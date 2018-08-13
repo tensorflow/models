@@ -90,5 +90,3 @@ ENV/
 
 # PyCharm
 .idea/
-
-samples/outreach/blogs/serving_blogpost/data/

@@ -2925,6 +2925,29 @@ def ssd_random_crop_pad_fixed_aspect_ratio(
   return result
 
 
+def convert_class_logits_to_softmax(multiclass_scores, temperature=1.0):
+  """Converts multiclass logits to softmax scores after applying temperature.
+
+  Args:
+    multiclass_scores: float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
+    temperature: Scale factor to use prior to applying softmax. Larger
+      temperatures give more uniform distruibutions after softmax.
+
+  Returns:
+    multiclass_scores: float32 tensor of shape
+      [num_instances, num_classes] with scaling and softmax applied.
+  """
+
+  # Multiclass scores must be stored as logits. Apply temp and softmax.
+  multiclass_scores_scaled = tf.divide(
+      multiclass_scores, temperature, name='scale_logits')
+  multiclass_scores = tf.nn.softmax(multiclass_scores_scaled, name='softmax')
+
+  return multiclass_scores
+
+
 def get_default_func_arg_map(include_label_scores=False,
                              include_multiclass_scores=False,
                              include_instance_masks=False,
@@ -3003,8 +3026,7 @@ def get_default_func_arg_map(include_label_scores=False,
       random_crop_pad_image: (fields.InputDataFields.image,
                               fields.InputDataFields.groundtruth_boxes,
                               fields.InputDataFields.groundtruth_classes,
-                              groundtruth_label_scores,
-                              multiclass_scores),
+                              groundtruth_label_scores, multiclass_scores),
       random_crop_to_aspect_ratio: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
@@ -3051,20 +3073,15 @@ def get_default_func_arg_map(include_label_scores=False,
       subtract_channel_mean: (fields.InputDataFields.image,),
       one_hot_encoding: (fields.InputDataFields.groundtruth_image_classes,),
       rgb_to_gray: (fields.InputDataFields.image,),
-      ssd_random_crop: (
-          fields.InputDataFields.image,
-          fields.InputDataFields.groundtruth_boxes,
-          fields.InputDataFields.groundtruth_classes,
-          groundtruth_label_scores,
-          multiclass_scores,
-          groundtruth_instance_masks,
-          groundtruth_keypoints
-      ),
+      ssd_random_crop: (fields.InputDataFields.image,
+                        fields.InputDataFields.groundtruth_boxes,
+                        fields.InputDataFields.groundtruth_classes,
+                        groundtruth_label_scores, multiclass_scores,
+                        groundtruth_instance_masks, groundtruth_keypoints),
       ssd_random_crop_pad: (fields.InputDataFields.image,
                             fields.InputDataFields.groundtruth_boxes,
                             fields.InputDataFields.groundtruth_classes,
-                            groundtruth_label_scores,
-                            multiclass_scores),
+                            groundtruth_label_scores, multiclass_scores),
       ssd_random_crop_fixed_aspect_ratio: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
@@ -3079,6 +3096,7 @@ def get_default_func_arg_map(include_label_scores=False,
           groundtruth_instance_masks,
           groundtruth_keypoints,
       ),
+      convert_class_logits_to_softmax: (multiclass_scores,),
   }
 
   return prep_func_arg_map

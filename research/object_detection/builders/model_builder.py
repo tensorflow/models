@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """A function to build a DetectionModel from configuration."""
+import functools
 from object_detection.builders import anchor_generator_builder
 from object_detection.builders import box_coder_builder
 from object_detection.builders import box_predictor_builder
@@ -23,7 +24,8 @@ from object_detection.builders import losses_builder
 from object_detection.builders import matcher_builder
 from object_detection.builders import post_processing_builder
 from object_detection.builders import region_similarity_calculator_builder as sim_calc
-from object_detection.core import box_predictor
+from object_detection.core import balanced_positive_negative_sampler as sampler
+from object_detection.core import target_assigner
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
@@ -41,7 +43,10 @@ from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobile
 from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMobileNetV1FpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
+from object_detection.predictors import rfcn_box_predictor
 from object_detection.protos import model_pb2
+from object_detection.utils import ops
+
 
 # A map of names to SSD feature extractors.
 SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -142,10 +147,34 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
     raise ValueError('Unknown ssd feature_extractor: {}'.format(feature_type))
 
   feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
-  return feature_extractor_class(
-      is_training, depth_multiplier, min_depth, pad_to_multiple,
-      conv_hyperparams, reuse_weights, use_explicit_padding, use_depthwise,
-      override_base_feature_extractor_hyperparams)
+  kwargs = {
+      'is_training':
+          is_training,
+      'depth_multiplier':
+          depth_multiplier,
+      'min_depth':
+          min_depth,
+      'pad_to_multiple':
+          pad_to_multiple,
+      'conv_hyperparams_fn':
+          conv_hyperparams,
+      'reuse_weights':
+          reuse_weights,
+      'use_explicit_padding':
+          use_explicit_padding,
+      'use_depthwise':
+          use_depthwise,
+      'override_base_feature_extractor_hyperparams':
+          override_base_feature_extractor_hyperparams
+  }
+
+  if feature_extractor_config.HasField('fpn'):
+    kwargs.update({
+        'fpn_min_level': feature_extractor_config.fpn.min_level,
+        'fpn_max_level': feature_extractor_config.fpn.max_level,
+    })
+
+  return feature_extractor_class(**kwargs)
 
 
 def _build_ssd_model(ssd_config, is_training, add_summaries,
@@ -194,6 +223,22 @@ def _build_ssd_model(ssd_config, is_training, add_summaries,
    random_example_sampler) = losses_builder.build(ssd_config.loss)
   normalize_loss_by_num_matches = ssd_config.normalize_loss_by_num_matches
   normalize_loc_loss_by_codesize = ssd_config.normalize_loc_loss_by_codesize
+  weight_regression_loss_by_score = (ssd_config.weight_regression_loss_by_score)
+
+  target_assigner_instance = target_assigner.TargetAssigner(
+      region_similarity_calculator,
+      matcher,
+      box_coder,
+      negative_class_weight=negative_class_weight,
+      weight_regression_loss_by_score=weight_regression_loss_by_score)
+
+  expected_classification_loss_under_sampling = None
+  if ssd_config.use_expected_classification_loss_under_sampling:
+    expected_classification_loss_under_sampling = functools.partial(
+        ops.expected_classification_loss_under_sampling,
+        minimum_negative_sampling=ssd_config.minimum_negative_sampling,
+        desired_negative_sampling_ratio=ssd_config.
+        desired_negative_sampling_ratio)
 
   return ssd_meta_arch.SSDMetaArch(
       is_training,
@@ -214,12 +259,15 @@ def _build_ssd_model(ssd_config, is_training, add_summaries,
       localization_weight,
       normalize_loss_by_num_matches,
       hard_example_miner,
+      target_assigner_instance=target_assigner_instance,
       add_summaries=add_summaries,
       normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
       freeze_batchnorm=ssd_config.freeze_batchnorm,
       inplace_batchnorm_update=ssd_config.inplace_batchnorm_update,
       add_background_class=add_background_class,
-      random_example_sampler=random_example_sampler)
+      random_example_sampler=random_example_sampler,
+      expected_classification_loss_under_sampling=
+      expected_classification_loss_under_sampling)
 
 
 def _build_faster_rcnn_feature_extractor(
@@ -291,6 +339,10 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   first_stage_anchor_generator = anchor_generator_builder.build(
       frcnn_config.first_stage_anchor_generator)
 
+  first_stage_target_assigner = target_assigner.create_target_assigner(
+      'FasterRCNN',
+      'proposal',
+      use_matmul_gather=frcnn_config.use_matmul_gather_in_matcher)
   first_stage_atrous_rate = frcnn_config.first_stage_atrous_rate
   first_stage_box_predictor_arg_scope_fn = hyperparams_builder.build(
       frcnn_config.first_stage_box_predictor_conv_hyperparams, is_training)
@@ -298,8 +350,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       frcnn_config.first_stage_box_predictor_kernel_size)
   first_stage_box_predictor_depth = frcnn_config.first_stage_box_predictor_depth
   first_stage_minibatch_size = frcnn_config.first_stage_minibatch_size
-  first_stage_positive_balance_fraction = (
-      frcnn_config.first_stage_positive_balance_fraction)
+  first_stage_sampler = sampler.BalancedPositiveNegativeSampler(
+      positive_fraction=frcnn_config.first_stage_positive_balance_fraction,
+      is_static=frcnn_config.use_static_balanced_label_sampler)
   first_stage_nms_score_threshold = frcnn_config.first_stage_nms_score_threshold
   first_stage_nms_iou_threshold = frcnn_config.first_stage_nms_iou_threshold
   first_stage_max_proposals = frcnn_config.first_stage_max_proposals
@@ -311,13 +364,19 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   maxpool_kernel_size = frcnn_config.maxpool_kernel_size
   maxpool_stride = frcnn_config.maxpool_stride
 
+  second_stage_target_assigner = target_assigner.create_target_assigner(
+      'FasterRCNN',
+      'detection',
+      use_matmul_gather=frcnn_config.use_matmul_gather_in_matcher)
   second_stage_box_predictor = box_predictor_builder.build(
       hyperparams_builder.build,
       frcnn_config.second_stage_box_predictor,
       is_training=is_training,
       num_classes=num_classes)
   second_stage_batch_size = frcnn_config.second_stage_batch_size
-  second_stage_balance_fraction = frcnn_config.second_stage_balance_fraction
+  second_stage_sampler = sampler.BalancedPositiveNegativeSampler(
+      positive_fraction=frcnn_config.second_stage_balance_fraction,
+      is_static=frcnn_config.use_static_balanced_label_sampler)
   (second_stage_non_max_suppression_fn, second_stage_score_conversion_fn
   ) = post_processing_builder.build(frcnn_config.second_stage_post_processing)
   second_stage_localization_loss_weight = (
@@ -338,6 +397,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_localization_loss_weight)
 
   use_matmul_crop_and_resize = (frcnn_config.use_matmul_crop_and_resize)
+  clip_anchors_to_image = (
+      frcnn_config.clip_anchors_to_image)
 
   common_kwargs = {
       'is_training': is_training,
@@ -346,6 +407,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       'feature_extractor': feature_extractor,
       'number_of_stages': number_of_stages,
       'first_stage_anchor_generator': first_stage_anchor_generator,
+      'first_stage_target_assigner': first_stage_target_assigner,
       'first_stage_atrous_rate': first_stage_atrous_rate,
       'first_stage_box_predictor_arg_scope_fn':
       first_stage_box_predictor_arg_scope_fn,
@@ -353,15 +415,15 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       first_stage_box_predictor_kernel_size,
       'first_stage_box_predictor_depth': first_stage_box_predictor_depth,
       'first_stage_minibatch_size': first_stage_minibatch_size,
-      'first_stage_positive_balance_fraction':
-      first_stage_positive_balance_fraction,
+      'first_stage_sampler': first_stage_sampler,
       'first_stage_nms_score_threshold': first_stage_nms_score_threshold,
       'first_stage_nms_iou_threshold': first_stage_nms_iou_threshold,
       'first_stage_max_proposals': first_stage_max_proposals,
       'first_stage_localization_loss_weight': first_stage_loc_loss_weight,
       'first_stage_objectness_loss_weight': first_stage_obj_loss_weight,
+      'second_stage_target_assigner': second_stage_target_assigner,
       'second_stage_batch_size': second_stage_batch_size,
-      'second_stage_balance_fraction': second_stage_balance_fraction,
+      'second_stage_sampler': second_stage_sampler,
       'second_stage_non_max_suppression_fn':
       second_stage_non_max_suppression_fn,
       'second_stage_score_conversion_fn': second_stage_score_conversion_fn,
@@ -373,10 +435,12 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       second_stage_classification_loss_weight,
       'hard_example_miner': hard_example_miner,
       'add_summaries': add_summaries,
-      'use_matmul_crop_and_resize': use_matmul_crop_and_resize
+      'use_matmul_crop_and_resize': use_matmul_crop_and_resize,
+      'clip_anchors_to_image': clip_anchors_to_image
   }
 
-  if isinstance(second_stage_box_predictor, box_predictor.RfcnBoxPredictor):
+  if isinstance(second_stage_box_predictor,
+                rfcn_box_predictor.RfcnBoxPredictor):
     return rfcn_meta_arch.RFCNMetaArch(
         second_stage_rfcn_box_predictor=second_stage_box_predictor,
         **common_kwargs)

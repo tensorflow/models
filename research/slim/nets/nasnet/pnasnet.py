@@ -43,6 +43,24 @@ def large_imagenet_config():
       use_aux_head=1,
       num_reduction_layers=2,
       data_format='NHWC',
+      skip_reduction_layer_input=1,
+      total_training_steps=250000,
+  )
+
+
+def mobile_imagenet_config():
+  """Mobile ImageNet configuration based on PNASNet-5."""
+  return tf.contrib.training.HParams(
+      stem_multiplier=1.0,
+      dense_dropout_keep_prob=0.5,
+      num_cells=9,
+      filter_scaling_rate=2.0,
+      num_conv_filters=54,
+      drop_path_keep_prob=1.0,
+      use_aux_head=1,
+      num_reduction_layers=2,
+      data_format='NHWC',
+      skip_reduction_layer_input=1,
       total_training_steps=250000,
   )
 
@@ -52,6 +70,14 @@ def pnasnet_large_arg_scope(weight_decay=4e-5, batch_norm_decay=0.9997,
   """Default arg scope for the PNASNet Large ImageNet model."""
   return nasnet.nasnet_large_arg_scope(
       weight_decay, batch_norm_decay, batch_norm_epsilon)
+
+
+def pnasnet_mobile_arg_scope(weight_decay=4e-5,
+                             batch_norm_decay=0.9997,
+                             batch_norm_epsilon=0.001):
+  """Default arg scope for the PNASNet Mobile ImageNet model."""
+  return nasnet.nasnet_mobile_arg_scope(weight_decay, batch_norm_decay,
+                                        batch_norm_epsilon)
 
 
 def _build_pnasnet_base(images,
@@ -92,7 +118,8 @@ def _build_pnasnet_base(images,
     is_reduction = cell_num in reduction_indices
     stride = 2 if is_reduction else 1
     if is_reduction: filter_scaling *= hparams.filter_scaling_rate
-    prev_layer = cell_outputs[-2]
+    if hparams.skip_reduction_layer_input or not is_reduction:
+      prev_layer = cell_outputs[-2]
     net = normal_cell(
         net,
         scope='cell_{}'.format(cell_num),
@@ -176,6 +203,56 @@ def build_pnasnet_large(images,
           is_training=is_training,
           final_endpoint=final_endpoint)
 build_pnasnet_large.default_image_size = 331
+
+
+def build_pnasnet_mobile(images,
+                         num_classes,
+                         is_training=True,
+                         final_endpoint=None,
+                         config=None):
+  """Build PNASNet Mobile model for the ImageNet Dataset."""
+  hparams = copy.deepcopy(config) if config else mobile_imagenet_config()
+  # pylint: disable=protected-access
+  nasnet._update_hparams(hparams, is_training)
+  # pylint: enable=protected-access
+
+  if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
+    tf.logging.info('A GPU is available on the machine, consider using NCHW '
+                    'data format for increased speed on GPU.')
+
+  if hparams.data_format == 'NCHW':
+    images = tf.transpose(images, [0, 3, 1, 2])
+
+  # Calculate the total number of cells in the network.
+  # There is no distinction between reduction and normal cells in PNAS so the
+  # total number of cells is equal to the number normal cells plus the number
+  # of stem cells (two by default).
+  total_num_cells = hparams.num_cells + 2
+
+  normal_cell = PNasNetNormalCell(hparams.num_conv_filters,
+                                  hparams.drop_path_keep_prob, total_num_cells,
+                                  hparams.total_training_steps)
+  with arg_scope(
+      [slim.dropout, nasnet_utils.drop_path, slim.batch_norm],
+      is_training=is_training):
+    with arg_scope(
+        [
+            slim.avg_pool2d, slim.max_pool2d, slim.conv2d, slim.batch_norm,
+            slim.separable_conv2d, nasnet_utils.factorized_reduction,
+            nasnet_utils.global_avg_pool, nasnet_utils.get_channel_index,
+            nasnet_utils.get_channel_dim
+        ],
+        data_format=hparams.data_format):
+      return _build_pnasnet_base(
+          images,
+          normal_cell=normal_cell,
+          num_classes=num_classes,
+          hparams=hparams,
+          is_training=is_training,
+          final_endpoint=final_endpoint)
+
+
+build_pnasnet_mobile.default_image_size = 224
 
 
 class PNasNetNormalCell(nasnet_utils.NasNetABaseCell):

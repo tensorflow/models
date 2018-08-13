@@ -2844,5 +2844,24 @@ class PreprocessorTest(tf.test.TestCase):
                                             include_instance_masks=True,
                                             include_keypoints=True)
 
+  def testConvertClassLogitsToSoftmax(self):
+    multiclass_scores = tf.constant(
+        [[1.0, 0.0], [0.5, 0.5], [1000, 1]], dtype=tf.float32)
+    temperature = 2.0
+
+    converted_multiclass_scores = (
+        preprocessor.convert_class_logits_to_softmax(
+            multiclass_scores=multiclass_scores, temperature=temperature))
+
+    expected_converted_multiclass_scores = [[[0.62245935, 0.37754068],
+                                             [0.5, 0.5], [1, 0]]]
+
+    with self.test_session() as sess:
+      (converted_multiclass_scores_) = sess.run([converted_multiclass_scores])
+
+      self.assertAllClose(converted_multiclass_scores_,
+                          expected_converted_multiclass_scores)
+
+
 if __name__ == '__main__':
   tf.test.main()

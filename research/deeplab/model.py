@@ -237,9 +237,6 @@ def multi_scale_logits(images,
   # Setup default values.
   if not image_pyramid:
     image_pyramid = [1.0]
-  if model_options.crop_size is None and model_options.add_image_level_feature:
-    raise ValueError(
-        'Crop size must be specified for using image-level feature.')
   crop_height = (
       model_options.crop_size[0]
       if model_options.crop_size else tf.shape(images)[1])
@@ -378,18 +375,39 @@ def extract_features(images,
         branch_logits = []
 
         if model_options.add_image_level_feature:
-          pool_height = scale_dimension(model_options.crop_size[0],
-                                        1. / model_options.output_stride)
-          pool_width = scale_dimension(model_options.crop_size[1],
-                                       1. / model_options.output_stride)
-          image_feature = slim.avg_pool2d(
-              features, [pool_height, pool_width], [pool_height, pool_width],
-              padding='VALID')
+          if model_options.crop_size is not None:
+            image_pooling_crop_size = model_options.image_pooling_crop_size
+            # If image_pooling_crop_size is not specified, use crop_size.
+            if image_pooling_crop_size is None:
+              image_pooling_crop_size = model_options.crop_size
+            pool_height = scale_dimension(image_pooling_crop_size[0],
+                                          1. / model_options.output_stride)
+            pool_width = scale_dimension(image_pooling_crop_size[1],
+                                         1. / model_options.output_stride)
+            image_feature = slim.avg_pool2d(
+                features, [pool_height, pool_width], [1, 1], padding='VALID')
+            resize_height = scale_dimension(model_options.crop_size[0],
+                                            1. / model_options.output_stride)
+            resize_width = scale_dimension(model_options.crop_size[1],
+                                           1. / model_options.output_stride)
+          else:
+            # If crop_size is None, we simply do global pooling.
+            pool_height = tf.shape(features)[1]
+            pool_width = tf.shape(features)[2]
+            image_feature = tf.reduce_mean(features, axis=[1, 2])[:, tf.newaxis,
+                                                                  tf.newaxis]
+            resize_height = pool_height
+            resize_width = pool_width
           image_feature = slim.conv2d(
               image_feature, depth, 1, scope=IMAGE_POOLING_SCOPE)
           image_feature = tf.image.resize_bilinear(
-              image_feature, [pool_height, pool_width], align_corners=True)
-          image_feature.set_shape([None, pool_height, pool_width, depth])
+              image_feature, [resize_height, resize_width], align_corners=True)
+          # Set shape for resize_height/resize_width if they are not Tensor.
+          if isinstance(resize_height, tf.Tensor):
+            resize_height = None
+          if isinstance(resize_width, tf.Tensor):
+            resize_width = None
+          image_feature.set_shape([None, resize_height, resize_width, depth])
           branch_logits.append(image_feature)
 
         # Employ a 1x1 convolution.
@@ -453,9 +471,14 @@ def _get_logits(images,
       fine_tune_batch_norm=fine_tune_batch_norm)
 
   if model_options.decoder_output_stride is not None:
-    decoder_height = scale_dimension(model_options.crop_size[0],
+    if model_options.crop_size is None:
+      height = tf.shape(images)[1]
+      width = tf.shape(images)[2]
+    else:
+      height, width = model_options.crop_size
+    decoder_height = scale_dimension(height,
                                      1.0 / model_options.decoder_output_stride)
-    decoder_width = scale_dimension(model_options.crop_size[1],
+    decoder_width = scale_dimension(width,
                                     1.0 / model_options.decoder_output_stride)
     features = refine_by_decoder(
         features,
@@ -557,8 +580,11 @@ def refine_by_decoder(features,
             for j, feature in enumerate(decoder_features_list):
               decoder_features_list[j] = tf.image.resize_bilinear(
                   feature, [decoder_height, decoder_width], align_corners=True)
-              decoder_features_list[j].set_shape(
-                  [None, decoder_height, decoder_width, None])
+              h = (None if isinstance(decoder_height, tf.Tensor)
+                   else decoder_height)
+              w = (None if isinstance(decoder_width, tf.Tensor)
+                   else decoder_width)
+              decoder_features_list[j].set_shape([None, h, w, None])
             decoder_depth = 256
             if decoder_use_separable_conv:
               decoder_features = split_separable_conv2d(

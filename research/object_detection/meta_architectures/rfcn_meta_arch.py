@@ -55,20 +55,22 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                feature_extractor,
                number_of_stages,
                first_stage_anchor_generator,
+               first_stage_target_assigner,
                first_stage_atrous_rate,
                first_stage_box_predictor_arg_scope_fn,
                first_stage_box_predictor_kernel_size,
                first_stage_box_predictor_depth,
                first_stage_minibatch_size,
-               first_stage_positive_balance_fraction,
+               first_stage_sampler,
                first_stage_nms_score_threshold,
                first_stage_nms_iou_threshold,
                first_stage_max_proposals,
                first_stage_localization_loss_weight,
                first_stage_objectness_loss_weight,
+               second_stage_target_assigner,
                second_stage_rfcn_box_predictor,
                second_stage_batch_size,
-               second_stage_balance_fraction,
+               second_stage_sampler,
                second_stage_non_max_suppression_fn,
                second_stage_score_conversion_fn,
                second_stage_localization_loss_weight,
@@ -77,7 +79,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                hard_example_miner,
                parallel_iterations=16,
                add_summaries=True,
-               use_matmul_crop_and_resize=False):
+               use_matmul_crop_and_resize=False,
+               clip_anchors_to_image=False):
     """RFCNMetaArch Constructor.
 
     Args:
@@ -97,6 +100,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       first_stage_anchor_generator: An anchor_generator.AnchorGenerator object
         (note that currently we only support
         grid_anchor_generator.GridAnchorGenerator objects)
+      first_stage_target_assigner: Target assigner to use for first stage of
+        R-FCN (RPN).
       first_stage_atrous_rate: A single integer indicating the atrous rate for
         the single convolution op which is applied to the `rpn_features_to_crop`
         tensor to obtain a tensor to be used for box prediction. Some feature
@@ -116,8 +121,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         "batch size" refers to the number of anchors selected as contributing
         to the loss function for any given image within the image batch and is
         only called "batch_size" due to terminology from the Faster R-CNN paper.
-      first_stage_positive_balance_fraction: Fraction of positive examples
-        per image for the RPN. The recommended value for Faster RCNN is 0.5.
+      first_stage_sampler: The sampler for the boxes used to calculate the RPN
+        loss after the first stage.
       first_stage_nms_score_threshold: Score threshold for non max suppression
         for the Region Proposal Network (RPN).  This value is expected to be in
         [0, 1] as it is applied directly after a softmax transformation.  The
@@ -130,6 +135,10 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         Region Proposal Network (RPN).
       first_stage_localization_loss_weight: A float
       first_stage_objectness_loss_weight: A float
+      second_stage_target_assigner: Target assigner to use for second stage of
+        R-FCN. If the model is configured with multiple prediction heads, this
+        target assigner is used to generate targets for all heads (with the
+        correct `unmatched_class_label`).
       second_stage_rfcn_box_predictor: RFCN box predictor to use for
         second stage.
       second_stage_batch_size: The batch size used for computing the
@@ -137,9 +146,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         "batch size" refers to the number of proposals selected as contributing
         to the loss function for any given image within the image batch and is
         only called "batch_size" due to terminology from the Faster R-CNN paper.
-      second_stage_balance_fraction: Fraction of positive examples to use
-        per image for the box classifier. The recommended value for Faster RCNN
-        is 0.25.
+      second_stage_sampler: The sampler for the boxes used for second stage
+        box classifier.
       second_stage_non_max_suppression_fn: batch_multiclass_non_max_suppression
         callable that takes `boxes`, `scores`, optional `clip_window` and
         optional (kwarg) `mask` inputs (with all other inputs already set)
@@ -163,6 +171,9 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       use_matmul_crop_and_resize: Force the use of matrix multiplication based
         crop and resize instead of standard tf.image.crop_and_resize while
         computing second stage input feature maps.
+      clip_anchors_to_image: The anchors generated are clip to the
+        window size without filtering the nonoverlapping anchors. This generates
+        a static number of anchors. This argument is unused.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals`
@@ -178,12 +189,13 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         feature_extractor,
         number_of_stages,
         first_stage_anchor_generator,
+        first_stage_target_assigner,
         first_stage_atrous_rate,
         first_stage_box_predictor_arg_scope_fn,
         first_stage_box_predictor_kernel_size,
         first_stage_box_predictor_depth,
         first_stage_minibatch_size,
-        first_stage_positive_balance_fraction,
+        first_stage_sampler,
         first_stage_nms_score_threshold,
         first_stage_nms_iou_threshold,
         first_stage_max_proposals,
@@ -192,9 +204,10 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         None,  # initial_crop_size is not used in R-FCN
         None,  # maxpool_kernel_size is not use in R-FCN
         None,  # maxpool_stride is not use in R-FCN
+        second_stage_target_assigner,
         None,  # fully_connected_box_predictor is not used in R-FCN.
         second_stage_batch_size,
-        second_stage_balance_fraction,
+        second_stage_sampler,
         second_stage_non_max_suppression_fn,
         second_stage_score_conversion_fn,
         second_stage_localization_loss_weight,
@@ -274,11 +287,16 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
             rpn_features,
             scope=self.second_stage_feature_extractor_scope))
 
-    box_predictions = self._rfcn_box_predictor.predict(
-        [box_classifier_features],
-        num_predictions_per_location=[1],
-        scope=self.second_stage_box_predictor_scope,
-        proposal_boxes=proposal_boxes_normalized)
+    if self._rfcn_box_predictor.is_keras_model:
+      box_predictions = self._rfcn_box_predictor(
+          [box_classifier_features],
+          proposal_boxes=proposal_boxes_normalized)
+    else:
+      box_predictions = self._rfcn_box_predictor.predict(
+          [box_classifier_features],
+          num_predictions_per_location=[1],
+          scope=self.second_stage_box_predictor_scope,
+          proposal_boxes=proposal_boxes_normalized)
     refined_box_encodings = tf.squeeze(
         tf.concat(box_predictions[box_predictor.BOX_ENCODINGS], axis=1), axis=1)
     class_predictions_with_background = tf.squeeze(

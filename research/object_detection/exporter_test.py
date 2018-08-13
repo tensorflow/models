@@ -20,8 +20,10 @@ import six
 import tensorflow as tf
 from google.protobuf import text_format
 from object_detection import exporter
+from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
 from object_detection.core import model
+from object_detection.protos import graph_rewriter_pb2
 from object_detection.protos import pipeline_pb2
 
 if six.PY2:
@@ -75,8 +77,10 @@ class FakeModel(model.DetectionModel):
 
 class ExportInferenceGraphTest(tf.test.TestCase):
 
-  def _save_checkpoint_from_mock_model(self, checkpoint_path,
-                                       use_moving_averages):
+  def _save_checkpoint_from_mock_model(self,
+                                       checkpoint_path,
+                                       use_moving_averages,
+                                       enable_quantization=False):
     g = tf.Graph()
     with g.as_default():
       mock_model = FakeModel()
@@ -86,20 +90,28 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       mock_model.postprocess(predictions, true_image_shapes)
       if use_moving_averages:
         tf.train.ExponentialMovingAverage(0.0).apply()
-      slim.get_or_create_global_step()
+      tf.train.get_or_create_global_step()
+      if enable_quantization:
+        graph_rewriter_config = graph_rewriter_pb2.GraphRewriter()
+        graph_rewriter_config.quantization.delay = 500000
+        graph_rewriter_fn = graph_rewriter_builder.build(
+            graph_rewriter_config, is_training=False)
+        graph_rewriter_fn()
       saver = tf.train.Saver()
       init = tf.global_variables_initializer()
       with self.test_session() as sess:
         sess.run(init)
         saver.save(sess, checkpoint_path)
 
-  def _load_inference_graph(self, inference_graph_path):
+  def _load_inference_graph(self, inference_graph_path, is_binary=True):
     od_graph = tf.Graph()
     with od_graph.as_default():
       od_graph_def = tf.GraphDef()
       with tf.gfile.GFile(inference_graph_path) as fid:
-        serialized_graph = fid.read()
-        od_graph_def.ParseFromString(serialized_graph)
+        if is_binary:
+          od_graph_def.ParseFromString(fid.read())
+        else:
+          text_format.Parse(fid.read(), od_graph_def)
         tf.import_graph_def(od_graph_def, name='')
     return od_graph
 
@@ -283,6 +295,42 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     actual_variables = set(
         [var_name for var_name, _ in tf.train.list_variables(output_directory)])
     self.assertTrue(expected_variables.issubset(actual_variables))
+
+  def test_export_model_with_quantization_nodes(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(
+        trained_checkpoint_prefix,
+        use_moving_averages=False,
+        enable_quantization=True)
+    output_directory = os.path.join(tmp_dir, 'output')
+    inference_graph_path = os.path.join(output_directory,
+                                        'inference_graph.pbtxt')
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      text_format.Merge(
+          """graph_rewriter {
+               quantization {
+                 delay: 50000
+                 activation_bits: 8
+                 weight_bits: 8
+               }
+             }""", pipeline_config)
+      exporter.export_inference_graph(
+          input_type='image_tensor',
+          pipeline_config=pipeline_config,
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory,
+          write_inference_graph=True)
+    self._load_inference_graph(inference_graph_path, is_binary=False)
+    has_quant_nodes = False
+    for v in tf.global_variables():
+      if v.op.name.endswith('act_quant/min'):
+        has_quant_nodes = True
+        break
+    self.assertTrue(has_quant_nodes)
 
   def test_export_model_with_all_output_nodes(self):
     tmp_dir = self.get_temp_dir()
@@ -564,16 +612,16 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       output_node_names = ','.join(outputs.keys())
       saver = tf.train.Saver()
       input_saver_def = saver.as_saver_def()
-      frozen_graph_def = exporter.freeze_graph_with_def_protos(
+      exporter.freeze_graph_with_def_protos(
           input_graph_def=tf.get_default_graph().as_graph_def(),
           input_saver_def=input_saver_def,
           input_checkpoint=trained_checkpoint_prefix,
           output_node_names=output_node_names,
           restore_op_name='save/restore_all',
           filename_tensor_name='save/Const:0',
+          output_graph=inference_graph_path,
           clear_devices=True,
           initializer_nodes='')
-      exporter.write_frozen_graph(inference_graph_path, frozen_graph_def)
 
     inference_graph = self._load_inference_graph(inference_graph_path)
     tf_example_np = np.expand_dims(self._create_tf_example(
@@ -719,6 +767,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           output_node_names=output_node_names,
           restore_op_name='save/restore_all',
           filename_tensor_name='save/Const:0',
+          output_graph='',
           clear_devices=True,
           initializer_nodes='')
       exporter.write_saved_model(

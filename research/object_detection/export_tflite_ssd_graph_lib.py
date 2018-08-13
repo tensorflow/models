@@ -21,6 +21,7 @@ import tempfile
 import numpy as np
 import tensorflow as tf
 from tensorflow.core.framework import attr_value_pb2
+from tensorflow.core.framework import types_pb2
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.tools.graph_transforms import TransformGraph
 from object_detection import exporter
@@ -41,7 +42,7 @@ def get_const_center_size_encoded_anchors(anchors):
       boxes
 
   Returns:
-    encoded_anchors: a float32 constant tensor of shape [4, num_anchors]
+    encoded_anchors: a float32 constant tensor of shape [num_anchors, 4]
     containing the anchor boxes.
   """
   anchor_boxlist = box_list.BoxList(anchors)
@@ -83,10 +84,10 @@ def append_postprocessing_op(frozen_graph_def, max_detections,
     TFLite_Detection_PostProcess custom op node has four outputs:
     detection_boxes: a float32 tensor of shape [1, num_boxes, 4] with box
     locations
-    detection_scores: a float32 tensor of shape [1, num_boxes]
-    with class scores
     detection_classes: a float32 tensor of shape [1, num_boxes]
     with class indices
+    detection_scores: a float32 tensor of shape [1, num_boxes]
+    with class scores
     num_boxes: a float32 tensor of size 1 containing the number of detected
     boxes
   """
@@ -94,6 +95,12 @@ def append_postprocessing_op(frozen_graph_def, max_detections,
   new_output.op = 'TFLite_Detection_PostProcess'
   new_output.name = 'TFLite_Detection_PostProcess'
   new_output.attr['_output_quantized'].CopyFrom(
+      attr_value_pb2.AttrValue(b=True))
+  new_output.attr['_output_types'].list.type.extend([
+      types_pb2.DT_FLOAT, types_pb2.DT_FLOAT, types_pb2.DT_FLOAT,
+      types_pb2.DT_FLOAT
+  ])
+  new_output.attr['_support_output_type_float_in_quantized_op'].CopyFrom(
       attr_value_pb2.AttrValue(b=True))
   new_output.attr['max_detections'].CopyFrom(
       attr_value_pb2.AttrValue(i=max_detections))
@@ -258,6 +265,7 @@ def export_tflite_graph(pipeline_config, trained_checkpoint_prefix, output_dir,
       restore_op_name='save/restore_all',
       filename_tensor_name='save/Const:0',
       clear_devices=True,
+      output_graph='',
       initializer_nodes='')
 
   # Add new operation to do post processing in a custom op (TF Lite only)

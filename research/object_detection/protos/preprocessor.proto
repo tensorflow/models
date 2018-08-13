@@ -33,6 +33,7 @@ message PreprocessingStep {
     RandomVerticalFlip random_vertical_flip = 25;
     RandomRotation90 random_rotation90 = 26;
     RGBtoGray rgb_to_gray = 27;
+    ConvertClassLogitsToSoftmax convert_class_logits_to_softmax = 28;
   }
 }
 
@@ -408,4 +409,12 @@ message SSDRandomCropPadFixedAspectRatio {
   // Max ratio of padded image height and width to the input image's height and
   // width. Two entries per operation.
   repeated float max_padded_size_ratio = 4;
+}
+
+// Converts class logits to softmax optionally scaling the values by temperature
+// first.
+message ConvertClassLogitsToSoftmax {
+
+  // Scale to use on logits before applying softmax.
+  optional float temperature = 1 [default=1.0];
 }
