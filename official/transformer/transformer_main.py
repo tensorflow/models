@@ -112,7 +112,7 @@ def model_fn(features, labels, mode, params):
         # host call functions should only have tensors as arguments.
         # This lambda pre-populates params so that metric_fn is
         # TPUEstimator compliant.
-        metric_fn = lambda logits, labels : (
+        metric_fn = lambda logits, labels: (
             metrics.get_eval_metrics(logits, labels, params=params))
         eval_metrics = (metric_fn, [logits, labels])
         return tf.contrib.tpu.TPUEstimatorSpec(
