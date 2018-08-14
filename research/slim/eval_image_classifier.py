@@ -79,6 +79,15 @@ tf.app.flags.DEFINE_float(
 tf.app.flags.DEFINE_integer(
     'eval_image_size', None, 'Eval image size')
 
+tf.app.flags.DEFINE_integer(
+    'inter_op_parallelism_threads', 0,
+    'Number of threads to use for inter-op parallelism. If left as default value of 0, the system will pick an appropriate number.')
+
+tf.app.flags.DEFINE_integer(
+    'intra_op_parallelism_threads', 0,
+    'Number of threads to use for intra-op parallelism. If left as default value of 0, the system will pick an appropriate number.')
+
+
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -171,6 +180,8 @@ def main(_):
       # This ensures that we make a single pass over all of the data.
       num_batches = math.ceil(dataset.num_samples / float(FLAGS.batch_size))
 
+    config = tf.ConfigProto(inter_op_parallelism_threads=FLAGS.inter_op_parallelism_threads, intra_op_parallelism_threads=FLAGS.intra_op_parallelism_threads)
+
     if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
       checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
     else:
@@ -184,7 +195,8 @@ def main(_):
         logdir=FLAGS.eval_dir,
         num_evals=num_batches,
         eval_op=list(names_to_updates.values()),
-        variables_to_restore=variables_to_restore)
+        variables_to_restore=variables_to_restore,
+        session_config=config)
 
 
 if __name__ == '__main__':
