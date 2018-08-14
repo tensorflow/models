@@ -177,7 +177,8 @@ def learning_rate_with_decay(
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
                     data_format, resnet_version, loss_scale,
-                    loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE):
+                    loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE,
+                    fine_tune=False):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -210,6 +211,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       otherwise. If None, batch_normalization variables will be excluded
       from the loss.
     dtype: the TensorFlow dtype to use for calculations.
+    fine_tune: If True only train the dense layers(final layers).
 
   Returns:
     EstimatorSpec parameterized according to the input params and the
@@ -281,11 +283,25 @@ def resnet_model_fn(features, labels, mode, model_class,
         momentum=momentum
     )
 
+    def _dense_grad_filter(gvs):
+      '''
+      only apply gradient updates to the final layer. This function is used for
+      fine tuning
+      Args:
+      gvs : list of tuples with gradients and variable info
+      Returns:
+      filtered gradients so that only the dense layer remains
+      '''
+      return [(g, v) for g, v in gvs if 'dense' in v.name]
+
     if loss_scale != 1:
       # When computing fp16 gradients, often intermediate tensor values are
       # so small, they underflow to 0. To avoid this, we multiply the loss by
       # loss_scale to make these tensor values loss_scale times bigger.
       scaled_grad_vars = optimizer.compute_gradients(loss * loss_scale)
+
+      if fine_tune:
+        scaled_grad_vars = _dense_grad_filter(scaled_grad_vars)
 
       # Once the gradient computation is complete we can scale the gradients
       # back to the correct scale before passing them to the optimizer.
@@ -293,7 +309,10 @@ def resnet_model_fn(features, labels, mode, model_class,
                             for grad, var in scaled_grad_vars]
       minimize_op = optimizer.apply_gradients(unscaled_grad_vars, global_step)
     else:
-      minimize_op = optimizer.minimize(loss, global_step)
+      grad_vars = optimizer.compute_gradients(loss)
+      if fine_tune:
+        grad_vars = _dense_grad_filter(grad_vars)
+      minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
@@ -354,15 +373,24 @@ def resnet_main(
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy, session_config=session_config)
 
+  # initialize our model with all but the dense layer from pretrained resnet
+  if flags_obj.pretrained_model_checkpoint_path is not None:
+    warm_start_settings = tf.estimator.WarmStartSettings(
+        flags_obj.pretrained_model_checkpoint_path,
+        vars_to_warm_start='^(?!.*dense)')
+  else:
+    warm_start_settings = None
+
   classifier = tf.estimator.Estimator(
       model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
-      params={
+      warm_start_from=warm_start_settings, params={
           'resnet_size': int(flags_obj.resnet_size),
           'data_format': flags_obj.data_format,
           'batch_size': flags_obj.batch_size,
           'resnet_version': int(flags_obj.resnet_version),
           'loss_scale': flags_core.get_loss_scale(flags_obj),
-          'dtype': flags_core.get_tf_dtype(flags_obj)
+          'dtype': flags_core.get_tf_dtype(flags_obj),
+          'fine_tune': flags_obj.fine_tune
       })
 
   run_params = {
@@ -446,6 +474,15 @@ def define_resnet_flags(resnet_size_choices=None):
       enum_values=['1', '2'],
       help=flags_core.help_wrap(
           'Version of ResNet. (1 or 2) See README.md for details.'))
+  flags.DEFINE_bool(
+      name='fine_tune', short_name='ft', default=False,
+      help=flags_core.help_wrap(
+          'If True do not train any parameters except for the final layer.'))
+  flags.DEFINE_string(
+      name='pretrained_model_checkpoint_path', short_name='pmcp', default=None,
+      help=flags_core.help_wrap(
+          'If not None initialize all the network except the final layer with '
+          'these values'))
 
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
