@@ -203,6 +203,7 @@ class BaseTest(tf.test.TestCase):
             'batch_size': _BATCH_SIZE,
             'resnet_version': resnet_version,
             'loss_scale': 128 if dtype == tf.float16 else 1,
+            'fine_tune': False,
         })
 
     predictions = spec.predictions
