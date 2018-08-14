@@ -49,7 +49,7 @@ $ export PYTHONPATH=$PYTHONPATH:$PWD:$PWD/slim
 You can fetch the MNIST data by running
 
 ```
- $ bazel run slim:download_and_convert_data -- --dataset_dir $DSN_DATA_DIR --dataset_name=mnist
+ $ bazel run slim:download_and_convert_data -- --dataset_dir $DSN_DATA_DIR --dataset_name mnist
 ```
 
 The MNIST-M dataset is available online [here](http://bit.ly/2nrlUAJ).  Once it is downloaded and extracted into your data directory, create TFRecord files by running:
