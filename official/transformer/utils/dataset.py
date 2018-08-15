@@ -220,7 +220,7 @@ def _read_and_batch_from_files(
   Returns:
     tf.data.Dataset object containing examples loaded from the files.
   """
-  dataset = tf.data.Dataset.list_files(file_pattern)
+  dataset = tf.data.Dataset.list_files(file_pattern, shuffle=shuffle)
 
   if shuffle:
     # Shuffle filenames
