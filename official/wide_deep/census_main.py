@@ -33,10 +33,12 @@ def define_census_flags():
                           model_dir='/tmp/census_model',
                           train_epochs=40,
                           epochs_between_evals=2,
+                          inter_op_parallelism_threads=0,
+                          intra_op_parallelism_threads=0,
                           batch_size=40)
 
 
-def build_estimator(model_dir, model_type, model_column_fn):
+def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
   """Build an estimator appropriate for the given model type."""
   wide_columns, deep_columns = model_column_fn()
   hidden_units = [100, 75, 50, 25]
@@ -44,7 +46,9 @@ def build_estimator(model_dir, model_type, model_column_fn):
   # Create a tf.estimator.RunConfig to ensure the model is run on CPU, which
   # trains faster than GPU for this model.
   run_config = tf.estimator.RunConfig().replace(
-      session_config=tf.ConfigProto(device_count={'GPU': 0}))
+      session_config=tf.ConfigProto(device_count={'GPU': 0},
+                                    inter_op_parallelism_threads=inter_op,
+                                    intra_op_parallelism_threads=intra_op))
 
   if model_type == 'wide':
     return tf.estimator.LinearClassifier(

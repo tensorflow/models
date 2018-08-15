@@ -39,6 +39,14 @@ To run the *wide* or *deep*-only models, set the `--model_type` flag to `wide` o
 
 The final accuracy should be over 83% with any of the three model types.
 
+You can also experiment with `-inter` and `-intra` flag to explore inter/intra op parallelism for potential better performance as follows:
+
+```
+python census_main.py --inter=<int> --intra=<int>
+```
+Please note the above optional inter/intra op does not affect model accuracy. These are TensorFlow framework configurations that only affect execution time.
+For more details regarding the above inter/intra flags, please refer to [Optimizing_for_CPU](https://www.tensorflow.org/performance/performance_guide#optimizing_for_cpu) or [TensorFlow config.proto source code](https://github.com/tensorflow/tensorflow/blob/26b4dfa65d360f2793ad75083c797d57f8661b93/tensorflow/core/protobuf/config.proto#L165).
+
 ### TensorBoard
 
 Run TensorBoard to inspect the details about the graph and training progression.
