@@ -62,9 +62,9 @@ def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
   hidden_units = [256, 256, 256, 128]
 
   run_config = tf.estimator.RunConfig().replace(
-          session_config=tf.ConfigProto(device_count={'GPU': 0},
-                                        inter_op_parallelism_threads=inter_op,
-                                        intra_op_parallelism_threads=intra_op))
+      session_config=tf.ConfigProto(device_count={'GPU': 0},
+                                    inter_op_parallelism_threads=inter_op,
+                                    intra_op_parallelism_threads=intra_op))
   return tf.estimator.DNNRegressor(
       model_dir=model_dir,
       feature_columns=deep_columns,

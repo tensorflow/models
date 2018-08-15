@@ -50,10 +50,12 @@ def define_wide_deep_flags():
           "Download data to data_dir if it is not already present."))
   flags.DEFINE_integer(
       name="inter_op_parallelism_threads", short_name="inter", default=0,
-      help="Number of threads to use for inter-op parallelism. If left as default value of 0, the system will pick an appropriate number.")
+      help="Number of threads to use for inter-op parallelism. "
+           "If left as default value of 0, the system will pick an appropriate number.")
   flags.DEFINE_integer(
       name="intra_op_parallelism_threads", short_name="intra", default=0,
-      help="Number of threads to use for intra-op parallelism. If left as default value of 0, the system will pick an appropriate number.")
+      help="Number of threads to use for intra-op parallelism. "
+           "If left as default value of 0, the system will pick an appropriate number.")
 
 
 def export_model(model, model_type, export_dir, model_column_fn):
