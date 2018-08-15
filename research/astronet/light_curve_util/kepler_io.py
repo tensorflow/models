@@ -213,11 +213,6 @@ def read_kepler_light_curve(filenames,
       # Index into primary HDU header and get quarter.
       quarter = hdu_list[0].header["QUARTER"]
 
-      # Remove NaN flux values.
-      valid_indices = np.where(np.isfinite(flux))
-      time = time[valid_indices]
-      flux = flux[valid_indices]
-
       if time.size:
         all_time.append(time)
         all_flux.append(flux)
@@ -226,5 +221,12 @@ def read_kepler_light_curve(filenames,
   if scramble_type:
     all_time, all_flux = scramble_light_curve(all_time, all_flux, all_quarters,
                                               scramble_type)
+
+  # Remove timestamps with NaN time or flux values.
+  for i, (time, flux) in enumerate(zip(all_time, all_flux)):
+    flux_and_time_finite = np.logical_and(np.isfinite(flux), np.isfinite(time))
+    valid_indices = np.where(flux_and_time_finite)
+    all_time[i] = time[valid_indices]
+    all_flux[i] = flux[valid_indices]
 
   return all_time, all_flux

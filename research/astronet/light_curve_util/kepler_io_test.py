@@ -155,10 +155,12 @@ class KeplerIoTest(absltest.TestCase):
         filenames, scramble_type="SCR1")
     self.assertLen(all_time, 3)
     self.assertLen(all_flux, 3)
-    self.assertLen(all_time[0], 4486)
-    self.assertLen(all_flux[0], 4486)
-    self.assertLen(all_time[1], 4134)
-    self.assertLen(all_flux[1], 4134)
+
+    # Arrays are shorter than above due to separation of time and flux NaNs.
+    self.assertLen(all_time[0], 4344)
+    self.assertLen(all_flux[0], 4344)
+    self.assertLen(all_time[1], 4041)
+    self.assertLen(all_flux[1], 4041)
     self.assertLen(all_time[2], 1008)
     self.assertLen(all_flux[2], 1008)
 
