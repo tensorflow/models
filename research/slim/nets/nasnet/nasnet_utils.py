@@ -450,6 +450,19 @@ class NasNetABaseCell(object):
     return net
 
 
+def get_used_hiddenstates(hiddenstate_indices):
+  assert len(hiddenstate_indices) % 2 == 0 # 2 indices per block
+
+  B = len(hiddenstate_indices) // 2
+
+  used_hiddenstates = [0] * (2 + B) # prev-prev cell + prev cell + B blocks
+
+  for i in hiddenstate_indices:
+    used_hiddenstates[i] = 1
+
+  return used_hiddenstates
+
+
 class NasNetANormalCell(NasNetABaseCell):
   """NASNetA Normal Cell."""
 
@@ -465,8 +478,8 @@ class NasNetANormalCell(NasNetABaseCell):
                   'avg_pool_3x3',
                   'separable_3x3_2',
                   'none']
-    used_hiddenstates = [1, 0, 0, 0, 0, 0, 0]
     hiddenstate_indices = [0, 1, 1, 1, 0, 1, 1, 1, 0, 0]
+    used_hiddenstates = get_used_hiddenstates(hiddenstate_indices)
     super(NasNetANormalCell, self).__init__(num_conv_filters, operations,
                                             used_hiddenstates,
                                             hiddenstate_indices,
@@ -490,8 +503,8 @@ class NasNetAReductionCell(NasNetABaseCell):
                   'avg_pool_3x3',
                   'separable_3x3_2',
                   'max_pool_3x3']
-    used_hiddenstates = [1, 1, 1, 0, 0, 0, 0]
     hiddenstate_indices = [0, 1, 0, 1, 0, 1, 3, 2, 2, 0]
+    used_hiddenstates = get_used_hiddenstates(hiddenstate_indices)
     super(NasNetAReductionCell, self).__init__(num_conv_filters, operations,
                                                used_hiddenstates,
                                                hiddenstate_indices,
