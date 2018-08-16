@@ -222,10 +222,6 @@ def _read_and_batch_from_files(
   """
   dataset = tf.data.Dataset.list_files(file_pattern, shuffle=shuffle)
 
-  if shuffle:
-    # Shuffle filenames
-    dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
-
   # Read files and interleave results. When training, the order of the examples
   # will be non-deterministic.
   dataset = dataset.apply(
