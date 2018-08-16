@@ -58,8 +58,6 @@ import tensorflow as tf
 
 from official.utils.misc import model_helpers
 
-# Use the number of training files as the shuffle buffer.
-_FILE_SHUFFLE_BUFFER = 100
 # Buffer size for reading records from a TFRecord file. Each training file is
 # 7.2 MB, so 8 MB allows an entire file to be kept in memory.
 _READ_RECORD_BUFFER = 8 * 1000 * 1000
