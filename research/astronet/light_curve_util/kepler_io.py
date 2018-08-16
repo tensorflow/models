@@ -23,6 +23,7 @@ import os.path
 from astropy.io import fits
 import numpy as np
 
+from light_curve_util import util
 from tensorflow import gfile
 
 LONG_CADENCE_TIME_DELTA_DAYS = 0.02043422  # Approximately 29.4 minutes.
@@ -155,17 +156,18 @@ def scramble_light_curve(all_time, all_flux, all_quarters, scramble_type):
 
   Args:
     all_time: List holding lists of time values (each interior list holds a
-      quarter of time data).
+        quarter of time data).
     all_flux: List holding lists of flux values (each interior list holds a
-      quarter of flux data).
+        quarter of flux data).
     all_quarters: List of integers specifying which quarters were present in
-      the light curve (max is 18: Q0...Q17).
+        the light curve (max is 18: Q0...Q17).
     scramble_type: String specifying the scramble order, one of {'SCR1', 'SCR2',
-      'SCR3'}.
+        'SCR3'}.
 
   Returns:
-    scr_flux: scrambled flux values, the same list of lists in another order
-    scr_time: time values, re-partitioned to match sizes of the scr_flux lists
+    scr_flux: Scrambled flux values; the same list as the input flux in another
+        order.
+    scr_time: Time values, re-partitioned to match sizes of the scr_flux lists.
   """
   order = SIMULATED_DATA_SCRAMBLE_ORDERS[scramble_type]
   scr_flux = []
@@ -186,7 +188,8 @@ def scramble_light_curve(all_time, all_flux, all_quarters, scramble_type):
 
 def read_kepler_light_curve(filenames,
                             light_curve_extension="LIGHTCURVE",
-                            scramble_type=None):
+                            scramble_type=None,
+                            interpolate_missing_time=False):
   """Reads time and flux measurements for a Kepler target star.
 
   Args:
@@ -194,6 +197,10 @@ def read_kepler_light_curve(filenames,
     light_curve_extension: Name of the HDU 1 extension containing light curves.
     scramble_type: What scrambling procedure to use: 'SCR1', 'SCR2', or 'SCR3'
       (pg 9: https://exoplanetarchive.ipac.caltech.edu/docs/KSCI-19114-002.pdf).
+    interpolate_missing_time: Whether to interpolate missing (NaN) time values.
+      This should only affect the output if scramble_type is specified (NaN time
+      values typically come with NaN flux values, which are removed anyway,
+      but scrambing decouples NaN time values from NaN flux values).
 
   Returns:
     all_time: A list of numpy arrays; the time values of the light curve.
@@ -206,17 +213,22 @@ def read_kepler_light_curve(filenames,
 
   for filename in filenames:
     with fits.open(gfile.Open(filename, "rb")) as hdu_list:
+      quarter = hdu_list["PRIMARY"].header["QUARTER"]
       light_curve = hdu_list[light_curve_extension].data
-      time = light_curve.TIME
-      flux = light_curve.PDCSAP_FLUX
 
-      # Index into primary HDU header and get quarter.
-      quarter = hdu_list[0].header["QUARTER"]
+    time = light_curve.TIME
+    flux = light_curve.PDCSAP_FLUX
+    if not time.size:
+      continue  # No data.
 
-      if time.size:
-        all_time.append(time)
-        all_flux.append(flux)
-        all_quarters.append(quarter)
+    # Possibly interpolate missing time values.
+    if interpolate_missing_time:
+      cadences = light_curve.CADENCENO
+      time = util.interpolate_missing_time(time, cadences)
+
+    all_time.append(time)
+    all_flux.append(flux)
+    all_quarters.append(quarter)
 
   if scramble_type:
     all_time, all_flux = scramble_light_curve(all_time, all_flux, all_quarters,
@@ -225,8 +237,7 @@ def read_kepler_light_curve(filenames,
   # Remove timestamps with NaN time or flux values.
   for i, (time, flux) in enumerate(zip(all_time, all_flux)):
     flux_and_time_finite = np.logical_and(np.isfinite(flux), np.isfinite(time))
-    valid_indices = np.where(flux_and_time_finite)
-    all_time[i] = time[valid_indices]
-    all_flux[i] = flux[valid_indices]
+    all_time[i] = time[flux_and_time_finite]
+    all_flux[i] = flux[flux_and_time_finite]
 
   return all_time, all_flux

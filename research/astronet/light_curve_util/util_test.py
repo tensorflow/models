@@ -176,6 +176,61 @@ class LightCurveUtilTest(absltest.TestCase):
     self.assertSequenceAlmostEqual([16, 17, 18, 19], output_time[0])
     self.assertSequenceAlmostEqual([160, 170, 180, 190], output_flux[0])
 
+  def testInterpolateMissingTime(self):
+    # Fewer than 2 finite values.
+    with self.assertRaises(ValueError):
+      util.interpolate_missing_time(np.array([]))
+    with self.assertRaises(ValueError):
+      util.interpolate_missing_time(np.array([5.0]))
+    with self.assertRaises(ValueError):
+      util.interpolate_missing_time(np.array([5.0, np.nan]))
+    with self.assertRaises(ValueError):
+      util.interpolate_missing_time(np.array([np.nan, np.nan, np.nan]))
+
+    # Small time arrays.
+    self.assertSequenceAlmostEqual([0.5, 0.6],
+                                   util.interpolate_missing_time(
+                                       np.array([0.5, 0.6])))
+    self.assertSequenceAlmostEqual([0.5, 0.6, 0.7],
+                                   util.interpolate_missing_time(
+                                       np.array([0.5, np.nan, 0.7])))
+
+    # Time array of length 20 with some values NaN.
+    time = np.array([
+        np.nan, 0.5, 1.0, 1.5, 2.0, 2.5, np.nan, 3.5, 4.0, 4.5, 5.0, np.nan,
+        np.nan, np.nan, np.nan, 7.5, 8.0, 8.5, np.nan, np.nan
+    ])
+    interp_time = util.interpolate_missing_time(time)
+    self.assertSequenceAlmostEqual([
+        0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5,
+        7.0, 7.5, 8.0, 8.5, 9.0, 9.5
+    ], interp_time)
+
+    # Fill with 0.0 for missing values at the beginning and end.
+    interp_time = util.interpolate_missing_time(time, fill_value=0.0)
+    self.assertSequenceAlmostEqual([
+        0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5,
+        7.0, 7.5, 8.0, 8.5, 0.0, 0.0
+    ], interp_time)
+
+    # Interpolate with cadences.
+    cadences = np.array([
+        100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113,
+        114, 115, 116, 117, 118, 119
+    ])
+    interp_time = util.interpolate_missing_time(time, cadences)
+    self.assertSequenceAlmostEqual([
+        0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5,
+        7.0, 7.5, 8.0, 8.5, 9.0, 9.5
+    ], interp_time)
+
+    # Interpolate with missing cadences.
+    time = np.array([0.6, 0.7, np.nan, np.nan, np.nan, 1.3, 1.4, 1.5])
+    cadences = np.array([106, 107, 108, 109, 110, 113, 114, 115])
+    interp_time = util.interpolate_missing_time(time, cadences)
+    self.assertSequenceAlmostEqual([0.6, 0.7, 0.8, 0.9, 1.0, 1.3, 1.4, 1.5],
+                                   interp_time)
+
   def testInterpolateMaskedSpline(self):
     all_time = [
         np.arange(0, 10, dtype=np.float),

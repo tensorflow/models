@@ -168,6 +168,27 @@ class KeplerIoTest(absltest.TestCase):
       self.assertTrue(np.isfinite(time).all())
       self.assertTrue(np.isfinite(flux).all())
 
+  def testReadKeplerLightCurveScrambledInterpolateMissingTime(self):
+    filenames = [
+        os.path.join(self.data_dir, "0114/011442793/kplr011442793-%s_llc.fits")
+        % q for q in ["2009350155506", "2010009091648", "2010174085026"]
+    ]
+    all_time, all_flux = kepler_io.read_kepler_light_curve(
+        filenames, scramble_type="SCR1", interpolate_missing_time=True)
+    self.assertLen(all_time, 3)
+    self.assertLen(all_flux, 3)
+
+    self.assertLen(all_time[0], 4486)
+    self.assertLen(all_flux[0], 4486)
+    self.assertLen(all_time[1], 4134)
+    self.assertLen(all_flux[1], 4134)
+    self.assertLen(all_time[2], 1008)
+    self.assertLen(all_flux[2], 1008)
+
+    for time, flux in zip(all_time, all_flux):
+      self.assertTrue(np.isfinite(time).all())
+      self.assertTrue(np.isfinite(flux).all())
+
 
 if __name__ == "__main__":
   FLAGS.test_srcdir = ""

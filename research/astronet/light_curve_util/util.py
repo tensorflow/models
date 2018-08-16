@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import scipy.interpolate
 from six.moves import range  # pylint:disable=redefined-builtin
 
 
@@ -128,6 +129,46 @@ def remove_events(all_time,
       output_flux.append(flux[mask])
 
   return output_time, output_flux
+
+
+def interpolate_missing_time(time, cadences=None, fill_value="extrapolate"):
+  """Interpolates missing (NaN or Inf) time values.
+
+  Args:
+    time: A numpy array of monotonically increasing values, with missing values
+        denoted by NaN or Inf.
+    cadences: Optional numpy array of cadence indices corresponding to the time
+        values. If not provided, missing time values are assumed to be evenly
+        spaced between present time values.
+    fill_value: Specifies how missing time values should be treated at the
+        beginning and end of the array. See scipy.interpolate.interp1d.
+
+  Returns:
+    A numpy array of the same length as the input time array, with NaN/Inf
+    values replaced with interpolated values.
+
+  Raises:
+    ValueError: If fewer than 2 values of time are finite.
+  """
+  if cadences is None:
+    cadences = np.arange(len(time))
+
+  is_finite = np.isfinite(time)
+  num_finite = np.sum(is_finite)
+  if num_finite < 2:
+    raise ValueError(
+        "Cannot interpolate time with fewer than 2 finite values. Got "
+        "len(time) = {} with {} finite values.".format(len(time), num_finite))
+
+  interpolate_fn = scipy.interpolate.interp1d(
+      cadences[is_finite],
+      time[is_finite],
+      copy=False,
+      bounds_error=False,
+      fill_value=fill_value,
+      assume_sorted=True)
+
+  return interpolate_fn(cadences)
 
 
 def interpolate_masked_spline(all_time, all_masked_time, all_masked_spline):
