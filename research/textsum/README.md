@@ -1,4 +1,6 @@
-Sequence-to-Sequence with Attention Model for Text Summarization.
+[Update 8/17/18: Many users have found success with a similar model based on this code, which in many ways supercedes the model described here. The model is described in [Get To The Point: Summarization with Pointer-Generator Networks](https://arxiv.org/abs/1704.04368) and the code can be found at https://github.com/abisee/pointer-generator.]
+
+# Sequence-to-Sequence with Attention Model for Text Summarization.
 
 Authors:
 
