@@ -110,7 +110,9 @@ bool CharShiftTransitionState::IsTokenEnd(int i) const {
 }
 
 void CharShiftTransitionSystem::Setup(TaskContext *context) {
-  left_to_right_ = context->Get("left-to-right", true);
+  // The version with underscores takes precedence if explicitly set.
+  left_to_right_ =
+      context->Get("left_to_right", context->Get("left-to-right", true));
 }
 
 bool CharShiftTransitionSystem::IsAllowedAction(

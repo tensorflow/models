@@ -186,7 +186,7 @@ def analyze_gnmax_conf_data_dep(votes, threshold, sigma1, sigma2, delta):
                                    ss=rdp_ss[order_idx],
                                    delta=-math.log(delta) / (order_opt[i] - 1))
     ss_std_opt[i] = ss_std[order_idx]
-    if i > 0 and (i + 1) % 10 == 0:
+    if i > 0 and (i + 1) % 1 == 0:
       print('queries = {}, E[answered] = {:.2f}, E[eps] = {:.3f} +/- {:.3f} '
             'at order = {:.2f}. Contributions: delta = {:.3f}, step1 = {:.3f}, '
             'step2 = {:.3f}, ss = {:.3f}'.format(
@@ -292,6 +292,8 @@ def plot_partition(figures_dir, gnmax_conf, print_order):
   fig, ax = plt.subplots()
   fig.set_figheight(4.5)
   fig.set_figwidth(4.7)
+  fig.patch.set_alpha(0)
+
   l1 = ax.plot(
       x, y3, color='b', ls='-', label=r'Total privacy cost', linewidth=1).pop()
 
@@ -311,8 +313,8 @@ def plot_partition(figures_dir, gnmax_conf, print_order):
   plt.xlim([0, xlim])
   ax.set_ylim([0, 3.])
 
-  ax.set_xlabel('Number of queries answered', fontsize=10)
-  ax.set_ylabel(r'Privacy cost $\varepsilon$ at $\delta=10^{-8}$', fontsize=10)
+  ax.set_xlabel('Number of queries answered', fontsize=16)
+  ax.set_ylabel(r'Privacy cost $\varepsilon$ at $\delta=10^{-8}$', fontsize=16)
 
   # Merging legends.
   if print_order:
@@ -321,11 +323,11 @@ def plot_partition(figures_dir, gnmax_conf, print_order):
         x, y_right, 'r', ls='-', label=r'Optimal order', linewidth=5,
         alpha=.5).pop()
     ax2.grid(False)
-    ax2.set_ylabel(r'Optimal Renyi order', fontsize=16)
+    # ax2.set_ylabel(r'Optimal Renyi order', fontsize=16)
     ax2.set_ylim([0, 200.])
-    ax.legend((l1, l2), (l1.get_label(), l2.get_label()), loc=0, fontsize=13)
+    # ax.legend((l1, l2), (l1.get_label(), l2.get_label()), loc=0, fontsize=13)
 
-  ax.tick_params(labelsize=10)
+  ax.tick_params(labelsize=14)
   plot_filename = os.path.join(figures_dir, 'partition.pdf')
   print('Saving the graph to ' + plot_filename)
   fig.savefig(plot_filename, bbox_inches='tight', dpi=800)
@@ -387,7 +389,7 @@ def main(argv):
   figures_dir = os.path.expanduser(FLAGS.figures_dir)
 
   plot_comparison(figures_dir, simple_ind, conf_ind, simple_dep, conf_dep)
-  plot_partition(figures_dir, conf_dep, False)
+  plot_partition(figures_dir, conf_dep, True)
   plt.close('all')
 
 

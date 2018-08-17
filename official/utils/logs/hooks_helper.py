@@ -35,13 +35,15 @@ _TENSORS_TO_LOG = dict((x, x) for x in ['learning_rate',
                                         'train_accuracy'])
 
 
-def get_train_hooks(name_list, **kwargs):
+def get_train_hooks(name_list, use_tpu=False, **kwargs):
   """Factory for getting a list of TensorFlow hooks for training by name.
 
   Args:
     name_list: a list of strings to name desired hook classes. Allowed:
       LoggingTensorHook, ProfilerHook, ExamplesPerSecondHook, which are defined
       as keys in HOOKS
+    use_tpu: Boolean of whether computation occurs on a TPU. This will disable
+      hooks altogether.
     **kwargs: a dictionary of arguments to the hooks.
 
   Returns:
@@ -52,6 +54,11 @@ def get_train_hooks(name_list, **kwargs):
   """
 
   if not name_list:
+    return []
+
+  if use_tpu:
+    tf.logging.warning("hooks_helper received name_list `{}`, but a TPU is "
+                       "specified. No hooks will be used.".format(name_list))
     return []
 
   train_hooks = []
@@ -87,10 +94,11 @@ def get_logging_tensor_hook(every_n_iter=100, tensors_to_log=None, **kwargs):  #
       every_n_iter=every_n_iter)
 
 
-def get_profiler_hook(save_steps=1000, **kwargs):  # pylint: disable=unused-argument
+def get_profiler_hook(model_dir, save_steps=1000, **kwargs):  # pylint: disable=unused-argument
   """Function to get ProfilerHook.
 
   Args:
+    model_dir: The directory to save the profile traces to.
     save_steps: `int`, print profile traces every N steps.
     **kwargs: a dictionary of arguments to ProfilerHook.
 
@@ -98,7 +106,7 @@ def get_profiler_hook(save_steps=1000, **kwargs):  # pylint: disable=unused-argu
     Returns a ProfilerHook that writes out timelines that can be loaded into
     profiling tools like chrome://tracing.
   """
-  return tf.train.ProfilerHook(save_steps=save_steps)
+  return tf.train.ProfilerHook(save_steps=save_steps, output_dir=model_dir)
 
 
 def get_examples_per_second_hook(every_n_steps=100,
@@ -119,29 +127,25 @@ def get_examples_per_second_hook(every_n_steps=100,
     Returns a ProfilerHook that writes out timelines that can be loaded into
     profiling tools like chrome://tracing.
   """
-  return hooks.ExamplesPerSecondHook(every_n_steps=every_n_steps,
-                                     batch_size=batch_size,
-                                     warm_steps=warm_steps)
+  return hooks.ExamplesPerSecondHook(
+      batch_size=batch_size, every_n_steps=every_n_steps,
+      warm_steps=warm_steps, metric_logger=logger.get_benchmark_logger())
 
 
-def get_logging_metric_hook(benchmark_log_dir=None,
-                            tensors_to_log=None,
+def get_logging_metric_hook(tensors_to_log=None,
                             every_n_secs=600,
                             **kwargs):  # pylint: disable=unused-argument
   """Function to get LoggingMetricHook.
 
   Args:
-    benchmark_log_dir: `string`, directory path to save the metric log.
     tensors_to_log: List of tensor names or dictionary mapping labels to tensor
       names. If not set, log _TENSORS_TO_LOG by default.
     every_n_secs: `int`, the frequency for logging the metric. Default to every
       10 mins.
 
   Returns:
-    Returns a ProfilerHook that writes out timelines that can be loaded into
-    profiling tools like chrome://tracing.
+    Returns a LoggingMetricHook that saves tensor values in a JSON format.
   """
-  logger.config_benchmark_logger(benchmark_log_dir)
   if tensors_to_log is None:
     tensors_to_log = _TENSORS_TO_LOG
   return metric_hook.LoggingMetricHook(

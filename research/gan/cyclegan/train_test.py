@@ -19,12 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 
+from absl import flags
 import numpy as np
 import tensorflow as tf
 
 import train
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 mock = tf.test.mock
 tfgan = tf.contrib.gan
 
@@ -59,9 +60,6 @@ class TrainTest(tf.test.TestCase):
     self.assertIsInstance(cyclegan_model, tfgan.CycleGANModel)
     self.assertShapeEqual(images_x_np, cyclegan_model.reconstructed_x)
     self.assertShapeEqual(images_y_np, cyclegan_model.reconstructed_y)
-
-    mock_eval.add_image_comparison_summaries.assert_called_once()
-    mock_eval.add_gan_model_image_summaries.assert_called_once()
 
   @mock.patch.object(train.networks, 'generator', autospec=True)
   @mock.patch.object(train.networks, 'discriminator', autospec=True)

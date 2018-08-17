@@ -69,6 +69,11 @@ def _update_optimizer_with_cosine_decay_learning_rate(
 
 class ConfigUtilTest(tf.test.TestCase):
 
+  def _create_and_load_test_configs(self, pipeline_config):
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    _write_config(pipeline_config, pipeline_config_path)
+    return config_util.get_configs_from_pipeline_file(pipeline_config_path)
+
   def test_get_configs_from_pipeline_file(self):
     """Test that proto configs can be read from pipeline config file."""
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
@@ -307,6 +312,34 @@ class ConfigUtilTest(tf.test.TestCase):
     new_batch_size = configs["train_config"].batch_size
     self.assertEqual(1, new_batch_size)  # Clipped to 1.0.
 
+  def testOverwriteBatchSizeWithKeyValue(self):
+    """Tests that batch size is overwritten based on key/value."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.train_config.batch_size = 2
+    configs = self._create_and_load_test_configs(pipeline_config)
+    hparams = tf.contrib.training.HParams(**{"train_config.batch_size": 10})
+    configs = config_util.merge_external_params_with_configs(configs, hparams)
+    new_batch_size = configs["train_config"].batch_size
+    self.assertEqual(10, new_batch_size)
+
+  def testKeyValueOverrideBadKey(self):
+    """Tests that overwriting with a bad key causes an exception."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    configs = self._create_and_load_test_configs(pipeline_config)
+    hparams = tf.contrib.training.HParams(**{"train_config.no_such_field": 10})
+    with self.assertRaises(ValueError):
+      config_util.merge_external_params_with_configs(configs, hparams)
+
+  def testOverwriteBatchSizeWithBadValueType(self):
+    """Tests that overwriting with a bad valuye type causes an exception."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.train_config.batch_size = 2
+    configs = self._create_and_load_test_configs(pipeline_config)
+    # Type should be an integer, but we're passing a string "10".
+    hparams = tf.contrib.training.HParams(**{"train_config.batch_size": "10"})
+    with self.assertRaises(TypeError):
+      config_util.merge_external_params_with_configs(configs, hparams)
+
   def testNewMomentumOptimizerValue(self):
     """Tests that new momentum value is updated appropriately."""
     original_momentum_value = 0.4
@@ -501,7 +534,20 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertEqual(new_mask_type, configs["train_input_config"].mask_type)
     self.assertEqual(new_mask_type, configs["eval_input_config"].mask_type)
 
-  def  test_get_image_resizer_config(self):
+  def testUseMovingAverageForEval(self):
+    use_moving_averages_orig = False
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_config.use_moving_averages = use_moving_averages_orig
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(
+        configs, eval_with_moving_averages=True)
+    self.assertEqual(True, configs["eval_config"].use_moving_averages)
+
+  def  testGetImageResizerConfig(self):
     """Tests that number of classes can be retrieved."""
     model_config = model_pb2.DetectionModel()
     model_config.faster_rcnn.image_resizer.fixed_shape_resizer.height = 100
@@ -510,14 +556,14 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertEqual(image_resizer_config.fixed_shape_resizer.height, 100)
     self.assertEqual(image_resizer_config.fixed_shape_resizer.width, 300)
 
-  def test_get_spatial_image_size_from_fixed_shape_resizer_config(self):
+  def testGetSpatialImageSizeFromFixedShapeResizerConfig(self):
     image_resizer_config = image_resizer_pb2.ImageResizer()
     image_resizer_config.fixed_shape_resizer.height = 100
     image_resizer_config.fixed_shape_resizer.width = 200
     image_shape = config_util.get_spatial_image_size(image_resizer_config)
     self.assertAllEqual(image_shape, [100, 200])
 
-  def test_get_spatial_image_size_from_aspect_preserving_resizer_config(self):
+  def testGetSpatialImageSizeFromAspectPreservingResizerConfig(self):
     image_resizer_config = image_resizer_pb2.ImageResizer()
     image_resizer_config.keep_aspect_ratio_resizer.min_dimension = 100
     image_resizer_config.keep_aspect_ratio_resizer.max_dimension = 600
@@ -525,12 +571,61 @@ class ConfigUtilTest(tf.test.TestCase):
     image_shape = config_util.get_spatial_image_size(image_resizer_config)
     self.assertAllEqual(image_shape, [600, 600])
 
-  def test_get_spatial_image_size_from_aspect_preserving_resizer_dynamic(self):
+  def testGetSpatialImageSizeFromAspectPreservingResizerDynamic(self):
     image_resizer_config = image_resizer_pb2.ImageResizer()
     image_resizer_config.keep_aspect_ratio_resizer.min_dimension = 100
     image_resizer_config.keep_aspect_ratio_resizer.max_dimension = 600
     image_shape = config_util.get_spatial_image_size(image_resizer_config)
     self.assertAllEqual(image_shape, [-1, -1])
+
+  def testEvalShuffle(self):
+    """Tests that `eval_shuffle` keyword arguments are applied correctly."""
+    original_shuffle = True
+    desired_shuffle = False
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_input_reader.shuffle = original_shuffle
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(
+        configs, eval_shuffle=desired_shuffle)
+    eval_shuffle = configs["eval_input_config"].shuffle
+    self.assertEqual(desired_shuffle, eval_shuffle)
+
+  def testTrainShuffle(self):
+    """Tests that `train_shuffle` keyword arguments are applied correctly."""
+    original_shuffle = True
+    desired_shuffle = False
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.train_input_reader.shuffle = original_shuffle
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(
+        configs, train_shuffle=desired_shuffle)
+    train_shuffle = configs["train_input_config"].shuffle
+    self.assertEqual(desired_shuffle, train_shuffle)
+
+  def testOverWriteRetainOriginalImages(self):
+    """Tests that `train_shuffle` keyword arguments are applied correctly."""
+    original_retain_original_images = True
+    desired_retain_original_images = False
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_config.retain_original_images = (
+        original_retain_original_images)
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(
+        configs, retain_original_images_in_eval=desired_retain_original_images)
+    retain_original_images = configs["eval_config"].retain_original_images
+    self.assertEqual(desired_retain_original_images, retain_original_images)
 
 
 if __name__ == "__main__":

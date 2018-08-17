@@ -33,10 +33,10 @@ works:
 *   DeepLabv3+:
 
 ```
-@article{deeplabv3plus2018,
+@inproceedings{deeplabv3plus2018,
   title={Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation},
   author={Liang-Chieh Chen and Yukun Zhu and George Papandreou and Florian Schroff and Hartwig Adam},
-  journal={arXiv:1802.02611},
+  booktitle={ECCV},
   year={2018}
 }
 ```
@@ -45,7 +45,7 @@ works:
 
 ```
 @inproceedings{mobilenetv22018,
-  title={Inverted Residuals and Linear Bottlenecks: Mobile Networks for Classification, Detection and Segmentation},
+  title={MobileNetV2: Inverted Residuals and Linear Bottlenecks},
   author={Mark Sandler and Andrew Howard and Menglong Zhu and Andrey Zhmoginov and Liang-Chieh Chen},
   booktitle={CVPR},
   year={2018}
@@ -78,6 +78,7 @@ Some segmentation results on Flickr images:
 *   Liang-Chieh Chen, github: [aquariusjay](https://github.com/aquariusjay)
 *   YuKun Zhu, github: [yknzhu](https://github.com/YknZhu)
 *   George Papandreou, github: [gpapan](https://github.com/gpapan)
+*   Hui Hui, github: [huihui-personal](https://github.com/huihui-personal)
 
 ## Tables of Contents
 
@@ -104,13 +105,37 @@ Misc:
 
 To get help with issues you may encounter while using the DeepLab Tensorflow
 implementation, create a new question on
-[StackOverflow](https://stackoverflow.com/) with the tags "tensorflow" and
-"deeplab".
+[StackOverflow](https://stackoverflow.com/) with the tag "tensorflow".
 
 Please report bugs (i.e., broken code, not usage questions) to the
 tensorflow/models GitHub [issue
 tracker](https://github.com/tensorflow/models/issues), prefixing the issue name
 with "deeplab".
+
+## Change Logs
+
+### May 26, 2018
+
+Updated ADE20K pretrained checkpoint.
+
+
+### May 18, 2018
+1.  Added builders for ResNet-v1 and Xception model variants.
+1.  Added ADE20K support, including colormap and pretrained Xception_65 checkpoint.
+1.  Fixed a bug on using non-default depth_multiplier for MobileNet-v2.
+
+
+### March 22, 2018
+
+Released checkpoints using MobileNet-V2 as network backbone and pretrained on
+PASCAL VOC 2012 and Cityscapes.
+
+
+### March 5, 2018
+
+First release of DeepLab in TensorFlow including deeper Xception network
+backbone. Included chekcpoints that have been pretrained on PASCAL VOC 2012
+and Cityscapes.
 
 ## References
 
@@ -130,8 +155,8 @@ with "deeplab".
     [[link]](http://arxiv.org/abs/1706.05587). arXiv: 1706.05587, 2017.
 
 4.  **Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation**<br />
-    Liang-Chieh Chen, Yukun Zhu, George Papandreou, Florian Schroff, Hartwig Adam. arXiv: 1802.02611.<br />
-    [[link]](https://arxiv.org/abs/1802.02611). arXiv: 1802.02611, 2018.
+    Liang-Chieh Chen, Yukun Zhu, George Papandreou, Florian Schroff, Hartwig Adam.<br />
+    [[link]](https://arxiv.org/abs/1802.02611). In ECCV, 2018.
 
 5.  **ParseNet: Looking Wider to See Better**<br />
     Wei Liu, Andrew Rabinovich, Alexander C Berg<br />
@@ -145,9 +170,9 @@ with "deeplab".
     Sergey Ioffe, Christian Szegedy <br />
     [[link]](https://arxiv.org/abs/1502.03167). In ICML, 2015.
 
-8.  **Inverted Residuals and Linear Bottlenecks: Mobile Networks for Classification, Detection and Segmentation**<br />
+8.  **MobileNetV2: Inverted Residuals and Linear Bottlenecks**<br />
     Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zhmoginov, Liang-Chieh Chen<br />
-    [[link]](https://arxiv.org/abs/1801.04381). arXiv:1801.04381, 2018.
+    [[link]](https://arxiv.org/abs/1801.04381). In CVPR, 2018.
 
 9.  **Xception: Deep Learning with Depthwise Separable Convolutions**<br />
     François Chollet<br />

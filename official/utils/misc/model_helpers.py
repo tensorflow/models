@@ -21,6 +21,7 @@ from __future__ import print_function
 import numbers
 
 import tensorflow as tf
+from tensorflow.python.util import nest
 
 
 def past_stop_threshold(stop_threshold, eval_metric):
@@ -53,3 +54,40 @@ def past_stop_threshold(stop_threshold, eval_metric):
     return True
 
   return False
+
+
+def generate_synthetic_data(
+    input_shape, input_value=0, input_dtype=None, label_shape=None,
+    label_value=0, label_dtype=None):
+  """Create a repeating dataset with constant values.
+
+  Args:
+    input_shape: a tf.TensorShape object or nested tf.TensorShapes. The shape of
+      the input data.
+    input_value: Value of each input element.
+    input_dtype: Input dtype. If None, will be inferred by the input value.
+    label_shape: a tf.TensorShape object or nested tf.TensorShapes. The shape of
+      the label data.
+    label_value: Value of each input element.
+    label_dtype: Input dtype. If None, will be inferred by the target value.
+
+  Returns:
+    Dataset of tensors or tuples of tensors (if label_shape is set).
+  """
+  # TODO(kathywu): Replace with SyntheticDataset once it is in contrib.
+  element = input_element = nest.map_structure(
+      lambda s: tf.constant(input_value, input_dtype, s), input_shape)
+
+  if label_shape:
+    label_element = nest.map_structure(
+        lambda s: tf.constant(label_value, label_dtype, s), label_shape)
+    element = (input_element, label_element)
+
+  return tf.data.Dataset.from_tensors(element).repeat()
+
+
+def apply_clean(flags_obj):
+  if flags_obj.clean and tf.gfile.Exists(flags_obj.model_dir):
+    tf.logging.info("--clean flag set. Removing existing model dir: {}".format(
+        flags_obj.model_dir))
+    tf.gfile.DeleteRecursively(flags_obj.model_dir)

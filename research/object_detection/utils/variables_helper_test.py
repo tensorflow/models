@@ -129,80 +129,88 @@ class FreezeGradientsMatchingRegexTest(tf.test.TestCase):
 class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
 
   def test_return_all_variables_from_checkpoint(self):
-    variables = [
-        tf.Variable(1.0, name='weights'),
-        tf.Variable(1.0, name='biases')
-    ]
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'graph.pb')
-    init_op = tf.global_variables_initializer()
-    saver = tf.train.Saver(variables)
-    with self.test_session() as sess:
-      sess.run(init_op)
-      saver.save(sess, checkpoint_path)
-    out_variables = variables_helper.get_variables_available_in_checkpoint(
-        variables, checkpoint_path)
+    with tf.Graph().as_default():
+      variables = [
+          tf.Variable(1.0, name='weights'),
+          tf.Variable(1.0, name='biases')
+      ]
+      checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
+      init_op = tf.global_variables_initializer()
+      saver = tf.train.Saver(variables)
+      with self.test_session() as sess:
+        sess.run(init_op)
+        saver.save(sess, checkpoint_path)
+      out_variables = variables_helper.get_variables_available_in_checkpoint(
+          variables, checkpoint_path)
     self.assertItemsEqual(out_variables, variables)
 
   def test_return_variables_available_in_checkpoint(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'graph.pb')
-    weight_variable = tf.Variable(1.0, name='weights')
-    global_step = tf.train.get_or_create_global_step()
-    graph1_variables = [
-        weight_variable,
-        global_step
-    ]
-    init_op = tf.global_variables_initializer()
-    saver = tf.train.Saver(graph1_variables)
-    with self.test_session() as sess:
-      sess.run(init_op)
-      saver.save(sess, checkpoint_path)
+    checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
+    with tf.Graph().as_default():
+      weight_variable = tf.Variable(1.0, name='weights')
+      global_step = tf.train.get_or_create_global_step()
+      graph1_variables = [
+          weight_variable,
+          global_step
+      ]
+      init_op = tf.global_variables_initializer()
+      saver = tf.train.Saver(graph1_variables)
+      with self.test_session() as sess:
+        sess.run(init_op)
+        saver.save(sess, checkpoint_path)
 
-    graph2_variables = graph1_variables + [tf.Variable(1.0, name='biases')]
-    out_variables = variables_helper.get_variables_available_in_checkpoint(
-        graph2_variables, checkpoint_path, include_global_step=False)
+    with tf.Graph().as_default():
+      graph2_variables = graph1_variables + [tf.Variable(1.0, name='biases')]
+      out_variables = variables_helper.get_variables_available_in_checkpoint(
+          graph2_variables, checkpoint_path, include_global_step=False)
     self.assertItemsEqual(out_variables, [weight_variable])
 
   def test_return_variables_available_an_checkpoint_with_dict_inputs(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'graph.pb')
-    graph1_variables = [
-        tf.Variable(1.0, name='ckpt_weights'),
-    ]
-    init_op = tf.global_variables_initializer()
-    saver = tf.train.Saver(graph1_variables)
-    with self.test_session() as sess:
-      sess.run(init_op)
-      saver.save(sess, checkpoint_path)
+    checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
+    with tf.Graph().as_default():
+      graph1_variables = [
+          tf.Variable(1.0, name='ckpt_weights'),
+      ]
+      init_op = tf.global_variables_initializer()
+      saver = tf.train.Saver(graph1_variables)
+      with self.test_session() as sess:
+        sess.run(init_op)
+        saver.save(sess, checkpoint_path)
 
-    graph2_variables_dict = {
-        'ckpt_weights': tf.Variable(1.0, name='weights'),
-        'ckpt_biases': tf.Variable(1.0, name='biases')
-    }
-    out_variables = variables_helper.get_variables_available_in_checkpoint(
-        graph2_variables_dict, checkpoint_path)
+    with tf.Graph().as_default():
+      graph2_variables_dict = {
+          'ckpt_weights': tf.Variable(1.0, name='weights'),
+          'ckpt_biases': tf.Variable(1.0, name='biases')
+      }
+      out_variables = variables_helper.get_variables_available_in_checkpoint(
+          graph2_variables_dict, checkpoint_path)
+
     self.assertTrue(isinstance(out_variables, dict))
     self.assertItemsEqual(out_variables.keys(), ['ckpt_weights'])
     self.assertTrue(out_variables['ckpt_weights'].op.name == 'weights')
 
   def test_return_variables_with_correct_sizes(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'graph.pb')
-    bias_variable = tf.Variable(3.0, name='biases')
-    global_step = tf.train.get_or_create_global_step()
-    graph1_variables = [
-        tf.Variable([[1.0, 2.0], [3.0, 4.0]], name='weights'),
-        bias_variable,
-        global_step
-    ]
-    init_op = tf.global_variables_initializer()
-    saver = tf.train.Saver(graph1_variables)
-    with self.test_session() as sess:
-      sess.run(init_op)
-      saver.save(sess, checkpoint_path)
+    checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
+    with tf.Graph().as_default():
+      bias_variable = tf.Variable(3.0, name='biases')
+      global_step = tf.train.get_or_create_global_step()
+      graph1_variables = [
+          tf.Variable([[1.0, 2.0], [3.0, 4.0]], name='weights'),
+          bias_variable,
+          global_step
+      ]
+      init_op = tf.global_variables_initializer()
+      saver = tf.train.Saver(graph1_variables)
+      with self.test_session() as sess:
+        sess.run(init_op)
+        saver.save(sess, checkpoint_path)
 
-    graph2_variables = [
-        tf.Variable([1.0, 2.0], name='weights'),  # Note the new variable shape.
-        bias_variable,
-        global_step
-    ]
+    with tf.Graph().as_default():
+      graph2_variables = [
+          tf.Variable([1.0, 2.0], name='weights'),  # New variable shape.
+          bias_variable,
+          global_step
+      ]
 
     out_variables = variables_helper.get_variables_available_in_checkpoint(
         graph2_variables, checkpoint_path, include_global_step=True)

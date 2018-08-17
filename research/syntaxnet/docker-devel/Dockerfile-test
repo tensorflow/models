@@ -9,3 +9,4 @@ COPY dragnn $SYNTAXNETDIR/syntaxnet/dragnn
 COPY syntaxnet $SYNTAXNETDIR/syntaxnet/syntaxnet
 COPY third_party $SYNTAXNETDIR/syntaxnet/third_party
 COPY util/utf8 $SYNTAXNETDIR/syntaxnet/util/utf8
+COPY WORKSPACE $SYNTAXNETDIR/syntaxnet/WORKSPACE

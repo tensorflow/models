@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
 import numpy as np
 
 import tensorflow as tf
@@ -30,6 +31,12 @@ mock = tf.test.mock
 
 
 class DataProviderTest(tf.test.TestCase):
+
+  def setUp(self):
+    super(DataProviderTest, self).setUp()
+    self.testdata_dir = os.path.join(
+        flags.FLAGS.test_srcdir,
+        'google3/third_party/tensorflow_models/gan/cyclegan/testdata')
 
   def test_normalize_image(self):
     image = tf.random_uniform(shape=(8, 8, 3), maxval=256, dtype=tf.int32)
@@ -51,13 +58,8 @@ class DataProviderTest(tf.test.TestCase):
       self.assertTupleEqual((10, 10, 3), sess.run(patch2).shape)
       self.assertTupleEqual((10, 10, 3), sess.run(patch3).shape)
 
-  def _get_testdata_dir(self):
-    return os.path.join(
-        tf.flags.FLAGS.test_srcdir,
-        'google3/third_party/tensorflow_models/gan/cyclegan/testdata')
-
   def test_custom_dataset_provider(self):
-    file_pattern = os.path.join(self._get_testdata_dir(), '*.jpg')
+    file_pattern = os.path.join(self.testdata_dir, '*.jpg')
     batch_size = 3
     patch_size = 8
     images = data_provider._provide_custom_dataset(
@@ -75,7 +77,7 @@ class DataProviderTest(tf.test.TestCase):
         self.assertTrue(np.all(np.abs(images_out) <= 1.0))
 
   def test_custom_datasets_provider(self):
-    file_pattern = os.path.join(self._get_testdata_dir(), '*.jpg')
+    file_pattern = os.path.join(self.testdata_dir, '*.jpg')
     batch_size = 3
     patch_size = 8
     images_list = data_provider.provide_custom_datasets(

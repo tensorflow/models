@@ -23,7 +23,9 @@ def exponential_decay_with_burnin(global_step,
                                   learning_rate_decay_steps,
                                   learning_rate_decay_factor,
                                   burnin_learning_rate=0.0,
-                                  burnin_steps=0):
+                                  burnin_steps=0,
+                                  min_learning_rate=0.0,
+                                  staircase=True):
   """Exponential decay schedule with burn-in period.
 
   In this schedule, learning rate is fixed at burnin_learning_rate
@@ -41,6 +43,8 @@ def exponential_decay_with_burnin(global_step,
       0.0 (which is the default), then the burn-in learning rate is simply
       set to learning_rate_base.
     burnin_steps: number of steps to use burnin learning rate.
+    min_learning_rate: the minimum learning rate.
+    staircase: whether use staircase decay.
 
   Returns:
     a (scalar) float tensor representing learning rate
@@ -49,14 +53,14 @@ def exponential_decay_with_burnin(global_step,
     burnin_learning_rate = learning_rate_base
   post_burnin_learning_rate = tf.train.exponential_decay(
       learning_rate_base,
-      global_step,
+      global_step - burnin_steps,
       learning_rate_decay_steps,
       learning_rate_decay_factor,
-      staircase=True)
-  return tf.where(
+      staircase=staircase)
+  return tf.maximum(tf.where(
       tf.less(tf.cast(global_step, tf.int32), tf.constant(burnin_steps)),
       tf.constant(burnin_learning_rate),
-      post_burnin_learning_rate, name='learning_rate')
+      post_burnin_learning_rate), min_learning_rate, name='learning_rate')
 
 
 def cosine_decay_with_warmup(global_step,
@@ -90,9 +94,6 @@ def cosine_decay_with_warmup(global_step,
     ValueError: if warmup_learning_rate is larger than learning_rate_base,
       or if warmup_steps is larger than total_steps.
   """
-  if learning_rate_base < warmup_learning_rate:
-    raise ValueError('learning_rate_base must be larger '
-                     'or equal to warmup_learning_rate.')
   if total_steps < warmup_steps:
     raise ValueError('total_steps must be larger or equal to '
                      'warmup_steps.')
@@ -104,6 +105,9 @@ def cosine_decay_with_warmup(global_step,
     learning_rate = tf.where(global_step > warmup_steps + hold_base_rate_steps,
                              learning_rate, learning_rate_base)
   if warmup_steps > 0:
+    if learning_rate_base < warmup_learning_rate:
+      raise ValueError('learning_rate_base must be larger or equal to '
+                       'warmup_learning_rate.')
     slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
     warmup_rate = slope * tf.cast(global_step,
                                   tf.float32) + warmup_learning_rate
@@ -165,7 +169,7 @@ def manual_stepping(global_step, boundaries, rates, warmup=False):
     boundaries = [0] + boundaries
   num_boundaries = len(boundaries)
   rate_index = tf.reduce_max(tf.where(tf.greater_equal(global_step, boundaries),
-                                      range(num_boundaries),
+                                      list(range(num_boundaries)),
                                       [0] * num_boundaries))
   return tf.reduce_sum(rates * tf.one_hot(rate_index, depth=num_boundaries),
                        name='learning_rate')

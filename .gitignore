@@ -90,3 +90,5 @@ ENV/
 
 # PyCharm
 .idea/
+
+samples/outreach/blogs/segmentation_blogpost/carvana-image-masking-challenge/

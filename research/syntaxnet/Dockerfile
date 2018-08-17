@@ -1,4 +1,4 @@
-FROM ubuntu:16.10
+FROM ubuntu:16.04
 
 ENV SYNTAXNETDIR=/opt/tensorflow PATH=$PATH:/root/bin
 
@@ -57,10 +57,10 @@ RUN python -m pip install \
     && rm -rf /root/.cache/pip /tmp/pip*
 
 # Installs Bazel.
-RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.8.1/bazel-0.8.1-installer-linux-x86_64.sh \
-    && chmod +x bazel-0.8.1-installer-linux-x86_64.sh \
-    && ./bazel-0.8.1-installer-linux-x86_64.sh \
-    && rm ./bazel-0.8.1-installer-linux-x86_64.sh
+RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.11.1/bazel-0.11.1-installer-linux-x86_64.sh \
+    && chmod +x bazel-0.11.1-installer-linux-x86_64.sh \
+    && ./bazel-0.11.1-installer-linux-x86_64.sh \
+    && rm ./bazel-0.11.1-installer-linux-x86_64.sh
 
 COPY WORKSPACE $SYNTAXNETDIR/syntaxnet/WORKSPACE
 COPY tools/bazel.rc $SYNTAXNETDIR/syntaxnet/tools/bazel.rc

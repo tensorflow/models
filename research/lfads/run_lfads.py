@@ -99,6 +99,7 @@ flags = tf.app.flags
 flags.DEFINE_string("kind", "train",
                     "Type of model to build {train, \
                     posterior_sample_and_average, \
+                    posterior_push_mean, \
                     prior_sample, write_model_params")
 flags.DEFINE_string("output_dist", OUTPUT_DISTRIBUTION,
                     "Type of output distribution, 'poisson' or 'gaussian'")
@@ -318,11 +319,10 @@ flags.DEFINE_boolean("do_train_io_only", DO_TRAIN_IO_ONLY,
 
 # This flag is used for an experiment where one wants to know if the dynamics
 # learned by the generator generalize across conditions. In that case, you might
-# train up a model on one set of data, and then only further train the encoder on 
-# another set of data (the conditions to be tested) so that the model is forced
-# to use the same dynamics to describe that data.
-# If you don't care about that particular experiment, this flag should always be
-# false.
+# train up a model on one set of data, and then only further train the encoder
+# on another set of data (the conditions to be tested) so that the model is
+# forced to use the same dynamics to describe that data. If you don't care about
+# that particular experiment, this flag should always be false.
 flags.DEFINE_boolean("do_train_encoder_only", DO_TRAIN_ENCODER_ONLY,
                      "Train only the encoder weights.")
 
@@ -449,11 +449,11 @@ def build_model(hps, kind="train", datasets=None):
     saver.restore(session, ckpt.model_checkpoint_path)
   else:
     print("Created model with fresh parameters.")
-    if kind in ["posterior_sample_and_average", "prior_sample",
-                "write_model_params"]:
+    if kind in ["posterior_sample_and_average", "posterior_push_mean",
+                "prior_sample", "write_model_params"]:
       print("Possible error!!! You are running ", kind, " on a newly \
       initialized model!")
-      # cant print ckpt.model_check_point path if no ckpt
+      # cannot print ckpt.model_check_point path if no ckpt
       print("Are you sure you sure a checkpoint in ", hps.lfads_save_dir,
             " exists?")
 
@@ -609,7 +609,7 @@ def train(hps, datasets):
   model.train_model(datasets)
 
 
-def write_model_runs(hps, datasets, output_fname=None):
+def write_model_runs(hps, datasets, output_fname=None, push_mean=False):
   """Run the model on the data in data_dict, and save the computed values.
 
   LFADS generates a number of outputs for each examples, and these are all
@@ -627,9 +627,14 @@ def write_model_runs(hps, datasets, output_fname=None):
     datasets: A dictionary of data dictionaries.  The dataset dict is simply a
       name(string)-> data dictionary mapping (See top of lfads.py).
     output_fname (optional): output filename stem to write the model runs.
+    push_mean: if False (default), generates batch_size samples for each trial
+      and averages the results. if True, runs each trial once without noise,
+      pushing the posterior mean initial conditions and control inputs through
+      the trained model. False is used for posterior_sample_and_average, True
+      is used for posterior_push_mean.
   """
   model = build_model(hps, kind=hps.kind, datasets=datasets)
-  model.write_model_runs(datasets, output_fname)
+  model.write_model_runs(datasets, output_fname, push_mean)
 
 
 def write_model_samples(hps, datasets, dataset_name=None, output_fname=None):
@@ -759,8 +764,8 @@ def main(_):
 
   # Read the data, if necessary.
   train_set = valid_set = None
-  if kind in ["train", "posterior_sample_and_average", "prior_sample",
-              "write_model_params"]:
+  if kind in ["train", "posterior_sample_and_average", "posterior_push_mean",
+              "prior_sample", "write_model_params"]:
     datasets = load_datasets(hps.data_dir, hps.data_filename_stem)
   else:
     raise ValueError('Kind {} is not supported.'.format(kind))
@@ -792,7 +797,11 @@ def main(_):
       if kind == "train":
         train(hps, datasets)
       elif kind == "posterior_sample_and_average":
-        write_model_runs(hps, datasets, hps.output_filename_stem)
+        write_model_runs(hps, datasets, hps.output_filename_stem,
+                         push_mean=False)
+      elif kind == "posterior_push_mean":
+        write_model_runs(hps, datasets, hps.output_filename_stem,
+                         push_mean=True)
       elif kind == "prior_sample":
         write_model_samples(hps, datasets, hps.output_filename_stem)
       elif kind == "write_model_params":

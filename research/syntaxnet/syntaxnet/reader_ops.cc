@@ -453,6 +453,8 @@ class WordEmbeddingInitializer : public OpKernel {
                                              &cache_vectors_locally_));
     OP_REQUIRES_OK(context, context->GetAttr("num_special_embeddings",
                                              &num_special_embeddings_));
+    OP_REQUIRES_OK(context, context->GetAttr("override_num_embeddings",
+                                             &override_num_embeddings_));
     OP_REQUIRES_OK(context,
                    context->GetAttr("embedding_init", &embedding_init_));
 
@@ -569,7 +571,13 @@ class WordEmbeddingInitializer : public OpKernel {
       const std::unordered_map<string, int64> &vocabulary,
       const TokenEmbedding &embedding, OpKernelContext *context,
       Tensor **embedding_matrix) const {
-    const int rows = vocabulary.size() + num_special_embeddings_;
+    const int rows = override_num_embeddings_ > 0 ? override_num_embeddings_ :
+        (vocabulary.size() + num_special_embeddings_);
+    if (rows < vocabulary.size()) {
+      return InvalidArgument(
+          "Embedding matrix row number ", rows,
+          " is less than vocabulary size ", vocabulary.size());
+    }
     const int columns = embedding.vector().values_size();
     TF_RETURN_IF_ERROR(context->allocate_output(0, TensorShape({rows, columns}),
                                                 embedding_matrix));
@@ -636,6 +644,11 @@ class WordEmbeddingInitializer : public OpKernel {
 
   // Number of special embeddings to allocate.
   int num_special_embeddings_ = 3;
+
+  // If override_num_embeddings_ is larger than zero, then the returned
+  // embedding matrix has override_num_embeddings_ of rows.  Otherwise, the
+  // number of rows equals to |vocabulary| + num_special_embeddigs_.
+  int override_num_embeddings_ = -1;
 
   // Seed for random initialization.
   uint64 seed_ = 0;

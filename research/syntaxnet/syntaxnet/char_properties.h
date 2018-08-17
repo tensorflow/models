@@ -73,6 +73,7 @@ limitations under the License.
 
 #include "syntaxnet/registry.h"
 #include "syntaxnet/utils.h"
+#include "absl/base/macros.h"
 
 // =====================================================================
 // Registry for accessing CharProperties by name
@@ -128,7 +129,7 @@ struct CharPropertyWrapper : RegisterableClass<CharPropertyWrapper> {
   static const int k_##name##_unicodes[] = {unicodes};                         \
   static utils::LazyStaticPtr<CharProperty, const char *, const int *, size_t> \
       name##_char_property = {#name, k_##name##_unicodes,                      \
-                              arraysize(k_##name##_unicodes)};                 \
+                              ABSL_ARRAYSIZE(k_##name##_unicodes)};            \
   REGISTER_CHAR_PROPERTY(name##_char_property, name);                          \
   DEFINE_IS_X_CHAR_PROPERTY_FUNCTIONS(name##_char_property, name)
 

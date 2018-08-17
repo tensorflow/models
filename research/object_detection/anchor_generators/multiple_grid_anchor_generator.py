@@ -157,12 +157,10 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
         correspond to an 8x8 layer followed by a 7x7 layer.
       im_height: the height of the image to generate the grid for. If both
         im_height and im_width are 1, the generated anchors default to
-        normalized coordinates, otherwise absolute coordinates are used for the
-        grid.
+        absolute coordinates, otherwise normalized coordinates are produced.
       im_width: the width of the image to generate the grid for. If both
         im_height and im_width are 1, the generated anchors default to
-        normalized coordinates, otherwise absolute coordinates are used for the
-        grid.
+        absolute coordinates, otherwise normalized coordinates are produced.
 
     Returns:
       boxes_list: a list of BoxLists each holding anchor boxes corresponding to

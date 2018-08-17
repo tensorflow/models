@@ -18,6 +18,12 @@
     "type": "TIMESTAMP"
   },
   {
+    "description": "The unique name for a test by the combination of key parameters, eg batch size, num of GPU, etc. It is hardware independent.",
+    "mode": "NULLABLE",
+    "name": "test_id",
+    "type": "STRING"
+  },
+  {
     "description": "The tensorflow version information.",
     "fields": [
       {
@@ -30,6 +36,18 @@
         "description": "Git Hash of the tensorflow",
         "mode": "NULLABLE",
         "name": "git_hash",
+        "type": "STRING"
+      },
+      {
+        "description": "The channel of the tensorflow binary, eg, nightly, RC, final, custom.",
+        "mode": "NULLABLE",
+        "name": "channel",
+        "type": "STRING"
+      },
+      {
+        "description": "Identify anything special about the build, eg CUDA 10, NCCL, MKL, etc.",
+        "mode": "NULLABLE",
+        "name": "build_type",
         "type": "STRING"
       }
     ],
@@ -98,41 +116,41 @@
     "type": "RECORD"
   },
   {
-    "description": "The list of hyperparameters of the model.",
+    "description": "The list of parameters run with the model. It could contain hyperparameters or others.",
     "fields": [
       {
-        "description": "The name of the hyperparameter.",
+        "description": "The name of the parameter.",
         "mode": "REQUIRED",
         "name": "name",
         "type": "STRING"
       },
       {
-        "description": "The string value of the hyperparameter.",
+        "description": "The string value of the parameter.",
         "mode": "NULLABLE",
         "name": "string_value",
         "type": "STRING"
       },
       {
-        "description": "The bool value of the hyperparameter.",
+        "description": "The bool value of the parameter.",
         "mode": "NULLABLE",
         "name": "bool_value",
         "type": "STRING"
       },
       {
-        "description": "The int/long value of the hyperparameter.",
+        "description": "The int/long value of the parameter.",
         "mode": "NULLABLE",
         "name": "long_value",
         "type": "INTEGER"
       },
       {
-        "description": "The double/float value of hyperparameter.",
+        "description": "The double/float value of parameter.",
         "mode": "NULLABLE",
         "name": "float_value",
         "type": "FLOAT"
       }
     ],
     "mode": "REPEATED",
-    "name": "hyperparameter",
+    "name": "run_parameters",
     "type": "RECORD"
   },
   {
@@ -168,6 +186,12 @@
         "type": "RECORD"
       }
     ]
+  },
+  {
+    "description": "Used to differentiate from AWS, GCE or DGX-1 at a high level",
+    "mode": "NULLABLE",
+    "name": "test_environment",
+    "type": "STRING"
   },
   {
     "description": "The machine configuration of the benchmark run.",

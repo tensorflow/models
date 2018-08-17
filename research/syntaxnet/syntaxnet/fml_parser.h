@@ -108,6 +108,10 @@ class FMLParser {
   string item_text_;
 };
 
+// Returns the |function| or |extractor| descriptor as an FML string.
+string AsFML(const FeatureFunctionDescriptor &function);
+string AsFML(const FeatureExtractorDescriptor &extractor);
+
 }  // namespace syntaxnet
 
 #endif  // SYNTAXNET_FML_PARSER_H_

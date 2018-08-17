@@ -25,6 +25,7 @@
 #include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/component.h"
 #include "dragnn/core/interfaces/transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "dragnn/protos/spec.pb.h"
 #include "dragnn/protos/trace.pb.h"
@@ -113,13 +114,24 @@ class SyntaxNetComponent : public Component {
     LOG(FATAL) << "Method not supported";
   }
 
+  void BulkEmbedDenseFixedFeatures(
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output, int embedding_output_size,
+      int32 *offset_array_output, int offset_array_size) override {
+    LOG(FATAL) << "Method not supported";
+  }
+
+  int BulkDenseFeatureSize() const override {
+    LOG(FATAL) << "Method not supported";
+  }
+
   // Extracts and returns the vector of LinkFeatures for the specified
   // channel. Note: these are NOT translated.
   std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override;
 
   // Returns a vector of oracle labels for each element in the beam and
   // batch.
-  std::vector<std::vector<int>> GetOracleLabels() const override;
+  std::vector<std::vector<std::vector<Label>>> GetOracleLabels() const override;
 
   // Annotate the underlying data object with the results of this Component's
   // calculation.

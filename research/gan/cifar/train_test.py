@@ -19,17 +19,23 @@ from __future__ import division
 from __future__ import print_function
 
 
+from absl import flags
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 import train
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 mock = tf.test.mock
 
 
-class TrainTest(tf.test.TestCase):
+class TrainTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _test_build_graph_helper(self, conditional, use_sync_replicas):
+  @parameterized.named_parameters(
+      ('Unconditional', False, False),
+      ('Conditional', True, False),
+      ('SyncReplicas', False, True))
+  def test_build_graph_helper(self, conditional, use_sync_replicas):
     FLAGS.max_number_of_steps = 0
     FLAGS.conditional = conditional
     FLAGS.use_sync_replicas = use_sync_replicas
@@ -45,14 +51,6 @@ class TrainTest(tf.test.TestCase):
           mock_imgs, mock_lbls, None, None)
       train.main(None)
 
-  def test_build_graph_unconditional(self):
-    self._test_build_graph_helper(False, False)
-
-  def test_build_graph_conditional(self):
-    self._test_build_graph_helper(True, False)
-
-  def test_build_graph_syncreplicas(self):
-    self._test_build_graph_helper(False, True)
 
 if __name__ == '__main__':
   tf.test.main()

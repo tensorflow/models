@@ -46,12 +46,29 @@ class ImageResizerBuilderTest(tf.test.TestCase):
         input_shape, image_resizer_text_proto)
     self.assertEqual(output_shape, expected_output_shape)
 
+  def test_build_keep_aspect_ratio_resizer_grayscale(self):
+    image_resizer_text_proto = """
+      keep_aspect_ratio_resizer {
+        min_dimension: 10
+        max_dimension: 20
+        convert_to_grayscale: true
+      }
+    """
+    input_shape = (50, 25, 3)
+    expected_output_shape = (20, 10, 1)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
   def test_build_keep_aspect_ratio_resizer_with_padding(self):
     image_resizer_text_proto = """
       keep_aspect_ratio_resizer {
         min_dimension: 10
         max_dimension: 20
         pad_to_max_dimension: true
+        per_channel_pad_value: 3
+        per_channel_pad_value: 4
+        per_channel_pad_value: 5
       }
     """
     input_shape = (50, 25, 3)
@@ -69,6 +86,20 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     """
     input_shape = (50, 25, 3)
     expected_output_shape = (10, 20, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_built_fixed_shape_resizer_grayscale(self):
+    image_resizer_text_proto = """
+      fixed_shape_resizer {
+        height: 10
+        width: 20
+        convert_to_grayscale: true
+      }
+    """
+    input_shape = (50, 25, 3)
+    expected_output_shape = (10, 20, 1)
     output_shape = self._shape_of_resized_random_image_given_text_proto(
         input_shape, image_resizer_text_proto)
     self.assertEqual(output_shape, expected_output_shape)

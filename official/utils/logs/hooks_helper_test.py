@@ -31,18 +31,19 @@ class BaseTest(unittest.TestCase):
   def test_raise_in_non_list_names(self):
     with self.assertRaises(ValueError):
       hooks_helper.get_train_hooks(
-          'LoggingTensorHook, ProfilerHook', batch_size=256)
+          'LoggingTensorHook, ProfilerHook', model_dir="", batch_size=256)
 
   def test_raise_in_invalid_names(self):
     invalid_names = ['StepCounterHook', 'StopAtStepHook']
     with self.assertRaises(ValueError):
-      hooks_helper.get_train_hooks(invalid_names, batch_size=256)
+      hooks_helper.get_train_hooks(invalid_names, model_dir="", batch_size=256)
 
   def validate_train_hook_name(self,
                                test_hook_name,
                                expected_hook_name,
                                **kwargs):
-    returned_hook = hooks_helper.get_train_hooks([test_hook_name], **kwargs)
+    returned_hook = hooks_helper.get_train_hooks(
+        [test_hook_name], model_dir="", **kwargs)
     self.assertEqual(len(returned_hook), 1)
     self.assertIsInstance(returned_hook[0], tf.train.SessionRunHook)
     self.assertEqual(returned_hook[0].__class__.__name__.lower(),
@@ -60,8 +61,7 @@ class BaseTest(unittest.TestCase):
 
   def test_get_logging_metric_hook(self):
     test_hook_name = 'LoggingMetricHook'
-    self.validate_train_hook_name(test_hook_name, 'loggingmetrichook',
-                                  benchmark_log_dir='/tmp')
+    self.validate_train_hook_name(test_hook_name, 'loggingmetrichook')
 
 if __name__ == '__main__':
   tf.test.main()
