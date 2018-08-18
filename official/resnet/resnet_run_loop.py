@@ -403,6 +403,7 @@ def resnet_main(
   print("\n\n TF_GPU_THREAD_COUNT ", os.environ['TF_GPU_THREAD_COUNT'])
   print("\n\n CPU count ", cpu_count)
   print("\n\n Total GPU thread count ", total_gpu_thread_count)
+  print("\n\n per GPU thread count ", per_gpu_thread_count)
   print("\n\n inter_op_parallelism_threads ", flags_obj.inter_op_parallelism_threads)
   print("\n\n num of dataset threads ", flags_obj.datasets_num_private_threads)
 
