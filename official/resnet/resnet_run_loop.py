@@ -377,15 +377,15 @@ def resnet_main(
   per_gpu_thread_count = str(flags_obj.tf_gpu_thread_count) or 2
   total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
 
-  if flags_obj.gpu_thread_mode == 'gpu_private':
+  if flags_obj.tf_gpu_thread_mode == 'gpu_private':
     os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  elif flags_obj.gpu_thread_mode == 'gpu_shared':
+  elif flags_obj.tf_gpu_thread_mode == 'gpu_shared':
     os.environ['TF_GPU_THREAD_COUNT'] = str(total_gpu_thread_count)
 
   # This is the number of logical CPU cores which is 80 on DGX.
   cpu_count = multiprocessing.cpu_count()
 
-  if flags_obj.gpu_thread_mode in [
+  if flags_obj.tf_gpu_thread_mode in [
     'gpu_private', 'gpu_shared'
   ]:
     main_thread_count = max(cpu_count - total_gpu_thread_count, 1)
@@ -404,7 +404,7 @@ def resnet_main(
   print("\n\n CPU count ", cpu_count)
   print("\n\n Total GPU thread count ", total_gpu_thread_count)
   print("\n\n inter_op_parallelism_threads ", flags_obj.inter_op_parallelism_threads)
-  print("\n\n num of dataset threads ", flags_obj.datasets_num_private_threads  )
+  print("\n\n num of dataset threads ", flags_obj.datasets_num_private_threads)
 
 
   # Create session config based on values of inter_op_parallelism_threads and
