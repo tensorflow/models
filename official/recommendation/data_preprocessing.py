@@ -314,7 +314,7 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
   tf.logging.info("Writing test data to file.")
   tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
   with tf.gfile.Open(cache_paths.eval_raw_file, "wb") as f:
-    pickle.dump(eval_data, f)
+    pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def construct_cache(dataset, data_dir, num_data_readers):
