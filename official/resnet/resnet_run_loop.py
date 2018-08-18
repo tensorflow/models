@@ -28,6 +28,7 @@ import os
 # pylint: disable=g-bad-import-order
 from absl import flags
 import tensorflow as tf
+import multiprocessing
 
 from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
@@ -370,6 +371,41 @@ def resnet_main(
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
   os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(flags_obj.tf_gpu_thread_count)
+
+  # Default to two threads. One for the device compute and the other for
+  # memory copies.
+  per_gpu_thread_count = str(flags_obj.tf_gpu_thread_count) or 2
+  total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
+
+  if flags_obj.gpu_thread_mode == 'gpu_private':
+    os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
+  elif flags_obj.gpu_thread_mode == 'gpu_shared':
+    os.environ['TF_GPU_THREAD_COUNT'] = str(total_gpu_thread_count)
+
+  # This is the number of logical CPU cores which is 80 on DGX.
+  cpu_count = multiprocessing.cpu_count()
+
+  if flags_obj.gpu_thread_mode in [
+    'gpu_private', 'gpu_shared'
+  ]:
+    main_thread_count = max(cpu_count - total_gpu_thread_count, 1)
+    flags_obj.inter_op_parallelism_threads = main_thread_count
+
+
+  # From the total cpu thread count, subtract the total_gpu_thread_count,
+  # and then 2 threads per GPU device for event monitoring and sending /
+  # receiving tensors
+  num_monitoring_threads = 2 * flags_obj.num_gpus
+  num_private_threads = max(
+      cpu_count - total_gpu_thread_count - num_monitoring_threads, 1)
+  flags_obj.datasets_num_private_threads = num_private_threads
+
+  print("\n\n TF_GPU_THREAD_COUNT ", os.environ['TF_GPU_THREAD_COUNT'])
+  print("\n\n CPU count ", cpu_count)
+  print("\n\n Total GPU thread count ", total_gpu_thread_count)
+  print("\n\n inter_op_parallelism_threads ", flags_obj.inter_op_parallelism_threads)
+  print("\n\n num of dataset threads ", flags_obj.datasets_num_private_threads  )
+
 
   # Create session config based on values of inter_op_parallelism_threads and
   # intra_op_parallelism_threads. Note that we default to having
