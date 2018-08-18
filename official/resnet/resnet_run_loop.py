@@ -397,7 +397,7 @@ def resnet_main(
   # receiving tensors
   num_monitoring_threads = 2 * flags_obj.num_gpus
   num_private_threads = max(
-      cpu_count - total_gpu_thread_count - num_monitoring_threads, 1)
+      cpu_count - int(total_gpu_thread_count) - num_monitoring_threads, 1)
   flags_obj.datasets_num_private_threads = num_private_threads
 
   print("\n\n TF_GPU_THREAD_COUNT ", os.environ['TF_GPU_THREAD_COUNT'])
