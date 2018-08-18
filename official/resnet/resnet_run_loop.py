@@ -388,7 +388,7 @@ def resnet_main(
   if flags_obj.tf_gpu_thread_mode in [
     'gpu_private', 'gpu_shared'
   ]:
-    main_thread_count = max(cpu_count - total_gpu_thread_count, 1)
+    main_thread_count = max(cpu_count - int(total_gpu_thread_count), 1)
     flags_obj.inter_op_parallelism_threads = main_thread_count
 
 
