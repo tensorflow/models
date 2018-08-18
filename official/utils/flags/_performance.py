@@ -45,9 +45,9 @@ def get_loss_scale(flags_obj):
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        synthetic_data=True, max_train_steps=True, dtype=True,
-                       all_reduce_alg=True, tf_gpu_thread_mode=False,
-                       tf_gpu_thread_count=False,
-                       datasets_num_private_threads=False):
+                       all_reduce_alg=True, tf_gpu_thread_mode=True,
+                       tf_gpu_thread_count=True,
+                       datasets_num_private_threads=True):
   """Register flags for specifying performance tuning arguments.
 
   Args:
