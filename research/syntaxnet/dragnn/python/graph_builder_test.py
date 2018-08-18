@@ -20,7 +20,6 @@ import os.path
 
 
 import numpy as np
-from six.moves import xrange
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -30,12 +29,11 @@ from dragnn.protos import trace_pb2
 from dragnn.python import dragnn_ops
 from dragnn.python import graph_builder
 from syntaxnet import sentence_pb2
+from syntaxnet import test_flags
 
 from tensorflow.python.framework import test_util
 from tensorflow.python.platform import googletest
 from tensorflow.python.platform import tf_logging as logging
-
-FLAGS = tf.app.flags.FLAGS
 
 
 _DUMMY_GOLD_SENTENCE = """
@@ -151,13 +149,6 @@ token {
 ]
 
 
-def setUpModule():
-  if not hasattr(FLAGS, 'test_srcdir'):
-    FLAGS.test_srcdir = ''
-  if not hasattr(FLAGS, 'test_tmpdir'):
-    FLAGS.test_tmpdir = tf.test.get_temp_dir()
-
-
 def _as_op(x):
   """Always returns the tf.Operation associated with a node."""
   return x.op if isinstance(x, tf.Tensor) else x
@@ -244,7 +235,7 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
 
   def LoadSpec(self, spec_path):
     master_spec = spec_pb2.MasterSpec()
-    testdata = os.path.join(FLAGS.test_srcdir,
+    testdata = os.path.join(test_flags.source_root(),
                             'dragnn/core/testdata')
     with open(os.path.join(testdata, spec_path), 'r') as fin:
       text_format.Parse(fin.read().replace('TESTDATA', testdata), master_spec)
@@ -445,7 +436,7 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
         self.assertEqual(expected_num_actions, correct_val)
         self.assertEqual(expected_num_actions, total_val)
 
-        builder.saver.save(sess, os.path.join(FLAGS.test_tmpdir, 'model'))
+        builder.saver.save(sess, os.path.join(test_flags.temp_dir(), 'model'))
 
         logging.info('Running test.')
         logging.info('Printing annotations')

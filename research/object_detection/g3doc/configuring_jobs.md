@@ -13,7 +13,7 @@ file is split into 5 parts:
 model parameters (ie. SGD parameters, input preprocessing and feature extractor
 initialization values).
 3. The `eval_config`, which determines what set of metrics will be reported for
-evaluation (currently we only support the PASCAL VOC metrics).
+evaluation.
 4. The `train_input_config`, which defines what dataset the model should be
 trained on.
 5. The `eval_input_config`, which defines what dataset the model will be
@@ -118,6 +118,7 @@ optimizer {
 }
 fine_tune_checkpoint: "/usr/home/username/tmp/model.ckpt-#####"
 from_detection_checkpoint: true
+load_all_detection_checkpoint_vars: true
 gradient_clipping_by_norm: 10.0
 data_augmentation_options {
   random_horizontal_flip {
@@ -130,8 +131,8 @@ data_augmentation_options {
 While optional, it is highly recommended that users utilize other object
 detection checkpoints. Training an object detector from scratch can take days.
 To speed up the training process, it is recommended that users re-use the
-feature extractor parameters from a pre-existing object classification or
-detection checkpoint. `train_config` provides two fields to specify
+feature extractor parameters from a pre-existing image classification or
+object detection checkpoint. `train_config` provides two fields to specify
 pre-existing checkpoints: `fine_tune_checkpoint` and
 `from_detection_checkpoint`. `fine_tune_checkpoint` should provide a path to
 the pre-existing checkpoint
@@ -157,6 +158,8 @@ number of workers, gpu type).
 
 ## Configuring the Evaluator
 
-Currently evaluation is fixed to generating metrics as defined by the PASCAL VOC
-challenge. The parameters for `eval_config` are set to reasonable defaults and
-typically do not need to be configured.
+The main components to set in `eval_config` are `num_examples` and
+`metrics_set`. The parameter `num_examples` indicates the number of batches (
+currently of batch size 1) used for an evaluation cycle, and often is the total
+size of the evaluation dataset. The parameter `metrics_set` indicates which
+metrics to run during evaluation (i.e. `"coco_detection_metrics"`).

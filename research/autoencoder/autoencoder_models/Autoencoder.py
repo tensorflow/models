@@ -40,21 +40,24 @@ class Autoencoder(object):
 
     def _initialize_weights(self):
         all_weights = dict()
+        initializer = tf.contrib.layers.xavier_initializer()
         # Encoding network weights
         encoder_weights = []
         for layer in range(len(self.n_layers)-1):
             w = tf.Variable(
-                autoencoder.Utils.xavier_init(self.n_layers[layer],
-                                              self.n_layers[layer + 1]))
-            b = tf.Variable(tf.zeros([self.n_layers[layer+1]], dtype=tf.float32))
+                initializer((self.n_layers[layer], self.n_layers[layer + 1]),
+                            dtype=tf.float32))
+            b = tf.Variable(
+                tf.zeros([self.n_layers[layer + 1]], dtype=tf.float32))
             encoder_weights.append({'w': w, 'b': b})
         # Recon network weights
         recon_weights = []
         for layer in range(len(self.n_layers)-1, 0, -1):
             w = tf.Variable(
-                autoencoder.Utils.xavier_init(self.n_layers[layer],
-                                              self.n_layers[layer - 1]))
-            b = tf.Variable(tf.zeros([self.n_layers[layer-1]], dtype=tf.float32))
+                initializer((self.n_layers[layer], self.n_layers[layer - 1]),
+                            dtype=tf.float32))
+            b = tf.Variable(
+                tf.zeros([self.n_layers[layer - 1]], dtype=tf.float32))
             recon_weights.append({'w': w, 'b': b})
         all_weights['encode'] = encoder_weights
         all_weights['recon'] = recon_weights

@@ -92,7 +92,7 @@ it to the TFRecord format expected by this library.
 ## Data Pipelines
 
 We use the [tf.data.Dataset
-API](https://www.tensorflow.org/programmers_guide/datasets) to construct input
+API](https://www.tensorflow.org/guide/datasets) to construct input
 pipelines that feed training, evaluation, and visualization. These pipelines are
 defined in `data_providers.py`.
 

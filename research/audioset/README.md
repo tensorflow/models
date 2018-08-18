@@ -209,6 +209,11 @@ the postprocessor can be run after inference.
 If you don't need to use the released embeddings or YouTube-8M, then you could
 skip postprocessing and use raw embeddings.
 
+A [Colab](https://colab.research.google.com/)
+showing how to download the model and calculate the embeddings on your
+own sound data is available here:
+[AudioSet Embedding Colab](https://colab.research.google.com/drive/1TbX92UL9sYWbdwdGE0rJ9owmezB-Rl1C).
+
 ### Future Work
 
 Below are some of the things we would like to add to this repository.  We

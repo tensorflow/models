@@ -111,7 +111,7 @@ def init_data(task, length, nbr_cases, nclass):
   """Data initialization."""
   def rand_pair(l, task):
     """Random data pair for a task. Total length should be <= l."""
-    k = (l-1)/2
+    k = int((l-1)/2)
     base = 10
     if task[0] == "b": base = 2
     if task[0] == "q": base = 4
@@ -135,7 +135,7 @@ def init_data(task, length, nbr_cases, nclass):
 
   def rand_dup_pair(l):
     """Random data pair for duplication task. Total length should be <= l."""
-    k = l/2
+    k = int(l/2)
     x = [np.random.randint(nclass - 1) + 1 for _ in xrange(k)]
     inp = x + [0 for _ in xrange(l - k)]
     res = x + x + [0 for _ in xrange(l - 2*k)]

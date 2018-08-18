@@ -1,5 +1,10 @@
 <font size=4><b>Reproduced ResNet on CIFAR-10 and CIFAR-100 dataset.</b></font>
 
+# Deprecated
+This code is not actively maintained. Please use the
+[offical ResNet](https://github.com/tensorflow/models/tree/master/official/resnet) implementation
+instead.
+
 Xin Pan
 
 <b>Dataset:</b>

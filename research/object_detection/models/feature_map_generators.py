@@ -185,8 +185,9 @@ def fpn_top_down_feature_maps(image_features, depth, scope=None):
   See https://arxiv.org/abs/1612.03144 for details.
 
   Args:
-    image_features: list of image feature tensors. Spatial resolutions of
-      succesive tensors must reduce exactly by a factor of 2.
+    image_features: list of tuples of (tensor_name, image_feature_tensor).
+      Spatial resolutions of succesive tensors must reduce exactly by a factor
+      of 2.
     depth: depth of output feature maps.
     scope: A scope name to wrap this op under.
 
@@ -194,32 +195,96 @@ def fpn_top_down_feature_maps(image_features, depth, scope=None):
     feature_maps: an OrderedDict mapping keys (feature map names) to
       tensors where each tensor has shape [batch, height_i, width_i, depth_i].
   """
-  with tf.variable_scope(
-      scope, 'top_down', image_features):
+  with tf.name_scope(scope, 'top_down'):
     num_levels = len(image_features)
     output_feature_maps_list = []
     output_feature_map_keys = []
     with slim.arg_scope(
-        [slim.conv2d],
-        activation_fn=None, normalizer_fn=None, padding='SAME', stride=1):
+        [slim.conv2d], padding='SAME', stride=1):
       top_down = slim.conv2d(
-          image_features[-1],
-          depth, [1, 1], scope='projection_%d' % num_levels)
+          image_features[-1][1],
+          depth, [1, 1], activation_fn=None, normalizer_fn=None,
+          scope='projection_%d' % num_levels)
       output_feature_maps_list.append(top_down)
       output_feature_map_keys.append(
-          'top_down_feature_map_%d' % (num_levels - 1))
+          'top_down_%s' % image_features[-1][0])
 
       for level in reversed(range(num_levels - 1)):
         top_down = ops.nearest_neighbor_upsampling(top_down, 2)
         residual = slim.conv2d(
-            image_features[level], depth, [1, 1],
+            image_features[level][1], depth, [1, 1],
+            activation_fn=None, normalizer_fn=None,
             scope='projection_%d' % (level + 1))
-        top_down = 0.5 * top_down + 0.5 * residual
+        top_down += residual
         output_feature_maps_list.append(slim.conv2d(
             top_down,
             depth, [3, 3],
-            activation_fn=None,
             scope='smoothing_%d' % (level + 1)))
-        output_feature_map_keys.append('top_down_feature_map_%d' % level)
-      return collections.OrderedDict(
-          reversed(zip(output_feature_map_keys, output_feature_maps_list)))
+        output_feature_map_keys.append('top_down_%s' % image_features[level][0])
+      return collections.OrderedDict(reversed(
+          list(zip(output_feature_map_keys, output_feature_maps_list))))
+
+
+def pooling_pyramid_feature_maps(base_feature_map_depth, num_layers,
+                                 image_features):
+  """Generates pooling pyramid feature maps.
+
+  The pooling pyramid feature maps is motivated by
+  multi_resolution_feature_maps. The main difference are that it is simpler and
+  reduces the number of free parameters.
+
+  More specifically:
+   - Instead of using convolutions to shrink the feature map, it uses max
+     pooling, therefore totally gets rid of the parameters in convolution.
+   - By pooling feature from larger map up to a single cell, it generates
+     features in the same feature space.
+   - Instead of independently making box predictions from individual maps, it
+     shares the same classifier across different feature maps, therefore reduces
+     the "mis-calibration" across different scales.
+
+  See go/ppn-detection for more details.
+
+  Args:
+    base_feature_map_depth: Depth of the base feature before the max pooling.
+    num_layers: Number of layers used to make predictions. They are pooled
+      from the base feature.
+    image_features: A dictionary of handles to activation tensors from the
+      feature extractor.
+
+  Returns:
+    feature_maps: an OrderedDict mapping keys (feature map names) to
+      tensors where each tensor has shape [batch, height_i, width_i, depth_i].
+  Raises:
+    ValueError: image_features does not contain exactly one entry
+  """
+  if len(image_features) != 1:
+    raise ValueError('image_features should be a dictionary of length 1.')
+  image_features = image_features[image_features.keys()[0]]
+
+  feature_map_keys = []
+  feature_maps = []
+  feature_map_key = 'Base_Conv2d_1x1_%d' % base_feature_map_depth
+  if base_feature_map_depth > 0:
+    image_features = slim.conv2d(
+        image_features,
+        base_feature_map_depth,
+        [1, 1],  # kernel size
+        padding='SAME', stride=1, scope=feature_map_key)
+    # Add a 1x1 max-pooling node (a no op node) immediately after the conv2d for
+    # TPU v1 compatibility.  Without the following dummy op, TPU runtime
+    # compiler will combine the convolution with one max-pooling below into a
+    # single cycle, so getting the conv2d feature becomes impossible.
+    image_features = slim.max_pool2d(
+        image_features, [1, 1], padding='SAME', stride=1, scope=feature_map_key)
+  feature_map_keys.append(feature_map_key)
+  feature_maps.append(image_features)
+  feature_map = image_features
+  with slim.arg_scope([slim.max_pool2d], padding='SAME', stride=2):
+    for i in range(num_layers - 1):
+      feature_map_key = 'MaxPool2d_%d_2x2' % i
+      feature_map = slim.max_pool2d(
+          feature_map, [2, 2], padding='SAME', scope=feature_map_key)
+      feature_map_keys.append(feature_map_key)
+      feature_maps.append(feature_map)
+  return collections.OrderedDict(
+      [(x, y) for (x, y) in zip(feature_map_keys, feature_maps)])

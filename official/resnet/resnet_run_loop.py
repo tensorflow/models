@@ -23,24 +23,28 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+# pylint: disable=g-bad-import-order
+from absl import flags
+import tensorflow as tf
 
 from official.resnet import resnet_model
-from official.utils.arg_parsers import parsers
+from official.utils.flags import core as flags_core
 from official.utils.export import export
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
+# pylint: enable=g-bad-import-order
 
 
 ################################################################################
 # Functions for input processing.
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
-                           parse_record_fn, num_epochs=1):
+                           parse_record_fn, num_epochs=1, num_gpus=None,
+                           examples_per_epoch=None):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -53,6 +57,8 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
     num_epochs: The number of epochs to repeat the dataset.
+    num_gpus: The number of gpus used for training.
+    examples_per_epoch: The number of examples in an epoch.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -70,6 +76,16 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # dataset for the appropriate number of epochs.
   dataset = dataset.repeat(num_epochs)
 
+  if is_training and num_gpus and examples_per_epoch:
+    total_examples = num_epochs * examples_per_epoch
+    # Force the number of batches to be divisible by the number of devices.
+    # This prevents some devices from receiving batches while others do not,
+    # which can lead to a lockup. This case will soon be handled directly by
+    # distribution strategies, at which point this .take() operation will no
+    # longer be needed.
+    total_batches = total_examples // batch_size // num_gpus * num_gpus
+    dataset.take(total_batches * batch_size)
+
   # Parse the raw records into images and labels. Testing has shown that setting
   # num_parallel_batches > 1 produces no improvement in throughput, since
   # batch_size is almost always much greater than the number of CPU cores.
@@ -77,7 +93,8 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training),
           batch_size=batch_size,
-          num_parallel_batches=1))
+          num_parallel_batches=1,
+          drop_remainder=False))
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
@@ -85,7 +102,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # critical training path. Setting buffer_size to tf.contrib.data.AUTOTUNE
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
-  dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
 
   return dataset
 
@@ -108,9 +125,11 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     that can be used for iteration.
   """
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
-    images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
-    labels = tf.zeros((batch_size, num_classes), tf.int32)
-    return tf.data.Dataset.from_tensors((images, labels)).repeat()
+    return model_helpers.generate_synthetic_data(
+        input_shape=tf.TensorShape([batch_size, height, width, num_channels]),
+        input_dtype=tf.float32,
+        label_shape=tf.TensorShape([batch_size]),
+        label_dtype=tf.int32)
 
   return input_fn
 
@@ -142,7 +161,9 @@ def learning_rate_with_decay(
   initial_learning_rate = 0.1 * batch_size / batch_denom
   batches_per_epoch = num_images / batch_size
 
-  # Multiply the learning rate by 0.1 at 100, 150, and 200 epochs.
+  # Reduce the learning rate at certain epochs.
+  # CIFAR-10: divide by 10 at epoch 100, 150, and 200
+  # ImageNet: divide by 10 at epoch 30, 60, 80, and 90
   boundaries = [int(batches_per_epoch * epoch) for epoch in boundary_epochs]
   vals = [initial_learning_rate * decay for decay in decay_rates]
 
@@ -155,8 +176,9 @@ def learning_rate_with_decay(
 
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format, version, loss_scale, loss_filter_fn=None,
-                    dtype=resnet_model.DEFAULT_DTYPE):
+                    data_format, resnet_version, loss_scale,
+                    loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE,
+                    fine_tune=False):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -180,8 +202,8 @@ def resnet_model_fn(features, labels, mode, model_class,
     momentum: momentum term used for optimization
     data_format: Input format ('channels_last', 'channels_first', or None).
       If set to None, the format is dependent on whether a GPU is available.
-    version: Integer representing which version of the ResNet network to use.
-      See README for details. Valid values: [1, 2]
+    resnet_version: Integer representing which version of the ResNet network to
+      use. See README for details. Valid values: [1, 2]
     loss_scale: The factor to scale the loss for numerical stability. A detailed
       summary is present in the arg parser help text.
     loss_filter_fn: function that takes a string variable name and returns
@@ -189,6 +211,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       otherwise. If None, batch_normalization variables will be excluded
       from the loss.
     dtype: the TensorFlow dtype to use for calculations.
+    fine_tune: If True only train the dense layers(final layers).
 
   Returns:
     EstimatorSpec parameterized according to the input params and the
@@ -200,7 +223,8 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   features = tf.cast(features, dtype)
 
-  model = model_class(resnet_size, data_format, version=version, dtype=dtype)
+  model = model_class(resnet_size, data_format, resnet_version=resnet_version,
+                      dtype=dtype)
 
   logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
@@ -224,8 +248,8 @@ def resnet_model_fn(features, labels, mode, model_class,
         })
 
   # Calculate loss, which includes softmax cross entropy and L2 regularization.
-  cross_entropy = tf.losses.softmax_cross_entropy(
-      logits=logits, onehot_labels=labels)
+  cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+      logits=logits, labels=labels)
 
   # Create a tensor named cross_entropy for logging purposes.
   tf.identity(cross_entropy, name='cross_entropy')
@@ -259,11 +283,25 @@ def resnet_model_fn(features, labels, mode, model_class,
         momentum=momentum
     )
 
+    def _dense_grad_filter(gvs):
+      '''
+      only apply gradient updates to the final layer. This function is used for
+      fine tuning
+      Args:
+      gvs : list of tuples with gradients and variable info
+      Returns:
+      filtered gradients so that only the dense layer remains
+      '''
+      return [(g, v) for g, v in gvs if 'dense' in v.name]
+
     if loss_scale != 1:
       # When computing fp16 gradients, often intermediate tensor values are
       # so small, they underflow to 0. To avoid this, we multiply the loss by
       # loss_scale to make these tensor values loss_scale times bigger.
       scaled_grad_vars = optimizer.compute_gradients(loss * loss_scale)
+
+      if fine_tune:
+        scaled_grad_vars = _dense_grad_filter(scaled_grad_vars)
 
       # Once the gradient computation is complete we can scale the gradients
       # back to the correct scale before passing them to the optimizer.
@@ -271,20 +309,17 @@ def resnet_model_fn(features, labels, mode, model_class,
                             for grad, var in scaled_grad_vars]
       minimize_op = optimizer.apply_gradients(unscaled_grad_vars, global_step)
     else:
-      minimize_op = optimizer.minimize(loss, global_step)
+      grad_vars = optimizer.compute_gradients(loss)
+      if fine_tune:
+        grad_vars = _dense_grad_filter(grad_vars)
+      minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
   else:
     train_op = None
 
-  if not tf.contrib.distribute.has_distribution_strategy():
-    accuracy = tf.metrics.accuracy(
-        tf.argmax(labels, axis=1), predictions['classes'])
-  else:
-    # Metrics are currently not compatible with distribution strategies during
-    # training. This does not affect the overall performance of the model.
-    accuracy = (tf.no_op(), tf.constant(0))
+  accuracy = tf.metrics.accuracy(labels, predictions['classes'])
 
   metrics = {'accuracy': accuracy}
 
@@ -300,51 +335,25 @@ def resnet_model_fn(features, labels, mode, model_class,
       eval_metric_ops=metrics)
 
 
-def per_device_batch_size(batch_size, num_gpus):
-  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
-
-  Note that this should eventually be handled by DistributionStrategies
-  directly. Multi-GPU support is currently experimental, however,
-  so doing the work here until that feature is in place.
-
-  Args:
-    batch_size: Global batch size to be divided among devices. This should be
-      equal to num_gpus times the single-GPU batch_size for multi-gpu training.
-    num_gpus: How many GPUs are used with DistributionStrategies.
-
-  Returns:
-    Batch size per device.
-
-  Raises:
-    ValueError: if batch_size is not divisible by number of devices
-  """
-  if num_gpus <= 1:
-    return batch_size
-
-  remainder = batch_size % num_gpus
-  if remainder:
-    err = ('When running with multiple GPUs, batch size '
-           'must be a multiple of the number of available GPUs. Found {} '
-           'GPUs with a batch size of {}; try --batch_size={} instead.'
-          ).format(num_gpus, batch_size, batch_size - remainder)
-    raise ValueError(err)
-  return int(batch_size / num_gpus)
-
-
-def resnet_main(flags, model_function, input_function, shape=None):
+def resnet_main(
+    flags_obj, model_function, input_function, dataset_name, shape=None):
   """Shared main loop for ResNet Models.
 
   Args:
-    flags: FLAGS object that contains the params for running. See
-      ResnetArgParser for created flags.
+    flags_obj: An object containing parsed flags. See define_resnet_flags()
+      for details.
     model_function: the function that instantiates the Model and builds the
       ops for train/eval. This will be passed directly into the estimator.
     input_function: the function that processes the dataset and returns a
       dataset that the estimator can train on. This will be wrapped with
       all the relevant flags for running and passed to estimator.
+    dataset_name: the name of the dataset for training and evaluation. This is
+      used for logging purpose.
     shape: list of ints representing the shape of the images used for training.
-      This is only used if flags.export_dir is passed.
+      This is only used if flags_obj.export_dir is passed.
   """
+
+  model_helpers.apply_clean(flags.FLAGS)
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
@@ -354,122 +363,141 @@ def resnet_main(flags, model_function, input_function, shape=None):
   # allow_soft_placement = True, which is required for multi-GPU and not
   # harmful for other modes.
   session_config = tf.ConfigProto(
-      inter_op_parallelism_threads=flags.inter_op_parallelism_threads,
-      intra_op_parallelism_threads=flags.intra_op_parallelism_threads,
+      inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
+      intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
       allow_soft_placement=True)
 
-  if flags.num_gpus == 0:
-    distribution = tf.contrib.distribute.OneDeviceStrategy('device:CPU:0')
-  elif flags.num_gpus == 1:
-    distribution = tf.contrib.distribute.OneDeviceStrategy('device:GPU:0')
-  else:
-    distribution = tf.contrib.distribute.MirroredStrategy(
-        num_gpus=flags.num_gpus
-    )
+  distribution_strategy = distribution_utils.get_distribution_strategy(
+      flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
 
-  run_config = tf.estimator.RunConfig(train_distribute=distribution,
-                                      session_config=session_config)
+  run_config = tf.estimator.RunConfig(
+      train_distribute=distribution_strategy, session_config=session_config)
+
+  # initialize our model with all but the dense layer from pretrained resnet
+  if flags_obj.pretrained_model_checkpoint_path is not None:
+    warm_start_settings = tf.estimator.WarmStartSettings(
+        flags_obj.pretrained_model_checkpoint_path,
+        vars_to_warm_start='^(?!.*dense)')
+  else:
+    warm_start_settings = None
 
   classifier = tf.estimator.Estimator(
-      model_fn=model_function, model_dir=flags.model_dir, config=run_config,
-      params={
-          'resnet_size': flags.resnet_size,
-          'data_format': flags.data_format,
-          'batch_size': flags.batch_size,
-          'version': flags.version,
-          'loss_scale': flags.loss_scale,
-          'dtype': flags.dtype
+      model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
+      warm_start_from=warm_start_settings, params={
+          'resnet_size': int(flags_obj.resnet_size),
+          'data_format': flags_obj.data_format,
+          'batch_size': flags_obj.batch_size,
+          'resnet_version': int(flags_obj.resnet_version),
+          'loss_scale': flags_core.get_loss_scale(flags_obj),
+          'dtype': flags_core.get_tf_dtype(flags_obj),
+          'fine_tune': flags_obj.fine_tune
       })
 
-  if flags.benchmark_log_dir is not None:
-    benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
-    benchmark_logger.log_run_info('resnet')
-  else:
-    benchmark_logger = None
+  run_params = {
+      'batch_size': flags_obj.batch_size,
+      'dtype': flags_core.get_tf_dtype(flags_obj),
+      'resnet_size': flags_obj.resnet_size,
+      'resnet_version': flags_obj.resnet_version,
+      'synthetic_data': flags_obj.use_synthetic_data,
+      'train_epochs': flags_obj.train_epochs,
+  }
+  if flags_obj.use_synthetic_data:
+    dataset_name = dataset_name + '-synthetic'
 
-  for _ in range(flags.train_epochs // flags.epochs_between_evals):
-    train_hooks = hooks_helper.get_train_hooks(
-        flags.hooks,
-        batch_size=flags.batch_size,
-        benchmark_log_dir=flags.benchmark_log_dir)
+  benchmark_logger = logger.get_benchmark_logger()
+  benchmark_logger.log_run_info('resnet', dataset_name, run_params,
+                                test_id=flags_obj.benchmark_test_id)
 
-    print('Starting a training cycle.')
+  train_hooks = hooks_helper.get_train_hooks(
+      flags_obj.hooks,
+      model_dir=flags_obj.model_dir,
+      batch_size=flags_obj.batch_size)
 
-    def input_fn_train():
-      return input_function(
-          is_training=True,
-          data_dir=flags.data_dir,
-          batch_size=per_device_batch_size(flags.batch_size, flags.num_gpus),
-          num_epochs=flags.epochs_between_evals,
-      )
+  def input_fn_train():
+    return input_function(
+        is_training=True, data_dir=flags_obj.data_dir,
+        batch_size=distribution_utils.per_device_batch_size(
+            flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+        num_epochs=flags_obj.epochs_between_evals,
+        num_gpus=flags_core.get_num_gpus(flags_obj))
+
+  def input_fn_eval():
+    return input_function(
+        is_training=False, data_dir=flags_obj.data_dir,
+        batch_size=distribution_utils.per_device_batch_size(
+            flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+        num_epochs=1)
+
+  total_training_cycle = (flags_obj.train_epochs //
+                          flags_obj.epochs_between_evals)
+  for cycle_index in range(total_training_cycle):
+    tf.logging.info('Starting a training cycle: %d/%d',
+                    cycle_index, total_training_cycle)
 
     classifier.train(input_fn=input_fn_train, hooks=train_hooks,
-                     max_steps=flags.max_train_steps)
+                     max_steps=flags_obj.max_train_steps)
 
-    print('Starting to evaluate.')
-    # Evaluate the model and print results
-    def input_fn_eval():
-      return input_function(
-          is_training=False,
-          data_dir=flags.data_dir,
-          batch_size=per_device_batch_size(flags.batch_size, flags.num_gpus),
-          num_epochs=1,
-      )
+    tf.logging.info('Starting to evaluate.')
 
-    # flags.max_train_steps is generally associated with testing and profiling.
-    # As a result it is frequently called with synthetic data, which will
-    # iterate forever. Passing steps=flags.max_train_steps allows the eval
-    # (which is generally unimportant in those circumstances) to terminate.
+    # flags_obj.max_train_steps is generally associated with testing and
+    # profiling. As a result it is frequently called with synthetic data, which
+    # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
+    # eval (which is generally unimportant in those circumstances) to terminate.
     # Note that eval will run for max_train_steps each loop, regardless of the
     # global_step count.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
-                                       steps=flags.max_train_steps)
-    print(eval_results)
+                                       steps=flags_obj.max_train_steps)
 
-    if benchmark_logger:
-      benchmark_logger.log_estimator_evaluation_result(eval_results)
+    benchmark_logger.log_evaluation_result(eval_results)
 
     if model_helpers.past_stop_threshold(
-        flags.stop_threshold, eval_results['accuracy']):
+        flags_obj.stop_threshold, eval_results['accuracy']):
       break
 
-  if flags.export_dir is not None:
+  if flags_obj.export_dir is not None:
     # Exports a saved model for the given classifier.
     input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-        shape, batch_size=flags.batch_size)
-    classifier.export_savedmodel(flags.export_dir, input_receiver_fn)
+        shape, batch_size=flags_obj.batch_size)
+    classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn)
 
 
-class ResnetArgParser(argparse.ArgumentParser):
-  """Arguments for configuring and running a Resnet Model."""
+def define_resnet_flags(resnet_size_choices=None):
+  """Add flags and validators for ResNet."""
+  flags_core.define_base()
+  flags_core.define_performance(num_parallel_calls=False)
+  flags_core.define_image()
+  flags_core.define_benchmark()
+  flags.adopt_module_key_flags(flags_core)
 
-  def __init__(self, resnet_size_choices=None):
-    super(ResnetArgParser, self).__init__(parents=[
-        parsers.BaseParser(multi_gpu=False),
-        parsers.PerformanceParser(num_parallel_calls=False),
-        parsers.ImageModelParser(),
-        parsers.ExportParser(),
-        parsers.BenchmarkParser(),
-    ])
+  flags.DEFINE_enum(
+      name='resnet_version', short_name='rv', default='2',
+      enum_values=['1', '2'],
+      help=flags_core.help_wrap(
+          'Version of ResNet. (1 or 2) See README.md for details.'))
+  flags.DEFINE_bool(
+      name='fine_tune', short_name='ft', default=False,
+      help=flags_core.help_wrap(
+          'If True do not train any parameters except for the final layer.'))
+  flags.DEFINE_string(
+      name='pretrained_model_checkpoint_path', short_name='pmcp', default=None,
+      help=flags_core.help_wrap(
+          'If not None initialize all the network except the final layer with '
+          'these values'))
 
-    self.add_argument(
-        '--version', '-v', type=int, choices=[1, 2],
-        default=resnet_model.DEFAULT_VERSION,
-        help='Version of ResNet. (1 or 2) See README.md for details.'
-    )
+  choice_kwargs = dict(
+      name='resnet_size', short_name='rs', default='50',
+      help=flags_core.help_wrap('The size of the ResNet model to use.'))
 
-    self.add_argument(
-        '--resnet_size', '-rs', type=int, default=50,
-        choices=resnet_size_choices,
-        help='[default: %(default)s] The size of the ResNet model to use.',
-        metavar='<RS>' if resnet_size_choices is None else None
-    )
+  if resnet_size_choices is None:
+    flags.DEFINE_string(**choice_kwargs)
+  else:
+    flags.DEFINE_enum(enum_values=resnet_size_choices, **choice_kwargs)
 
-  def parse_args(self, args=None, namespace=None):
-    args = super(ResnetArgParser, self).parse_args(
-        args=args, namespace=namespace)
-
-    # handle coupling between dtype and loss_scale
-    parsers.parse_dtype_info(args)
-
-    return args
+  # The current implementation of ResNet v1 is numerically unstable when run
+  # with fp16 and will produce NaN errors soon after training begins.
+  msg = ('ResNet version 1 is not currently supported with fp16. '
+         'Please use version 2 instead.')
+  @flags.multi_flags_validator(['dtype', 'resnet_version'], message=msg)
+  def _forbid_v1_fp16(flag_values):  # pylint: disable=unused-variable
+    return (flags_core.DTYPE_MAP[flag_values['dtype']][0] != tf.float16 or
+            flag_values['resnet_version'] != '1')

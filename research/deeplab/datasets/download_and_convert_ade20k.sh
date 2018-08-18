@@ -24,7 +24,7 @@
 #     - build_data.py
 #     - build_ade20k_data.py
 #     - download_and_convert_ade20k.sh
-#     + ADE20K 
+#     + ADE20K
 #       + tfrecord
 #       + ADEChallengeData2016
 #         + annotations

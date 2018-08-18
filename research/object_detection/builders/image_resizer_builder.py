@@ -79,12 +79,17 @@ def build(image_resizer_config):
             keep_aspect_ratio_config.max_dimension):
       raise ValueError('min_dimension > max_dimension')
     method = _tf_resize_method(keep_aspect_ratio_config.resize_method)
+    per_channel_pad_value = (0, 0, 0)
+    if keep_aspect_ratio_config.per_channel_pad_value:
+      per_channel_pad_value = tuple(keep_aspect_ratio_config.
+                                    per_channel_pad_value)
     image_resizer_fn = functools.partial(
         preprocessor.resize_to_range,
         min_dimension=keep_aspect_ratio_config.min_dimension,
         max_dimension=keep_aspect_ratio_config.max_dimension,
         method=method,
-        pad_to_max_dimension=keep_aspect_ratio_config.pad_to_max_dimension)
+        pad_to_max_dimension=keep_aspect_ratio_config.pad_to_max_dimension,
+        per_channel_pad_value=per_channel_pad_value)
     if not keep_aspect_ratio_config.convert_to_grayscale:
       return image_resizer_fn
   elif image_resizer_oneof == 'fixed_shape_resizer':

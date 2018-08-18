@@ -50,15 +50,6 @@ The model will begin training and will automatically evaluate itself on the vali
 
 Note that there are a number of other options you can specify, including `--model_dir` to choose where to store the model and `--resnet_size` to choose the model size (options include ResNet-18 through ResNet-200). See [`resnet.py`](resnet.py) for the full list of options.
 
-### Pre-trained model
-You can download 190 MB pre-trained versions of ResNet-50 achieving 76.3% and 75.3% (respectively) top-1 single-crop accuracy here: [resnetv2_imagenet_checkpoint.tar.gz](http://download.tensorflow.org/models/official/resnetv2_imagenet_checkpoint.tar.gz), [resnetv1_imagenet_checkpoint.tar.gz](http://download.tensorflow.org/models/official/resnetv1_imagenet_checkpoint.tar.gz). Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
-
-Other versions and formats:
-
-* [ResNet-v2-ImageNet Checkpoint](http://download.tensorflow.org/models/official/resnet_v2_imagenet_checkpoint.tar.gz)
-* [ResNet-v2-ImageNet SavedModel](http://download.tensorflow.org/models/official/resnet_v2_imagenet_savedmodel.tar.gz)
-* [ResNet-v1-ImageNet Checkpoint](http://download.tensorflow.org/models/official/resnet_v1_imagenet_checkpoint.tar.gz)
-* [ResNet-v1-ImageNet SavedModel](http://download.tensorflow.org/models/official/resnet_v1_imagenet_savedmodel.tar.gz)
 
 ## Compute Devices
 Training is accomplished using the DistributionStrategies API. (https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/distribute/README.md)
@@ -69,3 +60,34 @@ num_gpus:
 + 0:  Use OneDeviceStrategy and train on CPU.
 + 1:  Use OneDeviceStrategy and train on GPU.
 + 2+: Use MirroredStrategy (data parallelism) to distribute a batch between devices.
+
+### Pre-trained model
+You can download 190 MB pre-trained versions of ResNet-50. Reported accuracies are top-1 single-crop accuracy for the ImageNet validation set. Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
+
+ResNet-50 v2 (Accuracy 76.05%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_savedmodel.tar.gz)
+
+ResNet-50 v2 (fp16, Accuracy 75.56%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_savedmodel.tar.gz)
+
+ResNet-50 v1 (Accuracy 75.91%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_savedmodel.tar.gz)
+
+### Transfer Learning
+You can use a pretrained model to initialize a training process. In addition you are able to freeze all but the final fully connected layers to fine tune your model. Transfer Learning is useful when training on your own small datasets. For a brief look at transfer learning in the context of convolutional neural networks, we recommend reading these [short notes](http://cs231n.github.io/transfer-learning/). 
+
+
+To fine tune a pretrained resnet you must make three changes to your training procedure:
+
+1) Build the exact same model as previously except we change the number of labels in the final classification layer.
+
+2) Restore all weights from the pre-trained resnet except for the final classification layer; this will get randomly initialized instead.
+
+3) Freeze earlier layers of the network
+
+We can perform these three operations by specifying two flags: ```--pretrained_model_checkpoint_path``` and ```--fine_tune```. The first flag is a string that points to the path of a pre-trained resnet model. If this flag is specified, it will load all but the final classification layer. A key thing to note: if both ```--pretrained_model_checkpoint_path``` and a non empty ```model_dir``` directory are passed, the tensorflow estimator will load only the ```model_dir```. For more on this please see [WarmStartSettings](https://www.tensorflow.org/versions/master/api_docs/python/tf/estimator/WarmStartSettings) and [Estimators](https://www.tensorflow.org/guide/estimators).
+
+The second flag ```--fine_tune``` is a boolean that indicates whether earlier layers of the network should be frozen. You may set this flag to false if you wish to continue training a pre-trained model from a checkpoint. If you set this flag to true, you can train a new classification layer from scratch.

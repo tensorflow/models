@@ -23,6 +23,7 @@ Localization losses:
 Classification losses:
  * WeightedSigmoidClassificationLoss
  * WeightedSoftmaxClassificationLoss
+ * WeightedSoftmaxClassificationAgainstLogitsLoss
  * BootstrappedSigmoidClassificationLoss
 """
 from abc import ABCMeta
@@ -119,7 +120,7 @@ class WeightedSmoothL1LocalizationLoss(Loss):
   """Smooth L1 localization loss function aka Huber Loss..
 
   The smooth L1_loss is defined elementwise as .5 x^2 if |x| <= delta and
-  0.5 x^2 + delta * (|x|-delta) otherwise, where x is the difference between
+  delta * (|x|- 0.5*delta) otherwise, where x is the difference between
   predictions and target.
 
   See also Equation (3) in the Fast R-CNN paper by Ross Girshick (ICCV 2015)
@@ -311,6 +312,54 @@ class WeightedSoftmaxClassificationLoss(Loss):
     num_classes = prediction_tensor.get_shape().as_list()[-1]
     prediction_tensor = tf.divide(
         prediction_tensor, self._logit_scale, name='scale_logit')
+    per_row_cross_ent = (tf.nn.softmax_cross_entropy_with_logits(
+        labels=tf.reshape(target_tensor, [-1, num_classes]),
+        logits=tf.reshape(prediction_tensor, [-1, num_classes])))
+    return tf.reshape(per_row_cross_ent, tf.shape(weights)) * weights
+
+
+class WeightedSoftmaxClassificationAgainstLogitsLoss(Loss):
+  """Softmax loss function against logits.
+
+   Targets are expected to be provided in logits space instead of "one hot" or
+   "probability distribution" space.
+  """
+
+  def __init__(self, logit_scale=1.0):
+    """Constructor.
+
+    Args:
+      logit_scale: When this value is high, the target is "diffused" and
+                   when this value is low, the target is made peakier.
+                   (default 1.0)
+
+    """
+    self._logit_scale = logit_scale
+
+  def _scale_and_softmax_logits(self, logits):
+    """Scale logits then apply softmax."""
+    scaled_logits = tf.divide(logits, self._logit_scale, name='scale_logits')
+    return tf.nn.softmax(scaled_logits, name='convert_scores')
+
+  def _compute_loss(self, prediction_tensor, target_tensor, weights):
+    """Compute loss function.
+
+    Args:
+      prediction_tensor: A float tensor of shape [batch_size, num_anchors,
+        num_classes] representing the predicted logits for each class
+      target_tensor: A float tensor of shape [batch_size, num_anchors,
+        num_classes] representing logit classification targets
+      weights: a float tensor of shape [batch_size, num_anchors]
+
+    Returns:
+      loss: a float tensor of shape [batch_size, num_anchors]
+        representing the value of the loss function.
+    """
+    num_classes = prediction_tensor.get_shape().as_list()[-1]
+    target_tensor = self._scale_and_softmax_logits(target_tensor)
+    prediction_tensor = tf.divide(prediction_tensor, self._logit_scale,
+                                  name='scale_logits')
+
     per_row_cross_ent = (tf.nn.softmax_cross_entropy_with_logits(
         labels=tf.reshape(target_tensor, [-1, num_classes]),
         logits=tf.reshape(prediction_tensor, [-1, num_classes])))

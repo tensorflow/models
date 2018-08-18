@@ -931,6 +931,21 @@ class CoordinatesConversionTest(tf.test.TestCase):
       out = sess.run(boxlist.get())
       self.assertAllClose(out, coordinates)
 
+  def test_to_absolute_coordinates_maximum_coordinate_check(self):
+    coordinates = tf.constant([[0, 0, 1.2, 1.2],
+                               [0.25, 0.25, 0.75, 0.75]], tf.float32)
+    img = tf.ones((128, 100, 100, 3))
+    boxlist = box_list.BoxList(coordinates)
+    absolute_boxlist = box_list_ops.to_absolute_coordinates(
+        boxlist,
+        tf.shape(img)[1],
+        tf.shape(img)[2],
+        maximum_normalized_coordinate=1.1)
+
+    with self.test_session() as sess:
+      with self.assertRaisesOpError('assertion failed'):
+        sess.run(absolute_boxlist.get())
+
 
 class BoxRefinementTest(tf.test.TestCase):
 
