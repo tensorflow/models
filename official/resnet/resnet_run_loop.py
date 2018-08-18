@@ -374,7 +374,7 @@ def resnet_main(
 
   # Default to two threads. One for the device compute and the other for
   # memory copies.
-  per_gpu_thread_count = str(flags_obj.tf_gpu_thread_count) or 2
+  per_gpu_thread_count = flags_obj.tf_gpu_thread_count or 2
   total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
 
   if flags_obj.tf_gpu_thread_mode == 'gpu_private':
