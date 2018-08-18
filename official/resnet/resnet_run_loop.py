@@ -36,6 +36,7 @@ from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
+from tensorflow.contrib.data.python.ops import threadpool
 # pylint: enable=g-bad-import-order
 
 
@@ -44,7 +45,8 @@ from official.utils.misc import model_helpers
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_gpus=None,
-                           examples_per_epoch=None):
+                           examples_per_epoch=None,
+                           datasets_num_private_threads=None):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -59,6 +61,8 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
     examples_per_epoch: The number of examples in an epoch.
+    datasets_num_private_threads: Number of threads for a private
+      threadpool created for all datasets computation.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -103,6 +107,13 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+
+  if datasets_num_private_threads:
+    dataset = threadpool.override_threadpool(
+        dataset,
+        threadpool.PrivateThreadPool(
+            datasets_num_private_threads,
+            display_name="input_pipeline_thread_pool"))
 
   return dataset
 
@@ -357,6 +368,8 @@ def resnet_main(
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+  os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
+  os.environ['TF_GPU_THREAD_COUNT'] = str(flags_obj.tf_gpu_thread_count)
 
   # Create session config based on values of inter_op_parallelism_threads and
   # intra_op_parallelism_threads. Note that we default to having
@@ -419,14 +432,16 @@ def resnet_main(
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=flags_obj.epochs_between_evals,
-        num_gpus=flags_core.get_num_gpus(flags_obj))
+        num_gpus=flags_core.get_num_gpus(flags_obj),
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads)
 
   def input_fn_eval():
     return input_function(
         is_training=False, data_dir=flags_obj.data_dir,
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-        num_epochs=1)
+        num_epochs=1,
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads)
 
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)

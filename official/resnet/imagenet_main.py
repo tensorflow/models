@@ -156,7 +156,8 @@ def parse_record(raw_record, is_training):
   return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
+             datasets_num_private_threads=None):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -192,7 +193,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
       parse_record_fn=parse_record,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
-      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None
+      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
+      datasets_num_private_threads=datasets_num_private_threads
   )
 
 

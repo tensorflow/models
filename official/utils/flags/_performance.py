@@ -45,7 +45,9 @@ def get_loss_scale(flags_obj):
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        synthetic_data=True, max_train_steps=True, dtype=True,
-                       all_reduce_alg=True):
+                       all_reduce_alg=True, tf_gpu_thread_mode=False,
+                       tf_gpu_thread_count=False,
+                       datasets_num_private_threads=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -137,5 +139,26 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        "See tf.contrib.distribute.AllReduceCrossTowerOps for "
                        "more details and available options."))
 
+  if tf_gpu_thread_mode:
+    flags.DEFINE_string(
+        name="tf_gpu_thread_mode", short_name="gt_mode", default="global",
+        help=help_wrap(
+            "Whether and how the GPU device uses its own threadpool.")
+  )
+
+  if tf_gpu_thread_count:
+    flags.DEFINE_integer(
+        name="tf_gpu_thread_count", short_name="gt_count", default=2,
+        help=help_wrap("How many threads to reserve for GPU based on mode.")
+  )
+
+  if datasets_num_private_threads:
+    flags.DEFINE_integer(
+        name="datasets_num_private_threads", short_name="dataset_thread_count",
+        default=None,
+        help=help_wrap(
+            "Number of threads for a private threadpool created for all"
+            "datasets computation..")
+  )
 
   return key_flags
