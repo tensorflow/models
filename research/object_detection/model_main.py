@@ -67,6 +67,7 @@ def main(unused_argv):
   predict_input_fn = train_and_eval_dict['predict_input_fn']
   train_steps = train_and_eval_dict['train_steps']
   eval_steps = train_and_eval_dict['eval_steps']
+  eval_interval_secs = train_and_eval_dict['eval_interval_secs']
 
   if FLAGS.checkpoint_dir:
     if FLAGS.eval_training_data:
@@ -91,6 +92,7 @@ def main(unused_argv):
         predict_input_fn,
         train_steps,
         eval_steps,
+        eval_interval_secs=eval_interval_secs,
         eval_on_train_data=False)
 
     # Currently only a single Eval Spec is allowed.
