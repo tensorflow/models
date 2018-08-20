@@ -26,7 +26,7 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
                                                   labels,
                                                   num_classes,
                                                   ignore_label,
-                                                  loss_weight=1.0,
+                                                  label_weights,
                                                   upsample_logits=True,
                                                   scope=None):
   """Adds softmax cross entropy loss for logits of each scale.
@@ -46,6 +46,9 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
   """
   if labels is None:
     raise ValueError('No label for softmax cross entropy loss.')
+
+  if label_weights is None or len(label_weights) != num_classes:
+    raise ValueError('Length of label_weights must be equal to num_classes')
 
   for scale, logits in six.iteritems(scales_to_logits):
     loss_scope = None
@@ -67,8 +70,9 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
           align_corners=True)
 
     scaled_labels = tf.reshape(scaled_labels, shape=[-1])
-    not_ignore_mask = tf.to_float(tf.not_equal(scaled_labels,
-                                               ignore_label)) * loss_weight
+    not_ignore_mask = tf.to_float(tf.equal(scaled_labels, ignore_label)) * 0.
+    for i, label_weight in enumerate(label_weights):
+        not_ignore_mask += tf.to_float(tf.equal(scaled_labels, i)) * label_weight
     one_hot_labels = slim.one_hot_encoding(
         scaled_labels, num_classes, on_value=1.0, off_value=0.0)
     tf.losses.softmax_cross_entropy(

@@ -74,6 +74,8 @@ DatasetDescriptor = collections.namedtuple(
                       # foreground classes + 1 background class in the PASCAL
                       # VOC 2012 dataset. Thus, we set num_classes=21.
      'ignore_label',  # Ignore label value.
+     'label_weights',  # List of weights for each label. Length of the list must
+                       # be same as num_classes.
     ]
 )
 
@@ -84,6 +86,7 @@ _CITYSCAPES_INFORMATION = DatasetDescriptor(
     },
     num_classes=19,
     ignore_label=255,
+    label_weights=[1.] * 19,
 )
 
 _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
@@ -95,6 +98,7 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
     },
     num_classes=21,
     ignore_label=255,
+    label_weights=[1.] * 21,
 )
 
 # These number (i.e., 'train'/'test') seems to have to be hard coded
@@ -106,6 +110,7 @@ _ADE20K_INFORMATION = DatasetDescriptor(
     },
     num_classes=151,
     ignore_label=0,
+    label_weights=[1.] * 151,
 )
 
 
@@ -148,6 +153,7 @@ def get_dataset(dataset_name, split_name, dataset_dir):
   # Prepare the variables for different datasets.
   num_classes = _DATASETS_INFORMATION[dataset_name].num_classes
   ignore_label = _DATASETS_INFORMATION[dataset_name].ignore_label
+  label_weights = _DATASETS_INFORMATION[dataset_name].label_weights
 
   file_pattern = _FILE_PATTERN
   file_pattern = os.path.join(dataset_dir, file_pattern % split_name)
@@ -194,5 +200,6 @@ def get_dataset(dataset_name, split_name, dataset_dir):
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
       ignore_label=ignore_label,
       num_classes=num_classes,
+      label_weights=label_weights,
       name=dataset_name,
       multi_label=True)
