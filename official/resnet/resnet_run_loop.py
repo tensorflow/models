@@ -114,7 +114,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
         dataset,
         threadpool.PrivateThreadPool(
             datasets_num_private_threads,
-            display_name="input_pipeline_thread_pool"))
+            display_name='input_pipeline_thread_pool'))
 
   return dataset
 
@@ -180,8 +180,16 @@ def learning_rate_with_decay(
   vals = [initial_learning_rate * decay for decay in decay_rates]
 
   def learning_rate_fn(global_step):
+    """Builds scaled learning rate function with 5 epoch warm up."""
     global_step = tf.cast(global_step, tf.int32)
-    return tf.train.piecewise_constant(global_step, boundaries, vals)
+    lr = tf.train.piecewise_constant(global_step, boundaries, vals)
+    print('lr={}'.format(lr))
+    warmup_steps = int(batches_per_epoch * 5)
+    warmup_lr = (
+        initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
+            warmup_steps, tf.float32))
+    print('warmup_lr={}'.format(warmup_lr))
+    return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
 
   return learning_rate_fn
 
@@ -296,14 +304,15 @@ def resnet_model_fn(features, labels, mode, model_class,
     )
 
     def _dense_grad_filter(gvs):
-      '''
-      only apply gradient updates to the final layer. This function is used for
-      fine tuning
+      """Only apply gradient updates to the final layer.
+
+      This function is used for fine tuning.
       Args:
-      gvs : list of tuples with gradients and variable info
+        gvs: list of tuples with gradients and variable info
+
       Returns:
-      filtered gradients so that only the dense layer remains
-      '''
+        filtered gradients so that only the dense layer remains
+      """
       return [(g, v) for g, v in gvs if 'dense' in v.name]
 
     if loss_scale != 1:
@@ -369,44 +378,43 @@ def resnet_main(
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
-  os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
-  os.environ['TF_GPU_THREAD_COUNT'] = str(flags_obj.tf_gpu_thread_count)
-
-  # Default to two threads. One for the device compute and the other for
-  # memory copies.
-  per_gpu_thread_count = flags_obj.tf_gpu_thread_count or 2
-  total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
-
-  if flags_obj.tf_gpu_thread_mode == 'gpu_private':
-    os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  elif flags_obj.tf_gpu_thread_mode == 'gpu_shared':
-    os.environ['TF_GPU_THREAD_COUNT'] = str(total_gpu_thread_count)
-
   # This is the number of logical CPU cores which is 80 on DGX.
   cpu_count = multiprocessing.cpu_count()
+  print('CPU count ', cpu_count)
 
-  if flags_obj.tf_gpu_thread_mode in [
-    'gpu_private', 'gpu_shared'
-  ]:
+  # If using global (default tf_gpu_thread_mode) all values like
+  # `flags_obj.datasets_num_private_threads` need to be set individually.
+  if flags_obj.tf_gpu_thread_mode in ['gpu_private', 'gpu_shared']:
+    os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
+    os.environ['TF_GPU_THREAD_COUNT'] = str(flags_obj.tf_gpu_thread_count)
+
+    # Default to two threads. One for the device compute and the other for
+    # memory copies.
+    per_gpu_thread_count = flags_obj.tf_gpu_thread_count or 2
+    total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
+
+    if flags_obj.tf_gpu_thread_mode == 'gpu_private':
+      os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
+    elif flags_obj.tf_gpu_thread_mode == 'gpu_shared':
+      os.environ['TF_GPU_THREAD_COUNT'] = str(total_gpu_thread_count)
+
     main_thread_count = max(cpu_count - int(total_gpu_thread_count), 1)
     flags_obj.inter_op_parallelism_threads = main_thread_count
 
+    print('Total GPU thread count ', total_gpu_thread_count)
+    print('TF_GPU_THREAD_COUNT ', os.environ['TF_GPU_THREAD_COUNT'])
+    print('per GPU thread count ', per_gpu_thread_count)
+    # From the total cpu thread count, subtract the total_gpu_thread_count,
+    # and then 2 threads per GPU device for event monitoring and sending /
+    # receiving tensors
+    num_monitoring_threads = 2 * flags_obj.num_gpus
+    num_private_threads = max(
+        cpu_count - int(total_gpu_thread_count) - num_monitoring_threads, 1)
+    flags_obj.datasets_num_private_threads = num_private_threads
 
-  # From the total cpu thread count, subtract the total_gpu_thread_count,
-  # and then 2 threads per GPU device for event monitoring and sending /
-  # receiving tensors
-  num_monitoring_threads = 2 * flags_obj.num_gpus
-  num_private_threads = max(
-      cpu_count - int(total_gpu_thread_count) - num_monitoring_threads, 1)
-  flags_obj.datasets_num_private_threads = num_private_threads
-
-  print("\n\n TF_GPU_THREAD_COUNT ", os.environ['TF_GPU_THREAD_COUNT'])
-  print("\n\n CPU count ", cpu_count)
-  print("\n\n Total GPU thread count ", total_gpu_thread_count)
-  print("\n\n per GPU thread count ", per_gpu_thread_count)
-  print("\n\n inter_op_parallelism_threads ", flags_obj.inter_op_parallelism_threads)
-  print("\n\n num of dataset threads ", flags_obj.datasets_num_private_threads)
-
+  print('inter_op_parallelism_threads ', flags_obj.inter_op_parallelism_threads)
+  print('intra_op_parallelism_threads ', flags_obj.intra_op_parallelism_threads)
+  print('num of dataset threads ', flags_obj.datasets_num_private_threads)
 
   # Create session config based on values of inter_op_parallelism_threads and
   # intra_op_parallelism_threads. Note that we default to having
@@ -544,12 +552,3 @@ def define_resnet_flags(resnet_size_choices=None):
     flags.DEFINE_string(**choice_kwargs)
   else:
     flags.DEFINE_enum(enum_values=resnet_size_choices, **choice_kwargs)
-
-  # The current implementation of ResNet v1 is numerically unstable when run
-  # with fp16 and will produce NaN errors soon after training begins.
-  msg = ('ResNet version 1 is not currently supported with fp16. '
-         'Please use version 2 instead.')
-  @flags.multi_flags_validator(['dtype', 'resnet_version'], message=msg)
-  def _forbid_v1_fp16(flag_values):  # pylint: disable=unused-variable
-    return (flags_core.DTYPE_MAP[flag_values['dtype']][0] != tf.float16 or
-            flag_values['resnet_version'] != '1')
