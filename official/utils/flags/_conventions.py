@@ -30,7 +30,7 @@ from absl import flags
 # line after flags are listed. All flag definitions should wrap the text bodies
 # with help wrap when calling DEFINE_*.
 _help_wrap = functools.partial(flags.text_wrap, length=80, indent="",
-                              firstline_indent="\n")
+                               firstline_indent="\n")
 
 
 # Pretty formatting causes issues when utf-8 is not installed on a system.
