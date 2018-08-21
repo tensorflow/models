@@ -709,7 +709,7 @@ py_library(
 py_binary(
     name = "train_image_classifier",
     srcs = ["train_image_classifier.py"],
-    #paropts = ["--compress"],
+    paropts = ["--compress"],
     deps = [
         ":train_image_classifier_lib",
     ],
