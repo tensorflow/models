@@ -709,7 +709,7 @@ py_library(
 py_binary(
     name = "train_image_classifier",
     srcs = ["train_image_classifier.py"],
-    paropts = ["--compress"],
+    #paropts = ["--compress"],
     deps = [
         ":train_image_classifier_lib",
     ],
@@ -729,7 +729,7 @@ py_binary(
 py_binary(
     name = "export_inference_graph",
     srcs = ["export_inference_graph.py"],
-    paropts = ["--compress"],
+    #paropts = ["--compress"],
     deps = [
         ":dataset_factory",
         ":nets_factory",

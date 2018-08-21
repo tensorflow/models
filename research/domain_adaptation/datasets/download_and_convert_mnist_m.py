@@ -35,7 +35,7 @@ import numpy as np
 from six.moves import urllib
 import tensorflow as tf
 
-from slim.datasets import dataset_utils
+from research.slim.datasets import dataset_utils
 
 tf.app.flags.DEFINE_string(
     'dataset_dir', None,
@@ -185,6 +185,7 @@ def run(dataset_dir):
   Args:
     dataset_dir: The dataset directory where the dataset is stored.
   """
+  print(dataset_dir)
   if not tf.gfile.Exists(dataset_dir):
     tf.gfile.MakeDirs(dataset_dir)
 
@@ -229,6 +230,7 @@ def run(dataset_dir):
 
 
 def main(_):
+
   assert FLAGS.dataset_dir
   run(FLAGS.dataset_dir)
 

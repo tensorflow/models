@@ -22,7 +22,7 @@ py_library(
     srcs = ["dataset_factory.py"],
     deps = [
         ":mnist_m",
-        "//slim:mnist",
+        "//research/slim:mnist",
     ],
 )
 
@@ -31,7 +31,7 @@ py_binary(
     srcs = ["download_and_convert_mnist_m.py"],
     deps = [
         
-        "//slim:dataset_utils",
+        "//research/slim:dataset_utils",
     ],
 )
 
@@ -40,6 +40,6 @@ py_binary(
     srcs = ["mnist_m.py"],
     deps = [
         
-        "//slim:dataset_utils",
+        "//research/slim:dataset_utils",
     ],
 )
