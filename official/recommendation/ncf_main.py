@@ -226,8 +226,8 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
       .reshape(ncf_dataset.num_users, -1)
   item_with_padding = np.concatenate(item_batches, axis=0)
   items_by_user = item_with_padding[
-                  :ncf_dataset.num_users * (1 + rconst.NUM_EVAL_NEGATIVES)]\
-    .reshape(ncf_dataset.num_users, -1)
+      :ncf_dataset.num_users * (1 + rconst.NUM_EVAL_NEGATIVES)]\
+      .reshape(ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
   if FLAGS.ml_perf:
