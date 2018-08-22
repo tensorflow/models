@@ -182,12 +182,14 @@ def _train_eval_map_fn(args):
     cache_paths: rconst.Paths object containing locations for various cache
       files.
     seed: Random seed to be used when generating testing negatives.
+    match_mlperf: If True, sample eval negative with replacements, which the
+      MLPerf reference implementation does.
 
   Returns:
     A dict containing the evaluation data for a given shard.
   """
 
-  shard, shard_id, num_items, cache_paths, seed = args
+  shard, shard_id, num_items, cache_paths, seed, match_mlperf = args
   np.random.seed(seed)
 
   users = shard[movielens.USER_COLUMN]
@@ -217,7 +219,7 @@ def _train_eval_map_fn(args):
 
     test_negatives = stat_utils.sample_with_exclusion(
         num_items=num_items, positive_set=set(block_items),
-        n=rconst.NUM_EVAL_NEGATIVES, replacement=True)
+        n=rconst.NUM_EVAL_NEGATIVES, replacement=match_mlperf)
     test_blocks.append((
         block_user[0] * np.ones((rconst.NUM_EVAL_NEGATIVES + 1,),
                                 dtype=np.int32),
@@ -248,8 +250,9 @@ def _train_eval_map_fn(args):
   }
 
 
-def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
-  # type: (pd.DataFrame, int, int, rconst.Paths) -> None
+def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
+                             match_mlperf):
+  # type: (pd.DataFrame, int, int, rconst.Paths, bool) -> None
   """Construct training and evaluation datasets.
 
   This function manages dataset construction and validation that the
@@ -271,6 +274,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
     num_items: The cardinality of the item set.
     cache_paths: rconst.Paths object containing locations for various cache
       files.
+    match_mlperf: If True, sample eval negative with replacements, which the
+      MLPerf reference implementation does.
   """
 
   num_rows = len(df)
@@ -308,7 +313,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
   # We choose a different random seed for each process, so that the processes
   # will not all choose the same random numbers.
   process_seeds = [np.random.randint(2**32) for _ in range(approx_num_shards)]
-  map_args = [(shards[i], i, num_items, cache_paths, process_seeds[i])
+  map_args = [(shards[i], i, num_items, cache_paths, process_seeds[i],
+               match_mlperf)
               for i in range(approx_num_shards)]
   with contextlib.closing(
       multiprocessing.Pool(multiprocessing.cpu_count())) as pool:
@@ -364,7 +370,8 @@ def construct_cache(dataset, data_dir, num_data_readers, match_mlperf):
   df, user_map, item_map = _filter_index_sort(raw_rating_path, match_mlperf)
 
   generate_train_eval_data(df=df, approx_num_shards=approx_num_shards,
-                           num_items=len(item_map), cache_paths=cache_paths)
+                           num_items=len(item_map), cache_paths=cache_paths,
+                           match_mlperf=match_mlperf)
   del approx_num_shards  # value may have changed.
 
   ncf_dataset = NCFDataset(user_map=user_map, item_map=item_map,

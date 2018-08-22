@@ -69,7 +69,7 @@ def get_hit_rate_and_ndcg(predicted_scores_by_user, items_by_user, top_k=_TOP_K,
   will be higher the more successful the model is at this goal.
 
   If `match_mlperf` is True, then the HR and NDCG computations are done in a
-  slightly incorrect way to match the MLPerf reference implementation.
+  slightly unusual way to match the MLPerf reference implementation.
   Specifically, if `items_by_user[i, :]` contains duplicate items, it will be
   treated as if the item only appeared once. Effectively, for duplicate items in
   a row, the predicted score for all but one of the items will be set to
@@ -121,9 +121,9 @@ def get_hit_rate_and_ndcg(predicted_scores_by_user, items_by_user, top_k=_TOP_K,
     # equivalent to the MLPerf reference implementation.
     sorted_items_indices = items_by_user.argsort(kind="mergesort")
     sorted_items = items_by_user[
-      np.arange(num_users)[:, np.newaxis], sorted_items_indices]
+        np.arange(num_users)[:, np.newaxis], sorted_items_indices]
     sorted_predictions = predicted_scores_by_user[
-      np.arange(num_users)[:, np.newaxis], sorted_items_indices]
+        np.arange(num_users)[:, np.newaxis], sorted_items_indices]
 
     # For items that occur more than once in a user's row, set the predicted
     # score of the subsequent occurrences to -infinity, which effectively

@@ -166,7 +166,8 @@ class BaseTest(tf.test.TestCase):
     np.random.seed(1)
     data_preprocessing.generate_train_eval_data(df, approx_num_shards=2,
                                                 num_items=10,
-                                                cache_paths=cache_paths)
+                                                cache_paths=cache_paths,
+                                                match_mlperf=True)
     with tf.gfile.Open(cache_paths.eval_raw_file, "rb") as f:
       eval_data = pickle.load(f)
     eval_items_per_user = rconst.NUM_EVAL_NEGATIVES + 1
