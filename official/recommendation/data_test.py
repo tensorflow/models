@@ -89,6 +89,7 @@ class BaseTest(tf.test.TestCase):
     assert ncf_dataset.num_users == NUM_USERS
     assert ncf_dataset.num_items == NUM_ITEMS
 
+    time.sleep(1)  # Ensure we create the next cache in a new directory.
     ncf_dataset = data_preprocessing.construct_cache(
         dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2,
         match_mlperf=True)
