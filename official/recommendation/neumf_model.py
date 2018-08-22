@@ -51,6 +51,7 @@ def neumf_model_fn(features, labels, mode, params):
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     predictions = {
+        movielens.ITEM_COLUMN: items,
         movielens.RATING_COLUMN: logits,
     }
 

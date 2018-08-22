@@ -22,7 +22,6 @@ import atexit
 import contextlib
 import datetime
 import gc
-import functools
 import multiprocessing
 import json
 import os
@@ -64,8 +63,8 @@ def get_cycle_folder_name(i):
   return "cycle_{}".format(str(i).zfill(5))
 
 
-def _process_shard(shard_path, num_items, num_neg):
-  # type: (str, int, int) -> (np.ndarray, np.ndarray, np.ndarray)
+def _process_shard(args):
+  # type: ((str, int, int, int)) -> (np.ndarray, np.ndarray, np.ndarray)
   """Read a shard of training data and return training vectors.
 
   Args:
@@ -74,6 +73,8 @@ def _process_shard(shard_path, num_items, num_neg):
     num_neg: The number of negatives to generate per positive example.
     seed: Random seed to be used when generating negatives.
   """
+  shard_path, num_items, num_neg, seed = args
+  np.random.seed(seed)
 
   # The choice to store the training shards in files rather than in memory
   # is motivated by the fact that multiprocessing serializes arguments,
@@ -194,13 +195,16 @@ def _construct_training_records(
   num_carryover = carryover[0].shape[0]
   num_pts = num_carryover + num_train_positives * (1 + num_neg)
 
-  map_args = [i for i in training_shards * epochs_per_cycle]
-  map_fn = functools.partial(_process_shard, num_neg=num_neg,
-                             num_items=num_items)
+  # We choose a different random seed for each process, so that the processes
+  # will not all choose the same random numbers.
+  process_seeds = [np.random.randint(2**32)
+                   for _ in training_shards * epochs_per_cycle]
+  map_args = [(shard, num_items, num_neg, process_seeds[i])
+              for i, shard in enumerate(training_shards * epochs_per_cycle)]
 
   with contextlib.closing(multiprocessing.Pool(
       processes=num_workers, initializer=init_worker)) as pool:
-    data_generator = pool.imap_unordered(map_fn, map_args)  # pylint: disable=no-member
+    data_generator = pool.imap_unordered(_process_shard, map_args)  # pylint: disable=no-member
     data = [
         np.zeros(shape=(num_pts,), dtype=np.int32) - 1,
         np.zeros(shape=(num_pts,), dtype=np.uint16),
