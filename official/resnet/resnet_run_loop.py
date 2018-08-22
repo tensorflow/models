@@ -30,6 +30,8 @@ from absl import flags
 import tensorflow as tf
 import multiprocessing
 
+import numpy as np
+
 from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.export import export
@@ -176,20 +178,27 @@ def learning_rate_with_decay(
   # Reduce the learning rate at certain epochs.
   # CIFAR-10: divide by 10 at epoch 100, 150, and 200
   # ImageNet: divide by 10 at epoch 30, 60, 80, and 90
-  boundaries = [int(batches_per_epoch * epoch) for epoch in boundary_epochs]
-  vals = [initial_learning_rate * decay for decay in decay_rates]
+  _boundaries = [int(batches_per_epoch * epoch) for epoch in boundary_epochs]
+  _vals = [initial_learning_rate * decay for decay in decay_rates]
+
+  num_steps = 10
+  warmup_locs = np.linspace(0, batches_per_epoch, num_steps + 2).astype('int32').tolist()[1:-1]
+  warmup_vals = np.linspace(1e-6, initial_learning_rate, num_steps).tolist()
+
+  boundaries = warmup_locs + _boundaries
+  vals = warmup_vals + _vals
 
   def learning_rate_fn(global_step):
     """Builds scaled learning rate function with 5 epoch warm up."""
     global_step = tf.cast(global_step, tf.int32)
     lr = tf.train.piecewise_constant(global_step, boundaries, vals)
-    print('lr={}'.format(lr))
-    warmup_steps = int(batches_per_epoch * 5)
-    warmup_lr = (
-        initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
-            warmup_steps, tf.float32))
-    print('warmup_lr={}'.format(warmup_lr))
-    return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
+    #print('lr={}'.format(lr))
+    #warmup_steps = int(batches_per_epoch * 5)
+    #warmup_lr = (
+    #    initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
+    #        warmup_steps, tf.float32))
+    #print('warmup_lr={}'.format(warmup_lr))
+    return lr
 
   return learning_rate_fn
 
