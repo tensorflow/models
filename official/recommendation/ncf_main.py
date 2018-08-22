@@ -54,6 +54,125 @@ _HR_KEY = "HR"
 _NDCG_KEY = "NDCG"
 
 
+def get_hit_rate_and_ndcg(predicted_scores_by_user, top_k=_TOP_K):
+  """Returns the hit rate and the normalized DCG for evaluation.
+
+  Args:
+    predicted_scores_by_user: 2D Numpy array of the predicted scores.
+      `predicted_scores_by_user[i, :]` are the predicted scores for user `i`.
+      `predicted_scores_by_user[i, 0]` is an item that user `i` interacted with,
+      while `predicted_scores_by_user[i, 1:] are items that user `i` did not
+      interact with. The higher the first item's score is compared to the other
+      items, the higher HR and NDCG will be.
+    top_k: Only consider the highest rated `top_k` items per user. The HR and
+      NDCG for that user will only be nonzero if the predicted score for that
+      user's first item is in the `top_k` top scores.
+
+  Returns:
+    (hr, ndcg) tuple of floats, averaged across all users.
+  """
+  num_users = predicted_scores_by_user.shape[0]
+
+  # NumPy has an np.argparition() method, however log(1000) is so small that
+  # sorting the whole array is simpler and fast enough.
+  top_indicies = np.argsort(predicted_scores_by_user, axis=1)[:, -top_k:]
+  top_indicies = np.flip(top_indicies, axis=1)
+
+  # Both HR and NDCG vectorized computation takes advantage of the fact that if
+  # the positive example for a user is not in the top k, that index does not
+  # appear. That is to say:   hit_ind.shape[0] <= num_users
+  hit_ind = np.argwhere(np.equal(top_indicies, 0))
+  hr = hit_ind.shape[0] / num_users
+  ndcg = np.sum(np.log(2) / np.log(hit_ind[:, 1] + 2)) / num_users
+  return hr, ndcg
+
+
+def get_hit_rate_and_ndcg_mlperf(predicted_scores_by_user, items_by_user,
+                                 top_k=_TOP_K):
+  """Returns the hit rate and the normalized DCG for evaluation.
+
+  The HR and NDCG computations are done in a slightly incorrect way, to match
+  the MLPerf reference implementation. Specifically, if
+  `predicted_scores_by_user[i, :]` contains multiple scores for the same item
+  (even if each score is the same), it will be treated as if the item only
+  appeared once in `predicted_scores_by_user[i, :]`.
+
+  For example, suppose we have that following inputs:
+  predicted_scores_by_user: [[ 2,  3,  3],
+                             [ 5,  4,  4]]
+
+  items_by_user:            [[10, 20, 20],
+                             [30, 40, 40]]
+
+  top_k: 2
+
+  Then, this function would return a HR of 2/2 = 1.0, while the non-MLPerf
+  version of this function would return a HR of 1/2 = 0.5. This is because each
+  user has predicted scores for only 2 unique items: 10 and 20 for the first
+  user, and 30 and 40 for the second. Therefore, it's guarenteed the first
+  item's score is in the top 2. The non-MLPerf version would compute the first
+  user's first item is not in the top 2, because item 20 has a higher score, and
+  item 20 occurs twice.
+
+  Args:
+    predicted_scores_by_user: 2D Numpy array of the predicted scores.
+      `predicted_scores_by_user[i, :]` are the predicted scores for user `i`.
+      `predicted_scores_by_user[i, 0]` is an item that user `i` interacted with,
+      while `predicted_scores_by_user[i, 1:] are items that user `i` did not
+      interact with. The higher the first item's score is compared to the other
+      items, the higher HR and NDCG will be.
+    items_by_user: 2d numpy array of the item IDs. In particular,
+      `predicted_scores_by_user[i][j]` is the predicted score that user `i`
+      would rate item `items_by_user[i][j]`.
+    top_k: Only consider the highest rated `top_k` items per user. The HR and
+      NDCG for that user will only be nonzero if the predicted score for that
+      user's first item is in the `top_k` top scores.
+
+  Returns:
+    (hr, ndcg) tuple of floats, averaged across all users.
+  """
+
+  predicted_scores_by_user = predicted_scores_by_user.copy()
+  items_by_user = items_by_user.copy()
+  num_users = predicted_scores_by_user.shape[0]
+
+  # For each user, sort the items and predictions by increasing item number.
+  # We use mergesort since it's the only stable sort, which we need to be
+  # equivalent to the MLPerf reference implementation.
+  sorted_items_indices = items_by_user.argsort(kind="mergesort")
+  sorted_items = items_by_user[
+      np.arange(num_users)[:, np.newaxis], sorted_items_indices]
+  sorted_predictions = predicted_scores_by_user[
+      np.arange(num_users)[:, np.newaxis], sorted_items_indices]
+
+  # For items that occur more than once in a user's row, set the predicted score
+  # of the subsequent occurances to -infinity, which effectively removes them
+  # from the array.
+  diffs = sorted_items[:, :-1] - sorted_items[:, 1:]
+  diffs = np.concatenate(
+      [np.ones((diffs.shape[0], 1), dtype=diffs.dtype), diffs], axis=1)
+  predictions_dups_removed = np.where(diffs, sorted_predictions, -np.inf)
+
+  top_indicies = np.argsort(predictions_dups_removed, axis=1)[:, -top_k:]
+  top_indicies = np.flip(top_indicies, axis=1)
+
+  # After this block, `zero_indices` will be a (num_users, 1) shaped array
+  # indicating, for each user, the index of item of value 0 in
+  # `sorted_items_indices`. This item is the one we want to check if it is in
+  # the top_k items.
+  zero_indices = np.array(np.where(sorted_items_indices == 0))
+  assert np.array_equal(zero_indices[0, :], np.arange(num_users))
+  zero_indices = zero_indices[1, :, np.newaxis]
+
+  # Both HR and NDCG vectorized computation takes advantage of the fact that if
+  # the positive example for a user is not in the top k, that index does not
+  # appear. That is to say:   hit_ind.shape[0] <= num_users
+  hit_ind = np.argwhere(np.equal(top_indicies, zero_indices))
+  hr = hit_ind.shape[0] / num_users
+  ndcg = np.sum(np.log(2) / np.log(hit_ind[:, 1] + 2)) / num_users
+  return hr, ndcg
+
+
 def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   # type: (tf.estimator.Estimator, prepare.NCFDataset, typing.Callable) -> dict
   """Model evaluation with HR and NDCG metrics.
@@ -95,28 +214,27 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   # Get predictions
   predictions = estimator.predict(input_fn=pred_input_fn,
                                   yield_single_examples=False)
+  predictions = list(predictions)
 
   prediction_batches = [p[movielens.RATING_COLUMN] for p in predictions]
+  item_batches = [p[movielens.ITEM_COLUMN] for p in predictions]
 
-  # Reshape the predicted scores and each user takes one row
+  # Reshape the predicted scores and items. Each user takes one row.
   prediction_with_padding = np.concatenate(prediction_batches, axis=0)
   predicted_scores_by_user = prediction_with_padding[
       :ncf_dataset.num_users * (1 + rconst.NUM_EVAL_NEGATIVES)]\
       .reshape(ncf_dataset.num_users, -1)
+  item_with_padding = np.concatenate(item_batches, axis=0)
+  items_by_user = item_with_padding[
+                  :ncf_dataset.num_users * (1 + rconst.NUM_EVAL_NEGATIVES)]\
+    .reshape(ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
-
-  # NumPy has an np.argparition() method, however log(1000) is so small that
-  # sorting the whole array is simpler and fast enough.
-  top_indicies = np.argsort(predicted_scores_by_user, axis=1)[:, -_TOP_K:]
-  top_indicies = np.flip(top_indicies, axis=1)
-
-  # Both HR and NDCG vectorized computation takes advantage of the fact that if
-  # the positive example for a user is not in the top k, that index does not
-  # appear. That is to say:   hit_ind.shape[0] <= num_users
-  hit_ind = np.argwhere(np.equal(top_indicies, 0))
-  hr = hit_ind.shape[0] / ncf_dataset.num_users
-  ndcg = np.sum(np.log(2) / np.log(hit_ind[:, 1] + 2)) / ncf_dataset.num_users
+  if FLAGS.ml_perf:
+    hr, ndcg = get_hit_rate_and_ndcg_mlperf(predicted_scores_by_user,
+                                            items_by_user)
+  else:
+    hr, ndcg = get_hit_rate_and_ndcg(predicted_scores_by_user)
 
   global_step = estimator.get_variable_value(tf.GraphKeys.GLOBAL_STEP)
   eval_results = {
@@ -208,7 +326,8 @@ def run_ncf(_):
       batch_size=batch_size,
       eval_batch_size=eval_batch_size,
       num_neg=FLAGS.num_neg,
-      epochs_per_cycle=FLAGS.epochs_between_evals)
+      epochs_per_cycle=FLAGS.epochs_between_evals,
+      match_mlperf=FLAGS.ml_perf)
 
   model_helpers.apply_clean(flags.FLAGS)
 
@@ -381,6 +500,21 @@ def define_ncf_flags():
           "desired hr_threshold is 0.68 which is the result from the paper; "
           "For dataset ml-20m, the threshold can be set as 0.95 which is "
           "achieved by MLPerf implementation."))
+
+  flags.DEFINE_bool(
+      name="ml_perf", default=None,
+      help=flags_core.help_wrap(
+          "If set, changes the behavior of the model slightly to match the "
+          "MLPerf reference implementations here: \n"
+          "https://github.com/mlperf/reference/tree/master/recommendation/"
+          "pytorch\n"
+          "The two changes are:\n"
+          "1. When computing the HR and NDCG during evaluation, remove "
+          "duplicate user-item pairs before the computation. This results in "
+          "better HRs and NDCGs.\n"
+          "2. Use a different soring algorithm when sorting the input data, "
+          "which performs better due to the fact the sorting algorithms are "
+          "not stable."))
 
 
 if __name__ == "__main__":
