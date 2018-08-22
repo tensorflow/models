@@ -41,24 +41,27 @@ class NcfTest(tf.test.TestCase):
         [3, 2, 1],
         [2, 1, 3],
     ])
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 1)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 1)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, 1 / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 2)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 2)
     self.assertAlmostEqual(hr, 2 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 3)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 3)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 1)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 1,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, 1 / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 2)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 2,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 2 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 3)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 3,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
@@ -77,31 +80,35 @@ class NcfTest(tf.test.TestCase):
         [1, 2, 3, 2],
         [4, 3, 2, 1],
     ])
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 1)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 1)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, 1 / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 2)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 2)
     self.assertAlmostEqual(hr, 2 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 3)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 3)
     self.assertAlmostEqual(hr, 2 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 4)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 4)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(5)) / 4)
 
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 1)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 1,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, 1 / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 2)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 2,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 2 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 3)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 3,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 4)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 4,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
@@ -120,32 +127,36 @@ class NcfTest(tf.test.TestCase):
         [2, 1, 1, 1],
         [4, 2, 2, 1],
     ])
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 1)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 1)
     self.assertAlmostEqual(hr, 0 / 4)
     self.assertAlmostEqual(ndcg, 0 / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 2)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 2)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, (math.log(2) / math.log(3)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 3)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 3)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (math.log(2) / math.log(3) +
                                   3 * math.log(2) / math.log(4)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, 4)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 4)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (math.log(2) / math.log(3) +
                                   3 * math.log(2) / math.log(4)) / 4)
 
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 1)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 1,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, 1 / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 2)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 2,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 3 / 4)
     self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 3)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 3,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3) +
                                   math.log(2) / math.log(4)) / 4)
-    hr, ndcg = ncf_main.get_hit_rate_and_ndcg_mlperf(predictions, items, 4)
+    hr, ndcg = ncf_main.get_hit_rate_and_ndcg(predictions, items, 4,
+                                              match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3) +
                                   math.log(2) / math.log(4)) / 4)
