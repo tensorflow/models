@@ -184,6 +184,32 @@ def parse_record(raw_record, is_training):
 
   return image, label
 
+def parse_record_keras(raw_record, is_training):
+  """Parses a record containing a training example of an image.
+
+  The input record is parsed into a label and image, and the image is passed
+  through preprocessing steps (cropping, flipping, and so on).
+
+  Args:
+    raw_record: scalar Tensor tf.string containing a serialized
+      Example protocol buffer.
+    is_training: A boolean denoting whether the input is for training.
+
+  Returns:
+    Tuple with processed image tensor and one-hot-encoded label tensor.
+  """
+  image_buffer, label, bbox = _parse_example_proto(raw_record)
+
+  image = imagenet_preprocessing.preprocess_image(
+      image_buffer=image_buffer,
+      bbox=bbox,
+      output_height=_DEFAULT_IMAGE_SIZE,
+      output_width=_DEFAULT_IMAGE_SIZE,
+      num_channels=_NUM_CHANNELS,
+      is_training=is_training)
+
+  return image, tf.sparse_to_dense(label, (_NUM_CLASSES,), 1)
+
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
   """Input function which provides batches for train or eval.
@@ -218,7 +244,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
       is_training=is_training,
       batch_size=batch_size,
       shuffle_buffer=_SHUFFLE_BUFFER,
-      parse_record_fn=parse_record,
+      parse_record_fn=parse_record_keras,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
       examples_per_epoch=_NUM_IMAGES['train'] if is_training else None
