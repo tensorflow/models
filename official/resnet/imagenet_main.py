@@ -410,6 +410,8 @@ def run_imagenet(flags_obj):
     # Use logits instead of softmax for better performance
 
     def custom_sparse_categorical_crossentropy(y_true, y_pred):
+        print("\n\n labels shape ", y_true.shape)
+        print("\n\n logits shape ", y_pred.shape)
         return tf.keras.backend.sparse_categorical_crossentropy(
             y_true, y_pred, from_logits=True)
 
