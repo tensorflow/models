@@ -363,7 +363,7 @@ def run_imagenet(flags_obj):
 
     strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=flags_obj.num_gpus)
 
-    model = tf.keras.applications.ResNet50(classes=_NUM_CLASSES)
+    model = tf.keras.applications.ResNet50(classes=_NUM_CLASSES, weights=None)
 
 
     model.compile(loss="categorical_crossentropy",
