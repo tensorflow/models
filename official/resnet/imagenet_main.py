@@ -31,6 +31,7 @@ from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
 from official.utils.misc import distribution_utils
+from official.resnet import keras_resnet
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -391,10 +392,7 @@ def run_imagenet(flags_obj):
                                  flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
                              num_epochs=flags_obj.train_epochs,
                              num_gpus=flags_obj.num_gpus)
-    iter = input_dataset.make_one_shot_iterator()
-    x, y = iter.get_next()
-    print("\n]\n x ", x.shape)
-    print("\n]\n y ", y.shape)
+
     # Use Keras ResNet50 applications model and native keras APIs
     # initialize RMSprop optimizer
     # opt = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
@@ -402,12 +400,22 @@ def run_imagenet(flags_obj):
 
     strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=flags_obj.num_gpus)
 
-    model = tf.keras.applications.ResNet50(classes=_NUM_CLASSES, weights=None)
+    # model = tf.keras.applications.ResNet50(classes=_NUM_CLASSES, weights=None)
+    model = keras_resnet.ResNet50(classes=_NUM_CLASSES, weights=None)
 
     # Hardcode learning phase to improve perf by getting rid of a few conds
     # in the graph.
     tf.keras.backend.set_learning_phase(True)
-    model.compile(loss="categorical_crossentropy",
+
+    # Use logits instead of softmax for better performance
+
+    def custom_sparse_categorical_crossentropy(y_true, y_pred):
+        return tf.keras.backend.sparse_categorical_crossentropy(
+            y_true, y_pred, from_logits=True)
+
+    # Change the loss from 'categorical_crossentropy' to the custom loss
+    # function above.
+    model.compile(loss=custom_sparse_categorical_crossentropy,
                   optimizer=opt,
                   metrics=["accuracy"],
                   distribute=strategy)
