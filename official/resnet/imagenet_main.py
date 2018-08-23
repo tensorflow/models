@@ -397,7 +397,8 @@ def run_imagenet(flags_obj):
     print("\n]\n y ", y.shape)
     # Use Keras ResNet50 applications model and native keras APIs
     # initialize RMSprop optimizer
-    opt = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
+    # opt = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
+    opt = tf.train.GradientDescentOptimizer(learning_rate=0.0001)
 
     strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=flags_obj.num_gpus)
 
@@ -410,12 +411,7 @@ def run_imagenet(flags_obj):
                   distribute=strategy)
     time_callback = TimeHistory()
     steps_per_epoch = _NUM_IMAGES['train'] // flags_obj.batch_size
-    model.fit(input_fn(True,
-                       flags_obj.data_dir,
-                       batch_size=distribution_utils.per_device_batch_size(
-                           flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-                       num_epochs=flags_obj.train_epochs,
-                       num_gpus=flags_obj.num_gpus),
+    model.fit(input_dataset,
               epochs=flags_obj.train_epochs,
               steps_per_epoch=steps_per_epoch,
               callbacks=[time_callback])
