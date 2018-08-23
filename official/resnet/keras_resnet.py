@@ -26,7 +26,7 @@ import os
 import warnings
 
 import tensorflow as tf
-
+from official.resnet import imagenet_utils
 
 WEIGHTS_PATH = ('https://github.com/fchollet/deep-learning-models/'
                 'releases/download/v0.2/'
@@ -196,7 +196,7 @@ def ResNet50(include_top=True,
                      ' as true, `classes` should be 1000')
 
   # Determine proper input shape
-  input_shape = tf.keras.applications.imagenet_utils._obtain_input_shape(
+  input_shape = imagenet_utils._obtain_input_shape(
       input_shape,
       default_size=224,
       min_size=197,
