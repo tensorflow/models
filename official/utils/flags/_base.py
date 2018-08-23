@@ -27,7 +27,8 @@ from official.utils.logs import hooks_helper
 
 def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                 epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                num_gpu=True, hooks=True, export_dir=True, use_keras_model=True):
+                num_gpu=True, hooks=True, export_dir=True, use_keras_model=True,
+                use_keras=True):
   """Register base flags.
 
   Args:
@@ -134,6 +135,13 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
         help=help_wrap("If set, we should use the keras.applications.ResNet50"
                        " model."))
     key_flags.append("use_keras_model")
+
+  if use_keras:
+    flags.DEFINE_boolean(
+        name="use_keras", default=False,
+        help=help_wrap("If set, we should use the keras.applications.ResNet50"
+                       " model and native Keras APIs."))
+    key_flags.append("use_keras")
 
   return key_flags
 

@@ -23,12 +23,14 @@ import os
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
+import time
 
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
-from official.resnet import resnet_run_loop
+from official.resnet import
+from official.utils.misc import distribution_utils
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -43,6 +45,33 @@ _NUM_TRAIN_FILES = 1024
 _SHUFFLE_BUFFER = 10000
 
 DATASET_NAME = 'ImageNet'
+
+# Callback for Keras models
+class TimeHistory(tf.keras.callbacks.Callback):
+
+  def on_train_begin(self, logs=None):
+    self.epoch_times = []
+    self.batch_times = []
+    self.record_batch = True
+
+  def on_epoch_begin(self, epoch, logs=None):
+    self.epoch_time_start = time.time()
+
+  def on_epoch_end(self, epoch, logs=None):
+    self.epoch_times.append(time.time() - self.epoch_time_start)
+
+  def on_batch_begin(self, batch, logs=None):
+    if self.record_batch:
+      self.batch_time_start = time.time()
+      self.record_batch = False
+
+  def on_batch_end(self, batch, logs=None):
+    if batch % 100 == 0:
+      last_100_batches = time.time() - self.batch_time_start
+      self.batch_times.append(last_100_batches)
+      self.record_batch = True
+      print("Time take for %d batches:%f " % (batch, last_100_batches))
+
 
 ###############################################################################
 # Data processing
@@ -327,15 +356,60 @@ def run_imagenet(flags_obj):
   """
   input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
+  if flags_obj.use_keras:
+    # Use Keras ResNet50 applications model and native keras APIs
+    # initialize RMSprop optimizer
+    opt = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
 
-  if flags_obj.use_keras_model:
-    model_fn = keras_model_fn()
+    strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=flags_obj.num_gpus)
+
+    model = tf.keras.applications.ResNet50(classes=_NUM_CLASSES)
+
+
+    model.compile(loss="categorical_crossentropy",
+                  optimizer=opt,
+                  metrics=["accuracy"],
+                  distribute=strategy)
+    time_callback = TimeHistory()
+    steps_per_epoch = _NUM_IMAGES['train'] // flags_obj.batch_size
+    model.fit(input_fn(True,
+                       flags_obj.data_dir,
+                       batch_size=distribution_utils.per_device_batch_size(
+                           flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+                       num_epochs=flags_obj.train_epochs,
+                       num_gpus=flags_obj.num_gpus),
+              epochs=flags_obj.train_epochs,
+              steps_per_epoch=steps_per_epoch,
+              callbacks=[time_callback])
+
+    # If you have set FLAGS.train_epochs to be 1 then we cannot calculate samples/s
+    # in a meaningful way since the first epoch takes the longest.
+    if flags_obj.train_epochs == 1:
+      print("Please increase the number of train_epochs if you want to "
+              "calculate samples/s.")
+      return
+
+    total_time = 0
+    for i in range(1, flags_obj.train_epochs):
+      total_time += time_callback.epoch_times[i]
+    print("Total time for n-1 epochs: ", total_time)
+
+    if flags_obj.train_epochs > 1:
+      time_per_epoch = total_time//(flags_obj.train_epochs - 1)
+      samples_per_second = (flags_obj.batch_size * steps_per_epoch) // time_per_epoch
+      print("\n\n time_per_epoch %f, global_batchsize %d, step_per_epoch %d,"
+            "samples_per_second %d" % (time_per_epoch, flags_obj.batch_size,
+                                       steps_per_epoch, samples_per_second))
+
   else:
-    model_fn = imagenet_model_fn
+    if flags_obj.use_keras_model:
+      model_fn = keras_model_fn()
+    else:
+      model_fn = imagenet_model_fn
 
-  resnet_run_loop.resnet_main(
-      flags_obj, model_fn, input_function, DATASET_NAME,
-      shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
+    resnet_run_loop.resnet_main(
+        flags_obj, model_fn, input_function, DATASET_NAME,
+        shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
 
 
 def main(_):
