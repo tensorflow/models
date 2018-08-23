@@ -72,8 +72,8 @@ class NCFDataset(object):
     self.num_train_positives = num_train_positives
 
 
-def _filter_index_sort(raw_rating_path):
-  # type: (str) -> (pd.DataFrame, dict, dict)
+def _filter_index_sort(raw_rating_path, match_mlperf):
+  # type: (str, bool) -> (pd.DataFrame, dict, dict)
   """Read in data CSV, and output structured data.
 
   This function reads in the raw CSV of positive items, and performs three
@@ -98,6 +98,8 @@ def _filter_index_sort(raw_rating_path):
 
   Args:
     raw_rating_path: The path to the CSV which contains the raw dataset.
+    match_mlperf: If True, change the sorting algorithm to match the MLPerf
+      reference implementation.
 
   Returns:
     A filtered, zero-index remapped, sorted dataframe, a dict mapping raw user
@@ -136,8 +138,18 @@ def _filter_index_sort(raw_rating_path):
   # This sort is used to shard the dataframe by user, and later to select
   # the last item for a user to be used in validation.
   tf.logging.info("Sorting by user, timestamp...")
-  df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
-                 inplace=True)
+
+  if match_mlperf:
+    # This sort is equivalent to the non-MLPerf sort, except that the order of
+    # items with the same user and timestamp are sometimes different. For some
+    # reason, this sort results in a better hit-rate during evaluation, matching
+    # the performance of the MLPerf reference implementation.
+    df.sort_values(by=movielens.TIMESTAMP_COLUMN, inplace=True)
+    df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
+                   inplace=True, kind="mergesort")
+  else:
+    df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
+                   inplace=True)
 
   df = df.reset_index()  # The dataframe does not reconstruct indicies in the
   # sort or filter steps.
@@ -169,12 +181,16 @@ def _train_eval_map_fn(args):
       which validation negatives should be drawn.
     cache_paths: rconst.Paths object containing locations for various cache
       files.
+    seed: Random seed to be used when generating testing negatives.
+    match_mlperf: If True, sample eval negative with replacements, which the
+      MLPerf reference implementation does.
 
   Returns:
     A dict containing the evaluation data for a given shard.
   """
 
-  shard, shard_id, num_items, cache_paths = args
+  shard, shard_id, num_items, cache_paths, seed, match_mlperf = args
+  np.random.seed(seed)
 
   users = shard[movielens.USER_COLUMN]
   items = shard[movielens.ITEM_COLUMN]
@@ -203,7 +219,7 @@ def _train_eval_map_fn(args):
 
     test_negatives = stat_utils.sample_with_exclusion(
         num_items=num_items, positive_set=set(block_items),
-        n=rconst.NUM_EVAL_NEGATIVES, replacement=False)
+        n=rconst.NUM_EVAL_NEGATIVES, replacement=match_mlperf)
     test_blocks.append((
         block_user[0] * np.ones((rconst.NUM_EVAL_NEGATIVES + 1,),
                                 dtype=np.int32),
@@ -234,8 +250,9 @@ def _train_eval_map_fn(args):
   }
 
 
-def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
-  # type: (pd.DataFrame, int, int, rconst.Paths) -> None
+def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
+                             match_mlperf):
+  # type: (pd.DataFrame, int, int, rconst.Paths, bool) -> None
   """Construct training and evaluation datasets.
 
   This function manages dataset construction and validation that the
@@ -257,6 +274,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
     num_items: The cardinality of the item set.
     cache_paths: rconst.Paths object containing locations for various cache
       files.
+    match_mlperf: If True, sample eval negative with replacements, which the
+      MLPerf reference implementation does.
   """
 
   num_rows = len(df)
@@ -290,9 +309,13 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
   tf.logging.info("Splitting train and test data and generating {} test "
                   "negatives per user...".format(rconst.NUM_EVAL_NEGATIVES))
   tf.gfile.MakeDirs(cache_paths.train_shard_subdir)
-  map_args = [(shards[i], i, num_items, cache_paths)
-              for i in range(approx_num_shards)]
 
+  # We choose a different random seed for each process, so that the processes
+  # will not all choose the same random numbers.
+  process_seeds = [np.random.randint(2**32) for _ in range(approx_num_shards)]
+  map_args = [(shards[i], i, num_items, cache_paths, process_seeds[i],
+               match_mlperf)
+              for i in range(approx_num_shards)]
   with contextlib.closing(
       multiprocessing.Pool(multiprocessing.cpu_count())) as pool:
     test_shards = pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
@@ -314,11 +337,11 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
   tf.logging.info("Writing test data to file.")
   tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
   with tf.gfile.Open(cache_paths.eval_raw_file, "wb") as f:
-    pickle.dump(eval_data, f)
+    pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def construct_cache(dataset, data_dir, num_data_readers):
-  # type: (str, str, int, int, bool) -> NCFDataset
+def construct_cache(dataset, data_dir, num_data_readers, match_mlperf):
+  # type: (str, str, int, bool) -> NCFDataset
   """Load and digest data CSV into a usable form.
 
   Args:
@@ -326,6 +349,8 @@ def construct_cache(dataset, data_dir, num_data_readers):
     data_dir: The root directory of the dataset.
     num_data_readers: The number of parallel processes which will request
       data during training.
+    match_mlperf: If True, change the behavior of the cache construction to
+      match the MLPerf reference implementation.
   """
   cache_paths = rconst.Paths(data_dir=data_dir)
   num_data_readers = (num_data_readers or int(multiprocessing.cpu_count() / 2)
@@ -342,10 +367,11 @@ def construct_cache(dataset, data_dir, num_data_readers):
   tf.gfile.MakeDirs(cache_paths.cache_root)
 
   raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
-  df, user_map, item_map = _filter_index_sort(raw_rating_path)
+  df, user_map, item_map = _filter_index_sort(raw_rating_path, match_mlperf)
 
   generate_train_eval_data(df=df, approx_num_shards=approx_num_shards,
-                           num_items=len(item_map), cache_paths=cache_paths)
+                           num_items=len(item_map), cache_paths=cache_paths,
+                           match_mlperf=match_mlperf)
   del approx_num_shards  # value may have changed.
 
   ncf_dataset = NCFDataset(user_map=user_map, item_map=item_map,
@@ -376,12 +402,14 @@ def _shutdown(proc):
 
 
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
-                         num_data_readers=None, num_neg=4, epochs_per_cycle=1):
+                         num_data_readers=None, num_neg=4, epochs_per_cycle=1,
+                         match_mlperf=False):
   """Preprocess data and start negative generation subprocess."""
 
   tf.logging.info("Beginning data preprocessing.")
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
-                                num_data_readers=num_data_readers)
+                                num_data_readers=num_data_readers,
+                                match_mlperf=match_mlperf)
 
   tf.logging.info("Creating training file subprocess.")
 
