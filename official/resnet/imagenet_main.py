@@ -387,7 +387,7 @@ def run_imagenet(flags_obj):
                     input_function() or \
                     input_fn(True,
                              flags_obj.data_dir,
-                             fbatch_size=distribution_utils.per_device_batch_size(
+                             batch_size=distribution_utils.per_device_batch_size(
                                  flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
                              num_epochs=flags_obj.train_epochs,
                              num_gpus=flags_obj.num_gpus)
