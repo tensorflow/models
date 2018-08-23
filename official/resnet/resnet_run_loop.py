@@ -30,8 +30,6 @@ from absl import flags
 import tensorflow as tf
 import multiprocessing
 
-import numpy as np
-
 from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.export import export
@@ -178,27 +176,18 @@ def learning_rate_with_decay(
   # Reduce the learning rate at certain epochs.
   # CIFAR-10: divide by 10 at epoch 100, 150, and 200
   # ImageNet: divide by 10 at epoch 30, 60, 80, and 90
-  _boundaries = [int(batches_per_epoch * epoch) for epoch in boundary_epochs]
-  _vals = [initial_learning_rate * decay for decay in decay_rates]
-
-  num_steps = 10
-  warmup_locs = np.linspace(0, batches_per_epoch, num_steps + 2).astype('int32').tolist()[1:-1]
-  warmup_vals = np.linspace(1e-6, initial_learning_rate, num_steps).tolist()
-
-  boundaries = warmup_locs + _boundaries
-  vals = warmup_vals + _vals
+  boundaries = [int(batches_per_epoch * epoch) for epoch in boundary_epochs]
+  vals = [initial_learning_rate * decay for decay in decay_rates]
 
   def learning_rate_fn(global_step):
     """Builds scaled learning rate function with 5 epoch warm up."""
     global_step = tf.cast(global_step, tf.int32)
     lr = tf.train.piecewise_constant(global_step, boundaries, vals)
-    #print('lr={}'.format(lr))
-    #warmup_steps = int(batches_per_epoch * 5)
-    #warmup_lr = (
-    #    initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
-    #        warmup_steps, tf.float32))
-    #print('warmup_lr={}'.format(warmup_lr))
-    return lr
+    warmup_steps = int(batches_per_epoch * 5)
+    warmup_lr = (
+        initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
+            warmup_steps, tf.float32))
+    return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
 
   return learning_rate_fn
 
@@ -351,11 +340,21 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   accuracy = tf.metrics.accuracy(labels, predictions['classes'])
 
-  metrics = {'accuracy': accuracy}
+  labels_1d = tf.squeeze(labels, axis=[1])
+  accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
+                                                  targets=labels_1d,
+                                                  k=5,
+                                                  name='top_5_op'))
+
+  metrics = {'accuracy': accuracy,
+             'accuracy_top_5': accuracy_top_5}
 
   # Create a tensor named train_accuracy for logging purposes
   tf.identity(accuracy[1], name='train_accuracy')
+  tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+
   tf.summary.scalar('train_accuracy', accuracy[1])
+  tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
   return tf.estimator.EstimatorSpec(
       mode=mode,
@@ -499,29 +498,33 @@ def resnet_main(
 
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)
-  for cycle_index in range(total_training_cycle):
-    tf.logging.info('Starting a training cycle: %d/%d',
-                    cycle_index, total_training_cycle)
-
-    classifier.train(input_fn=input_fn_train, hooks=train_hooks,
-                     max_steps=flags_obj.max_train_steps)
-
-    tf.logging.info('Starting to evaluate.')
-
-    # flags_obj.max_train_steps is generally associated with testing and
-    # profiling. As a result it is frequently called with synthetic data, which
-    # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
-    # eval (which is generally unimportant in those circumstances) to terminate.
-    # Note that eval will run for max_train_steps each loop, regardless of the
-    # global_step count.
-    eval_results = classifier.evaluate(input_fn=input_fn_eval,
-                                       steps=flags_obj.max_train_steps)
-
+  if flags_obj.eval_only:
+    eval_results = classifier.evaluate(input_fn=input_fn_eval)
     benchmark_logger.log_evaluation_result(eval_results)
+  else:
+    for cycle_index in range(total_training_cycle):
+      tf.logging.info('Starting a training cycle: %d/%d',
+                      cycle_index, total_training_cycle)
 
-    if model_helpers.past_stop_threshold(
-        flags_obj.stop_threshold, eval_results['accuracy']):
-      break
+      classifier.train(input_fn=input_fn_train, hooks=train_hooks,
+                       max_steps=flags_obj.max_train_steps)
+
+      tf.logging.info('Starting to evaluate.')
+
+      # flags_obj.max_train_steps is generally associated with testing and
+      # profiling. As a result it is frequently called with synthetic data,
+      # which will iterate forever. Passing steps=flags_obj.max_train_steps
+      # allows the eval (which is generally unimportant in those circumstances)
+      # to terminate. Note that eval will run for max_train_steps each loop,
+      # regardless of the global_step count.
+      eval_results = classifier.evaluate(input_fn=input_fn_eval,
+                                         steps=flags_obj.max_train_steps)
+
+      benchmark_logger.log_evaluation_result(eval_results)
+
+      if model_helpers.past_stop_threshold(
+          flags_obj.stop_threshold, eval_results['accuracy']):
+        break
 
   if flags_obj.export_dir is not None:
     # Exports a saved model for the given classifier.
@@ -532,7 +535,7 @@ def resnet_main(
 
 def define_resnet_flags(resnet_size_choices=None):
   """Add flags and validators for ResNet."""
-  flags_core.define_base()
+  flags_core.define_base(eval_only=True)
   flags_core.define_performance(num_parallel_calls=False)
   flags_core.define_image()
   flags_core.define_benchmark()
