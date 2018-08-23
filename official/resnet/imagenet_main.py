@@ -417,7 +417,7 @@ def run_imagenet(flags_obj):
 
     # Change the loss from 'categorical_crossentropy' to the custom loss
     # function above.
-    model.compile(loss=custom_sparse_categorical_crossentropy,
+    model.compile(loss='categorical_crossentropy',
                   optimizer=opt,
                   metrics=["accuracy"],
                   distribute=strategy)
