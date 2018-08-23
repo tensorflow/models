@@ -404,7 +404,9 @@ def run_imagenet(flags_obj):
 
     model = tf.keras.applications.ResNet50(classes=_NUM_CLASSES, weights=None)
 
-
+    # Hardcode learning phase to improve perf by getting rid of a few conds
+    # in the graph.
+    tf.keras.backend.set_learning_phase(True)
     model.compile(loss="categorical_crossentropy",
                   optimizer=opt,
                   metrics=["accuracy"],
