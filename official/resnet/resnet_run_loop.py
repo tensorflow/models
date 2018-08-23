@@ -168,8 +168,14 @@ def learning_rate_with_decay(
   vals = [initial_learning_rate * decay for decay in decay_rates]
 
   def learning_rate_fn(global_step):
+    """Builds scaled learning rate function with 5 epoch warm up."""
     global_step = tf.cast(global_step, tf.int32)
-    return tf.train.piecewise_constant(global_step, boundaries, vals)
+    lr = tf.train.piecewise_constant(global_step, boundaries, vals)
+    warmup_steps = int(batches_per_epoch * 5)
+    warmup_lr = (
+        initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
+            warmup_steps, tf.float32))
+    return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
 
   return learning_rate_fn
 
