@@ -357,6 +357,18 @@ def run_imagenet(flags_obj):
   input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
   if flags_obj.use_keras:
+    input_dataset = flags_obj.use_synthetic_data and \
+                    input_function() or \
+                    input_fn(True,
+                             flags_obj.data_dir,
+                             fbatch_size=distribution_utils.per_device_batch_size(
+                                 flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+                             num_epochs=flags_obj.train_epochs,
+                             num_gpus=flags_obj.num_gpus)
+    iter = input_dataset.make_one_shot_iterator()
+    x, y = iter.get_next()
+    print("\n]\n x ", x.shape)
+    print("\n]\n y ", y.shape)
     # Use Keras ResNet50 applications model and native keras APIs
     # initialize RMSprop optimizer
     opt = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
