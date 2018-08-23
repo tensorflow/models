@@ -27,7 +27,7 @@ from official.utils.logs import hooks_helper
 
 def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                 epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                num_gpu=True, hooks=True, export_dir=True):
+                num_gpu=True, hooks=True, export_dir=True, eval_only=False):
   """Register base flags.
 
   Args:
@@ -41,6 +41,7 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
     num_gpu: Create a flag to specify the number of GPUs used.
     hooks: Create a flag to specify hooks for logging.
     export_dir: Create a flag to specify where a SavedModel should be exported.
+    eval_only: Create a flag to specify that only eval is to be done.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -127,6 +128,12 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                        "See the README for more details and relevant links.")
     )
     key_flags.append("export_dir")
+
+  if eval_only:
+    flags.DEFINE_boolean(
+        name="eval_only", default=False,
+        help=help_wrap("If set, only eval will be run on model_dir."))
+    key_flags.append("eval_only")
 
   return key_flags
 
