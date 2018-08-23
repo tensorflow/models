@@ -194,7 +194,7 @@ def cifar10_model_fn(features, labels, mode, params):
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
       num_images=_NUM_IMAGES['train'], boundary_epochs=[100, 150, 200],
-      decay_rates=[1, 0.1, 0.01, 0.001])
+      decay_rates=[1, 0.1, 0.01, 0.001], warmup=False)
 
   # We use a weight decay of 0.0002, which performs better
   # than the 0.0001 that was originally suggested.
