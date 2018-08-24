@@ -430,17 +430,23 @@ def resnet_main(
         num_epochs=1)
 
   if flags_obj.eval_only:
+    # If --eval_only is set, perform a single loop with zero train epochs.
     schedule, n_loops = [0], 1
   else:
+    # Compute the number of times to loop while training. All but the last
+    # pass will train for `epochs_between_evals` epochs, while the last will
+    # train for the number needed to reach `training_epochs`. For instance if
+    #   train_epochs = 25 and epochs_between_evals = 10
+    # schedule will be set to [10, 10, 5]
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
-  for cycle_index, num_epochs in enumerate(schedule):
+  for cycle_index, num_train_epochs in enumerate(schedule):
     tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
-    if num_epochs:
-      classifier.train(input_fn=lambda: input_fn_train(num_epochs),
+    if num_train_epochs:
+      classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                        hooks=train_hooks, max_steps=flags_obj.max_train_steps)
 
     tf.logging.info('Starting to evaluate.')
