@@ -125,7 +125,10 @@ def model_fn(features, labels, mode, params):
 
     logits = model(image, training=True)
     loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
-    accuracy = tf.metrics.accuracy(
+    if params.get('multi_gpu'):
+      accuracy = (tf.no_op(), tf.constant(0))
+    else:
+      accuracy = tf.metrics.accuracy(
         labels=labels, predictions=tf.argmax(logits, axis=1))
 
     # Name tensors to be logged with LoggingTensorHook.
@@ -167,16 +170,10 @@ def run_mnist(flags_obj):
   num_gpus = flags_core.get_num_gpus(flags_obj)
   multi_gpu = num_gpus > 1
 
+  config=None
   if multi_gpu:
-    # Validate that the batch size can be split into devices.
-    distribution_utils.per_device_batch_size(flags_obj.batch_size, num_gpus)
-
-    # There are two steps required if using multi-GPU: (1) wrap the model_fn,
-    # and (2) wrap the optimizer. The first happens here, and (2) happens
-    # in the model_fn itself when the optimizer is defined.
-    model_function = tf.contrib.estimator.replicate_model_fn(
-        model_fn, loss_reduction=tf.losses.Reduction.MEAN,
-        devices=["/device:GPU:%d" % d for d in range(num_gpus)])
+    distribution = tf.contrib.distribute.MirroredStrategy(num_gpus=num_gpus)
+    config = tf.estimator.RunConfig(train_distribute=distribution)
 
   data_format = flags_obj.data_format
   if data_format is None:
@@ -188,7 +185,7 @@ def run_mnist(flags_obj):
       params={
           'data_format': data_format,
           'multi_gpu': multi_gpu
-      })
+      }, config=config)
 
   # Set up training and evaluation input functions.
   def train_input_fn():
