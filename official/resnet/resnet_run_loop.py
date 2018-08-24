@@ -23,6 +23,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import os
 
 # pylint: disable=g-bad-import-order
@@ -413,12 +414,12 @@ def resnet_main(
       model_dir=flags_obj.model_dir,
       batch_size=flags_obj.batch_size)
 
-  def input_fn_train():
+  def input_fn_train(num_epochs):
     return input_function(
         is_training=True, data_dir=flags_obj.data_dir,
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-        num_epochs=flags_obj.epochs_between_evals,
+        num_epochs=num_epochs,
         num_gpus=flags_core.get_num_gpus(flags_obj))
 
   def input_fn_eval():
@@ -428,14 +429,19 @@ def resnet_main(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1)
 
-  total_training_cycle = (flags_obj.train_epochs //
-                          flags_obj.epochs_between_evals)
-  for cycle_index in range(total_training_cycle):
-    tf.logging.info('Starting a training cycle: %d/%d',
-                    cycle_index, total_training_cycle)
+  if flags_obj.eval_only:
+    schedule, n_loops = [0], 1
+  else:
+    n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
+    schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
+    schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
-    classifier.train(input_fn=input_fn_train, hooks=train_hooks,
-                     max_steps=flags_obj.max_train_steps)
+  for cycle_index, num_epochs in enumerate(schedule):
+    tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
+
+    if num_epochs:
+      classifier.train(input_fn=lambda: input_fn_train(num_epochs),
+                       hooks=train_hooks, max_steps=flags_obj.max_train_steps)
 
     tf.logging.info('Starting to evaluate.')
 
@@ -483,6 +489,10 @@ def define_resnet_flags(resnet_size_choices=None):
       help=flags_core.help_wrap(
           'If not None initialize all the network except the final layer with '
           'these values'))
+  flags.DEFINE_boolean(
+      name="eval_only", default=False,
+      help=flags_core.help_wrap('Skip training and only perform evaluation on '
+                                'the latest checkpoint.'))
 
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
