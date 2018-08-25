@@ -321,9 +321,8 @@ def resnet_model_fn(features, labels, mode, model_class,
     train_op = None
 
   accuracy = tf.metrics.accuracy(labels, predictions['classes'])
-  labels_1d = tf.squeeze(labels, axis=[1])
   accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
-                                                  targets=labels_1d,
+                                                  targets=labels,
                                                   k=5,
                                                   name='top_5_op'))
   metrics = {'accuracy': accuracy,
