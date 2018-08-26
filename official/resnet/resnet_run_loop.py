@@ -47,7 +47,8 @@ from tensorflow.contrib.data.python.ops import threadpool
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_gpus=None,
                            examples_per_epoch=None,
-                           datasets_num_private_threads=None):
+                           datasets_num_private_threads=None,
+                           num_parallel_batches=1):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -64,6 +65,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     examples_per_epoch: The number of examples in an epoch.
     datasets_num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
+    num_parallel_batches: Number of parallel batches for tf.data.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -98,7 +100,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training),
           batch_size=batch_size,
-          num_parallel_batches=1,
+          num_parallel_batches=num_parallel_batches,
           drop_remainder=False))
 
   # Operations between the final prefetch and the get_next call to the iterator
@@ -191,6 +193,7 @@ def learning_rate_with_decay(
           initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
               warmup_steps, tf.float32))
       return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
+    return lr
 
   return learning_rate_fn
 
@@ -487,7 +490,9 @@ def resnet_main(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=flags_obj.epochs_between_evals,
         num_gpus=flags_core.get_num_gpus(flags_obj),
-        datasets_num_private_threads=flags_obj.datasets_num_private_threads)
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads,
+        num_parallel_batches=flags_obj.num_parallel_calls
+        )
 
   def input_fn_eval():
     return input_function(
@@ -537,7 +542,7 @@ def resnet_main(
 def define_resnet_flags(resnet_size_choices=None):
   """Add flags and validators for ResNet."""
   flags_core.define_base(eval_only=True)
-  flags_core.define_performance(num_parallel_calls=False)
+  flags_core.define_performance()
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)

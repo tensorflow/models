@@ -107,7 +107,8 @@ def preprocess_image(image, is_training):
   return image
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
+             datasets_num_private_threads=None, num_parallel_batches=1):
   """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
@@ -116,6 +117,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
+    datasets_num_private_threads: Number of private threads for tf.data.
+    num_parallel_batches: Number of parallel batches for tf.data.
 
   Returns:
     A dataset that can be used for iteration.
@@ -131,7 +134,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
       parse_record_fn=parse_record,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
-      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None
+      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
+      datasets_num_private_threads=datasets_num_private_threads,
+      num_parallel_batches=num_parallel_batches
   )
 
 
