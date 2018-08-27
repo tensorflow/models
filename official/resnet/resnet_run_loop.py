@@ -429,7 +429,7 @@ def resnet_main(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1)
 
-  if flags_obj.eval_only:
+  if flags_obj.eval_only or not flags_obj.train_epochs:
     # If --eval_only is set, perform a single loop with zero train epochs.
     schedule, n_loops = [0], 1
   else:
@@ -437,7 +437,10 @@ def resnet_main(
     # pass will train for `epochs_between_evals` epochs, while the last will
     # train for the number needed to reach `training_epochs`. For instance if
     #   train_epochs = 25 and epochs_between_evals = 10
-    # schedule will be set to [10, 10, 5]
+    # schedule will be set to [10, 10, 5]. That is to say, the loop will:
+    #   Train for 10 epochs and then evaluate.
+    #   Train for another 10 epochs and then evaluate.
+    #   Train for a final 5 epochs (to reach 25 epochs) and then evaluate.
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
