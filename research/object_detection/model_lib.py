@@ -378,8 +378,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       if not use_tpu and use_original_images:
         detection_and_groundtruth = (
             vis_utils.draw_side_by_side_evaluation_image(
-                eval_dict, category_index, max_boxes_to_draw=20,
-                min_score_thresh=0.2,
+                eval_dict, category_index, max_boxes_to_draw=eval_config.max_num_boxes_to_visualize,
+                min_score_thresh=eval_config.min_score_threshold,
                 use_normalized_coordinates=False))
         img_summary = tf.summary.image('Detections_Left_Groundtruth_Right',
                                        detection_and_groundtruth)
