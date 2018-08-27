@@ -501,12 +501,3 @@ def define_resnet_flags(resnet_size_choices=None):
     flags.DEFINE_string(**choice_kwargs)
   else:
     flags.DEFINE_enum(enum_values=resnet_size_choices, **choice_kwargs)
-
-  # The current implementation of ResNet v1 is numerically unstable when run
-  # with fp16 and will produce NaN errors soon after training begins.
-  msg = ('ResNet version 1 is not currently supported with fp16. '
-         'Please use version 2 instead.')
-  @flags.multi_flags_validator(['dtype', 'resnet_version'], message=msg)
-  def _forbid_v1_fp16(flag_values):  # pylint: disable=unused-variable
-    return (flags_core.DTYPE_MAP[flag_values['dtype']][0] != tf.float16 or
-            flag_values['resnet_version'] != '1')
