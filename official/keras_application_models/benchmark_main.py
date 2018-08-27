@@ -42,9 +42,8 @@ MODELS = {
     "densenet121": tf.keras.applications.DenseNet121,
     "densenet169": tf.keras.applications.DenseNet169,
     "densenet201": tf.keras.applications.DenseNet201,
-    # TODO(b/80431378)
-    # "nasnetlarge": tf.keras.applications.NASNetLarge,
-    # "nasnetmobile": tf.keras.applications.NASNetMobile,
+    "nasnetlarge": tf.keras.applications.NASNetLarge,
+    "nasnetmobile": tf.keras.applications.NASNetMobile,
 }
 
 
@@ -84,16 +83,15 @@ def run_keras_model_benchmark(_):
   if FLAGS.dist_strat:
     distribution = distribution_utils.get_distribution_strategy(
         num_gpus=num_gpus)
-  else:
+  elif num_gpus > 1:
     # Run with multi_gpu_model
     # If eager execution is enabled, only one GPU is utilized even if multiple
     # GPUs are provided.
-    if num_gpus > 1:
-      if FLAGS.eager:
-        tf.logging.warning(
-            "{} GPUs are provided, but only one GPU is utilized as "
-            "eager execution is enabled.".format(num_gpus))
-      model = tf.keras.utils.multi_gpu_model(model, gpus=num_gpus)
+    if FLAGS.eager:
+      tf.logging.warning(
+          "{} GPUs are provided, but only one GPU is utilized as "
+          "eager execution is enabled.".format(num_gpus))
+    model = tf.keras.utils.multi_gpu_model(model, gpus=num_gpus)
 
   # Adam optimizer and some other optimizers doesn't work well with
   # distribution strategy (b/113076709)
@@ -141,7 +139,7 @@ def run_keras_model_benchmark(_):
         "accuracy": history.history["val_acc"][epoch],
         "loss": history.history["val_loss"][epoch],
         tf.GraphKeys.GLOBAL_STEP: (epoch + 1) * np.ceil(
-            FLAGS.num_images/FLAGS.batch_size)
+            FLAGS.num_eval_images/FLAGS.batch_size)
     }
     benchmark_logger.log_evaluation_result(eval_results)
 
@@ -200,6 +198,14 @@ def define_keras_benchmark_flags():
           "A list of (case insensitive) strings to specify the names of "
           "callbacks. For example: `--callbacks ExamplesPerSecondCallback,"
           "LoggingMetricCallback`"))
+
+  @flags.multi_flags_validator(
+    ["eager", "dist_strat"],
+    message="Both --eager and --dist_strat were set. Only one can be defined, "
+            "as DistributionStrategy is not supported in Eager execution "
+            "currently.")
+  def _check_eager_dist_strat(flag_dict):
+    return not(flag_dict["eager"] and flag_dict["dist_strat"])
 
 
 def main(_):
