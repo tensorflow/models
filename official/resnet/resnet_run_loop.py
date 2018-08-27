@@ -139,7 +139,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
 ################################################################################
 def learning_rate_with_decay(
     batch_size, batch_denom, num_images, boundary_epochs, decay_rates,
-    warmup=True):
+    base_lr=0.1, warmup=False):
   """Get a learning rate that decays step-wise as training progresses.
 
   Args:
@@ -153,14 +153,14 @@ def learning_rate_with_decay(
     decay_rates: list of floats representing the decay rates to be used
       for scaling the learning rate. It should have one more element
       than `boundary_epochs`, and all elements should have the same type.
+    base_lr: Initial learning rate scaled based on batch_denom.
     warmup: Run a 5 epoch warmup to the initial lr.
-
   Returns:
     Returns a function that takes a single argument - the number of batches
     trained so far (global_step)- and returns the learning rate to be used
     for training the next batch.
   """
-  initial_learning_rate = 0.1 * batch_size / batch_denom
+  initial_learning_rate = base_lr * batch_size / batch_denom
   batches_per_epoch = num_images / batch_size
 
   # Reduce the learning rate at certain epochs.
@@ -173,7 +173,7 @@ def learning_rate_with_decay(
     """Builds scaled learning rate function with 5 epoch warm up."""
     lr = tf.train.piecewise_constant(global_step, boundaries, vals)
     if warmup:
-      warmup_steps = batches_per_epoch * 5
+      warmup_steps = int(batches_per_epoch * 5)
       warmup_lr = (
           initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
               warmup_steps, tf.float32))
