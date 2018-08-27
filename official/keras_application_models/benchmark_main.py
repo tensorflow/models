@@ -200,10 +200,11 @@ def define_keras_benchmark_flags():
           "LoggingMetricCallback`"))
 
   @flags.multi_flags_validator(
-    ["eager", "dist_strat"],
-    message="Both --eager and --dist_strat were set. Only one can be defined, "
-            "as DistributionStrategy is not supported in Eager execution "
-            "currently.")
+      ["eager", "dist_strat"],
+      message="Both --eager and --dist_strat were set. Only one can be "
+              "defined, as DistributionStrategy is not supported in Eager "
+              "execution currently.")
+  # pylint: disable=unused-variable
   def _check_eager_dist_strat(flag_dict):
     return not(flag_dict["eager"] and flag_dict["dist_strat"])
 
