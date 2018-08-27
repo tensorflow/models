@@ -284,14 +284,15 @@ def resnet_model_fn(features, labels, mode, model_class,
     )
 
     def _dense_grad_filter(gvs):
-      '''
-      only apply gradient updates to the final layer. This function is used for
-      fine tuning
+      """Only apply gradient updates to the final layer.
+
+      This function is used for fine tuning.
+
       Args:
-      gvs : list of tuples with gradients and variable info
+        gvs: list of tuples with gradients and variable info
       Returns:
-      filtered gradients so that only the dense layer remains
-      '''
+        filtered gradients so that only the dense layer remains
+      """
       return [(g, v) for g, v in gvs if 'dense' in v.name]
 
     if loss_scale != 1:
@@ -320,12 +321,18 @@ def resnet_model_fn(features, labels, mode, model_class,
     train_op = None
 
   accuracy = tf.metrics.accuracy(labels, predictions['classes'])
-
-  metrics = {'accuracy': accuracy}
+  accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
+                                                  targets=labels,
+                                                  k=5,
+                                                  name='top_5_op'))
+  metrics = {'accuracy': accuracy,
+             'accuracy_top_5': accuracy_top_5}
 
   # Create a tensor named train_accuracy for logging purposes
   tf.identity(accuracy[1], name='train_accuracy')
+  tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
   tf.summary.scalar('train_accuracy', accuracy[1])
+  tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
   return tf.estimator.EstimatorSpec(
       mode=mode,
