@@ -138,7 +138,8 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
 # Functions for running training/eval/validation loops for the model.
 ################################################################################
 def learning_rate_with_decay(
-    batch_size, batch_denom, num_images, boundary_epochs, decay_rates):
+    batch_size, batch_denom, num_images, boundary_epochs, decay_rates,
+    base_lr=0.1, warmup=False):
   """Get a learning rate that decays step-wise as training progresses.
 
   Args:
@@ -152,13 +153,14 @@ def learning_rate_with_decay(
     decay_rates: list of floats representing the decay rates to be used
       for scaling the learning rate. It should have one more element
       than `boundary_epochs`, and all elements should have the same type.
-
+    base_lr: Initial learning rate scaled based on batch_denom.
+    warmup: Run a 5 epoch warmup to the initial lr.
   Returns:
     Returns a function that takes a single argument - the number of batches
     trained so far (global_step)- and returns the learning rate to be used
     for training the next batch.
   """
-  initial_learning_rate = 0.1 * batch_size / batch_denom
+  initial_learning_rate = base_lr * batch_size / batch_denom
   batches_per_epoch = num_images / batch_size
 
   # Reduce the learning rate at certain epochs.
@@ -168,8 +170,15 @@ def learning_rate_with_decay(
   vals = [initial_learning_rate * decay for decay in decay_rates]
 
   def learning_rate_fn(global_step):
-    global_step = tf.cast(global_step, tf.int32)
-    return tf.train.piecewise_constant(global_step, boundaries, vals)
+    """Builds scaled learning rate function with 5 epoch warm up."""
+    lr = tf.train.piecewise_constant(global_step, boundaries, vals)
+    if warmup:
+      warmup_steps = int(batches_per_epoch * 5)
+      warmup_lr = (
+          initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
+              warmup_steps, tf.float32))
+      return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
+    return lr
 
   return learning_rate_fn
 
@@ -499,12 +508,3 @@ def define_resnet_flags(resnet_size_choices=None):
     flags.DEFINE_string(**choice_kwargs)
   else:
     flags.DEFINE_enum(enum_values=resnet_size_choices, **choice_kwargs)
-
-  # The current implementation of ResNet v1 is numerically unstable when run
-  # with fp16 and will produce NaN errors soon after training begins.
-  msg = ('ResNet version 1 is not currently supported with fp16. '
-         'Please use version 2 instead.')
-  @flags.multi_flags_validator(['dtype', 'resnet_version'], message=msg)
-  def _forbid_v1_fp16(flag_values):  # pylint: disable=unused-variable
-    return (flags_core.DTYPE_MAP[flag_values['dtype']][0] != tf.float16 or
-            flag_values['resnet_version'] != '1')
