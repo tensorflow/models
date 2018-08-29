@@ -43,7 +43,7 @@ fi
 if [ ! -f ${PRETRAINED_CHECKPOINT_DIR}/${MODEL_NAME}.ckpt ]; then
   wget http://download.tensorflow.org/models/inception_resnet_v2_2016_08_30.tar.gz
   tar -xvf inception_resnet_v2_2016_08_30.tar.gz
-  mv inception_resnet_v2.ckpt ${PRETRAINED_CHECKPOINT_DIR}/${MODEL_NAME}.ckpt
+  mv inception_resnet_v2_2016_08_30.ckpt ${PRETRAINED_CHECKPOINT_DIR}/${MODEL_NAME}.ckpt
   rm inception_resnet_v2_2016_08_30.tar.gz
 fi
 
