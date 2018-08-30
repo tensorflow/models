@@ -353,8 +353,8 @@ def _get_init_fn():
     for exclusion in exclusions:
       if var.op.name.startswith(exclusion):
         break
-    else:
-      variables_to_restore.append(var)
+      else:
+        variables_to_restore.append(var)
 
   if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
     checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
