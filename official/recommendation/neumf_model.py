@@ -65,7 +65,9 @@ def neumf_model_fn(features, labels, mode, params):
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
-    optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
+    optimizer = tf.train.AdamOptimizer(
+        learning_rate=params["learning_rate"], beta1=params["beta1"],
+        beta2=params["beta2"], epsilon=params["epsilon"])
     if params["use_tpu"]:
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
