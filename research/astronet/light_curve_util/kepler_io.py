@@ -26,8 +26,6 @@ import numpy as np
 from light_curve_util import util
 from tensorflow import gfile
 
-LONG_CADENCE_TIME_DELTA_DAYS = 0.02043422  # Approximately 29.4 minutes.
-
 # Quarter index to filename prefix for long cadence Kepler data.
 # Reference: https://archive.stsci.edu/kepler/software/get_kepler.py
 LONG_CADENCE_QUARTER_PREFIXES = {
