@@ -8,7 +8,23 @@ See the following papers for more background:
 
 [2] [Identity Mappings in Deep Residual Networks](https://arxiv.org/pdf/1603.05027.pdf) by Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun, Jul 2016.
 
-In code v1 refers to the resnet defined in [1], while v2 correspondingly refers to [2]. The principle difference between the two versions is that v1 applies batch normalization and activation after convolution, while v2 applies batch normalization, then activation, and finally convolution. A schematic comparison is presented in Figure 1 (left) of [2].
+In code, v1 refers to the ResNet defined in [1] but where a stride 2 is used on
+the 3x3 conv rather than the first 1x1 in the bottleneck. This change results
+in higher and more stable accuracy with less epochs than the original v1 and has
+shown to scale to higher batch sizes with minimal degradation in accuracy.
+There is no originating paper and the first mention we are aware of was in the
+[torch version of ResNetv1](https://github.com/facebook/fb.resnet.torch). Most
+popular v1 implementations are this implementation which we call ResNetv1.5. In
+testing we found v1.5 requires ~12% more compute to train and has 6% reduced
+throughput for inference compared to ResNetv1. Comparing the v1 model to the
+v1.5 model, which has happened in blog posts, is an apples-to-oranges
+comparison especially in regards to hardware or platform performance. CIFAR-10
+ResNet does not use the bottleneck and is not impacted by these nuances.
+
+v2 refers to [2]. The principle difference between the two versions is that v1
+applies batch normalization and activation after convolution, while v2 applies
+batch normalization, then activation, and finally convolution. A schematic
+comparison is presented in Figure 1 (left) of [2].
 
 Please proceed according to which dataset you would like to train/evaluate on:
 
@@ -77,7 +93,7 @@ ResNet-50 v1 (Accuracy 75.91%):
 * [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_savedmodel.tar.gz)
 
 ### Transfer Learning
-You can use a pretrained model to initialize a training process. In addition you are able to freeze all but the final fully connected layers to fine tune your model. Transfer Learning is useful when training on your own small datasets. For a brief look at transfer learning in the context of convolutional neural networks, we recommend reading these [short notes](http://cs231n.github.io/transfer-learning/). 
+You can use a pretrained model to initialize a training process. In addition you are able to freeze all but the final fully connected layers to fine tune your model. Transfer Learning is useful when training on your own small datasets. For a brief look at transfer learning in the context of convolutional neural networks, we recommend reading these [short notes](http://cs231n.github.io/transfer-learning/).
 
 
 To fine tune a pretrained resnet you must make three changes to your training procedure:
