@@ -501,7 +501,7 @@ def define_resnet_flags(resnet_size_choices=None):
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_enum(
-      name='resnet_version', short_name='rv', default='2',
+      name='resnet_version', short_name='rv', default='1',
       enum_values=['1', '2'],
       help=flags_core.help_wrap(
           'Version of ResNet. (1 or 2) See README.md for details.'))
