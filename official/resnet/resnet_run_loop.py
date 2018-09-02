@@ -108,11 +108,12 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   return dataset
 
 
-def get_synth_input_fn(height, width, num_channels, num_classes):
-  """Returns an input function that returns a dataset with zeroes.
+def get_synth_input_fn(height, width, num_channels, num_classes,
+                       dtype=tf.float32):
+  """Returns an input function that returns a dataset with random data.
 
-  This is useful in debugging input pipeline performance, as it removes all
-  elements of file reading and image preprocessing.
+  This input_fn removed all aspects of the input pipeline other than the
+  host to device copy. This is useful in debugging input pipeline performance.
 
   Args:
     height: Integer height that will be used to create a fake image tensor.
@@ -120,17 +121,32 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     num_channels: Integer depth that will be used to create a fake image tensor.
     num_classes: Number of classes that should be represented in the fake labels
       tensor
+    dtype: Data type for features/images.
 
   Returns:
     An input_fn that can be used in place of a real one to return a dataset
     that can be used for iteration.
   """
-  def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
-    return model_helpers.generate_synthetic_data(
-        input_shape=tf.TensorShape([batch_size, height, width, num_channels]),
-        input_dtype=tf.float32,
-        label_shape=tf.TensorShape([batch_size]),
-        label_dtype=tf.int32)
+  # pylint: disable=unused-argument
+  def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
+    """Returns dataset filled with random data."""
+    # Synthetic input should be within [0, 255].
+    inputs = tf.truncated_normal(
+        [batch_size] + [height, width, num_channels],
+        dtype=dtype,
+        mean=127,
+        stddev=60,
+        name='synthetic_inputs')
+
+    labels = tf.random_uniform(
+        [batch_size],
+        minval=0,
+        maxval=num_classes - 1,
+        dtype=tf.int32,
+        name='synthetic_labels')
+    data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
+    data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+    return data
 
   return input_fn
 
@@ -230,7 +246,7 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   # Generate a summary node for the images
   tf.summary.image('images', features, max_outputs=6)
-
+  # TODO(tobyboyd): Add cast as part of input pipeline on cpu and remove.
   features = tf.cast(features, dtype)
 
   model = model_class(resnet_size, data_format, resnet_version=resnet_version,

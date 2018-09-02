@@ -196,9 +196,10 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
   )
 
 
-def get_synth_input_fn():
+def get_synth_input_fn(dtype):
   return resnet_run_loop.get_synth_input_fn(
-      _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS, _NUM_CLASSES)
+      _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS, _NUM_CLASSES,
+      dtype=dtype)
 
 
 ###############################################################################
@@ -331,8 +332,9 @@ def run_imagenet(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
-  input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
-                    or input_fn)
+  input_function = (flags_obj.use_synthetic_data and
+                    get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
+                    input_fn)
 
   resnet_run_loop.resnet_main(
       flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
