@@ -112,8 +112,10 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32):
   """Returns an input function that returns a dataset with random data.
 
-  This input_fn removed all aspects of the input pipeline other than the
-  host to device copy. This is useful in debugging input pipeline performance.
+  This input_fn returns a data set that iterates over a set of random data and
+  bypasses all preprocessing, e.g. jpeg decode and copy. The host to device
+  copy is still included. This used to find the upper throughput bound when
+  tunning the full input pipeline.
 
   Args:
     height: Integer height that will be used to create a fake image tensor.
