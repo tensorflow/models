@@ -66,7 +66,7 @@ def get_filenames(is_training, data_dir):
     return [os.path.join(data_dir, 'test_batch.bin')]
 
 
-def parse_record(raw_record, is_training):
+def parse_record(raw_record, is_training, dtype):
   """Parse CIFAR-10 image and label from a raw record."""
   # Convert bytes to a vector of uint8 that is record_bytes long.
   record_vector = tf.decode_raw(raw_record, tf.uint8)
@@ -85,6 +85,7 @@ def parse_record(raw_record, is_training):
   image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
 
   image = preprocess_image(image, is_training)
+  image = tf.cast(image, dtype)
 
   return image, label
 
@@ -108,8 +109,9 @@ def preprocess_image(image, is_training):
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
-             datasets_num_private_threads=None, num_parallel_batches=1):
-  """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
+             dtype=tf.float32, datasets_num_private_threads=None,
+             num_parallel_batches=1):
+  """Input function provides batches for train or eval.
 
   Args:
     is_training: A boolean denoting whether the input is for training.
@@ -117,6 +119,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
+    dtype: Data type to use for images/features
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
 
@@ -135,14 +138,15 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
       examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
+      dtype=dtype
       datasets_num_private_threads=datasets_num_private_threads,
       num_parallel_batches=num_parallel_batches
   )
 
 
-def get_synth_input_fn():
+def get_synth_input_fn(dtype):
   return resnet_run_loop.get_synth_input_fn(
-      _HEIGHT, _WIDTH, _NUM_CHANNELS, _NUM_CLASSES)
+      _HEIGHT, _WIDTH, _NUM_CHANNELS, _NUM_CLASSES, dtype=dtype)
 
 
 ###############################################################################
@@ -248,8 +252,9 @@ def run_cifar(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
-  input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
-                    or input_fn)
+  input_function = (flags_obj.use_synthetic_data and
+                    get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
+                    input_fn)
   resnet_run_loop.resnet_main(
       flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
       shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])

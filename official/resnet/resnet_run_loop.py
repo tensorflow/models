@@ -23,6 +23,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import os
 
 # pylint: disable=g-bad-import-order
@@ -46,7 +47,7 @@ from tensorflow.contrib.data.python.ops import threadpool
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_gpus=None,
-                           examples_per_epoch=None,
+                           examples_per_epoch=None, dtype=tf.float32,
                            datasets_num_private_threads=None,
                            num_parallel_batches=1):
   """Given a Dataset with raw records, return an iterator over the records.
@@ -63,6 +64,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
     examples_per_epoch: The number of examples in an epoch.
+    dtype: Data type to use for images/features.
     datasets_num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
     num_parallel_batches: Number of parallel batches for tf.data.
@@ -98,7 +100,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # batch_size is almost always much greater than the number of CPU cores.
   dataset = dataset.apply(
       tf.contrib.data.map_and_batch(
-          lambda value: parse_record_fn(value, is_training),
+          lambda value: parse_record_fn(value, is_training, dtype),
           batch_size=batch_size,
           num_parallel_batches=num_parallel_batches,
           drop_remainder=False))
@@ -121,11 +123,14 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   return dataset
 
 
-def get_synth_input_fn(height, width, num_channels, num_classes):
-  """Returns an input function that returns a dataset with zeroes.
+def get_synth_input_fn(height, width, num_channels, num_classes,
+                       dtype=tf.float32):
+  """Returns an input function that returns a dataset with random data.
 
-  This is useful in debugging input pipeline performance, as it removes all
-  elements of file reading and image preprocessing.
+  This input_fn returns a data set that iterates over a set of random data and
+  bypasses all preprocessing, e.g. jpeg decode and copy. The host to device
+  copy is still included. This used to find the upper throughput bound when
+  tunning the full input pipeline.
 
   Args:
     height: Integer height that will be used to create a fake image tensor.
@@ -133,17 +138,32 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     num_channels: Integer depth that will be used to create a fake image tensor.
     num_classes: Number of classes that should be represented in the fake labels
       tensor
+    dtype: Data type for features/images.
 
   Returns:
     An input_fn that can be used in place of a real one to return a dataset
     that can be used for iteration.
   """
-  def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
-    return model_helpers.generate_synthetic_data(
-        input_shape=tf.TensorShape([batch_size, height, width, num_channels]),
-        input_dtype=tf.float32,
-        label_shape=tf.TensorShape([batch_size]),
-        label_dtype=tf.int32)
+  # pylint: disable=unused-argument
+  def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
+    """Returns dataset filled with random data."""
+    # Synthetic input should be within [0, 255].
+    inputs = tf.truncated_normal(
+        [batch_size] + [height, width, num_channels],
+        dtype=dtype,
+        mean=127,
+        stddev=60,
+        name='synthetic_inputs')
+
+    labels = tf.random_uniform(
+        [batch_size],
+        minval=0,
+        maxval=num_classes - 1,
+        dtype=tf.int32,
+        name='synthetic_labels')
+    data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
+    data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+    return data
 
   return input_fn
 
@@ -244,8 +264,8 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   # Generate a summary node for the images
   tf.summary.image('images', features, max_outputs=6)
-
-  features = tf.cast(features, dtype)
+  # Checks that features/images have same data type being used for calculations.
+  assert features.dtype == dtype
 
   model = model_class(resnet_size, data_format, resnet_version=resnet_version,
                       dtype=dtype)
@@ -311,6 +331,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       """Only apply gradient updates to the final layer.
 
       This function is used for fine tuning.
+
       Args:
         gvs: list of tuples with gradients and variable info
 
@@ -483,13 +504,14 @@ def resnet_main(
       model_dir=flags_obj.model_dir,
       batch_size=flags_obj.batch_size)
 
-  def input_fn_train():
+  def input_fn_train(num_epochs):
     return input_function(
         is_training=True, data_dir=flags_obj.data_dir,
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-        num_epochs=flags_obj.epochs_between_evals,
+        num_epochs=num_epochs,
         num_gpus=flags_core.get_num_gpus(flags_obj),
+        dtype=flags_core.get_tf_dtype(flags_obj))
         datasets_num_private_threads=flags_obj.datasets_num_private_threads,
         num_parallel_batches=flags_obj.num_parallel_calls
         )
@@ -500,43 +522,54 @@ def resnet_main(
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1,
-        datasets_num_private_threads=flags_obj.datasets_num_private_threads)
+        dtype=flags_core.get_tf_dtype(flags_obj))
 
-  total_training_cycle = (flags_obj.train_epochs //
-                          flags_obj.epochs_between_evals)
-  if flags_obj.eval_only:
-    eval_results = classifier.evaluate(input_fn=input_fn_eval)
-    benchmark_logger.log_evaluation_result(eval_results)
+  if flags_obj.eval_only or not flags_obj.train_epochs:
+    # If --eval_only is set, perform a single loop with zero train epochs.
+    schedule, n_loops = [0], 1
   else:
-    for cycle_index in range(total_training_cycle):
-      tf.logging.info('Starting a training cycle: %d/%d',
-                      cycle_index, total_training_cycle)
+    # Compute the number of times to loop while training. All but the last
+    # pass will train for `epochs_between_evals` epochs, while the last will
+    # train for the number needed to reach `training_epochs`. For instance if
+    #   train_epochs = 25 and epochs_between_evals = 10
+    # schedule will be set to [10, 10, 5]. That is to say, the loop will:
+    #   Train for 10 epochs and then evaluate.
+    #   Train for another 10 epochs and then evaluate.
+    #   Train for a final 5 epochs (to reach 25 epochs) and then evaluate.
+    n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
+    schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
+    schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
-      classifier.train(input_fn=input_fn_train, hooks=train_hooks,
-                       max_steps=flags_obj.max_train_steps)
+  for cycle_index, num_train_epochs in enumerate(schedule):
+    tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
-      tf.logging.info('Starting to evaluate.')
+    if num_train_epochs:
+      classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
+                       hooks=train_hooks, max_steps=flags_obj.max_train_steps)
 
-      # flags_obj.max_train_steps is generally associated with testing and
-      # profiling. As a result it is frequently called with synthetic data,
-      # which will iterate forever. Passing steps=flags_obj.max_train_steps
-      # allows the eval (which is generally unimportant in those circumstances)
-      # to terminate. Note that eval will run for max_train_steps each loop,
-      # regardless of the global_step count.
-      eval_results = classifier.evaluate(input_fn=input_fn_eval,
-                                         steps=flags_obj.max_train_steps)
+    tf.logging.info('Starting to evaluate.')
 
-      benchmark_logger.log_evaluation_result(eval_results)
+    # flags_obj.max_train_steps is generally associated with testing and
+    # profiling. As a result it is frequently called with synthetic data, which
+    # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
+    # eval (which is generally unimportant in those circumstances) to terminate.
+    # Note that eval will run for max_train_steps each loop, regardless of the
+    # global_step count.
+    eval_results = classifier.evaluate(input_fn=input_fn_eval,
+                                       steps=flags_obj.max_train_steps)
 
-      if model_helpers.past_stop_threshold(
-          flags_obj.stop_threshold, eval_results['accuracy']):
-        break
+    benchmark_logger.log_evaluation_result(eval_results)
+
+    if model_helpers.past_stop_threshold(
+        flags_obj.stop_threshold, eval_results['accuracy']):
+      break
 
   if flags_obj.export_dir is not None:
     # Exports a saved model for the given classifier.
     input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
         shape, batch_size=flags_obj.batch_size)
     classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn)
+
 
 
 def define_resnet_flags(resnet_size_choices=None):
@@ -548,7 +581,7 @@ def define_resnet_flags(resnet_size_choices=None):
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_enum(
-      name='resnet_version', short_name='rv', default='2',
+      name='resnet_version', short_name='rv', default='1',
       enum_values=['1', '2'],
       help=flags_core.help_wrap(
           'Version of ResNet. (1 or 2) See README.md for details.'))
@@ -561,6 +594,10 @@ def define_resnet_flags(resnet_size_choices=None):
       help=flags_core.help_wrap(
           'If not None initialize all the network except the final layer with '
           'these values'))
+  flags.DEFINE_boolean(
+      name='eval_only', default=False,
+      help=flags_core.help_wrap('Skip training and only perform evaluation on '
+                                'the latest checkpoint.'))
 
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',

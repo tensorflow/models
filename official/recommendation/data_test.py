@@ -19,9 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import pickle
 import time
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 from official.datasets import movielens
@@ -82,7 +84,15 @@ class BaseTest(tf.test.TestCase):
     # For the most part the necessary checks are performed within
     # construct_cache()
     ncf_dataset = data_preprocessing.construct_cache(
-        dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2)
+        dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2,
+        match_mlperf=False)
+    assert ncf_dataset.num_users == NUM_USERS
+    assert ncf_dataset.num_items == NUM_ITEMS
+
+    time.sleep(1)  # Ensure we create the next cache in a new directory.
+    ncf_dataset = data_preprocessing.construct_cache(
+        dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2,
+        match_mlperf=True)
     assert ncf_dataset.num_users == NUM_USERS
     assert ncf_dataset.num_items == NUM_ITEMS
 
@@ -144,6 +154,30 @@ class BaseTest(tf.test.TestCase):
     # This check is more heuristic because negatives are sampled with
     # replacement. It only checks that negative generation is reasonably random.
     assert len(train_examples[False]) / NUM_NEG / num_positives_seen > 0.9
+
+  def test_shard_randomness(self):
+    users = [0, 0, 0, 0, 1, 1, 1, 1]
+    items = [0, 2, 4, 6, 0, 2, 4, 6]
+    times = [1, 2, 3, 4, 1, 2, 3, 4]
+    df = pd.DataFrame({movielens.USER_COLUMN: users,
+                       movielens.ITEM_COLUMN: items,
+                       movielens.TIMESTAMP_COLUMN: times})
+    cache_paths = rconst.Paths(data_dir=self.temp_data_dir)
+    np.random.seed(1)
+    data_preprocessing.generate_train_eval_data(df, approx_num_shards=2,
+                                                num_items=10,
+                                                cache_paths=cache_paths,
+                                                match_mlperf=True)
+    with tf.gfile.Open(cache_paths.eval_raw_file, "rb") as f:
+      eval_data = pickle.load(f)
+    eval_items_per_user = rconst.NUM_EVAL_NEGATIVES + 1
+    self.assertAllClose(eval_data[0][movielens.USER_COLUMN],
+                        [0] * eval_items_per_user + [1] * eval_items_per_user)
+
+    # Each shard process should generate different random items.
+    self.assertNotAllClose(
+        eval_data[0][movielens.ITEM_COLUMN][:eval_items_per_user],
+        eval_data[0][movielens.ITEM_COLUMN][eval_items_per_user:])
 
 
 if __name__ == "__main__":

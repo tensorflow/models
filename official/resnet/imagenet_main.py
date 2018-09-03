@@ -129,7 +129,7 @@ def _parse_example_proto(example_serialized):
   return features['image/encoded'], label, bbox
 
 
-def parse_record(raw_record, is_training):
+def parse_record(raw_record, is_training, dtype):
   """Parses a record containing a training example of an image.
 
   The input record is parsed into a label and image, and the image is passed
@@ -139,6 +139,7 @@ def parse_record(raw_record, is_training):
     raw_record: scalar Tensor tf.string containing a serialized
       Example protocol buffer.
     is_training: A boolean denoting whether the input is for training.
+    dtype: data type to use for images/features.
 
   Returns:
     Tuple with processed image tensor and one-hot-encoded label tensor.
@@ -152,12 +153,14 @@ def parse_record(raw_record, is_training):
       output_width=_DEFAULT_IMAGE_SIZE,
       num_channels=_NUM_CHANNELS,
       is_training=is_training)
+  image = tf.cast(image, dtype)
 
   return image, label
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
-             datasets_num_private_threads=None, num_parallel_batches=1):
+             dtype=tf.float32, datasets_num_private_threads=None,
+             num_parallel_batches=1):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -166,6 +169,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
+    dtype: Data type to use for images/features
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
 
@@ -196,14 +200,16 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
       examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
+      dtype=dtype
       datasets_num_private_threads=datasets_num_private_threads,
       num_parallel_batches=num_parallel_batches
   )
 
 
-def get_synth_input_fn():
+def get_synth_input_fn(dtype):
   return resnet_run_loop.get_synth_input_fn(
-      _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS, _NUM_CLASSES)
+      _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS, _NUM_CLASSES,
+      dtype=dtype)
 
 
 ###############################################################################
@@ -336,8 +342,9 @@ def run_imagenet(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
-  input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
-                    or input_fn)
+  input_function = (flags_obj.use_synthetic_data and
+                    get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
+                    input_fn)
 
   resnet_run_loop.resnet_main(
       flags_obj, imagenet_model_fn, input_function, DATASET_NAME,

@@ -610,7 +610,7 @@ def run_transformer(flags_obj):
       bleu_threshold=flags_obj.stop_threshold,
       vocab_file=flags_obj.vocab_file)
 
-  if flags_obj.export_dir:
+  if flags_obj.export_dir and not params["use_tpu"]:
     serving_input_fn = export.build_tensor_serving_input_receiver_fn(
         shape=[None], dtype=tf.int64, batch_size=None)
     # Export saved model, and save the vocab file as an extra asset. The vocab
