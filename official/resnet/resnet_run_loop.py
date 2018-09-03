@@ -29,6 +29,7 @@ import os
 # pylint: disable=g-bad-import-order
 from absl import flags
 import tensorflow as tf
+import multiprocessing
 
 from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
@@ -37,6 +38,7 @@ from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
+from tensorflow.contrib.data.python.ops import threadpool
 # pylint: enable=g-bad-import-order
 
 
@@ -45,7 +47,9 @@ from official.utils.misc import model_helpers
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_gpus=None,
-                           examples_per_epoch=None, dtype=tf.float16):
+                           examples_per_epoch=None, dtype=tf.float32,
+                           datasets_num_private_threads=None,
+                           num_parallel_batches=1):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -61,6 +65,9 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     num_gpus: The number of gpus used for training.
     examples_per_epoch: The number of examples in an epoch.
     dtype: Data type to use for images/features.
+    datasets_num_private_threads: Number of threads for a private
+      threadpool created for all datasets computation.
+    num_parallel_batches: Number of parallel batches for tf.data.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -95,7 +102,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training, dtype),
           batch_size=batch_size,
-          num_parallel_batches=1,
+          num_parallel_batches=num_parallel_batches,
           drop_remainder=False))
 
   # Operations between the final prefetch and the get_next call to the iterator
@@ -105,6 +112,13 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+
+  if datasets_num_private_threads:
+    dataset = threadpool.override_threadpool(
+        dataset,
+        threadpool.PrivateThreadPool(
+            datasets_num_private_threads,
+            display_name='input_pipeline_thread_pool'))
 
   return dataset
 
@@ -175,6 +189,7 @@ def learning_rate_with_decay(
       than `boundary_epochs`, and all elements should have the same type.
     base_lr: Initial learning rate scaled based on batch_denom.
     warmup: Run a 5 epoch warmup to the initial lr.
+
   Returns:
     Returns a function that takes a single argument - the number of batches
     trained so far (global_step)- and returns the learning rate to be used
@@ -319,6 +334,7 @@ def resnet_model_fn(features, labels, mode, model_class,
 
       Args:
         gvs: list of tuples with gradients and variable info
+
       Returns:
         filtered gradients so that only the dense layer remains
       """
@@ -354,12 +370,14 @@ def resnet_model_fn(features, labels, mode, model_class,
                                                   targets=labels,
                                                   k=5,
                                                   name='top_5_op'))
+
   metrics = {'accuracy': accuracy,
              'accuracy_top_5': accuracy_top_5}
 
   # Create a tensor named train_accuracy for logging purposes
   tf.identity(accuracy[1], name='train_accuracy')
   tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+
   tf.summary.scalar('train_accuracy', accuracy[1])
   tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
@@ -393,6 +411,43 @@ def resnet_main(
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+  # This is the number of logical CPU cores which is 80 on DGX.
+  cpu_count = multiprocessing.cpu_count()
+  print('CPU count ', cpu_count)
+
+  # If using global (default tf_gpu_thread_mode) all values like
+  # `flags_obj.datasets_num_private_threads` need to be set individually.
+  if flags_obj.tf_gpu_thread_mode in ['gpu_private', 'gpu_shared']:
+    os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
+    os.environ['TF_GPU_THREAD_COUNT'] = str(flags_obj.tf_gpu_thread_count)
+
+    # Default to two threads. One for the device compute and the other for
+    # memory copies.
+    per_gpu_thread_count = flags_obj.tf_gpu_thread_count or 2
+    total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
+
+    if flags_obj.tf_gpu_thread_mode == 'gpu_private':
+      os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
+    elif flags_obj.tf_gpu_thread_mode == 'gpu_shared':
+      os.environ['TF_GPU_THREAD_COUNT'] = str(total_gpu_thread_count)
+
+    main_thread_count = max(cpu_count - int(total_gpu_thread_count), 1)
+    flags_obj.inter_op_parallelism_threads = main_thread_count
+
+    print('Total GPU thread count ', total_gpu_thread_count)
+    print('TF_GPU_THREAD_COUNT ', os.environ['TF_GPU_THREAD_COUNT'])
+    print('per GPU thread count ', per_gpu_thread_count)
+    # From the total cpu thread count, subtract the total_gpu_thread_count,
+    # and then 2 threads per GPU device for event monitoring and sending /
+    # receiving tensors
+    num_monitoring_threads = 2 * flags_obj.num_gpus
+    num_private_threads = max(
+        cpu_count - int(total_gpu_thread_count) - num_monitoring_threads, 1)
+    flags_obj.datasets_num_private_threads = num_private_threads
+
+  print('inter_op_parallelism_threads ', flags_obj.inter_op_parallelism_threads)
+  print('intra_op_parallelism_threads ', flags_obj.intra_op_parallelism_threads)
+  print('num of dataset threads ', flags_obj.datasets_num_private_threads)
 
   # Create session config based on values of inter_op_parallelism_threads and
   # intra_op_parallelism_threads. Note that we default to having
@@ -457,6 +512,9 @@ def resnet_main(
         num_epochs=num_epochs,
         num_gpus=flags_core.get_num_gpus(flags_obj),
         dtype=flags_core.get_tf_dtype(flags_obj))
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads,
+        num_parallel_batches=flags_obj.num_parallel_calls
+        )
 
   def input_fn_eval():
     return input_function(
@@ -513,10 +571,11 @@ def resnet_main(
     classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn)
 
 
+
 def define_resnet_flags(resnet_size_choices=None):
   """Add flags and validators for ResNet."""
-  flags_core.define_base()
-  flags_core.define_performance(num_parallel_calls=False)
+  flags_core.define_base(eval_only=True)
+  flags_core.define_performance()
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
