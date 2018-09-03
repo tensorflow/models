@@ -138,7 +138,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
       examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
-      dtype=dtype
+      dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
       num_parallel_batches=num_parallel_batches
   )
