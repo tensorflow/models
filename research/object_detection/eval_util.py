@@ -32,6 +32,8 @@ from object_detection.utils import visualization_utils as vis_utils
 
 slim = tf.contrib.slim
 
+BEST_RES = 0
+
 
 def write_metrics(metrics, global_step, summary_dir):
   """Write metrics to a summary directory.
@@ -63,7 +65,7 @@ def visualize_detection_results(result_dict,
                                 show_groundtruth=False,
                                 groundtruth_box_visualization_color='black',
                                 min_score_thresh=.5,
-                                max_num_predictions=20,
+                                max_num_predictions=2500,
                                 skip_scores=False,
                                 skip_labels=False,
                                 keep_image_id_for_visualization_export=False):
@@ -182,6 +184,9 @@ def visualize_detection_results(result_dict,
     else:
       export_path = os.path.join(export_dir, 'export-{}.png'.format(tag))
     vis_utils.save_image_array_as_png(image, export_path)
+  elif keep_image_id_for_visualization_export:
+    tag += ' - ' + result_dict[fields.InputDataFields().key]
+        
 
   summary = tf.Summary(value=[
       tf.Summary.Value(
@@ -258,7 +263,9 @@ def _run_checkpoint_once(tensor_dict,
   """
   if save_graph and not save_graph_dir:
     raise ValueError('`save_graph_dir` must be defined.')
-  sess = tf.Session(master, graph=tf.get_default_graph())
+  config = tf.ConfigProto(allow_soft_placement = True)
+  config.gpu_options.per_process_gpu_memory_fraction = 0.4
+  sess = tf.Session(master, graph=tf.get_default_graph(),config=config)
   sess.run(tf.global_variables_initializer())
   sess.run(tf.local_variables_initializer())
   sess.run(tf.tables_initializer())
@@ -270,9 +277,6 @@ def _run_checkpoint_once(tensor_dict,
     checkpoint_file = tf.train.latest_checkpoint(checkpoint_dirs[0])
     saver = tf.train.Saver(variables_to_restore)
     saver.restore(sess, checkpoint_file)
-
-  if save_graph:
-    tf.train.write_graph(sess.graph_def, save_graph_dir, 'eval.pbtxt')
 
   counters = {'skipped': 0, 'success': 0}
   aggregate_result_losses_dict = collections.defaultdict(list)
@@ -326,6 +330,13 @@ def _run_checkpoint_once(tensor_dict,
 
       for key, value in iter(aggregate_result_losses_dict.items()):
         all_evaluator_metrics['Losses/' + key] = np.mean(value)
+  global BEST_RES
+  if save_graph and all_evaluator_metrics["PascalBoxes_Precision/mAP@0.5IOU"] > BEST_RES:
+    BEST_RES = all_evaluator_metrics["PascalBoxes_Precision/mAP@0.5IOU"]
+    saver = tf.train.Saver()
+    saver.save(sess, os.path.join(save_graph_dir, ("eval_global_mAP_{:.4f}_step_{:d}.ckpt").format(BEST_RES, global_step)))
+    # tf.train.write_graph(sess.graph_def, save_graph_dir, ("eval_global_step_{:d}_mAP_{:.4f}.pb").format(global_step, BEST_RES), as_text=False)
+    # tf.train.write_graph(sess.graph_def, save_graph_dir, ('eval_global_step_' + str(global_step) + '_mAP_{:.2f}' + '.pb').format(BEST_RES), as_text=False)
   sess.close()
   return (global_step, all_evaluator_metrics)
 

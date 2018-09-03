@@ -45,6 +45,7 @@ Example usage:
 """
 import functools
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import tensorflow as tf
 
 from object_detection import evaluator

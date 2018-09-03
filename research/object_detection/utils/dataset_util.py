@@ -129,10 +129,14 @@ def read_dataset(file_read_func, decode_func, input_files, config):
 
   filename_dataset = filename_dataset.repeat(config.num_epochs or None)
 
-  records_dataset = filename_dataset.apply(
-      tf.contrib.data.parallel_interleave(
-          file_read_func, cycle_length=config.num_readers,
-          block_length=config.read_block_length, sloppy=True))
+  if hasattr(tf.contrib.data, "parallel_interleave"):
+    records_dataset = filename_dataset.apply(
+        tf.contrib.data.parallel_interleave(
+            file_read_func, cycle_length=config.num_readers,
+            block_length=config.read_block_length, sloppy=True))
+  else:
+    records_dataset = filename_dataset.interleave(file_read_func, cycle_length=config.num_readers,
+            block_length=config.read_block_length)   
   if config.shuffle:
     records_dataset.shuffle(config.shuffle_buffer_size)
   tensor_dataset = records_dataset.map(

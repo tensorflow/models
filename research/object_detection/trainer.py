@@ -20,7 +20,8 @@ DetectionModel.
 """
 
 import functools
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import tensorflow as tf
 
 from object_detection.builders import optimizer_builder
@@ -358,7 +359,8 @@ def train(create_tensor_dict_fn,
     # Save checkpoints regularly.
     keep_checkpoint_every_n_hours = train_config.keep_checkpoint_every_n_hours
     saver = tf.train.Saver(
-        keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours)
+        keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours,
+        max_to_keep=20)
 
     # Create ops required to initialize the model from a given checkpoint.
     init_fn = None
@@ -395,5 +397,6 @@ def train(create_tensor_dict_fn,
         number_of_steps=(
             train_config.num_steps if train_config.num_steps else None),
         save_summaries_secs=120,
+        save_interval_secs=120,
         sync_optimizer=sync_optimizer,
         saver=saver)
