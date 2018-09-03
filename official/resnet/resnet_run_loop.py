@@ -511,7 +511,7 @@ def resnet_main(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=num_epochs,
         num_gpus=flags_core.get_num_gpus(flags_obj),
-        dtype=flags_core.get_tf_dtype(flags_obj))
+        dtype=flags_core.get_tf_dtype(flags_obj)),
         datasets_num_private_threads=flags_obj.datasets_num_private_threads,
         num_parallel_batches=flags_obj.num_parallel_calls
         )
