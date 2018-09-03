@@ -574,7 +574,7 @@ def resnet_main(
 
 def define_resnet_flags(resnet_size_choices=None):
   """Add flags and validators for ResNet."""
-  flags_core.define_base(eval_only=True)
+  flags_core.define_base()
   flags_core.define_performance()
   flags_core.define_image()
   flags_core.define_benchmark()
