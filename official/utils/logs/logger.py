@@ -291,12 +291,11 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
          RUN_STATUS_RUNNING))
 
   def on_finish(self, status):
-    thread.start_new_thread(
-        self._bigquery_uploader.update_run_status,
-        (self._bigquery_data_set,
-         self._bigquery_run_status_table,
-         self._run_id,
-         status))
+    self._bigquery_uploader.update_run_status(
+        self._bigquery_data_set,
+        self._bigquery_run_status_table,
+        self._run_id,
+        status)
 
 
 def _gather_run_info(model_name, dataset_name, run_params, test_id):
