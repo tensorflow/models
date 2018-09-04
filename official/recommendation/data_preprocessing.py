@@ -50,7 +50,7 @@ class NCFDataset(object):
   """Container for training and testing data."""
 
   def __init__(self, user_map, item_map, num_data_readers, cache_paths,
-               num_train_positives):
+               num_train_positives, deterministic=False):
     # type: (dict, dict, int, rconst.Paths) -> None
     """Assign key values for recommendation dataset.
 
@@ -61,6 +61,8 @@ class NCFDataset(object):
       cache_paths: Object containing locations for various cache files.
       num_train_positives: The number of positive training examples in the
         dataset.
+      deterministic: Operations should use deterministic, order preserving
+        methods, even at the cost of performance.
     """
 
     self.user_map = {int(k): int(v) for k, v in user_map.items()}
@@ -70,6 +72,7 @@ class NCFDataset(object):
     self.num_data_readers = num_data_readers
     self.cache_paths = cache_paths
     self.num_train_positives = num_train_positives
+    self.deterministic = deterministic
 
 
 def _filter_index_sort(raw_rating_path, match_mlperf):
@@ -340,7 +343,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
     pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def construct_cache(dataset, data_dir, num_data_readers, match_mlperf):
+def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
+                    deterministic):
   # type: (str, str, int, bool) -> NCFDataset
   """Load and digest data CSV into a usable form.
 
@@ -377,7 +381,8 @@ def construct_cache(dataset, data_dir, num_data_readers, match_mlperf):
   ncf_dataset = NCFDataset(user_map=user_map, item_map=item_map,
                            num_data_readers=num_data_readers,
                            cache_paths=cache_paths,
-                           num_train_positives=len(df) - len(user_map))
+                           num_train_positives=len(df) - len(user_map),
+                           deterministic=deterministic)
 
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
@@ -403,13 +408,14 @@ def _shutdown(proc):
 
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                          num_data_readers=None, num_neg=4, epochs_per_cycle=1,
-                         match_mlperf=False):
+                         match_mlperf=False, deterministic=False):
   """Preprocess data and start negative generation subprocess."""
 
   tf.logging.info("Beginning data preprocessing.")
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
                                 num_data_readers=num_data_readers,
-                                match_mlperf=match_mlperf)
+                                match_mlperf=match_mlperf,
+                                deterministic=deterministic)
 
   tf.logging.info("Creating training file subprocess.")
 
@@ -439,9 +445,10 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                               # guarantee batch size and significantly improves
                               # performance. (~5% increase in examples/sec on
                               # GPU, and needed for TPU XLA.)
-      "--redirect_logs", "True",
-      "--seed", str(int(stat_utils.random_int32()))
+      "--redirect_logs", "True"
   ]
+  if ncf_dataset.deterministic:
+    subproc_args.extend(["--seed", str(int(stat_utils.random_int32()))])
 
   tf.logging.info(
       "Generation subprocess command: {}".format(" ".join(subproc_args)))
@@ -556,7 +563,7 @@ def make_train_input_fn(ncf_dataset):
         tf.data.TFRecordDataset,
         cycle_length=4,
         block_length=100000,
-        sloppy=True,
+        sloppy=not ncf_dataset.deterministic,
         prefetch_input_elements=4,
     )
 
