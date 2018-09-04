@@ -348,7 +348,13 @@ def _generation_loop(
   log_msg("Signaling that I am alive.")
   with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
     f.write("Generation subproc has started.")
-  atexit.register(tf.gfile.Remove, filename=cache_paths.subproc_alive)
+
+  @atexit.register
+  def remove_alive_file():
+    try:
+      tf.gfile.Remove(cache_paths.subproc_alive)
+    except tf.errors.NotFoundError:
+      return  # Main thread has already deleted the entire cache dir.
 
   log_msg("Entering generation loop.")
   tf.gfile.MakeDirs(cache_paths.train_epoch_dir)

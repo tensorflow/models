@@ -247,6 +247,8 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
         zone=params["tpu_zone"],
         project=params["tpu_gcp_project"],
     )
+    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
+    tf.Session.reset(tpu_cluster_resolver.get_master())
 
     tpu_config = tf.contrib.tpu.TPUConfig(
         iterations_per_loop=100,
@@ -297,6 +299,9 @@ def run_ncf(_):
   if FLAGS.download_if_missing:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
+  if FLAGS.seed is not None:
+    np.random.seed(FLAGS.seed)
+
   num_gpus = flags_core.get_num_gpus(FLAGS)
   batch_size = distribution_utils.per_device_batch_size(
       int(FLAGS.batch_size), num_gpus)
@@ -313,6 +318,7 @@ def run_ncf(_):
 
   train_estimator, eval_estimator = construct_estimator(
       num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
+          "use_seed": FLAGS.seed is not None,
           "batch_size": batch_size,
           "learning_rate": FLAGS.learning_rate,
           "num_users": ncf_dataset.num_users,
@@ -495,6 +501,10 @@ def define_ncf_flags():
           "2. Use a different soring algorithm when sorting the input data, "
           "which performs better due to the fact the sorting algorithms are "
           "not stable."))
+
+  flags.DEFINE_integer(
+      name="seed", default=None, help=flags_core.help_wrap(
+          "This value will be used to seed both NumPy and TensorFlow."))
 
 
 if __name__ == "__main__":
