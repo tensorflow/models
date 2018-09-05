@@ -53,6 +53,7 @@ Alan L. Yuille (* equal contribution)
 """
 import tensorflow as tf
 from deeplab.core import feature_extractor
+from tensorflow.python.framework import dtypes
 
 slim = tf.contrib.slim
 
@@ -181,7 +182,7 @@ def predict_labels(images, model_options, image_pyramid=None):
         scales_to_logits[MERGED_LOGITS_SCOPE],
         tf.shape(images)[1:3],
         align_corners=True)
-    predictions[output] = tf.argmax(logits, 3)
+    predictions[output] = tf.argmax(logits, 3, output_type=dtypes.int32)
 
   return predictions
 
