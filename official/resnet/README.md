@@ -50,6 +50,25 @@ python cifar10_main.py
 
 Use `--data_dir` to specify the location of the CIFAR-10 data used in the previous step. There are more flag options as described in `cifar10_main.py`.
 
+## CIFAR-100
+
+### Setup
+
+You simply need to have the latest version of TensorFlow installed.
+Then download and extract the CIFAR-10 data from Alex's website, specifying the location with the `--data_dir` flag. Run the following:
+
+```
+python cifar100_download_and_extract.py
+```
+
+Then to train the model, run the following:
+
+```
+python cifar100_main.py
+```
+
+Use `--data_dir` to specify the location of the CIFAR-100 data used in the previous step. There are more flag options as described in `cifar100_main.py`.
+
 
 ## ImageNet
 
