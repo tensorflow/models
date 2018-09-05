@@ -45,7 +45,7 @@ from official.utils.misc import model_helpers
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_gpus=None,
-                           examples_per_epoch=None):
+                           examples_per_epoch=None, dtype=tf.float32):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -60,6 +60,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
     examples_per_epoch: The number of examples in an epoch.
+    dtype: Data type to use for images/features.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -92,7 +93,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # batch_size is almost always much greater than the number of CPU cores.
   dataset = dataset.apply(
       tf.contrib.data.map_and_batch(
-          lambda value: parse_record_fn(value, is_training),
+          lambda value: parse_record_fn(value, is_training, dtype),
           batch_size=batch_size,
           num_parallel_batches=1,
           drop_remainder=False))
@@ -248,8 +249,8 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   # Generate a summary node for the images
   tf.summary.image('images', features, max_outputs=6)
-  # TODO(tobyboyd): Add cast as part of input pipeline on cpu and remove.
-  features = tf.cast(features, dtype)
+  # Checks that features/images have same data type being used for calculations.
+  assert features.dtype == dtype
 
   model = model_class(resnet_size, data_format, resnet_version=resnet_version,
                       dtype=dtype)
@@ -454,14 +455,16 @@ def resnet_main(
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=num_epochs,
-        num_gpus=flags_core.get_num_gpus(flags_obj))
+        num_gpus=flags_core.get_num_gpus(flags_obj),
+        dtype=flags_core.get_tf_dtype(flags_obj))
 
   def input_fn_eval():
     return input_function(
         is_training=False, data_dir=flags_obj.data_dir,
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-        num_epochs=1)
+        num_epochs=1,
+        dtype=flags_core.get_tf_dtype(flags_obj))
 
   if flags_obj.eval_only or not flags_obj.train_epochs:
     # If --eval_only is set, perform a single loop with zero train epochs.
@@ -533,7 +536,7 @@ def define_resnet_flags(resnet_size_choices=None):
           'If not None initialize all the network except the final layer with '
           'these values'))
   flags.DEFINE_boolean(
-      name="eval_only", default=False,
+      name='eval_only', default=False,
       help=flags_core.help_wrap('Skip training and only perform evaluation on '
                                 'the latest checkpoint.'))
 
