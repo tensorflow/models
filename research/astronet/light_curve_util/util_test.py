@@ -253,6 +253,65 @@ class LightCurveUtilTest(absltest.TestCase):
         [120, 122, 124, 126, 128, 130, 132, 132, 132, 132], interp_spline[1])
     self.assertTrue(np.all(np.isnan(interp_spline[2])))
 
+  def testReshardArrays(self):
+    xs = [
+        np.array([1, 2, 3]),
+        np.array([4]),
+        np.array([5, 6, 7, 8, 9]),
+        np.array([]),
+    ]
+    ys = [
+        np.array([]),
+        np.array([10, 20]),
+        np.array([30, 40, 50, 60]),
+        np.array([70]),
+        np.array([80, 90]),
+    ]
+    reshard_xs = util.reshard_arrays(xs, ys)
+    self.assertEqual(5, len(reshard_xs))
+    np.testing.assert_array_equal([], reshard_xs[0])
+    np.testing.assert_array_equal([1, 2], reshard_xs[1])
+    np.testing.assert_array_equal([3, 4, 5, 6], reshard_xs[2])
+    np.testing.assert_array_equal([7], reshard_xs[3])
+    np.testing.assert_array_equal([8, 9], reshard_xs[4])
+
+    with self.assertRaisesRegexp(ValueError,
+                                 "xs and ys do not have the same total length"):
+      util.reshard_arrays(xs, [np.array([10, 20, 30]), np.array([40, 50])])
+
+  def testUniformCadenceLightCurve(self):
+    all_cadence_no = [
+        np.array([13]),
+        np.array([4, 5, 6]),
+        np.array([8, 9, 11, 12]),
+    ]
+    all_time = [
+        np.array([130]),
+        np.array([40, 50, 60]),
+        np.array([80, 90, 110, 120]),
+    ]
+    all_flux = [
+        np.array([1300]),
+        np.array([400, 500, 600]),
+        np.array([800, np.nan, 1100, 1200]),
+    ]
+    cadence_no, time, flux, mask = util.uniform_cadence_light_curve(
+        all_cadence_no, all_time, all_flux)
+    np.testing.assert_array_equal([4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+                                  cadence_no)
+    np.testing.assert_array_equal([40, 50, 60, 0, 80, 0, 0, 110, 120, 130],
+                                  time)
+    np.testing.assert_array_equal(
+        [400, 500, 600, 0, 800, 0, 0, 1100, 1200, 1300], flux)
+    np.testing.assert_array_equal([1, 1, 1, 0, 1, 0, 0, 1, 1, 1], mask)
+
+    # Add duplicate cadence number.
+    all_cadence_no.append(np.array([13, 14, 15]))
+    all_time.append(np.array([130, 140, 150]))
+    all_flux.append(np.array([1300, 1400, 1500]))
+    with self.assertRaisesRegexp(ValueError, "Duplicate cadence number"):
+      util.uniform_cadence_light_curve(all_cadence_no, all_time, all_flux)
+
   def testCountTransitPoints(self):
     time = np.concatenate([
         np.arange(0, 10, 0.1, dtype=np.float),

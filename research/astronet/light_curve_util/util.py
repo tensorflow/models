@@ -131,15 +131,15 @@ def remove_events(all_time,
   return output_time, output_flux
 
 
-def interpolate_missing_time(time, cadences=None, fill_value="extrapolate"):
+def interpolate_missing_time(time, cadence_no=None, fill_value="extrapolate"):
   """Interpolates missing (NaN or Inf) time values.
 
   Args:
     time: A numpy array of monotonically increasing values, with missing values
         denoted by NaN or Inf.
-    cadences: Optional numpy array of cadence indices corresponding to the time
-        values. If not provided, missing time values are assumed to be evenly
-        spaced between present time values.
+    cadence_no: Optional numpy array of cadence numbers corresponding to the
+        time values. If not provided, missing time values are assumed to be
+        evenly spaced between present time values.
     fill_value: Specifies how missing time values should be treated at the
         beginning and end of the array. See scipy.interpolate.interp1d.
 
@@ -150,8 +150,8 @@ def interpolate_missing_time(time, cadences=None, fill_value="extrapolate"):
   Raises:
     ValueError: If fewer than 2 values of time are finite.
   """
-  if cadences is None:
-    cadences = np.arange(len(time))
+  if cadence_no is None:
+    cadence_no = np.arange(len(time))
 
   is_finite = np.isfinite(time)
   num_finite = np.sum(is_finite)
@@ -161,14 +161,14 @@ def interpolate_missing_time(time, cadences=None, fill_value="extrapolate"):
         "len(time) = {} with {} finite values.".format(len(time), num_finite))
 
   interpolate_fn = scipy.interpolate.interp1d(
-      cadences[is_finite],
+      cadence_no[is_finite],
       time[is_finite],
       copy=False,
       bounds_error=False,
       fill_value=fill_value,
       assume_sorted=True)
 
-  return interpolate_fn(cadences)
+  return interpolate_fn(cadence_no)
 
 
 def interpolate_masked_spline(all_time, all_masked_time, all_masked_spline):
@@ -193,6 +193,78 @@ def interpolate_masked_spline(all_time, all_masked_time, all_masked_spline):
     else:
       interp_spline.append(np.array([np.nan] * len(time)))
   return interp_spline
+
+
+def reshard_arrays(xs, ys):
+  """Reshards arrays in xs to match the lengths of arrays in ys.
+
+  Args:
+    xs: List of 1d numpy arrays with the same total length as ys.
+    ys: List of 1d numpy arrays with the same total length as xs.
+
+  Returns:
+    A list of numpy arrays containing the same elements as xs, in the same
+    order, but with array lengths matching the pairwise array in ys.
+
+  Raises:
+    ValueError: If xs and ys do not have the same total length.
+  """
+  # Compute indices of boundaries between segments of ys, plus the end boundary.
+  boundaries = np.cumsum([len(y) for y in ys])
+  concat_x = np.concatenate(xs)
+  if len(concat_x) != boundaries[-1]:
+    raise ValueError(
+        "xs and ys do not have the same total length ({} vs. {}).".format(
+            len(concat_x), boundaries[-1]))
+  boundaries = boundaries[:-1]  # Remove exclusive end boundary.
+  return np.split(concat_x, boundaries)
+
+
+def uniform_cadence_light_curve(all_cadence_no, all_time, all_flux):
+  """Combines data into a single light curve with uniform cadence numbers.
+
+  Args:
+    all_cadence_no: A list of numpy arrays; the cadence numbers of the light
+      curve.
+    all_time: A list of numpy arrays; the time values of the light curve.
+    all_flux: A list of numpy arrays; the flux values of the light curve.
+
+  Returns:
+    cadence_no: numpy array; the cadence numbers of the light curve with no
+      gaps. It starts and ends at the minimum and maximum cadence numbers in the
+      input light curve, respectively.
+    time: numpy array; the time values of the light curve. Missing data points
+      have value zero and correspond to a False value in the mask.
+    flux: numpy array; the time values of the light curve. Missing data points
+      have value zero and correspond to a False value in the mask.
+    mask: Boolean numpy array; False indicates missing data points, where
+      missing data points are those that have no corresponding cadence number in
+      the input or those where at least one of the cadence number, time value,
+      or flux value is NaN/Inf.
+
+  Raises:
+    ValueError: If there are duplicate cadence numbers in the input.
+  """
+  min_cadence_no = np.min([np.min(c) for c in all_cadence_no])
+  max_cadence_no = np.max([np.max(c) for c in all_cadence_no])
+
+  out_cadence_no = np.arange(
+      min_cadence_no, max_cadence_no + 1, dtype=all_cadence_no[0].dtype)
+  out_time = np.zeros_like(out_cadence_no, dtype=all_time[0].dtype)
+  out_flux = np.zeros_like(out_cadence_no, dtype=all_flux[0].dtype)
+  out_mask = np.zeros_like(out_cadence_no, dtype=np.bool)
+
+  for cadence_no, time, flux in zip(all_cadence_no, all_time, all_flux):
+    for c, t, f in zip(cadence_no, time, flux):
+      if np.isfinite(c) and np.isfinite(t) and np.isfinite(f):
+        i = int(c - min_cadence_no)
+        if out_mask[i]:
+          raise ValueError("Duplicate cadence number: {}".format(c))
+        out_time[i] = t
+        out_flux[i] = f
+        out_mask[i] = True
+
+  return out_cadence_no, out_time, out_flux, out_mask
 
 
 def count_transit_points(time, event):

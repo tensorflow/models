@@ -153,18 +153,18 @@ def scramble_light_curve(all_time, all_flux, all_quarters, scramble_type):
   """Scrambles a light curve according to a given scrambling procedure.
 
   Args:
-    all_time: List holding lists of time values (each interior list holds a
-        quarter of time data).
-    all_flux: List holding lists of flux values (each interior list holds a
-        quarter of flux data).
-    all_quarters: List of integers specifying which quarters were present in
-        the light curve (max is 18: Q0...Q17).
+    all_time: List holding arrays of time values, each containing a quarter of
+      time data.
+    all_flux: List holding arrays of flux values, each containing a quarter of
+      flux data.
+    all_quarters: List of integers specifying which quarters are present in
+      the light curve (max is 18: Q0...Q17).
     scramble_type: String specifying the scramble order, one of {'SCR1', 'SCR2',
-        'SCR3'}.
+      'SCR3'}.
 
   Returns:
     scr_flux: Scrambled flux values; the same list as the input flux in another
-        order.
+      order.
     scr_time: Time values, re-partitioned to match sizes of the scr_flux lists.
   """
   order = SIMULATED_DATA_SCRAMBLE_ORDERS[scramble_type]
@@ -174,12 +174,7 @@ def scramble_light_curve(all_time, all_flux, all_quarters, scramble_type):
     if quarter in all_quarters:
       scr_flux.append(all_flux[all_quarters.index(quarter)])
 
-  # Reapportion time lists to match sizes of respective flux lists.
-  concat_time = np.concatenate(all_time)
-  scr_time = []
-  for flux in scr_flux:
-    time, concat_time = np.split(concat_time, [len(flux)])
-    scr_time.append(time)
+  scr_time = util.reshard_arrays(all_time, scr_flux)
 
   return scr_time, scr_flux
 
@@ -197,13 +192,12 @@ def read_kepler_light_curve(filenames,
       (pg 9: https://exoplanetarchive.ipac.caltech.edu/docs/KSCI-19114-002.pdf).
     interpolate_missing_time: Whether to interpolate missing (NaN) time values.
       This should only affect the output if scramble_type is specified (NaN time
-      values typically come with NaN flux values, which are removed anyway,
-      but scrambing decouples NaN time values from NaN flux values).
+      values typically come with NaN flux values, which are removed anyway, but
+      scrambing decouples NaN time values from NaN flux values).
 
   Returns:
     all_time: A list of numpy arrays; the time values of the light curve.
-    all_flux: A list of numpy arrays corresponding to the time arrays in
-        all_time.
+    all_flux: A list of numpy arrays; the flux values of the light curve.
   """
   all_time = []
   all_flux = []
@@ -221,8 +215,7 @@ def read_kepler_light_curve(filenames,
 
     # Possibly interpolate missing time values.
     if interpolate_missing_time:
-      cadences = light_curve.CADENCENO
-      time = util.interpolate_missing_time(time, cadences)
+      time = util.interpolate_missing_time(time, light_curve.CADENCENO)
 
     all_time.append(time)
     all_flux.append(flux)
