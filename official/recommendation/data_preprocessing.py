@@ -502,6 +502,12 @@ def make_train_input_fn(ncf_dataset):
   # type: (NCFDataset) -> (typing.Callable, str, int)
   """Construct training input_fn for the current epoch."""
 
+  if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
+    # The generation subprocess must have been alive at some point, because we
+    # earlier checked that the subproc_alive file existed.
+    raise ValueError("Generation subprocess unexpectedly died. Data will not "
+                     "be available; exiting to avoid waiting forever.")
+
   train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
   while not tf.gfile.Exists(train_epoch_dir):
     tf.logging.info("Waiting for {} to exist.".format(train_epoch_dir))
