@@ -329,8 +329,7 @@ def _construct_eval_record(cache_paths, eval_batch_size):
           items=items[i, :]
       )
       writer.write(batch_bytes)
-  tf.gfile.Copy(intermediate_fpath, dest_fpath)
-  tf.gfile.Remove(intermediate_fpath)
+  tf.gfile.Rename(intermediate_fpath, dest_fpath)
   log_msg("Eval TFRecords file successfully constructed.")
 
 
