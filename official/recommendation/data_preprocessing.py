@@ -452,6 +452,14 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   atexit.register(tf.gfile.DeleteRecursively,
                   ncf_dataset.cache_paths.cache_root)
 
+  for _ in range(15):
+    if tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
+      break
+    time.sleep(1)  # allow `alive` file to be written
+  if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
+    raise ValueError("Generation subprocess did not start correctly. Data will "
+                     "not be available; exiting to avoid waiting forever.")
+
   return ncf_dataset
 
 
@@ -493,10 +501,6 @@ def make_deserialize(params, batch_size, training=False):
 def make_train_input_fn(ncf_dataset):
   # type: (NCFDataset) -> (typing.Callable, str, int)
   """Construct training input_fn for the current epoch."""
-
-  if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
-    raise ValueError("Generation subprocess did not start correctly. Data will "
-                     "not be available; exiting to avoid waiting forever.")
 
   train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
   while not tf.gfile.Exists(train_epoch_dir):
