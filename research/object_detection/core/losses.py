@@ -560,8 +560,11 @@ class HardExampleMiner(object):
         num_hard_examples = self._num_hard_examples
       else:
         num_hard_examples = detection_boxlist.num_boxes()
-      selected_indices = tf.image.non_max_suppression(
-          box_locations, image_losses, num_hard_examples, self._iou_threshold)
+      if self._iou_threshold < 1.0:
+        selected_indices = tf.image.non_max_suppression(
+            box_locations, image_losses, num_hard_examples, self._iou_threshold)
+      else:
+        _, selected_indices = tf.nn.top_k(image_losses, num_hard_examples)
       if self._max_negatives_per_positive is not None and match:
         (selected_indices, num_positives,
          num_negatives) = self._subsample_selection_to_desired_neg_pos_ratio(
