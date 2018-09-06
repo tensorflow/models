@@ -307,6 +307,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
           category_name = unicode(category_name, 'utf-8')
         except TypeError:
           pass
+        except NameError:
+          pass
         category_name = unicodedata.normalize(
             'NFKD', category_name).encode('ascii', 'ignore')
         display_name = (
