@@ -67,8 +67,13 @@ def get_filenames(is_training, data_dir):
     return [os.path.join(data_dir, 'test_batch.bin')]
 
 
+<<<<<<< HEAD:official/resnet/cifar_main.py
 def parse_record(raw_record, is_training):
   """Parse CIFAR image and label from a raw record."""
+=======
+def parse_record(raw_record, is_training, dtype):
+  """Parse CIFAR-10 image and label from a raw record."""
+>>>>>>> 7b3046768d2d6ea3f306b6ee7b62c02c9ca128a1:official/resnet/cifar10_main.py
   # Convert bytes to a vector of uint8 that is record_bytes long.
   record_vector = tf.decode_raw(raw_record, tf.uint8)
 
@@ -90,6 +95,7 @@ def parse_record(raw_record, is_training):
   image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
 
   image = preprocess_image(image, is_training)
+  image = tf.cast(image, dtype)
 
   return image, label
 
@@ -112,8 +118,14 @@ def preprocess_image(image, is_training):
   return image
 
 
+<<<<<<< HEAD:official/resnet/cifar_main.py
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
   """Input_fn using the tf.data input pipeline for CIFAR dataset.
+=======
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
+             dtype=tf.float32):
+  """Input function which provides batches for train or eval.
+>>>>>>> 7b3046768d2d6ea3f306b6ee7b62c02c9ca128a1:official/resnet/cifar10_main.py
 
   Args:
     is_training: A boolean denoting whether the input is for training.
@@ -121,6 +133,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
+    dtype: Data type to use for images/features
 
   Returns:
     A dataset that can be used for iteration.
@@ -136,7 +149,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
       parse_record_fn=parse_record,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
-      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None
+      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
+      dtype=dtype
   )
 
 

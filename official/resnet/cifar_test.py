@@ -59,7 +59,11 @@ class BaseTest(tf.test.TestCase):
     fake_dataset = tf.data.FixedLengthRecordDataset(
         filename, cifar_main._RECORD_BYTES)  # pylint: disable=protected-access
     fake_dataset = fake_dataset.map(
+<<<<<<< HEAD:official/resnet/cifar_test.py
         lambda val: cifar_main.parse_record(val, False))
+=======
+        lambda val: cifar10_main.parse_record(val, False, tf.float32))
+>>>>>>> 7b3046768d2d6ea3f306b6ee7b62c02c9ca128a1:official/resnet/cifar10_test.py
     image, label = fake_dataset.make_one_shot_iterator().get_next()
 
     self.assertAllEqual(label.shape, ())

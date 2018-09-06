@@ -115,11 +115,6 @@ class BaseTest(tf.test.TestCase):
         batch_size=BATCH_SIZE, eval_batch_size=BATCH_SIZE, num_data_readers=2,
         num_neg=NUM_NEG)
 
-    for _ in range(30):
-      if tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
-        break
-      time.sleep(1)  # allow `alive` file to be written
-
     g = tf.Graph()
     with g.as_default():
       input_fn, record_dir, batch_count = \
