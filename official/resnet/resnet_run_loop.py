@@ -536,7 +536,9 @@ def define_resnet_flags(resnet_size_choices=None):
       name="eval_only", default=False,
       help=flags_core.help_wrap('Skip training and only perform evaluation on '
                                 'the latest checkpoint.'))
-
+  flags.DEFINE_string(
+      name="dataset", default='cifar10',
+      help=flags_core.help_wrap('Dataset name'))
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
       help=flags_core.help_wrap('The size of the ResNet model to use.'))
