@@ -53,7 +53,6 @@ def get_filenames(is_training, data_dir):
     data_dir = os.path.join(data_dir, 'cifar-10-batches-bin')
   else:
     data_dir = os.path.join(data_dir, 'cifar-100-binary')
-  print (data_dir)
   assert os.path.exists(data_dir), (
       'Run cifar_download_and_extract.py first to download and extract the '
       'CIFAR data.')
