@@ -45,7 +45,7 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config.train_config.batch_size = 32
     pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
     pipeline_config.eval_config.num_examples = 20
-    pipeline_config.eval_input_reader.queue_capacity = 100
+    pipeline_config.eval_input_reader.add().queue_capacity = 100
 
     pipeline_config.Extensions[
         internal_pipeline_pb2.lstm_model].train_unroll_length = 5
@@ -62,7 +62,7 @@ class ConfigUtilTest(tf.test.TestCase):
                            configs["train_input_config"])
     self.assertProtoEquals(pipeline_config.eval_config, configs["eval_config"])
     self.assertProtoEquals(pipeline_config.eval_input_reader,
-                           configs["eval_input_config"])
+                           configs["eval_input_configs"])
     self.assertProtoEquals(
         pipeline_config.Extensions[internal_pipeline_pb2.lstm_model],
         configs["lstm_model"])
@@ -76,7 +76,7 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config.train_config.batch_size = 32
     pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
     pipeline_config.eval_config.num_examples = 20
-    pipeline_config.eval_input_reader.queue_capacity = 100
+    pipeline_config.eval_input_reader.add().queue_capacity = 100
 
     pipeline_config.Extensions[
         internal_pipeline_pb2.lstm_model].train_unroll_length = 5
