@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import itertools
 import tensorflow as tf
+
 from tensorflow.python.util import nest
+
 
 def map_nested(map_fn, nested):
   """Executes map_fn on every element in a (potentially) nested structure.
@@ -60,9 +63,31 @@ def tile_tensors(tensors, multiples):
       multiples [3, 4], multiples would be padded to [3, 4, 1, 1] before tiling.
   """
   def tile_fn(x):
-    return tf.tile(x, multiples + [1]*(x.shape.ndims - len(multiples)))
+    return tf.tile(x, multiples + [1] * (x.shape.ndims - len(multiples)))
 
   return map_nested(tile_fn, tensors)
+
+
+def where_tensors(condition, x_tensors, y_tensors):
+  """Performs a tf.where operation on a two sets of Tensors.
+
+  Args:
+    condition: The condition tensor to use for the where operation.
+    x_tensors: A potentially nested tuple or list of Tensors.
+    y_tensors: A potentially nested tuple or list of Tensors. Must have the
+    same structure as x_tensors.
+  Returns:
+    whered_tensors: A potentially nested tuple or list of Tensors with the
+      same structure as the 'tensors' input argument. Contains the result of
+      applying tf.where(condition, x, y) on each pair of elements in x_tensors
+      and y_tensors.
+  """
+  flat_x = nest.flatten(x_tensors)
+  flat_y = nest.flatten(y_tensors)
+  result = [tf.where(condition, x, y) for x, y in
+            itertools.izip(flat_x, flat_y)]
+
+  return nest.pack_sequence_as(x_tensors, result)
 
 
 def gather_tensors(tensors, indices):
@@ -79,20 +104,22 @@ def gather_tensors(tensors, indices):
   return map_nested(lambda x: tf.gather(x, indices), tensors)
 
 
-def tas_for_tensors(tensors, length):
+def tas_for_tensors(tensors, length, **kwargs):
   """Unstacks a set of Tensors into TensorArrays.
 
   Args:
     tensors: A potentially nested tuple or list of Tensors with length in the
       first dimension greater than or equal to the 'length' input argument.
     length: The desired length of the TensorArrays.
+    **kwargs: Keyword args for TensorArray constructor.
   Returns:
     tensorarrays: A potentially nested tuple or list of TensorArrays with the
       same structure as 'tensors'. Contains the result of unstacking each Tensor
       in 'tensors'.
   """
   def map_fn(x):
-    ta = tf.TensorArray(x.dtype, length, name=x.name.split(':')[0] + '_ta')
+    ta = tf.TensorArray(x.dtype, length,
+                        name=x.name.split(':')[0] + '_ta', **kwargs)
     return ta.unstack(x[:length, :])
   return map_nested(map_fn, tensors)
 

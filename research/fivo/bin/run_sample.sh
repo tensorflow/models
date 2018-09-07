@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2017 The TensorFlow Authors All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,18 +14,20 @@
 # limitations under the License.
 # ==============================================================================
 
-# An example of running training.
+# An example of sampling from the model.
 
 PIANOROLL_DIR=$HOME/pianorolls
 
 python run_fivo.py \
-  --mode=train \
-  --logdir=/tmp/fivo \
+  --mode=sample \
+  --alsologtostderr \
+  --logdir="/tmp/fivo" \
   --model=vrnn \
   --bound=fivo \
-  --summarize_every=100 \
   --batch_size=4 \
   --num_samples=4 \
-  --learning_rate=0.0001 \
+  --split=test \
   --dataset_path="$PIANOROLL_DIR/jsb.pkl" \
-  --dataset_type="pianoroll"
+  --dataset_type="pianoroll" \
+  --prefix_length=25 \
+  --sample_length=50
