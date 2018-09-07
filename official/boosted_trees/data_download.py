@@ -45,9 +45,9 @@ INPUT_FILE = "HIGGS.csv.gz"
 NPZ_FILE = "HIGGS.csv.gz.npz"  # numpy compressed file to contain "data" array.
 
 
-def _download_higgs_data_and_save_npz(data_dir):
+def _download_higgs_data_and_save_npz(data_dir, cache_data):
   """Download higgs data and store as a numpy compressed file."""
-  input_url = os.path.join(URL_ROOT, INPUT_FILE)
+  input_url = URL_ROOT + "/%s" % INPUT_FILE
   np_filename = os.path.join(data_dir, NPZ_FILE)
   if tf.gfile.Exists(np_filename):
     raise ValueError("data_dir already has the processed data file: {}".format(
@@ -56,8 +56,16 @@ def _download_higgs_data_and_save_npz(data_dir):
     tf.gfile.MkDir(data_dir)
   # 2.8 GB to download.
   try:
-    tf.logging.info("Data downloading...")
-    temp_filename, _ = urllib.request.urlretrieve(input_url)
+    if not cache_data:
+      tf.logging.info("Data downloading...")
+      temp_filename, _ = urllib.request.urlretrieve(input_url)
+    else:
+      temp_filename = os.path.join(data_dir, INPUT_FILE)
+      if not tf.gfile.Exists(temp_filename):
+        tf.logging.info("Data downloading...")
+        urllib.request.urlretrieve(input_url, filename=temp_filename)
+      else:
+        tf.logging.info("Data already exists")
     # Reading and parsing 11 million csv lines takes 2~3 minutes.
     tf.logging.info("Data processing... taking multiple minutes...")
     with gzip.open(temp_filename, "rb") as csv_file:
@@ -67,7 +75,8 @@ def _download_higgs_data_and_save_npz(data_dir):
           names=["c%02d" % i for i in range(29)]  # label + 28 features.
       ).as_matrix()
   finally:
-    tf.gfile.Remove(temp_filename)
+    if not cache_data:
+      tf.gfile.Remove(temp_filename)
 
   # Writing to temporary location then copy to the data_dir (0.8 GB).
   f = tempfile.NamedTemporaryFile()
@@ -79,7 +88,7 @@ def _download_higgs_data_and_save_npz(data_dir):
 def main(unused_argv):
   if not tf.gfile.Exists(FLAGS.data_dir):
     tf.gfile.MkDir(FLAGS.data_dir)
-  _download_higgs_data_and_save_npz(FLAGS.data_dir)
+  _download_higgs_data_and_save_npz(FLAGS.data_dir, FLAGS.cache_data)
 
 
 def define_data_download_flags():
@@ -88,6 +97,10 @@ def define_data_download_flags():
       name="data_dir", default="/tmp/higgs_data",
       help=flags_core.help_wrap(
           "Directory to download higgs dataset and store training/eval data."))
+  flags.DEFINE_boolean(
+      'cache_data', default=False,
+      help=flags_core.help_wrap(
+          "If true, don't delete downloaded data after processed"))
 
 
 if __name__ == "__main__":
