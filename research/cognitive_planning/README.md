@@ -58,6 +58,9 @@ git clone --depth 1 https://github.com/tensorflow/models.git
 ### Download ActiveVisionDataset 
 We used Active Vision Dataset (AVD) which can be downloaded from [here](http://cs.unc.edu/~ammirato/active_vision_dataset_website/). To make our code faster and reduce memory footprint, we created the AVD Minimal dataset. AVD Minimal consists of low resolution images from the original AVD dataset. In addition, we added annotations for target views, predicted object detections from pre-trained object detector on MS-COCO dataset, and predicted semantic segmentation from pre-trained model on NYU-v2 dataset. AVD minimal can be downloaded from [here](https://storage.googleapis.com/active-vision-dataset/AVD_Minimal.zip). Set `$AVD_DIR` as the path to the downloaded AVD Minimal.
 
+### TODO: Adding SunCG support
+The public release version does not support suncg at the moment but it can be added by inheriting from `envs/task_env.py` and overriding the necessary functions.
+
 
 ### ActiveVisionDataset Demo
 
