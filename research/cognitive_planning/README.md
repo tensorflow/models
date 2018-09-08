@@ -61,7 +61,7 @@ We used Active Vision Dataset (AVD) which can be downloaded from [here](http://c
 ### TODO: SUNCG Dataset
 Current version of the code does not support SUNCG dataset. It can be added by
 implementing necessary functions of `envs/task_env.py` using the public
-releaseed code of SUNCG environment such as
+released code of SUNCG environment such as
 [House3d](https://github.com/facebookresearch/House3D) and
 [MINOS](https://github.com/minosworld/minos). 
 
@@ -79,7 +79,7 @@ python viz_active_vision_dataset_main -- \
 ## 3. Training
 Right now, the released version only supports training and inference using the real data from Active Vision Dataset.
 
-When RGB image modality is used Resnet the embedding is initialized  is used To start the training download pre-trained Resnet50 check point in the working directory ./resnet_v2_50_checkpoint/resnet_v2_50.ckpt
+When RGB image modality is used, the Resnet embeddings are initialized. To start the training download pre-trained Resnet50 check point in the working directory ./resnet_v2_50_checkpoint/resnet_v2_50.ckpt
 
 ```
 wget http://download.tensorflow.org/models/resnet_v2_50_2017_04_14.tar.gz
