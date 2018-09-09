@@ -17,8 +17,8 @@
 See model.py for more details and usage.
 """
 
-import six
 import math
+import six
 import tensorflow as tf
 from deeplab import common
 from deeplab import model

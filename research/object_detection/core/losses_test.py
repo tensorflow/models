@@ -224,7 +224,7 @@ class SigmoidFocalClassificationLossTest(tf.test.TestCase):
 
   def testEasyExamplesProduceSmallLossComparedToSigmoidXEntropy(self):
     prediction_tensor = tf.constant([[[_logit(0.97)],
-                                      [_logit(0.90)],
+                                      [_logit(0.91)],
                                       [_logit(0.73)],
                                       [_logit(0.27)],
                                       [_logit(0.09)],
@@ -571,6 +571,111 @@ class WeightedSoftmaxClassificationLossTest(tf.test.TestCase):
     uniform_distribution_loss = - math.log(.33333333333)
     exp_loss = np.matrix([[uniform_distribution_loss] * 4,
                           [uniform_distribution_loss] * 4])
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, exp_loss)
+
+
+class WeightedSoftmaxClassificationAgainstLogitsLossTest(tf.test.TestCase):
+
+  def testReturnsCorrectLoss(self):
+    prediction_tensor = tf.constant([[[-100, 100, -100],
+                                      [100, -100, -100],
+                                      [0, 0, -100],
+                                      [-100, -100, 100]],
+                                     [[-100, 0, 0],
+                                      [-100, 100, -100],
+                                      [-100, 100, -100],
+                                      [100, -100, -100]]], tf.float32)
+
+    target_tensor = tf.constant([[[-100, 100, -100],
+                                  [100, -100, -100],
+                                  [100, -100, -100],
+                                  [-100, -100, 100]],
+                                 [[-100, -100, 100],
+                                  [-100, 100, -100],
+                                  [-100, 100, -100],
+                                  [100, -100, -100]]], tf.float32)
+    weights = tf.constant([[1, 1, .5, 1],
+                           [1, 1, 1, 1]], tf.float32)
+    loss_op = losses.WeightedSoftmaxClassificationAgainstLogitsLoss()
+    loss = loss_op(prediction_tensor, target_tensor, weights=weights)
+    loss = tf.reduce_sum(loss)
+
+    exp_loss = - 1.5 * math.log(.5)
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, exp_loss)
+
+  def testReturnsCorrectAnchorWiseLoss(self):
+    prediction_tensor = tf.constant([[[-100, 100, -100],
+                                      [100, -100, -100],
+                                      [0, 0, -100],
+                                      [-100, -100, 100]],
+                                     [[-100, 0, 0],
+                                      [-100, 100, -100],
+                                      [-100, 100, -100],
+                                      [100, -100, -100]]], tf.float32)
+    target_tensor = tf.constant([[[-100, 100, -100],
+                                  [100, -100, -100],
+                                  [100, -100, -100],
+                                  [-100, -100, 100]],
+                                 [[-100, -100, 100],
+                                  [-100, 100, -100],
+                                  [-100, 100, -100],
+                                  [100, -100, -100]]], tf.float32)
+    weights = tf.constant([[1, 1, .5, 1],
+                           [1, 1, 1, 0]], tf.float32)
+    loss_op = losses.WeightedSoftmaxClassificationAgainstLogitsLoss()
+    loss = loss_op(prediction_tensor, target_tensor, weights=weights)
+
+    exp_loss = np.matrix([[0, 0, - 0.5 * math.log(.5), 0],
+                          [-math.log(.5), 0, 0, 0]])
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, exp_loss)
+
+  def testReturnsCorrectAnchorWiseLossWithLogitScaleSetting(self):
+    logit_scale = 100.
+    prediction_tensor = tf.constant([[[-100, 100, -100],
+                                      [100, -100, -100],
+                                      [0, 0, -100],
+                                      [-100, -100, 100]],
+                                     [[-100, 0, 0],
+                                      [-100, 100, -100],
+                                      [-100, 100, -100],
+                                      [100, -100, -100]]], tf.float32)
+    target_tensor = tf.constant([[[-100, 100, -100],
+                                  [100, -100, -100],
+                                  [0, 0, -100],
+                                  [-100, -100, 100]],
+                                 [[-100, 0, 0],
+                                  [-100, 100, -100],
+                                  [-100, 100, -100],
+                                  [100, -100, -100]]], tf.float32)
+    weights = tf.constant([[1, 1, .5, 1],
+                           [1, 1, 1, 0]], tf.float32)
+    loss_op = losses.WeightedSoftmaxClassificationAgainstLogitsLoss(
+        logit_scale=logit_scale)
+    loss = loss_op(prediction_tensor, target_tensor, weights=weights)
+
+    # find softmax of the two prediction types above
+    softmax_pred1 = [np.exp(-1), np.exp(-1), np.exp(1)]
+    softmax_pred1 /= sum(softmax_pred1)
+    softmax_pred2 = [np.exp(0), np.exp(0), np.exp(-1)]
+    softmax_pred2 /= sum(softmax_pred2)
+
+    # compute the expected cross entropy for perfect matches
+    exp_entropy1 = sum(
+        [-x*np.log(x) for x in softmax_pred1])
+    exp_entropy2 = sum(
+        [-x*np.log(x) for x in softmax_pred2])
+
+    # weighted expected losses
+    exp_loss = np.matrix(
+        [[exp_entropy1, exp_entropy1, exp_entropy2*.5, exp_entropy1],
+         [exp_entropy2, exp_entropy1, exp_entropy1, 0.]])
+
     with self.test_session() as sess:
       loss_output = sess.run(loss)
       self.assertAllClose(loss_output, exp_loss)

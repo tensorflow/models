@@ -20,7 +20,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
+from official.utils.logs import logger
 
 
 class ExamplesPerSecondHook(tf.train.SessionRunHook):
@@ -36,7 +38,8 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
                batch_size,
                every_n_steps=None,
                every_n_secs=None,
-               warm_steps=0):
+               warm_steps=0,
+               metric_logger=None):
     """Initializer for ExamplesPerSecondHook.
 
     Args:
@@ -48,6 +51,9 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
       warm_steps: The number of steps to be skipped before logging and running
         average calculation. warm_steps steps refers to global steps across all
         workers, not on each worker
+      metric_logger: instance of `BenchmarkLogger`, the benchmark logger that
+          hook should use to write the log. If None, BaseBenchmarkLogger will
+          be used.
 
     Raises:
       ValueError: if neither `every_n_steps` or `every_n_secs` is set, or
@@ -55,8 +61,10 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
     """
 
     if (every_n_steps is None) == (every_n_secs is None):
-      raise ValueError('exactly one of every_n_steps'
-                       ' and every_n_secs should be provided.')
+      raise ValueError("exactly one of every_n_steps"
+                       " and every_n_secs should be provided.")
+
+    self._logger = metric_logger or logger.BaseBenchmarkLogger()
 
     self._timer = tf.train.SecondOrStepTimer(
         every_steps=every_n_steps, every_secs=every_n_secs)
@@ -71,7 +79,7 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
     self._global_step_tensor = tf.train.get_global_step()
     if self._global_step_tensor is None:
       raise RuntimeError(
-          'Global step should be created to use StepCounterHook.')
+          "Global step should be created to use StepCounterHook.")
 
   def before_run(self, run_context):  # pylint: disable=unused-argument
     """Called before each call to run().
@@ -109,7 +117,11 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
         # and training time per batch
         current_examples_per_sec = self._batch_size * (
             elapsed_steps / elapsed_time)
-        # Current examples/sec followed by average examples/sec
-        tf.logging.info('Batch [%g]:  current exp/sec = %g, average exp/sec = '
-                        '%g', self._total_steps, current_examples_per_sec,
-                        average_examples_per_sec)
+
+        self._logger.log_metric(
+            "average_examples_per_sec", average_examples_per_sec,
+            global_step=global_step)
+
+        self._logger.log_metric(
+            "current_examples_per_sec", current_examples_per_sec,
+            global_step=global_step)

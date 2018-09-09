@@ -42,3 +42,17 @@ py_library(
         "//astronet/ops:training",
     ],
 )
+
+py_library(
+    name = "example_util",
+    srcs = ["example_util.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_test(
+    name = "example_util_test",
+    size = "small",
+    srcs = ["example_util_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [":example_util"],
+)

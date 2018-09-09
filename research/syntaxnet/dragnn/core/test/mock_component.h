@@ -22,6 +22,7 @@
 #include "dragnn/core/index_translator.h"
 #include "dragnn/core/interfaces/component.h"
 #include "dragnn/core/interfaces/transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "dragnn/protos/spec.pb.h"
 #include "syntaxnet/base.h"
@@ -64,9 +65,15 @@ class MockComponent : public Component {
                     int output_array_size,
                     const vector<const float *> &per_channel_embeddings,
                     float *embedding_output));
+  MOCK_METHOD5(BulkEmbedDenseFixedFeatures,
+               void(const vector<const float *> &per_channel_embeddings,
+                    float *embedding_output, int embedding_output_size,
+                    int32 *offset_array_output, int offset_array_size));
+  MOCK_CONST_METHOD0(BulkDenseFeatureSize, int());
   MOCK_CONST_METHOD1(GetRawLinkFeatures,
                      std::vector<LinkFeatures>(int channel_id));
-  MOCK_CONST_METHOD0(GetOracleLabels, std::vector<std::vector<int>>());
+  MOCK_CONST_METHOD0(GetOracleLabels,
+                     std::vector<std::vector<std::vector<Label>>>());
   MOCK_METHOD0(ResetComponent, void());
   MOCK_METHOD1(GetStepLookupFunction,
                std::function<int(int, int, int)>(const string &method));

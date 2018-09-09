@@ -248,7 +248,7 @@ def _bottleneck_block_v1(inputs, filters, training, projection_shortcut,
 
 def _bottleneck_block_v2(inputs, filters, training, projection_shortcut,
                          strides, data_format):
-  """A single block for ResNet v2, without a bottleneck.
+  """A single block for ResNet v2, with a bottleneck.
 
   Similar to _building_block_v2(), except using the "bottleneck" blocks
   described in:
@@ -353,8 +353,8 @@ class Model(object):
   def __init__(self, resnet_size, bottleneck, num_classes, num_filters,
                kernel_size,
                conv_stride, first_pool_size, first_pool_stride,
-               second_pool_size, second_pool_stride, block_sizes, block_strides,
-               final_size, version=DEFAULT_VERSION, data_format=None,
+               block_sizes, block_strides,
+               final_size, resnet_version=DEFAULT_VERSION, data_format=None,
                dtype=DEFAULT_DTYPE):
     """Creates a model for classifying an image.
 
@@ -371,16 +371,14 @@ class Model(object):
         If none, the first pooling layer is skipped.
       first_pool_stride: stride size for the first pooling layer. Not used
         if first_pool_size is None.
-      second_pool_size: Pool size to be used for the second pooling layer.
-      second_pool_stride: stride size for the final pooling layer
       block_sizes: A list containing n values, where n is the number of sets of
         block layers desired. Each value should be the number of blocks in the
         i-th set.
       block_strides: List of integers representing the desired stride size for
         each of the sets of block layers. Should be same length as block_sizes.
       final_size: The expected size of the model after the second pooling.
-      version: Integer representing which version of the ResNet network to use.
-        See README for details. Valid values: [1, 2]
+      resnet_version: Integer representing which version of the ResNet network
+        to use. See README for details. Valid values: [1, 2]
       data_format: Input format ('channels_last', 'channels_first', or None).
         If set to None, the format is dependent on whether a GPU is available.
       dtype: The TensorFlow dtype to use for calculations. If not specified
@@ -395,19 +393,19 @@ class Model(object):
       data_format = (
           'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
 
-    self.resnet_version = version
-    if version not in (1, 2):
+    self.resnet_version = resnet_version
+    if resnet_version not in (1, 2):
       raise ValueError(
           'Resnet version should be 1 or 2. See README for citations.')
 
     self.bottleneck = bottleneck
     if bottleneck:
-      if version == 1:
+      if resnet_version == 1:
         self.block_fn = _bottleneck_block_v1
       else:
         self.block_fn = _bottleneck_block_v2
     else:
-      if version == 1:
+      if resnet_version == 1:
         self.block_fn = _building_block_v1
       else:
         self.block_fn = _building_block_v2
@@ -422,12 +420,11 @@ class Model(object):
     self.conv_stride = conv_stride
     self.first_pool_size = first_pool_size
     self.first_pool_stride = first_pool_stride
-    self.second_pool_size = second_pool_size
-    self.second_pool_stride = second_pool_stride
     self.block_sizes = block_sizes
     self.block_strides = block_strides
     self.final_size = final_size
     self.dtype = dtype
+    self.pre_activation = resnet_version == 2
 
   def _custom_dtype_getter(self, getter, name, shape=None, dtype=DEFAULT_DTYPE,
                            *args, **kwargs):
@@ -507,6 +504,14 @@ class Model(object):
           strides=self.conv_stride, data_format=self.data_format)
       inputs = tf.identity(inputs, 'initial_conv')
 
+      # We do not include batch normalization or activation functions in V2
+      # for the initial conv1 because the first ResNet unit will perform these
+      # for both the shortcut and non-shortcut paths as part of the first
+      # block's projection. Cf. Appendix of [2].
+      if self.resnet_version == 1:
+        inputs = batch_norm(inputs, training, self.data_format)
+        inputs = tf.nn.relu(inputs)
+
       if self.first_pool_size:
         inputs = tf.layers.max_pooling2d(
             inputs=inputs, pool_size=self.first_pool_size,
@@ -522,8 +527,11 @@ class Model(object):
             strides=self.block_strides[i], training=training,
             name='block_layer{}'.format(i + 1), data_format=self.data_format)
 
-      inputs = batch_norm(inputs, training, self.data_format)
-      inputs = tf.nn.relu(inputs)
+      # Only apply the BN and ReLU for model that does pre_activation in each
+      # building/bottleneck block, eg resnet V2.
+      if self.pre_activation:
+        inputs = batch_norm(inputs, training, self.data_format)
+        inputs = tf.nn.relu(inputs)
 
       # The current top layer has shape
       # `batch_size x pool_size x pool_size x final_size`.

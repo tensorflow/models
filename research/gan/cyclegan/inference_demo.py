@@ -21,6 +21,8 @@ from __future__ import print_function
 import os
 
 
+from absl import app
+from absl import flags
 import numpy as np
 import PIL
 import tensorflow as tf
@@ -28,7 +30,6 @@ import tensorflow as tf
 import data_provider
 import networks
 
-flags = tf.flags
 tfgan = tf.contrib.gan
 
 flags.DEFINE_string('checkpoint_path', '',
@@ -147,4 +148,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run()

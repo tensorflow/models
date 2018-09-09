@@ -31,15 +31,15 @@ import sgf_wrapper
 
 def time_recommendation(move_num, seconds_per_move=5, time_limit=15*60,
                         decay_factor=0.98):
-  """
-  Given current move number and "desired" seconds per move,
-  return how much time should actually be used. To be used specifically
-  for CGOS time controls, which are absolute 15 minute time.
+  """Compute the time can be used."""
 
-  The strategy is to spend the maximum time possible using seconds_per_move,
-  and then switch to an exponentially decaying time usage, calibrated so that
-  we have enough time for an infinite number of moves.
-  """
+  # Given current move number and "desired" seconds per move,
+  # return how much time should actually be used. To be used specifically
+  # for CGOS time controls, which are absolute 15 minute time.
+
+  # The strategy is to spend the maximum time possible using seconds_per_move,
+  # and then switch to an exponentially decaying time usage, calibrated so that
+  # we have enough time for an infinite number of moves.
 
   # divide by two since you only play half the moves in a game.
   player_move_num = move_num / 2
@@ -69,6 +69,7 @@ def _get_temperature_cutoff(board_size):
 
 
 class MCTSPlayerMixin(object):
+
   # If 'simulations_per_move' is nonzero, it will perform that many reads
   # before playing. Otherwise, it uses 'seconds_per_move' of wall time'
   def __init__(self, board_size, network, seconds_per_move=5,
@@ -92,7 +93,6 @@ class MCTSPlayerMixin(object):
     self.result = 0
     self.result_string = None
     self.resign_threshold = -abs(resign_threshold)
-    super(MCTSPlayerMixin, self).__init__(board_size)
 
   def initialize_game(self, position=None):
     if position is None:
@@ -105,11 +105,10 @@ class MCTSPlayerMixin(object):
     self.qs = []
 
   def suggest_move(self, position):
-    """ Used for playing a single game.
+    """ Used for playing a single game."""
+    # For parallel play, use initialize_move, select_leaf,
+    # incorporate_results, and pick_move
 
-    For parallel play, use initialize_move, select_leaf,
-    incorporate_results, and pick_move
-    """
     start = time.time()
 
     if self.simulations_per_move == 0:
@@ -120,7 +119,7 @@ class MCTSPlayerMixin(object):
       while self.root.N < current_readouts + self.simulations_per_move:
         self.tree_search()
       if self.verbosity > 0:
-        print("%d: Searched %d times in %s seconds\n\n" % (
+        print('%d: Searched %d times in %s seconds\n\n' % (
             position.n, self.simulations_per_move, time.time() - start),
               file=sys.stderr)
 
@@ -134,13 +133,13 @@ class MCTSPlayerMixin(object):
     return self.pick_move()
 
   def play_move(self, c):
-    """
-    Notable side effects:
-      - finalizes the probability distribution according to
-      this roots visit counts into the class' running tally, `searches_pi`
-      - Makes the node associated with this move the root, for future
-      `inject_noise` calls.
-    """
+    """Play a move."""
+
+    # Notable side effects:
+    #   - finalizes the probability distribution according to
+    #   this roots visit counts into the class' running tally, `searches_pi`
+    #   - Makes the node associated with this move the root, for future
+    #   `inject_noise` calls.
     if not self.two_player_mode:
       self.searches_pi.append(
           self.root.children_as_pi(self.root.position.n < self.temp_threshold))
@@ -155,7 +154,8 @@ class MCTSPlayerMixin(object):
     """Picks a move to play, based on MCTS readout statistics.
 
     Highest N is most robust indicator. In the early stage of the game, pick
-    a move weighted by visit count; later on, pick the absolute max."""
+    a move weighted by visit count; later on, pick the absolute max.
+    """
     if self.root.position.n > self.temp_threshold:
       fcoord = np.argmax(self.root.child_N)
     else:
@@ -191,20 +191,20 @@ class MCTSPlayerMixin(object):
         leaf.incorporate_results(move_prob, value, up_to=self.root)
 
   def show_path_to_root(self, node):
-    MAX_DEPTH = (self.board_size ** 2) * 1.4  # 505 moves for 19x19, 113 for 9x9
+    max_depth = (self.board_size ** 2) * 1.4  # 505 moves for 19x19, 113 for 9x9
     pos = node.position
     diff = node.position.n - self.root.position.n
-    if len(pos.recent) == 0:
+    if pos.recent is None:
       return
 
     def fmt(move):
-      return "{}-{}".format('b' if move.color == 1 else 'w',
+      return '{}-{}'.format('b' if move.color == 1 else 'w',
                             coords.to_kgs(self.board_size, move.move))
-    path = " ".join(fmt(move) for move in pos.recent[-diff:])
-    if node.position.n >= MAX_DEPTH:
-      path += " (depth cutoff reached) %0.1f" % node.position.score()
+    path = ' '.join(fmt(move) for move in pos.recent[-diff:])
+    if node.position.n >= max_depth:
+      path += ' (depth cutoff reached) %0.1f' % node.position.score()
     elif node.position.is_game_over():
-      path += " (game over) %0.1f" % node.position.score()
+      path += ' (game over) %0.1f' % node.position.score()
     return path
 
   def should_resign(self):
@@ -217,7 +217,7 @@ class MCTSPlayerMixin(object):
   def set_result(self, winner, was_resign):
     self.result = winner
     if was_resign:
-      string = "B+R" if winner == go.BLACK else "W+R"
+      string = 'B+R' if winner == go.BLACK else 'W+R'
     else:
       string = self.root.position.result_string()
     self.result_string = string
@@ -227,14 +227,14 @@ class MCTSPlayerMixin(object):
     pos = self.root.position
     if use_comments:
       comments = self.comments or ['No comments.']
-      comments[0] = ("Resign Threshold: %0.3f\n" %
+      comments[0] = ('Resign Threshold: %0.3f\n' %
                      self.resign_threshold) + comments[0]
     else:
       comments = []
     return sgf_wrapper.make_sgf(
         self.board_size, pos.recent, self.result_string,
-        white_name=os.path.basename(self.network.save_file) or "Unknown",
-        black_name=os.path.basename(self.network.save_file) or "Unknown",
+        white_name=os.path.basename(self.network.save_file) or 'Unknown',
+        black_name=os.path.basename(self.network.save_file) or 'Unknown',
         comments=comments)
 
   def is_done(self):
@@ -255,8 +255,8 @@ class MCTSPlayerMixin(object):
 
     if 'winrate' in text.lower():
       wr = (abs(self.root.Q) + 1.0) / 2.0
-      color = "Black" if self.root.Q > 0 else "White"
-      return "{:s} {:.2f}%".format(color, wr * 100.0)
+      color = 'Black' if self.root.Q > 0 else 'White'
+      return '{:s} {:.2f}%'.format(color, wr * 100.0)
     elif 'nextplay' in text.lower():
       return "I'm thinking... " + self.root.most_visited_path()
     elif 'fortune' in text.lower():
@@ -269,6 +269,7 @@ class MCTSPlayerMixin(object):
 
 
 class CGOSPlayerMixin(MCTSPlayerMixin):
+
   def suggest_move(self, position):
     self.seconds_per_move = time_recommendation(position.n)
     return super().suggest_move(position)

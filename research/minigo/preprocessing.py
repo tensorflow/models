@@ -39,11 +39,16 @@ def _one_hot(board_size, index):
 
 
 def make_tf_example(features, pi, value):
-  """
+  """Make tf examples.
+
   Args:
     features: [N, N, FEATURE_DIM] nparray of uint8
     pi: [N * N + 1] nparray of float32
     value: float
+
+  Returns:
+    tf example.
+
   """
   return tf.train.Example(
       features=tf.train.Features(
@@ -57,9 +62,9 @@ def make_tf_example(features, pi, value):
           }))
 
 
-# Write tf.Example to files
 def write_tf_examples(filename, tf_examples, serialize=True):
-  """
+  """Write tf.Example to files.
+
   Args:
     filename: Where to write tf.records
     tf_examples: An iterable of tf.Example
@@ -76,9 +81,13 @@ def write_tf_examples(filename, tf_examples, serialize=True):
 
 # Read tf.Example from files
 def _batch_parse_tf_example(board_size, batch_size, example_batch):
-  """
+  """Parse tf examples.
+
   Args:
+    board_size: the go board size
+    batch_size: the batch size
     example_batch: a batch of tf.Example
+
   Returns:
     A tuple (feature_tensor, dict of output tensors)
   """
@@ -102,21 +111,20 @@ def _batch_parse_tf_example(board_size, batch_size, example_batch):
 def read_tf_records(
     shuffle_buffer_size, batch_size, tf_records, num_repeats=None,
     shuffle_records=True, shuffle_examples=True, filter_amount=1.0):
-  """
+  """Read tf records.
+
   Args:
+    shuffle_buffer_size: how big of a buffer to fill before shuffling
     batch_size: batch size to return
     tf_records: a list of tf_record filenames
     num_repeats: how many times the data should be read (default: infinite)
     shuffle_records: whether to shuffle the order of files read
     shuffle_examples: whether to shuffle the tf.Examples
-    shuffle_buffer_size: how big of a buffer to fill before shuffling.
     filter_amount: what fraction of records to keep
+
   Returns:
     a tf dataset of batched tensors
   """
-
-  if shuffle_buffer_size is None:
-    shuffle_buffer_size = params.shuffle_buffer_size
   if shuffle_records:
     random.shuffle(tf_records)
   record_list = tf.data.Dataset.from_tensor_slices(tf_records)
@@ -130,8 +138,8 @@ def read_tf_records(
   dataset = record_list.interleave(
       lambda x: tf.data.TFRecordDataset(x, compression_type='ZLIB'),
       cycle_length=64, block_length=16)
-  dataset = dataset.filter(lambda x: tf.less(
-      tf.random_uniform([1]), filter_amount)[0])
+  dataset = dataset.filter(
+      lambda x: tf.less(tf.random_uniform([1]), filter_amount)[0])
   # TODO(amj): apply py_func for transforms here.
   if num_repeats is not None:
     dataset = dataset.repeat(num_repeats)
@@ -146,10 +154,19 @@ def read_tf_records(
 def get_input_tensors(params, batch_size, tf_records, num_repeats=None,
                       shuffle_records=True, shuffle_examples=True,
                       filter_amount=0.05):
-  """Read tf.Records and prepare them for ingestion by dual_net.  See
-  `read_tf_records` for parameter documentation.
+  """Read tf.Records and prepare them for ingestion by dualnet.
 
-  Returns a dict of tensors (see return value of batch_parse_tf_example)
+  Args:
+    params: An object of hyperparameters
+    batch_size: batch size to return
+    tf_records: a list of tf_record filenames
+    num_repeats: how many times the data should be read (default: infinite)
+    shuffle_records: whether to shuffle the order of files read
+    shuffle_examples: whether to shuffle the tf.Examples
+    filter_amount: what fraction of records to keep
+
+  Returns:
+    A dict of tensors (see return value of batch_parse_tf_example)
   """
   shuffle_buffer_size = params.shuffle_buffer_size
   dataset = read_tf_records(
@@ -170,8 +187,10 @@ def make_dataset_from_selfplay(data_extracts, params):
 
   Args:
     data_extracts: An iterable of (position, pi, result) tuples
+    params: An object of hyperparameters
 
-  Returns an iterable of tf.Examples.
+  Returns:
+    An iterable of tf.Examples.
   """
   board_size = params.board_size
   tf_examples = (make_tf_example(features_lib.extract_features(
@@ -190,7 +209,8 @@ def make_dataset_from_sgf(board_size, sgf_filename, tf_record):
 def _make_tf_example_from_pwc(board_size, position_w_context):
   features = features_lib.extract_features(
       board_size, position_w_context.position)
-  pi = _one_hot(board_size, coords.to_flat(position_w_context.next_move))
+  pi = _one_hot(board_size, coords.to_flat(
+      board_size, position_w_context.next_move))
   value = position_w_context.result
   return make_tf_example(features, pi, value)
 
@@ -203,7 +223,7 @@ def shuffle_tf_examples(shuffle_buffer_size, gather_size, records_to_shuffle):
     gather_size: The number of tf.Examples to be gathered together
     records_to_shuffle: A list of filenames
 
-  Returns:
+  Yields:
     An iterator yielding lists of bytes, which are serialized tf.Examples.
   """
   dataset = read_tf_records(shuffle_buffer_size, gather_size,

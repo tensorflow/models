@@ -40,6 +40,9 @@ SGF             'aa'            'sa'            ''
 KGS             'A19'           'T19'           'pass'
 pygtp           (1, 19)         (19, 19)        (0, 0)
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import gtp
 

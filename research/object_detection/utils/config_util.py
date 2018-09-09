@@ -22,6 +22,7 @@ from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io
 
 from object_detection.protos import eval_pb2
+from object_detection.protos import graph_rewriter_pb2
 from object_detection.protos import input_reader_pb2
 from object_detection.protos import model_pb2
 from object_detection.protos import pipeline_pb2
@@ -111,7 +112,25 @@ def create_configs_from_pipeline_proto(pipeline_config):
   configs["train_input_config"] = pipeline_config.train_input_reader
   configs["eval_config"] = pipeline_config.eval_config
   configs["eval_input_config"] = pipeline_config.eval_input_reader
+  if pipeline_config.HasField("graph_rewriter"):
+    configs["graph_rewriter_config"] = pipeline_config.graph_rewriter
+
   return configs
+
+
+def get_graph_rewriter_config_from_file(graph_rewriter_config_file):
+  """Parses config for graph rewriter.
+
+  Args:
+    graph_rewriter_config_file: file path to the graph rewriter config.
+
+  Returns:
+    graph_rewriter_pb2.GraphRewriter proto
+  """
+  graph_rewriter_config = graph_rewriter_pb2.GraphRewriter()
+  with tf.gfile.GFile(graph_rewriter_config_file, "r") as f:
+    text_format.Merge(f.read(), graph_rewriter_config)
+  return graph_rewriter_config
 
 
 def create_pipeline_proto_from_configs(configs):
@@ -132,6 +151,8 @@ def create_pipeline_proto_from_configs(configs):
   pipeline_config.train_input_reader.CopyFrom(configs["train_input_config"])
   pipeline_config.eval_config.CopyFrom(configs["eval_config"])
   pipeline_config.eval_input_reader.CopyFrom(configs["eval_input_config"])
+  if "graph_rewriter_config" in configs:
+    pipeline_config.graph_rewriter.CopyFrom(configs["graph_rewriter_config"])
   return pipeline_config
 
 
@@ -157,7 +178,8 @@ def get_configs_from_multiple_files(model_config_path="",
                                     train_config_path="",
                                     train_input_config_path="",
                                     eval_config_path="",
-                                    eval_input_config_path=""):
+                                    eval_input_config_path="",
+                                    graph_rewriter_config_path=""):
   """Reads training configuration from multiple config files.
 
   Args:
@@ -166,6 +188,7 @@ def get_configs_from_multiple_files(model_config_path="",
     train_input_config_path: Path to input_reader_pb2.InputReader.
     eval_config_path: Path to eval_pb2.EvalConfig.
     eval_input_config_path: Path to input_reader_pb2.InputReader.
+    graph_rewriter_config_path: Path to graph_rewriter_pb2.GraphRewriter.
 
   Returns:
     Dictionary of configuration objects. Keys are `model`, `train_config`,
@@ -202,6 +225,10 @@ def get_configs_from_multiple_files(model_config_path="",
     with tf.gfile.GFile(eval_input_config_path, "r") as f:
       text_format.Merge(f.read(), eval_input_config)
       configs["eval_input_config"] = eval_input_config
+
+  if graph_rewriter_config_path:
+    configs["graph_rewriter_config"] = get_graph_rewriter_config_from_file(
+        graph_rewriter_config_path)
 
   return configs
 
@@ -251,6 +278,19 @@ def get_learning_rate_type(optimizer_config):
   return optimizer_config.learning_rate.WhichOneof("learning_rate")
 
 
+def _is_generic_key(key):
+  """Determines whether the key starts with a generic config dictionary key."""
+  for prefix in [
+      "graph_rewriter_config",
+      "model",
+      "train_input_config",
+      "train_input_config",
+      "train_config"]:
+    if key.startswith(prefix + "."):
+      return True
+  return False
+
+
 def merge_external_params_with_configs(configs, hparams=None, **kwargs):
   """Updates `configs` dictionary based on supplied parameters.
 
@@ -259,6 +299,16 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
   values, or batch sizes. Rather than creating a new config text file for each
   experiment, one can use a single base config file, and update particular
   values.
+
+  There are two types of field overrides:
+  1. Strategy-based overrides, which update multiple relevant configuration
+  options. For example, updating `learning_rate` will update both the warmup and
+  final learning rates.
+  2. Generic key/value, which update a specific parameter based on namespaced
+  configuration keys. For example,
+  `model.ssd.loss.hard_example_miner.max_negatives_per_positive` will update the
+  hard example miner configuration for an SSD model config. Generic overrides
+  are automatically detected based on the namespaced keys.
 
   Args:
     configs: Dictionary of configuration objects. See outputs from
@@ -275,44 +325,48 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
   if hparams:
     kwargs.update(hparams.values())
   for key, value in kwargs.items():
+    tf.logging.info("Maybe overwriting %s: %s", key, value)
     # pylint: disable=g-explicit-bool-comparison
     if value == "" or value is None:
       continue
     # pylint: enable=g-explicit-bool-comparison
     if key == "learning_rate":
       _update_initial_learning_rate(configs, value)
-      tf.logging.info("Overwriting learning rate: %f", value)
-    if key == "batch_size":
+    elif key == "batch_size":
       _update_batch_size(configs, value)
-      tf.logging.info("Overwriting batch size: %d", value)
-    if key == "momentum_optimizer_value":
+    elif key == "momentum_optimizer_value":
       _update_momentum_optimizer_value(configs, value)
-      tf.logging.info("Overwriting momentum optimizer value: %f", value)
-    if key == "classification_localization_weight_ratio":
+    elif key == "classification_localization_weight_ratio":
       # Localization weight is fixed to 1.0.
       _update_classification_localization_weight_ratio(configs, value)
-    if key == "focal_loss_gamma":
+    elif key == "focal_loss_gamma":
       _update_focal_loss_gamma(configs, value)
-    if key == "focal_loss_alpha":
+    elif key == "focal_loss_alpha":
       _update_focal_loss_alpha(configs, value)
-    if key == "train_steps":
+    elif key == "train_steps":
       _update_train_steps(configs, value)
-      tf.logging.info("Overwriting train steps: %d", value)
-    if key == "eval_steps":
+    elif key == "eval_steps":
       _update_eval_steps(configs, value)
-      tf.logging.info("Overwriting eval steps: %d", value)
-    if key == "train_input_path":
+    elif key == "train_input_path":
       _update_input_path(configs["train_input_config"], value)
-      tf.logging.info("Overwriting train input path: %s", value)
-    if key == "eval_input_path":
+    elif key == "eval_input_path":
       _update_input_path(configs["eval_input_config"], value)
-      tf.logging.info("Overwriting eval input path: %s", value)
-    if key == "label_map_path":
+    elif key == "label_map_path":
       _update_label_map_path(configs, value)
-      tf.logging.info("Overwriting label map path: %s", value)
-    if key == "mask_type":
+    elif key == "mask_type":
       _update_mask_type(configs, value)
-      tf.logging.info("Overwritten mask type: %s", value)
+    elif key == "eval_with_moving_averages":
+      _update_use_moving_averages(configs, value)
+    elif key == "train_shuffle":
+      _update_shuffle(configs["train_input_config"], value)
+    elif key == "eval_shuffle":
+      _update_shuffle(configs["eval_input_config"], value)
+    elif key == "retain_original_images_in_eval":
+      _update_retain_original_images(configs["eval_config"], value)
+    elif _is_generic_key(key):
+      _update_generic(configs, key, value)
+    else:
+      tf.logging.info("Ignoring config override key: %s", key)
   return configs
 
 
@@ -382,6 +436,38 @@ def _update_batch_size(configs, batch_size):
       are rounded, and capped to be 1 or greater.
   """
   configs["train_config"].batch_size = max(1, int(round(batch_size)))
+
+
+def _validate_message_has_field(message, field):
+  if not message.HasField(field):
+    raise ValueError("Expecting message to have field %s" % field)
+
+
+def _update_generic(configs, key, value):
+  """Update a pipeline configuration parameter based on a generic key/value.
+
+  Args:
+    configs: Dictionary of pipeline configuration protos.
+    key: A string key, dot-delimited to represent the argument key.
+      e.g. "model.ssd.train_config.batch_size"
+    value: A value to set the argument to. The type of the value must match the
+      type for the protocol buffer. Note that setting the wrong type will
+      result in a TypeError.
+      e.g. 42
+
+  Raises:
+    ValueError if the message key does not match the existing proto fields.
+    TypeError the value type doesn't match the protobuf field type.
+  """
+  fields = key.split(".")
+  first_field = fields.pop(0)
+  last_field = fields.pop()
+  message = configs[first_field]
+  for field in fields:
+    _validate_message_has_field(message, field)
+    message = getattr(message, field)
+  _validate_message_has_field(message, last_field)
+  setattr(message, last_field, value)
 
 
 def _update_momentum_optimizer_value(configs, momentum):
@@ -560,3 +646,42 @@ def _update_mask_type(configs, mask_type):
   """
   configs["train_input_config"].mask_type = mask_type
   configs["eval_input_config"].mask_type = mask_type
+
+
+def _update_use_moving_averages(configs, use_moving_averages):
+  """Updates the eval config option to use or not use moving averages.
+
+  The configs dictionary is updated in place, and hence not returned.
+
+  Args:
+    configs: Dictionary of configuration objects. See outputs from
+      get_configs_from_pipeline_file() or get_configs_from_multiple_files().
+    use_moving_averages: Boolean indicating whether moving average variables
+      should be loaded during evaluation.
+  """
+  configs["eval_config"].use_moving_averages = use_moving_averages
+
+
+def _update_shuffle(input_config, shuffle):
+  """Updates input configuration to reflect a new shuffle configuration.
+
+  The input_config object is updated in place, and hence not returned.
+
+  Args:
+    input_config: A input_reader_pb2.InputReader.
+    shuffle: Whether or not to shuffle the input data before reading.
+  """
+  input_config.shuffle = shuffle
+
+
+def _update_retain_original_images(eval_config, retain_original_images):
+  """Updates eval config with option to retain original images.
+
+  The eval_config object is updated in place, and hence not returned.
+
+  Args:
+    eval_config: A eval_pb2.EvalConfig.
+    retain_original_images: Boolean indicating whether to retain original images
+      in eval mode.
+  """
+  eval_config.retain_original_images = retain_original_images

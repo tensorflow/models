@@ -187,7 +187,7 @@ DEFINE_CHAR_PROPERTY(test_punctuation_plus, prop) {
   prop->AddCharRange('b', 'b');
   prop->AddCharRange('c', 'e');
   static const int kUnicodes[] = {'f', RANGE('g', 'i'), 'j'};
-  prop->AddCharSpec(kUnicodes, arraysize(kUnicodes));
+  prop->AddCharSpec(kUnicodes, ABSL_ARRAYSIZE(kUnicodes));
   prop->AddCharProperty("punctuation");
 }
 
@@ -223,25 +223,25 @@ const char32 kTestPunctuationPlusExtras[] = {
 //
 
 TEST_F(CharPropertiesTest, TestDigit) {
-  CollectArray(kTestDigit, arraysize(kTestDigit));
+  CollectArray(kTestDigit, ABSL_ARRAYSIZE(kTestDigit));
   ExpectCharPropertyEqualsCollectedSet("test_digit");
 }
 
 TEST_F(CharPropertiesTest, TestWavyDash) {
-  CollectArray(kTestWavyDash, arraysize(kTestWavyDash));
+  CollectArray(kTestWavyDash, ABSL_ARRAYSIZE(kTestWavyDash));
   ExpectCharPropertyEqualsCollectedSet("test_wavy_dash");
 }
 
 TEST_F(CharPropertiesTest, TestDigitOrWavyDash) {
-  CollectArray(kTestDigit, arraysize(kTestDigit));
-  CollectArray(kTestWavyDash, arraysize(kTestWavyDash));
+  CollectArray(kTestDigit, ABSL_ARRAYSIZE(kTestDigit));
+  CollectArray(kTestWavyDash, ABSL_ARRAYSIZE(kTestWavyDash));
   ExpectCharPropertyEqualsCollectedSet("test_digit_or_wavy_dash");
 }
 
 TEST_F(CharPropertiesTest, TestPunctuationPlus) {
   CollectCharProperty("punctuation");
   CollectArray(kTestPunctuationPlusExtras,
-               arraysize(kTestPunctuationPlusExtras));
+               ABSL_ARRAYSIZE(kTestPunctuationPlusExtras));
   ExpectCharPropertyEqualsCollectedSet("test_punctuation_plus");
 }
 

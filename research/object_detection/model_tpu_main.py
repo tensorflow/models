@@ -25,7 +25,6 @@ from __future__ import print_function
 from absl import flags
 import tensorflow as tf
 
-from tensorflow.contrib.tpu.python.tpu import tpu_config
 
 from object_detection import model_hparams
 from object_detection import model_lib
@@ -56,7 +55,9 @@ flags.DEFINE_integer('iterations_per_loop', 100,
 # recent checkpoint every 10 minutes by default for train_and_eval
 flags.DEFINE_string('mode', 'train',
                     'Mode to run: train, eval')
-flags.DEFINE_integer('train_batch_size', 32 * 8, 'Batch size for training.')
+flags.DEFINE_integer('train_batch_size', None, 'Batch size for training. If '
+                     'this is not provided, batch size is read from training '
+                     'config.')
 
 flags.DEFINE_string(
     'hparams_overrides', None, 'Comma-separated list of '
@@ -79,19 +80,23 @@ def main(unused_argv):
   flags.mark_flag_as_required('pipeline_config_path')
 
   tpu_cluster_resolver = (
-      tf.contrib.cluster_resolver.python.training.TPUClusterResolver(
-          tpu_names=[FLAGS.tpu_name],
+      tf.contrib.cluster_resolver.TPUClusterResolver(
+          tpu=[FLAGS.tpu_name],
           zone=FLAGS.tpu_zone,
           project=FLAGS.gcp_project))
   tpu_grpc_url = tpu_cluster_resolver.get_master()
 
-  config = tpu_config.RunConfig(
+  config = tf.contrib.tpu.RunConfig(
       master=tpu_grpc_url,
       evaluation_master=tpu_grpc_url,
       model_dir=FLAGS.model_dir,
-      tpu_config=tpu_config.TPUConfig(
+      tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_shards))
+
+  kwargs = {}
+  if FLAGS.train_batch_size:
+    kwargs['batch_size'] = FLAGS.train_batch_size
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
@@ -102,7 +107,7 @@ def main(unused_argv):
       use_tpu_estimator=True,
       use_tpu=FLAGS.use_tpu,
       num_shards=FLAGS.num_shards,
-      batch_size=FLAGS.train_batch_size)
+      **kwargs)
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
   eval_input_fn = train_and_eval_dict['eval_input_fn']

@@ -41,14 +41,22 @@ from official.utils.testing import reference_data
 DATA_FORMAT = "channels_last"  # CPU instructions often preclude channels_first
 BATCH_SIZE = 32
 BLOCK_TESTS = [
-    dict(bottleneck=True, projection=True, version=1, width=8, channels=4),
-    dict(bottleneck=True, projection=True, version=2, width=8, channels=4),
-    dict(bottleneck=True, projection=False, version=1, width=8, channels=4),
-    dict(bottleneck=True, projection=False, version=2, width=8, channels=4),
-    dict(bottleneck=False, projection=True, version=1, width=8, channels=4),
-    dict(bottleneck=False, projection=True, version=2, width=8, channels=4),
-    dict(bottleneck=False, projection=False, version=1, width=8, channels=4),
-    dict(bottleneck=False, projection=False, version=2, width=8, channels=4),
+    dict(bottleneck=True, projection=True, resnet_version=1, width=8,
+         channels=4),
+    dict(bottleneck=True, projection=True, resnet_version=2, width=8,
+         channels=4),
+    dict(bottleneck=True, projection=False, resnet_version=1, width=8,
+         channels=4),
+    dict(bottleneck=True, projection=False, resnet_version=2, width=8,
+         channels=4),
+    dict(bottleneck=False, projection=True, resnet_version=1, width=8,
+         channels=4),
+    dict(bottleneck=False, projection=True, resnet_version=2, width=8,
+         channels=4),
+    dict(bottleneck=False, projection=False, resnet_version=1, width=8,
+         channels=4),
+    dict(bottleneck=False, projection=False, resnet_version=2, width=8,
+         channels=4),
 ]
 
 
@@ -95,7 +103,7 @@ class BaseTest(reference_data.BaseTest):
     return projection_shortcut
 
   def _resnet_block_ops(self, test, batch_size, bottleneck, projection,
-                        version, width, channels):
+                        resnet_version, width, channels):
     """Test whether resnet block construction has changed.
 
     Args:
@@ -104,7 +112,7 @@ class BaseTest(reference_data.BaseTest):
         batch normalization.
       bottleneck: Whether or not to use bottleneck layers.
       projection: Whether or not to project the input.
-      version: Which version of ResNet to test.
+      resnet_version: Which version of ResNet to test.
       width: The width of the fake image.
       channels: The number of channels in the fake image.
     """
@@ -113,12 +121,12 @@ class BaseTest(reference_data.BaseTest):
         batch_size,
         "bottleneck" if bottleneck else "building",
         "_projection" if projection else "",
-        version,
+        resnet_version,
         width,
         channels
     )
 
-    if version == 1:
+    if resnet_version == 1:
       block_fn = resnet_model._building_block_v1
       if bottleneck:
         block_fn = resnet_model._bottleneck_block_v1

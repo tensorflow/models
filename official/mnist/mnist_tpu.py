@@ -23,10 +23,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import sys
+
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.mnist import dataset
-from official.mnist import mnist
+# For open source environment, add grandparent directory for import
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(sys.path[0]))))
+
+from official.mnist import dataset  # pylint: disable=wrong-import-position
+from official.mnist import mnist  # pylint: disable=wrong-import-position
 
 # Cloud TPU Cluster Resolver flags
 tf.flags.DEFINE_string(
@@ -46,10 +52,6 @@ tf.flags.DEFINE_string(
     "metadata.")
 
 # Model specific parameters
-tf.flags.DEFINE_string(
-    "master", default=None,
-    help="GRPC URL of the master (e.g. grpc://ip.address.of.tpu:8470). You "
-    "must specify either this flag or --tpu.")
 tf.flags.DEFINE_string("data_dir", "",
                        "Path to directory containing the MNIST dataset")
 tf.flags.DEFINE_string("model_dir", None, "Estimator model_dir")
@@ -136,24 +138,14 @@ def main(argv):
   del argv  # Unused.
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  if FLAGS.master is None and FLAGS.tpu is None:
-    raise RuntimeError('You must specify either --master or --tpu.')
-  if FLAGS.master is not None:
-    if FLAGS.tpu is not None:
-      tf.logging.warn('Both --master and --tpu are set. Ignoring '
-                      '--tpu and using --master.')
-    tpu_grpc_url = FLAGS.master
-  else:
-    tpu_cluster_resolver = (
-        tf.contrib.cluster_resolver.TPUClusterResolver(
-            FLAGS.tpu,
-            zone=FLAGS.tpu_zone,
-            project=FLAGS.gcp_project))
-    tpu_grpc_url = tpu_cluster_resolver.get_master()
+  tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+      FLAGS.tpu,
+      zone=FLAGS.tpu_zone,
+      project=FLAGS.gcp_project
+  )
 
   run_config = tf.contrib.tpu.RunConfig(
-      master=tpu_grpc_url,
-      evaluation_master=tpu_grpc_url,
+      cluster=tpu_cluster_resolver,
       model_dir=FLAGS.model_dir,
       session_config=tf.ConfigProto(
           allow_soft_placement=True, log_device_placement=True),
