@@ -195,6 +195,32 @@ class FasterRCNNResnetV1FeatureExtractor(
           
     return proposal_classifier_features
 
+class FasterRCNNResnet18FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
+  """Faster R-CNN Resnet 18 feature extractor implementation."""
+
+  def __init__(self,
+               is_training,
+               first_stage_features_stride,
+               batch_norm_trainable=False,
+               reuse_weights=None,
+               weight_decay=0.0):
+    """Constructor.
+
+    Args:
+      is_training: See base class.
+      first_stage_features_stride: See base class.
+      batch_norm_trainable: See base class.
+      reuse_weights: See base class.
+      weight_decay: See base class.
+
+    Raises:
+      ValueError: If `first_stage_features_stride` is not 8 or 16,
+        or if `architecture` is not supported.
+    """
+    super(FasterRCNNResnet18FeatureExtractor, self).__init__(
+        'resnet_v1_18', resnet_v1.resnet_v1_18, is_training,
+        first_stage_features_stride, batch_norm_trainable,
+        reuse_weights, weight_decay)
 
 class FasterRCNNResnet50FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
   """Faster R-CNN Resnet 50 feature extractor implementation."""

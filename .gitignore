@@ -90,8 +90,10 @@ ENV/
 
 # PyCharm
 .idea/
-
-# For mac
-.DS_Store
-
-samples/outreach/blogs/segmentation_blogpost/carvana-image-masking-challenge/
+/.vs/models/v15/.suo
+/.vs/models/v15/Browse.VC.db
+/.vs/ProjectSettings.json
+/.vs/slnx.sqlite
+/.vs/VSWorkspaceState.json
+/models.pyproj
+/models.sln

@@ -1301,18 +1301,20 @@ class FasterRCNNMetaArch(model.DetectionModel):
              groundtruth_boxlists, groundtruth_classes_with_background_list,
              groundtruth_weights_list)
     # normalize proposal boxes
-    def normalize_boxes(args):
-      proposal_boxes_per_image = args[0]
-      image_shape = args[1]
-      normalized_boxes_per_image = box_list_ops.to_normalized_coordinates(
-          box_list.BoxList(proposal_boxes_per_image), image_shape[0],
-          image_shape[1], check_range=False).get()
-      return normalized_boxes_per_image
-    normalized_proposal_boxes = shape_utils.static_or_dynamic_map_fn(
-        normalize_boxes, elems=[proposal_boxes, image_shapes], dtype=tf.float32)
-    return normalized_proposal_boxes, proposal_scores, num_proposals
+    proposal_boxes_reshaped = tf.reshape(proposal_boxes, [-1, 4])
+    normalized_proposal_boxes_reshaped = box_list_ops.to_normalized_coordinates(
+        box_list.BoxList(proposal_boxes_reshaped),
+        image_shape[1], image_shape[2], check_range=False).get()
 
-  def _sample_box_classifier_batch(
+    # get actual number of proposal boxes
+    nr_proposal_boxes =  proposal_boxes.shape[1].value if proposal_boxes.shape[1].value is not None else tf.shape(proposal_boxes)[1]
+    proposal_boxes = tf.reshape(normalized_proposal_boxes_reshaped,
+                                [-1, nr_proposal_boxes, 4],name="rpn_proposals_boxes")
+    proposal_scores = tf.identity(proposal_scores,"rpn_proposals_score")
+    
+    return proposal_boxes, proposal_scores, num_proposals
+
+  def _unpad_proposals_and_sample_box_classifier_batch(
       self,
       proposal_boxes,
       proposal_scores,

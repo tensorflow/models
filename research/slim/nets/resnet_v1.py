@@ -138,6 +138,58 @@ def bottleneck(inputs,
                                             sc.name,
                                             output)
 
+@slim.add_arg_scope
+def bottleneck_small(inputs,
+               depth,
+               depth_bottleneck,
+               stride,
+               rate=1,
+               outputs_collections=None,
+               scope=None,
+               use_bounded_activations=False):
+  """Bottleneck residual unit variant with BN after convolutions for use in
+    ResNet 18 or 34
+
+  This is the original residual unit proposed in [1]. See Fig. 1(a) of [2] for
+  its definition. Note that we use here the bottleneck variant which has an
+  extra bottleneck layer.
+
+  When putting together two consecutive ResNet blocks that use this unit, one
+  should use stride = 2 in the last unit of the first block.
+
+  Args:
+    inputs: A tensor of size [batch, height, width, channels].
+    depth: The depth of the ResNet unit output.
+    depth_bottleneck: The depth of the bottleneck layers.
+    stride: The ResNet unit's stride. Determines the amount of downsampling of
+      the units output compared to its input.
+    rate: An integer, rate for atrous convolution.
+    outputs_collections: Collection to add the ResNet unit output.
+    scope: Optional variable_scope.
+    use_bounded_activations: Whether or not to use bounded activations. Bounded
+      activations better lend themselves to quantized inference.
+
+  Returns:
+    The ResNet unit's output.
+  """
+  with tf.variable_scope(scope, 'small_bottleneck_v1', [inputs]) as sc:
+    depth_in = slim.utils.last_dimension(inputs.get_shape(), min_rank=4)
+    if depth == depth_in:
+        shortcut = resnet_utils.subsample(inputs, stride, 'shortcut_small_block')
+    else:
+        shortcut = slim.conv2d(inputs, depth, [1, 1], stride=stride, activation_fn=tf.nn.relu6 if use_bounded_activations else None, scope='shortcut')
+
+    residual = slim.conv2d(inputs, depth_bottleneck, [3, 3], stride=1, scope='conv1_small_block')
+    residual = slim.conv2d(residual, depth, [3, 3], stride=stride, activation_fn=None, scope='conv2_small_block')
+
+    if use_bounded_activations:
+      # Use clip_by_value to simulate bandpass activation.
+      residual = tf.clip_by_value(residual, -6.0, 6.0)
+      output = tf.nn.relu6(shortcut + residual)
+    else:
+      output = tf.nn.relu(shortcut + residual)
+
+    return slim.utils.collect_named_outputs(outputs_collections, sc.name, output)
 
 def resnet_v1(inputs,
               blocks,
@@ -220,7 +272,8 @@ def resnet_v1(inputs,
   """
   with tf.variable_scope(scope, 'resnet_v1', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
-    with slim.arg_scope([slim.conv2d, bottleneck,
+    #to use the correct bottleneck function, we extract it from the block description
+    with slim.arg_scope([slim.conv2d, blocks[0].unit_fn,
                          resnet_utils.stack_blocks_dense],
                         outputs_collections=end_points_collection):
       with (slim.arg_scope([slim.batch_norm], is_training=is_training)
@@ -254,6 +307,49 @@ def resnet_v1(inputs,
         return net, end_points
 resnet_v1.default_image_size = 224
 
+def resnet_v1_small_block(scope, base_depth, num_units, stride):
+  """Helper function for creating a resnet_v1 bottleneck for ResNet 18 or 34
+
+  Args:
+    scope: The scope of the block.
+    base_depth: The depth of the bottleneck layer for each unit.
+    num_units: The number of units in the block.
+    stride: The stride of the block, implemented as a stride in the last unit.
+      All other units have stride=1.
+
+  Returns:
+    A resnet_v1 bottleneck block.
+  """
+  return resnet_utils.Block(scope, bottleneck_small, [{
+      'depth': base_depth,
+      'depth_bottleneck': base_depth,
+      'stride': 1
+  }] * (num_units - 1) + [{
+      'depth': base_depth,
+      'depth_bottleneck': base_depth,
+      'stride': stride
+  }])
+
+def resnet_v1_18(inputs,
+                 num_classes=None,
+                 is_training=True,
+                 global_pool=True,
+                 output_stride=None,
+                 spatial_squeeze=True,
+                 reuse=None,
+                 scope='resnet_v1_18'):
+  """ResNet-18 model of [1]. See resnet_v1() for arg and return description."""
+  blocks = [
+      resnet_v1_small_block('block1', base_depth=64, num_units=2, stride=2),
+      resnet_v1_small_block('block2', base_depth=128, num_units=2, stride=2),
+      resnet_v1_small_block('block3', base_depth=256, num_units=2, stride=2),
+      resnet_v1_small_block('block4', base_depth=512, num_units=2, stride=1),
+  ]
+  return resnet_v1(inputs, blocks, num_classes, is_training,
+                   global_pool=global_pool, output_stride=output_stride,
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v1_18.default_image_size = resnet_v1.default_image_size
 
 def resnet_v1_block(scope, base_depth, num_units, stride):
   """Helper function for creating a resnet_v1 bottleneck block.
