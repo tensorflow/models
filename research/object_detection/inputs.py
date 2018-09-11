@@ -291,10 +291,42 @@ def _get_labels_dict(input_dict):
   return labels_dict
 
 
+def _replace_empty_string_with_random_number(string_tensor):
+  """Returns string unchanged if non-empty, and random string tensor otherwise.
+
+  The random string is an integer 0 and 2**63 - 1, casted as string.
+
+
+  Args:
+    string_tensor: A tf.tensor of dtype string.
+
+  Returns:
+    out_string: A tf.tensor of dtype string. If string_tensor contains the empty
+      string, out_string will contain a random integer casted to a string.
+      Otherwise string_tensor is returned unchanged.
+
+  """
+
+  empty_string = tf.constant('', dtype=tf.string, name='EmptyString')
+
+  random_source_id = tf.as_string(
+      tf.random_uniform(shape=[], maxval=2**63 - 1, dtype=tf.int64))
+
+  out_string = tf.cond(
+      tf.equal(string_tensor, empty_string),
+      true_fn=lambda: random_source_id,
+      false_fn=lambda: string_tensor)
+
+  return out_string
+
+
 def _get_features_dict(input_dict):
   """Extracts features dict from input dict."""
-  hash_from_source_id = tf.string_to_hash_bucket_fast(
-      input_dict[fields.InputDataFields.source_id], HASH_BINS)
+
+  source_id = _replace_empty_string_with_random_number(
+      input_dict[fields.InputDataFields.source_id])
+
+  hash_from_source_id = tf.string_to_hash_bucket_fast(source_id, HASH_BINS)
   features = {
       fields.InputDataFields.image:
           input_dict[fields.InputDataFields.image],

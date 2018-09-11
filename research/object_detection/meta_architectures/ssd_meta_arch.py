@@ -225,10 +225,7 @@ class SSDMetaArch(model.DetectionModel):
                box_predictor,
                box_coder,
                feature_extractor,
-               matcher,
-               region_similarity_calculator,
                encode_background_as_zeros,
-               negative_class_weight,
                image_resizer_fn,
                non_max_suppression_fn,
                score_conversion_fn,
@@ -238,14 +235,14 @@ class SSDMetaArch(model.DetectionModel):
                localization_loss_weight,
                normalize_loss_by_num_matches,
                hard_example_miner,
+               target_assigner_instance,
                add_summaries=True,
                normalize_loc_loss_by_codesize=False,
                freeze_batchnorm=False,
                inplace_batchnorm_update=False,
                add_background_class=True,
                random_example_sampler=None,
-               expected_classification_loss_under_sampling=None,
-               target_assigner_instance=None):
+               expected_classification_loss_under_sampling=None):
     """SSDMetaArch Constructor.
 
     TODO(rathodv,jonathanhuang): group NMS parameters + score converter into
@@ -259,13 +256,9 @@ class SSDMetaArch(model.DetectionModel):
       box_predictor: a box_predictor.BoxPredictor object.
       box_coder: a box_coder.BoxCoder object.
       feature_extractor: a SSDFeatureExtractor object.
-      matcher: a matcher.Matcher object.
-      region_similarity_calculator: a
-        region_similarity_calculator.RegionSimilarityCalculator object.
       encode_background_as_zeros: boolean determining whether background
         targets are to be encoded as an all zeros vector or a one-hot
         vector (where background is the 0th class).
-      negative_class_weight: Weight for confidence loss of negative anchors.
       image_resizer_fn: a callable for image resizing.  This callable always
         takes a rank-3 image tensor (corresponding to a single image) and
         returns a rank-3 image tensor, possibly with new spatial dimensions and
@@ -288,6 +281,7 @@ class SSDMetaArch(model.DetectionModel):
       localization_loss_weight: float
       normalize_loss_by_num_matches: boolean
       hard_example_miner: a losses.HardExampleMiner object (can be None)
+      target_assigner_instance: target_assigner.TargetAssigner instance to use.
       add_summaries: boolean (default: True) controlling whether summary ops
         should be added to tensorflow graph.
       normalize_loc_loss_by_codesize: whether to normalize localization loss
@@ -312,7 +306,6 @@ class SSDMetaArch(model.DetectionModel):
         the random sampled examples.
       expected_classification_loss_under_sampling: If not None, use
         to calcualte classification loss by background/foreground weighting.
-      target_assigner_instance: target_assigner.TargetAssigner instance to use.
     """
     super(SSDMetaArch, self).__init__(num_classes=box_predictor.num_classes)
     self._is_training = is_training
@@ -324,8 +317,6 @@ class SSDMetaArch(model.DetectionModel):
 
     self._box_coder = box_coder
     self._feature_extractor = feature_extractor
-    self._matcher = matcher
-    self._region_similarity_calculator = region_similarity_calculator
     self._add_background_class = add_background_class
 
     # Needed for fine-tuning from classification checkpoints whose
@@ -347,14 +338,7 @@ class SSDMetaArch(model.DetectionModel):
       self._unmatched_class_label = tf.constant((self.num_classes + 1) * [0],
                                                 tf.float32)
 
-    if target_assigner_instance:
-      self._target_assigner = target_assigner_instance
-    else:
-      self._target_assigner = target_assigner.TargetAssigner(
-          self._region_similarity_calculator,
-          self._matcher,
-          self._box_coder,
-          negative_class_weight=negative_class_weight)
+    self._target_assigner = target_assigner_instance
 
     self._classification_loss = classification_loss
     self._localization_loss = localization_loss
@@ -523,28 +507,25 @@ class SSDMetaArch(model.DetectionModel):
             im_height=image_shape[1],
             im_width=image_shape[2]))
     if self._box_predictor.is_keras_model:
-      prediction_dict = self._box_predictor(feature_maps)
+      predictor_results_dict = self._box_predictor(feature_maps)
     else:
       with slim.arg_scope([slim.batch_norm],
                           is_training=(self._is_training and
                                        not self._freeze_batchnorm),
                           updates_collections=batchnorm_updates_collections):
-        prediction_dict = self._box_predictor.predict(
+        predictor_results_dict = self._box_predictor.predict(
             feature_maps, self._anchor_generator.num_anchors_per_location())
-
-    box_encodings = tf.concat(prediction_dict['box_encodings'], axis=1)
-    if box_encodings.shape.ndims == 4 and box_encodings.shape[2] == 1:
-      box_encodings = tf.squeeze(box_encodings, axis=2)
-    class_predictions_with_background = tf.concat(
-        prediction_dict['class_predictions_with_background'], axis=1)
     predictions_dict = {
         'preprocessed_inputs': preprocessed_inputs,
-        'box_encodings': box_encodings,
-        'class_predictions_with_background':
-        class_predictions_with_background,
         'feature_maps': feature_maps,
         'anchors': self._anchors.get()
     }
+    for prediction_key, prediction_list in iter(predictor_results_dict.items()):
+      prediction = tf.concat(prediction_list, axis=1)
+      if (prediction_key == 'box_encodings' and prediction.shape.ndims == 4 and
+          prediction.shape[2] == 1):
+        prediction = tf.squeeze(prediction, axis=2)
+      predictions_dict[prediction_key] = prediction
     self._batched_prediction_tensor_names = [x for x in predictions_dict
                                              if x != 'anchors']
     return predictions_dict
@@ -587,6 +568,10 @@ class SSDMetaArch(model.DetectionModel):
           [batch_size, num_anchors, num_classes+1] containing class predictions
           (logits) for each of the anchors.  Note that this tensor *includes*
           background class predictions.
+        4) mask_predictions: (optional) a 5-D float tensor of shape
+          [batch_size, num_anchors, q, mask_height, mask_width]. `q` can be
+          either number of classes or 1 depending on whether a separate mask is
+          predicted per class.
       true_image_shapes: int32 tensor of shape [batch, 3] where each row is
         of the form [height, width, channels] indicating the shapes
         of true images in the resized images, as resized images can be padded
@@ -599,6 +584,8 @@ class SSDMetaArch(model.DetectionModel):
         detection_classes: [batch, max_detections]
         detection_keypoints: [batch, max_detections, num_keypoints, 2] (if
           encoded in the prediction_dict 'box_encodings')
+        detection_masks: [batch_size, max_detections, mask_height, mask_width]
+          (optional)
         num_detections: [batch]
     Raises:
       ValueError: if prediction_dict does not contain `box_encodings` or
@@ -627,13 +614,14 @@ class SSDMetaArch(model.DetectionModel):
       if detection_keypoints is not None:
         additional_fields = {
             fields.BoxListFields.keypoints: detection_keypoints}
-      (nmsed_boxes, nmsed_scores, nmsed_classes, _, nmsed_additional_fields,
-       num_detections) = self._non_max_suppression_fn(
+      (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
+       nmsed_additional_fields, num_detections) = self._non_max_suppression_fn(
            detection_boxes,
            detection_scores,
-           clip_window=self._compute_clip_window(
-               preprocessed_images, true_image_shapes),
-           additional_fields=additional_fields)
+           clip_window=self._compute_clip_window(preprocessed_images,
+                                                 true_image_shapes),
+           additional_fields=additional_fields,
+           masks=prediction_dict.get('mask_predictions'))
       detection_dict = {
           fields.DetectionResultFields.detection_boxes: nmsed_boxes,
           fields.DetectionResultFields.detection_scores: nmsed_scores,
@@ -645,6 +633,9 @@ class SSDMetaArch(model.DetectionModel):
           fields.BoxListFields.keypoints in nmsed_additional_fields):
         detection_dict[fields.DetectionResultFields.detection_keypoints] = (
             nmsed_additional_fields[fields.BoxListFields.keypoints])
+      if nmsed_masks is not None:
+        detection_dict[
+            fields.DetectionResultFields.detection_masks] = nmsed_masks
       return detection_dict
 
   def loss(self, prediction_dict, true_image_shapes, scope=None):
@@ -701,16 +692,22 @@ class SSDMetaArch(model.DetectionModel):
         batch_cls_weights = tf.multiply(batch_sampled_indicator,
                                         batch_cls_weights)
 
+      losses_mask = None
+      if self.groundtruth_has_field(fields.InputDataFields.is_annotated):
+        losses_mask = tf.stack(self.groundtruth_lists(
+            fields.InputDataFields.is_annotated))
       location_losses = self._localization_loss(
           prediction_dict['box_encodings'],
           batch_reg_targets,
           ignore_nan_targets=True,
-          weights=batch_reg_weights)
+          weights=batch_reg_weights,
+          losses_mask=losses_mask)
 
       cls_losses = self._classification_loss(
           prediction_dict['class_predictions_with_background'],
           batch_cls_targets,
-          weights=batch_cls_weights)
+          weights=batch_cls_weights,
+          losses_mask=losses_mask)
 
       if self._expected_classification_loss_under_sampling:
         if cls_losses.get_shape().ndims == 3:
@@ -734,12 +731,6 @@ class SSDMetaArch(model.DetectionModel):
           self._hard_example_miner.summarize()
       else:
         cls_losses = ops.reduce_sum_trailing_dimensions(cls_losses, ndims=2)
-        if self._add_summaries:
-          class_ids = tf.argmax(batch_cls_targets, axis=2)
-          flattened_class_ids = tf.reshape(class_ids, [-1])
-          flattened_classification_losses = tf.reshape(cls_losses, [-1])
-          self._summarize_anchor_classification_loss(
-              flattened_class_ids, flattened_classification_losses)
         localization_loss = tf.reduce_sum(location_losses)
         classification_loss = tf.reduce_sum(cls_losses)
 

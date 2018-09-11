@@ -163,5 +163,8 @@ message FeaturePyramidNetworks {
 
   // maximum level in feature pyramid
   optional int32 max_level = 2 [default = 7];
+
+  // channel depth for additional coarse feature layers.
+  optional int32 additional_layer_depth = 3 [default = 256];
 }
 

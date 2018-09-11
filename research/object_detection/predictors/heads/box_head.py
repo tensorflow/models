@@ -19,6 +19,7 @@ Contains Box prediction head classes for different meta architectures.
 All the box prediction heads have a predict function that receives the
 `features` as the first argument and returns `box_encodings`.
 """
+import functools
 import tensorflow as tf
 
 from object_detection.predictors.heads import head
@@ -196,18 +197,19 @@ class WeightSharedConvolutionalBoxHead(head.Head):
   def __init__(self,
                box_code_size,
                kernel_size=3,
-               class_prediction_bias_init=0.0):
+               use_depthwise=False):
     """Constructor.
 
     Args:
       box_code_size: Size of encoding for each box.
       kernel_size: Size of final convolution kernel.
-      class_prediction_bias_init: constant value to initialize bias of the last
-        conv2d layer before class prediction.
+      use_depthwise: Whether to use depthwise convolutions for prediction
+        steps. Default is False.
     """
     super(WeightSharedConvolutionalBoxHead, self).__init__()
     self._box_code_size = box_code_size
     self._kernel_size = kernel_size
+    self._use_depthwise = use_depthwise
 
   def predict(self, features, num_predictions_per_location):
     """Predicts boxes.
@@ -224,7 +226,11 @@ class WeightSharedConvolutionalBoxHead(head.Head):
         the objects.
     """
     box_encodings_net = features
-    box_encodings = slim.conv2d(
+    if self._use_depthwise:
+      conv_op = functools.partial(slim.separable_conv2d, depth_multiplier=1)
+    else:
+      conv_op = slim.conv2d
+    box_encodings = conv_op(
         box_encodings_net,
         num_predictions_per_location * self._box_code_size,
         [self._kernel_size, self._kernel_size],

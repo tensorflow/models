@@ -113,6 +113,13 @@ Model name                                                                      
 [faster_rcnn_inception_resnet_v2_atrous_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28.tar.gz) | 727 | 37              | Boxes
 [faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28.tar.gz) | 347  |               | Boxes
 
+## iNaturalist Species-trained models
+
+Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 (ms) | Outputs
+----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
+[faster_rcnn_resnet101_fgvc](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_fgvc_2018_07_19.tar.gz) | 395  | 58              | Boxes
+[faster_rcnn_resnet50_fgvc](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet50_fgvc_2018_07_19.tar.gz) | 366  | 55             | Boxes
+
 
 ## AVA v2.1 trained models
 

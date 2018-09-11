@@ -14,7 +14,6 @@
 # ==============================================================================
 """Common utility functions for evaluation."""
 import collections
-import logging
 import os
 import time
 
@@ -53,15 +52,15 @@ def write_metrics(metrics, global_step, summary_dir):
     global_step: Global step at which the metrics are computed.
     summary_dir: Directory to write tensorflow summaries to.
   """
-  logging.info('Writing metrics to tf summary.')
+  tf.logging.info('Writing metrics to tf summary.')
   summary_writer = tf.summary.FileWriterCache.get(summary_dir)
   for key in sorted(metrics):
     summary = tf.Summary(value=[
         tf.Summary.Value(tag=key, simple_value=metrics[key]),
     ])
     summary_writer.add_summary(summary, global_step)
-    logging.info('%s: %f', key, metrics[key])
-  logging.info('Metrics written to tf summary.')
+    tf.logging.info('%s: %f', key, metrics[key])
+  tf.logging.info('Metrics written to tf summary.')
 
 
 # TODO(rathodv): Add tests.
@@ -141,7 +140,7 @@ def visualize_detection_results(result_dict,
   if show_groundtruth and input_fields.groundtruth_boxes not in result_dict:
     raise ValueError('If show_groundtruth is enabled, result_dict must contain '
                      'groundtruth_boxes.')
-  logging.info('Creating detection visualizations.')
+  tf.logging.info('Creating detection visualizations.')
   category_index = label_map_util.create_category_index(categories)
 
   image = np.squeeze(result_dict[input_fields.original_image], axis=0)
@@ -205,7 +204,8 @@ def visualize_detection_results(result_dict,
   summary_writer = tf.summary.FileWriterCache.get(summary_dir)
   summary_writer.add_summary(summary, global_step)
 
-  logging.info('Detection visualizations written to summary with tag %s.', tag)
+  tf.logging.info('Detection visualizations written to summary with tag %s.',
+                  tag)
 
 
 def _run_checkpoint_once(tensor_dict,
@@ -218,7 +218,8 @@ def _run_checkpoint_once(tensor_dict,
                          master='',
                          save_graph=False,
                          save_graph_dir='',
-                         losses_dict=None):
+                         losses_dict=None,
+                         eval_export_path=None):
   """Evaluates metrics defined in evaluators and returns summaries.
 
   This function loads the latest checkpoint in checkpoint_dirs and evaluates
@@ -258,6 +259,8 @@ def _run_checkpoint_once(tensor_dict,
     save_graph_dir: where to store the Tensorflow graph on disk. If save_graph
       is True this must be non-empty.
     losses_dict: optional dictionary of scalar detection losses.
+    eval_export_path: Path for saving a json file that contains the detection
+      results in json format.
 
   Returns:
     global_step: the count of global steps.
@@ -292,7 +295,8 @@ def _run_checkpoint_once(tensor_dict,
     try:
       for batch in range(int(num_batches)):
         if (batch + 1) % 100 == 0:
-          logging.info('Running eval ops batch %d/%d', batch + 1, num_batches)
+          tf.logging.info('Running eval ops batch %d/%d', batch + 1,
+                          num_batches)
         if not batch_processor:
           try:
             if not losses_dict:
@@ -301,7 +305,7 @@ def _run_checkpoint_once(tensor_dict,
                                                         losses_dict])
             counters['success'] += 1
           except tf.errors.InvalidArgumentError:
-            logging.info('Skipping image')
+            tf.logging.info('Skipping image')
             counters['skipped'] += 1
             result_dict = {}
         else:
@@ -316,18 +320,31 @@ def _run_checkpoint_once(tensor_dict,
           # decoders to return correct image_id.
           # TODO(akuznetsa): result_dict contains batches of images, while
           # add_single_ground_truth_image_info expects a single image. Fix
+          if (isinstance(result_dict, dict) and
+              result_dict[fields.InputDataFields.key]):
+            image_id = result_dict[fields.InputDataFields.key]
+          else:
+            image_id = batch
           evaluator.add_single_ground_truth_image_info(
-              image_id=batch, groundtruth_dict=result_dict)
+              image_id=image_id, groundtruth_dict=result_dict)
           evaluator.add_single_detected_image_info(
-              image_id=batch, detections_dict=result_dict)
-      logging.info('Running eval batches done.')
+              image_id=image_id, detections_dict=result_dict)
+      tf.logging.info('Running eval batches done.')
     except tf.errors.OutOfRangeError:
-      logging.info('Done evaluating -- epoch limit reached')
+      tf.logging.info('Done evaluating -- epoch limit reached')
     finally:
       # When done, ask the threads to stop.
-      logging.info('# success: %d', counters['success'])
-      logging.info('# skipped: %d', counters['skipped'])
+      tf.logging.info('# success: %d', counters['success'])
+      tf.logging.info('# skipped: %d', counters['skipped'])
       all_evaluator_metrics = {}
+      if eval_export_path and eval_export_path is not None:
+        for evaluator in evaluators:
+          if (isinstance(evaluator, coco_evaluation.CocoDetectionEvaluator) or
+              isinstance(evaluator, coco_evaluation.CocoMaskEvaluator)):
+            tf.logging.info('Started dumping to json file.')
+            evaluator.dump_detections_to_json_file(
+                json_output_path=eval_export_path)
+            tf.logging.info('Finished dumping to json file.')
       for evaluator in evaluators:
         metrics = evaluator.evaluate()
         evaluator.clear()
@@ -356,7 +373,8 @@ def repeated_checkpoint_run(tensor_dict,
                             master='',
                             save_graph=False,
                             save_graph_dir='',
-                            losses_dict=None):
+                            losses_dict=None,
+                            eval_export_path=None):
   """Periodically evaluates desired tensors using checkpoint_dirs or restore_fn.
 
   This function repeatedly loads a checkpoint and evaluates a desired
@@ -397,6 +415,8 @@ def repeated_checkpoint_run(tensor_dict,
     save_graph_dir: where to save on disk the Tensorflow graph. If store_graph
       is True this must be non-empty.
     losses_dict: optional dictionary of scalar detection losses.
+    eval_export_path: Path for saving a json file that contains the detection
+      results in json format.
 
   Returns:
     metrics: A dictionary containing metric names and values in the latest
@@ -417,31 +437,36 @@ def repeated_checkpoint_run(tensor_dict,
   number_of_evaluations = 0
   while True:
     start = time.time()
-    logging.info('Starting evaluation at ' + time.strftime(
+    tf.logging.info('Starting evaluation at ' + time.strftime(
         '%Y-%m-%d-%H:%M:%S', time.gmtime()))
     model_path = tf.train.latest_checkpoint(checkpoint_dirs[0])
     if not model_path:
-      logging.info('No model found in %s. Will try again in %d seconds',
-                   checkpoint_dirs[0], eval_interval_secs)
+      tf.logging.info('No model found in %s. Will try again in %d seconds',
+                      checkpoint_dirs[0], eval_interval_secs)
     elif model_path == last_evaluated_model_path:
-      logging.info('Found already evaluated checkpoint. Will try again in %d '
-                   'seconds', eval_interval_secs)
+      tf.logging.info('Found already evaluated checkpoint. Will try again in '
+                      '%d seconds', eval_interval_secs)
     else:
       last_evaluated_model_path = model_path
-      global_step, metrics = _run_checkpoint_once(tensor_dict, evaluators,
-                                                  batch_processor,
-                                                  checkpoint_dirs,
-                                                  variables_to_restore,
-                                                  restore_fn, num_batches,
-                                                  master, save_graph,
-                                                  save_graph_dir,
-                                                  losses_dict=losses_dict)
+      global_step, metrics = _run_checkpoint_once(
+          tensor_dict,
+          evaluators,
+          batch_processor,
+          checkpoint_dirs,
+          variables_to_restore,
+          restore_fn,
+          num_batches,
+          master,
+          save_graph,
+          save_graph_dir,
+          losses_dict=losses_dict,
+          eval_export_path=eval_export_path)
       write_metrics(metrics, global_step, summary_dir)
     number_of_evaluations += 1
 
     if (max_number_of_evaluations and
         number_of_evaluations >= max_number_of_evaluations):
-      logging.info('Finished evaluation!')
+      tf.logging.info('Finished evaluation!')
       break
     time_to_next_eval = start + eval_interval_secs - time.time()
     if time_to_next_eval > 0:
@@ -680,4 +705,3 @@ def evaluator_options_from_eval_config(eval_config):
               eval_config.include_metrics_per_category)
       }
   return evaluator_options
-

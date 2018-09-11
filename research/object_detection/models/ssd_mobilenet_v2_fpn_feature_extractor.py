@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""SSD MobilenetV1 FPN Feature Extractor."""
+"""SSD MobilenetV2 FPN Feature Extractor."""
 
 import copy
 import functools
@@ -24,22 +24,25 @@ from object_detection.models import feature_map_generators
 from object_detection.utils import context_manager
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-from nets import mobilenet_v1
+from nets.mobilenet import mobilenet
+from nets.mobilenet import mobilenet_v2
 
 slim = tf.contrib.slim
 
 
-# A modified config of mobilenet v1 that makes it more detection friendly,
+# A modified config of mobilenet v2 that makes it more detection friendly,
 def _create_modified_mobilenet_config():
-  conv_defs = copy.copy(mobilenet_v1.MOBILENETV1_CONV_DEFS)
-  conv_defs[-2] = mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=2, depth=512)
-  conv_defs[-1] = mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=256)
+  conv_defs = copy.copy(mobilenet_v2.V2_DEF)
+  conv_defs['spec'][-1] = mobilenet.op(
+      slim.conv2d, stride=1, kernel_size=[1, 1], num_outputs=256)
   return conv_defs
+
+
 _CONV_DEFS = _create_modified_mobilenet_config()
 
 
-class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
-  """SSD Feature Extractor using MobilenetV1 FPN features."""
+class SSDMobileNetV2FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
+  """SSD Feature Extractor using MobilenetV2 FPN features."""
 
   def __init__(self,
                is_training,
@@ -54,7 +57,7 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                use_explicit_padding=False,
                use_depthwise=False,
                override_base_feature_extractor_hyperparams=False):
-    """SSD FPN feature extractor based on Mobilenet v1 architecture.
+    """SSD FPN feature extractor based on Mobilenet v2 architecture.
 
     Args:
       is_training: whether the network is in training mode.
@@ -66,9 +69,8 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         and separable_conv2d ops in the layers that are added on top of the base
         feature extractor.
       fpn_min_level: the highest resolution feature map to use in FPN. The valid
-        values are {2, 3, 4, 5} which map to MobileNet v1 layers
-        {Conv2d_3_pointwise, Conv2d_5_pointwise, Conv2d_11_pointwise,
-        Conv2d_13_pointwise}, respectively.
+        values are {2, 3, 4, 5} which map to MobileNet v2 layers
+        {layer_4, layer_7, layer_14, layer_19}, respectively.
       fpn_max_level: the smallest resolution feature map to construct or use in
         FPN. FPN constructions uses features maps starting from fpn_min_level
         upto the fpn_max_level. In the case that there are not enough feature
@@ -84,7 +86,7 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams_fn`.
     """
-    super(SSDMobileNetV1FpnFeatureExtractor, self).__init__(
+    super(SSDMobileNetV2FpnFeatureExtractor, self).__init__(
         is_training=is_training,
         depth_multiplier=depth_multiplier,
         min_depth=min_depth,
@@ -128,29 +130,26 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     preprocessed_inputs = shape_utils.check_min_image_dim(
         33, preprocessed_inputs)
 
-    with tf.variable_scope('MobilenetV1',
-                           reuse=self._reuse_weights) as scope:
+    with tf.variable_scope('MobilenetV2', reuse=self._reuse_weights) as scope:
       with slim.arg_scope(
-          mobilenet_v1.mobilenet_v1_arg_scope(
-              is_training=None, regularize_depthwise=True)):
+          mobilenet_v2.training_scope(is_training=None, bn_decay=0.9997)), \
+          slim.arg_scope(
+              [mobilenet.depth_multiplier], min_depth=self._min_depth):
         with (slim.arg_scope(self._conv_hyperparams_fn())
-              if self._override_base_feature_extractor_hyperparams
-              else context_manager.IdentityContextManager()):
-          _, image_features = mobilenet_v1.mobilenet_v1_base(
+              if self._override_base_feature_extractor_hyperparams else
+              context_manager.IdentityContextManager()):
+          _, image_features = mobilenet_v2.mobilenet_base(
               ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
-              final_endpoint='Conv2d_13_pointwise',
-              min_depth=self._min_depth,
+              final_endpoint='layer_19',
               depth_multiplier=self._depth_multiplier,
               conv_defs=_CONV_DEFS if self._use_depthwise else None,
               use_explicit_padding=self._use_explicit_padding,
               scope=scope)
-
       depth_fn = lambda d: max(int(d * self._depth_multiplier), self._min_depth)
       with slim.arg_scope(self._conv_hyperparams_fn()):
         with tf.variable_scope('fpn', reuse=self._reuse_weights):
           feature_blocks = [
-              'Conv2d_3_pointwise', 'Conv2d_5_pointwise', 'Conv2d_11_pointwise',
-              'Conv2d_13_pointwise'
+              'layer_4', 'layer_7', 'layer_14', 'layer_19'
           ]
           base_fpn_max_level = min(self._fpn_max_level, 5)
           feature_block_list = []
@@ -179,6 +178,6 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                 kernel_size=[3, 3],
                 stride=2,
                 padding='SAME',
-                scope='bottom_up_Conv2d_{}'.format(i - base_fpn_max_level + 13))
+                scope='bottom_up_Conv2d_{}'.format(i - base_fpn_max_level + 19))
             feature_maps.append(last_feature_map)
     return feature_maps

@@ -79,6 +79,26 @@ class WeightedL2LocalizationLossTest(tf.test.TestCase):
       loss_output = sess.run(loss)
       self.assertAllClose(loss_output, expected_loss)
 
+  def testReturnsCorrectWeightedLossWithLossesMask(self):
+    batch_size = 4
+    num_anchors = 10
+    code_size = 4
+    prediction_tensor = tf.ones([batch_size, num_anchors, code_size])
+    target_tensor = tf.zeros([batch_size, num_anchors, code_size])
+    weights = tf.constant([[1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                           [1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+                           [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                           [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], tf.float32)
+    losses_mask = tf.constant([True, False, True, True], tf.bool)
+    loss_op = losses.WeightedL2LocalizationLoss()
+    loss = tf.reduce_sum(loss_op(prediction_tensor, target_tensor,
+                                 weights=weights, losses_mask=losses_mask))
+
+    expected_loss = (3 * 5 * 4) / 2.0
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, expected_loss)
+
 
 class WeightedSmoothL1LocalizationLossTest(tf.test.TestCase):
 
@@ -104,6 +124,34 @@ class WeightedSmoothL1LocalizationLossTest(tf.test.TestCase):
       loss_output = sess.run(loss)
       self.assertAllClose(loss_output, exp_loss)
 
+  def testReturnsCorrectLossWithLossesMask(self):
+    batch_size = 3
+    num_anchors = 3
+    code_size = 4
+    prediction_tensor = tf.constant([[[2.5, 0, .4, 0],
+                                      [0, 0, 0, 0],
+                                      [0, 2.5, 0, .4]],
+                                     [[3.5, 0, 0, 0],
+                                      [0, .4, 0, .9],
+                                      [0, 0, 1.5, 0]],
+                                     [[3.5, 7., 0, 0],
+                                      [0, .4, 0, .9],
+                                      [2.2, 2.2, 1.5, 0]]], tf.float32)
+    target_tensor = tf.zeros([batch_size, num_anchors, code_size])
+    weights = tf.constant([[2, 1, 1],
+                           [0, 3, 0],
+                           [4, 3, 0]], tf.float32)
+    losses_mask = tf.constant([True, True, False], tf.bool)
+    loss_op = losses.WeightedSmoothL1LocalizationLoss()
+    loss = loss_op(prediction_tensor, target_tensor, weights=weights,
+                   losses_mask=losses_mask)
+    loss = tf.reduce_sum(loss)
+
+    exp_loss = 7.695
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, exp_loss)
+
 
 class WeightedIOULocalizationLossTest(tf.test.TestCase):
 
@@ -119,6 +167,24 @@ class WeightedIOULocalizationLossTest(tf.test.TestCase):
     loss = loss_op(prediction_tensor, target_tensor, weights=weights)
     loss = tf.reduce_sum(loss)
     exp_loss = 2.0
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, exp_loss)
+
+  def testReturnsCorrectLossWithNoLabels(self):
+    prediction_tensor = tf.constant([[[1.5, 0, 2.4, 1],
+                                      [0, 0, 1, 1],
+                                      [0, 0, .5, .25]]])
+    target_tensor = tf.constant([[[1.5, 0, 2.4, 1],
+                                  [0, 0, 1, 1],
+                                  [50, 50, 500.5, 100.25]]])
+    weights = [[1.0, .5, 2.0]]
+    losses_mask = tf.constant([False], tf.bool)
+    loss_op = losses.WeightedIOULocalizationLoss()
+    loss = loss_op(prediction_tensor, target_tensor, weights=weights,
+                   losses_mask=losses_mask)
+    loss = tf.reduce_sum(loss)
+    exp_loss = 0.0
     with self.test_session() as sess:
       loss_output = sess.run(loss)
       self.assertAllClose(loss_output, exp_loss)
@@ -213,6 +279,50 @@ class WeightedSigmoidClassificationLossTest(tf.test.TestCase):
                           [-math.log(.5), 0, 0, 0]])
     with self.test_session() as sess:
       loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, exp_loss)
+
+  def testReturnsCorrectLossWithLossesMask(self):
+    prediction_tensor = tf.constant([[[-100, 100, -100],
+                                      [100, -100, -100],
+                                      [100, 0, -100],
+                                      [-100, -100, 100]],
+                                     [[-100, 0, 100],
+                                      [-100, 100, -100],
+                                      [100, 100, 100],
+                                      [0, 0, -1]],
+                                     [[-100, 0, 100],
+                                      [-100, 100, -100],
+                                      [100, 100, 100],
+                                      [0, 0, -100]]], tf.float32)
+    target_tensor = tf.constant([[[0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [0, 0, 1]],
+                                 [[0, 0, 1],
+                                  [0, 1, 0],
+                                  [1, 1, 1],
+                                  [1, 0, 0]],
+                                 [[0, 0, 0],
+                                  [0, 0, 0],
+                                  [0, 0, 0],
+                                  [0, 0, 0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1],
+                           [1, 1, 1, 0],
+                           [1, 1, 1, 1]], tf.float32)
+    losses_mask = tf.constant([True, True, False], tf.bool)
+
+    loss_op = losses.WeightedSigmoidClassificationLoss()
+    loss_per_anchor = loss_op(prediction_tensor, target_tensor, weights=weights,
+                              losses_mask=losses_mask)
+    loss = tf.reduce_sum(loss_per_anchor)
+
+    exp_loss = -2 * math.log(.5)
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllEqual(prediction_tensor.shape.as_list(),
+                          loss_per_anchor.shape.as_list())
+      self.assertAllEqual(target_tensor.shape.as_list(),
+                          loss_per_anchor.shape.as_list())
       self.assertAllClose(loss_output, exp_loss)
 
 
@@ -484,6 +594,51 @@ class SigmoidFocalClassificationLossTest(tf.test.TestCase):
              8 * 2))),      # negatives from 8 anchors for two classes.
           focal_loss)
 
+  def testExpectedLossWithLossesMask(self):
+    # All zeros correspond to 0.5 probability.
+    prediction_tensor = tf.constant([[[0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0]],
+                                     [[0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0]],
+                                     [[0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0]]], tf.float32)
+    target_tensor = tf.constant([[[0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [0, 0, 1]],
+                                 [[0, 0, 1],
+                                  [0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0]],
+                                 [[1, 0, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1],
+                           [1, 1, 1, 1],
+                           [1, 1, 1, 1]], tf.float32)
+    losses_mask = tf.constant([True, True, False], tf.bool)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(alpha=0.75, gamma=0.0)
+
+    focal_loss = tf.reduce_sum(focal_loss_op(prediction_tensor, target_tensor,
+                                             weights=weights,
+                                             losses_mask=losses_mask))
+    with self.test_session() as sess:
+      focal_loss = sess.run(focal_loss)
+      self.assertAllClose(
+          (-math.log(.5) *  # x-entropy per class per anchor.
+           ((0.75 *         # alpha for positives.
+             8) +           # positives from 8 anchors.
+            (0.25 *         # alpha for negatives.
+             8 * 2))),      # negatives from 8 anchors for two classes.
+          focal_loss)
+
 
 class WeightedSoftmaxClassificationLossTest(tf.test.TestCase):
 
@@ -571,6 +726,45 @@ class WeightedSoftmaxClassificationLossTest(tf.test.TestCase):
     uniform_distribution_loss = - math.log(.33333333333)
     exp_loss = np.matrix([[uniform_distribution_loss] * 4,
                           [uniform_distribution_loss] * 4])
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, exp_loss)
+
+  def testReturnsCorrectLossWithLossesMask(self):
+    prediction_tensor = tf.constant([[[-100, 100, -100],
+                                      [100, -100, -100],
+                                      [0, 0, -100],
+                                      [-100, -100, 100]],
+                                     [[-100, 0, 0],
+                                      [-100, 100, -100],
+                                      [-100, 100, -100],
+                                      [100, -100, -100]],
+                                     [[-100, 0, 0],
+                                      [-100, 100, -100],
+                                      [-100, 100, -100],
+                                      [100, -100, -100]]], tf.float32)
+    target_tensor = tf.constant([[[0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [0, 0, 1]],
+                                 [[0, 0, 1],
+                                  [0, 1, 0],
+                                  [0, 1, 0],
+                                  [1, 0, 0]],
+                                 [[1, 0, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0]]], tf.float32)
+    weights = tf.constant([[1, 1, .5, 1],
+                           [1, 1, 1, 0],
+                           [1, 1, 1, 1]], tf.float32)
+    losses_mask = tf.constant([True, True, False], tf.bool)
+    loss_op = losses.WeightedSoftmaxClassificationLoss()
+    loss = loss_op(prediction_tensor, target_tensor, weights=weights,
+                   losses_mask=losses_mask)
+    loss = tf.reduce_sum(loss)
+
+    exp_loss = - 1.5 * math.log(.5)
     with self.test_session() as sess:
       loss_output = sess.run(loss)
       self.assertAllClose(loss_output, exp_loss)
