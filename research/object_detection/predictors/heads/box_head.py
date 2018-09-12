@@ -197,19 +197,22 @@ class WeightSharedConvolutionalBoxHead(head.Head):
   def __init__(self,
                box_code_size,
                kernel_size=3,
-               use_depthwise=False):
+               use_depthwise=False,
+               box_encodings_clip_range=None):
     """Constructor.
 
     Args:
       box_code_size: Size of encoding for each box.
       kernel_size: Size of final convolution kernel.
-      use_depthwise: Whether to use depthwise convolutions for prediction
-        steps. Default is False.
+      use_depthwise: Whether to use depthwise convolutions for prediction steps.
+        Default is False.
+      box_encodings_clip_range: Min and max values for clipping box_encodings.
     """
     super(WeightSharedConvolutionalBoxHead, self).__init__()
     self._box_code_size = box_code_size
     self._kernel_size = kernel_size
     self._use_depthwise = use_depthwise
+    self._box_encodings_clip_range = box_encodings_clip_range
 
   def predict(self, features, num_predictions_per_location):
     """Predicts boxes.
@@ -240,6 +243,11 @@ class WeightSharedConvolutionalBoxHead(head.Head):
     batch_size = features.get_shape().as_list()[0]
     if batch_size is None:
       batch_size = tf.shape(features)[0]
+    # Clipping the box encodings to make the inference graph TPU friendly.
+    if self._box_encodings_clip_range is not None:
+      box_encodings = tf.clip_by_value(
+          box_encodings, self._box_encodings_clip_range.min,
+          self._box_encodings_clip_range.max)
     box_encodings = tf.reshape(box_encodings,
                                [batch_size, -1, self._box_code_size])
     return box_encodings

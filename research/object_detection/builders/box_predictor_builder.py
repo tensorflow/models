@@ -15,8 +15,9 @@
 
 """Function to build box predictor from configuration."""
 
+import collections
 from absl import logging
-
+import tensorflow as tf
 from object_detection.predictors import convolutional_box_predictor
 from object_detection.predictors import convolutional_keras_box_predictor
 from object_detection.predictors import mask_rcnn_box_predictor
@@ -269,7 +270,9 @@ def build_weight_shared_convolutional_box_predictor(
     share_prediction_tower=False,
     apply_batch_norm=True,
     use_depthwise=False,
-    mask_head_config=None):
+    mask_head_config=None,
+    score_converter_fn=tf.identity,
+    box_encodings_clip_range=None):
   """Builds and returns a WeightSharedConvolutionalBoxPredictor class.
 
   Args:
@@ -296,6 +299,9 @@ def build_weight_shared_convolutional_box_predictor(
     use_depthwise: Whether to use depthwise separable conv2d instead of conv2d.
     mask_head_config: An optional MaskHead object containing configs for mask
       head construction.
+    score_converter_fn: Callable score converter to perform elementwise op on
+      class scores.
+    box_encodings_clip_range: Min and max values for clipping the box_encodings.
 
   Returns:
     A WeightSharedConvolutionalBoxPredictor class.
@@ -303,7 +309,8 @@ def build_weight_shared_convolutional_box_predictor(
   box_prediction_head = box_head.WeightSharedConvolutionalBoxHead(
       box_code_size=box_code_size,
       kernel_size=kernel_size,
-      use_depthwise=use_depthwise)
+      use_depthwise=use_depthwise,
+      box_encodings_clip_range=box_encodings_clip_range)
   class_prediction_head = (
       class_head.WeightSharedConvolutionalClassHead(
           num_classes=num_classes,
@@ -311,7 +318,8 @@ def build_weight_shared_convolutional_box_predictor(
           class_prediction_bias_init=class_prediction_bias_init,
           use_dropout=use_dropout,
           dropout_keep_prob=dropout_keep_prob,
-          use_depthwise=use_depthwise))
+          use_depthwise=use_depthwise,
+          score_converter_fn=score_converter_fn))
   other_heads = {}
   if mask_head_config is not None:
     if not mask_head_config.masks_are_class_agnostic:
@@ -426,6 +434,36 @@ def build_mask_rcnn_box_predictor(is_training,
       third_stage_heads=third_stage_heads)
 
 
+def build_score_converter(score_converter_config, is_training):
+  """Builds score converter based on the config.
+
+  Builds one of [tf.identity, tf.sigmoid] score converters based on the config
+  and whether the BoxPredictor is for training or inference.
+
+  Args:
+    score_converter_config:
+      box_predictor_pb2.WeightSharedConvolutionalBoxPredictor.score_converter.
+    is_training: Indicates whether the BoxPredictor is in training mode.
+
+  Returns:
+    Callable score converter op.
+
+  Raises:
+    ValueError: On unknown score converter.
+  """
+  if score_converter_config == (
+      box_predictor_pb2.WeightSharedConvolutionalBoxPredictor.IDENTITY):
+    return tf.identity
+  if score_converter_config == (
+      box_predictor_pb2.WeightSharedConvolutionalBoxPredictor.SIGMOID):
+    return tf.identity if is_training else tf.sigmoid
+  raise ValueError('Unknown score converter.')
+
+
+BoxEncodingsClipRange = collections.namedtuple('BoxEncodingsClipRange',
+                                               ['min', 'max'])
+
+
 def build(argscope_fn, box_predictor_config, is_training, num_classes):
   """Builds box predictor based on the configuration.
 
@@ -489,6 +527,18 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
     mask_head_config = (
         config_box_predictor.mask_head
         if config_box_predictor.HasField('mask_head') else None)
+    # During training phase, logits are used to compute the loss. Only apply
+    # sigmoid at inference to make the inference graph TPU friendly.
+    score_converter_fn = build_score_converter(
+        config_box_predictor.score_converter, is_training)
+    # Optionally apply clipping to box encodings, when box_encodings_clip_range
+    # is set.
+    box_encodings_clip_range = (
+        BoxEncodingsClipRange(
+            min=config_box_predictor.box_encodings_clip_range.min,
+            max=config_box_predictor.box_encodings_clip_range.max)
+        if config_box_predictor.HasField('box_encodings_clip_range') else None)
+
     return build_weight_shared_convolutional_box_predictor(
         is_training=is_training,
         num_classes=num_classes,
@@ -505,7 +555,9 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
         share_prediction_tower=config_box_predictor.share_prediction_tower,
         apply_batch_norm=apply_batch_norm,
         use_depthwise=config_box_predictor.use_depthwise,
-        mask_head_config=mask_head_config)
+        mask_head_config=mask_head_config,
+        score_converter_fn=score_converter_fn,
+        box_encodings_clip_range=box_encodings_clip_range)
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':
     config_box_predictor = box_predictor_config.mask_rcnn_box_predictor

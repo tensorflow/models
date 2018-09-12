@@ -213,7 +213,8 @@ class WeightSharedConvolutionalClassHead(head.Head):
                class_prediction_bias_init=0.0,
                use_dropout=False,
                dropout_keep_prob=0.8,
-               use_depthwise=False):
+               use_depthwise=False,
+               score_converter_fn=tf.identity):
     """Constructor.
 
     Args:
@@ -228,6 +229,8 @@ class WeightSharedConvolutionalClassHead(head.Head):
       dropout_keep_prob: Probability of keeping activiations.
       use_depthwise: Whether to use depthwise convolutions for prediction
         steps. Default is False.
+      score_converter_fn: Callable elementwise nonlinearity (that takes tensors
+        as inputs and returns tensors).
     """
     super(WeightSharedConvolutionalClassHead, self).__init__()
     self._num_classes = num_classes
@@ -236,6 +239,7 @@ class WeightSharedConvolutionalClassHead(head.Head):
     self._use_dropout = use_dropout
     self._dropout_keep_prob = dropout_keep_prob
     self._use_depthwise = use_depthwise
+    self._score_converter_fn = score_converter_fn
 
   def predict(self, features, num_predictions_per_location):
     """Predicts boxes.
@@ -273,6 +277,8 @@ class WeightSharedConvolutionalClassHead(head.Head):
     batch_size = features.get_shape().as_list()[0]
     if batch_size is None:
       batch_size = tf.shape(features)[0]
+    class_predictions_with_background = self._score_converter_fn(
+        class_predictions_with_background)
     class_predictions_with_background = tf.reshape(
         class_predictions_with_background, [batch_size, -1, num_class_slots])
     return class_predictions_with_background

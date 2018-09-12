@@ -75,7 +75,7 @@ message ConvolutionalBoxPredictor {
 }
 
 // Configuration proto for weight shared convolutional box predictor.
-// Next id: 16
+// Next id: 18
 message WeightSharedConvolutionalBoxPredictor {
   // Hyperparameters for convolution ops used in the box predictor.
   optional Hyperparams conv_hyperparams = 1;
@@ -115,6 +115,25 @@ message WeightSharedConvolutionalBoxPredictor {
 
   // Configs for a mask prediction head.
   optional MaskHead mask_head = 15;
+
+  // Enum to specify how to convert the detection scores at inference time.
+  enum ScoreConverter {
+    // Input scores equals output scores.
+    IDENTITY = 0;
+
+    // Applies a sigmoid on input scores.
+    SIGMOID = 1;
+  }
+
+  // Callable elementwise score converter at inference time.
+  optional ScoreConverter score_converter = 16 [default = IDENTITY];
+
+  // If specified, apply clipping to box encodings.
+  message BoxEncodingsClipRange {
+    optional float min = 1;
+    optional float max = 2;
+  }
+  optional BoxEncodingsClipRange box_encodings_clip_range = 17;
 }
 
 // TODO(alirezafathi): Refactor the proto file to be able to configure mask rcnn
