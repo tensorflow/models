@@ -29,26 +29,28 @@ comparison is presented in Figure 1 (left) of [2].
 Please proceed according to which dataset you would like to train/evaluate on:
 
 
-## CIFAR-10
+## CIFAR
 
 ### Setup
 
 You simply need to have the latest version of TensorFlow installed.
 First make sure you've [added the models folder to your Python path](/official/#running-the-models); otherwise you may encounter an error like `ImportError: No module named official.resnet`.
 
-Then download and extract the CIFAR-10 data from Alex's website, specifying the location with the `--data_dir` flag. Run the following:
+Then download and extract the CIFAR-10 or CIFAR-100 data from Alex's website, specifying the location with the `--data_dir` flag. Run the following:
 
 ```
-python cifar10_download_and_extract.py
+python cifar_download_and_extract.py --data_dir cifar10_data --cifar 10
+python cifar_download_and_extract.py --data_dir cifar100_data --cifar 100
 ```
 
 Then to train the model, run the following:
 
 ```
-python cifar10_main.py
+python cifar_main.py --data_dir cifar10_data --model_dir cifar10_model --cifar 10
+python cifar_main.py --data_dir cifar100_data --model_dir cifar100_model --cifar 100
 ```
 
-Use `--data_dir` to specify the location of the CIFAR-10 data used in the previous step. There are more flag options as described in `cifar10_main.py`.
+Use `--data_dir` to specify the location of the CIFAR-10 or CIFAR-100 data used in the previous step. There are more flag options as described in `cifar_main.py`.
 
 
 ## ImageNet

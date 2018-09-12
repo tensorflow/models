@@ -539,6 +539,10 @@ def define_resnet_flags(resnet_size_choices=None):
       name='eval_only', default=False,
       help=flags_core.help_wrap('Skip training and only perform evaluation on '
                                 'the latest checkpoint.'))
+  flags.DEFINE_string(
+      name='cifar', default='10',
+      help=flags_core.help_wrap(
+          'CIFAR-10 or CIFAR-100'))
 
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
