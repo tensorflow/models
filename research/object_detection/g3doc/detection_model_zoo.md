@@ -115,7 +115,7 @@ Model name                                                                      
 
 ## iNaturalist Species-trained models
 
-Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 | Outputs
+Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 (ms) | Outputs
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
 [faster_rcnn_resnet101_fgvc](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_fgvc_2018_07_19.tar.gz) | 395  | 58              | Boxes
 [faster_rcnn_resnet50_fgvc](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet50_fgvc_2018_07_19.tar.gz) | 366  | 55             | Boxes

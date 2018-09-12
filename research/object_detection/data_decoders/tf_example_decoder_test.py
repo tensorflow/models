@@ -18,12 +18,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.framework import constant_op
-from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import test_util
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import lookup_ops
-from tensorflow.python.ops import parsing_ops
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.protos import input_reader_pb2
@@ -86,92 +81,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
       self.assertAllEqual(
           np.concatenate([decoded_additional_channel] * 2, axis=2),
           tensor_dict[fields.InputDataFields.image_additional_channels])
-
-  def testDecodeExampleWithBranchedBackupHandler(self):
-    example1 = tf.train.Example(
-        features=tf.train.Features(
-            feature={
-                'image/object/class/text':
-                    dataset_util.bytes_list_feature(
-                        ['cat', 'dog', 'guinea pig']),
-                'image/object/class/label':
-                    dataset_util.int64_list_feature([42, 10, 900])
-            }))
-    example2 = tf.train.Example(
-        features=tf.train.Features(
-            feature={
-                'image/object/class/text':
-                    dataset_util.bytes_list_feature(
-                        ['cat', 'dog', 'guinea pig']),
-            }))
-    example3 = tf.train.Example(
-        features=tf.train.Features(
-            feature={
-                'image/object/class/label':
-                    dataset_util.int64_list_feature([42, 10, 901])
-            }))
-    # 'dog' -> 0, 'guinea pig' -> 1, 'cat' -> 2
-    table = lookup_ops.index_table_from_tensor(
-        constant_op.constant(['dog', 'guinea pig', 'cat']))
-    keys_to_features = {
-        'image/object/class/text': parsing_ops.VarLenFeature(dtypes.string),
-        'image/object/class/label': parsing_ops.VarLenFeature(dtypes.int64),
-    }
-    backup_handler = tf_example_decoder.BackupHandler(
-        handler=slim_example_decoder.Tensor('image/object/class/label'),
-        backup=tf_example_decoder.LookupTensor('image/object/class/text',
-                                               table))
-    items_to_handlers = {
-        'labels': backup_handler,
-    }
-    decoder = slim_example_decoder.TFExampleDecoder(keys_to_features,
-                                                    items_to_handlers)
-    obtained_class_ids_each_example = []
-    with self.test_session() as sess:
-      sess.run(lookup_ops.tables_initializer())
-      for example in [example1, example2, example3]:
-        serialized_example = array_ops.reshape(
-            example.SerializeToString(), shape=[])
-        obtained_class_ids_each_example.append(
-            decoder.decode(serialized_example)[0].eval())
-
-    self.assertAllClose([42, 10, 900], obtained_class_ids_each_example[0])
-    self.assertAllClose([2, 0, 1], obtained_class_ids_each_example[1])
-    self.assertAllClose([42, 10, 901], obtained_class_ids_each_example[2])
-
-  def testDecodeExampleWithBranchedLookup(self):
-
-    example = tf.train.Example(
-        features=tf.train.Features(
-            feature={
-                'image/object/class/text':
-                    dataset_util.bytes_list_feature(
-                        ['cat', 'dog', 'guinea pig']),
-            }))
-    serialized_example = example.SerializeToString()
-    # 'dog' -> 0, 'guinea pig' -> 1, 'cat' -> 2
-    table = lookup_ops.index_table_from_tensor(
-        constant_op.constant(['dog', 'guinea pig', 'cat']))
-
-    with self.test_session() as sess:
-      sess.run(lookup_ops.tables_initializer())
-
-      serialized_example = array_ops.reshape(serialized_example, shape=[])
-
-      keys_to_features = {
-          'image/object/class/text': parsing_ops.VarLenFeature(dtypes.string),
-      }
-
-      items_to_handlers = {
-          'labels':
-              tf_example_decoder.LookupTensor('image/object/class/text', table),
-      }
-
-      decoder = slim_example_decoder.TFExampleDecoder(keys_to_features,
-                                                      items_to_handlers)
-      obtained_class_ids = decoder.decode(serialized_example)[0].eval()
-
-    self.assertAllClose([2, 0, 1], obtained_class_ids)
 
   def testDecodeJpegImage(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
@@ -546,7 +455,49 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual([2, -1],
                         tensor_dict[fields.InputDataFields.groundtruth_classes])
 
-  def testDecodeObjectLabelWithMapping(self):
+  def testDecodeObjectLabelWithMappingWithDisplayName(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    bbox_classes_text = ['cat', 'dog']
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded':
+                    dataset_util.bytes_feature(encoded_jpeg),
+                'image/format':
+                    dataset_util.bytes_feature('jpeg'),
+                'image/object/class/text':
+                    dataset_util.bytes_list_feature(bbox_classes_text),
+            })).SerializeToString()
+
+    label_map_string = """
+      item {
+        id:3
+        display_name:'cat'
+      }
+      item {
+        id:1
+        display_name:'dog'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+    example_decoder = tf_example_decoder.TfExampleDecoder(
+        label_map_proto_file=label_map_path)
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.groundtruth_classes]
+                         .get_shape().as_list()), [None])
+
+    with self.test_session() as sess:
+      sess.run(tf.tables_initializer())
+      tensor_dict = sess.run(tensor_dict)
+
+    self.assertAllEqual([3, 1],
+                        tensor_dict[fields.InputDataFields.groundtruth_classes])
+
+  def testDecodeObjectLabelWithMappingWithName(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
     bbox_classes_text = ['cat', 'dog']

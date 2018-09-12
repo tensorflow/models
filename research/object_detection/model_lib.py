@@ -571,6 +571,10 @@ def create_estimator_and_inputs(run_config,
         use_tpu=use_tpu,
         config=run_config,
         # TODO(lzc): Remove conditional after CMLE moves to TF 1.9
+        # BEGIN GOOGLE-INTERNAL
+        export_to_tpu=export_to_tpu,
+        eval_on_tpu=False,  # Eval runs on CPU, so disable eval on TPU
+        # END GOOGLE-INTERNAL
         params=params if params else {})
   else:
     estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
