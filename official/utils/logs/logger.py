@@ -308,9 +308,9 @@ def _gather_run_info(model_name, dataset_name, run_params, test_id):
       "run_date": datetime.datetime.utcnow().strftime(
           _DATE_TIME_FORMAT_PATTERN)}
   if "session_config" in run_params:
-    session_config=run_params["session_config"]
+    session_config = run_params["session_config"]
   else:
-    session_config=None
+    session_config = None
   _collect_tensorflow_info(run_info)
   _collect_tensorflow_environment_variables(run_info)
   _collect_run_params(run_info, run_params)
