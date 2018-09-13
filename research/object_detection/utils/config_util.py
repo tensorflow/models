@@ -324,9 +324,6 @@ def _check_and_convert_legacy_input_config_key(key):
   elif field_name == "eval_shuffle":
     key_name = "eval_input_configs"
     field_name = "shuffle"
-  elif field_name == "sample_1_of_n_eval_examples":
-    key_name = "eval_input_configs"
-    field_name = "sample_1_of_n_examples"
   elif field_name == "train_input_path":
     key_name = "train_input_config"
     field_name = "input_path"
@@ -411,7 +408,7 @@ def check_and_parse_input_config_key(configs, key):
   # Checks if field_name is valid for specific update.
   if field_name not in [
       "input_path", "label_map_path", "shuffle", "mask_type",
-      "sample_1_of_n_eval_examples"
+      "sample_1_of_n_examples"
   ]:
     raise ValueError("Invalid field_name when overriding input config.")
 
@@ -539,6 +536,10 @@ def _maybe_update_config_with_key_value(configs, key, value):
     _update_label_map_path(configs, value)
   elif field_name == "mask_type":
     _update_mask_type(configs, value)
+  elif field_name == "sample_1_of_n_eval_examples":
+    _update_all_eval_input_configs(configs, "sample_1_of_n_examples", value)
+  elif field_name == "eval_num_epochs":
+    _update_all_eval_input_configs(configs, "num_epochs", value)
   elif field_name == "eval_with_moving_averages":
     _update_use_moving_averages(configs, value)
   elif field_name == "retain_original_images_in_eval":
@@ -624,7 +625,12 @@ def update_input_reader_config(configs,
     elif update_count > 1:
       raise ValueError("Duplicate input name found when overriding.")
   else:
-    raise ValueError("Unknown input config overriding.")
+    key_name = "None" if key_name is None else key_name
+    input_name = "None" if input_name is None else input_name
+    field_name = "None" if field_name is None else field_name
+    raise ValueError("Unknown input config overriding: "
+                     "key_name:{}, input_name:{}, field_name:{}.".format(
+                         key_name, input_name, field_name))
 
 
 def _update_initial_learning_rate(configs, learning_rate):
@@ -853,6 +859,12 @@ def _update_eval_steps(configs, eval_steps):
   configs["eval_config"].num_examples = int(eval_steps)
 
 
+def _update_all_eval_input_configs(configs, field, value):
+  """Updates the content of `field` with `value` for all eval input configs."""
+  for eval_input_config in configs["eval_input_configs"]:
+    setattr(eval_input_config, field, value)
+
+
 def _update_label_map_path(configs, label_map_path):
   """Updates the label map path for both train and eval input readers.
 
@@ -864,8 +876,7 @@ def _update_label_map_path(configs, label_map_path):
     label_map_path: New path to `StringIntLabelMap` pbtxt file.
   """
   configs["train_input_config"].label_map_path = label_map_path
-  for eval_input_config in configs["eval_input_configs"]:
-    eval_input_config.label_map_path = label_map_path
+  _update_all_eval_input_configs(configs, "label_map_path", label_map_path)
 
 
 def _update_mask_type(configs, mask_type):
@@ -880,8 +891,7 @@ def _update_mask_type(configs, mask_type):
       input_reader_pb2.InstanceMaskType
   """
   configs["train_input_config"].mask_type = mask_type
-  for eval_input_config in configs["eval_input_configs"]:
-    eval_input_config.mask_type = mask_type
+  _update_all_eval_input_configs(configs, "mask_type", mask_type)
 
 
 def _update_use_moving_averages(configs, use_moving_averages):

@@ -117,7 +117,7 @@ def main(unused_argv):
       **kwargs)
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
-  eval_input_fn = train_and_eval_dict['eval_input_fn']
+  eval_input_fns = train_and_eval_dict['eval_input_fns']
   eval_on_train_input_fn = train_and_eval_dict['eval_on_train_input_fn']
   train_steps = train_and_eval_dict['train_steps']
 
@@ -131,7 +131,8 @@ def main(unused_argv):
       input_fn = eval_on_train_input_fn
     else:
       name = 'validation_data'
-      input_fn = eval_input_fn
+      # Currently only a single eval input is allowed.
+      input_fn = eval_input_fns[0]
     model_lib.continuous_eval(estimator, FLAGS.model_dir, input_fn, train_steps,
                               name)
 

@@ -489,7 +489,8 @@ def create_estimator_and_inputs(run_config,
     A dictionary with the following fields:
     'estimator': An `Estimator` or `TPUEstimator`.
     'train_input_fn': A training input function.
-    'eval_input_fn': An evaluation input function.
+    'eval_input_fns': A list of all evaluation input functions.
+    'eval_input_names': A list of names for each evaluation input.
     'eval_on_train_input_fn': An evaluation-on-train input function.
     'predict_input_fn': A prediction input function.
     'train_steps': Number of training steps. Either directly from input or from
@@ -511,22 +512,20 @@ def create_estimator_and_inputs(run_config,
       'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples,
       'retain_original_images_in_eval': False if use_tpu else True,
   })
+  if override_eval_num_epochs:
+    kwargs.update({'eval_num_epochs': 1})
+    tf.logging.warning(
+        'Forced number of epochs for all eval validations to be 1.')
   configs = merge_external_params_with_configs(
       configs, hparams, kwargs_dict=kwargs)
   model_config = configs['model']
   train_config = configs['train_config']
   train_input_config = configs['train_input_config']
   eval_config = configs['eval_config']
-  eval_input_config = configs['eval_input_config']
+  eval_input_configs = configs['eval_input_configs']
   eval_on_train_input_config = copy.deepcopy(train_input_config)
   eval_on_train_input_config.sample_1_of_n_examples = (
       sample_1_of_n_eval_on_train_examples)
-  if override_eval_num_epochs and eval_input_config.num_epochs != 1:
-    tf.logging.warning('Expected number of evaluation epochs is 1, but '
-                       'instead encountered `eval_input_config.num_epochs` = '
-                       '{}. Overwriting `num_epochs` to 1.'.format(
-                           eval_input_config.num_epochs))
-    eval_input_config.num_epochs = 1
   if override_eval_num_epochs and eval_on_train_input_config.num_epochs != 1:
     tf.logging.warning('Expected number of evaluation epochs is 1, but '
                        'instead encountered `eval_on_train_input_config'
@@ -547,16 +546,21 @@ def create_estimator_and_inputs(run_config,
       train_config=train_config,
       train_input_config=train_input_config,
       model_config=model_config)
-  eval_input_fn = create_eval_input_fn(
-      eval_config=eval_config,
-      eval_input_config=eval_input_config,
-      model_config=model_config)
+  eval_input_fns = [
+      create_eval_input_fn(
+          eval_config=eval_config,
+          eval_input_config=eval_input_config,
+          model_config=model_config) for eval_input_config in eval_input_configs
+  ]
+  eval_input_names = [
+      eval_input_config.name for eval_input_config in eval_input_configs
+  ]
   eval_on_train_input_fn = create_eval_input_fn(
       eval_config=eval_config,
       eval_input_config=eval_on_train_input_config,
       model_config=model_config)
   predict_input_fn = create_predict_input_fn(
-      model_config=model_config, predict_input_config=eval_input_config)
+      model_config=model_config, predict_input_config=eval_input_configs[0])
 
   export_to_tpu = hparams.get('export_to_tpu', False)
   tf.logging.info('create_estimator_and_inputs: use_tpu %s, export_to_tpu %s',
@@ -587,25 +591,27 @@ def create_estimator_and_inputs(run_config,
   return dict(
       estimator=estimator,
       train_input_fn=train_input_fn,
-      eval_input_fn=eval_input_fn,
+      eval_input_fns=eval_input_fns,
+      eval_input_names=eval_input_names,
       eval_on_train_input_fn=eval_on_train_input_fn,
       predict_input_fn=predict_input_fn,
       train_steps=train_steps)
 
 
 def create_train_and_eval_specs(train_input_fn,
-                                eval_input_fn,
+                                eval_input_fns,
                                 eval_on_train_input_fn,
                                 predict_input_fn,
                                 train_steps,
                                 eval_on_train_data=False,
                                 final_exporter_name='Servo',
-                                eval_spec_name='eval'):
+                                eval_spec_names=None):
   """Creates a `TrainSpec` and `EvalSpec`s.
 
   Args:
     train_input_fn: Function that produces features and labels on train data.
-    eval_input_fn: Function that produces features and labels on eval data.
+    eval_input_fns: A list of functions that produce features and labels on eval
+      data.
     eval_on_train_input_fn: Function that produces features and labels for
       evaluation on train data.
     predict_input_fn: Function that produces features for inference.
@@ -613,27 +619,30 @@ def create_train_and_eval_specs(train_input_fn,
     eval_on_train_data: Whether to evaluate model on training data. Default is
       False.
     final_exporter_name: String name given to `FinalExporter`.
-    eval_spec_name: String name given to main `EvalSpec`.
+    eval_spec_names: A list of string names for each `EvalSpec`.
 
   Returns:
-    Tuple of `TrainSpec` and list of `EvalSpecs`. The first `EvalSpec` is for
-    evaluation data. If `eval_on_train_data` is True, the second `EvalSpec` in
-    the list will correspond to training data.
+    Tuple of `TrainSpec` and list of `EvalSpecs`. If `eval_on_train_data` is
+    True, the last `EvalSpec` in the list will correspond to training data. The
+    rest EvalSpecs in the list are evaluation datas.
   """
-
-  exporter = tf.estimator.FinalExporter(
-      name=final_exporter_name, serving_input_receiver_fn=predict_input_fn)
-
   train_spec = tf.estimator.TrainSpec(
       input_fn=train_input_fn, max_steps=train_steps)
 
-  eval_specs = [
-      tf.estimator.EvalSpec(
-          name=eval_spec_name,
-          input_fn=eval_input_fn,
-          steps=None,
-          exporters=exporter)
-  ]
+  if eval_spec_names is None:
+    eval_spec_names = range(len(eval_input_fns))
+
+  eval_specs = []
+  for eval_spec_name, eval_input_fn in zip(eval_spec_names, eval_input_fns):
+    exporter_name = '{}_{}'.format(final_exporter_name, eval_spec_name)
+    exporter = tf.estimator.FinalExporter(
+        name=exporter_name, serving_input_receiver_fn=predict_input_fn)
+    eval_specs.append(
+        tf.estimator.EvalSpec(
+            name=eval_spec_name,
+            input_fn=eval_input_fn,
+            steps=None,
+            exporters=exporter))
 
   if eval_on_train_data:
     eval_specs.append(
@@ -730,7 +739,7 @@ def populate_experiment(run_config,
       **kwargs)
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
-  eval_input_fn = train_and_eval_dict['eval_input_fn']
+  eval_input_fns = train_and_eval_dict['eval_input_fns']
   predict_input_fn = train_and_eval_dict['predict_input_fn']
   train_steps = train_and_eval_dict['train_steps']
 
@@ -742,7 +751,7 @@ def populate_experiment(run_config,
   return tf.contrib.learn.Experiment(
       estimator=estimator,
       train_input_fn=train_input_fn,
-      eval_input_fn=eval_input_fn,
+      eval_input_fn=eval_input_fns[0],
       train_steps=train_steps,
       eval_steps=None,
       export_strategies=export_strategies,

@@ -240,7 +240,7 @@ class ModelLibTest(tf.test.TestCase):
     self.assertIsInstance(estimator, tf.estimator.Estimator)
     self.assertEqual(20, train_steps)
     self.assertIn('train_input_fn', train_and_eval_dict)
-    self.assertIn('eval_input_fn', train_and_eval_dict)
+    self.assertIn('eval_input_fns', train_and_eval_dict)
     self.assertIn('eval_on_train_input_fn', train_and_eval_dict)
 
   def test_create_estimator_with_default_train_eval_steps(self):
@@ -292,25 +292,25 @@ class ModelLibTest(tf.test.TestCase):
         pipeline_config_path,
         train_steps=train_steps)
     train_input_fn = train_and_eval_dict['train_input_fn']
-    eval_input_fn = train_and_eval_dict['eval_input_fn']
+    eval_input_fns = train_and_eval_dict['eval_input_fns']
     eval_on_train_input_fn = train_and_eval_dict['eval_on_train_input_fn']
     predict_input_fn = train_and_eval_dict['predict_input_fn']
     train_steps = train_and_eval_dict['train_steps']
 
     train_spec, eval_specs = model_lib.create_train_and_eval_specs(
         train_input_fn,
-        eval_input_fn,
+        eval_input_fns,
         eval_on_train_input_fn,
         predict_input_fn,
         train_steps,
         eval_on_train_data=True,
         final_exporter_name='exporter',
-        eval_spec_name='holdout')
+        eval_spec_names=['holdout'])
     self.assertEqual(train_steps, train_spec.max_steps)
     self.assertEqual(2, len(eval_specs))
     self.assertEqual(None, eval_specs[0].steps)
     self.assertEqual('holdout', eval_specs[0].name)
-    self.assertEqual('exporter', eval_specs[0].exporters[0].name)
+    self.assertEqual('exporter_holdout', eval_specs[0].exporters[0].name)
     self.assertEqual(None, eval_specs[1].steps)
     self.assertEqual('eval_on_train', eval_specs[1].name)
 

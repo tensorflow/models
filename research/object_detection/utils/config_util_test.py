@@ -665,12 +665,14 @@ class ConfigUtilTest(tf.test.TestCase):
     retain_original_images = configs["eval_config"].retain_original_images
     self.assertEqual(desired_retain_original_images, retain_original_images)
 
-  def testOverwriteEvalSampling(self):
+  def testOverwriteAllEvalSampling(self):
     original_num_eval_examples = 1
     new_num_eval_examples = 10
 
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_input_reader.add().sample_1_of_n_examples = (
+        original_num_eval_examples)
     pipeline_config.eval_input_reader.add().sample_1_of_n_examples = (
         original_num_eval_examples)
     _write_config(pipeline_config, pipeline_config_path)
@@ -679,8 +681,26 @@ class ConfigUtilTest(tf.test.TestCase):
     override_dict = {"sample_1_of_n_eval_examples": new_num_eval_examples}
     configs = config_util.merge_external_params_with_configs(
         configs, kwargs_dict=override_dict)
-    self.assertEqual(new_num_eval_examples,
-                     configs["eval_input_configs"][0].sample_1_of_n_examples)
+    for eval_input_config in configs["eval_input_configs"]:
+      self.assertEqual(new_num_eval_examples,
+                       eval_input_config.sample_1_of_n_examples)
+
+  def testOverwriteAllEvalNumEpochs(self):
+    original_num_epochs = 10
+    new_num_epochs = 1
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_input_reader.add().num_epochs = original_num_epochs
+    pipeline_config.eval_input_reader.add().num_epochs = original_num_epochs
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"eval_num_epochs": new_num_epochs}
+    configs = config_util.merge_external_params_with_configs(
+        configs, kwargs_dict=override_dict)
+    for eval_input_config in configs["eval_input_configs"]:
+      self.assertEqual(new_num_epochs, eval_input_config.num_epochs)
 
   def testUpdateMaskTypeForAllInputConfigs(self):
     original_mask_type = input_reader_pb2.NUMERICAL_MASKS
