@@ -790,6 +790,7 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
 
 def merge_boxes_with_multiple_labels(boxes,
                                      classes,
+                                     confidences,
                                      num_classes,
                                      quantization_bins=10000):
   """Merges boxes with same coordinates and returns K-hot encoded classes.
@@ -799,6 +800,7 @@ def merge_boxes_with_multiple_labels(boxes,
       normalized coordinates are allowed.
     classes: A tf.int32 tensor with shape [N] holding class indices.
       The class index starts at 0.
+    confidences: A tf.float32 tensor with shape [N] holding class confidences.
     num_classes: total number of classes to use for K-hot encoding.
     quantization_bins: the number of bins used to quantize the box coordinate.
 
@@ -806,19 +808,26 @@ def merge_boxes_with_multiple_labels(boxes,
     merged_boxes: A tf.float32 tensor with shape [N', 4] holding boxes,
       where N' <= N.
     class_encodings: A tf.int32 tensor with shape [N', num_classes] holding
-      k-hot encodings for the merged boxes.
+      K-hot encodings for the merged boxes.
+    confidence_encodings: A tf.float32 tensor with shape [N', num_classes]
+      holding encodings of confidences for the merged boxes.
     merged_box_indices: A tf.int32 tensor with shape [N'] holding original
       indices of the boxes.
   """
   boxes_shape = tf.shape(boxes)
   classes_shape = tf.shape(classes)
-  shape_aligned_assert = shape_utils.assert_shape_equal_along_first_dimension(
+  confidences_shape = tf.shape(confidences)
+  box_class_shape_assert = shape_utils.assert_shape_equal_along_first_dimension(
       boxes_shape, classes_shape)
+  box_confidence_shape_assert = (
+      shape_utils.assert_shape_equal_along_first_dimension(
+          boxes_shape, confidences_shape))
   box_dimension_assert = tf.assert_equal(boxes_shape[1], 4)
   box_normalized_assert = shape_utils.assert_box_normalized(boxes)
 
   with tf.control_dependencies(
-      [shape_aligned_assert, box_dimension_assert, box_normalized_assert]):
+      [box_class_shape_assert, box_confidence_shape_assert,
+       box_dimension_assert, box_normalized_assert]):
     quantized_boxes = tf.to_int64(boxes * (quantization_bins - 1))
     ymin, xmin, ymax, xmax = tf.unstack(quantized_boxes, axis=1)
     hashcodes = (
@@ -833,24 +842,31 @@ def merge_boxes_with_multiple_labels(boxes,
         tf.range(num_boxes), unique_indices, num_unique_boxes)
     merged_boxes = tf.gather(boxes, merged_box_indices)
 
-    def merge_box_mapper(i):
+    def map_box_encodings(i):
+      """Produces box K-hot and score encodings for each class index."""
       box_mask = tf.equal(
           unique_indices, i * tf.ones(num_boxes, dtype=tf.int32))
       box_mask = tf.reshape(box_mask, [-1])
-      box_labels = tf.boolean_mask(classes, box_mask)
-      return tf.sparse_to_dense(
-          box_labels, [num_classes], 1, validate_indices=False)
+      box_indices = tf.boolean_mask(classes, box_mask)
+      box_confidences = tf.boolean_mask(confidences, box_mask)
+      box_class_encodings = tf.sparse_to_dense(
+          box_indices, [num_classes], 1, validate_indices=False)
+      box_confidence_encodings = tf.sparse_to_dense(
+          box_indices, [num_classes], box_confidences, validate_indices=False)
+      return box_class_encodings, box_confidence_encodings
 
-    class_encodings = tf.map_fn(
-        merge_box_mapper,
+    class_encodings, confidence_encodings = tf.map_fn(
+        map_box_encodings,
         tf.range(num_unique_boxes),
         back_prop=False,
-        dtype=tf.int32)
+        dtype=(tf.int32, tf.float32))
 
     merged_boxes = tf.reshape(merged_boxes, [-1, 4])
     class_encodings = tf.reshape(class_encodings, [-1, num_classes])
+    confidence_encodings = tf.reshape(confidence_encodings, [-1, num_classes])
     merged_box_indices = tf.reshape(merged_box_indices, [-1])
-    return merged_boxes, class_encodings, merged_box_indices
+    return (merged_boxes, class_encodings, confidence_encodings,
+            merged_box_indices)
 
 
 def nearest_neighbor_upsampling(input_tensor, scale):

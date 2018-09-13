@@ -2969,7 +2969,8 @@ def get_default_func_arg_map(include_label_scores=False,
   """
   groundtruth_label_scores = None
   if include_label_scores:
-    groundtruth_label_scores = (fields.InputDataFields.groundtruth_label_scores)
+    groundtruth_label_scores = (
+        fields.InputDataFields.groundtruth_confidences)
 
   multiclass_scores = None
   if include_multiclass_scores:

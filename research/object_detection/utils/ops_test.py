@@ -1147,23 +1147,26 @@ class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
          [0.25, 0.25, 0.75, 0.75]],
         dtype=tf.float32)
     class_indices = tf.constant([0, 4, 2], dtype=tf.int32)
+    class_confidences = tf.constant([0.8, 0.2, 0.1], dtype=tf.float32)
     num_classes = 5
-    merged_boxes, merged_classes, merged_box_indices = (
-        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
     expected_merged_boxes = np.array(
         [[0.25, 0.25, 0.75, 0.75], [0.0, 0.0, 0.5, 0.75]], dtype=np.float32)
     expected_merged_classes = np.array(
         [[1, 0, 1, 0, 0], [0, 0, 0, 0, 1]], dtype=np.int32)
+    expected_merged_confidences = np.array(
+        [[0.8, 0, 0.1, 0, 0], [0, 0, 0, 0, 0.2]], dtype=np.float32)
     expected_merged_box_indices = np.array([0, 1], dtype=np.int32)
     with self.test_session() as sess:
-      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
-          [merged_boxes, merged_classes, merged_box_indices])
-      if np_merged_classes[0, 0] != 1:
-        expected_merged_boxes = expected_merged_boxes[::-1, :]
-        expected_merged_classes = expected_merged_classes[::-1, :]
-        expected_merged_box_indices = expected_merged_box_indices[::-1, :]
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
       self.assertAllClose(np_merged_boxes, expected_merged_boxes)
       self.assertAllClose(np_merged_classes, expected_merged_classes)
+      self.assertAllClose(np_merged_confidences, expected_merged_confidences)
       self.assertAllClose(np_merged_box_indices, expected_merged_box_indices)
 
   def testMergeBoxesWithMultipleLabelsCornerCase(self):
@@ -1172,34 +1175,48 @@ class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
          [1, 1, 1, 1], [1, 0, 1, 1], [0, 1, 1, 1], [0, 0, 1, 1]],
         dtype=tf.float32)
     class_indices = tf.constant([0, 1, 2, 3, 2, 1, 0, 3], dtype=tf.int32)
+    class_confidences = tf.constant([0.1, 0.9, 0.2, 0.8, 0.3, 0.7, 0.4, 0.6],
+                                    dtype=tf.float32)
     num_classes = 4
-    merged_boxes, merged_classes, merged_box_indices = (
-        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
     expected_merged_boxes = np.array(
         [[0, 0, 1, 1], [0, 1, 1, 1], [1, 0, 1, 1], [1, 1, 1, 1]],
         dtype=np.float32)
     expected_merged_classes = np.array(
         [[1, 0, 0, 1], [1, 1, 0, 0], [0, 1, 1, 0], [0, 0, 1, 1]],
         dtype=np.int32)
+    expected_merged_confidences = np.array(
+        [[0.1, 0, 0, 0.6], [0.4, 0.9, 0, 0],
+         [0, 0.7, 0.2, 0], [0, 0, 0.3, 0.8]], dtype=np.float32)
     expected_merged_box_indices = np.array([0, 1, 2, 3], dtype=np.int32)
     with self.test_session() as sess:
-      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
-          [merged_boxes, merged_classes, merged_box_indices])
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
       self.assertAllClose(np_merged_boxes, expected_merged_boxes)
       self.assertAllClose(np_merged_classes, expected_merged_classes)
+      self.assertAllClose(np_merged_confidences, expected_merged_confidences)
       self.assertAllClose(np_merged_box_indices, expected_merged_box_indices)
 
   def testMergeBoxesWithEmptyInputs(self):
     boxes = tf.zeros([0, 4], dtype=tf.float32)
     class_indices = tf.constant([], dtype=tf.int32)
+    class_confidences = tf.constant([], dtype=tf.float32)
     num_classes = 5
-    merged_boxes, merged_classes, merged_box_indices = (
-        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
     with self.test_session() as sess:
-      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
-          [merged_boxes, merged_classes, merged_box_indices])
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
       self.assertAllEqual(np_merged_boxes.shape, [0, 4])
       self.assertAllEqual(np_merged_classes.shape, [0, 5])
+      self.assertAllEqual(np_merged_confidences.shape, [0, 5])
       self.assertAllEqual(np_merged_box_indices.shape, [0])
 
 

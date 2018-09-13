@@ -40,8 +40,10 @@ class InputDataFields(object):
     source_id: source of the original image.
     filename: original filename of the dataset (without common path).
     groundtruth_image_classes: image-level class labels.
+    groundtruth_image_confidences: image-level class confidences.
     groundtruth_boxes: coordinates of the ground truth boxes in the image.
     groundtruth_classes: box-level class labels.
+    groundtruth_confidences: box-level class confidences.
     groundtruth_label_types: box-level label types (e.g. explicit negative).
     groundtruth_is_crowd: [DEPRECATED, use groundtruth_group_of instead]
       is the groundtruth a single object or a crowd.
@@ -72,8 +74,10 @@ class InputDataFields(object):
   source_id = 'source_id'
   filename = 'filename'
   groundtruth_image_classes = 'groundtruth_image_classes'
+  groundtruth_image_confidences = 'groundtruth_image_confidences'
   groundtruth_boxes = 'groundtruth_boxes'
   groundtruth_classes = 'groundtruth_classes'
+  groundtruth_confidences = 'groundtruth_confidences'
   groundtruth_label_types = 'groundtruth_label_types'
   groundtruth_is_crowd = 'groundtruth_is_crowd'
   groundtruth_area = 'groundtruth_area'

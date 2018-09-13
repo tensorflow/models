@@ -128,13 +128,33 @@ def transform_input_data(tensor_dict,
   tensor_dict[fields.InputDataFields.groundtruth_classes] = tf.one_hot(
       zero_indexed_groundtruth_classes, num_classes)
 
+  if fields.InputDataFields.groundtruth_confidences in tensor_dict:
+    groundtruth_confidences = tensor_dict[
+        fields.InputDataFields.groundtruth_confidences]
+    tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
+        tf.sparse_to_dense(
+            zero_indexed_groundtruth_classes,
+            [num_classes],
+            groundtruth_confidences,
+            validate_indices=False))
+  else:
+    groundtruth_confidences = tf.ones_like(
+        zero_indexed_groundtruth_classes, dtype=tf.float32)
+    tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
+        tensor_dict[fields.InputDataFields.groundtruth_classes])
+
   if merge_multiple_boxes:
-    merged_boxes, merged_classes, _ = util_ops.merge_boxes_with_multiple_labels(
-        tensor_dict[fields.InputDataFields.groundtruth_boxes],
-        zero_indexed_groundtruth_classes, num_classes)
+    merged_boxes, merged_classes, merged_confidences, _ = (
+        util_ops.merge_boxes_with_multiple_labels(
+            tensor_dict[fields.InputDataFields.groundtruth_boxes],
+            zero_indexed_groundtruth_classes,
+            groundtruth_confidences,
+            num_classes))
     merged_classes = tf.cast(merged_classes, tf.float32)
     tensor_dict[fields.InputDataFields.groundtruth_boxes] = merged_boxes
     tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
+    tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
+        merged_confidences)
 
   return tensor_dict
 
@@ -183,6 +203,8 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
       fields.InputDataFields.groundtruth_difficult: [max_num_boxes],
       fields.InputDataFields.groundtruth_boxes: [max_num_boxes, 4],
       fields.InputDataFields.groundtruth_classes: [max_num_boxes, num_classes],
+      fields.InputDataFields.groundtruth_confidences: [
+          max_num_boxes, num_classes],
       fields.InputDataFields.groundtruth_instance_masks: [
           max_num_boxes, height, width
       ],
@@ -198,6 +220,7 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
           max_num_boxes, num_classes + 1 if num_classes is not None else None
       ],
       fields.InputDataFields.groundtruth_image_classes: [num_classes],
+      fields.InputDataFields.groundtruth_image_confidences: [num_classes],
   }
 
   if fields.InputDataFields.original_image in tensor_dict:
@@ -252,9 +275,12 @@ def augment_input_data(tensor_dict, data_augmentation_options):
                             in tensor_dict)
   include_keypoints = (fields.InputDataFields.groundtruth_keypoints
                        in tensor_dict)
+  include_label_scores = (fields.InputDataFields.groundtruth_confidences in
+                          tensor_dict)
   tensor_dict = preprocessor.preprocess(
       tensor_dict, data_augmentation_options,
       func_arg_map=preprocessor.get_default_func_arg_map(
+          include_label_scores=include_label_scores,
           include_instance_masks=include_instance_masks,
           include_keypoints=include_keypoints))
   tensor_dict[fields.InputDataFields.image] = tf.squeeze(
@@ -275,6 +301,7 @@ def _get_labels_dict(input_dict):
     labels_dict[key] = input_dict[key]
 
   optional_label_keys = [
+      fields.InputDataFields.groundtruth_confidences,
       fields.InputDataFields.groundtruth_keypoints,
       fields.InputDataFields.groundtruth_instance_masks,
       fields.InputDataFields.groundtruth_area,
