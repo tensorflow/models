@@ -160,6 +160,9 @@ def pad_to_multiple(tensor, multiple):
   Returns:
     padded_tensor: the tensor zero padded to the specified multiple.
   """
+  if multiple == 1:
+    return tensor
+
   tensor_shape = tensor.get_shape()
   batch_size = static_shape.get_batch_size(tensor_shape)
   tensor_height = static_shape.get_height(tensor_shape)
