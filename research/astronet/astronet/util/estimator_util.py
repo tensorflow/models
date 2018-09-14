@@ -27,6 +27,59 @@ from astronet.ops import metrics
 from astronet.ops import training
 
 
+class _InputFn(object):
+  """Class that acts as a callable input function for Estimator train / eval."""
+
+  def __init__(self,
+               file_pattern,
+               input_config,
+               mode,
+               shuffle_values_buffer=0,
+               repeat=1):
+    """Initializes the input function.
+
+    Args:
+      file_pattern: File pattern matching input TFRecord files, e.g.
+        "/tmp/train-?????-of-00100". May also be a comma-separated list of file
+        patterns.
+      input_config: ConfigDict containing feature and label specifications.
+      mode: A tf.estimator.ModeKeys.
+      shuffle_values_buffer: If > 0, shuffle examples using a buffer of this
+        size.
+      repeat: The number of times to repeat the dataset. If None or -1 the
+        elements will be repeated indefinitely.
+    """
+    self._file_pattern = file_pattern
+    self._input_config = input_config
+    self._mode = mode
+    self._shuffle_values_buffer = shuffle_values_buffer
+    self._repeat = repeat
+
+  def __call__(self, config, params):
+    """Builds the input pipeline."""
+    # Infer whether this input_fn was called by Estimator or TPUEstimator using
+    # the config type.
+    use_tpu = isinstance(config, tf.contrib.tpu.RunConfig)
+
+    mode = self._mode
+    include_labels = (
+        mode in [tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL])
+    reverse_time_series_prob = 0.5 if mode == tf.estimator.ModeKeys.TRAIN else 0
+    shuffle_filenames = (mode == tf.estimator.ModeKeys.TRAIN)
+    dataset = dataset_ops.build_dataset(
+        file_pattern=self._file_pattern,
+        input_config=self._input_config,
+        batch_size=params["batch_size"],
+        include_labels=include_labels,
+        reverse_time_series_prob=reverse_time_series_prob,
+        shuffle_filenames=shuffle_filenames,
+        shuffle_values_buffer=self._shuffle_values_buffer,
+        repeat=self._repeat,
+        use_tpu=use_tpu)
+
+    return dataset
+
+
 def create_input_fn(file_pattern,
                     input_config,
                     mode,
@@ -36,62 +89,42 @@ def create_input_fn(file_pattern,
 
   Args:
     file_pattern: File pattern matching input TFRecord files, e.g.
-        "/tmp/train-?????-of-00100". May also be a comma-separated list of file
-        patterns.
+      "/tmp/train-?????-of-00100". May also be a comma-separated list of file
+      patterns.
     input_config: ConfigDict containing feature and label specifications.
     mode: A tf.estimator.ModeKeys.
     shuffle_values_buffer: If > 0, shuffle examples using a buffer of this size.
     repeat: The number of times to repeat the dataset. If None or -1 the
-        elements will be repeated indefinitely.
+      elements will be repeated indefinitely.
 
   Returns:
-    A callable that builds an input pipeline and returns (features, labels).
+    A callable that builds the input pipeline and returns a tf.data.Dataset
+    object.
   """
-  include_labels = (
-      mode in [tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL])
-  reverse_time_series_prob = 0.5 if mode == tf.estimator.ModeKeys.TRAIN else 0
-  shuffle_filenames = (mode == tf.estimator.ModeKeys.TRAIN)
-
-  def input_fn(config, params):
-    """Builds an input pipeline that reads a dataset from TFRecord files."""
-    # Infer whether this input_fn was called by Estimator or TPUEstimator using
-    # the config type.
-    use_tpu = isinstance(config, tf.contrib.tpu.RunConfig)
-
-    dataset = dataset_ops.build_dataset(
-        file_pattern=file_pattern,
-        input_config=input_config,
-        batch_size=params["batch_size"],
-        include_labels=include_labels,
-        reverse_time_series_prob=reverse_time_series_prob,
-        shuffle_filenames=shuffle_filenames,
-        shuffle_values_buffer=shuffle_values_buffer,
-        repeat=repeat,
-        use_tpu=use_tpu)
-
-    return dataset
-
-  return input_fn
+  return _InputFn(file_pattern, input_config, mode, shuffle_values_buffer,
+                  repeat)
 
 
-def create_model_fn(model_class, hparams, use_tpu=False):
-  """Wraps model_class as an Estimator or TPUEstimator model_fn.
+class _ModelFn(object):
+  """Class that acts as a callable model function for Estimator train / eval."""
 
-  Args:
-    model_class: AstroModel or a subclass.
-    hparams: ConfigDict of configuration parameters for building the model.
-    use_tpu: If True, a TPUEstimator model_fn is returned. Otherwise an
-        Estimator model_fn is returned.
+  def __init__(self, model_class, hparams, use_tpu=False):
+    """Initializes the model function.
 
-  Returns:
-    model_fn: A callable that constructs the model and returns a
-        TPUEstimatorSpec if use_tpu is True, otherwise an EstimatorSpec.
-  """
-  hparams = copy.deepcopy(hparams)
+    Args:
+      model_class: Model class.
+      hparams: ConfigDict containing hyperparameters for building and training
+        the model.
+      use_tpu: If True, a TPUEstimator will be returned. Otherwise an Estimator
+        will be returned.
+    """
+    self._model_class = model_class
+    self._base_hparams = hparams
+    self._use_tpu = use_tpu
 
-  def model_fn(features, labels, mode, params):
+  def __call__(self, features, labels, mode, params):
     """Builds the model and returns an EstimatorSpec or TPUEstimatorSpec."""
-    # For TPUEstimator, params contains the batch size per TPU core.
+    hparams = copy.deepcopy(self._base_hparams)
     if "batch_size" in params:
       hparams.batch_size = params["batch_size"]
 
@@ -103,10 +136,11 @@ def create_model_fn(model_class, hparams, use_tpu=False):
             (features["labels"], labels))
       labels = features.pop("labels")
 
-    model = model_class(features, labels, hparams, mode)
+    model = self._model_class(features, labels, hparams, mode)
     model.build()
 
     # Possibly create train_op.
+    use_tpu = self._use_tpu
     train_op = None
     if mode == tf.estimator.ModeKeys.TRAIN:
       learning_rate = training.create_learning_rate(hparams, model.global_step)
@@ -137,7 +171,21 @@ def create_model_fn(model_class, hparams, use_tpu=False):
 
     return estimator
 
-  return model_fn
+
+def create_model_fn(model_class, hparams, use_tpu=False):
+  """Wraps model_class as an Estimator or TPUEstimator model_fn.
+
+  Args:
+    model_class: AstroModel or a subclass.
+    hparams: ConfigDict of configuration parameters for building the model.
+    use_tpu: If True, a TPUEstimator model_fn is returned. Otherwise an
+      Estimator model_fn is returned.
+
+  Returns:
+    model_fn: A callable that constructs the model and returns a
+        TPUEstimatorSpec if use_tpu is True, otherwise an EstimatorSpec.
+  """
+  return _ModelFn(model_class, hparams, use_tpu)
 
 
 def create_estimator(model_class,
