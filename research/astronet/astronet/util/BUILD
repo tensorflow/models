@@ -33,6 +33,12 @@ py_test(
 )
 
 py_library(
+    name = "estimator_runner",
+    srcs = ["estimator_runner.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_library(
     name = "estimator_util",
     srcs = ["estimator_util.py"],
     srcs_version = "PY2AND3",
