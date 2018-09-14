@@ -452,7 +452,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   atexit.register(tf.gfile.DeleteRecursively,
                   ncf_dataset.cache_paths.cache_root)
 
-  for _ in range(15):
+  for _ in range(300):
     if tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
       break
     time.sleep(1)  # allow `alive` file to be written
