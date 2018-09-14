@@ -676,9 +676,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
     }
 
     if self._number_of_stages >= 2:
+      # If mixed-precision training on TPU is enabled, rpn_box_encodings and
+      # rpn_objectness_predictions_with_background are bfloat16 tensors.
+      # Considered prediction results, they need to be casted to float32
+      # tensors for correct postprocess_rpn computation in predict_second_stage.
       prediction_dict.update(self._predict_second_stage(
-          rpn_box_encodings,
-          rpn_objectness_predictions_with_background,
+          tf.to_float(rpn_box_encodings),
+          tf.to_float(rpn_objectness_predictions_with_background),
           rpn_features_to_crop,
           self._anchors.get(), image_shape, true_image_shapes))
 
@@ -722,7 +726,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         [batch_size, num_valid_anchors, 2] containing class
         predictions (logits) for each of the anchors.  Note that this
         tensor *includes* background class predictions (at class index 0).
-      rpn_features_to_crop: A 4-D float32 tensor with shape
+      rpn_features_to_crop: A 4-D float32 or bfloat16 tensor with shape
         [batch_size, height, width, depth] representing image features to crop
         using the proposal boxes predicted by the RPN.
       anchors: 2-D float tensor of shape
@@ -761,17 +765,22 @@ class FasterRCNNMetaArch(model.DetectionModel):
           boxes proposed by the RPN, thus enabling one to extract features and
           get box classification and prediction for externally selected areas
           of the image.
-        6) box_classifier_features: a 4-D float32 tensor representing the
-          features for each proposal.
+        6) box_classifier_features: a 4-D float32 or bfloat16 tensor
+          representing the features for each proposal.
     """
     image_shape_2d = self._image_batch_shape_2d(image_shape)
     proposal_boxes_normalized, _, num_proposals = self._postprocess_rpn(
         rpn_box_encodings, rpn_objectness_predictions_with_background,
         anchors, image_shape_2d, true_image_shapes)
 
+    # If mixed-precision training on TPU is enabled, the dtype of
+    # rpn_features_to_crop is bfloat16, otherwise it is float32. tf.cast is
+    # used to match the dtype of proposal_boxes_normalized to that of
+    # rpn_features_to_crop for further computation.
     flattened_proposal_feature_maps = (
         self._compute_second_stage_input_feature_maps(
-            rpn_features_to_crop, proposal_boxes_normalized))
+            rpn_features_to_crop,
+            tf.cast(proposal_boxes_normalized, rpn_features_to_crop.dtype)))
 
     box_classifier_features = (
         self._feature_extractor.extract_box_classifier_features(

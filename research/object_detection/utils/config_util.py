@@ -544,6 +544,8 @@ def _maybe_update_config_with_key_value(configs, key, value):
     _update_use_moving_averages(configs, value)
   elif field_name == "retain_original_images_in_eval":
     _update_retain_original_images(configs["eval_config"], value)
+  elif field_name == "use_bfloat16":
+    _update_use_bfloat16(configs, value)
   else:
     return False
   return True
@@ -919,3 +921,16 @@ def _update_retain_original_images(eval_config, retain_original_images):
       in eval mode.
   """
   eval_config.retain_original_images = retain_original_images
+
+
+def _update_use_bfloat16(configs, use_bfloat16):
+  """Updates `configs` to reflect the new setup on whether to use bfloat16.
+
+  The configs dictionary is updated in place, and hence not returned.
+
+  Args:
+    configs: Dictionary of configuration objects. See outputs from
+      get_configs_from_pipeline_file() or get_configs_from_multiple_files().
+    use_bfloat16: A bool, indicating whether to use bfloat16 for training.
+  """
+  configs["train_config"].use_bfloat16 = use_bfloat16

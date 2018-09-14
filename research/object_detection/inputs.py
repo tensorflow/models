@@ -52,7 +52,8 @@ def transform_input_data(tensor_dict,
                          num_classes,
                          data_augmentation_fn=None,
                          merge_multiple_boxes=False,
-                         retain_original_image=False):
+                         retain_original_image=False,
+                         use_bfloat16=False):
   """A single function that is responsible for all input data transformations.
 
   Data transformation functions are applied in the following order.
@@ -86,6 +87,7 @@ def transform_input_data(tensor_dict,
       and classes for a given image if the boxes are exactly the same.
     retain_original_image: (optional) whether to retain original image in the
       output dictionary.
+    use_bfloat16: (optional) a bool, whether to use bfloat16 in training.
 
   Returns:
     A dictionary keyed by fields.InputDataFields containing the tensors obtained
@@ -111,6 +113,9 @@ def transform_input_data(tensor_dict,
   image = tensor_dict[fields.InputDataFields.image]
   preprocessed_resized_image, true_image_shape = model_preprocess_fn(
       tf.expand_dims(tf.to_float(image), axis=0))
+  if use_bfloat16:
+    preprocessed_resized_image = tf.cast(
+        preprocessed_resized_image, tf.bfloat16)
   tensor_dict[fields.InputDataFields.image] = tf.squeeze(
       preprocessed_resized_image, axis=0)
   tensor_dict[fields.InputDataFields.true_image_shape] = tf.squeeze(
@@ -451,7 +456,8 @@ def create_train_input_fn(train_config, train_input_config,
           num_classes=config_util.get_number_of_classes(model_config),
           data_augmentation_fn=data_augmentation_fn,
           merge_multiple_boxes=train_config.merge_multiple_label_boxes,
-          retain_original_image=train_config.retain_original_images)
+          retain_original_image=train_config.retain_original_images,
+          use_bfloat16=train_config.use_bfloat16)
 
       tensor_dict = pad_input_data_to_static_shapes(
           tensor_dict=transform_data_fn(tensor_dict),

@@ -253,8 +253,18 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           groundtruth_is_crowd_list=gt_is_crowd_list)
 
     preprocessed_images = features[fields.InputDataFields.image]
-    prediction_dict = detection_model.predict(
-        preprocessed_images, features[fields.InputDataFields.true_image_shape])
+    if use_tpu and train_config.use_bfloat16:
+      with tf.contrib.tpu.bfloat16_scope():
+        prediction_dict = detection_model.predict(
+            preprocessed_images,
+            features[fields.InputDataFields.true_image_shape])
+        for k, v in prediction_dict.items():
+          if v.dtype == tf.bfloat16:
+            prediction_dict[k] = tf.cast(v, tf.float32)
+    else:
+      prediction_dict = detection_model.predict(
+          preprocessed_images,
+          features[fields.InputDataFields.true_image_shape])
     if mode in (tf.estimator.ModeKeys.EVAL, tf.estimator.ModeKeys.PREDICT):
       detections = detection_model.postprocess(
           prediction_dict, features[fields.InputDataFields.true_image_shape])

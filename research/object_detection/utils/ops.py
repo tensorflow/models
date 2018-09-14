@@ -953,10 +953,10 @@ def matmul_crop_and_resize(image, boxes, crop_size, scope=None):
 
   Args:
     image: A `Tensor`. Must be one of the following types: `uint8`, `int8`,
-      `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+      `int16`, `int32`, `int64`, `half`, 'bfloat16', `float32`, `float64`.
       A 4-D tensor of shape `[batch, image_height, image_width, depth]`.
       Both `image_height` and `image_width` need to be positive.
-    boxes: A `Tensor` of type `float32`.
+    boxes: A `Tensor` of type `float32` or 'bfloat16'.
       A 3-D tensor of shape `[batch, num_boxes, 4]`. The boxes are specified in
       normalized coordinates and are of the form `[y1, x1, y2, x2]`. A
       normalized coordinate value of `y` is mapped to the image coordinate at
@@ -1014,15 +1014,19 @@ def matmul_crop_and_resize(image, boxes, crop_size, scope=None):
   with tf.name_scope(scope, 'MatMulCropAndResize'):
     y1_weights, y2_weights = _lin_space_weights(crop_size[0], img_height)
     x1_weights, x2_weights = _lin_space_weights(crop_size[1], img_width)
+    y1_weights = tf.cast(y1_weights, boxes.dtype)
+    y2_weights = tf.cast(y2_weights, boxes.dtype)
+    x1_weights = tf.cast(x1_weights, boxes.dtype)
+    x2_weights = tf.cast(x2_weights, boxes.dtype)
     [y1, x1, y2, x2] = tf.unstack(boxes, axis=2)
 
     # Pixel centers of input image and grid points along height and width
     image_idx_h = tf.constant(
         np.reshape(np.arange(img_height), (1, 1, 1, img_height)),
-        dtype=tf.float32)
+        dtype=boxes.dtype)
     image_idx_w = tf.constant(
         np.reshape(np.arange(img_width), (1, 1, 1, img_width)),
-        dtype=tf.float32)
+        dtype=boxes.dtype)
     grid_pos_h = tf.expand_dims(
         tf.einsum('ab,c->abc', y1, y1_weights) + tf.einsum(
             'ab,c->abc', y2, y2_weights),
