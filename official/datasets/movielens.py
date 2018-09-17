@@ -72,7 +72,7 @@ NUM_USER_IDS = {
     ML_20M: 138493,
 }
 
-# Note: Users are indexed [1, k], not [0, k-1]
+# Note: Movies are indexed [1, k], not [0, k-1]
 # Both the 1m and 20m datasets use the same movie set.
 NUM_ITEM_IDS = 3952
 
