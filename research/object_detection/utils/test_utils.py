@@ -129,7 +129,7 @@ class MockAnchorGenerator(anchor_generator.AnchorGenerator):
 class MockMatcher(matcher.Matcher):
   """Simple matcher that matches first anchor to first groundtruth box."""
 
-  def _match(self, similarity_matrix):
+  def _match(self, similarity_matrix, valid_rows):
     return tf.constant([0, -1, -1, -1], dtype=tf.int32)
 
 
