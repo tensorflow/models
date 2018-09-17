@@ -119,7 +119,7 @@ def kepler_filenames(base_dir,
     A list of filenames.
   """
   # Pad the Kepler id with zeros to length 9.
-  kep_id = "%.9d" % int(kep_id)
+  kep_id = "{:09d}".format(int(kep_id))
 
   quarter_prefixes, cadence_suffix = ((LONG_CADENCE_QUARTER_PREFIXES, "llc")
                                       if long_cadence else
@@ -135,12 +135,11 @@ def kepler_filenames(base_dir,
   for quarter in quarters:
     for quarter_prefix in quarter_prefixes[quarter]:
       if injected_group:
-        base_name = "kplr%s-%s_INJECTED-%s_%s.fits" % (kep_id, quarter_prefix,
-                                                       injected_group,
-                                                       cadence_suffix)
+        base_name = "kplr{}-{}_INJECTED-{}_{}.fits".format(
+            kep_id, quarter_prefix, injected_group, cadence_suffix)
       else:
-        base_name = "kplr%s-%s_%s.fits" % (kep_id, quarter_prefix,
-                                           cadence_suffix)
+        base_name = "kplr{}-{}_{}.fits".format(kep_id, quarter_prefix,
+                                               cadence_suffix)
       filename = os.path.join(base_dir, base_name)
       # Not all stars have data for all quarters.
       if not check_existence or gfile.Exists(filename):

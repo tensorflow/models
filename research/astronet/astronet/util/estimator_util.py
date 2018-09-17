@@ -132,8 +132,8 @@ class _ModelFn(object):
     if "labels" in features:
       if labels is not None and labels is not features["labels"]:
         raise ValueError(
-            "Conflicting labels: features['labels'] = %s, labels = %s" %
-            (features["labels"], labels))
+            "Conflicting labels: features['labels'] = {}, labels = {}".format(
+                features["labels"], labels))
       labels = features.pop("labels")
 
     model = self._model_class(features, labels, hparams, mode)

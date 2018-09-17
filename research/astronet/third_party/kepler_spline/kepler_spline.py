@@ -54,7 +54,8 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
   """
   if len(time) < 4:
     raise InsufficientPointsError(
-        "Cannot fit a spline on less than 4 points. Got %d points." % len(time))
+        "Cannot fit a spline on less than 4 points. Got {} points.".format(
+            len(time)))
 
   # Rescale time into [0, 1].
   t_min = np.min(time)
@@ -91,7 +92,7 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
       # and we consider this a fatal error.
       raise InsufficientPointsError(
           "Cannot fit a spline on less than 4 points. After removing "
-          "outliers, got %d points." % np.sum(mask))
+          "outliers, got {} points.".format(np.sum(mask)))
 
     try:
       with warnings.catch_warnings():
@@ -106,9 +107,9 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
       spline = curve.value(time)[0]
     except (IndexError, TypeError) as e:
       raise SplineError(
-          "Fitting spline failed with error: '%s'. This might be caused by the "
+          "Fitting spline failed with error: '{}'. This might be caused by the "
           "breakpoint spacing being too small, and/or there being insufficient "
-          "points to fit the spline in one of the intervals." % e)
+          "points to fit the spline in one of the intervals.".format(e))
 
   return spline, mask
 
@@ -227,7 +228,7 @@ def choose_kepler_spline(all_time,
         # It's expected to get a SplineError occasionally for small values of
         # bkspace. Skip this bkspace.
         if verbose:
-          warnings.warn("Bad bkspace %.4f: %s" % (bkspace, e))
+          warnings.warn("Bad bkspace {}: {}".format(bkspace, e))
         metadata.bad_bkspaces.append(bkspace)
         bad_bkspace = True
         break

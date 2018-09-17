@@ -69,7 +69,7 @@ def _recursive_pad_to_batch_size(tensor_or_collection, batch_size):
         for t in tensor_or_collection
     ]
 
-  raise ValueError("Unknown input type: %s" % tensor_or_collection)
+  raise ValueError("Unknown input type: {}".format(tensor_or_collection))
 
 
 def pad_dataset_to_batch_size(dataset, batch_size):
@@ -119,7 +119,7 @@ def _recursive_set_batch_size(tensor_or_collection, batch_size):
     for t in tensor_or_collection:
       _recursive_set_batch_size(t, batch_size)
   else:
-    raise ValueError("Unknown input type: %s" % tensor_or_collection)
+    raise ValueError("Unknown input type: {}".format(tensor_or_collection))
 
   return tensor_or_collection
 
@@ -170,7 +170,7 @@ def build_dataset(file_pattern,
   for p in file_patterns:
     matches = tf.gfile.Glob(p)
     if not matches:
-      raise ValueError("Found no input files matching %s" % p)
+      raise ValueError("Found no input files matching {}".format(p))
     filenames.extend(matches)
   tf.logging.info("Building input pipeline from %d files matching patterns: %s",
                   len(filenames), file_patterns)
@@ -180,8 +180,8 @@ def build_dataset(file_pattern,
     label_ids = set(input_config.label_map.values())
     if label_ids != set(range(len(label_ids))):
       raise ValueError(
-          "Label IDs must be contiguous integers starting at 0. Got: %s" %
-          label_ids)
+          "Label IDs must be contiguous integers starting at 0. Got: {}".format(
+              label_ids))
 
     # Create a HashTable mapping label strings to integer ids.
     table_initializer = tf.contrib.lookup.KeyValueTensorInitializer(

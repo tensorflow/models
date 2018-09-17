@@ -48,7 +48,8 @@ def get_feature(ex, name, kind=None, strict=True):
     return np.array([])  # Feature exists, but it's empty.
 
   if kind and kind != inferred_kind:
-    raise TypeError("Requested %s, but Feature has %s" % (kind, inferred_kind))
+    raise TypeError("Requested {}, but Feature has {}".format(
+        kind, inferred_kind))
 
   return np.array(getattr(ex.features.feature[name], inferred_kind).value)
 
@@ -105,7 +106,8 @@ def set_feature(ex,
       del ex.features.feature[name]
     else:
       raise ValueError(
-          "Attempting to set duplicate feature with name: %s" % name)
+          "Attempting to overwrite feature with name: {}. "
+          "Set allow_overwrite=True if this is desired.".format(name))
 
   if not kind:
     kind = _infer_kind(value)
@@ -117,7 +119,7 @@ def set_feature(ex,
   elif kind == "int64_list":
     value = [int(v) for v in value]
   else:
-    raise ValueError("Unrecognized kind: %s" % kind)
+    raise ValueError("Unrecognized kind: {}".format(kind))
 
   getattr(ex.features.feature[name], kind).value.extend(value)
 

@@ -93,7 +93,7 @@ class AstroModel(object):
         tf.estimator.ModeKeys.PREDICT
     ]
     if mode not in valid_modes:
-      raise ValueError("Expected mode in %s. Got: %s" % (valid_modes, mode))
+      raise ValueError("Expected mode in {}. Got: {}".format(valid_modes, mode))
 
     self.hparams = hparams
     self.mode = mode
@@ -213,7 +213,7 @@ class AstroModel(object):
             inputs=net,
             units=self.hparams.pre_logits_hidden_layer_size,
             activation=tf.nn.relu,
-            name="fully_connected_%s" % (i + 1))
+            name="fully_connected_{}".format(i + 1))
 
         if self.hparams.pre_logits_dropout_rate > 0:
           net = tf.layers.dropout(

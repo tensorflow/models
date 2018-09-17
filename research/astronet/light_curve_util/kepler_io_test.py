@@ -122,15 +122,17 @@ class KeplerIoTest(absltest.TestCase):
     filenames = kepler_io.kepler_filenames(
         self.data_dir, 11442793, check_existence=True)
     expected_filenames = [
-        os.path.join(self.data_dir, "0114/011442793/kplr011442793-%s_llc.fits")
-        % q for q in ["2009350155506", "2010009091648", "2010174085026"]
+        os.path.join(self.data_dir,
+                     "0114/011442793/kplr011442793-{}_llc.fits".format(q))
+        for q in ["2009350155506", "2010009091648", "2010174085026"]
     ]
     self.assertItemsEqual(expected_filenames, filenames)
 
   def testReadKeplerLightCurve(self):
     filenames = [
-        os.path.join(self.data_dir, "0114/011442793/kplr011442793-%s_llc.fits")
-        % q for q in ["2009350155506", "2010009091648", "2010174085026"]
+        os.path.join(self.data_dir,
+                     "0114/011442793/kplr011442793-{}_llc.fits".format(q))
+        for q in ["2009350155506", "2010009091648", "2010174085026"]
     ]
     all_time, all_flux = kepler_io.read_kepler_light_curve(filenames)
     self.assertLen(all_time, 3)
@@ -148,8 +150,9 @@ class KeplerIoTest(absltest.TestCase):
 
   def testReadKeplerLightCurveScrambled(self):
     filenames = [
-        os.path.join(self.data_dir, "0114/011442793/kplr011442793-%s_llc.fits")
-        % q for q in ["2009350155506", "2010009091648", "2010174085026"]
+        os.path.join(self.data_dir,
+                     "0114/011442793/kplr011442793-{}_llc.fits".format(q))
+        for q in ["2009350155506", "2010009091648", "2010174085026"]
     ]
     all_time, all_flux = kepler_io.read_kepler_light_curve(
         filenames, scramble_type="SCR1")
@@ -170,8 +173,9 @@ class KeplerIoTest(absltest.TestCase):
 
   def testReadKeplerLightCurveScrambledInterpolateMissingTime(self):
     filenames = [
-        os.path.join(self.data_dir, "0114/011442793/kplr011442793-%s_llc.fits")
-        % q for q in ["2009350155506", "2010009091648", "2010174085026"]
+        os.path.join(self.data_dir,
+                     "0114/011442793/kplr011442793-{}_llc.fits".format(q))
+        for q in ["2009350155506", "2010009091648", "2010174085026"]
     ]
     all_time, all_flux = kepler_io.read_kepler_light_curve(
         filenames, scramble_type="SCR1", interpolate_missing_time=True)

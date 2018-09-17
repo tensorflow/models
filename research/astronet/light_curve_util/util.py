@@ -287,8 +287,8 @@ def count_transit_points(time, event):
   # Tiny periods or erroneous time values could make this loop take forever.
   if (t_max - t_min) / event.period > 10**6:
     raise ValueError(
-        "Too many transits! Time range is [%.2f, %.2f] and period is %.2e." %
-        (t_min, t_max, event.period))
+        "Too many transits! Time range is [{:.4f}, {:.4f}] and period is "
+        "{:.4e}.".format(t_min, t_max, event.period))
 
   # Make sure t0 is in [t_min, t_min + period).
   t0 = np.mod(event.t0 - t_min, event.period) + t_min

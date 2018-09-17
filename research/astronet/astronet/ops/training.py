@@ -74,7 +74,7 @@ def create_optimizer(hparams, learning_rate, use_tpu=False):
   elif optimizer_name == "rmsprop":
     optimizer = tf.RMSPropOptimizer(learning_rate)
   else:
-    raise ValueError("Unknown optimizer: %s" % hparams.optimizer)
+    raise ValueError("Unknown optimizer: {}".format(hparams.optimizer))
 
   if use_tpu:
     optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)

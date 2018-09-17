@@ -47,8 +47,8 @@ def read_light_curve(kepid, kepler_data_dir):
   # Read the Kepler light curve.
   file_names = kepler_io.kepler_filenames(kepler_data_dir, kepid)
   if not file_names:
-    raise IOError("Failed to find .fits files in %s for Kepler ID %s" %
-                  (kepler_data_dir, kepid))
+    raise IOError("Failed to find .fits files in {} for Kepler ID {}".format(
+        kepler_data_dir, kepid))
 
   return kepler_io.read_kepler_light_curve(file_names)
 

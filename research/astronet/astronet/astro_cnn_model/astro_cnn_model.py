@@ -54,24 +54,6 @@ from astronet.astro_model import astro_model
 class AstroCNNModel(astro_model.AstroModel):
   """A model for classifying light curves using a convolutional neural net."""
 
-  def __init__(self, features, labels, hparams, mode):
-    """Basic setup. The actual TensorFlow graph is constructed in build().
-
-    Args:
-      features: A dictionary containing "time_series_features" and
-          "aux_features", each of which is a dictionary of named input Tensors.
-          All features have dtype float32 and shape [batch_size, length].
-      labels: An int64 Tensor with shape [batch_size]. May be None if mode is
-          tf.estimator.ModeKeys.PREDICT.
-      hparams: A ConfigDict of hyperparameters for building the model.
-      mode: A tf.estimator.ModeKeys to specify whether the graph should be built
-          for training, evaluation or prediction.
-
-    Raises:
-      ValueError: If mode is invalid.
-    """
-    super(AstroCNNModel, self).__init__(features, labels, hparams, mode)
-
   def _build_cnn_layers(self, inputs, hparams, scope="cnn"):
     """Builds convolutional layers.
 
@@ -95,7 +77,7 @@ class AstroCNNModel(astro_model.AstroModel):
       for i in range(hparams.cnn_num_blocks):
         num_filters = int(hparams.cnn_initial_num_filters *
                           hparams.cnn_block_filter_factor**i)
-        with tf.variable_scope("block_%d" % (i + 1)):
+        with tf.variable_scope("block_{}".format(i + 1)):
           for j in range(hparams.cnn_block_size):
             net = tf.layers.conv1d(
                 inputs=net,
@@ -103,7 +85,7 @@ class AstroCNNModel(astro_model.AstroModel):
                 kernel_size=int(hparams.cnn_kernel_size),
                 padding=hparams.convolution_padding,
                 activation=tf.nn.relu,
-                name="conv_%d" % (j + 1))
+                name="conv_{}".format(j + 1))
 
           if hparams.pool_size > 1:  # pool_size 0 or 1 denotes no pooling
             net = tf.layers.max_pooling1d(
