@@ -242,6 +242,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       gt_weights_list = None
       if fields.InputDataFields.groundtruth_weights in labels:
         gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
+      gt_is_crowd_list = None
       if fields.InputDataFields.groundtruth_is_crowd in labels:
         gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
       detection_model.provide_groundtruth(
