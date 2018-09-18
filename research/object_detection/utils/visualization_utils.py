@@ -188,6 +188,8 @@ def draw_bounding_box_on_image(image,
     text_bottom = bottom + total_display_str_height
   # Reverse list and print from bottom to top.
   for display_str in display_str_list[::-1]:
+    if (display_str == ''):
+      continue
     text_width, text_height = font.getsize(display_str)
     margin = np.ceil(0.05 * text_height)
     draw.rectangle(
@@ -195,10 +197,10 @@ def draw_bounding_box_on_image(image,
                                                           text_bottom)],
         fill=color)
     draw.text(
-        (left + margin, text_bottom - text_height - margin),
-        display_str,
-        fill='black',
-        font=font)
+      (left + margin, text_bottom - text_height - margin),
+      display_str,
+      fill='black',
+      font=font)
     text_bottom -= text_height - 2 * margin
 
 
@@ -316,7 +318,10 @@ def draw_bounding_boxes_on_image_tensors(images,
                                          keypoints=None,
                                          max_boxes_to_draw=20,
                                          min_score_thresh=0.2,
-                                         use_normalized_coordinates=True):
+                                         use_normalized_coordinates=True,
+                                         skip_scores=False,
+                                         skip_labels=False,
+                                         line_thickness=4):
   """Draws bounding boxes, masks, and keypoints on batch of image tensors.
 
   Args:
@@ -348,7 +353,9 @@ def draw_bounding_boxes_on_image_tensors(images,
       'max_boxes_to_draw': max_boxes_to_draw,
       'min_score_thresh': min_score_thresh,
       'agnostic_mode': False,
-      'line_thickness': 4
+      'line_thickness': line_thickness,
+      'skip_scores': skip_scores,
+      'skip_labels': skip_labels
   }
 
   if instance_masks is not None and keypoints is None:
@@ -390,7 +397,8 @@ def draw_side_by_side_evaluation_image(eval_dict,
                                        category_index,
                                        max_boxes_to_draw=20,
                                        min_score_thresh=0.2,
-                                       use_normalized_coordinates=True):
+                                       use_normalized_coordinates=True,
+                                       line_thickness=4):
   """Creates a side-by-side image with detections and groundtruth.
 
   Bounding boxes (and instance masks, if available) are visualized on both
@@ -437,7 +445,12 @@ def draw_side_by_side_evaluation_image(eval_dict,
       keypoints=keypoints,
       max_boxes_to_draw=max_boxes_to_draw,
       min_score_thresh=min_score_thresh,
-      use_normalized_coordinates=use_normalized_coordinates)
+      use_normalized_coordinates=use_normalized_coordinates,
+      line_thickness=line_thickness,
+      skip_labels=True,
+      skip_scores=True)
+
+
   images_with_groundtruth = draw_bounding_boxes_on_image_tensors(
       eval_dict[input_data_fields.original_image],
       tf.expand_dims(eval_dict[input_data_fields.groundtruth_boxes], axis=0),
@@ -452,7 +465,10 @@ def draw_side_by_side_evaluation_image(eval_dict,
       keypoints=None,
       max_boxes_to_draw=None,
       min_score_thresh=0.0,
-      use_normalized_coordinates=use_normalized_coordinates)
+      use_normalized_coordinates=use_normalized_coordinates,
+      line_thickness=line_thickness,
+      skip_scores=True,
+      skip_labels=True)
   return tf.concat([images_with_detections, images_with_groundtruth], axis=2)
 
 
