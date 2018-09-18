@@ -85,6 +85,46 @@ class FasterRCNNMetaArchTest(
       self.assertTrue(np.amax(detections_out['detection_masks'] <= 1.0))
       self.assertTrue(np.amin(detections_out['detection_masks'] >= 0.0))
 
+  def test_postprocess_second_stage_only_inference_mode_with_shared_boxes(self):
+    model = self._build_model(
+        is_training=False, number_of_stages=2, second_stage_batch_size=6)
+
+    batch_size = 2
+    total_num_padded_proposals = batch_size * model.max_num_proposals
+    proposal_boxes = tf.constant(
+        [[[1, 1, 2, 3],
+          [0, 0, 1, 1],
+          [.5, .5, .6, .6],
+          4*[0], 4*[0], 4*[0], 4*[0], 4*[0]],
+         [[2, 3, 6, 8],
+          [1, 2, 5, 3],
+          4*[0], 4*[0], 4*[0], 4*[0], 4*[0], 4*[0]]], dtype=tf.float32)
+    num_proposals = tf.constant([3, 2], dtype=tf.int32)
+
+    # This has 1 box instead of one for each class.
+    refined_box_encodings = tf.zeros(
+        [total_num_padded_proposals, 1, 4], dtype=tf.float32)
+    class_predictions_with_background = tf.ones(
+        [total_num_padded_proposals, model.num_classes+1], dtype=tf.float32)
+    image_shape = tf.constant([batch_size, 36, 48, 3], dtype=tf.int32)
+
+    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+    detections = model.postprocess({
+        'refined_box_encodings': refined_box_encodings,
+        'class_predictions_with_background': class_predictions_with_background,
+        'num_proposals': num_proposals,
+        'proposal_boxes': proposal_boxes,
+        'image_shape': image_shape,
+    }, true_image_shapes)
+    with self.test_session() as sess:
+      detections_out = sess.run(detections)
+      self.assertAllEqual(detections_out['detection_boxes'].shape, [2, 5, 4])
+      self.assertAllClose(detections_out['detection_scores'],
+                          [[1, 1, 1, 1, 1], [1, 1, 1, 1, 0]])
+      self.assertAllClose(detections_out['detection_classes'],
+                          [[0, 0, 0, 1, 1], [0, 0, 1, 1, 0]])
+      self.assertAllClose(detections_out['num_detections'], [5, 4])
+
   @parameterized.parameters(
       {'masks_are_class_agnostic': False},
       {'masks_are_class_agnostic': True},
@@ -190,9 +230,14 @@ class FasterRCNNMetaArchTest(
           tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
           tf.constant([[1, 0], [1, 0]], dtype=tf.float32)
       ]
+      groundtruth_weights_list = [
+          tf.constant([1, 1], dtype=tf.float32),
+          tf.constant([1, 1], dtype=tf.float32)]
       _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-      model.provide_groundtruth(groundtruth_boxes_list,
-                                groundtruth_classes_list)
+      model.provide_groundtruth(
+          groundtruth_boxes_list,
+          groundtruth_classes_list,
+          groundtruth_weights_list=groundtruth_weights_list)
 
       result_tensor_dict = model.predict(preprocessed_inputs, true_image_shapes)
       mask_shape_1 = 1 if masks_are_class_agnostic else model._num_classes

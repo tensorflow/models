@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Utility functions to build DRAGNN MasterSpecs and schedule model training.
 
 Provides functions to finish a MasterSpec, building required lexicons for it and
@@ -23,13 +22,12 @@ import random
 
 
 import tensorflow as tf
-from six.moves import xrange
+
 from tensorflow.core.framework.summary_pb2 import Summary
 from tensorflow.python.framework import errors
 from tensorflow.python.platform import gfile
 
-flags = tf.app.flags
-FLAGS = flags.FLAGS
+from syntaxnet.util import check
 
 
 def calculate_component_accuracies(eval_res_values):
@@ -59,7 +57,9 @@ def annotate_dataset(sess, annotator, eval_corpus):
     end = min(start + batch_size, len(eval_corpus))
     serialized_annotations = sess.run(
         annotator['annotations'],
-        feed_dict={annotator['input_batch']: eval_corpus[start:end]})
+        feed_dict={
+            annotator['input_batch']: eval_corpus[start:end]
+        })
     assert len(serialized_annotations) == end - start
     processed.extend(serialized_annotations)
   tf.logging.info('Done. Produced %d annotations', len(processed))
@@ -81,16 +81,60 @@ def get_summary_writer(tensorboard_dir):
   return summary_writer
 
 
+def generate_target_per_step_schedule(pretrain_steps, train_steps):
+  """Generates a sampled training schedule.
+
+  Arguments:
+    pretrain_steps: List, number of pre-training steps per each target.
+    train_steps: List, number of sampled training steps per each target.
+
+  Returns:
+    Python list of length sum(pretrain_steps + train_steps), containing
+    target numbers per step.
+  """
+  check.Eq(len(pretrain_steps), len(train_steps))
+  # Arbitrary seed to make sure the return is deterministic.
+  random.seed(0x31337)
+  tf.logging.info('Determining the training schedule...')
+  target_per_step = []
+  for target_idx in xrange(len(pretrain_steps)):
+    target_per_step += [target_idx] * pretrain_steps[target_idx]
+  train_steps = list(train_steps)
+  while sum(train_steps) > 0:
+    step = random.randint(0, sum(train_steps) - 1)
+    cumulative_steps = 0
+    for target_idx in xrange(len(train_steps)):
+      cumulative_steps += train_steps[target_idx]
+      if step < cumulative_steps:
+        break
+    assert train_steps[target_idx] > 0
+    train_steps[target_idx] -= 1
+    target_per_step.append(target_idx)
+  tf.logging.info('Training schedule defined!')
+  return target_per_step
+
+
 def run_training_step(sess, trainer, train_corpus, batch_size):
   """Runs a single iteration of train_op on a randomly sampled batch."""
   batch = random.sample(train_corpus, batch_size)
   sess.run(trainer['run'], feed_dict={trainer['input_batch']: batch})
 
 
-def run_training(sess, trainers, annotator, evaluator, pretrain_steps,
-                 train_steps, train_corpus, eval_corpus, eval_gold,
-                 batch_size, summary_writer, report_every, saver,
-                 checkpoint_filename, checkpoint_stats=None):
+def run_training(sess,
+                 trainers,
+                 annotator,
+                 evaluator,
+                 pretrain_steps,
+                 train_steps,
+                 train_corpus,
+                 eval_corpus,
+                 eval_gold,
+                 batch_size,
+                 summary_writer,
+                 report_every,
+                 saver,
+                 checkpoint_filename,
+                 checkpoint_stats=None):
   """Runs multi-task DRAGNN training on a single corpus.
 
   Arguments:
@@ -117,30 +161,15 @@ def run_training(sess, trainers, annotator, evaluator, pretrain_steps,
     checkpoint_filename: File to save checkpoints to.
     checkpoint_stats: Stats of checkpoint.
   """
-  random.seed(0x31337)
-
   if not checkpoint_stats:
     checkpoint_stats = [0] * (len(train_steps) + 1)
-  tf.logging.info('Determining the training schedule...')
-  target_for_step = []
-  for target_idx in xrange(len(pretrain_steps)):
-    target_for_step += [target_idx] * pretrain_steps[target_idx]
-  while sum(train_steps) > 0:
-    step = random.randint(0, sum(train_steps) - 1)
-    cumulative_steps = 0
-    for target_idx in xrange(len(train_steps)):
-      cumulative_steps += train_steps[target_idx]
-      if step < cumulative_steps:
-        break
-    assert train_steps[target_idx] > 0
-    train_steps[target_idx] -= 1
-    target_for_step.append(target_idx)
-  tf.logging.info('Training schedule defined!')
 
+  target_per_step = generate_target_per_step_schedule(pretrain_steps,
+                                                      train_steps)
   best_eval_metric = -1.0
   tf.logging.info('Starting training...')
   actual_step = sum(checkpoint_stats[1:])
-  for step, target_idx in enumerate(target_for_step):
+  for step, target_idx in enumerate(target_per_step):
     run_training_step(sess, trainers[target_idx], train_corpus, batch_size)
     checkpoint_stats[target_idx + 1] += 1
     if step % 100 == 0:

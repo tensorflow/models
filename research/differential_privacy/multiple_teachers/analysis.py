@@ -240,7 +240,7 @@ def main(unused_argv):
     counts_mat = np.zeros((n, 10)).astype(np.int32)
     for i in range(n):
       for j in range(num_teachers):
-        counts_mat[i, input_mat[j, i]] += 1
+        counts_mat[i, int(input_mat[j, i])] += 1
   n = counts_mat.shape[0]
   num_examples = min(n, FLAGS.max_examples)
 

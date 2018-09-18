@@ -14,8 +14,8 @@
 # ==============================================================================
 
 """Tests for xception.py."""
-import six
 import numpy as np
+import six
 import tensorflow as tf
 
 from deeplab.core import xception

@@ -33,7 +33,7 @@ IndexTranslator::IndexTranslator(const std::vector<Component *> &path,
   } else if (method_ == "history") {
     // History lookup: Return the number of steps taken less the feature.
     step_lookup_ = [this](int batch_index, int beam_index, int feature) {
-      if (feature > path_.back()->StepsTaken(batch_index) - 1) {
+      if (feature > path_.back()->StepsTaken(batch_index) - 1 || feature < 0) {
         VLOG(2) << "Translation to outside: feature is " << feature
                 << " and steps_taken is "
                 << path_.back()->StepsTaken(batch_index);

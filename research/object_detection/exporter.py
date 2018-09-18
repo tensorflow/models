@@ -14,88 +14,24 @@
 # ==============================================================================
 
 """Functions to export object detection inference graph."""
-import logging
 import os
 import tempfile
 import tensorflow as tf
-from google.protobuf import text_format
 from tensorflow.core.protobuf import saver_pb2
-from tensorflow.python import pywrap_tensorflow
 from tensorflow.python.client import session
-from tensorflow.python.framework import graph_util
 from tensorflow.python.platform import gfile
 from tensorflow.python.saved_model import signature_constants
+from tensorflow.python.tools import freeze_graph
 from tensorflow.python.training import saver as saver_lib
+from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
+from object_detection.utils import config_util
 
 slim = tf.contrib.slim
 
-
-# TODO(derekjchow): Replace with freeze_graph.freeze_graph_with_def_protos when
-# newer version of Tensorflow becomes more common.
-def freeze_graph_with_def_protos(
-    input_graph_def,
-    input_saver_def,
-    input_checkpoint,
-    output_node_names,
-    restore_op_name,
-    filename_tensor_name,
-    clear_devices,
-    initializer_nodes,
-    variable_names_blacklist=''):
-  """Converts all variables in a graph and checkpoint into constants."""
-  del restore_op_name, filename_tensor_name  # Unused by updated loading code.
-
-  # 'input_checkpoint' may be a prefix if we're using Saver V2 format
-  if not saver_lib.checkpoint_exists(input_checkpoint):
-    raise ValueError(
-        'Input checkpoint "' + input_checkpoint + '" does not exist!')
-
-  if not output_node_names:
-    raise ValueError(
-        'You must supply the name of a node to --output_node_names.')
-
-  # Remove all the explicit device specifications for this node. This helps to
-  # make the graph more portable.
-  if clear_devices:
-    for node in input_graph_def.node:
-      node.device = ''
-
-  with tf.Graph().as_default():
-    tf.import_graph_def(input_graph_def, name='')
-    config = tf.ConfigProto(graph_options=tf.GraphOptions())
-    with session.Session(config=config) as sess:
-      if input_saver_def:
-        saver = saver_lib.Saver(saver_def=input_saver_def)
-        saver.restore(sess, input_checkpoint)
-      else:
-        var_list = {}
-        reader = pywrap_tensorflow.NewCheckpointReader(input_checkpoint)
-        var_to_shape_map = reader.get_variable_to_shape_map()
-        for key in var_to_shape_map:
-          try:
-            tensor = sess.graph.get_tensor_by_name(key + ':0')
-          except KeyError:
-            # This tensor doesn't exist in the graph (for example it's
-            # 'global_step' or a similar housekeeping element) so skip it.
-            continue
-          var_list[key] = tensor
-        saver = saver_lib.Saver(var_list=var_list)
-        saver.restore(sess, input_checkpoint)
-        if initializer_nodes:
-          sess.run(initializer_nodes)
-
-      variable_names_blacklist = (variable_names_blacklist.split(',') if
-                                  variable_names_blacklist else None)
-      output_graph_def = graph_util.convert_variables_to_constants(
-          sess,
-          input_graph_def,
-          output_node_names.split(','),
-          variable_names_blacklist=variable_names_blacklist)
-
-  return output_graph_def
+freeze_graph_with_def_protos = freeze_graph.freeze_graph_with_def_protos
 
 
 def replace_variable_values_with_moving_averages(graph,
@@ -197,6 +133,9 @@ def _add_output_tensor_nodes(postprocessed_tensors,
       containing scores for the detected boxes.
     * detection_classes: float32 tensor of shape [batch_size, num_boxes]
       containing class predictions for the detected boxes.
+    * detection_keypoints: (Optional) float32 tensor of shape
+      [batch_size, num_boxes, num_keypoints, 2] containing keypoints for each
+      detection box.
     * detection_masks: (Optional) float32 tensor of shape
       [batch_size, num_boxes, mask_height, mask_width] containing masks for each
       detection box.
@@ -220,6 +159,7 @@ def _add_output_tensor_nodes(postprocessed_tensors,
   scores = postprocessed_tensors.get(detection_fields.detection_scores)
   classes = postprocessed_tensors.get(
       detection_fields.detection_classes) + label_id_offset
+  keypoints = postprocessed_tensors.get(detection_fields.detection_keypoints)
   masks = postprocessed_tensors.get(detection_fields.detection_masks)
   num_detections = postprocessed_tensors.get(detection_fields.num_detections)
   outputs = {}
@@ -231,27 +171,16 @@ def _add_output_tensor_nodes(postprocessed_tensors,
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(
       num_detections, name=detection_fields.num_detections)
+  if keypoints is not None:
+    outputs[detection_fields.detection_keypoints] = tf.identity(
+        keypoints, name=detection_fields.detection_keypoints)
   if masks is not None:
     outputs[detection_fields.detection_masks] = tf.identity(
         masks, name=detection_fields.detection_masks)
   for output_key in outputs:
     tf.add_to_collection(output_collection_name, outputs[output_key])
-  if masks is not None:
-    tf.add_to_collection(output_collection_name,
-                         outputs[detection_fields.detection_masks])
+
   return outputs
-
-
-def write_frozen_graph(frozen_graph_path, frozen_graph_def):
-  """Writes frozen graph to disk.
-
-  Args:
-    frozen_graph_path: Path to write inference graph.
-    frozen_graph_def: tf.GraphDef holding frozen graph.
-  """
-  with gfile.GFile(frozen_graph_path, 'wb') as f:
-    f.write(frozen_graph_def.SerializeToString())
-  logging.info('%d ops in the final graph.', len(frozen_graph_def.node))
 
 
 def write_saved_model(saved_model_path,
@@ -269,7 +198,7 @@ def write_saved_model(saved_model_path,
   Args:
     saved_model_path: Path to write SavedModel.
     frozen_graph_def: tf.GraphDef holding frozen graph.
-    inputs: The input image tensor to use for detection.
+    inputs: The input placeholder tensor.
     outputs: A tensor dictionary containing the outputs of a DetectionModel.
   """
   with tf.Graph().as_default():
@@ -363,7 +292,8 @@ def _export_inference_graph(input_type,
                             additional_output_tensor_names=None,
                             input_shape=None,
                             output_collection_name='inference_op',
-                            graph_hook_fn=None):
+                            graph_hook_fn=None,
+                            write_inference_graph=False):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
   frozen_graph_path = os.path.join(output_directory,
@@ -378,6 +308,7 @@ def _export_inference_graph(input_type,
       output_collection_name=output_collection_name,
       graph_hook_fn=graph_hook_fn)
 
+  profile_inference_graph(tf.get_default_graph())
   saver_kwargs = {}
   if use_moving_averages:
     # This check is to be compatible with both version of SaverDef.
@@ -401,22 +332,31 @@ def _export_inference_graph(input_type,
       model_path=model_path,
       input_saver_def=input_saver_def,
       trained_checkpoint_prefix=checkpoint_to_use)
+  if write_inference_graph:
+    inference_graph_def = tf.get_default_graph().as_graph_def()
+    inference_graph_path = os.path.join(output_directory,
+                                        'inference_graph.pbtxt')
+    for node in inference_graph_def.node:
+      node.device = ''
+    with gfile.GFile(inference_graph_path, 'wb') as f:
+      f.write(str(inference_graph_def))
 
   if additional_output_tensor_names is not None:
     output_node_names = ','.join(outputs.keys()+additional_output_tensor_names)
   else:
     output_node_names = ','.join(outputs.keys())
 
-  frozen_graph_def = freeze_graph_with_def_protos(
+  frozen_graph_def = freeze_graph.freeze_graph_with_def_protos(
       input_graph_def=tf.get_default_graph().as_graph_def(),
       input_saver_def=input_saver_def,
       input_checkpoint=checkpoint_to_use,
       output_node_names=output_node_names,
       restore_op_name='save/restore_all',
       filename_tensor_name='save/Const:0',
+      output_graph=frozen_graph_path,
       clear_devices=True,
       initializer_nodes='')
-  write_frozen_graph(frozen_graph_path, frozen_graph_def)
+
   write_saved_model(saved_model_path, frozen_graph_def,
                     placeholder_tensor, outputs)
 
@@ -427,12 +367,13 @@ def export_inference_graph(input_type,
                            output_directory,
                            input_shape=None,
                            output_collection_name='inference_op',
-                           additional_output_tensor_names=None):
+                           additional_output_tensor_names=None,
+                           write_inference_graph=False):
   """Exports inference graph for the model specified in the pipeline config.
 
   Args:
-    input_type: Type of input for the graph. Can be one of [`image_tensor`,
-      `tf_example`].
+    input_type: Type of input for the graph. Can be one of ['image_tensor',
+      'encoded_image_string_tensor', 'tf_example'].
     pipeline_config: pipeline_pb2.TrainAndEvalPipelineConfig proto.
     trained_checkpoint_prefix: Path to the trained checkpoint file.
     output_directory: Path to write outputs.
@@ -442,17 +383,57 @@ def export_inference_graph(input_type,
       If None, does not add output tensors to a collection.
     additional_output_tensor_names: list of additional output
       tensors to include in the frozen graph.
+    write_inference_graph: If true, writes inference graph to disk.
   """
   detection_model = model_builder.build(pipeline_config.model,
                                         is_training=False)
-  _export_inference_graph(input_type, detection_model,
-                          pipeline_config.eval_config.use_moving_averages,
-                          trained_checkpoint_prefix,
-                          output_directory, additional_output_tensor_names,
-                          input_shape, output_collection_name,
-                          graph_hook_fn=None)
+  graph_rewriter_fn = None
+  if pipeline_config.HasField('graph_rewriter'):
+    graph_rewriter_config = pipeline_config.graph_rewriter
+    graph_rewriter_fn = graph_rewriter_builder.build(graph_rewriter_config,
+                                                     is_training=False)
+  _export_inference_graph(
+      input_type,
+      detection_model,
+      pipeline_config.eval_config.use_moving_averages,
+      trained_checkpoint_prefix,
+      output_directory,
+      additional_output_tensor_names,
+      input_shape,
+      output_collection_name,
+      graph_hook_fn=graph_rewriter_fn,
+      write_inference_graph=write_inference_graph)
   pipeline_config.eval_config.use_moving_averages = False
-  config_text = text_format.MessageToString(pipeline_config)
-  with tf.gfile.Open(
-      os.path.join(output_directory, 'pipeline.config'), 'wb') as f:
-    f.write(config_text)
+  config_util.save_pipeline_config(pipeline_config, output_directory)
+
+
+def profile_inference_graph(graph):
+  """Profiles the inference graph.
+
+  Prints model parameters and computation FLOPs given an inference graph.
+  BatchNorms are excluded from the parameter count due to the fact that
+  BatchNorms are usually folded. BatchNorm, Initializer, Regularizer
+  and BiasAdd are not considered in FLOP count.
+
+  Args:
+    graph: the inference graph.
+  """
+  tfprof_vars_option = (
+      tf.contrib.tfprof.model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+  tfprof_flops_option = tf.contrib.tfprof.model_analyzer.FLOAT_OPS_OPTIONS
+
+  # Batchnorm is usually folded during inference.
+  tfprof_vars_option['trim_name_regexes'] = ['.*BatchNorm.*']
+  # Initializer and Regularizer are only used in training.
+  tfprof_flops_option['trim_name_regexes'] = [
+      '.*BatchNorm.*', '.*Initializer.*', '.*Regularizer.*', '.*BiasAdd.*'
+  ]
+
+  tf.contrib.tfprof.model_analyzer.print_model_analysis(
+      graph,
+      tfprof_options=tfprof_vars_option)
+
+  tf.contrib.tfprof.model_analyzer.print_model_analysis(
+      graph,
+      tfprof_options=tfprof_flops_option)
+

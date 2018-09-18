@@ -24,6 +24,7 @@ from abc import abstractmethod
 import tensorflow as tf
 
 from object_detection.core import box_list_ops
+from object_detection.core import standard_fields as fields
 
 
 class RegionSimilarityCalculator(object):
@@ -33,7 +34,7 @@ class RegionSimilarityCalculator(object):
   def compare(self, boxlist1, boxlist2, scope=None):
     """Computes matrix of pairwise similarity between BoxLists.
 
-    This op (to be overriden) computes a measure of pairwise similarity between
+    This op (to be overridden) computes a measure of pairwise similarity between
     the boxes in the given BoxLists. Higher values indicate more similarity.
 
     Note that this method simply measures similarity and does not explicitly
@@ -112,3 +113,42 @@ class IoaSimilarity(RegionSimilarityCalculator):
       A tensor with shape [N, M] representing pairwise IOA scores.
     """
     return box_list_ops.ioa(boxlist1, boxlist2)
+
+
+class ThresholdedIouSimilarity(RegionSimilarityCalculator):
+  """Class to compute similarity based on thresholded IOU and score.
+
+  This class computes pairwise similarity between two BoxLists based on IOU and
+  a 'score' present in boxlist1. If IOU > threshold, then the entry in the
+  output pairwise tensor will contain `score`, otherwise 0.
+  """
+
+  def __init__(self, iou_threshold=0):
+    """Initialize the ThresholdedIouSimilarity.
+
+    Args:
+      iou_threshold: For a given pair of boxes, if the IOU is > iou_threshold,
+        then the comparison result will be the foreground probability of
+        the first box, otherwise it will be zero.
+    """
+    self._iou_threshold = iou_threshold
+
+  def _compare(self, boxlist1, boxlist2):
+    """Compute pairwise IOU similarity between the two BoxLists and score.
+
+    Args:
+      boxlist1: BoxList holding N boxes. Must have a score field.
+      boxlist2: BoxList holding M boxes.
+
+    Returns:
+      A tensor with shape [N, M] representing scores threholded by pairwise
+      iou scores.
+    """
+    ious = box_list_ops.iou(boxlist1, boxlist2)
+    scores = boxlist1.get_field(fields.BoxListFields.scores)
+    scores = tf.expand_dims(scores, axis=1)
+    row_replicated_scores = tf.tile(scores, [1, tf.shape(ious)[-1]])
+    thresholded_ious = tf.where(ious > self._iou_threshold,
+                                row_replicated_scores, tf.zeros_like(ious))
+
+    return thresholded_ious

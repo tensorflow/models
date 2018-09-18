@@ -237,7 +237,8 @@ class DetectionModel(object):
                           groundtruth_classes_list,
                           groundtruth_masks_list=None,
                           groundtruth_keypoints_list=None,
-                          groundtruth_weights_list=None):
+                          groundtruth_weights_list=None,
+                          groundtruth_is_crowd_list=None):
     """Provide groundtruth tensors.
 
     Args:
@@ -260,6 +261,8 @@ class DetectionModel(object):
         missing keypoints should be encoded as NaN.
       groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
         [num_boxes] containing weights for groundtruth boxes.
+      groundtruth_is_crowd_list: A list of 1-D tf.bool tensors of shape
+        [num_boxes] containing is_crowd annotations
     """
     self._groundtruth_lists[fields.BoxListFields.boxes] = groundtruth_boxes_list
     self._groundtruth_lists[
@@ -273,6 +276,9 @@ class DetectionModel(object):
     if groundtruth_keypoints_list:
       self._groundtruth_lists[
           fields.BoxListFields.keypoints] = groundtruth_keypoints_list
+    if groundtruth_is_crowd_list:
+      self._groundtruth_lists[
+          fields.BoxListFields.is_crowd] = groundtruth_is_crowd_list
 
   @abstractmethod
   def restore_map(self, fine_tune_checkpoint_type='detection'):

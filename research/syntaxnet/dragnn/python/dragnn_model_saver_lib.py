@@ -164,6 +164,7 @@ def export_to_graph(master_spec,
                     export_path,
                     external_graph,
                     export_moving_averages,
+                    build_runtime_graph,
                     signature_name='model'):
   """Restores a model and exports it in SavedModel form.
 
@@ -177,6 +178,7 @@ def export_to_graph(master_spec,
     export_path: Path to export the SavedModel to.
     external_graph: A tf.Graph() object to build the graph inside.
     export_moving_averages: Whether to export the moving average parameters.
+    build_runtime_graph: Whether to build a graph for use by the runtime.
     signature_name: Name of the signature to insert.
   """
   tf.logging.info(
@@ -189,7 +191,7 @@ def export_to_graph(master_spec,
     hyperparam_config.use_moving_average = export_moving_averages
     builder = graph_builder.MasterBuilder(master_spec, hyperparam_config)
     post_restore_hook = builder.build_post_restore_hook()
-    annotation = builder.add_annotation()
+    annotation = builder.add_annotation(build_runtime_graph=build_runtime_graph)
     builder.add_saver()
 
   # Resets session.

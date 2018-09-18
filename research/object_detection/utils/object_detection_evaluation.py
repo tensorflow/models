@@ -31,6 +31,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 import collections
 import logging
+import unicodedata
 import numpy as np
 
 from object_detection.core import standard_fields
@@ -87,6 +88,23 @@ class DetectionEvaluator(object):
       image_id: A unique string/integer identifier for the image.
       detections_dict: A dictionary of detection numpy arrays required
         for evaluation.
+    """
+    pass
+
+  def get_estimator_eval_metric_ops(self, eval_dict):
+    """Returns dict of metrics to use with `tf.estimator.EstimatorSpec`.
+
+    Note that this must only be implemented if performing evaluation with a
+    `tf.estimator.Estimator`.
+
+    Args:
+      eval_dict: A dictionary that holds tensors for evaluating an object
+        detection model, returned from
+        eval_util.result_dict_for_single_example().
+
+    Returns:
+      A dictionary of metric names to tuple of value_op and update_op that can
+      be used as eval metric ops in `tf.estimator.EstimatorSpec`.
     """
     pass
 
@@ -284,18 +302,23 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     category_index = label_map_util.create_category_index(self._categories)
     for idx in range(per_class_ap.size):
       if idx + self._label_id_offset in category_index:
+        category_name = category_index[idx + self._label_id_offset]['name']
+        try:
+          category_name = unicode(category_name, 'utf-8')
+        except TypeError:
+          pass
+        category_name = unicodedata.normalize(
+            'NFKD', category_name).encode('ascii', 'ignore')
         display_name = (
             self._metric_prefix + 'PerformanceByCategory/AP@{}IOU/{}'.format(
-                self._matching_iou_threshold,
-                category_index[idx + self._label_id_offset]['name']))
+                self._matching_iou_threshold, category_name))
         pascal_metrics[display_name] = per_class_ap[idx]
 
         # Optionally add CorLoc metrics.classes
         if self._evaluate_corlocs:
           display_name = (
               self._metric_prefix + 'PerformanceByCategory/CorLoc@{}IOU/{}'
-              .format(self._matching_iou_threshold,
-                      category_index[idx + self._label_id_offset]['name']))
+              .format(self._matching_iou_threshold, category_name))
           pascal_metrics[display_name] = per_class_corloc[idx]
 
     return pascal_metrics
@@ -525,8 +548,8 @@ class OpenImagesDetectionChallengeEvaluator(OpenImagesDetectionEvaluator):
         standard_fields.InputDataFields.groundtruth_classes: integer numpy array
           of shape [num_boxes] containing 1-indexed groundtruth classes for the
           boxes.
-        standard_fields.InputDataFields.verified_labels: integer 1D numpy array
-          containing all classes for which labels are verified.
+        standard_fields.InputDataFields.groundtruth_image_classes: integer 1D
+          numpy array containing all classes for which labels are verified.
         standard_fields.InputDataFields.groundtruth_group_of: Optional length
           M numpy boolean array denoting whether a groundtruth box contains a
           group of instances.
@@ -541,7 +564,7 @@ class OpenImagesDetectionChallengeEvaluator(OpenImagesDetectionEvaluator):
         self._label_id_offset)
     self._evaluatable_labels[image_id] = np.unique(
         np.concatenate(((groundtruth_dict.get(
-            standard_fields.InputDataFields.verified_labels,
+            standard_fields.InputDataFields.groundtruth_image_classes,
             np.array([], dtype=int)) - self._label_id_offset),
                         groundtruth_classes)))
 
@@ -839,6 +862,9 @@ class ObjectDetectionEvaluation(object):
       if self.use_weighted_mean_ap:
         all_scores = np.append(all_scores, scores)
         all_tp_fp_labels = np.append(all_tp_fp_labels, tp_fp_labels)
+      logging.info('Scores and tpfp per class label: %d', class_index)
+      logging.info(tp_fp_labels)
+      logging.info(scores)
       precision, recall = metrics.compute_precision_recall(
           scores, tp_fp_labels, self.num_gt_instances_per_class[class_index])
       self.precisions_per_class.append(precision)

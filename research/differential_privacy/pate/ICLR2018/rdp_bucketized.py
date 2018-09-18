@@ -51,8 +51,10 @@ plt.style.use('ggplot')
 FLAGS = flags.FLAGS
 flags.DEFINE_enum('plot', 'small', ['small', 'large'], 'Selects which of'
                   'the two plots is produced.')
-flags.DEFINE_string('counts_file', '', 'Counts file.')
+flags.DEFINE_string('counts_file', None, 'Counts file.')
 flags.DEFINE_string('plot_file', '', 'Plot file to write.')
+
+flags.mark_flag_as_required('counts_file')
 
 
 def compute_count_per_bin(bin_num, votes):
@@ -164,6 +166,8 @@ def main(argv):
     m_check = compute_expected_answered_per_bin(bin_num, votes, 3500, 1500)
     a_check = compute_expected_answered_per_bin(bin_num, votes, 5000, 1500)
     eps = compute_privacy_cost_per_bins(bin_num, votes, 100, 50)
+  else:
+    raise ValueError('--plot flag must be one of ["small", "large"]')
 
   counts = compute_count_per_bin(bin_num, votes)
   bins = np.linspace(0, 100, num=bin_num, endpoint=False)
@@ -171,14 +175,14 @@ def main(argv):
   plt.close('all')
   fig, ax = plt.subplots()
   if FLAGS.plot == 'small':
-    fig.set_figheight(4.7)
+    fig.set_figheight(5)
     fig.set_figwidth(5)
     ax.bar(
         bins,
         counts,
         20,
         color='orangered',
-        linestyle='dashed',
+        linestyle='dotted',
         linewidth=5,
         edgecolor='red',
         fill=False,
@@ -189,7 +193,7 @@ def main(argv):
         bins,
         m_check,
         20,
-        color='b',
+        color='g',
         alpha=.5,
         linewidth=0,
         edgecolor='g',
@@ -238,12 +242,13 @@ def main(argv):
     ax2.set_ylabel(r'Per query privacy cost $\varepsilon$', fontsize=16)
 
   plt.xlim([0, 100])
+  ax.set_ylim([0, 2500])
   # ax.set_yscale('log')
   ax.set_xlabel('Percentage of teachers that agree', fontsize=16)
   ax.set_ylabel('Number of queries answered', fontsize=16)
   vals = ax.get_xticks()
   ax.set_xticklabels([str(int(x)) + '%' for x in vals])
-  ax.tick_params(labelsize=14)
+  ax.tick_params(labelsize=14, bottom=True, top=True, left=True, right=True)
   ax.legend(loc=2, prop={'size': 16})
 
   # simple: 'figures/noisy_thresholding_check_perf.pdf')

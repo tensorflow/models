@@ -37,7 +37,7 @@ in Java.
 ## Notes
 
 - This example demonstrates the use of the TensorFlow [SavedModel
-  format](https://www.tensorflow.org/programmers_guide/saved_model). If you have
+  format](https://www.tensorflow.org/guide/saved_model). If you have
   TensorFlow for Python installed, you could explore the model to get the names
   of the tensors using `saved_model_cli` command. For example:
   ```

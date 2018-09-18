@@ -353,6 +353,25 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
     self.assertListEqual(end_points['global_pool'].get_shape().as_list(),
                          [2, 1, 1, 32])
 
+  def testClassificationEndPointsWithNoBatchNormArgscope(self):
+    global_pool = True
+    num_classes = 10
+    inputs = create_test_input(2, 224, 224, 3)
+    with slim.arg_scope(resnet_utils.resnet_arg_scope()):
+      logits, end_points = self._resnet_small(inputs, num_classes,
+                                              global_pool=global_pool,
+                                              spatial_squeeze=False,
+                                              is_training=None,
+                                              scope='resnet')
+    self.assertTrue(logits.op.name.startswith('resnet/logits'))
+    self.assertListEqual(logits.get_shape().as_list(), [2, 1, 1, num_classes])
+    self.assertTrue('predictions' in end_points)
+    self.assertListEqual(end_points['predictions'].get_shape().as_list(),
+                         [2, 1, 1, num_classes])
+    self.assertTrue('global_pool' in end_points)
+    self.assertListEqual(end_points['global_pool'].get_shape().as_list(),
+                         [2, 1, 1, 32])
+
   def testEndpointNames(self):
     # Like ResnetUtilsTest.testEndPointsV1(), but for the public API.
     global_pool = True

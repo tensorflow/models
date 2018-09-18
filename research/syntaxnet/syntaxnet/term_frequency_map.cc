@@ -19,6 +19,7 @@ limitations under the License.
 #include <algorithm>
 #include <limits>
 
+#include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/io/buffered_inputstream.h"
 #include "tensorflow/core/lib/io/random_inputstream.h"
@@ -52,8 +53,9 @@ void TermFrequencyMap::Clear() {
   term_data_.clear();
 }
 
-void TermFrequencyMap::Load(const string &filename, int min_frequency,
-                            int max_num_terms) {
+tensorflow::Status TermFrequencyMap::TryLoad(const string &filename,
+                                             int min_frequency,
+                                             int max_num_terms) {
   Clear();
 
   // If max_num_terms is non-positive, replace it with INT_MAX.
@@ -61,46 +63,83 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
 
   // Read the first line (total # of terms in the mapping).
   std::unique_ptr<tensorflow::RandomAccessFile> file;
-  TF_CHECK_OK(tensorflow::Env::Default()->NewRandomAccessFile(filename, &file));
+  TF_RETURN_IF_ERROR(
+      tensorflow::Env::Default()->NewRandomAccessFile(filename, &file));
   static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
   tensorflow::io::RandomAccessInputStream stream(file.get());
   tensorflow::io::BufferedInputStream buffer(&stream, kInputBufferSize);
   string line;
-  TF_CHECK_OK(buffer.ReadLine(&line));
+  TF_RETURN_IF_ERROR(buffer.ReadLine(&line));
   int32 total = -1;
-  CHECK(utils::ParseInt32(line.c_str(), &total))
-      << "Unable to parse from " << filename;
-  CHECK_GE(total, 0);
+  if (!utils::ParseInt32(line.c_str(), &total)) {
+    return tensorflow::errors::InvalidArgument(
+        filename, ":0: Unable to parse term map size");
+  }
+  if (total < 0) {
+    return tensorflow::errors::InvalidArgument(
+        filename, ":0: Invalid term map size: ", total);
+  }
 
   // Read the mapping.
   int64 last_frequency = -1;
   for (int i = 0; i < total && i < max_num_terms; ++i) {
-    TF_CHECK_OK(buffer.ReadLine(&line));
+    TF_RETURN_IF_ERROR(buffer.ReadLine(&line));
+    static LazyRE2 re = {"(.*) (\\d*)"};
     string term;
     int64 frequency = 0;
-    CHECK(RE2::FullMatch(line, "(.*) (\\d*)", &term, &frequency));
-    CHECK(!term.empty());
-    CHECK_GT(frequency, 0);
+    if (!RE2::FullMatch(line, *re, &term, &frequency)) {
+      return tensorflow::errors::InvalidArgument(
+          filename, ":", i + 1,
+          ": Couldn't split term and frequency in line: ", line);
+    }
+    if (term.empty()) {
+      return tensorflow::errors::InvalidArgument(filename, ":", i + 1,
+                                                 ": Invalid empty term");
+    }
+    if (frequency <= 0) {
+      return tensorflow::errors::InvalidArgument(
+          filename, ":", i + 1, ": Invalid frequency: term=", term,
+          " frequency=", frequency);
+    }
 
     // Check frequency sorting (descending order).
-    if (i > 0) CHECK_GE(last_frequency, frequency);
+    if (i > 0 && last_frequency < frequency) {
+      return tensorflow::errors::InvalidArgument(
+          filename, ":", i + 1,
+          ": Non-descending frequencies: current=", frequency,
+          " previous=", last_frequency);
+    }
     last_frequency = frequency;
 
     // Ignore low-frequency items.
     if (frequency < min_frequency) continue;
 
     // Check uniqueness of the mapped terms.
-    CHECK(term_index_.find(term) == term_index_.end())
-        << "File " << filename << " has duplicate term: " << term;
+    if (term_index_.find(term) != term_index_.end()) {
+      return tensorflow::errors::InvalidArgument(filename, ":", i + 1,
+                                                 ": Duplicate term: ", term);
+    }
 
     // Assign the next available index.
     const int index = term_index_.size();
     term_index_[term] = index;
     term_data_.push_back(std::pair<string, int64>(term, frequency));
   }
-  CHECK_EQ(term_index_.size(), term_data_.size());
+
+  if (term_index_.size() != term_data_.size()) {
+    return tensorflow::errors::Internal(
+        "Unexpected size mismatch between term index (", term_index_.size(),
+        ") and term data (", term_data_.size(), ")");
+  }
+
   LOG(INFO) << "Loaded " << term_index_.size() << " terms from " << filename
             << ".";
+  return tensorflow::Status::OK();
+}
+
+void TermFrequencyMap::Load(const string &filename, int min_frequency,
+                            int max_num_terms) {
+  TF_CHECK_OK(TryLoad(filename, min_frequency, max_num_terms));
 }
 
 struct TermFrequencyMap::SortByFrequencyThenTerm {

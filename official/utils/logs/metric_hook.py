@@ -20,8 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.logs import logger
-
 
 class LoggingMetricHook(tf.train.LoggingTensorHook):
   """Hook to log benchmark metric information.
@@ -35,17 +33,15 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
   whose evaluation produces a side effect such as consuming additional inputs.
   """
 
-  def __init__(self, tensors, log_dir=None, metric_logger=None,
+  def __init__(self, tensors, metric_logger=None,
                every_n_iter=None, every_n_secs=None, at_end=False):
     """Initializer for LoggingMetricHook.
 
     Args:
       tensors: `dict` that maps string-valued tags to tensors/tensor names,
           or `iterable` of tensors/tensor names.
-      log_dir: `string`, directory path that metric hook should write log to.
       metric_logger: instance of `BenchmarkLogger`, the benchmark logger that
-          hook should use to write the log. Exactly one of the `log_dir` and
-          `metric_logger` should be provided.
+          hook should use to write the log.
       every_n_iter: `int`, print the values of `tensors` once every N local
           steps taken on the current worker.
       every_n_secs: `int` or `float`, print the values of `tensors` once every N
@@ -66,14 +62,9 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
         every_n_secs=every_n_secs,
         at_end=at_end)
 
-    if (log_dir is None) == (metric_logger is None):
-      raise ValueError(
-          "exactly one of log_dir and metric_logger should be provided.")
-
-    if log_dir is not None:
-      self._logger = logger.BenchmarkLogger(log_dir)
-    else:
-      self._logger = metric_logger
+    if metric_logger is None:
+      raise ValueError("metric_logger should be provided.")
+    self._logger = metric_logger
 
   def begin(self):
     super(LoggingMetricHook, self).begin()
