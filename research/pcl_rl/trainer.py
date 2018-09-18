@@ -25,6 +25,7 @@ import random
 import os
 import pickle
 
+from six.moves import xrange
 import controller
 import model
 import policy

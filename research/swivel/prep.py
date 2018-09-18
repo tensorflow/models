@@ -61,6 +61,7 @@ import os
 import struct
 import sys
 
+from six.moves import xrange
 import tensorflow as tf
 
 flags = tf.app.flags
@@ -118,7 +119,7 @@ def create_vocabulary(lines):
   if not num_words:
     raise Exception('empty vocabulary')
 
-  print 'vocabulary contains %d tokens' % num_words
+  print('vocabulary contains %d tokens' % num_words)
 
   vocab = vocab[:num_words]
   return [tok for tok, n in vocab]
@@ -309,7 +310,7 @@ def main(_):
   write_vocab_and_sums(vocab, sums, 'row_vocab.txt', 'row_sums.txt')
   write_vocab_and_sums(vocab, sums, 'col_vocab.txt', 'col_sums.txt')
 
-  print 'done!'
+  print('done!')
 
 
 if __name__ == '__main__':

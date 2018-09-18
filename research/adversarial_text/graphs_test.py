@@ -30,7 +30,7 @@ import tempfile
 import tensorflow as tf
 
 import graphs
-from adversarial_text.data import data_utils
+from data import data_utils
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS

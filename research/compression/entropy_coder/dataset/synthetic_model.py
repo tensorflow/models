@@ -16,6 +16,7 @@
 """Binary code sample generator."""
 
 import numpy as np
+from six.moves import xrange
 
 
 _CRC_LINE = [

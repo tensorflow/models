@@ -39,6 +39,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from single_task import defaults  # brain coder

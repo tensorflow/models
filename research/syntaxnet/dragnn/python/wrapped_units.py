@@ -330,7 +330,7 @@ class LayerNormBasicLSTMNetwork(BaseLSTMNetwork):
 
     def _cell_closure(scope):
       """Applies the LSTM cell to the current inputs and state."""
-      return cell(input_tensor, state, scope)
+      return cell(input_tensor, state, scope=scope)
 
     unused_h, state = self._apply_with_captured_variables(_cell_closure)
 

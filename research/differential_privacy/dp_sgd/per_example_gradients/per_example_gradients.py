@@ -17,6 +17,7 @@
 
 import collections
 
+from six.moves import xrange
 import tensorflow as tf
 
 OrderedDict = collections.OrderedDict

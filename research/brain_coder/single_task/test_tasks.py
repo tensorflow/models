@@ -4,6 +4,7 @@ from __future__ import print_function
 
 """Tasks that test correctness of algorithms."""
 
+from six.moves import xrange
 from common import reward as reward_lib  # brain coder
 from single_task import misc  # brain coder
 
@@ -124,5 +125,3 @@ class HillClimbingTask(object):
     # closest next element.
     # Maximum distance possible is num_actions * base / 2 = 3 * 8 / 2 = 12
     return (len(prefix) + (1 - min_dist / 12.0)), False
-
-

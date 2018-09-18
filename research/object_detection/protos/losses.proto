@@ -20,6 +20,9 @@ message Loss {
 
   // Localization loss weight.
   optional float localization_weight = 5 [default=1.0];
+
+  // If not left to default, applies random example sampling.
+  optional RandomExampleSampler random_example_sampler = 6;
 }
 
 // Configuration for bounding box localization loss function.
@@ -33,14 +36,22 @@ message LocalizationLoss {
 
 // L2 location loss: 0.5 * ||weight * (a - b)|| ^ 2
 message WeightedL2LocalizationLoss {
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
 }
 
-// SmoothL1 (Huber) location loss: .5 * x ^ 2 if |x| < 1 else |x| - .5
+// SmoothL1 (Huber) location loss.
+// The smooth L1_loss is defined elementwise as .5 x^2 if |x| <= delta and
+// delta * (|x|-0.5*delta) otherwise, where x is the difference between
+// predictions and target.
 message WeightedSmoothL1LocalizationLoss {
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
+
+  // Delta value for huber loss.
+  optional float delta = 2 [default=1.0];
 }
 
 // Intersection over union location loss: 1 - IOU
@@ -52,6 +63,7 @@ message ClassificationLoss {
   oneof classification_loss {
     WeightedSigmoidClassificationLoss weighted_sigmoid = 1;
     WeightedSoftmaxClassificationLoss weighted_softmax = 2;
+    WeightedSoftmaxClassificationAgainstLogitsLoss weighted_logits_softmax = 5;
     BootstrappedSigmoidClassificationLoss bootstrapped_sigmoid = 3;
     SigmoidFocalClassificationLoss weighted_sigmoid_focal = 4;
   }
@@ -59,6 +71,7 @@ message ClassificationLoss {
 
 // Classification loss using a sigmoid function over class predictions.
 message WeightedSigmoidClassificationLoss {
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
 }
@@ -66,6 +79,7 @@ message WeightedSigmoidClassificationLoss {
 // Sigmoid Focal cross entropy loss as described in
 // https://arxiv.org/abs/1708.02002
 message SigmoidFocalClassificationLoss {
+  // DEPRECATED, do not use.
   optional bool anchorwise_output = 1 [default = false];
   // modulating factor for the loss.
   optional float gamma = 2 [default = 2.0];
@@ -75,10 +89,22 @@ message SigmoidFocalClassificationLoss {
 
 // Classification loss using a softmax function over class predictions.
 message WeightedSoftmaxClassificationLoss {
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
   // Scale logit (input) value before calculating softmax classification loss.
   // Typically used for softmax distillation.
+  optional float logit_scale = 2 [default = 1.0];
+}
+
+// Classification loss using a softmax function over class predictions and
+// a softmax function over the groundtruth labels (assumed to be logits).
+message WeightedSoftmaxClassificationAgainstLogitsLoss {
+  // DEPRECATED, do not use.
+  optional bool anchorwise_output = 1 [default = false];
+  // Scale and softmax groundtruth logits before calculating softmax
+  // classification loss. Typically used for softmax distillation with teacher
+  // annotations stored as logits.
   optional float logit_scale = 2 [default = 1.0];
 }
 
@@ -93,11 +119,12 @@ message BootstrappedSigmoidClassificationLoss {
   // probabilities.
   optional bool hard_bootstrap = 2 [default=false];
 
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 3 [default=false];
 }
 
-// Configuation for hard example miner.
+// Configuration for hard example miner.
 message HardExampleMiner {
   // Maximum number of hard examples to be selected per image (prior to
   // enforcing max negative to positive ratio constraint).  If set to 0,
@@ -127,4 +154,11 @@ message HardExampleMiner {
   // positive anchors and thus not bias the model towards having at least one
   // detection per image.
   optional int32 min_negatives_per_image = 5 [default=0];
+}
+
+// Configuration for random example sampler.
+message RandomExampleSampler {
+  // The desired fraction of positive samples in batch when applying random
+  // example sampling.
+  optional float positive_sample_fraction = 1 [default = 0.01];
 }

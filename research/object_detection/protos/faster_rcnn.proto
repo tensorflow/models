@@ -20,7 +20,7 @@ import "object_detection/protos/post_processing.proto";
 message FasterRcnn {
 
   // Whether to construct only the Region Proposal Network (RPN).
-  optional bool first_stage_only = 1 [default=false];
+  optional int32 number_of_stages = 1 [default=2];
 
   // Number of classes to predict.
   optional int32 num_classes = 3;
@@ -131,6 +131,32 @@ message FasterRcnn {
   // to use sigmoid loss and enable merge_multiple_label_boxes.
   // If not specified, Softmax loss is used as default.
   optional ClassificationLoss second_stage_classification_loss = 29;
+
+  // Whether to update batch_norm inplace during training. This is required
+  // for batch norm to work correctly on TPUs. When this is false, user must add
+  // a control dependency on tf.GraphKeys.UPDATE_OPS for train/loss op in order
+  // to update the batch norm moving average parameters.
+  optional bool inplace_batchnorm_update = 30 [default = false];
+
+  // Force the use of matrix multiplication based crop and resize instead of
+  // standard tf.image.crop_and_resize while computing second stage input
+  // feature maps.
+  optional bool use_matmul_crop_and_resize = 31 [default = false];
+
+  // Normally, anchors generated for a given image size are pruned during
+  // training if they lie outside the image window. Setting this option to true,
+  // clips the anchors to be within the image instead of pruning.
+  optional bool clip_anchors_to_image = 32 [default = false];
+
+  // After peforming matching between anchors and targets, in order to pull out
+  // targets for training Faster R-CNN meta architecture we perform a gather
+  // operation. This options specifies whether to use an alternate
+  // implementation of tf.gather that is faster on TPUs.
+  optional bool use_matmul_gather_in_matcher = 33 [default = false];
+
+  // Whether to use the balanced positive negative sampler implementation with
+  // static shape guarantees.
+  optional bool use_static_balanced_label_sampler = 34 [default = false];
 }
 
 

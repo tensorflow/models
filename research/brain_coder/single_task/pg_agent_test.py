@@ -8,6 +8,7 @@ from collections import Counter
 
 from absl import logging
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from common import utils  # brain coder

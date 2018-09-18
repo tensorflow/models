@@ -18,6 +18,7 @@ from __future__ import print_function
 import os
 import h5py
 import numpy as np
+from six.moves import xrange
 
 from synthetic_data_utils import generate_data, generate_rnn
 from synthetic_data_utils import get_train_n_valid_inds
@@ -39,7 +40,7 @@ flags.DEFINE_integer("C", 400, "Number of conditions")
 flags.DEFINE_integer("N", 50, "Number of units for the RNN")
 flags.DEFINE_float("train_percentage", 4.0/5.0,
                    "Percentage of train vs validation trials")
-flags.DEFINE_integer("nspikifications", 10,
+flags.DEFINE_integer("nreplications", 10,
                      "Number of spikifications of the same underlying rates.")
 flags.DEFINE_float("g", 1.5, "Complexity of dynamics")
 flags.DEFINE_float("x0_std", 1.0,
@@ -55,8 +56,8 @@ rnn_rngs = [np.random.RandomState(seed=FLAGS.synth_data_seed+1),
 T = FLAGS.T
 C = FLAGS.C
 N = FLAGS.N
-nspikifications = FLAGS.nspikifications
-E = nspikifications * C
+nreplications = FLAGS.nreplications
+E = nreplications * C
 train_percentage = FLAGS.train_percentage
 ntimesteps = int(T / FLAGS.dt)
 
@@ -76,8 +77,8 @@ condition_labels = []
 condition_number = 0
 for c in range(C):
   x0 = FLAGS.x0_std * rng.randn(N, 1)
-  x0s.append(np.tile(x0, nspikifications))
-  for ns in range(nspikifications):
+  x0s.append(np.tile(x0, nreplications))
+  for ns in range(nreplications):
     condition_labels.append(condition_number)
   condition_number += 1
 x0s = np.concatenate(x0s, axis=1)
@@ -106,7 +107,7 @@ for trial in xrange(E):
 
 # split into train and validation sets
 train_inds, valid_inds = get_train_n_valid_inds(E, train_percentage,
-                                                nspikifications)
+                                                nreplications)
 
 rates_train, rates_valid = split_list_by_inds(rates, train_inds, valid_inds)
 spikes_train, spikes_valid = split_list_by_inds(spikes, train_inds, valid_inds)
@@ -128,7 +129,7 @@ data = {'train_truth': rates_train,
         'train_ext_input' : np.array(ext_input_train),
         'valid_ext_input': np.array(ext_input_valid),
         'train_percentage' : train_percentage,
-        'nspikifications' : nspikifications,
+        'nreplications' : nreplications,
         'dt' : FLAGS.dt,
         'P_sxn' : P_nxn,
         'condition_labels_train' : condition_labels_train,

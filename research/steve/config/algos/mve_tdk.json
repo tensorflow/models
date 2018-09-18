@@ -1,0 +1,14 @@
+{
+  "inherits": [
+    "config/core/basic.json",
+    "config/core/model.json"
+  ],
+  "updates":{
+    "policy_config": {
+      "value_expansion": {
+        "rollout_len": 3,
+        "tdk_trick": true
+      }
+    }
+  }
+}

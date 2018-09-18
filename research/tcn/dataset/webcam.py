@@ -58,6 +58,7 @@ matplotlib.use('TkAgg')
 from matplotlib import animation  # pylint: disable=g-import-not-at-top
 import matplotlib.pyplot as plt
 import numpy as np
+from six.moves import input
 import tensorflow as tf
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -438,7 +439,7 @@ def main(_):
       tf.logging.info('About to write to:')
       for v in view_dirs:
         tf.logging.info(v)
-      raw_input('Press Enter to continue...')
+      input('Press Enter to continue...')
     except SyntaxError:
       pass
 

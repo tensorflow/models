@@ -30,8 +30,8 @@ from tensorflow.python.platform import flags
 import datasets.nav_env_config as nec
 import datasets.nav_env as nav_env
 import cv2
-from datasets import factory 
-import render.swiftshader_renderer as renderer 
+from datasets import factory
+import render.swiftshader_renderer as renderer
 
 SwiftshaderRenderer = renderer.SwiftshaderRenderer
 VisualNavigationEnv = nav_env.VisualNavigationEnv
@@ -53,10 +53,10 @@ def get_args():
   navtask.camera_param.width = sz
   navtask.task_params.img_height = sz
   navtask.task_params.img_width = sz
-  
+
   # navtask.task_params.semantic_task.class_map_names = ['chair', 'door', 'table']
   # navtask.task_params.type = 'to_nearest_obj_acc'
-  
+
   logging.info('navtask: %s', navtask)
   return navtask
 
@@ -90,12 +90,12 @@ def walk_through(b):
 
   root = tk.Tk()
   image = b.render_nodes(b.task.nodes[[current_node],:])[0]
-  print image.shape
+  print(image.shape)
   image = image.astype(np.uint8)
   im = Image.fromarray(image)
   im = ImageTk.PhotoImage(im)
   panel = tk.Label(root, image=im)
- 
+
   map_size = b.traversible.shape
   sc = np.max(map_size)/256.
   loc = np.array([[map_size[1]/2., map_size[0]/2.]])
@@ -128,15 +128,15 @@ def walk_through(b):
     global current_node
     current_node = b.take_action([current_node], [3], 1)[0][0]
     refresh()
-  
+
   def right_key(event):
     global current_node
     current_node = b.take_action([current_node], [1], 1)[0][0]
     refresh()
 
   def quit(event):
-    root.destroy() 
-  
+    root.destroy()
+
   panel_overhead.grid(row=4, column=5, rowspan=1, columnspan=1,
                       sticky=tk.W+tk.E+tk.N+tk.S)
   panel.bind('<Left>', left_key)
@@ -150,19 +150,19 @@ def walk_through(b):
 
 def simple_window():
   root = tk.Tk()
-  
+
   image = np.zeros((128, 128, 3), dtype=np.uint8)
   image[32:96, 32:96, 0] = 255
   im = Image.fromarray(image)
   im = ImageTk.PhotoImage(im)
-  
+
   image = np.zeros((128, 128, 3), dtype=np.uint8)
   image[32:96, 32:96, 1] = 255
   im2 = Image.fromarray(image)
   im2 = ImageTk.PhotoImage(im2)
-  
+
   panel = tk.Label(root, image=im)
-  
+
   def left_key(event):
     panel.configure(image=im2)
     panel.image = im2
@@ -176,7 +176,7 @@ def simple_window():
   panel.bind('q', quit)
   panel.focus_set()
   panel.pack(side = "bottom", fill = "both", expand = "yes")
-  root.mainloop() 
+  root.mainloop()
 
 def main(_):
   b = load_building(FLAGS.dataset_name, FLAGS.building_name)

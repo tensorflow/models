@@ -11,6 +11,7 @@ import random
 
 from absl import logging
 import numpy as np
+from six.moves import xrange
 
 from common import bf  # brain coder
 from common import reward as r  # brain coder

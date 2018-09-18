@@ -49,6 +49,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import errno
 import os.path
 import sys
 
@@ -69,7 +70,13 @@ if __name__ == '__main__':
   # Make all sub-directories in the validation data dir.
   for label in unique_labels:
     labeled_data_dir = os.path.join(data_dir, label)
-    os.makedirs(labeled_data_dir)
+    # Catch error if sub-directory exists
+    try:
+      os.makedirs(labeled_data_dir)
+    except OSError as e:
+      # Raise all errors but 'EEXIST'
+      if e.errno != errno.EEXIST:
+        raise
 
   # Move all of the image to the appropriate sub-directory.
   for i in range(len(labels)):

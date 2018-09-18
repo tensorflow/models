@@ -20,6 +20,7 @@ from __future__ import print_function
 from datetime import datetime
 import math
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 import time
 
@@ -600,5 +601,3 @@ def softmax_preds(images, ckpt_path, return_logits=False):
   tf.reset_default_graph()
 
   return preds
-
-

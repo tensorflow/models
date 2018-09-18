@@ -12,6 +12,7 @@ import "object_detection/protos/post_processing.proto";
 import "object_detection/protos/region_similarity_calculator.proto";
 
 // Configuration for Single Shot Detection (SSD) models.
+// Next id: 21
 message Ssd {
 
   // Number of classes to predict.
@@ -32,6 +33,14 @@ message Ssd {
   // Region similarity calculator to compute similarity of boxes.
   optional RegionSimilarityCalculator similarity_calculator = 6;
 
+  // Whether background targets are to be encoded as an all
+  // zeros vector or a one-hot vector (where background is the 0th class).
+  optional bool encode_background_as_zeros = 12 [default=false];
+
+  // classification weight to be associated to negative
+  // anchors (default: 1.0). The weight must be in [0., 1.].
+  optional float negative_class_weight = 13 [default = 1.0];
+
   // Box predictor to attach to the features.
   optional BoxPredictor box_predictor = 7;
 
@@ -45,28 +54,12 @@ message Ssd {
   // the anchors.
   optional bool normalize_loss_by_num_matches = 10 [default=true];
 
+  // Whether to normalize the localization loss by the code size of the box
+  // encodings. This is applied along with other normalization factors.
+  optional bool normalize_loc_loss_by_codesize = 14 [default=false];
+
   // Loss configuration for training.
   optional Loss loss = 11;
-}
-
-
-message SsdFeatureExtractor {
-  // Type of ssd feature extractor.
-  optional string type = 1;
-
-  // The factor to alter the depth of the channels in the feature extractor.
-  optional float depth_multiplier = 2 [default=1.0];
-
-  // Minimum number of the channels in the feature extractor.
-  optional int32 min_depth = 3 [default=16];
-
-  // Hyperparameters for the feature extractor.
-  optional Hyperparams conv_hyperparams = 4;
-
-  // The nearest multiple to zero-pad the input height and width dimensions to.
-  // For example, if pad_to_multiple = 2, input dimensions are zero-padded
-  // until the resulting dimensions are even.
-  optional int32 pad_to_multiple = 5 [default = 1];
 
   // Whether to update batch norm parameters during training or not.
   // When training with a relative small batch size (e.g. 1), it is
@@ -81,5 +74,94 @@ message SsdFeatureExtractor {
   // When canned arg_scopes are used with feature extractors `conv_hyperparams`
   // will apply only to the additional layers that are added and are outside the
   // canned arg_scope.
-  optional bool batch_norm_trainable = 6 [default=true];
+  optional bool freeze_batchnorm = 16 [default = false];
+
+  // Whether to update batch_norm inplace during training. This is required
+  // for batch norm to work correctly on TPUs. When this is false, user must add
+  // a control dependency on tf.GraphKeys.UPDATE_OPS for train/loss op in order
+  // to update the batch norm moving average parameters.
+  optional bool inplace_batchnorm_update = 15 [default = false];
+
+  // Whether to weight the regression loss by the score of the ground truth box
+  // the anchor matches to.
+  optional bool weight_regression_loss_by_score = 17 [default=false];
+
+  // Whether to compute expected loss with respect to balanced positive/negative
+  // sampling scheme. If false, use explicit sampling.
+  optional bool use_expected_classification_loss_under_sampling = 18 [default=false];
+
+  // Minimum number of effective negative samples.
+  // Only applies if use_expected_classification_loss_under_sampling is true.
+  optional float minimum_negative_sampling = 19 [default=0];
+
+  // Desired number of effective negative samples per positive sample.
+  // Only applies if use_expected_classification_loss_under_sampling is true.
+  optional float desired_negative_sampling_ratio = 20 [default=3];
 }
+
+
+message SsdFeatureExtractor {
+  reserved 6;
+
+  // Type of ssd feature extractor.
+  optional string type = 1;
+
+  // The factor to alter the depth of the channels in the feature extractor.
+  optional float depth_multiplier = 2 [default=1.0];
+
+  // Minimum number of the channels in the feature extractor.
+  optional int32 min_depth = 3 [default=16];
+
+  // Hyperparameters that affect the layers of feature extractor added on top
+  // of the base feature extractor.
+  optional Hyperparams conv_hyperparams = 4;
+
+  // Normally, SSD feature extractors are constructed by reusing an existing
+  // base feature extractor (that has its own hyperparams) and adding new layers
+  // on top of it. `conv_hyperparams` above normally applies only to the new
+  // layers while base feature extractor uses its own default hyperparams. If
+  // this value is set to true, the base feature extractor's hyperparams will be
+  // overridden with the `conv_hyperparams`.
+  optional bool override_base_feature_extractor_hyperparams = 9 [default = false];
+
+  // The nearest multiple to zero-pad the input height and width dimensions to.
+  // For example, if pad_to_multiple = 2, input dimensions are zero-padded
+  // until the resulting dimensions are even.
+  optional int32 pad_to_multiple = 5 [default = 1];
+
+  // Whether to use explicit padding when extracting SSD multiresolution
+  // features. This will also apply to the base feature extractor if a MobileNet
+  // architecture is used.
+  optional bool use_explicit_padding = 7 [default=false];
+
+  // Whether to use depthwise separable convolutions for to extract additional
+  // feature maps added by SSD.
+  optional bool use_depthwise = 8 [default=false];
+
+  // Feature Pyramid Networks config.
+  optional FeaturePyramidNetworks fpn = 10;
+}
+
+// Configuration for Feature Pyramid Networks.
+message FeaturePyramidNetworks {
+  // We recommend to use multi_resolution_feature_map_generator with FPN, and
+  // the levels there must match the levels defined below for better
+  // performance.
+  // Correspondence from FPN levels to Resnet/Mobilenet V1 feature maps:
+  // FPN Level        Resnet Feature Map      Mobilenet-V1 Feature Map
+  //     2               Block 1                Conv2d_3_pointwise
+  //     3               Block 2                Conv2d_5_pointwise
+  //     4               Block 3                Conv2d_11_pointwise
+  //     5               Block 4                Conv2d_13_pointwise
+  //     6               Bottomup_5             bottom_up_Conv2d_14
+  //     7               Bottomup_6             bottom_up_Conv2d_15
+  //     8               Bottomup_7             bottom_up_Conv2d_16
+  //     9               Bottomup_8             bottom_up_Conv2d_17
+
+  // minimum level in feature pyramid
+  optional int32 min_level = 1 [default = 3];
+
+  // maximum level in feature pyramid
+  optional int32 max_level = 2 [default = 7];
+}
+

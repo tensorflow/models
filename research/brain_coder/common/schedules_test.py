@@ -7,6 +7,7 @@ from __future__ import print_function
 from math import exp
 from math import sqrt
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from common import config_lib  # brain coder

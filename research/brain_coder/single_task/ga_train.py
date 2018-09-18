@@ -18,6 +18,7 @@ from time import sleep
 from absl import flags
 from absl import logging
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from common import utils  # brain coder
@@ -321,4 +322,3 @@ def run_random_search(max_num_programs, checkpoint_dir, task_eval_fn,
       solution_found=found_solution, generations=num_programs_seen,
       num_programs=num_programs_seen, max_generations=max_num_programs,
       max_num_programs=max_num_programs)
-

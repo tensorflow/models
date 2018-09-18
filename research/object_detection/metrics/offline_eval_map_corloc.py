@@ -22,7 +22,7 @@ The evaluation metrics set is supplied in object_detection.protos.EvalConfig
 in metrics_set field.
 Currently two set of metrics are supported:
 - pascal_voc_metrics: standard PASCAL VOC 2007 metric
-- open_images_metrics: Open Image V2 metric
+- open_images_detection_metrics: Open Image V2 metric
 All other field of object_detection.protos.EvalConfig are ignored.
 
 Example usage:
@@ -36,8 +36,8 @@ import os
 import re
 import tensorflow as tf
 
-from object_detection import evaluator
 from object_detection.core import standard_fields
+from object_detection.legacy import evaluator
 from object_detection.metrics import tf_example_parser
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util

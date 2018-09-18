@@ -10,7 +10,8 @@ cc_library(
         "//dragnn/core:component_registry",
         "//dragnn/core/interfaces:component",
         "//dragnn/core/interfaces:transition_state",
-        "//dragnn/protos:data_proto",
+        "//dragnn/core/util:label",
+        "//dragnn/protos:data_proto_cc",
         "//syntaxnet:base",
     ],
     alwayslink = 1,
@@ -27,7 +28,7 @@ cc_test(
         "//dragnn/core/test:mock_transition_state",
         "//dragnn/io:sentence_input_batch",
         "//syntaxnet:base",
-        "//syntaxnet:sentence_proto",
+        "//syntaxnet:sentence_proto_cc",
         "//syntaxnet:test_main",
     ],
 )

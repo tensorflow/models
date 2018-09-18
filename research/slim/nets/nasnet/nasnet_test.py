@@ -158,6 +158,21 @@ class NASNetTest(tf.test.TestCase):
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
 
+  def testNoAuxHeadCifarModel(self):
+    batch_size = 5
+    height, width = 32, 32
+    num_classes = 10
+    for use_aux_head in (True, False):
+      tf.reset_default_graph()
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      tf.train.create_global_step()
+      config = nasnet.cifar_config()
+      config.set_hparam('use_aux_head', int(use_aux_head))
+      with slim.arg_scope(nasnet.nasnet_cifar_arg_scope()):
+        _, end_points = nasnet.build_nasnet_cifar(inputs, num_classes,
+                                                  config=config)
+      self.assertEqual('AuxLogits' in end_points, use_aux_head)
+
   def testAllEndPointsShapesMobileModel(self):
     batch_size = 5
     height, width = 224, 224
@@ -193,6 +208,21 @@ class NASNetTest(tf.test.TestCase):
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
+
+  def testNoAuxHeadMobileModel(self):
+    batch_size = 5
+    height, width = 224, 224
+    num_classes = 1000
+    for use_aux_head in (True, False):
+      tf.reset_default_graph()
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      tf.train.create_global_step()
+      config = nasnet.mobile_imagenet_config()
+      config.set_hparam('use_aux_head', int(use_aux_head))
+      with slim.arg_scope(nasnet.nasnet_mobile_arg_scope()):
+        _, end_points = nasnet.build_nasnet_mobile(inputs, num_classes,
+                                                   config=config)
+      self.assertEqual('AuxLogits' in end_points, use_aux_head)
 
   def testAllEndPointsShapesLargeModel(self):
     batch_size = 5
@@ -235,6 +265,21 @@ class NASNetTest(tf.test.TestCase):
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
+
+  def testNoAuxHeadLargeModel(self):
+    batch_size = 5
+    height, width = 331, 331
+    num_classes = 1000
+    for use_aux_head in (True, False):
+      tf.reset_default_graph()
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      tf.train.create_global_step()
+      config = nasnet.large_imagenet_config()
+      config.set_hparam('use_aux_head', int(use_aux_head))
+      with slim.arg_scope(nasnet.nasnet_large_arg_scope()):
+        _, end_points = nasnet.build_nasnet_large(inputs, num_classes,
+                                                  config=config)
+      self.assertEqual('AuxLogits' in end_points, use_aux_head)
 
   def testVariablesSetDeviceMobileModel(self):
     batch_size = 5
@@ -283,6 +328,48 @@ class NASNetTest(tf.test.TestCase):
       sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (batch_size,))
+
+  def testOverrideHParamsCifarModel(self):
+    batch_size = 5
+    height, width = 32, 32
+    num_classes = 10
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    tf.train.create_global_step()
+    config = nasnet.cifar_config()
+    config.set_hparam('data_format', 'NCHW')
+    with slim.arg_scope(nasnet.nasnet_cifar_arg_scope()):
+      _, end_points = nasnet.build_nasnet_cifar(
+          inputs, num_classes, config=config)
+    self.assertListEqual(
+        end_points['Stem'].shape.as_list(), [batch_size, 96, 32, 32])
+
+  def testOverrideHParamsMobileModel(self):
+    batch_size = 5
+    height, width = 224, 224
+    num_classes = 1000
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    tf.train.create_global_step()
+    config = nasnet.mobile_imagenet_config()
+    config.set_hparam('data_format', 'NCHW')
+    with slim.arg_scope(nasnet.nasnet_mobile_arg_scope()):
+      _, end_points = nasnet.build_nasnet_mobile(
+          inputs, num_classes, config=config)
+    self.assertListEqual(
+        end_points['Stem'].shape.as_list(), [batch_size, 88, 28, 28])
+
+  def testOverrideHParamsLargeModel(self):
+    batch_size = 5
+    height, width = 331, 331
+    num_classes = 1000
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    tf.train.create_global_step()
+    config = nasnet.large_imagenet_config()
+    config.set_hparam('data_format', 'NCHW')
+    with slim.arg_scope(nasnet.nasnet_large_arg_scope()):
+      _, end_points = nasnet.build_nasnet_large(
+          inputs, num_classes, config=config)
+    self.assertListEqual(
+        end_points['Stem'].shape.as_list(), [batch_size, 336, 42, 42])
 
 
 if __name__ == '__main__':

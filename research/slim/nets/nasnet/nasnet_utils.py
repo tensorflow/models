@@ -86,8 +86,6 @@ def global_avg_pool(x, data_format=INVALID):
 @tf.contrib.framework.add_arg_scope
 def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   """Reduces the shape of net without information loss due to striding."""
-  assert output_filters % 2 == 0, (
-      'Need even number of filters when using this factorized reduction.')
   assert data_format != INVALID
   if stride == 1:
     net = slim.conv2d(net, output_filters, 1, scope='path_conv')
@@ -117,7 +115,10 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
 
   path2 = tf.nn.avg_pool(
       path2, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
-  path2 = slim.conv2d(path2, int(output_filters / 2), 1, scope='path2_conv')
+
+  # If odd number of filters, add an additional one to the second path.
+  final_filter_size = int(output_filters / 2) + int(output_filters % 2)
+  path2 = slim.conv2d(path2, final_filter_size, 1, scope='path2_conv')
 
   # Concat and apply BN
   final_path = tf.concat(values=[path1, path2], axis=concat_axis)
@@ -133,8 +134,10 @@ def drop_path(net, keep_prob, is_training=True):
     noise_shape = [batch_size, 1, 1, 1]
     random_tensor = keep_prob
     random_tensor += tf.random_uniform(noise_shape, dtype=tf.float32)
-    binary_tensor = tf.floor(random_tensor)
-    net = tf.div(net, keep_prob) * binary_tensor
+    binary_tensor = tf.cast(tf.floor(random_tensor), net.dtype)
+    keep_prob_inv = tf.cast(1.0 / keep_prob, net.dtype)
+    net = net * keep_prob_inv * binary_tensor
+
   return net
 
 
@@ -289,8 +292,7 @@ class NasNetABaseCell(object):
     net = slim.conv2d(net, num_filters, 1, scope='1x1')
     net = slim.batch_norm(net, scope='beginning_bn')
     split_axis = get_channel_index()
-    net = tf.split(
-        axis=split_axis, num_or_size_splits=1, value=net)
+    net = tf.split(axis=split_axis, num_or_size_splits=1, value=net)
     for split in net:
       assert int(split.shape[split_axis] == int(self._num_conv_filters *
                                                 self._filter_scaling))
@@ -398,31 +400,52 @@ class NasNetABaseCell(object):
     net = tf.concat(values=states_to_combine, axis=concat_axis)
     return net
 
-  def _apply_drop_path(self, net):
-    """Apply drop_path regularization to net."""
+  @tf.contrib.framework.add_arg_scope  # No public API. For internal use only.
+  def _apply_drop_path(self, net, current_step=None,
+                       use_summaries=False, drop_connect_version='v3'):
+    """Apply drop_path regularization.
+
+    Args:
+      net: the Tensor that gets drop_path regularization applied.
+      current_step: a float32 Tensor with the current global_step value,
+        to be divided by hparams.total_training_steps. Usually None, which
+        defaults to tf.train.get_or_create_global_step() properly casted.
+      use_summaries: a Python boolean. If set to False, no summaries are output.
+      drop_connect_version: one of 'v1', 'v2', 'v3', controlling whether
+        the dropout rate is scaled by current_step (v1), layer (v2), or
+        both (v3, the default).
+
+    Returns:
+      The dropped-out value of `net`.
+    """
     drop_path_keep_prob = self._drop_path_keep_prob
     if drop_path_keep_prob < 1.0:
-      # Scale keep prob by layer number
-      assert self._cell_num != -1
-      # The added 2 is for the reduction cells
-      num_cells = self._total_num_cells
-      layer_ratio = (self._cell_num + 1)/float(num_cells)
-      with tf.device('/cpu:0'):
-        tf.summary.scalar('layer_ratio', layer_ratio)
-      drop_path_keep_prob = 1 - layer_ratio * (1 - drop_path_keep_prob)
-      # Decrease the keep probability over time
-      current_step = tf.cast(tf.train.get_or_create_global_step(),
-                             tf.float32)
-      drop_path_burn_in_steps = self._total_training_steps
-      current_ratio = (
-          current_step / drop_path_burn_in_steps)
-      current_ratio = tf.minimum(1.0, current_ratio)
-      with tf.device('/cpu:0'):
-        tf.summary.scalar('current_ratio', current_ratio)
-      drop_path_keep_prob = (
-          1 - current_ratio * (1 - drop_path_keep_prob))
-      with tf.device('/cpu:0'):
-        tf.summary.scalar('drop_path_keep_prob', drop_path_keep_prob)
+      assert drop_connect_version in ['v1', 'v2', 'v3']
+      if drop_connect_version in ['v2', 'v3']:
+        # Scale keep prob by layer number
+        assert self._cell_num != -1
+        # The added 2 is for the reduction cells
+        num_cells = self._total_num_cells
+        layer_ratio = (self._cell_num + 1)/float(num_cells)
+        if use_summaries:
+          with tf.device('/cpu:0'):
+            tf.summary.scalar('layer_ratio', layer_ratio)
+        drop_path_keep_prob = 1 - layer_ratio * (1 - drop_path_keep_prob)
+      if drop_connect_version in ['v1', 'v3']:
+        # Decrease the keep probability over time
+        if not current_step:
+          current_step = tf.cast(tf.train.get_or_create_global_step(),
+                                 tf.float32)
+        drop_path_burn_in_steps = self._total_training_steps
+        current_ratio = current_step / drop_path_burn_in_steps
+        current_ratio = tf.minimum(1.0, current_ratio)
+        if use_summaries:
+          with tf.device('/cpu:0'):
+            tf.summary.scalar('current_ratio', current_ratio)
+        drop_path_keep_prob = (1 - current_ratio * (1 - drop_path_keep_prob))
+      if use_summaries:
+        with tf.device('/cpu:0'):
+          tf.summary.scalar('drop_path_keep_prob', drop_path_keep_prob)
       net = drop_path(net, drop_path_keep_prob)
     return net
 

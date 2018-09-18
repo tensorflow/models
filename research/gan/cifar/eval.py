@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import app
+from absl import flags
 import tensorflow as tf
 
 import data_provider
@@ -25,8 +27,7 @@ import networks
 import util
 
 
-flags = tf.flags
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 tfgan = tf.contrib.gan
 
 flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
@@ -63,6 +64,15 @@ flags.DEFINE_integer('max_number_of_evaluations', None,
                      'Number of times to run evaluation. If `None`, run '
                      'forever.')
 
+flags.DEFINE_boolean('write_to_disk', True, 'If `True`, run images to disk.')
+
+flags.DEFINE_integer(
+    'inter_op_parallelism_threads', 0,
+    'Number of threads to use for inter-op parallelism. If left as default value of 0, the system will pick an appropriate number.')
+
+flags.DEFINE_integer(
+    'intra_op_parallelism_threads', 0,
+    'Number of threads to use for intra-op parallelism. If left as default value of 0, the system will pick an appropriate number.')
 
 def main(_, run_eval_loop=True):
   # Fetch and generate images to run through Inception.
@@ -97,7 +107,7 @@ def main(_, run_eval_loop=True):
 
   # Create ops that write images to disk.
   image_write_ops = None
-  if FLAGS.conditional_eval:
+  if FLAGS.conditional_eval and FLAGS.write_to_disk:
     reshaped_imgs = util.get_image_grid(
         generated_data, FLAGS.num_images_generated, num_classes,
         FLAGS.num_images_per_class)
@@ -106,7 +116,7 @@ def main(_, run_eval_loop=True):
         '%s/%s'% (FLAGS.eval_dir, 'conditional_cifar10.png'),
         tf.image.encode_png(uint8_images[0]))
   else:
-    if FLAGS.num_images_generated >= 100:
+    if FLAGS.num_images_generated >= 100 and FLAGS.write_to_disk:
       reshaped_imgs = tfgan.eval.image_reshaper(
           generated_data[:100], num_cols=FLAGS.num_images_per_class)
       uint8_images = data_provider.float_image_to_uint8(reshaped_imgs)
@@ -116,12 +126,16 @@ def main(_, run_eval_loop=True):
 
   # For unit testing, use `run_eval_loop=False`.
   if not run_eval_loop: return
+  sess_config = tf.ConfigProto(
+        inter_op_parallelism_threads=FLAGS.inter_op_parallelism_threads,
+        intra_op_parallelism_threads=FLAGS.intra_op_parallelism_threads)
   tf.contrib.training.evaluate_repeatedly(
       FLAGS.checkpoint_dir,
       master=FLAGS.master,
       hooks=[tf.contrib.training.SummaryAtEndHook(FLAGS.eval_dir),
              tf.contrib.training.StopAfterNEvalsHook(1)],
       eval_ops=image_write_ops,
+      config=sess_config,
       max_number_of_evaluations=FLAGS.max_number_of_evaluations)
 
 
@@ -147,10 +161,10 @@ def _get_generated_data(num_images_generated, conditional_eval, num_classes):
   # In order for variables to load, use the same variable scope as in the
   # train job.
   with tf.variable_scope('Generator'):
-    data = generator_fn(generator_inputs)
+    data = generator_fn(generator_inputs, is_training=False)
 
   return data
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main)

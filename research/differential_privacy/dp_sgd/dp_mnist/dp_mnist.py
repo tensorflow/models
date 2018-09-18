@@ -22,6 +22,7 @@ import sys
 import time
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from differential_privacy.dp_sgd.dp_optimizer import dp_optimizer
@@ -36,7 +37,7 @@ tf.flags.DEFINE_integer("batch_size", 600,
 tf.flags.DEFINE_integer("batches_per_lot", 1,
                         "Number of batches per lot.")
 # Together, batch_size and batches_per_lot determine lot_size.
-tf.flags.DEFINE_integer("num_training_steps", 50000,
+tf.flags.DEFINE_integer("num_training_steps", 100,
                         "The number of training steps."
                         "This counts number of lots.")
 

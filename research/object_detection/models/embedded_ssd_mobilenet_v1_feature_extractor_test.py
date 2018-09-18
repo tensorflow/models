@@ -22,10 +22,10 @@ from object_detection.models import ssd_feature_extractor_test
 
 
 class EmbeddedSSDMobileNetV1FeatureExtractorTest(
-    ssd_feature_extractor_test.SsdFeatureExtractorTestBase, tf.test.TestCase):
+    ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                is_training=True, batch_norm_trainable=True):
+                                is_training=True):
     """Constructs a new feature extractor.
 
     Args:
@@ -33,29 +33,39 @@ class EmbeddedSSDMobileNetV1FeatureExtractorTest(
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
       is_training: whether the network is in training mode.
-      batch_norm_trainable: whether to update batch norm parameters during
-        training.
 
     Returns:
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
     min_depth = 32
-    conv_hyperparams = {}
     return (embedded_ssd_mobilenet_v1_feature_extractor.
             EmbeddedSSDMobileNetV1FeatureExtractor(
                 is_training, depth_multiplier, min_depth, pad_to_multiple,
-                conv_hyperparams, batch_norm_trainable))
+                self.conv_hyperparams_fn,
+                override_base_feature_extractor_hyperparams=True))
 
   def test_extract_features_returns_correct_shapes_256(self):
     image_height = 256
     image_width = 256
     depth_multiplier = 1.0
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 16, 16, 512), (4, 8, 8, 1024),
-                                  (4, 4, 4, 512), (4, 2, 2, 256),
-                                  (4, 1, 1, 256)]
+    expected_feature_map_shape = [(2, 16, 16, 512), (2, 8, 8, 1024),
+                                  (2, 4, 4, 512), (2, 2, 2, 256),
+                                  (2, 1, 1, 256)]
     self.check_extract_features_returns_correct_shape(
-        image_height, image_width, depth_multiplier, pad_to_multiple,
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape)
+
+  def test_extract_features_returns_correct_shapes_with_dynamic_inputs(self):
+    image_height = 256
+    image_width = 256
+    depth_multiplier = 1.0
+    pad_to_multiple = 1
+    expected_feature_map_shape = [(2, 16, 16, 512), (2, 8, 8, 1024),
+                                  (2, 4, 4, 512), (2, 2, 2, 256),
+                                  (2, 1, 1, 256)]
+    self.check_extract_features_returns_correct_shapes_with_dynamic_inputs(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
         expected_feature_map_shape)
 
   def test_extract_features_returns_correct_shapes_enforcing_min_depth(self):
@@ -63,10 +73,10 @@ class EmbeddedSSDMobileNetV1FeatureExtractorTest(
     image_width = 256
     depth_multiplier = 0.5**12
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 16, 16, 32), (4, 8, 8, 32), (4, 4, 4, 32),
-                                  (4, 2, 2, 32), (4, 1, 1, 32)]
+    expected_feature_map_shape = [(2, 16, 16, 32), (2, 8, 8, 32), (2, 4, 4, 32),
+                                  (2, 2, 2, 32), (2, 1, 1, 32)]
     self.check_extract_features_returns_correct_shape(
-        image_height, image_width, depth_multiplier, pad_to_multiple,
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
         expected_feature_map_shape)
 
   def test_extract_features_returns_correct_shapes_with_pad_to_multiple_of_1(
@@ -75,11 +85,11 @@ class EmbeddedSSDMobileNetV1FeatureExtractorTest(
     image_width = 256
     depth_multiplier = 1.0
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 16, 16, 512), (4, 8, 8, 1024),
-                                  (4, 4, 4, 512), (4, 2, 2, 256),
-                                  (4, 1, 1, 256)]
+    expected_feature_map_shape = [(2, 16, 16, 512), (2, 8, 8, 1024),
+                                  (2, 4, 4, 512), (2, 2, 2, 256),
+                                  (2, 1, 1, 256)]
     self.check_extract_features_returns_correct_shape(
-        image_height, image_width, depth_multiplier, pad_to_multiple,
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
         expected_feature_map_shape)
 
   def test_extract_features_raises_error_with_pad_to_multiple_not_1(self):

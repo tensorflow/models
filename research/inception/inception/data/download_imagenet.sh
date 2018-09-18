@@ -43,7 +43,7 @@ SYNSETS_FILE="${2:-./synsets.txt}"
 
 echo "Saving downloaded files to $OUTDIR"
 mkdir -p "${OUTDIR}"
-CURRENT_DIR=$(pwd)
+INITIAL_DIR=$(pwd)
 BBOX_DIR="${OUTDIR}bounding_boxes"
 mkdir -p "${BBOX_DIR}"
 cd "${OUTDIR}"
@@ -59,9 +59,8 @@ wget "${BOUNDING_BOX_ANNOTATIONS}" -O "${BBOX_TAR_BALL}" || BASE_URL_CHANGE=1
 if [ $BASE_URL_CHANGE ]; then
   BASE_URL="http://www.image-net.org/challenges/LSVRC/2012/nnoupb"
   BOUNDING_BOX_ANNOTATIONS="${BASE_URL}/ILSVRC2012_bbox_train_v2.tar.gz"
-  BBOX_TAR_BALL="${BBOX_DIR}/annotations.tar.gz"
+  wget "${BOUNDING_BOX_ANNOTATIONS}" -O "${BBOX_TAR_BALL}"
 fi
-wget "${BOUNDING_BOX_ANNOTATIONS}" -O "${BBOX_TAR_BALL}"
 echo "Uncompressing bounding box annotations ..."
 tar xzf "${BBOX_TAR_BALL}" -C "${BBOX_DIR}"
 
@@ -102,4 +101,4 @@ while read SYNSET; do
   rm -f "${SYNSET}.tar"
 
   echo "Finished processing: ${SYNSET}"
-done < "${SYNSETS_FILE}"
+done < "${INITIAL_DIR}/${SYNSETS_FILE}"

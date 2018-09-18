@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "dragnn/protos/spec.pb.h"
 #include "dragnn/protos/trace.pb.h"
@@ -123,8 +124,12 @@ void ComputeSessionImpl::InitializeComponentData(const string &component_name,
     VLOG(1) << "Source result found. Using prior initialization vector for "
             << component_name;
     auto source = source_result->second;
-    CHECK(source->IsTerminal()) << "Source is not terminal for component '"
-                                << component_name << "'. Exiting.";
+    CHECK(source->IsTerminal())
+        << "Source component '" << source->Name()
+        << "' for currently active component '" << component_name
+        << "' is not terminal. "
+        << "Are you using bulk feature extraction with only linked features? "
+        << "If so, consider using the StatelessComponent instead. Exiting.";
     component->InitializeData(source->GetBeam(), max_beam_size,
                               input_data_.get());
   }
@@ -219,8 +224,8 @@ std::vector<LinkFeatures> ComputeSessionImpl::GetTranslatedLinkFeatures(
 
   return features;
 }
-std::vector<std::vector<int>> ComputeSessionImpl::EmitOracleLabels(
-    const string &component_name) {
+std::vector<std::vector<std::vector<Label>>>
+ComputeSessionImpl::EmitOracleLabels(const string &component_name) {
   return GetReadiedComponent(component_name)->GetOracleLabels();
 }
 
@@ -301,6 +306,10 @@ void ComputeSessionImpl::SetInputData(const std::vector<string> &data) {
 void ComputeSessionImpl::SetInputBatchCache(
     std::unique_ptr<InputBatchCache> batch) {
   input_data_ = std::move(batch);
+}
+
+InputBatchCache *ComputeSessionImpl::GetInputBatchCache() {
+  return input_data_.get();
 }
 
 void ComputeSessionImpl::ResetSession() {

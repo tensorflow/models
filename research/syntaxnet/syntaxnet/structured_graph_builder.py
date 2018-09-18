@@ -115,9 +115,8 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
       return tf.logical_and(args[1] < max_steps, tf.reduce_any(args[3]))
 
     step = tf.constant(0, tf.int32, [])
-    scores_array = tensor_array_ops.TensorArray(dtype=tf.float32,
-                                                size=0,
-                                                dynamic_size=True)
+    scores_array = tensor_array_ops.TensorArray(
+        dtype=tf.float32, size=0, infer_shape=False, dynamic_size=True)
     alive = tf.constant(True, tf.bool, [batch_size])
     alive_steps = tf.constant(0, tf.int32, [batch_size])
     t = tf.while_loop(

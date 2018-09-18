@@ -10,6 +10,7 @@ else that may be specific to a particular run.
 
 import ast
 import itertools
+from six.moves import xrange
 
 
 class Config(dict):

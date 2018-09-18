@@ -109,7 +109,9 @@ class ComponentSpecBuilder(object):
     if transition_spec.registered_name == 'arc-standard':
       return 'shift-reduce-step'
 
-    if transition_spec.registered_name in ('shift-only', 'tagger'):
+    if transition_spec.registered_name in ('shift-only', 'tagger', 'morpher',
+                                           'lm-transitions', 'dependency-label',
+                                           'category'):
       if 'left_to_right' in transition_spec.parameters:
         if transition_spec.parameters['left_to_right'] == 'false':
           return 'reverse-token'

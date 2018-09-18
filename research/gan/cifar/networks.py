@@ -32,29 +32,35 @@ def _last_conv_layer(end_points):
   return end_points[conv_list[-1]]
 
 
-def generator(noise):
+def generator(noise, is_training=True):
   """Generator to produce CIFAR images.
 
   Args:
     noise: A 2D Tensor of shape [batch size, noise dim]. Since this example
       does not use conditioning, this Tensor represents a noise vector of some
       kind that will be reshaped by the generator into CIFAR examples.
+    is_training: If `True`, batch norm uses batch statistics. If `False`, batch
+      norm uses the exponential moving average collected from population
+      statistics.
 
   Returns:
     A single Tensor with a batch of generated CIFAR images.
   """
-  images, _ = dcgan.generator(noise)
+  images, _ = dcgan.generator(noise, is_training=is_training, fused_batch_norm=True)
 
   # Make sure output lies between [-1, 1].
   return tf.tanh(images)
 
 
-def conditional_generator(inputs):
+def conditional_generator(inputs, is_training=True):
   """Generator to produce CIFAR images.
 
   Args:
     inputs: A 2-tuple of Tensors (noise, one_hot_labels) and creates a
       conditional generator.
+    is_training: If `True`, batch norm uses batch statistics. If `False`, batch
+      norm uses the exponential moving average collected from population
+      statistics.
 
   Returns:
     A single Tensor with a batch of generated CIFAR images.
@@ -62,13 +68,13 @@ def conditional_generator(inputs):
   noise, one_hot_labels = inputs
   noise = tfgan.features.condition_tensor_from_onehot(noise, one_hot_labels)
 
-  images, _ = dcgan.generator(noise)
+  images, _ = dcgan.generator(noise, is_training=is_training, fused_batch_norm=True)
 
   # Make sure output lies between [-1, 1].
   return tf.tanh(images)
 
 
-def discriminator(img, unused_conditioning):
+def discriminator(img, unused_conditioning, is_training=True):
   """Discriminator for CIFAR images.
 
   Args:
@@ -79,20 +85,23 @@ def discriminator(img, unused_conditioning):
       would require extra `condition` information to both the generator and the
       discriminator. Since this example is not conditional, we do not use this
       argument.
+    is_training: If `True`, batch norm uses batch statistics. If `False`, batch
+      norm uses the exponential moving average collected from population
+      statistics.
 
   Returns:
     A 1D Tensor of shape [batch size] representing the confidence that the
     images are real. The output can lie in [-inf, inf], with positive values
     indicating high confidence that the images are real.
   """
-  logits, _ = dcgan.discriminator(img)
+  logits, _ = dcgan.discriminator(img, is_training=is_training, fused_batch_norm=True)
   return logits
 
 
 # (joelshor): This discriminator creates variables that aren't used, and
 # causes logging warnings. Improve `dcgan` nets to accept a target end layer,
 # so extraneous variables aren't created.
-def conditional_discriminator(img, conditioning):
+def conditional_discriminator(img, conditioning, is_training=True):
   """Discriminator for CIFAR images.
 
   Args:
@@ -100,13 +109,16 @@ def conditional_discriminator(img, conditioning):
       either real or generated. It is the discriminator's goal to distinguish
       between the two.
     conditioning: A 2-tuple of Tensors representing (noise, one_hot_labels).
+    is_training: If `True`, batch norm uses batch statistics. If `False`, batch
+      norm uses the exponential moving average collected from population
+      statistics.
 
   Returns:
     A 1D Tensor of shape [batch size] representing the confidence that the
     images are real. The output can lie in [-inf, inf], with positive values
     indicating high confidence that the images are real.
   """
-  logits, end_points = dcgan.discriminator(img)
+  logits, end_points = dcgan.discriminator(img, is_training=is_training, fused_batch_norm=True)
 
   # Condition the last convolution layer.
   _, one_hot_labels = conditioning

@@ -22,6 +22,9 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
+#include "google/protobuf/util/message_differencer.h"
+
+
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/lib/strings/stringprintf.h"
