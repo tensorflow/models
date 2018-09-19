@@ -232,10 +232,8 @@ class ImagenetModel(resnet_model.Model):
     # For bigger models, we want to use "bottleneck" layers
     if resnet_size < 50:
       bottleneck = False
-      final_size = 512
     else:
       bottleneck = True
-      final_size = 2048
 
     super(ImagenetModel, self).__init__(
         resnet_size=resnet_size,
@@ -248,7 +246,6 @@ class ImagenetModel(resnet_model.Model):
         first_pool_stride=2,
         block_sizes=_get_block_sizes(resnet_size),
         block_strides=[1, 2, 2, 2],
-        final_size=final_size,
         resnet_version=resnet_version,
         data_format=data_format,
         dtype=dtype

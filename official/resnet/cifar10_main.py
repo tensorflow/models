@@ -184,7 +184,6 @@ class Cifar10Model(resnet_model.Model):
         first_pool_stride=None,
         block_sizes=[num_blocks] * 3,
         block_strides=[1, 2, 2],
-        final_size=64,
         resnet_version=resnet_version,
         data_format=data_format,
         dtype=dtype
