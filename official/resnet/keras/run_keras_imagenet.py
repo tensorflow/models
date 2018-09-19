@@ -122,9 +122,9 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
 
   print("\n\n synthetic labels ", labels.get_shape())
 
-  data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
-  data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
-  return data
+  dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  return dataset
 
 
 def run_imagenet_with_keras(flags_obj):
@@ -133,14 +133,18 @@ def run_imagenet_with_keras(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
+  batch_size=distribution_utils.per_device_batch_size(
+      flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
+
   if flags_obj.use_synthetic_data:
-    syn_input_fn = imagenet_main.get_synth_input_fn(flags_core.get_tf_dtype(flags_obj))
-    input_dataset = syn_input_fn(True, flags_obj.data_dir, flags_obj.batch_size)
+    input_dataset = synthetic_input_fn(batch_size, _DEFAULT_IMAGE_SIZE,
+                                       _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS,
+                                       _NUM_CLASSES,
+                                       dtype=flags_core.get_tf_dtype(flags_obj))
   else:
     input_dataset = imagenet_main.input_fn(True,
                                            flags_obj.data_dir,
-                                           batch_size=distribution_utils.per_device_batch_size(
-                                               flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+                                           batch_size=batch_size,
                                            num_epochs=flags_obj.train_epochs,
                                            num_gpus=flags_obj.num_gpus,
                                            parse_record_fn=parse_record_keras)
