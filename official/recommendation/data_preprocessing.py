@@ -21,6 +21,7 @@ from __future__ import print_function
 import atexit
 import contextlib
 import gc
+import hashlib
 import multiprocessing
 import json
 import os
@@ -519,6 +520,36 @@ def make_deserialize(params, batch_size, training=False):
   return deserialize
 
 
+def hash_pipeline(dataset, deterministic):
+  # type: (tf.data.Dataset, bool) -> None
+  if not deterministic:
+    tf.logging.warning("Data pipeline is not marked as deterministic. Hash "
+                       "values are not expected to be meaningful.")
+
+  batch = dataset.make_one_shot_iterator().get_next()
+  md5 = hashlib.md5()
+  count = 0
+  first_batch_hash = b""
+  with tf.Session() as sess:
+    while True:
+      try:
+        result = sess.run(batch)
+        if isinstance(result, tuple):
+          result = result[0]  # only hash features
+      except tf.errors.OutOfRangeError:
+        break
+
+      count += 1
+      md5.update(memoryview(result[movielens.USER_COLUMN]).tobytes())
+      md5.update(memoryview(result[movielens.ITEM_COLUMN]).tobytes())
+      if count == 1:
+        first_batch_hash = md5.hexdigest()
+  overall_hash = md5.hexdigest()
+  tf.logging.info("Batch count: {}".format(count))
+  tf.logging.info("  [pipeline_hash] First batch hash: {}".format(first_batch_hash))
+  tf.logging.info("  [pipeline_hash] All batches hash: {}".format(overall_hash))
+
+
 def make_train_input_fn(ncf_dataset):
   # type: (NCFDataset) -> (typing.Callable, str, int)
   """Construct training input_fn for the current epoch."""
@@ -584,7 +615,12 @@ def make_train_input_fn(ncf_dataset):
     deserialize = make_deserialize(params, batch_size, True)
     dataset = record_files.apply(interleave)
     dataset = dataset.map(deserialize, num_parallel_calls=4)
-    return dataset.prefetch(32)
+    dataset = dataset.prefetch(32)
+
+    if params.get("hash_pipeline"):
+      hash_pipeline(dataset, ncf_dataset.deterministic)
+
+    return dataset
 
   return input_fn, record_dir, batch_count
 
@@ -609,7 +645,11 @@ def make_pred_input_fn(ncf_dataset):
 
     deserialize = make_deserialize(params, batch_size, False)
     dataset = dataset.map(deserialize, num_parallel_calls=4)
+    dataset = dataset.prefetch(16)
 
-    return dataset.prefetch(16)
+    if params.get("hash_pipeline"):
+      hash_pipeline(dataset, ncf_dataset.deterministic)
+
+    return dataset
 
   return input_fn

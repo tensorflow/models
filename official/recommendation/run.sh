@@ -42,12 +42,19 @@ do
   echo "Beginning run ${i}"
   echo "  Complete logs are in ${RUN_LOG}"
 
+  # To reduce variation set the seed flag:
+  #   --seed ${i}
+  #
+  # And to confirm that the pipeline is deterministic pass the flag:
+  #   --hash_pipeline
+  #
+  # (`--hash_pipeline` will slow down training)
   python ncf_main.py --model_dir ${MODEL_DIR} \
                      --data_dir ${DATA_DIR} \
                      --dataset ${DATASET} --hooks "" \
                      ${DEVICE_FLAG} \
                      --clean \
-                     --train_epochs 100 \
+                     --train_epochs 20 \
                      --batch_size 2048 \
                      --eval_batch_size 65536 \
                      --learning_rate 0.0005 \
@@ -55,7 +62,7 @@ do
                      --hr_threshold 0.635 \
                      --ml_perf \
   |& tee ${RUN_LOG} \
-  | grep --line-buffered  -E --regexp="Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+"
+  | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)"
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."

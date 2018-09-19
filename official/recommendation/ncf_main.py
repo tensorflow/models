@@ -320,6 +320,7 @@ def run_ncf(_):
   train_estimator, eval_estimator = construct_estimator(
       num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
           "use_seed": FLAGS.seed is not None,
+          "hash_pipeline": FLAGS.hash_pipeline,
           "batch_size": batch_size,
           "learning_rate": FLAGS.learning_rate,
           "num_users": ncf_dataset.num_users,
@@ -372,6 +373,7 @@ def run_ncf(_):
       tf.logging.warning(
           "Estimated ({}) and reported ({}) number of batches differ by more "
           "than one".format(approx_train_steps, batch_count))
+
     train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
                           steps=batch_count)
     tf.gfile.DeleteRecursively(train_record_dir)
@@ -508,6 +510,13 @@ def define_ncf_flags():
   flags.DEFINE_integer(
       name="seed", default=None, help=flags_core.help_wrap(
           "This value will be used to seed both NumPy and TensorFlow."))
+
+  flags.DEFINE_bool(
+      name="hash_pipeline", default=False, help=flags_core.help_wrap(
+          "This flag will perform a separate run of the pipeline and hash "
+          "batches as they are produced. \nNOTE: this will significantly slow "
+          "training. However it is useful to confirm that a random seed is "
+          "does indeed make the data pipeline deterministic."))
 
 
 if __name__ == "__main__":
