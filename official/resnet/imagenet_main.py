@@ -160,7 +160,7 @@ def parse_record(raw_record, is_training, dtype):
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
              dtype=tf.float32, datasets_num_private_threads=None,
-             num_parallel_batches=1):
+             num_parallel_batches=1, parse_record_fn=parse_record):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -196,7 +196,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
       is_training=is_training,
       batch_size=batch_size,
       shuffle_buffer=_SHUFFLE_BUFFER,
-      parse_record_fn=parse_record,
+      parse_record_fn=parse_record_fn,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
       examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
