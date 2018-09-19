@@ -26,7 +26,7 @@ import os
 import warnings
 
 import tensorflow as tf
-from official.resnet import imagenet_utils
+from official.resnet.keras import imagenet_utils
 
 WEIGHTS_PATH = ('https://github.com/fchollet/deep-learning-models/'
                 'releases/download/v0.2/'
