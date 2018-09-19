@@ -6,6 +6,7 @@
 /research/adv_imagenet_models/ @AlexeyKurakin
 /research/attention_ocr/ @alexgorban
 /research/audioset/ @plakal @dpwe
+/research/autoaugment/* @barretzoph
 /research/autoencoders/ @snurkabill
 /research/brain_coder/ @danabo
 /research/cognitive_mapping_and_planning/ @s-gupta
