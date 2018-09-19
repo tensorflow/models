@@ -28,6 +28,7 @@ from mpl_toolkits.mplot3d import axes3d as p3  # pylint:disable=unused-import
 import numpy as np
 from PIL import Image
 from skimage import measure
+from six.moves import xrange
 
 import tensorflow as tf
 
@@ -116,4 +117,3 @@ def visualize_voxel_scatter(points, vis_size=128):
           vis_size, vis_size, 3)
   p.close('all')
   return data
-

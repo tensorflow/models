@@ -13,14 +13,15 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_COMPONENT_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_COMPONENT_H_
+#ifndef DRAGNN_CORE_INTERFACES_COMPONENT_H_
+#define DRAGNN_CORE_INTERFACES_COMPONENT_H_
 
 #include <vector>
 
 #include "dragnn/components/util/bulk_feature_extractor.h"
 #include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/spec.pb.h"
 #include "dragnn/protos/trace.pb.h"
 #include "syntaxnet/registry.h"
@@ -83,11 +84,13 @@ class Component : public RegisterableClass<Component> {
   virtual std::function<int(int, int, int)> GetStepLookupFunction(
       const string &method) = 0;
 
-  // Advances this component from the given transition matrix.
-  virtual void AdvanceFromPrediction(const float transition_matrix[],
-                                     int transition_matrix_length) = 0;
+  // Advances this component from the given transition matrix, which is
+  // |num_items| x |num_actions|.
+  virtual bool AdvanceFromPrediction(const float *score_matrix, int num_items,
+                                     int num_actions) = 0;
 
-  // Advances this component from the state oracles.
+  // Advances this component from the state oracles. There is no return from
+  // this, since it should always succeed.
   virtual void AdvanceFromOracle() = 0;
 
   // Returns true if all states within this component are terminal.
@@ -110,6 +113,26 @@ class Component : public RegisterableClass<Component> {
   // BulkFeatureExtractor object to contain the functors and other information.
   virtual int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) = 0;
 
+  // Directly computes the embedding matrix for all channels, advancing the
+  // component via the oracle until it is terminal. This call takes a vector
+  // of EmbeddingMatrix structs, one per channel, in channel order.
+  virtual void BulkEmbedFixedFeatures(
+      int batch_size_padding, int num_steps_padding, int output_array_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output) = 0;
+
+  // Directly computes the embedding matrix for all channels, advancing the
+  // component via the oracle until it is terminal. This call takes a vector
+  // of float matrices containing embeddings, one per channel, in channel order.
+  // This function outputs a densified right-ragged tensor.
+  virtual void BulkEmbedDenseFixedFeatures(
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output, int embedding_output_size,
+      int32 *offset_array_output, int offset_array_size) = 0;
+
+  // Gets the expected size of the data matrix for BulkEmbedDenseFixedFeatures.
+  virtual int BulkDenseFeatureSize() const = 0;
+
   // Extracts and returns the vector of LinkFeatures for the specified
   // channel. Note: these are NOT translated.
   virtual std::vector<LinkFeatures> GetRawLinkFeatures(
@@ -117,7 +140,8 @@ class Component : public RegisterableClass<Component> {
 
   // Returns a vector of oracle labels for each element in the beam and
   // batch.
-  virtual std::vector<std::vector<int>> GetOracleLabels() const = 0;
+  virtual std::vector<std::vector<std::vector<Label>>> GetOracleLabels()
+      const = 0;
 
   // Annotate the underlying data object with the results of this Component's
   // calculation.
@@ -138,4 +162,4 @@ class Component : public RegisterableClass<Component> {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_COMPONENT_H_
+#endif  // DRAGNN_CORE_INTERFACES_COMPONENT_H_

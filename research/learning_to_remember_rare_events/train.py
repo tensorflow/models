@@ -26,6 +26,7 @@ import os
 import random
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 import data_utils
@@ -111,7 +112,7 @@ class Trainer(object):
       remainders = [0] * (episode_width - remainder) + [1] * remainder
       episode_x = [
           random.sample(data[lab],
-                        r + (episode_length - remainder) / episode_width)
+                        r + (episode_length - remainder) // episode_width)
           for lab, r in zip(episode_labels, remainders)]
       episode = sum([[(x, i, ii) for ii, x in enumerate(xx)]
                      for i, xx in enumerate(episode_x)], [])
@@ -159,9 +160,9 @@ class Trainer(object):
     logging.info('batch_size %d', batch_size)
 
     assert all(len(v) >= float(episode_length) / episode_width
-               for v in train_data.itervalues())
+               for v in train_data.values())
     assert all(len(v) >= float(episode_length) / episode_width
-               for v in valid_data.itervalues())
+               for v in valid_data.values())
 
     output_dim = episode_width
     self.model = self.get_model()
@@ -196,7 +197,8 @@ class Trainer(object):
 
         # validation
         correct = []
-        correct_by_shot = dict((k, []) for k in xrange(self.episode_width + 1))
+        num_shots = episode_length // episode_width
+        correct_by_shot = dict((k, []) for k in xrange(num_shots))
         for _ in xrange(FLAGS.validation_length):
           x, y = self.sample_episode_batch(
               valid_data, episode_length, episode_width, 1)
@@ -206,22 +208,21 @@ class Trainer(object):
           correct.append(self.compute_correct(np.array(y), y_preds))
 
           # compute per-shot accuracies
-          seen_counts = [[0] * episode_width for _ in xrange(batch_size)]
+          seen_counts = [0] * episode_width
           # loop over episode steps
           for yy, yy_preds in zip(y, y_preds):
             # loop over batch examples
-            for k, (yyy, yyy_preds) in enumerate(zip(yy, yy_preds)):
-              yyy, yyy_preds = int(yyy), int(yyy_preds)
-              count = seen_counts[k][yyy % self.episode_width]
-              if count in correct_by_shot:
-                correct_by_shot[count].append(
-                    self.individual_compute_correct(yyy, yyy_preds))
-              seen_counts[k][yyy % self.episode_width] = count + 1
+            yyy, yyy_preds = int(yy[0]), int(yy_preds[0])
+            count = seen_counts[yyy % episode_width]
+            if count in correct_by_shot:
+              correct_by_shot[count].append(
+                self.individual_compute_correct(yyy, yyy_preds))
+            seen_counts[yyy % episode_width] = count + 1
 
         logging.info('validation overall accuracy %f', np.mean(correct))
-        logging.info('%d-shot: %.3f, ' * (self.episode_width + 1),
+        logging.info('%d-shot: %.3f, ' * num_shots,
                      *sum([[k, np.mean(correct_by_shot[k])]
-                           for k in xrange(self.episode_width + 1)], []))
+                           for k in xrange(num_shots)], []))
 
         if saver and FLAGS.save_dir:
           saved_file = saver.save(sess,

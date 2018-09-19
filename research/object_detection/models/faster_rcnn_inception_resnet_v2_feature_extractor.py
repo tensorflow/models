@@ -105,12 +105,10 @@ class FasterRCNNInceptionResnetV2FeatureExtractor(
                           is_training=self._train_batch_norm):
         with tf.variable_scope('InceptionResnetV2',
                                reuse=self._reuse_weights) as scope:
-          rpn_feature_map, _ = (
-              inception_resnet_v2.inception_resnet_v2_base(
-                  preprocessed_inputs, final_endpoint='PreAuxLogits',
-                  scope=scope, output_stride=self._first_stage_features_stride,
-                  align_feature_maps=True))
-    return rpn_feature_map
+          return inception_resnet_v2.inception_resnet_v2_base(
+              preprocessed_inputs, final_endpoint='PreAuxLogits',
+              scope=scope, output_stride=self._first_stage_features_stride,
+              align_feature_maps=True)
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.
@@ -180,7 +178,7 @@ class FasterRCNNInceptionResnetV2FeatureExtractor(
     faster_rcnn_meta_arch.FasterRCNNFeatureExtractor which does not work for
     InceptionResnetV2 checkpoints.
 
-    TODO: revisit whether it's possible to force the
+    TODO(jonathanhuang,rathodv): revisit whether it's possible to force the
     `Repeat` namescope as created in `_extract_box_classifier_features` to
     start counting at 2 (e.g. `Repeat_2`) so that the default restore_fn can
     be used.

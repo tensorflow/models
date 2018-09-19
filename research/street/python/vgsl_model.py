@@ -14,6 +14,8 @@
 # ==============================================================================
 
 """String network description language to define network layouts."""
+from __future__ import print_function
+
 import re
 import time
 
@@ -170,7 +172,7 @@ def Eval(train_dir,
           _AddRateToSummary('Sequence error rate', rates.sequence_error, step,
                             sw)
           sw.flush()
-          print 'Error rates=', rates
+          print('Error rates=', rates)
         else:
           raise ValueError('Non-softmax decoder evaluation not implemented!')
       if eval_interval_secs:

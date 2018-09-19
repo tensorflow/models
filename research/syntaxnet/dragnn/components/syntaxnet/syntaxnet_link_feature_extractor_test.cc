@@ -34,7 +34,7 @@ class ExportSpecTest : public ::testing::Test {
 TEST_F(ExportSpecTest, WritesChannelSpec) {
   TaskContext context;
 
-  context.SetParameter("neurosis_feature_syntax_version", "2");
+
   context.SetParameter("link_features", "input.focus;stack.focus");
   context.SetParameter("link_embedding_names", "tagger;parser");
   context.SetParameter("link_predicate_maps", "none;none");

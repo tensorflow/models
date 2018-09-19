@@ -117,7 +117,7 @@ class AdversarialCrypto(object):
     return in_m, in_k
 
   def model(self, collection, message, key=None):
-    """The model for Alice, Bob, and Eve.  If key=None, the first FC layer
+    """The model for Alice, Bob, and Eve.  If key=None, the first fully connected layer
     takes only the message as inputs.  Otherwise, it uses both the key
     and the message.
 
@@ -206,7 +206,7 @@ def doeval(s, ac, n, itercount):
     itercount: Iteration count label for logging.
 
   Returns:
-    Bob and eve's loss, as a percent of bits incorrect.
+    Bob and Eve's loss, as a percent of bits incorrect.
   """
 
   bob_loss_accum = 0
@@ -217,7 +217,7 @@ def doeval(s, ac, n, itercount):
     eve_loss_accum += el
   bob_loss_percent = bob_loss_accum / (n * FLAGS.batch_size)
   eve_loss_percent = eve_loss_accum / (n * FLAGS.batch_size)
-  print('%d %.2f %.2f' % (itercount, bob_loss_percent, eve_loss_percent))
+  print('%10d\t%20.2f\t%20.2f'%(itercount, bob_loss_percent, eve_loss_percent))
   sys.stdout.flush()
   return bob_loss_percent, eve_loss_percent
 
@@ -245,7 +245,7 @@ def train_and_evaluate():
   with tf.Session() as s:
     s.run(init)
     print('# Batch size: ', FLAGS.batch_size)
-    print('# Iter Bob_Recon_Error Eve_Recon_Error')
+    print('# %10s\t%20s\t%20s'%("Iter","Bob_Recon_Error","Eve_Recon_Error"))
 
     if train_until_thresh(s, ac):
       for _ in xrange(EVE_EXTRA_ROUNDS):

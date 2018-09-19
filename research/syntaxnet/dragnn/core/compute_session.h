@@ -13,14 +13,16 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_H_
+#ifndef DRAGNN_CORE_COMPUTE_SESSION_H_
+#define DRAGNN_CORE_COMPUTE_SESSION_H_
 
 #include <string>
 
 #include "dragnn/components/util/bulk_feature_extractor.h"
 #include "dragnn/core/index_translator.h"
+#include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/component.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/spec.pb.h"
 #include "dragnn/protos/trace.pb.h"
 
@@ -64,10 +66,11 @@ class ComputeSession {
   // Advance the given component using the component's oracle.
   virtual void AdvanceFromOracle(const string &component_name) = 0;
 
-  // Advance the given component using the given score matrix.
-  virtual void AdvanceFromPrediction(const string &component_name,
-                                     const float score_matrix[],
-                                     int score_matrix_length) = 0;
+  // Advance the given component using the given score matrix, which is
+  // |num_items| x |num_actions|.
+  virtual bool AdvanceFromPrediction(const string &component_name,
+                                     const float *score_matrix, int num_items,
+                                     int num_actions) = 0;
 
   // Get the input features for the given component and channel. This passes
   // through to the relevant Component's GetFixedFeatures() call.
@@ -84,6 +87,15 @@ class ComputeSession {
   virtual int BulkGetInputFeatures(const string &component_name,
                                    const BulkFeatureExtractor &extractor) = 0;
 
+  // Directly computes the embedding matrix for all channels, advancing the
+  // component via the oracle until it is terminal. This call takes a vector
+  // of float embedding matrices, one per channel, in channel order.
+  virtual void BulkEmbedFixedFeatures(
+      const string &component_name, int batch_size_padding,
+      int num_steps_padding, int output_array_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output) = 0;
+
   // Get the input features for the given component and channel. This function
   // can return empty LinkFeatures protos, which represent unused padding slots
   // in the output weight tensor.
@@ -91,7 +103,7 @@ class ComputeSession {
       const string &component_name, int channel_id) = 0;
 
   // Get the oracle labels for the given component.
-  virtual std::vector<std::vector<int>> EmitOracleLabels(
+  virtual std::vector<std::vector<std::vector<Label>>> EmitOracleLabels(
       const string &component_name) = 0;
 
   // Returns true if the given component is terminal.
@@ -111,6 +123,13 @@ class ComputeSession {
   // Provides the ComputeSession with a batch of data to compute.
   virtual void SetInputData(const std::vector<string> &data) = 0;
 
+  // Like SetInputData(), but accepts an InputBatchCache directly, potentially
+  // bypassing de-serialization.
+  virtual void SetInputBatchCache(std::unique_ptr<InputBatchCache> batch) = 0;
+
+  // Returns the current InputBatchCache, or null if there is none.
+  virtual InputBatchCache *GetInputBatchCache() = 0;
+
   // Resets all components owned by this ComputeSession.
   virtual void ResetSession() = 0;
 
@@ -127,9 +146,14 @@ class ComputeSession {
   // validate correct construction of translators in tests.
   virtual const std::vector<const IndexTranslator *> Translators(
       const string &component_name) const = 0;
+
+  // Get a given component. CHECK-fail if the component's IsReady method
+  // returns false.
+  virtual Component *GetReadiedComponent(
+      const string &component_name) const = 0;
 };
 
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_H_
+#endif  // DRAGNN_CORE_COMPUTE_SESSION_H_

@@ -42,25 +42,27 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
       scales: a list of (float) scales, default=(0.5, 1.0, 2.0)
       aspect_ratios: a list of (float) aspect ratios, default=(0.5, 1.0, 2.0)
       base_anchor_size: base anchor size as height, width (
-                        (length-2 float32 list, default=[256, 256])
+                        (length-2 float32 list or tensor, default=[256, 256])
       anchor_stride: difference in centers between base anchors for adjacent
-                     grid positions (length-2 float32 list, default=[16, 16])
+                     grid positions (length-2 float32 list or tensor,
+                     default=[16, 16])
       anchor_offset: center of the anchor with scale and aspect ratio 1 for the
                      upper left element of the grid, this should be zero for
                      feature networks with only VALID padding and even receptive
                      field size, but may need additional calculation if other
-                     padding is used (length-2 float32 tensor, default=[0, 0])
+                     padding is used (length-2 float32 list or tensor,
+                     default=[0, 0])
     """
     # Handle argument defaults
     if base_anchor_size is None:
       base_anchor_size = [256, 256]
-    base_anchor_size = tf.constant(base_anchor_size, tf.float32)
+    base_anchor_size = tf.to_float(tf.convert_to_tensor(base_anchor_size))
     if anchor_stride is None:
       anchor_stride = [16, 16]
-    anchor_stride = tf.constant(anchor_stride, dtype=tf.float32)
+    anchor_stride = tf.to_float(tf.convert_to_tensor(anchor_stride))
     if anchor_offset is None:
       anchor_offset = [0, 0]
-    anchor_offset = tf.constant(anchor_offset, dtype=tf.float32)
+    anchor_offset = tf.to_float(tf.convert_to_tensor(anchor_offset))
 
     self._scales = scales
     self._aspect_ratios = aspect_ratios
@@ -91,7 +93,9 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
         allowed.
 
     Returns:
-      boxes: a BoxList holding a collection of N anchor boxes
+      boxes_list: a list of BoxLists each holding anchor boxes corresponding to
+        the input feature map shapes.
+
     Raises:
       ValueError: if feature_map_shape_list, box_specs_list do not have the same
         length.
@@ -109,13 +113,20 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
                                                    self._aspect_ratios)
     scales_grid = tf.reshape(scales_grid, [-1])
     aspect_ratios_grid = tf.reshape(aspect_ratios_grid, [-1])
-    return tile_anchors(grid_height,
-                        grid_width,
-                        scales_grid,
-                        aspect_ratios_grid,
-                        self._base_anchor_size,
-                        self._anchor_stride,
-                        self._anchor_offset)
+    anchors = tile_anchors(grid_height,
+                           grid_width,
+                           scales_grid,
+                           aspect_ratios_grid,
+                           self._base_anchor_size,
+                           self._anchor_stride,
+                           self._anchor_offset)
+
+    num_anchors = anchors.num_boxes_static()
+    if num_anchors is None:
+      num_anchors = anchors.num_boxes()
+    anchor_indices = tf.zeros([num_anchors])
+    anchors.add_field('feature_map_index', anchor_indices)
+    return [anchors]
 
 
 def tile_anchors(grid_height,

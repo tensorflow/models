@@ -44,7 +44,7 @@ flags.DEFINE_integer('image_size', 64,
                      'Input images dimension (pixels) - width & height.')
 flags.DEFINE_integer('vox_size', 32, 'Voxel prediction dimension.')
 flags.DEFINE_integer('step_size', 24, 'Steps to take in rotation to fetch viewpoints.')
-flags.DEFINE_integer('batch_size', 1, 'Batch size while training.')
+flags.DEFINE_integer('batch_size', 6, 'Batch size while training.')
 flags.DEFINE_float('focal_length', 0.866, 'Focal length parameter used in perspective projection.')
 flags.DEFINE_float('focal_range', 1.732, 'Focal length parameter used in perspective projection.')
 flags.DEFINE_string('encoder_name', 'ptn_encoder',

@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_BEAM_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_BEAM_H_
+#ifndef DRAGNN_CORE_BEAM_H_
+#define DRAGNN_CORE_BEAM_H_
 
 #include <algorithm>
 #include <cmath>
@@ -43,19 +43,23 @@ class Beam {
     static_assert(
         std::is_base_of<CloneableTransitionState<T>, T>::value,
         "This class must be instantiated to use a CloneableTransitionState");
+    track_gold_ = false;
   }
+
+  // Sets whether or not the beam should track gold states.
+  void SetGoldTracking(bool track_gold) { track_gold_ = track_gold; }
 
   // Sets the Beam functions, as follows:
   // bool is_allowed(TransitionState *, int): Return true if transition 'int' is
   //   allowed for transition state 'TransitionState *'.
   // void perform_transition(TransitionState *, int): Performs transition 'int'
   //   on transition state 'TransitionState *'.
-  // int oracle_function(TransitionState *): Returns the oracle-specified action
-  //   for transition state 'TransitionState *'.
+  // vector<int> oracle_function(TransitionState *): Returns the oracle-
+  //   specified actions for transition state 'TransitionState *'.
   void SetFunctions(std::function<bool(T *, int)> is_allowed,
                     std::function<bool(T *)> is_final,
                     std::function<void(T *, int)> perform_transition,
-                    std::function<int(T *)> oracle_function) {
+                    std::function<vector<int>(T *)> oracle_function) {
     is_allowed_ = is_allowed;
     is_final_ = is_final;
     perform_transition_ = perform_transition;
@@ -74,12 +78,17 @@ class Beam {
     for (int i = 0; i < beam_.size(); ++i) {
       previous_beam_indices.at(i) = beam_[i]->ParentBeamIndex();
       beam_[i]->SetBeamIndex(i);
+
+      // TODO(googleuser): Add gold tracking to component-level state creation.
+      if (!track_gold_) {
+        beam_[i]->SetGold(false);
+      }
     }
     beam_index_history_.emplace_back(previous_beam_indices);
   }
 
   // Advances the Beam from the given transition matrix.
-  void AdvanceFromPrediction(const float transition_matrix[], int matrix_length,
+  bool AdvanceFromPrediction(const float *transition_matrix, int matrix_length,
                              int num_actions) {
     // Ensure that the transition matrix is the correct size. All underlying
     // states should have the same transition profile, so using the one at 0
@@ -89,91 +98,20 @@ class Beam {
            "state transitions!";
 
     if (max_size_ == 1) {
-      // In the case where beam size is 1, we can advance by simply finding the
-      // highest score and advancing the beam state in place.
-      VLOG(2) << "Beam size is 1. Using fast beam path.";
-      int best_action = -1;
-      float best_score = -INFINITY;
-      auto &state = beam_[0];
-      for (int action_idx = 0; action_idx < num_actions; ++action_idx) {
-        if (is_allowed_(state.get(), action_idx) &&
-            transition_matrix[action_idx] > best_score) {
-          best_score = transition_matrix[action_idx];
-          best_action = action_idx;
-        }
+      bool success = FastAdvanceFromPrediction(transition_matrix, num_actions);
+      if (!success) {
+        return false;
       }
-      CHECK_GE(best_action, 0) << "Num actions: " << num_actions
-                               << " score[0]: " << transition_matrix[0];
-      perform_transition_(state.get(), best_action);
-      const float new_score = state->GetScore() + best_score;
-      state->SetScore(new_score);
-      state->SetBeamIndex(0);
     } else {
-      // Create the vector of all possible transitions, along with their scores.
-      std::vector<Transition> candidates;
-
-      // Iterate through all beams, examining all actions for each beam.
-      for (int beam_idx = 0; beam_idx < beam_.size(); ++beam_idx) {
-        const auto &state = beam_[beam_idx];
-        for (int action_idx = 0; action_idx < num_actions; ++action_idx) {
-          // If the action is allowed, calculate the proposed new score and add
-          // the candidate action to the vector of all actions at this state.
-          if (is_allowed_(state.get(), action_idx)) {
-            Transition candidate;
-
-            // The matrix is laid out by beam index, with a linear set of
-            // actions for that index - so beam N's actions start at [nr. of
-            // actions]*[N].
-            const int matrix_idx = action_idx + beam_idx * num_actions;
-            CHECK_LT(matrix_idx, matrix_length)
-                << "Matrix index out of bounds!";
-            const double score_delta = transition_matrix[matrix_idx];
-            CHECK(!std::isnan(score_delta));
-            candidate.source_idx = beam_idx;
-            candidate.action = action_idx;
-            candidate.resulting_score = state->GetScore() + score_delta;
-            candidates.emplace_back(candidate);
-          }
-        }
+      bool success = BeamAdvanceFromPrediction(transition_matrix, matrix_length,
+                                               num_actions);
+      if (!success) {
+        return false;
       }
-
-      // Sort the vector of all possible transitions and scores.
-      const auto comparator = [](const Transition &a, const Transition &b) {
-        return a.resulting_score > b.resulting_score;
-      };
-      std::stable_sort(candidates.begin(), candidates.end(), comparator);
-
-      // Apply the top transitions, up to a maximum of 'max_size_'.
-      std::vector<std::unique_ptr<T>> new_beam;
-      std::vector<int> previous_beam_indices(max_size_, -1);
-      const int beam_size =
-          std::min(max_size_, static_cast<int>(candidates.size()));
-      VLOG(2) << "Previous beam size = " << beam_.size();
-      VLOG(2) << "New beam size = " << beam_size;
-      VLOG(2) << "Maximum beam size = " << max_size_;
-      for (int i = 0; i < beam_size; ++i) {
-        // Get the source of the i'th transition.
-        const auto &transition = candidates[i];
-        VLOG(2) << "Taking transition with score: "
-                << transition.resulting_score
-                << " and action: " << transition.action;
-        VLOG(2) << "transition.source_idx = " << transition.source_idx;
-        const auto &source = beam_[transition.source_idx];
-
-        // Put the new transition on the new state beam.
-        auto new_state = source->Clone();
-        perform_transition_(new_state.get(), transition.action);
-        new_state->SetScore(transition.resulting_score);
-        new_state->SetBeamIndex(i);
-        previous_beam_indices.at(i) = transition.source_idx;
-        new_beam.emplace_back(std::move(new_state));
-      }
-
-      beam_ = std::move(new_beam);
-      beam_index_history_.emplace_back(previous_beam_indices);
     }
 
     ++num_steps_;
+    return true;
   }
 
   // Advances the Beam from the state oracles.
@@ -182,7 +120,10 @@ class Beam {
     for (int i = 0; i < beam_.size(); ++i) {
       previous_beam_indices.at(i) = i;
       if (is_final_(beam_[i].get())) continue;
-      const auto oracle_label = oracle_function_(beam_[i].get());
+
+      // There will always be at least one oracular transition, and taking the
+      // first returned transition is never worse than any other option.
+      const int oracle_label = oracle_function_(beam_[i].get()).at(0);
       VLOG(2) << "AdvanceFromOracle beam_index:" << i
               << " oracle_label:" << oracle_label;
       perform_transition_(beam_[i].get(), oracle_label);
@@ -312,18 +253,179 @@ class Beam {
   // Returns the current size of the beam.
   const int size() const { return beam_.size(); }
 
+  // Returns true if at least one of the states in the beam is gold.
+  bool ContainsGold() {
+    if (!track_gold_) {
+      return false;
+    }
+    for (const auto &state : beam_) {
+      if (state->IsGold()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
  private:
-  // Associates an action taken on an index into current_state_ with a score.
+  friend void BM_FastAdvance(int num_iters, int num_transitions);
+  friend void BM_BeamAdvance(int num_iters, int num_transitions,
+                             int max_beam_size);
+
+  // Associates an action taken with its source index.
   struct Transition {
     // The index of the source item.
     int source_idx;
 
     // The index of the action being taken.
     int action;
-
-    // The score of the full derivation.
-    double resulting_score;
   };
+
+  // In the case where beam size is 1, we can advance by simply finding the
+  // highest score and advancing the beam state in place.
+  bool FastAdvanceFromPrediction(const float *transition_matrix,
+                                 int num_actions) {
+    CHECK_EQ(1, max_size_)
+        << "Using fast advance on invalid beam. This should never happen.";
+    VLOG(2) << "Beam size is 1. Using fast beam path.";
+    constexpr int kNoActionChosen = -1;
+    int best_action = kNoActionChosen;
+    float best_score = -INFINITY;
+    auto &state = beam_[0];
+    for (int action_idx = 0; action_idx < num_actions; ++action_idx) {
+      if (std::isnan(transition_matrix[action_idx])) {
+        LOG(ERROR) << "Found a NaN in the transition matrix! Unable to "
+                      "continue. Num actions: "
+                   << num_actions << " index: " << action_idx;
+        return false;
+      }
+      if (is_allowed_(state.get(), action_idx) &&
+          transition_matrix[action_idx] > best_score) {
+        best_score = transition_matrix[action_idx];
+        best_action = action_idx;
+      }
+    }
+    if (best_action == kNoActionChosen) {
+      LOG(ERROR) << "No action was chosen! Unable to continue. Num actions: "
+                 << num_actions << " score[0]: " << transition_matrix[0];
+      return false;
+    }
+    bool is_gold = false;
+    if (track_gold_ && state->IsGold()) {
+      for (const auto &gold_transition : oracle_function_(state.get())) {
+        VLOG(3) << "Examining gold transition " << gold_transition
+                << " for source index 1";
+        if (gold_transition == best_action) {
+          is_gold = true;
+          break;
+        }
+      }
+    }
+    perform_transition_(state.get(), best_action);
+    const float new_score = state->GetScore() + best_score;
+    state->SetScore(new_score);
+    state->SetBeamIndex(0);
+    state->SetGold(is_gold);
+    return true;
+  }
+
+  // In case the beam size is greater than 1, we need to advance using
+  // standard beam search.
+  bool BeamAdvanceFromPrediction(const float *transition_matrix,
+                                 int matrix_length, int num_actions) {
+    VLOG(2) << "Beam size is " << max_size_ << ". Using standard beam search.";
+
+    // Keep the multimap sorted high to low. The sort order for
+    // identical keys is stable.
+    std::multimap<float, Transition, std::greater<float>> candidates;
+    float threshold = -INFINITY;
+
+    // Iterate through all beams, examining all actions for each beam.
+    for (int beam_idx = 0; beam_idx < beam_.size(); ++beam_idx) {
+      const auto &state = beam_[beam_idx];
+      const float score = state->GetScore();
+      for (int action_idx = 0; action_idx < num_actions; ++action_idx) {
+        if (is_allowed_(state.get(), action_idx)) {
+          // The matrix is laid out by beam index, with a linear set of
+          // actions for that index - so beam N's actions start at [nr. of
+          // actions]*[N].
+          const int matrix_idx = action_idx + beam_idx * num_actions;
+          CHECK_LT(matrix_idx, matrix_length) << "Matrix index out of bounds!";
+          const float resulting_score = score + transition_matrix[matrix_idx];
+          if (std::isnan(resulting_score)) {
+            LOG(ERROR) << "Resulting score was a NaN! Unable to continue. Num "
+                          "actions: "
+                       << num_actions << " action index " << action_idx;
+            return false;
+          }
+          if (candidates.size() == max_size_) {
+            // If the new score is lower than the bottom of the beam, move on.
+            if (resulting_score < threshold) {
+              continue;
+            }
+
+            // Otherwise, remove the bottom of the beam, making space
+            // for the new candidate.
+            candidates.erase(std::prev(candidates.end()));
+          }
+
+          // Add the new candidate, and update the threshold score.
+          const Transition candidate{beam_idx, action_idx};
+          candidates.emplace(resulting_score, candidate);
+          threshold = candidates.rbegin()->first;
+        }
+      }
+    }
+
+    // Apply the top transitions, up to a maximum of 'max_size_'.
+    std::vector<std::unique_ptr<T>> new_beam;
+    std::vector<int> previous_beam_indices(max_size_, -1);
+    const int beam_size = candidates.size();
+    new_beam.reserve(max_size_);
+    VLOG(2) << "Previous beam size = " << beam_.size();
+    VLOG(2) << "New beam size = " << beam_size;
+    VLOG(2) << "Maximum beam size = " << max_size_;
+    auto candidate_iterator = candidates.cbegin();
+    for (int i = 0; i < beam_size; ++i) {
+      // Get the score and source of the i'th transition.
+      const float resulting_score = candidate_iterator->first;
+      const auto &transition = candidate_iterator->second;
+      ++candidate_iterator;
+      VLOG(2) << "Taking transition with score: " << resulting_score
+              << " and action: " << transition.action;
+      VLOG(2) << "transition.source_idx = " << transition.source_idx;
+      const auto &source = beam_[transition.source_idx];
+
+      // Determine if the transition being taken will result in a gold state.
+      bool is_gold = false;
+      if (track_gold_ && source->IsGold()) {
+        for (const auto &gold_transition : oracle_function_(source.get())) {
+          VLOG(3) << "Examining gold transition " << gold_transition
+                  << " for source index " << transition.source_idx;
+          if (gold_transition == transition.action) {
+            VLOG(2) << "State from index " << transition.source_idx
+                    << " is gold.";
+            is_gold = true;
+            break;
+          }
+        }
+      }
+      VLOG(2) << "Gold examination complete for source index "
+              << transition.source_idx;
+
+      // Put the new transition on the new state beam.
+      auto new_state = source->Clone();
+      perform_transition_(new_state.get(), transition.action);
+      new_state->SetScore(resulting_score);
+      new_state->SetBeamIndex(i);
+      new_state->SetGold(is_gold);
+      previous_beam_indices.at(i) = transition.source_idx;
+      new_beam.emplace_back(std::move(new_state));
+    }
+
+    beam_ = std::move(new_beam);
+    beam_index_history_.emplace_back(previous_beam_indices);
+    return true;
+  }
 
   // The maximum beam size.
   int max_size_;
@@ -341,7 +443,7 @@ class Beam {
   std::function<void(T *, int)> perform_transition_;
 
   // Function to provide the oracle action for a given state.
-  std::function<int(T *)> oracle_function_;
+  std::function<vector<int>(T *)> oracle_function_;
 
   // The history of the states in this beam. The vector indexes across steps.
   // For every step, there is a vector in the vector. This inner vector denotes
@@ -355,9 +457,12 @@ class Beam {
 
   // The number of steps taken so far.
   int num_steps_;
+
+  // Whether to track golden states.
+  bool track_gold_;
 };
 
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_BEAM_H_
+#endif  // DRAGNN_CORE_BEAM_H_

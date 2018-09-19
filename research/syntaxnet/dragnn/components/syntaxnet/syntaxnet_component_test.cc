@@ -15,6 +15,8 @@
 
 #include "dragnn/components/syntaxnet/syntaxnet_component.h"
 
+#include <limits>
+
 #include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/test/generic.h"
 #include "dragnn/core/test/mock_transition_state.h"
@@ -38,6 +40,7 @@ namespace dragnn {
 namespace {
 
 const char kSentence0[] = R"(
+text: "Sentence 0."
 token {
   word: "Sentence" start: 0 end: 7 tag: "NN" category: "NOUN" label: "ROOT"
   break_level: NO_BREAK
@@ -53,6 +56,7 @@ token {
 )";
 
 const char kSentence1[] = R"(
+text: "Sentence 1."
 token {
   word: "Sentence" start: 0 end: 7 tag: "NN" category: "NOUN" label: "ROOT"
   break_level: NO_BREAK
@@ -68,6 +72,7 @@ token {
 )";
 
 const char kLongSentence[] = R"(
+text: "Sentence 123."
 token {
   word: "Sentence" start: 0 end: 7 tag: "NN" category: "NOUN" label: "ROOT"
   break_level: NO_BREAK
@@ -197,8 +202,8 @@ TEST_F(SyntaxNetComponentTest, AdvancesFromPredictionAndTerminates) {
   // Transition the expected number of times.
   for (int i = 0; i < kExpectedNumTransitions; ++i) {
     EXPECT_FALSE(test_parser->IsTerminal());
-    test_parser->AdvanceFromPrediction(transition_matrix,
-                                       kNumPossibleTransitions * kBeamSize);
+    EXPECT_TRUE(test_parser->AdvanceFromPrediction(transition_matrix, kBeamSize,
+                                                   kNumPossibleTransitions));
   }
 
   // At this point, the test parser should be terminal.
@@ -223,6 +228,29 @@ TEST_F(SyntaxNetComponentTest, AdvancesFromPredictionAndTerminates) {
   test_parser->FinalizeData();
 
   // TODO(googleuser): What should the finalized data look like?
+}
+
+TEST_F(SyntaxNetComponentTest, AdvancesFromPredictionFailsWithNanWeights) {
+  // Create an empty input batch and beam vector to initialize the parser.
+  Sentence sentence_0;
+  TextFormat::ParseFromString(kSentence0, &sentence_0);
+  string sentence_0_str;
+  sentence_0.SerializeToString(&sentence_0_str);
+
+  auto test_parser = CreateParser({}, {sentence_0_str});
+
+  // There are 93 possible transitions for any given state. Create a transition
+  // array with a score of 10.0 for each transition.
+  constexpr int kBeamSize = 2;
+  constexpr int kNumPossibleTransitions = 93;
+  float transition_matrix[kNumPossibleTransitions * kBeamSize];
+  for (int i = 0; i < kNumPossibleTransitions * kBeamSize; ++i) {
+    transition_matrix[i] = std::numeric_limits<double>::quiet_NaN();
+  }
+
+  EXPECT_FALSE(test_parser->IsTerminal());
+  EXPECT_FALSE(test_parser->AdvanceFromPrediction(transition_matrix, kBeamSize,
+                                                  kNumPossibleTransitions));
 }
 
 TEST_F(SyntaxNetComponentTest, RetainsPassedTransitionStateData) {
@@ -269,8 +297,8 @@ TEST_F(SyntaxNetComponentTest, RetainsPassedTransitionStateData) {
   // Transition the expected number of times
   for (int i = 0; i < kExpectedNumTransitions; ++i) {
     EXPECT_FALSE(test_parser->IsTerminal());
-    test_parser->AdvanceFromPrediction(transition_matrix,
-                                       kNumPossibleTransitions * kBeamSize);
+    EXPECT_TRUE(test_parser->AdvanceFromPrediction(transition_matrix, kBeamSize,
+                                                   kNumPossibleTransitions));
   }
 
   // At this point, the test parser should be terminal.
@@ -326,8 +354,8 @@ TEST_F(SyntaxNetComponentTest, AdvancesFromPredictionForMultiSentenceBatches) {
   // Transition the expected number of times.
   for (int i = 0; i < kExpectedNumTransitions; ++i) {
     EXPECT_FALSE(test_parser->IsTerminal());
-    test_parser->AdvanceFromPrediction(
-        transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+    EXPECT_TRUE(test_parser->AdvanceFromPrediction(
+        transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions));
   }
 
   // At this point, the test parser should be terminal.
@@ -382,8 +410,8 @@ TEST_F(SyntaxNetComponentTest,
   constexpr int kExpectedNumTransitions = kNumTokensInLongSentence * 2;
   for (int i = 0; i < kExpectedNumTransitions; ++i) {
     EXPECT_FALSE(test_parser->IsTerminal());
-    test_parser->AdvanceFromPrediction(
-        transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+    EXPECT_TRUE(test_parser->AdvanceFromPrediction(
+        transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions));
   }
 
   // At this point, the test parser should be terminal.
@@ -467,7 +495,7 @@ TEST_F(SyntaxNetComponentTest, ResetAllowsReductionInBatchSize) {
   for (int i = 0; i < kExpectedNumTransitions; ++i) {
     EXPECT_FALSE(parser_component->IsTerminal());
     parser_component->AdvanceFromPrediction(
-        transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+        transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions);
   }
 
   // At this point, the test parser should be terminal.
@@ -553,7 +581,7 @@ TEST_F(SyntaxNetComponentTest, ResetAllowsIncreaseInBatchSize) {
   for (int i = 0; i < kExpectedNumTransitions; ++i) {
     EXPECT_FALSE(parser_component->IsTerminal());
     parser_component->AdvanceFromPrediction(
-        transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+        transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions);
   }
 
   // At this point, the test parser should be terminal.
@@ -611,8 +639,8 @@ TEST_F(SyntaxNetComponentTest, ResetCausesBeamToReset) {
   // Transition the expected number of times.
   for (int i = 0; i < kExpectedNumTransitions; ++i) {
     EXPECT_FALSE(test_parser->IsTerminal());
-    test_parser->AdvanceFromPrediction(transition_matrix,
-                                       kNumPossibleTransitions * kBeamSize);
+    EXPECT_TRUE(test_parser->AdvanceFromPrediction(transition_matrix, kBeamSize,
+                                                   kNumPossibleTransitions));
   }
 
   // At this point, the test parser should be terminal.
@@ -823,10 +851,10 @@ TEST_F(SyntaxNetComponentTest, ExportsFixedFeatures) {
   }
 
   // Advance twice, so that the underlying parser fills the beam.
-  test_parser->AdvanceFromPrediction(
-      transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
-  test_parser->AdvanceFromPrediction(
-      transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+  EXPECT_TRUE(test_parser->AdvanceFromPrediction(
+      transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions));
+  EXPECT_TRUE(test_parser->AdvanceFromPrediction(
+      transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions));
 
   // Get and check the raw link features.
   vector<int32> indices;
@@ -907,10 +935,10 @@ TEST_F(SyntaxNetComponentTest, AdvancesAccordingToHighestWeightedInputOption) {
   transition_matrix[kBatchOffset + 5] = 2 * kTransitionValue;
 
   // Advance twice, so that the underlying parser fills the beam.
-  test_parser->AdvanceFromPrediction(
-      transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
-  test_parser->AdvanceFromPrediction(
-      transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+  EXPECT_TRUE(test_parser->AdvanceFromPrediction(
+      transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions));
+  EXPECT_TRUE(test_parser->AdvanceFromPrediction(
+      transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions));
 
   // Get and check the raw link features.
   vector<int32> indices;
@@ -1112,10 +1140,10 @@ TEST_F(SyntaxNetComponentTest, ExportsRawLinkFeatures) {
   }
 
   // Advance twice, so that the underlying parser fills the beam.
-  test_parser->AdvanceFromPrediction(
-      transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
-  test_parser->AdvanceFromPrediction(
-      transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+  EXPECT_TRUE(test_parser->AdvanceFromPrediction(
+      transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions));
+  EXPECT_TRUE(test_parser->AdvanceFromPrediction(
+      transition_matrix, kBeamSize * kBatchSize, kNumPossibleTransitions));
 
   // Get and check the raw link features.
   constexpr int kNumLinkFeatures = 2;
@@ -1267,6 +1295,47 @@ TEST_F(SyntaxNetComponentTest, TracingOutputsFeatureNames) {
   EXPECT_EQ(link_features.size(), 2);
   EXPECT_EQ(link_features.at(0).feature_name(), "stack.focus");
   EXPECT_EQ(link_features.at(1).feature_name(), "stack(1).focus");
+}
+
+TEST_F(SyntaxNetComponentTest, BulkEmbedFixedFeaturesIsNotSupported) {
+  // Create an empty input batch and beam vector to initialize the parser.
+  Sentence sentence_0;
+
+  // TODO(googleuser): Wrap this in a lint-friendly helper function.
+  TextFormat::ParseFromString(kSentence0, &sentence_0);
+  string sentence_0_str;
+  sentence_0.SerializeToString(&sentence_0_str);
+
+  constexpr int kBeamSize = 1;
+  auto test_parser = CreateParserWithBeamSize(kBeamSize, {}, {sentence_0_str});
+  EXPECT_TRUE(test_parser->IsReady());
+  EXPECT_DEATH(test_parser->BulkEmbedFixedFeatures(0, 0, 0, {nullptr}, nullptr),
+               "Method not supported");
+}
+
+TEST_F(SyntaxNetComponentTest, GetStepLookupFunction) {
+  Sentence sentence_0;
+  TextFormat::ParseFromString(kSentence0, &sentence_0);
+  string sentence_0_str;
+  sentence_0.SerializeToString(&sentence_0_str);
+
+  constexpr int kBeamSize = 1;
+  auto test_parser = CreateParserWithBeamSize(kBeamSize, {}, {sentence_0_str});
+  ASSERT_TRUE(test_parser->IsReady());
+
+  const auto reverse_token_lookup =
+      test_parser->GetStepLookupFunction("reverse-token");
+  const int kNumTokens = sentence_0.token_size();
+  for (int i = 0; i < kNumTokens; ++i) {
+    EXPECT_EQ(i, reverse_token_lookup(0, 0, kNumTokens - i - 1));
+  }
+
+  const auto reverse_char_lookup =
+      test_parser->GetStepLookupFunction("reverse-char");
+  const int kNumChars = sentence_0.text().size();  // assumes ASCII
+  for (int i = 0; i < kNumChars; ++i) {
+    EXPECT_EQ(i, reverse_char_lookup(0, 0, kNumChars - i - 1));
+  }
 }
 
 }  // namespace dragnn

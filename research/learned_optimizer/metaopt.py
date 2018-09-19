@@ -21,6 +21,7 @@ import sys
 import time
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from learned_optimizer.optimizer import trainable_optimizer

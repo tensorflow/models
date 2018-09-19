@@ -100,16 +100,16 @@ class AddExtraFieldTest(tf.test.TestCase):
 
   def test_get_extra_fields(self):
     boxlist = self.boxlist
-    self.assertSameElements(boxlist.get_extra_fields(), [])
+    self.assertItemsEqual(boxlist.get_extra_fields(), [])
 
     scores = np.array([0.5, 0.7, 0.9], dtype=float)
     boxlist.add_field('scores', scores)
-    self.assertSameElements(boxlist.get_extra_fields(), ['scores'])
+    self.assertItemsEqual(boxlist.get_extra_fields(), ['scores'])
 
     labels = np.array([[0, 0, 0, 1, 0], [0, 1, 0, 0, 0], [0, 0, 0, 0, 1]],
                       dtype=int)
     boxlist.add_field('labels', labels)
-    self.assertSameElements(boxlist.get_extra_fields(), ['scores', 'labels'])
+    self.assertItemsEqual(boxlist.get_extra_fields(), ['scores', 'labels'])
 
   def test_get_coordinates(self):
     y_min, x_min, y_max, x_max = self.boxlist.get_coordinates()

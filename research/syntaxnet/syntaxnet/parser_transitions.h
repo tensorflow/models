@@ -74,6 +74,9 @@ class ParserTransitionState {
 class ParserTransitionSystem
     : public RegisterableClass<ParserTransitionSystem> {
  public:
+  // Sentinel value that represents a dynamic action set.
+  static constexpr int kDynamicNumActions = -1;
+
   // Construction and cleanup.
   ParserTransitionSystem() {}
   virtual ~ParserTransitionSystem() {}
@@ -94,7 +97,8 @@ class ParserTransitionSystem
   // Returns the number of action types.
   virtual int NumActionTypes() const = 0;
 
-  // Returns the number of actions.
+  // Returns the number of actions, or |kDynamicNumActions| if the action set is
+  // dynamic (i.e., varies per instance).
   virtual int NumActions(int num_labels) const = 0;
 
   // Internally creates the set of outcomes (when transition systems support a
@@ -195,6 +199,9 @@ class ParserTransitionSystem
 
 #define REGISTER_TRANSITION_SYSTEM(type, component) \
   REGISTER_SYNTAXNET_CLASS_COMPONENT(ParserTransitionSystem, type, component)
+
+// Transition system registry.
+DECLARE_SYNTAXNET_CLASS_REGISTRY("transition system", ParserTransitionSystem);
 
 }  // namespace syntaxnet
 

@@ -22,6 +22,8 @@ namespace syntaxnet {
 // Transition system registry.
 REGISTER_SYNTAXNET_CLASS_REGISTRY("transition system", ParserTransitionSystem);
 
+constexpr int ParserTransitionSystem::kDynamicNumActions;
+
 void ParserTransitionSystem::PerformAction(ParserAction action,
                                            ParserState *state) const {
   if (state->keep_history()) {

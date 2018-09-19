@@ -109,7 +109,9 @@ class ComponentSpecBuilder(object):
     if transition_spec.registered_name == 'arc-standard':
       return 'shift-reduce-step'
 
-    if transition_spec.registered_name in ('shift-only', 'tagger'):
+    if transition_spec.registered_name in ('shift-only', 'tagger', 'morpher',
+                                           'lm-transitions', 'dependency-label',
+                                           'category'):
       if 'left_to_right' in transition_spec.parameters:
         if transition_spec.parameters['left_to_right'] == 'false':
           return 'reverse-token'
@@ -174,16 +176,22 @@ class ComponentSpecBuilder(object):
     """Shorthand to add a fixed_feature using kwargs."""
     self.spec.fixed_feature.add(**kwargs)
 
-  def add_link(self, source, source_layer=None, source_translator='identity',
-               name=None, **kwargs):
+  def add_link(self,
+               source,
+               source_layer=None,
+               source_translator='identity',
+               name=None,
+               **kwargs):
     """Add a link using default naming and layers only."""
     if source_layer is None:
       source_layer = source.default_source_layer()
     if name is None:
       name = source.spec.name
     self.spec.linked_feature.add(
-        source_component=source.spec.name, source_layer=source_layer,
-        name=name, source_translator=source_translator,
+        source_component=source.spec.name,
+        source_layer=source_layer,
+        name=name,
+        source_translator=source_translator,
         **kwargs)
 
   def fill_from_resources(self, resource_path, tf_master=''):
@@ -209,13 +217,18 @@ class ComponentSpecBuilder(object):
         'Set a transition system before calling fill_from_resources().')
 
     context = lexicon.create_lexicon_context(resource_path)
+
+    # If there are any transition system-specific params or resources,
+    # copy them over into the context.
+    for resource in self.spec.resource:
+      context.input.add(name=resource.name).part.add(
+          file_pattern=resource.part[0].file_pattern)
     for key, value in self.spec.transition_system.parameters.iteritems():
       context.parameter.add(name=key, value=value)
 
     context.parameter.add(
         name='brain_parser_embedding_dims',
-        value=';'.join(
-            [str(x.embedding_dim) for x in self.spec.fixed_feature]))
+        value=';'.join([str(x.embedding_dim) for x in self.spec.fixed_feature]))
     context.parameter.add(
         name='brain_parser_features',
         value=';'.join([x.fml for x in self.spec.fixed_feature]))
@@ -243,6 +256,7 @@ class ComponentSpecBuilder(object):
       self.spec.linked_feature[i].size = len(
           self.spec.linked_feature[i].fml.split(' '))
 
+    del self.spec.resource[:]
     for resource in context.input:
       self.spec.resource.add(name=resource.name).part.add(
           file_pattern=resource.part[0].file_pattern)

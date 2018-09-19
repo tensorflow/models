@@ -22,10 +22,10 @@ from object_detection.models import ssd_inception_v3_feature_extractor
 
 
 class SsdInceptionV3FeatureExtractorTest(
-    ssd_feature_extractor_test.SsdFeatureExtractorTestBase, tf.test.TestCase):
+    ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                is_training=True, batch_norm_trainable=True):
+                                is_training=True):
     """Constructs a SsdInceptionV3FeatureExtractor.
 
     Args:
@@ -33,27 +33,38 @@ class SsdInceptionV3FeatureExtractorTest(
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
       is_training: whether the network is in training mode.
-      batch_norm_trainable: Whether to update batch norm parameters during
-        training or not
+
     Returns:
       an ssd_inception_v3_feature_extractor.SsdInceptionV3FeatureExtractor.
     """
     min_depth = 32
-    conv_hyperparams = {}
     return ssd_inception_v3_feature_extractor.SSDInceptionV3FeatureExtractor(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, batch_norm_trainable)
+        self.conv_hyperparams_fn,
+        override_base_feature_extractor_hyperparams=True)
 
   def test_extract_features_returns_correct_shapes_128(self):
     image_height = 128
     image_width = 128
     depth_multiplier = 1.0
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 13, 13, 288), (4, 6, 6, 768),
-                                  (4, 2, 2, 2048), (4, 1, 1, 512),
-                                  (4, 1, 1, 256), (4, 1, 1, 128)]
+    expected_feature_map_shape = [(2, 13, 13, 288), (2, 6, 6, 768),
+                                  (2, 2, 2, 2048), (2, 1, 1, 512),
+                                  (2, 1, 1, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
-        image_height, image_width, depth_multiplier, pad_to_multiple,
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape)
+
+  def test_extract_features_returns_correct_shapes_with_dynamic_inputs(self):
+    image_height = 128
+    image_width = 128
+    depth_multiplier = 1.0
+    pad_to_multiple = 1
+    expected_feature_map_shape = [(2, 13, 13, 288), (2, 6, 6, 768),
+                                  (2, 2, 2, 2048), (2, 1, 1, 512),
+                                  (2, 1, 1, 256), (2, 1, 1, 128)]
+    self.check_extract_features_returns_correct_shapes_with_dynamic_inputs(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
         expected_feature_map_shape)
 
   def test_extract_features_returns_correct_shapes_299(self):
@@ -61,11 +72,11 @@ class SsdInceptionV3FeatureExtractorTest(
     image_width = 299
     depth_multiplier = 1.0
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 35, 35, 288), (4, 17, 17, 768),
-                                  (4, 8, 8, 2048), (4, 4, 4, 512),
-                                  (4, 2, 2, 256), (4, 1, 1, 128)]
+    expected_feature_map_shape = [(2, 35, 35, 288), (2, 17, 17, 768),
+                                  (2, 8, 8, 2048), (2, 4, 4, 512),
+                                  (2, 2, 2, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
-        image_height, image_width, depth_multiplier, pad_to_multiple,
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
         expected_feature_map_shape)
 
   def test_extract_features_returns_correct_shapes_enforcing_min_depth(self):
@@ -73,11 +84,11 @@ class SsdInceptionV3FeatureExtractorTest(
     image_width = 299
     depth_multiplier = 0.5**12
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 35, 35, 128), (4, 17, 17, 128),
-                                  (4, 8, 8, 192), (4, 4, 4, 32),
-                                  (4, 2, 2, 32), (4, 1, 1, 32)]
+    expected_feature_map_shape = [(2, 35, 35, 128), (2, 17, 17, 128),
+                                  (2, 8, 8, 192), (2, 4, 4, 32),
+                                  (2, 2, 2, 32), (2, 1, 1, 32)]
     self.check_extract_features_returns_correct_shape(
-        image_height, image_width, depth_multiplier, pad_to_multiple,
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
         expected_feature_map_shape)
 
   def test_extract_features_returns_correct_shapes_with_pad_to_multiple(self):
@@ -85,11 +96,11 @@ class SsdInceptionV3FeatureExtractorTest(
     image_width = 299
     depth_multiplier = 1.0
     pad_to_multiple = 32
-    expected_feature_map_shape = [(4, 37, 37, 288), (4, 18, 18, 768),
-                                  (4, 8, 8, 2048), (4, 4, 4, 512),
-                                  (4, 2, 2, 256), (4, 1, 1, 128)]
+    expected_feature_map_shape = [(2, 37, 37, 288), (2, 18, 18, 768),
+                                  (2, 8, 8, 2048), (2, 4, 4, 512),
+                                  (2, 2, 2, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
-        image_height, image_width, depth_multiplier, pad_to_multiple,
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
         expected_feature_map_shape)
 
   def test_extract_features_raises_error_with_invalid_image_size(self):

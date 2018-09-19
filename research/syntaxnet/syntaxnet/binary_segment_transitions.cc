@@ -28,8 +28,7 @@ namespace syntaxnet {
 //  -MERGE: adds the token at state.input to its prevous word, and also advances
 //          state.input.
 //
-// Also see nlp/saft/components/segmentation/transition/binary-segment-state.h
-// for examples on handling spaces.
+// Also see binary_segment_state.h for examples on handling spaces.
 class BinarySegmentTransitionSystem : public ParserTransitionSystem {
  public:
   BinarySegmentTransitionSystem() {}

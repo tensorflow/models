@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "dragnn/protos/spec.pb.h"
 #include "dragnn/protos/trace.pb.h"
@@ -123,8 +124,12 @@ void ComputeSessionImpl::InitializeComponentData(const string &component_name,
     VLOG(1) << "Source result found. Using prior initialization vector for "
             << component_name;
     auto source = source_result->second;
-    CHECK(source->IsTerminal()) << "Source is not terminal for component '"
-                                << component_name << "'. Exiting.";
+    CHECK(source->IsTerminal())
+        << "Source component '" << source->Name()
+        << "' for currently active component '" << component_name
+        << "' is not terminal. "
+        << "Are you using bulk feature extraction with only linked features? "
+        << "If so, consider using the StatelessComponent instead. Exiting.";
     component->InitializeData(source->GetBeam(), max_beam_size,
                               input_data_.get());
   }
@@ -161,11 +166,11 @@ void ComputeSessionImpl::AdvanceFromOracle(const string &component_name) {
   GetReadiedComponent(component_name)->AdvanceFromOracle();
 }
 
-void ComputeSessionImpl::AdvanceFromPrediction(const string &component_name,
-                                               const float score_matrix[],
-                                               int score_matrix_length) {
-  GetReadiedComponent(component_name)
-      ->AdvanceFromPrediction(score_matrix, score_matrix_length);
+bool ComputeSessionImpl::AdvanceFromPrediction(const string &component_name,
+                                               const float *score_matrix,
+                                               int num_items, int num_actions) {
+  return GetReadiedComponent(component_name)
+      ->AdvanceFromPrediction(score_matrix, num_items, num_actions);
 }
 
 int ComputeSessionImpl::GetInputFeatures(
@@ -180,6 +185,16 @@ int ComputeSessionImpl::GetInputFeatures(
 int ComputeSessionImpl::BulkGetInputFeatures(
     const string &component_name, const BulkFeatureExtractor &extractor) {
   return GetReadiedComponent(component_name)->BulkGetFixedFeatures(extractor);
+}
+
+void ComputeSessionImpl::BulkEmbedFixedFeatures(
+    const string &component_name, int batch_size_padding, int num_steps_padding,
+    int output_array_size, const vector<const float *> &per_channel_embeddings,
+    float *embedding_output) {
+  return GetReadiedComponent(component_name)
+      ->BulkEmbedFixedFeatures(batch_size_padding, num_steps_padding,
+                               output_array_size, per_channel_embeddings,
+                               embedding_output);
 }
 
 std::vector<LinkFeatures> ComputeSessionImpl::GetTranslatedLinkFeatures(
@@ -209,8 +224,8 @@ std::vector<LinkFeatures> ComputeSessionImpl::GetTranslatedLinkFeatures(
 
   return features;
 }
-std::vector<std::vector<int>> ComputeSessionImpl::EmitOracleLabels(
-    const string &component_name) {
+std::vector<std::vector<std::vector<Label>>>
+ComputeSessionImpl::EmitOracleLabels(const string &component_name) {
   return GetReadiedComponent(component_name)->GetOracleLabels();
 }
 
@@ -288,6 +303,15 @@ void ComputeSessionImpl::SetInputData(const std::vector<string> &data) {
   input_data_.reset(new InputBatchCache(data));
 }
 
+void ComputeSessionImpl::SetInputBatchCache(
+    std::unique_ptr<InputBatchCache> batch) {
+  input_data_ = std::move(batch);
+}
+
+InputBatchCache *ComputeSessionImpl::GetInputBatchCache() {
+  return input_data_.get();
+}
+
 void ComputeSessionImpl::ResetSession() {
   // Reset all component states.
   for (auto &component_pair : components_) {
@@ -308,6 +332,7 @@ const std::vector<const IndexTranslator *> ComputeSessionImpl::Translators(
     const string &component_name) const {
   auto translators = GetTranslators(component_name);
   std::vector<const IndexTranslator *> const_translators;
+  const_translators.reserve(translators.size());
   for (const auto &translator : translators) {
     const_translators.push_back(translator);
   }

@@ -64,7 +64,7 @@ flags.DEFINE_float('clip_gradient_norm', 0, '')
 flags.DEFINE_integer('save_summaries_secs', 15, '')
 flags.DEFINE_integer('eval_interval_secs', 60 * 5, '')
 # Scheduling
-flags.DEFINE_string('master', 'local', '')
+flags.DEFINE_string('master', '', '')
 
 FLAGS = flags.FLAGS
 

@@ -150,12 +150,17 @@ def spectrogram_to_mel_matrix(num_mel_bins=20,
     An np.array with shape (num_spectrogram_bins, num_mel_bins).
 
   Raises:
-    ValueError: if frequency edges are incorrectly ordered.
+    ValueError: if frequency edges are incorrectly ordered or out of range.
   """
   nyquist_hertz = audio_sample_rate / 2.
+  if lower_edge_hertz < 0.0:
+    raise ValueError("lower_edge_hertz %.1f must be >= 0" % lower_edge_hertz)
   if lower_edge_hertz >= upper_edge_hertz:
     raise ValueError("lower_edge_hertz %.1f >= upper_edge_hertz %.1f" %
                      (lower_edge_hertz, upper_edge_hertz))
+  if upper_edge_hertz > nyquist_hertz:
+    raise ValueError("upper_edge_hertz %.1f is greater than Nyquist %.1f" %
+                     (upper_edge_hertz, nyquist_hertz))
   spectrogram_bins_hertz = np.linspace(0.0, nyquist_hertz, num_spectrogram_bins)
   spectrogram_bins_mel = hertz_to_mel(spectrogram_bins_hertz)
   # The i'th mel band (starting from i=1) has center frequency

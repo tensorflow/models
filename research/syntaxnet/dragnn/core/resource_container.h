@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_RESOURCE_CONTAINER_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_RESOURCE_CONTAINER_H_
+#ifndef DRAGNN_CORE_RESOURCE_CONTAINER_H_
+#define DRAGNN_CORE_RESOURCE_CONTAINER_H_
 
 #include <memory>
 
@@ -48,4 +48,4 @@ class ResourceContainer : public tensorflow::ResourceBase {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_RESOURCE_CONTAINER_H_
+#endif  // DRAGNN_CORE_RESOURCE_CONTAINER_H_

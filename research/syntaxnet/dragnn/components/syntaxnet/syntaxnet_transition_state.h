@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_TRANSITION_STATE_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_TRANSITION_STATE_H_
+#ifndef DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_TRANSITION_STATE_H_
+#define DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_TRANSITION_STATE_H_
 
 #include <vector>
 
@@ -31,11 +31,11 @@ namespace dragnn {
 class SyntaxNetTransitionState
     : public CloneableTransitionState<SyntaxNetTransitionState> {
  public:
-  // Create a SyntaxNetTransitionState to wrap this nlp_saft::ParserState.
+  // Creates a SyntaxNetTransitionState to wrap this ParserState.
   SyntaxNetTransitionState(std::unique_ptr<ParserState> parser_state,
                            SyntaxNetSentence *sentence);
 
-  // Initialize this TransitionState from a previous TransitionState. The
+  // Initializes this TransitionState from a previous TransitionState. The
   // ParentBeamIndex is the location of that previous TransitionState in the
   // provided beam.
   void Init(const TransitionState &parent) override;
@@ -43,21 +43,27 @@ class SyntaxNetTransitionState
   // Produces a new state with the same backing data as this state.
   std::unique_ptr<SyntaxNetTransitionState> Clone() const override;
 
-  // Return the beam index of the state passed into the initializer of this
+  // Returns the beam index of the state passed into the initializer of this
   // TransitionState.
-  const int ParentBeamIndex() const override;
+  int ParentBeamIndex() const override;
 
-  // Get the current beam index for this state.
-  const int GetBeamIndex() const override;
+  // Gets the current beam index for this state.
+  int GetBeamIndex() const override;
 
-  // Set the current beam index for this state.
-  void SetBeamIndex(const int index) override;
+  // Sets the current beam index for this state.
+  void SetBeamIndex(int index) override;
 
-  // Get the score associated with this transition state.
-  const float GetScore() const override;
+  // Gets the score associated with this transition state.
+  float GetScore() const override;
 
-  // Set the score associated with this transition state.
-  void SetScore(const float score) override;
+  // Sets the score associated with this transition state.
+  void SetScore(float score) override;
+
+  // Gets the state's gold-ness (if it is on or consistent with the oracle path)
+  bool IsGold() const override;
+
+  // Sets the gold-ness of this state.
+  void SetGold(bool is_gold) override;
 
   // Depicts this state as an HTML-language string.
   string HTMLRepresentation() const override;
@@ -108,7 +114,7 @@ class SyntaxNetTransitionState
     parent_for_token_.insert(parent_for_token_.begin() + token, parent);
   }
 
-  // Accessor for the underlying nlp_saft::ParserState.
+  // Accessor for the underlying ParserState.
   ParserState *parser_state() { return parser_state_.get(); }
 
   // Accessor for the underlying sentence object.
@@ -151,9 +157,12 @@ class SyntaxNetTransitionState
 
   // Trace of the history to produce this state.
   std::unique_ptr<ComponentTrace> trace_;
+
+  // True if this state is gold.
+  bool is_gold_;
 };
 
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_TRANSITION_STATE_H_
+#endif  // DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_TRANSITION_STATE_H_

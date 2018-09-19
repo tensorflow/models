@@ -66,6 +66,8 @@ class ProtoRecordReader {
       CHECK(proto->ParseFromString(buffer));
       return tensorflow::Status::OK();
     } else {
+      CHECK_EQ(status.code(), tensorflow::error::OUT_OF_RANGE)
+          << "Non-OK and non-out-of-range (EOF) status: " << status;
       return status;
     }
   }

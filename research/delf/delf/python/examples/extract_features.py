@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Extracts DELF features from a list of images, saving them to file.
 
 The images must be in JPG format. The program checks if descriptors already
@@ -24,18 +23,17 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-from google.protobuf import text_format
-import numpy as np
 import os
 import sys
-import tensorflow as tf
-from tensorflow.python.platform import app
 import time
 
+import tensorflow as tf
+
+from google.protobuf import text_format
+from tensorflow.python.platform import app
 from delf import delf_config_pb2
 from delf import feature_extractor
 from delf import feature_io
-from delf import feature_pb2
 
 cmd_args = None
 
@@ -152,9 +150,9 @@ def main(unused_argv):
                      config.delf_local_config.max_feature_num
              })
 
-        serialized_desc = feature_io.WriteToFile(
-            out_desc_fullpath, locations_out, feature_scales_out,
-            descriptors_out, attention_out)
+        feature_io.WriteToFile(out_desc_fullpath, locations_out,
+                               feature_scales_out, descriptors_out,
+                               attention_out)
 
       # Finalize enqueue threads.
       coord.request_stop()

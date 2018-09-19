@@ -30,6 +30,23 @@ arg_scope = tf.contrib.framework.arg_scope
 slim = tf.contrib.slim
 
 
+def nasnet_large_arg_scope_for_detection(is_batch_norm_training=False):
+  """Defines the default arg scope for the NASNet-A Large for object detection.
+
+  This provides a small edit to switch batch norm training on and off.
+
+  Args:
+    is_batch_norm_training: Boolean indicating whether to train with batch norm.
+
+  Returns:
+    An `arg_scope` to use for the NASNet Large Model.
+  """
+  imagenet_scope = nasnet.nasnet_large_arg_scope()
+  with arg_scope(imagenet_scope):
+    with arg_scope([slim.batch_norm], is_training=is_batch_norm_training) as sc:
+      return sc
+
+
 # Note: This is largely a copy of _build_nasnet_base inside nasnet.py but
 # with special edits to remove instantiation of the stem and the special
 # ability to receive as input a pair of hidden states.
@@ -91,7 +108,7 @@ def _build_nasnet_base(hidden_previous,
   return net
 
 
-# TODO: Only fixed_shape_resizer is currently supported for NASNet
+# TODO(shlens): Only fixed_shape_resizer is currently supported for NASNet
 # featurization. The reason for this is that nasnet.py only supports
 # inputs with fully known shapes. We need to update nasnet.py to handle
 # shapes not known at compile time.
@@ -154,6 +171,8 @@ class FasterRCNNNASFeatureExtractor(
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      end_points: A dictionary mapping feature extractor tensor names to tensors
+
     Raises:
       ValueError: If the created network is missing the required activation.
     """
@@ -163,12 +182,16 @@ class FasterRCNNNASFeatureExtractor(
       raise ValueError('`preprocessed_inputs` must be 4 dimensional, got a '
                        'tensor of shape %s' % preprocessed_inputs.get_shape())
 
-    with slim.arg_scope(nasnet.nasnet_large_arg_scope()):
-      _, end_points = nasnet.build_nasnet_large(
-          preprocessed_inputs, num_classes=None,
-          is_training=self._is_training,
-          is_batchnorm_training=self._train_batch_norm,
-          final_endpoint='Cell_11')
+    with slim.arg_scope(nasnet_large_arg_scope_for_detection(
+        is_batch_norm_training=self._train_batch_norm)):
+      with arg_scope([slim.conv2d,
+                      slim.batch_norm,
+                      slim.separable_conv2d],
+                     reuse=self._reuse_weights):
+        _, end_points = nasnet.build_nasnet_large(
+            preprocessed_inputs, num_classes=None,
+            is_training=self._is_training,
+            final_endpoint='Cell_11')
 
     # Note that both 'Cell_10' and 'Cell_11' have equal depth = 2016.
     rpn_feature_map = tf.concat([end_points['Cell_10'],
@@ -181,7 +204,7 @@ class FasterRCNNNASFeatureExtractor(
     rpn_feature_map_shape = [batch] + shape_without_batch
     rpn_feature_map.set_shape(rpn_feature_map_shape)
 
-    return rpn_feature_map
+    return rpn_feature_map, end_points
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.
@@ -210,9 +233,11 @@ class FasterRCNNNASFeatureExtractor(
     # Note that what follows is largely a copy of build_nasnet_large() within
     # nasnet.py. We are copying to minimize code pollution in slim.
 
-    # pylint: disable=protected-access
-    hparams = nasnet._large_imagenet_config(is_training=self._is_training)
-    # pylint: enable=protected-access
+    # TODO(shlens,skornblith): Determine the appropriate drop path schedule.
+    # For now the schedule is the default (1.0->0.7 over 250,000 train steps).
+    hparams = nasnet.large_imagenet_config()
+    if not self._is_training:
+      hparams.set_hparam('drop_path_keep_prob', 1.0)
 
     # Calculate the total number of cells in the network
     # -- Add 2 for the reduction cells.

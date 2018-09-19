@@ -207,6 +207,7 @@ TEST(ComputeSessionPoolTest, SupportsMultithreadedAccess) {
 
   std::vector<std::unique_ptr<tensorflow::Thread>> request_threads;
   constexpr int kNumThreadsToTest = 100;
+  request_threads.reserve(kNumThreadsToTest);
   for (int i = 0; i < kNumThreadsToTest; ++i) {
     request_threads.push_back(std::unique_ptr<tensorflow::Thread>(
         tensorflow::Env::Default()->StartThread(

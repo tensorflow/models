@@ -203,8 +203,8 @@ void CharProperty::AddAsciiPredicate(AsciiPredicate *pred) {
 
 void CharProperty::AddCharProperty(const char *propname) {
   const CharProperty *prop = CharProperty::Lookup(propname);
-  CHECK(prop != NULL) << ": unknown char property \"" << propname
-                      << "\" in " << name_;
+  CHECK(prop != nullptr) << ": unknown char property \"" << propname << "\" in "
+                         << name_;
   int c = -1;
   while ((c = prop->NextElementAfter(c)) >= 0) {
     AddChar(c);
@@ -268,10 +268,10 @@ const CharProperty *CharProperty::Lookup(const char *subclass) {
   // the CharProperty it provides.
   std::unique_ptr<CharPropertyWrapper> wrapper(
       CharPropertyWrapper::Create(subclass));
-  if (wrapper.get() == NULL) {
+  if (wrapper == nullptr) {
     LOG(ERROR) << "CharPropertyWrapper not found for subclass: "
                << "\"" << subclass << "\"";
-    return NULL;
+    return nullptr;
   }
   return wrapper->GetCharProperty();
 }

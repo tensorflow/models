@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Helper library for visualizations.
 
 TODO(googleuser): Find a more reliable way to serve stuff from IPython
@@ -64,6 +63,17 @@ def parse_trace_json(trace):
     JSON str, as expected by visualization tools.
   """
   as_proto = trace_pb2.MasterTrace.FromString(trace)
+
+  # Sanitize non-UTF8 captions. One case where this occurs is for byte LSTMs,
+  # which may be processing a sub-sequence of a UTF-8 multi-byte sequence.
+  for component_trace in as_proto.component_trace:
+    for step_trace in component_trace.step_trace:
+      if isinstance(step_trace.caption, str):
+        try:
+          unicode(step_trace.caption, 'utf-8')
+        except UnicodeDecodeError:
+          step_trace.caption = repr(step_trace.caption)  # Safe encoding.
+
   as_json = json_format.MessageToJson(
       as_proto, preserving_proto_field_name=True)
   return as_json

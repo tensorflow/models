@@ -13,14 +13,15 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
+#ifndef DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
+#define DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
 
 #include <memory>
 
 #include "dragnn/core/compute_session.h"
 #include "dragnn/protos/spec.pb.h"
 #include "tensorflow/core/platform/mutex.h"
+#include "tensorflow/core/platform/thread_annotations.h"
 
 namespace syntaxnet {
 namespace dragnn {
@@ -29,14 +30,14 @@ namespace dragnn {
 
 class ComputeSessionPool {
  public:
-  // Create a ComputeSessionPool that creates ComputeSessions for the given
+  // Creates a ComputeSessionPool that creates ComputeSessions for the given
   // MasterSpec and hyperparameters.
   ComputeSessionPool(const MasterSpec &master_spec,
                      const GridPoint &hyperparams);
 
   virtual ~ComputeSessionPool();
 
-  // Get a ComputeSession. This function will attempt to use an already-created
+  // Gets a ComputeSession. This function will attempt to use an already-created
   // ComputeSession, but if none are available a new one will be created.
   std::unique_ptr<ComputeSession> GetSession();
 
@@ -48,6 +49,15 @@ class ComputeSessionPool {
     tensorflow::mutex_lock lock(lock_);
     return num_unique_sessions_ - sessions_.size();
   }
+
+  // Returns the number of unique sessions that have been created.
+  int num_unique_sessions() {
+    tensorflow::mutex_lock lock(lock_);
+    return num_unique_sessions_;
+  }
+
+  // Returns a reference to the underlying spec for this pool.
+  const MasterSpec &GetSpec() const { return master_spec_; }
 
  private:
   friend class ComputeSessionImplTestPoolAccessor;
@@ -76,21 +86,22 @@ class ComputeSessionPool {
   const GridPoint hyperparams_;
 
   // The function that is used to create ComputeSessions.
-  std::function<std::unique_ptr<ComputeSession>()> session_builder_;
+  std::function<std::unique_ptr<ComputeSession>()> session_builder_
+      GUARDED_BY(lock_);
 
   // The function passed to ComputeSessions that will be used by that session
   // to create components.
   std::function<std::unique_ptr<Component>(const string &component_name,
                                            const string &backend_type)>
-      component_builder_;
+      component_builder_ GUARDED_BY(lock_);
 
   // ComputeSessions that are not currently being used. These sessions are not
   // reset until they are requested by another thread.
-  std::vector<std::unique_ptr<ComputeSession>> sessions_;
+  std::vector<std::unique_ptr<ComputeSession>> sessions_ GUARDED_BY(lock_);
 
   // Count of the number of unique ComputeSession objects that have been
   // created. Used to assign IDs to new Sessions.
-  int num_unique_sessions_;
+  int num_unique_sessions_ GUARDED_BY(lock_);
 
   // Mutex that protects accesses to all members of this object.
   tensorflow::mutex lock_;
@@ -99,4 +110,4 @@ class ComputeSessionPool {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
+#endif  // DRAGNN_CORE_COMPUTE_SESSION_POOL_H_

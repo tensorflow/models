@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INDEX_TRANSLATOR_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INDEX_TRANSLATOR_H_
+#ifndef DRAGNN_CORE_INDEX_TRANSLATOR_H_
+#define DRAGNN_CORE_INDEX_TRANSLATOR_H_
 
 #include <memory>
 #include <vector>
@@ -80,4 +80,4 @@ class IndexTranslator {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INDEX_TRANSLATOR_H_
+#endif  // DRAGNN_CORE_INDEX_TRANSLATOR_H_

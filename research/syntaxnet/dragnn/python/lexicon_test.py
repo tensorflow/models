@@ -27,14 +27,7 @@ from dragnn.python import lexicon
 
 from syntaxnet import parser_trainer
 from syntaxnet import task_spec_pb2
-
-import syntaxnet.load_parser_ops
-
-FLAGS = tf.app.flags.FLAGS
-if not hasattr(FLAGS, 'test_srcdir'):
-  FLAGS.test_srcdir = ''
-if not hasattr(FLAGS, 'test_tmpdir'):
-  FLAGS.test_tmpdir = tf.test.get_temp_dir()
+from syntaxnet import test_flags
 
 
 _EXPECTED_CONTEXT = r"""
@@ -48,6 +41,7 @@ input { name: "char-ngram-map" Part { file_pattern: "/tmp/char-ngram-map" } }
 input { name: "label-map" Part { file_pattern: "/tmp/label-map" } }
 input { name: "prefix-table" Part { file_pattern: "/tmp/prefix-table" } }
 input { name: "suffix-table" Part { file_pattern: "/tmp/suffix-table" } }
+input { name: "known-word-map" Part { file_pattern: "/tmp/known-word-map" } }
 """
 
 
@@ -60,8 +54,8 @@ class LexiconTest(tf.test.TestCase):
         lexicon.create_lexicon_context('/tmp'), expected_context)
 
   def testBuildLexicon(self):
-    empty_input_path = os.path.join(FLAGS.test_tmpdir, 'empty-input')
-    lexicon_output_path = os.path.join(FLAGS.test_tmpdir, 'lexicon-output')
+    empty_input_path = os.path.join(test_flags.temp_dir(), 'empty-input')
+    lexicon_output_path = os.path.join(test_flags.temp_dir(), 'lexicon-output')
 
     with open(empty_input_path, 'w'):
       pass

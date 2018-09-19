@@ -12,30 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for feature_io, the python interface of DelfFeatures."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from delf import feature_io
-from delf import datum_pb2
-import numpy as np
 import os
+
+import numpy as np
 import tensorflow as tf
+
+from delf import feature_io
 
 
 def create_data():
   """Creates data to be used in tests.
-    Returns:
-      locations: [N, 2] float array which denotes the selected keypoint
-        locations. N is the number of features.
-      scales: [N] float array with feature scales.
-      descriptors: [N, depth] float array with DELF descriptors.
-      attention: [N] float array with attention scores.
-      orientations: [N] float array with orientations.
-    """
+
+  Returns:
+    locations: [N, 2] float array which denotes the selected keypoint
+      locations. N is the number of features.
+    scales: [N] float array with feature scales.
+    descriptors: [N, depth] float array with DELF descriptors.
+    attention: [N] float array with attention scores.
+    orientations: [N] float array with orientations.
+  """
   locations = np.arange(8, dtype=np.float32).reshape(4, 2)
   scales = np.arange(4, dtype=np.float32)
   attention = np.arange(4, dtype=np.float32)

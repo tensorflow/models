@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """An optimizer that switches between several methods."""
+import functools
+
 
 import tensorflow as tf
 from tensorflow.python.training import optimizer
@@ -28,7 +29,7 @@ class CompositeOptimizer(optimizer.Optimizer):
                optimizer2,
                switch,
                use_locking=False,
-               name='Composite'):
+               name="Composite"):
     """Construct a new Composite optimizer.
 
     Args:
@@ -47,24 +48,20 @@ class CompositeOptimizer(optimizer.Optimizer):
     self._switch = switch
 
   def apply_gradients(self, grads_and_vars, global_step=None, name=None):
-
-    return tf.cond(
-        self._switch,
-        lambda: self._optimizer1.apply_gradients(grads_and_vars,
-                                                 global_step, name),
-        lambda: self._optimizer2.apply_gradients(grads_and_vars,
-                                                 global_step, name)
-    )
-
+    return tf.cond(self._switch,
+                   functools.partial(self._optimizer1.apply_gradients,
+                                     grads_and_vars, global_step, name),
+                   functools.partial(self._optimizer2.apply_gradients,
+                                     grads_and_vars, global_step, name))
 
   def get_slot(self, var, name):
-    slot1 = self._optimizer1.get_slot(var, name)
-    slot2 = self._optimizer2.get_slot(var, name)
-    if slot1 and slot2:
-      raise LookupError('Slot named %s for variable %s populated for both '
-                        'optimizers' % (name, var.name))
-    return slot1 or slot2
+    if name.startswith("c1-"):
+      return self._optimizer1.get_slot(var, name[3:])
+    else:
+      return self._optimizer2.get_slot(var, name[3:])
 
   def get_slot_names(self):
-    return sorted(self._optimizer1.get_slot_names() +
-                  self._optimizer2.get_slot_names())
+    opt1_names = self._optimizer1.get_slot_names()
+    opt2_names = self._optimizer2.get_slot_names()
+    return sorted(["c1-{}".format(name) for name in opt1_names] +
+                  ["c2-{}".format(name) for name in opt2_names])

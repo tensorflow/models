@@ -95,6 +95,9 @@ class FasterRCNNResnetV1FeatureExtractor(
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      activations: A dictionary mapping feature extractor tensor names to
+        tensors
+
     Raises:
       InvalidArgumentError: If the spatial size of `preprocessed_inputs`
         (height or width) is less than 33.
@@ -111,7 +114,8 @@ class FasterRCNNResnetV1FeatureExtractor(
 
     with tf.control_dependencies([shape_assert]):
       # Disables batchnorm for fine-tuning with smaller batch sizes.
-      # TODO: Figure out if it is needed when image batch size is bigger.
+      # TODO(chensun): Figure out if it is needed when image
+      # batch size is bigger.
       with slim.arg_scope(
           resnet_utils.resnet_arg_scope(
               batch_norm_epsilon=1e-5,
@@ -129,7 +133,7 @@ class FasterRCNNResnetV1FeatureExtractor(
               scope=var_scope)
 
     handle = scope + '/%s/block3' % self._architecture
-    return activations[handle]
+    return activations[handle], activations
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.

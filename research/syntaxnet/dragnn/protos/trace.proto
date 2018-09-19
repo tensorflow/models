@@ -53,6 +53,8 @@ message ComponentStepTrace {
   // Set to true once the step is finished. (This allows us to open a step after
   // each transition, without having to know if it will be used.)
   optional bool step_finished = 6 [default = false];
+
+  extensions 1000 to max;
 }
 
 // The traces for all steps for a single Component.

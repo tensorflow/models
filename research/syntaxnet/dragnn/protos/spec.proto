@@ -1,4 +1,5 @@
-// DRAGNN Configuration proto. See go/dragnn-design for more information.
+// DRAGNN Configuration proto.
+
 
 syntax = "proto2";
 
@@ -16,6 +17,7 @@ message MasterSpec {
   // Whether to extract debug traces.
   optional bool debug_tracing = 4 [default = false];
 
+  extensions 1000 to max;
   reserved 2, 3, 5;
 }
 
@@ -28,8 +30,7 @@ message ComponentSpec {
   // TransitionSystem to use.
   optional RegisteredModuleSpec transition_system = 2;
 
-  // Resources that this component depends on. These are copied to TaskInputs
-  // when calling SAFT code.
+  // Resources that this component depends on.
   repeated Resource resource = 3;
 
   // Feature space configurations.
@@ -58,6 +59,8 @@ message ComponentSpec {
 
   // Default max number of active states for beam inference.
   optional int32 inference_beam_size = 12 [default = 1];
+
+  extensions 1000 to max;
 }
 
 // Super generic container for any registered sub-piece of DRAGNN.
@@ -65,14 +68,11 @@ message RegisteredModuleSpec {
   // Name of the registered class.
   optional string registered_name = 1;
 
-  // Parameters to set while initializing this system; these are copied to
-  // Parameters in a TaskSpec when calling SAFT code, or via kwargs in TF Python
-  // code.
+  // Parameters to set while initializing this system.
   map<string, string> parameters = 2;
 }
 
-// Fixed resources that will be converted into TaskInput's when calling SAFT
-// code.
+// Fixed resource.
 message Resource {
   optional string name = 1;
   repeated Part part = 2;
@@ -94,7 +94,7 @@ message Part {
 // are extracted, embedded, and then concatenated together as a group.
 
 // Specification for a feature channel that is a *fixed* function of the input.
-// NEXT_ID: 10
+// NEXT_ID: 12
 message FixedFeatureChannel {
   // Interpretable name for this feature channel. NN builders might depend on
   // this to determine how to hook different channels up internally.
@@ -130,6 +130,19 @@ message FixedFeatureChannel {
 
   // Vocab file, containing all vocabulary words one per line.
   optional Resource vocab = 8;
+
+  // Settings for feature ID dropout:
+
+  // If non-negative, enables feature ID dropout, and dropped feature IDs will
+  // be replaced with this ID.
+  optional int64 dropout_id = 10 [default = -1];
+
+  // Probability of keeping each of the |vocabulary_size| feature IDs.  Only
+  // used if |dropout_id| is non-negative, and must not be empty in that case.
+  // If this has fewer than |vocabulary_size| values, then the final value is
+  // tiled onto the remaining IDs.  For example, specifying a single value is
+  // equivalent to setting all IDs to that value.
+  repeated float dropout_keep_probability = 11 [packed = true];
 }
 
 // Specification for a feature channel that *links* to component
@@ -174,10 +187,16 @@ message TrainingGridSpec {
 }
 
 // A hyperparameter configuration for a training run.
-// NEXT ID: 22
+// NEXT ID: 23
 message GridPoint {
   // Global learning rate initialization point.
   optional double learning_rate = 1 [default = 0.1];
+
+  // Whether to use PBT (population-based training) to optimize the learning
+  // rate. Population-based training is not currently open-source, so this will
+  // just create a tf.assign op which external frameworks can use to adjust the
+  // learning rate.
+  optional bool pbt_optimize_learning_rate = 22 [default = false];
 
   // Momentum coefficient when using MomentumOptimizer.
   optional double momentum = 2 [default = 0.9];
@@ -218,6 +237,9 @@ message GridPoint {
   optional double gradient_clip_norm = 11 [default = 0.0];
 
   // A spec for using multiple optimization methods.
+  //
+  // This is not guaranteed to work for recursively-defined composite
+  // optimizers.
   message CompositeOptimizerSpec {
     // First optimizer.
     optional GridPoint method1 = 1;
@@ -227,6 +249,11 @@ message GridPoint {
 
     // After this number of steps, switch from first to second.
     optional int32 switch_after_steps = 3;
+
+    // Whether to reset the learning rate (which normally decays) after
+    // switching optimizers. Limitations: It will only reset to the initial
+    // learning rate, and won't work for recursively-defined optimizers.
+    optional bool reset_learning_rate = 4 [default = false];
   }
   optional CompositeOptimizerSpec composite_optimizer_spec = 12;
 
@@ -247,6 +274,7 @@ message GridPoint {
   // place. Typically a single component.
   optional string self_norm_components_filter = 21;
 
+  extensions 1000 to max;
   reserved 5, 6;
 }
 

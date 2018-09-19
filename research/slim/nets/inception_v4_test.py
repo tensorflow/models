@@ -127,7 +127,7 @@ class InceptionTest(tf.test.TestCase):
         'Mixed_6e', 'Mixed_6f', 'Mixed_6g', 'Mixed_6h', 'Mixed_7a',
         'Mixed_7b', 'Mixed_7c', 'Mixed_7d']
     self.assertItemsEqual(end_points.keys(), expected_endpoints)
-    for name, op in end_points.iteritems():
+    for name, op in end_points.items():
       self.assertTrue(op.name.startswith('InceptionV4/' + name))
 
   def testBuildOnlyUpToFinalEndpoint(self):
@@ -146,7 +146,7 @@ class InceptionTest(tf.test.TestCase):
             inputs, final_endpoint=endpoint)
         self.assertTrue(out_tensor.op.name.startswith(
             'InceptionV4/' + endpoint))
-        self.assertItemsEqual(all_endpoints[:index+1], end_points)
+        self.assertItemsEqual(all_endpoints[:index+1], end_points.keys())
 
   def testVariablesSetDevice(self):
     batch_size = 5
@@ -177,8 +177,8 @@ class InceptionTest(tf.test.TestCase):
                          [batch_size, 3, 3, 1536])
 
   def testGlobalPool(self):
-    batch_size = 2
-    height, width = 400, 600
+    batch_size = 1
+    height, width = 350, 400
     num_classes = 1000
     inputs = tf.random_uniform((batch_size, height, width, 3))
     logits, end_points = inception.inception_v4(inputs, num_classes)
@@ -187,11 +187,11 @@ class InceptionTest(tf.test.TestCase):
                          [batch_size, num_classes])
     pre_pool = end_points['Mixed_7d']
     self.assertListEqual(pre_pool.get_shape().as_list(),
-                         [batch_size, 11, 17, 1536])
+                         [batch_size, 9, 11, 1536])
 
   def testGlobalPoolUnknownImageShape(self):
-    batch_size = 2
-    height, width = 400, 600
+    batch_size = 1
+    height, width = 350, 400
     num_classes = 1000
     with self.test_session() as sess:
       inputs = tf.placeholder(tf.float32, (batch_size, None, None, 3))
@@ -206,7 +206,7 @@ class InceptionTest(tf.test.TestCase):
       logits_out, pre_pool_out = sess.run([logits, pre_pool],
                                           {inputs: images.eval()})
       self.assertTupleEqual(logits_out.shape, (batch_size, num_classes))
-      self.assertTupleEqual(pre_pool_out.shape, (batch_size, 11, 17, 1536))
+      self.assertTupleEqual(pre_pool_out.shape, (batch_size, 9, 11, 1536))
 
   def testUnknownBatchSize(self):
     batch_size = 1

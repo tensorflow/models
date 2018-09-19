@@ -12,10 +12,6 @@ component {
       value: "en"
     }
     parameters {
-      key: "neurosis_feature_syntax_version"
-      value: "2"
-    }
-    parameters {
       key: "parser_skip_deterministic"
       value: "false"
     }

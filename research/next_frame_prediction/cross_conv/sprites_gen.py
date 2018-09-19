@@ -21,6 +21,7 @@ import sys
 
 import numpy as np
 import scipy.misc
+from six.moves import xrange
 import tensorflow as tf
 
 

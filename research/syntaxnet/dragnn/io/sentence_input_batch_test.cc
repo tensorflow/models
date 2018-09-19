@@ -49,6 +49,9 @@ TEST(SentenceInputBatchTest, ConvertsFromStringifiedProtos) {
     EXPECT_NE(converted_data->at(i).workspace(), nullptr);
   }
 
+  // Check the batch size.
+  EXPECT_EQ(strings.size(), set.GetSize());
+
   // Get the data back out. The strings should be identical.
   auto output = set.GetSerializedData();
   EXPECT_EQ(output.size(), strings.size());

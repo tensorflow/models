@@ -30,7 +30,9 @@ from nets import overfeat
 from nets import resnet_v1
 from nets import resnet_v2
 from nets import vgg
+from nets.mobilenet import mobilenet_v2
 from nets.nasnet import nasnet
+from nets.nasnet import pnasnet
 
 slim = tf.contrib.slim
 
@@ -58,9 +60,14 @@ networks_map = {'alexnet_v2': alexnet.alexnet_v2,
                 'mobilenet_v1_075': mobilenet_v1.mobilenet_v1_075,
                 'mobilenet_v1_050': mobilenet_v1.mobilenet_v1_050,
                 'mobilenet_v1_025': mobilenet_v1.mobilenet_v1_025,
+                'mobilenet_v2': mobilenet_v2.mobilenet,
+                'mobilenet_v2_140': mobilenet_v2.mobilenet_v2_140,
+                'mobilenet_v2_035': mobilenet_v2.mobilenet_v2_035,
                 'nasnet_cifar': nasnet.build_nasnet_cifar,
                 'nasnet_mobile': nasnet.build_nasnet_mobile,
                 'nasnet_large': nasnet.build_nasnet_large,
+                'pnasnet_large': pnasnet.build_pnasnet_large,
+                'pnasnet_mobile': pnasnet.build_pnasnet_mobile,
                }
 
 arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
@@ -88,9 +95,14 @@ arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
                   'mobilenet_v1_075': mobilenet_v1.mobilenet_v1_arg_scope,
                   'mobilenet_v1_050': mobilenet_v1.mobilenet_v1_arg_scope,
                   'mobilenet_v1_025': mobilenet_v1.mobilenet_v1_arg_scope,
+                  'mobilenet_v2': mobilenet_v2.training_scope,
+                  'mobilenet_v2_035': mobilenet_v2.training_scope,
+                  'mobilenet_v2_140': mobilenet_v2.training_scope,
                   'nasnet_cifar': nasnet.nasnet_cifar_arg_scope,
                   'nasnet_mobile': nasnet.nasnet_mobile_arg_scope,
                   'nasnet_large': nasnet.nasnet_large_arg_scope,
+                  'pnasnet_large': pnasnet.pnasnet_large_arg_scope,
+                  'pnasnet_mobile': pnasnet.pnasnet_mobile_arg_scope,
                  }
 
 

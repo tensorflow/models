@@ -16,16 +16,16 @@ Cryptography"](https://arxiv.org/abs/1610.06918).
 > encryption and decryption, and also how to apply these operations
 > selectively in order to meet confidentiality goals.
 
-This code allows you to train an encoder/decoder/adversary triplet
+This code allows you to train encoder/decoder/adversary network triplets
 and evaluate their effectiveness on randomly generated input and key
 pairs.
 
 ## Prerequisites
 
 The only software requirements for running the encoder and decoder is having
-Tensorflow installed.
+TensorFlow installed.
 
-Requires Tensorflow r0.12 or later.
+Requires TensorFlow r0.12 or later.
 
 ## Training and evaluating
 
@@ -49,8 +49,8 @@ of two.  In the version in the paper, there was a nonlinear unit
 after the fully-connected layer;  that nonlinear has been removed
 here.  These changes improve the robustness of training.  The
 initializer for the convolution layers has switched to the
-tf.contrib.layers default of xavier_initializer instead of
-a simpler truncated_normal.
+`tf.contrib.layers default` of `xavier_initializer` instead of
+a simpler `truncated_normal`.
 
 ## Contact information
 

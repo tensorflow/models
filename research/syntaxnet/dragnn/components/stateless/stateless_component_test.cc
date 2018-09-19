@@ -18,6 +18,7 @@
 #include "dragnn/core/test/generic.h"
 #include "dragnn/core/test/mock_transition_state.h"
 #include "dragnn/io/sentence_input_batch.h"
+#include "dragnn/protos/data.pb.h"
 #include "syntaxnet/base.h"
 #include "syntaxnet/sentence.pb.h"
 #include "tensorflow/core/lib/core/errors.h"
@@ -119,6 +120,10 @@ class StatelessComponentTest : public ::testing::Test {
     CHECK(TextFormat::ParseFromString(kMasterSpec, &master_spec));
     data_.reset(new InputBatchCache(data));
 
+    // The stateless component does not use any particular input batch type, and
+    // relies on the preceding components to convert the input batch.
+    data_->GetAs<SentenceInputBatch>();
+
     // Create a parser component with the specified beam size.
     std::unique_ptr<Component> parser_component(
         Component::Create("StatelessComponent"));
@@ -165,6 +170,38 @@ TEST_F(StatelessComponentTest, ForwardsTransitionStates) {
 
   const auto forwarded_states = test_parser->GetBeam();
   EXPECT_EQ(parent_states, forwarded_states);
+}
+
+TEST_F(StatelessComponentTest, UnimplementedMethodsDie) {
+  MockTransitionState mock_state_1, mock_state_2, mock_state_3;
+  const std::vector<std::vector<const TransitionState *>> parent_states;
+  std::vector<string> data;
+  for (const string &textproto : {kSentence0, kSentence1, kLongSentence}) {
+    Sentence sentence;
+    CHECK(TextFormat::ParseFromString(textproto, &sentence));
+    data.emplace_back();
+    CHECK(sentence.SerializeToString(&data.back()));
+  }
+
+  const int kBeamSize = 2;
+  auto test_parser = CreateParser(kBeamSize, parent_states, data);
+
+  EXPECT_TRUE(test_parser->IsReady());
+  EXPECT_DEATH(test_parser->AdvanceFromPrediction({}, 0, 0),
+               "AdvanceFromPrediction not supported");
+  EXPECT_DEATH(test_parser->AdvanceFromOracle(),
+               "AdvanceFromOracle not supported");
+  EXPECT_DEATH(test_parser->GetOracleLabels(), "Method not supported");
+  EXPECT_DEATH(test_parser->GetFixedFeatures(nullptr, nullptr, nullptr, 0),
+               "Method not supported");
+  BulkFeatureExtractor extractor(nullptr, nullptr, nullptr);
+  EXPECT_DEATH(test_parser->BulkEmbedFixedFeatures(0, 0, 0, {nullptr}, nullptr),
+               "Method not supported");
+  EXPECT_DEATH(test_parser->BulkGetFixedFeatures(extractor),
+               "Method not supported");
+  EXPECT_DEATH(test_parser->GetRawLinkFeatures(0), "Method not supported");
+  EXPECT_DEATH(test_parser->AddTranslatedLinkFeaturesToTrace({}, 0),
+               "Method not supported");
 }
 
 }  // namespace dragnn

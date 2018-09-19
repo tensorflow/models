@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_COMPONENT_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_COMPONENT_H_
+#ifndef DRAGNN_CORE_TEST_MOCK_COMPONENT_H_
+#define DRAGNN_CORE_TEST_MOCK_COMPONENT_H_
 
 #include <gmock/gmock.h>
 
@@ -22,6 +22,7 @@
 #include "dragnn/core/index_translator.h"
 #include "dragnn/core/interfaces/component.h"
 #include "dragnn/core/interfaces/transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "dragnn/protos/spec.pb.h"
 #include "syntaxnet/base.h"
@@ -47,8 +48,8 @@ class MockComponent : public Component {
   MOCK_CONST_METHOD3(GetBeamIndexAtStep,
                      int(int step, int current_index, int batch));
   MOCK_CONST_METHOD2(GetSourceBeamIndex, int(int current_index, int batch));
-  MOCK_METHOD2(AdvanceFromPrediction,
-               void(const float transition_matrix[], int matrix_length));
+  MOCK_METHOD3(AdvanceFromPrediction, bool(const float *transition_matrix,
+                                           int num_items, int num_actions));
   MOCK_METHOD0(AdvanceFromOracle, void());
   MOCK_CONST_METHOD0(IsTerminal, bool());
   MOCK_METHOD0(GetBeam, std::vector<std::vector<const TransitionState *>>());
@@ -59,9 +60,20 @@ class MockComponent : public Component {
                          int channel_id));
   MOCK_METHOD1(BulkGetFixedFeatures,
                int(const BulkFeatureExtractor &extractor));
+  MOCK_METHOD5(BulkEmbedFixedFeatures,
+               void(int batch_size_padding, int num_steps_padding,
+                    int output_array_size,
+                    const vector<const float *> &per_channel_embeddings,
+                    float *embedding_output));
+  MOCK_METHOD5(BulkEmbedDenseFixedFeatures,
+               void(const vector<const float *> &per_channel_embeddings,
+                    float *embedding_output, int embedding_output_size,
+                    int32 *offset_array_output, int offset_array_size));
+  MOCK_CONST_METHOD0(BulkDenseFeatureSize, int());
   MOCK_CONST_METHOD1(GetRawLinkFeatures,
                      std::vector<LinkFeatures>(int channel_id));
-  MOCK_CONST_METHOD0(GetOracleLabels, std::vector<std::vector<int>>());
+  MOCK_CONST_METHOD0(GetOracleLabels,
+                     std::vector<std::vector<std::vector<Label>>>());
   MOCK_METHOD0(ResetComponent, void());
   MOCK_METHOD1(GetStepLookupFunction,
                std::function<int(int, int, int)>(const string &method));
@@ -75,4 +87,4 @@ class MockComponent : public Component {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_COMPONENT_H_
+#endif  // DRAGNN_CORE_TEST_MOCK_COMPONENT_H_

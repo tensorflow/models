@@ -20,33 +20,26 @@
 import os.path
 import tensorflow as tf
 
-from tensorflow.python.framework import test_util
 from tensorflow.python.ops import variables
-from tensorflow.python.platform import googletest
 
 from syntaxnet import graph_builder
 from syntaxnet import sparse_pb2
+from syntaxnet import test_flags
 from syntaxnet.ops import gen_parser_ops
 
-FLAGS = tf.app.flags.FLAGS
-if not hasattr(FLAGS, 'test_srcdir'):
-  FLAGS.test_srcdir = ''
-if not hasattr(FLAGS, 'test_tmpdir'):
-  FLAGS.test_tmpdir = tf.test.get_temp_dir()
 
-
-class GraphBuilderTest(test_util.TensorFlowTestCase):
+class GraphBuilderTest(tf.test.TestCase):
 
   def setUp(self):
     # Creates a task context with the correct testing paths.
-    initial_task_context = os.path.join(FLAGS.test_srcdir,
+    initial_task_context = os.path.join(test_flags.source_root(),
                                         'syntaxnet/'
                                         'testdata/context.pbtxt')
-    self._task_context = os.path.join(FLAGS.test_tmpdir, 'context.pbtxt')
+    self._task_context = os.path.join(test_flags.temp_dir(), 'context.pbtxt')
     with open(initial_task_context, 'r') as fin:
       with open(self._task_context, 'w') as fout:
-        fout.write(fin.read().replace('SRCDIR', FLAGS.test_srcdir)
-                   .replace('OUTPATH', FLAGS.test_tmpdir))
+        fout.write(fin.read().replace('SRCDIR', test_flags.source_root())
+                   .replace('OUTPATH', test_flags.temp_dir()))
 
     # Creates necessary term maps.
     with self.test_session() as sess:
@@ -320,4 +313,4 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
 
 
 if __name__ == '__main__':
-  googletest.main()
+  tf.test.main()

@@ -17,8 +17,10 @@ limitations under the License.
 
 #include <string>
 
+#include "syntaxnet/generic_features.h"
 #include "syntaxnet/registry.h"
 #include "syntaxnet/sentence_features.h"
+#include "syntaxnet/whole_sentence_features.h"
 #include "syntaxnet/workspace.h"
 
 namespace syntaxnet {
@@ -329,22 +331,8 @@ class LastActionFeatureFunction : public ParserFeatureFunction {
 
 REGISTER_PARSER_FEATURE_FUNCTION("last-action", LastActionFeatureFunction);
 
-class Constant : public ParserFeatureFunction {
- public:
-  void Init(TaskContext *context) override {
-    value_ = this->GetIntParameter("value", 0);
-    this->set_feature_type(new NumericFeatureType(this->name(), value_ + 1));
-  }
-
-  // Returns the constant's value.
-  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
-                       const FeatureVector *result) const override {
-    return value_;
-  }
- private:
-  int value_ = 0;
-};
-
-REGISTER_PARSER_FEATURE_FUNCTION("constant", Constant);
+// Register the generic parser features.
+typedef GenericFeatures<ParserState> GenericParserFeature;
+REGISTER_SYNTAXNET_GENERIC_FEATURES(GenericParserFeature);
 
 }  // namespace syntaxnet

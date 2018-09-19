@@ -23,6 +23,7 @@ from string import maketrans
 
 import nn_ops
 import shapes
+from six.moves import xrange
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 

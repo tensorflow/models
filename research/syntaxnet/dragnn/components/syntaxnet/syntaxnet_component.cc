@@ -22,19 +22,20 @@
 #include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/component.h"
 #include "dragnn/core/interfaces/transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/io/sentence_input_batch.h"
 #include "dragnn/io/syntaxnet_sentence.h"
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/sparse.pb.h"
 #include "syntaxnet/task_spec.pb.h"
 #include "syntaxnet/utils.h"
+#include "tensorflow/core/lib/strings/str_util.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/logging.h"
+#include "util/utf8/unicodetext.h"
 
 namespace syntaxnet {
 namespace dragnn {
-
-using tensorflow::strings::StrCat;
-
 namespace {
 
 // Returns a new step in a trace based on a ComponentSpec.
@@ -102,10 +103,10 @@ void SyntaxNetComponent::InitializeComponent(const ComponentSpec &spec) {
     names.push_back(channel.name());
     fml.push_back(channel.fml());
     predicate_maps.push_back(channel.predicate_map());
-    dims.push_back(StrCat(channel.embedding_dim()));
+    dims.push_back(tensorflow::strings::StrCat(channel.embedding_dim()));
   }
 
-  context.SetParameter("neurosis_feature_syntax_version", "2");
+
   context.SetParameter("brain_parser_embedding_dims", utils::Join(dims, ";"));
   context.SetParameter("brain_parser_predicate_maps",
                        utils::Join(predicate_maps, ";"));
@@ -124,7 +125,7 @@ void SyntaxNetComponent::InitializeComponent(const ComponentSpec &spec) {
   for (const LinkedFeatureChannel &channel : spec.linked_feature()) {
     names.push_back(channel.name());
     fml.push_back(channel.fml());
-    dims.push_back(StrCat(channel.embedding_dim()));
+    dims.push_back(tensorflow::strings::StrCat(channel.embedding_dim()));
     source_components.push_back(channel.source_component());
     source_layers.push_back(channel.source_layer());
     source_translators.push_back(channel.source_translator());
@@ -187,8 +188,9 @@ std::unique_ptr<Beam<SyntaxNetTransitionState>> SyntaxNetComponent::CreateBeam(
     return this->IsFinal(state);
   };
   auto oracle_function = [this](SyntaxNetTransitionState *state) {
-    VLOG(2) << "oracle_function action:" << this->GetOracleLabel(state);
-    return this->GetOracleLabel(state);
+    VLOG(2) << "oracle_function action:"
+            << tensorflow::str_util::Join(this->GetOracleVector(state), ", ");
+    return this->GetOracleVector(state);
   };
   auto beam_ptr = beam.get();
   auto advance_function = [this, beam_ptr](SyntaxNetTransitionState *state,
@@ -330,30 +332,53 @@ std::function<int(int, int, int)> SyntaxNetComponent::GetStepLookupFunction(
         return -1;
       }
     };
+  } else if (method == "reverse-char") {
+    // Reverses the character-level index.
+    return [this](int batch_index, int beam_index, int value) {
+      SyntaxNetTransitionState *state =
+          batch_.at(batch_index)->beam_state(beam_index);
+      const auto *sentence = state->sentence()->sentence();
+      const string &text = sentence->text();
+      const int start_byte = sentence->token(0).start();
+      const int end_byte = sentence->token(sentence->token_size() - 1).end();
+      UnicodeText unicode;
+      unicode.PointToUTF8(text.data() + start_byte, end_byte - start_byte + 1);
+      const int num_chars = distance(unicode.begin(), unicode.end());
+      const int result = num_chars - value - 1;
+      if (result >= 0 && result < num_chars) return result;
+      return -1;
+    };
   } else {
     LOG(FATAL) << "Unable to find step lookup function " << method;
   }
 }
 
-void SyntaxNetComponent::AdvanceFromPrediction(const float transition_matrix[],
-                                               int transition_matrix_length) {
-  VLOG(2) << "Advancing from prediction.";
-  int matrix_index = 0;
-  int num_labels = transition_system_->NumActions(label_map_->Size());
-  for (int i = 0; i < batch_.size(); ++i) {
-    int max_beam_size = batch_.at(i)->max_size();
-    int matrix_size = num_labels * max_beam_size;
-    CHECK_LE(matrix_index + matrix_size, transition_matrix_length);
-    if (!batch_.at(i)->IsTerminal()) {
-      batch_.at(i)->AdvanceFromPrediction(&transition_matrix[matrix_index],
-                                          matrix_size, num_labels);
-    }
-    matrix_index += num_labels * max_beam_size;
+bool SyntaxNetComponent::AdvanceFromPrediction(const float *transition_matrix,
+                                               int num_items, int num_actions) {
+  VLOG(2) << "Advancing from prediction, component = " << spec_.name();
+  const int num_static_actions =
+      transition_system_->NumActions(label_map_->Size());
+  if (num_static_actions != ParserTransitionSystem::kDynamicNumActions) {
+    CHECK_EQ(num_static_actions, num_actions)
+        << "[" << spec_.name()
+        << "] static action set does not match transition matrix";
   }
+  for (int i = 0; i < batch_.size(); ++i) {
+    const int size = num_actions * batch_[i]->max_size();
+    if (!batch_[i]->IsTerminal()) {
+      bool success = batch_[i]->AdvanceFromPrediction(transition_matrix, size,
+                                                      num_actions);
+      if (!success) {
+        return false;
+      }
+    }
+    transition_matrix += size;
+  }
+  return true;
 }
 
 void SyntaxNetComponent::AdvanceFromOracle() {
-  VLOG(2) << "Advancing from oracle.";
+  VLOG(2) << "Advancing from oracle, component = " << spec_.name();
   for (auto &beam : batch_) {
     beam->AdvanceFromOracle();
   }
@@ -404,8 +429,18 @@ int SyntaxNetComponent::GetFixedFeatures(
         features.emplace_back(f);
         if (do_tracing_) {
           FixedFeatures fixed_features;
-          for (const string &name : f.description()) {
-            fixed_features.add_value_name(name);
+          CHECK_EQ(f.description_size(), f.id_size());
+          CHECK(f.weight_size() == 0 || f.weight_size() == f.id_size());
+          const bool has_weights = f.weight_size() != 0;
+          for (int i = 0; i < f.description_size(); ++i) {
+            if (has_weights) {
+              fixed_features.add_value_name(tensorflow::strings::StrCat(
+                  "id: ", f.id(i), " name: ", f.description(i),
+                  " weight: ", f.weight(i)));
+            } else {
+              fixed_features.add_value_name(tensorflow::strings::StrCat(
+                  "id: ", f.id(i), " name: ", f.description(i)));
+            }
           }
           fixed_features.set_feature_name("");
           auto *trace = GetLastStepInTrace(state->mutable_trace());
@@ -522,8 +557,8 @@ int SyntaxNetComponent::BulkGetFixedFeatures(
   // This would be a good place to add threading.
   for (int channel_id = 0; channel_id < num_channels; ++channel_id) {
     int feature_count = feature_counts[channel_id];
-    LOG(INFO) << "Feature count is " << feature_count << " for channel "
-              << channel_id;
+    VLOG(2) << "Feature count is " << feature_count << " for channel "
+            << channel_id;
     int32 *indices_tensor =
         extractor.AllocateIndexMemory(channel_id, feature_count);
     int64 *ids_tensor = extractor.AllocateIdMemory(channel_id, feature_count);
@@ -596,14 +631,19 @@ std::vector<LinkFeatures> SyntaxNetComponent::GetRawLinkFeatures(
   return features;
 }
 
-std::vector<std::vector<int>> SyntaxNetComponent::GetOracleLabels() const {
-  std::vector<std::vector<int>> oracle_labels;
-  for (const auto &beam : batch_) {
-    oracle_labels.emplace_back();
+std::vector<std::vector<std::vector<Label>>>
+SyntaxNetComponent::GetOracleLabels() const {
+  std::vector<std::vector<std::vector<Label>>> oracle_labels(batch_.size());
+  for (int batch_idx = 0; batch_idx < batch_.size(); ++batch_idx) {
+    const auto &beam = batch_[batch_idx];
+    std::vector<std::vector<Label>> &output_beam = oracle_labels[batch_idx];
     for (int beam_idx = 0; beam_idx < beam->size(); ++beam_idx) {
       // Get the raw link features from the linked feature extractor.
       auto state = beam->beam_state(beam_idx);
-      oracle_labels.back().push_back(GetOracleLabel(state));
+
+      // Arbitrarily choose the first vector element.
+      output_beam.emplace_back();
+      output_beam.back().emplace_back(GetOracleVector(state).front());
     }
   }
   return oracle_labels;
@@ -661,13 +701,17 @@ bool SyntaxNetComponent::IsFinal(SyntaxNetTransitionState *state) const {
   return transition_system_->IsFinalState(*(state->parser_state()));
 }
 
-int SyntaxNetComponent::GetOracleLabel(SyntaxNetTransitionState *state) const {
+std::vector<int> SyntaxNetComponent::GetOracleVector(
+    SyntaxNetTransitionState *state) const {
   if (IsFinal(state)) {
     // It is not permitted to request an oracle label from a sentence that is
     // in a final state.
-    return -1;
+    return {-1};
   } else {
-    return transition_system_->GetNextGoldAction(*(state->parser_state()));
+    // TODO(googleuser): This should use the 'ParserAction' typedef.
+    std::vector<int> golds;
+    transition_system_->GetAllNextGoldActions(*(state->parser_state()), &golds);
+    return golds;
   }
 }
 

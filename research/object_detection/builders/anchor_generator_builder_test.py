@@ -15,11 +15,14 @@
 
 """Tests for anchor_generator_builder."""
 
+import math
+
 import tensorflow as tf
 
 from google.protobuf import text_format
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.anchor_generators import multiple_grid_anchor_generator
+from object_detection.anchor_generators import multiscale_grid_anchor_generator
 from object_detection.builders import anchor_generator_builder
 from object_detection.protos import anchor_generator_pb2
 
@@ -116,7 +119,52 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
       base_anchor_size = sess.run(anchor_generator_object._base_anchor_size)
     self.assertAllClose(base_anchor_size, [1.0, 1.0])
 
-  def test_build_ssd_anchor_generator_withoud_reduced_boxes(self):
+  def test_build_ssd_anchor_generator_with_custom_scales(self):
+    anchor_generator_text_proto = """
+      ssd_anchor_generator {
+        aspect_ratios: [1.0]
+        scales: [0.1, 0.15, 0.2, 0.4, 0.6, 0.8]
+        reduce_boxes_in_lowest_layer: false
+      }
+    """
+    anchor_generator_proto = anchor_generator_pb2.AnchorGenerator()
+    text_format.Merge(anchor_generator_text_proto, anchor_generator_proto)
+    anchor_generator_object = anchor_generator_builder.build(
+        anchor_generator_proto)
+    self.assertTrue(isinstance(anchor_generator_object,
+                               multiple_grid_anchor_generator.
+                               MultipleGridAnchorGenerator))
+    for actual_scales, expected_scales in zip(
+        list(anchor_generator_object._scales),
+        [(0.1, math.sqrt(0.1 * 0.15)),
+         (0.15, math.sqrt(0.15 * 0.2)),
+         (0.2, math.sqrt(0.2 * 0.4)),
+         (0.4, math.sqrt(0.4 * 0.6)),
+         (0.6, math.sqrt(0.6 * 0.8)),
+         (0.8, math.sqrt(0.8 * 1.0))]):
+      self.assert_almost_list_equal(expected_scales, actual_scales, delta=1e-2)
+
+  def test_build_ssd_anchor_generator_with_custom_interpolated_scale(self):
+    anchor_generator_text_proto = """
+      ssd_anchor_generator {
+        aspect_ratios: [0.5]
+        interpolated_scale_aspect_ratio: 0.5
+        reduce_boxes_in_lowest_layer: false
+      }
+    """
+    anchor_generator_proto = anchor_generator_pb2.AnchorGenerator()
+    text_format.Merge(anchor_generator_text_proto, anchor_generator_proto)
+    anchor_generator_object = anchor_generator_builder.build(
+        anchor_generator_proto)
+    self.assertTrue(isinstance(anchor_generator_object,
+                               multiple_grid_anchor_generator.
+                               MultipleGridAnchorGenerator))
+    for actual_aspect_ratio, expected_aspect_ratio in zip(
+        list(anchor_generator_object._aspect_ratios),
+        6 * [(0.5, 0.5)]):
+      self.assert_almost_list_equal(expected_aspect_ratio, actual_aspect_ratio)
+
+  def test_build_ssd_anchor_generator_without_reduced_boxes(self):
     anchor_generator_text_proto = """
       ssd_anchor_generator {
         aspect_ratios: [1.0]
@@ -157,6 +205,14 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
         min_scale: 0.3
         max_scale: 0.8
         aspect_ratios: [2.0]
+        height_stride: 16
+        height_stride: 32
+        width_stride: 20
+        width_stride: 30
+        height_offset: 8
+        height_offset: 16
+        width_offset: 0
+        width_offset: 10
       }
     """
     anchor_generator_proto = anchor_generator_pb2.AnchorGenerator()
@@ -169,13 +225,21 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
 
     for actual_scales, expected_scales in zip(
         list(anchor_generator_object._scales),
-        [(0.1, 0.3, 0.3), (0.8,)]):
+        [(0.1, 0.3, 0.3), (0.8, 0.894)]):
       self.assert_almost_list_equal(expected_scales, actual_scales, delta=1e-2)
 
     for actual_aspect_ratio, expected_aspect_ratio in zip(
         list(anchor_generator_object._aspect_ratios),
-        [(1.0, 2.0, 0.5), (2.0,)]):
+        [(1.0, 2.0, 0.5), (2.0, 1.0)]):
       self.assert_almost_list_equal(expected_aspect_ratio, actual_aspect_ratio)
+
+    for actual_strides, expected_strides in zip(
+        list(anchor_generator_object._anchor_strides), [(16, 20), (32, 30)]):
+      self.assert_almost_list_equal(expected_strides, actual_strides)
+
+    for actual_offsets, expected_offsets in zip(
+        list(anchor_generator_object._anchor_offsets), [(8, 0), (16, 10)]):
+      self.assert_almost_list_equal(expected_offsets, actual_offsets)
 
     with self.test_session() as sess:
       base_anchor_size = sess.run(anchor_generator_object._base_anchor_size)
@@ -188,6 +252,48 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
     text_format.Merge(anchor_generator_text_proto, anchor_generator_proto)
     with self.assertRaises(ValueError):
       anchor_generator_builder.build(anchor_generator_proto)
+
+  def test_build_multiscale_anchor_generator_custom_aspect_ratios(self):
+    anchor_generator_text_proto = """
+      multiscale_anchor_generator {
+        aspect_ratios: [1.0]
+      }
+    """
+    anchor_generator_proto = anchor_generator_pb2.AnchorGenerator()
+    text_format.Merge(anchor_generator_text_proto, anchor_generator_proto)
+    anchor_generator_object = anchor_generator_builder.build(
+        anchor_generator_proto)
+    self.assertTrue(isinstance(anchor_generator_object,
+                               multiscale_grid_anchor_generator.
+                               MultiscaleGridAnchorGenerator))
+    for level, anchor_grid_info in zip(
+        range(3, 8), anchor_generator_object._anchor_grid_info):
+      self.assertEqual(set(anchor_grid_info.keys()), set(['level', 'info']))
+      self.assertTrue(level, anchor_grid_info['level'])
+      self.assertEqual(len(anchor_grid_info['info']), 4)
+      self.assertAllClose(anchor_grid_info['info'][0], [2**0, 2**0.5])
+      self.assertTrue(anchor_grid_info['info'][1], 1.0)
+      self.assertAllClose(anchor_grid_info['info'][2],
+                          [4.0 * 2**level, 4.0 * 2**level])
+      self.assertAllClose(anchor_grid_info['info'][3], [2**level, 2**level])
+      self.assertTrue(anchor_generator_object._normalize_coordinates)
+
+  def test_build_multiscale_anchor_generator_with_anchors_in_pixel_coordinates(
+      self):
+    anchor_generator_text_proto = """
+      multiscale_anchor_generator {
+        aspect_ratios: [1.0]
+        normalize_coordinates: false
+      }
+    """
+    anchor_generator_proto = anchor_generator_pb2.AnchorGenerator()
+    text_format.Merge(anchor_generator_text_proto, anchor_generator_proto)
+    anchor_generator_object = anchor_generator_builder.build(
+        anchor_generator_proto)
+    self.assertTrue(isinstance(anchor_generator_object,
+                               multiscale_grid_anchor_generator.
+                               MultiscaleGridAnchorGenerator))
+    self.assertFalse(anchor_generator_object._normalize_coordinates)
 
 
 if __name__ == '__main__':

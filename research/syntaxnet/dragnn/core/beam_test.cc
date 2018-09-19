@@ -15,11 +15,15 @@
 
 #include "dragnn/core/beam.h"
 
+#include <limits>
+#include <random>
+
 #include "dragnn/core/interfaces/cloneable_transition_state.h"
 #include "dragnn/core/interfaces/transition_state.h"
 #include "dragnn/core/test/mock_transition_state.h"
 #include <gmock/gmock.h>
 #include "tensorflow/core/platform/test.h"
+#include "tensorflow/core/platform/test_benchmark.h"
 
 namespace syntaxnet {
 namespace dragnn {
@@ -43,7 +47,7 @@ namespace {
 class TestTransitionState
     : public CloneableTransitionState<TestTransitionState> {
  public:
-  TestTransitionState() {}
+  TestTransitionState() : is_gold_(false) {}
 
   void Init(const TransitionState &parent) override {}
 
@@ -52,19 +56,25 @@ class TestTransitionState
     return ptr;
   }
 
-  const int ParentBeamIndex() const override { return parent_beam_index_; }
+  int ParentBeamIndex() const override { return parent_beam_index_; }
 
-  // Get the current beam index for this state.
-  const int GetBeamIndex() const override { return beam_index_; }
+  // Gets the current beam index for this state.
+  int GetBeamIndex() const override { return beam_index_; }
 
-  // Set the current beam index for this state.
-  void SetBeamIndex(const int index) override { beam_index_ = index; }
+  // Sets the current beam index for this state.
+  void SetBeamIndex(int index) override { beam_index_ = index; }
 
-  // Get the score associated with this transition state.
-  const float GetScore() const override { return score_; }
+  // Gets the score associated with this transition state.
+  float GetScore() const override { return score_; }
 
-  // Set the score associated with this transition state.
-  void SetScore(const float score) override { score_ = score; }
+  // Sets the score associated with this transition state.
+  void SetScore(float score) override { score_ = score; }
+
+  // Gets the gold-ness of this state (whether it is on the oracle path)
+  bool IsGold() const override { return is_gold_; }
+
+  // Sets the gold-ness of this state.
+  void SetGold(bool is_gold) override { is_gold_ = is_gold; }
 
   // Depicts this state as an HTML-language string.
   string HTMLRepresentation() const override { return ""; }
@@ -76,6 +86,8 @@ class TestTransitionState
   float score_;
 
   int transition_action_;
+
+  bool is_gold_;
 };
 
 // This transition function annotates a TestTransitionState with the action that
@@ -85,17 +97,29 @@ auto transition_function = [](TestTransitionState *state, int action) {
   cast_state->transition_action_ = action;
 };
 
-// Create oracle and permission functions that do nothing.
-auto null_oracle = [](TestTransitionState *) { return 0; };
+// Creates oracle and permission functions that do nothing.
+auto null_oracle = [](TestTransitionState *) -> const vector<int> {
+  return {0};
+};
 auto null_permissions = [](TestTransitionState *, int) { return true; };
 auto null_finality = [](TestTransitionState *) { return false; };
 
-// Create a unique_ptr with a test transition state in it and set its initial
+// Creates a unique_ptr with a test transition state in it and set its initial
 // score.
 std::unique_ptr<TestTransitionState> CreateState(float score) {
   std::unique_ptr<TestTransitionState> state;
   state.reset(new TestTransitionState());
   state->SetScore(score);
+  return state;
+}
+
+// Creates a unique_ptr with a test transition state in it and set its initial
+// score. Also, set gold-ness to TRUE.
+std::unique_ptr<TestTransitionState> CreateGoldState(float score) {
+  std::unique_ptr<TestTransitionState> state;
+  state.reset(new TestTransitionState());
+  state->SetScore(score);
+  state->SetGold(true);
   return state;
 }
 
@@ -114,11 +138,51 @@ void SetParentBeamIndex(TransitionState *state, int index) {
 // *****************************************************************************
 // Tests begin here.
 // *****************************************************************************
+TEST(BeamTest, AdvancesFromPredictionWithSingleBeamReturnsFalseOnNan) {
+  // Create a matrix of transitions.
+  constexpr int kNumTransitions = 4;
+  constexpr int kMatrixSize = kNumTransitions;
+  constexpr float kNan = std::numeric_limits<double>::quiet_NaN();
+  constexpr float kTransitionMatrix[kMatrixSize] = {1.0, kNan, 2.0, 3.0};
+  constexpr float kOldScore = 3.0;
+
+  // Create the beam and transition it.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.push_back(CreateState(kOldScore));
+  constexpr int kBeamSize = 1;
+  Beam<TestTransitionState> beam(kBeamSize);
+  beam.SetFunctions(null_permissions, null_finality, transition_function,
+                    null_oracle);
+  beam.Init(std::move(states));
+  EXPECT_FALSE(beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize,
+                                          kNumTransitions));
+}
+
+TEST(BeamTest, AdvancesFromPredictionWithSingleBeamReturnsFalseOnNoneAllowed) {
+  // Create a matrix of transitions.
+  constexpr int kNumTransitions = 4;
+  constexpr int kMatrixSize = kNumTransitions;
+  constexpr float kTransitionMatrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0};
+  constexpr float kOldScore = 3.0;
+
+  // Create the beam and transition it.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.push_back(CreateState(kOldScore));
+  constexpr int kBeamSize = 1;
+  Beam<TestTransitionState> beam(kBeamSize);
+  auto empty_permissions = [](TestTransitionState *, int) { return false; };
+  beam.SetFunctions(empty_permissions, null_finality, transition_function,
+                    null_oracle);
+  beam.Init(std::move(states));
+  EXPECT_FALSE(beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize,
+                                          kNumTransitions));
+}
+
 TEST(BeamTest, AdvancesFromPredictionWithSingleBeam) {
   // Create a matrix of transitions.
   constexpr int kNumTransitions = 4;
   constexpr int kMatrixSize = kNumTransitions;
-  constexpr float matrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0};
+  constexpr float kTransitionMatrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0};
   constexpr int kBestTransition = 2;
   constexpr float kOldScore = 3.0;
 
@@ -130,7 +194,7 @@ TEST(BeamTest, AdvancesFromPredictionWithSingleBeam) {
   beam.SetFunctions(null_permissions, null_finality, transition_function,
                     null_oracle);
   beam.Init(std::move(states));
-  beam.AdvanceFromPrediction(matrix, kMatrixSize, kNumTransitions);
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
 
   // Validate the new beam.
   EXPECT_EQ(beam.beam().size(), kBeamSize);
@@ -139,7 +203,8 @@ TEST(BeamTest, AdvancesFromPredictionWithSingleBeam) {
   EXPECT_EQ(GetTransition(beam.beam().at(0)), kBestTransition);
 
   // Make sure the state has had its score updated properly.
-  EXPECT_EQ(beam.beam().at(0)->GetScore(), kOldScore + matrix[kBestTransition]);
+  EXPECT_EQ(beam.beam().at(0)->GetScore(),
+            kOldScore + kTransitionMatrix[kBestTransition]);
 
   // Make sure that the beam index field is consistent with the actual beam idx.
   EXPECT_EQ(beam.beam().at(0)->GetBeamIndex(), 0);
@@ -152,12 +217,166 @@ TEST(BeamTest, AdvancesFromPredictionWithSingleBeam) {
   EXPECT_EQ(history.at(1).at(0), 0);
 }
 
+TEST(BeamTest, NewlyCreatedStatesWithTrackingOffAreNotGold) {
+  // Create the beam.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  constexpr float kOldScore = 3.0;
+  states.push_back(CreateGoldState(kOldScore));
+  constexpr int kBeamSize = 1;
+  Beam<TestTransitionState> beam(kBeamSize);
+
+  beam.SetFunctions(null_permissions, null_finality, transition_function,
+                    null_oracle);
+
+  // SetGoldTracking is false by default.
+  beam.SetGoldTracking(false);
+  beam.Init(std::move(states));
+
+  // Validate that the beam still has a gold state in it.
+  EXPECT_FALSE(beam.ContainsGold());
+}
+
+TEST(BeamTest, AdvancesFromPredictionWithSingleBeamAndGoldTracking) {
+  // Create a matrix of transitions.
+  constexpr int kNumTransitions = 4;
+  constexpr int kMatrixSize = kNumTransitions;
+  constexpr float kTransitionMatrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0};
+  constexpr int kBestTransition = 2;
+  constexpr float kOldScore = 3.0;
+
+  // Create the beam and transition it.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.push_back(CreateGoldState(kOldScore));
+  constexpr int kBeamSize = 1;
+  Beam<TestTransitionState> beam(kBeamSize);
+
+  // Create an oracle that indicates the best transition is index 2.
+  testing::MockFunction<const vector<int>(TestTransitionState *)>
+      mock_oracle_function;
+  vector<int> oracle_labels = {1, 2};
+  EXPECT_CALL(mock_oracle_function, Call(_)).WillOnce(Return(oracle_labels));
+
+  beam.SetFunctions(null_permissions, null_finality, transition_function,
+                    mock_oracle_function.AsStdFunction());
+  beam.SetGoldTracking(true);
+  beam.Init(std::move(states));
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
+
+  // Validate the new beam.
+  EXPECT_EQ(beam.beam().size(), kBeamSize);
+
+  // Make sure the state has performed the expected transition.
+  EXPECT_EQ(GetTransition(beam.beam()[0]), kBestTransition);
+
+  // Make sure the state has had its score updated properly.
+  EXPECT_EQ(beam.beam()[0]->GetScore(),
+            kOldScore + kTransitionMatrix[kBestTransition]);
+
+  // Make sure that the beam index field is consistent with the actual beam idx.
+  EXPECT_EQ(beam.beam()[0]->GetBeamIndex(), 0);
+
+  // Make sure that the beam_state accessor actually accesses the beam.
+  EXPECT_EQ(beam.beam()[0], beam.beam_state(0));
+
+  // Validate the beam history field.
+  auto history = beam.history();
+  EXPECT_EQ(history[1][0], 0);
+
+  // Validate that the beam still has a gold state in it.
+  EXPECT_TRUE(beam.ContainsGold());
+}
+
+TEST(BeamTest, AdvancesFromPredictionWithSingleBeamAndGoldTrackingFalloff) {
+  // Create a matrix of transitions.
+  constexpr int kNumTransitions = 4;
+  constexpr int kMatrixSize = kNumTransitions;
+  constexpr float kTransitionMatrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0};
+  constexpr int kBestTransition = 2;
+  constexpr float kOldScore = 3.0;
+
+  // Create the beam and transition it.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.push_back(CreateGoldState(kOldScore));
+  constexpr int kBeamSize = 1;
+  Beam<TestTransitionState> beam(kBeamSize);
+
+  // Create an oracle that indicates the best transition is NOT index 2.
+  testing::MockFunction<const vector<int>(TestTransitionState *)>
+      mock_oracle_function;
+  vector<int> oracle_labels = {0, 1};
+  EXPECT_CALL(mock_oracle_function, Call(_)).WillOnce(Return(oracle_labels));
+
+  beam.SetFunctions(null_permissions, null_finality, transition_function,
+                    mock_oracle_function.AsStdFunction());
+  beam.SetGoldTracking(true);
+  beam.Init(std::move(states));
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
+
+  // Validate the new beam.
+  EXPECT_EQ(beam.beam().size(), kBeamSize);
+
+  // Make sure the state has performed the expected transition.
+  EXPECT_EQ(GetTransition(beam.beam()[0]), kBestTransition);
+
+  // Make sure the state has had its score updated properly.
+  EXPECT_EQ(beam.beam()[0]->GetScore(),
+            kOldScore + kTransitionMatrix[kBestTransition]);
+
+  // Make sure that the beam index field is consistent with the actual beam idx.
+  EXPECT_EQ(beam.beam()[0]->GetBeamIndex(), 0);
+
+  // Make sure that the beam_state accessor actually accesses the beam.
+  EXPECT_EQ(beam.beam()[0], beam.beam_state(0));
+
+  // Validate the beam history field.
+  auto history = beam.history();
+  EXPECT_EQ(history[1][0], 0);
+
+  // Validate that the beam has no gold state in it.
+  EXPECT_FALSE(beam.ContainsGold());
+}
+
+TEST(BeamTest, NonGoldBeamDoesNotInvokeOracle) {
+  // Create a matrix of transitions.
+  constexpr int kNumTransitions = 4;
+  constexpr int kMatrixSize = kNumTransitions;
+  constexpr float kTransitionMatrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0};
+  constexpr float kOldScore = 3.0;
+
+  // Create the beam and transition it.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.push_back(CreateGoldState(kOldScore));
+  auto first_state = states[0].get();
+  constexpr int kBeamSize = 1;
+  Beam<TestTransitionState> beam(kBeamSize);
+
+  // Create an oracle that indicates the best transition is NOT index 2.
+  testing::MockFunction<const vector<int>(TestTransitionState *)>
+      mock_oracle_function;
+  vector<int> oracle_labels = {0, 1};
+  EXPECT_CALL(mock_oracle_function, Call(first_state))
+      .WillOnce(Return(oracle_labels));
+
+  beam.SetFunctions(null_permissions, null_finality, transition_function,
+                    mock_oracle_function.AsStdFunction());
+  beam.SetGoldTracking(true);
+  beam.Init(std::move(states));
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
+
+  // Validate that the beam has no gold state in it.
+  EXPECT_FALSE(beam.ContainsGold());
+
+  // Advance again. Since the oracle function above expects to be called exactly
+  // once, another call should not match and cause a failure.
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
+}
+
 TEST(BeamTest, AdvancingCreatesNewTransitions) {
   // Create a matrix of transitions.
   constexpr int kMaxBeamSize = 8;
   constexpr int kNumTransitions = 4;
   constexpr int kMatrixSize = kNumTransitions * kMaxBeamSize;
-  constexpr float matrix[kMatrixSize] = {
+  constexpr float kTransitionMatrix[kMatrixSize] = {
       30.0, 20.0, 40.0, 10.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0,
       00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0,
       00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0};
@@ -171,7 +390,7 @@ TEST(BeamTest, AdvancingCreatesNewTransitions) {
   beam.SetFunctions(null_permissions, null_finality, transition_function,
                     null_oracle);
   beam.Init(std::move(states));
-  beam.AdvanceFromPrediction(matrix, kMatrixSize, kNumTransitions);
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
 
   // Validate the new beam.
   EXPECT_EQ(beam.beam().size(), 4);
@@ -183,10 +402,10 @@ TEST(BeamTest, AdvancingCreatesNewTransitions) {
   EXPECT_EQ(GetTransition(beam.beam().at(3)), 3);
 
   // Make sure the state has had its score updated properly.
-  EXPECT_EQ(beam.beam().at(0)->GetScore(), kOldScore + matrix[2]);
-  EXPECT_EQ(beam.beam().at(1)->GetScore(), kOldScore + matrix[0]);
-  EXPECT_EQ(beam.beam().at(2)->GetScore(), kOldScore + matrix[1]);
-  EXPECT_EQ(beam.beam().at(3)->GetScore(), kOldScore + matrix[3]);
+  EXPECT_EQ(beam.beam().at(0)->GetScore(), kOldScore + kTransitionMatrix[2]);
+  EXPECT_EQ(beam.beam().at(1)->GetScore(), kOldScore + kTransitionMatrix[0]);
+  EXPECT_EQ(beam.beam().at(2)->GetScore(), kOldScore + kTransitionMatrix[1]);
+  EXPECT_EQ(beam.beam().at(3)->GetScore(), kOldScore + kTransitionMatrix[3]);
 
   // Make sure that the beam index field is consistent with the actual beam idx.
   for (int i = 0; i < beam.beam().size(); ++i) {
@@ -212,7 +431,7 @@ TEST(BeamTest, MultipleElementBeamsAdvanceAllElements) {
   constexpr int kNumTransitions = 4;
   constexpr int kMatrixSize = kNumTransitions * kMaxBeamSize;
 
-  constexpr float matrix[kMatrixSize] = {
+  constexpr float kTransitionMatrix[kMatrixSize] = {
       30.0, 20.0, 40.0, 10.0,  // State 0
       31.0, 21.0, 41.0, 11.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0,
       00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0,
@@ -229,7 +448,7 @@ TEST(BeamTest, MultipleElementBeamsAdvanceAllElements) {
   beam.SetFunctions(null_permissions, null_finality, transition_function,
                     null_oracle);
   beam.Init(std::move(states));
-  beam.AdvanceFromPrediction(matrix, kMatrixSize, kNumTransitions);
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
 
   // Validate the new beam.
   EXPECT_EQ(beam.beam().size(), 8);
@@ -247,14 +466,22 @@ TEST(BeamTest, MultipleElementBeamsAdvanceAllElements) {
   EXPECT_EQ(GetTransition(beam.beam().at(7)), 3);
 
   // Make sure the state has had its score updated properly.
-  EXPECT_EQ(beam.beam().at(0)->GetScore(), kOldScores[1] + matrix[6]);
-  EXPECT_EQ(beam.beam().at(1)->GetScore(), kOldScores[0] + matrix[2]);
-  EXPECT_EQ(beam.beam().at(2)->GetScore(), kOldScores[1] + matrix[4]);
-  EXPECT_EQ(beam.beam().at(3)->GetScore(), kOldScores[0] + matrix[0]);
-  EXPECT_EQ(beam.beam().at(4)->GetScore(), kOldScores[1] + matrix[5]);
-  EXPECT_EQ(beam.beam().at(5)->GetScore(), kOldScores[0] + matrix[1]);
-  EXPECT_EQ(beam.beam().at(6)->GetScore(), kOldScores[1] + matrix[7]);
-  EXPECT_EQ(beam.beam().at(7)->GetScore(), kOldScores[0] + matrix[3]);
+  EXPECT_EQ(beam.beam().at(0)->GetScore(),
+            kOldScores[1] + kTransitionMatrix[6]);
+  EXPECT_EQ(beam.beam().at(1)->GetScore(),
+            kOldScores[0] + kTransitionMatrix[2]);
+  EXPECT_EQ(beam.beam().at(2)->GetScore(),
+            kOldScores[1] + kTransitionMatrix[4]);
+  EXPECT_EQ(beam.beam().at(3)->GetScore(),
+            kOldScores[0] + kTransitionMatrix[0]);
+  EXPECT_EQ(beam.beam().at(4)->GetScore(),
+            kOldScores[1] + kTransitionMatrix[5]);
+  EXPECT_EQ(beam.beam().at(5)->GetScore(),
+            kOldScores[0] + kTransitionMatrix[1]);
+  EXPECT_EQ(beam.beam().at(6)->GetScore(),
+            kOldScores[1] + kTransitionMatrix[7]);
+  EXPECT_EQ(beam.beam().at(7)->GetScore(),
+            kOldScores[0] + kTransitionMatrix[3]);
 
   // Make sure that the beam index field is consistent with the actual beam idx.
   for (int i = 0; i < beam.beam().size(); ++i) {
@@ -273,19 +500,255 @@ TEST(BeamTest, MultipleElementBeamsAdvanceAllElements) {
   EXPECT_EQ(history.at(1).at(7), 0);
 }
 
+TEST(BeamTest, MultipleElementBeamsFailOnNan) {
+  // Create a matrix of transitions.
+  constexpr int kMaxBeamSize = 8;
+  constexpr int kNumTransitions = 4;
+  constexpr int kMatrixSize = kNumTransitions * kMaxBeamSize;
+  constexpr float kNan = std::numeric_limits<double>::quiet_NaN();
+
+  constexpr float kTransitionMatrix[kMatrixSize] = {
+      30.0, 20.0, 40.0, 10.0,  // State 0
+      31.0, 21.0, kNan, 11.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0,
+      00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0,
+      00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0};
+
+  constexpr float kOldScores[] = {5.0, 7.0};
+
+  // Create the beam and transition it.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.push_back(CreateState(kOldScores[0]));
+  states.push_back(CreateState(kOldScores[1]));
+
+  Beam<TestTransitionState> beam(kMaxBeamSize);
+  beam.SetFunctions(null_permissions, null_finality, transition_function,
+                    null_oracle);
+  beam.Init(std::move(states));
+
+  EXPECT_FALSE(beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize,
+                                          kNumTransitions));
+}
+
+TEST(BeamTest, AdvancesFromPredictionWithMultipleStateBeamAndGoldTracking) {
+  // Create a matrix of transitions.
+  constexpr int kNumTransitions = 4;
+  constexpr int kMaxBeamSize = 8;
+  constexpr int kMatrixSize = kNumTransitions * kMaxBeamSize;
+  constexpr float kTransitionMatrix[kMatrixSize] = {
+      30.0, 20.0, 40.0, 10.0,   // State 0
+      31.0, 21.0, 41.0, 11.0,   // State 1
+      32.0, 22.0, 42.0, 12.0,   // State 2
+      33.0, 23.0, 43.0, 13.0,   // State 3
+      34.0, 24.0, 44.0, 14.0,   // State 4
+      35.0, 25.0, 45.0, 15.0,   // State 5
+      36.0, 26.0, 46.0, 16.0,   // State 6
+      37.0, 27.0, 47.0, 17.0};  // State 7
+  constexpr float kOldScores[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8};
+
+  // Create the beam and transition it.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.push_back(CreateGoldState(kOldScores[0]));
+  states.push_back(CreateGoldState(kOldScores[1]));
+  states.push_back(CreateGoldState(kOldScores[2]));
+  states.push_back(CreateGoldState(kOldScores[3]));
+  states.push_back(CreateGoldState(kOldScores[4]));
+  states.push_back(CreateGoldState(kOldScores[5]));
+  states.push_back(CreateGoldState(kOldScores[6]));
+  states.push_back(CreateGoldState(kOldScores[7]));
+
+  // Arbitrarily choose state 4 as the golden state.
+  auto gold_state = states[4].get();
+
+  // Create an oracle that will only return one gold transition - on transition
+  // 2 for state 6 (arbitrarily).
+  testing::MockFunction<const vector<int>(TestTransitionState *)>
+      mock_oracle_function;
+  vector<int> oracle_labels = {0, 2};
+  vector<int> null_labels = {};
+  EXPECT_CALL(mock_oracle_function, Call(testing::Ne(gold_state)))
+      .WillRepeatedly(Return(null_labels));
+  EXPECT_CALL(mock_oracle_function, Call(gold_state))
+      .WillOnce(Return(oracle_labels));
+
+  Beam<TestTransitionState> beam(kMaxBeamSize);
+  beam.SetFunctions(null_permissions, null_finality, transition_function,
+                    mock_oracle_function.AsStdFunction());
+  beam.SetGoldTracking(true);
+  beam.Init(std::move(states));
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
+
+  // Validate the new beam.
+  EXPECT_EQ(beam.beam().size(), 8);
+
+  // Make sure the state has performed the expected transition.
+  // In this case, every state will perform transition 2.
+  EXPECT_EQ(GetTransition(beam.beam()[0]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[1]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[2]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[3]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[4]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[5]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[6]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[7]), 2);
+
+  // Make sure the state has had its score updated properly. (Note that row
+  // 0 had the smallest transition score, so it ends up on the bottom of the
+  // beam, and so forth.) For the matrix index, N*kNumTransitions gets into the
+  // correct state row and we add 2 since that was the transition index.
+  EXPECT_EQ(beam.beam()[0]->GetScore(),
+            kOldScores[7] + kTransitionMatrix[7 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[0]->IsGold());
+
+  EXPECT_EQ(beam.beam()[1]->GetScore(),
+            kOldScores[6] + kTransitionMatrix[6 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[1]->IsGold());
+
+  EXPECT_EQ(beam.beam()[2]->GetScore(),
+            kOldScores[5] + kTransitionMatrix[5 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[2]->IsGold());
+
+  // This should be the gold state.
+  EXPECT_EQ(beam.beam()[3]->GetScore(),
+            kOldScores[4] + kTransitionMatrix[4 * kNumTransitions + 2]);
+  EXPECT_TRUE(beam.beam()[3]->IsGold());
+
+  EXPECT_EQ(beam.beam()[4]->GetScore(),
+            kOldScores[3] + kTransitionMatrix[3 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[4]->IsGold());
+
+  EXPECT_EQ(beam.beam()[5]->GetScore(),
+            kOldScores[2] + kTransitionMatrix[2 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[5]->IsGold());
+
+  EXPECT_EQ(beam.beam()[6]->GetScore(),
+            kOldScores[1] + kTransitionMatrix[1 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[6]->IsGold());
+
+  EXPECT_EQ(beam.beam()[7]->GetScore(),
+            kOldScores[0] + kTransitionMatrix[0 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[7]->IsGold());
+
+  // Validate that the beam still has a gold state in it.
+  EXPECT_TRUE(beam.ContainsGold());
+}
+
+TEST(BeamTest, AdvancesFromPredictionWithMultipleGoldStates) {
+  // Create a matrix of transitions.
+  constexpr int kNumTransitions = 4;
+  constexpr int kMaxBeamSize = 8;
+  constexpr int kMatrixSize = kNumTransitions * kMaxBeamSize;
+  constexpr float kTransitionMatrix[kMatrixSize] = {
+      30.0, 20.0, 40.0, 10.0,   // State 0
+      31.0, 21.0, 41.0, 11.0,   // State 1
+      32.0, 22.0, 42.0, 12.0,   // State 2
+      33.0, 23.0, 43.0, 13.0,   // State 3
+      54.0, 24.0, 44.0, 14.0,   // State 4 (gold - next will have both states)
+      35.0, 25.0, 45.0, 15.0,   // State 5
+      36.0, 26.0, 46.0, 16.0,   // State 6
+      37.0, 27.0, 47.0, 17.0};  // State 7
+  constexpr float kOldScores[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8};
+
+  // Create the beam and transition it.
+  std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.push_back(CreateState(kOldScores[0]));
+  states.push_back(CreateState(kOldScores[1]));
+  states.push_back(CreateState(kOldScores[2]));
+  states.push_back(CreateState(kOldScores[3]));
+  states.push_back(CreateGoldState(kOldScores[4]));
+  states.push_back(CreateState(kOldScores[5]));
+  states.push_back(CreateState(kOldScores[6]));
+  states.push_back(CreateState(kOldScores[7]));
+
+  // Arbitrarily choose state 4 as the golden state.
+  auto gold_state = states[4].get();
+
+  // Create an oracle that will only return one gold transition - on transition
+  // 2 for state 6 (arbitrarily).
+  testing::MockFunction<const vector<int>(TestTransitionState *)>
+      mock_oracle_function;
+  vector<int> oracle_labels = {0, 2};
+  vector<int> null_labels = {};
+  EXPECT_CALL(mock_oracle_function, Call(gold_state))
+      .WillOnce(Return(oracle_labels))
+      .WillOnce(Return(oracle_labels));
+
+  Beam<TestTransitionState> beam(kMaxBeamSize);
+  beam.SetFunctions(null_permissions, null_finality, transition_function,
+                    mock_oracle_function.AsStdFunction());
+  beam.SetGoldTracking(true);
+  beam.Init(std::move(states));
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
+
+  // Validate the new beam.
+  EXPECT_EQ(beam.beam().size(), 8);
+
+  // Make sure the state has performed the expected transition.
+  // In this case, every state will perform transition 2.
+  EXPECT_EQ(GetTransition(beam.beam()[0]), 0);
+  EXPECT_EQ(GetTransition(beam.beam()[1]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[2]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[3]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[4]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[5]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[6]), 2);
+  EXPECT_EQ(GetTransition(beam.beam()[7]), 2);
+
+  // Make sure the state has had its score updated properly. (Note that row
+  // 0 had the smallest transition score, so it ends up on the bottom of the
+  // beam, and so forth.) For the matrix index, N*kNumTransitions gets into the
+  // correct state row and we add 2 since that was the transition index.
+  // This should be a gold state.
+  EXPECT_EQ(beam.beam()[0]->GetScore(),
+            kOldScores[4] + kTransitionMatrix[4 * kNumTransitions + 0]);
+  EXPECT_TRUE(beam.beam()[0]->IsGold());
+
+  EXPECT_EQ(beam.beam()[1]->GetScore(),
+            kOldScores[7] + kTransitionMatrix[7 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[1]->IsGold());
+
+  EXPECT_EQ(beam.beam()[2]->GetScore(),
+            kOldScores[6] + kTransitionMatrix[6 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[2]->IsGold());
+
+  EXPECT_EQ(beam.beam()[3]->GetScore(),
+            kOldScores[5] + kTransitionMatrix[5 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[3]->IsGold());
+
+  // This should be a gold state.
+  EXPECT_EQ(beam.beam()[4]->GetScore(),
+            kOldScores[4] + kTransitionMatrix[4 * kNumTransitions + 2]);
+  EXPECT_TRUE(beam.beam()[4]->IsGold());
+
+  EXPECT_EQ(beam.beam()[5]->GetScore(),
+            kOldScores[3] + kTransitionMatrix[3 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[5]->IsGold());
+
+  EXPECT_EQ(beam.beam()[6]->GetScore(),
+            kOldScores[2] + kTransitionMatrix[2 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[6]->IsGold());
+
+  EXPECT_EQ(beam.beam()[7]->GetScore(),
+            kOldScores[1] + kTransitionMatrix[1 * kNumTransitions + 2]);
+  EXPECT_FALSE(beam.beam()[7]->IsGold());
+
+  // Validate that the beam still has a gold state in it.
+  EXPECT_TRUE(beam.ContainsGold());
+}
+
 TEST(BeamTest, AdvancingDropsLowValuePredictions) {
   // Create a matrix of transitions.
   constexpr int kNumTransitions = 4;
   constexpr int kMaxBeamSize = 8;
   constexpr int kMatrixSize = kNumTransitions * kMaxBeamSize;
-  constexpr float matrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0,   // State 0
-                                         31.0, 21.0, 41.0, 11.0,   // State 1
-                                         32.0, 22.0, 42.0, 12.0,   // State 2
-                                         33.0, 23.0, 43.0, 13.0,   // State 3
-                                         34.0, 24.0, 44.0, 14.0,   // State 4
-                                         35.0, 25.0, 45.0, 15.0,   // State 5
-                                         36.0, 26.0, 46.0, 16.0,   // State 6
-                                         37.0, 27.0, 47.0, 17.0};  // State 7
+  constexpr float kTransitionMatrix[kMatrixSize] = {
+      30.0, 20.0, 40.0, 10.0,   // State 0
+      31.0, 21.0, 41.0, 11.0,   // State 1
+      32.0, 22.0, 42.0, 12.0,   // State 2
+      33.0, 23.0, 43.0, 13.0,   // State 3
+      34.0, 24.0, 44.0, 14.0,   // State 4
+      35.0, 25.0, 45.0, 15.0,   // State 5
+      36.0, 26.0, 46.0, 16.0,   // State 6
+      37.0, 27.0, 47.0, 17.0};  // State 7
   constexpr float kOldScores[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8};
 
   // Create the beam and transition it.
@@ -302,7 +765,7 @@ TEST(BeamTest, AdvancingDropsLowValuePredictions) {
   beam.SetFunctions(null_permissions, null_finality, transition_function,
                     null_oracle);
   beam.Init(std::move(states));
-  beam.AdvanceFromPrediction(matrix, kMatrixSize, kNumTransitions);
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
 
   // Validate the new beam.
   EXPECT_EQ(beam.beam().size(), 8);
@@ -323,21 +786,21 @@ TEST(BeamTest, AdvancingDropsLowValuePredictions) {
   // beam, and so forth.) For the matrix index, N*kNumTransitions gets into the
   // correct state row and we add 2 since that was the transition index.
   EXPECT_EQ(beam.beam().at(0)->GetScore(),
-            kOldScores[7] + matrix[7 * kNumTransitions + 2]);
+            kOldScores[7] + kTransitionMatrix[7 * kNumTransitions + 2]);
   EXPECT_EQ(beam.beam().at(1)->GetScore(),
-            kOldScores[6] + matrix[6 * kNumTransitions + 2]);
+            kOldScores[6] + kTransitionMatrix[6 * kNumTransitions + 2]);
   EXPECT_EQ(beam.beam().at(2)->GetScore(),
-            kOldScores[5] + matrix[5 * kNumTransitions + 2]);
+            kOldScores[5] + kTransitionMatrix[5 * kNumTransitions + 2]);
   EXPECT_EQ(beam.beam().at(3)->GetScore(),
-            kOldScores[4] + matrix[4 * kNumTransitions + 2]);
+            kOldScores[4] + kTransitionMatrix[4 * kNumTransitions + 2]);
   EXPECT_EQ(beam.beam().at(4)->GetScore(),
-            kOldScores[3] + matrix[3 * kNumTransitions + 2]);
+            kOldScores[3] + kTransitionMatrix[3 * kNumTransitions + 2]);
   EXPECT_EQ(beam.beam().at(5)->GetScore(),
-            kOldScores[2] + matrix[2 * kNumTransitions + 2]);
+            kOldScores[2] + kTransitionMatrix[2 * kNumTransitions + 2]);
   EXPECT_EQ(beam.beam().at(6)->GetScore(),
-            kOldScores[1] + matrix[1 * kNumTransitions + 2]);
+            kOldScores[1] + kTransitionMatrix[1 * kNumTransitions + 2]);
   EXPECT_EQ(beam.beam().at(7)->GetScore(),
-            kOldScores[0] + matrix[0 * kNumTransitions + 2]);
+            kOldScores[0] + kTransitionMatrix[0 * kNumTransitions + 2]);
 
   // Make sure that the beam index field is consistent with the actual beam idx.
   for (int i = 0; i < beam.beam().size(); ++i) {
@@ -358,7 +821,9 @@ TEST(BeamTest, AdvancingDropsLowValuePredictions) {
 TEST(BeamTest, AdvancesFromOracleWithSingleBeam) {
   // Create an oracle function for this state.
   constexpr int kOracleLabel = 3;
-  auto oracle_function = [](TransitionState *) { return kOracleLabel; };
+  auto oracle_function = [](TransitionState *) -> const vector<int> {
+    return {kOracleLabel};
+  };
 
   // Create the beam and transition it.
   std::vector<std::unique_ptr<TestTransitionState>> states;
@@ -392,21 +857,24 @@ TEST(BeamTest, AdvancesFromOracleWithMultipleStates) {
 
   // Create a beam with 8 transition states.
   std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.reserve(kMaxBeamSize);
   for (int i = 0; i < kMaxBeamSize; ++i) {
-    // This is nonzero to test the oracle holding scores to 0.
+    // This is nonzero to test the oracle holding scores constant.
     states.push_back(CreateState(10.0));
   }
 
   std::vector<int> expected_actions;
 
   // Create an oracle function for this state. Use mocks for finer control.
-  testing::MockFunction<int(TestTransitionState *)> mock_oracle_function;
+  testing::MockFunction<const vector<int>(TestTransitionState *)>
+      mock_oracle_function;
   for (int i = 0; i < kMaxBeamSize; ++i) {
     // We expect each state to be queried for its oracle label,
     // and then to be transitioned in place with its oracle label.
     int oracle_label = i % 3;  // 3 is arbitrary.
+    vector<int> oracle_labels = {oracle_label};
     EXPECT_CALL(mock_oracle_function, Call(states.at(i).get()))
-        .WillOnce(Return(oracle_label));
+        .WillOnce(Return(oracle_labels));
     expected_actions.push_back(oracle_label);
   }
 
@@ -435,6 +903,7 @@ TEST(BeamTest, ReportsNonFinality) {
 
   // Create a beam with 8 transition states.
   std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.reserve(kMaxBeamSize);
   for (int i = 0; i < kMaxBeamSize; ++i) {
     // This is nonzero to test the oracle holding scores to 0.
     states.push_back(CreateState(10.0));
@@ -467,6 +936,7 @@ TEST(BeamTest, ReportsFinality) {
 
   // Create a beam with 8 transition states.
   std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.reserve(kMaxBeamSize);
   for (int i = 0; i < kMaxBeamSize; ++i) {
     // This is nonzero to test the oracle holding scores to 0.
     states.push_back(CreateState(10.0));
@@ -493,7 +963,7 @@ TEST(BeamTest, IgnoresForbiddenTransitionActions) {
   constexpr int kMaxBeamSize = 4;
   constexpr int kNumTransitions = 4;
   constexpr int kMatrixSize = kNumTransitions * kMaxBeamSize;
-  constexpr float matrix[kMatrixSize] = {
+  constexpr float kTransitionMatrix[kMatrixSize] = {
       10.0, 1000.0, 40.0, 30.0, 00.0, 0000.0, 00.0, 00.0,
       00.0, 0000.0, 00.0, 00.0, 00.0, 0000.0, 00.0, 00.0};
   constexpr float kOldScore = 4.0;
@@ -518,7 +988,7 @@ TEST(BeamTest, IgnoresForbiddenTransitionActions) {
   beam.SetFunctions(mock_permission_function.AsStdFunction(), null_finality,
                     transition_function, null_oracle);
   beam.Init(std::move(states));
-  beam.AdvanceFromPrediction(matrix, kMatrixSize, kNumTransitions);
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
 
   // Validate the new beam.
   EXPECT_EQ(beam.beam().size(), 3);
@@ -529,9 +999,9 @@ TEST(BeamTest, IgnoresForbiddenTransitionActions) {
   EXPECT_EQ(GetTransition(beam.beam().at(2)), 0);
 
   // Make sure the state has had its score updated properly.
-  EXPECT_EQ(beam.beam().at(0)->GetScore(), kOldScore + matrix[2]);
-  EXPECT_EQ(beam.beam().at(1)->GetScore(), kOldScore + matrix[3]);
-  EXPECT_EQ(beam.beam().at(2)->GetScore(), kOldScore + matrix[0]);
+  EXPECT_EQ(beam.beam().at(0)->GetScore(), kOldScore + kTransitionMatrix[2]);
+  EXPECT_EQ(beam.beam().at(1)->GetScore(), kOldScore + kTransitionMatrix[3]);
+  EXPECT_EQ(beam.beam().at(2)->GetScore(), kOldScore + kTransitionMatrix[0]);
 
   // Make sure that the beam index field is consistent with the actual beam idx.
   for (int i = 0; i < beam.beam().size(); ++i) {
@@ -551,7 +1021,7 @@ TEST(BeamTest, BadlySizedMatrixDies) {
   // Create a matrix of transitions.
   constexpr int kNumTransitions = 4;
   constexpr int kMatrixSize = 4;  // We have a max beam size of 4; should be 16.
-  constexpr float matrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0};
+  constexpr float kTransitionMatrix[kMatrixSize] = {30.0, 20.0, 40.0, 10.0};
 
   // Create the beam and transition it.
   std::vector<std::unique_ptr<TestTransitionState>> states;
@@ -564,7 +1034,8 @@ TEST(BeamTest, BadlySizedMatrixDies) {
   beam.Init(std::move(states));
 
   // This matrix should have 8 elements, not 4, so this should die.
-  EXPECT_DEATH(beam.AdvanceFromPrediction(matrix, kMatrixSize, kNumTransitions),
+  EXPECT_DEATH(beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize,
+                                          kNumTransitions),
                "Transition matrix size does not match max beam size \\* number "
                "of state transitions");
 }
@@ -573,6 +1044,7 @@ TEST(BeamTest, BadlySizedBeamInitializationDies) {
   // Create an initialization beam too large for the max beam size.
   constexpr int kMaxBeamSize = 4;
   std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.reserve(kMaxBeamSize + 1);
   for (int i = 0; i < kMaxBeamSize + 1; ++i) {
     states.push_back(CreateState(0.0));
   }
@@ -590,6 +1062,7 @@ TEST(BeamTest, ValidBeamIndicesAfterBeamInitialization) {
   // Create a standard beam.
   constexpr int kMaxBeamSize = 4;
   std::vector<std::unique_ptr<TestTransitionState>> states;
+  states.reserve(kMaxBeamSize);
   for (int i = 0; i < kMaxBeamSize; ++i) {
     states.push_back(CreateState(0.0));
   }
@@ -611,7 +1084,7 @@ TEST(BeamTest, FindPreviousIndexTracesHistory) {
   constexpr int kNumTransitions = 4;
   constexpr int kMaxBeamSize = 8;
   constexpr int kMatrixSize = kNumTransitions * kMaxBeamSize;
-  constexpr float matrix[kMatrixSize] = {
+  constexpr float kTransitionMatrix[kMatrixSize] = {
       30.0, 20.0, 40.0, 10.0,  // State 0
       31.0, 21.0, 41.0, 11.0,  // State 1
       00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0, 00.0,
@@ -632,7 +1105,7 @@ TEST(BeamTest, FindPreviousIndexTracesHistory) {
   beam.SetFunctions(null_permissions, null_finality, transition_function,
                     null_oracle);
   beam.Init(std::move(states));
-  beam.AdvanceFromPrediction(matrix, kMatrixSize, kNumTransitions);
+  beam.AdvanceFromPrediction(kTransitionMatrix, kMatrixSize, kNumTransitions);
 
   // Validate the new beam.
   EXPECT_EQ(beam.beam().size(), 8);
@@ -650,14 +1123,22 @@ TEST(BeamTest, FindPreviousIndexTracesHistory) {
   EXPECT_EQ(GetTransition(beam.beam().at(7)), 3);
 
   // Make sure the state has had its score updated properly.
-  EXPECT_EQ(beam.beam().at(0)->GetScore(), kOldScores[1] + matrix[6]);
-  EXPECT_EQ(beam.beam().at(1)->GetScore(), kOldScores[0] + matrix[2]);
-  EXPECT_EQ(beam.beam().at(2)->GetScore(), kOldScores[1] + matrix[4]);
-  EXPECT_EQ(beam.beam().at(3)->GetScore(), kOldScores[0] + matrix[0]);
-  EXPECT_EQ(beam.beam().at(4)->GetScore(), kOldScores[1] + matrix[5]);
-  EXPECT_EQ(beam.beam().at(5)->GetScore(), kOldScores[0] + matrix[1]);
-  EXPECT_EQ(beam.beam().at(6)->GetScore(), kOldScores[1] + matrix[7]);
-  EXPECT_EQ(beam.beam().at(7)->GetScore(), kOldScores[0] + matrix[3]);
+  EXPECT_EQ(beam.beam().at(0)->GetScore(),
+            kOldScores[1] + kTransitionMatrix[6]);
+  EXPECT_EQ(beam.beam().at(1)->GetScore(),
+            kOldScores[0] + kTransitionMatrix[2]);
+  EXPECT_EQ(beam.beam().at(2)->GetScore(),
+            kOldScores[1] + kTransitionMatrix[4]);
+  EXPECT_EQ(beam.beam().at(3)->GetScore(),
+            kOldScores[0] + kTransitionMatrix[0]);
+  EXPECT_EQ(beam.beam().at(4)->GetScore(),
+            kOldScores[1] + kTransitionMatrix[5]);
+  EXPECT_EQ(beam.beam().at(5)->GetScore(),
+            kOldScores[0] + kTransitionMatrix[1]);
+  EXPECT_EQ(beam.beam().at(6)->GetScore(),
+            kOldScores[1] + kTransitionMatrix[7]);
+  EXPECT_EQ(beam.beam().at(7)->GetScore(),
+            kOldScores[0] + kTransitionMatrix[3]);
 
   // Make sure that the beam index field is consistent with the actual beam idx.
   for (int i = 0; i < beam.beam().size(); ++i) {

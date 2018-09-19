@@ -17,7 +17,7 @@ py_library(
     deps = [
         "//dragnn/core:dragnn_bulk_ops",
         "//dragnn/core:dragnn_ops",
-        "//dragnn/protos:spec_py_pb2",
+        "//dragnn/protos:spec_pb2_py",
         "//dragnn/python:graph_builder",
         "//dragnn/python:lexicon",
         "//dragnn/python:load_dragnn_cc_impl_py",
@@ -25,7 +25,7 @@ py_library(
         "//dragnn/python:visualization",
         "//syntaxnet:load_parser_ops_py",
         "//syntaxnet:parser_ops",
-        "//syntaxnet:sentence_py_pb2",
+        "//syntaxnet:sentence_pb2_py",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/core:protos_all_py",
     ],
@@ -34,6 +34,7 @@ py_library(
 filegroup(
     name = "data",
     data = glob(["tutorial_data/*"]),
+    visibility = ["//visibility:public"],
 )
 
 sh_test(

@@ -30,7 +30,7 @@ class NetworksTest(tf.test.TestCase):
   def testGetNetworkFnFirstHalf(self):
     batch_size = 5
     num_classes = 1000
-    for net in nets_factory.networks_map.keys()[:10]:
+    for net in list(nets_factory.networks_map.keys())[:10]:
       with tf.Graph().as_default() as g, self.test_session(g):
         net_fn = nets_factory.get_network_fn(net, num_classes)
         # Most networks use 224 as their default_image_size
@@ -45,7 +45,7 @@ class NetworksTest(tf.test.TestCase):
   def testGetNetworkFnSecondHalf(self):
     batch_size = 5
     num_classes = 1000
-    for net in nets_factory.networks_map.keys()[10:]:
+    for net in list(nets_factory.networks_map.keys())[10:]:
       with tf.Graph().as_default() as g, self.test_session(g):
         net_fn = nets_factory.get_network_fn(net, num_classes)
         # Most networks use 224 as their default_image_size

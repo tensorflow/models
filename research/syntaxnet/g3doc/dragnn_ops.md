@@ -3,7 +3,7 @@
 ### Module `dragnn_ops`
 
 Defined in
-[`tensorflow/dragnn/python/dragnn_ops.py`](https://github.com/tensorflow/models/blob/master/research/syntaxnet/dragnn/python/dragnn_ops.py).
+[`tensorflow/dragnn/python/dragnn_ops.py`](https://github.com/tensorflow/models/blob/master/syntaxnet/dragnn/python/dragnn_ops.py).
 
 Groups the DRAGNN TensorFlow ops in one module.
 

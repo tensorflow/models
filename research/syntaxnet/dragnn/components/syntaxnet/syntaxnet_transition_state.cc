@@ -23,7 +23,9 @@ namespace dragnn {
 
 SyntaxNetTransitionState::SyntaxNetTransitionState(
     std::unique_ptr<ParserState> parser_state, SyntaxNetSentence *sentence)
-    : parser_state_(std::move(parser_state)), sentence_(sentence) {
+    : parser_state_(std::move(parser_state)),
+      sentence_(sentence),
+      is_gold_(false) {
   score_ = 0;
   current_beam_index_ = -1;
   parent_beam_index_ = 0;
@@ -60,21 +62,25 @@ std::unique_ptr<SyntaxNetTransitionState> SyntaxNetTransitionState::Clone()
   return new_state;
 }
 
-const int SyntaxNetTransitionState::ParentBeamIndex() const {
+int SyntaxNetTransitionState::ParentBeamIndex() const {
   return parent_beam_index_;
 }
 
-const int SyntaxNetTransitionState::GetBeamIndex() const {
+int SyntaxNetTransitionState::GetBeamIndex() const {
   return current_beam_index_;
 }
 
-void SyntaxNetTransitionState::SetBeamIndex(const int index) {
+bool SyntaxNetTransitionState::IsGold() const { return is_gold_; }
+
+void SyntaxNetTransitionState::SetGold(bool is_gold) { is_gold_ = is_gold; }
+
+void SyntaxNetTransitionState::SetBeamIndex(int index) {
   current_beam_index_ = index;
 }
 
-const float SyntaxNetTransitionState::GetScore() const { return score_; }
+float SyntaxNetTransitionState::GetScore() const { return score_; }
 
-void SyntaxNetTransitionState::SetScore(const float score) { score_ = score; }
+void SyntaxNetTransitionState::SetScore(float score) { score_ = score; }
 
 string SyntaxNetTransitionState::HTMLRepresentation() const {
   // Crude HTML string showing the stack and the word on the input.

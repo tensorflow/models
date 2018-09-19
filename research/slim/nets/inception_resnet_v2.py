@@ -365,10 +365,12 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
 inception_resnet_v2.default_image_size = 299
 
 
-def inception_resnet_v2_arg_scope(weight_decay=0.00004,
-                                  batch_norm_decay=0.9997,
-                                  batch_norm_epsilon=0.001,
-                                  activation_fn=tf.nn.relu):
+def inception_resnet_v2_arg_scope(
+    weight_decay=0.00004,
+    batch_norm_decay=0.9997,
+    batch_norm_epsilon=0.001,
+    activation_fn=tf.nn.relu,
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
   """Returns the scope with the default parameters for inception_resnet_v2.
 
   Args:
@@ -376,6 +378,8 @@ def inception_resnet_v2_arg_scope(weight_decay=0.00004,
     batch_norm_decay: decay for the moving average of batch_norm momentums.
     batch_norm_epsilon: small float added to variance to avoid dividing by zero.
     activation_fn: Activation function for conv2d.
+    batch_norm_updates_collections: Collection for the update ops for
+      batch norm.
 
   Returns:
     a arg_scope with the parameters needed for inception_resnet_v2.
@@ -388,6 +392,7 @@ def inception_resnet_v2_arg_scope(weight_decay=0.00004,
     batch_norm_params = {
         'decay': batch_norm_decay,
         'epsilon': batch_norm_epsilon,
+        'updates_collections': batch_norm_updates_collections,
         'fused': None,  # Use fused batch norm if possible.
     }
     # Set activation_fn and parameters for batch_norm.

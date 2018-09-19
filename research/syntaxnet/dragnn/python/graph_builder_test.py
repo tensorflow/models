@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for graph_builder."""
 
 
@@ -30,19 +29,12 @@ from dragnn.protos import trace_pb2
 from dragnn.python import dragnn_ops
 from dragnn.python import graph_builder
 from syntaxnet import sentence_pb2
+from syntaxnet import test_flags
 
 from tensorflow.python.framework import test_util
 from tensorflow.python.platform import googletest
 from tensorflow.python.platform import tf_logging as logging
 
-import dragnn.python.load_dragnn_cc_impl
-import syntaxnet.load_parser_ops
-
-FLAGS = tf.app.flags.FLAGS
-if not hasattr(FLAGS, 'test_srcdir'):
-  FLAGS.test_srcdir = ''
-if not hasattr(FLAGS, 'test_tmpdir'):
-  FLAGS.test_tmpdir = tf.test.get_temp_dir()
 
 _DUMMY_GOLD_SENTENCE = """
 token {
@@ -243,9 +235,9 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
 
   def LoadSpec(self, spec_path):
     master_spec = spec_pb2.MasterSpec()
-    testdata = os.path.join(FLAGS.test_srcdir,
+    testdata = os.path.join(test_flags.source_root(),
                             'dragnn/core/testdata')
-    with file(os.path.join(testdata, spec_path), 'r') as fin:
+    with open(os.path.join(testdata, spec_path), 'r') as fin:
       text_format.Parse(fin.read().replace('TESTDATA', testdata), master_spec)
       return master_spec
 
@@ -264,7 +256,8 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
     gold_doc_2 = sentence_pb2.Sentence()
     text_format.Parse(_DUMMY_GOLD_SENTENCE_2, gold_doc_2)
     reader_strings = [
-        gold_doc.SerializeToString(), gold_doc_2.SerializeToString()
+        gold_doc.SerializeToString(),
+        gold_doc_2.SerializeToString()
     ]
     tf.logging.info('Generating graph with config: %s', hyperparam_config)
     with tf.Graph().as_default():
@@ -294,18 +287,35 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
     self.RunTraining(
         self.MakeHyperparams(learning_method='adam', use_moving_average=True))
 
+  def testTrainingWithLazyAdamAndNoAveraging(self):
+    """Adds code coverage for lazy ADAM without the use of moving averaging."""
+    self.RunTraining(
+        self.MakeHyperparams(
+            learning_method='lazyadam', use_moving_average=False))
+
   def testTrainingWithCompositeOptimizer(self):
     """Adds code coverage for CompositeOptimizer."""
+    self.RunCompositeOptimizerTraining(False)
+
+  def testTrainingWithCompositeOptimizerResetLearningRate(self):
+    """Adds code coverage for CompositeOptimizer."""
+    self.RunCompositeOptimizerTraining(True)
+
+  def RunCompositeOptimizerTraining(self, reset_learning_rate):
     grid_point = self.MakeHyperparams(learning_method='composite')
-    grid_point.composite_optimizer_spec.method1.learning_method = 'adam'
-    grid_point.composite_optimizer_spec.method2.learning_method = 'momentum'
-    grid_point.composite_optimizer_spec.method2.momentum = 0.9
+    spec = grid_point.composite_optimizer_spec
+    spec.reset_learning_rate = reset_learning_rate
+    spec.switch_after_steps = 1
+    spec.method1.learning_method = 'adam'
+    spec.method2.learning_method = 'momentum'
+    spec.method2.momentum = 0.9
     self.RunTraining(grid_point)
 
   def RunFullTrainingAndInference(self,
                                   test_name,
                                   master_spec_path=None,
                                   master_spec=None,
+                                  hyperparam_config=None,
                                   component_weights=None,
                                   unroll_using_oracle=None,
                                   num_evaluated_components=1,
@@ -320,7 +330,8 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
     gold_doc_2 = sentence_pb2.Sentence()
     text_format.Parse(_DUMMY_GOLD_SENTENCE_2, gold_doc_2)
     gold_reader_strings = [
-        gold_doc.SerializeToString(), gold_doc_2.SerializeToString()
+        gold_doc.SerializeToString(),
+        gold_doc_2.SerializeToString()
     ]
 
     test_doc = sentence_pb2.Sentence()
@@ -328,8 +339,10 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
     test_doc_2 = sentence_pb2.Sentence()
     text_format.Parse(_DUMMY_TEST_SENTENCE_2, test_doc_2)
     test_reader_strings = [
-        test_doc.SerializeToString(), test_doc.SerializeToString(),
-        test_doc_2.SerializeToString(), test_doc.SerializeToString()
+        test_doc.SerializeToString(),
+        test_doc.SerializeToString(),
+        test_doc_2.SerializeToString(),
+        test_doc.SerializeToString()
     ]
 
     if batch_size_limit is not None:
@@ -338,7 +351,8 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
 
     with tf.Graph().as_default():
       tf.set_random_seed(1)
-      hyperparam_config = spec_pb2.GridPoint()
+      if not hyperparam_config:
+        hyperparam_config = spec_pb2.GridPoint()
       builder = graph_builder.MasterBuilder(
           master_spec, hyperparam_config, pool_scope=test_name)
       target = spec_pb2.TrainTarget()
@@ -422,7 +436,7 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
         self.assertEqual(expected_num_actions, correct_val)
         self.assertEqual(expected_num_actions, total_val)
 
-        builder.saver.save(sess, os.path.join(FLAGS.test_tmpdir, 'model'))
+        builder.saver.save(sess, os.path.join(test_flags.temp_dir(), 'model'))
 
         logging.info('Running test.')
         logging.info('Printing annotations')
@@ -492,6 +506,22 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
         unroll_using_oracle=[False, True, True],
         expected_num_actions=12,
         expected=_TAGGER_PARSER_EXPECTED_SENTENCES)
+
+  def testTaggerParserNanDeath(self):
+    hyperparam_config = spec_pb2.GridPoint()
+    hyperparam_config.learning_rate = 1.0
+
+    # The large learning rate should trigger check_numerics.
+    with self.assertRaisesRegexp(tf.errors.InvalidArgumentError,
+                                 'Cost is not finite'):
+      self.RunFullTrainingAndInference(
+          'tagger-parser',
+          'tagger_parser_master_spec.textproto',
+          hyperparam_config=hyperparam_config,
+          component_weights=[0., 1., 1.],
+          unroll_using_oracle=[False, True, True],
+          expected_num_actions=12,
+          expected=_TAGGER_PARSER_EXPECTED_SENTENCES)
 
   def testTaggerParserWithAttention(self):
     spec = self.LoadSpec('tagger_parser_master_spec.textproto')
@@ -620,6 +650,18 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
       # A similar contract applies to the annotations.
       self.checkOpOrder('annotations', anno['annotations'],
                         ['GetSession', 'ReleaseSession'])
+
+  def testWarmupGetsAndReleasesSession(self):
+    """Checks that create_warmup_graph creates Get and ReleaseSession."""
+    test_name = 'warmup-graph-structure'
+
+    with tf.Graph().as_default():
+      # Build the actual graphs. The choice of spec is arbitrary, as long as
+      # training and annotation nodes can be constructed.
+      builder, _ = self.getBuilderAndTarget(test_name)
+      warmup = builder.build_warmup_graph('foo')
+      self.checkOpOrder('annotations', warmup,
+                        ['SetAssetDirectory', 'GetSession', 'ReleaseSession'])
 
   def testAttachDataReader(self):
     """Checks that train['run'] and 'annotations' call AttachDataReader."""

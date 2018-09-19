@@ -84,7 +84,6 @@ class ParserFeatureFunctionTest : public ::testing::Test {
   // Prepares a feature for computations.
   string ExtractFeature(const string &feature_name) {
     context_.mutable_spec()->mutable_input()->Clear();
-    context_.mutable_spec()->mutable_output()->Clear();
     feature_extractor_.reset(new ParserFeatureExtractor());
     feature_extractor_->Parse(feature_name);
     feature_extractor_->Setup(&context_);
@@ -150,6 +149,12 @@ TEST_F(ParserFeatureFunctionTest, GoldHeadFeatureFunction) {
   EXPECT_EQ("6", ExtractFeature("input(5).gold-head"));
   EXPECT_EQ("4", ExtractFeature("input(6).gold-head"));
   EXPECT_EQ("1", ExtractFeature("input(7).gold-head"));
+}
+
+TEST_F(ParserFeatureFunctionTest, PairFeatureFunction) {
+  EXPECT_EQ("(1,PRP)", ExtractFeature("pair { input.gold-head input.tag }"));
+  EXPECT_EQ("(1,PRP,ROOT)",
+            ExtractFeature("triple { input.gold-head input.tag input.label }"));
 }
 
 }  // namespace syntaxnet

@@ -13,10 +13,30 @@
 // limitations under the License.
 // =============================================================================
 
+#include "dragnn/core/ops/shape_helpers.h"
 #include "tensorflow/core/framework/op.h"
+#include "tensorflow/core/framework/shape_inference.h"
 
 namespace syntaxnet {
 namespace dragnn {
+
+REGISTER_OP("SetAssetDirectory")
+    .Input("asset_directory: string")
+    .Output("asset_directory_out: string")
+    .SetIsStateful()
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      context->set_output(0, context->Vector(1));
+      return ScalarInputShape(0, context);
+    })
+    .Doc(R"doc(
+Override the paths to assets specified in the MasterSpec with the given
+asset_directory. This op must be called before any calls to GetSession, as it
+will create a new session pool with the overridden master spec.
+
+asset_directory: The directory containing all the assets. Note that all assets
+    must be in a single flat directory.
+asset_directory_out: The input, just as an output.
+)doc");
 
 REGISTER_OP("GetSession")
     .Input("container: string")
@@ -24,6 +44,10 @@ REGISTER_OP("GetSession")
     .Attr("grid_point: string")
     .Output("handle: string")
     .SetIsStateful()
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      TF_RETURN_IF_ERROR(ScalarInputShape(0, context));
+      return ComputeSessionHandleOutputShape(context);
+    })
     .Doc(R"doc(
 Given MasterSpec and GridPoint protos, outputs a handle to a ComputeSession.
 
@@ -34,7 +58,11 @@ grid_point: A serialized syntaxnet.dragnn.GridPoint proto.
 handle: A string handle to a ComputeSession.
 )doc");
 
-REGISTER_OP("ReleaseSession").Input("handle: string").SetIsStateful().Doc(R"doc(
+REGISTER_OP("ReleaseSession")
+    .Input("handle: string")
+    .SetIsStateful()
+    .SetShapeFn(ComputeSessionHandleInputShape)
+    .Doc(R"doc(
 Given a ComputeSession, return it to the ComputeSession pool.
 
 This ComputeSession will no longer be available after this op returns.
@@ -42,11 +70,86 @@ This ComputeSession will no longer be available after this op returns.
 handle: A handle to a ComputeSession that will be returned to the backing pool.
 )doc");
 
+REGISTER_OP("GetSessionCounts")
+    .Input("container: string")
+    .Output("stats: int64")
+    .SetIsStateful()
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      context->set_output(0, context->Vector(2));
+      return ScalarInputShape(0, context);
+    })
+    .Doc(R"doc(
+Given a container string, output session counts for that ComputeSessionPool.
+
+container: A unique identifier for the ComputeSessionPool to analyze.
+stats: A vector of stats. [0] is the total number of created sessions. [1] is
+the number of sessions that are currently not in the pool.
+)doc");
+
+REGISTER_OP("RebatchDensor")
+    .Input("dense_data: float")
+    .Input("offsets: int32")
+    .Attr("sequence_length: int")
+    .Attr("lr_padding: int")
+    .Output("rebatched_data: float")
+    .Output("rebatched_indices: int32")
+    .SetIsStateful()
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      int sequence_length;
+      TF_RETURN_IF_ERROR(context->GetAttr("sequence_length", &sequence_length));
+      int lr_padding;
+      TF_RETURN_IF_ERROR(context->GetAttr("lr_padding", &lr_padding));
+      const int output_sequence_length = 2 * lr_padding + sequence_length;
+
+      TF_RETURN_IF_ERROR(MatrixInputShape(0, context));
+      const auto embedding_dim = context->Dim(context->input(0), 1);
+      context->set_output(
+          0, context->MakeShape({context->UnknownDim(), output_sequence_length,
+                                 embedding_dim}));
+      VectorOutputShape(1, context);
+      return VectorInputShape(1, context);
+    })
+    .Doc(R"doc(
+Rebatch a dense ragged tensor into a set of fixed-size subsequences.
+
+dense_data: A tensor containing the dense ragged data.
+offsets: The passage offsets into the dense_data tensor.
+sequence_length: The size of the sequence length to rebatch to.
+lr_padding: The amount of context to pad when breaking a passage.
+)doc");
+
+REGISTER_OP("UnbatchSubsequences")
+    .Input("data: float")
+    .Input("indices: int32")
+    .Input("offsets: int32")
+    .Output("rebatched_data: float")
+    .SetIsStateful()
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      TF_RETURN_IF_ERROR(TensorInputShape(0, 4, context));
+      const auto embedding_dim = context->Dim(context->input(0), 3);
+      context->set_output(
+          0, context->MakeShape({context->UnknownDim(), context->UnknownDim(),
+                                 embedding_dim}));
+      TF_RETURN_IF_ERROR(VectorInputShape(1, context));
+      return VectorInputShape(2, context);
+    })
+    .Doc(R"doc(
+Rebatch a dense ragged tensor into a set of fixed-size subsequences.
+
+data: A tensor containing the fixed-length subsequences to unbatch.
+indices: A tensor mapping the subsequences to the original sequences.
+offsets: The passage offsets used to create the subsequences.
+)doc");
+
 REGISTER_OP("InitComponentData")
     .Input("handle: string")
     .Input("beam_size: int32")
     .Attr("component: string")
     .Output("output_handle: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      TF_RETURN_IF_ERROR(ScalarInputShape(1, context));
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
     .Doc(R"doc(
 Initialize a component with the given beam size for a given ComputeSession.
 
@@ -60,6 +163,10 @@ REGISTER_OP("BatchSize")
     .Input("handle: string")
     .Attr("component: string")
     .Output("batch_size: int32")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      ScalarOutputShape(0, context);
+      return ComputeSessionHandleInputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession and a component name,return the component batch size.
 
@@ -73,6 +180,10 @@ REGISTER_OP("SetTracing")
     .Input("tracing_on: bool")
     .Attr("component: string = 'NOT_USED_FOR_THIS_OP'")
     .Output("output_handle: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      TF_RETURN_IF_ERROR(ScalarInputShape(1, context));
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession, turns on or off tracing for all components.
 
@@ -86,6 +197,10 @@ REGISTER_OP("AttachDataReader")
     .Input("input_spec: string")
     .Attr("component: string = 'NOT_USED_FOR_THIS_OP'")
     .Output("output_handle: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      TF_RETURN_IF_ERROR(VectorInputShape(1, context));
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession, attach a data source.
 
@@ -101,6 +216,7 @@ REGISTER_OP("AdvanceFromOracle")
     .Input("handle: string")
     .Attr("component: string")
     .Output("output_handle: string")
+    .SetShapeFn(ComputeSessionHandleInputAndOutputShape)
     .Doc(R"doc(
 Given a ComputeSession and a Component name, advance the component via oracle.
 
@@ -114,6 +230,10 @@ REGISTER_OP("AdvanceFromPrediction")
     .Input("scores: float")
     .Attr("component: string")
     .Output("output_handle: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      TF_RETURN_IF_ERROR(MatrixInputShape(1, context));
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession, a Component name, and a score tensor, advance the state.
 
@@ -123,28 +243,6 @@ component: The name of a Component instance, matching the ComponentSpec.name.
 output_handle: A handle to the same ComputeSession after advancement.
 )doc");
 
-REGISTER_OP("DragnnEmbeddingInitializer")
-    .Output("embeddings: float")
-    .Attr("embedding_input: string")
-    .Attr("vocab: string")
-    .Attr("scaling_coefficient: float = 1.0")
-    .Attr("seed: int = 0")
-    .Attr("seed2: int = 0")
-    .Doc(R"doc(
-*** PLACEHOLDER OP - FUNCTIONALITY NOT YET IMPLEMENTED ***
-
-Read embeddings from an an input for every key specified in a text vocab file.
-
-embeddings: A tensor containing embeddings from the specified sstable.
-embedding_input: Path to location with embedding vectors.
-vocab: Path to list of keys corresponding to the input.
-scaling_coefficient: A scaling coefficient for the embedding matrix.
-seed: If either `seed` or `seed2` are set to be non-zero, the random number
-      generator is seeded by the given seed.  Otherwise, it is seeded by a
-      random seed.
-seed2: A second seed to avoid seed collision.
-)doc");
-
 REGISTER_OP("ExtractFixedFeatures")
     .Input("handle: string")
     .Output("indices: int32")
@@ -152,6 +250,12 @@ REGISTER_OP("ExtractFixedFeatures")
     .Output("weights: float")
     .Attr("component: string")
     .Attr("channel_id: int")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      VectorOutputShape(0, context);
+      VectorOutputShape(1, context);
+      VectorOutputShape(2, context);
+      return ComputeSessionHandleInputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession, Component, and channel index, output fixed features.
 
@@ -175,6 +279,11 @@ REGISTER_OP("ExtractLinkFeatures")
     .Output("idx: int32")
     .Attr("component: string")
     .Attr("channel_id: int")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      VectorOutputShape(0, context);
+      VectorOutputShape(1, context);
+      return ComputeSessionHandleInputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession, Component, and a channel index, outputs link features.
 
@@ -191,6 +300,10 @@ REGISTER_OP("EmitOracleLabels")
     .Input("handle: string")
     .Output("gold_labels: int32")
     .Attr("component: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      VectorOutputShape(0, context);
+      return ComputeSessionHandleInputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession and Component, emit a vector of gold labels.
 
@@ -200,10 +313,39 @@ gold_labels: A [batch_size * beam_size] vector of gold labels for the current
 component: The name of a Component instance, matching the ComponentSpec.name.
 )doc");
 
+REGISTER_OP("EmitOracleLabelsAndProbabilities")
+    .Input("handle: string")
+    .Output("instance_indices: int32")
+    .Output("gold_labels: int32")
+    .Output("probabilities: float")
+    .Attr("component: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      VectorOutputShape(0, context);
+      VectorOutputShape(1, context);
+      VectorOutputShape(2, context);
+      return ComputeSessionHandleInputShape(context);
+    })
+    .Doc(R"doc(
+Given a ComputeSession and Component, emit corresponding vectors of instance
+indices, gold labels, and probabilities.
+
+handle: A handle to a ComputeSession.
+instance_indices: A vector [N] of indices for the current ComputeSession, where
+             N is the number of instance labels. Each element in each beam is
+             assigned an index.
+gold_labels: A vector [N] of gold labels for the current ComputeSession.
+probabilities: A vector [N] of probabilities for the current ComputeSession.
+component: The name of a Component instance, matching the ComponentSpec.name.
+)doc");
+
 REGISTER_OP("EmitAllFinal")
     .Input("handle: string")
     .Output("all_final: bool")
     .Attr("component: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      context->set_output(0, context->Vector(1));
+      return ComputeSessionHandleInputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession and Component, returns whether the Component is final.
 
@@ -219,6 +361,7 @@ REGISTER_OP("WriteAnnotations")
     .Input("handle: string")
     .Output("output_handle: string")
     .Attr("component: string")
+    .SetShapeFn(ComputeSessionHandleInputAndOutputShape)
     .Doc(R"doc(
 Given a ComputeSession, has the given component write out its annotations.
 
@@ -234,6 +377,10 @@ REGISTER_OP("EmitAnnotations")
     .Input("handle: string")
     .Output("annotations: string")
     .Attr("component: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      VectorOutputShape(0, context);
+      return ComputeSessionHandleInputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession, emits strings with final predictions for the model.
 
@@ -248,6 +395,10 @@ REGISTER_OP("GetComponentTrace")
     .Input("handle: string")
     .Output("trace: string")
     .Attr("component: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      VectorOutputShape(0, context);
+      return ComputeSessionHandleInputShape(context);
+    })
     .Doc(R"doc(
 Gets the raw MasterTrace proto for each batch, state, and beam slot.
 

@@ -56,7 +56,7 @@ setuptools.setup(
     version='0.2',
     description='SyntaxNet: Neural Models of Syntax',
     long_description='',
-    url='https://github.com/tensorflow/models/tree/master/research/syntaxnet',
+    url='https://github.com/tensorflow/models/tree/master/syntaxnet',
     author='Google Inc.',
     author_email='opensource@google.com',
 

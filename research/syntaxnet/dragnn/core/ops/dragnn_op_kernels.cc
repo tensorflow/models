@@ -21,6 +21,7 @@
 #include "dragnn/core/compute_session_pool.h"
 #include "dragnn/core/ops/compute_session_op.h"
 #include "dragnn/core/resource_container.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "dragnn/protos/spec.pb.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
@@ -30,6 +31,7 @@
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/threadpool.h"
+#include "tensorflow/core/lib/io/path.h"
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/mutex.h"
 
@@ -47,12 +49,67 @@ using tensorflow::ResourceMgr;
 using tensorflow::Status;
 using tensorflow::Tensor;
 using tensorflow::TensorShape;
+using tensorflow::io::Dirname;
+using tensorflow::io::JoinPath;
 
 namespace syntaxnet {
 namespace dragnn {
 
 typedef ResourceContainer<ComputeSession> ComputeSessionResource;
 typedef ResourceContainer<ComputeSessionPool> ComputeSessionPoolResource;
+typedef ResourceContainer<string> StringResource;
+
+namespace {
+
+const char kGlobalContainer[] = "__reserved_global_container";
+const char kBasePathTag[] = "__reserved_asset_base_path";
+const char kUnmanagedAssetDirectory[] = "assets.extra";
+
+// When restoring a graph from a SavedModel, this op will rewrite the MasterSpec
+// to point the DRAGNN components to the new resource locations. It will then
+// add a string resource to the resource manager, which will be used to
+// rebuild the masterspec before it is acquired in the GetComputeSession op.
+class SetAssetDirectory : public OpKernel {
+ public:
+  explicit SetAssetDirectory(OpKernelConstruction *context)
+      : OpKernel(context) {
+    OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, {DT_STRING}));
+  }
+
+  void Compute(OpKernelContext *context) override {
+    ResourceMgr *rmgr = context->resource_manager();
+    const string asset_path = context->input(0).scalar<string>()();
+
+    // TODO(googleuser): Get this data in a way that isn't fragile as all hell.
+    // "I've done stuff I ain't proud of... and the stuff I am proud of is
+    // disgusting." -- Moe
+    auto extra_asset_dir =
+        JoinPath(Dirname(Dirname(asset_path)), kUnmanagedAssetDirectory);
+    LOG(INFO) << "Found extra assets path at:" << extra_asset_dir;
+
+    // Rather than attempt to rewrite the MasterSpec here, we save off a
+    // StringResource containing the new asset path. It will be used in
+    // the GetSession op, if it exists.
+    std::unique_ptr<string> asset_path_ptr(new string(extra_asset_dir));
+
+    OP_REQUIRES_OK(context, rmgr->Create<StringResource>(
+                                kGlobalContainer, kBasePathTag,
+                                new StringResource(std::move(asset_path_ptr))));
+
+    // This isn't used anywhere - it just allows us to have an output so that
+    // it's easier to reason about Tensorflow's graph execution.
+    Tensor *output;
+    OP_REQUIRES_OK(context,
+                   context->allocate_output(0, TensorShape({1}), &output));
+    output->vec<string>()(0) = asset_path;
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(SetAssetDirectory);
+};
+
+REGISTER_KERNEL_BUILDER(Name("SetAssetDirectory").Device(DEVICE_CPU),
+                        SetAssetDirectory);
 
 // Given a MasterSpec proto, outputs a handle to a ComputeSession.
 class GetSession : public OpKernel {
@@ -66,6 +123,7 @@ class GetSession : public OpKernel {
     CHECK(master_spec_.ParseFromString(master_spec_str));
     CHECK(grid_point_.ParseFromString(grid_point_spec_str));
     OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, {DT_STRING}));
+    has_overwritten_spec_ = false;
   }
 
   void Compute(OpKernelContext *context) override {
@@ -74,10 +132,32 @@ class GetSession : public OpKernel {
 
     // Create the pool for this container, or re-use one that was allocated in a
     // previous call.
-    auto create_pool = [this,
+    auto create_pool = [this, &rmgr,
                         &container](ComputeSessionPoolResource **resource) {
-      LOG(INFO) << "Creating new ComputeSessionPool in container handle: "
-      << container;
+      if (has_overwritten_spec_) {
+        // TODO(googleuser): Figure out a way to test this.
+        // If there's already an overwritten spec, use that.
+        LOG(INFO) << "Creating new ComputeSessionPool in container handle: "
+                  << container << " with previously overwritten master spec.";
+      } else {
+        // If not, try to find the resource base.
+        StringResource *resource_base;
+        auto resource_base_lookup = rmgr->Lookup<StringResource>(
+            kGlobalContainer, kBasePathTag, &resource_base);
+        if (resource_base_lookup.ok()) {
+          // If that exists, the spec must be rewritten.
+          string resource_base_path = *resource_base->get();
+          LOG(INFO) << "Creating new ComputeSessionPool in container handle: "
+                    << container << " using resource directory base "
+                    << resource_base_path;
+          RewriteMasterSpec(resource_base_path);
+          resource_base->Unref();
+        } else {
+          // If not, just use the spec as is.
+          LOG(INFO) << "Creating new ComputeSessionPool in container handle: "
+                    << container << " without editing master spec.";
+        }
+      }
       std::unique_ptr<ComputeSessionPool> pool(
           new ComputeSessionPool(master_spec_, grid_point_));
       *resource = new ComputeSessionPoolResource(std::move(pool));
@@ -120,6 +200,23 @@ class GetSession : public OpKernel {
   }
 
  private:
+  // Rewrites this op's saved MasterSpec, appending the new base directory.
+  void RewriteMasterSpec(const string &new_base) {
+    for (auto &component_spec : *master_spec_.mutable_component()) {
+      for (auto &resource_def : *component_spec.mutable_resource()) {
+        for (auto &part_def : *resource_def.mutable_part()) {
+          part_def.set_file_pattern(
+              JoinPath(new_base, part_def.file_pattern()));
+          VLOG(2) << "New path: " << part_def.file_pattern();
+        }
+      }
+    }
+
+    VLOG(3) << "Rewritten spec: " << master_spec_.DebugString();
+    has_overwritten_spec_ = true;
+  }
+
+  bool has_overwritten_spec_;
   MasterSpec master_spec_;
   GridPoint grid_point_;
 
@@ -141,7 +238,6 @@ REGISTER_KERNEL_BUILDER(Name("GetSession").Device(DEVICE_CPU), GetSession);
 class ReleaseSession : public OpKernel {
  public:
   explicit ReleaseSession(OpKernelConstruction *context) : OpKernel(context) {
-    string master_spec_str;
     OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, {}));
   }
 
@@ -188,6 +284,256 @@ class ReleaseSession : public OpKernel {
 REGISTER_KERNEL_BUILDER(Name("ReleaseSession").Device(DEVICE_CPU),
                         ReleaseSession);
 
+// Returns statistics about session loads to the graph. This op returns the
+// total number of created Session objects and the number of those objects
+// that are currently being used in the ComputeSessionPool.
+class GetSessionCounts : public OpKernel {
+ public:
+  explicit GetSessionCounts(OpKernelConstruction *context) : OpKernel(context) {
+    OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, {DT_INT64}));
+  }
+
+  void Compute(OpKernelContext *context) override {
+    const string container = context->input(0).scalar<string>()();
+    VLOG(1) << "Getting stats for container: " << container;
+    ResourceMgr *rmgr = context->resource_manager();
+
+    // Allocate the output tensors.
+    Tensor *output;
+    OP_REQUIRES_OK(context,
+                   context->allocate_output(0, TensorShape({2}), &output));
+
+    // Get the pool for this container.
+    ComputeSessionPoolResource *pool_resource;
+    auto result = rmgr->Lookup<ComputeSessionPoolResource>(container, "pool",
+                                                           &pool_resource);
+    if (!result.ok()) {
+      // If there's no ComputeSessionPoolResource, report 0 sessions created
+      // and 0 available.
+      output->vec<int64>()(0) = 0;
+      output->vec<int64>()(1) = 0;
+      return;
+    }
+
+    auto *pool = pool_resource->get();
+    CHECK(pool != nullptr);
+
+    output->vec<int64>()(0) = pool->num_unique_sessions();
+    output->vec<int64>()(1) = pool->num_outstanding_sessions();
+
+    pool_resource->Unref();
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(GetSessionCounts);
+};
+
+REGISTER_KERNEL_BUILDER(Name("GetSessionCounts").Device(DEVICE_CPU),
+                        GetSessionCounts);
+
+// Rebatches a dense ragged tensor into a batch of padded subsequences.
+class RebatchDensor : public OpKernel {
+ public:
+  explicit RebatchDensor(OpKernelConstruction *context) : OpKernel(context) {
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("sequence_length", &sequence_length_));
+    OP_REQUIRES_OK(context, context->GetAttr("lr_padding", &lr_padding_));
+    OP_REQUIRES_OK(context, context->MatchSignature({DT_FLOAT, DT_INT32},
+                                                    {DT_FLOAT, DT_INT32}));
+    OP_REQUIRES(context, lr_padding_ < sequence_length_,
+                tensorflow::errors::FailedPrecondition(
+                    "Sequence length must be longer than padding."));
+  }
+
+  void Compute(OpKernelContext *context) override {
+    // Figure out how many sequences we need.
+    const Tensor &data = context->input(0);
+    const int embedding_size = data.shape().dim_size(1);
+    const Tensor &offsets = context->input(1);
+    const int offsets_size = offsets.shape().dim_size(0);
+    const int batch_size = offsets_size - 1;
+    const auto &offset_data = offsets.vec<int32>();
+
+    int num_elements = 0;
+    for (int i = 0; i < batch_size; ++i) {
+      int element_length = offset_data(i + 1) - offset_data(i);
+      if (element_length > 0) {
+        int num_full_sequences = element_length / sequence_length_;
+        int length = ((element_length % sequence_length_) == 0)
+                         ? (num_full_sequences)
+                         : (num_full_sequences + 1);
+        num_elements += length;
+        VLOG(2) << "Item " << i << " of length " << element_length
+                << " will use " << length << ". Total: " << num_elements;
+      }
+    }
+
+    int output_sequence_length = 2 * lr_padding_ + sequence_length_;
+    VLOG(2) << "Rebatch shape: " << num_elements << " "
+            << output_sequence_length << " " << embedding_size;
+
+    // Allocate the output tensors.
+    Tensor *output;
+    OP_REQUIRES_OK(
+        context,
+        context->allocate_output(
+            0,
+            TensorShape({num_elements, output_sequence_length, embedding_size}),
+            &output));
+    output->flat<float>().setZero();
+
+    Tensor *indices;
+    OP_REQUIRES_OK(context, context->allocate_output(
+                                1, TensorShape({num_elements}), &indices));
+
+    const float *dense_data = data.flat<float>().data();
+    float *output_data = output->flat<float>().data();
+    int64 start_offset = lr_padding_ * embedding_size;
+    int64 seq_max_length = lr_padding_ + sequence_length_;
+    int64 row_index = 0;
+
+    for (int i = 0; i < batch_size; ++i) {
+      int64 element_length = offset_data(i + 1) - offset_data(i);
+      VLOG(2) << "Rebatching index " << i << " with size " << element_length;
+
+      if (element_length == 0) {
+        continue;
+      }
+
+      int64 first_seq_length = std::min(element_length, seq_max_length);
+      int64 subseqence_length = first_seq_length * embedding_size;
+      int64 dense_start = offset_data(i) * embedding_size;
+      int64 output_start =
+          row_index * output_sequence_length * embedding_size + start_offset;
+      for (int j = 0; j < subseqence_length; ++j) {
+        output_data[output_start + j] = dense_data[dense_start + j];
+      }
+      indices->vec<int32>()(row_index) = i;
+      VLOG(2) << "Rebatched " << i << " to " << row_index;
+      ++row_index;
+
+      int64 tokens_remaining = element_length - sequence_length_;
+      VLOG(2) << "Remaining: " << tokens_remaining;
+      while (tokens_remaining > 0) {
+        int64 seq_length = std::min(tokens_remaining, seq_max_length);
+        int64 subseqence_length = (seq_length + lr_padding_) * embedding_size;
+        int64 data_start =
+            (offset_data(i + 1) - tokens_remaining) - lr_padding_;
+        int64 dense_start = data_start * embedding_size;
+        int64 output_start =
+            row_index * output_sequence_length * embedding_size;
+        for (int j = 0; j < subseqence_length; ++j) {
+          output_data[output_start + j] = dense_data[dense_start + j];
+        }
+        indices->vec<int32>()(row_index) = i;
+        VLOG(2) << "Rebatched " << i << " to " << row_index;
+        ++row_index;
+        tokens_remaining -= sequence_length_;
+        VLOG(2) << "Remaining: " << tokens_remaining;
+      }
+    }
+
+    for (int j = 0; j < num_elements; ++j) {
+      VLOG(2) << "Rebatch item :" << j
+              << " has index: " << indices->vec<int32>()(j);
+    }
+  }
+
+ private:
+  int sequence_length_;
+  int lr_padding_;
+  TF_DISALLOW_COPY_AND_ASSIGN(RebatchDensor);
+};
+
+REGISTER_KERNEL_BUILDER(Name("RebatchDensor").Device(DEVICE_CPU),
+                        RebatchDensor);
+
+// Rebatches a dense ragged tensor into a batch of padded subsequences.
+class UnbatchSubsequences : public OpKernel {
+ public:
+  explicit UnbatchSubsequences(OpKernelConstruction *context)
+      : OpKernel(context) {
+    OP_REQUIRES_OK(context, context->MatchSignature(
+                                {DT_FLOAT, DT_INT32, DT_INT32}, {DT_FLOAT}));
+  }
+
+  void Compute(OpKernelContext *context) override {
+    // Figure out how many sequences we need.
+    const Tensor &data = context->input(0);
+    const int input_batch_size = data.shape().dim_size(0);
+    const int sequence_length = data.shape().dim_size(2);
+    const int embedding_size = data.shape().dim_size(3);
+    const int input_size = data.NumElements();
+    const Tensor &indices = context->input(1);
+    const int indices_size = indices.shape().dim_size(0);
+    const Tensor &offsets = context->input(2);
+    const int offsets_size = offsets.shape().dim_size(0);
+    const int batch_size = offsets_size - 1;
+    const auto &offset_data = offsets.vec<int32>();
+
+    int max_sequence_size = 0;
+    for (int i = 0; i < batch_size; ++i) {
+      int element_length = offset_data(i + 1) - offset_data(i);
+      if (element_length > max_sequence_size) {
+        max_sequence_size = element_length;
+      }
+    }
+
+    // Allocate the output tensors.
+    Tensor *output;
+
+    VLOG(2) << "Unbatch shape: " << batch_size << " " << max_sequence_size
+            << " " << embedding_size;
+    OP_REQUIRES_OK(
+        context,
+        context->allocate_output(
+            0, TensorShape({batch_size, max_sequence_size, embedding_size}),
+            &output));
+    output->flat<float>().setZero();
+    int output_size = output->NumElements();
+
+    const float *input_data = data.flat<float>().data();
+    float *output_data = output->flat<float>().data();
+    const int32 *index_data = indices.flat<int32>().data();
+    int previous_index = -1;
+    int current_sequence_element = 0;
+
+    VLOG(2) << "Sequence length: " << sequence_length;
+    VLOG(2) << "Indices size: " << indices_size;
+    for (int i = 0; i < indices_size; ++i) {
+      int current_index = index_data[i];
+      CHECK(current_index < input_batch_size) << "Index out of bounds.";
+      if (current_index > previous_index) {
+        previous_index = current_index;
+        current_sequence_element = 0;
+      }
+
+      int current_sequence_length = std::min(
+          sequence_length, max_sequence_size - current_sequence_element);
+      int64 input_offset = i * sequence_length * embedding_size;
+      int64 output_offset =
+          (current_index * max_sequence_size + current_sequence_element) *
+          embedding_size;
+      VLOG(2) << "cur_ind: " << current_index
+              << " cur_element: " << current_sequence_element
+              << " cur sqlen: " << current_sequence_length
+              << " in: " << input_offset << " out: " << output_offset;
+      for (int j = 0; j < current_sequence_length * embedding_size; ++j) {
+        CHECK((output_offset + j) < output_size) << "output index invalid";
+        CHECK((input_offset + j) < input_size) << "input index invalid";
+        output_data[output_offset + j] = input_data[input_offset + j];
+      }
+      current_sequence_element += current_sequence_length;
+    }
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(UnbatchSubsequences);
+};
+
+REGISTER_KERNEL_BUILDER(Name("UnbatchSubsequences").Device(DEVICE_CPU),
+                        UnbatchSubsequences);
+
 /*******************************************************************************
  *                   ComputeSessionOps below here.
  ******************************************************************************/
@@ -233,9 +579,17 @@ class AdvanceFromPrediction : public ComputeSessionOp {
   void ComputeWithState(OpKernelContext *context,
                         ComputeSession *session) override {
     const Tensor &scores = context->input(1);
-    session->AdvanceFromPrediction(component_name(),
-                                   scores.tensor<float, 2>().data(),
-                                   scores.NumElements());
+    const int num_items = scores.shape().dim_size(0);
+    const int num_actions = scores.shape().dim_size(1);
+    bool success = session->AdvanceFromPrediction(
+        component_name(), scores.tensor<float, 2>().data(), num_items,
+        num_actions);
+    if (success) {
+      VLOG(2) << "Score: " << scores.tensor<float, 2>();
+    }
+    OP_REQUIRES(
+        context, success,
+        tensorflow::errors::Internal("Unable to advance from prediction."));
   }
 
  private:
@@ -247,13 +601,12 @@ REGISTER_KERNEL_BUILDER(Name("AdvanceFromPrediction").Device(DEVICE_CPU),
 
 // Given a handle to a ComputeSession and a channel index, outputs fixed
 // features.
-// Fixed features are returned as 3 vectors or equal length:
+// Fixed features are returned as 3 vectors of equal length:
 //   - ids: specifies which rows should be looked up in the embedding
 //   matrix,
 //   - weights: specifies a scale for each embedding vector,
 //   - indices: sorted vector that assigns the same index to embedding
-//   vectors
-//       that should be summed together.
+//   vectors that should be summed together.
 //
 // For example if we have 3 features, for a given channel, we might have:
 //   feature a: (5, 1)
@@ -300,7 +653,10 @@ class ExtractFixedFeatures : public ComputeSessionOp {
     int num_features = session->GetInputFeatures(
         component_name(), indices_allocator, ids_allocator, weights_allocator,
         channel_id_);
-    VLOG(2) << "Extracted " << num_features;
+    VLOG(2) << "Extracted features (" << num_features << "): "
+            << " ids=" << context->mutable_output(1)->vec<int64>()
+            << " weights=" << context->mutable_output(2)->vec<float>()
+            << " indices=" << context->mutable_output(0)->vec<int32>();
   }
 
  private:
@@ -394,7 +750,8 @@ REGISTER_KERNEL_BUILDER(Name("ExtractLinkFeatures").Device(DEVICE_CPU),
 
 // Given a handle to a BatchedBeamComponentState, emits a vector of gold
 // labels.
-// The vector of gold labels has size batch_size * beam_size.
+// The vector of gold labels has size batch_size * beam_size. The code assumes
+// one label per instance.
 class EmitOracleLabels : public ComputeSessionOp {
  public:
   explicit EmitOracleLabels(OpKernelConstruction *context)
@@ -415,12 +772,13 @@ class EmitOracleLabels : public ComputeSessionOp {
                        TensorShape({session->BatchSize(component_name()) *
                                     session->BeamSize(component_name())}),
                        &output));
-    std::vector<std::vector<int>> batched_labels =
+    std::vector<std::vector<std::vector<Label>>> batched_labels =
         session->EmitOracleLabels(component_name());
     int raw_index = 0;
     for (const auto &batch_vector : batched_labels) {
-      for (const auto &label : batch_vector) {
-        output->vec<int32>()(raw_index) = label;
+      for (const auto &instance_labels : batch_vector) {
+        // The code assumes there is one label per instance.
+        output->vec<int32>()(raw_index) = instance_labels.at(0).id;
         ++raw_index;
       }
     }
@@ -432,6 +790,66 @@ class EmitOracleLabels : public ComputeSessionOp {
 
 REGISTER_KERNEL_BUILDER(Name("EmitOracleLabels").Device(DEVICE_CPU),
                         EmitOracleLabels);
+
+// Given a handle to a BatchedBeamComponentState, emits corresponding vectors of
+// indices, gold labels, and probabilities. The size of the output vectors is
+// equal to the sum of the number of labels for each instance in the beams in
+// the batch.
+class EmitOracleLabelsAndProbabilities : public ComputeSessionOp {
+ public:
+  explicit EmitOracleLabelsAndProbabilities(OpKernelConstruction *context)
+      : ComputeSessionOp(context) {
+    OP_REQUIRES_OK(context, context->MatchSignature(
+                                {DT_STRING}, {DT_INT32, DT_INT32, DT_FLOAT}));
+  }
+  bool OutputsHandle() const override { return false; }
+  bool RequiresComponentName() const override { return true; }
+
+  void ComputeWithState(OpKernelContext *context,
+                        ComputeSession *session) override {
+    const std::vector<std::vector<std::vector<Label>>> batched_labels =
+        session->EmitOracleLabels(component_name());
+    int label_count = 0;
+    for (const auto &beam : batched_labels) {
+      for (const auto &instance : beam) {
+        label_count += instance.size();
+      }
+    }
+
+    Tensor *indices_output;
+    OP_REQUIRES_OK(context,
+                   context->allocate_output(0, TensorShape({label_count}),
+                                            &indices_output));
+    Tensor *label_output;
+    OP_REQUIRES_OK(context, context->allocate_output(
+                                1, TensorShape({label_count}), &label_output));
+    Tensor *prob_output;
+    OP_REQUIRES_OK(context, context->allocate_output(
+                                2, TensorShape({label_count}), &prob_output));
+
+    // Index keeping track of each instance in the beams in the batch.
+    int instance_index = -1;
+    int raw_index = -1;
+    for (const auto &beam : batched_labels) {
+      for (const auto &instance : beam) {
+        ++instance_index;
+        for (const Label &label : instance) {
+          ++raw_index;
+          indices_output->vec<int32>()(raw_index) = instance_index;
+          label_output->vec<int32>()(raw_index) = label.id;
+          prob_output->vec<float>()(raw_index) = label.probability;
+        }
+      }
+    }
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(EmitOracleLabelsAndProbabilities);
+};
+
+REGISTER_KERNEL_BUILDER(
+    Name("EmitOracleLabelsAndProbabilities").Device(DEVICE_CPU),
+    EmitOracleLabelsAndProbabilities);
 
 // Given a handle to a ComponentState, emits a single bool indicating
 // whether all elements in the batch contain beams containing all final states.
@@ -524,6 +942,7 @@ class AttachDataReader : public ComputeSessionOp {
     auto input_data(context->input(1).vec<string>());
 
     std::vector<string> data;
+    data.reserve(input_data.size());
     for (int i = 0; i < input_data.size(); ++i) {
       data.push_back(input_data(i));
     }
@@ -642,5 +1061,6 @@ class GetComponentTrace : public ComputeSessionOp {
 REGISTER_KERNEL_BUILDER(Name("GetComponentTrace").Device(DEVICE_CPU),
                         GetComponentTrace);
 
+}  // namespace
 }  // namespace dragnn
 }  // namespace syntaxnet

@@ -32,6 +32,8 @@ class StringData : public InputBatch {
     }
   }
 
+  int GetSize() const override { return data_.size(); }
+
   const std::vector<string> GetSerializedData() const override { return data_; }
 
   std::vector<string> *data() { return &data_; }
@@ -50,6 +52,8 @@ class DifferentStringData : public InputBatch {
     }
   }
 
+  int GetSize() const override { return data_.size(); }
+
   const std::vector<string> GetSerializedData() const override { return data_; }
 
   std::vector<string> *data() { return &data_; }
@@ -57,6 +61,11 @@ class DifferentStringData : public InputBatch {
  private:
   std::vector<string> data_;
 };
+
+// Expects that two pointers have the same address.
+void ExpectSameAddress(const void *pointer1, const void *pointer2) {
+  EXPECT_EQ(pointer1, pointer2);
+}
 
 TEST(InputBatchCacheTest, ConvertsSingleInput) {
   string test_string = "Foo";
@@ -116,6 +125,49 @@ TEST(InputBatchCacheTest, ConvertsAddedInputDiesAfterGetAs) {
   EXPECT_EQ(data->data()->at(0), "Foo_converted");
   EXPECT_DEATH(generic_set.AddData("YOU MAY NOT DO THIS AND IT WILL DIE."),
                "after the cache has been converted");
+}
+
+TEST(InputBatchCacheTest, SerializedDataAndSize) {
+  InputBatchCache generic_set;
+  generic_set.AddData("Foo");
+  generic_set.AddData("Bar");
+  generic_set.GetAs<StringData>();
+
+  const std::vector<string> expected_data = {"Foo_converted", "Bar_converted"};
+  EXPECT_EQ(expected_data, generic_set.SerializedData());
+  EXPECT_EQ(2, generic_set.Size());
+}
+
+TEST(InputBatchCacheTest, InitializeFromInputBatch) {
+  const std::vector<string> kInputData = {"foo", "bar", "baz"};
+  const std::vector<string> kExpectedData = {"foo_converted",  //
+                                             "bar_converted",  //
+                                             "baz_converted"};
+
+  std::unique_ptr<StringData> string_data(new StringData());
+  string_data->SetData(kInputData);
+  const StringData *string_data_ptr = string_data.get();
+
+  InputBatchCache generic_set(std::move(string_data));
+  auto data = generic_set.GetAs<StringData>();
+
+  ExpectSameAddress(string_data_ptr, data);
+  EXPECT_EQ(data->GetSize(), 3);
+  EXPECT_EQ(data->GetSerializedData(), kExpectedData);
+  EXPECT_EQ(*data->data(), kExpectedData);
+
+  // AddData() shouldn't work since the cache is already populated.
+  EXPECT_DEATH(generic_set.AddData("YOU MAY NOT DO THIS AND IT WILL DIE."),
+               "after the cache has been converted");
+
+  // GetAs() shouldn't work with a different type.
+  EXPECT_DEATH(generic_set.GetAs<DifferentStringData>(),
+               "Attempted to convert to two object types!");
+}
+
+TEST(InputBatchCacheTest, CannotInitializeFromNullInputBatch) {
+  EXPECT_DEATH(InputBatchCache(std::unique_ptr<StringData>()),
+               "Cannot initialize from a null InputBatch");
 }
 
 }  // namespace dragnn

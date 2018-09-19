@@ -94,7 +94,7 @@ GenericEmbeddingFeatureExtractor::ConvertExample(
     for (int j = 0; j < feature_vectors[i].size(); ++j) {
       const FeatureType &feature_type = *feature_vectors[i].type(j);
       const FeatureValue value = feature_vectors[i].value(j);
-      const bool is_continuous = feature_type.name().find("continuous") == 0;
+      const bool is_continuous = feature_type.is_continuous();
       const int64 id = is_continuous ? FloatFeatureValue(value).id : value;
       const int base = feature_type.base();
       if (id >= 0) {

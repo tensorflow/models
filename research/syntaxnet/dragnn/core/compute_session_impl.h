@@ -13,23 +13,26 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
+#ifndef DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
+#define DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
 
+#include <map>
 #include <memory>
 
 #include "dragnn/components/util/bulk_feature_extractor.h"
 #include "dragnn/core/compute_session.h"
 #include "dragnn/core/index_translator.h"
 #include "dragnn/core/input_batch_cache.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "dragnn/protos/spec.pb.h"
 #include "dragnn/protos/trace.pb.h"
 
+
 namespace syntaxnet {
 namespace dragnn {
 
-class ComputeSessionImpl : public ComputeSession {
+class ComputeSessionImpl final : public ComputeSession {
  public:
   // Creates a ComputeSessionImpl with the provided component builder function.
   ComputeSessionImpl(
@@ -55,9 +58,9 @@ class ComputeSessionImpl : public ComputeSession {
 
   void AdvanceFromOracle(const string &component_name) override;
 
-  void AdvanceFromPrediction(const string &component_name,
-                             const float score_matrix[],
-                             int score_matrix_length) override;
+  bool AdvanceFromPrediction(const string &component_name,
+                             const float *score_matrix, int num_items,
+                             int num_actions) override;
 
   int GetInputFeatures(const string &component_name,
                        std::function<int32 *(int)> allocate_indices,
@@ -68,10 +71,16 @@ class ComputeSessionImpl : public ComputeSession {
   int BulkGetInputFeatures(const string &component_name,
                            const BulkFeatureExtractor &extractor) override;
 
+  void BulkEmbedFixedFeatures(
+      const string &component_name, int batch_size_padding,
+      int num_steps_padding, int output_array_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output) override;
+
   std::vector<LinkFeatures> GetTranslatedLinkFeatures(
       const string &component_name, int channel_id) override;
 
-  std::vector<std::vector<int>> EmitOracleLabels(
+  std::vector<std::vector<std::vector<Label>>> EmitOracleLabels(
       const string &component_name) override;
 
   bool IsTerminal(const string &component_name) override;
@@ -84,6 +93,10 @@ class ComputeSessionImpl : public ComputeSession {
 
   void SetInputData(const std::vector<string> &data) override;
 
+  void SetInputBatchCache(std::unique_ptr<InputBatchCache> batch) override;
+
+  InputBatchCache *GetInputBatchCache() override;
+
   void ResetSession() override;
 
   void SetTracing(bool tracing_on) override;
@@ -95,13 +108,18 @@ class ComputeSessionImpl : public ComputeSession {
   const std::vector<const IndexTranslator *> Translators(
       const string &component_name) const override;
 
- private:
-  // Get a given component. Fails if the component is not found.
-  Component *GetComponent(const string &component_name) const;
-
   // Get a given component. CHECK-fail if the component's IsReady method
   // returns false.
-  Component *GetReadiedComponent(const string &component_name) const;
+  Component *GetReadiedComponent(const string &component_name) const override;
+
+ private:
+  // Mapping from Keys to Values.
+  template <class Key, class Value>
+  using Mapping =  std::map<Key, Value>;
+
+
+  // Get a given component. Fails if the component is not found.
+  Component *GetComponent(const string &component_name) const;
 
   // Get the index translators for the given component.
   const std::vector<IndexTranslator *> &GetTranslators(
@@ -116,11 +134,11 @@ class ComputeSessionImpl : public ComputeSession {
 
   // Holds all of the components owned by this ComputeSession, associated with
   // their names in the MasterSpec.
-  std::map<string, std::unique_ptr<Component>> components_;
+  Mapping<string, std::unique_ptr<Component>> components_;
 
   // Holds a vector of translators for each component, indexed by the name
   // of the component they belong to.
-  std::map<string, std::vector<IndexTranslator *>> translators_;
+  Mapping<string, std::vector<IndexTranslator *>> translators_;
 
   // Holds ownership of all the IndexTranslators for this compute session.
   std::vector<std::unique_ptr<IndexTranslator>> owned_translators_;
@@ -128,7 +146,7 @@ class ComputeSessionImpl : public ComputeSession {
   // The predecessor component for every component.
   // If a component is not in this map, it has no predecessor component and
   // will have its beam initialized without any data from other components.
-  std::map<Component *, Component *> predecessors_;
+  Mapping<Component *, Component *> predecessors_;
 
   // Holds the current input data for this ComputeSession.
   std::unique_ptr<InputBatchCache> input_data_;
@@ -154,4 +172,4 @@ class ComputeSessionImpl : public ComputeSession {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
+#endif  // DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_

@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_TRANSITION_STATE_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_TRANSITION_STATE_H_
+#ifndef DRAGNN_CORE_TEST_MOCK_TRANSITION_STATE_H_
+#define DRAGNN_CORE_TEST_MOCK_TRANSITION_STATE_H_
 
 #include <memory>
 
@@ -31,15 +31,17 @@ class MockTransitionState : public TransitionState {
  public:
   MOCK_METHOD1(Init, void(const TransitionState &parent));
   MOCK_CONST_METHOD0(Clone, std::unique_ptr<TransitionState>());
-  MOCK_CONST_METHOD0(ParentBeamIndex, const int());
-  MOCK_METHOD1(SetBeamIndex, void(const int index));
-  MOCK_CONST_METHOD0(GetBeamIndex, const int());
-  MOCK_CONST_METHOD0(GetScore, const float());
-  MOCK_METHOD1(SetScore, void(const float score));
+  MOCK_CONST_METHOD0(ParentBeamIndex, int());
+  MOCK_METHOD1(SetBeamIndex, void(int index));
+  MOCK_CONST_METHOD0(GetBeamIndex, int());
+  MOCK_CONST_METHOD0(GetScore, float());
+  MOCK_METHOD1(SetScore, void(float score));
+  MOCK_CONST_METHOD0(IsGold, bool());
+  MOCK_METHOD1(SetGold, void(bool is_gold));
   MOCK_CONST_METHOD0(HTMLRepresentation, string());
 };
 
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_TRANSITION_STATE_H_
+#endif  // DRAGNN_CORE_TEST_MOCK_TRANSITION_STATE_H_

@@ -16,7 +16,7 @@
 #include "dragnn/core/component_registry.h"
 #include "dragnn/core/interfaces/component.h"
 #include "dragnn/core/interfaces/transition_state.h"
-#include "dragnn/io/sentence_input_batch.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "syntaxnet/base.h"
 
@@ -25,7 +25,8 @@ namespace dragnn {
 namespace {
 
 // A component that does not create its own transition states; instead, it
-// simply forwards the states of the previous component.  Does not support all
+// simply forwards the states of the previous component.  Requires that some
+// previous component has converted the input batch.  Does not support all
 // methods.  Intended for "compute-only" bulk components that only use linked
 // features, which use only a small subset of DRAGNN functionality.
 class StatelessComponent : public Component {
@@ -38,8 +39,7 @@ class StatelessComponent : public Component {
   void InitializeData(
       const std::vector<std::vector<const TransitionState *>> &parent_states,
       int max_beam_size, InputBatchCache *input_data) override {
-    // Must use SentenceInputBatch to match SyntaxNetComponent.
-    batch_size_ = input_data->GetAs<SentenceInputBatch>()->data()->size();
+    batch_size_ = input_data->Size();
     beam_size_ = max_beam_size;
     parent_states_ = parent_states;
 
@@ -84,31 +84,43 @@ class StatelessComponent : public Component {
     LOG(FATAL) << "[" << name_ << "] Method not supported";
     return nullptr;
   }
-  void AdvanceFromPrediction(const float transition_matrix[],
-                             int matrix_length) override {
-    LOG(FATAL) << "[" << name_ << "] Method not supported";
+  bool AdvanceFromPrediction(const float *transition_matrix, int num_items,
+                             int num_actions) override {
+    LOG(FATAL) << "[" << name_ << "] AdvanceFromPrediction not supported";
   }
   void AdvanceFromOracle() override {
-    LOG(FATAL) << "[" << name_ << "] Method not supported";
+    LOG(FATAL) << "[" << name_ << "] AdvanceFromOracle not supported";
   }
-  std::vector<std::vector<int>> GetOracleLabels() const override {
+  std::vector<std::vector<std::vector<Label>>> GetOracleLabels()
+      const override {
     LOG(FATAL) << "[" << name_ << "] Method not supported";
-    return {};
   }
   int GetFixedFeatures(std::function<int32 *(int)> allocate_indices,
                        std::function<int64 *(int)> allocate_ids,
                        std::function<float *(int)> allocate_weights,
                        int channel_id) const override {
     LOG(FATAL) << "[" << name_ << "] Method not supported";
-    return 0;
   }
   int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override {
     LOG(FATAL) << "[" << name_ << "] Method not supported";
-    return 0;
+  }
+  void BulkEmbedFixedFeatures(
+      int batch_size_padding, int num_steps_padding, int output_array_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output) override {
+    LOG(FATAL) << "[" << name_ << "] Method not supported";
+  }
+  void BulkEmbedDenseFixedFeatures(
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output, int embedding_output_size,
+      int32 *offset_array_output, int offset_array_size) override {
+    LOG(FATAL) << "[" << name_ << "] Method not supported";
+  }
+  int BulkDenseFeatureSize() const override {
+    LOG(FATAL) << "Method not supported";
   }
   std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override {
     LOG(FATAL) << "[" << name_ << "] Method not supported";
-    return {};
   }
   void AddTranslatedLinkFeaturesToTrace(
       const std::vector<LinkFeatures> &features, int channel_id) override {
@@ -116,9 +128,9 @@ class StatelessComponent : public Component {
   }
 
  private:
-  string name_;  // component name
+  string name_;         // component name
   int batch_size_ = 1;  // number of sentences in current batch
-  int beam_size_ = 1;  // maximum beam size
+  int beam_size_ = 1;   // maximum beam size
 
   // Parent states passed to InitializeData(), and passed along in GetBeam().
   std::vector<std::vector<const TransitionState *>> parent_states_;

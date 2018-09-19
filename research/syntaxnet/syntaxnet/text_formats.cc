@@ -157,7 +157,12 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       const int start = text.size();
       const int end = start + word.size() - 1;
       text.append(word);
-      add_space_to_text = fields[9] != "SpaceAfter=No";
+
+      // Determine whether a space should be added to sentence text.
+      std::vector<string> sub_fields = utils::Split(fields[9], '|');
+      auto no_space = [](const string &str) { return str == "SpaceAfter=No"; };
+      add_space_to_text =
+          !std::any_of(sub_fields.begin(), sub_fields.end(), no_space);
 
       // Add token to sentence.
       Token *token = sentence->add_token();
@@ -329,28 +334,28 @@ REGISTER_SYNTAXNET_DOCUMENT_FORMAT("conll-sentence", CoNLLSyntaxFormat);
 //
 // Examples:
 // To create a training example for sentence with raw text:
-//   That's a good point.
+//   "That's a good point."
 // and the corresponding gold segmentation:
-//   That 's a good point .
+//   "That" "\'s" "a" "good" "point" "."
 // Then the correct input is:
-// That	NO_SPACE
-// 's	SPACE
-// a	SPACE
-// good	SPACE
-// point	NO_SPACE
-// .	NO_SPACE
+// "That\tNO_SPACE"
+// "'s\tSPACE"
+// "a\tSPACE"
+// "good\tSPACE"
+// "point\tNO_SPACE"
+// ".\tNO_SPACE"
 //
 // Yet another example:
 // To create a training example for sentence with raw text:
-//   这是一个测试
+//   "这是一个测试"
 // and the corresponding gold segmentation:
-//   这 是 一 个 测试
+//   "这" "是" "一" "个" "测试"
 // Then the correct input is:
-// 这	NO_SPACE
-// 是	NO_SPACE
-// 一	NO_SPACE
-// 个	NO_SPACE
-// 测试	NO_SPACE
+// "这\tNO_SPACE"
+// "是\tNO_SPACE"
+// "一\tNO_SPACE"
+// "个\tNO_SPACE"
+// "测试\tNO_SPACE"
 class SegmentationTrainingDataFormat : public CoNLLSyntaxFormat {
  public:
   // Converts to segmentation training data by breaking those word in the input

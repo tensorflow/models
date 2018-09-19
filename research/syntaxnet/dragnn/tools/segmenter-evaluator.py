@@ -27,6 +27,7 @@ import os
 import re
 import time
 
+from absl import flags
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -42,10 +43,6 @@ from syntaxnet import sentence_pb2
 from syntaxnet.ops import gen_parser_ops
 from syntaxnet.util import check
 
-import dragnn.python.load_dragnn_cc_impl
-import syntaxnet.load_parser_ops
-
-flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('master_spec', '',

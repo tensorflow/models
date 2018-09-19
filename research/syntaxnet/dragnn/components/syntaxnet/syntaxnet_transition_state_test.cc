@@ -134,6 +134,22 @@ TEST_F(SyntaxNetTransitionStateTest, CanSetAndGetScore) {
   EXPECT_EQ(test_state->GetScore(), kNewScore);
 }
 
+// Validates the consistency of the goldness setter and getter.
+TEST_F(SyntaxNetTransitionStateTest, CanSetAndGetGold) {
+  // Create and initialize a test state.
+  MockTransitionState mock_state;
+  auto test_state = CreateState();
+  test_state->Init(mock_state);
+
+  constexpr bool kOldGold = true;
+  test_state->SetGold(kOldGold);
+  EXPECT_EQ(test_state->IsGold(), kOldGold);
+
+  constexpr bool kNewGold = false;
+  test_state->SetGold(kNewGold);
+  EXPECT_EQ(test_state->IsGold(), kNewGold);
+}
+
 // This test ensures that the initializing state's current index is saved
 // as the parent beam index of the state being initialized.
 TEST_F(SyntaxNetTransitionStateTest, ReportsParentBeamIndex) {

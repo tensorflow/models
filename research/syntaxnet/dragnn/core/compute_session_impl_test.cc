@@ -22,223 +22,52 @@
 #include "dragnn/core/component_registry.h"
 #include "dragnn/core/compute_session.h"
 #include "dragnn/core/compute_session_pool.h"
+#include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/component.h"
+#include "dragnn/core/interfaces/input_batch.h"
+#include "dragnn/core/test/fake_component_base.h"
 #include "dragnn/core/test/generic.h"
 #include "dragnn/core/test/mock_component.h"
 #include "dragnn/core/test/mock_transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "tensorflow/core/platform/test.h"
 
 namespace syntaxnet {
 namespace dragnn {
 
 using syntaxnet::test::EqualsProto;
-using testing::_;
 using testing::ElementsAre;
-using testing::Return;
 using testing::NotNull;
+using testing::Return;
+using testing::_;
 
 // *****************************************************************************
 // Test-internal class definitions.
 // *****************************************************************************
 
-// Define a test component to validate registered construction.
-class TestComponentType1 : public Component {
+class TestComponentType1 : public FakeComponentBase {
  public:
-  TestComponentType1() {}
-  void InitializeComponent(const ComponentSpec &spec) override {
-    name_ = spec.name();
-  }
-  void InitializeData(
-      const std::vector<std::vector<const TransitionState *>> &states,
-      int max_beam_size, InputBatchCache *input_data) override {}
-  void InitializeTracing() override {}
-  void DisableTracing() override {}
-  bool IsReady() const override { return true; }
-  string Name() const override { return name_; }
   int BeamSize() const override { return 3; }
   int BatchSize() const override { return 1; }
-  int StepsTaken(int batch_index) const override { return 0; }
-  int GetBeamIndexAtStep(int step, int current_index,
-                         int batch) const override {
-    return 0;
-  }
-  int GetSourceBeamIndex(int current_index, int batch) const override {
-    return 0;
-  }
-  void AdvanceFromPrediction(const float transition_matrix[],
-                             int matrix_length) override {}
-  void AdvanceFromOracle() override {}
-  bool IsTerminal() const override { return true; }
-  std::function<int(int, int, int)> GetStepLookupFunction(
-      const string &method) override {
-    return nullptr;
-  }
-  std::vector<std::vector<const TransitionState *>> GetBeam() override {
-    std::vector<std::vector<const TransitionState *>> states;
-    return states;
-  }
-  int GetFixedFeatures(std::function<int32 *(int)> allocate_indices,
-                       std::function<int64 *(int)> allocate_ids,
-                       std::function<float *(int)> allocate_weights,
-                       int channel_id) const override {
-    return 0;
-  }
-  int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override {
-    return 0;
-  }
-  std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override {
-    std::vector<LinkFeatures> ret;
-    return ret;
-  }
-  std::vector<std::vector<int>> GetOracleLabels() const override {
-    std::vector<std::vector<int>> ret;
-    return ret;
-  }
-  void FinalizeData() override {}
-  void ResetComponent() override {}
-
-  std::vector<std::vector<ComponentTrace>> GetTraceProtos() const override {
-    std::vector<std::vector<ComponentTrace>> ret;
-    return ret;
-  }
-  void AddTranslatedLinkFeaturesToTrace(
-      const std::vector<LinkFeatures> &features, int channel_id) override {}
-
-  string name_;
 };
 
 REGISTER_DRAGNN_COMPONENT(TestComponentType1);
 
-// Define a second test component to validate registered construction.
-class TestComponentType2 : public Component {
+class TestComponentType2 : public FakeComponentBase {
  public:
-  TestComponentType2() {}
-  void InitializeComponent(const ComponentSpec &spec) override {
-    name_ = spec.name();
-  }
-  void InitializeData(
-      const std::vector<std::vector<const TransitionState *>> &states,
-      int max_beam_size, InputBatchCache *input_data) override {}
-  void InitializeTracing() override {}
-  void DisableTracing() override {}
-  bool IsReady() const override { return true; }
-  string Name() const override { return name_; }
   int BeamSize() const override { return 4; }
   int BatchSize() const override { return 2; }
-  int StepsTaken(int batch_index) const override { return 0; }
-  int GetBeamIndexAtStep(int step, int current_index,
-                         int batch) const override {
-    return 0;
-  }
-  int GetSourceBeamIndex(int current_index, int batch) const override {
-    return 0;
-  }
-  void AdvanceFromPrediction(const float transition_matrix[],
-                             int matrix_length) override {}
-  void AdvanceFromOracle() override {}
-  bool IsTerminal() const override { return true; }
-  std::function<int(int, int, int)> GetStepLookupFunction(
-      const string &method) override {
-    return nullptr;
-  }
-  std::vector<std::vector<const TransitionState *>> GetBeam() override {
-    std::vector<std::vector<const TransitionState *>> states;
-    return states;
-  }
-  int GetFixedFeatures(std::function<int32 *(int)> allocate_indices,
-                       std::function<int64 *(int)> allocate_ids,
-                       std::function<float *(int)> allocate_weights,
-                       int channel_id) const override {
-    return 0;
-  }
-  int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override {
-    return 0;
-  }
-  std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override {
-    std::vector<LinkFeatures> ret;
-    return ret;
-  }
-  std::vector<std::vector<int>> GetOracleLabels() const override {
-    std::vector<std::vector<int>> ret;
-    return ret;
-  }
-  void FinalizeData() override {}
-  void ResetComponent() override {}
-
-  std::vector<std::vector<ComponentTrace>> GetTraceProtos() const override {
-    std::vector<std::vector<ComponentTrace>> ret;
-    return ret;
-  }
-  void AddTranslatedLinkFeaturesToTrace(
-      const std::vector<LinkFeatures> &features, int channel_id) override {}
-
-  string name_;
 };
 
 REGISTER_DRAGNN_COMPONENT(TestComponentType2);
 
 // Define a component that returns false for IsReady and IsTerminal.
-class UnreadyComponent : public Component {
+class UnreadyComponent : public FakeComponentBase {
  public:
-  UnreadyComponent() {}
-  void InitializeComponent(const ComponentSpec &spec) override {
-    name_ = spec.name();
-  }
-  void InitializeData(
-      const std::vector<std::vector<const TransitionState *>> &states,
-      int max_beam_size, InputBatchCache *input_data) override {}
-  void InitializeTracing() override {}
-  void DisableTracing() override {}
   bool IsReady() const override { return false; }
-  string Name() const override { return name_; }
   int BeamSize() const override { return 1; }
   int BatchSize() const override { return 2; }
-  int StepsTaken(int batch_index) const override { return 0; }
-  int GetBeamIndexAtStep(int step, int current_index,
-                         int batch) const override {
-    return 0;
-  }
-  int GetSourceBeamIndex(int current_index, int batch) const override {
-    return 0;
-  }
-  void AdvanceFromPrediction(const float transition_matrix[],
-                             int matrix_length) override {}
-  void AdvanceFromOracle() override {}
   bool IsTerminal() const override { return false; }
-  std::function<int(int, int, int)> GetStepLookupFunction(
-      const string &method) override {
-    return nullptr;
-  }
-  std::vector<std::vector<const TransitionState *>> GetBeam() override {
-    std::vector<std::vector<const TransitionState *>> states;
-    return states;
-  }
-  int GetFixedFeatures(std::function<int32 *(int)> allocate_indices,
-                       std::function<int64 *(int)> allocate_ids,
-                       std::function<float *(int)> allocate_weights,
-                       int channel_id) const override {
-    return 0;
-  }
-  int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override {
-    return 0;
-  }
-  std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override {
-    std::vector<LinkFeatures> ret;
-    return ret;
-  }
-  std::vector<std::vector<int>> GetOracleLabels() const override {
-    std::vector<std::vector<int>> ret;
-    return ret;
-  }
-  void FinalizeData() override {}
-  void ResetComponent() override {}
-  std::vector<std::vector<ComponentTrace>> GetTraceProtos() const override {
-    std::vector<std::vector<ComponentTrace>> ret;
-    return ret;
-  }
-  void AddTranslatedLinkFeaturesToTrace(
-      const std::vector<LinkFeatures> &features, int channel_id) override {}
-  string name_;
 };
 
 REGISTER_DRAGNN_COMPONENT(UnreadyComponent);
@@ -252,6 +81,18 @@ class ComputeSessionImplTestPoolAccessor {
           component_builder_function) {
     pool->SetComponentBuilder(std::move(component_builder_function));
   }
+};
+
+// An InputBatch that uses the serialized data directly.
+class IdentityBatch : public InputBatch {
+ public:
+  // Implements InputBatch.
+  void SetData(const std::vector<string> &data) override { data_ = data; }
+  int GetSize() const override { return data_.size(); }
+  const std::vector<string> GetSerializedData() const override { return data_; }
+
+ private:
+  std::vector<string> data_;  // the batch data
 };
 
 // *****************************************************************************
@@ -739,7 +580,7 @@ TEST(ComputeSessionImplTest, InitializesComponentWithSource) {
   EXPECT_CALL(*mock_components["component_one"], GetBeam())
       .WillOnce(Return(beam));
 
-  // Expect that the second component will recieve that beam.
+  // Expect that the second component will receive that beam.
   EXPECT_CALL(*mock_components["component_two"],
               InitializeData(beam, kMaxBeamSize, NotNull()));
 
@@ -818,7 +659,7 @@ TEST(ComputeSessionImplTest,
 
   // The death expectation is interacting strangely with this test, so I need
   // to wrap the function in a lambda.
-  EXPECT_DEATH(function_that_will_die(), "Source is not terminal");
+  EXPECT_DEATH(function_that_will_die(), "is not terminal");
 }
 
 TEST(ComputeSessionImplTest, ResetSessionResetsAllComponents) {
@@ -899,7 +740,7 @@ TEST(ComputeSessionImplTest, SetTracingPropagatesToAllComponents) {
   EXPECT_CALL(*mock_components["component_one"], GetBeam())
       .WillOnce(Return(beam));
 
-  // Expect that the second component will recieve that beam, and then its
+  // Expect that the second component will receive that beam, and then its
   // tracing will be initialized.
   EXPECT_CALL(*mock_components["component_two"],
               InitializeData(beam, kMaxBeamSize, NotNull()));
@@ -1084,12 +925,12 @@ TEST(ComputeSessionImplTest, InterfacePassesThrough) {
   session->AdvanceFromOracle("component_one");
 
   // AdvanceFromPrediction()
-  constexpr int kScoreMatrixLength = 3;
-  const float score_matrix[kScoreMatrixLength] = {1.0, 2.3, 4.5};
+  const int kNumActions = 1;
+  const float score_matrix[] = {1.0, 2.3, 4.5};
   EXPECT_CALL(*mock_components["component_one"],
-              AdvanceFromPrediction(score_matrix, kScoreMatrixLength));
-  session->AdvanceFromPrediction("component_one", score_matrix,
-                                 kScoreMatrixLength);
+              AdvanceFromPrediction(score_matrix, batch_size, kNumActions));
+  session->AdvanceFromPrediction("component_one", score_matrix, batch_size,
+                                 kNumActions);
 
   // GetFixedFeatures
   auto allocate_indices = [](int size) -> int32 * { return nullptr; };
@@ -1109,8 +950,16 @@ TEST(ComputeSessionImplTest, InterfacePassesThrough) {
       .WillOnce(Return(0));
   EXPECT_EQ(0, session->BulkGetInputFeatures("component_one", extractor));
 
+  // BulkEmbedFixedFeatures
+  EXPECT_CALL(*mock_components["component_one"],
+              BulkEmbedFixedFeatures(1, 2, 3, _, _));
+  session->BulkEmbedFixedFeatures("component_one", 1, 2, 3, {nullptr}, nullptr);
+
   // EmitOracleLabels()
-  std::vector<std::vector<int>> oracle_labels = {{0, 1}, {2, 3}};
+  // The size of oracle_labels is batch_size * beam_size * num_labels.
+  const std::vector<std::vector<std::vector<Label>>> oracle_labels{
+      {{{0, 1.f}}, {{1, 1.f}}}, {{{2, 1.f}}, {{3, 1.f}}}};
+
   EXPECT_CALL(*mock_components["component_one"], GetOracleLabels())
       .WillOnce(Return(oracle_labels));
   EXPECT_EQ(oracle_labels, session->EmitOracleLabels("component_one"));
@@ -1154,7 +1003,7 @@ TEST(ComputeSessionImplTest, InterfaceRequiresReady) {
   constexpr int kScoreMatrixLength = 3;
   const float score_matrix[kScoreMatrixLength] = {1.0, 2.3, 4.5};
   EXPECT_DEATH(session->AdvanceFromPrediction("component_one", score_matrix,
-                                              kScoreMatrixLength),
+                                              kScoreMatrixLength, 1),
                "without first initializing it");
   constexpr int kArbitraryChannelId = 3;
   EXPECT_DEATH(session->GetInputFeatures("component_one", nullptr, nullptr,
@@ -1163,9 +1012,55 @@ TEST(ComputeSessionImplTest, InterfaceRequiresReady) {
   BulkFeatureExtractor extractor(nullptr, nullptr, nullptr, false, 0, 0);
   EXPECT_DEATH(session->BulkGetInputFeatures("component_one", extractor),
                "without first initializing it");
+  EXPECT_DEATH(session->BulkEmbedFixedFeatures("component_one", 0, 0, 0,
+                                               {nullptr}, nullptr),
+               "without first initializing it");
   EXPECT_DEATH(
       session->GetTranslatedLinkFeatures("component_one", kArbitraryChannelId),
       "without first initializing it");
+}
+
+TEST(ComputeSessionImplTest, SetInputBatchCache) {
+  // Use empty protos since we won't interact with components.
+  MasterSpec spec;
+  GridPoint hyperparams;
+  ComputeSessionPool pool(spec, hyperparams);
+  auto session = pool.GetSession();
+
+  // Initialize a cached IdentityBatch.
+  const std::vector<string> data = {"foo", "bar", "baz"};
+  std::unique_ptr<InputBatchCache> input_batch_cache(new InputBatchCache(data));
+  input_batch_cache->GetAs<IdentityBatch>();
+
+  // Inject the cache into the session.
+  session->SetInputBatchCache(std::move(input_batch_cache));
+
+  // Check that the injected batch can be retrieved.
+  EXPECT_EQ(session->GetSerializedPredictions(), data);
+}
+
+TEST(ComputeSessionImplTest, GetInputBatchCache) {
+  // Use empty protos since we won't interact with components.
+  MasterSpec spec;
+  GridPoint hyperparams;
+  ComputeSessionPool pool(spec, hyperparams);
+  auto session = pool.GetSession();
+
+  // No input data yet.
+  EXPECT_EQ(session->GetInputBatchCache(), nullptr);
+
+  // Set some data, expect some batch to be returned.
+  session->SetInputData({"arbitrary_data"});
+  EXPECT_NE(session->GetInputBatchCache(), nullptr);
+
+  // Create a dummy batch.
+  const std::vector<string> data = {"foo", "bar", "baz"};
+  std::unique_ptr<InputBatchCache> input_batch_cache(new InputBatchCache(data));
+  InputBatchCache *input_batch_cache_ptr = input_batch_cache.get();
+
+  // Inject a batch, expect that batch to be returned.
+  session->SetInputBatchCache(std::move(input_batch_cache));
+  EXPECT_EQ(session->GetInputBatchCache(), input_batch_cache_ptr);
 }
 
 }  // namespace dragnn

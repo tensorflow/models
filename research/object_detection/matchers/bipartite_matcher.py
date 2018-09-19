@@ -24,11 +24,22 @@ from object_detection.core import matcher
 class GreedyBipartiteMatcher(matcher.Matcher):
   """Wraps a Tensorflow greedy bipartite matcher."""
 
+  def __init__(self, use_matmul_gather=False):
+    """Constructs a Matcher.
+
+    Args:
+      use_matmul_gather: Force constructed match objects to use matrix
+        multiplication based gather instead of standard tf.gather.
+        (Default: False).
+    """
+    super(GreedyBipartiteMatcher, self).__init__(
+        use_matmul_gather=use_matmul_gather)
+
   def _match(self, similarity_matrix, num_valid_rows=-1):
     """Bipartite matches a collection rows and columns. A greedy bi-partite.
 
-    TODO: Add num_valid_columns options to match only that many columns with
-        all the rows.
+    TODO(rathodv): Add num_valid_columns options to match only that many columns
+    with all the rows.
 
     Args:
       similarity_matrix: Float tensor of shape [N, M] with pairwise similarity

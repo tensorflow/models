@@ -13,11 +13,16 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPONENT_REGISTRY_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPONENT_REGISTRY_H_
+#ifndef DRAGNN_CORE_COMPONENT_REGISTRY_H_
+#define DRAGNN_CORE_COMPONENT_REGISTRY_H_
 
 #include "dragnn/core/interfaces/component.h"
 #include "syntaxnet/registry.h"
+
+namespace syntaxnet {
+// Class registry for DRAGNN components.
+DECLARE_SYNTAXNET_CLASS_REGISTRY("DRAGNN Component", dragnn::Component);
+}  // namespace syntaxnet
 
 // Macro to add a component to the registry. This macro associates a class with
 // its class name as a string, so FooComponent would be associated with the
@@ -26,4 +31,4 @@
   REGISTER_SYNTAXNET_CLASS_COMPONENT(syntaxnet::dragnn::Component, #component, \
                                      component)
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPONENT_REGISTRY_H_
+#endif  // DRAGNN_CORE_COMPONENT_REGISTRY_H_

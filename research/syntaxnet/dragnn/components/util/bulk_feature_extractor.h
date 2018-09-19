@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_UTIL_BULK_FEATURE_EXTRACTOR_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_UTIL_BULK_FEATURE_EXTRACTOR_H_
+#ifndef DRAGNN_COMPONENTS_UTIL_BULK_FEATURE_EXTRACTOR_H_
+#define DRAGNN_COMPONENTS_UTIL_BULK_FEATURE_EXTRACTOR_H_
 
 #include <functional>
 #include <utility>
@@ -107,4 +107,4 @@ class BulkFeatureExtractor {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_UTIL_BULK_FEATURE_EXTRACTOR_H_
+#endif  // DRAGNN_COMPONENTS_UTIL_BULK_FEATURE_EXTRACTOR_H_
