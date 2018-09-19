@@ -108,7 +108,8 @@ def run_imagenet_with_keras(flags_obj):
     flags_obj: An object containing parsed flag values.
   """
   if flags_obj.use_synthetic_data:
-    input_dataset = imagenet_main.get_synth_input_fn(flags_core.get_tf_dtype(flags_obj))
+    syn_input_fn = imagenet_main.get_synth_input_fn(flags_core.get_tf_dtype(flags_obj))
+    input_dataset = syn_input_fn()
   else:
     input_dataset = imagenet_main.input_fn(True,
                                            flags_obj.data_dir,
