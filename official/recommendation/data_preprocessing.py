@@ -475,7 +475,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
     raise ValueError("Generation subprocess did not start correctly. Data will "
                      "not be available; exiting to avoid waiting forever.")
 
-  return ncf_dataset
+  return ncf_dataset, cleanup
 
 
 def make_deserialize(params, batch_size, training=False):

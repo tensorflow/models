@@ -110,7 +110,7 @@ class BaseTest(tf.test.TestCase):
     return output
 
   def test_end_to_end(self):
-    ncf_dataset = data_preprocessing.instantiate_pipeline(
+    ncf_dataset, _ = data_preprocessing.instantiate_pipeline(
         dataset=DATASET, data_dir=self.temp_data_dir,
         batch_size=BATCH_SIZE, eval_batch_size=BATCH_SIZE, num_data_readers=2,
         num_neg=NUM_NEG)
