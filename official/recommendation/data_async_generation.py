@@ -341,11 +341,19 @@ def _construct_eval_record(cache_paths, eval_batch_size):
   log_msg("Eval TFRecords file successfully constructed.")
 
 
-def _generation_loop(
-    num_workers, cache_paths, num_readers, num_neg, num_train_positives,
-    num_items, spillover, epochs_per_cycle, train_batch_size, eval_batch_size,
-    deterministic):
-  # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int, bool) -> None  # pylint: disable=line-too-long
+def _generation_loop(num_workers,           # type: int
+                     cache_paths,           # type: rconst.Paths
+                     num_readers,           # type: int
+                     num_neg,               # type: int
+                     num_train_positives,   # type: int
+                     num_items,             # type: int
+                     spillover,             # type: bool
+                     epochs_per_cycle,      # type: int
+                     train_batch_size,      # type: int
+                     eval_batch_size,       # type: int
+                     deterministic          # type: bool
+                    ):
+  # type: (...) -> None
   """Primary run loop for data file generation."""
 
   log_msg("Signaling that I am alive.")

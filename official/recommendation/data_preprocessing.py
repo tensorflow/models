@@ -355,6 +355,8 @@ def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
       data during training.
     match_mlperf: If True, change the behavior of the cache construction to
       match the MLPerf reference implementation.
+    deterministic: Try to enforce repeatable behavior, even at the cost of
+      performance.
   """
   cache_paths = rconst.Paths(data_dir=data_dir)
   num_data_readers = (num_data_readers or int(multiprocessing.cpu_count() / 2)
@@ -409,6 +411,7 @@ def _shutdown(proc):
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                          num_data_readers=None, num_neg=4, epochs_per_cycle=1,
                          match_mlperf=False, deterministic=False):
+  # type: (...) -> (NCFDataset, typing.Callable)
   """Preprocess data and start negative generation subprocess."""
 
   tf.logging.info("Beginning data preprocessing.")
@@ -463,7 +466,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
 
     _shutdown(proc)
     try:
-      tf.gfile.Remove(ncf_dataset.cache_paths.cache_root)
+      tf.gfile.DeleteRecursively(ncf_dataset.cache_paths.cache_root)
     except tf.errors.NotFoundError:
       pass
 
