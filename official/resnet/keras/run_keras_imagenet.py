@@ -107,19 +107,20 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
   """Returns dataset filled with random data."""
   # Synthetic input should be within [0, 255].
   inputs = tf.truncated_normal(
-      [_NUM_IMAGES['train']] + [height, width, num_channels],
+      [1000] + [height, width, num_channels],
       dtype=dtype,
       mean=127,
       stddev=60,
       name='synthetic_inputs')
 
   labels = tf.random_uniform(
-      [_NUM_IMAGES['train']],
+      [1000],
       minval=0,
       maxval=num_classes - 1,
       dtype=tf.int32,
       name='synthetic_labels')
 
+  labels = tf.sparse_to_dense(labels, (labels. NUM_CLASSES), 1)
   print("\n\n synthetic labels ", labels.get_shape())
 
   dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
