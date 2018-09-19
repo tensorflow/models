@@ -29,6 +29,7 @@ from official.utils.logs import logger
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
+from official.resnet.keras import run_keras_imagenet
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
