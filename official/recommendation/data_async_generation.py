@@ -345,7 +345,7 @@ def _generation_loop(
     num_workers, cache_paths, num_readers, num_neg, num_train_positives,
     num_items, spillover, epochs_per_cycle, train_batch_size, eval_batch_size,
     deterministic):
-  # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int, bool) -> None
+  # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int, bool) -> None  # pylint: disable=line-too-long
   """Primary run loop for data file generation."""
 
   log_msg("Signaling that I am alive.")

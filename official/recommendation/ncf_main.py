@@ -312,7 +312,8 @@ def run_ncf(_):
       eval_batch_size=eval_batch_size,
       num_neg=FLAGS.num_neg,
       epochs_per_cycle=FLAGS.epochs_between_evals,
-      match_mlperf=FLAGS.ml_perf)
+      match_mlperf=FLAGS.ml_perf,
+      deterministic=FLAGS.seed is not None)
 
   model_helpers.apply_clean(flags.FLAGS)
 

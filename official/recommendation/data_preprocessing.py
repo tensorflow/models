@@ -465,7 +465,9 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
     try:
       tf.gfile.Remove(ncf_dataset.cache_paths.cache_root)
     except tf.errors.NotFoundError:
-      return
+      pass
+
+    cleanup_called["finished"] = True
 
   for _ in range(300):
     if tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
