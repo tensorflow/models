@@ -306,7 +306,7 @@ def run_ncf(_):
   batch_size = distribution_utils.per_device_batch_size(
       int(FLAGS.batch_size), num_gpus)
   eval_batch_size = int(FLAGS.eval_batch_size or FLAGS.batch_size)
-  ncf_dataset = data_preprocessing.instantiate_pipeline(
+  ncf_dataset, cleanup_fn = data_preprocessing.instantiate_pipeline(
       dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
       batch_size=batch_size,
       eval_batch_size=eval_batch_size,
@@ -395,6 +395,8 @@ def run_ncf(_):
     # If some evaluation threshold is met
     if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
       break
+
+  cleanup_fn()  # Cleanup data construction artifacts and subprocess.
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()

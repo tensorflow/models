@@ -455,9 +455,17 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
 
   proc = subprocess.Popen(args=subproc_args, shell=False, env=subproc_env)
 
-  atexit.register(_shutdown, proc=proc)
-  atexit.register(tf.gfile.DeleteRecursively,
-                  ncf_dataset.cache_paths.cache_root)
+  cleanup_called = {"finished": False}
+  @atexit.register
+  def cleanup():
+    if cleanup_called["finished"]:
+      return
+
+    _shutdown(proc)
+    try:
+      tf.gfile.Remove(ncf_dataset.cache_paths.cache_root)
+    except tf.errors.NotFoundError:
+      return
 
   for _ in range(300):
     if tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):

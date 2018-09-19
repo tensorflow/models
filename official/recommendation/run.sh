@@ -42,9 +42,6 @@ do
   echo "Beginning run ${i}"
   echo "  Complete logs are in ${RUN_LOG}"
 
-  # Note: The hit rate threshold has been set to 0.62 rather than the MLPerf 0.635
-  #       The reason why the TF implementation does not reach 0.635 is still unknown.
-  # TODO(robieta): set seed to i
   python ncf_main.py --model_dir ${MODEL_DIR} \
                      --data_dir ${DATA_DIR} \
                      --dataset ${DATASET} --hooks "" \
@@ -57,7 +54,6 @@ do
                      --layers 256,256,128,64 --num_factors 64 \
                      --hr_threshold 0.635 \
                      --ml_perf \
-                     --seed 0 \
   |& tee ${RUN_LOG} \
   | grep --line-buffered  -E --regexp="Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+"
 
