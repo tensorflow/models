@@ -109,7 +109,7 @@ def run_imagenet_with_keras(flags_obj):
   """
   if flags_obj.use_synthetic_data:
     syn_input_fn = imagenet_main.get_synth_input_fn(flags_core.get_tf_dtype(flags_obj))
-    input_dataset = syn_input_fn()
+    input_dataset = syn_input_fn(True, flags_obj.data_dir, flags_obj.batch_size)
   else:
     input_dataset = imagenet_main.input_fn(True,
                                            flags_obj.data_dir,
