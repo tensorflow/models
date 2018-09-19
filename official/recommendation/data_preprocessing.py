@@ -461,6 +461,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   cleanup_called = {"finished": False}
   @atexit.register
   def cleanup():
+    """Remove files and subprocess from data generation."""
     if cleanup_called["finished"]:
       return
 
