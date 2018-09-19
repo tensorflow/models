@@ -99,8 +99,32 @@ def parse_record_keras(raw_record, is_training, dtype):
       is_training=is_training)
 
   image = tf.cast(image, dtype)
+  label = tf.sparse_to_dense(label, (_NUM_CLASSES,), 1)
+  return image, label
 
-  return image, tf.sparse_to_dense(label, (_NUM_CLASSES,), 1)
+def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
+                       dtype=tf.float32):
+  """Returns dataset filled with random data."""
+  # Synthetic input should be within [0, 255].
+  inputs = tf.truncated_normal(
+      [_NUM_IMAGES] + [height, width, num_channels],
+      dtype=dtype,
+      mean=127,
+      stddev=60,
+      name='synthetic_inputs')
+
+  labels = tf.random_uniform(
+      [_NUM_IMAGES],
+      minval=0,
+      maxval=num_classes - 1,
+      dtype=tf.int32,
+      name='synthetic_labels')
+
+  print("\n\n synthetic labels ", labels.get_shape())
+
+  data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
+  data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  return data
 
 
 def run_imagenet_with_keras(flags_obj):
@@ -143,7 +167,7 @@ def run_imagenet_with_keras(flags_obj):
   time_callback = TimeHistory()
 
   # steps_per_epoch = _NUM_IMAGES['train'] // flags_obj.batch_size
-  steps_per_epoch = 5
+  steps_per_epoch = 10
   model.fit(input_dataset,
             epochs=flags_obj.train_epochs,
             steps_per_epoch=steps_per_epoch,
