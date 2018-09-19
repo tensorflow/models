@@ -74,7 +74,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
       print("Time take for %d batches:%f " % (batch, last_100_batches))
 
 
-def parse_record_keras(raw_record, is_training):
+def parse_record_keras(raw_record, is_training, dtype):
   """Parses a record containing a training example of an image.
 
   The input record is parsed into a label and image, and the image is passed
@@ -97,6 +97,8 @@ def parse_record_keras(raw_record, is_training):
       output_width=_DEFAULT_IMAGE_SIZE,
       num_channels=_NUM_CHANNELS,
       is_training=is_training)
+
+  image = tf.cast(image, dtype)
 
   return image, tf.sparse_to_dense(label, (_NUM_CLASSES,), 1)
 
