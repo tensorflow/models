@@ -83,7 +83,11 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
 
   # If we are training over multiple epochs before evaluating, repeat the
   # dataset for the appropriate number of epochs.
-  dataset = dataset.repeat(num_epochs)
+  # dataset = dataset.repeat(num_epochs)
+  #  TODO(anjalisridhar): repeating for number of epochs does not work for Keras
+  # since we are assuming the dataset is sufficient for one epoch to being with.
+  dataset = dataset.repeat()
+
 
   if is_training and num_gpus and examples_per_epoch:
     total_examples = num_epochs * examples_per_epoch
@@ -161,6 +165,8 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
         maxval=num_classes - 1,
         dtype=tf.int32,
         name='synthetic_labels')
+
+
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
     data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
     return data
