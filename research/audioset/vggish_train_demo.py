@@ -64,7 +64,7 @@ flags.DEFINE_integer(
 
 flags.DEFINE_boolean(
     'train_vggish', True,
-    'If Frue, allow VGGish parameters to change during training, thus '
+    'If True, allow VGGish parameters to change during training, thus '
     'fine-tuning VGGish. If False, VGGish parameters are fixed, thus using '
     'VGGish as a fixed feature extractor.')
 
