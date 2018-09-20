@@ -42,21 +42,27 @@ do
   echo "Beginning run ${i}"
   echo "  Complete logs are in ${RUN_LOG}"
 
-  # Note: The hit rate threshold has been set to 0.62 rather than the MLPerf 0.635
-  #       The reason why the TF implementation does not reach 0.635 is still unknown.
+  # To reduce variation set the seed flag:
+  #   --seed ${i}
+  #
+  # And to confirm that the pipeline is deterministic pass the flag:
+  #   --hash_pipeline
+  #
+  # (`--hash_pipeline` will slow down training)
   python ncf_main.py --model_dir ${MODEL_DIR} \
                      --data_dir ${DATA_DIR} \
                      --dataset ${DATASET} --hooks "" \
                      ${DEVICE_FLAG} \
                      --clean \
-                     --train_epochs 100 \
+                     --train_epochs 20 \
                      --batch_size 2048 \
                      --eval_batch_size 65536 \
                      --learning_rate 0.0005 \
                      --layers 256,256,128,64 --num_factors 64 \
-                     --hr_threshold 0.62 \
+                     --hr_threshold 0.635 \
+                     --ml_perf \
   |& tee ${RUN_LOG} \
-  | grep --line-buffered  -E --regexp="Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+"
+  | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)"
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."

@@ -85,14 +85,14 @@ class BaseTest(tf.test.TestCase):
     # construct_cache()
     ncf_dataset = data_preprocessing.construct_cache(
         dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2,
-        match_mlperf=False)
+        match_mlperf=False, deterministic=False)
     assert ncf_dataset.num_users == NUM_USERS
     assert ncf_dataset.num_items == NUM_ITEMS
 
     time.sleep(1)  # Ensure we create the next cache in a new directory.
     ncf_dataset = data_preprocessing.construct_cache(
         dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2,
-        match_mlperf=True)
+        match_mlperf=True, deterministic=False)
     assert ncf_dataset.num_users == NUM_USERS
     assert ncf_dataset.num_items == NUM_ITEMS
 
@@ -110,7 +110,7 @@ class BaseTest(tf.test.TestCase):
     return output
 
   def test_end_to_end(self):
-    ncf_dataset = data_preprocessing.instantiate_pipeline(
+    ncf_dataset, _ = data_preprocessing.instantiate_pipeline(
         dataset=DATASET, data_dir=self.temp_data_dir,
         batch_size=BATCH_SIZE, eval_batch_size=BATCH_SIZE, num_data_readers=2,
         num_neg=NUM_NEG)
