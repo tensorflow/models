@@ -172,8 +172,8 @@ def run_imagenet_with_keras(flags_obj):
                 distribute=strategy)
   time_callback = TimeHistory()
 
-  # steps_per_epoch = _NUM_IMAGES['train'] // flags_obj.batch_size
-  steps_per_epoch = 10
+  steps_per_epoch = _NUM_IMAGES['train'] // flags_obj.batch_size
+  # steps_per_epoch = 10
   model.fit(input_dataset,
             epochs=flags_obj.train_epochs,
             steps_per_epoch=steps_per_epoch,
