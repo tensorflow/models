@@ -346,8 +346,13 @@ def run_imagenet(flags_obj):
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
 
+  if flags_obj.use_keras_model:
+    model_fn = lambda: tf.keras.applications.ResNet50(classes=1001, weights=None)
+  else:
+    model_fn = imagenet_model_fn
+
   resnet_run_loop.resnet_main(
-      flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
+      flags_obj, model_fn, input_function, DATASET_NAME,
       shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
 
 
