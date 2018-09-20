@@ -85,6 +85,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # dataset for the appropriate number of epochs.
   dataset = dataset.repeat(num_epochs)
 
+
   if is_training and num_gpus and examples_per_epoch:
     total_examples = num_epochs * examples_per_epoch
     # Force the number of batches to be divisible by the number of devices.
@@ -161,6 +162,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
         maxval=num_classes - 1,
         dtype=tf.int32,
         name='synthetic_labels')
+
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
     data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
     return data
@@ -388,27 +390,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       train_op=train_op,
       eval_metric_ops=metrics)
 
-
-def resnet_main(
-    flags_obj, model_function, input_function, dataset_name, shape=None):
-  """Shared main loop for ResNet Models.
-
-  Args:
-    flags_obj: An object containing parsed flags. See define_resnet_flags()
-      for details.
-    model_function: the function that instantiates the Model and builds the
-      ops for train/eval. This will be passed directly into the estimator.
-    input_function: the function that processes the dataset and returns a
-      dataset that the estimator can train on. This will be wrapped with
-      all the relevant flags for running and passed to estimator.
-    dataset_name: the name of the dataset for training and evaluation. This is
-      used for logging purpose.
-    shape: list of ints representing the shape of the images used for training.
-      This is only used if flags_obj.export_dir is passed.
-  """
-
-  model_helpers.apply_clean(flags.FLAGS)
-
+def set_environment_vars(flags_obj):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
   # This is the number of logical CPU cores which is 80 on DGX.
@@ -457,6 +439,30 @@ def resnet_main(
       inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
       intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
       allow_soft_placement=True)
+  return session_config
+
+
+def resnet_main(
+    flags_obj, model_function, input_function, dataset_name, shape=None):
+  """Shared main loop for ResNet Models.
+
+  Args:
+    flags_obj: An object containing parsed flags. See define_resnet_flags()
+      for details.
+    model_function: the function that instantiates the Model and builds the
+      ops for train/eval. This will be passed directly into the estimator.
+    input_function: the function that processes the dataset and returns a
+      dataset that the estimator can train on. This will be wrapped with
+      all the relevant flags for running and passed to estimator.
+    dataset_name: the name of the dataset for training and evaluation. This is
+      used for logging purpose.
+    shape: list of ints representing the shape of the images used for training.
+      This is only used if flags_obj.export_dir is passed.
+  """
+
+  model_helpers.apply_clean(flags.FLAGS)
+
+  session_config = set_environment_vars(flags_obj)
 
   distribution_strategy = distribution_utils.get_distribution_strategy(
       flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
@@ -473,8 +479,9 @@ def resnet_main(
     warm_start_settings = None
 
   classifier = tf.estimator.Estimator(
-      model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
-      warm_start_from=warm_start_settings, params={
+      model_fn=model_function, model_dir=flags_obj.model_dir,
+      config=run_config, warm_start_from=warm_start_settings,
+      params={
           'resnet_size': int(flags_obj.resnet_size),
           'data_format': flags_obj.data_format,
           'batch_size': flags_obj.batch_size,
