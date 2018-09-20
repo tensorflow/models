@@ -446,18 +446,6 @@ def set_environment_vars(flags_obj):
   return session_config
 
 
-def keras_model_fn(learning_rate=None, momentum=None):
-  # Move this to imagenet_main
-  # optimizer = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
-  optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.0001)
-
-  model = tf.keras.applications.ResNet50(classes=1001, weights=None)
-  model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy',
-                metrics=['accuracy'])
-
-  return model
-
-
 def resnet_main(
     flags_obj, model_function, input_function, dataset_name, shape=None):
   """Shared main loop for ResNet Models.
@@ -494,22 +482,17 @@ def resnet_main(
   else:
     warm_start_settings = None
 
-  if flags_obj.use_keras_model:
-    classifier = tf.keras.estimator.model_to_estimator(
-        keras_model=model_function, config=run_config,
-        model_dir=flags_obj.model_dir)
-  else:
-    classifier = tf.estimator.Estimator(
-        model_fn=model_function, model_dir=flags_obj.model_dir,
-        config=run_config, warm_start_from=warm_start_settings, params={
-            'resnet_size': int(flags_obj.resnet_size),
-            'data_format': flags_obj.data_format,
-            'batch_size': flags_obj.batch_size,
-            'resnet_version': int(flags_obj.resnet_version),
-            'loss_scale': flags_core.get_loss_scale(flags_obj),
-            'dtype': flags_core.get_tf_dtype(flags_obj),
-            'fine_tune': flags_obj.fine_tune
-        })
+  classifier = tf.estimator.Estimator(
+      model_fn=model_function, model_dir=flags_obj.model_dir,
+      config=run_config, warm_start_from=warm_start_settings, params={
+          'resnet_size': int(flags_obj.resnet_size),
+          'data_format': flags_obj.data_format,
+          'batch_size': flags_obj.batch_size,
+          'resnet_version': int(flags_obj.resnet_version),
+          'loss_scale': flags_core.get_loss_scale(flags_obj),
+          'dtype': flags_core.get_tf_dtype(flags_obj),
+          'fine_tune': flags_obj.fine_tune
+      })
 
   run_params = {
       'batch_size': flags_obj.batch_size,
