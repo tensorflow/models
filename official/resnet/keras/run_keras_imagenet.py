@@ -119,9 +119,7 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
       maxval=num_classes - 1,
       dtype=tf.int32,
       name='synthetic_labels')
-
   labels = tf.one_hot(labels, _NUM_CLASSES)
-  print("\n\n synthetic labels ", labels.get_shape())
 
   dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
@@ -150,7 +148,10 @@ def run_imagenet_with_keras(flags_obj):
                                            num_gpus=flags_obj.num_gpus,
                                            parse_record_fn=parse_record_keras)
 
+  # Set environment vars and session config
   session_config = resnet_run_loop.set_environment_vars(flags_obj)
+  session = tf.Session(config=session_config)
+  tf.keras.backend.set_session(session)
 
   # Use Keras ResNet50 applications model and native keras APIs
   # initialize RMSprop optimizer
@@ -193,7 +194,7 @@ def run_imagenet_with_keras(flags_obj):
   if flags_obj.train_epochs > 1:
     time_per_epoch = total_time//(flags_obj.train_epochs - 1)
     samples_per_second = (flags_obj.batch_size * steps_per_epoch) // time_per_epoch
-    print("\n\n time_per_epoch %f, global_batchsize %d, step_per_epoch %d,"
+    print("Results: time_per_epoch %f, global_batchsize %d, step_per_epoch %d,"
           "samples_per_second %d" % (time_per_epoch, flags_obj.batch_size,
                                      steps_per_epoch, samples_per_second))
 
