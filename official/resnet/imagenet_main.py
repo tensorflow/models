@@ -329,6 +329,13 @@ def imagenet_model_fn(features, labels, mode, params):
   )
 
 
+def keras_model_fn():
+  return resnet_run_loop.keras_model_fn(
+      learning_rate=0.001,
+      momentum=0.9
+  )
+
+
 def define_imagenet_flags():
   resnet_run_loop.define_resnet_flags(
       resnet_size_choices=['18', '34', '50', '101', '152', '200'])
@@ -347,7 +354,7 @@ def run_imagenet(flags_obj):
                     input_fn)
 
   if flags_obj.use_keras_model:
-    model_fn = lambda: tf.keras.applications.ResNet50(classes=1001, weights=None)
+    model_fn = keras_model_fn()
   else:
     model_fn = imagenet_model_fn
 

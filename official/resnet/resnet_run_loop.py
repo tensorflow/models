@@ -482,17 +482,22 @@ def resnet_main(
   else:
     warm_start_settings = None
 
-  classifier = tf.estimator.Estimator(
-      model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
-      warm_start_from=warm_start_settings, params={
-          'resnet_size': int(flags_obj.resnet_size),
-          'data_format': flags_obj.data_format,
-          'batch_size': flags_obj.batch_size,
-          'resnet_version': int(flags_obj.resnet_version),
-          'loss_scale': flags_core.get_loss_scale(flags_obj),
-          'dtype': flags_core.get_tf_dtype(flags_obj),
-          'fine_tune': flags_obj.fine_tune
-      })
+  if flags_obj.use_keras_model:
+    classifier = tf.keras.estimator.model_to_estimator(
+        keras_model=model_function, config=run_config,
+        model_dir=flags_obj.model_dir)
+  else:
+    classifier = tf.estimator.Estimator(
+        model_fn=model_function, model_dir=flags_obj.model_dir,
+        config=run_config, warm_start_from=warm_start_settings, params={
+            'resnet_size': int(flags_obj.resnet_size),
+            'data_format': flags_obj.data_format,
+            'batch_size': flags_obj.batch_size,
+            'resnet_version': int(flags_obj.resnet_version),
+            'loss_scale': flags_core.get_loss_scale(flags_obj),
+            'dtype': flags_core.get_tf_dtype(flags_obj),
+            'fine_tune': flags_obj.fine_tune
+        })
 
   run_params = {
       'batch_size': flags_obj.batch_size,
