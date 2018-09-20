@@ -66,9 +66,32 @@ class BottleneckConvLstmCellsTest(tf.test.TestCase):
     init_state = cell.init_state(
         state_name, batch_size, dtype, learned_state)
     output, state_tuple = cell(inputs, init_state)
-    self.assertAllEqual([4, 1500], output.shape.as_list())
+    self.assertAllEqual([4, 10, 10, 15], output.shape.as_list())
     self.assertAllEqual([4, 1500], state_tuple[0].shape.as_list())
     self.assertAllEqual([4, 1500], state_tuple[1].shape.as_list())
+
+  def test_run_lstm_cell_with_output_bottleneck(self):
+    filter_size = [3, 3]
+    output_dim = 10
+    output_size = [output_dim] * 2
+    num_units = 15
+    state_name = 'lstm_state'
+    batch_size = 4
+    dtype = tf.float32
+    learned_state = False
+
+    inputs = tf.zeros([batch_size, output_dim, output_dim, 3], dtype=tf.float32)
+    cell = lstm_cells.BottleneckConvLSTMCell(
+        filter_size=filter_size,
+        output_size=output_size,
+        num_units=num_units,
+        output_bottleneck=True)
+    init_state = cell.init_state(
+        state_name, batch_size, dtype, learned_state)
+    output, state_tuple = cell(inputs, init_state)
+    self.assertAllEqual([4, 10, 10, 30], output.shape.as_list())
+    self.assertAllEqual([4, 10, 10, 15], state_tuple[0].shape.as_list())
+    self.assertAllEqual([4, 10, 10, 15], state_tuple[1].shape.as_list())
 
   def test_get_init_state(self):
     filter_size = [3, 3]
