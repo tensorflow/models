@@ -87,8 +87,7 @@ def get_logging_tensor_hook(every_n_iter=100, tensors_to_log=None, **kwargs):  #
     printed to stdout.
   """
   if tensors_to_log is None:
-    # tensors_to_log = _TENSORS_TO_LOG
-    tensors_to_log = {}
+    tensors_to_log = _TENSORS_TO_LOG
 
   return tf.train.LoggingTensorHook(
       tensors=tensors_to_log,
