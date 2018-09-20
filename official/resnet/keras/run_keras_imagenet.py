@@ -120,7 +120,7 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
       dtype=tf.int32,
       name='synthetic_labels')
 
-  labels = tf.sparse_to_dense(labels, (labels. NUM_CLASSES), 1)
+  labels = tf.sparse_to_dense(labels, (labels, _NUM_CLASSES), 1)
   print("\n\n synthetic labels ", labels.get_shape())
 
   dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
