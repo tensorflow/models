@@ -129,6 +129,13 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
     )
     key_flags.append("export_dir")
 
+  if use_keras_model:
+    flags.DEFINE_boolean(
+        name="use_keras_model", default=False,
+        help=help_wrap("If set, we should use the keras.applications.ResNet50"
+                       " model."))
+    key_flags.append("use_keras_model")
+
   if use_keras:
     flags.DEFINE_boolean(
         name="use_keras", default=False,
