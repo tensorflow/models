@@ -27,8 +27,7 @@ from official.utils.logs import hooks_helper
 
 def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                 epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                num_gpu=True, hooks=True, export_dir=True, use_keras_model=True,
-                use_keras=True):
+                num_gpu=True, hooks=True, export_dir=True, use_keras=True):
   """Register base flags.
 
   Args:

@@ -18,8 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
@@ -33,19 +31,6 @@ from official.resnet import resnet_run_loop
 from official.utils.misc import distribution_utils
 from official.resnet import imagenet_main
 
-_DEFAULT_IMAGE_SIZE = 224
-_NUM_CHANNELS = 3
-_NUM_CLASSES = 1001
-
-_NUM_IMAGES = {
-  'train': 1281167,
-  'validation': 50000,
-}
-
-_NUM_TRAIN_FILES = 1024
-_SHUFFLE_BUFFER = 10000
-
-DATASET_NAME = 'ImageNet'
 
 # Callback for Keras models
 class TimeHistory(tf.keras.callbacks.Callback):
@@ -93,13 +78,13 @@ def parse_record_keras(raw_record, is_training, dtype):
   image = imagenet_preprocessing.preprocess_image(
       image_buffer=image_buffer,
       bbox=bbox,
-      output_height=_DEFAULT_IMAGE_SIZE,
-      output_width=_DEFAULT_IMAGE_SIZE,
-      num_channels=_NUM_CHANNELS,
+      output_height=imagenet_main._DEFAULT_IMAGE_SIZE,
+      output_width=imagenet_main._DEFAULT_IMAGE_SIZE,
+      num_channels=imagenet_main._NUM_CHANNELS,
       is_training=is_training)
 
   image = tf.cast(image, dtype)
-  label = tf.sparse_to_dense(label, (_NUM_CLASSES,), 1)
+  label = tf.sparse_to_dense(label, (imagenet_main._NUM_CLASSES,), 1)
   return image, label
 
 def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
@@ -119,7 +104,7 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
       maxval=num_classes - 1,
       dtype=tf.int32,
       name='synthetic_labels')
-  labels = tf.one_hot(labels, _NUM_CLASSES)
+  labels = tf.one_hot(labels, imagenet_main._NUM_CLASSES)
 
   dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
@@ -136,9 +121,11 @@ def run_imagenet_with_keras(flags_obj):
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
 
   if flags_obj.use_synthetic_data:
-    input_dataset = synthetic_input_fn(batch_size, _DEFAULT_IMAGE_SIZE,
-                                       _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS,
-                                       _NUM_CLASSES,
+    input_dataset = synthetic_input_fn(batch_size,
+                                       imagenet_main._DEFAULT_IMAGE_SIZE,
+                                       imagenet_main._DEFAULT_IMAGE_SIZE,
+                                       imagenet_main._NUM_CHANNELS,
+                                       imagenet_main._NUM_CLASSES,
                                        dtype=flags_core.get_tf_dtype(flags_obj))
   else:
     input_dataset = imagenet_main.input_fn(True,
@@ -160,7 +147,8 @@ def run_imagenet_with_keras(flags_obj):
 
   strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=flags_obj.num_gpus)
 
-  model = resnet_model.ResNet50(classes=_NUM_CLASSES, weights=None)
+  model = resnet_model.ResNet50(classes=imagenet_main._NUM_CLASSES,
+                                weights=None)
 
   # Hardcode learning phase to improve perf by getting rid of a few conds
   # in the graph.
@@ -172,7 +160,7 @@ def run_imagenet_with_keras(flags_obj):
                 distribute=strategy)
   time_callback = TimeHistory()
 
-  steps_per_epoch = _NUM_IMAGES['train'] // flags_obj.batch_size
+  steps_per_epoch = imagenet_main._NUM_IMAGES['train'] // flags_obj.batch_size
   # steps_per_epoch = 10
   model.fit(input_dataset,
             epochs=flags_obj.train_epochs,
