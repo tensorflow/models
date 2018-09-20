@@ -446,6 +446,17 @@ def set_environment_vars(flags_obj):
   return session_config
 
 
+def keras_model_fn(learning_rate=None, momentum=None):
+  # Move this to imagenet_main
+  optimizer = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
+
+  model = tf.keras.applications.ResNet50(classes=1001, weights=None)
+  model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy',
+                metrics=['accuracy'])
+
+  return model
+
+
 def resnet_main(
     flags_obj, model_function, input_function, dataset_name, shape=None):
   """Shared main loop for ResNet Models.
