@@ -245,7 +245,7 @@ def _build_aux_head(net, end_points, num_classes, hparams, scope):
       end_points['AuxLogits'] = aux_logits
 
 
-def _imagenet_stem(inputs, hparams, stem_cell):
+def _imagenet_stem(inputs, hparams, stem_cell, current_step=None):
   """Stem used for models trained on ImageNet."""
   num_stem_cells = 2
 
@@ -266,7 +266,8 @@ def _imagenet_stem(inputs, hparams, stem_cell):
         filter_scaling=filter_scaling,
         stride=2,
         prev_layer=cell_outputs[-2],
-        cell_num=cell_num)
+        cell_num=cell_num,
+        current_step=current_step)
     cell_outputs.append(net)
     filter_scaling *= hparams.filter_scaling_rate
   return net, cell_outputs
@@ -286,7 +287,8 @@ def _cifar_stem(inputs, hparams):
 
 def build_nasnet_cifar(images, num_classes,
                        is_training=True,
-                       config=None):
+                       config=None,
+                       current_step=None):
   """Build NASNet model for the Cifar Dataset."""
   hparams = cifar_config() if config is None else copy.deepcopy(config)
   _update_hparams(hparams, is_training)
@@ -326,14 +328,16 @@ def build_nasnet_cifar(images, num_classes,
                                 num_classes=num_classes,
                                 hparams=hparams,
                                 is_training=is_training,
-                                stem_type='cifar')
+                                stem_type='cifar',
+                                current_step=current_step)
 build_nasnet_cifar.default_image_size = 32
 
 
 def build_nasnet_mobile(images, num_classes,
                         is_training=True,
                         final_endpoint=None,
-                        config=None):
+                        config=None,
+                        current_step=None):
   """Build NASNet Mobile model for the ImageNet Dataset."""
   hparams = (mobile_imagenet_config() if config is None
              else copy.deepcopy(config))
@@ -377,14 +381,16 @@ def build_nasnet_mobile(images, num_classes,
                                 hparams=hparams,
                                 is_training=is_training,
                                 stem_type='imagenet',
-                                final_endpoint=final_endpoint)
+                                final_endpoint=final_endpoint,
+                                current_step=current_step)
 build_nasnet_mobile.default_image_size = 224
 
 
 def build_nasnet_large(images, num_classes,
                        is_training=True,
                        final_endpoint=None,
-                       config=None):
+                       config=None,
+                       current_step=None):
   """Build NASNet Large model for the ImageNet Dataset."""
   hparams = (large_imagenet_config() if config is None
              else copy.deepcopy(config))
@@ -428,7 +434,8 @@ def build_nasnet_large(images, num_classes,
                                 hparams=hparams,
                                 is_training=is_training,
                                 stem_type='imagenet',
-                                final_endpoint=final_endpoint)
+                                final_endpoint=final_endpoint,
+                                current_step=current_step)
 build_nasnet_large.default_image_size = 331
 
 
@@ -439,7 +446,8 @@ def _build_nasnet_base(images,
                        hparams,
                        is_training,
                        stem_type,
-                       final_endpoint=None):
+                       final_endpoint=None,
+                       current_step=None):
   """Constructs a NASNet image model."""
 
   end_points = {}
@@ -482,7 +490,8 @@ def _build_nasnet_base(images,
           filter_scaling=filter_scaling,
           stride=2,
           prev_layer=cell_outputs[-2],
-          cell_num=true_cell_num)
+          cell_num=true_cell_num,
+          current_step=current_step)
       if add_and_check_endpoint(
           'Reduction_Cell_{}'.format(reduction_indices.index(cell_num)), net):
         return net, end_points
@@ -496,7 +505,8 @@ def _build_nasnet_base(images,
         filter_scaling=filter_scaling,
         stride=stride,
         prev_layer=prev_layer,
-        cell_num=true_cell_num)
+        cell_num=true_cell_num,
+        current_step=current_step)
 
     if add_and_check_endpoint('Cell_{}'.format(cell_num), net):
       return net, end_points
