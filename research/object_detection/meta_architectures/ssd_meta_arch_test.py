@@ -210,60 +210,6 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
       self.assertAllClose(detections_out['num_detections'],
                           expected_num_detections)
 
-  # BEGIN GOOGLE-INTERNAL
-  # TODO(b/112621326): Remove conditional after CMLE moves to TF 1.11
-  def test_postprocess_results_are_correct_static(self, use_keras):
-    with tf.Graph().as_default():
-      _, _, _, _ = self._create_model(use_keras=use_keras)
-    def graph_fn(input_image):
-      model, _, _, _ = self._create_model(use_static_shapes=True,
-                                          nms_max_size_per_class=4)
-      preprocessed_inputs, true_image_shapes = model.preprocess(input_image)
-      prediction_dict = model.predict(preprocessed_inputs,
-                                      true_image_shapes)
-      detections = model.postprocess(prediction_dict, true_image_shapes)
-      return (detections['detection_boxes'], detections['detection_scores'],
-              detections['detection_classes'], detections['num_detections'])
-
-    batch_size = 2
-    image_size = 2
-    channels = 3
-    input_image = np.random.rand(batch_size, image_size, image_size,
-                                 channels).astype(np.float32)
-    expected_boxes = [
-        [
-            [0, 0, .5, .5],
-            [0, .5, .5, 1],
-            [.5, 0, 1, .5],
-            [0, 0, 0, 0]
-        ],  # padding
-        [
-            [0, 0, .5, .5],
-            [0, .5, .5, 1],
-            [.5, 0, 1, .5],
-            [0, 0, 0, 0]
-        ]
-    ]  # padding
-    expected_scores = [[0, 0, 0, 0], [0, 0, 0, 0]]
-    expected_classes = [[0, 0, 0, 0], [0, 0, 0, 0]]
-    expected_num_detections = np.array([3, 3])
-
-    (detection_boxes, detection_scores, detection_classes,
-     num_detections) = self.execute(graph_fn, [input_image])
-    for image_idx in range(batch_size):
-      self.assertTrue(test_utils.first_rows_close_as_set(
-          detection_boxes[image_idx][
-              0:expected_num_detections[image_idx]].tolist(),
-          expected_boxes[image_idx][0:expected_num_detections[image_idx]]))
-      self.assertAllClose(
-          detection_scores[image_idx][0:expected_num_detections[image_idx]],
-          expected_scores[image_idx][0:expected_num_detections[image_idx]])
-      self.assertAllClose(
-          detection_classes[image_idx][0:expected_num_detections[image_idx]],
-          expected_classes[image_idx][0:expected_num_detections[image_idx]])
-    self.assertAllClose(num_detections,
-                        expected_num_detections)
-  # END GOOGLE-INTERNAL
 
   def test_loss_results_are_correct(self, use_keras):
 

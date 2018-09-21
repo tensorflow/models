@@ -50,11 +50,6 @@ from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMo
 from object_detection.predictors import rfcn_box_predictor
 from object_detection.protos import model_pb2
 from object_detection.utils import ops
-# BEGIN GOOGLE-INTERNAL
-# TODO(lzc): move ssd_mask_meta_arch to third party when it has decent
-# performance relative to a comparable Mask R-CNN model (b/112561592).
-from google3.image.understanding.object_detection.meta_architectures import ssd_mask_meta_arch
-# END GOOGLE-INTERNAL
 
 # A map of names to SSD feature extractors.
 SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -254,23 +249,6 @@ def _build_ssd_model(ssd_config, is_training, add_summaries,
         desired_negative_sampling_ratio)
 
   ssd_meta_arch_fn = ssd_meta_arch.SSDMetaArch
-  # BEGIN GOOGLE-INTERNAL
-  # TODO(lzc): move ssd_mask_meta_arch to third party when it has decent
-  # performance relative to a comparable Mask R-CNN model (b/112561592).
-  predictor_config = ssd_config.box_predictor
-  predict_instance_masks = False
-  if predictor_config.WhichOneof(
-      'box_predictor_oneof') == 'convolutional_box_predictor':
-    predict_instance_masks = (
-        predictor_config.convolutional_box_predictor.HasField('mask_head'))
-  elif predictor_config.WhichOneof(
-      'box_predictor_oneof') == 'weight_shared_convolutional_box_predictor':
-    predict_instance_masks = (
-        predictor_config.weight_shared_convolutional_box_predictor.HasField(
-            'mask_head'))
-  if predict_instance_masks:
-    ssd_meta_arch_fn = ssd_mask_meta_arch.SSDMaskMetaArch
-  # END GOOGLE-INTERNAL
 
   return ssd_meta_arch_fn(
       is_training=is_training,

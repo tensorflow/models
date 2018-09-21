@@ -103,7 +103,8 @@ def transform_input_data(tensor_dict,
 
   if retain_original_image:
     tensor_dict[fields.InputDataFields.original_image] = tf.cast(
-        tensor_dict[fields.InputDataFields.image], tf.uint8)
+        image_resizer_fn(tensor_dict[fields.InputDataFields.image], None)[0],
+        tf.uint8)
 
   # Apply data augmentation ops.
   if data_augmentation_fn is not None:
@@ -199,6 +200,7 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
       fields.InputDataFields.image: [
           height, width, 3 + num_additional_channels
       ],
+      fields.InputDataFields.original_image_spatial_shape: [2],
       fields.InputDataFields.image_additional_channels: [
           height, width, num_additional_channels
       ],
@@ -230,7 +232,7 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
 
   if fields.InputDataFields.original_image in tensor_dict:
     padding_shapes[fields.InputDataFields.original_image] = [
-        None, None, 3 + num_additional_channels
+        height, width, 3 + num_additional_channels
     ]
   if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
     tensor_shape = (
@@ -364,7 +366,9 @@ def _get_features_dict(input_dict):
           input_dict[fields.InputDataFields.image],
       HASH_KEY: tf.cast(hash_from_source_id, tf.int32),
       fields.InputDataFields.true_image_shape:
-          input_dict[fields.InputDataFields.true_image_shape]
+          input_dict[fields.InputDataFields.true_image_shape],
+      fields.InputDataFields.original_image_spatial_shape:
+          input_dict[fields.InputDataFields.original_image_spatial_shape]
   }
   if fields.InputDataFields.original_image in input_dict:
     features[fields.InputDataFields.original_image] = input_dict[
@@ -479,8 +483,6 @@ def create_train_input_fn(train_config, train_input_config,
 def create_eval_input_fn(eval_config, eval_input_config, model_config):
   """Creates an eval `input` function for `Estimator`.
 
-  # TODO(ronnyvotel,rathodv): Allow batch sizes of more than 1 for eval.
-
   Args:
     eval_config: An eval_pb2.EvalConfig.
     eval_input_config: An input_reader_pb2.InputReader.
@@ -562,7 +564,7 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
       return (_get_features_dict(tensor_dict), _get_labels_dict(tensor_dict))
     dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         eval_input_config,
-        batch_size=1,  # Currently only support batch size of 1 for eval.
+        batch_size=params['batch_size'] if params else eval_config.batch_size,
         transform_input_data_fn=transform_and_pad_input_data_fn)
     return dataset
 

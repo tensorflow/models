@@ -504,13 +504,6 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       for key in expected_shapes:
         self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
 
-  # BEGIN GOOGLE-INTERNAL
-  # TODO(bhattad): Remove conditional after CMLE moves to TF 1.11
-  @parameterized.parameters(
-      {'use_static_shapes': False},
-      {'use_static_shapes': True}
-  )
-  # END GOOGLE-INTERNAL
   def test_predict_gives_correct_shapes_in_train_mode_both_stages(
       self,
       use_static_shapes=False):
@@ -1187,16 +1180,6 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           'Loss/BoxClassifierLoss/classification_loss'], 0)
       self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
-  # BEGIN GOOGLE-INTERNAL
-  # TODO(bhattad): Remove conditional after CMLE moves to TF 1.11
-  @parameterized.parameters(
-      {'use_static_shapes': False, 'shared_boxes': False},
-      {'use_static_shapes': False, 'shared_boxes': True},
-
-      {'use_static_shapes': True, 'shared_boxes': False},
-      {'use_static_shapes': True, 'shared_boxes': True},
-  )
-  # END GOOGLE-INTERNAL
   def test_loss_full_zero_padded_proposals_nonzero_loss_with_two_images(
       self, use_static_shapes=False, shared_boxes=False):
     batch_size = 2

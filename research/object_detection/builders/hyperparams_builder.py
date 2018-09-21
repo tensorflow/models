@@ -163,6 +163,10 @@ class KerasLayerHyperparams(object):
     new_params['activation'] = None
     if include_activation:
       new_params['activation'] = self._activation_fn
+    if self.use_batch_norm() and self.batch_norm_params()['center']:
+      new_params['use_bias'] = False
+    else:
+      new_params['use_bias'] = True
     new_params.update(**overrides)
     return new_params
 

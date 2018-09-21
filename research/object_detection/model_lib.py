@@ -377,9 +377,14 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       groundtruth = _prepare_groundtruth_for_eval(detection_model,
                                                   class_agnostic)
       use_original_images = fields.InputDataFields.original_image in features
-      eval_images = (
-          features[fields.InputDataFields.original_image]
-          if use_original_images else features[fields.InputDataFields.image])
+      if use_original_images:
+        eval_images = tf.cast(tf.image.resize_bilinear(
+            features[fields.InputDataFields.original_image][0:1],
+            features[fields.InputDataFields.original_image_spatial_shape][0]),
+                              tf.uint8)
+      else:
+        eval_images = features[fields.InputDataFields.image]
+
       eval_dict = eval_util.result_dict_for_single_example(
           eval_images[0:1],
           features[inputs.HASH_KEY][0],
@@ -520,8 +525,7 @@ def create_estimator_and_inputs(run_config,
   configs = get_configs_from_pipeline_file(pipeline_config_path)
   kwargs.update({
       'train_steps': train_steps,
-      'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples,
-      'retain_original_images_in_eval': False if use_tpu else True,
+      'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples
   })
   if override_eval_num_epochs:
     kwargs.update({'eval_num_epochs': 1})
@@ -586,10 +590,6 @@ def create_estimator_and_inputs(run_config,
         use_tpu=use_tpu,
         config=run_config,
         # TODO(lzc): Remove conditional after CMLE moves to TF 1.9
-        # BEGIN GOOGLE-INTERNAL
-        export_to_tpu=export_to_tpu,
-        eval_on_tpu=False,  # Eval runs on CPU, so disable eval on TPU
-        # END GOOGLE-INTERNAL
         params=params if params else {})
   else:
     estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)

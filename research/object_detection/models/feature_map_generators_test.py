@@ -118,8 +118,8 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
       self.assertDictEqual(expected_feature_map_shapes, out_feature_map_shapes)
 
   # TODO(kaftan): Remove conditional after CMLE moves to TF 1.10
-  # BEGIN GOOGLE-INTERNAL
-  def test_get_expected_feature_map_shapes_with_inception_v2_use_depthwise(
+
+  def test_get_expected_feature_map_shapes_use_explicit_padding(
       self, use_keras):
     image_features = {
         'Mixed_3c': tf.random_uniform([4, 28, 28, 256], dtype=tf.float32),
@@ -127,7 +127,7 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
         'Mixed_5c': tf.random_uniform([4, 7, 7, 1024], dtype=tf.float32)
     }
     layout_copy = INCEPTION_V2_LAYOUT.copy()
-    layout_copy['use_depthwise'] = True
+    layout_copy['use_explicit_padding'] = True
     feature_map_generator = self._build_feature_map_generator(
         feature_map_layout=layout_copy,
         use_keras=use_keras
@@ -149,7 +149,6 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
       out_feature_map_shapes = dict(
           (key, value.shape) for key, value in out_feature_maps.items())
       self.assertDictEqual(expected_feature_map_shapes, out_feature_map_shapes)
-  # END GOOGLE-INTERNAL
 
   def test_get_expected_feature_map_shapes_with_inception_v3(self, use_keras):
     image_features = {
@@ -238,18 +237,18 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
     ])
 
     expected_keras_variables = set([
-        'FeatureMaps/output_3/Mixed_5c_1_Conv2d_3_1x1_256_conv/kernel',
-        'FeatureMaps/output_3/Mixed_5c_1_Conv2d_3_1x1_256_conv/bias',
-        'FeatureMaps/output_3/Mixed_5c_2_Conv2d_3_3x3_s2_512_conv/kernel',
-        'FeatureMaps/output_3/Mixed_5c_2_Conv2d_3_3x3_s2_512_conv/bias',
-        'FeatureMaps/output_4/Mixed_5c_1_Conv2d_4_1x1_128_conv/kernel',
-        'FeatureMaps/output_4/Mixed_5c_1_Conv2d_4_1x1_128_conv/bias',
-        'FeatureMaps/output_4/Mixed_5c_2_Conv2d_4_3x3_s2_256_conv/kernel',
-        'FeatureMaps/output_4/Mixed_5c_2_Conv2d_4_3x3_s2_256_conv/bias',
-        'FeatureMaps/output_5/Mixed_5c_1_Conv2d_5_1x1_128_conv/kernel',
-        'FeatureMaps/output_5/Mixed_5c_1_Conv2d_5_1x1_128_conv/bias',
-        'FeatureMaps/output_5/Mixed_5c_2_Conv2d_5_3x3_s2_256_conv/kernel',
-        'FeatureMaps/output_5/Mixed_5c_2_Conv2d_5_3x3_s2_256_conv/bias',
+        'FeatureMaps/Mixed_5c_1_Conv2d_3_1x1_256_conv/kernel',
+        'FeatureMaps/Mixed_5c_1_Conv2d_3_1x1_256_conv/bias',
+        'FeatureMaps/Mixed_5c_2_Conv2d_3_3x3_s2_512_conv/kernel',
+        'FeatureMaps/Mixed_5c_2_Conv2d_3_3x3_s2_512_conv/bias',
+        'FeatureMaps/Mixed_5c_1_Conv2d_4_1x1_128_conv/kernel',
+        'FeatureMaps/Mixed_5c_1_Conv2d_4_1x1_128_conv/bias',
+        'FeatureMaps/Mixed_5c_2_Conv2d_4_3x3_s2_256_conv/kernel',
+        'FeatureMaps/Mixed_5c_2_Conv2d_4_3x3_s2_256_conv/bias',
+        'FeatureMaps/Mixed_5c_1_Conv2d_5_1x1_128_conv/kernel',
+        'FeatureMaps/Mixed_5c_1_Conv2d_5_1x1_128_conv/bias',
+        'FeatureMaps/Mixed_5c_2_Conv2d_5_3x3_s2_256_conv/kernel',
+        'FeatureMaps/Mixed_5c_2_Conv2d_5_3x3_s2_256_conv/bias',
     ])
 
     init_op = tf.global_variables_initializer()
@@ -264,82 +263,6 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
         self.assertSetEqual(expected_slim_variables, actual_variable_set)
 
   # TODO(kaftan): Remove conditional after CMLE moves to TF 1.10
-  # BEGIN GOOGLE-INTERNAL
-  def test_get_expected_variable_names_with_inception_v2_use_depthwise(
-      self,
-      use_keras):
-    image_features = {
-        'Mixed_3c': tf.random_uniform([4, 28, 28, 256], dtype=tf.float32),
-        'Mixed_4c': tf.random_uniform([4, 14, 14, 576], dtype=tf.float32),
-        'Mixed_5c': tf.random_uniform([4, 7, 7, 1024], dtype=tf.float32)
-    }
-    layout_copy = INCEPTION_V2_LAYOUT.copy()
-    layout_copy['use_depthwise'] = True
-    feature_map_generator = self._build_feature_map_generator(
-        feature_map_layout=layout_copy,
-        use_keras=use_keras
-    )
-    feature_maps = feature_map_generator(image_features)
-
-    expected_slim_variables = set([
-        'Mixed_5c_1_Conv2d_3_1x1_256/weights',
-        'Mixed_5c_1_Conv2d_3_1x1_256/biases',
-        'Mixed_5c_2_Conv2d_3_3x3_s2_512_depthwise/depthwise_weights',
-        'Mixed_5c_2_Conv2d_3_3x3_s2_512_depthwise/biases',
-        'Mixed_5c_2_Conv2d_3_3x3_s2_512/weights',
-        'Mixed_5c_2_Conv2d_3_3x3_s2_512/biases',
-        'Mixed_5c_1_Conv2d_4_1x1_128/weights',
-        'Mixed_5c_1_Conv2d_4_1x1_128/biases',
-        'Mixed_5c_2_Conv2d_4_3x3_s2_256_depthwise/depthwise_weights',
-        'Mixed_5c_2_Conv2d_4_3x3_s2_256_depthwise/biases',
-        'Mixed_5c_2_Conv2d_4_3x3_s2_256/weights',
-        'Mixed_5c_2_Conv2d_4_3x3_s2_256/biases',
-        'Mixed_5c_1_Conv2d_5_1x1_128/weights',
-        'Mixed_5c_1_Conv2d_5_1x1_128/biases',
-        'Mixed_5c_2_Conv2d_5_3x3_s2_256_depthwise/depthwise_weights',
-        'Mixed_5c_2_Conv2d_5_3x3_s2_256_depthwise/biases',
-        'Mixed_5c_2_Conv2d_5_3x3_s2_256/weights',
-        'Mixed_5c_2_Conv2d_5_3x3_s2_256/biases',
-    ])
-
-    expected_keras_variables = set([
-        'FeatureMaps/output_3/Mixed_5c_1_Conv2d_3_1x1_256_conv/kernel',
-        'FeatureMaps/output_3/Mixed_5c_1_Conv2d_3_1x1_256_conv/bias',
-        ('FeatureMaps/output_3/Mixed_5c_2_Conv2d_3_3x3_s2_512_depthwise_conv/'
-         'depthwise_kernel'),
-        ('FeatureMaps/output_3/Mixed_5c_2_Conv2d_3_3x3_s2_512_depthwise_conv/'
-         'bias'),
-        'FeatureMaps/output_3/Mixed_5c_2_Conv2d_3_3x3_s2_512_conv/kernel',
-        'FeatureMaps/output_3/Mixed_5c_2_Conv2d_3_3x3_s2_512_conv/bias',
-        'FeatureMaps/output_4/Mixed_5c_1_Conv2d_4_1x1_128_conv/kernel',
-        'FeatureMaps/output_4/Mixed_5c_1_Conv2d_4_1x1_128_conv/bias',
-        ('FeatureMaps/output_4/Mixed_5c_2_Conv2d_4_3x3_s2_256_depthwise_conv/'
-         'depthwise_kernel'),
-        ('FeatureMaps/output_4/Mixed_5c_2_Conv2d_4_3x3_s2_256_depthwise_conv/'
-         'bias'),
-        'FeatureMaps/output_4/Mixed_5c_2_Conv2d_4_3x3_s2_256_conv/kernel',
-        'FeatureMaps/output_4/Mixed_5c_2_Conv2d_4_3x3_s2_256_conv/bias',
-        'FeatureMaps/output_5/Mixed_5c_1_Conv2d_5_1x1_128_conv/kernel',
-        'FeatureMaps/output_5/Mixed_5c_1_Conv2d_5_1x1_128_conv/bias',
-        ('FeatureMaps/output_5/Mixed_5c_2_Conv2d_5_3x3_s2_256_depthwise_conv/'
-         'depthwise_kernel'),
-        ('FeatureMaps/output_5/Mixed_5c_2_Conv2d_5_3x3_s2_256_depthwise_conv/'
-         'bias'),
-        'FeatureMaps/output_5/Mixed_5c_2_Conv2d_5_3x3_s2_256_conv/kernel',
-        'FeatureMaps/output_5/Mixed_5c_2_Conv2d_5_3x3_s2_256_conv/bias',
-    ])
-
-    init_op = tf.global_variables_initializer()
-    with self.test_session() as sess:
-      sess.run(init_op)
-      sess.run(feature_maps)
-      actual_variable_set = set(
-          [var.op.name for var in tf.trainable_variables()])
-      if use_keras:
-        self.assertSetEqual(expected_keras_variables, actual_variable_set)
-      else:
-        self.assertSetEqual(expected_slim_variables, actual_variable_set)
-  # END GOOGLE-INTERNAL
 
 
 class FPNFeatureMapGeneratorTest(tf.test.TestCase):

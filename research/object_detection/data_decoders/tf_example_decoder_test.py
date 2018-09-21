@@ -97,13 +97,17 @@ class TfExampleDecoderTest(tf.test.TestCase):
     example_decoder = tf_example_decoder.TfExampleDecoder()
     tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
-    self.assertAllEqual(
-        (tensor_dict[fields.InputDataFields.image].get_shape().as_list()),
-        [None, None, 3])
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.image].
+                         get_shape().as_list()), [None, None, 3])
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.
+                                     original_image_spatial_shape].
+                         get_shape().as_list()), [2])
     with self.test_session() as sess:
       tensor_dict = sess.run(tensor_dict)
 
     self.assertAllEqual(decoded_jpeg, tensor_dict[fields.InputDataFields.image])
+    self.assertAllEqual([4, 5], tensor_dict[fields.InputDataFields.
+                                            original_image_spatial_shape])
     self.assertEqual('image_id', tensor_dict[fields.InputDataFields.source_id])
 
   def testDecodeImageKeyAndFilename(self):
@@ -141,13 +145,17 @@ class TfExampleDecoderTest(tf.test.TestCase):
     example_decoder = tf_example_decoder.TfExampleDecoder()
     tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
-    self.assertAllEqual(
-        (tensor_dict[fields.InputDataFields.image].get_shape().as_list()),
-        [None, None, 3])
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.image].
+                         get_shape().as_list()), [None, None, 3])
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.
+                                     original_image_spatial_shape].
+                         get_shape().as_list()), [2])
     with self.test_session() as sess:
       tensor_dict = sess.run(tensor_dict)
 
     self.assertAllEqual(decoded_png, tensor_dict[fields.InputDataFields.image])
+    self.assertAllEqual([4, 5], tensor_dict[fields.InputDataFields.
+                                            original_image_spatial_shape])
     self.assertEqual('image_id', tensor_dict[fields.InputDataFields.source_id])
 
   def testDecodePngInstanceMasks(self):
