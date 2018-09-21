@@ -15,6 +15,8 @@
 
 """Tests for object_detection.models.model_builder."""
 
+from absl.testing import parameterized
+
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -36,7 +38,13 @@ from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobile
 from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMobileNetV1FpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
+from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
 from object_detection.protos import model_pb2
+# BEGIN GOOGLE-INTERNAL
+# TODO(lzc): move ssd_mask_meta_arch to third party when it has decent
+# performance relative to a comparable Mask R-CNN model (b/112561592).
+from google3.image.understanding.object_detection.meta_architectures import ssd_mask_meta_arch
+# END GOOGLE-INTERNAL
 
 FRCNN_RESNET_FEAT_MAPS = {
     'faster_rcnn_resnet50':
@@ -66,7 +74,7 @@ SSD_RESNET_V1_PPN_FEAT_MAPS = {
 }
 
 
-class ModelBuilderTest(tf.test.TestCase):
+class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
 
   def create_model(self, model_config):
     """Builds a DetectionModel based on the model config.
@@ -160,6 +168,162 @@ class ModelBuilderTest(tf.test.TestCase):
             'minimum_negative_sampling': 10,
             'desired_negative_sampling_ratio': 2
         })
+
+  # BEGIN GOOGLE-INTERNAL
+  # TODO(lzc): move ssd_mask_meta_arch to third party when it has decent
+  # performance relative to a comparable Mask R-CNN model (b/112561592).
+  def test_create_ssd_conv_predictor_model_with_mask(self):
+    model_text_proto = """
+      ssd {
+        feature_extractor {
+          type: 'ssd_inception_v2'
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+          override_base_feature_extractor_hyperparams: true
+        }
+        box_coder {
+          faster_rcnn_box_coder {
+          }
+        }
+        matcher {
+          argmax_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          convolutional_box_predictor {
+            mask_head {
+            }
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_smooth_l1 {
+            }
+          }
+        }
+        use_expected_classification_loss_under_sampling: true
+        minimum_negative_sampling: 10
+        desired_negative_sampling_ratio: 2
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = self.create_model(model_proto)
+    self.assertIsInstance(model, ssd_mask_meta_arch.SSDMaskMetaArch)
+
+  def test_create_ssd_weight_shared_predictor_model_with_mask(self):
+    model_text_proto = """
+      ssd {
+        feature_extractor {
+          type: 'ssd_inception_v2'
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+          override_base_feature_extractor_hyperparams: true
+        }
+        box_coder {
+          faster_rcnn_box_coder {
+          }
+        }
+        matcher {
+          argmax_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          weight_shared_convolutional_box_predictor {
+            mask_head {
+            }
+            depth: 32
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                random_normal_initializer {
+                }
+              }
+            }
+            num_layers_before_predictor: 1
+          }
+        }
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_smooth_l1 {
+            }
+          }
+        }
+        use_expected_classification_loss_under_sampling: true
+        minimum_negative_sampling: 10
+        desired_negative_sampling_ratio: 2
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = self.create_model(model_proto)
+    self.assertIsInstance(model, ssd_mask_meta_arch.SSDMaskMetaArch)
+  # END GOOGLE-INTERNAL
 
   def test_create_ssd_inception_v3_model_from_config(self):
     model_text_proto = """
@@ -712,6 +876,170 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertTrue(model._normalize_loc_loss_by_codesize)
     self.assertTrue(model._target_assigner._weight_regression_loss_by_score)
 
+  def test_create_ssd_mobilenet_v2_fpn_model_from_config(self):
+    model_text_proto = """
+      ssd {
+        freeze_batchnorm: true
+        inplace_batchnorm_update: true
+        feature_extractor {
+          type: 'ssd_mobilenet_v2_fpn'
+          fpn {
+            min_level: 3
+            max_level: 7
+          }
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+        }
+        box_coder {
+          faster_rcnn_box_coder {
+          }
+        }
+        matcher {
+          argmax_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          convolutional_box_predictor {
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        normalize_loc_loss_by_codesize: true
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_smooth_l1 {
+            }
+          }
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = self.create_model(model_proto)
+    self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
+    self.assertIsInstance(model._feature_extractor,
+                          SSDMobileNetV2FpnFeatureExtractor)
+    self.assertTrue(model._normalize_loc_loss_by_codesize)
+    self.assertTrue(model._freeze_batchnorm)
+    self.assertTrue(model._inplace_batchnorm_update)
+
+  def test_create_ssd_mobilenet_v2_fpnlite_model_from_config(self):
+    model_text_proto = """
+      ssd {
+        freeze_batchnorm: true
+        inplace_batchnorm_update: true
+        feature_extractor {
+          type: 'ssd_mobilenet_v2_fpn'
+          use_depthwise: true
+          fpn {
+            min_level: 3
+            max_level: 7
+            additional_layer_depth: 128
+          }
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+        }
+        box_coder {
+          faster_rcnn_box_coder {
+          }
+        }
+        matcher {
+          argmax_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          convolutional_box_predictor {
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        normalize_loc_loss_by_codesize: true
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_smooth_l1 {
+            }
+          }
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = self.create_model(model_proto)
+    self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
+    self.assertIsInstance(model._feature_extractor,
+                          SSDMobileNetV2FpnFeatureExtractor)
+    self.assertTrue(model._normalize_loc_loss_by_codesize)
+    self.assertTrue(model._freeze_batchnorm)
+    self.assertTrue(model._inplace_batchnorm_update)
+
   def test_create_embedded_ssd_mobilenet_v1_model_from_config(self):
     model_text_proto = """
       ssd {
@@ -845,13 +1173,19 @@ class ModelBuilderTest(tf.test.TestCase):
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
+
     for extractor_type, extractor_class in FRCNN_RESNET_FEAT_MAPS.items():
       model_proto.faster_rcnn.feature_extractor.type = extractor_type
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, faster_rcnn_meta_arch.FasterRCNNMetaArch)
       self.assertIsInstance(model._feature_extractor, extractor_class)
 
-  def test_create_faster_rcnn_resnet101_with_mask_prediction_enabled(self):
+  @parameterized.parameters(
+      {'use_matmul_crop_and_resize': False},
+      {'use_matmul_crop_and_resize': True},
+  )
+  def test_create_faster_rcnn_resnet101_with_mask_prediction_enabled(
+      self, use_matmul_crop_and_resize):
     model_text_proto = """
       faster_rcnn {
         num_classes: 3
@@ -924,6 +1258,8 @@ class ModelBuilderTest(tf.test.TestCase):
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
+    model_proto.faster_rcnn.use_matmul_crop_and_resize = (
+        use_matmul_crop_and_resize)
     model = model_builder.build(model_proto, is_training=True)
     self.assertAlmostEqual(model._second_stage_mask_loss_weight, 3.0)
 

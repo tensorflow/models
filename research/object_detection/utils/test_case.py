@@ -14,6 +14,7 @@
 # ==============================================================================
 """A convenience wrapper around tf.test.TestCase to enable TPU tests."""
 
+import os
 import tensorflow as tf
 from tensorflow.contrib import tpu
 
@@ -21,6 +22,36 @@ flags = tf.app.flags
 
 flags.DEFINE_bool('tpu_test', False, 'Whether to configure test for TPU.')
 FLAGS = flags.FLAGS
+
+
+# BEGIN GOOGLE-INTERNAL
+def hlo_memory_profile(function):
+  """Decorator to set environment variables that produce XLA HLO memory profile.
+
+  Args:
+    function: A function to run with XLA HLO profiling on.
+
+  Returns:
+    A decorated function that dumps the XLA HLO memory profile in test output
+    directory.
+
+  Usage:
+    @test_case.hlo_memory_profile
+    def test_run_my_tf_tpu_op(self):
+      ...
+
+    After running the test, access the memory profile proto from output files
+    and generate visualization using XLA memory visualizer.
+  """
+  def wrapper_func(*args, **kwargs):
+    outputs_dir = os.environ['TEST_UNDECLARED_OUTPUTS_DIR']
+    path_to_function = os.path.join(outputs_dir, 'hlo_memory_profile',
+                                    function.__name__)
+    os.environ['TF_XLA_FLAGS'] = (
+        '--xla_dump_optimized_hlo_proto_to=' + path_to_function)
+    return function(*args, **kwargs)
+  return wrapper_func
+# END GOOGLE-INTERNAL
 
 
 class TestCase(tf.test.TestCase):

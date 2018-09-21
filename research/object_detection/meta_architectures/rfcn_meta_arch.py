@@ -62,11 +62,11 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                first_stage_box_predictor_depth,
                first_stage_minibatch_size,
                first_stage_sampler,
-               first_stage_nms_score_threshold,
-               first_stage_nms_iou_threshold,
+               first_stage_non_max_suppression_fn,
                first_stage_max_proposals,
                first_stage_localization_loss_weight,
                first_stage_objectness_loss_weight,
+               crop_and_resize_fn,
                second_stage_target_assigner,
                second_stage_rfcn_box_predictor,
                second_stage_batch_size,
@@ -79,8 +79,9 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                hard_example_miner,
                parallel_iterations=16,
                add_summaries=True,
-               use_matmul_crop_and_resize=False,
-               clip_anchors_to_image=False):
+               clip_anchors_to_image=False,
+               use_static_shapes=False,
+               resize_masks=False):
     """RFCNMetaArch Constructor.
 
     Args:
@@ -123,18 +124,22 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         only called "batch_size" due to terminology from the Faster R-CNN paper.
       first_stage_sampler: The sampler for the boxes used to calculate the RPN
         loss after the first stage.
-      first_stage_nms_score_threshold: Score threshold for non max suppression
-        for the Region Proposal Network (RPN).  This value is expected to be in
-        [0, 1] as it is applied directly after a softmax transformation.  The
-        recommended value for Faster R-CNN is 0.
-      first_stage_nms_iou_threshold: The Intersection Over Union (IOU) threshold
-        for performing Non-Max Suppression (NMS) on the boxes predicted by the
-        Region Proposal Network (RPN).
+      first_stage_non_max_suppression_fn: batch_multiclass_non_max_suppression
+        callable that takes `boxes`, `scores` and optional `clip_window`(with
+        all other inputs already set) and returns a dictionary containing
+        tensors with keys: `detection_boxes`, `detection_scores`,
+        `detection_classes`, `num_detections`. This is used to perform non max
+        suppression  on the boxes predicted by the Region Proposal Network
+        (RPN).
+        See `post_processing.batch_multiclass_non_max_suppression` for the type
+        and shape of these tensors.
       first_stage_max_proposals: Maximum number of boxes to retain after
         performing Non-Max Suppression (NMS) on the boxes predicted by the
         Region Proposal Network (RPN).
       first_stage_localization_loss_weight: A float
       first_stage_objectness_loss_weight: A float
+      crop_and_resize_fn: A differentiable resampler to use for cropping RPN
+        proposal features.
       second_stage_target_assigner: Target assigner to use for second stage of
         R-FCN. If the model is configured with multiple prediction heads, this
         target assigner is used to generate targets for all heads (with the
@@ -168,12 +173,13 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         in parallel for calls to tf.map_fn.
       add_summaries: boolean (default: True) controlling whether summary ops
         should be added to tensorflow graph.
-      use_matmul_crop_and_resize: Force the use of matrix multiplication based
-        crop and resize instead of standard tf.image.crop_and_resize while
-        computing second stage input feature maps.
       clip_anchors_to_image: The anchors generated are clip to the
         window size without filtering the nonoverlapping anchors. This generates
         a static number of anchors. This argument is unused.
+      use_static_shapes: If True, uses implementation of ops with static shape
+        guarantees.
+      resize_masks: Indicates whether the masks presend in the groundtruth
+        should be resized in the model with `image_resizer_fn`
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals`
@@ -196,11 +202,11 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         first_stage_box_predictor_depth,
         first_stage_minibatch_size,
         first_stage_sampler,
-        first_stage_nms_score_threshold,
-        first_stage_nms_iou_threshold,
+        first_stage_non_max_suppression_fn,
         first_stage_max_proposals,
         first_stage_localization_loss_weight,
         first_stage_objectness_loss_weight,
+        crop_and_resize_fn,
         None,  # initial_crop_size is not used in R-FCN
         None,  # maxpool_kernel_size is not use in R-FCN
         None,  # maxpool_stride is not use in R-FCN
@@ -215,7 +221,11 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         second_stage_classification_loss,
         1.0,  # second stage mask prediction loss weight isn't used in R-FCN.
         hard_example_miner,
-        parallel_iterations)
+        parallel_iterations,
+        add_summaries,
+        clip_anchors_to_image,
+        use_static_shapes,
+        resize_masks)
 
     self._rfcn_box_predictor = second_stage_rfcn_box_predictor
 

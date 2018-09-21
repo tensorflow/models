@@ -14,7 +14,9 @@
 # ==============================================================================
 
 """A function to build a DetectionModel from configuration."""
+
 import functools
+
 from object_detection.builders import anchor_generator_builder
 from object_detection.builders import box_coder_builder
 from object_detection.builders import box_predictor_builder
@@ -25,6 +27,7 @@ from object_detection.builders import matcher_builder
 from object_detection.builders import post_processing_builder
 from object_detection.builders import region_similarity_calculator_builder as sim_calc
 from object_detection.core import balanced_positive_negative_sampler as sampler
+from object_detection.core import post_processing
 from object_detection.core import target_assigner
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
@@ -43,10 +46,15 @@ from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobile
 from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMobileNetV1FpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
+from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
 from object_detection.predictors import rfcn_box_predictor
 from object_detection.protos import model_pb2
 from object_detection.utils import ops
-
+# BEGIN GOOGLE-INTERNAL
+# TODO(lzc): move ssd_mask_meta_arch to third party when it has decent
+# performance relative to a comparable Mask R-CNN model (b/112561592).
+from google3.image.understanding.object_detection.meta_architectures import ssd_mask_meta_arch
+# END GOOGLE-INTERNAL
 
 # A map of names to SSD feature extractors.
 SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -56,6 +64,7 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_mobilenet_v1_fpn': SSDMobileNetV1FpnFeatureExtractor,
     'ssd_mobilenet_v1_ppn': SSDMobileNetV1PpnFeatureExtractor,
     'ssd_mobilenet_v2': SSDMobileNetV2FeatureExtractor,
+    'ssd_mobilenet_v2_fpn': SSDMobileNetV2FpnFeatureExtractor,
     'ssd_resnet50_v1_fpn': ssd_resnet_v1_fpn.SSDResnet50V1FpnFeatureExtractor,
     'ssd_resnet101_v1_fpn': ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
     'ssd_resnet152_v1_fpn': ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
@@ -170,8 +179,12 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
 
   if feature_extractor_config.HasField('fpn'):
     kwargs.update({
-        'fpn_min_level': feature_extractor_config.fpn.min_level,
-        'fpn_max_level': feature_extractor_config.fpn.max_level,
+        'fpn_min_level':
+            feature_extractor_config.fpn.min_level,
+        'fpn_max_level':
+            feature_extractor_config.fpn.max_level,
+        'additional_layer_depth':
+            feature_extractor_config.fpn.additional_layer_depth,
     })
 
   return feature_extractor_class(**kwargs)
@@ -240,25 +253,41 @@ def _build_ssd_model(ssd_config, is_training, add_summaries,
         desired_negative_sampling_ratio=ssd_config.
         desired_negative_sampling_ratio)
 
-  return ssd_meta_arch.SSDMetaArch(
-      is_training,
-      anchor_generator,
-      ssd_box_predictor,
-      box_coder,
-      feature_extractor,
-      matcher,
-      region_similarity_calculator,
-      encode_background_as_zeros,
-      negative_class_weight,
-      image_resizer_fn,
-      non_max_suppression_fn,
-      score_conversion_fn,
-      classification_loss,
-      localization_loss,
-      classification_weight,
-      localization_weight,
-      normalize_loss_by_num_matches,
-      hard_example_miner,
+  ssd_meta_arch_fn = ssd_meta_arch.SSDMetaArch
+  # BEGIN GOOGLE-INTERNAL
+  # TODO(lzc): move ssd_mask_meta_arch to third party when it has decent
+  # performance relative to a comparable Mask R-CNN model (b/112561592).
+  predictor_config = ssd_config.box_predictor
+  predict_instance_masks = False
+  if predictor_config.WhichOneof(
+      'box_predictor_oneof') == 'convolutional_box_predictor':
+    predict_instance_masks = (
+        predictor_config.convolutional_box_predictor.HasField('mask_head'))
+  elif predictor_config.WhichOneof(
+      'box_predictor_oneof') == 'weight_shared_convolutional_box_predictor':
+    predict_instance_masks = (
+        predictor_config.weight_shared_convolutional_box_predictor.HasField(
+            'mask_head'))
+  if predict_instance_masks:
+    ssd_meta_arch_fn = ssd_mask_meta_arch.SSDMaskMetaArch
+  # END GOOGLE-INTERNAL
+
+  return ssd_meta_arch_fn(
+      is_training=is_training,
+      anchor_generator=anchor_generator,
+      box_predictor=ssd_box_predictor,
+      box_coder=box_coder,
+      feature_extractor=feature_extractor,
+      encode_background_as_zeros=encode_background_as_zeros,
+      image_resizer_fn=image_resizer_fn,
+      non_max_suppression_fn=non_max_suppression_fn,
+      score_conversion_fn=score_conversion_fn,
+      classification_loss=classification_loss,
+      localization_loss=localization_loss,
+      classification_loss_weight=classification_weight,
+      localization_loss_weight=localization_weight,
+      normalize_loss_by_num_matches=normalize_loss_by_num_matches,
+      hard_example_miner=hard_example_miner,
       target_assigner_instance=target_assigner_instance,
       add_summaries=add_summaries,
       normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
@@ -350,12 +379,27 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       frcnn_config.first_stage_box_predictor_kernel_size)
   first_stage_box_predictor_depth = frcnn_config.first_stage_box_predictor_depth
   first_stage_minibatch_size = frcnn_config.first_stage_minibatch_size
+  # TODO(bhattad): When eval is supported using static shapes, add separate
+  # use_static_shapes_for_trainig and use_static_shapes_for_evaluation.
+  use_static_shapes = frcnn_config.use_static_shapes and is_training
   first_stage_sampler = sampler.BalancedPositiveNegativeSampler(
       positive_fraction=frcnn_config.first_stage_positive_balance_fraction,
-      is_static=frcnn_config.use_static_balanced_label_sampler)
-  first_stage_nms_score_threshold = frcnn_config.first_stage_nms_score_threshold
-  first_stage_nms_iou_threshold = frcnn_config.first_stage_nms_iou_threshold
+      is_static=frcnn_config.use_static_balanced_label_sampler and is_training)
   first_stage_max_proposals = frcnn_config.first_stage_max_proposals
+  if (frcnn_config.first_stage_nms_iou_threshold < 0 or
+      frcnn_config.first_stage_nms_iou_threshold > 1.0):
+    raise ValueError('iou_threshold not in [0, 1.0].')
+  if (is_training and frcnn_config.second_stage_batch_size >
+      first_stage_max_proposals):
+    raise ValueError('second_stage_batch_size should be no greater than '
+                     'first_stage_max_proposals.')
+  first_stage_non_max_suppression_fn = functools.partial(
+      post_processing.batch_multiclass_non_max_suppression,
+      score_thresh=frcnn_config.first_stage_nms_score_threshold,
+      iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
+      max_size_per_class=frcnn_config.first_stage_max_proposals,
+      max_total_size=frcnn_config.first_stage_max_proposals,
+      use_static_shapes=use_static_shapes and is_training)
   first_stage_loc_loss_weight = (
       frcnn_config.first_stage_localization_loss_weight)
   first_stage_obj_loss_weight = frcnn_config.first_stage_objectness_loss_weight
@@ -376,7 +420,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   second_stage_batch_size = frcnn_config.second_stage_batch_size
   second_stage_sampler = sampler.BalancedPositiveNegativeSampler(
       positive_fraction=frcnn_config.second_stage_balance_fraction,
-      is_static=frcnn_config.use_static_balanced_label_sampler)
+      is_static=frcnn_config.use_static_balanced_label_sampler and is_training)
   (second_stage_non_max_suppression_fn, second_stage_score_conversion_fn
   ) = post_processing_builder.build(frcnn_config.second_stage_post_processing)
   second_stage_localization_loss_weight = (
@@ -396,7 +440,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_classification_loss_weight,
         second_stage_localization_loss_weight)
 
-  use_matmul_crop_and_resize = (frcnn_config.use_matmul_crop_and_resize)
+  crop_and_resize_fn = (
+      ops.matmul_crop_and_resize if frcnn_config.use_matmul_crop_and_resize
+      else ops.native_crop_and_resize)
   clip_anchors_to_image = (
       frcnn_config.clip_anchors_to_image)
 
@@ -416,8 +462,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       'first_stage_box_predictor_depth': first_stage_box_predictor_depth,
       'first_stage_minibatch_size': first_stage_minibatch_size,
       'first_stage_sampler': first_stage_sampler,
-      'first_stage_nms_score_threshold': first_stage_nms_score_threshold,
-      'first_stage_nms_iou_threshold': first_stage_nms_iou_threshold,
+      'first_stage_non_max_suppression_fn': first_stage_non_max_suppression_fn,
       'first_stage_max_proposals': first_stage_max_proposals,
       'first_stage_localization_loss_weight': first_stage_loc_loss_weight,
       'first_stage_objectness_loss_weight': first_stage_obj_loss_weight,
@@ -435,8 +480,10 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       second_stage_classification_loss_weight,
       'hard_example_miner': hard_example_miner,
       'add_summaries': add_summaries,
-      'use_matmul_crop_and_resize': use_matmul_crop_and_resize,
-      'clip_anchors_to_image': clip_anchors_to_image
+      'crop_and_resize_fn': crop_and_resize_fn,
+      'clip_anchors_to_image': clip_anchors_to_image,
+      'use_static_shapes': use_static_shapes,
+      'resize_masks': frcnn_config.resize_masks
   }
 
   if isinstance(second_stage_box_predictor,

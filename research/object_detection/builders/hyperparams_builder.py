@@ -63,6 +63,7 @@ class KerasLayerHyperparams(object):
       self._batch_norm_params = _build_keras_batch_norm_params(
           hyperparams_config.batch_norm)
 
+    self._activation_fn = _build_activation_fn(hyperparams_config.activation)
     self._op_params = {
         'kernel_regularizer': _build_keras_regularizer(
             hyperparams_config.regularizer),
@@ -126,7 +127,21 @@ class KerasLayerHyperparams(object):
     else:
       return tf.keras.layers.Lambda(tf.identity)
 
-  def params(self, **overrides):
+  def build_activation_layer(self, name='activation'):
+    """Returns a Keras layer that applies the desired activation function.
+
+    Args:
+      name: The name to assign the Keras layer.
+    Returns: A Keras lambda layer that applies the activation function
+      specified in the hyperparam config, or applies the identity if the
+      activation function is None.
+    """
+    if self._activation_fn:
+      return tf.keras.layers.Lambda(self._activation_fn, name=name)
+    else:
+      return tf.keras.layers.Lambda(tf.identity, name=name)
+
+  def params(self, include_activation=False, **overrides):
     """Returns a dict containing the layer construction hyperparameters to use.
 
     Optionally overrides values in the returned dict. Overrides
@@ -134,12 +149,20 @@ class KerasLayerHyperparams(object):
     future calls.
 
     Args:
+      include_activation: If False, activation in the returned dictionary will
+        be set to `None`, and the activation must be applied via a separate
+        layer created by `build_activation_layer`. If True, `activation` in the
+        output param dictionary will be set to the activation function
+        specified in the hyperparams config.
       **overrides: keyword arguments to override in the hyperparams dictionary.
 
     Returns: dict containing the layer construction keyword arguments, with
       values overridden by the `overrides` keyword arguments.
     """
     new_params = self._op_params.copy()
+    new_params['activation'] = None
+    if include_activation:
+      new_params['activation'] = self._activation_fn
     new_params.update(**overrides)
     return new_params
 
@@ -243,6 +266,8 @@ def _build_slim_regularizer(regularizer):
     return slim.l1_regularizer(scale=float(regularizer.l1_regularizer.weight))
   if regularizer_oneof == 'l2_regularizer':
     return slim.l2_regularizer(scale=float(regularizer.l2_regularizer.weight))
+  if regularizer_oneof is None:
+    return None
   raise ValueError('Unknown regularizer function: {}'.format(regularizer_oneof))
 
 

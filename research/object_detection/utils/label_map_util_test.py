@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for object_detection.utils.label_map_util."""
 
 import os
@@ -189,7 +188,7 @@ class LabelMapUtilTest(tf.test.TestCase):
     }]
     self.assertListEqual(expected_categories_list, categories)
 
-  def test_convert_label_map_to_coco_categories(self):
+  def test_convert_label_map_to_categories(self):
     label_map_proto = self._generate_label_map(num_classes=4)
     categories = label_map_util.convert_label_map_to_categories(
         label_map_proto, max_num_classes=3)
@@ -205,7 +204,7 @@ class LabelMapUtilTest(tf.test.TestCase):
     }]
     self.assertListEqual(expected_categories_list, categories)
 
-  def test_convert_label_map_to_coco_categories_with_few_classes(self):
+  def test_convert_label_map_to_categories_with_few_classes(self):
     label_map_proto = self._generate_label_map(num_classes=4)
     cat_no_offset = label_map_util.convert_label_map_to_categories(
         label_map_proto, max_num_classes=2)
@@ -238,6 +237,30 @@ class LabelMapUtilTest(tf.test.TestCase):
         }
     }, category_index)
 
+  def test_create_categories_from_labelmap(self):
+    label_map_string = """
+      item {
+        id:1
+        name:'dog'
+      }
+      item {
+        id:2
+        name:'cat'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+
+    categories = label_map_util.create_categories_from_labelmap(label_map_path)
+    self.assertListEqual([{
+        'name': u'dog',
+        'id': 1
+    }, {
+        'name': u'cat',
+        'id': 2
+    }], categories)
+
   def test_create_category_index_from_labelmap(self):
     label_map_string = """
       item {
@@ -265,6 +288,46 @@ class LabelMapUtilTest(tf.test.TestCase):
             'id': 2
         }
     }, category_index)
+
+  def test_create_category_index_from_labelmap_display(self):
+    label_map_string = """
+      item {
+        id:2
+        name:'cat'
+        display_name:'meow'
+      }
+      item {
+        id:1
+        name:'dog'
+        display_name:'woof'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+
+    self.assertDictEqual({
+        1: {
+            'name': u'dog',
+            'id': 1
+        },
+        2: {
+            'name': u'cat',
+            'id': 2
+        }
+    }, label_map_util.create_category_index_from_labelmap(
+        label_map_path, False))
+
+    self.assertDictEqual({
+        1: {
+            'name': u'woof',
+            'id': 1
+        },
+        2: {
+            'name': u'meow',
+            'id': 2
+        }
+    }, label_map_util.create_category_index_from_labelmap(label_map_path))
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from object_detection.core import standard_fields
 from object_detection.metrics import coco_tools
+from object_detection.utils import json_utils
 from object_detection.utils import object_detection_evaluation
 
 
@@ -148,6 +149,19 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
                                               detection_classes]))
     self._image_ids[image_id] = True
 
+  def dump_detections_to_json_file(self, json_output_path):
+    """Saves the detections into json_output_path in the format used by MS COCO.
+
+    Args:
+      json_output_path: String containing the output file's path. It can be also
+        None. In that case nothing will be written to the output file.
+    """
+    if json_output_path and json_output_path is not None:
+      with tf.gfile.GFile(json_output_path, 'w') as fid:
+        tf.logging.info('Dumping detections to output json file.')
+        json_utils.Dump(
+            obj=self._detection_boxes_list, fid=fid, float_digits=4, indent=2)
+
   def evaluate(self):
     """Evaluates the detection boxes and returns a dictionary of coco metrics.
 
@@ -245,10 +259,11 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
                detection_boxes_batched, detection_scores_batched,
                detection_classes_batched, num_det_boxes_per_image):
         self.add_single_ground_truth_image_info(
-            image_id,
-            {'groundtruth_boxes': gt_box[:num_gt_box],
-             'groundtruth_classes': gt_class[:num_gt_box],
-             'groundtruth_is_crowd': gt_is_crowd[:num_gt_box]})
+            image_id, {
+                'groundtruth_boxes': gt_box[:num_gt_box],
+                'groundtruth_classes': gt_class[:num_gt_box],
+                'groundtruth_is_crowd': gt_is_crowd[:num_gt_box]
+            })
         self.add_single_detected_image_info(
             image_id,
             {'detection_boxes': det_box[:num_det_box],
@@ -268,8 +283,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     detection_classes = eval_dict[detection_fields.detection_classes]
     num_gt_boxes_per_image = eval_dict.get(
         'num_groundtruth_boxes_per_image', None)
-    num_det_boxes_per_image = eval_dict.get(
-        'num_groundtruth_boxes_per_image', None)
+    num_det_boxes_per_image = eval_dict.get('num_det_boxes_per_image', None)
 
     if groundtruth_is_crowd is None:
       groundtruth_is_crowd = tf.zeros_like(groundtruth_classes, dtype=tf.bool)
@@ -490,6 +504,19 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                                               DetectionResultFields.
                                               detection_classes]))
     self._image_ids_with_detections.update([image_id])
+
+  def dump_detections_to_json_file(self, json_output_path):
+    """Saves the detections into json_output_path in the format used by MS COCO.
+
+    Args:
+      json_output_path: String containing the output file's path. It can be also
+        None. In that case nothing will be written to the output file.
+    """
+    if json_output_path and json_output_path is not None:
+      tf.logging.info('Dumping detections to output json file.')
+      with tf.gfile.GFile(json_output_path, 'w') as fid:
+        json_utils.Dump(
+            obj=self._detection_masks_list, fid=fid, float_digits=4, indent=2)
 
   def evaluate(self):
     """Evaluates the detection masks and returns a dictionary of coco metrics.

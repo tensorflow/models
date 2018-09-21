@@ -106,6 +106,9 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/ymax'].float_list.value,
         [0.75])
+    self._assertProtoEqual(
+        example.features.feature['image/object/class/text'].bytes_list.value,
+        ['cat'])
 
   def test_create_tf_example_with_instance_masks(self):
     image_file_name = 'tmp_image.jpg'
@@ -169,6 +172,9 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/ymax'].float_list.value,
         [1])
+    self._assertProtoEqual(
+        example.features.feature['image/object/class/text'].bytes_list.value,
+        ['dog'])
     encoded_mask_pngs = [
         io.BytesIO(encoded_masks) for encoded_masks in example.features.feature[
             'image/object/mask'].bytes_list.value

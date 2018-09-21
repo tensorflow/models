@@ -460,6 +460,11 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     keras_config = hyperparams_builder.KerasLayerHyperparams(
         conv_hyperparams_proto)
     self.assertEqual(keras_config.params()['activation'], None)
+    self.assertEqual(
+        keras_config.params(include_activation=True)['activation'], None)
+    activation_layer = keras_config.build_activation_layer()
+    self.assertTrue(isinstance(activation_layer, tf.keras.layers.Lambda))
+    self.assertEqual(activation_layer.function, tf.identity)
 
   def test_use_relu_activation(self):
     conv_hyperparams_text_proto = """
@@ -497,7 +502,12 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     keras_config = hyperparams_builder.KerasLayerHyperparams(
         conv_hyperparams_proto)
-    self.assertEqual(keras_config.params()['activation'], tf.nn.relu)
+    self.assertEqual(keras_config.params()['activation'], None)
+    self.assertEqual(
+        keras_config.params(include_activation=True)['activation'], tf.nn.relu)
+    activation_layer = keras_config.build_activation_layer()
+    self.assertTrue(isinstance(activation_layer, tf.keras.layers.Lambda))
+    self.assertEqual(activation_layer.function, tf.nn.relu)
 
   def test_use_relu_6_activation(self):
     conv_hyperparams_text_proto = """
@@ -535,7 +545,12 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     keras_config = hyperparams_builder.KerasLayerHyperparams(
         conv_hyperparams_proto)
-    self.assertEqual(keras_config.params()['activation'], tf.nn.relu6)
+    self.assertEqual(keras_config.params()['activation'], None)
+    self.assertEqual(
+        keras_config.params(include_activation=True)['activation'], tf.nn.relu6)
+    activation_layer = keras_config.build_activation_layer()
+    self.assertTrue(isinstance(activation_layer, tf.keras.layers.Lambda))
+    self.assertEqual(activation_layer.function, tf.nn.relu6)
 
   def test_override_activation_keras(self):
     conv_hyperparams_text_proto = """
