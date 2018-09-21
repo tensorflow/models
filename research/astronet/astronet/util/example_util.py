@@ -28,7 +28,7 @@ def get_feature(ex, name, kind=None, strict=True):
     ex: A tf.train.Example.
     name: Name of the feature to look up.
     kind: Optional: one of 'bytes_list', 'float_list', 'int64_list'. Inferred if
-        not specified.
+      not specified.
     strict: Whether to raise a KeyError if there is no such feature.
 
   Returns:
@@ -93,7 +93,7 @@ def set_feature(ex,
     name: Name of the feature to set.
     value: Feature value to set. Must be a sequence.
     kind: Optional: one of 'bytes_list', 'float_list', 'int64_list'. Inferred if
-        not specified.
+      not specified.
     allow_overwrite: Whether to overwrite the existing value of the feature.
     bytes_encoding: Codec for encoding strings when kind = 'bytes_list'.
 

@@ -51,7 +51,7 @@ def create_optimizer(hparams, learning_rate, use_tpu=False):
     hparams: ConfigDict containing the optimizer configuration.
     learning_rate: A Python float or a scalar Tensor.
     use_tpu: If True, the returned optimizer is wrapped in a
-        CrossShardOptimizer.
+      CrossShardOptimizer.
 
   Returns:
     A TensorFlow optimizer.

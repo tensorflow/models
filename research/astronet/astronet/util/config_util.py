@@ -105,7 +105,7 @@ def unflatten(flat_config):
 
   Args:
     flat_config: A dictionary with strings as keys where nested configuration
-        parameters are represented with period-separated names.
+      parameters are represented with period-separated names.
 
   Returns:
     A dictionary nested according to the keys of the input dictionary.

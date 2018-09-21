@@ -27,11 +27,10 @@ def prepare_feed_dict(model, features, labels=None, is_training=None):
   Args:
     model: An instance of AstroModel.
     features: Dictionary containing "time_series_features" and "aux_features".
-        Each is a dictionary of named numpy arrays of shape
-        [batch_size, length].
+      Each is a dictionary of named numpy arrays of shape [batch_size, length].
     labels: (Optional). Numpy array of shape [batch_size].
     is_training: (Optional). Python boolean to feed to the model.is_training
-        Tensor (if None, no value is fed).
+      Tensor (if None, no value is fed).
 
   Returns:
     feed_dict: A dictionary of input Tensor to numpy array.

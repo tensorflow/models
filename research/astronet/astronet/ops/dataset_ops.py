@@ -142,19 +142,19 @@ def build_dataset(file_pattern,
 
   Args:
     file_pattern: File pattern matching input TFRecord files, e.g.
-        "/tmp/train-?????-of-00100". May also be a comma-separated list of file
-        patterns.
+      "/tmp/train-?????-of-00100". May also be a comma-separated list of file
+      patterns.
     input_config: ConfigDict containing feature and label specifications.
     batch_size: The number of examples per batch.
     include_labels: Whether to read labels from the input files.
     reverse_time_series_prob: If > 0, the time series features will be randomly
-        reversed with this probability. Within a given example, either all time
-        series features will be reversed, or none will be reversed.
+      reversed with this probability. Within a given example, either all time
+      series features will be reversed, or none will be reversed.
     shuffle_filenames: Whether to shuffle the order of TFRecord files between
-        epochs.
+      epochs.
     shuffle_values_buffer: If > 0, shuffle examples using a buffer of this size.
     repeat: The number of times to repeat the dataset. If None or -1 the dataset
-        will repeat indefinitely.
+      will repeat indefinitely.
     use_tpu: Whether to build the dataset for TPU.
 
   Raises:

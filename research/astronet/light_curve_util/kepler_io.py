@@ -105,15 +105,15 @@ def kepler_filenames(base_dir,
   Args:
     base_dir: Base directory containing Kepler data.
     kep_id: Id of the Kepler target star. May be an int or a possibly zero-
-        padded string.
+      padded string.
     long_cadence: Whether to read a long cadence (~29.4 min / measurement) light
-        curve as opposed to a short cadence (~1 min / measurement) light curve.
+      curve as opposed to a short cadence (~1 min / measurement) light curve.
     quarters: Optional list of integers in [0, 17]; the quarters of the Kepler
-        mission to return.
+      mission to return.
     injected_group: Optional string indicating injected light curves. One of
-        "inj1", "inj2", "inj3".
+      "inj1", "inj2", "inj3".
     check_existence: If True, only return filenames corresponding to files that
-        exist (not all stars have data for all quarters).
+      exist (not all stars have data for all quarters).
 
   Returns:
     A list of filenames.

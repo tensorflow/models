@@ -62,7 +62,7 @@ class Event(object):
       other_event: An Event.
       period_rtol: Relative tolerance in matching the periods.
       t0_durations: Tolerance in matching the t0 values, in units of the other
-          Event's duration.
+        Event's duration.
 
     Returns:
       True if this Event is the same as other_event, within the given tolerance.

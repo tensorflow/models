@@ -37,9 +37,9 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
     flux: Numpy array; the flux (brightness) values of the light curve.
     bkspace: Spline break point spacing in time units.
     maxiter: Maximum number of attempts to fit the spline after removing badly
-        fit points.
+      fit points.
     outlier_cut: The maximum number of standard deviations from the median
-        spline residual before a point is considered an outlier.
+      spline residual before a point is considered an outlier.
 
   Returns:
     spline: The values of the fitted spline corresponding to the input time
@@ -119,15 +119,15 @@ class SplineMetadata(object):
 
   Attributes:
     light_curve_mask: List of boolean numpy arrays indicating which points in
-        the light curve were used to fit the best-fit spline.
+      the light curve were used to fit the best-fit spline.
     bkspace: The break-point spacing used for the best-fit spline.
     bad_bkspaces: List of break-point spacing values that failed.
     likelihood_term: The likelihood term of the Bayesian Information Criterion;
-        -2*ln(L), where L is the likelihood of the data given the model.
-    penalty_term: The penalty term for the number of parameters in the
-        Bayesian Information Criterion.
+      -2*ln(L), where L is the likelihood of the data given the model.
+    penalty_term: The penalty term for the number of parameters in the Bayesian
+      Information Criterion.
     bic: The value of the Bayesian Information Criterion; equal to
-        likelihood_term + penalty_coeff * penalty_term.
+      likelihood_term + penalty_coeff * penalty_term.
   """
 
   def __init__(self):
@@ -163,14 +163,13 @@ def choose_kepler_spline(all_time,
     all_flux: List of 1D numpy arrays; the flux values of the light curve.
     bkspaces: List of break-point spacings to try.
     maxiter: Maximum number of attempts to fit each spline after removing badly
-        fit points.
+      fit points.
     penalty_coeff: Coefficient of the penalty term for using more parameters in
-        the Bayesian Information Criterion. Decreasing this value will allow
-        more parameters to be used (i.e. smaller break-point spacing), and
-        vice-versa.
+      the Bayesian Information Criterion. Decreasing this value will allow more
+      parameters to be used (i.e. smaller break-point spacing), and vice-versa.
     verbose: Whether to log individual spline errors. Note that if bkspaces
-        contains many values (particularly small ones) then this may cause
-        logging pollution if calling this function for many light curves.
+      contains many values (particularly small ones) then this may cause logging
+      pollution if calling this function for many light curves.
 
   Returns:
     spline: List of numpy arrays; values of the best-fit spline corresponding to
@@ -295,14 +294,13 @@ def fit_kepler_spline(all_time,
     bkspace_max: Maximum breakpoint spacing to try.
     bkspace_num: Number of breakpoint spacings to try.
     maxiter: Maximum number of attempts to fit each spline after removing badly
-        fit points.
+      fit points.
     penalty_coeff: Coefficient of the penalty term for using more parameters in
-        the Bayesian Information Criterion. Decreasing this value will allow
-        more parameters to be used (i.e. smaller break-point spacing), and
-        vice-versa.
+      the Bayesian Information Criterion. Decreasing this value will allow more
+      parameters to be used (i.e. smaller break-point spacing), and vice-versa.
     verbose: Whether to log individual spline errors. Note that if bkspaces
-        contains many values (particularly small ones) then this may cause
-        logging pollution if calling this function for many light curves.
+      contains many values (particularly small ones) then this may cause logging
+      pollution if calling this function for many light curves.
 
   Returns:
     spline: List of numpy arrays; values of the best-fit spline corresponding to

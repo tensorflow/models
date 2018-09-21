@@ -73,17 +73,19 @@ class AstroModel(object):
   """A TensorFlow model for classifying astrophysical light curves."""
 
   def __init__(self, features, labels, hparams, mode):
-    """Basic setup. The actual TensorFlow graph is constructed in build().
+    """Basic setup.
+
+    The actual TensorFlow graph is constructed in build().
 
     Args:
       features: A dictionary containing "time_series_features" and
-          "aux_features", each of which is a dictionary of named input Tensors.
-          All features have dtype float32 and shape [batch_size, length].
+        "aux_features", each of which is a dictionary of named input Tensors.
+        All features have dtype float32 and shape [batch_size, length].
       labels: An int64 Tensor with shape [batch_size]. May be None if mode is
-          tf.estimator.ModeKeys.PREDICT.
+        tf.estimator.ModeKeys.PREDICT.
       hparams: A ConfigDict of hyperparameters for building the model.
       mode: A tf.estimator.ModeKeys to specify whether the graph should be built
-          for training, evaluation or prediction.
+        for training, evaluation or prediction.
 
     Raises:
       ValueError: If mode is invalid.
@@ -201,10 +203,9 @@ class AstroModel(object):
     if len(hidden_layers) == 1:
       pre_logits_concat = hidden_layers[0][1]
     else:
-      pre_logits_concat = tf.concat(
-          [layer[1] for layer in hidden_layers],
-          axis=1,
-          name="pre_logits_concat")
+      pre_logits_concat = tf.concat([layer[1] for layer in hidden_layers],
+                                    axis=1,
+                                    name="pre_logits_concat")
 
     net = pre_logits_concat
     with tf.variable_scope("pre_logits_hidden"):

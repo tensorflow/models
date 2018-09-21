@@ -17,7 +17,7 @@ def robust_mean(y, cut):
   Args:
     y: 1D numpy array. Assumed to be normally distributed with outliers.
     cut: Points more than this number of standard deviations from the median are
-        ignored.
+      ignored.
 
   Returns:
     mean: A robust estimate of the mean of y.

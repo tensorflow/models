@@ -57,7 +57,7 @@ def get_model_config(model_name, config_name):
   Args:
     model_name: Name of the model class.
     config_name: Name of a configuration-builder function from the model's
-        configurations module.
+      configurations module.
 
   Returns:
     model_class: The requested model class.

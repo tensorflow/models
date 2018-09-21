@@ -203,10 +203,10 @@ def create_estimator(model_class,
     hparams: ConfigDict of configuration parameters for building the model.
     run_config: Optional tf.estimator.RunConfig or tf.contrib.tpu.RunConfig.
     model_dir: Optional directory for saving the model. If not passed
-        explicitly, it must be specified in run_config.
+      explicitly, it must be specified in run_config.
     eval_batch_size: Optional batch size for evaluation on TPU. Only applicable
-        if run_config is a tf.contrib.tpu.RunConfig. Defaults to
-        hparams.batch_size.
+      if run_config is a tf.contrib.tpu.RunConfig. Defaults to
+      hparams.batch_size.
 
   Returns:
     An Estimator object if run_config is None or a tf.estimator.RunConfig, or a

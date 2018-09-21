@@ -32,16 +32,16 @@ def median_filter(x, y, num_bins, bin_width=None, x_min=None, x_max=None):
 
   Args:
     x: 1D array of x-coordinates sorted in ascending order. Must have at least 2
-        elements, and all elements cannot be the same value.
+      elements, and all elements cannot be the same value.
     y: 1D array of y-coordinates with the same size as x.
     num_bins: The number of intervals to divide the x-axis into. Must be at
-        least 2.
+      least 2.
     bin_width: The width of each bin on the x-axis. Must be positive, and less
-        than x_max - x_min. Defaults to (x_max - x_min) / num_bins.
+      than x_max - x_min. Defaults to (x_max - x_min) / num_bins.
     x_min: The inclusive leftmost value to consider on the x-axis. Must be less
-        than or equal to the largest value of x. Defaults to min(x).
+      than or equal to the largest value of x. Defaults to min(x).
     x_max: The exclusive rightmost value to consider on the x-axis. Must be
-        greater than x_min. Defaults to max(x).
+      greater than x_min. Defaults to max(x).
 
   Returns:
     1D NumPy array of size num_bins containing the median y-values of uniformly

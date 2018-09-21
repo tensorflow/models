@@ -51,9 +51,9 @@ def split(all_time, all_flux, gap_width=0.75):
 
   Args:
     all_time: Numpy array or sequence of numpy arrays; each is a sequence of
-        time values.
+      time values.
     all_flux: Numpy array or sequence of numpy arrays; each is a sequence of
-        flux values of the corresponding time array.
+      flux values of the corresponding time array.
     gap_width: Minimum gap size (in time units) for a split.
 
   Returns:
@@ -91,9 +91,9 @@ def remove_events(all_time,
 
   Args:
     all_time: Numpy array or sequence of numpy arrays; each is a sequence of
-        time values.
+      time values.
     all_flux: Numpy array or sequence of numpy arrays; each is a sequence of
-        flux values of the corresponding time array.
+      flux values of the corresponding time array.
     events: List of Event objects to remove.
     width_factor: Fractional multiplier of the duration of each event to remove.
     include_empty_segments: Whether to include empty segments in the output.
@@ -136,12 +136,12 @@ def interpolate_missing_time(time, cadence_no=None, fill_value="extrapolate"):
 
   Args:
     time: A numpy array of monotonically increasing values, with missing values
-        denoted by NaN or Inf.
+      denoted by NaN or Inf.
     cadence_no: Optional numpy array of cadence numbers corresponding to the
-        time values. If not provided, missing time values are assumed to be
-        evenly spaced between present time values.
+      time values. If not provided, missing time values are assumed to be evenly
+      spaced between present time values.
     fill_value: Specifies how missing time values should be treated at the
-        beginning and end of the array. See scipy.interpolate.interp1d.
+      beginning and end of the array. See scipy.interpolate.interp1d.
 
   Returns:
     A numpy array of the same length as the input time array, with NaN/Inf
@@ -177,17 +177,17 @@ def interpolate_masked_spline(all_time, all_masked_time, all_masked_spline):
   Args:
     all_time: List of numpy arrays; each is a sequence of time values.
     all_masked_time: List of numpy arrays; each is a sequence of time values
-        with some values missing (masked).
+      with some values missing (masked).
     all_masked_spline: List of numpy arrays; the masked spline values
-        corresponding to all_masked_time.
+      corresponding to all_masked_time.
 
   Returns:
     interp_spline: List of numpy arrays; each is the masked spline with missing
         points linearly interpolated.
   """
   interp_spline = []
-  for time, masked_time, masked_spline in zip(
-      all_time, all_masked_time, all_masked_spline):
+  for time, masked_time, masked_spline in zip(all_time, all_masked_time,
+                                              all_masked_spline):
     if masked_time.size:
       interp_spline.append(np.interp(time, masked_time, masked_spline))
     else:

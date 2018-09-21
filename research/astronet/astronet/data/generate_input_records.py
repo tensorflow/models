@@ -88,7 +88,6 @@ import tensorflow as tf
 
 from astronet.data import preprocess
 
-
 parser = argparse.ArgumentParser()
 
 _DR24_TCE_URL = ("https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/"
@@ -225,10 +224,10 @@ def main(argv):
     file_shards.append((train_tces[start:end], filename))
 
   # Validation and test sets each have a single shard.
-  file_shards.append((val_tces, os.path.join(FLAGS.output_dir,
-                                             "val-00000-of-00001")))
-  file_shards.append((test_tces, os.path.join(FLAGS.output_dir,
-                                              "test-00000-of-00001")))
+  file_shards.append((val_tces,
+                      os.path.join(FLAGS.output_dir, "val-00000-of-00001")))
+  file_shards.append((test_tces,
+                      os.path.join(FLAGS.output_dir, "test-00000-of-00001")))
   num_file_shards = len(file_shards)
 
   # Launch subprocesses for the file shards.
