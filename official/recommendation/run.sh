@@ -56,7 +56,7 @@ do
                      --clean \
                      --train_epochs 20 \
                      --batch_size 2048 \
-                     --eval_batch_size 65536 \
+                     --eval_batch_size 100000 \
                      --learning_rate 0.0005 \
                      --layers 256,256,128,64 --num_factors 64 \
                      --hr_threshold 0.635 \
@@ -66,6 +66,12 @@ do
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."
+
+  # Don't fill up the local hard drive.
+  if [[ -z ${BUCKET} ]]; then
+    echo "Removing model directory to save space."
+    rm -r ${MODEL_DIR}
+  fi
 
 done
 

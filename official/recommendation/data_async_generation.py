@@ -124,7 +124,7 @@ def _process_shard(args):
   return users_out, items_out, labels_out
 
 
-def _construct_record(users, items, labels=None):
+def _construct_record(users, items, labels=None, dupe_mask=None):
   """Convert NumPy arrays into a TFRecords entry."""
   feature_dict = {
       movielens.USER_COLUMN: tf.train.Feature(
@@ -135,6 +135,10 @@ def _construct_record(users, items, labels=None):
   if labels is not None:
     feature_dict["labels"] = tf.train.Feature(
         bytes_list=tf.train.BytesList(value=[memoryview(labels).tobytes()]))
+
+  if dupe_mask is not None:
+    feature_dict[rconst.DUPLICATE_MASK] = tf.train.Feature(
+        bytes_list=tf.train.BytesList(value=[memoryview(dupe_mask).tobytes()]))
 
   return tf.train.Example(
       features=tf.train.Features(feature=feature_dict)).SerializeToString()
@@ -305,6 +309,9 @@ def _construct_training_records(
 def _construct_eval_record(cache_paths, eval_batch_size):
   """Convert Eval data to a single TFRecords file."""
 
+  # Later logic assumes that all items for a given user are in the same batch.
+  assert not eval_batch_size % (rconst.NUM_EVAL_NEGATIVES + 1)
+
   log_msg("Beginning construction of eval TFRecords file.")
   raw_fpath = cache_paths.eval_raw_file
   intermediate_fpath = cache_paths.eval_record_template_temp
@@ -332,9 +339,16 @@ def _construct_eval_record(cache_paths, eval_batch_size):
   num_batches = users.shape[0]
   with tf.python_io.TFRecordWriter(intermediate_fpath) as writer:
     for i in range(num_batches):
+      batch_users = users[i, :]
+      batch_items = items[i, :]
+      dupe_mask = stat_utils.mask_duplicates(
+          batch_items.reshape(-1, rconst.NUM_EVAL_NEGATIVES + 1),
+          axis=1).flatten().astype(np.int8)
+
       batch_bytes = _construct_record(
-          users=users[i, :],
-          items=items[i, :]
+          users=batch_users,
+          items=batch_items,
+          dupe_mask=dupe_mask
       )
       writer.write(batch_bytes)
   tf.gfile.Rename(intermediate_fpath, dest_fpath)

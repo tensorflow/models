@@ -52,6 +52,12 @@ MIN_NUM_RATINGS = 20
 # when performing evaluation.
 NUM_EVAL_NEGATIVES = 999
 
+# keys for evaluation metrics
+TOP_K = 10  # Top-k list for evaluation
+HR_KEY = "HR"
+NDCG_KEY = "NDCG"
+DUPLICATE_MASK = "duplicate_mask"
+
 # ==============================================================================
 # == Subprocess Data Generation ================================================
 # ==============================================================================
