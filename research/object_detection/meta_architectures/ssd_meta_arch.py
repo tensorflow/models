@@ -125,12 +125,13 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
                depth_multiplier,
                min_depth,
                pad_to_multiple,
-               conv_hyperparams_config,
+               conv_hyperparams,
                freeze_batchnorm,
                inplace_batchnorm_update,
                use_explicit_padding=False,
                use_depthwise=False,
-               override_base_feature_extractor_hyperparams=False):
+               override_base_feature_extractor_hyperparams=False,
+               name=None):
     """Constructor.
 
     Args:
@@ -139,9 +140,9 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
       min_depth: minimum feature extractor depth.
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
-      conv_hyperparams_config: A hyperparams.proto object containing
-        convolution hyperparameters for the layers added on top of the
-        base feature extractor.
+      conv_hyperparams: `hyperparams_builder.KerasLayerHyperparams` object
+        containing convolution hyperparameters for the layers added on top of
+        the base feature extractor.
       freeze_batchnorm: Whether to freeze batch norm parameters during
         training or not. When training with a small batch size (e.g. 1), it is
         desirable to freeze batch norm update and use pretrained batch norm
@@ -156,14 +157,16 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams_config`.
+      name: A string name scope to assign to the model. If 'None', Keras
+        will auto-generate one from the class name.
     """
-    super(SSDKerasFeatureExtractor, self).__init__()
+    super(SSDKerasFeatureExtractor, self).__init__(name=name)
 
     self._is_training = is_training
     self._depth_multiplier = depth_multiplier
     self._min_depth = min_depth
     self._pad_to_multiple = pad_to_multiple
-    self._conv_hyperparams_config = conv_hyperparams_config
+    self._conv_hyperparams = conv_hyperparams
     self._freeze_batchnorm = freeze_batchnorm
     self._inplace_batchnorm_update = inplace_batchnorm_update
     self._use_explicit_padding = use_explicit_padding

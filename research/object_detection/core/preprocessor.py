@@ -811,8 +811,10 @@ def random_image_scale(image,
         image, [image_newysize, image_newxsize], align_corners=True)
     result.append(image)
     if masks is not None:
-      masks = tf.image.resize_nearest_neighbor(
-          masks, [image_newysize, image_newxsize], align_corners=True)
+      masks = tf.image.resize_images(
+          masks, [image_newysize, image_newxsize],
+          method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+          align_corners=True)
       result.append(masks)
     return tuple(result)
 

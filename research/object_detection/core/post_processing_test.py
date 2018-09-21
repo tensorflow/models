@@ -58,55 +58,6 @@ class MulticlassNonMaxSuppressionTest(test_case.TestCase):
       self.assertAllClose(nms_classes_output, exp_nms_classes)
 
   # TODO(bhattad): Remove conditional after CMLE moves to TF 1.9
-  # BEGIN GOOGLE-INTERNAL
-  def test_multiclass_nms_select_with_shared_boxes_pad_to_max_output_size(self):
-    boxes = np.array([[[0, 0, 1, 1]],
-                      [[0, 0.1, 1, 1.1]],
-                      [[0, -0.1, 1, 0.9]],
-                      [[0, 10, 1, 11]],
-                      [[0, 10.1, 1, 11.1]],
-                      [[0, 100, 1, 101]],
-                      [[0, 1000, 1, 1002]],
-                      [[0, 1000, 1, 1002.1]]], np.float32)
-    scores = np.array([[.9, 0.01], [.75, 0.05],
-                       [.6, 0.01], [.95, 0],
-                       [.5, 0.01], [.3, 0.01],
-                       [.01, .85], [.01, .5]], np.float32)
-    score_thresh = 0.1
-    iou_thresh = .5
-    max_size_per_class = 4
-    max_output_size = 5
-
-    exp_nms_corners = [[0, 10, 1, 11],
-                       [0, 0, 1, 1],
-                       [0, 1000, 1, 1002],
-                       [0, 100, 1, 101]]
-    exp_nms_scores = [.95, .9, .85, .3]
-    exp_nms_classes = [0, 0, 1, 0]
-
-    def graph_fn(boxes, scores):
-      nms, num_valid_nms_boxes = post_processing.multiclass_non_max_suppression(
-          boxes,
-          scores,
-          score_thresh,
-          iou_thresh,
-          max_size_per_class,
-          max_total_size=max_output_size,
-          pad_to_max_output_size=True)
-      return [nms.get(), nms.get_field(fields.BoxListFields.scores),
-              nms.get_field(fields.BoxListFields.classes), num_valid_nms_boxes]
-
-    [nms_corners_output, nms_scores_output, nms_classes_output,
-     num_valid_nms_boxes] = self.execute(graph_fn, [boxes, scores])
-
-    self.assertEqual(num_valid_nms_boxes, 4)
-    self.assertAllClose(nms_corners_output[0:num_valid_nms_boxes],
-                        exp_nms_corners)
-    self.assertAllClose(nms_scores_output[0:num_valid_nms_boxes],
-                        exp_nms_scores)
-    self.assertAllClose(nms_classes_output[0:num_valid_nms_boxes],
-                        exp_nms_classes)
-  # END GOOGLE-INTERNAL
 
   def test_multiclass_nms_select_with_shared_boxes_given_keypoints(self):
     boxes = tf.constant([[[0, 0, 1, 1]],
@@ -1126,61 +1077,6 @@ class MulticlassNonMaxSuppressionTest(test_case.TestCase):
       self.assertAllClose(num_detections, [1, 1])
 
   # TODO(bhattad): Remove conditional after CMLE moves to TF 1.9
-  # BEGIN GOOGLE-INTERNAL
-  def test_batch_multiclass_nms_with_use_static_shapes(self):
-    boxes = np.array([[[[0, 0, 1, 1], [0, 0, 4, 5]],
-                       [[0, 0.1, 1, 1.1], [0, 0.1, 2, 1.1]],
-                       [[0, -0.1, 1, 0.9], [0, -0.1, 1, 0.9]],
-                       [[0, 10, 1, 11], [0, 10, 1, 11]]],
-                      [[[0, 10.1, 1, 11.1], [0, 10.1, 1, 11.1]],
-                       [[0, 100, 1, 101], [0, 100, 1, 101]],
-                       [[0, 1000, 1, 1002], [0, 999, 2, 1004]],
-                       [[0, 1000, 1, 1002.1], [0, 999, 2, 1002.7]]]],
-                     np.float32)
-    scores = np.array([[[.9, 0.01], [.75, 0.05],
-                        [.6, 0.01], [.95, 0]],
-                       [[.5, 0.01], [.3, 0.01],
-                        [.01, .85], [.01, .5]]],
-                      np.float32)
-    clip_window = np.array([[0., 0., 5., 5.],
-                            [0., 0., 200., 200.]],
-                           np.float32)
-    score_thresh = 0.1
-    iou_thresh = .5
-    max_output_size = 4
-
-    exp_nms_corners = np.array([[[0, 0, 1, 1],
-                                 [0, 0, 0, 0],
-                                 [0, 0, 0, 0],
-                                 [0, 0, 0, 0]],
-                                [[0, 10.1, 1, 11.1],
-                                 [0, 100, 1, 101],
-                                 [0, 0, 0, 0],
-                                 [0, 0, 0, 0]]])
-    exp_nms_scores = np.array([[.9, 0., 0., 0.],
-                               [.5, .3, 0, 0]])
-    exp_nms_classes = np.array([[0, 0, 0, 0],
-                                [0, 0, 0, 0]])
-
-    def graph_fn(boxes, scores, clip_window):
-      (nmsed_boxes, nmsed_scores, nmsed_classes, _, _, num_detections
-      ) = post_processing.batch_multiclass_non_max_suppression(
-          boxes, scores, score_thresh, iou_thresh,
-          max_size_per_class=max_output_size, clip_window=clip_window,
-          use_static_shapes=True)
-      return nmsed_boxes, nmsed_scores, nmsed_classes, num_detections
-
-    (nmsed_boxes, nmsed_scores, nmsed_classes,
-     num_detections) = self.execute(graph_fn, [boxes, scores, clip_window])
-    for i in range(len(num_detections)):
-      self.assertAllClose(nmsed_boxes[i, 0:num_detections[i]],
-                          exp_nms_corners[i, 0:num_detections[i]])
-      self.assertAllClose(nmsed_scores[i, 0:num_detections[i]],
-                          exp_nms_scores[i, 0:num_detections[i]])
-      self.assertAllClose(nmsed_classes[i, 0:num_detections[i]],
-                          exp_nms_classes[i, 0:num_detections[i]])
-    self.assertAllClose(num_detections, [1, 2])
-  # END GOOGLE-INTERNAL
 
 if __name__ == '__main__':
   tf.test.main()

@@ -4,6 +4,7 @@ package object_detection.protos;
 
 // Message for configuring DetectionModel evaluation jobs (eval.py).
 message EvalConfig {
+  optional uint32 batch_size = 25 [default=1];
   // Number of visualization images to generate.
   optional uint32 num_visualizations = 1 [default=10];
 

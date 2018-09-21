@@ -322,6 +322,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       A dictionary of the following tensors.
       fields.InputDataFields.image - 3D uint8 tensor of shape [None, None, 3]
         containing image.
+      fields.InputDataFields.original_image_spatial_shape - 1D int32 tensor of
+        shape [2] containing shape of the image.
       fields.InputDataFields.source_id - string tensor containing original
         image id.
       fields.InputDataFields.key - string tensor with unique sha256 hash key.
@@ -365,6 +367,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     is_crowd = fields.InputDataFields.groundtruth_is_crowd
     tensor_dict[is_crowd] = tf.cast(tensor_dict[is_crowd], dtype=tf.bool)
     tensor_dict[fields.InputDataFields.image].set_shape([None, None, 3])
+    tensor_dict[fields.InputDataFields.original_image_spatial_shape] = tf.shape(
+        tensor_dict[fields.InputDataFields.image])[:2]
     tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
         tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
 
