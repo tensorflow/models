@@ -177,7 +177,7 @@ Instead of writing all tf.Example protos to a single file as shown in
 
 ```python
 import contextlib2
-from google3.third_party.tensorflow_models.object_detection.dataset_tools import tf_record_creation_util
+from object_detection.dataset_tools import tf_record_creation_util
 
 num_shards=10
 output_filebase='/path/to/train_dataset.record'
