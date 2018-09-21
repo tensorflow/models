@@ -172,7 +172,8 @@ dataset into multiple files:
 *   tf.data.Dataset API can shuffle the examples better with sharded files which
     improves performance of the model slightly.
 
-Instead of writing all tf.Example protos to a single file, use the snippet below.
+Instead of writing all tf.Example protos to a single file as shown in
+[conversion script outline](#conversion-script-outline-conversion-script-outline), use the snippet below.
 
 ```python
 import contextlib2
