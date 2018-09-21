@@ -36,6 +36,7 @@ class InputDataFields(object):
     image: image.
     image_additional_channels: additional channels.
     original_image: image in the original input size.
+    original_image_spatial_shape: image in the original input size.
     key: unique key corresponding to image.
     source_id: source of the original image.
     filename: original filename of the dataset (without common path).
@@ -70,6 +71,7 @@ class InputDataFields(object):
   image = 'image'
   image_additional_channels = 'image_additional_channels'
   original_image = 'original_image'
+  original_image_spatial_shape = 'original_image_spatial_shape'
   key = 'key'
   source_id = 'source_id'
   filename = 'filename'

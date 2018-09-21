@@ -67,7 +67,7 @@ class FakeSSDKerasFeatureExtractor(ssd_meta_arch.SSDKerasFeatureExtractor):
           depth_multiplier=0,
           min_depth=0,
           pad_to_multiple=1,
-          conv_hyperparams_config=None,
+          conv_hyperparams=None,
           freeze_batchnorm=False,
           inplace_batchnorm_update=False,
       )

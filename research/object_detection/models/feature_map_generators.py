@@ -145,7 +145,7 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
     if 'use_depthwise' in feature_map_layout:
       use_depthwise = feature_map_layout['use_depthwise']
     for index, from_layer in enumerate(feature_map_layout['from_layer']):
-      net = tf.keras.Sequential(name='output_%d' % index)
+      net = []
       self.convolutions.append(net)
       layer_depth = feature_map_layout['layer_depth'][index]
       conv_kernel_size = 3
@@ -157,17 +157,17 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
         if insert_1x1_conv:
           layer_name = '{}_1_Conv2d_{}_1x1_{}'.format(
               base_from_layer, index, depth_fn(layer_depth / 2))
-          net.add(tf.keras.layers.Conv2D(depth_fn(layer_depth / 2),
-                                         [1, 1],
-                                         padding='SAME',
-                                         strides=1,
-                                         name=layer_name + '_conv',
-                                         **conv_hyperparams.params()))
-          net.add(
+          net.append(tf.keras.layers.Conv2D(depth_fn(layer_depth / 2),
+                                            [1, 1],
+                                            padding='SAME',
+                                            strides=1,
+                                            name=layer_name + '_conv',
+                                            **conv_hyperparams.params()))
+          net.append(
               conv_hyperparams.build_batch_norm(
                   training=(is_training and not freeze_batchnorm),
                   name=layer_name + '_batchnorm'))
-          net.add(
+          net.append(
               conv_hyperparams.build_activation_layer(
                   name=layer_name))
 
@@ -182,51 +182,52 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
           # conv_kernel_size, to avoid holding a reference to the loop variable
           # conv_kernel_size inside of a lambda function
           def fixed_padding(features, kernel_size=conv_kernel_size):
-            ops.fixed_padding(features, kernel_size)
-          net.add(tf.keras.layers.Lambda(fixed_padding))
+            return ops.fixed_padding(features, kernel_size)
+          net.append(tf.keras.layers.Lambda(fixed_padding))
         # TODO(rathodv): Add some utilities to simplify the creation of
         # Depthwise & non-depthwise convolutions w/ normalization & activations
         if use_depthwise:
-          net.add(tf.keras.layers.DepthwiseConv2D(
+          net.append(tf.keras.layers.DepthwiseConv2D(
               [conv_kernel_size, conv_kernel_size],
               depth_multiplier=1,
               padding=padding,
               strides=stride,
               name=layer_name + '_depthwise_conv',
               **conv_hyperparams.params()))
-          net.add(
+          net.append(
               conv_hyperparams.build_batch_norm(
                   training=(is_training and not freeze_batchnorm),
                   name=layer_name + '_depthwise_batchnorm'))
-          net.add(
+          net.append(
               conv_hyperparams.build_activation_layer(
                   name=layer_name + '_depthwise'))
 
-          net.add(tf.keras.layers.Conv2D(depth_fn(layer_depth), [1, 1],
-                                         padding='SAME',
-                                         strides=1,
-                                         name=layer_name + '_conv',
-                                         **conv_hyperparams.params()))
-          net.add(
+          net.append(tf.keras.layers.Conv2D(depth_fn(layer_depth), [1, 1],
+                                            padding='SAME',
+                                            strides=1,
+                                            name=layer_name + '_conv',
+                                            **conv_hyperparams.params()))
+          net.append(
               conv_hyperparams.build_batch_norm(
                   training=(is_training and not freeze_batchnorm),
                   name=layer_name + '_batchnorm'))
-          net.add(
+          net.append(
               conv_hyperparams.build_activation_layer(
                   name=layer_name))
 
         else:
-          net.add(tf.keras.layers.Conv2D(depth_fn(layer_depth),
-                                         [conv_kernel_size, conv_kernel_size],
-                                         padding=padding,
-                                         strides=stride,
-                                         name=layer_name + '_conv',
-                                         **conv_hyperparams.params()))
-          net.add(
+          net.append(tf.keras.layers.Conv2D(
+              depth_fn(layer_depth),
+              [conv_kernel_size, conv_kernel_size],
+              padding=padding,
+              strides=stride,
+              name=layer_name + '_conv',
+              **conv_hyperparams.params()))
+          net.append(
               conv_hyperparams.build_batch_norm(
                   training=(is_training and not freeze_batchnorm),
                   name=layer_name + '_batchnorm'))
-          net.add(
+          net.append(
               conv_hyperparams.build_activation_layer(
                   name=layer_name))
 
@@ -252,8 +253,9 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
         feature_map_keys.append(from_layer)
       else:
         feature_map = feature_maps[-1]
-        feature_map = self.convolutions[index](feature_map)
-        layer_name = self.convolutions[index].layers[-1].name
+        for layer in self.convolutions[index]:
+          feature_map = layer(feature_map)
+        layer_name = self.convolutions[index][-1].name
         feature_map_keys.append(layer_name)
       feature_maps.append(feature_map)
     return collections.OrderedDict(
