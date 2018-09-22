@@ -282,12 +282,9 @@ def augment_input_data(tensor_dict, data_augmentation_options):
                             in tensor_dict)
   include_keypoints = (fields.InputDataFields.groundtruth_keypoints
                        in tensor_dict)
-  include_label_scores = (fields.InputDataFields.groundtruth_confidences in
-                          tensor_dict)
   tensor_dict = preprocessor.preprocess(
       tensor_dict, data_augmentation_options,
       func_arg_map=preprocessor.get_default_func_arg_map(
-          include_label_scores=include_label_scores,
           include_instance_masks=include_instance_masks,
           include_keypoints=include_keypoints))
   tensor_dict[fields.InputDataFields.image] = tf.squeeze(
