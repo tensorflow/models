@@ -173,7 +173,8 @@ dataset into multiple files:
     improves performance of the model slightly.
 
 Instead of writing all tf.Example protos to a single file as shown in
-[conversion script outline](#conversion-script-outline-conversion-script-outline), use the snippet below.
+the conversion script outline in the previous section, the snippet below
+will shard the dataset across 10 TFRecords.
 
 ```python
 import contextlib2
