@@ -49,6 +49,7 @@ References:
   through ADE20K dataset", In Proc. of CVPR, 2017.
 """
 import collections
+import os
 import os.path
 import tensorflow as tf
 
@@ -108,11 +109,21 @@ _ADE20K_INFORMATION = DatasetDescriptor(
     ignore_label=0,
 )
 
+_CUSTOM_INFORMATION = DatasetDescriptor(
+    splits_to_sizes={
+        'train': int(os.environ.get('DL_CUSTOM_TRAIN') or 1000),
+        'validation': int(os.environ.get('DL_CUSTOM_VALIDATION') or 1000),
+    },
+    num_classes=int(os.environ.get('DL_CUSTOM_CLASSES') or 10),
+    ignore_label=int(os.environ.get('DL_CUSTOM_IGNORE') or 0),
+)
+
 
 _DATASETS_INFORMATION = {
     'cityscapes': _CITYSCAPES_INFORMATION,
     'pascal_voc_seg': _PASCAL_VOC_SEG_INFORMATION,
     'ade20k': _ADE20K_INFORMATION,
+    'custom': _CUSTOM_INFORMATION,
 }
 
 # Default file pattern of TFRecord of TensorFlow Example.
