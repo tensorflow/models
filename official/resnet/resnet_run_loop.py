@@ -25,6 +25,7 @@ from __future__ import print_function
 
 import math
 import os
+import sys
 
 # pylint: disable=g-bad-import-order
 from absl import flags
@@ -389,6 +390,12 @@ def resnet_main(
       This is only used if flags_obj.export_dir is passed.
   """
 
+  print("\n" * 3)
+  tf.logging.info("TF version: {}".format(tf.VERSION))
+  tf.logging.info("TF git version: {}".format(tf.GIT_VERSION))
+  print("\n" * 3)
+  sys.stdout.flush()
+
   model_helpers.apply_clean(flags.FLAGS)
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
@@ -487,7 +494,9 @@ def resnet_main(
 
     if num_train_epochs:
       classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
-                       hooks=train_hooks, max_steps=flags_obj.max_train_steps)
+                       hooks=train_hooks, steps=5)
+
+    continue  # We don't need eval for this repro.
 
     tf.logging.info('Starting to evaluate.')
 
