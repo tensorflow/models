@@ -229,7 +229,7 @@ class Model(object):
               estimated_cloud_b = cloud_a + tf.stack([egomotion[0][3],
                                                       egomotion[1][3],
                                                       egomotion[2][3]], axis=0)
-              residuals = -(cloud_b - estimated_cloud_b)
+              residuals = cloud_b - estimated_cloud_b
               self.residual_loss += 1.0 / (2**s) * tf.reduce_mean(
                 tf.abs(residuals))
 
