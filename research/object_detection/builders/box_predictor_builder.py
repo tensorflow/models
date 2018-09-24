@@ -362,7 +362,8 @@ def build_mask_rcnn_box_predictor(is_training,
                                   mask_width=14,
                                   mask_prediction_num_conv_layers=2,
                                   mask_prediction_conv_depth=256,
-                                  masks_are_class_agnostic=False):
+                                  masks_are_class_agnostic=False,
+                                  convolve_then_upsample_masks=False):
   """Builds and returns a MaskRCNNBoxPredictor class.
 
   Args:
@@ -396,6 +397,10 @@ def build_mask_rcnn_box_predictor(is_training,
         image features.
       masks_are_class_agnostic: Boolean determining if the mask-head is
         class-agnostic or not.
+      convolve_then_upsample_masks: Whether to apply convolutions on mask
+        features before upsampling using nearest neighbor resizing. Otherwise,
+        mask features are resized to [`mask_height`, `mask_width`] using
+        bilinear resizing before applying convolutions.
 
   Returns:
     A MaskRCNNBoxPredictor class.
@@ -425,7 +430,8 @@ def build_mask_rcnn_box_predictor(is_training,
             mask_width=mask_width,
             mask_prediction_num_conv_layers=mask_prediction_num_conv_layers,
             mask_prediction_conv_depth=mask_prediction_conv_depth,
-            masks_are_class_agnostic=masks_are_class_agnostic)
+            masks_are_class_agnostic=masks_are_class_agnostic,
+            convolve_then_upsample=convolve_then_upsample_masks)
   return mask_rcnn_box_predictor.MaskRCNNBoxPredictor(
       is_training=is_training,
       num_classes=num_classes,
@@ -585,7 +591,9 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
         mask_prediction_conv_depth=(
             config_box_predictor.mask_prediction_conv_depth),
         masks_are_class_agnostic=(
-            config_box_predictor.masks_are_class_agnostic))
+            config_box_predictor.masks_are_class_agnostic),
+        convolve_then_upsample_masks=(
+            config_box_predictor.convolve_then_upsample_masks))
 
   if box_predictor_oneof == 'rfcn_box_predictor':
     config_box_predictor = box_predictor_config.rfcn_box_predictor

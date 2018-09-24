@@ -627,6 +627,48 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
         third_stage_heads[mask_rcnn_box_predictor.MASK_PREDICTIONS]
         ._mask_prediction_conv_depth, 512)
 
+  def test_build_box_predictor_with_convlve_then_upsample_masks(self):
+    box_predictor_proto = box_predictor_pb2.BoxPredictor()
+    box_predictor_proto.mask_rcnn_box_predictor.fc_hyperparams.op = (
+        hyperparams_pb2.Hyperparams.FC)
+    box_predictor_proto.mask_rcnn_box_predictor.conv_hyperparams.op = (
+        hyperparams_pb2.Hyperparams.CONV)
+    box_predictor_proto.mask_rcnn_box_predictor.predict_instance_masks = True
+    box_predictor_proto.mask_rcnn_box_predictor.mask_prediction_conv_depth = 512
+    box_predictor_proto.mask_rcnn_box_predictor.mask_height = 24
+    box_predictor_proto.mask_rcnn_box_predictor.mask_width = 24
+    box_predictor_proto.mask_rcnn_box_predictor.convolve_then_upsample_masks = (
+        True)
+
+    mock_argscope_fn = mock.Mock(return_value='arg_scope')
+    box_predictor = box_predictor_builder.build(
+        argscope_fn=mock_argscope_fn,
+        box_predictor_config=box_predictor_proto,
+        is_training=True,
+        num_classes=90)
+    mock_argscope_fn.assert_has_calls(
+        [mock.call(box_predictor_proto.mask_rcnn_box_predictor.fc_hyperparams,
+                   True),
+         mock.call(box_predictor_proto.mask_rcnn_box_predictor.conv_hyperparams,
+                   True)], any_order=True)
+    box_head = box_predictor._box_prediction_head
+    class_head = box_predictor._class_prediction_head
+    third_stage_heads = box_predictor._third_stage_heads
+    self.assertFalse(box_head._use_dropout)
+    self.assertFalse(class_head._use_dropout)
+    self.assertAlmostEqual(box_head._dropout_keep_prob, 0.5)
+    self.assertAlmostEqual(class_head._dropout_keep_prob, 0.5)
+    self.assertEqual(box_predictor.num_classes, 90)
+    self.assertTrue(box_predictor._is_training)
+    self.assertEqual(box_head._box_code_size, 4)
+    self.assertTrue(
+        mask_rcnn_box_predictor.MASK_PREDICTIONS in third_stage_heads)
+    self.assertEqual(
+        third_stage_heads[mask_rcnn_box_predictor.MASK_PREDICTIONS]
+        ._mask_prediction_conv_depth, 512)
+    self.assertTrue(third_stage_heads[mask_rcnn_box_predictor.MASK_PREDICTIONS]
+                    ._convolve_then_upsample)
+
 
 class RfcnBoxPredictorBuilderTest(tf.test.TestCase):
 

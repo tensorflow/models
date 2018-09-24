@@ -1222,7 +1222,7 @@ class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
 
 class NearestNeighborUpsamplingTest(test_case.TestCase):
 
-  def test_upsampling(self):
+  def test_upsampling_with_single_scale(self):
 
     def graph_fn(inputs):
       custom_op_output = ops.nearest_neighbor_upsampling(inputs, scale=2)
@@ -1234,6 +1234,22 @@ class NearestNeighborUpsamplingTest(test_case.TestCase):
                         [[0], [0], [1], [1]],
                         [[2], [2], [3], [3]],
                         [[2], [2], [3], [3]]]]
+    self.assertAllClose(custom_op_output, expected_output)
+
+  def test_upsampling_with_separate_height_width_scales(self):
+
+    def graph_fn(inputs):
+      custom_op_output = ops.nearest_neighbor_upsampling(inputs,
+                                                         height_scale=2,
+                                                         width_scale=3)
+      return custom_op_output
+    inputs = np.reshape(np.arange(4).astype(np.float32), [1, 2, 2, 1])
+    custom_op_output = self.execute(graph_fn, [inputs])
+
+    expected_output = [[[[0], [0], [0], [1], [1], [1]],
+                        [[0], [0], [0], [1], [1], [1]],
+                        [[2], [2], [2], [3], [3], [3]],
+                        [[2], [2], [2], [3], [3], [3]]]]
     self.assertAllClose(custom_op_output, expected_output)
 
 

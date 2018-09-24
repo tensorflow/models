@@ -872,7 +872,8 @@ def merge_boxes_with_multiple_labels(boxes,
             merged_box_indices)
 
 
-def nearest_neighbor_upsampling(input_tensor, scale):
+def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
+                                width_scale=None):
   """Nearest neighbor upsampling implementation.
 
   Nearest neighbor upsampling function that maps input tensor with shape
@@ -883,19 +884,33 @@ def nearest_neighbor_upsampling(input_tensor, scale):
   Args:
     input_tensor: A float32 tensor of size [batch, height_in, width_in,
       channels].
-    scale: An integer multiple to scale resolution of input data.
+    scale: An integer multiple to scale resolution of input data in both height
+      and width dimensions.
+    height_scale: An integer multiple to scale the height of input image. This
+      option when provided overrides `scale` option.
+    width_scale: An integer multiple to scale the width of input image. This
+      option when provided overrides `scale` option.
   Returns:
     data_up: A float32 tensor of size
       [batch, height_in*scale, width_in*scale, channels].
+
+  Raises:
+    ValueError: If both scale and height_scale or if both scale and width_scale
+      are None.
   """
+  if not scale and (height_scale is None or width_scale is None):
+    raise ValueError('Provide either `scale` or `height_scale` and'
+                     ' `width_scale`.')
   with tf.name_scope('nearest_neighbor_upsampling'):
+    h_scale = scale if height_scale is None else height_scale
+    w_scale = scale if width_scale is None else width_scale
     (batch_size, height, width,
      channels) = shape_utils.combined_static_and_dynamic_shape(input_tensor)
     output_tensor = tf.reshape(
         input_tensor, [batch_size, height, 1, width, 1, channels]) * tf.ones(
-            [1, 1, scale, 1, scale, 1], dtype=input_tensor.dtype)
+            [1, 1, h_scale, 1, w_scale, 1], dtype=input_tensor.dtype)
     return tf.reshape(output_tensor,
-                      [batch_size, height * scale, width * scale, channels])
+                      [batch_size, height * h_scale, width * w_scale, channels])
 
 
 def matmul_gather_on_zeroth_axis(params, indices, scope=None):
