@@ -353,6 +353,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         for var in optimizer_summary_vars:
           tf.summary.scalar(var.op.name, var)
       summaries = [] if use_tpu else None
+      if train_config.summarize_gradients:
+        summaries = ['gradients', 'gradient_norm', 'global_gradient_norm']
       train_op = tf.contrib.layers.optimize_loss(
           loss=total_loss,
           global_step=global_step,
