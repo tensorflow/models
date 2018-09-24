@@ -218,12 +218,20 @@ class Model(object):
             if self.icp_weight > 0:
               cloud_a = self.cloud[j][s]
               cloud_b = self.cloud[i][s]
+              # (kristijanbartol): ICP is not differentiable. Moreover, we have
+              # to be very careful with backpropagation in this case. It can be
+              # shown that the only correct way to apply gradients to achieve
+              # approximatelly the procedure described in paper is to apply 
+              # only translation transform, under the assumption that rotation 
+              # did not happen. I will write a blog post soon on
+              # kristijanbartol.github.io. As a result, there is actually no
+              # iterative closest point algorithm needed.
               estimated_cloud_b = cloud_a + tf.stack([egomotion[0][3],
                                                       egomotion[1][3],
                                                       egomotion[2][3]], axis=0)
-              residuals = cloud_b - estimated_cloud_b
+              residuals = -(cloud_b - estimated_cloud_b)
               self.residual_loss += 1.0 / (2**s) * tf.reduce_mean(
-                  tf.abs(residuals))
+                tf.abs(residuals))
 
       self.total_loss = self.reconstr_weight * self.reconstr_loss
       if self.smooth_weight > 0:
