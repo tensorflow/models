@@ -77,7 +77,8 @@ def visualize_detection_results(result_dict,
                                 max_num_predictions=20,
                                 skip_scores=False,
                                 skip_labels=False,
-                                keep_image_id_for_visualization_export=False):
+                                keep_image_id_for_visualization_export=False,
+                                box_line_thickness=4):
   """Visualizes detection results and writes visualizations to image summaries.
 
   This function visualizes an image with its detected bounding boxes and writes
@@ -167,7 +168,8 @@ def visualize_detection_results(result_dict,
         keypoints=groundtruth_keypoints,
         use_normalized_coordinates=False,
         max_boxes_to_draw=None,
-        groundtruth_box_visualization_color=groundtruth_box_visualization_color)
+        groundtruth_box_visualization_color=groundtruth_box_visualization_color,
+      line_thickness=box_line_thickness)
   vis_utils.visualize_boxes_and_labels_on_image_array(
       image,
       detection_boxes,
@@ -182,7 +184,8 @@ def visualize_detection_results(result_dict,
       min_score_thresh=min_score_thresh,
       agnostic_mode=agnostic_mode,
       skip_scores=skip_scores,
-      skip_labels=skip_labels)
+      skip_labels=skip_labels,
+  line_thickness=box_line_thickness)
 
   if export_dir:
     if keep_image_id_for_visualization_export and result_dict[fields.
