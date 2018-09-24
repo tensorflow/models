@@ -391,8 +391,11 @@ def resnet_main(
   """
 
   print("\n" * 3)
+  sys.stdout.flush()
+
   tf.logging.info("TF version: {}".format(tf.VERSION))
   tf.logging.info("TF git version: {}".format(tf.GIT_VERSION))
+
   print("\n" * 3)
   sys.stdout.flush()
 
@@ -490,7 +493,13 @@ def resnet_main(
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
   for cycle_index, num_train_epochs in enumerate(schedule):
+    print("\n" * 3)
+    sys.stdout.flush()
+
     tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
+
+    print("\n" * 3)
+    sys.stdout.flush()
 
     if num_train_epochs:
       classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
