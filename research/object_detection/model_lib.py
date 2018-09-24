@@ -650,7 +650,7 @@ def create_train_and_eval_specs(train_input_fn,
         name=exporter_name, serving_input_receiver_fn=predict_input_fn)
     eval_specs.append(
         tf.estimator.EvalSpec(
-            name=eval_spec_name,
+            name=str(eval_spec_name),
             input_fn=eval_input_fn,
             steps=None,
             exporters=exporter))
