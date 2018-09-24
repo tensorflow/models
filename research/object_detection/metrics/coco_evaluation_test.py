@@ -735,6 +735,106 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
     self.assertFalse(coco_evaluator._image_id_to_mask_shape_map)
     self.assertFalse(coco_evaluator._detection_masks_list)
 
+  def testGetOneMAPWithMatchingGroundtruthAndDetectionsBatched(self):
+    coco_evaluator = coco_evaluation.CocoMaskEvaluator(_get_categories_list())
+    batch_size = 3
+    image_id = tf.placeholder(tf.string, shape=(batch_size))
+    groundtruth_boxes = tf.placeholder(tf.float32, shape=(batch_size, None, 4))
+    groundtruth_classes = tf.placeholder(tf.float32, shape=(batch_size, None))
+    groundtruth_masks = tf.placeholder(
+        tf.uint8, shape=(batch_size, None, None, None))
+    detection_scores = tf.placeholder(tf.float32, shape=(batch_size, None))
+    detection_classes = tf.placeholder(tf.float32, shape=(batch_size, None))
+    detection_masks = tf.placeholder(
+        tf.uint8, shape=(batch_size, None, None, None))
+
+    input_data_fields = standard_fields.InputDataFields
+    detection_fields = standard_fields.DetectionResultFields
+    eval_dict = {
+        input_data_fields.key: image_id,
+        input_data_fields.groundtruth_boxes: groundtruth_boxes,
+        input_data_fields.groundtruth_classes: groundtruth_classes,
+        input_data_fields.groundtruth_instance_masks: groundtruth_masks,
+        detection_fields.detection_scores: detection_scores,
+        detection_fields.detection_classes: detection_classes,
+        detection_fields.detection_masks: detection_masks,
+    }
+
+    eval_metric_ops = coco_evaluator.get_estimator_eval_metric_ops(eval_dict)
+
+    _, update_op = eval_metric_ops['DetectionMasks_Precision/mAP']
+
+    with self.test_session() as sess:
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id: ['image1', 'image2', 'image3'],
+              groundtruth_boxes:
+                  np.array([[[100., 100., 200., 200.]],
+                            [[50., 50., 100., 100.]],
+                            [[25., 25., 50., 50.]]]),
+              groundtruth_classes:
+                  np.array([[1], [1], [1]]),
+              groundtruth_masks:
+                  np.stack([
+                      np.pad(
+                          np.ones([1, 100, 100], dtype=np.uint8),
+                          ((0, 0), (0, 0), (0, 0)),
+                          mode='constant'),
+                      np.pad(
+                          np.ones([1, 50, 50], dtype=np.uint8),
+                          ((0, 0), (25, 25), (25, 25)),
+                          mode='constant'),
+                      np.pad(
+                          np.ones([1, 25, 25], dtype=np.uint8),
+                          ((0, 0), (37, 38), (37, 38)),
+                          mode='constant')
+                  ],
+                           axis=0),
+              detection_scores:
+                  np.array([[.8], [.8], [.8]]),
+              detection_classes:
+                  np.array([[1], [1], [1]]),
+              detection_masks:
+                  np.stack([
+                      np.pad(
+                          np.ones([1, 100, 100], dtype=np.uint8),
+                          ((0, 0), (0, 0), (0, 0)),
+                          mode='constant'),
+                      np.pad(
+                          np.ones([1, 50, 50], dtype=np.uint8),
+                          ((0, 0), (25, 25), (25, 25)),
+                          mode='constant'),
+                      np.pad(
+                          np.ones([1, 25, 25], dtype=np.uint8),
+                          ((0, 0), (37, 38), (37, 38)),
+                          mode='constant')
+                  ],
+                           axis=0)
+          })
+    metrics = {}
+    for key, (value_op, _) in eval_metric_ops.iteritems():
+      metrics[key] = value_op
+    metrics = sess.run(metrics)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP@.50IOU'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP@.75IOU'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP (large)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP (medium)'],
+                           1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP (small)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@1'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@10'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@100'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@100 (large)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@100 (medium)'],
+                           1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@100 (small)'], 1.0)
+    self.assertFalse(coco_evaluator._groundtruth_list)
+    self.assertFalse(coco_evaluator._image_ids_with_detections)
+    self.assertFalse(coco_evaluator._image_id_to_mask_shape_map)
+    self.assertFalse(coco_evaluator._detection_masks_list)
+
 
 if __name__ == '__main__':
   tf.test.main()
