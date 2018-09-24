@@ -357,12 +357,11 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       frcnn_config.first_stage_box_predictor_kernel_size)
   first_stage_box_predictor_depth = frcnn_config.first_stage_box_predictor_depth
   first_stage_minibatch_size = frcnn_config.first_stage_minibatch_size
-  # TODO(bhattad): When eval is supported using static shapes, add separate
-  # use_static_shapes_for_trainig and use_static_shapes_for_evaluation.
-  use_static_shapes = frcnn_config.use_static_shapes and is_training
+  use_static_shapes = frcnn_config.use_static_shapes
   first_stage_sampler = sampler.BalancedPositiveNegativeSampler(
       positive_fraction=frcnn_config.first_stage_positive_balance_fraction,
-      is_static=frcnn_config.use_static_balanced_label_sampler and is_training)
+      is_static=(frcnn_config.use_static_balanced_label_sampler and
+                 use_static_shapes))
   first_stage_max_proposals = frcnn_config.first_stage_max_proposals
   if (frcnn_config.first_stage_nms_iou_threshold < 0 or
       frcnn_config.first_stage_nms_iou_threshold > 1.0):
@@ -377,7 +376,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
       max_size_per_class=frcnn_config.first_stage_max_proposals,
       max_total_size=frcnn_config.first_stage_max_proposals,
-      use_static_shapes=use_static_shapes and is_training)
+      use_static_shapes=use_static_shapes)
   first_stage_loc_loss_weight = (
       frcnn_config.first_stage_localization_loss_weight)
   first_stage_obj_loss_weight = frcnn_config.first_stage_objectness_loss_weight
@@ -398,7 +397,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   second_stage_batch_size = frcnn_config.second_stage_batch_size
   second_stage_sampler = sampler.BalancedPositiveNegativeSampler(
       positive_fraction=frcnn_config.second_stage_balance_fraction,
-      is_static=frcnn_config.use_static_balanced_label_sampler and is_training)
+      is_static=(frcnn_config.use_static_balanced_label_sampler and
+                 use_static_shapes))
   (second_stage_non_max_suppression_fn, second_stage_score_conversion_fn
   ) = post_processing_builder.build(frcnn_config.second_stage_post_processing)
   second_stage_localization_loss_weight = (

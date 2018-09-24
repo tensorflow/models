@@ -662,7 +662,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
              anchors_boxlist, clip_window)
     else:
       anchors_boxlist = box_list_ops.clip_to_window(
-          anchors_boxlist, clip_window)
+          anchors_boxlist, clip_window,
+          filter_nonoverlapping=not self._use_static_shapes)
 
     self._anchors = anchors_boxlist
     prediction_dict = {
@@ -1566,6 +1567,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       mask_predictions_batch = tf.reshape(
           mask_predictions, [-1, self.max_num_proposals,
                              self.num_classes, mask_height, mask_width])
+
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks, _,
      num_detections) = self._second_stage_nms_fn(
          refined_decoded_boxes_batch,
