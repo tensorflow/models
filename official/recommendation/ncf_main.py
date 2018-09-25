@@ -247,6 +247,8 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
         zone=params["tpu_zone"],
         project=params["tpu_gcp_project"],
     )
+    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
+    tf.Session.reset(tpu_cluster_resolver.get_master())
 
     tpu_config = tf.contrib.tpu.TPUConfig(
         iterations_per_loop=100,
@@ -297,22 +299,28 @@ def run_ncf(_):
   if FLAGS.download_if_missing:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
+  if FLAGS.seed is not None:
+    np.random.seed(FLAGS.seed)
+
   num_gpus = flags_core.get_num_gpus(FLAGS)
   batch_size = distribution_utils.per_device_batch_size(
       int(FLAGS.batch_size), num_gpus)
   eval_batch_size = int(FLAGS.eval_batch_size or FLAGS.batch_size)
-  ncf_dataset = data_preprocessing.instantiate_pipeline(
+  ncf_dataset, cleanup_fn = data_preprocessing.instantiate_pipeline(
       dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
       batch_size=batch_size,
       eval_batch_size=eval_batch_size,
       num_neg=FLAGS.num_neg,
       epochs_per_cycle=FLAGS.epochs_between_evals,
-      match_mlperf=FLAGS.ml_perf)
+      match_mlperf=FLAGS.ml_perf,
+      deterministic=FLAGS.seed is not None)
 
   model_helpers.apply_clean(flags.FLAGS)
 
   train_estimator, eval_estimator = construct_estimator(
       num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
+          "use_seed": FLAGS.seed is not None,
+          "hash_pipeline": FLAGS.hash_pipeline,
           "batch_size": batch_size,
           "learning_rate": FLAGS.learning_rate,
           "num_users": ncf_dataset.num_users,
@@ -365,6 +373,7 @@ def run_ncf(_):
       tf.logging.warning(
           "Estimated ({}) and reported ({}) number of batches differ by more "
           "than one".format(approx_train_steps, batch_count))
+
     train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
                           steps=batch_count)
     tf.gfile.DeleteRecursively(train_record_dir)
@@ -389,6 +398,8 @@ def run_ncf(_):
     # If some evaluation threshold is met
     if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
       break
+
+  cleanup_fn()  # Cleanup data construction artifacts and subprocess.
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
@@ -495,6 +506,17 @@ def define_ncf_flags():
           "2. Use a different soring algorithm when sorting the input data, "
           "which performs better due to the fact the sorting algorithms are "
           "not stable."))
+
+  flags.DEFINE_integer(
+      name="seed", default=None, help=flags_core.help_wrap(
+          "This value will be used to seed both NumPy and TensorFlow."))
+
+  flags.DEFINE_bool(
+      name="hash_pipeline", default=False, help=flags_core.help_wrap(
+          "This flag will perform a separate run of the pipeline and hash "
+          "batches as they are produced. \nNOTE: this will significantly slow "
+          "training. However it is useful to confirm that a random seed is "
+          "does indeed make the data pipeline deterministic."))
 
 
 if __name__ == "__main__":

@@ -1615,7 +1615,7 @@ class PreprocessorTest(tf.test.TestCase):
     tensor_dict = {
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
-        fields.InputDataFields.groundtruth_label_scores: label_scores
+        fields.InputDataFields.groundtruth_confidences: label_scores
     }
 
     preprocessing_options = [
@@ -1630,7 +1630,7 @@ class PreprocessorTest(tf.test.TestCase):
     retained_labels = retained_tensor_dict[
         fields.InputDataFields.groundtruth_classes]
     retained_label_scores = retained_tensor_dict[
-        fields.InputDataFields.groundtruth_label_scores]
+        fields.InputDataFields.groundtruth_confidences]
 
     with self.test_session() as sess:
       (retained_boxes_, retained_labels_,
@@ -1655,7 +1655,7 @@ class PreprocessorTest(tf.test.TestCase):
     tensor_dict = {
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
-        fields.InputDataFields.groundtruth_label_scores: label_scores,
+        fields.InputDataFields.groundtruth_confidences: label_scores,
         fields.InputDataFields.groundtruth_instance_masks: masks
     }
 
@@ -1687,7 +1687,7 @@ class PreprocessorTest(tf.test.TestCase):
     tensor_dict = {
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
-        fields.InputDataFields.groundtruth_label_scores: label_scores,
+        fields.InputDataFields.groundtruth_confidences: label_scores,
         fields.InputDataFields.groundtruth_keypoints: keypoints
     }
 
@@ -2784,7 +2784,7 @@ class PreprocessorTest(tf.test.TestCase):
     }
     if include_label_scores:
       label_scores = self.createTestLabelScores()
-      tensor_dict[fields.InputDataFields.groundtruth_label_scores] = (
+      tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
           label_scores)
     if include_multiclass_scores:
       multiclass_scores = self.createTestMultiClassScores()

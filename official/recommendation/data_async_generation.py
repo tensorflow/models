@@ -160,7 +160,8 @@ def _construct_training_records(
     train_batch_size,     # type: int
     training_shards,      # type: typing.List[str]
     spillover,            # type: bool
-    carryover=None        # type: typing.Union[typing.List[np.ndarray], None]
+    carryover=None,       # type: typing.Union[typing.List[np.ndarray], None]
+    deterministic=False   # type: bool
     ):
   """Generate false negatives and write TFRecords files.
 
@@ -204,7 +205,8 @@ def _construct_training_records(
 
   with contextlib.closing(multiprocessing.Pool(
       processes=num_workers, initializer=init_worker)) as pool:
-    data_generator = pool.imap_unordered(_process_shard, map_args)  # pylint: disable=no-member
+    map_fn = pool.imap if deterministic else pool.imap_unordered  # pylint: disable=no-member
+    data_generator = map_fn(_process_shard, map_args)
     data = [
         np.zeros(shape=(num_pts,), dtype=np.int32) - 1,
         np.zeros(shape=(num_pts,), dtype=np.uint16),
@@ -282,11 +284,17 @@ def _construct_training_records(
       raise ValueError("Error detected: point counts do not match: {} vs. {}"
                        .format(num_pts, written_pts))
 
-  with tf.gfile.Open(os.path.join(record_dir, rconst.READY_FILE), "w") as f:
+  # We write to a temp file then atomically rename it to the final file, because
+  # writing directly to the final file can cause the main process to read a
+  # partially written JSON file.
+  ready_file_temp = os.path.join(record_dir, rconst.READY_FILE_TEMP)
+  with tf.gfile.Open(ready_file_temp, "w") as f:
     json.dump({
         "batch_size": train_batch_size,
         "batch_count": batch_count,
     }, f)
+  ready_file = os.path.join(record_dir, rconst.READY_FILE)
+  tf.gfile.Rename(ready_file_temp, ready_file)
 
   log_msg("Cycle {} complete. Total time: {:.1f} seconds"
           .format(train_cycle, timeit.default_timer() - st))
@@ -329,21 +337,35 @@ def _construct_eval_record(cache_paths, eval_batch_size):
           items=items[i, :]
       )
       writer.write(batch_bytes)
-  tf.gfile.Copy(intermediate_fpath, dest_fpath)
-  tf.gfile.Remove(intermediate_fpath)
+  tf.gfile.Rename(intermediate_fpath, dest_fpath)
   log_msg("Eval TFRecords file successfully constructed.")
 
 
-def _generation_loop(
-    num_workers, cache_paths, num_readers, num_neg, num_train_positives,
-    num_items, spillover, epochs_per_cycle, train_batch_size, eval_batch_size):
-  # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int) -> None
+def _generation_loop(num_workers,           # type: int
+                     cache_paths,           # type: rconst.Paths
+                     num_readers,           # type: int
+                     num_neg,               # type: int
+                     num_train_positives,   # type: int
+                     num_items,             # type: int
+                     spillover,             # type: bool
+                     epochs_per_cycle,      # type: int
+                     train_batch_size,      # type: int
+                     eval_batch_size,       # type: int
+                     deterministic          # type: bool
+                    ):
+  # type: (...) -> None
   """Primary run loop for data file generation."""
 
   log_msg("Signaling that I am alive.")
   with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
     f.write("Generation subproc has started.")
-  atexit.register(tf.gfile.Remove, filename=cache_paths.subproc_alive)
+
+  @atexit.register
+  def remove_alive_file():
+    try:
+      tf.gfile.Remove(cache_paths.subproc_alive)
+    except tf.errors.NotFoundError:
+      return  # Main thread has already deleted the entire cache dir.
 
   log_msg("Entering generation loop.")
   tf.gfile.MakeDirs(cache_paths.train_epoch_dir)
@@ -359,7 +381,8 @@ def _generation_loop(
       cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
       num_train_positives=num_train_positives, num_items=num_items,
       epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
-      training_shards=training_shards, spillover=spillover, carryover=None)
+      training_shards=training_shards, spillover=spillover, carryover=None,
+      deterministic=deterministic)
 
   _construct_eval_record(cache_paths=cache_paths,
                          eval_batch_size=eval_batch_size)
@@ -392,7 +415,7 @@ def _generation_loop(
         num_train_positives=num_train_positives, num_items=num_items,
         epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
         training_shards=training_shards, spillover=spillover,
-        carryover=carryover)
+        carryover=carryover, deterministic=deterministic)
 
     wait_count = 0
     start_time = time.time()
@@ -436,6 +459,7 @@ def main(_):
         epochs_per_cycle=flags.FLAGS.epochs_per_cycle,
         train_batch_size=flags.FLAGS.train_batch_size,
         eval_batch_size=flags.FLAGS.eval_batch_size,
+        deterministic=flags.FLAGS.seed is not None,
     )
   except KeyboardInterrupt:
     log_msg("KeyboardInterrupt registered.")

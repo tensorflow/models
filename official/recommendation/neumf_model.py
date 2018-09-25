@@ -40,10 +40,14 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
+from official.recommendation import stat_utils
 
 
 def neumf_model_fn(features, labels, mode, params):
   """Model Function for NeuMF estimator."""
+  if params.get("use_seed"):
+    tf.set_random_seed(stat_utils.random_int32())
+
   users = features[movielens.USER_COLUMN]
   items = tf.cast(features[movielens.ITEM_COLUMN], tf.int32)
 

@@ -21,6 +21,7 @@ import numpy as np
 import PIL.Image as Image
 import tensorflow as tf
 
+from object_detection.core import standard_fields as fields
 from object_detection.utils import visualization_utils
 
 _TESTDATA_PATH = 'object_detection/test_images'
@@ -224,6 +225,80 @@ class VisualizationUtilsTest(tf.test.TestCase):
     hist_image_summary = tf.get_collection(key=tf.GraphKeys.SUMMARIES)[0]
     with self.test_session():
       hist_image_summary.eval()
+
+  def test_eval_metric_ops(self):
+    category_index = {1: {'id': 1, 'name': 'dog'}, 2: {'id': 2, 'name': 'cat'}}
+    max_examples_to_draw = 4
+    metric_op_base = 'Detections_Left_Groundtruth_Right'
+    eval_metric_ops = visualization_utils.VisualizeSingleFrameDetections(
+        category_index,
+        max_examples_to_draw=max_examples_to_draw,
+        summary_name_prefix=metric_op_base)
+    original_image = tf.placeholder(tf.uint8, [1, None, None, 3])
+    detection_boxes = tf.random_uniform([20, 4],
+                                        minval=0.0,
+                                        maxval=1.0,
+                                        dtype=tf.float32)
+    detection_classes = tf.random_uniform([20],
+                                          minval=1,
+                                          maxval=3,
+                                          dtype=tf.int64)
+    detection_scores = tf.random_uniform([20],
+                                         minval=0.,
+                                         maxval=1.,
+                                         dtype=tf.float32)
+    groundtruth_boxes = tf.random_uniform([8, 4],
+                                          minval=0.0,
+                                          maxval=1.0,
+                                          dtype=tf.float32)
+    groundtruth_classes = tf.random_uniform([8],
+                                            minval=1,
+                                            maxval=3,
+                                            dtype=tf.int64)
+    eval_dict = {
+        fields.DetectionResultFields.detection_boxes: detection_boxes,
+        fields.DetectionResultFields.detection_classes: detection_classes,
+        fields.DetectionResultFields.detection_scores: detection_scores,
+        fields.InputDataFields.original_image: original_image,
+        fields.InputDataFields.groundtruth_boxes: groundtruth_boxes,
+        fields.InputDataFields.groundtruth_classes: groundtruth_classes}
+    metric_ops = eval_metric_ops.get_estimator_eval_metric_ops(eval_dict)
+    _, update_op = metric_ops[metric_ops.keys()[0]]
+
+    with self.test_session() as sess:
+      sess.run(tf.global_variables_initializer())
+      value_ops = {}
+      for key, (value_op, _) in metric_ops.iteritems():
+        value_ops[key] = value_op
+
+      # First run enough update steps to surpass `max_examples_to_draw`.
+      for i in range(max_examples_to_draw):
+        # Use a unique image shape on each eval image.
+        sess.run(update_op, feed_dict={
+            original_image: np.random.randint(low=0,
+                                              high=256,
+                                              size=(1, 6 + i, 7 + i, 3),
+                                              dtype=np.uint8)
+        })
+      value_ops_out = sess.run(value_ops)
+      for key, value_op in value_ops_out.iteritems():
+        self.assertNotEqual('', value_op)
+
+      # Now run fewer update steps than `max_examples_to_draw`. A single value
+      # op will be the empty string, since not enough image summaries can be
+      # produced.
+      for i in range(max_examples_to_draw - 1):
+        # Use a unique image shape on each eval image.
+        sess.run(update_op, feed_dict={
+            original_image: np.random.randint(low=0,
+                                              high=256,
+                                              size=(1, 6 + i, 7 + i, 3),
+                                              dtype=np.uint8)
+        })
+      value_ops_out = sess.run(value_ops)
+      self.assertEqual(
+          '',
+          value_ops_out[metric_op_base + '/' + str(max_examples_to_draw - 1)])
 
 
 if __name__ == '__main__':

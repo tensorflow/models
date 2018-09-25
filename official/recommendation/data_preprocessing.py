@@ -21,6 +21,7 @@ from __future__ import print_function
 import atexit
 import contextlib
 import gc
+import hashlib
 import multiprocessing
 import json
 import os
@@ -50,7 +51,7 @@ class NCFDataset(object):
   """Container for training and testing data."""
 
   def __init__(self, user_map, item_map, num_data_readers, cache_paths,
-               num_train_positives):
+               num_train_positives, deterministic=False):
     # type: (dict, dict, int, rconst.Paths) -> None
     """Assign key values for recommendation dataset.
 
@@ -61,6 +62,8 @@ class NCFDataset(object):
       cache_paths: Object containing locations for various cache files.
       num_train_positives: The number of positive training examples in the
         dataset.
+      deterministic: Operations should use deterministic, order preserving
+        methods, even at the cost of performance.
     """
 
     self.user_map = {int(k): int(v) for k, v in user_map.items()}
@@ -70,6 +73,7 @@ class NCFDataset(object):
     self.num_data_readers = num_data_readers
     self.cache_paths = cache_paths
     self.num_train_positives = num_train_positives
+    self.deterministic = deterministic
 
 
 def _filter_index_sort(raw_rating_path, match_mlperf):
@@ -340,7 +344,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
     pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def construct_cache(dataset, data_dir, num_data_readers, match_mlperf):
+def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
+                    deterministic):
   # type: (str, str, int, bool) -> NCFDataset
   """Load and digest data CSV into a usable form.
 
@@ -351,6 +356,8 @@ def construct_cache(dataset, data_dir, num_data_readers, match_mlperf):
       data during training.
     match_mlperf: If True, change the behavior of the cache construction to
       match the MLPerf reference implementation.
+    deterministic: Try to enforce repeatable behavior, even at the cost of
+      performance.
   """
   cache_paths = rconst.Paths(data_dir=data_dir)
   num_data_readers = (num_data_readers or int(multiprocessing.cpu_count() / 2)
@@ -377,7 +384,8 @@ def construct_cache(dataset, data_dir, num_data_readers, match_mlperf):
   ncf_dataset = NCFDataset(user_map=user_map, item_map=item_map,
                            num_data_readers=num_data_readers,
                            cache_paths=cache_paths,
-                           num_train_positives=len(df) - len(user_map))
+                           num_train_positives=len(df) - len(user_map),
+                           deterministic=deterministic)
 
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
@@ -403,13 +411,15 @@ def _shutdown(proc):
 
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                          num_data_readers=None, num_neg=4, epochs_per_cycle=1,
-                         match_mlperf=False):
+                         match_mlperf=False, deterministic=False):
+  # type: (...) -> (NCFDataset, typing.Callable)
   """Preprocess data and start negative generation subprocess."""
 
   tf.logging.info("Beginning data preprocessing.")
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
                                 num_data_readers=num_data_readers,
-                                match_mlperf=match_mlperf)
+                                match_mlperf=match_mlperf,
+                                deterministic=deterministic)
 
   tf.logging.info("Creating training file subprocess.")
 
@@ -439,20 +449,40 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                               # guarantee batch size and significantly improves
                               # performance. (~5% increase in examples/sec on
                               # GPU, and needed for TPU XLA.)
-      "--redirect_logs", "True",
-      "--seed", str(int(stat_utils.random_int32()))
+      "--redirect_logs", "True"
   ]
+  if ncf_dataset.deterministic:
+    subproc_args.extend(["--seed", str(int(stat_utils.random_int32()))])
 
   tf.logging.info(
       "Generation subprocess command: {}".format(" ".join(subproc_args)))
 
   proc = subprocess.Popen(args=subproc_args, shell=False, env=subproc_env)
 
-  atexit.register(_shutdown, proc=proc)
-  atexit.register(tf.gfile.DeleteRecursively,
-                  ncf_dataset.cache_paths.cache_root)
+  cleanup_called = {"finished": False}
+  @atexit.register
+  def cleanup():
+    """Remove files and subprocess from data generation."""
+    if cleanup_called["finished"]:
+      return
 
-  return ncf_dataset
+    _shutdown(proc)
+    try:
+      tf.gfile.DeleteRecursively(ncf_dataset.cache_paths.cache_root)
+    except tf.errors.NotFoundError:
+      pass
+
+    cleanup_called["finished"] = True
+
+  for _ in range(300):
+    if tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
+      break
+    time.sleep(1)  # allow `alive` file to be written
+  if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
+    raise ValueError("Generation subprocess did not start correctly. Data will "
+                     "not be available; exiting to avoid waiting forever.")
+
+  return ncf_dataset, cleanup
 
 
 def make_deserialize(params, batch_size, training=False):
@@ -490,13 +520,53 @@ def make_deserialize(params, batch_size, training=False):
   return deserialize
 
 
+def hash_pipeline(dataset, deterministic):
+  # type: (tf.data.Dataset, bool) -> None
+  """Utility function for detecting non-determinism in the data pipeline.
+
+  Args:
+    dataset: a tf.data.Dataset generated by the input_fn
+    deterministic: Does the input_fn expect the dataset to be deterministic.
+      (i.e. fixed seed, sloppy=False, etc.)
+  """
+  if not deterministic:
+    tf.logging.warning("Data pipeline is not marked as deterministic. Hash "
+                       "values are not expected to be meaningful.")
+
+  batch = dataset.make_one_shot_iterator().get_next()
+  md5 = hashlib.md5()
+  count = 0
+  first_batch_hash = b""
+  with tf.Session() as sess:
+    while True:
+      try:
+        result = sess.run(batch)
+        if isinstance(result, tuple):
+          result = result[0]  # only hash features
+      except tf.errors.OutOfRangeError:
+        break
+
+      count += 1
+      md5.update(memoryview(result[movielens.USER_COLUMN]).tobytes())
+      md5.update(memoryview(result[movielens.ITEM_COLUMN]).tobytes())
+      if count == 1:
+        first_batch_hash = md5.hexdigest()
+  overall_hash = md5.hexdigest()
+  tf.logging.info("Batch count: {}".format(count))
+  tf.logging.info("  [pipeline_hash] First batch hash: {}".format(
+      first_batch_hash))
+  tf.logging.info("  [pipeline_hash] All batches hash: {}".format(overall_hash))
+
+
 def make_train_input_fn(ncf_dataset):
   # type: (NCFDataset) -> (typing.Callable, str, int)
   """Construct training input_fn for the current epoch."""
 
   if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
-    raise ValueError("Generation subprocess did not start correctly. Data will "
-                     "not be available; exiting to avoid waiting forever.")
+    # The generation subprocess must have been alive at some point, because we
+    # earlier checked that the subproc_alive file existed.
+    raise ValueError("Generation subprocess unexpectedly died. Data will not "
+                     "be available; exiting to avoid waiting forever.")
 
   train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
   while not tf.gfile.Exists(train_epoch_dir):
@@ -546,14 +616,19 @@ def make_train_input_fn(ncf_dataset):
         tf.data.TFRecordDataset,
         cycle_length=4,
         block_length=100000,
-        sloppy=True,
+        sloppy=not ncf_dataset.deterministic,
         prefetch_input_elements=4,
     )
 
     deserialize = make_deserialize(params, batch_size, True)
     dataset = record_files.apply(interleave)
     dataset = dataset.map(deserialize, num_parallel_calls=4)
-    return dataset.prefetch(32)
+    dataset = dataset.prefetch(32)
+
+    if params.get("hash_pipeline"):
+      hash_pipeline(dataset, ncf_dataset.deterministic)
+
+    return dataset
 
   return input_fn, record_dir, batch_count
 
@@ -578,7 +653,11 @@ def make_pred_input_fn(ncf_dataset):
 
     deserialize = make_deserialize(params, batch_size, False)
     dataset = dataset.map(deserialize, num_parallel_calls=4)
+    dataset = dataset.prefetch(16)
 
-    return dataset.prefetch(16)
+    if params.get("hash_pipeline"):
+      hash_pipeline(dataset, ncf_dataset.deterministic)
+
+    return dataset
 
   return input_fn

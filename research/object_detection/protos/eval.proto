@@ -4,17 +4,18 @@ package object_detection.protos;
 
 // Message for configuring DetectionModel evaluation jobs (eval.py).
 message EvalConfig {
+  optional uint32 batch_size = 25 [default=1];
   // Number of visualization images to generate.
   optional uint32 num_visualizations = 1 [default=10];
 
   // Number of examples to process of evaluation.
-  optional uint32 num_examples = 2 [default=5000];
+  optional uint32 num_examples = 2 [default=5000, deprecated=true];
 
   // How often to run evaluation.
   optional uint32 eval_interval_secs = 3 [default=300];
 
   // Maximum number of times to run evaluation. If set to 0, will run forever.
-  optional uint32 max_evals = 4 [default=0];
+  optional uint32 max_evals = 4 [default=0, deprecated=true];
 
   // Whether the TensorFlow graph used for evaluation should be saved to disk.
   optional bool save_graph = 5 [default=false];

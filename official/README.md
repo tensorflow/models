@@ -54,7 +54,7 @@ our objectives of readable, usable, and maintainable code.
 * Runnable from a blank environment with relative ease.
 * Trainable on: single GPU/CPU (baseline), multiple GPUs, TPU
 * Compatible with Python 2 and 3 (using [six](https://pythonhosted.org/six/) when necessary)
-* Conform to [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
+* Conform to [Google Python Style Guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md)
 
 **Implementation guidelines**
 

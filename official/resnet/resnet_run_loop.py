@@ -45,7 +45,7 @@ from official.utils.misc import model_helpers
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_gpus=None,
-                           examples_per_epoch=None):
+                           examples_per_epoch=None, dtype=tf.float32):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -60,6 +60,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
     examples_per_epoch: The number of examples in an epoch.
+    dtype: Data type to use for images/features.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -92,7 +93,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # batch_size is almost always much greater than the number of CPU cores.
   dataset = dataset.apply(
       tf.contrib.data.map_and_batch(
-          lambda value: parse_record_fn(value, is_training),
+          lambda value: parse_record_fn(value, is_training, dtype),
           batch_size=batch_size,
           num_parallel_batches=1,
           drop_remainder=False))
@@ -108,11 +109,14 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   return dataset
 
 
-def get_synth_input_fn(height, width, num_channels, num_classes):
-  """Returns an input function that returns a dataset with zeroes.
+def get_synth_input_fn(height, width, num_channels, num_classes,
+                       dtype=tf.float32):
+  """Returns an input function that returns a dataset with random data.
 
-  This is useful in debugging input pipeline performance, as it removes all
-  elements of file reading and image preprocessing.
+  This input_fn returns a data set that iterates over a set of random data and
+  bypasses all preprocessing, e.g. jpeg decode and copy. The host to device
+  copy is still included. This used to find the upper throughput bound when
+  tunning the full input pipeline.
 
   Args:
     height: Integer height that will be used to create a fake image tensor.
@@ -120,17 +124,32 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     num_channels: Integer depth that will be used to create a fake image tensor.
     num_classes: Number of classes that should be represented in the fake labels
       tensor
+    dtype: Data type for features/images.
 
   Returns:
     An input_fn that can be used in place of a real one to return a dataset
     that can be used for iteration.
   """
-  def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
-    return model_helpers.generate_synthetic_data(
-        input_shape=tf.TensorShape([batch_size, height, width, num_channels]),
-        input_dtype=tf.float32,
-        label_shape=tf.TensorShape([batch_size]),
-        label_dtype=tf.int32)
+  # pylint: disable=unused-argument
+  def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
+    """Returns dataset filled with random data."""
+    # Synthetic input should be within [0, 255].
+    inputs = tf.truncated_normal(
+        [batch_size] + [height, width, num_channels],
+        dtype=dtype,
+        mean=127,
+        stddev=60,
+        name='synthetic_inputs')
+
+    labels = tf.random_uniform(
+        [batch_size],
+        minval=0,
+        maxval=num_classes - 1,
+        dtype=tf.int32,
+        name='synthetic_labels')
+    data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
+    data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+    return data
 
   return input_fn
 
@@ -230,8 +249,8 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   # Generate a summary node for the images
   tf.summary.image('images', features, max_outputs=6)
-
-  features = tf.cast(features, dtype)
+  # Checks that features/images have same data type being used for calculations.
+  assert features.dtype == dtype
 
   model = model_class(resnet_size, data_format, resnet_version=resnet_version,
                       dtype=dtype)
@@ -436,14 +455,16 @@ def resnet_main(
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=num_epochs,
-        num_gpus=flags_core.get_num_gpus(flags_obj))
+        num_gpus=flags_core.get_num_gpus(flags_obj),
+        dtype=flags_core.get_tf_dtype(flags_obj))
 
   def input_fn_eval():
     return input_function(
         is_training=False, data_dir=flags_obj.data_dir,
         batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-        num_epochs=1)
+        num_epochs=1,
+        dtype=flags_core.get_tf_dtype(flags_obj))
 
   if flags_obj.eval_only or not flags_obj.train_epochs:
     # If --eval_only is set, perform a single loop with zero train epochs.
@@ -501,7 +522,7 @@ def define_resnet_flags(resnet_size_choices=None):
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_enum(
-      name='resnet_version', short_name='rv', default='2',
+      name='resnet_version', short_name='rv', default='1',
       enum_values=['1', '2'],
       help=flags_core.help_wrap(
           'Version of ResNet. (1 or 2) See README.md for details.'))
@@ -515,7 +536,7 @@ def define_resnet_flags(resnet_size_choices=None):
           'If not None initialize all the network except the final layer with '
           'these values'))
   flags.DEFINE_boolean(
-      name="eval_only", default=False,
+      name='eval_only', default=False,
       help=flags_core.help_wrap('Skip training and only perform evaluation on '
                                 'the latest checkpoint.'))
 
