@@ -88,7 +88,7 @@ def model_fn(features, labels, mode, params):
     image = features["image"]
 
   model = mnist.create_model("channels_last")
-  
+
   if mode == tf.estimator.ModeKeys.PREDICT:
     logits = model(image, training=False)
     predictions = {
@@ -96,10 +96,7 @@ def model_fn(features, labels, mode, params):
         'probabilities': tf.nn.softmax(logits),
         'label': labels,
     }
-    return tf.contrib.tpu.TPUEstimatorSpec(mode, predictions=predictions,
-        export_outputs={
-            'classify': tf.estimator.export.PredictOutput(predictions)
-        })
+    return tf.contrib.tpu.TPUEstimatorSpec(mode, predictions=predictions)
 
   logits = model(image, training=(mode == tf.estimator.ModeKeys.TRAIN))
   loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
