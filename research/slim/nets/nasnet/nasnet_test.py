@@ -371,6 +371,24 @@ class NASNetTest(tf.test.TestCase):
     self.assertListEqual(
         end_points['Stem'].shape.as_list(), [batch_size, 336, 42, 42])
 
+  def testCurrentStepCifarModel(self):
+    batch_size = 5
+    height, width = 32, 32
+    num_classes = 10
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    global_step = tf.train.create_global_step()
+    with slim.arg_scope(nasnet.nasnet_cifar_arg_scope()):
+      logits, end_points = nasnet.build_nasnet_cifar(inputs,
+                                                     num_classes,
+                                                     current_step=global_step)
+    auxlogits = end_points['AuxLogits']
+    predictions = end_points['Predictions']
+    self.assertListEqual(auxlogits.get_shape().as_list(),
+                         [batch_size, num_classes])
+    self.assertListEqual(logits.get_shape().as_list(),
+                         [batch_size, num_classes])
+    self.assertListEqual(predictions.get_shape().as_list(),
+                         [batch_size, num_classes])
 
 if __name__ == '__main__':
   tf.test.main()

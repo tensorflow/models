@@ -641,7 +641,7 @@ def create_train_and_eval_specs(train_input_fn,
       input_fn=train_input_fn, max_steps=train_steps)
 
   if eval_spec_names is None:
-    eval_spec_names = range(len(eval_input_fns))
+    eval_spec_names = [ str(i) for i in range(len(eval_input_fns)) ]
 
   eval_specs = []
   for eval_spec_name, eval_input_fn in zip(eval_spec_names, eval_input_fns):
