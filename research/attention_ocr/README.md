@@ -162,6 +162,14 @@ implement one in Python or C++.
 
 The recommended way is to use the [Serving infrastructure][serving].
 
+To export to SavedModel format:
+
+```
+python export_saved_model.py \
+  --checkpoint /tmp/attention_ocr/train/model.ckpt-123456 \
+  --saved_dir ./saved/1
+```
+
 Alternatively you can:
 1. define a placeholder for images (or use directly an numpy array)
 2. [create a graph ](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/eval.py#L60)
