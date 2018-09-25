@@ -24,7 +24,7 @@ flags.DEFINE_string('saved_dir', './saved/1',
 def get_dataset_image_shape(dataset_name):
     ds_module = getattr(datasets, dataset_name)
     height, width, channel = ds_module.DEFAULT_CONFIG['image_shape']
-  return height, width, channel
+    return height, width, channel
 
 
 def create_model(dataset_name):
