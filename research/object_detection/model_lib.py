@@ -646,8 +646,14 @@ def create_train_and_eval_specs(train_input_fn,
     eval_spec_names = [str(i) for i in range(len(eval_input_fns))]
 
   eval_specs = []
-  for eval_spec_name, eval_input_fn in zip(eval_spec_names, eval_input_fns):
-    exporter_name = '{}_{}'.format(final_exporter_name, eval_spec_name)
+  for index, (eval_spec_name, eval_input_fn) in enumerate(
+      zip(eval_spec_names, eval_input_fns)):
+    # Uses final_exporter_name as exporter_name for the first eval spec for
+    # backward compatibility.
+    if index == 0:
+      exporter_name = final_exporter_name
+    else:
+      exporter_name = '{}_{}'.format(final_exporter_name, eval_spec_name)
     exporter = tf.estimator.FinalExporter(
         name=exporter_name, serving_input_receiver_fn=predict_input_fn)
     eval_specs.append(
