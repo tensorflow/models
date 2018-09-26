@@ -918,12 +918,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
       _, num_classes, mask_height, mask_width = (
           detection_masks.get_shape().as_list())
       _, max_detection = detection_classes.get_shape().as_list()
+      prediction_dict['mask_predictions'] = tf.reshape(
+          detection_masks, [-1, num_classes, mask_height, mask_width])
       if num_classes > 1:
         detection_masks = self._gather_instance_masks(
             detection_masks, detection_classes)
 
       prediction_dict[fields.DetectionResultFields.detection_masks] = (
-          tf.reshape(detection_masks,
+          tf.reshape(tf.sigmoid(detection_masks),
                      [batch_size, max_detection, mask_height, mask_width]))
 
     return prediction_dict
@@ -1176,13 +1178,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     if self._number_of_stages == 3:
       # Post processing is already performed in 3rd stage. We need to transfer
       # postprocessed tensors from `prediction_dict` to `detections_dict`.
-      detections_dict = {}
-      for key in prediction_dict:
-        if key == fields.DetectionResultFields.detection_masks:
-          detections_dict[key] = tf.sigmoid(prediction_dict[key])
-        elif 'detection' in key:
-          detections_dict[key] = prediction_dict[key]
-      return detections_dict
+      return prediction_dict
 
   def _postprocess_rpn(self,
                        rpn_box_encodings_batch,
