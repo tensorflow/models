@@ -12,6 +12,12 @@ The master branch of the models are **in development**, and they target the [nig
 If you are on a version of TensorFlow earlier than 1.4, please [update your installation](https://www.tensorflow.org/install/).
 
 ## Requirements
+
+Import the models module. Navigate to or point to folder you want to tensorflow models module to live; then git clone repo there:
+```
+git clone https://github.com/tensorflow/models
+```
+
 Please follow the below steps before running models in this repo:
 
 1. Add the top-level ***/models*** folder to the Python path with the command:
