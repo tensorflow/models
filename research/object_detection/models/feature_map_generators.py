@@ -399,6 +399,7 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
 def fpn_top_down_feature_maps(image_features,
                               depth,
                               use_depthwise=False,
+                              use_explicit_padding=False,
                               scope=None):
   """Generates `top-down` feature maps for Feature Pyramid Networks.
 
@@ -409,7 +410,9 @@ def fpn_top_down_feature_maps(image_features,
       Spatial resolutions of succesive tensors must reduce exactly by a factor
       of 2.
     depth: depth of output feature maps.
-    use_depthwise: use depthwise separable conv instead of regular conv.
+    use_depthwise: whether to use depthwise separable conv instead of regular
+      conv.
+    use_explicit_padding: whether to use explicit padding.
     scope: A scope name to wrap this op under.
 
   Returns:
@@ -420,8 +423,10 @@ def fpn_top_down_feature_maps(image_features,
     num_levels = len(image_features)
     output_feature_maps_list = []
     output_feature_map_keys = []
+    padding = 'VALID' if use_explicit_padding else 'SAME'
+    kernel_size = 3
     with slim.arg_scope(
-        [slim.conv2d, slim.separable_conv2d], padding='SAME', stride=1):
+        [slim.conv2d, slim.separable_conv2d], padding=padding, stride=1):
       top_down = slim.conv2d(
           image_features[-1][1],
           depth, [1, 1], activation_fn=None, normalizer_fn=None,
@@ -436,14 +441,20 @@ def fpn_top_down_feature_maps(image_features,
             image_features[level][1], depth, [1, 1],
             activation_fn=None, normalizer_fn=None,
             scope='projection_%d' % (level + 1))
+        if use_explicit_padding:
+          # slice top_down to the same shape as residual
+          residual_shape = tf.shape(residual)
+          top_down = top_down[:, :residual_shape[1], :residual_shape[2], :]
         top_down += residual
         if use_depthwise:
           conv_op = functools.partial(slim.separable_conv2d, depth_multiplier=1)
         else:
           conv_op = slim.conv2d
+        if use_explicit_padding:
+          top_down = ops.fixed_padding(top_down, kernel_size)
         output_feature_maps_list.append(conv_op(
             top_down,
-            depth, [3, 3],
+            depth, [kernel_size, kernel_size],
             scope='smoothing_%d' % (level + 1)))
         output_feature_map_keys.append('top_down_%s' % image_features[level][0])
       return collections.OrderedDict(reversed(

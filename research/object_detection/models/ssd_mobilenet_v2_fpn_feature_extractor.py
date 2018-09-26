@@ -158,7 +158,8 @@ class SSDMobileNetV2FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
           fpn_features = feature_map_generators.fpn_top_down_feature_maps(
               [(key, image_features[key]) for key in feature_block_list],
               depth=depth_fn(self._additional_layer_depth),
-              use_depthwise=self._use_depthwise)
+              use_depthwise=self._use_depthwise,
+              use_explicit_padding=self._use_explicit_padding)
           feature_maps = []
           for level in range(self._fpn_min_level, base_fpn_max_level + 1):
             feature_maps.append(fpn_features['top_down_{}'.format(
@@ -166,18 +167,23 @@ class SSDMobileNetV2FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
           last_feature_map = fpn_features['top_down_{}'.format(
               feature_blocks[base_fpn_max_level - 2])]
           # Construct coarse features
+          padding = 'VALID' if self._use_explicit_padding else 'SAME'
+          kernel_size = 3
           for i in range(base_fpn_max_level + 1, self._fpn_max_level + 1):
             if self._use_depthwise:
               conv_op = functools.partial(
                   slim.separable_conv2d, depth_multiplier=1)
             else:
               conv_op = slim.conv2d
+            if self._use_explicit_padding:
+              last_feature_map = ops.fixed_padding(
+                  last_feature_map, kernel_size)
             last_feature_map = conv_op(
                 last_feature_map,
                 num_outputs=depth_fn(self._additional_layer_depth),
-                kernel_size=[3, 3],
+                kernel_size=[kernel_size, kernel_size],
                 stride=2,
-                padding='SAME',
+                padding=padding,
                 scope='bottom_up_Conv2d_{}'.format(i - base_fpn_max_level + 19))
             feature_maps.append(last_feature_map)
     return feature_maps
