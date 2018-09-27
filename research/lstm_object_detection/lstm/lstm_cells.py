@@ -45,6 +45,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
                forget_bias=1.0,
                activation=tf.tanh,
                flattened_state=False,
+               clip_state=False,
                output_bottleneck=False,
                visualize_gates=True):
     """Initializes the basic LSTM cell.
@@ -57,6 +58,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       activation: Activation function of the inner states.
       flattened_state: if True, state tensor will be flattened and stored as
         a 2-d tensor. Use for exporting the model to tfmini.
+      clip_state: if True, clip state between [-6, 6].
       output_bottleneck: if True, the cell bottleneck will be concatenated
         to the cell output.
       visualize_gates: if True, add histogram summaries of all gates
@@ -69,6 +71,7 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
     self._activation = activation
     self._viz_gates = visualize_gates
     self._flattened_state = flattened_state
+    self._clip_state = clip_state
     self._output_bottleneck = output_bottleneck
     self._param_count = self._num_units
     for dim in self._output_size:
@@ -138,6 +141,8 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       new_c = (
           c * tf.sigmoid(f + self._forget_bias) +
           tf.sigmoid(i) * self._activation(j))
+      if self._clip_state:
+        new_c = tf.clip_by_value(new_c, -6, 6)
       new_h = self._activation(new_c) * tf.sigmoid(o)
       # summary of cell output and new state
       if self._viz_gates:
