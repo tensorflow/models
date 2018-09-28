@@ -38,6 +38,7 @@ _RECORD_BYTES = _DEFAULT_IMAGE_BYTES + 1
 _NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
+# TODO(tobyboyd): Change to best practice 45K(train)/5K(val)/10K(test) splits.
 _NUM_IMAGES = {
     'train': 50000,
     'validation': 10000,
@@ -193,14 +194,14 @@ class Cifar10Model(resnet_model.Model):
 def cifar10_model_fn(features, labels, mode, params):
   """Model function for CIFAR-10."""
   features = tf.reshape(features, [-1, _HEIGHT, _WIDTH, _NUM_CHANNELS])
-
+  # Learning rate schedule follows arXiv:1512.03385 for ResNet-56 and under.
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
-      num_images=_NUM_IMAGES['train'], boundary_epochs=[100, 150, 200],
+      num_images=_NUM_IMAGES['train'], boundary_epochs=[91, 136, 182],
       decay_rates=[1, 0.1, 0.01, 0.001])
 
-  # We use a weight decay of 0.0002, which performs better
-  # than the 0.0001 that was originally suggested.
+  # Weight decay of 2e-4 diverges from 1e-4 decay used in the ResNet paper
+  # and seems more stable in testing. The difference was nominal for ResNet-56.
   weight_decay = 2e-4
 
   # Empirical testing showed that including batch_normalization variables
@@ -234,8 +235,8 @@ def define_cifar_flags():
   flags.adopt_module_key_flags(resnet_run_loop)
   flags_core.set_defaults(data_dir='/tmp/cifar10_data',
                           model_dir='/tmp/cifar10_model',
-                          resnet_size='32',
-                          train_epochs=250,
+                          resnet_size='56',
+                          train_epochs=182,
                           epochs_between_evals=10,
                           batch_size=128)
 
