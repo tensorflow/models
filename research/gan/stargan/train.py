@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Trains a CycleGAN model."""
+"""Trains a StarGAN model."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,72 +23,60 @@ from absl import flags
 import tensorflow as tf
 
 import data_provider
-import networks
+import network
 
-tfgan = tf.contrib.gan
+# FLAGS for data.
+flags.DEFINE_multi_string(
+    'image_file_patterns', None,
+    'List of file pattern for different domain of images. '
+    '(e.g.[\'black_hair\', \'blond_hair\', \'brown_hair\']')
+flags.DEFINE_integer('batch_size', 6, 'The number of images in each batch.')
+flags.DEFINE_integer('patch_size', 128, 'The patch size of images.')
 
-
-flags.DEFINE_string('image_set_x_file_pattern', None,
-                    'File pattern of images in image set X')
-
-flags.DEFINE_string('image_set_y_file_pattern', None,
-                    'File pattern of images in image set Y')
-
-flags.DEFINE_integer('batch_size', 1, 'The number of images in each batch.')
-
-flags.DEFINE_integer('patch_size', 64, 'The patch size of images.')
-
-flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
-
-flags.DEFINE_string('train_log_dir', '/tmp/cyclegan/',
+flags.DEFINE_string('train_log_dir', '/tmp/stargan/',
                     'Directory where to write event logs.')
 
-flags.DEFINE_float('generator_lr', 0.0002,
-                   'The compression model learning rate.')
-
-flags.DEFINE_float('discriminator_lr', 0.0001,
-                   'The discriminator learning rate.')
-
-flags.DEFINE_integer('max_number_of_steps', 500000,
+# FLAGS for training hyper-parameters.
+flags.DEFINE_float('generator_lr', 1e-4, 'The generator learning rate.')
+flags.DEFINE_float('discriminator_lr', 1e-4, 'The discriminator learning rate.')
+flags.DEFINE_integer('max_number_of_steps', 1000000,
                      'The maximum number of gradient steps.')
+flags.DEFINE_float('adam_beta1', 0.5, 'Adam Beta 1 for the Adam optimizer.')
+flags.DEFINE_float('adam_beta2', 0.999, 'Adam Beta 2 for the Adam optimizer.')
+flags.DEFINE_float('gen_disc_step_ratio', 0.2,
+                   'Generator:Discriminator training step ratio.')
 
+# FLAGS for distributed training.
+flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
 flags.DEFINE_integer(
     'ps_tasks', 0,
     'The number of parameter servers. If the value is 0, then the parameters '
     'are handled locally by the worker.')
-
 flags.DEFINE_integer(
     'task', 0,
     'The Task ID. This value is used when training with multiple workers to '
     'identify each worker.')
 
-flags.DEFINE_float('cycle_consistency_loss_weight', 10.0,
-                   'The weight of cycle consistency loss')
-
-
 FLAGS = flags.FLAGS
+tfgan = tf.contrib.gan
 
 
-def _define_model(images_x, images_y):
-  """Defines a CycleGAN model that maps between images_x and images_y.
+def _define_model(images, labels):
+  """Create the StarGAN Model.
 
   Args:
-    images_x: A 4D float `Tensor` of NHWC format.  Images in set X.
-    images_y: A 4D float `Tensor` of NHWC format.  Images in set Y.
+    images: `Tensor` or list of `Tensor` of shape (N, H, W, C).
+    labels: `Tensor` or list of `Tensor` of shape (N, num_domains).
 
   Returns:
-    A `CycleGANModel` namedtuple.
+    `StarGANModel` namedtuple.
   """
-  cyclegan_model = tfgan.cyclegan_model(
-      generator_fn=networks.generator,
-      discriminator_fn=networks.discriminator,
-      data_x=images_x,
-      data_y=images_y)
 
-  # Add summaries for generated images.
-  tfgan.eval.add_cyclegan_image_summaries(cyclegan_model)
-
-  return cyclegan_model
+  return tfgan.stargan_model(
+      generator_fn=network.generator,
+      discriminator_fn=network.discriminator,
+      input_data=images,
+      input_data_domain_label=labels)
 
 
 def _get_lr(base_lr):
@@ -128,30 +116,31 @@ def _get_optimizer(gen_lr, dis_lr):
   Returns:
     A tuple of generator optimizer and discriminator optimizer.
   """
-  # beta1 follows
-  # https://github.com/junyanz/CycleGAN/blob/master/options.lua
-  gen_opt = tf.train.AdamOptimizer(gen_lr, beta1=0.5, use_locking=True)
-  dis_opt = tf.train.AdamOptimizer(dis_lr, beta1=0.5, use_locking=True)
+  gen_opt = tf.train.AdamOptimizer(
+      gen_lr, beta1=FLAGS.adam_beta1, beta2=FLAGS.adam_beta2, use_locking=True)
+  dis_opt = tf.train.AdamOptimizer(
+      dis_lr, beta1=FLAGS.adam_beta1, beta2=FLAGS.adam_beta2, use_locking=True)
   return gen_opt, dis_opt
 
 
-def _define_train_ops(cyclegan_model, cyclegan_loss):
-  """Defines train ops that trains `cyclegan_model` with `cyclegan_loss`.
+def _define_train_ops(model, loss):
+  """Defines train ops that trains `stargan_model` with `stargan_loss`.
 
   Args:
-    cyclegan_model: A `CycleGANModel` namedtuple.
-    cyclegan_loss: A `CycleGANLoss` namedtuple containing all losses for
-        `cyclegan_model`.
+    model: A `StarGANModel` namedtuple.
+    loss: A `StarGANLoss` namedtuple containing all losses for
+        `stargan_model`.
 
   Returns:
     A `GANTrainOps` namedtuple.
   """
+
   gen_lr = _get_lr(FLAGS.generator_lr)
   dis_lr = _get_lr(FLAGS.discriminator_lr)
   gen_opt, dis_opt = _get_optimizer(gen_lr, dis_lr)
   train_ops = tfgan.gan_train_ops(
-      cyclegan_model,
-      cyclegan_loss,
+      model,
+      loss,
       generator_optimizer=gen_opt,
       discriminator_optimizer=dis_opt,
       summarize_gradients=True,
@@ -160,45 +149,68 @@ def _define_train_ops(cyclegan_model, cyclegan_loss):
 
   tf.summary.scalar('generator_lr', gen_lr)
   tf.summary.scalar('discriminator_lr', dis_lr)
+
   return train_ops
 
 
+def _define_train_step():
+  """Get the training step for generator and discriminator for each GAN step.
+
+  Returns:
+    GANTrainSteps namedtuple representing the training step configuration.
+  """
+
+  if FLAGS.gen_disc_step_ratio <= 1:
+    discriminator_step = int(1 / FLAGS.gen_disc_step_ratio)
+    return tfgan.GANTrainSteps(1, discriminator_step)
+  else:
+    generator_step = int(FLAGS.gen_disc_step_ratio)
+    return tfgan.GANTrainSteps(generator_step, 1)
+
+
 def main(_):
+
+  # Create the log_dir if not exist.
   if not tf.gfile.Exists(FLAGS.train_log_dir):
     tf.gfile.MakeDirs(FLAGS.train_log_dir)
 
+  # Shard the model to different parameter servers.
   with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
+
+    # Create the input dataset.
     with tf.name_scope('inputs'):
-      images_x, images_y = data_provider.provide_custom_data(
-          [FLAGS.image_set_x_file_pattern, FLAGS.image_set_y_file_pattern],
-          batch_size=FLAGS.batch_size,
-          patch_size=FLAGS.patch_size)
-      # Set batch size for summaries.
-      images_x.set_shape([FLAGS.batch_size, None, None, None])
-      images_y.set_shape([FLAGS.batch_size, None, None, None])
+      images, labels = data_provider.provide_data(
+          FLAGS.image_file_patterns, FLAGS.batch_size, FLAGS.patch_size)
 
-    # Define CycleGAN model.
-    cyclegan_model = _define_model(images_x, images_y)
+    # Define the model.
+    with tf.name_scope('model'):
+      model = _define_model(images, labels)
 
-    # Define CycleGAN loss.
-    cyclegan_loss = tfgan.cyclegan_loss(
-        cyclegan_model,
-        cycle_consistency_loss_weight=FLAGS.cycle_consistency_loss_weight,
-        tensor_pool_fn=tfgan.features.tensor_pool)
+    # Add image summary.
+    tfgan.eval.add_stargan_image_summaries(
+        model,
+        num_images=len(FLAGS.image_file_patterns) * FLAGS.batch_size,
+        display_diffs=True)
 
-    # Define CycleGAN train ops.
-    train_ops = _define_train_ops(cyclegan_model, cyclegan_loss)
+    # Define the model loss.
+    loss = tfgan.stargan_loss(model)
 
-    # Training
-    train_steps = tfgan.GANTrainSteps(1, 1)
+    # Define the train ops.
+    with tf.name_scope('train_ops'):
+      train_ops = _define_train_ops(model, loss)
+
+    # Define the train steps.
+    train_steps = _define_train_step()
+
+    # Define a status message.
     status_message = tf.string_join(
         [
             'Starting train step: ',
             tf.as_string(tf.train.get_or_create_global_step())
         ],
         name='status_message')
-    if not FLAGS.max_number_of_steps:
-      return
+
+    # Train the model.
     tfgan.gan_train(
         train_ops,
         FLAGS.train_log_dir,
@@ -212,6 +224,5 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.flags.mark_flag_as_required('image_set_x_file_pattern')
-  tf.flags.mark_flag_as_required('image_set_y_file_pattern')
+  tf.flags.mark_flag_as_required('image_file_patterns')
   tf.app.run()
