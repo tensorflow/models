@@ -47,6 +47,7 @@ from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMo
 from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
+from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
 from object_detection.predictors import rfcn_box_predictor
 from object_detection.protos import model_pb2
 from object_detection.utils import ops
@@ -69,6 +70,7 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_resnet152_v1_ppn':
         ssd_resnet_v1_ppn.SSDResnet152V1PpnFeatureExtractor,
     'embedded_ssd_mobilenet_v1': EmbeddedSSDMobileNetV1FeatureExtractor,
+    'ssd_pnasnet': SSDPNASNetFeatureExtractor,
 }
 
 # A map of names to Faster R-CNN feature extractors.

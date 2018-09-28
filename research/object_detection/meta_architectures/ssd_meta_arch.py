@@ -19,7 +19,6 @@ models.
 """
 from abc import abstractmethod
 
-import re
 import tensorflow as tf
 
 from object_detection.core import box_list
@@ -115,6 +114,25 @@ class SSDFeatureExtractor(object):
         [batch, height_i, width_i, depth_i]
     """
     raise NotImplementedError
+
+  def restore_from_classification_checkpoint_fn(self, feature_extractor_scope):
+    """Returns a map of variables to load from a foreign checkpoint.
+
+    Args:
+      feature_extractor_scope: A scope name for the feature extractor.
+
+    Returns:
+      A dict mapping variable names (to load from a checkpoint) to variables in
+      the model graph.
+    """
+    variables_to_restore = {}
+    for variable in tf.global_variables():
+      var_name = variable.op.name
+      if var_name.startswith(feature_extractor_scope + '/'):
+        var_name = var_name.replace(feature_extractor_scope + '/', '')
+        variables_to_restore[var_name] = variable
+
+    return variables_to_restore
 
 
 class SSDKerasFeatureExtractor(tf.keras.Model):
@@ -217,6 +235,25 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
   # method.
   def call(self, inputs, **kwargs):
     return self._extract_features(inputs)
+
+  def restore_from_classification_checkpoint_fn(self, feature_extractor_scope):
+    """Returns a map of variables to load from a foreign checkpoint.
+
+    Args:
+      feature_extractor_scope: A scope name for the feature extractor.
+
+    Returns:
+      A dict mapping variable names (to load from a checkpoint) to variables in
+      the model graph.
+    """
+    variables_to_restore = {}
+    for variable in tf.global_variables():
+      var_name = variable.op.name
+      if var_name.startswith(feature_extractor_scope + '/'):
+        var_name = var_name.replace(feature_extractor_scope + '/', '')
+        variables_to_restore[var_name] = variable
+
+    return variables_to_restore
 
 
 class SSDMetaArch(model.DetectionModel):
@@ -997,18 +1034,19 @@ class SSDMetaArch(model.DetectionModel):
     if fine_tune_checkpoint_type not in ['detection', 'classification']:
       raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
           fine_tune_checkpoint_type))
-    variables_to_restore = {}
-    for variable in tf.global_variables():
-      var_name = variable.op.name
-      if (fine_tune_checkpoint_type == 'detection' and
-          load_all_detection_checkpoint_vars):
-        variables_to_restore[var_name] = variable
-      else:
-        if var_name.startswith(self._extract_features_scope):
-          if fine_tune_checkpoint_type == 'classification':
-            var_name = (
-                re.split('^' + self._extract_features_scope + '/',
-                         var_name)[-1])
+
+    if fine_tune_checkpoint_type == 'classification':
+      return self._feature_extractor.restore_from_classification_checkpoint_fn(
+          self._extract_features_scope)
+
+    if fine_tune_checkpoint_type == 'detection':
+      variables_to_restore = {}
+      for variable in tf.global_variables():
+        var_name = variable.op.name
+        if load_all_detection_checkpoint_vars:
           variables_to_restore[var_name] = variable
+        else:
+          if var_name.startswith(self._extract_features_scope):
+            variables_to_restore[var_name] = variable
 
     return variables_to_restore
