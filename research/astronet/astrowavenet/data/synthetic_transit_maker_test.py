@@ -92,8 +92,8 @@ class SyntheticTransitMakerTest(absltest.TestCase):
     time = np.linspace(0, 100, 100)
 
     flux, mask = transit_maker.random_light_curve(time)
-    self.assertAllClose(flux, gold_flux)
-    self.assertAllClose(mask, np.ones(100))
+    np.testing.assert_array_almost_equal(flux, gold_flux)
+    np.testing.assert_array_almost_equal(mask, np.ones(100))
 
   def testRandomLightCurveGenerator(self):
     transit_maker = synthetic_transit_maker.SyntheticTransitMaker()
