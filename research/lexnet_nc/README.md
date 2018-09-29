@@ -53,6 +53,15 @@ The following source code is included here:
 * `get_indicative_paths.py` is a script that generates the most indicative
   syntactic dependency paths for a particular relationship.
 
+Also included are utilities for preparing data for training:
+
+* `text_embeddings_to_binary.py` converts a text file containing word embeddings
+  into a binary file that is quicker to load.
+* `extract_paths.py` finds all the dependency paths that connect words in a
+  corpus.
+* `sorted_paths_to_examples.py` processes the output of `extract_paths.py` to
+  produce summarized training data.
+
 # Dependencies
 
 * [TensorFlow](http://www.tensorflow.org/): see detailed installation
