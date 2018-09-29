@@ -121,7 +121,7 @@ def run_imagenet_with_keras(flags_obj):
   # not have support for FP16 in Keras.
   if flags_obj.dtype == 'fp16':
     raise ValueError('fp16 is unsupported in Keras. You can only use the '
-                     'default value of fp32 when running Keras APIs.')
+                     'default value of fp32 when using Keras APIs.')
 
 
   batch_size=distribution_utils.per_device_batch_size(
