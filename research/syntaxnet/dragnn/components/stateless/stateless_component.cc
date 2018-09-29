@@ -16,6 +16,7 @@
 #include "dragnn/core/component_registry.h"
 #include "dragnn/core/interfaces/component.h"
 #include "dragnn/core/interfaces/transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/data.pb.h"
 #include "syntaxnet/base.h"
 
@@ -90,7 +91,8 @@ class StatelessComponent : public Component {
   void AdvanceFromOracle() override {
     LOG(FATAL) << "[" << name_ << "] AdvanceFromOracle not supported";
   }
-  std::vector<std::vector<int>> GetOracleLabels() const override {
+  std::vector<std::vector<std::vector<Label>>> GetOracleLabels()
+      const override {
     LOG(FATAL) << "[" << name_ << "] Method not supported";
   }
   int GetFixedFeatures(std::function<int32 *(int)> allocate_indices,
@@ -108,7 +110,15 @@ class StatelessComponent : public Component {
       float *embedding_output) override {
     LOG(FATAL) << "[" << name_ << "] Method not supported";
   }
-
+  void BulkEmbedDenseFixedFeatures(
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output, int embedding_output_size,
+      int32 *offset_array_output, int offset_array_size) override {
+    LOG(FATAL) << "[" << name_ << "] Method not supported";
+  }
+  int BulkDenseFeatureSize() const override {
+    LOG(FATAL) << "Method not supported";
+  }
   std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override {
     LOG(FATAL) << "[" << name_ << "] Method not supported";
   }
@@ -118,9 +128,9 @@ class StatelessComponent : public Component {
   }
 
  private:
-  string name_;  // component name
+  string name_;         // component name
   int batch_size_ = 1;  // number of sentences in current batch
-  int beam_size_ = 1;  // maximum beam size
+  int beam_size_ = 1;   // maximum beam size
 
   // Parent states passed to InitializeData(), and passed along in GetBeam().
   std::vector<std::vector<const TransitionState *>> parent_states_;

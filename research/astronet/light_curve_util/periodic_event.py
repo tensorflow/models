@@ -36,6 +36,13 @@ class Event(object):
     self._duration = duration
     self._t0 = t0
 
+  def __str__(self):
+    return "<period={}, duration={}, t0={}>".format(self.period, self.duration,
+                                                    self.t0)
+
+  def __repr__(self):
+    return "Event({})".format(str(self))
+
   @property
   def period(self):
     return self._period

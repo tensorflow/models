@@ -64,7 +64,7 @@ cd ${SCRATCH_DIR}
 # Download the images.
 BASE_IMAGE_URL="http://images.cocodataset.org/zips"
 
-# TRAIN_IMAGE_FILE="train2017.zip"
+TRAIN_IMAGE_FILE="train2017.zip"
 download_and_unzip ${BASE_IMAGE_URL} ${TRAIN_IMAGE_FILE}
 TRAIN_IMAGE_DIR="${SCRATCH_DIR}/train2017"
 
@@ -91,7 +91,7 @@ download_and_unzip ${BASE_IMAGE_INFO_URL} ${IMAGE_INFO_FILE}
 
 TESTDEV_ANNOTATIONS_FILE="${SCRATCH_DIR}/annotations/image_info_test-dev2017.json"
 
-# # Build TFRecords of the image data.
+# Build TFRecords of the image data.
 cd "${CURRENT_DIR}"
 python object_detection/dataset_tools/create_coco_tf_record.py \
   --logtostderr \

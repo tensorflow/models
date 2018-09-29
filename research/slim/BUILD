@@ -80,7 +80,7 @@ py_binary(
     ],
 )
 
-py_binary(
+py_library(
     name = "cifar10",
     srcs = ["datasets/cifar10.py"],
     deps = [
@@ -89,7 +89,7 @@ py_binary(
     ],
 )
 
-py_binary(
+py_library(
     name = "flowers",
     srcs = ["datasets/flowers.py"],
     deps = [
@@ -98,7 +98,7 @@ py_binary(
     ],
 )
 
-py_binary(
+py_library(
     name = "imagenet",
     srcs = ["datasets/imagenet.py"],
     deps = [
@@ -107,7 +107,7 @@ py_binary(
     ],
 )
 
-py_binary(
+py_library(
     name = "mnist",
     srcs = ["datasets/mnist.py"],
     deps = [
@@ -205,6 +205,7 @@ py_library(
         ":nasnet",
         ":overfeat",
         ":pix2pix",
+        ":pnasnet",
         ":resnet_v1",
         ":resnet_v2",
         ":vgg",
@@ -434,7 +435,6 @@ py_library(
     srcs = glob(["nets/mobilenet/*.py"]),
     srcs_version = "PY2AND3",
     deps = [
-        "//third_party/py/contextlib2",
         # "//tensorflow",
     ],
 )
@@ -530,6 +530,29 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":nasnet",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "pnasnet",
+    srcs = ["nets/nasnet/pnasnet.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet",
+        ":nasnet_utils",
+        # "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "pnasnet_test",
+    size = "large",
+    srcs = ["nets/nasnet/pnasnet_test.py"],
+    shard_count = 4,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":pnasnet",
         # "//tensorflow",
     ],
 )
@@ -671,10 +694,9 @@ py_test(
     ],
 )
 
-py_binary(
-    name = "train_image_classifier",
+py_library(
+    name = "train_image_classifier_lib",
     srcs = ["train_image_classifier.py"],
-    paropts = ["--compress"],
     deps = [
         ":dataset_factory",
         ":model_deploy",
@@ -685,13 +707,30 @@ py_binary(
 )
 
 py_binary(
-    name = "eval_image_classifier",
+    name = "train_image_classifier",
+    srcs = ["train_image_classifier.py"],
+    paropts = ["--compress"],
+    deps = [
+        ":train_image_classifier_lib",
+    ],
+)
+
+py_library(
+    name = "eval_image_classifier_lib",
     srcs = ["eval_image_classifier.py"],
     deps = [
         ":dataset_factory",
         ":nets_factory",
         ":preprocessing_factory",
         # "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "eval_image_classifier",
+    srcs = ["eval_image_classifier.py"],
+    deps = [
+        ":eval_image_classifier_lib",
     ],
 )
 

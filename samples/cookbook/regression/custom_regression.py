@@ -31,11 +31,6 @@ parser.add_argument('--train_steps', default=1000, type=int,
 parser.add_argument('--price_norm_factor', default=1000., type=float,
                     help='price normalization factor')
 
-
-def from_dataset(ds):
-    return lambda: ds.make_one_shot_iterator().get_next()
-
-
 def my_dnn_regression_fn(features, labels, mode, params):
   """A model function implementing DNN regression for a custom Estimator."""
 
@@ -81,6 +76,10 @@ def my_dnn_regression_fn(features, labels, mode, params):
   # Calculate root mean squared error
   print(labels)
   print(predictions)
+
+  # Fixed for #4083
+  predictions = tf.cast(predictions, tf.float64)
+
   rmse = tf.metrics.root_mean_squared_error(labels, predictions)
 
   # Add the rmse to the collection of evaluation metrics.
@@ -102,17 +101,11 @@ def main(argv):
   train_y /= args.price_norm_factor
   test_y /= args.price_norm_factor
 
-  # Build the training dataset.
-  train = (
-      automobile_data.make_dataset(train_x, train_y)
-      # Shuffling with a buffer larger than the data set ensures
-      # that the examples are well mixed.
-      .shuffle(1000).batch(args.batch_size)
-      # Repeat forever
-      .repeat())
+  # Provide the training input dataset.
+  train_input_fn = automobile_data.make_dataset(args.batch_size, train_x, train_y, True, 1000)
 
   # Build the validation dataset.
-  test = automobile_data.make_dataset(test_x, test_y).batch(args.batch_size)
+  test_input_fn = automobile_data.make_dataset(args.batch_size, test_x, test_y)
 
   # The first way assigns a unique weight to each category. To do this you must
   # specify the category's vocabulary (values outside this specification will
@@ -151,10 +144,10 @@ def main(argv):
       })
 
   # Train the model.
-  model.train(input_fn=from_dataset(train), steps=args.train_steps)
+  model.train(input_fn=train_input_fn, steps=args.train_steps)
 
   # Evaluate how the model performs on data it has not yet seen.
-  eval_result = model.evaluate(input_fn=from_dataset(test))
+  eval_result = model.evaluate(input_fn=test_input_fn)
 
   # Print the Root Mean Square Error (RMSE).
   print("\n" + 80 * "*")

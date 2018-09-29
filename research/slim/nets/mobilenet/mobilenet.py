@@ -22,8 +22,6 @@ import contextlib
 import copy
 import os
 
-import contextlib2
-
 import tensorflow as tf
 
 
@@ -76,17 +74,23 @@ def _set_arg_scope_defaults(defaults):
   """Sets arg scope defaults for all items present in defaults.
 
   Args:
-    defaults: dictionary mapping function to default_dict
+    defaults: dictionary/list of pairs, containing a mapping from
+    function to a dictionary of default args.
 
   Yields:
-    context manager
+    context manager where all defaults are set.
   """
-  with contextlib2.ExitStack() as stack:
-    _ = [
-        stack.enter_context(slim.arg_scope(func, **default_arg))
-        for func, default_arg in defaults.items()
-    ]
+  if hasattr(defaults, 'items'):
+    items = list(defaults.items())
+  else:
+    items = defaults
+  if not items:
     yield
+  else:
+    func, default_arg = items[0]
+    with slim.arg_scope(func, **default_arg):
+      with _set_arg_scope_defaults(items[1:]):
+        yield
 
 
 @slim.add_arg_scope
@@ -108,6 +112,37 @@ _Op = collections.namedtuple('Op', ['op', 'params', 'multiplier_func'])
 def op(opfunc, **params):
   multiplier = params.pop('multiplier_transorm', depth_multiplier)
   return _Op(opfunc, params=params, multiplier_func=multiplier)
+
+
+class NoOpScope(object):
+  """No-op context manager."""
+
+  def __enter__(self):
+    return None
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    return False
+
+
+def safe_arg_scope(funcs, **kwargs):
+  """Returns `slim.arg_scope` with all None arguments removed.
+
+  Arguments:
+    funcs: Functions to pass to `arg_scope`.
+    **kwargs: Arguments to pass to `arg_scope`.
+
+  Returns:
+    arg_scope or No-op context manager.
+
+  Note: can be useful if None value should be interpreted as "do not overwrite
+    this parameter value".
+  """
+  filtered_args = {name: value for name, value in kwargs.items()
+                   if value is not None}
+  if filtered_args:
+    return slim.arg_scope(funcs, **filtered_args)
+  else:
+    return NoOpScope()
 
 
 @slim.add_arg_scope
@@ -159,7 +194,9 @@ def mobilenet_base(  # pylint: disable=invalid-name
       only. It is safe to set it to the value matching
       training_scope(is_training=...). It is also safe to explicitly set
       it to False, even if there is outer training_scope set to to training.
-      (The network will be built in inference mode).
+      (The network will be built in inference mode). If this is set to None,
+      no arg_scope is added for slim.batch_norm's is_training parameter.
+
   Returns:
     tensor_out: output tensor.
     end_points: a set of activations for external use, for example summaries or
@@ -190,7 +227,7 @@ def mobilenet_base(  # pylint: disable=invalid-name
   # c) set all defaults
   # d) set all extra overrides.
   with _scope_all(scope, default_scope='Mobilenet'), \
-      slim.arg_scope([slim.batch_norm], is_training=is_training), \
+      safe_arg_scope([slim.batch_norm], is_training=is_training), \
       _set_arg_scope_defaults(conv_defs_defaults), \
       _set_arg_scope_defaults(conv_defs_overrides):
     # The current_stride variable keeps track of the output stride of the
@@ -390,14 +427,16 @@ def training_scope(is_training=True,
      # initialized appropriately.
   Args:
     is_training: if set to False this will ensure that all customizations are
-    set to non-training mode. This might be helpful for code that is reused
-    across both training/evaluation, but most of the time training_scope with
-    value False is not needed.
+      set to non-training mode. This might be helpful for code that is reused
+      across both training/evaluation, but most of the time training_scope with
+      value False is not needed. If this is set to None, the parameters is not
+      added to the batch_norm arg_scope.
 
     weight_decay: The weight decay to use for regularizing the model.
     stddev: Standard deviation for initialization, if negative uses xavier.
-    dropout_keep_prob: dropout keep probability
-    bn_decay: decay for the batch norm moving averages.
+    dropout_keep_prob: dropout keep probability (not set if equals to None).
+    bn_decay: decay for the batch norm moving averages (not set if equals to
+      None).
 
   Returns:
     An argument scope to use via arg_scope.
@@ -405,10 +444,9 @@ def training_scope(is_training=True,
   # Note: do not introduce parameters that would change the inference
   # model here (for example whether to use bias), modify conv_def instead.
   batch_norm_params = {
-      'is_training': is_training,
       'decay': bn_decay,
+      'is_training': is_training
   }
-
   if stddev < 0:
     weight_intitializer = slim.initializers.xavier_initializer()
   else:
@@ -420,8 +458,8 @@ def training_scope(is_training=True,
       weights_initializer=weight_intitializer,
       normalizer_fn=slim.batch_norm), \
       slim.arg_scope([mobilenet_base, mobilenet], is_training=is_training),\
-      slim.arg_scope([slim.batch_norm], **batch_norm_params), \
-      slim.arg_scope([slim.dropout], is_training=is_training,
+      safe_arg_scope([slim.batch_norm], **batch_norm_params), \
+      safe_arg_scope([slim.dropout], is_training=is_training,
                      keep_prob=dropout_keep_prob), \
       slim.arg_scope([slim.conv2d], \
                      weights_regularizer=slim.l2_regularizer(weight_decay)), \

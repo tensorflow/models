@@ -17,18 +17,19 @@
 # Script to download and preprocess the PASCAL VOC 2012 dataset.
 #
 # Usage:
-#   bash ./download_and_preprocess_voc2012.sh
+#   bash ./download_and_convert_voc2012.sh
 #
 # The folder structure is assumed to be:
-#  + data
+#  + datasets
 #     - build_data.py
 #     - build_voc2012_data.py
-#     - download_and_preprocess_voc2012.sh
+#     - download_and_convert_voc2012.sh
 #     - remove_gt_colormap.py
-#     + VOCdevkit
-#       + VOC2012
-#         + JPEGImages
-#         + SegmentationClass
+#     + pascal_voc_seg
+#       + VOCdevkit
+#         + VOC2012
+#           + JPEGImages
+#           + SegmentationClass
 #
 
 # Exit immediately if a command exits with a non-zero status.
@@ -36,27 +37,27 @@ set -e
 
 CURRENT_DIR=$(pwd)
 WORK_DIR="./pascal_voc_seg"
-mkdir -p ${WORK_DIR}
-cd ${WORK_DIR}
+mkdir -p "${WORK_DIR}"
+cd "${WORK_DIR}"
 
 # Helper function to download and unpack VOC 2012 dataset.
-function download_and_uncompress() {
+download_and_uncompress() {
   local BASE_URL=${1}
   local FILENAME=${2}
 
-  if [ ! -f ${FILENAME} ]; then
+  if [ ! -f "${FILENAME}" ]; then
     echo "Downloading ${FILENAME} to ${WORK_DIR}"
     wget -nd -c "${BASE_URL}/${FILENAME}"
   fi
   echo "Uncompressing ${FILENAME}"
-  tar -xf ${FILENAME}
+  tar -xf "${FILENAME}"
 }
 
 # Download the images.
 BASE_URL="http://host.robots.ox.ac.uk/pascal/VOC/voc2012/"
 FILENAME="VOCtrainval_11-May-2012.tar"
 
-download_and_uncompress ${BASE_URL} ${FILENAME}
+download_and_uncompress "${BASE_URL}" "${FILENAME}"
 
 cd "${CURRENT_DIR}"
 

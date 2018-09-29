@@ -79,23 +79,43 @@ class BiaffineDigraphNetwork(network_units.NetworkUnitInterface):
     self._source_dim = self._linked_feature_dims['sources']
     self._target_dim = self._linked_feature_dims['targets']
 
-    # TODO(googleuser): Make parameter initialization configurable.
     self._weights = []
-    self._weights.append(tf.get_variable(
-        'weights_arc', [self._source_dim, self._target_dim], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4)))
-    self._weights.append(tf.get_variable(
-        'weights_source', [self._source_dim], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4)))
-    self._weights.append(tf.get_variable(
-        'root', [self._source_dim], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4)))
+    self._weights.append(
+        tf.get_variable('weights_arc', [self._source_dim, self._target_dim],
+                        tf.float32, tf.orthogonal_initializer()))
+    self._weights.append(
+        tf.get_variable('weights_source', [self._source_dim], tf.float32,
+                        tf.zeros_initializer()))
+    self._weights.append(
+        tf.get_variable('root', [self._source_dim], tf.float32,
+                        tf.zeros_initializer()))
 
     self._params.extend(self._weights)
     self._regularized_weights.extend(self._weights)
 
+    # Add runtime hooks for pre-computed weights.
+    self._derived_params.append(self._get_root_weights)
+    self._derived_params.append(self._get_root_bias)
+
     # Negative Layer.dim indicates that the dimension is dynamic.
     self._layers.append(network_units.Layer(component, 'adjacency', -1))
+
+  def _get_root_weights(self):
+    """Pre-computes the product of the root embedding and arc weights."""
+    weights_arc = self._component.get_variable('weights_arc')
+    root = self._component.get_variable('root')
+    name = self._component.name + '/root_weights'
+    with tf.name_scope(None):
+      return tf.matmul(tf.expand_dims(root, 0), weights_arc, name=name)
+
+  def _get_root_bias(self):
+    """Pre-computes the product of the root embedding and source weights."""
+    weights_source = self._component.get_variable('weights_source')
+    root = self._component.get_variable('root')
+    name = self._component.name + '/root_bias'
+    with tf.name_scope(None):
+      return tf.matmul(
+          tf.expand_dims(root, 0), tf.expand_dims(weights_source, 1), name=name)
 
   def create(self,
              fixed_embeddings,
@@ -133,11 +153,16 @@ class BiaffineDigraphNetwork(network_units.NetworkUnitInterface):
     sources_bxnxn = digraph_ops.ArcSourcePotentialsFromTokens(
         source_tokens_bxnxs, weights_source)
     roots_bxn = digraph_ops.RootPotentialsFromTokens(
-        root, target_tokens_bxnxt, weights_arc)
+        root, target_tokens_bxnxt, weights_arc, weights_source)
 
     # Combine them into a single matrix with the roots on the diagonal.
     adjacency_bxnxn = digraph_ops.CombineArcAndRootPotentials(
         arcs_bxnxn + sources_bxnxn, roots_bxn)
+
+    # The adjacency matrix currently has sources on rows and targets on columns,
+    # but we want targets on rows so that maximizing within a row corresponds to
+    # selecting sources for a given target.
+    adjacency_bxnxn = tf.matrix_transpose(adjacency_bxnxn)
 
     return [tf.reshape(adjacency_bxnxn, [-1, num_tokens])]
 

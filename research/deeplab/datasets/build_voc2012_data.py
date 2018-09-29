@@ -50,7 +50,6 @@ The Example proto contains the following fields:
   image/segmentation/class/encoded: encoded semantic segmentation content.
   image/segmentation/class/format: semantic segmentation file format.
 """
-import glob
 import math
 import os.path
 import sys
@@ -114,13 +113,13 @@ def _convert_dataset(dataset_split):
         # Read the image.
         image_filename = os.path.join(
             FLAGS.image_folder, filenames[i] + '.' + FLAGS.image_format)
-        image_data = tf.gfile.FastGFile(image_filename, 'r').read()
+        image_data = tf.gfile.FastGFile(image_filename, 'rb').read()
         height, width = image_reader.read_image_dims(image_data)
         # Read the semantic segmentation annotation.
         seg_filename = os.path.join(
             FLAGS.semantic_segmentation_folder,
             filenames[i] + '.' + FLAGS.label_format)
-        seg_data = tf.gfile.FastGFile(seg_filename, 'r').read()
+        seg_data = tf.gfile.FastGFile(seg_filename, 'rb').read()
         seg_height, seg_width = label_reader.read_image_dims(seg_data)
         if height != seg_height or width != seg_width:
           raise RuntimeError('Shape mismatched between image and label.')
@@ -133,7 +132,7 @@ def _convert_dataset(dataset_split):
 
 
 def main(unused_argv):
-  dataset_splits = glob.glob(os.path.join(FLAGS.list_folder, '*.txt'))
+  dataset_splits = tf.gfile.Glob(os.path.join(FLAGS.list_folder, '*.txt'))
   for dataset_split in dataset_splits:
     _convert_dataset(dataset_split)
 

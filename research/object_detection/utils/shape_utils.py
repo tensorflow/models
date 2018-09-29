@@ -106,13 +106,49 @@ def pad_or_clip_tensor(t, length):
       length is an integer, the first dimension of the processed tensor is set
       to length statically.
   """
-  processed_t = tf.cond(
-      tf.greater(tf.shape(t)[0], length),
-      lambda: clip_tensor(t, length),
-      lambda: pad_tensor(t, length))
-  if not _is_tensor(length):
-    processed_t = _set_dim_0(processed_t, length)
-  return processed_t
+  return pad_or_clip_nd(t, [length] + t.shape.as_list()[1:])
+
+
+def pad_or_clip_nd(tensor, output_shape):
+  """Pad or Clip given tensor to the output shape.
+
+  Args:
+    tensor: Input tensor to pad or clip.
+    output_shape: A list of integers / scalar tensors (or None for dynamic dim)
+      representing the size to pad or clip each dimension of the input tensor.
+
+  Returns:
+    Input tensor padded and clipped to the output shape.
+  """
+  tensor_shape = tf.shape(tensor)
+  clip_size = [
+      tf.where(tensor_shape[i] - shape > 0, shape, -1)
+      if shape is not None else -1 for i, shape in enumerate(output_shape)
+  ]
+  clipped_tensor = tf.slice(
+      tensor,
+      begin=tf.zeros(len(clip_size), dtype=tf.int32),
+      size=clip_size)
+
+  # Pad tensor if the shape of clipped tensor is smaller than the expected
+  # shape.
+  clipped_tensor_shape = tf.shape(clipped_tensor)
+  trailing_paddings = [
+      shape - clipped_tensor_shape[i] if shape is not None else 0
+      for i, shape in enumerate(output_shape)
+  ]
+  paddings = tf.stack(
+      [
+          tf.zeros(len(trailing_paddings), dtype=tf.int32),
+          trailing_paddings
+      ],
+      axis=1)
+  padded_tensor = tf.pad(clipped_tensor, paddings=paddings)
+  output_static_shape = [
+      dim if not isinstance(dim, tf.Tensor) else None for dim in output_shape
+  ]
+  padded_tensor.set_shape(output_static_shape)
+  return padded_tensor
 
 
 def combined_static_and_dynamic_shape(tensor):
@@ -307,3 +343,25 @@ def assert_shape_equal_along_first_dimension(shape_a, shape_b):
   else:
     return tf.assert_equal(shape_a[0], shape_b[0])
 
+
+def assert_box_normalized(boxes, maximum_normalized_coordinate=1.1):
+  """Asserts the input box tensor is normalized.
+
+  Args:
+    boxes: a tensor of shape [N, 4] where N is the number of boxes.
+    maximum_normalized_coordinate: Maximum coordinate value to be considered
+      as normalized, default to 1.1.
+
+  Returns:
+    a tf.Assert op which fails when the input box tensor is not normalized.
+
+  Raises:
+    ValueError: When the input box tensor is not normalized.
+  """
+  box_minimum = tf.reduce_min(boxes)
+  box_maximum = tf.reduce_max(boxes)
+  return tf.Assert(
+      tf.logical_and(
+          tf.less_equal(box_maximum, maximum_normalized_coordinate),
+          tf.greater_equal(box_minimum, 0)),
+      [boxes])

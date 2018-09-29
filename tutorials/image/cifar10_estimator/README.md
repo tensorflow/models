@@ -13,7 +13,7 @@ Before trying to run the model we highly encourage you to read all the README.
 
 ## Prerequisite
 
-1. [Install](https://www.tensorflow.org/install/) TensorFlow version 1.2.1 or
+1. [Install](https://www.tensorflow.org/install/) TensorFlow version 1.9.0 or
 later.
 
 2. Download the CIFAR-10 dataset and generate TFRecord files using the provided

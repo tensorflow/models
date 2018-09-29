@@ -1,5 +1,7 @@
 # Preparing Inputs
 
+[TOC]
+
 To use your own dataset in Tensorflow Object Detection API, you must convert it
 into the [TFRecord file format](https://www.tensorflow.org/api_guides/python/python_io#tfrecords_format_details).
 This document outlines how to write a script to generate the TFRecord file.
@@ -86,7 +88,7 @@ def create_cat_tf_example(encoded_cat_image_data):
   return tf_example
 ```
 
-## Conversion Script Outline
+## Conversion Script Outline {#conversion-script-outline}
 
 A typical conversion script will look like the following:
 
@@ -159,3 +161,49 @@ currently unused by the API and are optional.
 Note: Please refer to the section on [Running an Instance Segmentation
 Model](instance_segmentation.md) for instructions on how to configure a model
 that predicts masks in addition to object bounding boxes.
+
+## Sharding datasets
+
+When you have more than a few thousand examples, it is beneficial to shard your
+dataset into multiple files:
+
+*   tf.data.Dataset API can read input examples in parallel improving
+    throughput.
+*   tf.data.Dataset API can shuffle the examples better with sharded files which
+    improves performance of the model slightly.
+
+Instead of writing all tf.Example protos to a single file as shown in
+[conversion script outline](#conversion-script-outline), use the snippet below.
+
+```python
+import contextlib2
+from google3.third_party.tensorflow_models.object_detection.dataset_tools import tf_record_creation_util
+
+num_shards=10
+output_filebase='/path/to/train_dataset.record'
+
+with contextlib2.ExitStack() as tf_record_close_stack:
+  output_tfrecords = tf_record_creation_util.open_sharded_output_tfrecords(
+      tf_record_close_stack, output_filebase, num_shards)
+  for index, example in examples:
+    tf_example = create_tf_example(example)
+    output_shard_index = index % num_shards
+    output_tfrecords[output_shard_index].write(tf_example.SerializeToString())
+```
+
+This will produce the following output files
+
+```bash
+/path/to/train_dataset.record-00000-00010
+/path/to/train_dataset.record-00001-00010
+...
+/path/to/train_dataset.record-00009-00010
+```
+
+which can then be used in the config file as below.
+
+```bash
+tf_record_input_reader {
+  input_path: "/path/to/train_dataset.record-?????-of-00010"
+}
+```

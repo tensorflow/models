@@ -44,6 +44,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     object_class_label = [1, 1, 2]
     object_difficult = [1, 0, 0]
     object_group_of = [0, 0, 1]
+    verified_labels = [1, 2, 3, 4]
     detection_class_label = [2, 1]
     detection_score = [0.5, 0.3]
     features = {
@@ -113,9 +114,19 @@ class TfExampleDecoderTest(tf.test.TestCase):
     example = tf.train.Example(features=tf.train.Features(feature=features))
     results_dict = parser.parse(example)
     self.assertIsNotNone(results_dict)
-    np_testing.assert_almost_equal(
+    np_testing.assert_equal(
         object_group_of,
         results_dict[fields.InputDataFields.groundtruth_group_of])
+
+    features[fields.TfExampleFields.image_class_label] = (
+        self._Int64Feature(verified_labels))
+
+    example = tf.train.Example(features=tf.train.Features(feature=features))
+    results_dict = parser.parse(example)
+    self.assertIsNotNone(results_dict)
+    np_testing.assert_equal(
+        verified_labels,
+        results_dict[fields.InputDataFields.groundtruth_image_classes])
 
   def testParseString(self):
     string_val = 'abc'

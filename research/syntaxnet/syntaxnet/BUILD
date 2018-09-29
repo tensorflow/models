@@ -11,63 +11,66 @@ package(
 licenses(["notice"])  # Apache 2.0
 
 load(
-    "syntaxnet",
-    "tf_proto_library",
-    "tf_proto_library_py",
+    "@org_tensorflow//tensorflow:tensorflow.bzl",
     "tf_gen_op_libs",
     "tf_gen_op_wrapper_py",
+)
+load(
+    ":syntaxnet.bzl",
+    "tf_proto_library_cc",
+    "tf_proto_library_py",
 )
 
 # proto libraries
 
-tf_proto_library(
+tf_proto_library_cc(
     name = "feature_extractor_proto",
     srcs = ["feature_extractor.proto"],
 )
 
-tf_proto_library(
+tf_proto_library_cc(
     name = "sentence_proto",
     srcs = ["sentence.proto"],
 )
 
 tf_proto_library_py(
-    name = "sentence_py_pb2",
+    name = "sentence_pb2",
     srcs = ["sentence.proto"],
 )
 
-tf_proto_library(
+tf_proto_library_cc(
     name = "dictionary_proto",
     srcs = ["dictionary.proto"],
 )
 
 tf_proto_library_py(
-    name = "dictionary_py_pb2",
+    name = "dictionary_pb2",
     srcs = ["dictionary.proto"],
 )
 
-tf_proto_library(
+tf_proto_library_cc(
     name = "kbest_syntax_proto",
     srcs = ["kbest_syntax.proto"],
-    deps = [":sentence_proto"],
+    protodeps = [":sentence_proto"],
 )
 
-tf_proto_library(
+tf_proto_library_cc(
     name = "task_spec_proto",
     srcs = ["task_spec.proto"],
 )
 
 tf_proto_library_py(
-    name = "task_spec_py_pb2",
+    name = "task_spec_pb2",
     srcs = ["task_spec.proto"],
 )
 
-tf_proto_library(
+tf_proto_library_cc(
     name = "sparse_proto",
     srcs = ["sparse.proto"],
 )
 
 tf_proto_library_py(
-    name = "sparse_py_pb2",
+    name = "sparse_pb2",
     srcs = ["sparse.proto"],
 )
 
@@ -79,11 +82,10 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_googlesource_code_re2//:re2",
-        "@protobuf_archive//:protobuf",
         "@org_tensorflow//third_party/eigen3",
     ] + select({
         "//conditions:default": [
-            "@org_tensorflow//tensorflow/core:framework",
+            "@org_tensorflow//tensorflow/core:framework_headers_lib",
             "@org_tensorflow//tensorflow/core:lib",
         ],
         "@org_tensorflow//tensorflow:darwin": [
@@ -122,7 +124,7 @@ cc_library(
     hdrs = ["document_format.h"],
     deps = [
         ":registry",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
     ],
 )
@@ -134,7 +136,7 @@ cc_library(
         ":base",
         ":document_format",
         ":segmenter_utils",
-        ":sentence_proto",
+        ":sentence_proto_cc",
     ],
     alwayslink = 1,
 )
@@ -144,7 +146,7 @@ cc_library(
     srcs = ["fml_parser.cc"],
     hdrs = ["fml_parser.h"],
     deps = [
-        ":feature_extractor_proto",
+        ":feature_extractor_proto_cc",
         ":utils",
     ],
 )
@@ -153,9 +155,9 @@ cc_library(
     name = "proto_io",
     hdrs = ["proto_io.h"],
     deps = [
-        ":feature_extractor_proto",
+        ":feature_extractor_proto_cc",
         ":fml_parser",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
     ],
 )
@@ -168,6 +170,7 @@ cc_library(
         ":registry",
         ":utils",
         "//util/utf8:unicodetext",
+        "@com_google_absl//absl/base:core_headers",
     ],
     alwayslink = 1,
 )
@@ -190,7 +193,7 @@ cc_library(
     deps = [
         ":base",
         ":char_properties",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         "//util/utf8:unicodetext",
     ],
     alwayslink = 1,
@@ -205,9 +208,9 @@ cc_library(
     ],
     deps = [
         ":document_format",
-        ":feature_extractor_proto",
+        ":feature_extractor_proto_cc",
         ":proto_io",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
         ":utils",
         ":workspace",
@@ -219,9 +222,9 @@ cc_library(
     srcs = ["affix.cc"],
     hdrs = ["affix.h"],
     deps = [
-        ":dictionary_proto",
+        ":dictionary_proto_cc",
         ":feature_extractor",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":shared_store",
         ":term_frequency_map",
         ":utils",
@@ -276,7 +279,9 @@ cc_library(
     srcs = ["registry.cc"],
     hdrs = ["registry.h"],
     deps = [
+        ":base",
         ":utils",
+        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 
@@ -294,7 +299,7 @@ cc_library(
     srcs = ["task_context.cc"],
     hdrs = ["task_context.h"],
     deps = [
-        ":task_spec_proto",
+        ":task_spec_proto_cc",
         ":utils",
     ],
 )
@@ -307,7 +312,6 @@ cc_library(
     deps = [
         ":utils",
     ],
-    alwayslink = 1,
 )
 
 cc_library(
@@ -319,7 +323,7 @@ cc_library(
         ":feature_extractor",
         ":proto_io",
         ":registry",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":utils",
     ],
 )
@@ -360,7 +364,7 @@ cc_library(
         ":registry",
         ":segmenter_utils",
         ":sentence_features",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":shared_store",
         ":task_context",
         ":term_frequency_map",
@@ -377,10 +381,10 @@ cc_library(
     srcs = ["populate_test_inputs.cc"],
     hdrs = ["populate_test_inputs.h"],
     deps = [
-        ":dictionary_proto",
-        ":sentence_proto",
+        ":dictionary_proto_cc",
+        ":sentence_proto_cc",
         ":task_context",
-        ":task_spec_proto",
+        ":task_spec_proto_cc",
         ":term_frequency_map",
         ":test_main",
     ],
@@ -395,7 +399,7 @@ cc_library(
         ":feature_extractor",
         ":parser_transitions",
         ":sentence_features",
-        ":sparse_proto",
+        ":sparse_proto_cc",
         ":task_context",
         ":utils",
         ":workspace",
@@ -420,10 +424,10 @@ cc_library(
         ":embedding_feature_extractor",
         ":feature_extractor",
         ":parser_transitions",
-        ":sentence_proto",
-        ":sparse_proto",
+        ":sentence_proto_cc",
+        ":sparse_proto_cc",
         ":task_context",
-        ":task_spec_proto",
+        ":task_spec_proto_cc",
         ":term_frequency_map",
         ":workspace",
     ],
@@ -438,10 +442,10 @@ cc_library(
     deps = [
         ":parser_transitions",
         ":sentence_batch",
-        ":sentence_proto",
-        ":sparse_proto",
+        ":sentence_proto_cc",
+        ":sparse_proto_cc",
         ":task_context",
-        ":task_spec_proto",
+        ":task_spec_proto_cc",
     ],
     alwayslink = 1,
 )
@@ -454,7 +458,7 @@ cc_library(
         ":parser_transitions",
         ":segmenter_utils",
         ":sentence_batch",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
         ":text_formats",
     ],
@@ -472,7 +476,7 @@ cc_library(
         ":parser_transitions",
         ":segmenter_utils",
         ":sentence_batch",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":term_frequency_map",
         ":text_formats",
         ":utils",
@@ -484,10 +488,18 @@ cc_library(
     name = "unpack_sparse_features",
     srcs = ["unpack_sparse_features.cc"],
     deps = [
-        ":sparse_proto",
+        ":sparse_proto_cc",
         ":utils",
     ],
     alwayslink = 1,
+)
+
+cc_library(
+    name = "shape_helpers",
+    hdrs = ["ops/shape_helpers.h"],
+    deps = [
+        "@org_tensorflow//tensorflow/core:framework_headers_lib",
+    ],
 )
 
 cc_library(
@@ -498,6 +510,7 @@ cc_library(
         ":document_filters",
         ":lexicon_builder",
         ":reader_ops",
+        ":shape_helpers",
         ":unpack_sparse_features",
     ],
     alwayslink = 1,
@@ -581,7 +594,7 @@ cc_test(
     deps = [
         ":base",
         ":segmenter_utils",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":test_main",
     ],
 )
@@ -605,9 +618,9 @@ cc_test(
         ":feature_extractor",
         ":populate_test_inputs",
         ":sentence_features",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
-        ":task_spec_proto",
+        ":task_spec_proto_cc",
         ":term_frequency_map",
         ":test_main",
         ":utils",
@@ -622,7 +635,7 @@ cc_test(
     deps = [
         ":feature_extractor",
         ":parser_transitions",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
         ":term_frequency_map",
         ":test_main",
@@ -648,8 +661,8 @@ cc_test(
     deps = [
         ":parser_transitions",
         ":populate_test_inputs",
-        ":sentence_proto",
-        ":task_spec_proto",
+        ":sentence_proto_cc",
+        ":task_spec_proto_cc",
         ":test_main",
     ],
 )
@@ -662,8 +675,8 @@ cc_test(
     deps = [
         ":parser_transitions",
         ":populate_test_inputs",
-        ":sentence_proto",
-        ":task_spec_proto",
+        ":sentence_proto_cc",
+        ":task_spec_proto_cc",
         ":test_main",
     ],
 )
@@ -674,7 +687,7 @@ cc_test(
     srcs = ["binary_segment_transitions_test.cc"],
     deps = [
         ":parser_transitions",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
         ":test_main",
         ":workspace",
@@ -689,8 +702,8 @@ cc_test(
     deps = [
         ":parser_transitions",
         ":populate_test_inputs",
-        ":sentence_proto",
-        ":task_spec_proto",
+        ":sentence_proto_cc",
+        ":task_spec_proto_cc",
         ":test_main",
     ],
 )
@@ -702,7 +715,7 @@ cc_test(
     deps = [
         ":base",
         ":parser_transitions",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
         ":term_frequency_map",
         ":test_main",
@@ -716,7 +729,7 @@ cc_test(
     deps = [
         ":base",
         ":parser_transitions",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
         ":term_frequency_map",
         ":test_main",
@@ -730,7 +743,7 @@ cc_test(
     deps = [
         ":base",
         ":parser_transitions",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
         ":term_frequency_map",
         ":test_main",
@@ -744,7 +757,7 @@ cc_test(
     deps = [
         ":base",
         ":parser_transitions",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
         ":term_frequency_map",
         ":test_main",
@@ -759,12 +772,61 @@ cc_test(
         ":feature_extractor",
         ":parser_transitions",
         ":populate_test_inputs",
-        ":sentence_proto",
+        ":sentence_proto_cc",
         ":task_context",
-        ":task_spec_proto",
+        ":task_spec_proto_cc",
         ":term_frequency_map",
         ":test_main",
         ":workspace",
+    ],
+)
+
+cc_test(
+    name = "term_frequency_map_test",
+    size = "small",
+    srcs = ["term_frequency_map_test.cc"],
+    deps = [
+        ":base",
+        ":term_frequency_map",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "fml_parser_test",
+    srcs = ["fml_parser_test.cc"],
+    deps = [
+        ":base",
+        ":feature_extractor_proto_cc",
+        ":fml_parser",
+        ":test_main",
+        "@org_tensorflow//tensorflow/core:lib",
+        "@org_tensorflow//tensorflow/core:test",
+    ],
+)
+
+cc_test(
+    name = "registry_test",
+    srcs = ["registry_test.cc"],
+    deps = [
+        ":base",
+        ":registry",
+        ":test_main",
+        "//dragnn/core/test:generic",
+        "@org_tensorflow//tensorflow/core:test",
+    ],
+)
+
+cc_test(
+    name = "registry_test_with_duplicate",
+    srcs = ["registry_test.cc"],
+    defines = ["DRAGNN_REGISTRY_TEST_WITH_DUPLICATE"],
+    deps = [
+        ":base",
+        ":registry",
+        ":test_main",
+        "//dragnn/core/test:generic",
+        "@org_tensorflow//tensorflow/core:test",
     ],
 )
 
@@ -772,6 +834,7 @@ cc_test(
 
 tf_gen_op_libs(
     op_lib_names = ["parser_ops"],
+    deps = [":shape_helpers"],
 )
 
 tf_gen_op_wrapper_py(
@@ -819,7 +882,9 @@ py_binary(
     deps = [
         ":graph_builder",
         ":structured_graph_builder",
-        ":task_spec_py_pb2",
+        ":task_spec_pb2_py",
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
     ],
 )
 
@@ -828,9 +893,11 @@ py_binary(
     srcs = ["parser_eval.py"],
     deps = [
         ":graph_builder",
-        ":sentence_py_pb2",
+        ":sentence_pb2_py",
         ":structured_graph_builder",
-        ":task_spec_py_pb2",
+        ":task_spec_pb2_py",
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
     ],
 )
 
@@ -839,7 +906,18 @@ py_binary(
     srcs = ["conll2tree.py"],
     deps = [
         ":graph_builder",
-        ":sentence_py_pb2",
+        ":sentence_pb2_py",
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
+    ],
+)
+
+py_library(
+    name = "test_flags",
+    srcs = ["test_flags.py"],
+    deps = [
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -851,8 +929,9 @@ py_test(
     srcs = ["lexicon_builder_test.py"],
     deps = [
         ":graph_builder",
-        ":sentence_py_pb2",
-        ":task_spec_py_pb2",
+        ":sentence_pb2_py",
+        ":task_spec_pb2_py",
+        "//syntaxnet:test_flags",
     ],
 )
 
@@ -862,8 +941,9 @@ py_test(
     srcs = ["text_formats_test.py"],
     deps = [
         ":graph_builder",
-        ":sentence_py_pb2",
-        ":task_spec_py_pb2",
+        ":sentence_pb2_py",
+        ":task_spec_pb2_py",
+        "//syntaxnet:test_flags",
     ],
 )
 
@@ -874,9 +954,10 @@ py_test(
     data = [":testdata"],
     tags = ["notsan"],
     deps = [
-        ":dictionary_py_pb2",
+        ":dictionary_pb2_py",
         ":graph_builder",
-        ":sparse_py_pb2",
+        ":sparse_pb2_py",
+        "//syntaxnet:test_flags",
     ],
 )
 
@@ -888,6 +969,7 @@ py_test(
     tags = ["notsan"],
     deps = [
         ":structured_graph_builder",
+        "//syntaxnet:test_flags",
     ],
 )
 
@@ -901,7 +983,8 @@ py_test(
     tags = ["notsan"],
     deps = [
         ":graph_builder",
-        ":sparse_py_pb2",
+        ":sparse_pb2_py",
+        "//syntaxnet:test_flags",
     ],
 )
 

@@ -123,6 +123,22 @@ class UtilTest(tf.test.TestCase):
     self.assertTrue(tf.contrib.framework.is_tensor(combined_shape[0]))
     self.assertListEqual(combined_shape[1:], [2, 3])
 
+  def test_pad_or_clip_nd_tensor(self):
+    tensor_placeholder = tf.placeholder(tf.float32, [None, 5, 4, 7])
+    output_tensor = shape_utils.pad_or_clip_nd(
+        tensor_placeholder, [None, 3, 5, tf.constant(6)])
+
+    self.assertAllEqual(output_tensor.shape.as_list(), [None, 3, 5, None])
+
+    with self.test_session() as sess:
+      output_tensor_np = sess.run(
+          output_tensor,
+          feed_dict={
+              tensor_placeholder: np.random.rand(2, 5, 4, 7),
+          })
+
+    self.assertAllEqual(output_tensor_np.shape, [2, 3, 5, 6])
+
 
 class StaticOrDynamicMapFnTest(tf.test.TestCase):
 

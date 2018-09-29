@@ -1,0 +1,1 @@
+{"inherits": ["config/algos/mve_tdk.json", "config/core/bayesian", "config/envs/humanoid.json"]}

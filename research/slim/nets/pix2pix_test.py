@@ -24,18 +24,6 @@ from nets import pix2pix
 
 class GeneratorTest(tf.test.TestCase):
 
-  def test_nonsquare_inputs_raise_exception(self):
-    batch_size = 2
-    height, width = 240, 320
-    num_outputs = 4
-
-    images = tf.ones((batch_size, height, width, 3))
-
-    with self.assertRaises(ValueError):
-      with tf.contrib.framework.arg_scope(pix2pix.pix2pix_arg_scope()):
-        pix2pix.pix2pix_generator(
-            images, num_outputs, upsample_method='nn_upsample_conv')
-
   def _reduced_default_blocks(self):
     """Returns the default blocks, scaled down to make test run faster."""
     return [pix2pix.Block(b.num_filters // 32, b.decoder_keep_prob)

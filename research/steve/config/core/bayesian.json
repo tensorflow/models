@@ -1,0 +1,26 @@
+{
+  "updates": {
+    "policy_config": {
+      "bayesian": {
+        "ensemble_size": 4,
+        "train_sample_count": 4,
+        "eval_sample_count": 4
+      }
+    },
+
+    "*model_config": {
+      "bayesian": {
+        "transition": {
+          "ensemble_size": 4,
+          "train_sample_count": 4,
+          "eval_sample_count": 4
+        },
+        "reward": {
+          "ensemble_size": 4,
+          "train_sample_count": 4,
+          "eval_sample_count": 4
+        }
+      }
+    }
+  }
+}

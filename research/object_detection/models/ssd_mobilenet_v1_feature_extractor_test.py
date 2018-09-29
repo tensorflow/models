@@ -27,8 +27,7 @@ class SsdMobilenetV1FeatureExtractorTest(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                is_training=True, batch_norm_trainable=True,
-                                use_explicit_padding=False):
+                                is_training=True, use_explicit_padding=False):
     """Constructs a new feature extractor.
 
     Args:
@@ -36,8 +35,6 @@ class SsdMobilenetV1FeatureExtractorTest(
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
       is_training: whether the network is in training mode.
-      batch_norm_trainable: Whether to update batch norm parameters during
-        training or not.
       use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
@@ -45,11 +42,9 @@ class SsdMobilenetV1FeatureExtractorTest(
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
     min_depth = 32
-    with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm) as sc:
-      conv_hyperparams = sc
     return ssd_mobilenet_v1_feature_extractor.SSDMobileNetV1FeatureExtractor(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, batch_norm_trainable=batch_norm_trainable,
+        self.conv_hyperparams_fn,
         use_explicit_padding=use_explicit_padding)
 
   def test_extract_features_returns_correct_shapes_128(self):
@@ -153,7 +148,7 @@ class SsdMobilenetV1FeatureExtractorTest(
     self.check_feature_extractor_variables_under_scope(
         depth_multiplier, pad_to_multiple, scope_name)
 
-  def test_nofused_batchnorm(self):
+  def test_has_fused_batchnorm(self):
     image_height = 40
     image_width = 40
     depth_multiplier = 1
@@ -164,8 +159,8 @@ class SsdMobilenetV1FeatureExtractorTest(
                                                        pad_to_multiple)
     preprocessed_image = feature_extractor.preprocess(image_placeholder)
     _ = feature_extractor.extract_features(preprocessed_image)
-    self.assertFalse(any(op.type == 'FusedBatchNorm'
-                         for op in tf.get_default_graph().get_operations()))
+    self.assertTrue(any(op.type == 'FusedBatchNorm'
+                        for op in tf.get_default_graph().get_operations()))
 
 if __name__ == '__main__':
   tf.test.main()

@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
+from absl.testing import parameterized
 import numpy as np
 
 import tensorflow as tf
@@ -27,11 +29,14 @@ import tensorflow as tf
 import data_provider
 
 
-class DataProviderTest(tf.test.TestCase):
+class DataProviderTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _test_data_provider_helper(self, split_name):
+  @parameterized.named_parameters(
+      ('train', 'train'),
+      ('validation', 'validation'))
+  def test_data_provider(self, split_name):
     dataset_dir = os.path.join(
-        tf.flags.FLAGS.test_srcdir,
+        flags.FLAGS.test_srcdir,
         'google3/third_party/tensorflow_models/gan/image_compression/testdata/')
 
     batch_size = 3
@@ -48,12 +53,6 @@ class DataProviderTest(tf.test.TestCase):
                          images_out.shape)
         # Check range.
         self.assertTrue(np.all(np.abs(images_out) <= 1.0))
-
-  def test_data_provider_train(self):
-    self._test_data_provider_helper('train')
-
-  def test_data_provider_validation(self):
-    self._test_data_provider_helper('validation')
 
 
 if __name__ == '__main__':

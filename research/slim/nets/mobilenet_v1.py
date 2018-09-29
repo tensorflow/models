@@ -120,8 +120,8 @@ slim = tf.contrib.slim
 Conv = namedtuple('Conv', ['kernel', 'stride', 'depth'])
 DepthSepConv = namedtuple('DepthSepConv', ['kernel', 'stride', 'depth'])
 
-# _CONV_DEFS specifies the MobileNet body
-_CONV_DEFS = [
+# MOBILENETV1_CONV_DEFS specifies the MobileNet body
+MOBILENETV1_CONV_DEFS = [
     Conv(kernel=[3, 3], stride=2, depth=32),
     DepthSepConv(kernel=[3, 3], stride=1, depth=64),
     DepthSepConv(kernel=[3, 3], stride=2, depth=128),
@@ -221,7 +221,7 @@ def mobilenet_v1_base(inputs,
     raise ValueError('depth_multiplier is not greater than zero.')
 
   if conv_defs is None:
-    conv_defs = _CONV_DEFS
+    conv_defs = MOBILENETV1_CONV_DEFS
 
   if output_stride is not None and output_stride not in [8, 16, 32]:
     raise ValueError('Only allowed output_stride values are 8, 16, 32.')
@@ -425,33 +425,40 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
   return kernel_size_out
 
 
-def mobilenet_v1_arg_scope(is_training=True,
-                           weight_decay=0.00004,
-                           stddev=0.09,
-                           regularize_depthwise=False,
-                           batch_norm_decay=0.9997,
-                           batch_norm_epsilon=0.001):
+def mobilenet_v1_arg_scope(
+    is_training=True,
+    weight_decay=0.00004,
+    stddev=0.09,
+    regularize_depthwise=False,
+    batch_norm_decay=0.9997,
+    batch_norm_epsilon=0.001,
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
   """Defines the default MobilenetV1 arg scope.
 
   Args:
-    is_training: Whether or not we're training the model.
+    is_training: Whether or not we're training the model. If this is set to
+      None, the parameter is not added to the batch_norm arg_scope.
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
     regularize_depthwise: Whether or not apply regularization on depthwise.
     batch_norm_decay: Decay for batch norm moving average.
     batch_norm_epsilon: Small float added to variance to avoid dividing by zero
       in batch norm.
+    batch_norm_updates_collections: Collection for the update ops for
+      batch norm.
 
   Returns:
     An `arg_scope` to use for the mobilenet v1 model.
   """
   batch_norm_params = {
-      'is_training': is_training,
       'center': True,
       'scale': True,
       'decay': batch_norm_decay,
       'epsilon': batch_norm_epsilon,
+      'updates_collections': batch_norm_updates_collections,
   }
+  if is_training is not None:
+    batch_norm_params['is_training'] = is_training
 
   # Set weight_decay for weights in Conv and DepthSepConv layers.
   weights_init = tf.truncated_normal_initializer(stddev=stddev)

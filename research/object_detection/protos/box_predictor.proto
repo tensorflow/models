@@ -4,23 +4,37 @@ package object_detection.protos;
 
 import "object_detection/protos/hyperparams.proto";
 
-
 // Configuration proto for box predictor. See core/box_predictor.py for details.
 message BoxPredictor {
   oneof box_predictor_oneof {
     ConvolutionalBoxPredictor convolutional_box_predictor = 1;
     MaskRCNNBoxPredictor mask_rcnn_box_predictor = 2;
     RfcnBoxPredictor rfcn_box_predictor = 3;
-    WeightSharedConvolutionalBoxPredictor weight_shared_convolutional_box_predictor = 4;
+    WeightSharedConvolutionalBoxPredictor
+        weight_shared_convolutional_box_predictor = 4;
   }
 }
 
+// Configuration proto for MaskHead in predictors.
+// Next id: 4
+message MaskHead {
+  // The height and the width of the predicted mask. Only used when
+  // predict_instance_masks is true.
+  optional int32 mask_height = 1 [default = 15];
+  optional int32 mask_width = 2 [default = 15];
+
+  // Whether to predict class agnostic masks. Only used when
+  // predict_instance_masks is true.
+  optional bool masks_are_class_agnostic = 3 [default = true];
+}
+
 // Configuration proto for Convolutional box predictor.
+// Next id: 13
 message ConvolutionalBoxPredictor {
   // Hyperparameters for convolution ops used in the box predictor.
   optional Hyperparams conv_hyperparams = 1;
 
-  // Minumum feature depth prior to predicting box encodings and class
+  // Minimum feature depth prior to predicting box encodings and class
   // predictions.
   optional int32 min_depth = 2 [default = 0];
 
@@ -55,9 +69,13 @@ message ConvolutionalBoxPredictor {
 
   // Whether to use depthwise separable convolution for box predictor layers.
   optional bool use_depthwise = 11 [default = false];
+
+  // Configs for a mask prediction head.
+  optional MaskHead mask_head = 12;
 }
 
 // Configuration proto for weight shared convolutional box predictor.
+// Next id: 18
 message WeightSharedConvolutionalBoxPredictor {
   // Hyperparameters for convolution ops used in the box predictor.
   optional Hyperparams conv_hyperparams = 1;
@@ -81,14 +99,51 @@ message WeightSharedConvolutionalBoxPredictor {
   // training where there are large number of negative boxes. See
   // https://arxiv.org/abs/1708.02002 for details.
   optional float class_prediction_bias_init = 10 [default = 0.0];
+
+  // Whether to use dropout for class prediction.
+  optional bool use_dropout = 11 [default = false];
+
+  // Keep probability for dropout.
+  optional float dropout_keep_probability = 12 [default = 0.8];
+
+  // Whether to share the multi-layer tower between box prediction and class
+  // prediction heads.
+  optional bool share_prediction_tower = 13 [default = false];
+
+  // Whether to use depthwise separable convolution for box predictor layers.
+  optional bool use_depthwise = 14 [default = false];
+
+  // Configs for a mask prediction head.
+  optional MaskHead mask_head = 15;
+
+  // Enum to specify how to convert the detection scores at inference time.
+  enum ScoreConverter {
+    // Input scores equals output scores.
+    IDENTITY = 0;
+
+    // Applies a sigmoid on input scores.
+    SIGMOID = 1;
+  }
+
+  // Callable elementwise score converter at inference time.
+  optional ScoreConverter score_converter = 16 [default = IDENTITY];
+
+  // If specified, apply clipping to box encodings.
+  message BoxEncodingsClipRange {
+    optional float min = 1;
+    optional float max = 2;
+  }
+  optional BoxEncodingsClipRange box_encodings_clip_range = 17;
 }
 
+// TODO(alirezafathi): Refactor the proto file to be able to configure mask rcnn
+// head easily.
 message MaskRCNNBoxPredictor {
   // Hyperparameters for fully connected ops used in the box predictor.
   optional Hyperparams fc_hyperparams = 1;
 
   // Whether to use dropout op prior to the both box and class predictions.
-  optional bool use_dropout = 2 [default= false];
+  optional bool use_dropout = 2 [default = false];
 
   // Keep probability for dropout. This is only used if use_dropout is true.
   optional float dropout_keep_probability = 3 [default = 0.5];
@@ -118,6 +173,11 @@ message MaskRCNNBoxPredictor {
   // The number of convolutions applied to image_features in the mask prediction
   // branch.
   optional int32 mask_prediction_num_conv_layers = 11 [default = 2];
+  optional bool masks_are_class_agnostic = 12 [default = false];
+
+  // Whether to use one box for all classes rather than a different box for each
+  // class.
+  optional bool share_box_across_classes = 13 [default = false];
 }
 
 message RfcnBoxPredictor {
@@ -130,13 +190,13 @@ message RfcnBoxPredictor {
   optional int32 num_spatial_bins_width = 3 [default = 3];
 
   // Target depth to reduce the input image features to.
-  optional int32 depth = 4 [default=1024];
+  optional int32 depth = 4 [default = 1024];
 
   // Size of the encoding for the boxes.
   optional int32 box_code_size = 5 [default = 4];
 
   // Size to resize the rfcn crops to.
-  optional int32 crop_height = 6 [default= 12];
+  optional int32 crop_height = 6 [default = 12];
 
-  optional int32 crop_width = 7 [default=12];
+  optional int32 crop_width = 7 [default = 12];
 }

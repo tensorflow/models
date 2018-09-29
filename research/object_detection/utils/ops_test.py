@@ -136,6 +136,13 @@ class OpsTestPadToMultiple(tf.test.TestCase):
       padded_tensor_out = sess.run(padded_tensor)
     self.assertEqual((1, 2, 2, 1), padded_tensor_out.shape)
 
+  def test_non_square_padding(self):
+    tensor = tf.constant([[[[0.], [0.]]]])
+    padded_tensor = ops.pad_to_multiple(tensor, 2)
+    with self.test_session() as sess:
+      padded_tensor_out = sess.run(padded_tensor)
+    self.assertEqual((1, 2, 2, 1), padded_tensor_out.shape)
+
   def test_padding(self):
     tensor = tf.constant([[[[0.], [0.]], [[0.], [0.]]]])
     padded_tensor = ops.pad_to_multiple(tensor, 4)
@@ -805,13 +812,12 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
 
   def test_position_sensitive(self):
     num_spatial_bins = [3, 2]
-    image_shape = [1, 3, 2, 6]
+    image_shape = [3, 2, 6]
 
     # First channel is 1's, second channel is 2's, etc.
     image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
                         shape=image_shape)
     boxes = tf.random_uniform((2, 4))
-    box_ind = tf.constant([0, 0], dtype=tf.int32)
 
     # The result for both boxes should be [[1, 2], [3, 4], [5, 6]]
     # before averaging.
@@ -820,7 +826,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     for crop_size_mult in range(1, 3):
       crop_size = [3 * crop_size_mult, 2 * crop_size_mult]
       ps_crop_and_pool = ops.position_sensitive_crop_regions(
-          image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=True)
+          image, boxes, crop_size, num_spatial_bins, global_pool=True)
 
       with self.test_session() as sess:
         output = sess.run(ps_crop_and_pool)
@@ -828,24 +834,24 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
 
   def test_position_sensitive_with_equal_channels(self):
     num_spatial_bins = [2, 2]
-    image_shape = [1, 3, 3, 4]
+    image_shape = [3, 3, 4]
     crop_size = [2, 2]
 
     image = tf.constant(range(1, 3 * 3 + 1), dtype=tf.float32,
-                        shape=[1, 3, 3, 1])
-    tiled_image = tf.tile(image, [1, 1, 1, image_shape[3]])
+                        shape=[3, 3, 1])
+    tiled_image = tf.tile(image, [1, 1, image_shape[2]])
     boxes = tf.random_uniform((3, 4))
     box_ind = tf.constant([0, 0, 0], dtype=tf.int32)
 
     # All channels are equal so position-sensitive crop and resize should
     # work as the usual crop and resize for just one channel.
-    crop = tf.image.crop_and_resize(image, boxes, box_ind, crop_size)
-    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
+    crop = tf.image.crop_and_resize(tf.expand_dims(image, axis=0), boxes,
+                                    box_ind, crop_size)
+    crop_and_pool = tf.reduce_mean(crop, [1, 2], keep_dims=True)
 
     ps_crop_and_pool = ops.position_sensitive_crop_regions(
         tiled_image,
         boxes,
-        box_ind,
         crop_size,
         num_spatial_bins,
         global_pool=True)
@@ -854,78 +860,53 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
       expected_output, output = sess.run((crop_and_pool, ps_crop_and_pool))
       self.assertAllClose(output, expected_output)
 
-  def test_position_sensitive_with_single_bin(self):
-    num_spatial_bins = [1, 1]
-    image_shape = [2, 3, 3, 4]
-    crop_size = [2, 2]
-
-    image = tf.random_uniform(image_shape)
-    boxes = tf.random_uniform((6, 4))
-    box_ind = tf.constant([0, 0, 0, 1, 1, 1], dtype=tf.int32)
-
-    # When a single bin is used, position-sensitive crop and pool should be
-    # the same as non-position sensitive crop and pool.
-    crop = tf.image.crop_and_resize(image, boxes, box_ind, crop_size)
-    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
-
-    ps_crop_and_pool = ops.position_sensitive_crop_regions(
-        image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=True)
-
-    with self.test_session() as sess:
-      expected_output, output = sess.run((crop_and_pool, ps_crop_and_pool))
-      self.assertAllClose(output, expected_output)
-
   def test_raise_value_error_on_num_bins_less_than_one(self):
     num_spatial_bins = [1, -1]
-    image_shape = [1, 1, 1, 2]
+    image_shape = [1, 1, 2]
     crop_size = [2, 2]
 
     image = tf.constant(1, dtype=tf.float32, shape=image_shape)
     boxes = tf.constant([[0, 0, 1, 1]], dtype=tf.float32)
-    box_ind = tf.constant([0], dtype=tf.int32)
 
     with self.assertRaisesRegexp(ValueError, 'num_spatial_bins should be >= 1'):
       ops.position_sensitive_crop_regions(
-          image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=True)
+          image, boxes, crop_size, num_spatial_bins, global_pool=True)
 
   def test_raise_value_error_on_non_divisible_crop_size(self):
     num_spatial_bins = [2, 3]
-    image_shape = [1, 1, 1, 6]
+    image_shape = [1, 1, 6]
     crop_size = [3, 2]
 
     image = tf.constant(1, dtype=tf.float32, shape=image_shape)
     boxes = tf.constant([[0, 0, 1, 1]], dtype=tf.float32)
-    box_ind = tf.constant([0], dtype=tf.int32)
 
     with self.assertRaisesRegexp(
         ValueError, 'crop_size should be divisible by num_spatial_bins'):
       ops.position_sensitive_crop_regions(
-          image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=True)
+          image, boxes, crop_size, num_spatial_bins, global_pool=True)
 
   def test_raise_value_error_on_non_divisible_num_channels(self):
     num_spatial_bins = [2, 2]
-    image_shape = [1, 1, 1, 5]
+    image_shape = [1, 1, 5]
     crop_size = [2, 2]
 
     image = tf.constant(1, dtype=tf.float32, shape=image_shape)
     boxes = tf.constant([[0, 0, 1, 1]], dtype=tf.float32)
-    box_ind = tf.constant([0], dtype=tf.int32)
 
     with self.assertRaisesRegexp(
         ValueError, 'Dimension size must be evenly divisible by 4 but is 5'):
       ops.position_sensitive_crop_regions(
-          image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=True)
+          image, boxes, crop_size, num_spatial_bins, global_pool=True)
 
   def test_position_sensitive_with_global_pool_false(self):
     num_spatial_bins = [3, 2]
-    image_shape = [1, 3, 2, 6]
+    image_shape = [3, 2, 6]
     num_boxes = 2
 
     # First channel is 1's, second channel is 2's, etc.
     image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
                         shape=image_shape)
     boxes = tf.random_uniform((num_boxes, 4))
-    box_ind = tf.constant([0, 0], dtype=tf.int32)
 
     expected_output = []
 
@@ -949,79 +930,21 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     for crop_size_mult in range(1, 3):
       crop_size = [3 * crop_size_mult, 2 * crop_size_mult]
       ps_crop = ops.position_sensitive_crop_regions(
-          image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=False)
+          image, boxes, crop_size, num_spatial_bins, global_pool=False)
       with self.test_session() as sess:
         output = sess.run(ps_crop)
 
       self.assertAllEqual(output, expected_output[crop_size_mult - 1])
 
-  def test_position_sensitive_with_global_pool_false_and_known_boxes(self):
-    num_spatial_bins = [2, 2]
-    image_shape = [2, 2, 2, 4]
-    crop_size = [2, 2]
-
-    image = tf.constant(range(1, 2 * 2 * 4  + 1) * 2, dtype=tf.float32,
-                        shape=image_shape)
-
-    # First box contains whole image, and second box contains only first row.
-    boxes = tf.constant(np.array([[0., 0., 1., 1.],
-                                  [0., 0., 0.5, 1.]]), dtype=tf.float32)
-    box_ind = tf.constant([0, 1], dtype=tf.int32)
-
-    expected_output = []
-
-    # Expected output, when the box containing whole image.
-    expected_output.append(
-        np.reshape(np.array([[4, 7],
-                             [10, 13]]),
-                   (1, 2, 2, 1))
-    )
-
-    # Expected output, when the box containing only first row.
-    expected_output.append(
-        np.reshape(np.array([[3, 6],
-                             [7, 10]]),
-                   (1, 2, 2, 1))
-    )
-    expected_output = np.concatenate(expected_output, axis=0)
-
-    ps_crop = ops.position_sensitive_crop_regions(
-        image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=False)
-
-    with self.test_session() as sess:
-      output = sess.run(ps_crop)
-      self.assertAllEqual(output, expected_output)
-
-  def test_position_sensitive_with_global_pool_false_and_single_bin(self):
-    num_spatial_bins = [1, 1]
-    image_shape = [2, 3, 3, 4]
-    crop_size = [1, 1]
-
-    image = tf.random_uniform(image_shape)
-    boxes = tf.random_uniform((6, 4))
-    box_ind = tf.constant([0, 0, 0, 1, 1, 1], dtype=tf.int32)
-
-    # Since single_bin is used and crop_size = [1, 1] (i.e., no crop resize),
-    # the outputs are the same whatever the global_pool value is.
-    ps_crop_and_pool = ops.position_sensitive_crop_regions(
-        image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=True)
-    ps_crop = ops.position_sensitive_crop_regions(
-        image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=False)
-
-    with self.test_session() as sess:
-      pooled_output, unpooled_output = sess.run((ps_crop_and_pool, ps_crop))
-      self.assertAllClose(pooled_output, unpooled_output)
-
   def test_position_sensitive_with_global_pool_false_and_do_global_pool(self):
     num_spatial_bins = [3, 2]
-    image_shape = [1, 3, 2, 6]
+    image_shape = [3, 2, 6]
     num_boxes = 2
 
     # First channel is 1's, second channel is 2's, etc.
     image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
                         shape=image_shape)
     boxes = tf.random_uniform((num_boxes, 4))
-    box_ind = tf.constant([0, 0], dtype=tf.int32)
 
     expected_output = []
 
@@ -1052,9 +975,9 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
       # Perform global_pooling after running the function with
       # global_pool=False.
       ps_crop = ops.position_sensitive_crop_regions(
-          image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=False)
+          image, boxes, crop_size, num_spatial_bins, global_pool=False)
       ps_crop_and_pool = tf.reduce_mean(
-          ps_crop, reduction_indices=(1, 2), keepdims=True)
+          ps_crop, reduction_indices=(1, 2), keep_dims=True)
 
       with self.test_session() as sess:
         output = sess.run(ps_crop_and_pool)
@@ -1063,17 +986,99 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
 
   def test_raise_value_error_on_non_square_block_size(self):
     num_spatial_bins = [3, 2]
-    image_shape = [1, 3, 2, 6]
+    image_shape = [3, 2, 6]
     crop_size = [6, 2]
 
     image = tf.constant(1, dtype=tf.float32, shape=image_shape)
     boxes = tf.constant([[0, 0, 1, 1]], dtype=tf.float32)
-    box_ind = tf.constant([0], dtype=tf.int32)
 
     with self.assertRaisesRegexp(
         ValueError, 'Only support square bin crop size for now.'):
       ops.position_sensitive_crop_regions(
-          image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=False)
+          image, boxes, crop_size, num_spatial_bins, global_pool=False)
+
+
+class OpsTestBatchPositionSensitiveCropRegions(tf.test.TestCase):
+
+  def test_position_sensitive_with_single_bin(self):
+    num_spatial_bins = [1, 1]
+    image_shape = [2, 3, 3, 4]
+    crop_size = [2, 2]
+
+    image = tf.random_uniform(image_shape)
+    boxes = tf.random_uniform((2, 3, 4))
+    box_ind = tf.constant([0, 0, 0, 1, 1, 1], dtype=tf.int32)
+
+    # When a single bin is used, position-sensitive crop and pool should be
+    # the same as non-position sensitive crop and pool.
+    crop = tf.image.crop_and_resize(image, tf.reshape(boxes, [-1, 4]), box_ind,
+                                    crop_size)
+    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
+    crop_and_pool = tf.reshape(crop_and_pool, [2, 3, 1, 1, 4])
+
+    ps_crop_and_pool = ops.batch_position_sensitive_crop_regions(
+        image, boxes, crop_size, num_spatial_bins, global_pool=True)
+
+    with self.test_session() as sess:
+      expected_output, output = sess.run((crop_and_pool, ps_crop_and_pool))
+      self.assertAllClose(output, expected_output)
+
+  def test_position_sensitive_with_global_pool_false_and_known_boxes(self):
+    num_spatial_bins = [2, 2]
+    image_shape = [2, 2, 2, 4]
+    crop_size = [2, 2]
+
+    images = tf.constant(range(1, 2 * 2 * 4  + 1) * 2, dtype=tf.float32,
+                         shape=image_shape)
+
+    # First box contains whole image, and second box contains only first row.
+    boxes = tf.constant(np.array([[[0., 0., 1., 1.]],
+                                  [[0., 0., 0.5, 1.]]]), dtype=tf.float32)
+    # box_ind = tf.constant([0, 1], dtype=tf.int32)
+
+    expected_output = []
+
+    # Expected output, when the box containing whole image.
+    expected_output.append(
+        np.reshape(np.array([[4, 7],
+                             [10, 13]]),
+                   (1, 2, 2, 1))
+    )
+
+    # Expected output, when the box containing only first row.
+    expected_output.append(
+        np.reshape(np.array([[3, 6],
+                             [7, 10]]),
+                   (1, 2, 2, 1))
+    )
+    expected_output = np.stack(expected_output, axis=0)
+
+    ps_crop = ops.batch_position_sensitive_crop_regions(
+        images, boxes, crop_size, num_spatial_bins, global_pool=False)
+
+    with self.test_session() as sess:
+      output = sess.run(ps_crop)
+      self.assertAllEqual(output, expected_output)
+
+  def test_position_sensitive_with_global_pool_false_and_single_bin(self):
+    num_spatial_bins = [1, 1]
+    image_shape = [2, 3, 3, 4]
+    crop_size = [1, 1]
+
+    images = tf.random_uniform(image_shape)
+    boxes = tf.random_uniform((2, 3, 4))
+    # box_ind = tf.constant([0, 0, 0, 1, 1, 1], dtype=tf.int32)
+
+    # Since single_bin is used and crop_size = [1, 1] (i.e., no crop resize),
+    # the outputs are the same whatever the global_pool value is.
+    ps_crop_and_pool = ops.batch_position_sensitive_crop_regions(
+        images, boxes, crop_size, num_spatial_bins, global_pool=True)
+    ps_crop = ops.batch_position_sensitive_crop_regions(
+        images, boxes, crop_size, num_spatial_bins, global_pool=False)
+
+    with self.test_session() as sess:
+      pooled_output, unpooled_output = sess.run((ps_crop_and_pool, ps_crop))
+      self.assertAllClose(pooled_output, unpooled_output)
 
 
 class ReframeBoxMasksToImageMasksTest(tf.test.TestCase):
@@ -1092,6 +1097,16 @@ class ReframeBoxMasksToImageMasksTest(tf.test.TestCase):
     with self.test_session() as sess:
       np_image_masks = sess.run(image_masks)
       self.assertAllClose(np_image_masks, np_expected_image_masks)
+
+  def testZeroBoxMasks(self):
+    box_masks = tf.zeros([0, 3, 3], dtype=tf.float32)
+    boxes = tf.zeros([0, 4], dtype=tf.float32)
+    image_masks = ops.reframe_box_masks_to_image_masks(box_masks, boxes,
+                                                       image_height=4,
+                                                       image_width=4)
+    with self.test_session() as sess:
+      np_image_masks = sess.run(image_masks)
+      self.assertAllEqual(np_image_masks.shape, np.array([0, 4, 4]))
 
   def testMaskIsCenteredInImageWhenBoxIsCentered(self):
     box_masks = tf.constant([[[1, 1],
@@ -1132,36 +1147,76 @@ class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
          [0.25, 0.25, 0.75, 0.75]],
         dtype=tf.float32)
     class_indices = tf.constant([0, 4, 2], dtype=tf.int32)
+    class_confidences = tf.constant([0.8, 0.2, 0.1], dtype=tf.float32)
     num_classes = 5
-    merged_boxes, merged_classes, merged_box_indices = (
-        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
     expected_merged_boxes = np.array(
         [[0.25, 0.25, 0.75, 0.75], [0.0, 0.0, 0.5, 0.75]], dtype=np.float32)
     expected_merged_classes = np.array(
         [[1, 0, 1, 0, 0], [0, 0, 0, 0, 1]], dtype=np.int32)
+    expected_merged_confidences = np.array(
+        [[0.8, 0, 0.1, 0, 0], [0, 0, 0, 0, 0.2]], dtype=np.float32)
     expected_merged_box_indices = np.array([0, 1], dtype=np.int32)
     with self.test_session() as sess:
-      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
-          [merged_boxes, merged_classes, merged_box_indices])
-      if np_merged_classes[0, 0] != 1:
-        expected_merged_boxes = expected_merged_boxes[::-1, :]
-        expected_merged_classes = expected_merged_classes[::-1, :]
-        expected_merged_box_indices = expected_merged_box_indices[::-1, :]
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
       self.assertAllClose(np_merged_boxes, expected_merged_boxes)
       self.assertAllClose(np_merged_classes, expected_merged_classes)
+      self.assertAllClose(np_merged_confidences, expected_merged_confidences)
+      self.assertAllClose(np_merged_box_indices, expected_merged_box_indices)
+
+  def testMergeBoxesWithMultipleLabelsCornerCase(self):
+    boxes = tf.constant(
+        [[0, 0, 1, 1], [0, 1, 1, 1], [1, 0, 1, 1], [1, 1, 1, 1],
+         [1, 1, 1, 1], [1, 0, 1, 1], [0, 1, 1, 1], [0, 0, 1, 1]],
+        dtype=tf.float32)
+    class_indices = tf.constant([0, 1, 2, 3, 2, 1, 0, 3], dtype=tf.int32)
+    class_confidences = tf.constant([0.1, 0.9, 0.2, 0.8, 0.3, 0.7, 0.4, 0.6],
+                                    dtype=tf.float32)
+    num_classes = 4
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
+    expected_merged_boxes = np.array(
+        [[0, 0, 1, 1], [0, 1, 1, 1], [1, 0, 1, 1], [1, 1, 1, 1]],
+        dtype=np.float32)
+    expected_merged_classes = np.array(
+        [[1, 0, 0, 1], [1, 1, 0, 0], [0, 1, 1, 0], [0, 0, 1, 1]],
+        dtype=np.int32)
+    expected_merged_confidences = np.array(
+        [[0.1, 0, 0, 0.6], [0.4, 0.9, 0, 0],
+         [0, 0.7, 0.2, 0], [0, 0, 0.3, 0.8]], dtype=np.float32)
+    expected_merged_box_indices = np.array([0, 1, 2, 3], dtype=np.int32)
+    with self.test_session() as sess:
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
+      self.assertAllClose(np_merged_boxes, expected_merged_boxes)
+      self.assertAllClose(np_merged_classes, expected_merged_classes)
+      self.assertAllClose(np_merged_confidences, expected_merged_confidences)
       self.assertAllClose(np_merged_box_indices, expected_merged_box_indices)
 
   def testMergeBoxesWithEmptyInputs(self):
-    boxes = tf.constant([[]])
-    class_indices = tf.constant([])
+    boxes = tf.zeros([0, 4], dtype=tf.float32)
+    class_indices = tf.constant([], dtype=tf.int32)
+    class_confidences = tf.constant([], dtype=tf.float32)
     num_classes = 5
-    merged_boxes, merged_classes, merged_box_indices = (
-        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
     with self.test_session() as sess:
-      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
-          [merged_boxes, merged_classes, merged_box_indices])
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
       self.assertAllEqual(np_merged_boxes.shape, [0, 4])
       self.assertAllEqual(np_merged_classes.shape, [0, 5])
+      self.assertAllEqual(np_merged_confidences.shape, [0, 5])
       self.assertAllEqual(np_merged_box_indices.shape, [0])
 
 
@@ -1253,8 +1308,8 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
 
     image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[0, 0, 1, 1]], dtype=np.float32)
-    expected_output = [[[[2.5]]]]
+    boxes = np.array([[[0, 0, 1, 1]]], dtype=np.float32)
+    expected_output = [[[[[2.5]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1264,8 +1319,8 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
 
     image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[1, 1, 0, 0]], dtype=np.float32)
-    expected_output = [[[[2.5]]]]
+    boxes = np.array([[[1, 1, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[2.5]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1275,10 +1330,10 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
 
     image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[0, 0, 1, 1]], dtype=np.float32)
-    expected_output = [[[[1.0], [1.5], [2.0]],
-                        [[2.0], [2.5], [3.0]],
-                        [[3.0], [3.5], [4.0]]]]
+    boxes = np.array([[[0, 0, 1, 1]]], dtype=np.float32)
+    expected_output = [[[[[1.0], [1.5], [2.0]],
+                         [[2.0], [2.5], [3.0]],
+                         [[3.0], [3.5], [4.0]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1288,10 +1343,10 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
 
     image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[1, 1, 0, 0]], dtype=np.float32)
-    expected_output = [[[[4.0], [3.5], [3.0]],
-                        [[3.0], [2.5], [2.0]],
-                        [[2.0], [1.5], [1.0]]]]
+    boxes = np.array([[[1, 1, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[4.0], [3.5], [3.0]],
+                         [[3.0], [2.5], [2.0]],
+                         [[2.0], [1.5], [1.0]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1303,14 +1358,14 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
     image = np.array([[[[1], [2], [3]],
                        [[4], [5], [6]],
                        [[7], [8], [9]]]], dtype=np.float32)
-    boxes = np.array([[0, 0, 1, 1],
-                      [0, 0, .5, .5]], dtype=np.float32)
-    expected_output = [[[[1], [3]], [[7], [9]]],
-                       [[[1], [2]], [[4], [5]]]]
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]]], dtype=np.float32)
+    expected_output = [[[[[1], [3]], [[7], [9]]],
+                        [[[1], [2]], [[4], [5]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
-  def testMatMulCropAndResize3x3To2x2MultiChannel(self):
+  def testMatMulCropAndResize3x3To2x2_2Channels(self):
 
     def graph_fn(image, boxes):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
@@ -1318,10 +1373,32 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
     image = np.array([[[[1, 0], [2, 1], [3, 2]],
                        [[4, 3], [5, 4], [6, 5]],
                        [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-    boxes = np.array([[0, 0, 1, 1],
-                      [0, 0, .5, .5]], dtype=np.float32)
-    expected_output = [[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-                       [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]]
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]]], dtype=np.float32)
+    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testBatchMatMulCropAndResize3x3To2x2_2Channels(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
+
+    image = np.array([[[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]],
+                      [[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]],
+                      [[1, 1, 0, 0],
+                       [.5, .5, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
+                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
+                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1333,10 +1410,10 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
     image = np.array([[[[1], [2], [3]],
                        [[4], [5], [6]],
                        [[7], [8], [9]]]], dtype=np.float32)
-    boxes = np.array([[1, 1, 0, 0],
-                      [.5, .5, 0, 0]], dtype=np.float32)
-    expected_output = [[[[9], [7]], [[3], [1]]],
-                       [[[5], [4]], [[2], [1]]]]
+    boxes = np.array([[[1, 1, 0, 0],
+                       [.5, .5, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[9], [7]], [[3], [1]]],
+                        [[[5], [4]], [[2], [1]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1346,6 +1423,112 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
     crop_size = [4, 4]
     with self.assertRaises(ValueError):
       _ = ops.matmul_crop_and_resize(image, boxes, crop_size)
+
+
+class OpsTestCropAndResize(test_case.TestCase):
+
+  def testBatchCropAndResize3x3To2x2_2Channels(self):
+
+    def graph_fn(image, boxes):
+      return ops.native_crop_and_resize(image, boxes, crop_size=[2, 2])
+
+    image = np.array([[[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]],
+                      [[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]],
+                      [[1, 1, 0, 0],
+                       [.5, .5, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
+                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
+                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
+    crop_output = self.execute_cpu(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+
+class OpsTestExpectedClassificationLoss(test_case.TestCase):
+
+  def testExpectedClassificationLossUnderSamplingWithHardLabels(self):
+
+    def graph_fn(batch_cls_targets, cls_losses, negative_to_positive_ratio,
+                 minimum_negative_sampling):
+      return ops.expected_classification_loss_under_sampling(
+          batch_cls_targets, cls_losses, negative_to_positive_ratio,
+          minimum_negative_sampling)
+
+    batch_cls_targets = np.array(
+        [[[1., 0, 0], [0, 1., 0]], [[1., 0, 0], [0, 1., 0]]], dtype=np.float32)
+    cls_losses = np.array([[1, 2], [3, 4]], dtype=np.float32)
+    negative_to_positive_ratio = np.array([2], dtype=np.float32)
+    minimum_negative_sampling = np.array([1], dtype=np.float32)
+
+    classification_loss = self.execute(graph_fn, [
+        batch_cls_targets, cls_losses, negative_to_positive_ratio,
+        minimum_negative_sampling
+    ])
+
+    # expected_foregorund_sum = [1,1]
+    # expected_beta = [2,2]
+    # expected_cls_loss_weights = [2,1],[2,1]
+    # expected_classification_loss_under_sampling = [2*1+1*2, 2*3+1*4]
+    expected_classification_loss_under_sampling = [2 + 2, 6 + 4]
+
+    self.assertAllClose(expected_classification_loss_under_sampling,
+                        classification_loss)
+
+  def testExpectedClassificationLossUnderSamplingWithAllNegative(self):
+
+    def graph_fn(batch_cls_targets, cls_losses):
+      return ops.expected_classification_loss_under_sampling(
+          batch_cls_targets, cls_losses, negative_to_positive_ratio,
+          minimum_negative_sampling)
+
+    batch_cls_targets = np.array(
+        [[[1, 0, 0], [1, 0, 0]], [[1, 0, 0], [1, 0, 0]]], dtype=np.float32)
+    cls_losses = np.array([[1, 2], [3, 4]], dtype=np.float32)
+    negative_to_positive_ratio = np.array([2], dtype=np.float32)
+    minimum_negative_sampling = np.array([1], dtype=np.float32)
+
+    classification_loss = self.execute(graph_fn,
+                                       [batch_cls_targets, cls_losses])
+
+    # expected_foregorund_sum = [0,0]
+    # expected_beta = [0.5,0.5]
+    # expected_cls_loss_weights = [0.5,0.5],[0.5,0.5]
+    # expected_classification_loss_under_sampling = [.5*1+.5*2, .5*3+.5*4]
+    expected_classification_loss_under_sampling = [1.5, 3.5]
+
+    self.assertAllClose(expected_classification_loss_under_sampling,
+                        classification_loss)
+
+  def testExpectedClassificationLossUnderSamplingWithAllPositive(self):
+
+    def graph_fn(batch_cls_targets, cls_losses):
+      return ops.expected_classification_loss_under_sampling(
+          batch_cls_targets, cls_losses, negative_to_positive_ratio,
+          minimum_negative_sampling)
+
+    batch_cls_targets = np.array(
+        [[[0, 1., 0], [0, 1., 0]], [[0, 1, 0], [0, 0, 1]]], dtype=np.float32)
+    cls_losses = np.array([[1, 2], [3, 4]], dtype=np.float32)
+    negative_to_positive_ratio = np.array([2], dtype=np.float32)
+    minimum_negative_sampling = np.array([1], dtype=np.float32)
+
+    classification_loss = self.execute(graph_fn,
+                                       [batch_cls_targets, cls_losses])
+
+    # expected_foregorund_sum = [2,2]
+    # expected_beta = [0,0]
+    # expected_cls_loss_weights = [1,1],[1,1]
+    # expected_classification_loss_under_sampling = [1*1+1*2, 1*3+1*4]
+    expected_classification_loss_under_sampling = [1 + 2, 3 + 4]
+
+    self.assertAllClose(expected_classification_loss_under_sampling,
+                        classification_loss)
 
 
 if __name__ == '__main__':

@@ -27,15 +27,6 @@ from dragnn.python import spec_builder
 
 from syntaxnet import parser_trainer
 
-FLAGS = tf.app.flags.FLAGS
-
-
-def setUpModule():
-  if not hasattr(FLAGS, 'test_srcdir'):
-    FLAGS.test_srcdir = ''
-  if not hasattr(FLAGS, 'test_tmpdir'):
-    FLAGS.test_tmpdir = tf.test.get_temp_dir()
-
 
 class SpecBuilderTest(tf.test.TestCase):
 

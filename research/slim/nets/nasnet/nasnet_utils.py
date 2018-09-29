@@ -86,8 +86,6 @@ def global_avg_pool(x, data_format=INVALID):
 @tf.contrib.framework.add_arg_scope
 def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   """Reduces the shape of net without information loss due to striding."""
-  assert output_filters % 2 == 0, (
-      'Need even number of filters when using this factorized reduction.')
   assert data_format != INVALID
   if stride == 1:
     net = slim.conv2d(net, output_filters, 1, scope='path_conv')
@@ -117,7 +115,10 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
 
   path2 = tf.nn.avg_pool(
       path2, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
-  path2 = slim.conv2d(path2, int(output_filters / 2), 1, scope='path2_conv')
+
+  # If odd number of filters, add an additional one to the second path.
+  final_filter_size = int(output_filters / 2) + int(output_filters % 2)
+  path2 = slim.conv2d(path2, final_filter_size, 1, scope='path2_conv')
 
   # Concat and apply BN
   final_path = tf.concat(values=[path1, path2], axis=concat_axis)
@@ -133,8 +134,10 @@ def drop_path(net, keep_prob, is_training=True):
     noise_shape = [batch_size, 1, 1, 1]
     random_tensor = keep_prob
     random_tensor += tf.random_uniform(noise_shape, dtype=tf.float32)
-    binary_tensor = tf.floor(random_tensor)
-    net = tf.div(net, keep_prob) * binary_tensor
+    binary_tensor = tf.cast(tf.floor(random_tensor), net.dtype)
+    keep_prob_inv = tf.cast(1.0 / keep_prob, net.dtype)
+    net = net * keep_prob_inv * binary_tensor
+
   return net
 
 
@@ -297,7 +300,7 @@ class NasNetABaseCell(object):
     return net
 
   def __call__(self, net, scope=None, filter_scaling=1, stride=1,
-               prev_layer=None, cell_num=-1):
+               prev_layer=None, cell_num=-1, current_step=None):
     """Runs the conv cell."""
     self._cell_num = cell_num
     self._filter_scaling = filter_scaling
@@ -322,10 +325,12 @@ class NasNetABaseCell(object):
           # Apply conv operations
           with tf.variable_scope('left'):
             h1 = self._apply_conv_operation(h1, operation_left,
-                                            stride, original_input_left)
+                                            stride, original_input_left,
+                                            current_step)
           with tf.variable_scope('right'):
             h2 = self._apply_conv_operation(h2, operation_right,
-                                            stride, original_input_right)
+                                            stride, original_input_right,
+                                            current_step)
 
           # Combine hidden states using 'add'.
           with tf.variable_scope('combine'):
@@ -340,7 +345,7 @@ class NasNetABaseCell(object):
       return net
 
   def _apply_conv_operation(self, net, operation,
-                            stride, is_from_original_input):
+                            stride, is_from_original_input, current_step):
     """Applies the predicted conv operation to net."""
     # Dont stride if this is not one of the original hiddenstates
     if stride > 1 and not is_from_original_input:
@@ -364,7 +369,7 @@ class NasNetABaseCell(object):
       raise ValueError('Unimplemented operation', operation)
 
     if operation != 'none':
-      net = self._apply_drop_path(net)
+      net = self._apply_drop_path(net, current_step=current_step)
     return net
 
   def _combine_unused_states(self, net):
@@ -430,9 +435,9 @@ class NasNetABaseCell(object):
         drop_path_keep_prob = 1 - layer_ratio * (1 - drop_path_keep_prob)
       if drop_connect_version in ['v1', 'v3']:
         # Decrease the keep probability over time
-        if not current_step:
-          current_step = tf.cast(tf.train.get_or_create_global_step(),
-                                 tf.float32)
+        if current_step is None:
+          current_step = tf.train.get_or_create_global_step()
+        current_step = tf.cast(current_step, tf.float32)
         drop_path_burn_in_steps = self._total_training_steps
         current_ratio = current_step / drop_path_burn_in_steps
         current_ratio = tf.minimum(1.0, current_ratio)

@@ -27,25 +27,23 @@ paper: https://arxiv.org/abs/1607.00133
 
 Note: r0.11 might experience some problems
 
-2. Bazel 0.3.1
+2. Bazel 0.3.1 (<em>Optional</em>)
 
-3. Download MNIST data
-
-TODO(xpan): Complete the link:
-[train](http://download.tensorflow.org/models/)
-[test](http://download.tensorflow.org/models/)
-
-Alternatively, download the tfrecord format MNIST from:
-https://github.com/panyx0718/models/tree/master/slim
+3. Download MNIST data (tfrecord format) <br>
+   ```shell
+   cd models/research/slim
+   DATA_DIR=/tmp/mnist/
+   mkdir /tmp/mnist
+   python download_and_convert_data.py --dataset_name=mnist --dataset_dir="${DATA_DIR}"
+   ```
 
 <b>How to run:</b>
 
 ```shell
 # Clone the codes under differential_privacy.
 # Create an empty WORKSPACE file.
-# Download the data to the data/ directory.
 
-# List the codes.
+# List the codes (Optional).
 $ ls -R differential_privacy/
 differential_privacy/:
 dp_sgd  __init__.py  privacy_accountant  README.md
@@ -71,20 +69,26 @@ BUILD  gaussian_moments.py
 differential_privacy/privacy_accountant/tf:
 accountant.py  accountant_test.py  BUILD
 
-# List the data.
+# List the data (optional).
+$ mv /tmp/mnist/mnist_train.tfrecord data
+$ mv /tmp/mnist/mnist_test.tfrecord data
 $ ls -R data/
 
 ./data:
 mnist_test.tfrecord  mnist_train.tfrecord
 
-# Build the codes.
+# Build the codes (optional).
 $ bazel build -c opt differential_privacy/...
 
-# Run the mnist differntial privacy training codes.
+# Run the mnist differential privacy training codes.
+# 1. With bazel
 $ bazel-bin/differential_privacy/dp_sgd/dp_mnist/dp_mnist \
     --training_data_path=data/mnist_train.tfrecord \
     --eval_data_path=data/mnist_test.tfrecord \
     --save_path=/tmp/mnist_dir
+
+# 2. Or without (by default data is in /tmp/mnist)
+python dp_sgd/dp_mnist/dp_mnist.py  
 
 ...
 step: 1

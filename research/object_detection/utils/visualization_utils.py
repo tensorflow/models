@@ -19,6 +19,8 @@ These functions often receive an image, perform some visualization on the image.
 The functions do not return a value, instead they modify the image itself.
 
 """
+from abc import ABCMeta
+from abc import abstractmethod
 import collections
 import functools
 # Set headless-friendly backend.
@@ -315,11 +317,13 @@ def draw_bounding_boxes_on_image_tensors(images,
                                          instance_masks=None,
                                          keypoints=None,
                                          max_boxes_to_draw=20,
-                                         min_score_thresh=0.2):
+                                         min_score_thresh=0.2,
+                                         use_normalized_coordinates=True):
   """Draws bounding boxes, masks, and keypoints on batch of image tensors.
 
   Args:
-    images: A 4D uint8 image tensor of shape [N, H, W, C].
+    images: A 4D uint8 image tensor of shape [N, H, W, C]. If C > 3, additional
+      channels will be ignored.
     boxes: [N, max_detections, 4] float32 tensor of detection boxes.
     classes: [N, max_detections] int tensor of detection classes. Note that
       classes are 1-indexed.
@@ -332,12 +336,17 @@ def draw_bounding_boxes_on_image_tensors(images,
       with keypoints.
     max_boxes_to_draw: Maximum number of boxes to draw on an image. Default 20.
     min_score_thresh: Minimum score threshold for visualization. Default 0.2.
+    use_normalized_coordinates: Whether to assume boxes and kepoints are in
+      normalized coordinates (as opposed to absolute coordiantes).
+      Default is True.
 
   Returns:
     4D image tensor of type uint8, with boxes drawn on top.
   """
+  # Additional channels are being ignored.
+  images = images[:, :, :, 0:3]
   visualization_keyword_args = {
-      'use_normalized_coordinates': True,
+      'use_normalized_coordinates': use_normalized_coordinates,
       'max_boxes_to_draw': max_boxes_to_draw,
       'min_score_thresh': min_score_thresh,
       'agnostic_mode': False,
@@ -382,7 +391,8 @@ def draw_bounding_boxes_on_image_tensors(images,
 def draw_side_by_side_evaluation_image(eval_dict,
                                        category_index,
                                        max_boxes_to_draw=20,
-                                       min_score_thresh=0.2):
+                                       min_score_thresh=0.2,
+                                       use_normalized_coordinates=True):
   """Creates a side-by-side image with detections and groundtruth.
 
   Bounding boxes (and instance masks, if available) are visualized on both
@@ -394,6 +404,9 @@ def draw_side_by_side_evaluation_image(eval_dict,
     category_index: A category index (dictionary) produced from a labelmap.
     max_boxes_to_draw: The maximum number of boxes to draw for detections.
     min_score_thresh: The minimum score threshold for showing detections.
+    use_normalized_coordinates: Whether to assume boxes and kepoints are in
+      normalized coordinates (as opposed to absolute coordiantes).
+      Default is True.
 
   Returns:
     A [1, H, 2 * W, C] uint8 tensor. The subimage on the left corresponds to
@@ -425,7 +438,8 @@ def draw_side_by_side_evaluation_image(eval_dict,
       instance_masks=instance_masks,
       keypoints=keypoints,
       max_boxes_to_draw=max_boxes_to_draw,
-      min_score_thresh=min_score_thresh)
+      min_score_thresh=min_score_thresh,
+      use_normalized_coordinates=use_normalized_coordinates)
   images_with_groundtruth = draw_bounding_boxes_on_image_tensors(
       eval_dict[input_data_fields.original_image],
       tf.expand_dims(eval_dict[input_data_fields.groundtruth_boxes], axis=0),
@@ -439,7 +453,8 @@ def draw_side_by_side_evaluation_image(eval_dict,
       instance_masks=groundtruth_instance_masks,
       keypoints=None,
       max_boxes_to_draw=None,
-      min_score_thresh=0.0)
+      min_score_thresh=0.0,
+      use_normalized_coordinates=use_normalized_coordinates)
   return tf.concat([images_with_detections, images_with_groundtruth], axis=2)
 
 
@@ -689,3 +704,187 @@ def add_cdf_image_summary(values, name):
     return image
   cdf_plot = tf.py_func(cdf_plot, [values], tf.uint8)
   tf.summary.image(name, cdf_plot)
+
+
+def add_hist_image_summary(values, bins, name):
+  """Adds a tf.summary.image for a histogram plot of the values.
+
+  Plots the histogram of values and creates a tf image summary.
+
+  Args:
+    values: a 1-D float32 tensor containing the values.
+    bins: bin edges which will be directly passed to np.histogram.
+    name: name for the image summary.
+  """
+
+  def hist_plot(values, bins):
+    """Numpy function to plot hist."""
+    fig = plt.figure(frameon=False)
+    ax = fig.add_subplot('111')
+    y, x = np.histogram(values, bins=bins)
+    ax.plot(x[:-1], y)
+    ax.set_ylabel('count')
+    ax.set_xlabel('value')
+    fig.canvas.draw()
+    width, height = fig.get_size_inches() * fig.get_dpi()
+    image = np.fromstring(
+        fig.canvas.tostring_rgb(), dtype='uint8').reshape(
+            1, int(height), int(width), 3)
+    return image
+  hist_plot = tf.py_func(hist_plot, [values, bins], tf.uint8)
+  tf.summary.image(name, hist_plot)
+
+
+class EvalMetricOpsVisualization(object):
+  """Abstract base class responsible for visualizations during evaluation.
+
+  Currently, summary images are not run during evaluation. One way to produce
+  evaluation images in Tensorboard is to provide tf.summary.image strings as
+  `value_ops` in tf.estimator.EstimatorSpec's `eval_metric_ops`. This class is
+  responsible for accruing images (with overlaid detections and groundtruth)
+  and returning a dictionary that can be passed to `eval_metric_ops`.
+  """
+  __metaclass__ = ABCMeta
+
+  def __init__(self,
+               category_index,
+               max_examples_to_draw=5,
+               max_boxes_to_draw=20,
+               min_score_thresh=0.2,
+               use_normalized_coordinates=True,
+               summary_name_prefix='evaluation_image'):
+    """Creates an EvalMetricOpsVisualization.
+
+    Args:
+      category_index: A category index (dictionary) produced from a labelmap.
+      max_examples_to_draw: The maximum number of example summaries to produce.
+      max_boxes_to_draw: The maximum number of boxes to draw for detections.
+      min_score_thresh: The minimum score threshold for showing detections.
+      use_normalized_coordinates: Whether to assume boxes and kepoints are in
+        normalized coordinates (as opposed to absolute coordiantes).
+        Default is True.
+      summary_name_prefix: A string prefix for each image summary.
+    """
+
+    self._category_index = category_index
+    self._max_examples_to_draw = max_examples_to_draw
+    self._max_boxes_to_draw = max_boxes_to_draw
+    self._min_score_thresh = min_score_thresh
+    self._use_normalized_coordinates = use_normalized_coordinates
+    self._summary_name_prefix = summary_name_prefix
+    self._images = []
+
+  def clear(self):
+    self._images = []
+
+  def add_images(self, images):
+    """Store a list of images, each with shape [1, H, W, C]."""
+    if len(self._images) >= self._max_examples_to_draw:
+      return
+
+    # Store images and clip list if necessary.
+    self._images.extend(images)
+    if len(self._images) > self._max_examples_to_draw:
+      self._images[self._max_examples_to_draw:] = []
+
+  def get_estimator_eval_metric_ops(self, eval_dict):
+    """Returns metric ops for use in tf.estimator.EstimatorSpec.
+
+    Args:
+      eval_dict: A dictionary that holds an image, groundtruth, and detections
+        for a single example. See eval_util.result_dict_for_single_example() for
+        a convenient method for constructing such a dictionary. The dictionary
+        contains
+        fields.InputDataFields.original_image: [1, H, W, 3] image.
+        fields.InputDataFields.groundtruth_boxes - [num_boxes, 4] float32
+          tensor with groundtruth boxes in range [0.0, 1.0].
+        fields.InputDataFields.groundtruth_classes - [num_boxes] int64
+          tensor with 1-indexed groundtruth classes.
+        fields.InputDataFields.groundtruth_instance_masks - (optional)
+          [num_boxes, H, W] int64 tensor with instance masks.
+        fields.DetectionResultFields.detection_boxes - [max_num_boxes, 4]
+          float32 tensor with detection boxes in range [0.0, 1.0].
+        fields.DetectionResultFields.detection_classes - [max_num_boxes]
+          int64 tensor with 1-indexed detection classes.
+        fields.DetectionResultFields.detection_scores - [max_num_boxes]
+          float32 tensor with detection scores.
+        fields.DetectionResultFields.detection_masks - (optional)
+          [max_num_boxes, H, W] float32 tensor of binarized masks.
+        fields.DetectionResultFields.detection_keypoints - (optional)
+          [max_num_boxes, num_keypoints, 2] float32 tensor with keypooints.
+
+    Returns:
+      A dictionary of image summary names to tuple of (value_op, update_op). The
+      `update_op` is the same for all items in the dictionary, and is
+      responsible for saving a single side-by-side image with detections and
+      groundtruth. Each `value_op` holds the tf.summary.image string for a given
+      image.
+    """
+    images = self.images_from_evaluation_dict(eval_dict)
+
+    def get_images():
+      """Returns a list of images, padded to self._max_images_to_draw."""
+      images = self._images
+      while len(images) < self._max_examples_to_draw:
+        images.append(np.array(0, dtype=np.uint8))
+      self.clear()
+      return images
+
+    def image_summary_or_default_string(summary_name, image):
+      """Returns image summaries for non-padded elements."""
+      return tf.cond(
+          tf.equal(tf.size(tf.shape(image)), 4),
+          lambda: tf.summary.image(summary_name, image),
+          lambda: tf.constant(''))
+
+    update_op = tf.py_func(self.add_images, [images], [])
+    image_tensors = tf.py_func(
+        get_images, [], [tf.uint8] * self._max_examples_to_draw)
+    eval_metric_ops = {}
+    for i, image in enumerate(image_tensors):
+      summary_name = self._summary_name_prefix + '/' + str(i)
+      value_op = image_summary_or_default_string(summary_name, image)
+      eval_metric_ops[summary_name] = (value_op, update_op)
+    return eval_metric_ops
+
+  @abstractmethod
+  def images_from_evaluation_dict(self, eval_dict):
+    """Converts evaluation dictionary into a list of image tensors.
+
+    To be overridden by implementations.
+
+    Args:
+      eval_dict: A dictionary with all the necessary information for producing
+        visualizations.
+
+    Returns:
+      A list of [1, H, W, C] uint8 tensors.
+    """
+    raise NotImplementedError
+
+
+class VisualizeSingleFrameDetections(EvalMetricOpsVisualization):
+  """Class responsible for single-frame object detection visualizations."""
+
+  def __init__(self,
+               category_index,
+               max_examples_to_draw=5,
+               max_boxes_to_draw=20,
+               min_score_thresh=0.2,
+               use_normalized_coordinates=True,
+               summary_name_prefix='Detections_Left_Groundtruth_Right'):
+    super(VisualizeSingleFrameDetections, self).__init__(
+        category_index=category_index,
+        max_examples_to_draw=max_examples_to_draw,
+        max_boxes_to_draw=max_boxes_to_draw,
+        min_score_thresh=min_score_thresh,
+        use_normalized_coordinates=use_normalized_coordinates,
+        summary_name_prefix=summary_name_prefix)
+
+  def images_from_evaluation_dict(self, eval_dict):
+    return [draw_side_by_side_evaluation_image(
+        eval_dict,
+        self._category_index,
+        self._max_boxes_to_draw,
+        self._min_score_thresh,
+        self._use_normalized_coordinates)]
