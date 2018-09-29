@@ -58,45 +58,108 @@ The following source code is included here:
   instructions at that site.
 * [SciKit Learn](http://scikit-learn.org/): you can probably just install this
   with `pip install sklearn`.
+* [SpaCy](https://spacy.io/): `pip install spacy` ought to do the trick, along
+  with the English model.
 
 # Creating the Model
 
 This section describes the necessary steps that you must follow to reproduce the
-results in the paper.
+results in the paper. Or, at least, something like them. :)
 
-## Generate/Download Path Data
+## Generate Path Data
 
-TBD! Our plan is to make the aggregate path data available that was used to
-train path embeddings and classifiers; however, this will be released
-separately.
+To begin, you need three text files:
 
-## Generate/Download Embedding Data
+1. **Corpus**. This file should contain natural language sentences, written with
+   one sentence per line.  For purposes of exposition, we'll assume that you
+   have English Wikipedia serialized this way in `${HOME}/data/wiki.txt`.
+2. **Labeled Noun Compound Pairs**.  This file contain (modfier, head, label)
+   tuples, tab-separated, with one per line.  The *label* represented the
+   relationship between the head and the modifier; e.g., if `purpose` is one
+   your labels, you could possibly include `tooth<tab>paste<tab>purpose`.  We
+   used pairs from Tratz-Hovy 2012 for this.  We'll assume that you have this
+   file as `${HOME}/data/labeled-pairs.tsv`.
+3. **Word Embeddings**. We used the
+   [GloVe](https://nlp.stanford.edu/projects/glove/) word embeddings; in
+   particular the 6B token, 300d variant.  We'll assume you have this file as
+   `${HOME}/data/glove.6B.300d.txt`.
 
-TBD! While we used the standard Glove vectors for the relata embeddings, the NC
-embeddings were generated separately. Our plan is to make that data available,
-but it will be released separately.
+We first processed the embeddings from their text format into something that we
+can load a little bit more quickly:
+
+    ./text_embeddings_to_binary.py \
+      --input ${HOME}/data/glove.6B.300d.txt \
+      --output_vocab ${HOME}/data/vocab.txt \
+      --output_npy ${HOME}/data/glove.6B.300d.npy
+
+Next, we'll extract all the dependency parse paths connecting our labeled pairs
+from the corpus.  This process takes a *looooong* time, but is trivially
+parallelized using map-reduce if you have access to that technology.
+
+    ./extract_paths.py \
+      --corpus ${HOME}/data/wiki.txt \
+      --labeled_pairs ${HOME}/data/labeled-pairs.tsv \
+      --output ${HOME}/data/paths.tsv
+
+The file it produces (`paths.tsv`) is a tab-separated file that contains the
+modifier, the head, the label, the encoded path, and the sentence from which the
+path was drawn.  (This last is mostly for sanity checking.)  A sample row might
+look something like this (where newlines would actually be tab characters):
+
+    navy
+    captain
+    owner_emp_use
+    <X>/PROPN/dobj/>::enter/VERB/ROOT/^::follow/VERB/advcl/<::in/ADP/prep/<::footstep/NOUN/pobj/<::of/ADP/prep/<::father/NOUN/pobj/<::bover/PROPN/appos/<::<Y>/PROPN/compound/<
+    He entered the Royal Navy following in the footsteps of his father Captain John Bover and two of his elder brothers as volunteer aboard HMS Perseus
+
+This file must be sorted as follows:
+
+    sort -k1,3 -t$'\t' paths.tsv > sorted.paths.tsv
+
+In particular, rows with the same modifier, head, and label must appear
+contiguously.
+
+We must also create a file that contains all the relation labels from our
+original labeled pairs:
+
+    awk 'BEGIN {FS="\t"} {print $3}' < ${HOME}/data/labeled-pairs.tsv \
+      | sort -u > ${HOME}/data/relations.txt
+
+With these in hand, we're ready to produce the train, validation, and test data:
+
+    ./sorted_paths_to_examples.py \
+       --input ${HOME}/data/sorted.paths.tsv \
+       --vocab ${HOME}/data/vocab.txt \
+       --relations ${HOME}/data/relations.txt \
+       --splits ${HOME}/data/splits.txt \
+       --output_dir ${HOME}/data
+
+Here, `splits.txt` is a file that indicates which "split" (train, test, or
+validation) you want the pair to appear in.  It should be a tab-separate file
+which conatins the modifier, head, and the dataset into which the pair should be
+placed; e.g., `train`, `test`, or `val`:
+
+    tooth <TAB> paste <TAB> train
+    banana <TAB> seat <TAB> test
+
+The program will produce a separate file for each dataset label.
+
+This will have one line per relation actually contained in the data.
 
 ## Create Path Embeddings
 
-Create the path embeddings using `learn_path_embeddings.py`.  This shell script
-fragment will iterate through each dataset, split, and corpus to generate path
-embeddings for each.
+Now we're ready to train the path embeddings using `learn_path_embeddings.py`:
 
-    for DATASET in tratz/fine_grained tratz/coarse_grained ; do
-      for SPLIT in random lexical_head lexical_mod lexical_full ; do
-        for CORPUS in wiki_gigiawords ; do
-          python learn_path_embeddings.py \
-            --dataset_dir ~/lexnet/datasets \
-            --dataset "${DATASET}" \
-            --corpus "${SPLIT}/${CORPUS}" \
-            --embeddings_base_path ~/lexnet/embeddings \
-            --logdir /tmp/learn_path_embeddings
-        done
-      done
-    done
+    ./learn_path_embeddings.py \
+        --train ${HOME}/data/train.tfrecs.gz \
+        --val ${HOME}/data/val.tfrecs.gz \
+        --text ${HOME}/data/test.tfrecs.gz \
+        --embeddings ${HOME}/data/glove.6B.300d.npy
+        --relations ${HOME}/data/relations.txt
+        --output ${HOME}/data/path-embeddings \
+        --logdir /tmp/learn_path_embeddings
 
-The path embeddings will be placed in the directory specified by
-`--embeddings_base_path`.
+The path embeddings will be placed at the location specified by `--output`.
 
 ## Train classifiers
 
