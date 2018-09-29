@@ -64,6 +64,7 @@ class CreateExampleFn(object):
     # Some hackery to map from SpaCy postags to Google's.
     lexnet_common.POSTAG_TO_ID['PROPN'] = lexnet_common.POSTAG_TO_ID['NOUN']
     lexnet_common.POSTAG_TO_ID['PRON'] = lexnet_common.POSTAG_TO_ID['NOUN']
+    lexnet_common.POSTAG_TO_ID['CCONJ'] = lexnet_common.POSTAG_TO_ID['CONJ']
     #lexnet_common.DEPLABEL_TO_ID['relcl'] = lexnet_common.DEPLABEL_TO_ID['rel']
     #lexnet_common.DEPLABEL_TO_ID['compound'] = lexnet_common.DEPLABEL_TO_ID['xcomp']
     #lexnet_common.DEPLABEL_TO_ID['oprd'] = lexnet_common.DEPLABEL_TO_ID['UNK']
