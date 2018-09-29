@@ -29,17 +29,16 @@ Training a model requires the following:
 1. A collection of noun compounds that have been labeled using a *relation
    inventory*.  The inventory describes the specific relationships that you'd
    like the model to differentiate (e.g. *part of* versus *composed of* versus
-   *purpose*), and generally may consist of tens of classes. 
-   You can download the dataset used in the paper from [here](https://vered1986.github.io/papers/Tratz2011_Dataset.tar.gz).
-2. You'll need a collection of word embeddings: the path-based model uses the
-   word embeddings as part of the path representation, and the distributional
-   models use the word embeddings directly as prediction features.
+   *purpose*), and generally may consist of tens of classes.  You can download
+   the dataset used in the paper from
+   [here](https://vered1986.github.io/papers/Tratz2011_Dataset.tar.gz).
+2. A collection of word embeddings: the path-based model uses the word
+   embeddings as part of the path representation, and the distributional models
+   use the word embeddings directly as prediction features.
 3. The path-based model requires a collection of syntactic dependency parses
-   that connect the constituents for each noun compound.
-
-At the moment, this repository does not contain the tools for generating this
-data, but we will provide references to existing datasets and plan to add tools
-to generate the data in the future.
+   that connect the constituents for each noun compound. To generate these,
+   you'll need a corpus from which to train this data; we used Wikipedia and the
+   [LDC GigaWord5](https://catalog.ldc.upenn.edu/LDC2011T07) corpora.
 
 # Contents
 
@@ -62,6 +61,10 @@ Also included are utilities for preparing data for training:
 * `sorted_paths_to_examples.py` processes the output of `extract_paths.py` to
   produce summarized training data.
 
+This code (in particular, the utilities used to prepare the data) differs from
+the code that was used to prepare data for the paper. Notably, we used a
+proprietary dependency parser instead of spaCy, which is used here.
+
 # Dependencies
 
 * [TensorFlow](http://www.tensorflow.org/): see detailed installation
@@ -73,8 +76,8 @@ Also included are utilities for preparing data for training:
 
 # Creating the Model
 
-This section describes the necessary steps that you must follow to reproduce the
-results in the paper. Or, at least, something like them. :)
+This sections described the steps necessary to create and evaluate the model
+described in the paper.
 
 ## Generate Path Data
 
@@ -86,9 +89,7 @@ To begin, you need three text files:
 2. **Labeled Noun Compound Pairs**.  This file contain (modfier, head, label)
    tuples, tab-separated, with one per line.  The *label* represented the
    relationship between the head and the modifier; e.g., if `purpose` is one
-   your labels, you could possibly include `tooth<tab>paste<tab>purpose`.  We
-   used pairs from Tratz-Hovy 2012 for this.  We'll assume that you have this
-   file as `${HOME}/data/labeled-pairs.tsv`.
+   your labels, you could possibly include `tooth<tab>paste<tab>purpose`.
 3. **Word Embeddings**. We used the
    [GloVe](https://nlp.stanford.edu/projects/glove/) word embeddings; in
    particular the 6B token, 300d variant.  We'll assume you have this file as
@@ -129,8 +130,8 @@ This file must be sorted as follows:
 In particular, rows with the same modifier, head, and label must appear
 contiguously.
 
-We must also create a file that contains all the relation labels from our
-original labeled pairs:
+We next create a file that contains all the relation labels from our original
+labeled pairs:
 
     awk 'BEGIN {FS="\t"} {print $3}' < ${HOME}/data/labeled-pairs.tsv \
       | sort -u > ${HOME}/data/relations.txt
@@ -146,15 +147,15 @@ With these in hand, we're ready to produce the train, validation, and test data:
 
 Here, `splits.txt` is a file that indicates which "split" (train, test, or
 validation) you want the pair to appear in.  It should be a tab-separate file
-which conatins the modifier, head, and the dataset into which the pair should be
-placed; e.g., `train`, `test`, or `val`:
+which conatins the modifier, head, and the dataset ( `train`, `test`, or `val`)
+into which the pair should be placed; e.g.,:
 
     tooth <TAB> paste <TAB> train
     banana <TAB> seat <TAB> test
 
-The program will produce a separate file for each dataset label.
-
-This will have one line per relation actually contained in the data.
+The program will produce a separate file for each dataset split in the directory
+specified by `--output_dir`.  Each file is contains `tf.train.Example` protocol
+buffers encoded using the `TFRecord` file format.
 
 ## Create Path Embeddings
 
