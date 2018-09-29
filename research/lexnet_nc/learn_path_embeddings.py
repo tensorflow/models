@@ -174,9 +174,10 @@ def epoch_completed(model, session, epoch, epoch_loss,
           precision, recall, f1))
 
   if f1 > best_f1:
-    print('Saving model in: %s' % (save_path + 'best.ckpt'))
-    saver.save(session, save_path + 'best.ckpt')
-    print('Model saved in file: %s' % (save_path + 'best.ckpt'))
+    save_filename = os.path.join(save_path, 'best.ckpt')
+    print('Saving model in: %s' % save_filename)
+    saver.save(session, save_filename)
+    print('Model saved in file: %s' % save_filename)
 
   return f1
 

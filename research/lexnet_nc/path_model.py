@@ -79,7 +79,8 @@ class PathBasedModel(object):
     network_input = self.lstm_output_dim
     self.lemma_lookup = tf.get_variable(
         'lemma_lookup',
-        initializer=self.lemma_embeddings,
+        #initializer=self.lemma_embeddings,  # DONTCHECKIN
+        shape=self.lemma_embeddings.shape,
         dtype=tf.float32,
         trainable=self.hparams.learn_lemmas)
     self.pos_lookup = tf.get_variable(

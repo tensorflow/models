@@ -70,11 +70,15 @@ class CreateExampleFn(object):
     #lexnet_common.DEPLABEL_TO_ID['oprd'] = lexnet_common.DEPLABEL_TO_ID['UNK']
 
   def __call__(self, mod, head, rel, raw_paths):
-    raw_paths, counts = zip(*raw_paths.most_common(FLAGS.max_paths))
-    paths = [raw_path.split('::') for raw_path in raw_paths]
-
     # Drop any really long paths.
-    paths = [path for path in paths if len(path) <= FLAGS.max_pathlen]
+    paths = []
+    counts = []
+    for raw, count in raw_paths.most_common(FLAGS.max_paths):
+      path = raw.split('::')
+      if len(path) <= FLAGS.max_pathlen:
+        paths.append(path)
+        counts.append(count)
+
     if not paths:
       return None
 
