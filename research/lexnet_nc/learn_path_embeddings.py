@@ -122,7 +122,7 @@ def main(_):
           session.run(assign_best_f1_op, {f1_t: f1})
 
         if f1 < best_f1 - 0.08:
-          tf.logging.fino('Stopping training after %d epochs.\n' % epoch)
+          tf.logging.info('Stopping training after %d epochs.\n' % epoch)
           break
 
       # Print the best performance on the validation set
