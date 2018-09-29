@@ -117,6 +117,13 @@ def run_imagenet_with_keras(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
+  # Raise an error if the user wants to run with FP16 support. Currently we do
+  # not have support for FP16 in Keras.
+  if flags_obj.dtype == 'fp16':
+    raise ValueError('fp16 is unsupported in Keras. You can only use the '
+                     'default value of fp32 when running Keras APIs.')
+
+
   batch_size=distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
 
