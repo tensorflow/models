@@ -238,7 +238,8 @@ def define_cifar_flags():
                           resnet_size='56',
                           train_epochs=182,
                           epochs_between_evals=10,
-                          batch_size=128)
+                          batch_size=128,
+                          image_bytes_as_serving_input=False)
 
 
 def run_cifar(flags_obj):
@@ -247,6 +248,11 @@ def run_cifar(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
+  if flags_obj.image_bytes_as_serving_input:
+    tf.logging.fatal('--image_bytes_as_serving_input cannot be set to True '
+                     'for CIFAR. This flag is only applicable to ImageNet.')
+    return
+
   input_function = (flags_obj.use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
