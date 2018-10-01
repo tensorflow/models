@@ -204,8 +204,8 @@ python setup.py sdist
 This will create python packages dist/object_detection-0.1.tar.gz,
 slim/dist/slim-0.1.tar.gz, and /tmp/pycocotools/pycocotools-2.0.tar.gz.
 
-For running the training Cloud ML job, we'll configure the cluster to use 10
-training jobs (1 master + 9 workers) and three parameters servers. The
+For running the training Cloud ML job, we'll configure the cluster to use 5
+training jobs and three parameters servers. The
 configuration file can be found at `object_detection/samples/cloud/cloud.yml`.
 
 Note: This sample is supported for use with 1.8 runtime version.
