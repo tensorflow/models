@@ -665,22 +665,40 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
     _, update_op = eval_metric_ops['DetectionMasks_Precision/mAP']
 
     with self.test_session() as sess:
-      sess.run(update_op,
-               feed_dict={
-                   image_id: 'image1',
-                   groundtruth_boxes: np.array([[100., 100., 200., 200.]]),
-                   groundtruth_classes: np.array([1]),
-                   groundtruth_masks: np.pad(np.ones([1, 100, 100],
-                                                     dtype=np.uint8),
-                                             ((0, 0), (10, 10), (10, 10)),
-                                             mode='constant'),
-                   detection_scores: np.array([.8]),
-                   detection_classes: np.array([1]),
-                   detection_masks: np.pad(np.ones([1, 100, 100],
-                                                   dtype=np.uint8),
-                                           ((0, 0), (10, 10), (10, 10)),
-                                           mode='constant')
-               })
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id:
+                  'image1',
+              groundtruth_boxes:
+                  np.array([[100., 100., 200., 200.], [50., 50., 100., 100.]]),
+              groundtruth_classes:
+                  np.array([1, 2]),
+              groundtruth_masks:
+                  np.stack([
+                      np.pad(
+                          np.ones([100, 100], dtype=np.uint8), ((10, 10),
+                                                                (10, 10)),
+                          mode='constant'),
+                      np.pad(
+                          np.ones([50, 50], dtype=np.uint8), ((0, 70), (0, 70)),
+                          mode='constant')
+                  ]),
+              detection_scores:
+                  np.array([.9, .8]),
+              detection_classes:
+                  np.array([2, 1]),
+              detection_masks:
+                  np.stack([
+                      np.pad(
+                          np.ones([50, 50], dtype=np.uint8), ((0, 70), (0, 70)),
+                          mode='constant'),
+                      np.pad(
+                          np.ones([100, 100], dtype=np.uint8), ((10, 10),
+                                                                (10, 10)),
+                          mode='constant'),
+                  ])
+          })
       sess.run(update_op,
                feed_dict={
                    image_id: 'image2',
