@@ -94,7 +94,6 @@ def model_fn(features, labels, mode, params):
     predictions = {
         'class_ids': tf.argmax(logits, axis=1),
         'probabilities': tf.nn.softmax(logits),
-        'label': labels,
     }
     return tf.contrib.tpu.TPUEstimatorSpec(mode, predictions=predictions)
 
@@ -186,18 +185,17 @@ def main(argv):
   if FLAGS.eval_steps:
     estimator.evaluate(input_fn=eval_input_fn, steps=FLAGS.eval_steps)
 
-  # Run prediction on the test data.
+  # Run prediction on top few samples of test data.
   if FLAGS.enable_predict:
     predictions = estimator.predict(input_fn=predict_input_fn)
 
     for pred_dict in predictions:
-      template = ('Prediction is "{}" ({:.1f}%), expected "{}"')
+      template = ('Prediction is "{}" ({:.1f}%).')
 
       class_id = pred_dict['class_ids']
       probability = pred_dict['probabilities'][class_id]
-      expected_label = pred_dict['label']
 
-      print(template.format(class_id, 100 * probability, expected_label))
+      print(template.format(class_id, 100 * probability))
 
 
 if __name__ == "__main__":
