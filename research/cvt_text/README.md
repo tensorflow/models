@@ -22,12 +22,12 @@ Run `python cvt.py --mode=train --model_name=chunking_model`. By default this tr
 Run `python cvt.py --mode=eval --model_name=chunking_model`. A CVT model trained on the chunking data for 200k steps should get at least 97.1 F1 on the dev set and 96.6 F1 on the test set.
 
 ## Citation
-If you use this code for your publication, please cite the original paper
+If you use this code for your publication, please cite the original paper:
 ```
 @inproceedings{clark2018semi,
   title = {Semi-Supervised Sequence Modeling with Cross-View Training},
   author = {Kevin Clark and Minh-Thang Luong and Christopher D. Manning and Quoc V. Le},
-  booktitle = {ACL},
+  booktitle = {EMNLP},
   year = {2018}
 }
 ```
