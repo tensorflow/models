@@ -333,6 +333,9 @@ def run_ncf(_):
           "tpu": FLAGS.tpu,
           "tpu_zone": FLAGS.tpu_zone,
           "tpu_gcp_project": FLAGS.tpu_gcp_project,
+          "beta1": FLAGS.beta1,
+          "beta2": FLAGS.beta2,
+          "epsilon": FLAGS.epsilon,
       }, batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
 
   # Create hooks that log information about the training and metric values
@@ -482,6 +485,19 @@ def define_ncf_flags():
   flags.DEFINE_float(
       name="learning_rate", default=0.001,
       help=flags_core.help_wrap("The learning rate."))
+
+  flags.DEFINE_float(
+      name="beta1", default=0.9,
+      help=flags_core.help_wrap("beta1 hyperparameter for the Adam optimizer."))
+
+  flags.DEFINE_float(
+      name="beta2", default=0.999,
+      help=flags_core.help_wrap("beta2 hyperparameter for the Adam optimizer."))
+
+  flags.DEFINE_float(
+      name="epsilon", default=1e-8,
+      help=flags_core.help_wrap("epsilon hyperparameter for the Adam "
+                                "optimizer."))
 
   flags.DEFINE_float(
       name="hr_threshold", default=None,
