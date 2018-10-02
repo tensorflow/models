@@ -114,5 +114,5 @@ def mask_duplicates(x, axis=1):  # type: (np.ndarray, int) -> np.ndarray
 
   # Duplicate values will have a difference of zero. By definition the first
   # element is never a duplicate.
-  return diffs[np.arange(x.shape[0])[:, np.newaxis],
-               inv_x_sort_ind].astype(bool)
+  return np.where(diffs[np.arange(x.shape[0])[:, np.newaxis],
+                  inv_x_sort_ind], 0, 1)

@@ -131,7 +131,7 @@ def run_ncf(_):
   eval_batch_size = int(FLAGS.eval_batch_size or FLAGS.batch_size)
   eval_per_user = rconst.NUM_EVAL_NEGATIVES + 1
   if eval_batch_size % eval_per_user:
-    eval_batch_size = int(eval_batch_size / eval_per_user) * eval_per_user
+    eval_batch_size = eval_batch_size // eval_per_user * eval_per_user
     tf.logging.warning(
         "eval examples per user does not evenly divide eval_batch_size. "
         "Overriding to {}".format(eval_batch_size))

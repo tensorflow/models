@@ -85,6 +85,8 @@ def neumf_model_fn(features, labels, mode, params):
         labels=labels,
         logits=softmax_logits
     )
+
+    # This tensor is used by logging hooks.
     tf.identity(loss, name="cross_entropy")
 
     global_step = tf.train.get_global_step()
@@ -202,7 +204,7 @@ def construct_model(users, items, params):
 
 def compute_eval_loss_and_metrics(logits, softmax_logits, duplicate_mask,
                                   num_training_neg, match_mlperf=False):
-  # type: (tf.Tensor, tf.Tensor, tf.Tensor, bool) -> tf.estimator.EstimatorSpec
+  # type: (tf.Tensor, tf.Tensor, tf.Tensor, int, bool) -> tf.estimator.EstimatorSpec
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -256,6 +258,7 @@ def compute_eval_loss_and_metrics(logits, softmax_logits, duplicate_mask,
       appeared for that user.
 
     num_training_neg: The number of negatives per positive during training.
+
     match_mlperf: Use the MLPerf reference convention for computing rank.
 
   Returns:
@@ -283,11 +286,9 @@ def compute_eval_loss_and_metrics(logits, softmax_logits, duplicate_mask,
   # However this is a special case because the target will only appear in
   # sort_indices once.
   one_hot_position = tf.cast(tf.equal(sort_indices, 0), tf.int32)
-  tiled_range = tf.tile(tf.range(logits_by_user.shape[1])[tf.newaxis, :],
-                        (logits_by_user.shape[0], 1))
-
-  position_vector = tf.reduce_sum(tf.multiply(
-      one_hot_position, tiled_range), axis=1)
+  sparse_positions = tf.multiply(
+      one_hot_position, tf.range(logits_by_user.shape[1])[tf.newaxis, :])
+  position_vector = tf.reduce_sum(sparse_positions, axis=1)
 
   in_top_k = tf.cast(tf.less(position_vector, rconst.TOP_K), tf.float32)
   ndcg = tf.log(2.) / tf.log(tf.cast(position_vector, tf.float32) + 2)
