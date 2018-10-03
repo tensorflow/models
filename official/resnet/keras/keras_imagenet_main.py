@@ -153,7 +153,7 @@ def run_imagenet_with_keras(flags_obj):
   # in the graph.
   tf.keras.backend.set_learning_phase(True)
 
-  model.compile(loss=softmax_corss_entrophy,
+  model.compile(loss=softmax_corssentropy_with_logits,
                 optimizer=opt,
                 metrics=["accuracy"],
                 distribute=strategy)
@@ -186,8 +186,8 @@ def run_imagenet_with_keras(flags_obj):
                                      steps_per_epoch, samples_per_second))
 
 
-def softmax_corss_entrophy(y_true, y_pred):
-  """A cost function replicating tf's sparse_softmax_cross_entropy
+def softmax_corssentropy_with_logits(y_true, y_pred):
+  """A loss function replicating tf's sparse_softmax_cross_entropy
 
   Args:
     y_true: True labels. Tensor.
