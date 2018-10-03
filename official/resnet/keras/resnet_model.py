@@ -281,4 +281,3 @@ def ResNet50(include_top=True,
     model.load_weights(weights)
 
   return model
-
