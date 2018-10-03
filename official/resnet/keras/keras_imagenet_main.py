@@ -56,7 +56,10 @@ class TimeHistory(tf.keras.callbacks.Callback):
       last_100_batches = time.time() - self.batch_time_start
       self.batch_times.append(last_100_batches)
       self.record_batch = True
-      print("Time take for %d batches:%f " % (batch, last_100_batches))
+      # TODO(anjalisridhar): add timestamp as well.
+      if batch != 0:
+        print("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f}" %
+              (batch, last_100_batches))
 
 
 def parse_record_keras(raw_record, is_training, dtype):
@@ -117,6 +120,11 @@ def run_imagenet_with_keras(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
+  if flags_obj.dtype == 'fp16':
+    raise ValueError('dtype fp16 is not supported in Keras. Use the default '
+                     'value(fp32).')
+
+
   batch_size=distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
 
@@ -161,11 +169,11 @@ def run_imagenet_with_keras(flags_obj):
   time_callback = TimeHistory()
 
   steps_per_epoch = imagenet_main._NUM_IMAGES['train'] // flags_obj.batch_size
-  # steps_per_epoch = 10
   model.fit(input_dataset,
             epochs=flags_obj.train_epochs,
             steps_per_epoch=steps_per_epoch,
-            callbacks=[time_callback])
+            callbacks=[time_callback],
+            verbose=0)
 
   # If you have set FLAGS.train_epochs to be 1 then we cannot calculate samples/s
   # in a meaningful way since the first epoch takes the longest.
@@ -176,15 +184,16 @@ def run_imagenet_with_keras(flags_obj):
 
   total_time = 0
   for i in range(1, flags_obj.train_epochs):
+    # time taken for n-1 epochs.
     total_time += time_callback.epoch_times[i]
-  print("Total time for n-1 epochs: ", total_time)
 
   if flags_obj.train_epochs > 1:
     time_per_epoch = total_time//(flags_obj.train_epochs - 1)
-    samples_per_second = (flags_obj.batch_size * steps_per_epoch) // time_per_epoch
-    print("Results: time_per_epoch %f, global_batchsize %d, step_per_epoch %d,"
-          "samples_per_second %d" % (time_per_epoch, flags_obj.batch_size,
-                                     steps_per_epoch, samples_per_second))
+    samples_per_second = (flags_obj.batch_size * steps_per_epoch) / time_per_epoch
+    print("BenchmarkMetric: {'time_per_epoch':%f, 'global_batch_size': %d, "
+          "'steps_per_epoch': %d, 'examples_per_s': %f}" %
+          (time_per_epoch, flags_obj.batch_size,
+           steps_per_epoch, samples_per_second))
 
 
 def main(_):
