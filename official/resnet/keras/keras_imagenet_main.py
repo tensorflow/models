@@ -121,7 +121,7 @@ def run_imagenet_with_keras(flags_obj):
     flags_obj: An object containing parsed flag values.
   """
   if flags_obj.dtype == 'fp16':
-    raise ValueError('fp16 is not supported in Keras. Use the default '
+    raise ValueError('dtype fp16 is not supported in Keras. Use the default '
                      'value(fp32).')
 
 
