@@ -83,3 +83,36 @@ def sample_with_exclusion(num_items, positive_set, n, replacement=True):
     # in practice tends to be quite ordered.
 
   return negatives[:n]
+
+def mask_duplicates(x, axis=1):  # type: (np.ndarray, int) -> np.ndarray
+  """Identify duplicates from sampling with replacement.
+
+  Args:
+    x: A 2D NumPy array of samples
+    axis: The axis along which to de-dupe.
+
+  Returns:
+    A NumPy array with the same shape as x with one if an element appeared
+    previously along axis 1, else zero.
+  """
+  if axis != 1:
+    raise NotImplementedError
+
+  x_sort_ind = np.argsort(x, axis=1, kind="mergesort")
+  sorted_x = x[np.arange(x.shape[0])[:, np.newaxis], x_sort_ind]
+
+  # compute the indices needed to map values back to their original position.
+  inv_x_sort_ind = np.argsort(x_sort_ind, axis=1, kind="mergesort")
+
+  # Compute the difference of adjacent sorted elements.
+  diffs = sorted_x[:, :-1] - sorted_x[:, 1:]
+
+  # We are only interested in whether an element is zero. Therefore left padding
+  # with ones to restore the original shape is sufficient.
+  diffs = np.concatenate(
+      [np.ones((diffs.shape[0], 1), dtype=diffs.dtype), diffs], axis=1)
+
+  # Duplicate values will have a difference of zero. By definition the first
+  # element is never a duplicate.
+  return np.where(diffs[np.arange(x.shape[0])[:, np.newaxis],
+                        inv_x_sort_ind], 0, 1)
