@@ -659,14 +659,16 @@ class ObjectDetectionEvaluation(object):
     self._initialize_detections()
 
   def _initialize_detections(self):
+    """Initializes internal data structures."""
     self.detection_keys = set()
     self.scores_per_class = [[] for _ in range(self.num_class)]
     self.tp_fp_labels_per_class = [[] for _ in range(self.num_class)]
     self.num_images_correctly_detected_per_class = np.zeros(self.num_class)
     self.average_precision_per_class = np.empty(self.num_class, dtype=float)
     self.average_precision_per_class.fill(np.nan)
-    self.precisions_per_class = []
-    self.recalls_per_class = []
+    self.precisions_per_class = [np.nan] * self.num_class
+    self.recalls_per_class = [np.nan] * self.num_class
+
     self.corloc_per_class = np.ones(self.num_class, dtype=float)
 
   def clear_detections(self):
@@ -867,8 +869,8 @@ class ObjectDetectionEvaluation(object):
       logging.info(scores)
       precision, recall = metrics.compute_precision_recall(
           scores, tp_fp_labels, self.num_gt_instances_per_class[class_index])
-      self.precisions_per_class.append(precision)
-      self.recalls_per_class.append(recall)
+      self.precisions_per_class[class_index] = precision
+      self.recalls_per_class[class_index] = recall
       average_precision = metrics.compute_average_precision(precision, recall)
       self.average_precision_per_class[class_index] = average_precision
 
