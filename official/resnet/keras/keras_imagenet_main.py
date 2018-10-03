@@ -103,7 +103,6 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
       maxval=num_classes - 1,
       dtype=tf.int32,
       name='synthetic_labels')
-  labels = tf.one_hot(labels, imagenet_main._NUM_CLASSES)
 
   dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
