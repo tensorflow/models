@@ -50,7 +50,7 @@ class NcfTest(tf.test.TestCase):
     g = tf.Graph()
     with g.as_default():
       logits = tf.convert_to_tensor(
-          predicted_scores_by_user.flatten()[:, np.newaxis], tf.float32)
+          predicted_scores_by_user.reshape((-1, 1)), tf.float32)
       softmax_logits = tf.concat([tf.zeros(logits.shape, dtype=logits.dtype),
                                   logits], axis=1)
       duplicate_mask = tf.convert_to_tensor(

@@ -92,7 +92,7 @@ def mask_duplicates(x, axis=1):  # type: (np.ndarray, int) -> np.ndarray
     axis: The axis along which to de-dupe.
 
   Returns:
-    A NumPy array with the same shape as x with ones if an element appeared
+    A NumPy array with the same shape as x with one if an element appeared
     previously along axis 1, else zero.
   """
   if axis != 1:
