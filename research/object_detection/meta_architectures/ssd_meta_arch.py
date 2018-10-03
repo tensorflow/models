@@ -651,6 +651,16 @@ class SSDMetaArch(model.DetectionModel):
                                   [-1, -1, -1])
       additional_fields = None
 
+      batch_size = (
+          shape_utils.combined_static_and_dynamic_shape(preprocessed_images)[0])
+
+      if 'feature_maps' in prediction_dict:
+        feature_map_list = []
+        for feature_map in prediction_dict['feature_maps']:
+          feature_map_list.append(tf.reshape(feature_map, [batch_size, -1]))
+        box_features = tf.concat(feature_map_list, 1)
+        box_features = tf.identity(box_features, 'raw_box_features')
+
       if detection_keypoints is not None:
         additional_fields = {
             fields.BoxListFields.keypoints: detection_keypoints}
