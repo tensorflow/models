@@ -72,7 +72,7 @@ def neumf_model_fn(features, labels, mode, params):
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)
     return compute_eval_loss_and_metrics(
         logits, softmax_logits, duplicate_mask, params["num_neg"],
-        params["match_mlperf"])
+        params["match_mlperf"], params["use_tpu"])
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
@@ -203,11 +203,12 @@ def construct_model(users, items, params):
   return logits
 
 
-def compute_eval_loss_and_metrics(logits,             # type: tf.Tensor
-                                  softmax_logits,     # type: tf.Tensor
-                                  duplicate_mask,     # type: tf.Tensor
-                                  num_training_neg,   # type: int
-                                  match_mlperf=False  # type: bool
+def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
+                                  softmax_logits,      # type: tf.Tensor
+                                  duplicate_mask,      # type: tf.Tensor
+                                  num_training_neg,    # type: int
+                                  match_mlperf=False,  # type: bool
+                                  use_tpu=False        # type: bool
                                  ):
   # type: (...) -> tf.estimator.EstimatorSpec
   """Model evaluation with HR and NDCG metrics.
@@ -265,6 +266,8 @@ def compute_eval_loss_and_metrics(logits,             # type: tf.Tensor
     num_training_neg: The number of negatives per positive during training.
 
     match_mlperf: Use the MLPerf reference convention for computing rank.
+
+    use_tpu: Should the evaluation be performed on a TPU.
 
   Returns:
     An EstimatorSpec for evaluation.
@@ -330,10 +333,19 @@ def compute_eval_loss_and_metrics(logits,             # type: tf.Tensor
   cross_entropy = tf.losses.sparse_softmax_cross_entropy(
       logits=softmax_logits, labels=eval_labels, weights=example_weights)
 
+  def metric_fn(top_k_tensor, ndcg_tensor, weight_tensor):
+    return {
+        rconst.HR_KEY: tf.metrics.mean(top_k_tensor, weights=weight_tensor),
+        rconst.NDCG_KEY: tf.metrics.mean(ndcg_tensor, weights=weight_tensor),
+    }
+
+  if use_tpu:
+    return tf.contrib.tpu.TPUEstimatorSpec(
+        mode=tf.estimator.ModeKeys.EVAL, loss=cross_entropy,
+        eval_metrics=(metric_fn, [in_top_k, ndcg, metric_weights]))
+
   return tf.estimator.EstimatorSpec(
       mode=tf.estimator.ModeKeys.EVAL,
       loss=cross_entropy,
-      eval_metric_ops={
-          rconst.HR_KEY: tf.metrics.mean(in_top_k, weights=metric_weights),
-          rconst.NDCG_KEY: tf.metrics.mean(ndcg, weights=metric_weights),
-      })
+      eval_metric_ops=metric_fn(in_top_k, ndcg, metric_weights)
+  )
