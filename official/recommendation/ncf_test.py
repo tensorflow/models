@@ -102,17 +102,17 @@ class NcfTest(tf.test.TestCase):
                                   2 * math.log(2) / math.log(4)) / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 1,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, 1 / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 2,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 2 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3)) / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 3,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
@@ -149,23 +149,23 @@ class NcfTest(tf.test.TestCase):
                                   2 * math.log(2) / math.log(5)) / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 1,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, 1 / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 2,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 2 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3)) / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 3,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 4,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
@@ -203,23 +203,23 @@ class NcfTest(tf.test.TestCase):
                                   3 * math.log(2) / math.log(4)) / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 1,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 1 / 4)
     self.assertAlmostEqual(ndcg, 1 / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 2,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 3 / 4)
     self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3)) / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 3,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3) +
                                   math.log(2) / math.log(4)) / 4)
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 4,
-                                              match_mlperf=True)
+                                          match_mlperf=True)
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3) +
                                   math.log(2) / math.log(4)) / 4)

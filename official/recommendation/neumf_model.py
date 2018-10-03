@@ -71,7 +71,8 @@ def neumf_model_fn(features, labels, mode, params):
   elif mode == tf.estimator.ModeKeys.EVAL:
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)
     return compute_eval_loss_and_metrics(
-        logits, softmax_logits, duplicate_mask, params["num_neg"], params["match_mlperf"])
+        logits, softmax_logits, duplicate_mask, params["num_neg"],
+        params["match_mlperf"])
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
@@ -202,9 +203,13 @@ def construct_model(users, items, params):
   return logits
 
 
-def compute_eval_loss_and_metrics(logits, softmax_logits, duplicate_mask,
-                                  num_training_neg, match_mlperf=False):
-  # type: (tf.Tensor, tf.Tensor, tf.Tensor, int, bool) -> tf.estimator.EstimatorSpec
+def compute_eval_loss_and_metrics(logits,             # type: tf.Tensor
+                                  softmax_logits,     # type: tf.Tensor
+                                  duplicate_mask,     # type: tf.Tensor
+                                  num_training_neg,   # type: int
+                                  match_mlperf=False  # type: bool
+                                 ):
+  # type: (...) -> tf.estimator.EstimatorSpec
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -329,7 +334,6 @@ def compute_eval_loss_and_metrics(logits, softmax_logits, duplicate_mask,
       mode=tf.estimator.ModeKeys.EVAL,
       loss=cross_entropy,
       eval_metric_ops={
-        rconst.HR_KEY: tf.metrics.mean(in_top_k, weights=metric_weights),
-        rconst.NDCG_KEY: tf.metrics.mean(ndcg, weights=metric_weights),
+          rconst.HR_KEY: tf.metrics.mean(in_top_k, weights=metric_weights),
+          rconst.NDCG_KEY: tf.metrics.mean(ndcg, weights=metric_weights),
       })
-

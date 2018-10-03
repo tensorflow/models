@@ -27,6 +27,7 @@ import json
 import os
 import pickle
 import signal
+import socket
 import subprocess
 import time
 import timeit
@@ -405,7 +406,7 @@ def _shutdown(proc):
     if proc.returncode is not None:
       return  # SIGINT was handled successfully within 1 sec
 
-  except BrokenPipeError:
+  except socket.error:
     pass
 
   # Otherwise another second of grace period and then forcibly kill the process.
