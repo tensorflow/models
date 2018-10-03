@@ -382,7 +382,7 @@ def extract_features(images,
     else:
       # The following codes employ the DeepLabv3 ASPP module. Note that We
       # could express the ASPP module as one particular dense prediction
-      # cell architecture. We do not do so but leave the followng codes in
+      # cell architecture. We do not do so but leave the following codes in
       # order for backward compatibility.
       batch_norm_params = {
         'is_training': is_training and fine_tune_batch_norm,

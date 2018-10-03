@@ -126,9 +126,17 @@ with "deeplab".
 
 ## Change Logs
 
+### October 1, 2018
+
+Released MobileNet-v2 depth-multiplier = 0.5 COCO-pretrained checkpoints on
+PASCAL VOC 2012, and Xception-65 COCO pretrained checkpoint (i.e., no PASCAL
+pretrained).
+
+
 ### September 5, 2018
 
 Released Cityscapes pretrained checkpoints with found best dense prediction cell.
+
 
 ### May 26, 2018
 

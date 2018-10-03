@@ -100,8 +100,9 @@ Un-tar'ed directory includes:
 
 ### Model details
 
-We also provide some checkpoints that are only pretrained on ImageNet so that
-one could use this for training your own models.
+We also provide some checkpoints that are pretrained on ImageNet and/or COCO (as
+post-fixed in the model name) so that one could use this for training your own
+models.
 
 *   mobilenet_v2: We refer the interested users to the TensorFlow open source
     [MobileNet-V2](https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet)
@@ -120,11 +121,12 @@ one could use this for training your own models.
 
 Model name                                                                             | File Size
 -------------------------------------------------------------------------------------- | :-------:
-[xception_41](http://download.tensorflow.org/models/xception_41_2018_05_09.tar.gz ) | 288MB
-[xception_65](http://download.tensorflow.org/models/deeplabv3_xception_2018_01_04.tar.gz) | 447MB
-[xception_71](http://download.tensorflow.org/models/xception_71_2018_05_09.tar.gz  ) | 474MB
-[resnet_v1_50_beta](http://download.tensorflow.org/models/resnet_v1_50_2018_05_04.tar.gz)      | 274MB
-[resnet_v1_101_beta](http://download.tensorflow.org/models/resnet_v1_101_2018_05_04.tar.gz)    | 477MB
+[xception_41_imagenet](http://download.tensorflow.org/models/xception_41_2018_05_09.tar.gz ) | 288MB
+[xception_65_imagenet](http://download.tensorflow.org/models/deeplabv3_xception_2018_01_04.tar.gz) | 447MB
+[xception_65_imagenet_coco](http://download.tensorflow.org/models/xception_65_coco_pretrained_2018_10_02.tar.gz) | 292MB
+[xception_71_imagenet](http://download.tensorflow.org/models/xception_71_2018_05_09.tar.gz  ) | 474MB
+[resnet_v1_50_beta_imagenet](http://download.tensorflow.org/models/resnet_v1_50_2018_05_04.tar.gz)      | 274MB
+[resnet_v1_101_beta_imagenet](http://download.tensorflow.org/models/resnet_v1_101_2018_05_04.tar.gz)    | 477MB
 
 ## References
 
