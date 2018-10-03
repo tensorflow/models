@@ -25,7 +25,7 @@ def open_sharded_output_tfrecords(exit_stack, base_path, num_shards):
   """Opens all TFRecord shards for writing and adds them to an exit stack.
 
   Args:
-    exit_stack: A context2.ExitStack used to automatically closed the TFRecords
+    exit_stack: A context2.ExitStack used to automatically close the TFRecords
       opened in this function.
     base_path: The base path for all shards
     num_shards: The number of shards
