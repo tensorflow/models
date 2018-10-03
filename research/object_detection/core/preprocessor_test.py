@@ -1281,6 +1281,66 @@ class PreprocessorTest(tf.test.TestCase):
         self.assertAllEqual(distorted_labels_, expected_labels_)
         self.assertAllEqual(distorted_weights_, expected_weights_)
 
+  def testRandomCropWithoutClipBoxes(self):
+    preprocessing_options = [(preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    })]
+
+    images = self.createColorfulTestImage()
+    boxes = tf.constant([[0.1, 0.1, 0.8, 0.3],
+                         [0.2, 0.4, 0.75, 0.75],
+                         [0.3, 0.1, 0.4, 0.7]], dtype=tf.float32)
+    labels = tf.constant([1, 7, 11], dtype=tf.int32)
+    weights = tf.constant([1.0, 0.5, 0.6], dtype=tf.float32)
+
+    tensor_dict = {
+        fields.InputDataFields.image: images,
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
+    }
+    tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+    images = tensor_dict[fields.InputDataFields.image]
+
+    preprocessing_options = [(preprocessor.random_crop_image, {
+        'clip_boxes': False,
+    })]
+    with mock.patch.object(
+        tf.image,
+        'sample_distorted_bounding_box') as mock_sample_distorted_bounding_box:
+      mock_sample_distorted_bounding_box.return_value = (tf.constant(
+          [6, 143, 0], dtype=tf.int32), tf.constant(
+              [190, 237, -1], dtype=tf.int32), tf.constant(
+                  [[[0.03, 0.3575, 0.98, 0.95]]], dtype=tf.float32))
+
+      distorted_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                      preprocessing_options)
+
+      distorted_boxes = distorted_tensor_dict[
+          fields.InputDataFields.groundtruth_boxes]
+      distorted_labels = distorted_tensor_dict[
+          fields.InputDataFields.groundtruth_classes]
+      distorted_weights = distorted_tensor_dict[
+          fields.InputDataFields.groundtruth_weights]
+      expected_boxes = tf.constant(
+          [[0.178947, 0.07173, 0.75789469, 0.66244733],
+           [0.28421, -0.434599, 0.38947365, 0.57805908]],
+          dtype=tf.float32)
+      expected_labels = tf.constant([7, 11], dtype=tf.int32)
+      expected_weights = tf.constant([0.5, 0.6], dtype=tf.float32)
+
+      with self.test_session() as sess:
+        (distorted_boxes_, distorted_labels_, distorted_weights_,
+         expected_boxes_, expected_labels_, expected_weights_) = sess.run(
+             [distorted_boxes, distorted_labels, distorted_weights,
+              expected_boxes, expected_labels, expected_weights])
+        self.assertAllClose(distorted_boxes_, expected_boxes_)
+        self.assertAllEqual(distorted_labels_, expected_labels_)
+        self.assertAllEqual(distorted_weights_, expected_weights_)
+
   def testRandomCropImageWithMultiClassScores(self):
     preprocessing_options = []
     preprocessing_options.append((preprocessor.normalize_image, {
