@@ -118,14 +118,16 @@ def bottleneck(inputs,
           depth, [1, 1],
           stride=stride,
           activation_fn=tf.nn.relu6 if use_bounded_activations else None,
-          scope='shortcut')
+          scope='shortcut',
+          biases_initializer=None)
 
     residual = slim.conv2d(inputs, depth_bottleneck, [1, 1], stride=1,
-                           scope='conv1')
+                           scope='conv1', biases_initializer=None)
     residual = resnet_utils.conv2d_same(residual, depth_bottleneck, 3, stride,
-                                        rate=rate, scope='conv2')
+                                        rate=rate, scope='conv2', 
+                                        biases_initializer=None)
     residual = slim.conv2d(residual, depth, [1, 1], stride=1,
-                           activation_fn=None, scope='conv3')
+                           activation_fn=None, scope='conv3', biases_initializer=None)
 
     if use_bounded_activations:
       # Use clip_by_value to simulate bandpass activation.
@@ -231,7 +233,8 @@ def resnet_v1(inputs,
             if output_stride % 4 != 0:
               raise ValueError('The output_stride needs to be a multiple of 4.')
             output_stride /= 4
-          net = resnet_utils.conv2d_same(net, 64, 7, stride=2, scope='conv1')
+          net = resnet_utils.conv2d_same(net, 64, 7, stride=2, scope='conv1',
+                                         biases_initializer=None)
           net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1')
         net = resnet_utils.stack_blocks_dense(net, blocks, output_stride,
                                               store_non_strided_activations)
