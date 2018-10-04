@@ -156,13 +156,13 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   return input_fn
 
 
-def image_bytes_serving_input_fn(image_shape):
+def image_bytes_serving_input_fn(image_shape, dtype=tf.float32):
   """Serving input fn for raw jpeg images."""
 
   def _preprocess_image(image_bytes):
     """Preprocess a single raw image."""
     # Bounding box around the whole image.
-    bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
+    bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=dtype, shape=[1, 1, 4])
     height, width, num_channels = image_shape
     image = imagenet_preprocessing.preprocess_image(
         image_bytes, bbox, height, width, num_channels, is_training=False)
@@ -530,12 +530,13 @@ def resnet_main(
 
   if flags_obj.export_dir is not None:
     # Exports a saved model for the given classifier.
+    export_dtype=flags_core.get_tf_dtype(flags_obj)
     if flags_obj.image_bytes_as_serving_input:
-      input_receiver_fn = functools.partial(image_bytes_serving_input_fn, shape)
+      input_receiver_fn = functools.partial(
+          image_bytes_serving_input_fn, shape, dtype=export_dtype)
     else:
       input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-          shape, batch_size=flags_obj.batch_size,
-          dtype=flags_core.get_tf_dtype(flags_obj))
+          shape, batch_size=flags_obj.batch_size, dtype=export_dtype)
     classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn,
                                  strip_default_attrs=True)
 
