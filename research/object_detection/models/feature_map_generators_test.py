@@ -45,6 +45,11 @@ EMBEDDED_SSD_MOBILENET_V1_LAYOUT = {
     'conv_kernel_size': [-1, -1, 3, 3, 2],
 }
 
+SSD_MOBILENET_V1_WEIGHT_SHARED_LAYOUT = {
+    'from_layer': ['Conv2d_13_pointwise', '', '', ''],
+    'layer_depth': [-1, 256, 256, 256],
+}
+
 
 @parameterized.parameters(
     {'use_keras': False},
@@ -67,7 +72,8 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams)
     return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
 
-  def _build_feature_map_generator(self, feature_map_layout, use_keras):
+  def _build_feature_map_generator(self, feature_map_layout, use_keras,
+                                   pool_residual=False):
     if use_keras:
       return feature_map_generators.KerasMultiResolutionFeatureMaps(
           feature_map_layout=feature_map_layout,
@@ -86,7 +92,8 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
             depth_multiplier=1,
             min_depth=32,
             insert_1x1_conv=True,
-            image_features=image_features)
+            image_features=image_features,
+            pool_residual=pool_residual)
       return feature_map_generator
 
   def test_get_expected_feature_map_shapes_with_inception_v2(self, use_keras):
@@ -200,6 +207,34 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
         'Conv2d_13_pointwise_2_Conv2d_2_3x3_s2_512': (4, 4, 4, 512),
         'Conv2d_13_pointwise_2_Conv2d_3_3x3_s2_256': (4, 2, 2, 256),
         'Conv2d_13_pointwise_2_Conv2d_4_2x2_s2_256': (4, 1, 1, 256)}
+
+    init_op = tf.global_variables_initializer()
+    with self.test_session() as sess:
+      sess.run(init_op)
+      out_feature_maps = sess.run(feature_maps)
+      out_feature_map_shapes = dict(
+          (key, value.shape) for key, value in out_feature_maps.items())
+      self.assertDictEqual(expected_feature_map_shapes, out_feature_map_shapes)
+
+  def test_feature_map_shapes_with_pool_residual_ssd_mobilenet_v1(
+      self, use_keras):
+    image_features = {
+        'Conv2d_13_pointwise': tf.random_uniform([4, 8, 8, 1024],
+                                                 dtype=tf.float32),
+    }
+
+    feature_map_generator = self._build_feature_map_generator(
+        feature_map_layout=SSD_MOBILENET_V1_WEIGHT_SHARED_LAYOUT,
+        use_keras=use_keras,
+        pool_residual=True
+    )
+    feature_maps = feature_map_generator(image_features)
+
+    expected_feature_map_shapes = {
+        'Conv2d_13_pointwise': (4, 8, 8, 1024),
+        'Conv2d_13_pointwise_2_Conv2d_1_3x3_s2_256': (4, 4, 4, 256),
+        'Conv2d_13_pointwise_2_Conv2d_2_3x3_s2_256': (4, 2, 2, 256),
+        'Conv2d_13_pointwise_2_Conv2d_3_3x3_s2_256': (4, 1, 1, 256)}
 
     init_op = tf.global_variables_initializer()
     with self.test_session() as sess:

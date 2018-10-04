@@ -263,7 +263,8 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
 
 
 def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
-                                  min_depth, insert_1x1_conv, image_features):
+                                  min_depth, insert_1x1_conv, image_features,
+                                  pool_residual=False):
   """Generates multi resolution feature maps from input image features.
 
   Generates multi-scale feature maps for detection as in the SSD papers by
@@ -317,6 +318,13 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
       should be inserted before shrinking the feature map.
     image_features: A dictionary of handles to activation tensors from the
       base feature extractor.
+    pool_residual: Whether to add an average pooling layer followed by a
+      residual connection between subsequent feature maps when the channel
+      depth match. For example, with option 'layer_depth': [-1, 512, 256, 256],
+      a pooling and residual layer is added between the third and forth feature
+      map. This option is better used with Weight Shared Convolution Box
+      Predictor when all feature maps have the same channel depth to encourage
+      more consistent features across multi-scale feature maps.
 
   Returns:
     feature_maps: an OrderedDict mapping keys (feature map names) to
@@ -350,6 +358,7 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
       feature_map_keys.append(from_layer)
     else:
       pre_layer = feature_maps[-1]
+      pre_layer_depth = pre_layer.get_shape().as_list()[3]
       intermediate_layer = pre_layer
       if insert_1x1_conv:
         layer_name = '{}_1_Conv2d_{}_1x1_{}'.format(
@@ -383,6 +392,12 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
             padding='SAME',
             stride=1,
             scope=layer_name)
+        if pool_residual and pre_layer_depth == depth_fn(layer_depth):
+          feature_map += slim.avg_pool2d(
+              pre_layer, [3, 3],
+              padding='SAME',
+              stride=2,
+              scope=layer_name + '_pool')
       else:
         feature_map = slim.conv2d(
             intermediate_layer,
