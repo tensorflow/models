@@ -535,7 +535,8 @@ def resnet_main(
     else:
       input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
           shape, batch_size=flags_obj.batch_size)
-    classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn)
+    classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn,
+                                 strip_default_attrs=True)
 
 
 def define_resnet_flags(resnet_size_choices=None):
