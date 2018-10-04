@@ -30,15 +30,12 @@ from nets.mobilenet import mobilenet_v2
 slim = tf.contrib.slim
 
 
-# A modified config of mobilenet v2 that makes it more detection friendly,
+# A modified config of mobilenet v2 that makes it more detection friendly.
 def _create_modified_mobilenet_config():
   conv_defs = copy.deepcopy(mobilenet_v2.V2_DEF)
   conv_defs['spec'][-1] = mobilenet.op(
       slim.conv2d, stride=1, kernel_size=[1, 1], num_outputs=256)
   return conv_defs
-
-
-_CONV_DEFS = _create_modified_mobilenet_config()
 
 
 class SSDMobileNetV2FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
@@ -100,6 +97,9 @@ class SSDMobileNetV2FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     self._fpn_min_level = fpn_min_level
     self._fpn_max_level = fpn_max_level
     self._additional_layer_depth = additional_layer_depth
+    self._conv_defs = None
+    if self._use_depthwise:
+      self._conv_defs = _create_modified_mobilenet_config()
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -142,7 +142,7 @@ class SSDMobileNetV2FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
               ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
               final_endpoint='layer_19',
               depth_multiplier=self._depth_multiplier,
-              conv_defs=_CONV_DEFS if self._use_depthwise else None,
+              conv_defs=self._conv_defs,
               use_explicit_padding=self._use_explicit_padding,
               scope=scope)
       depth_fn = lambda d: max(int(d * self._depth_multiplier), self._min_depth)
