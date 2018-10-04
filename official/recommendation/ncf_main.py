@@ -128,8 +128,9 @@ def run_ncf(_):
   batch_size = distribution_utils.per_device_batch_size(
       int(FLAGS.batch_size), num_gpus)
 
-  eval_batch_size = int(FLAGS.eval_batch_size or FLAGS.batch_size)
   eval_per_user = rconst.NUM_EVAL_NEGATIVES + 1
+  eval_batch_size = int(FLAGS.eval_batch_size or
+                        max([FLAGS.batch_size, eval_per_user])
   if eval_batch_size % eval_per_user:
     eval_batch_size = eval_batch_size // eval_per_user * eval_per_user
     tf.logging.warning(
@@ -275,7 +276,7 @@ def define_ncf_flags():
           "Download data to data_dir if it is not already present."))
 
   flags.DEFINE_string(
-      name="eval_batch_size", default=None, help=flags_core.help_wrap(
+      name="eval_batch_size", default=1000, help=flags_core.help_wrap(
           "The batch size used for evaluation. This should generally be larger"
           "than the training batch size as the lack of back propagation during"
           "evaluation can allow for larger batch sizes to fit in memory. If not"
@@ -365,7 +366,8 @@ def define_ncf_flags():
   @flags.validator("eval_batch_size", "eval_batch_size must be at least {}"
                    .format(rconst.NUM_EVAL_NEGATIVES + 1))
   def eval_size_check(eval_batch_size):
-    return int(eval_batch_size) > rconst.NUM_EVAL_NEGATIVES
+    return (eval_batch_size is None or
+            int(eval_batch_size) > rconst.NUM_EVAL_NEGATIVES)
 
 
 if __name__ == "__main__":
