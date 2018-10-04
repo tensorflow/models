@@ -39,6 +39,7 @@ from __future__ import print_function
 
 import collections
 import tensorflow as tf
+from tensorflow.python.ops import init_ops
 
 slim = tf.contrib.slim
 
@@ -74,7 +75,8 @@ def subsample(inputs, factor, scope=None):
     return slim.max_pool2d(inputs, [1, 1], stride=factor, scope=scope)
 
 
-def conv2d_same(inputs, num_outputs, kernel_size, stride, rate=1, scope=None):
+def conv2d_same(inputs, num_outputs, kernel_size, stride, rate=1, scope=None,
+                biases_initializer=init_ops.zeros_initializer()):
   """Strided 2-D convolution with 'SAME' padding.
 
   When stride > 1, then we do explicit zero-padding, followed by conv2d with
@@ -110,7 +112,8 @@ def conv2d_same(inputs, num_outputs, kernel_size, stride, rate=1, scope=None):
   """
   if stride == 1:
     return slim.conv2d(inputs, num_outputs, kernel_size, stride=1, rate=rate,
-                       padding='SAME', scope=scope)
+                       padding='SAME', scope=scope, 
+                       biases_initializer=biases_initializer)
   else:
     kernel_size_effective = kernel_size + (kernel_size - 1) * (rate - 1)
     pad_total = kernel_size_effective - 1
@@ -119,7 +122,8 @@ def conv2d_same(inputs, num_outputs, kernel_size, stride, rate=1, scope=None):
     inputs = tf.pad(inputs,
                     [[0, 0], [pad_beg, pad_end], [pad_beg, pad_end], [0, 0]])
     return slim.conv2d(inputs, num_outputs, kernel_size, stride=stride,
-                       rate=rate, padding='VALID', scope=scope)
+                       rate=rate, padding='VALID', scope=scope,
+                       biases_initializer=biases_initializer)
 
 
 @slim.add_arg_scope
