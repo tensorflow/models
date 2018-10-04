@@ -276,7 +276,7 @@ def define_ncf_flags():
           "Download data to data_dir if it is not already present."))
 
   flags.DEFINE_string(
-      name="eval_batch_size", default=1000, help=flags_core.help_wrap(
+      name="eval_batch_size", default=None, help=flags_core.help_wrap(
           "The batch size used for evaluation. This should generally be larger"
           "than the training batch size as the lack of back propagation during"
           "evaluation can allow for larger batch sizes to fit in memory. If not"
