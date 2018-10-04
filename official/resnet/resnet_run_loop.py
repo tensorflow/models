@@ -171,7 +171,7 @@ def image_bytes_serving_input_fn(image_shape, dtype=tf.float32):
   image_bytes_list = tf.placeholder(
       shape=[None], dtype=tf.string, name='input_tensor')
   images = tf.map_fn(
-      _preprocess_image, image_bytes_list, back_prop=False, dtype=tf.float32)
+      _preprocess_image, image_bytes_list, back_prop=False, dtype=dtype)
   return tf.estimator.export.TensorServingInputReceiver(
       images, {'image_bytes': image_bytes_list})
 
@@ -530,7 +530,7 @@ def resnet_main(
 
   if flags_obj.export_dir is not None:
     # Exports a saved model for the given classifier.
-    export_dtype=flags_core.get_tf_dtype(flags_obj)
+    export_dtype = flags_core.get_tf_dtype(flags_obj)
     if flags_obj.image_bytes_as_serving_input:
       input_receiver_fn = functools.partial(
           image_bytes_serving_input_fn, shape, dtype=export_dtype)
@@ -568,7 +568,7 @@ def define_resnet_flags(resnet_size_choices=None):
       help=flags_core.help_wrap('Skip training and only perform evaluation on '
                                 'the latest checkpoint.'))
   flags.DEFINE_boolean(
-      name="image_bytes_as_serving_input", default=True,
+      name="image_bytes_as_serving_input", default=False,
       help=flags_core.help_wrap(
           'If True exports savedmodel with serving signature that accepts '
           'JPEG image bytes instead of a fixed size [HxWxC] tensor that '
