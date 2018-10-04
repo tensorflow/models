@@ -86,19 +86,41 @@ num_gpus:
 + 2+: Use MirroredStrategy (data parallelism) to distribute a batch between devices.
 
 ### Pre-trained model
-You can download 190 MB pre-trained versions of ResNet-50. Reported accuracies are top-1 single-crop accuracy for the ImageNet validation set. Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
+You can download pre-trained versions of ResNet-50. Reported accuracies are top-1 single-crop accuracy for the ImageNet validation set.
+Models are reported as both checkpoints produced by Estimator during training, and as SavedModels which are more portable. Checkpoints are fragile,
+and these are not guaranteed to work with future versions of the code. Both ResNet v1
+and ResNet v2 have been trained in both fp16 and fp32 precision. (Here v1 refers to "v1.5". See the note above.) Furthermore, SavedModels
+are generated to accept either tensor or JPG inputs, and with channels_first (NCHW) and channels_last (NHWC) convolutions. NCHW is generally
+better for GPUs, while NHWC is generally better for CPUs. See the TensorFlow [performance guide](https://www.tensorflow.org/performance/performance_guide#data_formats)
+for more details.
 
-ResNet-50 v2 (Accuracy 76.05%):
-* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_checkpoint.tar.gz)
-* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_savedmodel.tar.gz)
+ResNet-50 v2 (fp32, Accuracy 76.47%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20181001_resnet/checkpoints/resnet_imagenet_v2_fp32_20181001.tar.gz)
+* SavedModel [(NCHW)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v2_fp32_savedmodel_NCHW.tar.gz),
+[(NCHW, JPG)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v2_fp32_savedmodel_NCHW_jpg.tar.gz),
+[(NHWC)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v2_fp32_savedmodel_NHWC.tar.gz),
+[(NHWC, JPG)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v2_fp32_savedmodel_NHWC_jpg.tar.gz)
 
-ResNet-50 v2 (fp16, Accuracy 75.56%):
-* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_checkpoint.tar.gz)
-* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_savedmodel.tar.gz)
+ResNet-50 v2 (fp16, Accuracy 76.56%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20181001_resnet/checkpoints/resnet_imagenet_v2_fp16_20180928.tar.gz)
+* SavedModel [(NCHW)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v2_fp16_savedmodel_NCHW.tar.gz),
+[(NCHW, JPG)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v2_fp16_savedmodel_NCHW_jpg.tar.gz),
+[(NHWC)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v2_fp16_savedmodel_NHWC.tar.gz),
+[(NHWC, JPG)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v2_fp16_savedmodel_NHWC_jpg.tar.gz)
 
-ResNet-50 v1 (Accuracy 75.91%):
-* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_checkpoint.tar.gz)
-* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_savedmodel.tar.gz)
+ResNet-50 v1 (fp32, Accuracy 76.53%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20181001_resnet/checkpoints/resnet_imagenet_v1_fp32_20181001.tar.gz)
+* SavedModel [(NCHW)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v1_fp32_savedmodel_NCHW.tar.gz),
+[(NCHW, JPG)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v1_fp32_savedmodel_NCHW_jpg.tar.gz),
+[(NHWC)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v1_fp32_savedmodel_NHWC.tar.gz),
+[(NHWC, JPG)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v1_fp32_savedmodel_NHWC_jpg.tar.gz)
+
+ResNet-50 v1 (fp16, Accuracy 76.18%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20181001_resnet/checkpoints/resnet_imagenet_v1_fp16_20181001.tar.gz)
+* SavedModel [(NCHW)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v1_fp16_savedmodel_NCHW.tar.gz),
+[(NCHW, JPG)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v1_fp16_savedmodel_NCHW_jpg.tar.gz),
+[(NHWC)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v1_fp16_savedmodel_NHWC.tar.gz),
+[(NHWC, JPG)](http://download.tensorflow.org/models/official/20181001_resnet/savedmodels/resnet_v1_fp16_savedmodel_NHWC_jpg.tar.gz)
 
 ### Transfer Learning
 You can use a pretrained model to initialize a training process. In addition you are able to freeze all but the final fully connected layers to fine tune your model. Transfer Learning is useful when training on your own small datasets. For a brief look at transfer learning in the context of convolutional neural networks, we recommend reading these [short notes](http://cs231n.github.io/transfer-learning/).
