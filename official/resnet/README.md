@@ -89,8 +89,9 @@ num_gpus:
 You can download pre-trained versions of ResNet-50. Reported accuracies are top-1 single-crop accuracy for the ImageNet validation set.
 Models are reported as both checkpoints produced by Estimator during training, and as SavedModels which are more portable. Both ResNet v1
 and ResNet v2 have been trained in both fp16 and fp32 precision. (Here v1 refers to "v1.5". See the note above.) Furthermore, SavedModels
-are generated to accept either tensor or JPG inputs, and with channels_first (NCHW) and channels_last (NHWC) convolutions to better
-accommodate both CPU and GPU architectures.
+are generated to accept either tensor or JPG inputs, and with channels_first (NCHW) and channels_last (NHWC) convolutions. NCHW is generally
+better for GPUs, which NHWC is generally better for CPUs. See the TensorFlow [performance guide](https://www.tensorflow.org/performance/performance_guide#data_formats)
+for more details.
 
 ResNet-50 v2 (fp32, Accuracy 76.47%):
 * [Checkpoint](http://download.tensorflow.org/models/official/20181001_resnet/checkpoints/resnet_imagenet_v2_fp32_20181001.tar.gz)
