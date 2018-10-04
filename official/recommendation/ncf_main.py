@@ -130,7 +130,7 @@ def run_ncf(_):
 
   eval_per_user = rconst.NUM_EVAL_NEGATIVES + 1
   eval_batch_size = int(FLAGS.eval_batch_size or
-                        max([FLAGS.batch_size, eval_per_user])
+                        max([FLAGS.batch_size, eval_per_user]))
   if eval_batch_size % eval_per_user:
     eval_batch_size = eval_batch_size // eval_per_user * eval_per_user
     tf.logging.warning(
