@@ -28,6 +28,8 @@ employ ASPP and decoder modules for fast computation.
 
 Checkpoint name             | Network backbone | Pretrained  dataset | ASPP  | Decoder
 --------------------------- | :--------------: | :-----------------: | :---: | :-----:
+mobilenetv2_dm05_coco_voc_trainaug | MobileNet-v2 <br> Depth-Multiplier = 0.5  | MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
+mobilenetv2_dm05_coco_voc_trainval | MobileNet-v2 <br> Depth-Multiplier = 0.5  | MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
 mobilenetv2_coco_voc_trainaug | MobileNet-v2  | MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
 mobilenetv2_coco_voc_trainval | MobileNet-v2  | MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
 xception65_coco_voc_trainaug  | Xception_65  | MS-COCO <br> VOC 2012 train_aug set| [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
