@@ -39,6 +39,8 @@ In the table, **OS** denotes output stride.
 
 Checkpoint name                                                                                                          | Eval OS   | Eval scales                | Left-right Flip | Multiply-Adds        | Runtime (sec)  | PASCAL mIOU                    | File Size
 ------------------------------------------------------------------------------------------------------------------------ | :-------: | :------------------------: | :-------------: | :------------------: | :------------: | :----------------------------: | :-------:
+[mobilenetv2_dm05_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_mnv2_dm05_pascal_trainaug_2018_10_01.tar.gz)  | 16 | [1.0] | No  | 0.88B  | -  | 70.19% (val)  | 7.6MB
+[mobilenetv2_dm05_coco_voc_trainval](http://download.tensorflow.org/models/deeplabv3_mnv2_dm05_pascal_trainval_2018_10_01.tar.gz)  | 8  | [1.0] | No  | 2.84B  | -  | 71.83% (test)  | 7.6MB
 [mobilenetv2_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_mnv2_pascal_train_aug_2018_01_29.tar.gz) | 16 <br> 8 | [1.0] <br> [0.5:0.25:1.75] | No <br> Yes     | 2.75B <br> 152.59B   | 0.1 <br> 26.9  | 75.32% (val) <br> 77.33 (val)  | 23MB
 [mobilenetv2_coco_voc_trainval](http://download.tensorflow.org/models/deeplabv3_mnv2_pascal_trainval_2018_01_29.tar.gz)  | 8         | [0.5:0.25:1.75]            | Yes             | 152.59B              | 26.9           | 80.25% (**test**)              | 23MB
 [xception65_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_pascal_train_aug_2018_01_04.tar.gz)         | 16 <br> 8 | [1.0] <br> [0.5:0.25:1.75] | No <br> Yes     | 54.17B <br> 3055.35B | 0.7 <br> 223.2 | 82.20% (val) <br> 83.58% (val) | 439MB
