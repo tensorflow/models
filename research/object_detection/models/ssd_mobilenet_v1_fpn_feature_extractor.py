@@ -31,11 +31,10 @@ slim = tf.contrib.slim
 
 # A modified config of mobilenet v1 that makes it more detection friendly,
 def _create_modified_mobilenet_config():
-  conv_defs = copy.copy(mobilenet_v1.MOBILENETV1_CONV_DEFS)
+  conv_defs = copy.deepcopy(mobilenet_v1.MOBILENETV1_CONV_DEFS)
   conv_defs[-2] = mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=2, depth=512)
   conv_defs[-1] = mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=256)
   return conv_defs
-_CONV_DEFS = _create_modified_mobilenet_config()
 
 
 class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
@@ -98,6 +97,9 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     self._fpn_min_level = fpn_min_level
     self._fpn_max_level = fpn_max_level
     self._additional_layer_depth = additional_layer_depth
+    self._conv_defs = None
+    if self._use_depthwise:
+      self._conv_defs = _create_modified_mobilenet_config()
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -141,7 +143,7 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
               final_endpoint='Conv2d_13_pointwise',
               min_depth=self._min_depth,
               depth_multiplier=self._depth_multiplier,
-              conv_defs=_CONV_DEFS if self._use_depthwise else None,
+              conv_defs=self._conv_defs,
               use_explicit_padding=self._use_explicit_padding,
               scope=scope)
 
