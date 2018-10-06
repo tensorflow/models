@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
 import time
 
 from absl import app as absl_app
@@ -34,11 +33,16 @@ from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 
 
-# Callback for Keras models
 class TimeHistory(tf.keras.callbacks.Callback):
+  """Callback for Keras models."""
 
   def __init__(self, batch_size):
-    # This is the global batch size that we pass to the flags.
+    """Callback for Keras models.
+
+    Args:
+      batch_size: Total batch size.
+
+    """
     self._batch_size = batch_size
     super(TimeHistory, self).__init__()
 
@@ -81,6 +85,7 @@ def parse_record_keras(raw_record, is_training, dtype):
     raw_record: scalar Tensor tf.string containing a serialized
       Example protocol buffer.
     is_training: A boolean denoting whether the input is for training.
+    dtype: dtype to use.
 
   Returns:
     Tuple with processed image tensor and one-hot-encoded label tensor.
@@ -128,11 +133,13 @@ def run_imagenet_with_keras(flags_obj):
 
   Args:
     flags_obj: An object containing parsed flag values.
+
+  Raises:
+    ValueError: If fp16 is passed as it is not currently supported.
   """
   if flags_obj.dtype == 'fp16':
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
                      'value(fp32).')
-
 
   per_device_batch_size = distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
@@ -154,20 +161,21 @@ def run_imagenet_with_keras(flags_obj):
                                                 flags_obj))
 
   else:
-    train_input_dataset = imagenet_main.input_fn(True,
-                                                 flags_obj.data_dir,
-                                                 batch_size=per_device_batch_size,
-                                                 num_epochs=flags_obj.train_epochs,
-                                                 num_gpus=flags_obj.num_gpus,
-                                                 parse_record_fn=parse_record_keras)
+    train_input_dataset = imagenet_main.input_fn(
+        True,
+        flags_obj.data_dir,
+        batch_size=per_device_batch_size,
+        num_epochs=flags_obj.train_epochs,
+        num_gpus=flags_obj.num_gpus,
+        parse_record_fn=parse_record_keras)
 
-    eval_input_dataset = imagenet_main.input_fn(False,
-                                                flags_obj.data_dir,
-                                                batch_size=per_device_batch_size,
-                                                num_epochs=flags_obj.train_epochs,
-                                                num_gpus=flags_obj.num_gpus,
-                                                parse_record_fn=parse_record_keras)
-
+    eval_input_dataset = imagenet_main.input_fn(
+        False,
+        flags_obj.data_dir,
+        batch_size=per_device_batch_size,
+        num_epochs=flags_obj.train_epochs,
+        num_gpus=flags_obj.num_gpus,
+        parse_record_fn=parse_record_keras)
 
   # Set environment vars and session config
   session_config = resnet_run_loop.set_environment_vars(flags_obj)
@@ -191,7 +199,7 @@ def run_imagenet_with_keras(flags_obj):
 
   model.compile(loss='categorical_crossentropy',
                 optimizer=opt,
-                metrics=["accuracy"],
+                metrics=['accuracy'],
                 distribute=strategy)
   time_callback = TimeHistory(flags_obj.batch_size)
 
@@ -203,14 +211,16 @@ def run_imagenet_with_keras(flags_obj):
             verbose=0)
 
   num_eval_steps = imagenet_main._NUM_IMAGES['validation'] // flags_obj.batch_size
-  eval_output = model.evaluate(eval_input_dataset, steps=num_eval_steps, verbose=0)
+  eval_output = model.evaluate(eval_input_dataset,
+                               steps=num_eval_steps,
+                               verbose=0)
   print('Test loss:', eval_output[0])
 
-  # If you have set FLAGS.train_epochs to be 1 then we cannot calculate samples/s
-  # in a meaningful way since the first epoch takes the longest.
+  # If you have set FLAGS.train_epochs to be 1 then we cannot calculate
+  # samples/s in a meaningful way since the first epoch takes the longest.
   if flags_obj.train_epochs == 1:
-    print("Please increase the number of train_epochs if you want to "
-          "calculate samples/s.")
+    print('Please increase the number of train_epochs if you want to '
+          'calculate samples/s.')
     return
 
   total_time = 0
@@ -221,9 +231,10 @@ def run_imagenet_with_keras(flags_obj):
   if flags_obj.train_epochs > 1:
     time_per_epoch = total_time // (flags_obj.train_epochs - 1)
     if time_per_epoch == 0:
-      print("Please verify that you are processing data since the time taken to"
-            "process each epoch is ~0.")
-    samples_per_second = (flags_obj.batch_size * steps_per_epoch) / time_per_epoch
+      print('Please verify that you are processing data since the time taken to'
+            'process each epoch is ~0.')
+    samples_per_second = ((flags_obj.batch_size * steps_per_epoch)
+                          / time_per_epoch)
     print("BenchmarkMetric: {'time_per_epoch':%f, 'global_batch_size': %d, "
           "'steps_per_epoch': %d, 'examples_per_s': %f}" %
           (time_per_epoch, flags_obj.batch_size,
