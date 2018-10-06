@@ -94,9 +94,10 @@ def bottleneck(inputs, depth, depth_bottleneck, stride, rate=1,
                              scope='shortcut')
 
     residual = slim.conv2d(preact, depth_bottleneck, [1, 1], stride=1,
-                           scope='conv1')
+                           scope='conv1', biases_initializer=None)
     residual = resnet_utils.conv2d_same(residual, depth_bottleneck, 3, stride,
-                                        rate=rate, scope='conv2')
+                                        rate=rate, scope='conv2',
+                                        biases_initializer=None)
     residual = slim.conv2d(residual, depth, [1, 1], stride=1,
                            normalizer_fn=None, activation_fn=None,
                            scope='conv3')
