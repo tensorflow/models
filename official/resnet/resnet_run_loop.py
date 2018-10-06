@@ -390,46 +390,35 @@ def resnet_model_fn(features, labels, mode, model_class,
       train_op=train_op,
       eval_metric_ops=metrics)
 
+
 def set_environment_vars(flags_obj):
-  # Using the Winograd non-fused algorithms provides a small performance boost.
-  os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
-  # This is the number of logical CPU cores which is 80 on DGX.
-  cpu_count = multiprocessing.cpu_count()
-  print('CPU count ', cpu_count)
 
-  # If using global (default tf_gpu_thread_mode) all values like
-  # `flags_obj.datasets_num_private_threads` need to be set individually.
-  if flags_obj.tf_gpu_thread_mode in ['gpu_private', 'gpu_shared']:
-    os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
-    os.environ['TF_GPU_THREAD_COUNT'] = str(flags_obj.tf_gpu_thread_count)
+  if flags_obj.tf_gpu_thread_mode in ['gpu_private']:
+    cpu_count = multiprocessing.cpu_count()
+    print('Logical CPU cores:', cpu_count)
 
-    # Default to two threads. One for the device compute and the other for
-    # memory copies.
-    per_gpu_thread_count = flags_obj.tf_gpu_thread_count or 2
+    # Sets up thread pool for each GPU for op scheduling.
+    per_gpu_thread_count = 1
     total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
+    os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
+    os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
+    print('TF_GPU_THREAD_COUNT:', os.environ['TF_GPU_THREAD_COUNT'])
 
-    if flags_obj.tf_gpu_thread_mode == 'gpu_private':
-      os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-    elif flags_obj.tf_gpu_thread_mode == 'gpu_shared':
-      os.environ['TF_GPU_THREAD_COUNT'] = str(total_gpu_thread_count)
-
-    main_thread_count = max(cpu_count - int(total_gpu_thread_count), 1)
+    # Reduces general thread pool by number of threads used for GPU pool.
+    main_thread_count = cpu_count - total_gpu_thread_count
     flags_obj.inter_op_parallelism_threads = main_thread_count
 
-    print('Total GPU thread count ', total_gpu_thread_count)
-    print('TF_GPU_THREAD_COUNT ', os.environ['TF_GPU_THREAD_COUNT'])
-    print('per GPU thread count ', per_gpu_thread_count)
-    # From the total cpu thread count, subtract the total_gpu_thread_count,
-    # and then 2 threads per GPU device for event monitoring and sending /
-    # receiving tensors
+    # Sets thread count for tf.data. Logical cores minus threads assign to the
+    # private GPU pool along with 2 thread per GPU for event monitoring and
+    # sending / receiving tensors.
     num_monitoring_threads = 2 * flags_obj.num_gpus
-    num_private_threads = max(
-        cpu_count - int(total_gpu_thread_count) - num_monitoring_threads, 1)
+    num_private_threads = (cpu_count - total_gpu_thread_count
+                           - num_monitoring_threads)
     flags_obj.datasets_num_private_threads = num_private_threads
 
-  print('inter_op_parallelism_threads ', flags_obj.inter_op_parallelism_threads)
-  print('intra_op_parallelism_threads ', flags_obj.intra_op_parallelism_threads)
-  print('num of dataset threads ', flags_obj.datasets_num_private_threads)
+  print('inter_op_parallelism_threads:', flags_obj.inter_op_parallelism_threads)
+  print('intra_op_parallelism_threads:', flags_obj.intra_op_parallelism_threads)
+  print('datasets_num_private_threads:', flags_obj.datasets_num_private_threads)
 
   # Create session config based on values of inter_op_parallelism_threads and
   # intra_op_parallelism_threads. Note that we default to having
