@@ -65,7 +65,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
       # TODO(anjalisridhar): add timestamp as well.
       if batch != 0:
         print("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
-              "'examples_per_second': %f}" %
+              "'images_per_second': %f}" %
               (batch, last_100_batches, examples_per_second))
 
 
