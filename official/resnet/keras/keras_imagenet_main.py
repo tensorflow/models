@@ -153,19 +153,21 @@ def run_imagenet_with_keras(flags_obj):
 
   else:
     train_input_dataset = imagenet_main.input_fn(True,
-                                           flags_obj.data_dir,
-                                           batch_size=per_device_batch_size,
-                                           num_epochs=flags_obj.train_epochs,
-                                           num_gpus=flags_obj.num_gpus,
-                                           parse_record_fn=parse_record_keras)
+                                                 flags_obj.data_dir,
+                                                 batch_size=per_device_batch_size,
+                                                 num_epochs=flags_obj.train_epochs,
+                                                 num_gpus=flags_obj.num_gpus,
+                                                 parse_record_fn=parse_record_keras)
 
-    eval_input_dataset = imagenet_main.input_fn(
-        False, flags_obj.data_dir, batch_size=per_device_batch_size,
-        num_epochs=flags_obj.train_epochs, num_gpus=flags_obj.num_gpus,
-        parse_record_fn=parse_record_keras)
+    eval_input_dataset = imagenet_main.input_fn(False,
+                                                flags_obj.data_dir,
+                                                batch_size=per_device_batch_size,
+                                                num_epochs=flags_obj.train_epochs,
+                                                num_gpus=flags_obj.num_gpus,
+                                                parse_record_fn=parse_record_keras)
 
 
-# Set environment vars and session config
+  # Set environment vars and session config
   session_config = resnet_run_loop.set_environment_vars(flags_obj)
   session = tf.Session(config=session_config)
   tf.keras.backend.set_session(session)
@@ -190,8 +192,7 @@ def run_imagenet_with_keras(flags_obj):
                 distribute=strategy)
   time_callback = TimeHistory(flags_obj.batch_size)
 
-  # steps_per_epoch = imagenet_main._NUM_IMAGES['train'] // flags_obj.batch_size
-  steps_per_epoch = 10
+  steps_per_epoch = imagenet_main._NUM_IMAGES['train'] // flags_obj.batch_size
   model.fit(train_input_dataset,
             epochs=flags_obj.train_epochs,
             steps_per_epoch=steps_per_epoch,
