@@ -18,18 +18,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+import time
+
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
-import time
 
+from official.resnet import imagenet_main
+from official.resnet import imagenet_preprocessing
+from official.resnet import resnet_run_loop
+from official.resnet.keras import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
-from official.resnet import imagenet_preprocessing
-from official.resnet.keras import resnet_model
-from official.resnet import resnet_run_loop
 from official.utils.misc import distribution_utils
-from official.resnet import imagenet_main
 
 
 # Callback for Keras models
@@ -64,9 +66,9 @@ class TimeHistory(tf.keras.callbacks.Callback):
       self.record_batch = True
       # TODO(anjalisridhar): add timestamp as well.
       if batch != 0:
-        print("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
-              "'images_per_second': %f}" %
-              (batch, last_100_batches, examples_per_second))
+        tf.logging.info("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
+                        "'images_per_second': %f}" %
+                        (batch, last_100_batches, examples_per_second))
 
 
 def parse_record_keras(raw_record, is_training, dtype):
@@ -177,7 +179,8 @@ def run_imagenet_with_keras(flags_obj):
   # opt = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
   opt = tf.train.GradientDescentOptimizer(learning_rate=0.0001)
 
-  strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=flags_obj.num_gpus)
+  strategy = distribution_utils.get_distribution_strategy(
+      num_gpus=flags_obj.num_gpus)
 
   model = resnet_model.ResNet50(classes=imagenet_main._NUM_CLASSES,
                                 weights=None)
