@@ -127,7 +127,8 @@ def bottleneck(inputs,
                                         rate=rate, scope='conv2', 
                                         biases_initializer=None)
     residual = slim.conv2d(residual, depth, [1, 1], stride=1,
-                           activation_fn=None, scope='conv3', biases_initializer=None)
+                           activation_fn=None, scope='conv3', 
+                           biases_initializer=None)
 
     if use_bounded_activations:
       # Use clip_by_value to simulate bandpass activation.
