@@ -35,6 +35,11 @@ from official.resnet import imagenet_main
 # Callback for Keras models
 class TimeHistory(tf.keras.callbacks.Callback):
 
+  def __init__(self, batch_size):
+    # This is the global batch size that we pass to the flags.
+    self._batch_size = batch_size
+    super(TimeHistory, self).__init__()
+
   def on_train_begin(self, logs=None):
     self.epoch_times = []
     self.batch_times = []
@@ -54,12 +59,14 @@ class TimeHistory(tf.keras.callbacks.Callback):
   def on_batch_end(self, batch, logs=None):
     if batch % 100 == 0:
       last_100_batches = time.time() - self.batch_time_start
+      examples_per_second = (self._batch_size * 100) / last_100_batches
       self.batch_times.append(last_100_batches)
       self.record_batch = True
       # TODO(anjalisridhar): add timestamp as well.
       if batch != 0:
-        print("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f}" %
-              (batch, last_100_batches))
+        print("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
+              "'images_per_second': %f}" %
+              (batch, last_100_batches, examples_per_second))
 
 
 def parse_record_keras(raw_record, is_training, dtype):
@@ -125,23 +132,40 @@ def run_imagenet_with_keras(flags_obj):
                      'value(fp32).')
 
 
-  batch_size=distribution_utils.per_device_batch_size(
+  per_device_batch_size = distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
 
   if flags_obj.use_synthetic_data:
-    input_dataset = synthetic_input_fn(batch_size,
-                                       imagenet_main._DEFAULT_IMAGE_SIZE,
-                                       imagenet_main._DEFAULT_IMAGE_SIZE,
-                                       imagenet_main._NUM_CHANNELS,
-                                       imagenet_main._NUM_CLASSES,
-                                       dtype=flags_core.get_tf_dtype(flags_obj))
+    train_input_dataset = synthetic_input_fn(per_device_batch_size,
+                                             imagenet_main._DEFAULT_IMAGE_SIZE,
+                                             imagenet_main._DEFAULT_IMAGE_SIZE,
+                                             imagenet_main._NUM_CHANNELS,
+                                             imagenet_main._NUM_CLASSES,
+                                             dtype=flags_core.get_tf_dtype(
+                                                 flags_obj))
+    eval_input_dataset = synthetic_input_fn(per_device_batch_size,
+                                            imagenet_main._DEFAULT_IMAGE_SIZE,
+                                            imagenet_main._DEFAULT_IMAGE_SIZE,
+                                            imagenet_main._NUM_CHANNELS,
+                                            imagenet_main._NUM_CLASSES,
+                                            dtype=flags_core.get_tf_dtype(
+                                                flags_obj))
+
   else:
-    input_dataset = imagenet_main.input_fn(True,
-                                           flags_obj.data_dir,
-                                           batch_size=batch_size,
-                                           num_epochs=flags_obj.train_epochs,
-                                           num_gpus=flags_obj.num_gpus,
-                                           parse_record_fn=parse_record_keras)
+    train_input_dataset = imagenet_main.input_fn(True,
+                                                 flags_obj.data_dir,
+                                                 batch_size=per_device_batch_size,
+                                                 num_epochs=flags_obj.train_epochs,
+                                                 num_gpus=flags_obj.num_gpus,
+                                                 parse_record_fn=parse_record_keras)
+
+    eval_input_dataset = imagenet_main.input_fn(False,
+                                                flags_obj.data_dir,
+                                                batch_size=per_device_batch_size,
+                                                num_epochs=flags_obj.train_epochs,
+                                                num_gpus=flags_obj.num_gpus,
+                                                parse_record_fn=parse_record_keras)
+
 
   # Set environment vars and session config
   session_config = resnet_run_loop.set_environment_vars(flags_obj)
@@ -166,14 +190,18 @@ def run_imagenet_with_keras(flags_obj):
                 optimizer=opt,
                 metrics=["accuracy"],
                 distribute=strategy)
-  time_callback = TimeHistory()
+  time_callback = TimeHistory(flags_obj.batch_size)
 
   steps_per_epoch = imagenet_main._NUM_IMAGES['train'] // flags_obj.batch_size
-  model.fit(input_dataset,
+  model.fit(train_input_dataset,
             epochs=flags_obj.train_epochs,
             steps_per_epoch=steps_per_epoch,
             callbacks=[time_callback],
             verbose=0)
+
+  num_eval_steps = imagenet_main._NUM_IMAGES['validation'] // flags_obj.batch_size
+  eval_output = model.evaluate(eval_input_dataset, steps=num_eval_steps, verbose=0)
+  print('Test loss:', eval_output[0])
 
   # If you have set FLAGS.train_epochs to be 1 then we cannot calculate samples/s
   # in a meaningful way since the first epoch takes the longest.
@@ -188,7 +216,10 @@ def run_imagenet_with_keras(flags_obj):
     total_time += time_callback.epoch_times[i]
 
   if flags_obj.train_epochs > 1:
-    time_per_epoch = total_time//(flags_obj.train_epochs - 1)
+    time_per_epoch = total_time // (flags_obj.train_epochs - 1)
+    if time_per_epoch == 0:
+      print("Please verify that you are processing data since the time taken to"
+            "process each epoch is ~0.")
     samples_per_second = (flags_obj.batch_size * steps_per_epoch) / time_per_epoch
     print("BenchmarkMetric: {'time_per_epoch':%f, 'global_batch_size': %d, "
           "'steps_per_epoch': %d, 'examples_per_s': %f}" %
