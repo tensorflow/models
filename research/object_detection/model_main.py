@@ -86,7 +86,6 @@ def main(unused_argv):
       input_fn = eval_input_fns[0]
     if FLAGS.run_once:
       estimator.evaluate(input_fn,
-                         num_eval_steps=None,
                          checkpoint_path=tf.train.latest_checkpoint(
                              FLAGS.checkpoint_dir))
     else:
