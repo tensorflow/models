@@ -107,14 +107,14 @@ def conv_block(input_tensor,
   conv_name_base = 'res' + str(stage) + block + '_branch'
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-  x = tf.keras.layers.Conv2D(filters1, (1, 1), strides=strides,
+  x = tf.keras.layers.Conv2D(filters1, (1, 1),
                              name=conv_name_base + '2a')(input_tensor)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2a')(x)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size, padding='same',
-                             name=conv_name_base + '2b')(x)
+                             name=conv_name_base + '2b', strides=strides)(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2b')(x)
   x = tf.keras.layers.Activation('relu')(x)
@@ -218,25 +218,23 @@ def ResNet50(include_top=True,
   x = tf.keras.layers.Activation('relu')(x)
   x = tf.keras.layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
-  strides = 2
-
-  x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=strides)
+  x = conv_block(x, 3, [64, 64, 256], stage=2, block='a')
   x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
   x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
 
-  x = conv_block(x, 3, [128, 128, 512], stage=3, block='a',strides=strides)
+  x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
   x = identity_block(x, 3, [128, 128, 512], stage=3, block='b')
   x = identity_block(x, 3, [128, 128, 512], stage=3, block='c')
   x = identity_block(x, 3, [128, 128, 512], stage=3, block='d')
 
-  x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a', strides = strides)
+  x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a')
   x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b')
   x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c')
   x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d')
   x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e')
   x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f')
 
-  x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a', strides=strides)
+  x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
   x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
   x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
 
