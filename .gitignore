@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+#Python environment
+subbots_python
+
 # C extensions
 *.so
 
