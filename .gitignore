@@ -5,7 +5,7 @@ __pycache__/
 
 #Python environment
 subbots_python
-research/object_detection/ssd_mobilenet_v1_coco_2017_11_17*
+research/object_detection/tutorial/*
 
 
 # C extensions
