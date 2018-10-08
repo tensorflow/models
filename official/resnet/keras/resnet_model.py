@@ -239,7 +239,7 @@ def ResNet50(include_top=True,
   x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
 
   if include_top:
-    x = tf.keras.layers.AveragePooling2D((2, 2), name='avg_pool')(x)
+    x = tf.keras.layers.AveragePooling2D((7, 7), name='avg_pool')(x)
     x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dense(classes, activation='linear', name='fc1000')(x)
   else:
