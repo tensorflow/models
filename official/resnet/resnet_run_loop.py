@@ -68,11 +68,6 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     Dataset of (image, label) pairs ready for iteration.
   """
 
-  # Sets tf.data to AUTOTUNE, e.g. num_parallel_batches in map_and_batch.
-  options = tf.data.Options()
-  options.experimental_autotune = True
-  dataset = dataset.with_options(options)
-
   # Prefetches a batch at a time to smooth out the time taken to load input
   # files for shuffling and processing.
   dataset = dataset.prefetch(buffer_size=batch_size)
@@ -88,6 +83,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training, dtype),
           batch_size=batch_size,
+          num_parallel_calls=1,
           drop_remainder=False))
 
   # Operations between the final prefetch and the get_next call to the iterator
