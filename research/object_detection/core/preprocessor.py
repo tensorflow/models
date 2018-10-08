@@ -1264,8 +1264,9 @@ def _strict_random_crop_image(image,
           keypoints_of_boxes_inside_window, keep_ids)
       new_keypoints = keypoint_ops.change_coordinate_frame(
           keypoints_of_boxes_completely_inside_window, im_box_rank1)
-      new_keypoints = keypoint_ops.prune_outside_window(new_keypoints,
-                                                        [0.0, 0.0, 1.0, 1.0])
+      if clip_boxes:
+        new_keypoints = keypoint_ops.prune_outside_window(new_keypoints,
+                                                          [0.0, 0.0, 1.0, 1.0])
       result.append(new_keypoints)
 
     return tuple(result)
@@ -1802,8 +1803,9 @@ def random_crop_to_aspect_ratio(image,
       keypoints_inside_window = tf.gather(keypoints, keep_ids)
       new_keypoints = keypoint_ops.change_coordinate_frame(
           keypoints_inside_window, im_box)
-      new_keypoints = keypoint_ops.prune_outside_window(new_keypoints,
-                                                        [0.0, 0.0, 1.0, 1.0])
+      if clip_boxes:
+        new_keypoints = keypoint_ops.prune_outside_window(new_keypoints,
+                                                          [0.0, 0.0, 1.0, 1.0])
       result.append(new_keypoints)
 
     return tuple(result)
