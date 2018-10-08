@@ -21,6 +21,7 @@ from __future__ import print_function
 import copy
 import functools
 import os
+import sys
 
 import tensorflow as tf
 
@@ -410,8 +411,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
             eval_dict)
 
       # Eval metrics on a single example.
+      category_index_values = category_index.values() if sys.version_info[0] < 3 elses list(category_index.values())
       eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-          eval_config, category_index.values(), eval_dict)
+          eval_config, category_index_values, eval_dict)
       for loss_key, loss_tensor in iter(losses_dict.items()):
         eval_metric_ops[loss_key] = tf.metrics.mean(loss_tensor)
       for var in optimizer_summary_vars:
