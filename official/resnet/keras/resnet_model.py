@@ -218,7 +218,7 @@ def ResNet50(include_top=True,
   x = tf.keras.layers.Activation('relu')(x)
   x = tf.keras.layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
-  x = conv_block(x, 3, [64, 64, 256], stage=2, block='a')
+  x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
   x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
   x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
 
