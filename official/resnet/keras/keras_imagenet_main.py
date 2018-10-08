@@ -101,7 +101,6 @@ def parse_record_keras(raw_record, is_training, dtype):
       is_training=is_training)
 
   image = tf.cast(image, dtype)
-  label = tf.sparse_to_dense(label, (imagenet_main._NUM_CLASSES,), 1)
   return image, label
 
 def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
@@ -121,7 +120,6 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
       maxval=num_classes - 1,
       dtype=tf.int32,
       name='synthetic_labels')
-  labels = tf.one_hot(labels, imagenet_main._NUM_CLASSES)
 
   dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
@@ -197,7 +195,7 @@ def run_imagenet_with_keras(flags_obj):
   # in the graph.
   tf.keras.backend.set_learning_phase(True)
 
-  model.compile(loss='categorical_crossentropy',
+  model.compile(loss=softmax_crossentropy_with_logits,
                 optimizer=opt,
                 metrics=['accuracy'],
                 distribute=strategy)
@@ -240,6 +238,16 @@ def run_imagenet_with_keras(flags_obj):
           (time_per_epoch, flags_obj.batch_size,
            steps_per_epoch, samples_per_second))
 
+
+def softmax_crossentropy_with_logits(y_true, y_pred):
+  """A loss function replicating tf's sparse_softmax_cross_entropy
+
+  Args:
+    y_true: True labels. Tensor.
+    y_pred: Predictions. Tensor of the same shape as y_true
+  """
+  return tf.losses.sparse_softmax_cross_entropy(
+      logits=y_true, labels=tf.argmax(y_pred, axis=1))
 
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
