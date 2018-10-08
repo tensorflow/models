@@ -3,6 +3,17 @@
 # The current directory
 CURR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+echo "================================================================"
+echo "Setup .bashrc"
+echo "================================================================"
+# Shell config files that various shells source when they run.
+# This is where we want to add aliases, source ROS environment
+# variables, etc.
+SHELL_CONFIG_FILES=(
+    "$HOME/.bashrc"\
+            "$HOME/.zshrc"
+    )
+
 # All lines listed here will be added to the shell config files
 # listed above, if they are not present already
 declare -a new_shell_config_lines=(

@@ -5,6 +5,8 @@ __pycache__/
 
 #Python environment
 subbots_python
+research/object_detection/ssd_mobilenet_v1_coco_2017_11_17*
+
 
 # C extensions
 *.so
@@ -80,10 +82,6 @@ celerybeat-schedule
 
 # dotenv
 .env
-
-# virtualenv
-venv/
-ENV/
 
 # Spyder project settings
 .spyderproject
