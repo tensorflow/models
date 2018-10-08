@@ -107,14 +107,14 @@ def conv_block(input_tensor,
   conv_name_base = 'res' + str(stage) + block + '_branch'
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-  x = tf.keras.layers.Conv2D(filters1, (1, 1), strides=strides,
+  x = tf.keras.layers.Conv2D(filters1, (1, 1),
                              name=conv_name_base + '2a')(input_tensor)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2a')(x)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size, padding='same',
-                             name=conv_name_base + '2b')(x)
+                             name=conv_name_base + '2b', strides=strides)(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2b')(x)
   x = tf.keras.layers.Activation('relu')(x)
