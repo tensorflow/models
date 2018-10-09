@@ -85,17 +85,6 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # dataset for the appropriate number of epochs.
   dataset = dataset.repeat(num_epochs)
 
-
-  if is_training and num_gpus and examples_per_epoch:
-    total_examples = num_epochs * examples_per_epoch
-    # Force the number of batches to be divisible by the number of devices.
-    # This prevents some devices from receiving batches while others do not,
-    # which can lead to a lockup. This case will soon be handled directly by
-    # distribution strategies, at which point this .take() operation will no
-    # longer be needed.
-    total_batches = total_examples // batch_size // num_gpus * num_gpus
-    dataset.take(total_batches * batch_size)
-
   # Parse the raw records into images and labels. Testing has shown that setting
   # num_parallel_batches > 1 produces no improvement in throughput, since
   # batch_size is almost always much greater than the number of CPU cores.
