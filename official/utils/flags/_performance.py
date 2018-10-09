@@ -67,7 +67,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
   if num_parallel_calls:
     flags.DEFINE_integer(
         name="num_parallel_calls", short_name="npc",
-        default=multiprocessing.cpu_count(),
+        default=1,
         help=help_wrap("The number of records that are  processed in parallel "
                        "during input processing. This can be optimized per "
                        "data set but for generally homogeneous data sets, "
