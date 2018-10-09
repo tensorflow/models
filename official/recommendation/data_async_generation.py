@@ -43,6 +43,7 @@ from absl import flags
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
+from official.recommendation import popen_helper
 
 
 _log_file = None
