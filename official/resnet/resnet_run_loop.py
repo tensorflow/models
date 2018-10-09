@@ -262,10 +262,8 @@ def resnet_model_fn(features, labels, mode, model_class,
   assert features.dtype == dtype
 
   if use_keras_model:
-    print("use keras")
     model = keras_resnet_model.ResNet50(classes=1001, weights=None)
   else :
-    print("use estimator")
     model = model_class(resnet_size, data_format, resnet_version=resnet_version,
                         dtype=dtype)
 
