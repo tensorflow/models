@@ -64,6 +64,8 @@ DUPLICATE_MASK = "duplicate_mask"
 CYCLES_TO_BUFFER = 3  # The number of train cycles worth of data to "run ahead"
                       # of the main training loop.
 
+COMMAND_FILE_TEMP = "command.json.temp"
+COMMAND_FILE = "command.json"
 READY_FILE_TEMP = "ready.json.temp"
 READY_FILE = "ready.json"
 TRAIN_RECORD_TEMPLATE = "train_{}.tfrecords"
