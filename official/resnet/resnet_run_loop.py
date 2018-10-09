@@ -31,7 +31,8 @@ from absl import flags
 import tensorflow as tf
 import multiprocessing
 
-from official.resnet import resnet_model
+from official.resnet import resnet_model as official_resnet_model
+from official.resnet.keras import resnet_model as keras_resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.export import export
 from official.utils.logs import hooks_helper
@@ -212,8 +213,10 @@ def learning_rate_with_decay(
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
                     data_format, resnet_version, loss_scale,
-                    loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE,
-                    fine_tune=False):
+                    loss_filter_fn=None,
+                    dtype=official_resnet_model.DEFAULT_DTYPE,
+                    fine_tune=False,
+                    use_keras_model=False):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -258,8 +261,13 @@ def resnet_model_fn(features, labels, mode, model_class,
   # Checks that features/images have same data type being used for calculations.
   assert features.dtype == dtype
 
-  model = model_class(resnet_size, data_format, resnet_version=resnet_version,
-                      dtype=dtype)
+  if use_keras_model:
+    print("use keras")
+    model = keras_resnet_model.ResNet50(classes=1001, weights=None)
+  else :
+    print("use estimator")
+    model = model_class(resnet_size, data_format, resnet_version=resnet_version,
+                        dtype=dtype)
 
   logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
@@ -466,7 +474,8 @@ def resnet_main(
           'resnet_version': int(flags_obj.resnet_version),
           'loss_scale': flags_core.get_loss_scale(flags_obj),
           'dtype': flags_core.get_tf_dtype(flags_obj),
-          'fine_tune': flags_obj.fine_tune
+          'fine_tune': flags_obj.fine_tune,
+          'use_keras_model': flags_obj.use_keras_model
       })
 
   run_params = {
