@@ -48,6 +48,18 @@ from official.recommendation import stat_utils
 from official.recommendation import popen_helper
 
 
+DATASET_TO_NUM_USERS_AND_ITEMS = {
+    "ml-1m": (6040, 3706),
+    "ml-20m": (138493, 26744)
+}
+
+
+# Number of batches to run per epoch when using synthetic data. At high batch
+# sizes, we run for more batches than with real data, which is good since
+# running more batches reduces noise when measuring the average batches/second.
+_SYNTHETIC_BATCHES_PER_EPOCH = 2000
+
+
 class NCFDataset(object):
   """Container for training and testing data."""
 
@@ -376,6 +388,14 @@ def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
 
   raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
   df, user_map, item_map = _filter_index_sort(raw_rating_path, match_mlperf)
+  num_users, num_items = DATASET_TO_NUM_USERS_AND_ITEMS[dataset]
+
+  if num_users != len(user_map):
+    raise ValueError("Expected to find {} users, but found {}".format(
+        num_users, len(user_map)))
+  if num_items != len(item_map):
+    raise ValueError("Expected to find {} items, but found {}".format(
+        num_items, len(item_map)))
 
   generate_train_eval_data(df=df, approx_num_shards=approx_num_shards,
                            num_items=len(item_map), cache_paths=cache_paths,
@@ -570,8 +590,11 @@ def hash_pipeline(dataset, deterministic):
 
 
 def make_train_input_fn(ncf_dataset):
-  # type: (NCFDataset) -> (typing.Callable, str, int)
+  # type: (typing.Optional[NCFDataset]) -> (typing.Callable, str, int)
   """Construct training input_fn for the current epoch."""
+
+  if ncf_dataset is None:
+    return make_train_synthetic_input_fn()
 
   if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
     # The generation subprocess must have been alive at some point, because we
@@ -644,9 +667,39 @@ def make_train_input_fn(ncf_dataset):
   return input_fn, record_dir, batch_count
 
 
+def make_train_synthetic_input_fn():
+  """Construct training input_fn that uses synthetic data."""
+  def input_fn(params):
+    """Generated input_fn for the given epoch."""
+    batch_size = params["batch_size"]
+    num_users = params["num_users"]
+    num_items = params["num_items"]
+
+    users = tf.random_uniform([batch_size], dtype=tf.int32, minval=0,
+                              maxval=num_users)
+    items = tf.random_uniform([batch_size], dtype=tf.int32, minval=0,
+                              maxval=num_items)
+    labels = tf.random_uniform([batch_size], dtype=tf.int32, minval=0,
+                               maxval=2)
+
+    data = {
+        movielens.USER_COLUMN: users,
+        movielens.ITEM_COLUMN: items,
+    }, labels
+    dataset = tf.data.Dataset.from_tensors(data).repeat(
+        _SYNTHETIC_BATCHES_PER_EPOCH)
+    dataset = dataset.prefetch(32)
+    return dataset
+
+  return input_fn, None, _SYNTHETIC_BATCHES_PER_EPOCH
+
+
 def make_pred_input_fn(ncf_dataset):
-  # type: (NCFDataset) -> typing.Callable
+  # type: (typing.Optional[NCFDataset]) -> typing.Callable
   """Construct input_fn for metric evaluation."""
+
+  if ncf_dataset is None:
+    return make_synthetic_pred_input_fn()
 
   def input_fn(params):
     """Input function based on eval batch size."""
@@ -669,6 +722,35 @@ def make_pred_input_fn(ncf_dataset):
     if params.get("hash_pipeline"):
       hash_pipeline(dataset, ncf_dataset.deterministic)
 
+    return dataset
+
+  return input_fn
+
+
+def make_synthetic_pred_input_fn():
+  """Construct input_fn for metric evaluation that uses synthetic data."""
+
+  def input_fn(params):
+    """Generated input_fn for the given epoch."""
+    batch_size = params["eval_batch_size"]
+    num_users = params["num_users"]
+    num_items = params["num_items"]
+
+    users = tf.random_uniform([batch_size], dtype=tf.int32, minval=0,
+                              maxval=num_users)
+    items = tf.random_uniform([batch_size], dtype=tf.int32, minval=0,
+                              maxval=num_items)
+    dupe_mask = tf.cast(tf.random_uniform([batch_size], dtype=tf.int32,
+                                          minval=0, maxval=2), tf.bool)
+
+    data = {
+        movielens.USER_COLUMN: users,
+        movielens.ITEM_COLUMN: items,
+        rconst.DUPLICATE_MASK: dupe_mask,
+    }
+    dataset = tf.data.Dataset.from_tensors(data).repeat(
+        _SYNTHETIC_BATCHES_PER_EPOCH)
+    dataset = dataset.prefetch(16)
     return dataset
 
   return input_fn
