@@ -54,6 +54,12 @@ DATASET_TO_NUM_USERS_AND_ITEMS = {
 }
 
 
+# Number of batches to run per epoch when using synthetic data. At high batch
+# sizes, we run for more batches than with real data, which is good since
+# running more batches reduces noise when measuring the average batches/second.
+_SYNTHETIC_BATCHES_PER_EPOCH = 2000
+
+
 class NCFDataset(object):
   """Container for training and testing data."""
 
@@ -659,9 +665,6 @@ def make_train_input_fn(ncf_dataset):
     return dataset
 
   return input_fn, record_dir, batch_count
-
-
-_SYNTHETIC_BATCHES_PER_EPOCH = 2000
 
 
 def make_train_synthetic_input_fn():
