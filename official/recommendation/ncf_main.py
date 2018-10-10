@@ -118,7 +118,7 @@ def main(_):
 
 def run_ncf(_):
   """Run NCF training and eval loop."""
-  if FLAGS.download_if_missing:
+  if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
   if FLAGS.seed is not None:
@@ -137,14 +137,25 @@ def run_ncf(_):
         "eval examples per user does not evenly divide eval_batch_size. "
         "Overriding to {}".format(eval_batch_size))
 
-  ncf_dataset, cleanup_fn = data_preprocessing.instantiate_pipeline(
-      dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
-      batch_size=batch_size,
-      eval_batch_size=eval_batch_size,
-      num_neg=FLAGS.num_neg,
-      epochs_per_cycle=FLAGS.epochs_between_evals,
-      match_mlperf=FLAGS.ml_perf,
-      deterministic=FLAGS.seed is not None)
+  if FLAGS.use_synthetic_data:
+    ncf_dataset = None
+    cleanup_fn = lambda: None
+    num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
+        FLAGS.dataset]
+    approx_train_steps = None
+  else:
+    ncf_dataset, cleanup_fn = data_preprocessing.instantiate_pipeline(
+        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
+        batch_size=batch_size,
+        eval_batch_size=eval_batch_size,
+        num_neg=FLAGS.num_neg,
+        epochs_per_cycle=FLAGS.epochs_between_evals,
+        match_mlperf=FLAGS.ml_perf,
+        deterministic=FLAGS.seed is not None)
+    num_users = ncf_dataset.num_users
+    num_items = ncf_dataset.num_items
+    approx_train_steps = int(ncf_dataset.num_train_positives
+                             * (1 + FLAGS.num_neg) // FLAGS.batch_size)
 
   model_helpers.apply_clean(flags.FLAGS)
 
@@ -153,9 +164,10 @@ def run_ncf(_):
           "use_seed": FLAGS.seed is not None,
           "hash_pipeline": FLAGS.hash_pipeline,
           "batch_size": batch_size,
+          "eval_batch_size": eval_batch_size,
           "learning_rate": FLAGS.learning_rate,
-          "num_users": ncf_dataset.num_users,
-          "num_items": ncf_dataset.num_items,
+          "num_users": num_users,
+          "num_items": num_items,
           "mf_dim": FLAGS.num_factors,
           "model_layers": [int(layer) for layer in FLAGS.layers],
           "mf_regularization": FLAGS.mf_regularization,
@@ -192,8 +204,6 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
-  approx_train_steps = int(ncf_dataset.num_train_positives
-                           * (1 + FLAGS.num_neg) // FLAGS.batch_size)
   pred_input_fn = data_preprocessing.make_pred_input_fn(ncf_dataset=ncf_dataset)
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
@@ -205,14 +215,15 @@ def run_ncf(_):
     train_input_fn, train_record_dir, batch_count = \
       data_preprocessing.make_train_input_fn(ncf_dataset=ncf_dataset)
 
-    if np.abs(approx_train_steps - batch_count) > 1:
+    if approx_train_steps and np.abs(approx_train_steps - batch_count) > 1:
       tf.logging.warning(
           "Estimated ({}) and reported ({}) number of batches differ by more "
           "than one".format(approx_train_steps, batch_count))
 
     train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
                           steps=batch_count)
-    tf.gfile.DeleteRecursively(train_record_dir)
+    if train_record_dir:
+      tf.gfile.DeleteRecursively(train_record_dir)
 
     tf.logging.info("Beginning evaluation.")
     eval_results = eval_estimator.evaluate(pred_input_fn)
@@ -245,7 +256,7 @@ def define_ncf_flags():
       num_parallel_calls=False,
       inter_op=False,
       intra_op=False,
-      synthetic_data=False,
+      synthetic_data=True,
       max_train_steps=False,
       dtype=False,
       all_reduce_alg=False
