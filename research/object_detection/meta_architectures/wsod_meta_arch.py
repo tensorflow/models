@@ -108,6 +108,10 @@ from object_detection.core import target_assigner
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 
+from object_detection.models.faster_rcnn_inception_v2_feature_extractor import FasterRCNNInceptionV2FeatureExtractor
+from core import plotlib
+from core import training_utils
+
 slim = tf.contrib.slim
 
 
@@ -216,7 +220,7 @@ class FasterRCNNFeatureExtractor(object):
     return variables_to_restore
 
 
-class FasterRCNNMetaArch(model.DetectionModel):
+class WSODMetaArch(model.DetectionModel):
   """Faster R-CNN Meta-architecture definition."""
 
   def __init__(self,
@@ -256,8 +260,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
                add_summaries=True,
                clip_anchors_to_image=False,
                use_static_shapes=False,
-               resize_masks=True):
-    """FasterRCNNMetaArch Constructor.
+               resize_masks=True,
+               saliency_model=None,
+               saliency_model_checkpoint_path=None):
+    """WSODMetaArch Constructor.
 
     Args:
       is_training: A boolean indicating whether the training version of the
@@ -378,6 +384,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         guarantees.
       resize_masks: Indicates whether the masks presend in the groundtruth
         should be resized in the model with `image_resizer_fn`
+      saliency_model: Saliency model using to predict the `heatmap`.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals` at
@@ -387,7 +394,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     """
     # TODO(rathodv): add_summaries is currently unused. Respect that directive
     # in the future.
-    super(FasterRCNNMetaArch, self).__init__(num_classes=num_classes)
+    super(WSODMetaArch, self).__init__(num_classes=num_classes)
 
     if not isinstance(first_stage_anchor_generator,
                       grid_anchor_generator.GridAnchorGenerator):
@@ -470,6 +477,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
     if self._number_of_stages <= 0 or self._number_of_stages > 3:
       raise ValueError('Number of stages should be a value in {1, 2, 3}.')
 
+    self._saliency_model = saliency_model
+    self._saliency_model_checkpoint_path = saliency_model_checkpoint_path
+
   @property
   def first_stage_feature_extractor_scope(self):
     return 'FirstStageFeatureExtractor'
@@ -516,7 +526,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     See base class.
 
     For Faster R-CNN, we perform image resizing in the base class --- each
-    class subclassing FasterRCNNMetaArch is responsible for any additional
+    class subclassing WSODMetaArch is responsible for any additional
     preprocessing (e.g., scaling pixel values to be in [-1, 1]).
 
     Args:
@@ -643,6 +653,45 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Raises:
       ValueError: If `predict` is called before `preprocess`.
     """
+    # Generate the saliency map as groundtruth for training.
+
+    if self._is_training:
+      # TODO(yek@): add model instances that are allowed.
+      if not isinstance(self._feature_extractor, 
+          FasterRCNNInceptionV2FeatureExtractor):
+        raise ValueError("The WSOD model is only tested under the inception family.")
+
+      if len(tf.global_variables()) != 1:
+        raise ValueError("At the time, only the `global_step` should be there.")
+
+      # TODO(yek@): eliminate all of the constants.
+
+      # Compute the saliency mask.
+      # preprocessed_inputs shape = [batch, height, width, channels]
+      # values are in the range of [-1.0 to 1.0] (i.e., inception preprocessing).
+      batch, height, width, _ = preprocessed_inputs.get_shape().as_list()
+      with tf.variable_scope('wsod'):
+        saliency_inputs = (preprocessed_inputs + 1.0) * 255.0 / 2.0
+        saliency_map = self._saliency_model.build_prediction(
+            examples={ 'image': saliency_inputs },
+            prediction_task='image_saliency')['image_saliency']
+        saliency_map = tf.squeeze(
+            tf.image.resize_images( 
+              tf.expand_dims(saliency_map, axis=-1), [height, width]),
+            axis=-1)
+
+      # Load the saliency model.
+      tf.train.init_from_checkpoint(
+          self._saliency_model_checkpoint_path, assignment_map={"/": "wsod/"})
+
+      # visualize to tensorboard.
+      heat_map = plotlib.convert_to_heatmap(saliency_map, normalize=True)
+
+      image = (preprocessed_inputs + 1.0) * 0.5
+      heat_map = plotlib.gaussian_filter(heat_map, ksize=32)
+      image = tf.maximum(0.0, tf.concat([image, heat_map], axis=2))
+      tf.summary.image("heatmap", image, max_outputs=10)
+
     (rpn_box_predictor_features, rpn_features_to_crop, anchors_boxlist,
      image_shape) = self._extract_rpn_feature_maps(preprocessed_inputs)
     (rpn_box_encodings, rpn_objectness_predictions_with_background
@@ -689,6 +738,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
     if self._number_of_stages == 3:
       prediction_dict = self._predict_third_stage(
           prediction_dict, true_image_shapes)
+
+    # Add saliency_map to the prediction_dict.
+
+    if self._is_training:
+      prediction_dict['saliency_map'] = saliency_map
 
     return prediction_dict
 
