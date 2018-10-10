@@ -322,6 +322,7 @@ def _run_checkpoint_once(tensor_dict,
           # TODO(akuznetsa): result_dict contains batches of images, while
           # add_single_ground_truth_image_info expects a single image. Fix
           if (isinstance(result_dict, dict) and
+              fields.InputDataFields.key in result_dict and
               result_dict[fields.InputDataFields.key]):
             image_id = result_dict[fields.InputDataFields.key]
           else:
