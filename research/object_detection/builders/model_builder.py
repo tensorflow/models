@@ -32,6 +32,7 @@ from object_detection.core import target_assigner
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
+from object_detection.meta_architectures import wsod_meta_arch
 from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
 from object_detection.models import faster_rcnn_inception_v2_feature_extractor as frcnn_inc_v2
 from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
@@ -50,6 +51,9 @@ from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMo
 from object_detection.predictors import rfcn_box_predictor
 from object_detection.protos import model_pb2
 from object_detection.utils import ops
+
+from models import builder as saliency_model_builder
+
 
 # A map of names to SSD feature extractors.
 SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -118,6 +122,8 @@ def build(model_config, is_training, add_summaries=True,
   if meta_architecture == 'faster_rcnn':
     return _build_faster_rcnn_model(model_config.faster_rcnn, is_training,
                                     add_summaries)
+  if meta_architecture == 'wsod':
+    return _build_wsod_model(model_config.wsod, is_training, add_summaries)
   raise ValueError('Unknown meta architecture: {}'.format(meta_architecture))
 
 
@@ -471,6 +477,177 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         **common_kwargs)
   else:
     return faster_rcnn_meta_arch.FasterRCNNMetaArch(
+        initial_crop_size=initial_crop_size,
+        maxpool_kernel_size=maxpool_kernel_size,
+        maxpool_stride=maxpool_stride,
+        second_stage_mask_rcnn_box_predictor=second_stage_box_predictor,
+        second_stage_mask_prediction_loss_weight=(
+            second_stage_mask_prediction_loss_weight),
+        **common_kwargs)
+
+
+def _build_wsod_model(frcnn_config, is_training, add_summaries):
+  """Builds a Faster R-CNN or R-FCN detection model based on the model config.
+
+  Builds R-FCN model if the second_stage_box_predictor in the config is of type
+  `rfcn_box_predictor` else builds a Faster R-CNN model.
+
+  Args:
+    frcnn_config: A faster_rcnn.proto object containing the config for the
+      desired FasterRCNNMetaArch or RFCNMetaArch.
+    is_training: True if this model is being built for training purposes.
+    add_summaries: Whether to add tf summaries in the model.
+
+  Returns:
+    FasterRCNNMetaArch based on the config.
+
+  Raises:
+    ValueError: If frcnn_config.type is not recognized (i.e. not registered in
+      model_class_map).
+  """
+  # Create saliency model builder.
+  saliency_model = saliency_model_builder.build(
+      frcnn_config.saliency_model, is_training=False)
+  saliency_model_checkpoint_path = frcnn_config.saliency_model_checkpoint_path
+
+  num_classes = frcnn_config.num_classes
+  image_resizer_fn = image_resizer_builder.build(frcnn_config.image_resizer)
+
+  feature_extractor = _build_faster_rcnn_feature_extractor(
+      frcnn_config.feature_extractor, is_training,
+      frcnn_config.inplace_batchnorm_update)
+
+  number_of_stages = frcnn_config.number_of_stages
+  first_stage_anchor_generator = anchor_generator_builder.build(
+      frcnn_config.first_stage_anchor_generator)
+
+  first_stage_target_assigner = target_assigner.create_target_assigner(
+      'FasterRCNN',
+      'proposal',
+      use_matmul_gather=frcnn_config.use_matmul_gather_in_matcher)
+  first_stage_atrous_rate = frcnn_config.first_stage_atrous_rate
+  first_stage_box_predictor_arg_scope_fn = hyperparams_builder.build(
+      frcnn_config.first_stage_box_predictor_conv_hyperparams, is_training)
+  first_stage_box_predictor_kernel_size = (
+      frcnn_config.first_stage_box_predictor_kernel_size)
+  first_stage_box_predictor_depth = frcnn_config.first_stage_box_predictor_depth
+  first_stage_minibatch_size = frcnn_config.first_stage_minibatch_size
+  # TODO(bhattad): When eval is supported using static shapes, add separate
+  # use_static_shapes_for_trainig and use_static_shapes_for_evaluation.
+  use_static_shapes = frcnn_config.use_static_shapes and is_training
+  first_stage_sampler = sampler.BalancedPositiveNegativeSampler(
+      positive_fraction=frcnn_config.first_stage_positive_balance_fraction,
+      is_static=frcnn_config.use_static_balanced_label_sampler and is_training)
+  first_stage_max_proposals = frcnn_config.first_stage_max_proposals
+  if (frcnn_config.first_stage_nms_iou_threshold < 0 or
+      frcnn_config.first_stage_nms_iou_threshold > 1.0):
+    raise ValueError('iou_threshold not in [0, 1.0].')
+  if (is_training and frcnn_config.second_stage_batch_size >
+      first_stage_max_proposals):
+    raise ValueError('second_stage_batch_size should be no greater than '
+                     'first_stage_max_proposals.')
+  first_stage_non_max_suppression_fn = functools.partial(
+      post_processing.batch_multiclass_non_max_suppression,
+      score_thresh=frcnn_config.first_stage_nms_score_threshold,
+      iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
+      max_size_per_class=frcnn_config.first_stage_max_proposals,
+      max_total_size=frcnn_config.first_stage_max_proposals,
+      use_static_shapes=use_static_shapes and is_training)
+  first_stage_loc_loss_weight = (
+      frcnn_config.first_stage_localization_loss_weight)
+  first_stage_obj_loss_weight = frcnn_config.first_stage_objectness_loss_weight
+
+  initial_crop_size = frcnn_config.initial_crop_size
+  maxpool_kernel_size = frcnn_config.maxpool_kernel_size
+  maxpool_stride = frcnn_config.maxpool_stride
+
+  second_stage_target_assigner = target_assigner.create_target_assigner(
+      'FasterRCNN',
+      'detection',
+      use_matmul_gather=frcnn_config.use_matmul_gather_in_matcher)
+  second_stage_box_predictor = box_predictor_builder.build(
+      hyperparams_builder.build,
+      frcnn_config.second_stage_box_predictor,
+      is_training=is_training,
+      num_classes=num_classes)
+  second_stage_batch_size = frcnn_config.second_stage_batch_size
+  second_stage_sampler = sampler.BalancedPositiveNegativeSampler(
+      positive_fraction=frcnn_config.second_stage_balance_fraction,
+      is_static=frcnn_config.use_static_balanced_label_sampler and is_training)
+  (second_stage_non_max_suppression_fn, second_stage_score_conversion_fn
+  ) = post_processing_builder.build(frcnn_config.second_stage_post_processing)
+  second_stage_localization_loss_weight = (
+      frcnn_config.second_stage_localization_loss_weight)
+  second_stage_classification_loss = (
+      losses_builder.build_faster_rcnn_classification_loss(
+          frcnn_config.second_stage_classification_loss))
+  second_stage_classification_loss_weight = (
+      frcnn_config.second_stage_classification_loss_weight)
+  second_stage_mask_prediction_loss_weight = (
+      frcnn_config.second_stage_mask_prediction_loss_weight)
+
+  hard_example_miner = None
+  if frcnn_config.HasField('hard_example_miner'):
+    hard_example_miner = losses_builder.build_hard_example_miner(
+        frcnn_config.hard_example_miner,
+        second_stage_classification_loss_weight,
+        second_stage_localization_loss_weight)
+
+  crop_and_resize_fn = (
+      ops.matmul_crop_and_resize if frcnn_config.use_matmul_crop_and_resize
+      else ops.native_crop_and_resize)
+  clip_anchors_to_image = (
+      frcnn_config.clip_anchors_to_image)
+
+  common_kwargs = {
+      'is_training': is_training,
+      'num_classes': num_classes,
+      'image_resizer_fn': image_resizer_fn,
+      'feature_extractor': feature_extractor,
+      'number_of_stages': number_of_stages,
+      'first_stage_anchor_generator': first_stage_anchor_generator,
+      'first_stage_target_assigner': first_stage_target_assigner,
+      'first_stage_atrous_rate': first_stage_atrous_rate,
+      'first_stage_box_predictor_arg_scope_fn':
+      first_stage_box_predictor_arg_scope_fn,
+      'first_stage_box_predictor_kernel_size':
+      first_stage_box_predictor_kernel_size,
+      'first_stage_box_predictor_depth': first_stage_box_predictor_depth,
+      'first_stage_minibatch_size': first_stage_minibatch_size,
+      'first_stage_sampler': first_stage_sampler,
+      'first_stage_non_max_suppression_fn': first_stage_non_max_suppression_fn,
+      'first_stage_max_proposals': first_stage_max_proposals,
+      'first_stage_localization_loss_weight': first_stage_loc_loss_weight,
+      'first_stage_objectness_loss_weight': first_stage_obj_loss_weight,
+      'second_stage_target_assigner': second_stage_target_assigner,
+      'second_stage_batch_size': second_stage_batch_size,
+      'second_stage_sampler': second_stage_sampler,
+      'second_stage_non_max_suppression_fn':
+      second_stage_non_max_suppression_fn,
+      'second_stage_score_conversion_fn': second_stage_score_conversion_fn,
+      'second_stage_localization_loss_weight':
+      second_stage_localization_loss_weight,
+      'second_stage_classification_loss':
+      second_stage_classification_loss,
+      'second_stage_classification_loss_weight':
+      second_stage_classification_loss_weight,
+      'hard_example_miner': hard_example_miner,
+      'add_summaries': add_summaries,
+      'crop_and_resize_fn': crop_and_resize_fn,
+      'clip_anchors_to_image': clip_anchors_to_image,
+      'use_static_shapes': use_static_shapes,
+      'resize_masks': frcnn_config.resize_masks,
+      'saliency_model': saliency_model,
+      'saliency_model_checkpoint_path': saliency_model_checkpoint_path,
+  }
+
+  if isinstance(second_stage_box_predictor,
+                rfcn_box_predictor.RfcnBoxPredictor):
+    return rfcn_meta_arch.RFCNMetaArch(
+        second_stage_rfcn_box_predictor=second_stage_box_predictor,
+        **common_kwargs)
+  else:
+    return wsod_meta_arch.WSODMetaArch(
         initial_crop_size=initial_crop_size,
         maxpool_kernel_size=maxpool_kernel_size,
         maxpool_stride=maxpool_stride,
