@@ -370,12 +370,14 @@ class SSDMetaArch(model.DetectionModel):
       # Slim feature extractors get an explicit naming scope
       self._extract_features_scope = 'FeatureExtractor'
 
-    # TODO(jonathanhuang): handle agnostic mode
-    # weights
-    self._unmatched_class_label = tf.constant([1] + self.num_classes * [0],
-                                              tf.float32)
-    if encode_background_as_zeros:
+    if self._add_background_class and encode_background_as_zeros:
       self._unmatched_class_label = tf.constant((self.num_classes + 1) * [0],
+                                                tf.float32)
+    elif self._add_background_class:
+      self._unmatched_class_label = tf.constant([1] + self.num_classes * [0],
+                                                tf.float32)
+    else:
+      self._unmatched_class_label = tf.constant(self.num_classes * [0],
                                                 tf.float32)
 
     self._target_assigner = target_assigner_instance
@@ -643,12 +645,10 @@ class SSDMetaArch(model.DetectionModel):
       detection_boxes = tf.identity(detection_boxes, 'raw_box_locations')
       detection_boxes = tf.expand_dims(detection_boxes, axis=2)
 
-      detection_scores_with_background = self._score_conversion_fn(
-          class_predictions)
-      detection_scores_with_background = tf.identity(
-          detection_scores_with_background, 'raw_box_scores')
-      detection_scores = tf.slice(detection_scores_with_background, [0, 0, 1],
-                                  [-1, -1, -1])
+      detection_scores = self._score_conversion_fn(class_predictions)
+      detection_scores = tf.identity(detection_scores, 'raw_box_scores')
+      if self._add_background_class:
+        detection_scores = tf.slice(detection_scores, [0, 0, 1], [-1, -1, -1])
       additional_fields = None
 
       batch_size = (

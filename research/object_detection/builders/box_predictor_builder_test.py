@@ -113,7 +113,8 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         argscope_fn=mock_conv_argscope_builder,
         box_predictor_config=box_predictor_proto,
         is_training=False,
-        num_classes=10)
+        num_classes=10,
+        add_background_class=False)
     class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._min_depth, 2)
     self.assertEqual(box_predictor._max_depth, 16)
@@ -122,6 +123,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertAlmostEqual(class_head._dropout_keep_prob, 0.4)
     self.assertTrue(class_head._apply_sigmoid_to_scores)
     self.assertAlmostEqual(class_head._class_prediction_bias_init, 4.0)
+    self.assertEqual(class_head._num_class_slots, 10)
     self.assertEqual(box_predictor.num_classes, 10)
     self.assertFalse(box_predictor._is_training)
     self.assertTrue(class_head._use_depthwise)
@@ -154,6 +156,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertTrue(class_head._use_dropout)
     self.assertAlmostEqual(class_head._dropout_keep_prob, 0.8)
     self.assertFalse(class_head._apply_sigmoid_to_scores)
+    self.assertEqual(class_head._num_class_slots, 91)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
     self.assertFalse(class_head._use_depthwise)
@@ -306,7 +309,8 @@ class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         argscope_fn=mock_conv_argscope_builder,
         box_predictor_config=box_predictor_proto,
         is_training=False,
-        num_classes=10)
+        num_classes=10,
+        add_background_class=False)
     class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._depth, 2)
     self.assertEqual(box_predictor._num_layers_before_predictor, 2)
@@ -349,7 +353,8 @@ class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         argscope_fn=mock_conv_argscope_builder,
         box_predictor_config=box_predictor_proto,
         is_training=False,
-        num_classes=10)
+        num_classes=10,
+        add_background_class=False)
     class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._depth, 2)
     self.assertEqual(box_predictor._num_layers_before_predictor, 2)

@@ -344,11 +344,11 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
     preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
     groundtruth_boxes1 = np.array([[0, 0, .5, .5]], dtype=np.float32)
     groundtruth_boxes2 = np.array([[0, 0, .5, .5]], dtype=np.float32)
-    groundtruth_classes1 = np.array([[0, 1]], dtype=np.float32)
-    groundtruth_classes2 = np.array([[0, 1]], dtype=np.float32)
+    groundtruth_classes1 = np.array([[1]], dtype=np.float32)
+    groundtruth_classes2 = np.array([[1]], dtype=np.float32)
     expected_localization_loss = 0.0
     expected_classification_loss = (
-        batch_size * num_anchors * (num_classes + 1) * np.log(2.0))
+        batch_size * num_anchors * num_classes * np.log(2.0))
     (localization_loss, classification_loss) = self.execute(
         graph_fn, [
             preprocessed_input, groundtruth_boxes1, groundtruth_boxes2,
@@ -432,11 +432,11 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
     preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
     groundtruth_boxes1 = np.array([[0, 0, 1, 1]], dtype=np.float32)
     groundtruth_boxes2 = np.array([[0, 0, 1, 1]], dtype=np.float32)
-    groundtruth_classes1 = np.array([[0, 1]], dtype=np.float32)
-    groundtruth_classes2 = np.array([[1, 0]], dtype=np.float32)
+    groundtruth_classes1 = np.array([[1]], dtype=np.float32)
+    groundtruth_classes2 = np.array([[0]], dtype=np.float32)
     expected_localization_loss = 0.25
     expected_classification_loss = (
-        batch_size * num_anchors * (num_classes + 1) * np.log(2.0))
+        batch_size * num_anchors * num_classes * np.log(2.0))
     (localization_loss, classification_loss) = self.execute(
         graph_fn, [
             preprocessed_input, groundtruth_boxes1, groundtruth_boxes2,

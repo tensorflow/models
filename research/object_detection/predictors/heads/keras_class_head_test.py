@@ -45,7 +45,7 @@ class ConvolutionalKerasClassPredictorTest(test_case.TestCase):
     conv_hyperparams = self._build_conv_hyperparams()
     class_prediction_head = keras_class_head.ConvolutionalClassHead(
         is_training=True,
-        num_classes=20,
+        num_class_slots=20,
         use_dropout=True,
         dropout_keep_prob=0.5,
         kernel_size=3,
@@ -56,7 +56,7 @@ class ConvolutionalKerasClassPredictorTest(test_case.TestCase):
     image_feature = tf.random_uniform(
         [64, 17, 19, 1024], minval=-10.0, maxval=10.0, dtype=tf.float32)
     class_predictions = class_prediction_head(image_feature,)
-    self.assertAllEqual([64, 323, 21],
+    self.assertAllEqual([64, 323, 20],
                         class_predictions.get_shape().as_list())
 
   # TODO(kaftan): Remove conditional after CMLE moves to TF 1.10

@@ -130,10 +130,12 @@ class SSDMetaArchTestBase(test_case.TestCase):
     mock_anchor_generator = MockAnchorGenerator2x2()
     if use_keras:
       mock_box_predictor = test_utils.MockKerasBoxPredictor(
-          is_training, num_classes, predict_mask=predict_mask)
+          is_training, num_classes, add_background_class=add_background_class,
+          predict_mask=predict_mask)
     else:
       mock_box_predictor = test_utils.MockBoxPredictor(
-          is_training, num_classes, predict_mask=predict_mask)
+          is_training, num_classes, add_background_class=add_background_class,
+          predict_mask=predict_mask)
     mock_box_coder = test_utils.MockBoxCoder()
     if use_keras:
       fake_feature_extractor = FakeSSDKerasFeatureExtractor()
