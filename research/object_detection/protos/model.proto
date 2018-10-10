@@ -3,6 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 import "object_detection/protos/faster_rcnn.proto";
+import "object_detection/protos/wsod.proto";
 import "object_detection/protos/ssd.proto";
 
 // Top level configuration for DetectionModels.
@@ -10,5 +11,6 @@ message DetectionModel {
   oneof model {
     FasterRcnn faster_rcnn = 1;
     Ssd ssd = 2;
+    Wsod wsod = 3;
   }
 }
