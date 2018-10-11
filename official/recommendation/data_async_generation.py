@@ -441,14 +441,21 @@ def _generation_loop(num_workers,           # type: int
 
 
 def _parse_flagfile():
-  """Fill flags with flagfile."""
+  """Fill flags with flagfile written by the main process."""
   flagfile = os.path.join(flags.FLAGS.data_dir,
                           rconst.FLAGFILE)
   tf.logging.info("Waiting for flagfile to appear at {}..."
                   .format(flagfile))
+  start_time = time.time()
   while not tf.gfile.Exists(flagfile):
+    if time.time() - start_time > rconst.TIMEOUT_SECONDS:
+      log_msg("Waited more than {} seconds. Concluding that this "
+              "process is orphaned and exiting gracefully."
+              .format(rconst.TIMEOUT_SECONDS))
+      sys.exit()
     time.sleep(1)
   tf.logging.info("flagfile found.")
+  # This overrides FLAGS with flags from flagfile.
   flags.FLAGS([__file__, "--flagfile", flagfile])
 
 

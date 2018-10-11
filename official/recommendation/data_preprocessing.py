@@ -450,6 +450,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   }
   if ncf_dataset.deterministic:
     flags_["seed"] = stat_utils.random_int32()
+  tf.gfile.MakeDirs(flags.FLAGS.data_dir)
   # We write to a temp file then atomically rename it to the final file,
   # because writing directly to the final file can cause the data generation
   # async process to read a partially written JSON file.
