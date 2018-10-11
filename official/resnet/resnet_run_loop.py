@@ -31,7 +31,7 @@ from absl import flags
 import tensorflow as tf
 import multiprocessing
 
-from official.resnet import resnet_model as resnet_model
+from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.export import export
 from official.utils.logs import hooks_helper
