@@ -32,7 +32,6 @@ import tensorflow as tf
 import multiprocessing
 
 from official.resnet import resnet_model as official_resnet_model
-from official.resnet.keras import resnet_model as keras_resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.export import export
 from official.utils.logs import hooks_helper
@@ -210,13 +209,11 @@ def learning_rate_with_decay(
   return learning_rate_fn
 
 
-def resnet_model_fn(features, labels, mode, model_class,
-                    resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format, resnet_version, loss_scale,
+def resnet_model_fn(features, labels, mode, model,
+                    weight_decay, learning_rate_fn, momentum,loss_scale,
                     loss_filter_fn=None,
                     dtype=official_resnet_model.DEFAULT_DTYPE,
-                    fine_tune=False,
-                    use_keras_model=False):
+                    fine_tune=False):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -231,17 +228,11 @@ def resnet_model_fn(features, labels, mode, model_class,
     labels: tensor representing class labels for all input images
     mode: current estimator mode; should be one of
       `tf.estimator.ModeKeys.TRAIN`, `EVALUATE`, `PREDICT`
-    model_class: a class representing a TensorFlow model that has a __call__
-      function. We assume here that this is a subclass of ResnetModel.
-    resnet_size: A single integer for the size of the ResNet model.
+    model: a model object that represents a ResnetModel
     weight_decay: weight decay loss rate used to regularize learned variables.
     learning_rate_fn: function that returns the current learning rate given
       the current global_step
     momentum: momentum term used for optimization
-    data_format: Input format ('channels_last', 'channels_first', or None).
-      If set to None, the format is dependent on whether a GPU is available.
-    resnet_version: Integer representing which version of the ResNet network to
-      use. See README for details. Valid values: [1, 2]
     loss_scale: The factor to scale the loss for numerical stability. A detailed
       summary is present in the arg parser help text.
     loss_filter_fn: function that takes a string variable name and returns
@@ -260,12 +251,6 @@ def resnet_model_fn(features, labels, mode, model_class,
   tf.summary.image('images', features, max_outputs=6)
   # Checks that features/images have same data type being used for calculations.
   assert features.dtype == dtype
-
-  if use_keras_model:
-    model = keras_resnet_model.ResNet50(classes=1001, weights=None)
-  else :
-    model = model_class(resnet_size, data_format, resnet_version=resnet_version,
-                        dtype=dtype)
 
   logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
