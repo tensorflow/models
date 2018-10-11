@@ -148,7 +148,7 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
           }
         }
         use_expected_classification_loss_under_sampling: true
-        minimum_negative_sampling: 10
+        min_num_negative_samples: 10
         desired_negative_sampling_ratio: 2
       }"""
     model_proto = model_pb2.DetectionModel()
@@ -160,7 +160,7 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsNotNone(model._expected_classification_loss_under_sampling)
     self.assertEqual(
         model._expected_classification_loss_under_sampling.keywords, {
-            'minimum_negative_sampling': 10,
+            'min_num_negative_samples': 10,
             'desired_negative_sampling_ratio': 2
         })
 

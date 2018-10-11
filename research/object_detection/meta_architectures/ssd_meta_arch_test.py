@@ -42,7 +42,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                     random_example_sampling=False,
                     weight_regression_loss_by_score=False,
                     use_expected_classification_loss_under_sampling=False,
-                    minimum_negative_sampling=1,
+                    min_num_negative_samples=1,
                     desired_negative_sampling_ratio=3,
                     use_keras=False,
                     predict_mask=False,
@@ -57,7 +57,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         weight_regression_loss_by_score=weight_regression_loss_by_score,
         use_expected_classification_loss_under_sampling=
         use_expected_classification_loss_under_sampling,
-        minimum_negative_sampling=minimum_negative_sampling,
+        min_num_negative_samples=min_num_negative_samples,
         desired_negative_sampling_ratio=desired_negative_sampling_ratio,
         use_keras=use_keras,
         predict_mask=predict_mask,
@@ -371,7 +371,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
           apply_hard_mining=False,
           add_background_class=True,
           use_expected_classification_loss_under_sampling=True,
-          minimum_negative_sampling=1,
+          min_num_negative_samples=1,
           desired_negative_sampling_ratio=desired_negative_sampling_ratio)
       model.provide_groundtruth(groundtruth_boxes_list,
                                 groundtruth_classes_list)
@@ -391,8 +391,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
     expected_localization_loss = 0.0
 
     expected_classification_loss = (
-        batch_size * (desired_negative_sampling_ratio * num_anchors +
-                      num_classes * num_anchors) * np.log(2.0))
+        batch_size * (num_anchors + num_classes * num_anchors) * np.log(2.0))
     (localization_loss, classification_loss) = self.execute(
         graph_fn, [
             preprocessed_input, groundtruth_boxes1, groundtruth_boxes2,

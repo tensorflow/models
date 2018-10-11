@@ -119,7 +119,7 @@ class SSDMetaArchTestBase(test_case.TestCase):
                     random_example_sampling=False,
                     weight_regression_loss_by_score=False,
                     use_expected_classification_loss_under_sampling=False,
-                    minimum_negative_sampling=1,
+                    min_num_negative_samples=1,
                     desired_negative_sampling_ratio=3,
                     use_keras=False,
                     predict_mask=False,
@@ -184,7 +184,7 @@ class SSDMetaArchTestBase(test_case.TestCase):
     if use_expected_classification_loss_under_sampling:
       expected_classification_loss_under_sampling = functools.partial(
           ops.expected_classification_loss_under_sampling,
-          minimum_negative_sampling=minimum_negative_sampling,
+          min_num_negative_samples=min_num_negative_samples,
           desired_negative_sampling_ratio=desired_negative_sampling_ratio)
 
     code_size = 4

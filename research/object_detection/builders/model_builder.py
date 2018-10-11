@@ -235,7 +235,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
   if ssd_config.use_expected_classification_loss_under_sampling:
     expected_classification_loss_under_sampling = functools.partial(
         ops.expected_classification_loss_under_sampling,
-        minimum_negative_sampling=ssd_config.minimum_negative_sampling,
+        min_num_negative_samples=ssd_config.min_num_negative_samples,
         desired_negative_sampling_ratio=ssd_config.
         desired_negative_sampling_ratio)
 

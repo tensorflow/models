@@ -92,7 +92,7 @@ message Ssd {
 
   // Minimum number of effective negative samples.
   // Only applies if use_expected_classification_loss_under_sampling is true.
-  optional float minimum_negative_sampling = 19 [default=0];
+  optional float min_num_negative_samples = 19 [default=0];
 
   // Desired number of effective negative samples per positive sample.
   // Only applies if use_expected_classification_loss_under_sampling is true.
