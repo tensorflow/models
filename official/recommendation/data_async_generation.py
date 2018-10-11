@@ -43,6 +43,7 @@ from absl import flags
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
+from official.recommendation import popen_helper
 
 
 _log_file = None
@@ -50,6 +51,10 @@ _log_file = None
 
 def log_msg(msg):
   """Include timestamp info when logging messages to a file."""
+  if flags.FLAGS.use_tf_logging:
+    tf.logging.info(msg)
+    return
+
   if flags.FLAGS.redirect_logs:
     timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     print("[{}] {}".format(timestamp, msg), file=_log_file)
@@ -207,8 +212,7 @@ def _construct_training_records(
   map_args = [(shard, num_items, num_neg, process_seeds[i])
               for i, shard in enumerate(training_shards * epochs_per_cycle)]
 
-  with contextlib.closing(multiprocessing.Pool(
-      processes=num_workers, initializer=init_worker)) as pool:
+  with popen_helper.get_pool(num_workers, init_worker) as pool:
     map_fn = pool.imap if deterministic else pool.imap_unordered  # pylint: disable=no-member
     data_generator = map_fn(_process_shard, map_args)
     data = [
@@ -436,12 +440,32 @@ def _generation_loop(num_workers,           # type: int
     gc.collect()
 
 
+def _parse_flagfile():
+  """Fill flags with flagfile written by the main process."""
+  flagfile = os.path.join(flags.FLAGS.data_dir,
+                          rconst.FLAGFILE)
+  tf.logging.info("Waiting for flagfile to appear at {}..."
+                  .format(flagfile))
+  start_time = time.time()
+  while not tf.gfile.Exists(flagfile):
+    if time.time() - start_time > rconst.TIMEOUT_SECONDS:
+      log_msg("Waited more than {} seconds. Concluding that this "
+              "process is orphaned and exiting gracefully."
+              .format(rconst.TIMEOUT_SECONDS))
+      sys.exit()
+    time.sleep(1)
+  tf.logging.info("flagfile found.")
+  # This overrides FLAGS with flags from flagfile.
+  flags.FLAGS([__file__, "--flagfile", flagfile])
+
+
 def main(_):
   global _log_file
+  _parse_flagfile()
+
   redirect_logs = flags.FLAGS.redirect_logs
   cache_paths = rconst.Paths(
       data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
-
 
   log_file_name = "data_gen_proc_{}.log".format(cache_paths.cache_id)
   log_path = os.path.join(cache_paths.data_dir, log_file_name)
@@ -489,16 +513,12 @@ def main(_):
 
 
 def define_flags():
-  """Construct flags for the server.
-
-  This function does not use offical.utils.flags, as these flags are not meant
-  to be used by humans. Rather, they should be passed as part of a subprocess
-  call.
-  """
+  """Construct flags for the server."""
   flags.DEFINE_integer(name="num_workers", default=multiprocessing.cpu_count(),
                        help="Size of the negative generation worker pool.")
   flags.DEFINE_string(name="data_dir", default=None,
                       help="The data root. (used to construct cache paths.)")
+  flags.mark_flags_as_required(["data_dir"])
   flags.DEFINE_string(name="cache_id", default=None,
                       help="The cache_id generated in the main process.")
   flags.DEFINE_integer(name="num_readers", default=4,
@@ -528,14 +548,11 @@ def define_flags():
   flags.DEFINE_boolean(name="redirect_logs", default=False,
                        help="Catch logs and write them to a file. "
                             "(Useful if this is run as a subprocess)")
+  flags.DEFINE_boolean(name="use_tf_logging", default=False,
+                       help="Use tf.logging instead of log file.")
   flags.DEFINE_integer(name="seed", default=None,
                        help="NumPy random seed to set at startup. If not "
                             "specified, a seed will not be set.")
-
-  flags.mark_flags_as_required(
-      ["data_dir", "cache_id", "num_neg", "num_train_positives", "num_items",
-       "train_batch_size", "eval_batch_size"])
-
 
 
 if __name__ == "__main__":
