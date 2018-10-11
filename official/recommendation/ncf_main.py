@@ -144,7 +144,8 @@ def run_ncf(_):
       num_neg=FLAGS.num_neg,
       epochs_per_cycle=FLAGS.epochs_between_evals,
       match_mlperf=FLAGS.ml_perf,
-      deterministic=FLAGS.seed is not None)
+      deterministic=FLAGS.seed is not None,
+      use_subprocess=FLAGS.use_subprocess)
 
   model_helpers.apply_clean(flags.FLAGS)
 
@@ -368,6 +369,12 @@ def define_ncf_flags():
   def eval_size_check(eval_batch_size):
     return (eval_batch_size is None or
             int(eval_batch_size) > rconst.NUM_EVAL_NEGATIVES)
+
+  flags.DEFINE_bool(
+      name="use_subprocess", default=True, help=flags_core.help_wrap(
+          "By default, ncf_main.py starts async data generation process as a "
+          "subprocess. If set to False, ncf_main.py will assume the async data "
+          "generation process has already been started by the user."))
 
 
 if __name__ == "__main__":
