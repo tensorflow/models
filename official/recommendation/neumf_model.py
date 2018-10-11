@@ -44,6 +44,31 @@ from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
 
 
+def _sparse_to_dense_grads(grads_and_vars):
+  """Convert sparse gradients to dense gradients.
+
+  All sparse gradients, which are represented as instances of tf.IndexedSlices,
+  are converted to dense Tensors. Dense gradients, which are represents as
+  Tensors, are unchanged.
+
+  The purpose of this conversion is that for small embeddings, which are used by
+  this model, applying dense gradients with the AdamOptimizer is faster than
+  applying sparse gradients.
+
+  Args
+    grads_and_vars: A list of (gradient, variable) tuples. Each gradient can
+      be a Tensor or an IndexedSlices. Tensors are unchanged, and IndexedSlices
+      are converted to dense Tensors.
+  Returns:
+    The same list of (gradient, variable) as `grads_and_vars`, except each
+    IndexedSlices gradient is converted to a Tensor.
+  """
+
+  # Calling convert_to_tensor changes IndexedSlices into Tensors, and leaves
+  # Tensors unchanged.
+  return [(tf.convert_to_tensor(g), v) for g, v in grads_and_vars]
+
+
 def neumf_model_fn(features, labels, mode, params):
   """Model Function for NeuMF estimator."""
   if params.get("use_seed"):
@@ -94,6 +119,7 @@ def neumf_model_fn(features, labels, mode, params):
     tvars = tf.trainable_variables()
     gradients = optimizer.compute_gradients(
         loss, tvars, colocate_gradients_with_ops=True)
+    gradients = _sparse_to_dense_grads(gradients)
     minimize_op = optimizer.apply_gradients(
         gradients, global_step=global_step, name="train")
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
