@@ -633,11 +633,37 @@ class ObjectDetectionEvaluation(object):
                nms_max_output_boxes=10000,
                use_weighted_mean_ap=False,
                label_id_offset=0,
-               group_of_weight=0.0):
+               group_of_weight=0.0,
+               per_image_eval_class=per_image_evaluation.PerImageEvaluation):
+    """Constructor.
+
+    Args:
+      num_groundtruth_classes: Number of ground-truth classes.
+      matching_iou_threshold: IOU threshold used for matching detected boxes
+        to ground-truth boxes.
+      nms_iou_threshold: IOU threshold used for non-maximum suppression.
+      nms_max_output_boxes: Maximum number of boxes returned by non-maximum
+        suppression.
+      use_weighted_mean_ap: (optional) boolean which determines if the mean
+        average precision is computed directly from the scores and tp_fp_labels
+        of all classes.
+      label_id_offset: The label id offset.
+      group_of_weight: Weight of group-of boxes.If set to 0, detections of the
+        correct class within a group-of box are ignored. If weight is > 0, then
+        if at least one detection falls within a group-of box with
+        matching_iou_threshold, weight group_of_weight is added to true
+        positives. Consequently, if no detection falls within a group-of box,
+        weight group_of_weight is added to false negatives.
+      per_image_eval_class: The class that contains functions for computing
+        per image metrics.
+
+    Raises:
+      ValueError: if num_groundtruth_classes is smaller than 1.
+    """
     if num_groundtruth_classes < 1:
       raise ValueError('Need at least 1 groundtruth class for evaluation.')
 
-    self.per_image_eval = per_image_evaluation.PerImageEvaluation(
+    self.per_image_eval = per_image_eval_class(
         num_groundtruth_classes=num_groundtruth_classes,
         matching_iou_threshold=matching_iou_threshold,
         nms_iou_threshold=nms_iou_threshold,
