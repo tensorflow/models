@@ -430,76 +430,53 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   # pool underlying the training generation doesn't starve other processes.
   num_workers = int(multiprocessing.cpu_count() * 0.75) or 1
 
+  flags_ = {
+      "data_dir": data_dir,
+      "cache_id": ncf_dataset.cache_paths.cache_id,
+      "num_neg": num_neg,
+      "num_train_positives": ncf_dataset.num_train_positives,
+      "num_items": ncf_dataset.num_items,
+      "num_readers": ncf_dataset.num_data_readers,
+      "epochs_per_cycle": epochs_per_cycle,
+      "train_batch_size": batch_size,
+      "eval_batch_size": eval_batch_size,
+      "num_workers": num_workers,
+      # This allows the training input function to guarantee batch size and
+      # significantly improves performance. (~5% increase in examples/sec on
+      # GPU, and needed for TPU XLA.)
+      "spillover": True,
+      "redirect_logs": use_subprocess,
+      "use_tf_logging": not use_subprocess,
+  }
+  if ncf_dataset.deterministic:
+    flags_["seed"] = stat_utils.random_int32()
+  # We write to a temp file then atomically rename it to the final file,
+  # because writing directly to the final file can cause the data generation
+  # async process to read a partially written JSON file.
+  flagfile_temp = os.path.join(flags.FLAGS.data_dir, rconst.FLAGFILE_TEMP)
+  tf.logging.info("Preparing flagfile for async data generation in {} ..."
+                  .format(flagfile_temp))
+  with tf.gfile.Open(flagfile_temp, "w") as f:
+    for k, v in six.iteritems(flags_):
+      f.write("--{}={}\n".format(k, v))
+  flagfile = os.path.join(data_dir, rconst.FLAGFILE)
+  tf.gfile.Rename(flagfile_temp, flagfile)
+  tf.logging.info(
+      "Wrote flagfile for async data generation in {}."
+      .format(flagfile))
+
   if use_subprocess:
     tf.logging.info("Creating training file subprocess.")
-
     subproc_env = os.environ.copy()
-
     # The subprocess uses TensorFlow for tf.gfile, but it does not need GPU
     # resources and by default will try to allocate GPU memory. This would cause
     # contention with the main training process.
     subproc_env["CUDA_VISIBLE_DEVICES"] = ""
-
     subproc_args = popen_helper.INVOCATION + [
-        "--data_dir", data_dir,
-        "--cache_id", str(ncf_dataset.cache_paths.cache_id),
-        "--num_neg", str(num_neg),
-        "--num_train_positives", str(ncf_dataset.num_train_positives),
-        "--num_items", str(ncf_dataset.num_items),
-        "--num_readers", str(ncf_dataset.num_data_readers),
-        "--epochs_per_cycle", str(epochs_per_cycle),
-        "--train_batch_size", str(batch_size),
-        "--eval_batch_size", str(eval_batch_size),
-        "--num_workers", str(num_workers),
-        # This allows the training input function to guarantee batch size and
-        # significantly improves performance. (~5% increase in examples/sec on
-        # GPU, and needed for TPU XLA.)
-        "--spillover", "True",
-        "--redirect_logs", "True"
-    ]
-    if ncf_dataset.deterministic:
-      subproc_args.extend(["--seed", str(int(stat_utils.random_int32()))])
-
+        "--data_dir", data_dir]
     tf.logging.info(
         "Generation subprocess command: {}".format(" ".join(subproc_args)))
-
     proc = subprocess.Popen(args=subproc_args, shell=False, env=subproc_env)
-
-  else:
-    # We write to a temp file then atomically rename it to the final file,
-    # because writing directly to the final file can cause the data generation
-    # async process to read a partially written JSON file.
-    command_file_temp = os.path.join(data_dir, rconst.COMMAND_FILE_TEMP)
-    tf.logging.info("Generation subprocess command at {} ..."
-                    .format(command_file_temp))
-    with tf.gfile.Open(command_file_temp, "w") as f:
-      command = {
-          "data_dir": data_dir,
-          "cache_id": ncf_dataset.cache_paths.cache_id,
-          "num_neg": num_neg,
-          "num_train_positives": ncf_dataset.num_train_positives,
-          "num_items": ncf_dataset.num_items,
-          "num_readers": ncf_dataset.num_data_readers,
-          "epochs_per_cycle": epochs_per_cycle,
-          "train_batch_size": batch_size,
-          "eval_batch_size": eval_batch_size,
-          "num_workers": num_workers,
-          # This allows the training input function to guarantee batch size and
-          # significantly improves performance. (~5% increase in examples/sec on
-          # GPU, and needed for TPU XLA.)
-          "spillover": True,
-          "redirect_logs": False
-      }
-      if ncf_dataset.deterministic:
-        command["seed"] = stat_utils.random_int32()
-
-      json.dump(command, f)
-    command_file = os.path.join(data_dir, rconst.COMMAND_FILE)
-    tf.gfile.Rename(command_file_temp, command_file)
-
-    tf.logging.info(
-        "Generation subprocess command saved to: {}"
-        .format(command_file))
 
   cleanup_called = {"finished": False}
   @atexit.register

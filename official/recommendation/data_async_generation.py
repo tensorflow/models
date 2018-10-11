@@ -51,7 +51,7 @@ _log_file = None
 
 def log_msg(msg):
   """Include timestamp info when logging messages to a file."""
-  if flags.FLAGS.use_command_file:
+  if flags.FLAGS.use_tf_logging:
     tf.logging.info(msg)
     return
 
@@ -440,43 +440,25 @@ def _generation_loop(num_workers,           # type: int
     gc.collect()
 
 
-def _set_flags_with_command_file():
-  """Use arguments from COMMAND_FILE when use_command_file is True."""
-  command_file = os.path.join(flags.FLAGS.data_dir,
-                              rconst.COMMAND_FILE)
-  tf.logging.info("Waiting for command file to appear at {}..."
-                  .format(command_file))
-  while not tf.gfile.Exists(command_file):
+def _parse_flagfile():
+  """Fill flags with flagfile."""
+  flagfile = os.path.join(flags.FLAGS.data_dir,
+                          rconst.FLAGFILE)
+  tf.logging.info("Waiting for flagfile to appear at {}..."
+                  .format(flagfile))
+  while not tf.gfile.Exists(flagfile):
     time.sleep(1)
-  tf.logging.info("Command file found.")
-  with tf.gfile.Open(command_file, "r") as f:
-    command = json.load(f)
-  flags.FLAGS.num_workers = command["num_workers"]
-  assert flags.FLAGS.data_dir == command["data_dir"]
-  flags.FLAGS.cache_id = command["cache_id"]
-  flags.FLAGS.num_readers = command["num_readers"]
-  flags.FLAGS.num_neg = command["num_neg"]
-  flags.FLAGS.num_train_positives = command["num_train_positives"]
-  flags.FLAGS.num_items = command["num_items"]
-  flags.FLAGS.epochs_per_cycle = command["epochs_per_cycle"]
-  flags.FLAGS.train_batch_size = command["train_batch_size"]
-  flags.FLAGS.eval_batch_size = command["eval_batch_size"]
-  flags.FLAGS.spillover = command["spillover"]
-  flags.FLAGS.redirect_logs = command["redirect_logs"]
-  assert flags.FLAGS.redirect_logs is False
-  if "seed" in command:
-    flags.FLAGS.seed = command["seed"]
+  tf.logging.info("flagfile found.")
+  flags.FLAGS([__file__, "--flagfile", flagfile])
 
 
 def main(_):
   global _log_file
-  if flags.FLAGS.use_command_file is not None:
-    _set_flags_with_command_file()
+  _parse_flagfile()
 
   redirect_logs = flags.FLAGS.redirect_logs
   cache_paths = rconst.Paths(
       data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
-
 
   log_file_name = "data_gen_proc_{}.log".format(cache_paths.cache_id)
   log_path = os.path.join(cache_paths.data_dir, log_file_name)
@@ -559,12 +541,11 @@ def define_flags():
   flags.DEFINE_boolean(name="redirect_logs", default=False,
                        help="Catch logs and write them to a file. "
                             "(Useful if this is run as a subprocess)")
+  flags.DEFINE_boolean(name="use_tf_logging", default=False,
+                       help="Use tf.logging instead of log file.")
   flags.DEFINE_integer(name="seed", default=None,
                        help="NumPy random seed to set at startup. If not "
                             "specified, a seed will not be set.")
-  flags.DEFINE_boolean(name="use_command_file", default=False,
-                       help="Use command arguments from json at command_path. "
-                       "All arguments other than data_dir will be ignored.")
 
 
 if __name__ == "__main__":
