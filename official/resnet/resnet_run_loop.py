@@ -31,7 +31,7 @@ from absl import flags
 import tensorflow as tf
 import multiprocessing
 
-from official.resnet import resnet_model as official_resnet_model
+from official.resnet import resnet_model as resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.export import export
 from official.utils.logs import hooks_helper
@@ -212,7 +212,7 @@ def learning_rate_with_decay(
 def resnet_model_fn(features, labels, mode, model,
                     weight_decay, learning_rate_fn, momentum,loss_scale,
                     loss_filter_fn=None,
-                    dtype=official_resnet_model.DEFAULT_DTYPE,
+                    dtype=resnet_model.DEFAULT_DTYPE,
                     fine_tune=False):
   """Shared functionality for different resnet model_fns.
 
