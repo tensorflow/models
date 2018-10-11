@@ -314,10 +314,8 @@ def imagenet_model_fn(features, labels, mode, params):
 
   dtype = params['dtype']
   if params['use_keras_model']:
-    print('use keras model')
     model = keras_resnet_model.ResNet50(classes=_NUM_CLASSES, weights=None)
   else:
-    print('not use keras model')
     model = ImagenetModel(resnet_size=params['resnet_size'], data_format=params['data_format'],
             resnet_version=params['resnet_version'], dtype=dtype)
 
