@@ -48,7 +48,7 @@ def batch_norm(inputs, training, data_format):
   """Performs a batch normalization using a standard set of parameters."""
   # We set fused=True for a significant performance boost. See
   # https://www.tensorflow.org/performance/performance_guide#common_fused_ops
-  return tf.layers.batch_normalization(
+  return tf.keras.layers.batch_normalization(
       inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
       momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
       scale=True, training=training, fused=True)
@@ -88,7 +88,7 @@ def conv2d_fixed_padding(inputs, filters, kernel_size, strides, data_format):
   if strides > 1:
     inputs = fixed_padding(inputs, kernel_size, data_format)
 
-  return tf.layers.conv2d(
+  return tf.keras.layers.conv2d(
       inputs=inputs, filters=filters, kernel_size=kernel_size, strides=strides,
       padding=('SAME' if strides == 1 else 'VALID'), use_bias=False,
       kernel_initializer=tf.variance_scaling_initializer(),
@@ -347,7 +347,7 @@ def block_layer(inputs, filters, bottleneck, block_fn, blocks, strides,
   return tf.identity(inputs, name)
 
 
-class Model(object):
+class Model(tf.keras.Model):
   """Base class for building the Resnet Model."""
 
   def __init__(self, resnet_size, bottleneck, num_classes, num_filters,
@@ -513,7 +513,7 @@ class Model(object):
         inputs = tf.nn.relu(inputs)
 
       if self.first_pool_size:
-        inputs = tf.layers.max_pooling2d(
+        inputs = tf.keras.layers.max_pooling2d(
             inputs=inputs, pool_size=self.first_pool_size,
             strides=self.first_pool_stride, padding='SAME',
             data_format=self.data_format)
@@ -543,6 +543,6 @@ class Model(object):
       inputs = tf.identity(inputs, 'final_reduce_mean')
 
       inputs = tf.reshape(inputs, [-1, self.final_size])
-      inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
+      inputs = tf.keras.layers.dense(inputs=inputs, units=self.num_classes)
       inputs = tf.identity(inputs, 'final_dense')
       return inputs
