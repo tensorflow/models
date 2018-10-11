@@ -474,7 +474,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   # We write to a temp file then atomically rename it to the final file,
   # because writing directly to the final file can cause the data generation
   # async process to read a partially written JSON file.
-  flagfile_temp = os.path.join(flags.FLAGS.data_dir, rconst.FLAGFILE_TEMP)
+  flagfile_temp = os.path.join(data_dir, rconst.FLAGFILE_TEMP)
   tf.logging.info("Preparing flagfile for async data generation in {} ..."
                   .format(flagfile_temp))
   with tf.gfile.Open(flagfile_temp, "w") as f:
