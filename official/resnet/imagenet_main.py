@@ -29,7 +29,6 @@ from official.utils.logs import logger
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
-from official.resnet.keras import resnet_model as keras_resnet_model
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -44,6 +43,7 @@ _NUM_TRAIN_FILES = 1024
 _SHUFFLE_BUFFER = 10000
 
 DATASET_NAME = 'ImageNet'
+
 
 ###############################################################################
 # Data processing
@@ -312,24 +312,20 @@ def imagenet_model_fn(features, labels, mode, params):
       num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
       decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=warmup, base_lr=base_lr)
 
-  dtype = params['dtype']
-  if params['use_keras_model']:
-    model = keras_resnet_model.ResNet50(classes=_NUM_CLASSES, weights=None)
-  else:
-    model = ImagenetModel(resnet_size=params['resnet_size'], data_format=params['data_format'],
-            resnet_version=params['resnet_version'], dtype=dtype)
-
   return resnet_run_loop.resnet_model_fn(
       features=features,
       labels=labels,
       mode=mode,
-      model=model,
+      model_class=ImagenetModel,
+      resnet_size=params['resnet_size'],
       weight_decay=1e-4,
       learning_rate_fn=learning_rate_fn,
       momentum=0.9,
+      data_format=params['data_format'],
+      resnet_version=params['resnet_version'],
       loss_scale=params['loss_scale'],
       loss_filter_fn=None,
-      dtype=dtype,
+      dtype=params['dtype'],
       fine_tune=params['fine_tune']
   )
 

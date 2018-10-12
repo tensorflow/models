@@ -192,7 +192,7 @@ class Cifar10Model(resnet_model.Model):
         final_size=64,
         resnet_version=resnet_version,
         data_format=data_format,
-        dtype=dtype
+        dtype=dtype,
     )
 
 
@@ -231,7 +231,8 @@ def cifar10_model_fn(features, labels, mode, params):
       loss_scale=params['loss_scale'],
       loss_filter_fn=loss_filter_fn,
       dtype=params['dtype'],
-      fine_tune=params['fine_tune']
+      fine_tune=params['fine_tune'],
+      num_classes=_NUM_CLASSES
   )
 
 

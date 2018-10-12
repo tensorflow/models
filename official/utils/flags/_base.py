@@ -42,6 +42,8 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
     num_gpu: Create a flag to specify the number of GPUs used.
     hooks: Create a flag to specify hooks for logging.
     export_dir: Create a flag to specify where a SavedModel should be exported.
+    use_keras_model: Create a flag to specify whether we should use the Keras
+      ResNet50 model.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -132,8 +134,8 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
   if use_keras_model:
     flags.DEFINE_boolean(
         name="use_keras_model", default=False,
-        help=help_wrap("If set, we should use the keras.applications.ResNet50"
-                       " model and native Keras APIs."))
+        help=help_wrap("If set, we should use the modified Keras ResNet50"
+                       " model."))
     key_flags.append("use_keras_model")
 
   return key_flags
