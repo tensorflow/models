@@ -45,7 +45,8 @@ def get_loss_scale(flags_obj):
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        synthetic_data=True, max_train_steps=True, dtype=True,
-                       all_reduce_alg=True):
+                       all_reduce_alg=True, tf_gpu_thread_mode=True,
+                       datasets_num_private_threads=True):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -56,7 +57,9 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     max_train_steps: Create a flags to allow specification of maximum number
       of training steps
     dtype: Create flags for specifying dtype.
-
+    all_reduce_alg: If set forces a specific algorithm for multi-gpu.
+    tf_gpu_thread_mode: gpu_private triggers us of private thread pool.
+    datasets_num_private_threads: Number of private threads for datasets.
   Returns:
     A list of flags for core.py to marks as key flags.
   """
@@ -65,7 +68,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
   if num_parallel_calls:
     flags.DEFINE_integer(
         name="num_parallel_calls", short_name="npc",
-        default=multiprocessing.cpu_count(),
+        default=1,
         help=help_wrap("The number of records that are  processed in parallel "
                        "during input processing. This can be optimized per "
                        "data set but for generally homogeneous data sets, "
@@ -137,5 +140,20 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        "See tf.contrib.distribute.AllReduceCrossTowerOps for "
                        "more details and available options."))
 
+  if tf_gpu_thread_mode:
+    flags.DEFINE_string(
+        name="tf_gpu_thread_mode", short_name="gt_mode", default="global",
+        help=help_wrap(
+            "Whether and how the GPU device uses its own threadpool.")
+    )
+
+  if datasets_num_private_threads:
+    flags.DEFINE_integer(
+        name="datasets_num_private_threads", short_name="dataset_thread_count",
+        default=None,
+        help=help_wrap(
+            "Number of threads for a private threadpool created for all"
+            "datasets computation..")
+    )
 
   return key_flags
