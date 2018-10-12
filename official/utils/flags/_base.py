@@ -132,8 +132,8 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
   if use_keras_model:
     flags.DEFINE_boolean(
         name="use_keras_model", default=False,
-        help=help_wrap("If set, we should use the keras.applications.ResNet50"
-                       " model and native Keras APIs."))
+        help=help_wrap("If set, we should use the modified keras.applications.ResNet50"
+                       " model."))
     key_flags.append("use_keras_model")
 
   return key_flags

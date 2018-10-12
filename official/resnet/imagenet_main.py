@@ -319,17 +319,20 @@ def imagenet_model_fn(features, labels, mode, params):
     model = ImagenetModel(resnet_size=params['resnet_size'], data_format=params['data_format'],
             resnet_version=params['resnet_version'], dtype=dtype)
 
-  return resnet_run_loop.resnet_model_fn(
+   return resnet_run_loop.resnet_model_fn(
       features=features,
       labels=labels,
       mode=mode,
-      model=model,
+      model_class=ImagenetModel,
+      resnet_size=params['resnet_size'],
       weight_decay=1e-4,
       learning_rate_fn=learning_rate_fn,
       momentum=0.9,
+      data_format=params['data_format'],
+      resnet_version=params['resnet_version'],
       loss_scale=params['loss_scale'],
       loss_filter_fn=None,
-      dtype=dtype,
+      dtype=params['dtype'],
       fine_tune=params['fine_tune']
   )
 
