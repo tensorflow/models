@@ -181,8 +181,8 @@ class ConvolutionalKerasBoxPredictorTest(test_case.TestCase):
       self.assertAllEqual(objectness_predictions_shape,
                           [4, expected_num_anchors, 1])
     expected_variable_set = set([
-        'BoxPredictor/PreHeadConvolutions_0/Conv2d_0_1x1_32/bias',
-        'BoxPredictor/PreHeadConvolutions_0/Conv2d_0_1x1_32/kernel',
+        'BoxPredictor/SharedConvolutions_0/Conv2d_0_1x1_32/bias',
+        'BoxPredictor/SharedConvolutions_0/Conv2d_0_1x1_32/kernel',
         'BoxPredictor/ConvolutionalBoxHead_0/BoxEncodingPredictor/bias',
         'BoxPredictor/ConvolutionalBoxHead_0/BoxEncodingPredictor/kernel',
         'BoxPredictor/ConvolutionalClassHead_0/ClassPredictor/bias',

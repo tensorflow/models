@@ -110,7 +110,7 @@ class ConvolutionalClassHead(head.KerasHead):
           tf.keras.layers.Conv2D(
               num_predictions_per_location * self._num_class_slots, [1, 1],
               name='ClassPredictor',
-              **conv_hyperparams.params(activation=None)))
+              **conv_hyperparams.params(use_bias=True)))
     else:
       self._class_predictor_layers.append(
           tf.keras.layers.Conv2D(
@@ -120,7 +120,7 @@ class ConvolutionalClassHead(head.KerasHead):
               name='ClassPredictor',
               bias_initializer=tf.constant_initializer(
                   self._class_prediction_bias_init),
-              **conv_hyperparams.params(activation=None)))
+              **conv_hyperparams.params(use_bias=True)))
 
   def _predict(self, features):
     """Predicts boxes.

@@ -1034,6 +1034,26 @@ class SSDMetaArch(model.DetectionModel):
         [combined_shape[0], combined_shape[1], 4]))
     return decoded_boxes, decoded_keypoints
 
+  def regularization_losses(self):
+    """Returns a list of regularization losses for this model.
+
+    Returns a list of regularization losses for this model that the estimator
+    needs to use during training/optimization.
+
+    Returns:
+      A list of regularization loss tensors.
+    """
+    losses = []
+    slim_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    # Copy the slim losses to avoid modifying the collection
+    if slim_losses:
+      losses.extend(slim_losses)
+    if self._box_predictor.is_keras_model:
+      losses.extend(self._box_predictor.losses)
+    if self._feature_extractor.is_keras_model:
+      losses.extend(self._feature_extractor.losses)
+    return losses
+
   def restore_map(self,
                   fine_tune_checkpoint_type='detection',
                   load_all_detection_checkpoint_vars=False):
@@ -1076,3 +1096,28 @@ class SSDMetaArch(model.DetectionModel):
             variables_to_restore[var_name] = variable
 
     return variables_to_restore
+
+  def updates(self):
+    """Returns a list of update operators for this model.
+
+    Returns a list of update operators for this model that must be executed at
+    each training step. The estimator's train op needs to have a control
+    dependency on these updates.
+
+    Returns:
+      A list of update operators.
+    """
+    update_ops = []
+    slim_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    # Copy the slim ops to avoid modifying the collection
+    if slim_update_ops:
+      update_ops.extend(slim_update_ops)
+    if self._box_predictor.is_keras_model:
+      update_ops.extend(self._box_predictor.get_updates_for(None))
+      update_ops.extend(self._box_predictor.get_updates_for(
+          self._box_predictor.inputs))
+    if self._feature_extractor.is_keras_model:
+      update_ops.extend(self._feature_extractor.get_updates_for(None))
+      update_ops.extend(self._feature_extractor.get_updates_for(
+          self._feature_extractor.inputs))
+    return update_ops

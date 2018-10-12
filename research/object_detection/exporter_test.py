@@ -74,6 +74,12 @@ class FakeModel(model.DetectionModel):
   def loss(self, prediction_dict, true_image_shapes):
     pass
 
+  def regularization_losses(self):
+    pass
+
+  def updates(self):
+    pass
+
 
 class ExportInferenceGraphTest(tf.test.TestCase):
 

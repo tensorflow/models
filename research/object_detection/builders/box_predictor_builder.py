@@ -146,7 +146,7 @@ def build_convolutional_keras_box_predictor(is_training,
                                             use_depthwise=False,
                                             mask_head_config=None,
                                             name='BoxPredictor'):
-  """Builds the ConvolutionalBoxPredictor from the arguments.
+  """Builds the Keras ConvolutionalBoxPredictor from the arguments.
 
   Args:
     is_training: Indicates whether the BoxPredictor is in training mode.
@@ -195,7 +195,7 @@ def build_convolutional_keras_box_predictor(is_training,
       will auto-generate one from the class name.
 
   Returns:
-    A ConvolutionalBoxPredictor class.
+    A Keras ConvolutionalBoxPredictor class.
   """
   box_prediction_heads = []
   class_prediction_heads = []
@@ -632,3 +632,78 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
         box_code_size=config_box_predictor.box_code_size)
     return box_predictor_object
   raise ValueError('Unknown box predictor: {}'.format(box_predictor_oneof))
+
+
+def build_keras(conv_hyperparams_fn, freeze_batchnorm, inplace_batchnorm_update,
+                num_predictions_per_location_list, box_predictor_config,
+                is_training, num_classes, add_background_class=True):
+  """Builds a Keras-based box predictor based on the configuration.
+
+  Builds Keras-based box predictor based on the configuration.
+  See box_predictor.proto for configurable options. Also, see box_predictor.py
+  for more details.
+
+  Args:
+    conv_hyperparams_fn: A function that takes a hyperparams_pb2.Hyperparams
+      proto and returns a `hyperparams_builder.KerasLayerHyperparams`
+      for Conv or FC hyperparameters.
+    freeze_batchnorm: Whether to freeze batch norm parameters during
+      training or not. When training with a small batch size (e.g. 1), it is
+      desirable to freeze batch norm update and use pretrained batch norm
+      params.
+    inplace_batchnorm_update: Whether to update batch norm moving average
+      values inplace. When this is false train op must add a control
+      dependency on tf.graphkeys.UPDATE_OPS collection in order to update
+      batch norm statistics.
+    num_predictions_per_location_list: A list of integers representing the
+      number of box predictions to be made per spatial location for each
+      feature map.
+    box_predictor_config: box_predictor_pb2.BoxPredictor proto containing
+      configuration.
+    is_training: Whether the models is in training mode.
+    num_classes: Number of classes to predict.
+    add_background_class: Whether to add an implicit background class.
+
+  Returns:
+    box_predictor: box_predictor.KerasBoxPredictor object.
+
+  Raises:
+    ValueError: On unknown box predictor, or one with no Keras box predictor.
+  """
+  if not isinstance(box_predictor_config, box_predictor_pb2.BoxPredictor):
+    raise ValueError('box_predictor_config not of type '
+                     'box_predictor_pb2.BoxPredictor.')
+
+  box_predictor_oneof = box_predictor_config.WhichOneof('box_predictor_oneof')
+
+  if box_predictor_oneof == 'convolutional_box_predictor':
+    config_box_predictor = box_predictor_config.convolutional_box_predictor
+    conv_hyperparams = conv_hyperparams_fn(
+        config_box_predictor.conv_hyperparams)
+
+    mask_head_config = (
+        config_box_predictor.mask_head
+        if config_box_predictor.HasField('mask_head') else None)
+    return build_convolutional_keras_box_predictor(
+        is_training=is_training,
+        num_classes=num_classes,
+        add_background_class=add_background_class,
+        conv_hyperparams=conv_hyperparams,
+        freeze_batchnorm=freeze_batchnorm,
+        inplace_batchnorm_update=inplace_batchnorm_update,
+        num_predictions_per_location_list=num_predictions_per_location_list,
+        use_dropout=config_box_predictor.use_dropout,
+        dropout_keep_prob=config_box_predictor.dropout_keep_probability,
+        box_code_size=config_box_predictor.box_code_size,
+        kernel_size=config_box_predictor.kernel_size,
+        num_layers_before_predictor=(
+            config_box_predictor.num_layers_before_predictor),
+        min_depth=config_box_predictor.min_depth,
+        max_depth=config_box_predictor.max_depth,
+        class_prediction_bias_init=(
+            config_box_predictor.class_prediction_bias_init),
+        use_depthwise=config_box_predictor.use_depthwise,
+        mask_head_config=mask_head_config)
+
+  raise ValueError(
+      'Unknown box predictor for Keras: {}'.format(box_predictor_oneof))

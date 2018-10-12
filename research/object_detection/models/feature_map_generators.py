@@ -146,7 +146,6 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
       use_depthwise = feature_map_layout['use_depthwise']
     for index, from_layer in enumerate(feature_map_layout['from_layer']):
       net = []
-      self.convolutions.append(net)
       layer_depth = feature_map_layout['layer_depth'][index]
       conv_kernel_size = 3
       if 'conv_kernel_size' in feature_map_layout:
@@ -230,6 +229,10 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
           net.append(
               conv_hyperparams.build_activation_layer(
                   name=layer_name))
+
+      # Until certain bugs are fixed in checkpointable lists,
+      # this net must be appended only once it's been filled with layers
+      self.convolutions.append(net)
 
   def call(self, image_features):
     """Generate the multi-resolution feature maps.

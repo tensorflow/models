@@ -47,6 +47,7 @@ from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMo
 from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
+from object_detection.models.ssd_mobilenet_v2_keras_feature_extractor import SSDMobileNetV2KerasFeatureExtractor
 from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
 from object_detection.predictors import rfcn_box_predictor
 from object_detection.protos import model_pb2
@@ -71,6 +72,10 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
         ssd_resnet_v1_ppn.SSDResnet152V1PpnFeatureExtractor,
     'embedded_ssd_mobilenet_v1': EmbeddedSSDMobileNetV1FeatureExtractor,
     'ssd_pnasnet': SSDPNASNetFeatureExtractor,
+}
+
+SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
+    'ssd_mobilenet_v2_keras': SSDMobileNetV2KerasFeatureExtractor
 }
 
 # A map of names to Faster R-CNN feature extractors.
@@ -117,13 +122,19 @@ def build(model_config, is_training, add_summaries=True):
   raise ValueError('Unknown meta architecture: {}'.format(meta_architecture))
 
 
-def _build_ssd_feature_extractor(feature_extractor_config, is_training,
+def _build_ssd_feature_extractor(feature_extractor_config,
+                                 is_training,
+                                 freeze_batchnorm,
                                  reuse_weights=None):
   """Builds a ssd_meta_arch.SSDFeatureExtractor based on config.
 
   Args:
     feature_extractor_config: A SSDFeatureExtractor proto config from ssd.proto.
     is_training: True if this feature extractor is being built for training.
+    freeze_batchnorm: Whether to freeze batch norm parameters during
+      training or not. When training with a small batch size (e.g. 1), it is
+      desirable to freeze batch norm update and use pretrained batch norm
+      params.
     reuse_weights: if the feature extractor should reuse weights.
 
   Returns:
@@ -133,20 +144,31 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
     ValueError: On invalid feature extractor type.
   """
   feature_type = feature_extractor_config.type
+  is_keras_extractor = feature_type in SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
   depth_multiplier = feature_extractor_config.depth_multiplier
   min_depth = feature_extractor_config.min_depth
   pad_to_multiple = feature_extractor_config.pad_to_multiple
   use_explicit_padding = feature_extractor_config.use_explicit_padding
   use_depthwise = feature_extractor_config.use_depthwise
-  conv_hyperparams = hyperparams_builder.build(
-      feature_extractor_config.conv_hyperparams, is_training)
+
+  if is_keras_extractor:
+    conv_hyperparams = hyperparams_builder.KerasLayerHyperparams(
+        feature_extractor_config.conv_hyperparams)
+  else:
+    conv_hyperparams = hyperparams_builder.build(
+        feature_extractor_config.conv_hyperparams, is_training)
   override_base_feature_extractor_hyperparams = (
       feature_extractor_config.override_base_feature_extractor_hyperparams)
 
-  if feature_type not in SSD_FEATURE_EXTRACTOR_CLASS_MAP:
+  if (feature_type not in SSD_FEATURE_EXTRACTOR_CLASS_MAP) and (
+      not is_keras_extractor):
     raise ValueError('Unknown ssd feature_extractor: {}'.format(feature_type))
 
-  feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
+  if is_keras_extractor:
+    feature_extractor_class = SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP[
+        feature_type]
+  else:
+    feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
   kwargs = {
       'is_training':
           is_training,
@@ -156,10 +178,6 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
           min_depth,
       'pad_to_multiple':
           pad_to_multiple,
-      'conv_hyperparams_fn':
-          conv_hyperparams,
-      'reuse_weights':
-          reuse_weights,
       'use_explicit_padding':
           use_explicit_padding,
       'use_depthwise':
@@ -167,6 +185,18 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
       'override_base_feature_extractor_hyperparams':
           override_base_feature_extractor_hyperparams
   }
+
+  if is_keras_extractor:
+    kwargs.update({
+        'conv_hyperparams': conv_hyperparams,
+        'inplace_batchnorm_update': False,
+        'freeze_batchnorm': freeze_batchnorm
+    })
+  else:
+    kwargs.update({
+        'conv_hyperparams_fn': conv_hyperparams,
+        'reuse_weights': reuse_weights,
+    })
 
   if feature_extractor_config.HasField('fpn'):
     kwargs.update({
@@ -201,6 +231,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
   # Feature extractor
   feature_extractor = _build_ssd_feature_extractor(
       feature_extractor_config=ssd_config.feature_extractor,
+      freeze_batchnorm=ssd_config.freeze_batchnorm,
       is_training=is_training)
 
   box_coder = box_coder_builder.build(ssd_config.box_coder)
@@ -209,11 +240,23 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       ssd_config.similarity_calculator)
   encode_background_as_zeros = ssd_config.encode_background_as_zeros
   negative_class_weight = ssd_config.negative_class_weight
-  ssd_box_predictor = box_predictor_builder.build(
-      hyperparams_builder.build, ssd_config.box_predictor, is_training,
-      num_classes, ssd_config.add_background_class)
   anchor_generator = anchor_generator_builder.build(
       ssd_config.anchor_generator)
+  if feature_extractor.is_keras_model:
+    ssd_box_predictor = box_predictor_builder.build_keras(
+        conv_hyperparams_fn=hyperparams_builder.KerasLayerHyperparams,
+        freeze_batchnorm=ssd_config.freeze_batchnorm,
+        inplace_batchnorm_update=False,
+        num_predictions_per_location_list=anchor_generator
+        .num_anchors_per_location(),
+        box_predictor_config=ssd_config.box_predictor,
+        is_training=is_training,
+        num_classes=num_classes,
+        add_background_class=ssd_config.add_background_class)
+  else:
+    ssd_box_predictor = box_predictor_builder.build(
+        hyperparams_builder.build, ssd_config.box_predictor, is_training,
+        num_classes, ssd_config.add_background_class)
   image_resizer_fn = image_resizer_builder.build(ssd_config.image_resizer)
   non_max_suppression_fn, score_conversion_fn = post_processing_builder.build(
       ssd_config.post_processing)

@@ -306,8 +306,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           prediction_dict, features[fields.InputDataFields.true_image_shape])
       losses = [loss_tensor for loss_tensor in losses_dict.values()]
       if train_config.add_regularization_loss:
-        regularization_losses = tf.get_collection(
-            tf.GraphKeys.REGULARIZATION_LOSSES)
+        regularization_losses = detection_model.regularization_losses()
         if regularization_losses:
           regularization_loss = tf.add_n(
               regularization_losses, name='regularization_loss')
@@ -361,6 +360,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           learning_rate=None,
           clip_gradients=clip_gradients_value,
           optimizer=training_optimizer,
+          update_ops=detection_model.updates(),
           variables=trainable_variables,
           summaries=summaries,
           name='')  # Preventing scope prefix on all variables.
