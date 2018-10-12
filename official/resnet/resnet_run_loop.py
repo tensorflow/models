@@ -38,6 +38,7 @@ from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
+from official.resnet.keras import keras_model
 from tensorflow.contrib.data.python.ops import threadpool
 # pylint: enable=g-bad-import-order
 
@@ -213,8 +214,8 @@ def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
                     data_format, resnet_version, loss_scale,
                     loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE,
-                    fine_tune=False):
-    """Shared functionality for different resnet model_fns.
+                    fine_tune=False, use_keras_model=False, num_classes=1001):
+  """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
   and uses that model to build the necessary EstimatorSpecs for
@@ -252,14 +253,13 @@ def resnet_model_fn(features, labels, mode, model_class,
     EstimatorSpec parameterized according to the input params and the
     current mode.
   """
-
   # Generate a summary node for the images
   tf.summary.image('images', features, max_outputs=6)
   # Checks that features/images have same data type being used for calculations.
   assert features.dtype == dtype
 
-  if params['use_keras_model']:
-    model = keras_resnet_model.ResNet50(classes=_NUM_CLASSES, weights=None)
+  if use_keras_model:
+    model = keras_model.ResNet50(classes=num_classes, weights=None)
   else:
     model = model_class(resnet_size, data_format, resnet_version=resnet_version,
                         dtype=dtype)
