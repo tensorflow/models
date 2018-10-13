@@ -333,8 +333,7 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
   map_args = [(shards[i], i, num_items, cache_paths, process_seeds[i],
                match_mlperf)
               for i in range(approx_num_shards)]
-  with contextlib.closing(
-      multiprocessing.Pool(multiprocessing.cpu_count())) as pool:
+  with popen_helper.get_pool(multiprocessing.cpu_count()) as pool:
     test_shards = pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
 
   tf.logging.info("Merging test shards...")
