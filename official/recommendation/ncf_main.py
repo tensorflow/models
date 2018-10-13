@@ -389,8 +389,9 @@ def define_ncf_flags():
           "generation process has already been started by the user."))
 
   flags.DEFINE_integer(name="cache_id", default=None, help=flags_core.help_wrap(
-    "Use a specified cache_id rather than using a timestamp. This is only needed to synchronize across multiple "
-    "workers. Generally this flag will not need to be set."
+      "Use a specified cache_id rather than using a timestamp. This is only "
+      "needed to synchronize across multiple workers. Generally this flag will "
+      "not need to be set."
   ))
 
 
