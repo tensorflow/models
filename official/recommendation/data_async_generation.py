@@ -460,15 +460,20 @@ def _parse_flagfile():
   with tf.gfile.Open(flagfile, "r") as f:
     # This overrides FLAGS with flags from flagfile.
     flags.FLAGS([__file__] + f.read().splitlines())
+  return flagfile
 
 
 def main(_):
   global _log_file
-  _parse_flagfile()
+  flagfile = _parse_flagfile()
 
   redirect_logs = flags.FLAGS.redirect_logs
   cache_paths = rconst.Paths(
       data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
+  # Rename flagfile so the next run at the same data_dir will still work.
+  flagfile_with_id = flagfile + "_" + cache_paths.cache_id
+  tf.gfile.Rename(flagfile, flagfile_with_id)
+  tf.logging.info("Moving flagfile to {}.".format(flagfile_with_id))
 
   log_file_name = "data_gen_proc_{}.log".format(cache_paths.cache_id)
   log_path = os.path.join(cache_paths.data_dir, log_file_name)
