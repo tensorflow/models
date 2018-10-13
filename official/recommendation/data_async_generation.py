@@ -455,8 +455,11 @@ def _parse_flagfile():
       sys.exit()
     time.sleep(1)
   tf.logging.info("flagfile found.")
-  # This overrides FLAGS with flags from flagfile.
-  flags.FLAGS([__file__, "--flagfile", flagfile])
+  # `flags` module opens `flagfile` with `open`, which does not work on
+  # google cloud storage etc.
+  with tf.gfile.Open(flagfile, "r") as f:
+    # This overrides FLAGS with flags from flagfile.
+    flags.FLAGS([__file__] + [line for line in f])
 
 
 def main(_):
