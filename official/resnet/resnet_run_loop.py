@@ -25,13 +25,13 @@ from __future__ import print_function
 
 import functools
 import math
+import multiprocessing
 import os
 
 # pylint: disable=g-bad-import-order
 from absl import flags
 import tensorflow as tf
 from tensorflow.contrib.data.python.ops import threadpool
-import multiprocessing
 
 from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
