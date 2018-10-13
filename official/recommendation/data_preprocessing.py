@@ -218,7 +218,7 @@ def _train_eval_map_fn(args):
                 [users.shape[0]])
 
   train_blocks = []
-  test_blocks = []
+  # test_blocks = []
   test_positives = []
   for i in range(len(boundaries) - 1):
     # This is simply a vector of repeated values such that the shard could be
@@ -234,37 +234,46 @@ def _train_eval_map_fn(args):
     block_items = items[boundaries[i]:boundaries[i+1]]
     train_blocks.append((block_user[:-1], block_items[:-1]))
 
-    test_negatives = stat_utils.sample_with_exclusion(
-        num_items=num_items, positive_set=set(block_items),
-        n=rconst.NUM_EVAL_NEGATIVES, replacement=match_mlperf)
-    test_blocks.append((
-        block_user[0] * np.ones((rconst.NUM_EVAL_NEGATIVES + 1,),
-                                dtype=np.int32),
-        np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
-    ))
+    # test_negatives = stat_utils.sample_with_exclusion(
+    #     num_items=num_items, positive_set=set(block_items),
+    #     n=rconst.NUM_EVAL_NEGATIVES, replacement=match_mlperf)
+    # test_blocks.append((
+    #     block_user[0] * np.ones((rconst.NUM_EVAL_NEGATIVES + 1,),
+    #                             dtype=np.int32),
+    #     np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
+    # ))
     test_positives.append((block_user[0], block_items[-1]))
 
   train_users = np.concatenate([i[0] for i in train_blocks])
   train_items = np.concatenate([i[1] for i in train_blocks])
+
+  test_pos_users = np.concatenate([i[0] for i in test_positives])
+  test_pos_items = np.concatenate([i[1] for i in test_positives])
 
   train_shard_fpath = cache_paths.train_shard_template.format(
       str(shard_id).zfill(5))
 
   with tf.gfile.Open(train_shard_fpath, "wb") as f:
     pickle.dump({
-        movielens.USER_COLUMN: train_users,
-        movielens.ITEM_COLUMN: train_items,
+        rconst.TRAIN_KEY: {
+            movielens.USER_COLUMN: train_users,
+            movielens.ITEM_COLUMN: train_items,
+        },
+        rconst.EVAL_KEY: {
+            movielens.USER_COLUMN: test_pos_users,
+            movielens.ITEM_COLUMN: test_pos_items,
+        }
     }, f)
 
-  test_users = np.concatenate([i[0] for i in test_blocks])
-  test_items = np.concatenate([i[1] for i in test_blocks])
-  assert test_users.shape == test_items.shape
-  assert test_items.shape[0] % (rconst.NUM_EVAL_NEGATIVES + 1) == 0
-
-  return {
-      movielens.USER_COLUMN: test_users,
-      movielens.ITEM_COLUMN: test_items,
-  }
+  # test_users = np.concatenate([i[0] for i in test_blocks])
+  # test_items = np.concatenate([i[1] for i in test_blocks])
+  # assert test_users.shape == test_items.shape
+  # assert test_items.shape[0] % (rconst.NUM_EVAL_NEGATIVES + 1) == 0
+  #
+  # return {
+  #     movielens.USER_COLUMN: test_users,
+  #     movielens.ITEM_COLUMN: test_items,
+  # }
 
 
 def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
@@ -333,6 +342,7 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
   map_args = [(shards[i], i, num_items, cache_paths, process_seeds[i],
                match_mlperf)
               for i in range(approx_num_shards)]
+<<<<<<< HEAD
   with popen_helper.get_pool(multiprocessing.cpu_count()) as pool:
     test_shards = pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
 
@@ -354,6 +364,31 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
   tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
   with tf.gfile.Open(cache_paths.eval_raw_file, "wb") as f:
     pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+=======
+  with contextlib.closing(
+      multiprocessing.Pool(multiprocessing.cpu_count())) as pool:
+    pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
+  #   test_shards = pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
+  #
+  # tf.logging.info("Merging test shards...")
+  # test_users = np.concatenate([i[movielens.USER_COLUMN] for i in test_shards])
+  # test_items = np.concatenate([i[movielens.ITEM_COLUMN] for i in test_shards])
+  #
+  # assert test_users.shape == test_items.shape
+  # assert test_items.shape[0] % (rconst.NUM_EVAL_NEGATIVES + 1) == 0
+  #
+  # test_labels = np.zeros(shape=test_users.shape)
+  # test_labels[0::(rconst.NUM_EVAL_NEGATIVES + 1)] = 1
+  # eval_data = ({
+  #     movielens.USER_COLUMN: test_users,
+  #     movielens.ITEM_COLUMN: test_items,
+  # }, test_labels)
+  #
+  # tf.logging.info("Writing test data to file.")
+  # tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
+  # with tf.gfile.Open(cache_paths.eval_raw_file, "wb") as f:
+  #   pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+>>>>>>> intermediate commit
 
 
 def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
@@ -461,13 +496,10 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "train_batch_size": batch_size,
       "eval_batch_size": eval_batch_size,
       "num_workers": num_workers,
-      # This allows the training input function to guarantee batch size and
-      # significantly improves performance. (~5% increase in examples/sec on
-      # GPU, and needed for TPU XLA.)
-      "spillover": True,
       "redirect_logs": use_subprocess,
       "use_tf_logging": not use_subprocess,
   }
+
   if ncf_dataset.deterministic:
     flags_["seed"] = stat_utils.random_int32()
   tf.gfile.MakeDirs(data_dir)

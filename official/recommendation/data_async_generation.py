@@ -92,8 +92,8 @@ def _process_shard(args):
   with tf.gfile.Open(shard_path, "rb") as f:
     shard = pickle.load(f)
 
-  users = shard[movielens.USER_COLUMN]
-  items = shard[movielens.ITEM_COLUMN]
+  users = shard[rconst.TRAIN_KEY][movielens.USER_COLUMN]
+  items = shard[rconst.TRAIN_KEY][movielens.ITEM_COLUMN]
 
   delta = users[1:] - users[:-1]
   boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
@@ -168,8 +168,6 @@ def _construct_training_records(
     epochs_per_cycle,     # type: int
     train_batch_size,     # type: int
     training_shards,      # type: typing.List[str]
-    spillover,            # type: bool
-    carryover=None,       # type: typing.Union[typing.List[np.ndarray], None]
     deterministic=False   # type: bool
     ):
   """Generate false negatives and write TFRecords files.
@@ -190,24 +188,19 @@ def _construct_training_records(
       to properly batch data when writing TFRecords.
     training_shards: The picked positive examples from which to generate
       negatives.
-    spillover: If the final batch is incomplete, push it to the next
-      cycle (True) or include a partial batch (False).
-    carryover: The data points to be spilled over to the next cycle.
   """
 
   st = timeit.default_timer()
   num_workers = min([num_workers, len(training_shards) * epochs_per_cycle])
-  carryover = carryover or [
-      np.zeros((0,), dtype=np.int32),
-      np.zeros((0,), dtype=np.uint16),
-      np.zeros((0,), dtype=np.int8),
-  ]
-  num_carryover = carryover[0].shape[0]
-  num_pts = num_carryover + num_train_positives * (1 + num_neg)
+
+  num_pts = num_train_positives * (1 + num_neg)
+  num_pts_with_padding = int(
+      np.ceil(num_pts / train_batch_size)) * train_batch_size
+  num_padding = num_pts_with_padding - num_pts
 
   # We choose a different random seed for each process, so that the processes
   # will not all choose the same random numbers.
-  process_seeds = [np.random.randint(2**32)
+  process_seeds = [stat_utils.random_int32()
                    for _ in training_shards * epochs_per_cycle]
   map_args = [(shard, num_items, num_neg, process_seeds[i])
               for i, shard in enumerate(training_shards * epochs_per_cycle)]
@@ -216,16 +209,13 @@ def _construct_training_records(
     map_fn = pool.imap if deterministic else pool.imap_unordered  # pylint: disable=no-member
     data_generator = map_fn(_process_shard, map_args)
     data = [
-        np.zeros(shape=(num_pts,), dtype=np.int32) - 1,
-        np.zeros(shape=(num_pts,), dtype=np.uint16),
-        np.zeros(shape=(num_pts,), dtype=np.int8),
+        np.zeros(shape=(num_pts_with_padding,), dtype=np.int32) - 1,
+        np.zeros(shape=(num_pts_with_padding,), dtype=np.uint16),
+        np.zeros(shape=(num_pts_with_padding,), dtype=np.int8),
     ]
 
-    # The carryover data is always first.
-    for i in range(3):
-      data[i][:num_carryover] = carryover[i]
     index_destinations = np.random.permutation(
-        num_train_positives * (1 + num_neg)) + num_carryover
+        num_train_positives * (1 + num_neg))
     start_ind = 0
     for data_segment in data_generator:
       n_in_segment = data_segment[0].shape[0]
@@ -234,38 +224,40 @@ def _construct_training_records(
       for i in range(3):
         data[i][dest] = data_segment[i]
 
+  if num_padding:
+    # In order to have a full batch, randomly include points from earlier in the
+    # batch.
+    pad_sample_indices = np.random.randint(
+        low=0, high=num_pts, size=(num_padding,))
+    dest = np.arange(start=start_ind, stop=start_ind + num_padding)
+    start_ind += num_padding
+    for i in range(3):
+      data[i][dest] = data[i][pad_sample_indices]
+
   # Check that no points were dropped.
-  assert (num_pts - num_carryover) == start_ind
   assert not np.sum(data[0] == -1)
 
   record_dir = os.path.join(cache_paths.train_epoch_dir,
                             get_cycle_folder_name(train_cycle))
+
   tf.gfile.MakeDirs(record_dir)
 
-  batches_per_file = np.ceil(num_pts / train_batch_size / num_readers)
+  batches_per_file = np.ceil(num_pts_with_padding / train_batch_size / num_readers)
   current_file_id = -1
   current_batch_id = -1
   batches_by_file = [[] for _ in range(num_readers)]
-
-  output_carryover = [
-      np.zeros(shape=(0,), dtype=np.int32),
-      np.zeros(shape=(0,), dtype=np.uint16),
-      np.zeros(shape=(0,), dtype=np.int8),
-  ]
 
   while True:
     current_batch_id += 1
     if (current_batch_id % batches_per_file) == 0:
       current_file_id += 1
-    end_ind = (current_batch_id + 1) * train_batch_size
-    if end_ind > num_pts:
-      if spillover:
-        output_carryover = [data[i][current_batch_id*train_batch_size:num_pts]
-                            for i in range(3)]
-        break
-      else:
-        batches_by_file[current_file_id].append(current_batch_id)
-        break
+
+    start_ind = current_batch_id * train_batch_size
+    end_ind = start_ind + train_batch_size
+    if end_ind > num_pts_with_padding:
+      if start_ind != num_pts_with_padding:
+        raise ValueError("Batch padding does not line up")
+      break
     batches_by_file[current_file_id].append(current_batch_id)
 
   batch_count = 0
@@ -285,13 +277,6 @@ def _construct_training_records(
         writer.write(batch_bytes)
         batch_count += 1
 
-
-  if spillover:
-    written_pts = output_carryover[0].shape[0] + batch_count * train_batch_size
-    if num_pts != written_pts:
-      raise ValueError("Error detected: point counts do not match: {} vs. {}"
-                       .format(num_pts, written_pts))
-
   # We write to a temp file then atomically rename it to the final file, because
   # writing directly to the final file can cause the main process to read a
   # partially written JSON file.
@@ -306,8 +291,6 @@ def _construct_training_records(
 
   log_msg("Cycle {} complete. Total time: {:.1f} seconds"
           .format(train_cycle, timeit.default_timer() - st))
-
-  return output_carryover
 
 
 def _construct_eval_record(cache_paths, eval_batch_size):
@@ -365,7 +348,6 @@ def _generation_loop(num_workers,           # type: int
                      num_neg,               # type: int
                      num_train_positives,   # type: int
                      num_items,             # type: int
-                     spillover,             # type: bool
                      epochs_per_cycle,      # type: int
                      train_batch_size,      # type: int
                      eval_batch_size,       # type: int
@@ -394,13 +376,12 @@ def _generation_loop(num_workers,           # type: int
   # Training blocks on the creation of the first epoch, so the num_workers
   # limit is not respected for this invocation
   train_cycle = 0
-  carryover = _construct_training_records(
+  _construct_training_records(
       train_cycle=train_cycle, num_workers=multiprocessing.cpu_count(),
       cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
       num_train_positives=num_train_positives, num_items=num_items,
       epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
-      training_shards=training_shards, spillover=spillover, carryover=None,
-      deterministic=deterministic)
+      training_shards=training_shards, deterministic=deterministic)
 
   _construct_eval_record(cache_paths=cache_paths,
                          eval_batch_size=eval_batch_size)
@@ -427,13 +408,12 @@ def _generation_loop(num_workers,           # type: int
       continue
 
     train_cycle += 1
-    carryover = _construct_training_records(
+    _construct_training_records(
         train_cycle=train_cycle, num_workers=num_workers,
         cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
         num_train_positives=num_train_positives, num_items=num_items,
         epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
-        training_shards=training_shards, spillover=spillover,
-        carryover=carryover, deterministic=deterministic)
+        training_shards=training_shards, deterministic=deterministic)
 
     wait_count = 0
     start_time = time.time()
@@ -499,7 +479,6 @@ def main(_):
         num_neg=flags.FLAGS.num_neg,
         num_train_positives=flags.FLAGS.num_train_positives,
         num_items=flags.FLAGS.num_items,
-        spillover=flags.FLAGS.spillover,
         epochs_per_cycle=flags.FLAGS.epochs_per_cycle,
         train_batch_size=flags.FLAGS.train_batch_size,
         eval_batch_size=flags.FLAGS.eval_batch_size,
@@ -545,11 +524,6 @@ def define_flags():
   flags.DEFINE_integer(name="eval_batch_size", default=None,
                        help="The batch size with which evaluation TFRecords "
                             "will be chunked.")
-  flags.DEFINE_boolean(
-      name="spillover", default=True,
-      help="If a complete batch cannot be provided, return an empty batch and "
-           "start the next epoch from a non-empty buffer. This guarantees "
-           "fixed batch sizes.")
   flags.DEFINE_boolean(name="redirect_logs", default=False,
                        help="Catch logs and write them to a file. "
                             "(Useful if this is run as a subprocess)")

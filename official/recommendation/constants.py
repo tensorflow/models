@@ -45,6 +45,10 @@ class Paths(object):
 
 APPROX_PTS_PER_TRAIN_SHARD = 128000
 
+# Keys for data shards
+TRAIN_KEY = "train"
+EVAL_KEY = "eval"
+
 # In both datasets, each user has at least 20 ratings.
 MIN_NUM_RATINGS = 20
 
