@@ -45,8 +45,9 @@ def get_loss_scale(flags_obj):
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        synthetic_data=True, max_train_steps=True, dtype=True,
-                       all_reduce_alg=True, tf_gpu_thread_mode=True,
-                       datasets_num_private_threads=True):
+                       all_reduce_alg=True, tf_gpu_thread_mode=False,
+                       datasets_num_private_threads=False,
+                       datasets_num_parallel_batches=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -60,6 +61,9 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     all_reduce_alg: If set forces a specific algorithm for multi-gpu.
     tf_gpu_thread_mode: gpu_private triggers us of private thread pool.
     datasets_num_private_threads: Number of private threads for datasets.
+    datasets_num_parallel_batches: Determines how many batches to process in
+    parallel when using map and batch from tf.data.
+
   Returns:
     A list of flags for core.py to marks as key flags.
   """
@@ -68,7 +72,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
   if num_parallel_calls:
     flags.DEFINE_integer(
         name="num_parallel_calls", short_name="npc",
-        default=1,
+        default=multiprocessing.cpu_count(),
         help=help_wrap("The number of records that are  processed in parallel "
                        "during input processing. This can be optimized per "
                        "data set but for generally homogeneous data sets, "
@@ -142,18 +146,27 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
 
   if tf_gpu_thread_mode:
     flags.DEFINE_string(
-        name="tf_gpu_thread_mode", short_name="gt_mode", default="global",
+        name="tf_gpu_thread_mode", short_name="gt_mode", default=None,
         help=help_wrap(
             "Whether and how the GPU device uses its own threadpool.")
     )
 
   if datasets_num_private_threads:
     flags.DEFINE_integer(
-        name="datasets_num_private_threads", short_name="dataset_thread_count",
+        name="datasets_num_private_threads",
         default=None,
         help=help_wrap(
             "Number of threads for a private threadpool created for all"
             "datasets computation..")
+    )
+
+  if datasets_num_parallel_batches:
+    flags.DEFINE_integer(
+        name="datasets_num_parallel_batches",
+        default=None,
+        help=help_wrap(
+            "Determines how many batches to process in parallel when using "
+            "map and batch from tf.data.")
     )
 
   return key_flags
