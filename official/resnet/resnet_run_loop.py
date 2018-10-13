@@ -189,8 +189,8 @@ def override_flags_and_set_envars_for_gpu_thread_pool(flags_obj):
   current platform of interest, which changes over time.
 
   On systems with small numbers of cpu cores, e.g. under 8 logical cores,
-  setting up a private thread pool for GPU with `tf_gpu_thread_mode=gpu_private`
-  may perform poorly.
+  setting up a gpu thread pool with `tf_gpu_thread_mode=gpu_private` may perform
+  poorly.
 
   Args:
     flags_obj: Current flags, which will be adjusted possibly overriding
@@ -215,9 +215,8 @@ def override_flags_and_set_envars_for_gpu_thread_pool(flags_obj):
   # private GPU pool along with 2 thread per GPU for event monitoring and
   # sending / receiving tensors.
   num_monitoring_threads = 2 * flags_obj.num_gpus
-  num_private_threads = (cpu_count - total_gpu_thread_count
-                         - num_monitoring_threads)
-  flags_obj.datasets_num_private_threads = num_private_threads
+  flags_obj.datasets_num_private_threads = (cpu_count - total_gpu_thread_count
+                                            - num_monitoring_threads)
 
 
 ################################################################################
@@ -461,10 +460,8 @@ def resnet_main(
   if flags_obj.tf_gpu_thread_mode:
     override_flags_and_set_envars_for_gpu_thread_pool(flags_obj)
 
-  # Create session config based on values of inter_op_parallelism_threads and
-  # intra_op_parallelism_threads. Note that we default to having
-  # allow_soft_placement = True, which is required for multi-GPU and not
-  # harmful for other modes.
+  # Creates session config. allow_soft_placement = True, is required for
+  # multi-GPU and is not harmful for other modes.
   session_config = tf.ConfigProto(
       inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
       intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
@@ -474,14 +471,13 @@ def resnet_main(
       flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
 
   # Creates a `RunConfig` that checkpoints every 24 hours which essentially
-  # results in checkpoints at the end of each training loop as determined by
-  # `epochs_between_evals`.  Doing it more often is a needless small cost.
+  # results in checkpoints determined only by `epochs_between_evals`.
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy,
       session_config=session_config,
       save_checkpoints_secs=60*60*24)
 
-  # initialize our model with all but the dense layer from pretrained resnet
+  # Initializes model with all but the dense layer from pretrained ResNet.
   if flags_obj.pretrained_model_checkpoint_path is not None:
     warm_start_settings = tf.estimator.WarmStartSettings(
         flags_obj.pretrained_model_checkpoint_path,
