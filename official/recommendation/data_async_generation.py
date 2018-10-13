@@ -459,7 +459,7 @@ def _parse_flagfile():
   # google cloud storage etc.
   with tf.gfile.Open(flagfile, "r") as f:
     # This overrides FLAGS with flags from flagfile.
-    flags.FLAGS([__file__] + [line for line in f])
+    flags.FLAGS([__file__] + f.read().splitlines())
 
 
 def main(_):
