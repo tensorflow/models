@@ -180,7 +180,7 @@ def image_bytes_serving_input_fn(image_shape, dtype=tf.float32):
       images, {'image_bytes': image_bytes_list})
 
 
-def override_flags_and_set_envars_for_gpu_private_threads(flags_obj):
+def override_flags_and_set_envars_for_gpu_thread_pool(flags_obj):
   """Override flags and set env_vars for performance.
 
   These settings exist to test the difference between using stock settings
@@ -457,9 +457,9 @@ def resnet_main(
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  # Ensures flog override logic is only executed if explicitly triggered
+  # Ensures flag override logic is only executed if explicitly triggered.
   if flags_obj.tf_gpu_thread_mode:
-    override_flags_and_set_envars_for_gpu_private_threads(flags_obj)
+    override_flags_and_set_envars_for_gpu_thread_pool(flags_obj)
 
   # Create session config based on values of inter_op_parallelism_threads and
   # intra_op_parallelism_threads. Note that we default to having
