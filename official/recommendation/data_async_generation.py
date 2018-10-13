@@ -467,13 +467,11 @@ def main(_):
   global _log_file
   cache_paths = rconst.Paths(
     data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
-  flagfile = os.path.join(cache_paths.cache_root, rconst.FLAGFILE)
 
+  flagfile = os.path.join(cache_paths.cache_root, rconst.FLAGFILE)
   _parse_flagfile(flagfile)
 
   redirect_logs = flags.FLAGS.redirect_logs
-  cache_paths = rconst.Paths(
-      data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
 
   log_file_name = "data_gen_proc_{}.log".format(cache_paths.cache_id)
   log_path = os.path.join(cache_paths.data_dir, log_file_name)
