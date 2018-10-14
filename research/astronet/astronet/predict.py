@@ -102,8 +102,9 @@ def _process_tce(feature_config):
         "Only 'global_view' and 'local_view' features are supported.")
 
   # Read and process the light curve.
-  time, flux = preprocess.read_and_process_light_curve(FLAGS.kepler_id,
-                                                       FLAGS.kepler_data_dir)
+  all_time, all_flux = preprocess.read_light_curve(FLAGS.kepler_id,
+                                                   FLAGS.kepler_data_dir)
+  time, flux = preprocess.process_light_curve(all_time, all_flux)
   time, flux = preprocess.phase_fold_and_sort_light_curve(
       time, flux, FLAGS.period, FLAGS.t0)
 
