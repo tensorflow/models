@@ -65,7 +65,7 @@ class NCFDataset(object):
 
   def __init__(self, user_map, item_map, num_data_readers, cache_paths,
                num_train_positives, deterministic=False):
-    # type: (dict, dict, int, rconst.Paths) -> None
+    # type: (dict, dict, int, rconst.Paths, int, bool) -> None
     """Assign key values for recommendation dataset.
 
     Args:
@@ -474,6 +474,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "num_workers": num_workers,
       "redirect_logs": use_subprocess,
       "use_tf_logging": not use_subprocess,
+      "ml_perf": match_mlperf,
   }
 
   if ncf_dataset.deterministic:

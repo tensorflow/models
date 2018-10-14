@@ -69,7 +69,7 @@ def get_cycle_folder_name(i):
 
 
 def _process_shard(args):
-  # type: ((str, int, int, int)) -> (np.ndarray, np.ndarray, np.ndarray)
+  # type: ((str, int, int, int, bool)) -> (np.ndarray, np.ndarray, np.ndarray)
   """Read a shard of training data and return training vectors.
 
   Args:
@@ -77,8 +77,10 @@ def _process_shard(args):
     num_items: The cardinality of the item set.
     num_neg: The number of negatives to generate per positive example.
     seed: Random seed to be used when generating negatives.
+    is_training: Generate training (True) or eval (False) data.
+    match_mlperf: Match the MLPerf reference behavior
   """
-  shard_path, num_items, num_neg, seed = args
+  shard_path, num_items, num_neg, seed, is_training, match_mlperf = args
   np.random.seed(seed)
 
   # The choice to store the training shards in files rather than in memory
@@ -95,6 +97,12 @@ def _process_shard(args):
   users = shard[rconst.TRAIN_KEY][movielens.USER_COLUMN]
   items = shard[rconst.TRAIN_KEY][movielens.ITEM_COLUMN]
 
+  if not is_training:
+    # For eval, there is one positive which was held out from the training set.
+    test_positive_dict = {k: v for k, v in zip(
+      shard[rconst.EVAL_KEY][movielens.USER_COLUMN],
+      shard[rconst.EVAL_KEY][movielens.ITEM_COLUMN])}
+
   delta = users[1:] - users[:-1]
   boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
                 [users.shape[0]])
@@ -104,16 +112,27 @@ def _process_shard(args):
   label_blocks = []
   for i in range(len(boundaries) - 1):
     assert len(set(users[boundaries[i]:boundaries[i+1]])) == 1
+    current_user = users[boundaries[i]]
+
     positive_items = items[boundaries[i]:boundaries[i+1]]
     positive_set = set(positive_items)
     if positive_items.shape[0] != len(positive_set):
       raise ValueError("Duplicate entries detected.")
-    n_pos = len(positive_set)
 
-    negatives = stat_utils.sample_with_exclusion(
-        num_items, positive_set, n_pos * num_neg)
+    if is_training:
+      n_pos = len(positive_set)
+      negatives = stat_utils.sample_with_exclusion(
+        num_items, positive_set, n_pos * num_neg, replacement=True)
 
-    user_blocks.append(users[boundaries[i]] * np.ones(
+    else:
+      positive_set.add(test_positive_dict[current_user])
+      negatives = stat_utils.sample_with_exclusion(
+        num_items, positive_set, num_neg, replacement=match_mlperf)
+      positive_set = [test_positive_dict[current_user]]
+      n_pos = len(positive_set)
+      assert n_pos == 1
+
+    user_blocks.append(current_user * np.ones(
         (n_pos * (1 + num_neg),), dtype=np.int32))
     item_blocks.append(
         np.array(list(positive_set) + negatives, dtype=np.uint16))
@@ -157,6 +176,51 @@ def init_worker():
   signal.signal(signal.SIGINT, sigint_handler)
 
 
+def _construct_records(
+    is_training,          # type: bool
+    train_cycle,          # type: int
+    num_workers,          # type: int
+    cache_paths,          # type: rconst.Paths
+    num_readers,          # type: int
+    num_neg,              # type: int
+    num_positives,        # type: int
+    num_items,            # type: int
+    epochs_per_cycle,     # type: int
+    train_batch_size,     # type: int
+    training_shards,      # type: typing.List[str]
+    deterministic=False   # type: bool
+    ):
+  """Generate false negatives and write TFRecords files.
+
+  Args:
+    is_training: Are training records (True) or eval records (False) created.
+    train_cycle: Integer of which cycle the generated data is for.
+    num_workers: Number of multiprocessing workers to use for negative
+      generation.
+    cache_paths: Paths object with information of where to write files.
+    num_readers: The number of reader datasets in the input_fn.
+    num_neg: The number of false negatives per positive example.
+    num_positives: The number of positive examples. This value is used
+      to pre-allocate arrays while the imap is still running. (NumPy does not
+      allow dynamic arrays.)
+    num_items: The cardinality of the item set.
+    epochs_per_cycle: The number of epochs worth of data to construct.
+    batch_size: The expected batch size used during training. This is used
+      to properly batch data when writing TFRecords.
+    training_shards: The picked positive examples from which to generate
+      negatives.
+  """
+  st = timeit.default_timer()
+
+  epochs_per_cycle = epochs_per_cycle if is_training else 1
+  num_workers = min([num_workers, len(training_shards) * epochs_per_cycle])
+
+  num_pts = num_positives * (1 + num_neg)
+  num_pts_with_padding = int(
+    np.ceil(num_pts / train_batch_size)) * train_batch_size
+  num_padding = num_pts_with_padding - num_pts
+
+
 def _construct_training_records(
     train_cycle,          # type: int
     num_workers,          # type: int
@@ -168,7 +232,8 @@ def _construct_training_records(
     epochs_per_cycle,     # type: int
     train_batch_size,     # type: int
     training_shards,      # type: typing.List[str]
-    deterministic=False   # type: bool
+    deterministic=False,  # type: bool
+    match_mlperf=False    # type: bool
     ):
   """Generate false negatives and write TFRecords files.
 
@@ -202,7 +267,7 @@ def _construct_training_records(
   # will not all choose the same random numbers.
   process_seeds = [stat_utils.random_int32()
                    for _ in training_shards * epochs_per_cycle]
-  map_args = [(shard, num_items, num_neg, process_seeds[i])
+  map_args = [(shard, num_items, num_neg, process_seeds[i], True, match_mlperf)
               for i, shard in enumerate(training_shards * epochs_per_cycle)]
 
   with popen_helper.get_pool(num_workers, init_worker) as pool:
@@ -351,7 +416,8 @@ def _generation_loop(num_workers,           # type: int
                      epochs_per_cycle,      # type: int
                      train_batch_size,      # type: int
                      eval_batch_size,       # type: int
-                     deterministic          # type: bool
+                     deterministic,         # type: bool
+                     match_mlperf           # type: bool
                     ):
   # type: (...) -> None
   """Primary run loop for data file generation."""
@@ -381,7 +447,8 @@ def _generation_loop(num_workers,           # type: int
       cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
       num_train_positives=num_train_positives, num_items=num_items,
       epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
-      training_shards=training_shards, deterministic=deterministic)
+      training_shards=training_shards, deterministic=deterministic,
+      match_mlperf=match_mlperf)
 
   _construct_eval_record(cache_paths=cache_paths,
                          eval_batch_size=eval_batch_size)
@@ -413,7 +480,8 @@ def _generation_loop(num_workers,           # type: int
         cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
         num_train_positives=num_train_positives, num_items=num_items,
         epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
-        training_shards=training_shards, deterministic=deterministic)
+        training_shards=training_shards, deterministic=deterministic,
+        match_mlperf=match_mlperf)
 
     wait_count = 0
     start_time = time.time()
@@ -483,6 +551,7 @@ def main(_):
         train_batch_size=flags.FLAGS.train_batch_size,
         eval_batch_size=flags.FLAGS.eval_batch_size,
         deterministic=flags.FLAGS.seed is not None,
+        match_mlperf=flags.FLAGS.ml_perf,
     )
   except KeyboardInterrupt:
     log_msg("KeyboardInterrupt registered.")
@@ -532,6 +601,8 @@ def define_flags():
   flags.DEFINE_integer(name="seed", default=None,
                        help="NumPy random seed to set at startup. If not "
                             "specified, a seed will not be set.")
+  flags.DEFINE_boolean(name="ml_perf", default=None,
+                       help="Match MLPerf. See ncf_main.py for details.")
 
   flags.mark_flags_as_required(["data_dir", "cache_id"])
 
