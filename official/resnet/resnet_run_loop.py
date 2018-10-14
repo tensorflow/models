@@ -38,7 +38,7 @@ from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
-from official.resnet import keras
+from official.resnet.keras import resnet_model as keras_resnet_model
 from tensorflow.contrib.data.python.ops import threadpool
 # pylint: enable=g-bad-import-order
 
@@ -259,7 +259,7 @@ def resnet_model_fn(features, labels, mode, model_class,
   assert features.dtype == dtype
 
   if use_keras_model:
-    model = keras.resnet.resnet_model.ResNet50(classes=num_classes, weights=None)
+    model = keras_resnet_model.ResNet50(classes=num_classes, weights=None)
   else:
     model = model_class(resnet_size, data_format, resnet_version=resnet_version,
                         dtype=dtype)
