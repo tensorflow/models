@@ -342,31 +342,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
   map_args = [(shards[i], i, num_items, cache_paths, process_seeds[i],
                match_mlperf)
               for i in range(approx_num_shards)]
-<<<<<<< HEAD
+
   with popen_helper.get_pool(multiprocessing.cpu_count()) as pool:
-    test_shards = pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
-
-  tf.logging.info("Merging test shards...")
-  test_users = np.concatenate([i[movielens.USER_COLUMN] for i in test_shards])
-  test_items = np.concatenate([i[movielens.ITEM_COLUMN] for i in test_shards])
-
-  assert test_users.shape == test_items.shape
-  assert test_items.shape[0] % (rconst.NUM_EVAL_NEGATIVES + 1) == 0
-
-  test_labels = np.zeros(shape=test_users.shape)
-  test_labels[0::(rconst.NUM_EVAL_NEGATIVES + 1)] = 1
-  eval_data = ({
-      movielens.USER_COLUMN: test_users,
-      movielens.ITEM_COLUMN: test_items,
-  }, test_labels)
-
-  tf.logging.info("Writing test data to file.")
-  tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
-  with tf.gfile.Open(cache_paths.eval_raw_file, "wb") as f:
-    pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
-=======
-  with contextlib.closing(
-      multiprocessing.Pool(multiprocessing.cpu_count())) as pool:
     pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
   #   test_shards = pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
   #
@@ -388,7 +365,6 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
   # tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
   # with tf.gfile.Open(cache_paths.eval_raw_file, "wb") as f:
   #   pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
->>>>>>> intermediate commit
 
 
 def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
