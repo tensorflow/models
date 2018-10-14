@@ -1,5 +1,6 @@
 # Description:
 # Example RNN models, including language models and sequence-to-sequence models.
+# dont try this 
 
 package(default_visibility = ["//visibility:public"])
 
