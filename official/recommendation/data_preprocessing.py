@@ -357,8 +357,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
 
 
 def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
-                    deterministic):
-  # type: (str, str, int, bool) -> NCFDataset
+                    deterministic, cache_id=None):
+  # type: (str, str, int, bool, typing.Optional[int]) -> NCFDataset
   """Load and digest data CSV into a usable form.
 
   Args:
@@ -371,7 +371,7 @@ def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
     deterministic: Try to enforce repeatable behavior, even at the cost of
       performance.
   """
-  cache_paths = rconst.Paths(data_dir=data_dir)
+  cache_paths = rconst.Paths(data_dir=data_dir, cache_id=cache_id)
   num_data_readers = (num_data_readers or int(multiprocessing.cpu_count() / 2)
                       or 1)
   approx_num_shards = int(movielens.NUM_RATINGS[dataset]
@@ -436,7 +436,7 @@ def _shutdown(proc):
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                          num_data_readers=None, num_neg=4, epochs_per_cycle=1,
                          match_mlperf=False, deterministic=False,
-                         use_subprocess=True):
+                         use_subprocess=True, cache_id=None):
   # type: (...) -> (NCFDataset, typing.Callable)
   """Preprocess data and start negative generation subprocess."""
 
@@ -444,7 +444,8 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
                                 num_data_readers=num_data_readers,
                                 match_mlperf=match_mlperf,
-                                deterministic=deterministic)
+                                deterministic=deterministic,
+                                cache_id=cache_id)
   # By limiting the number of workers we guarantee that the worker
   # pool underlying the training generation doesn't starve other processes.
   num_workers = int(multiprocessing.cpu_count() * 0.75) or 1
@@ -473,13 +474,14 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   # We write to a temp file then atomically rename it to the final file,
   # because writing directly to the final file can cause the data generation
   # async process to read a partially written JSON file.
-  flagfile_temp = os.path.join(data_dir, rconst.FLAGFILE_TEMP)
+  flagfile_temp = os.path.join(ncf_dataset.cache_paths.cache_root,
+                               rconst.FLAGFILE_TEMP)
   tf.logging.info("Preparing flagfile for async data generation in {} ..."
                   .format(flagfile_temp))
   with tf.gfile.Open(flagfile_temp, "w") as f:
     for k, v in six.iteritems(flags_):
       f.write("--{}={}\n".format(k, v))
-  flagfile = os.path.join(data_dir, rconst.FLAGFILE)
+  flagfile = os.path.join(ncf_dataset.cache_paths.cache_root, rconst.FLAGFILE)
   tf.gfile.Rename(flagfile_temp, flagfile)
   tf.logging.info(
       "Wrote flagfile for async data generation in {}."
@@ -493,7 +495,8 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
     # contention with the main training process.
     subproc_env["CUDA_VISIBLE_DEVICES"] = ""
     subproc_args = popen_helper.INVOCATION + [
-        "--data_dir", data_dir]
+        "--data_dir", data_dir,
+        "--cache_id", str(ncf_dataset.cache_paths.cache_id)]
     tf.logging.info(
         "Generation subprocess command: {}".format(" ".join(subproc_args)))
     proc = subprocess.Popen(args=subproc_args, shell=False, env=subproc_env)

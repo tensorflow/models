@@ -440,10 +440,8 @@ def _generation_loop(num_workers,           # type: int
     gc.collect()
 
 
-def _parse_flagfile():
+def _parse_flagfile(flagfile):
   """Fill flags with flagfile written by the main process."""
-  flagfile = os.path.join(flags.FLAGS.data_dir,
-                          rconst.FLAGFILE)
   tf.logging.info("Waiting for flagfile to appear at {}..."
                   .format(flagfile))
   start_time = time.time()
@@ -455,17 +453,25 @@ def _parse_flagfile():
       sys.exit()
     time.sleep(1)
   tf.logging.info("flagfile found.")
-  # This overrides FLAGS with flags from flagfile.
-  flags.FLAGS([__file__, "--flagfile", flagfile])
+
+  # `flags` module opens `flagfile` with `open`, which does not work on
+  # google cloud storage etc.
+  _, flagfile_temp = tempfile.mkstemp()
+  tf.gfile.Copy(flagfile, flagfile_temp, overwrite=True)
+
+  flags.FLAGS([__file__, "--flagfile", flagfile_temp])
+  tf.gfile.Remove(flagfile_temp)
 
 
 def main(_):
   global _log_file
-  _parse_flagfile()
-
-  redirect_logs = flags.FLAGS.redirect_logs
   cache_paths = rconst.Paths(
       data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
+
+  flagfile = os.path.join(cache_paths.cache_root, rconst.FLAGFILE)
+  _parse_flagfile(flagfile)
+
+  redirect_logs = flags.FLAGS.redirect_logs
 
   log_file_name = "data_gen_proc_{}.log".format(cache_paths.cache_id)
   log_path = os.path.join(cache_paths.data_dir, log_file_name)
@@ -518,7 +524,6 @@ def define_flags():
                        help="Size of the negative generation worker pool.")
   flags.DEFINE_string(name="data_dir", default=None,
                       help="The data root. (used to construct cache paths.)")
-  flags.mark_flags_as_required(["data_dir"])
   flags.DEFINE_string(name="cache_id", default=None,
                       help="The cache_id generated in the main process.")
   flags.DEFINE_integer(name="num_readers", default=4,
@@ -554,6 +559,7 @@ def define_flags():
                        help="NumPy random seed to set at startup. If not "
                             "specified, a seed will not be set.")
 
+  flags.mark_flags_as_required(["data_dir", "cache_id"])
 
 if __name__ == "__main__":
   define_flags()

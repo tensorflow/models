@@ -152,7 +152,8 @@ def run_ncf(_):
         epochs_per_cycle=FLAGS.epochs_between_evals,
         match_mlperf=FLAGS.ml_perf,
         deterministic=FLAGS.seed is not None,
-        use_subprocess=FLAGS.use_subprocess)
+        use_subprocess=FLAGS.use_subprocess,
+        cache_id=FLAGS.cache_id)
     num_users = ncf_dataset.num_users
     num_items = ncf_dataset.num_items
     approx_train_steps = int(ncf_dataset.num_train_positives
@@ -386,6 +387,12 @@ def define_ncf_flags():
           "By default, ncf_main.py starts async data generation process as a "
           "subprocess. If set to False, ncf_main.py will assume the async data "
           "generation process has already been started by the user."))
+
+  flags.DEFINE_integer(name="cache_id", default=None, help=flags_core.help_wrap(
+      "Use a specified cache_id rather than using a timestamp. This is only "
+      "needed to synchronize across multiple workers. Generally this flag will "
+      "not need to be set."
+  ))
 
 
 if __name__ == "__main__":
