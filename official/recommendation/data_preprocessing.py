@@ -175,7 +175,6 @@ def _filter_index_sort(raw_rating_path, match_mlperf):
 
 
 def _train_eval_map_fn(args):
-  # type: (...) -> typing.Dict(np.ndarray)
   """Split training and testing data and generate testing negatives.
 
   This function is called as part of a multiprocessing map. The principle
@@ -186,9 +185,8 @@ def _train_eval_map_fn(args):
 
   For each user, all but the last item is written into a pickle file which the
   training data producer can consume on as needed. The last item for a user
-  is a validation point; for each validation point a number of negatives are
-  generated (typically 999). The validation data is returned by this function,
-  as it is held in memory for the remainder of the run.
+  is a validation point; it is written under a separate key and will be used
+  later to generate the evaluation data.
 
   Args:
     shard: A dict containing the user and item arrays.
@@ -198,16 +196,10 @@ def _train_eval_map_fn(args):
       which validation negatives should be drawn.
     cache_paths: rconst.Paths object containing locations for various cache
       files.
-    seed: Random seed to be used when generating testing negatives.
-    match_mlperf: If True, sample eval negative with replacements, which the
-      MLPerf reference implementation does.
 
-  Returns:
-    A dict containing the evaluation data for a given shard.
   """
 
-  shard, shard_id, num_items, cache_paths, seed, match_mlperf = args
-  np.random.seed(seed)
+  shard, shard_id, num_items, cache_paths = args
 
   users = shard[movielens.USER_COLUMN]
   items = shard[movielens.ITEM_COLUMN]
@@ -218,7 +210,6 @@ def _train_eval_map_fn(args):
                 [users.shape[0]])
 
   train_blocks = []
-  # test_blocks = []
   test_positives = []
   for i in range(len(boundaries) - 1):
     # This is simply a vector of repeated values such that the shard could be
@@ -233,15 +224,6 @@ def _train_eval_map_fn(args):
 
     block_items = items[boundaries[i]:boundaries[i+1]]
     train_blocks.append((block_user[:-1], block_items[:-1]))
-
-    # test_negatives = stat_utils.sample_with_exclusion(
-    #     num_items=num_items, positive_set=set(block_items),
-    #     n=rconst.NUM_EVAL_NEGATIVES, replacement=match_mlperf)
-    # test_blocks.append((
-    #     block_user[0] * np.ones((rconst.NUM_EVAL_NEGATIVES + 1,),
-    #                             dtype=np.int32),
-    #     np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
-    # ))
     test_positives.append((block_user[0], block_items[-1]))
 
   train_users = np.concatenate([i[0] for i in train_blocks])
@@ -266,16 +248,6 @@ def _train_eval_map_fn(args):
             movielens.ITEM_COLUMN: test_pos_items,
         }
     }, f)
-
-  # test_users = np.concatenate([i[0] for i in test_blocks])
-  # test_items = np.concatenate([i[1] for i in test_blocks])
-  # assert test_users.shape == test_items.shape
-  # assert test_items.shape[0] % (rconst.NUM_EVAL_NEGATIVES + 1) == 0
-  #
-  # return {
-  #     movielens.USER_COLUMN: test_users,
-  #     movielens.ITEM_COLUMN: test_items,
-  # }
 
 
 def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
@@ -338,35 +310,11 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
                   "negatives per user...".format(rconst.NUM_EVAL_NEGATIVES))
   tf.gfile.MakeDirs(cache_paths.train_shard_subdir)
 
-  # We choose a different random seed for each process, so that the processes
-  # will not all choose the same random numbers.
-  process_seeds = [np.random.randint(2**32) for _ in range(approx_num_shards)]
-  map_args = [(shards[i], i, num_items, cache_paths, process_seeds[i],
-               match_mlperf)
+  map_args = [(shards[i], i, num_items, cache_paths)
               for i in range(approx_num_shards)]
 
   with popen_helper.get_pool(multiprocessing.cpu_count()) as pool:
     pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
-  #   test_shards = pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
-  #
-  # tf.logging.info("Merging test shards...")
-  # test_users = np.concatenate([i[movielens.USER_COLUMN] for i in test_shards])
-  # test_items = np.concatenate([i[movielens.ITEM_COLUMN] for i in test_shards])
-  #
-  # assert test_users.shape == test_items.shape
-  # assert test_items.shape[0] % (rconst.NUM_EVAL_NEGATIVES + 1) == 0
-  #
-  # test_labels = np.zeros(shape=test_users.shape)
-  # test_labels[0::(rconst.NUM_EVAL_NEGATIVES + 1)] = 1
-  # eval_data = ({
-  #     movielens.USER_COLUMN: test_users,
-  #     movielens.ITEM_COLUMN: test_items,
-  # }, test_labels)
-  #
-  # tf.logging.info("Writing test data to file.")
-  # tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
-  # with tf.gfile.Open(cache_paths.eval_raw_file, "wb") as f:
-  #   pickle.dump(eval_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
