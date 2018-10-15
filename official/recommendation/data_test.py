@@ -121,7 +121,7 @@ class BaseTest(tf.test.TestCase):
     g = tf.Graph()
     with g.as_default():
       input_fn, record_dir, batch_count = \
-        data_preprocessing.make_train_input_fn(ncf_dataset)
+        data_preprocessing.make_input_fn(ncf_dataset, True)
       dataset = input_fn({"batch_size": BATCH_SIZE, "use_tpu": False})
     first_epoch = self.drain_dataset(dataset=dataset, g=g)
     user_inv_map = {v: k for k, v in ncf_dataset.user_map.items()}
