@@ -77,11 +77,11 @@ def neumf_model_fn(features, labels, mode, params):
   users = features[movielens.USER_COLUMN]
   items = tf.cast(features[movielens.ITEM_COLUMN], tf.int32)
 
+  padding_mask = tf.cast(tf.greater_equal(users, 0), tf.int32)
   if mode == tf.estimator.ModeKeys.TRAIN:
     # Padded values are encoded as -1. They are returned to zero to prevent a
     # key lookup error. Loss is multiplied by padding_mask to cancel
     # appropriately.
-    padding_mask = tf.cast(tf.greater_equal(users, 0), tf.int32)
     users *= padding_mask
 
   logits = construct_model(users=users, items=items, params=params)
@@ -117,7 +117,7 @@ def neumf_model_fn(features, labels, mode, params):
     loss = tf.losses.sparse_softmax_cross_entropy(
         labels=labels,
         logits=softmax_logits
-    ) * padding_mask
+    ) * tf.cast(padding_mask, tf.float32)
 
     # This tensor is used by logging hooks.
     tf.identity(loss, name="cross_entropy")
