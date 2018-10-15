@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-DATASET="ml-1m"
+DATASET="ml-20m"
 
 BUCKET=${BUCKET:-""}
 ROOT_DIR="${BUCKET:-/tmp}/MLPerf_NCF"
@@ -32,7 +32,7 @@ python ../datasets/movielens.py --data_dir ${DATA_DIR} --dataset ${DATASET}
 
 {
 
-for i in `seq 0 0`;
+for i in `seq 0 4`;
 do
   START_TIME=$(date +%s)
   MODEL_DIR="${TEST_DIR}/model_dir_${i}"
@@ -48,7 +48,7 @@ do
   # And to confirm that the pipeline is deterministic pass the flag:
   #   --hash_pipeline
   #
-  # (`--hash_pipeline` will slow down training)
+  # (`--hash_pipeline` will slow down training, though not as much as one might imagine.)
   python ncf_main.py --model_dir ${MODEL_DIR} \
                      --data_dir ${DATA_DIR} \
                      --dataset ${DATASET} --hooks "" \
@@ -59,10 +59,10 @@ do
                      --eval_batch_size 100000 \
                      --learning_rate 0.0005 \
                      --layers 256,256,128,64 --num_factors 64 \
-                     --hr_threshold 0.1 \
-                     --ml_perf # \
- # |& tee ${RUN_LOG} \
- # | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)"
+                     --hr_threshold 0.635 \
+                     --ml_perf \
+ |& tee ${RUN_LOG} \
+ | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)"
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."
