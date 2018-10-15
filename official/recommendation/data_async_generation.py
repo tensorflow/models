@@ -261,22 +261,23 @@ def _construct_records(
   assert np.sum(data[0] == -1) == num_padding
 
   if is_training:
-    if num_padding:
-      # In order to have a full batch, randomly include points from earlier in
-      # the batch.
-      pad_sample_indices = np.random.randint(
-        low=0, high=num_pts, size=(num_padding,))
-      dest = np.arange(start=start_ind, stop=start_ind + num_padding)
-      start_ind += num_padding
-      for i in range(3):
-        data[i][dest] = data[i][pad_sample_indices]
+    pass
+    # if num_padding:
+    #   # In order to have a full batch, randomly include points from earlier in
+    #   # the batch.
+    #   pad_sample_indices = np.random.randint(
+    #     low=0, high=num_pts, size=(num_padding,))
+    #   dest = np.arange(start=start_ind, stop=start_ind + num_padding)
+    #   start_ind += num_padding
+    #   for i in range(3):
+    #     data[i][dest] = data[i][pad_sample_indices]
   else:
     # For Evaluation, padding is all zeros. The evaluation input_fn knows how
     # to interpret and discard the zero padded entries.
     data[0][num_pts:] = 0
 
-  # Check that no points were overlooked.
-  assert not np.sum(data[0] == -1)
+    # Check that no points were overlooked.
+    assert not np.sum(data[0] == -1)
 
   batches_per_file = np.ceil(num_pts_with_padding / batch_size / num_readers)
   current_file_id = -1
