@@ -116,8 +116,9 @@ def neumf_model_fn(features, labels, mode, params):
 
     loss = tf.losses.sparse_softmax_cross_entropy(
         labels=labels,
-        logits=softmax_logits
-    ) * tf.cast(padding_mask, tf.float32)
+        logits=softmax_logits,
+        weights=padding_mask
+    )
 
     # This tensor is used by logging hooks.
     tf.identity(loss, name="cross_entropy")
