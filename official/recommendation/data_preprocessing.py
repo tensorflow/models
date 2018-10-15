@@ -369,7 +369,7 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths,
 
 def construct_cache(dataset, data_dir, num_data_readers, match_mlperf,
                     deterministic, cache_id=None):
-  # type: (str, str, int, bool, typing.Optional[int]) -> NCFDataset
+  # type: (str, str, int, bool, bool, typing.Optional[int]) -> NCFDataset
   """Load and digest data CSV into a usable form.
 
   Args:
@@ -467,6 +467,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "num_neg": num_neg,
       "num_train_positives": ncf_dataset.num_train_positives,
       "num_items": ncf_dataset.num_items,
+      "num_users": ncf_dataset.num_users,
       "num_readers": ncf_dataset.num_data_readers,
       "epochs_per_cycle": epochs_per_cycle,
       "train_batch_size": batch_size,

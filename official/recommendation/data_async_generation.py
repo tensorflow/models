@@ -186,9 +186,10 @@ def _construct_records(
     num_positives,        # type: int
     num_items,            # type: int
     epochs_per_cycle,     # type: int
-    train_batch_size,     # type: int
+    batch_size,           # type: int
     training_shards,      # type: typing.List[str]
-    deterministic=False   # type: bool
+    deterministic=False,  # type: bool
+    match_mlperf=False    # type: bool
     ):
   """Generate false negatives and write TFRecords files.
 
@@ -212,75 +213,43 @@ def _construct_records(
   """
   st = timeit.default_timer()
 
+  if not is_training:
+    # Later logic assumes that all items for a given user are in the same batch.
+    assert not batch_size % (rconst.NUM_EVAL_NEGATIVES + 1)
+    assert num_neg == rconst.NUM_EVAL_NEGATIVES
+
   epochs_per_cycle = epochs_per_cycle if is_training else 1
   num_workers = min([num_workers, len(training_shards) * epochs_per_cycle])
 
   num_pts = num_positives * (1 + num_neg)
-  num_pts_with_padding = int(
-    np.ceil(num_pts / train_batch_size)) * train_batch_size
-  num_padding = num_pts_with_padding - num_pts
-
-
-def _construct_training_records(
-    train_cycle,          # type: int
-    num_workers,          # type: int
-    cache_paths,          # type: rconst.Paths
-    num_readers,          # type: int
-    num_neg,              # type: int
-    num_train_positives,  # type: int
-    num_items,            # type: int
-    epochs_per_cycle,     # type: int
-    train_batch_size,     # type: int
-    training_shards,      # type: typing.List[str]
-    deterministic=False,  # type: bool
-    match_mlperf=False    # type: bool
-    ):
-  """Generate false negatives and write TFRecords files.
-
-  Args:
-    train_cycle: Integer of which cycle the generated data is for.
-    num_workers: Number of multiprocessing workers to use for negative
-      generation.
-    cache_paths: Paths object with information of where to write files.
-    num_readers: The number of reader datasets in the train input_fn.
-    num_neg: The number of false negatives per positive example.
-    num_train_positives: The number of positive examples. This value is used
-      to pre-allocate arrays while the imap is still running. (NumPy does not
-      allow dynamic arrays.)
-    num_items: The cardinality of the item set.
-    epochs_per_cycle: The number of epochs worth of data to construct.
-    train_batch_size: The expected batch size used during training. This is used
-      to properly batch data when writing TFRecords.
-    training_shards: The picked positive examples from which to generate
-      negatives.
-  """
-
-  st = timeit.default_timer()
-  num_workers = min([num_workers, len(training_shards) * epochs_per_cycle])
-
-  num_pts = num_train_positives * (1 + num_neg)
-  num_pts_with_padding = int(
-      np.ceil(num_pts / train_batch_size)) * train_batch_size
+  num_pts_with_padding = int(np.ceil(num_pts / batch_size)) * batch_size
   num_padding = num_pts_with_padding - num_pts
 
   # We choose a different random seed for each process, so that the processes
   # will not all choose the same random numbers.
   process_seeds = [stat_utils.random_int32()
                    for _ in training_shards * epochs_per_cycle]
-  map_args = [(shard, num_items, num_neg, process_seeds[i], True, match_mlperf)
-              for i, shard in enumerate(training_shards * epochs_per_cycle)]
+  map_args = [
+    (shard, num_items, num_neg, process_seeds[i], is_training, match_mlperf)
+    for i, shard in enumerate(training_shards * epochs_per_cycle)]
 
   with popen_helper.get_pool(num_workers, init_worker) as pool:
     map_fn = pool.imap if deterministic else pool.imap_unordered  # pylint: disable=no-member
     data_generator = map_fn(_process_shard, map_args)
     data = [
-        np.zeros(shape=(num_pts_with_padding,), dtype=np.int32) - 1,
-        np.zeros(shape=(num_pts_with_padding,), dtype=np.uint16),
-        np.zeros(shape=(num_pts_with_padding,), dtype=np.int8),
-    ]
+      np.zeros(shape=(num_pts_with_padding,), dtype=np.int32) - 1,
+      np.zeros(shape=(num_pts_with_padding,), dtype=np.uint16),
+      np.zeros(shape=(num_pts_with_padding,), dtype=np.int8),
+      ]
 
-    index_destinations = np.random.permutation(
-        num_train_positives * (1 + num_neg))
+    # Training data is shuffled. Evaluation data MUST not be shuffled.
+    # Downstream processing depends on the fact that evaluation data for a given
+    # user is grouped within a batch.
+    if is_training:
+      index_destinations = np.random.permutation(num_pts)
+    else:
+      index_destinations = np.arange(num_pts)
+
     start_ind = 0
     for data_segment in data_generator:
       n_in_segment = data_segment[0].shape[0]
@@ -289,25 +258,27 @@ def _construct_training_records(
       for i in range(3):
         data[i][dest] = data_segment[i]
 
-  if num_padding:
-    # In order to have a full batch, randomly include points from earlier in the
-    # batch.
-    pad_sample_indices = np.random.randint(
-        low=0, high=num_pts, size=(num_padding,))
-    dest = np.arange(start=start_ind, stop=start_ind + num_padding)
-    start_ind += num_padding
-    for i in range(3):
-      data[i][dest] = data[i][pad_sample_indices]
+  assert np.sum(data[0] == -1) == num_padding
 
-  # Check that no points were dropped.
+  if is_training:
+    if num_padding:
+      # In order to have a full batch, randomly include points from earlier in
+      # the batch.
+      pad_sample_indices = np.random.randint(
+        low=0, high=num_pts, size=(num_padding,))
+      dest = np.arange(start=start_ind, stop=start_ind + num_padding)
+      start_ind += num_padding
+      for i in range(3):
+        data[i][dest] = data[i][pad_sample_indices]
+  else:
+    # For Evaluation, padding is all zeros. The evaluation input_fn knows how
+    # to interpret and discard the zero padded entries.
+    data[0][num_pts:] = 0
+
+  # Check that no points were overlooked.
   assert not np.sum(data[0] == -1)
 
-  record_dir = os.path.join(cache_paths.train_epoch_dir,
-                            get_cycle_folder_name(train_cycle))
-
-  tf.gfile.MakeDirs(record_dir)
-
-  batches_per_file = np.ceil(num_pts_with_padding / train_batch_size / num_readers)
+  batches_per_file = np.ceil(num_pts_with_padding / batch_size / num_readers)
   current_file_id = -1
   current_batch_id = -1
   batches_by_file = [[] for _ in range(num_readers)]
@@ -317,27 +288,44 @@ def _construct_training_records(
     if (current_batch_id % batches_per_file) == 0:
       current_file_id += 1
 
-    start_ind = current_batch_id * train_batch_size
-    end_ind = start_ind + train_batch_size
+    start_ind = current_batch_id * batch_size
+    end_ind = start_ind + batch_size
     if end_ind > num_pts_with_padding:
       if start_ind != num_pts_with_padding:
         raise ValueError("Batch padding does not line up")
       break
     batches_by_file[current_file_id].append(current_batch_id)
 
+  if is_training:
+    template = rconst.TRAIN_RECORD_TEMPLATE
+    record_dir = os.path.join(cache_paths.train_epoch_dir,
+                              get_cycle_folder_name(train_cycle))
+    tf.gfile.MakeDirs(record_dir)
+  else:
+    template = rconst.EVAL_RECORD_TEMPLATE
+    record_dir = cache_paths.eval_data_subdir
+
   batch_count = 0
   for i in range(num_readers):
-    fpath = os.path.join(record_dir, rconst.TRAIN_RECORD_TEMPLATE.format(i))
+    fpath = os.path.join(record_dir, template.format(i))
     log_msg("Writing {}".format(fpath))
     with tf.python_io.TFRecordWriter(fpath) as writer:
       for j in batches_by_file[i]:
-        start_ind = j * train_batch_size
-        end_ind = start_ind + train_batch_size
-        batch_bytes = _construct_record(
-            users=data[0][start_ind:end_ind],
-            items=data[1][start_ind:end_ind],
-            labels=data[2][start_ind:end_ind],
+        start_ind = j * batch_size
+        end_ind = start_ind + batch_size
+        record_kwargs = dict(
+          users=data[0][start_ind:end_ind],
+          items=data[1][start_ind:end_ind],
         )
+
+        if is_training:
+          record_kwargs["labels"] = data[2][start_ind:end_ind]
+        else:
+          record_kwargs["dupe_mask"] = stat_utils.mask_duplicates(
+            record_kwargs["items"].reshape(-1, num_neg + 1),
+            axis=1).flatten().astype(np.int8)
+
+        batch_bytes = _construct_record(**record_kwargs)
 
         writer.write(batch_bytes)
         batch_count += 1
@@ -348,63 +336,18 @@ def _construct_training_records(
   ready_file_temp = os.path.join(record_dir, rconst.READY_FILE_TEMP)
   with tf.gfile.Open(ready_file_temp, "w") as f:
     json.dump({
-        "batch_size": train_batch_size,
-        "batch_count": batch_count,
+      "batch_size": batch_size,
+      "batch_count": batch_count,
     }, f)
   ready_file = os.path.join(record_dir, rconst.READY_FILE)
   tf.gfile.Rename(ready_file_temp, ready_file)
 
-  log_msg("Cycle {} complete. Total time: {:.1f} seconds"
-          .format(train_cycle, timeit.default_timer() - st))
-
-
-def _construct_eval_record(cache_paths, eval_batch_size):
-  """Convert Eval data to a single TFRecords file."""
-
-  # Later logic assumes that all items for a given user are in the same batch.
-  assert not eval_batch_size % (rconst.NUM_EVAL_NEGATIVES + 1)
-
-  log_msg("Beginning construction of eval TFRecords file.")
-  raw_fpath = cache_paths.eval_raw_file
-  intermediate_fpath = cache_paths.eval_record_template_temp
-  dest_fpath = cache_paths.eval_record_template.format(eval_batch_size)
-  with tf.gfile.Open(raw_fpath, "rb") as f:
-    eval_data = pickle.load(f)
-
-  users = eval_data[0][movielens.USER_COLUMN]
-  items = eval_data[0][movielens.ITEM_COLUMN]
-  assert users.shape == items.shape
-  # eval_data[1] is the labels, but during evaluation they are infered as they
-  # have a set structure. They are included the the data artifact for debug
-  # purposes.
-
-  # This packaging assumes that the caller knows to drop the padded values.
-  n_pts = users.shape[0]
-  n_pad = eval_batch_size - (n_pts % eval_batch_size)
-  assert not (n_pts + n_pad) % eval_batch_size
-
-  users = np.concatenate([users, np.zeros(shape=(n_pad,), dtype=np.int32)])\
-    .reshape((-1, eval_batch_size))
-  items = np.concatenate([items, np.zeros(shape=(n_pad,), dtype=np.uint16)])\
-    .reshape((-1, eval_batch_size))
-
-  num_batches = users.shape[0]
-  with tf.python_io.TFRecordWriter(intermediate_fpath) as writer:
-    for i in range(num_batches):
-      batch_users = users[i, :]
-      batch_items = items[i, :]
-      dupe_mask = stat_utils.mask_duplicates(
-          batch_items.reshape(-1, rconst.NUM_EVAL_NEGATIVES + 1),
-          axis=1).flatten().astype(np.int8)
-
-      batch_bytes = _construct_record(
-          users=batch_users,
-          items=batch_items,
-          dupe_mask=dupe_mask
-      )
-      writer.write(batch_bytes)
-  tf.gfile.Rename(intermediate_fpath, dest_fpath)
-  log_msg("Eval TFRecords file successfully constructed.")
+  if is_training:
+    log_msg("Cycle {} complete. Total time: {:.1f} seconds"
+            .format(train_cycle, timeit.default_timer() - st))
+  else:
+    log_msg("Eval construction complete. Total time: {:.1f} seconds"
+            .format(timeit.default_timer() - st))
 
 
 def _generation_loop(num_workers,           # type: int
@@ -413,6 +356,7 @@ def _generation_loop(num_workers,           # type: int
                      num_neg,               # type: int
                      num_train_positives,   # type: int
                      num_items,             # type: int
+                     num_users,             # type: int
                      epochs_per_cycle,      # type: int
                      train_batch_size,      # type: int
                      eval_batch_size,       # type: int
@@ -435,23 +379,32 @@ def _generation_loop(num_workers,           # type: int
 
   log_msg("Entering generation loop.")
   tf.gfile.MakeDirs(cache_paths.train_epoch_dir)
+  tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
 
   training_shards = [os.path.join(cache_paths.train_shard_subdir, i) for i in
                      tf.gfile.ListDirectory(cache_paths.train_shard_subdir)]
 
+  shared_kwargs = dict(
+      num_workers=multiprocessing.cpu_count(), cache_paths=cache_paths,
+      num_readers=num_readers, num_items=num_items,
+      training_shards=training_shards, deterministic=deterministic,
+      match_mlperf=match_mlperf
+  )
+
   # Training blocks on the creation of the first epoch, so the num_workers
   # limit is not respected for this invocation
   train_cycle = 0
-  _construct_training_records(
-      train_cycle=train_cycle, num_workers=multiprocessing.cpu_count(),
-      cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
-      num_train_positives=num_train_positives, num_items=num_items,
-      epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
-      training_shards=training_shards, deterministic=deterministic,
-      match_mlperf=match_mlperf)
+  _construct_records(
+    is_training=True, train_cycle=train_cycle, num_neg=num_neg,
+    num_positives=num_train_positives, epochs_per_cycle=epochs_per_cycle,
+    batch_size=train_batch_size, **shared_kwargs)
 
-  _construct_eval_record(cache_paths=cache_paths,
-                         eval_batch_size=eval_batch_size)
+  # Construct evaluation set.
+  shared_kwargs["num_workers"] = num_workers
+  _construct_records(
+    is_training=False, train_cycle=-1, num_neg=rconst.NUM_EVAL_NEGATIVES,
+    num_positives=num_users, epochs_per_cycle=1, batch_size=eval_batch_size,
+    **shared_kwargs)
 
   wait_count = 0
   start_time = time.time()
@@ -475,13 +428,10 @@ def _generation_loop(num_workers,           # type: int
       continue
 
     train_cycle += 1
-    _construct_training_records(
-        train_cycle=train_cycle, num_workers=num_workers,
-        cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
-        num_train_positives=num_train_positives, num_items=num_items,
-        epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
-        training_shards=training_shards, deterministic=deterministic,
-        match_mlperf=match_mlperf)
+    _construct_records(
+      is_training=True, train_cycle=train_cycle, num_neg=num_neg,
+      num_positives=num_train_positives, epochs_per_cycle=epochs_per_cycle,
+      batch_size=train_batch_size, **shared_kwargs)
 
     wait_count = 0
     start_time = time.time()
@@ -547,6 +497,7 @@ def main(_):
         num_neg=flags.FLAGS.num_neg,
         num_train_positives=flags.FLAGS.num_train_positives,
         num_items=flags.FLAGS.num_items,
+        num_users=flags.FLAGS.num_users,
         epochs_per_cycle=flags.FLAGS.epochs_per_cycle,
         train_batch_size=flags.FLAGS.train_batch_size,
         eval_batch_size=flags.FLAGS.eval_batch_size,
@@ -584,6 +535,8 @@ def define_flags():
                        help="The number of positive training examples.")
   flags.DEFINE_integer(name="num_items", default=None,
                        help="Number of items from which to select negatives.")
+  flags.DEFINE_integer(name="num_users", default=None,
+                       help="The number of unique users. Used for evaluation.")
   flags.DEFINE_integer(name="epochs_per_cycle", default=1,
                        help="The number of epochs of training data to produce"
                             "at a time.")
