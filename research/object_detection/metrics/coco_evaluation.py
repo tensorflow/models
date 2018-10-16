@@ -248,27 +248,30 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         detection_boxes_batched,
         detection_scores_batched,
         detection_classes_batched,
-        num_det_boxes_per_image):
+        num_det_boxes_per_image,
+        is_annotated_batched):
       """Update operation for adding batch of images to Coco evaluator."""
 
       for (image_id, gt_box, gt_class, gt_is_crowd, num_gt_box, det_box,
-           det_score, det_class, num_det_box) in zip(
+           det_score, det_class, num_det_box, is_annotated) in zip(
                image_id_batched, groundtruth_boxes_batched,
                groundtruth_classes_batched, groundtruth_is_crowd_batched,
                num_gt_boxes_per_image,
                detection_boxes_batched, detection_scores_batched,
-               detection_classes_batched, num_det_boxes_per_image):
-        self.add_single_ground_truth_image_info(
-            image_id, {
-                'groundtruth_boxes': gt_box[:num_gt_box],
-                'groundtruth_classes': gt_class[:num_gt_box],
-                'groundtruth_is_crowd': gt_is_crowd[:num_gt_box]
-            })
-        self.add_single_detected_image_info(
-            image_id,
-            {'detection_boxes': det_box[:num_det_box],
-             'detection_scores': det_score[:num_det_box],
-             'detection_classes': det_class[:num_det_box]})
+               detection_classes_batched, num_det_boxes_per_image,
+               is_annotated_batched):
+        if is_annotated:
+          self.add_single_ground_truth_image_info(
+              image_id, {
+                  'groundtruth_boxes': gt_box[:num_gt_box],
+                  'groundtruth_classes': gt_class[:num_gt_box],
+                  'groundtruth_is_crowd': gt_is_crowd[:num_gt_box]
+              })
+          self.add_single_detected_image_info(
+              image_id,
+              {'detection_boxes': det_box[:num_det_box],
+               'detection_scores': det_score[:num_det_box],
+               'detection_classes': det_class[:num_det_box]})
 
     # Unpack items from the evaluation dictionary.
     input_data_fields = standard_fields.InputDataFields
@@ -284,6 +287,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     num_gt_boxes_per_image = eval_dict.get(
         'num_groundtruth_boxes_per_image', None)
     num_det_boxes_per_image = eval_dict.get('num_det_boxes_per_image', None)
+    is_annotated = eval_dict.get('is_annotated', None)
 
     if groundtruth_is_crowd is None:
       groundtruth_is_crowd = tf.zeros_like(groundtruth_classes, dtype=tf.bool)
@@ -306,6 +310,11 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         num_det_boxes_per_image = tf.shape(detection_boxes)[1:2]
       else:
         num_det_boxes_per_image = tf.expand_dims(num_det_boxes_per_image, 0)
+
+      if is_annotated is None:
+        is_annotated = tf.constant([True])
+      else:
+        is_annotated = tf.expand_dims(is_annotated, 0)
     else:
       if num_gt_boxes_per_image is None:
         num_gt_boxes_per_image = tf.tile(
@@ -315,6 +324,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         num_det_boxes_per_image = tf.tile(
             tf.shape(detection_boxes)[1:2],
             multiples=tf.shape(detection_boxes)[0:1])
+      if is_annotated is None:
+        is_annotated = tf.ones_like(image_id, dtype=tf.bool)
 
     update_op = tf.py_func(update_op, [image_id,
                                        groundtruth_boxes,
@@ -324,7 +335,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
                                        detection_boxes,
                                        detection_scores,
                                        detection_classes,
-                                       num_det_boxes_per_image], [])
+                                       num_det_boxes_per_image,
+                                       is_annotated], [])
     metric_names = ['DetectionBoxes_Precision/mAP',
                     'DetectionBoxes_Precision/mAP@.50IOU',
                     'DetectionBoxes_Precision/mAP@.75IOU',
