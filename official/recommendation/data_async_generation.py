@@ -99,9 +99,8 @@ def _process_shard(args):
 
   if not is_training:
     # For eval, there is one positive which was held out from the training set.
-    test_positive_dict = {k: v for k, v in zip(
-      shard[rconst.EVAL_KEY][movielens.USER_COLUMN],
-      shard[rconst.EVAL_KEY][movielens.ITEM_COLUMN])}
+    test_positive_dict = {zip(shard[rconst.EVAL_KEY][movielens.USER_COLUMN],
+                              shard[rconst.EVAL_KEY][movielens.ITEM_COLUMN])}
 
   delta = users[1:] - users[:-1]
   boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
@@ -125,7 +124,12 @@ def _process_shard(args):
         num_items, positive_set, n_pos * num_neg, replacement=True)
 
     else:
-      positive_set.add(test_positive_dict[current_user])
+      if not match_mlperf:
+        # The mlperf reference allows the holdout item to appear as a negative. Including it in the positive set makes
+        # the eval more stringent, because an appearance of the test item would be removed by deduplication rules.
+        # (Effectively resulting in a minute reduction of NUM_EVAL_NEGATIVES)
+        positive_set.add(test_positive_dict[current_user])
+
       negatives = stat_utils.sample_with_exclusion(
         num_items, positive_set, num_neg, replacement=match_mlperf)
       positive_set = [test_positive_dict[current_user]]
@@ -178,7 +182,7 @@ def init_worker():
 
 def _construct_records(
     is_training,          # type: bool
-    train_cycle,          # type: int
+    train_cycle,          # type: typing.Optional[int]
     num_workers,          # type: int
     cache_paths,          # type: rconst.Paths
     num_readers,          # type: int
@@ -218,11 +222,13 @@ def _construct_records(
     assert not batch_size % (rconst.NUM_EVAL_NEGATIVES + 1)
     assert num_neg == rconst.NUM_EVAL_NEGATIVES
 
-  epochs_per_cycle = epochs_per_cycle if is_training else 1
+  assert epochs_per_cycle == 1 or is_training
   num_workers = min([num_workers, len(training_shards) * epochs_per_cycle])
 
   num_pts = num_positives * (1 + num_neg)
-  num_pts_with_padding = int(np.ceil(num_pts / batch_size)) * batch_size
+
+  # Equivalent to `int(ceil(num_pts / batch_size)) * batch_size`, but without precision concerns
+  num_pts_with_padding = (num_pts + batch_size - 1) // batch_size * batch_size
   num_padding = num_pts_with_padding - num_pts
 
   # We choose a different random seed for each process, so that the processes
@@ -262,6 +268,7 @@ def _construct_records(
 
   if is_training:
     pass
+    # TODO(robieta): go back to resampling if possible.
     # if num_padding:
     #   # In order to have a full batch, randomly include points from earlier in
     #   # the batch.
@@ -403,7 +410,7 @@ def _generation_loop(num_workers,           # type: int
   # Construct evaluation set.
   shared_kwargs["num_workers"] = num_workers
   _construct_records(
-    is_training=False, train_cycle=-1, num_neg=rconst.NUM_EVAL_NEGATIVES,
+    is_training=False, train_cycle=None, num_neg=rconst.NUM_EVAL_NEGATIVES,
     num_positives=num_users, epochs_per_cycle=1, batch_size=eval_batch_size,
     **shared_kwargs)
 

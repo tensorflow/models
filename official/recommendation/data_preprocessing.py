@@ -657,7 +657,7 @@ def make_synthetic_input_fn(is_training):
   def input_fn(params):
     """Generated input_fn for the given epoch."""
     batch_size = (params["batch_size"] if is_training else
-                  params["eval_batch_size"])
+                  params["eval_batch_size"] or params["batch_size"])
     num_users = params["num_users"]
     num_items = params["num_items"]
 

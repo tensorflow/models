@@ -28,7 +28,9 @@ import tensorflow as tf
 
 from official.datasets import movielens
 from official.recommendation import constants as rconst
+from official.recommendation import data_async_generation
 from official.recommendation import data_preprocessing
+from official.recommendation import stat_utils
 
 
 DATASET = "ml-test"
@@ -134,6 +136,9 @@ class BaseTest(tf.test.TestCase):
     for features, labels in first_epoch:
       for u, i, l in zip(features[movielens.USER_COLUMN],
                          features[movielens.ITEM_COLUMN], labels):
+        if u < 0:
+          continue  # Ignore padding
+
         u_raw = user_inv_map[u]
         i_raw = item_inv_map[i]
         if ((u_raw, i_raw) in self.seen_pairs) != l:
@@ -162,20 +167,35 @@ class BaseTest(tf.test.TestCase):
                        movielens.TIMESTAMP_COLUMN: times})
     cache_paths = rconst.Paths(data_dir=self.temp_data_dir)
     np.random.seed(1)
-    data_preprocessing.generate_train_eval_data(df, approx_num_shards=2,
-                                                num_items=10,
+
+    num_shards = 2
+    num_items = 10
+    data_preprocessing.generate_train_eval_data(df, approx_num_shards=num_shards,
+                                                num_items=num_items,
                                                 cache_paths=cache_paths,
                                                 match_mlperf=True)
-    with tf.gfile.Open(cache_paths.eval_raw_file, "rb") as f:
-      eval_data = pickle.load(f)
+
+    raw_shards = tf.gfile.ListDirectory(cache_paths.train_shard_subdir)
+    assert len(raw_shards) == num_shards
+
+    sharded_eval_data = []
+    for i in range(2):
+      sharded_eval_data.append(data_async_generation._process_shard((os.path.join(cache_paths.train_shard_subdir, raw_shards[i]), num_items, rconst.NUM_EVAL_NEGATIVES, stat_utils.random_int32(), False, True)))
+
+    eval_data = [np.concatenate([shard[i] for shard in sharded_eval_data]) for i in range(3)]
+    eval_data = {
+      movielens.USER_COLUMN: eval_data[0],
+      movielens.ITEM_COLUMN: eval_data[1],
+    }
+
     eval_items_per_user = rconst.NUM_EVAL_NEGATIVES + 1
-    self.assertAllClose(eval_data[0][movielens.USER_COLUMN],
+    self.assertAllClose(eval_data[movielens.USER_COLUMN],
                         [0] * eval_items_per_user + [1] * eval_items_per_user)
 
     # Each shard process should generate different random items.
     self.assertNotAllClose(
-        eval_data[0][movielens.ITEM_COLUMN][:eval_items_per_user],
-        eval_data[0][movielens.ITEM_COLUMN][eval_items_per_user:])
+        eval_data[movielens.ITEM_COLUMN][:eval_items_per_user],
+        eval_data[movielens.ITEM_COLUMN][eval_items_per_user:])
 
 
 if __name__ == "__main__":
