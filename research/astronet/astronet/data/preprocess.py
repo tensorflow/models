@@ -34,7 +34,7 @@ def read_light_curve(kepid, kepler_data_dir):
   Args:
     kepid: Kepler id of the target star.
     kepler_data_dir: Base directory containing Kepler data. See
-        kepler_io.kepler_filenames().
+      kepler_io.kepler_filenames().
 
   Returns:
     all_time: A list of numpy arrays; the time values of the raw light curve.
@@ -47,8 +47,8 @@ def read_light_curve(kepid, kepler_data_dir):
   # Read the Kepler light curve.
   file_names = kepler_io.kepler_filenames(kepler_data_dir, kepid)
   if not file_names:
-    raise IOError("Failed to find .fits files in %s for Kepler ID %s" %
-                  (kepler_data_dir, kepid))
+    raise IOError("Failed to find .fits files in {} for Kepler ID {}".format(
+        kepler_data_dir, kepid))
 
   return kepler_io.read_kepler_light_curve(file_names)
 
@@ -59,7 +59,7 @@ def process_light_curve(all_time, all_flux):
   Args:
     all_time: A list of numpy arrays; the time values of the raw light curve.
     all_flux: A list of numpy arrays corresponding to the time arrays in
-        all_time.
+      all_time.
 
   Returns:
     time: 1D NumPy array; the time values of the light curve.
@@ -192,7 +192,7 @@ def local_view(time,
     num_bins: The number of intervals to divide the time axis into.
     bin_width_factor: Width of the bins, as a fraction of duration.
     num_durations: The number of durations to consider on either side of 0 (the
-        event is assumed to be centered at 0).
+      event is assumed to be centered at 0).
 
   Returns:
     1D NumPy array of size num_bins containing the median flux values of
@@ -214,7 +214,7 @@ def generate_example_for_tce(time, flux, tce):
     time: 1D NumPy array; the time values of the light curve.
     flux: 1D NumPy array; the normalized flux values of the light curve.
     tce: Dict-like object containing at least 'tce_period', 'tce_duration', and
-        'tce_time0bk'. Additional items are included as features in the output.
+      'tce_time0bk'. Additional items are included as features in the output.
 
   Returns:
     A tf.train.Example containing features 'global_view', 'local_view', and all

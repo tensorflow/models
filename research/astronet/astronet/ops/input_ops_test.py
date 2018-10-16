@@ -31,9 +31,9 @@ class InputOpsTest(tf.test.TestCase):
 
     Args:
       expected_shapes: Dictionary of expected Tensor shapes, as lists,
-          corresponding to the structure of 'features'.
+        corresponding to the structure of 'features'.
       features: Dictionary of feature placeholders of the format returned by
-          input_ops.build_feature_placeholders().
+        input_ops.build_feature_placeholders().
     """
     actual_shapes = {}
     for feature_type in features:

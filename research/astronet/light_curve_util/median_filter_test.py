@@ -124,5 +124,5 @@ class MedianFilterTest(absltest.TestCase):
     np.testing.assert_array_equal([7, 1, 5, 2, 3], result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   absltest.main()

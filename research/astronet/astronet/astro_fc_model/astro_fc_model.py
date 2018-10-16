@@ -58,24 +58,6 @@ from astronet.astro_model import astro_model
 class AstroFCModel(astro_model.AstroModel):
   """A model for classifying light curves using fully connected layers."""
 
-  def __init__(self, features, labels, hparams, mode):
-    """Basic setup. The actual TensorFlow graph is constructed in build().
-
-    Args:
-      features: A dictionary containing "time_series_features" and
-          "aux_features", each of which is a dictionary of named input Tensors.
-          All features have dtype float32 and shape [batch_size, length].
-      labels: An int64 Tensor with shape [batch_size]. May be None if mode is
-          tf.estimator.ModeKeys.PREDICT.
-      hparams: A ConfigDict of hyperparameters for building the model.
-      mode: A tf.estimator.ModeKeys to specify whether the graph should be built
-          for training, evaluation or prediction.
-
-    Raises:
-      ValueError: If mode is invalid.
-    """
-    super(AstroFCModel, self).__init__(features, labels, hparams, mode)
-
   def _build_local_fc_layers(self, inputs, hparams, scope):
     """Builds locally fully connected layers.
 
@@ -120,8 +102,8 @@ class AstroFCModel(astro_model.AstroModel):
         elif hparams.pooling_type == "avg":
           net = tf.reduce_mean(net, axis=1, name="avg_pool")
         else:
-          raise ValueError(
-              "Unrecognized pooling_type: %s" % hparams.pooling_type)
+          raise ValueError("Unrecognized pooling_type: {}".format(
+              hparams.pooling_type))
 
         remaining_layers = hparams.num_local_layers - 1
       else:
@@ -133,7 +115,7 @@ class AstroFCModel(astro_model.AstroModel):
             inputs=net,
             num_outputs=hparams.local_layer_size,
             activation_fn=tf.nn.relu,
-            scope="fully_connected_%d" % (i + 1))
+            scope="fully_connected_{}".format(i + 1))
 
         if hparams.dropout_rate > 0:
           net = tf.layers.dropout(

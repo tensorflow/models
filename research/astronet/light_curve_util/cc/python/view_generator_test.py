@@ -76,5 +76,5 @@ class ViewGeneratorTest(absltest.TestCase):
     np.testing.assert_almost_equal(result, expected)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   absltest.main()

@@ -22,87 +22,36 @@ import copy
 
 import tensorflow as tf
 
-from astronet.ops import dataset_ops
-from astronet.ops import metrics
 from astronet.ops import training
 
 
 class _InputFn(object):
   """Class that acts as a callable input function for Estimator train / eval."""
 
-  def __init__(self,
-               file_pattern,
-               input_config,
-               mode,
-               shuffle_values_buffer=0,
-               repeat=1):
+  def __init__(self, dataset_builder):
     """Initializes the input function.
 
     Args:
-      file_pattern: File pattern matching input TFRecord files, e.g.
-        "/tmp/train-?????-of-00100". May also be a comma-separated list of file
-        patterns.
-      input_config: ConfigDict containing feature and label specifications.
-      mode: A tf.estimator.ModeKeys.
-      shuffle_values_buffer: If > 0, shuffle examples using a buffer of this
-        size.
-      repeat: The number of times to repeat the dataset. If None or -1 the
-        elements will be repeated indefinitely.
+      dataset_builder: Instance of DatasetBuilder.
     """
-    self._file_pattern = file_pattern
-    self._input_config = input_config
-    self._mode = mode
-    self._shuffle_values_buffer = shuffle_values_buffer
-    self._repeat = repeat
+    self._builder = dataset_builder
 
-  def __call__(self, config, params):
+  def __call__(self, params):
     """Builds the input pipeline."""
-    # Infer whether this input_fn was called by Estimator or TPUEstimator using
-    # the config type.
-    use_tpu = isinstance(config, tf.contrib.tpu.RunConfig)
-
-    mode = self._mode
-    include_labels = (
-        mode in [tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL])
-    reverse_time_series_prob = 0.5 if mode == tf.estimator.ModeKeys.TRAIN else 0
-    shuffle_filenames = (mode == tf.estimator.ModeKeys.TRAIN)
-    dataset = dataset_ops.build_dataset(
-        file_pattern=self._file_pattern,
-        input_config=self._input_config,
-        batch_size=params["batch_size"],
-        include_labels=include_labels,
-        reverse_time_series_prob=reverse_time_series_prob,
-        shuffle_filenames=shuffle_filenames,
-        shuffle_values_buffer=self._shuffle_values_buffer,
-        repeat=self._repeat,
-        use_tpu=use_tpu)
-
-    return dataset
+    return self._builder.build(batch_size=params["batch_size"])
 
 
-def create_input_fn(file_pattern,
-                    input_config,
-                    mode,
-                    shuffle_values_buffer=0,
-                    repeat=1):
-  """Creates an input_fn that reads a dataset from sharded TFRecord files.
+def create_input_fn(dataset_builder):
+  """Creates an input_fn that that builds an input pipeline.
 
   Args:
-    file_pattern: File pattern matching input TFRecord files, e.g.
-      "/tmp/train-?????-of-00100". May also be a comma-separated list of file
-      patterns.
-    input_config: ConfigDict containing feature and label specifications.
-    mode: A tf.estimator.ModeKeys.
-    shuffle_values_buffer: If > 0, shuffle examples using a buffer of this size.
-    repeat: The number of times to repeat the dataset. If None or -1 the
-      elements will be repeated indefinitely.
+    dataset_builder: Instance of DatasetBuilder.
 
   Returns:
-    A callable that builds the input pipeline and returns a tf.data.Dataset
+    A callable that builds an input pipeline and returns a tf.data.Dataset
     object.
   """
-  return _InputFn(file_pattern, input_config, mode, shuffle_values_buffer,
-                  repeat)
+  return _InputFn(dataset_builder)
 
 
 class _ModelFn(object):
@@ -113,8 +62,8 @@ class _ModelFn(object):
 
     Args:
       model_class: Model class.
-      hparams: ConfigDict containing hyperparameters for building and training
-        the model.
+      hparams: A HParams object containing hyperparameters for building and
+        training the model.
       use_tpu: If True, a TPUEstimator will be returned. Otherwise an Estimator
         will be returned.
     """
@@ -122,21 +71,13 @@ class _ModelFn(object):
     self._base_hparams = hparams
     self._use_tpu = use_tpu
 
-  def __call__(self, features, labels, mode, params):
+  def __call__(self, features, mode, params):
     """Builds the model and returns an EstimatorSpec or TPUEstimatorSpec."""
     hparams = copy.deepcopy(self._base_hparams)
     if "batch_size" in params:
       hparams.batch_size = params["batch_size"]
 
-    # Allow labels to be passed in the features dictionary.
-    if "labels" in features:
-      if labels is not None and labels is not features["labels"]:
-        raise ValueError(
-            "Conflicting labels: features['labels'] = {}, labels = {}".format(
-                features["labels"], labels))
-      labels = features.pop("labels")
-
-    model = self._model_class(features, labels, hparams, mode)
+    model = self._model_class(features, hparams, mode)
     model.build()
 
     # Possibly create train_op.
@@ -147,27 +88,12 @@ class _ModelFn(object):
       optimizer = training.create_optimizer(hparams, learning_rate, use_tpu)
       train_op = training.create_train_op(model, optimizer)
 
-    # Possibly create evaluation metrics.
-    eval_metrics = None
-    if mode == tf.estimator.ModeKeys.EVAL:
-      eval_metrics = (
-          metrics.create_metric_fn(model)
-          if use_tpu else metrics.create_metrics(model))
-
     if use_tpu:
       estimator = tf.contrib.tpu.TPUEstimatorSpec(
-          mode=mode,
-          predictions=model.predictions,
-          loss=model.total_loss,
-          train_op=train_op,
-          eval_metrics=eval_metrics)
+          mode=mode, loss=model.total_loss, train_op=train_op)
     else:
       estimator = tf.estimator.EstimatorSpec(
-          mode=mode,
-          predictions=model.predictions,
-          loss=model.total_loss,
-          train_op=train_op,
-          eval_metric_ops=eval_metrics)
+          mode=mode, loss=model.total_loss, train_op=train_op)
 
     return estimator
 
@@ -183,7 +109,7 @@ def create_model_fn(model_class, hparams, use_tpu=False):
 
   Returns:
     model_fn: A callable that constructs the model and returns a
-        TPUEstimatorSpec if use_tpu is True, otherwise an EstimatorSpec.
+      TPUEstimatorSpec if use_tpu is True, otherwise an EstimatorSpec.
   """
   return _ModelFn(model_class, hparams, use_tpu)
 
@@ -199,7 +125,7 @@ def create_estimator(model_class,
   If run_config is a tf.contrib.tpu.RunConfig, a TPUEstimator is returned.
 
   Args:
-    model_class: AstroModel or a subclass.
+    model_class: AstroWaveNet or a subclass.
     hparams: ConfigDict of configuration parameters for building the model.
     run_config: Optional tf.estimator.RunConfig or tf.contrib.tpu.RunConfig.
     model_dir: Optional directory for saving the model. If not passed

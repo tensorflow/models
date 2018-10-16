@@ -88,7 +88,6 @@ import tensorflow as tf
 
 from astronet.data import preprocess
 
-
 parser = argparse.ArgumentParser()
 
 _DR24_TCE_URL = ("https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/"
@@ -100,7 +99,7 @@ parser.add_argument(
     required=True,
     help="CSV file containing the Q1-Q17 DR24 Kepler TCE table. Must contain "
     "columns: rowid, kepid, tce_plnt_num, tce_period, tce_duration, "
-    "tce_time0bk. Download from: %s" % _DR24_TCE_URL)
+    "tce_time0bk. Download from: {}".format(_DR24_TCE_URL))
 
 parser.add_argument(
     "--kepler_data_dir",
@@ -219,14 +218,16 @@ def main(argv):
   for i in range(FLAGS.num_train_shards):
     start = boundaries[i]
     end = boundaries[i + 1]
-    file_shards.append((train_tces[start:end], os.path.join(
-        FLAGS.output_dir, "train-%.5d-of-%.5d" % (i, FLAGS.num_train_shards))))
+    filename = os.path.join(
+        FLAGS.output_dir, "train-{:05d}-of-{:05d}".format(
+            i, FLAGS.num_train_shards))
+    file_shards.append((train_tces[start:end], filename))
 
   # Validation and test sets each have a single shard.
-  file_shards.append((val_tces, os.path.join(FLAGS.output_dir,
-                                             "val-00000-of-00001")))
-  file_shards.append((test_tces, os.path.join(FLAGS.output_dir,
-                                              "test-00000-of-00001")))
+  file_shards.append((val_tces,
+                      os.path.join(FLAGS.output_dir, "val-00000-of-00001")))
+  file_shards.append((test_tces,
+                      os.path.join(FLAGS.output_dir, "test-00000-of-00001")))
   num_file_shards = len(file_shards)
 
   # Launch subprocesses for the file shards.

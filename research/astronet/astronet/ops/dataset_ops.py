@@ -69,7 +69,7 @@ def _recursive_pad_to_batch_size(tensor_or_collection, batch_size):
         for t in tensor_or_collection
     ]
 
-  raise ValueError("Unknown input type: %s" % tensor_or_collection)
+  raise ValueError("Unknown input type: {}".format(tensor_or_collection))
 
 
 def pad_dataset_to_batch_size(dataset, batch_size):
@@ -119,7 +119,7 @@ def _recursive_set_batch_size(tensor_or_collection, batch_size):
     for t in tensor_or_collection:
       _recursive_set_batch_size(t, batch_size)
   else:
-    raise ValueError("Unknown input type: %s" % tensor_or_collection)
+    raise ValueError("Unknown input type: {}".format(tensor_or_collection))
 
   return tensor_or_collection
 
@@ -142,19 +142,19 @@ def build_dataset(file_pattern,
 
   Args:
     file_pattern: File pattern matching input TFRecord files, e.g.
-        "/tmp/train-?????-of-00100". May also be a comma-separated list of file
-        patterns.
+      "/tmp/train-?????-of-00100". May also be a comma-separated list of file
+      patterns.
     input_config: ConfigDict containing feature and label specifications.
     batch_size: The number of examples per batch.
     include_labels: Whether to read labels from the input files.
     reverse_time_series_prob: If > 0, the time series features will be randomly
-        reversed with this probability. Within a given example, either all time
-        series features will be reversed, or none will be reversed.
+      reversed with this probability. Within a given example, either all time
+      series features will be reversed, or none will be reversed.
     shuffle_filenames: Whether to shuffle the order of TFRecord files between
-        epochs.
+      epochs.
     shuffle_values_buffer: If > 0, shuffle examples using a buffer of this size.
     repeat: The number of times to repeat the dataset. If None or -1 the dataset
-        will repeat indefinitely.
+      will repeat indefinitely.
     use_tpu: Whether to build the dataset for TPU.
 
   Raises:
@@ -170,7 +170,7 @@ def build_dataset(file_pattern,
   for p in file_patterns:
     matches = tf.gfile.Glob(p)
     if not matches:
-      raise ValueError("Found no input files matching %s" % p)
+      raise ValueError("Found no input files matching {}".format(p))
     filenames.extend(matches)
   tf.logging.info("Building input pipeline from %d files matching patterns: %s",
                   len(filenames), file_patterns)
@@ -180,8 +180,8 @@ def build_dataset(file_pattern,
     label_ids = set(input_config.label_map.values())
     if label_ids != set(range(len(label_ids))):
       raise ValueError(
-          "Label IDs must be contiguous integers starting at 0. Got: %s" %
-          label_ids)
+          "Label IDs must be contiguous integers starting at 0. Got: {}".format(
+              label_ids))
 
     # Create a HashTable mapping label strings to integer ids.
     table_initializer = tf.contrib.lookup.KeyValueTensorInitializer(
