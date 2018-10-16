@@ -4,6 +4,22 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
+py_binary(
+    name = "trainer",
+    srcs = ["trainer.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":astrowavenet_model",
+        ":configurations",
+        "//astronet/util:config_util",
+        "//astronet/util:configdict",
+        "//astronet/util:estimator_runner",
+        "//astrowavenet/data:kepler_light_curves",
+        "//astrowavenet/data:synthetic_transits",
+        "//astrowavenet/util:estimator_util",
+    ],
+)
+
 py_library(
     name = "configurations",
     srcs = ["configurations.py"],
@@ -11,22 +27,22 @@ py_library(
 )
 
 py_library(
-    name = "astrowavenet",
+    name = "astrowavenet_model",
     srcs = [
-        "astrowavenet.py",
+        "astrowavenet_model.py",
     ],
     srcs_version = "PY2AND3",
 )
 
 py_test(
-    name = "astrowavenet_test",
+    name = "astrowavenet_model_test",
     size = "small",
     srcs = [
-        "astrowavenet_test.py",
+        "astrowavenet_model_test.py",
     ],
     srcs_version = "PY2AND3",
     deps = [
-        ":astrowavenet",
+        ":astrowavenet_model",
         ":configurations",
         "//astronet/util:configdict",
     ],

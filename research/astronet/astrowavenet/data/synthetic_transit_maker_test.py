@@ -29,30 +29,30 @@ class SyntheticTransitMakerTest(absltest.TestCase):
   def testBadRangesRaiseExceptions(self):
 
     # Period range cannot contain negative values.
-    with self.assertRaisesRegexp(ValueError, 'Period'):
+    with self.assertRaisesRegexp(ValueError, "Period"):
       synthetic_transit_maker.SyntheticTransitMaker(period_range=(-1, 10))
 
     # Amplitude range cannot contain negative values.
-    with self.assertRaisesRegexp(ValueError, 'Amplitude'):
+    with self.assertRaisesRegexp(ValueError, "Amplitude"):
       synthetic_transit_maker.SyntheticTransitMaker(amplitude_range=(-10, -1))
 
     # Threshold ratio range must be contained in the half-open interval [0, 1).
-    with self.assertRaisesRegexp(ValueError, 'Threshold ratio'):
+    with self.assertRaisesRegexp(ValueError, "Threshold ratio"):
       synthetic_transit_maker.SyntheticTransitMaker(
           threshold_ratio_range=(0, 1))
 
     # Noise standard deviation range must only contain nonnegative values.
-    with self.assertRaisesRegexp(ValueError, 'Noise standard deviation'):
+    with self.assertRaisesRegexp(ValueError, "Noise standard deviation"):
       synthetic_transit_maker.SyntheticTransitMaker(noise_sd_range=(-1, 1))
 
     # End of range may not be less than start.
     invalid_range = (0.2, 0.1)
     range_args = [
-        'period_range', 'threshold_ratio_range', 'amplitude_range',
-        'noise_sd_range', 'phase_range'
+        "period_range", "threshold_ratio_range", "amplitude_range",
+        "noise_sd_range", "phase_range"
     ]
     for range_arg in range_args:
-      with self.assertRaisesRegexp(ValueError, 'may not be less'):
+      with self.assertRaisesRegexp(ValueError, "may not be less"):
         synthetic_transit_maker.SyntheticTransitMaker(
             **{range_arg: invalid_range})
 
@@ -106,5 +106,5 @@ class SyntheticTransitMakerTest(absltest.TestCase):
       self.assertEqual(len(mask), 100)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   absltest.main()

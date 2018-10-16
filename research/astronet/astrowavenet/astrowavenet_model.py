@@ -23,6 +23,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 
 def _shift_right(x):
@@ -64,18 +65,21 @@ class AstroWaveNet(object):
         tf.estimator.ModeKeys.PREDICT
     ]
     if mode not in valid_modes:
-      raise ValueError('Expected mode in {}. Got: {}'.format(valid_modes, mode))
+      raise ValueError("Expected mode in {}. Got: {}".format(valid_modes, mode))
     self.hparams = hparams
     self.mode = mode
 
-    self.autoregressive_input = features['autoregressive_input']
-    self.conditioning_stack = features['conditioning_stack']
-    self.weights = features.get('weights')
+    self.autoregressive_input = features["autoregressive_input"]
+    self.conditioning_stack = features["conditioning_stack"]
+    self.weights = features.get("weights")
 
     self.network_output = None  # Sum of skip connections from dilation stack.
+    self.dist_params = None  # Dict of predicted distribution parameters.
     self.predicted_distributions = None  # Predicted distribution for examples.
+    self.autoregressive_target = None  # Autoregressive target predictions.
     self.batch_losses = None  # Loss for each predicted distribution in batch.
     self.per_example_loss = None  # Loss for each example in batch.
+    self.num_nonzero_weight_examples = None  # Number of examples in batch.
     self.total_loss = None  # Overall loss for the batch.
     self.global_step = None  # Global step Tensor.
 
@@ -94,9 +98,9 @@ class AstroWaveNet(object):
     causal_conv_op = tf.keras.layers.Conv1D(
         output_size,
         kernel_width,
-        padding='causal',
+        padding="causal",
         dilation_rate=dilation_rate,
-        name='causal_conv')
+        name="causal_conv")
     return causal_conv_op(x)
 
   def conv_1x1_layer(self, x, output_size, activation=None):
@@ -111,7 +115,7 @@ class AstroWaveNet(object):
       Resulting tf.Tensor after applying the 1x1 convolution.
     """
     conv_1x1_op = tf.keras.layers.Conv1D(
-        output_size, 1, activation=activation, name='conv1x1')
+        output_size, 1, activation=activation, name="conv1x1")
     return conv_1x1_op(x)
 
   def gated_residual_layer(self, x, dilation_rate):
@@ -125,24 +129,26 @@ class AstroWaveNet(object):
       skip_connection: tf.Tensor; Skip connection to network_output layer.
       residual_connection: tf.Tensor; Sum of learned residual and input tensor.
     """
-    with tf.variable_scope('filter'):
-      x_filter_conv = self.causal_conv_layer(x, int(
-          x.shape[-1]), self.hparams.dilation_kernel_width, dilation_rate)
+    with tf.variable_scope("filter"):
+      x_filter_conv = self.causal_conv_layer(x, x.shape[-1].value,
+                                             self.hparams.dilation_kernel_width,
+                                             dilation_rate)
       cond_filter_conv = self.conv_1x1_layer(self.conditioning_stack,
-                                             int(x.shape[-1]))
-    with tf.variable_scope('gate'):
-      x_gate_conv = self.causal_conv_layer(x, int(
-          x.shape[-1]), self.hparams.dilation_kernel_width, dilation_rate)
+                                             x.shape[-1].value)
+    with tf.variable_scope("gate"):
+      x_gate_conv = self.causal_conv_layer(x, x.shape[-1].value,
+                                           self.hparams.dilation_kernel_width,
+                                           dilation_rate)
       cond_gate_conv = self.conv_1x1_layer(self.conditioning_stack,
-                                           int(x.shape[-1]))
+                                           x.shape[-1].value)
 
     gated_activation = (
         tf.tanh(x_filter_conv + cond_filter_conv) *
         tf.sigmoid(x_gate_conv + cond_gate_conv))
 
-    with tf.variable_scope('residual'):
-      residual = self.conv_1x1_layer(gated_activation, int(x.shape[-1]))
-    with tf.variable_scope('skip'):
+    with tf.variable_scope("residual"):
+      residual = self.conv_1x1_layer(gated_activation, x.shape[-1].value)
+    with tf.variable_scope("skip"):
       skip_connection = self.conv_1x1_layer(gated_activation,
                                             self.hparams.skip_output_dim)
 
@@ -167,13 +173,13 @@ class AstroWaveNet(object):
     """
     skip_connections = []
     x = _shift_right(self.autoregressive_input)
-    with tf.variable_scope('preprocess'):
+    with tf.variable_scope("preprocess"):
       x = self.causal_conv_layer(x, self.hparams.preprocess_output_size,
                                  self.hparams.preprocess_kernel_width)
     for i in range(self.hparams.num_residual_blocks):
-      with tf.variable_scope('block_{}'.format(i)):
+      with tf.variable_scope("block_{}".format(i)):
         for dilation_rate in self.hparams.dilation_rates:
-          with tf.variable_scope('dilation_{}'.format(dilation_rate)):
+          with tf.variable_scope("dilation_{}".format(dilation_rate)):
             skip_connection, x = self.gated_residual_layer(x, dilation_rate)
             skip_connections.append(skip_connection)
 
@@ -192,7 +198,7 @@ class AstroWaveNet(object):
       The parameters of each distribution, a tensor of shape [batch_size,
         time_series_length, outputs_size].
     """
-    with tf.variable_scope('dist_params'):
+    with tf.variable_scope("dist_params"):
       conv_outputs = self.conv_1x1_layer(x, outputs_size)
     return conv_outputs
 
@@ -212,36 +218,40 @@ class AstroWaveNet(object):
       self.network_outputs
 
     Outputs:
+      self.dist_params
       self.predicted_distributions
 
     Raises:
       ValueError: If distribution type is neither 'categorical' nor 'normal'.
     """
-    with tf.variable_scope('postprocess'):
+    with tf.variable_scope("postprocess"):
       network_output = tf.keras.activations.relu(self.network_output)
       network_output = self.conv_1x1_layer(
           network_output,
-          output_size=int(network_output.shape[-1]),
-          activation='relu')
-    num_dists = int(self.autoregressive_input.shape[-1])
+          output_size=network_output.shape[-1].value,
+          activation="relu")
+    num_dists = self.autoregressive_input.shape[-1].value
 
-    if self.hparams.output_distribution.type == 'categorical':
+    if self.hparams.output_distribution.type == "categorical":
       num_classes = self.hparams.output_distribution.num_classes
-      dist_params = self.dist_params_layer(network_output,
-                                           num_dists * num_classes)
-      dist_shape = tf.concat(
+      logits = self.dist_params_layer(network_output, num_dists * num_classes)
+      logits_shape = tf.concat(
           [tf.shape(network_output)[:-1], [num_dists, num_classes]], 0)
-      dist_params = tf.reshape(dist_params, dist_shape)
-      dist = tf.distributions.Categorical(logits=dist_params)
-    elif self.hparams.output_distribution.type == 'normal':
-      dist_params = self.dist_params_layer(network_output, num_dists * 2)
-      loc, scale = tf.split(dist_params, 2, axis=-1)
+      logits = tf.reshape(logits, logits_shape)
+      dist = tfp.distributions.Categorical(logits=logits)
+      dist_params = {"logits": logits}
+    elif self.hparams.output_distribution.type == "normal":
+      loc_scale = self.dist_params_layer(network_output, num_dists * 2)
+      loc, scale = tf.split(loc_scale, 2, axis=-1)
       # Ensure scale is positive.
       scale = tf.nn.softplus(scale) + self.hparams.output_distribution.min_scale
-      dist = tf.distributions.Normal(loc, scale)
+      dist = tfp.distributions.Normal(loc, scale)
+      dist_params = {"loc": loc, "scale": scale}
     else:
-      raise ValueError('Unsupported distribution type {}'.format(
+      raise ValueError("Unsupported distribution type {}".format(
           self.hparams.output_distribution.type))
+
+    self.dist_params = dist_params
     self.predicted_distributions = dist
 
   def build_losses(self):
@@ -257,7 +267,7 @@ class AstroWaveNet(object):
     autoregressive_target = self.autoregressive_input
 
     # Quantize the target if the output distribution is categorical.
-    if self.hparams.output_distribution.type == 'categorical':
+    if self.hparams.output_distribution.type == "categorical":
       min_val = self.hparams.output_distribution.min_quantization_value
       max_val = self.hparams.output_distribution.max_quantization_value
       num_classes = self.hparams.output_distribution.num_classes
@@ -270,7 +280,7 @@ class AstroWaveNet(object):
       # final quantized bucket a closed interval while all the other quantized
       # buckets are half-open intervals.
       quantized_target = tf.where(
-          quantized_target == num_classes,
+          quantized_target >= num_classes,
           tf.ones_like(quantized_target) * (num_classes - 1), quantized_target)
       autoregressive_target = quantized_target
 
@@ -280,22 +290,24 @@ class AstroWaveNet(object):
     if weights is None:
       weights = tf.ones_like(log_prob)
     weights_dim = len(weights.shape)
-    per_example_weight = tf.reduce_sum(weights, axis=range(1, weights_dim))
+    per_example_weight = tf.reduce_sum(
+        weights, axis=list(range(1, weights_dim)))
     per_example_indicator = tf.to_float(tf.greater(per_example_weight, 0))
-    num_examples = tf.reduce_sum(
-        per_example_indicator, name='num_nonzero_weight_examples')
+    num_examples = tf.reduce_sum(per_example_indicator)
 
     batch_losses = -log_prob * weights
-    losses_dim = len(batch_losses.shape)
+    losses_ndims = batch_losses.shape.ndims
     per_example_loss_sum = tf.reduce_sum(
-        batch_losses, axis=range(1, losses_dim))
+        batch_losses, axis=list(range(1, losses_ndims)))
     per_example_loss = tf.where(per_example_weight > 0,
                                 per_example_loss_sum / per_example_weight,
                                 tf.zeros_like(per_example_weight))
     total_loss = tf.reduce_sum(per_example_loss) / num_examples
 
+    self.autoregressive_target = autoregressive_target
     self.batch_losses = batch_losses
     self.per_example_loss = per_example_loss
+    self.num_nonzero_weight_examples = num_examples
     self.total_loss = total_loss
 
   def build(self):

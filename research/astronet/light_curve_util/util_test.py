@@ -280,23 +280,11 @@ class LightCurveUtilTest(absltest.TestCase):
       util.reshard_arrays(xs, [np.array([10, 20, 30]), np.array([40, 50])])
 
   def testUniformCadenceLightCurve(self):
-    all_cadence_no = [
-        np.array([13]),
-        np.array([4, 5, 6]),
-        np.array([8, 9, 11, 12]),
-    ]
-    all_time = [
-        np.array([130]),
-        np.array([40, 50, 60]),
-        np.array([80, 90, 110, 120]),
-    ]
-    all_flux = [
-        np.array([1300]),
-        np.array([400, 500, 600]),
-        np.array([800, np.nan, 1100, 1200]),
-    ]
+    input_cadence_no = np.array([13, 4, 5, 6, 8, 9, 11, 12])
+    input_time = np.array([130, 40, 50, 60, 80, 90, 110, 120])
+    input_flux = np.array([1300, 400, 500, 600, 800, np.nan, 1100, 1200])
     cadence_no, time, flux, mask = util.uniform_cadence_light_curve(
-        all_cadence_no, all_time, all_flux)
+        input_cadence_no, input_time, input_flux)
     np.testing.assert_array_equal([4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
                                   cadence_no)
     np.testing.assert_array_equal([40, 50, 60, 0, 80, 0, 0, 110, 120, 130],
@@ -306,11 +294,11 @@ class LightCurveUtilTest(absltest.TestCase):
     np.testing.assert_array_equal([1, 1, 1, 0, 1, 0, 0, 1, 1, 1], mask)
 
     # Add duplicate cadence number.
-    all_cadence_no.append(np.array([13, 14, 15]))
-    all_time.append(np.array([130, 140, 150]))
-    all_flux.append(np.array([1300, 1400, 1500]))
+    input_cadence_no = np.concatenate([input_cadence_no, np.array([13, 14])])
+    input_time = np.concatenate([input_time, np.array([130, 140])])
+    input_flux = np.concatenate([input_flux, np.array([1300, 1400])])
     with self.assertRaisesRegexp(ValueError, "Duplicate cadence number"):
-      util.uniform_cadence_light_curve(all_cadence_no, all_time, all_flux)
+      util.uniform_cadence_light_curve(input_cadence_no, input_time, input_flux)
 
   def testCountTransitPoints(self):
     time = np.concatenate([

@@ -220,14 +220,13 @@ def reshard_arrays(xs, ys):
   return np.split(concat_x, boundaries)
 
 
-def uniform_cadence_light_curve(all_cadence_no, all_time, all_flux):
+def uniform_cadence_light_curve(cadence_no, time, flux):
   """Combines data into a single light curve with uniform cadence numbers.
 
   Args:
-    all_cadence_no: A list of numpy arrays; the cadence numbers of the light
-      curve.
-    all_time: A list of numpy arrays; the time values of the light curve.
-    all_flux: A list of numpy arrays; the flux values of the light curve.
+    cadence_no: numpy array; the cadence numbers of the light curve.
+    time: numpy array; the time values of the light curve.
+    flux: numpy array; the flux values of the light curve.
 
   Returns:
     cadence_no: numpy array; the cadence numbers of the light curve with no
@@ -245,24 +244,23 @@ def uniform_cadence_light_curve(all_cadence_no, all_time, all_flux):
   Raises:
     ValueError: If there are duplicate cadence numbers in the input.
   """
-  min_cadence_no = np.min([np.min(c) for c in all_cadence_no])
-  max_cadence_no = np.max([np.max(c) for c in all_cadence_no])
+  min_cadence_no = np.min(cadence_no)
+  max_cadence_no = np.max(cadence_no)
 
   out_cadence_no = np.arange(
-      min_cadence_no, max_cadence_no + 1, dtype=all_cadence_no[0].dtype)
-  out_time = np.zeros_like(out_cadence_no, dtype=all_time[0].dtype)
-  out_flux = np.zeros_like(out_cadence_no, dtype=all_flux[0].dtype)
+      min_cadence_no, max_cadence_no + 1, dtype=cadence_no.dtype)
+  out_time = np.zeros_like(out_cadence_no, dtype=time.dtype)
+  out_flux = np.zeros_like(out_cadence_no, dtype=flux.dtype)
   out_mask = np.zeros_like(out_cadence_no, dtype=np.bool)
 
-  for cadence_no, time, flux in zip(all_cadence_no, all_time, all_flux):
-    for c, t, f in zip(cadence_no, time, flux):
-      if np.isfinite(c) and np.isfinite(t) and np.isfinite(f):
-        i = int(c - min_cadence_no)
-        if out_mask[i]:
-          raise ValueError("Duplicate cadence number: {}".format(c))
-        out_time[i] = t
-        out_flux[i] = f
-        out_mask[i] = True
+  for c, t, f in zip(cadence_no, time, flux):
+    if np.isfinite(c) and np.isfinite(t) and np.isfinite(f):
+      i = int(c - min_cadence_no)
+      if out_mask[i]:
+        raise ValueError("Duplicate cadence number: {}".format(c))
+      out_time[i] = t
+      out_flux[i] = f
+      out_mask[i] = True
 
   return out_cadence_no, out_time, out_flux, out_mask
 

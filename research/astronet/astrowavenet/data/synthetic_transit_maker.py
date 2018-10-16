@@ -43,8 +43,8 @@ class SyntheticTransitMaker(object):
       would translate the sine wave by half of the period. The most common
       reason to override this would be to generate light curves
       deterministically (with e.g. (0,0)).
-    noise_sd_range: A tuple of values in [0, 1) specifying the range of
-      standard deviations for the Gaussian noise applied to the sine wave.
+    noise_sd_range: A tuple of values in [0, 1) specifying the range of standard
+      deviations for the Gaussian noise applied to the sine wave.
   """
 
   def __init__(self,
@@ -125,7 +125,7 @@ class SyntheticTransitMaker(object):
     Args:
        time: An np.array of x-values to sample from the thresholded sine wave.
        mask_prob: Value in [0,1], probability an individual datapoint is set to
-        zero.
+         zero.
 
     Returns:
       A generator yielding random light curves.

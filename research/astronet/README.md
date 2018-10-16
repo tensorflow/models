@@ -40,6 +40,10 @@ Full text available at [*The Astronomical Journal*](http://iopscience.iop.org/ar
   * Training and evaluating a new model.
   * Using a trained model to generate new predictions.
 
+[astrowavenet/](astrowavenet/)
+
+* A generative model for light curves.
+
 [light_curve_util/](light_curve_util)
 
 * Utilities for operating on light curves. These include:
@@ -63,11 +67,11 @@ First, ensure that you have installed the following required packages:
 * **TensorFlow** ([instructions](https://www.tensorflow.org/install/))
 * **Pandas** ([instructions](http://pandas.pydata.org/pandas-docs/stable/install.html))
 * **NumPy** ([instructions](https://docs.scipy.org/doc/numpy/user/install.html))
+* **SciPy** ([instructions](https://scipy.org/install.html))
 * **AstroPy** ([instructions](http://www.astropy.org/))
 * **PyDl** ([instructions](https://pypi.python.org/pypi/pydl))
 * **Bazel** ([instructions](https://docs.bazel.build/versions/master/install.html))
 * **Abseil Python Common Libraries** ([instructions](https://github.com/abseil/abseil-py))
-    * Optional: only required for unit tests.
 
 ### Optional: Run Unit Tests
 

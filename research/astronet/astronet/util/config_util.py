@@ -63,6 +63,14 @@ def parse_json(json_string_or_file):
   return json_dict
 
 
+def to_json(config):
+  """Converts a JSON-serializable configuration object to a JSON string."""
+  if hasattr(config, "to_json") and callable(config.to_json):
+    return config.to_json(indent=2)
+  else:
+    return json.dumps(config, indent=2)
+
+
 def log_and_save_config(config, output_dir):
   """Logs and writes a JSON-serializable configuration object.
 
@@ -70,10 +78,7 @@ def log_and_save_config(config, output_dir):
     config: A JSON-serializable object.
     output_dir: Destination directory.
   """
-  if hasattr(config, "to_json") and callable(config.to_json):
-    config_json = config.to_json(indent=2)
-  else:
-    config_json = json.dumps(config, indent=2)
+  config_json = to_json(config)
   tf.logging.info("config: %s", config_json)
 
   tf.gfile.MakeDirs(output_dir)
