@@ -170,19 +170,26 @@ class BaseTest(tf.test.TestCase):
 
     num_shards = 2
     num_items = 10
-    data_preprocessing.generate_train_eval_data(df, approx_num_shards=num_shards,
-                                                num_items=num_items,
-                                                cache_paths=cache_paths,
-                                                match_mlperf=True)
+    data_preprocessing.generate_train_eval_data(
+        df, approx_num_shards=num_shards, num_items=num_items,
+        cache_paths=cache_paths, match_mlperf=True)
 
     raw_shards = tf.gfile.ListDirectory(cache_paths.train_shard_subdir)
     assert len(raw_shards) == num_shards
 
     sharded_eval_data = []
     for i in range(2):
-      sharded_eval_data.append(data_async_generation._process_shard((os.path.join(cache_paths.train_shard_subdir, raw_shards[i]), num_items, rconst.NUM_EVAL_NEGATIVES, stat_utils.random_int32(), False, True)))
+      sharded_eval_data.append(data_async_generation._process_shard(
+          (os.path.join(cache_paths.train_shard_subdir, raw_shards[i]),
+           num_items, rconst.NUM_EVAL_NEGATIVES, stat_utils.random_int32(),
+           False, True)))
 
-    eval_data = [np.concatenate([shard[i] for shard in sharded_eval_data]) for i in range(3)]
+    if sharded_eval_data[0][0][0] == 1:
+      # Order is not assured for this part of the pipeline.
+      sharded_eval_data.reverse()
+
+    eval_data = [np.concatenate([shard[i] for shard in sharded_eval_data])
+                 for i in range(3)]
     eval_data = {
       movielens.USER_COLUMN: eval_data[0],
       movielens.ITEM_COLUMN: eval_data[1],
