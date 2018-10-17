@@ -38,6 +38,7 @@ from object_detection.models import faster_rcnn_inception_v2_feature_extractor a
 from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
 from object_detection.models import faster_rcnn_pnas_feature_extractor as frcnn_pnas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
+from object_detection.models import faster_rcnn_mobilenet_v1_feature_extractor as frcnn_mobilenet_v1
 from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
 from object_detection.models import ssd_resnet_v1_ppn_feature_extractor as ssd_resnet_v1_ppn
 from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
@@ -52,7 +53,10 @@ from object_detection.predictors import rfcn_box_predictor
 from object_detection.protos import model_pb2
 from object_detection.utils import ops
 
+import cv2
 from models import builder as saliency_model_builder
+from core import utils as wsod_utils
+from core import imgproc
 
 
 # A map of names to SSD feature extractors.
@@ -91,6 +95,8 @@ FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
     frcnn_resnet_v1.FasterRCNNResnet101FeatureExtractor,
     'faster_rcnn_resnet152':
     frcnn_resnet_v1.FasterRCNNResnet152FeatureExtractor,
+    'faster_rcnn_mobilenet_v1':
+    frcnn_mobilenet_v1.FasterRCNNMobilenetV1FeatureExtractor,
 }
 
 
@@ -505,11 +511,31 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
     ValueError: If frcnn_config.type is not recognized (i.e. not registered in
       model_class_map).
   """
+  proposal_prediction = frcnn_config.proposal_prediction
+
   # Create saliency model builder.
   saliency_model = saliency_model_builder.build(
       frcnn_config.saliency_model, is_training=False)
   saliency_model_checkpoint_path = frcnn_config.saliency_model_checkpoint_path
 
+  def proposal_saliency_fn(saliency_map, anchors):
+    """A callable to compute the proposal saliency."""
+    return imgproc.calc_box_saliency(
+        saliency_map, anchors, 
+        border_ratio=frcnn_config.proposal_saliency_border_ratio,
+        alpha=frcnn_config.proposal_saliency_weight_alpha)
+
+  # Create opencv edge_boxes.
+  edge_detection, edge_boxes = None, None
+  if proposal_prediction.startswith('edge_boxes'):
+    edge_detection = cv2.ximgproc.createStructuredEdgeDetection(
+        frcnn_config.structured_edge_detection_model)
+    edge_boxes = cv2.ximgproc.createEdgeBoxes(
+        edgeMinMag=frcnn_config.edge_boxes_edge_min_mag, 
+        edgeMergeThr=frcnn_config.edge_boxes_edge_merge_thr, 
+        clusterMinMag=frcnn_config.edge_boxes_cluster_min_mag)
+
+  # Original frcnn configurations.
   num_classes = frcnn_config.num_classes
   image_resizer_fn = image_resizer_builder.build(frcnn_config.image_resizer)
 
@@ -639,6 +665,10 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       'resize_masks': frcnn_config.resize_masks,
       'saliency_model': saliency_model,
       'saliency_model_checkpoint_path': saliency_model_checkpoint_path,
+      'proposal_prediction': proposal_prediction,
+      'proposal_saliency_fn': proposal_saliency_fn,
+      'edge_detection': edge_detection,
+      'edge_boxes': edge_boxes,
   }
 
   if isinstance(second_stage_box_predictor,

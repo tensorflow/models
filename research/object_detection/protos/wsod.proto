@@ -173,5 +173,26 @@ message Wsod {
 
   // Path to the pre-trained saliency model.
   optional string saliency_model_checkpoint_path = 52;
+
+  // Proposal prediction method.
+  optional string proposal_prediction = 53 [default = ""];
+
+  // Border ratio to compute the proposal saliency.
+  optional float proposal_saliency_border_ratio = 54 [default = 0.1];
+
+  // Hyperparameter alpha to weigh the saliency inside and outside.
+  optional float proposal_saliency_weight_alpha = 55 [default = 1.0];
+
+  // Path to the OpenCV ximgproc model, for edge detection.
+  optional string structured_edge_detection_model = 61;
+
+  // EdgeBoxes edgeMinMag paramter.
+  optional float edge_boxes_edge_min_mag = 62 [default = 0.1];
+
+  // EdgeBoxes edgeMergeThr paramter.
+  optional float edge_boxes_edge_merge_thr = 63 [default = 0.5];
+
+  // EdgeBoxes clusterMinMag paramter.
+  optional float edge_boxes_cluster_min_mag = 64 [default = 0.5];
 }
 
