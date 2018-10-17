@@ -99,9 +99,9 @@ def _process_shard(args):
 
   if not is_training:
     # For eval, there is one positive which was held out from the training set.
-    test_positive_dict = {
-        k: v for k, v  in zip(shard[rconst.EVAL_KEY][movielens.USER_COLUMN],
-                              shard[rconst.EVAL_KEY][movielens.ITEM_COLUMN])}
+    test_positive_dict = dict(zip(
+        shard[rconst.EVAL_KEY][movielens.USER_COLUMN],
+        shard[rconst.EVAL_KEY][movielens.ITEM_COLUMN]))
 
   delta = users[1:] - users[:-1]
   boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
