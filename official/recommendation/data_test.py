@@ -191,8 +191,8 @@ class BaseTest(tf.test.TestCase):
     eval_data = [np.concatenate([shard[i] for shard in sharded_eval_data])
                  for i in range(3)]
     eval_data = {
-      movielens.USER_COLUMN: eval_data[0],
-      movielens.ITEM_COLUMN: eval_data[1],
+        movielens.USER_COLUMN: eval_data[0],
+        movielens.ITEM_COLUMN: eval_data[1],
     }
 
     eval_items_per_user = rconst.NUM_EVAL_NEGATIVES + 1
