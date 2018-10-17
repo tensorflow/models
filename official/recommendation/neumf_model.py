@@ -36,13 +36,12 @@ from __future__ import print_function
 import sys
 import typing
 
-import google3
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.official.datasets import movielens  # pylint: disable=g-bad-import-order
-from google3.third_party.tensorflow_models.official.recommendation import constants as rconst
-from google3.third_party.tensorflow_models.official.recommendation import stat_utils
+from official.datasets import movielens  # pylint: disable=g-bad-import-order
+from official.recommendation import constants as rconst
+from official.recommendation import stat_utils
 
 
 def _sparse_to_dense_grads(grads_and_vars):
