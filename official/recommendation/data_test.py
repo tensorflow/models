@@ -136,8 +136,6 @@ class BaseTest(tf.test.TestCase):
     for features, labels in first_epoch:
       for u, i, l in zip(features[movielens.USER_COLUMN],
                          features[movielens.ITEM_COLUMN], labels):
-        if u < 0:
-          continue  # Ignore padding
 
         u_raw = user_inv_map[u]
         i_raw = item_inv_map[i]
@@ -150,9 +148,7 @@ class BaseTest(tf.test.TestCase):
         train_examples[l].add((u_raw, i_raw))
     num_positives_seen = len(train_examples[True])
 
-    # The numbers don't match exactly because the last batch spills over into
-    # the next epoch
-    assert ncf_dataset.num_train_positives - num_positives_seen < BATCH_SIZE
+    assert ncf_dataset.num_train_positives == num_positives_seen
 
     # This check is more heuristic because negatives are sampled with
     # replacement. It only checks that negative generation is reasonably random.
