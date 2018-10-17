@@ -178,7 +178,7 @@ class BaseTest(tf.test.TestCase):
       sharded_eval_data.append(data_async_generation._process_shard(
           (os.path.join(cache_paths.train_shard_subdir, raw_shards[i]),
            num_items, rconst.NUM_EVAL_NEGATIVES, stat_utils.random_int32(),
-           False, True)))
+           False, True, 0)))
 
     if sharded_eval_data[0][0][0] == 1:
       # Order is not assured for this part of the pipeline.
