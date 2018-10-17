@@ -157,8 +157,8 @@ def run_ncf(_):
     num_users = ncf_dataset.num_users
     num_items = ncf_dataset.num_items
     num_train_steps = int(np.ceil(
-      FLAGS.epochs_between_evals * ncf_dataset.num_train_positives *
-      (1 + FLAGS.num_neg) / FLAGS.batch_size))
+        FLAGS.epochs_between_evals * ncf_dataset.num_train_positives *
+        (1 + FLAGS.num_neg) / FLAGS.batch_size))
     num_eval_steps = int(np.ceil((1 + rconst.NUM_EVAL_NEGATIVES) *
                                  ncf_dataset.num_users / eval_batch_size))
 
@@ -211,8 +211,6 @@ def run_ncf(_):
 
 
   pred_input_fn = None
-  # pred_input_fn = data_preprocessing.make_pred_input_fn(ncf_dataset=ncf_dataset)
-
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
@@ -221,12 +219,12 @@ def run_ncf(_):
     # Train the model
     train_input_fn, train_record_dir, batch_count = \
       data_preprocessing.make_input_fn(
-        ncf_dataset=ncf_dataset, is_training=True)
+          ncf_dataset=ncf_dataset, is_training=True)
 
     if batch_count != num_train_steps:
       raise ValueError(
-        "Step counts do not match. ({} vs. {}) The async process is producing "
-        "incorrect shards.".format(batch_count, num_train_steps))
+          "Step counts do not match. ({} vs. {}) The async process is "
+          "producing incorrect shards.".format(batch_count, num_train_steps))
 
     train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
                           steps=num_train_steps)
@@ -236,12 +234,13 @@ def run_ncf(_):
     tf.logging.info("Beginning evaluation.")
     if pred_input_fn is None:
       pred_input_fn, _, eval_batch_count = data_preprocessing.make_input_fn(
-        ncf_dataset=ncf_dataset, is_training=False)
+          ncf_dataset=ncf_dataset, is_training=False)
 
       if eval_batch_count != num_eval_steps:
         raise ValueError(
-          "Step counts do not match. ({} vs. {}) The async process is producing "
-          "incorrect shards.".format(eval_batch_count, num_eval_steps))
+            "Step counts do not match. ({} vs. {}) The async process is "
+            "producing incorrect shards.".format(
+                eval_batch_count, num_eval_steps))
 
     eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
     tf.logging.info("Evaluation complete.")
