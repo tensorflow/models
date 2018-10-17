@@ -670,20 +670,20 @@ def make_synthetic_input_fn(is_training):
       labels = tf.random_uniform([batch_size], dtype=tf.int32, minval=0,
                                  maxval=2)
       data = {
-               movielens.USER_COLUMN: users,
-               movielens.ITEM_COLUMN: items,
-             }, labels
+          movielens.USER_COLUMN: users,
+          movielens.ITEM_COLUMN: items,
+      }, labels
     else:
       dupe_mask = tf.cast(tf.random_uniform([batch_size], dtype=tf.int32,
                                             minval=0, maxval=2), tf.bool)
       data = {
-        movielens.USER_COLUMN: users,
-        movielens.ITEM_COLUMN: items,
-        rconst.DUPLICATE_MASK: dupe_mask,
+          movielens.USER_COLUMN: users,
+          movielens.ITEM_COLUMN: items,
+          rconst.DUPLICATE_MASK: dupe_mask,
       }
 
     dataset = tf.data.Dataset.from_tensors(data).repeat(
-      _SYNTHETIC_BATCHES_PER_EPOCH)
+        _SYNTHETIC_BATCHES_PER_EPOCH)
     dataset = dataset.prefetch(32)
     return dataset
 

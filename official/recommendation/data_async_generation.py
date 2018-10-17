@@ -99,8 +99,9 @@ def _process_shard(args):
 
   if not is_training:
     # For eval, there is one positive which was held out from the training set.
-    test_positive_dict = {k: v for k, v  in zip(shard[rconst.EVAL_KEY][movielens.USER_COLUMN],
-                                                shard[rconst.EVAL_KEY][movielens.ITEM_COLUMN])}
+    test_positive_dict = {
+        k: v for k, v  in zip(shard[rconst.EVAL_KEY][movielens.USER_COLUMN],
+                              shard[rconst.EVAL_KEY][movielens.ITEM_COLUMN])}
 
   delta = users[1:] - users[:-1]
   boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
@@ -121,17 +122,19 @@ def _process_shard(args):
     if is_training:
       n_pos = len(positive_set)
       negatives = stat_utils.sample_with_exclusion(
-        num_items, positive_set, n_pos * num_neg, replacement=True)
+          num_items, positive_set, n_pos * num_neg, replacement=True)
 
     else:
       if not match_mlperf:
-        # The mlperf reference allows the holdout item to appear as a negative. Including it in the positive set makes
-        # the eval more stringent, because an appearance of the test item would be removed by deduplication rules.
-        # (Effectively resulting in a minute reduction of NUM_EVAL_NEGATIVES)
+        # The mlperf reference allows the holdout item to appear as a negative.
+        # Including it in the positive set makes the eval more stringent,
+        # because an appearance of the test item would be removed by
+        # deduplication rules. (Effectively resulting in a minute reduction of
+        # NUM_EVAL_NEGATIVES)
         positive_set.add(test_positive_dict[current_user])
 
       negatives = stat_utils.sample_with_exclusion(
-        num_items, positive_set, num_neg, replacement=match_mlperf)
+          num_items, positive_set, num_neg, replacement=match_mlperf)
       positive_set = [test_positive_dict[current_user]]
       n_pos = len(positive_set)
       assert n_pos == 1
@@ -227,7 +230,8 @@ def _construct_records(
 
   num_pts = num_positives * (1 + num_neg)
 
-  # Equivalent to `int(ceil(num_pts / batch_size)) * batch_size`, but without precision concerns
+  # Equivalent to `int(ceil(num_pts / batch_size)) * batch_size`, but without
+  # precision concerns
   num_pts_with_padding = (num_pts + batch_size - 1) // batch_size * batch_size
   num_padding = num_pts_with_padding - num_pts
 
@@ -236,17 +240,17 @@ def _construct_records(
   process_seeds = [stat_utils.random_int32()
                    for _ in training_shards * epochs_per_cycle]
   map_args = [
-    (shard, num_items, num_neg, process_seeds[i], is_training, match_mlperf)
-    for i, shard in enumerate(training_shards * epochs_per_cycle)]
+      (shard, num_items, num_neg, process_seeds[i], is_training, match_mlperf)
+      for i, shard in enumerate(training_shards * epochs_per_cycle)]
 
   with popen_helper.get_pool(num_workers, init_worker) as pool:
     map_fn = pool.imap if deterministic else pool.imap_unordered  # pylint: disable=no-member
     data_generator = map_fn(_process_shard, map_args)
     data = [
-      np.zeros(shape=(num_pts_with_padding,), dtype=np.int32) - 1,
-      np.zeros(shape=(num_pts_with_padding,), dtype=np.uint16),
-      np.zeros(shape=(num_pts_with_padding,), dtype=np.int8),
-      ]
+        np.zeros(shape=(num_pts_with_padding,), dtype=np.int32) - 1,
+        np.zeros(shape=(num_pts_with_padding,), dtype=np.uint16),
+        np.zeros(shape=(num_pts_with_padding,), dtype=np.int8),
+    ]
 
     # Training data is shuffled. Evaluation data MUST not be shuffled.
     # Downstream processing depends on the fact that evaluation data for a given
@@ -322,16 +326,16 @@ def _construct_records(
         start_ind = j * batch_size
         end_ind = start_ind + batch_size
         record_kwargs = dict(
-          users=data[0][start_ind:end_ind],
-          items=data[1][start_ind:end_ind],
+            users=data[0][start_ind:end_ind],
+            items=data[1][start_ind:end_ind],
         )
 
         if is_training:
           record_kwargs["labels"] = data[2][start_ind:end_ind]
         else:
           record_kwargs["dupe_mask"] = stat_utils.mask_duplicates(
-            record_kwargs["items"].reshape(-1, num_neg + 1),
-            axis=1).flatten().astype(np.int8)
+              record_kwargs["items"].reshape(-1, num_neg + 1),
+              axis=1).flatten().astype(np.int8)
 
         batch_bytes = _construct_record(**record_kwargs)
 
@@ -344,8 +348,8 @@ def _construct_records(
   ready_file_temp = os.path.join(record_dir, rconst.READY_FILE_TEMP)
   with tf.gfile.Open(ready_file_temp, "w") as f:
     json.dump({
-      "batch_size": batch_size,
-      "batch_count": batch_count,
+        "batch_size": batch_size,
+        "batch_count": batch_count,
     }, f)
   ready_file = os.path.join(record_dir, rconst.READY_FILE)
   tf.gfile.Rename(ready_file_temp, ready_file)
@@ -403,16 +407,16 @@ def _generation_loop(num_workers,           # type: int
   # limit is not respected for this invocation
   train_cycle = 0
   _construct_records(
-    is_training=True, train_cycle=train_cycle, num_neg=num_neg,
-    num_positives=num_train_positives, epochs_per_cycle=epochs_per_cycle,
-    batch_size=train_batch_size, **shared_kwargs)
+      is_training=True, train_cycle=train_cycle, num_neg=num_neg,
+      num_positives=num_train_positives, epochs_per_cycle=epochs_per_cycle,
+      batch_size=train_batch_size, **shared_kwargs)
 
   # Construct evaluation set.
   shared_kwargs["num_workers"] = num_workers
   _construct_records(
-    is_training=False, train_cycle=None, num_neg=rconst.NUM_EVAL_NEGATIVES,
-    num_positives=num_users, epochs_per_cycle=1, batch_size=eval_batch_size,
-    **shared_kwargs)
+      is_training=False, train_cycle=None, num_neg=rconst.NUM_EVAL_NEGATIVES,
+      num_positives=num_users, epochs_per_cycle=1, batch_size=eval_batch_size,
+      **shared_kwargs)
 
   wait_count = 0
   start_time = time.time()
@@ -437,9 +441,9 @@ def _generation_loop(num_workers,           # type: int
 
     train_cycle += 1
     _construct_records(
-      is_training=True, train_cycle=train_cycle, num_neg=num_neg,
-      num_positives=num_train_positives, epochs_per_cycle=epochs_per_cycle,
-      batch_size=train_batch_size, **shared_kwargs)
+        is_training=True, train_cycle=train_cycle, num_neg=num_neg,
+        num_positives=num_train_positives, epochs_per_cycle=epochs_per_cycle,
+        batch_size=train_batch_size, **shared_kwargs)
 
     wait_count = 0
     start_time = time.time()
