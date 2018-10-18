@@ -182,7 +182,7 @@ def main(unused_argv):
   skip_thoughts_vocab = _load_vocabulary(FLAGS.skip_thoughts_vocab)
 
   # Load the Word2Vec model.
-  word2vec = gensim.models.Word2Vec.load_word2vec_format(
+  word2vec = gensim.models.KeyedVectors.load_word2vec_format(
       FLAGS.word2vec_model, binary=True)
 
   # Run vocabulary expansion.
