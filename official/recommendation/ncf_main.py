@@ -142,7 +142,8 @@ def run_ncf(_):
     cleanup_fn = lambda: None
     num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
         FLAGS.dataset]
-    num_train_steps, num_eval_steps = None, None
+    num_train_steps = data_preprocessing.SYNTHETIC_BATCHES_PER_EPOCH
+    num_eval_steps = data_preprocessing.SYNTHETIC_BATCHES_PER_EPOCH
   else:
     ncf_dataset, cleanup_fn = data_preprocessing.instantiate_pipeline(
         dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,

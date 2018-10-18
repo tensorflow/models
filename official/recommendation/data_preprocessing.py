@@ -57,7 +57,7 @@ DATASET_TO_NUM_USERS_AND_ITEMS = {
 # Number of batches to run per epoch when using synthetic data. At high batch
 # sizes, we run for more batches than with real data, which is good since
 # running more batches reduces noise when measuring the average batches/second.
-_SYNTHETIC_BATCHES_PER_EPOCH = 2000
+SYNTHETIC_BATCHES_PER_EPOCH = 2000
 
 
 class NCFDataset(object):
@@ -686,8 +686,8 @@ def make_synthetic_input_fn(is_training):
       }
 
     dataset = tf.data.Dataset.from_tensors(data).repeat(
-        _SYNTHETIC_BATCHES_PER_EPOCH)
+        SYNTHETIC_BATCHES_PER_EPOCH)
     dataset = dataset.prefetch(32)
     return dataset
 
-  return input_fn, None, _SYNTHETIC_BATCHES_PER_EPOCH
+  return input_fn, None, SYNTHETIC_BATCHES_PER_EPOCH
