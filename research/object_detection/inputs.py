@@ -124,6 +124,8 @@ def transform_input_data(tensor_dict,
   if fields.InputDataFields.groundtruth_instance_masks in tensor_dict:
     masks = tensor_dict[fields.InputDataFields.groundtruth_instance_masks]
     _, resized_masks, _ = image_resizer_fn(image, masks)
+    if use_bfloat16:
+      resized_masks = tf.cast(resized_masks, tf.bfloat16)
     tensor_dict[fields.InputDataFields.
                 groundtruth_instance_masks] = resized_masks
 
