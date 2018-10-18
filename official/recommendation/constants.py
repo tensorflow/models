@@ -35,15 +35,15 @@ class Paths(object):
                                              "positive_shard_{}.pickle")
     self.train_epoch_dir = os.path.join(self.cache_root, "training_epochs")
     self.eval_data_subdir = os.path.join(self.cache_root, "eval_data")
-    self.eval_raw_file = os.path.join(self.eval_data_subdir, "raw.pickle")
-    self.eval_record_template_temp = os.path.join(self.eval_data_subdir,
-                                                  "eval_records.temp")
-    self.eval_record_template = os.path.join(
-        self.eval_data_subdir, "padded_eval_batch_size_{}.tfrecords")
+
     self.subproc_alive = os.path.join(self.cache_root, "subproc.alive")
 
 
 APPROX_PTS_PER_TRAIN_SHARD = 128000
+
+# Keys for data shards
+TRAIN_KEY = "train"
+EVAL_KEY = "eval"
 
 # In both datasets, each user has at least 20 ratings.
 MIN_NUM_RATINGS = 20
@@ -68,7 +68,9 @@ FLAGFILE_TEMP = "flagfile.temp"
 FLAGFILE = "flagfile"
 READY_FILE_TEMP = "ready.json.temp"
 READY_FILE = "ready.json"
+
 TRAIN_RECORD_TEMPLATE = "train_{}.tfrecords"
+EVAL_RECORD_TEMPLATE = "eval_{}.tfrecords"
 
 TIMEOUT_SECONDS = 3600 * 2  # If the train loop goes more than two hours without
                             # consuming an epoch of data, this is a good
