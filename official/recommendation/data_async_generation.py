@@ -275,7 +275,7 @@ def _construct_records(
       # In order to have a full batch, randomly include points from earlier in
       # the batch.
       pad_sample_indices = np.random.randint(
-        low=0, high=num_pts, size=(num_padding,))
+          low=0, high=num_pts, size=(num_padding,))
       dest = np.arange(start=start_ind, stop=start_ind + num_padding)
       start_ind += num_padding
       for i in range(3):
