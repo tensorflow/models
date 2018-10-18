@@ -1162,9 +1162,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
         }
 
     # TODO(jrru): Remove mask_predictions from _post_process_box_classifier.
-    with tf.name_scope('SecondStagePostprocessor'):
-      if (self._number_of_stages == 2 or
-          (self._number_of_stages == 3 and self._is_training)):
+    if (self._number_of_stages == 2 or
+        (self._number_of_stages == 3 and self._is_training)):
+      with tf.name_scope('SecondStagePostprocessor'):
         mask_predictions = prediction_dict.get(box_predictor.MASK_PREDICTIONS)
         detections_dict = self._postprocess_box_classifier(
             prediction_dict['refined_box_encodings'],
@@ -1173,12 +1173,53 @@ class FasterRCNNMetaArch(model.DetectionModel):
             prediction_dict['num_proposals'],
             true_image_shapes,
             mask_predictions=mask_predictions)
-        return detections_dict
+
+      if 'rpn_features_to_crop' in prediction_dict and self._initial_crop_size:
+        self._add_detection_features_output_node(
+            detections_dict[fields.DetectionResultFields.detection_boxes],
+            prediction_dict['rpn_features_to_crop'])
+
+      return detections_dict
 
     if self._number_of_stages == 3:
       # Post processing is already performed in 3rd stage. We need to transfer
       # postprocessed tensors from `prediction_dict` to `detections_dict`.
       return prediction_dict
+
+  def _add_detection_features_output_node(self, detection_boxes,
+                                          rpn_features_to_crop):
+    """Add the detection features to the output node.
+
+    The detection features are from cropping rpn_features with boxes.
+    Each bounding box has one feature vector of length depth, which comes from
+    mean_pooling of the cropped rpn_features.
+
+    Args:
+      detection_boxes: a 3-D float32 tensor of shape
+        [batch_size, max_detection, 4] which represents the bounding boxes.
+      rpn_features_to_crop: A 4-D float32 tensor with shape
+        [batch, height, width, depth] representing image features to crop using
+        the proposals boxes.
+    """
+    with tf.name_scope('SecondStageDetectionFeaturesExtract'):
+      flattened_detected_feature_maps = (
+          self._compute_second_stage_input_feature_maps(
+              rpn_features_to_crop, detection_boxes))
+      detection_features_unpooled = (
+          self._feature_extractor.extract_box_classifier_features(
+              flattened_detected_feature_maps,
+              scope=self.second_stage_feature_extractor_scope))
+
+      batch_size = tf.shape(detection_boxes)[0]
+      max_detection = tf.shape(detection_boxes)[1]
+      detection_features_pool = tf.reduce_mean(
+          detection_features_unpooled, axis=[1, 2])
+      detection_features = tf.reshape(
+          detection_features_pool,
+          [batch_size, max_detection, tf.shape(detection_features_pool)[-1]])
+
+    detection_features = tf.identity(
+        detection_features, 'detection_features')
 
   def _postprocess_rpn(self,
                        rpn_box_encodings_batch,
