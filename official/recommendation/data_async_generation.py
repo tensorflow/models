@@ -79,13 +79,8 @@ def _process_shard(args):
     seed: Random seed to be used when generating negatives.
     is_training: Generate training (True) or eval (False) data.
     match_mlperf: Match the MLPerf reference behavior
-    paddings_per_user: During training, we perform extra sampling and set it
-      aside to fill the last partial batch.
   """
-  (shard_path, num_items, num_neg, seed, is_training, match_mlperf,
-   paddings_per_user) = args
-  assert is_training or not paddings_per_user
-
+  shard_path, num_items, num_neg, seed, is_training, match_mlperf = args
   np.random.seed(seed)
 
   # The choice to store the training shards in files rather than in memory
@@ -115,8 +110,6 @@ def _process_shard(args):
   user_blocks = []
   item_blocks = []
   label_blocks = []
-  positive_fraction = 1 / (1 + num_neg)
-  pad_values = [[], [], []]
   for i in range(len(boundaries) - 1):
     assert len(set(users[boundaries[i]:boundaries[i+1]])) == 1
     current_user = users[boundaries[i]]
@@ -129,18 +122,7 @@ def _process_shard(args):
     if is_training:
       n_pos = len(positive_set)
       negatives = stat_utils.sample_with_exclusion(
-          num_items, positive_set, n_pos * num_neg + paddings_per_user,
-          replacement=True)
-      positive_set_list = list(positive_set)
-      extra_negatives = negatives[n_pos * num_neg:]
-      negatives = negatives[:n_pos * num_neg]
-
-      for j, neg in enumerate(extra_negatives):
-        # Randomly select positives to preserve the correct ratio
-        sample = ((current_user, np.random.choice(positive_set_list, 1)[0], 1)
-                  if np.random.random() < positive_fraction else
-                  (current_user, extra_negatives[j], 0))
-        [pad_values[k].append(sample[k]) for k in range(3)]
+          num_items, positive_set, n_pos * num_neg, replacement=True)
 
     else:
       if not match_mlperf:
@@ -153,14 +135,14 @@ def _process_shard(args):
 
       negatives = stat_utils.sample_with_exclusion(
           num_items, positive_set, num_neg, replacement=match_mlperf)
-      positive_set_list = [test_positive_dict[current_user]]
-      n_pos = len(positive_set_list)
+      positive_set = [test_positive_dict[current_user]]
+      n_pos = len(positive_set)
       assert n_pos == 1
 
     user_blocks.append(current_user * np.ones(
         (n_pos * (1 + num_neg),), dtype=np.int32))
-    item_blocks.append(np.array(
-        list(positive_set_list) + negatives, dtype=np.uint16))
+    item_blocks.append(
+        np.array(list(positive_set) + negatives, dtype=np.uint16))
     labels_for_user = np.zeros((n_pos * (1 + num_neg),), dtype=np.int8)
     labels_for_user[:n_pos] = 1
     label_blocks.append(labels_for_user)
@@ -170,7 +152,7 @@ def _process_shard(args):
   labels_out = np.concatenate(label_blocks)
 
   assert users_out.shape == items_out.shape == labels_out.shape
-  return users_out, items_out, labels_out, pad_values
+  return users_out, items_out, labels_out
 
 
 def _construct_record(users, items, labels=None, dupe_mask=None):
@@ -210,7 +192,6 @@ def _construct_records(
     num_neg,              # type: int
     num_positives,        # type: int
     num_items,            # type: int
-    num_users,            # type: int
     epochs_per_cycle,     # type: int
     batch_size,           # type: int
     training_shards,      # type: typing.List[str]
@@ -231,7 +212,6 @@ def _construct_records(
       to pre-allocate arrays while the imap is still running. (NumPy does not
       allow dynamic arrays.)
     num_items: The cardinality of the item set.
-    num_users: The cardinality of the user set.
     epochs_per_cycle: The number of epochs worth of data to construct.
     batch_size: The expected batch size used during training. This is used
       to properly batch data when writing TFRecords.
@@ -255,19 +235,14 @@ def _construct_records(
   num_pts_with_padding = (num_pts + batch_size - 1) // batch_size * batch_size
   num_padding = num_pts_with_padding - num_pts
 
-  paddings_per_user = ((num_padding + num_users - 1) // num_users if is_training
-                       else 0)
-
   # We choose a different random seed for each process, so that the processes
   # will not all choose the same random numbers.
   process_seeds = [stat_utils.random_int32()
                    for _ in training_shards * epochs_per_cycle]
   map_args = [
-      (shard, num_items, num_neg, process_seeds[i], is_training, match_mlperf,
-       paddings_per_user)
+      (shard, num_items, num_neg, process_seeds[i], is_training, match_mlperf)
       for i, shard in enumerate(training_shards * epochs_per_cycle)]
 
-  pad_values = [[], [], []]
   with popen_helper.get_pool(num_workers, init_worker) as pool:
     map_fn = pool.imap if deterministic else pool.imap_unordered  # pylint: disable=no-member
     data_generator = map_fn(_process_shard, map_args)
@@ -293,25 +268,18 @@ def _construct_records(
       for i in range(3):
         data[i][dest] = data_segment[i]
 
-      [pad_values[k].extend(data_segment[3][k]) for k in range(3)]
-
   assert np.sum(data[0] == -1) == num_padding
-  assert len(pad_values[0]) == len(pad_values[1]) == len(pad_values[2])
-
-  if is_training:
-    assert len(pad_values[0]) >= num_padding
-  else:
-    assert not pad_values[0]
 
   if is_training:
     if num_padding:
       # In order to have a full batch, randomly include points from earlier in
       # the batch.
-      pad_sample_indices = np.random.permutation(len(pad_values[0]))[:num_padding]
+      pad_sample_indices = np.random.randint(
+        low=0, high=num_pts, size=(num_padding,))
       dest = np.arange(start=start_ind, stop=start_ind + num_padding)
       start_ind += num_padding
       for i in range(3):
-        data[i][dest] = np.array(pad_values[i])[pad_sample_indices]
+        data[i][dest] = data[i][pad_sample_indices]
   else:
     # For Evaluation, padding is all zeros. The evaluation input_fn knows how
     # to interpret and discard the zero padded entries.
@@ -429,7 +397,7 @@ def _generation_loop(num_workers,           # type: int
 
   shared_kwargs = dict(
       num_workers=multiprocessing.cpu_count(), cache_paths=cache_paths,
-      num_readers=num_readers, num_items=num_items, num_users=num_users,
+      num_readers=num_readers, num_items=num_items,
       training_shards=training_shards, deterministic=deterministic,
       match_mlperf=match_mlperf
   )
