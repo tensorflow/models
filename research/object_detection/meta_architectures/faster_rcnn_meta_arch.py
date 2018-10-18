@@ -1999,25 +1999,28 @@ class FasterRCNNMetaArch(model.DetectionModel):
             tf.expand_dims(flat_gt_masks, -1),
             tf.expand_dims(flat_normalized_proposals, axis=1),
             [mask_height, mask_width])
+        # Without stopping gradients into cropped groundtruth masks the
+        # performance with 100-padded groundtruth masks when batch size > 1 is
+        # about 4% worse.
+        # TODO(rathodv): Investigate this since we don't expect any variables
+        # upstream of flat_cropped_gt_mask.
+        flat_cropped_gt_mask = tf.stop_gradient(flat_cropped_gt_mask)
 
         batch_cropped_gt_mask = tf.reshape(
             flat_cropped_gt_mask,
             [batch_size, -1, mask_height * mask_width])
 
-        second_stage_mask_losses = ops.reduce_sum_trailing_dimensions(
-            self._second_stage_mask_loss(
-                reshaped_prediction_masks,
-                batch_cropped_gt_mask,
-                weights=batch_mask_target_weights,
-                losses_mask=losses_mask),
-            ndims=2) / (
-                mask_height * mask_width * tf.maximum(
-                    tf.reduce_sum(
-                        batch_mask_target_weights, axis=1, keep_dims=True
-                    ), tf.ones((batch_size, 1))))
-        second_stage_mask_loss = tf.reduce_sum(
-            tf.where(paddings_indicator, second_stage_mask_losses,
-                     tf.zeros_like(second_stage_mask_losses)))
+        mask_losses_weights = (
+            batch_mask_target_weights * tf.to_float(paddings_indicator))
+        mask_losses = self._second_stage_mask_loss(
+            reshaped_prediction_masks,
+            batch_cropped_gt_mask,
+            weights=mask_losses_weights,
+            losses_mask=losses_mask)
+        total_mask_loss = tf.reduce_sum(mask_losses)
+        normalizer = tf.maximum(
+            tf.reduce_sum(mask_losses_weights * mask_height * mask_width), 1.0)
+        second_stage_mask_loss = total_mask_loss / normalizer
 
       if second_stage_mask_loss is not None:
         mask_loss = tf.multiply(self._second_stage_mask_loss_weight,
