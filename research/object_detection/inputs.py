@@ -161,6 +161,9 @@ def transform_input_data(tensor_dict,
     tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
     tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
         merged_confidences)
+  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
+    tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
+        tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
 
   return tensor_dict
 
