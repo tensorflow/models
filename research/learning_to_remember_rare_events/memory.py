@@ -204,8 +204,8 @@ class Memory(object):
         teacher_hint_idxs[:, 0] + choose_k * tf.range(batch_size))
 
     # zero-out teacher_vals if there are no hints
-    teacher_vals *= (
-        1 - tf.to_float(tf.equal(0.0, tf.reduce_sum(teacher_hints, 1))))
+    teacher_vals *= tf.expand_dims(
+        1 - tf.to_float(tf.equal(0.0, tf.reduce_sum(teacher_hints, 1))), 1)
 
     # we'll determine whether to do an update to memory based on whether
     # memory was queried correctly
