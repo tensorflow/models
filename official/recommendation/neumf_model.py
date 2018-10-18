@@ -349,7 +349,7 @@ def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
 def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
                            duplicate_mask,      # type: tf.Tensor
                            match_mlperf=False   # type: bool
-                           ):
+                          ):
   """Compute inputs of metric calculation.
 
   Args:
