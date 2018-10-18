@@ -17,6 +17,7 @@
 import os
 import tempfile
 import tensorflow as tf
+from tensorflow.contrib.quantize.python import graph_matcher
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.client import session
 from tensorflow.python.platform import gfile
@@ -32,6 +33,51 @@ from object_detection.utils import config_util
 slim = tf.contrib.slim
 
 freeze_graph_with_def_protos = freeze_graph.freeze_graph_with_def_protos
+
+
+def rewrite_nn_resize_op(is_quantized=False):
+  """Replaces a custom nearest-neighbor resize op with the Tensorflow version.
+
+  Some graphs use this custom version for TPU-compatibility.
+
+  Args:
+    is_quantized: True if the default graph is quantized.
+  """
+  input_pattern = graph_matcher.OpTypePattern(
+      'FakeQuantWithMinMaxVars' if is_quantized else '*')
+  reshape_1_pattern = graph_matcher.OpTypePattern(
+      'Reshape', inputs=[input_pattern, 'Const'], ordered_inputs=False)
+  mul_pattern = graph_matcher.OpTypePattern(
+      'Mul', inputs=[reshape_1_pattern, 'Const'], ordered_inputs=False)
+  # The quantization script may or may not insert a fake quant op after the
+  # Mul. In either case, these min/max vars are not needed once replaced with
+  # the TF version of NN resize.
+  fake_quant_pattern = graph_matcher.OpTypePattern(
+      'FakeQuantWithMinMaxVars',
+      inputs=[mul_pattern, 'Identity', 'Identity'],
+      ordered_inputs=False)
+  reshape_2_pattern = graph_matcher.OpTypePattern(
+      'Reshape',
+      inputs=[graph_matcher.OneofPattern([fake_quant_pattern, mul_pattern]),
+              'Const'],
+      ordered_inputs=False)
+  add_pattern = graph_matcher.OpTypePattern(
+      'Add', inputs=[reshape_2_pattern, '*'], ordered_inputs=False)
+
+  matcher = graph_matcher.GraphMatcher(add_pattern)
+  for match in matcher.match_graph(tf.get_default_graph()):
+    projection_op = match.get_op(input_pattern)
+    reshape_2_op = match.get_op(reshape_2_pattern)
+    add_op = match.get_op(add_pattern)
+    nn_resize = tf.image.resize_nearest_neighbor(
+        projection_op.outputs[0],
+        add_op.outputs[0].shape.dims[1:3],
+        align_corners=False)
+
+    for index, op_input in enumerate(add_op.inputs):
+      if op_input == reshape_2_op.outputs[0]:
+        add_op._update_input(index, nn_resize)  # pylint: disable=protected-access
+        break
 
 
 def replace_variable_values_with_moving_averages(graph,
