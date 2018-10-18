@@ -308,6 +308,12 @@ def _construct_records(
     batches_by_file[current_file_id].append(current_batch_id)
 
   if is_training:
+    # Empirically it is observed that placing the batch with repeated values at
+    # the start rather than the end improves convergence.
+    batches_by_file[0][0], batches_by_file[-1][-1] = \
+      batches_by_file[-1][-1], batches_by_file[0][0]
+
+  if is_training:
     template = rconst.TRAIN_RECORD_TEMPLATE
     record_dir = os.path.join(cache_paths.train_epoch_dir,
                               get_cycle_folder_name(train_cycle))

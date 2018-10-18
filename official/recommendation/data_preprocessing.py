@@ -381,17 +381,20 @@ def _shutdown(proc):
 
   tf.logging.info("Shutting down train data creation subprocess.")
   try:
-    proc.send_signal(signal.SIGINT)
+    try:
+      proc.send_signal(signal.SIGINT)
+      time.sleep(5)
+      if proc.returncode is not None:
+        return  # SIGINT was handled successfully within 5 seconds
+
+    except socket.error:
+      pass
+
+    # Otherwise another second of grace period and then force kill the process.
     time.sleep(1)
-    if proc.returncode is not None:
-      return  # SIGINT was handled successfully within 1 sec
-
-  except socket.error:
-    pass
-
-  # Otherwise another second of grace period and then forcibly kill the process.
-  time.sleep(1)
-  proc.terminate()
+    proc.terminate()
+  except:  # pylint: disable=broad-except
+    tf.logging.error("Data generation subprocess could not be killed.")
 
 
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
