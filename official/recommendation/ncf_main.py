@@ -259,8 +259,8 @@ def run_ncf(_):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
                             value=cycle_index)
     eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
-    hr = eval_results[rconst.HR_KEY]
-    ndcg = eval_results[rconst.NDCG_KEY]
+    hr = float(eval_results[rconst.HR_KEY])
+    ndcg = float(eval_results[rconst.NDCG_KEY])
     tf.logging.info("Evaluation complete.")
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_TARGET,
