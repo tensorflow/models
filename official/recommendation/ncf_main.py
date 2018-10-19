@@ -118,6 +118,7 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
 
 def main(_):
   with logger.benchmark_context(FLAGS), mlperf_helper.LOGGER(FLAGS.ml_perf):
+    mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
     run_ncf(FLAGS)
 
 

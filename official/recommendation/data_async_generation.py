@@ -543,6 +543,7 @@ def main(_):
       np.random.seed(flags.FLAGS.seed)
 
     with mlperf_helper.LOGGER(enable=flags.FLAGS.ml_perf):
+      mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
       _generation_loop(
           num_workers=flags.FLAGS.num_workers,
           cache_paths=cache_paths,

@@ -62,7 +62,7 @@ do
                      --hr_threshold 0.635 \
                      --ml_perf \
  |& tee ${RUN_LOG} \
- | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)|(:::MLP)"
+ | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)|(^:::MLP)"
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."

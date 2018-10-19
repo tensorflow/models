@@ -28,7 +28,7 @@ import subprocess
 
 import tensorflow as tf
 
-_MIN_VERSION = (0, 0, 4)
+_MIN_VERSION = (0, 0, 5)
 _STACK_OFFSET = 2
 
 
@@ -42,7 +42,7 @@ def get_mlperf_log():
     if _version < _MIN_VERSION:
       tf.logging.warning(
           "mlperf_compliance is version {}, must be at least version {}".format(
-              ".".join([str(i) for i in VERSION]),
+              ".".join([str(i) for i in _version]),
               ".".join([str(i) for i in _MIN_VERSION])))
       raise ImportError
 
@@ -97,9 +97,14 @@ class Logger(object):
     self._mlperf_log.ncf_print(key=key, value=value, stack_offset=stack_offset,
                                deferred=deferred, extra_print=extra_print)
 
+  def set_ncf_root(self, path):
+    if self._mlperf_log is None:
+      return
+    self._mlperf_log.ROOT_DIR_NCF = path
+
 
 LOGGER = Logger()
-ncf_print = LOGGER.ncf_print
+ncf_print, set_ncf_root = LOGGER.ncf_print, LOGGER.set_ncf_root
 TAGS = LOGGER.tags
 
 
