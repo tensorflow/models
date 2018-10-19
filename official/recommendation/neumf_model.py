@@ -42,6 +42,7 @@ import tensorflow as tf
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
+from tensorflow.contrib.compiler import xla
 
 
 def _sparse_to_dense_grads(grads_and_vars):
@@ -132,6 +133,9 @@ def neumf_model_fn(features, labels, mode, params):
 
   else:
     raise NotImplementedError
+
+
+xla_neumf_model_fn = xla.estimator_model_fn(neumf_model_fn)
 
 
 def construct_model(users, items, params):

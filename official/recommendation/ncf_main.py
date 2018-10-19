@@ -105,10 +105,24 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
   distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
   run_config = tf.estimator.RunConfig(train_distribute=distribution)
   params["eval_batch_size"] = eval_batch_size
-  estimator = tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
-                                     model_dir=model_dir, config=run_config,
-                                     params=params)
-  return estimator, estimator
+  if params["use_xla_for_gpu"]:
+    tf.logging.info("Using xla.compile to compile neumf model function")
+    train_model_fn = neumf_model.xla_neumf_model_fn
+  else:
+    train_model_fn = neumf_model.neumf_model_fn
+  # Currently, we only use XLA with the training model function, because
+  # xla.compile does not support using eval_metric_ops.
+  eval_model_fn = neumf_model.neumf_model_fn
+  train_estimator = tf.estimator.Estimator(model_fn=train_model_fn,
+                                           model_dir=model_dir,
+                                           config=run_config, params=params)
+  if eval_model_fn is train_model_fn:
+    eval_estimator = train_estimator
+  else:
+    eval_estimator = tf.estimator.Estimator(model_fn=eval_model_fn,
+                                            model_dir=model_dir,
+                                            config=run_config, params=params)
+  return train_estimator, eval_estimator
 
 
 def main(_):
@@ -187,6 +201,7 @@ def run_ncf(_):
           "beta2": FLAGS.beta2,
           "epsilon": FLAGS.epsilon,
           "match_mlperf": FLAGS.ml_perf,
+          "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
       }, batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
 
   # Create hooks that log information about the training and metric values
@@ -408,6 +423,13 @@ def define_ncf_flags():
       "needed to synchronize across multiple workers. Generally this flag will "
       "not need to be set."
   ))
+
+  flags.DEFINE_bool(
+      name="use_xla_for_gpu", default=True, help=flags_core.help_wrap(
+          "If True, use XLA for the model function. Only works when using a "
+          "GPU. On TPUs, XLA is always used"))
+
+  flags.mark_flags_as_mutual_exclusive(["use_xla_for_gpu", "tpu"])
 
 
 if __name__ == "__main__":
