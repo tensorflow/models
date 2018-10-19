@@ -46,6 +46,7 @@ from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
 from official.recommendation import popen_helper
+from official.utils.logs import mlperf_helper
 
 
 DATASET_TO_NUM_USERS_AND_ITEMS = {
@@ -134,6 +135,9 @@ def _filter_index_sort(raw_rating_path, match_mlperf):
   original_users = df[movielens.USER_COLUMN].unique()
   original_items = df[movielens.ITEM_COLUMN].unique()
 
+  mlperf_helper.ncf_print(
+    key=mlperf_helper.TAGS.PREPROC_HP_MIN_RATINGS, value=rconst.MIN_NUM_RATINGS)
+
   # Map the ids of user and item to 0 based index for following processing
   tf.logging.info("Generating user_map and item_map...")
   user_map = {user: index for index, user in enumerate(original_users)}
@@ -146,6 +150,12 @@ def _filter_index_sort(raw_rating_path, match_mlperf):
 
   num_users = len(original_users)
   num_items = len(original_items)
+
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_NUM_EVAL,
+                          value=num_users * (1 + rconst.NUM_EVAL_NEGATIVES))
+  mlperf_helper.ncf_print(
+      key=mlperf_helper.TAGS.PREPROC_HP_SAMPLE_EVAL_REPLACEMENT,
+      value=match_mlperf)
 
   assert num_users <= np.iinfo(np.int32).max
   assert num_items <= np.iinfo(np.uint16).max
@@ -433,6 +443,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
 
   if ncf_dataset.deterministic:
     flags_["seed"] = stat_utils.random_int32()
+
   tf.gfile.MakeDirs(data_dir)
   # We write to a temp file then atomically rename it to the final file,
   # because writing directly to the final file can cause the data generation
@@ -449,6 +460,12 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   tf.logging.info(
       "Wrote flagfile for async data generation in {}."
       .format(flagfile))
+
+
+  # The async process performs the run specific random calls, therefore the
+  # clock is started before instantiating the subprocess.
+  mlperf_helper.clear_system_caches()
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_START)
 
   if use_subprocess:
     tf.logging.info("Creating training file subprocess.")

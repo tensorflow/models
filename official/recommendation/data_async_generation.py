@@ -44,6 +44,7 @@ from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
 from official.recommendation import popen_helper
+from official.utils.logs import mlperf_helper
 
 
 _log_file = None
@@ -222,10 +223,24 @@ def _construct_records(
   """
   st = timeit.default_timer()
 
-  if not is_training:
+  if is_training:
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_STEP_TRAIN_NEG_GEN)
+    mlperf_helper.ncf_print(
+        key=mlperf_helper.TAGS.INPUT_HP_NUM_NEG, value=num_neg)
+
+    # set inside _process_shard()
+    mlperf_helper.ncf_print(
+        key=mlperf_helper.TAGS.INPUT_HP_SAMPLE_TRAIN_REPLACEMENT, value=True)
+
+  else:
     # Later logic assumes that all items for a given user are in the same batch.
     assert not batch_size % (rconst.NUM_EVAL_NEGATIVES + 1)
     assert num_neg == rconst.NUM_EVAL_NEGATIVES
+
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_STEP_EVAL_NEG_GEN)
+
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_HP_NUM_USERS,
+                            value=num_positives)
 
   assert epochs_per_cycle == 1 or is_training
   num_workers = min([num_workers, len(training_shards) * epochs_per_cycle])
@@ -259,6 +274,7 @@ def _construct_records(
     # user is grouped within a batch.
     if is_training:
       index_destinations = np.random.permutation(num_pts)
+      mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_ORDER)
     else:
       index_destinations = np.arange(num_pts)
 
@@ -276,6 +292,8 @@ def _construct_records(
     if num_padding:
       # In order to have a full batch, randomly include points from earlier in
       # the batch.
+
+      mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_ORDER)
       pad_sample_indices = np.random.randint(
           low=0, high=num_pts, size=(num_padding,))
       dest = np.arange(start=start_ind, stop=start_ind + num_padding)
@@ -287,9 +305,19 @@ def _construct_records(
     # to interpret and discard the zero padded entries.
     data[0][num_pts:] = 0
 
-    # Check that no points were overlooked.
-
+  # Check that no points were overlooked.
   assert not np.sum(data[0] == -1)
+
+  if is_training:
+    # The number of points is slightly larger than num_pts due to padding.
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_SIZE,
+                            value=int(data[0].shape[0]))
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_BATCH_SIZE,
+                            value=batch_size)
+  else:
+    # num_pts is logged instead of int(data[0].shape[0]), because the size
+    # of the data vector includes zero pads which are ignored.
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_SIZE, value=num_pts)
 
   batches_per_file = np.ceil(num_pts_with_padding / batch_size / num_readers)
   current_file_id = -1
@@ -316,6 +344,7 @@ def _construct_records(
   if is_training:
     # Empirically it is observed that placing the batch with repeated values at
     # the start rather than the end improves convergence.
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_ORDER)
     batches_by_file[0][0], batches_by_file[-1][-1] = \
       batches_by_file[-1][-1], batches_by_file[0][0]
 
@@ -513,20 +542,21 @@ def main(_):
     if flags.FLAGS.seed is not None:
       np.random.seed(flags.FLAGS.seed)
 
-    _generation_loop(
-        num_workers=flags.FLAGS.num_workers,
-        cache_paths=cache_paths,
-        num_readers=flags.FLAGS.num_readers,
-        num_neg=flags.FLAGS.num_neg,
-        num_train_positives=flags.FLAGS.num_train_positives,
-        num_items=flags.FLAGS.num_items,
-        num_users=flags.FLAGS.num_users,
-        epochs_per_cycle=flags.FLAGS.epochs_per_cycle,
-        train_batch_size=flags.FLAGS.train_batch_size,
-        eval_batch_size=flags.FLAGS.eval_batch_size,
-        deterministic=flags.FLAGS.seed is not None,
-        match_mlperf=flags.FLAGS.ml_perf,
-    )
+    with mlperf_helper.LOGGER(enable=flags.FLAGS.ml_perf):
+      _generation_loop(
+          num_workers=flags.FLAGS.num_workers,
+          cache_paths=cache_paths,
+          num_readers=flags.FLAGS.num_readers,
+          num_neg=flags.FLAGS.num_neg,
+          num_train_positives=flags.FLAGS.num_train_positives,
+          num_items=flags.FLAGS.num_items,
+          num_users=flags.FLAGS.num_users,
+          epochs_per_cycle=flags.FLAGS.epochs_per_cycle,
+          train_batch_size=flags.FLAGS.train_batch_size,
+          eval_batch_size=flags.FLAGS.eval_batch_size,
+          deterministic=flags.FLAGS.seed is not None,
+          match_mlperf=flags.FLAGS.ml_perf,
+      )
   except KeyboardInterrupt:
     log_msg("KeyboardInterrupt registered.")
   except:

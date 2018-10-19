@@ -24,6 +24,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import subprocess
+
 import tensorflow as tf
 
 _MIN_VERSION = (0, 0, 4)
@@ -55,13 +57,13 @@ def get_mlperf_log():
 class Logger(object):
   class Tags(object):
     def __init__(self, mlperf_log):
-      self.enabled = False
-      self.mlperf_log = mlperf_log
+      self._enabled = False
+      self._mlperf_log = mlperf_log
 
     def __getattr__(self, item):
-      if self.mlperf_log is None:
+      if self._mlperf_log is None:
         return
-      return getattr(self.mlperf_log, item)
+      return getattr(self._mlperf_log, item)
 
   def __init__(self):
     self._enabled = False
@@ -69,8 +71,12 @@ class Logger(object):
     self.tags = self.Tags(self._mlperf_log)
 
   def __call__(self, enable=False):
+    if enable and self._mlperf_log is None:
+      raise ImportError("MLPerf logging was requested, but mlperf_compliance "
+                        "module could not be loaded.")
+
     self._enabled = enable
-    self.tags.enabled = enable
+    self.tags._enabled = enable
     return self
 
   def __enter__(self):
@@ -78,7 +84,7 @@ class Logger(object):
 
   def __exit__(self, exc_type, exc_val, exc_tb):
     self._enabled = False
-    self.tags.enabled = False
+    self.tags._enabled = False
 
   @property
   def enabled(self):
@@ -93,6 +99,18 @@ class Logger(object):
 
 
 LOGGER = Logger()
+ncf_print = LOGGER.ncf_print
+TAGS = LOGGER.tags
+
+
+def clear_system_caches():
+  if not LOGGER.enabled:
+    return
+  ret_code = subprocess.call(
+      ["sync && echo 3 | sudo tee /proc/sys/vm/drop_caches"], shell=True)
+
+  if ret_code:
+    raise ValueError("Failed to clear caches")
 
 
 if __name__ == "__main__":

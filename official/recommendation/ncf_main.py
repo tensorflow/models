@@ -45,6 +45,7 @@ from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
+from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
@@ -116,7 +117,7 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
 
 
 def main(_):
-  with logger.benchmark_context(FLAGS):
+  with logger.benchmark_context(FLAGS), mlperf_helper.LOGGER(FLAGS.ml_perf):
     run_ncf(FLAGS)
 
 
@@ -218,9 +219,15 @@ def run_ncf(_):
 
   pred_input_fn = None
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
+  target_reached = False
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.TRAIN_LOOP)
   for cycle_index in range(total_training_cycle):
+    assert FLAGS.epochs_between_evals == 1 or not mlperf_helper.LOGGER.enabled
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
+
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.TRAIN_EPOCH,
+                            value=cycle_index)
 
     # Train the model
     train_input_fn, train_record_dir, batch_count = \
@@ -248,26 +255,45 @@ def run_ncf(_):
             "producing incorrect shards.".format(
                 eval_batch_count, num_eval_steps))
 
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
+                            value=cycle_index)
     eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
+    hr = eval_results[rconst.HR_KEY]
+    ndcg = eval_results[rconst.NDCG_KEY]
     tf.logging.info("Evaluation complete.")
+
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_TARGET,
+                            value=FLAGS.hr_threshold)
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_ACCURACY, value=hr)
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS,
+                            value=rconst.NUM_EVAL_NEGATIVES)
+
+    # Logged by the async process during record creation.
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_HP_NUM_USERS,
+                            deferred=True)
+
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP)
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)
     # Log the HR and NDCG results.
-    hr = eval_results[rconst.HR_KEY]
-    ndcg = eval_results[rconst.NDCG_KEY]
     tf.logging.info(
         "Iteration {}: HR = {:.4f}, NDCG = {:.4f}".format(
             cycle_index + 1, hr, ndcg))
 
     # If some evaluation threshold is met
     if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
+      target_reached = True
       break
 
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_STOP,
+                                 value={"success": target_reached})
   cleanup_fn()  # Cleanup data construction artifacts and subprocess.
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
+
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_FINAL)
 
 
 def define_ncf_flags():
