@@ -66,5 +66,5 @@ class PhaseFoldAndSortLightCurveTest(absltest.TestCase):
     np.testing.assert_almost_equal(folded_flux, expected_flux)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   absltest.main()

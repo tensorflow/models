@@ -158,8 +158,9 @@ def parse_record(raw_record, is_training, dtype):
   return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
-             dtype=tf.float32):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1,
+             dtype=tf.float32, datasets_num_private_threads=None,
+             num_parallel_batches=1):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -167,8 +168,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
-    num_gpus: The number of gpus used for training.
     dtype: Data type to use for images/features
+    datasets_num_private_threads: Number of private threads for tf.data.
+    num_parallel_batches: Number of parallel batches for tf.data.
 
   Returns:
     A dataset that can be used for iteration.
@@ -195,9 +197,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
       shuffle_buffer=_SHUFFLE_BUFFER,
       parse_record_fn=parse_record,
       num_epochs=num_epochs,
-      num_gpus=num_gpus,
-      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
-      dtype=dtype
+      dtype=dtype,
+      datasets_num_private_threads=datasets_num_private_threads,
+      num_parallel_batches=num_parallel_batches
   )
 
 

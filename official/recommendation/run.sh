@@ -48,7 +48,7 @@ do
   # And to confirm that the pipeline is deterministic pass the flag:
   #   --hash_pipeline
   #
-  # (`--hash_pipeline` will slow down training)
+  # (`--hash_pipeline` will slow down training, though not as much as one might imagine.)
   python ncf_main.py --model_dir ${MODEL_DIR} \
                      --data_dir ${DATA_DIR} \
                      --dataset ${DATASET} --hooks "" \
@@ -61,8 +61,8 @@ do
                      --layers 256,256,128,64 --num_factors 64 \
                      --hr_threshold 0.635 \
                      --ml_perf \
-  |& tee ${RUN_LOG} \
-  | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)"
+ |& tee ${RUN_LOG} \
+ | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)"
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."

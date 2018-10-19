@@ -142,7 +142,8 @@ def run_ncf(_):
     cleanup_fn = lambda: None
     num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
         FLAGS.dataset]
-    approx_train_steps = None
+    num_train_steps = data_preprocessing.SYNTHETIC_BATCHES_PER_EPOCH
+    num_eval_steps = data_preprocessing.SYNTHETIC_BATCHES_PER_EPOCH
   else:
     ncf_dataset, cleanup_fn = data_preprocessing.instantiate_pipeline(
         dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
@@ -151,11 +152,16 @@ def run_ncf(_):
         num_neg=FLAGS.num_neg,
         epochs_per_cycle=FLAGS.epochs_between_evals,
         match_mlperf=FLAGS.ml_perf,
-        deterministic=FLAGS.seed is not None)
+        deterministic=FLAGS.seed is not None,
+        use_subprocess=FLAGS.use_subprocess,
+        cache_id=FLAGS.cache_id)
     num_users = ncf_dataset.num_users
     num_items = ncf_dataset.num_items
-    approx_train_steps = int(ncf_dataset.num_train_positives
-                             * (1 + FLAGS.num_neg) // FLAGS.batch_size)
+    num_train_steps = int(np.ceil(
+        FLAGS.epochs_between_evals * ncf_dataset.num_train_positives *
+        (1 + FLAGS.num_neg) / FLAGS.batch_size))
+    num_eval_steps = int(np.ceil((1 + rconst.NUM_EVAL_NEGATIVES) *
+                                 ncf_dataset.num_users / eval_batch_size))
 
   model_helpers.apply_clean(flags.FLAGS)
 
@@ -204,8 +210,8 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
-  pred_input_fn = data_preprocessing.make_pred_input_fn(ncf_dataset=ncf_dataset)
 
+  pred_input_fn = None
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
@@ -213,20 +219,31 @@ def run_ncf(_):
 
     # Train the model
     train_input_fn, train_record_dir, batch_count = \
-      data_preprocessing.make_train_input_fn(ncf_dataset=ncf_dataset)
+      data_preprocessing.make_input_fn(
+          ncf_dataset=ncf_dataset, is_training=True)
 
-    if approx_train_steps and np.abs(approx_train_steps - batch_count) > 1:
-      tf.logging.warning(
-          "Estimated ({}) and reported ({}) number of batches differ by more "
-          "than one".format(approx_train_steps, batch_count))
+    if batch_count != num_train_steps:
+      raise ValueError(
+          "Step counts do not match. ({} vs. {}) The async process is "
+          "producing incorrect shards.".format(batch_count, num_train_steps))
 
     train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
-                          steps=batch_count)
+                          steps=num_train_steps)
     if train_record_dir:
       tf.gfile.DeleteRecursively(train_record_dir)
 
     tf.logging.info("Beginning evaluation.")
-    eval_results = eval_estimator.evaluate(pred_input_fn)
+    if pred_input_fn is None:
+      pred_input_fn, _, eval_batch_count = data_preprocessing.make_input_fn(
+          ncf_dataset=ncf_dataset, is_training=False)
+
+      if eval_batch_count != num_eval_steps:
+        raise ValueError(
+            "Step counts do not match. ({} vs. {}) The async process is "
+            "producing incorrect shards.".format(
+                eval_batch_count, num_eval_steps))
+
+    eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
     tf.logging.info("Evaluation complete.")
 
     # Benchmark the evaluation results
@@ -379,6 +396,18 @@ def define_ncf_flags():
   def eval_size_check(eval_batch_size):
     return (eval_batch_size is None or
             int(eval_batch_size) > rconst.NUM_EVAL_NEGATIVES)
+
+  flags.DEFINE_bool(
+      name="use_subprocess", default=True, help=flags_core.help_wrap(
+          "By default, ncf_main.py starts async data generation process as a "
+          "subprocess. If set to False, ncf_main.py will assume the async data "
+          "generation process has already been started by the user."))
+
+  flags.DEFINE_integer(name="cache_id", default=None, help=flags_core.help_wrap(
+      "Use a specified cache_id rather than using a timestamp. This is only "
+      "needed to synchronize across multiple workers. Generally this flag will "
+      "not need to be set."
+  ))
 
 
 if __name__ == "__main__":

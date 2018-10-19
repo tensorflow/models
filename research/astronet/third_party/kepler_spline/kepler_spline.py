@@ -37,9 +37,9 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
     flux: Numpy array; the flux (brightness) values of the light curve.
     bkspace: Spline break point spacing in time units.
     maxiter: Maximum number of attempts to fit the spline after removing badly
-        fit points.
+      fit points.
     outlier_cut: The maximum number of standard deviations from the median
-        spline residual before a point is considered an outlier.
+      spline residual before a point is considered an outlier.
 
   Returns:
     spline: The values of the fitted spline corresponding to the input time
@@ -54,7 +54,8 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
   """
   if len(time) < 4:
     raise InsufficientPointsError(
-        "Cannot fit a spline on less than 4 points. Got %d points." % len(time))
+        "Cannot fit a spline on less than 4 points. Got {} points.".format(
+            len(time)))
 
   # Rescale time into [0, 1].
   t_min = np.min(time)
@@ -91,7 +92,7 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
       # and we consider this a fatal error.
       raise InsufficientPointsError(
           "Cannot fit a spline on less than 4 points. After removing "
-          "outliers, got %d points." % np.sum(mask))
+          "outliers, got {} points.".format(np.sum(mask)))
 
     try:
       with warnings.catch_warnings():
@@ -106,9 +107,9 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
       spline = curve.value(time)[0]
     except (IndexError, TypeError) as e:
       raise SplineError(
-          "Fitting spline failed with error: '%s'. This might be caused by the "
+          "Fitting spline failed with error: '{}'. This might be caused by the "
           "breakpoint spacing being too small, and/or there being insufficient "
-          "points to fit the spline in one of the intervals." % e)
+          "points to fit the spline in one of the intervals.".format(e))
 
   return spline, mask
 
@@ -118,15 +119,15 @@ class SplineMetadata(object):
 
   Attributes:
     light_curve_mask: List of boolean numpy arrays indicating which points in
-        the light curve were used to fit the best-fit spline.
+      the light curve were used to fit the best-fit spline.
     bkspace: The break-point spacing used for the best-fit spline.
     bad_bkspaces: List of break-point spacing values that failed.
     likelihood_term: The likelihood term of the Bayesian Information Criterion;
-        -2*ln(L), where L is the likelihood of the data given the model.
-    penalty_term: The penalty term for the number of parameters in the
-        Bayesian Information Criterion.
+      -2*ln(L), where L is the likelihood of the data given the model.
+    penalty_term: The penalty term for the number of parameters in the Bayesian
+      Information Criterion.
     bic: The value of the Bayesian Information Criterion; equal to
-        likelihood_term + penalty_coeff * penalty_term.
+      likelihood_term + penalty_coeff * penalty_term.
   """
 
   def __init__(self):
@@ -162,14 +163,13 @@ def choose_kepler_spline(all_time,
     all_flux: List of 1D numpy arrays; the flux values of the light curve.
     bkspaces: List of break-point spacings to try.
     maxiter: Maximum number of attempts to fit each spline after removing badly
-        fit points.
+      fit points.
     penalty_coeff: Coefficient of the penalty term for using more parameters in
-        the Bayesian Information Criterion. Decreasing this value will allow
-        more parameters to be used (i.e. smaller break-point spacing), and
-        vice-versa.
+      the Bayesian Information Criterion. Decreasing this value will allow more
+      parameters to be used (i.e. smaller break-point spacing), and vice-versa.
     verbose: Whether to log individual spline errors. Note that if bkspaces
-        contains many values (particularly small ones) then this may cause
-        logging pollution if calling this function for many light curves.
+      contains many values (particularly small ones) then this may cause logging
+      pollution if calling this function for many light curves.
 
   Returns:
     spline: List of numpy arrays; values of the best-fit spline corresponding to
@@ -227,7 +227,7 @@ def choose_kepler_spline(all_time,
         # It's expected to get a SplineError occasionally for small values of
         # bkspace. Skip this bkspace.
         if verbose:
-          warnings.warn("Bad bkspace %.4f: %s" % (bkspace, e))
+          warnings.warn("Bad bkspace {}: {}".format(bkspace, e))
         metadata.bad_bkspaces.append(bkspace)
         bad_bkspace = True
         break
@@ -294,14 +294,13 @@ def fit_kepler_spline(all_time,
     bkspace_max: Maximum breakpoint spacing to try.
     bkspace_num: Number of breakpoint spacings to try.
     maxiter: Maximum number of attempts to fit each spline after removing badly
-        fit points.
+      fit points.
     penalty_coeff: Coefficient of the penalty term for using more parameters in
-        the Bayesian Information Criterion. Decreasing this value will allow
-        more parameters to be used (i.e. smaller break-point spacing), and
-        vice-versa.
+      the Bayesian Information Criterion. Decreasing this value will allow more
+      parameters to be used (i.e. smaller break-point spacing), and vice-versa.
     verbose: Whether to log individual spline errors. Note that if bkspaces
-        contains many values (particularly small ones) then this may cause
-        logging pollution if calling this function for many light curves.
+      contains many values (particularly small ones) then this may cause logging
+      pollution if calling this function for many light curves.
 
   Returns:
     spline: List of numpy arrays; values of the best-fit spline corresponding to
