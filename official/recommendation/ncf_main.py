@@ -266,7 +266,7 @@ def run_ncf(_):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_TARGET,
                             value=FLAGS.hr_threshold)
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_ACCURACY, value=hr)
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS,
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_HP_NUM_NEG,
                             value=rconst.NUM_EVAL_NEGATIVES)
 
     # Logged by the async process during record creation.
