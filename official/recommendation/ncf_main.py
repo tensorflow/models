@@ -37,6 +37,7 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
+from tensorflow.contrib.compiler import xla
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
@@ -46,7 +47,6 @@ from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
-from tensorflow.contrib.compiler import xla
 
 
 def construct_estimator(num_gpus, model_dir, params, batch_size,
