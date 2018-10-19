@@ -46,6 +46,7 @@ from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
+from tensorflow.contrib.compiler import xla
 
 
 def construct_estimator(num_gpus, model_dir, params, batch_size,
@@ -105,24 +106,13 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
   distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
   run_config = tf.estimator.RunConfig(train_distribute=distribution)
   params["eval_batch_size"] = eval_batch_size
+  model_fn = neumf_model.neumf_model_fn
   if params["use_xla_for_gpu"]:
-    tf.logging.info("Using xla.compile to compile neumf model function")
-    train_model_fn = neumf_model.xla_neumf_model_fn
-  else:
-    train_model_fn = neumf_model.neumf_model_fn
-  # Currently, we only use XLA with the training model function, because
-  # xla.compile does not support using eval_metric_ops.
-  eval_model_fn = neumf_model.neumf_model_fn
-  train_estimator = tf.estimator.Estimator(model_fn=train_model_fn,
-                                           model_dir=model_dir,
-                                           config=run_config, params=params)
-  if eval_model_fn is train_model_fn:
-    eval_estimator = train_estimator
-  else:
-    eval_estimator = tf.estimator.Estimator(model_fn=eval_model_fn,
-                                            model_dir=model_dir,
-                                            config=run_config, params=params)
-  return train_estimator, eval_estimator
+    tf.logging.info("Using XLA for GPU for training and evaluation.")
+    model_fn = xla.estimator_model_fn(model_fn)
+  estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=model_dir,
+                                     config=run_config, params=params)
+  return estimator, estimator
 
 
 def main(_):
