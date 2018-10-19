@@ -415,7 +415,7 @@ def define_ncf_flags():
   ))
 
   flags.DEFINE_bool(
-      name="use_xla_for_gpu", default=True, help=flags_core.help_wrap(
+      name="use_xla_for_gpu", default=False, help=flags_core.help_wrap(
           "If True, use XLA for the model function. Only works when using a "
           "GPU. On TPUs, XLA is always used"))
 
