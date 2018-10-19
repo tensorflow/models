@@ -29,6 +29,7 @@ from object_detection.builders import model_builder
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.utils import config_util
+from object_detection.utils import shape_utils
 
 slim = tf.contrib.slim
 
@@ -128,11 +129,12 @@ def _tf_example_input_placeholder():
     image_tensor = tensor_dict[fields.InputDataFields.image]
     return image_tensor
   return (batch_tf_example_placeholder,
-          tf.map_fn(decode,
-                    elems=batch_tf_example_placeholder,
-                    dtype=tf.uint8,
-                    parallel_iterations=32,
-                    back_prop=False))
+          shape_utils.static_or_dynamic_map_fn(
+              decode,
+              elems=batch_tf_example_placeholder,
+              dtype=tf.uint8,
+              parallel_iterations=32,
+              back_prop=False))
 
 
 def _encoded_image_string_tensor_input_placeholder():
@@ -167,8 +169,8 @@ input_placeholder_fn_map = {
 }
 
 
-def _add_output_tensor_nodes(postprocessed_tensors,
-                             output_collection_name='inference_op'):
+def add_output_tensor_nodes(postprocessed_tensors,
+                            output_collection_name='inference_op'):
   """Adds output nodes for detection boxes and scores.
 
   Adds the following nodes for output tensors -
@@ -300,8 +302,8 @@ def _get_outputs_from_inputs(input_tensors, detection_model,
       preprocessed_inputs, true_image_shapes)
   postprocessed_tensors = detection_model.postprocess(
       output_tensors, true_image_shapes)
-  return _add_output_tensor_nodes(postprocessed_tensors,
-                                  output_collection_name)
+  return add_output_tensor_nodes(postprocessed_tensors,
+                                 output_collection_name)
 
 
 def _build_detection_graph(input_type, detection_model, input_shape,

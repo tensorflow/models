@@ -25,6 +25,7 @@ import os
 import tensorflow as tf
 
 from object_detection import eval_util
+from object_detection import exporter as exporter_lib
 from object_detection import inputs
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
@@ -366,9 +367,10 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           name='')  # Preventing scope prefix on all variables.
 
     if mode == tf.estimator.ModeKeys.PREDICT:
+      exported_output = exporter_lib.add_output_tensor_nodes(detections)
       export_outputs = {
           tf.saved_model.signature_constants.PREDICT_METHOD_NAME:
-              tf.estimator.export.PredictOutput(detections)
+              tf.estimator.export.PredictOutput(exported_output)
       }
 
     eval_metric_ops = None

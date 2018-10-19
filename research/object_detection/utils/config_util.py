@@ -430,7 +430,7 @@ def merge_external_params_with_configs(configs, hparams=None, kwargs_dict=None):
   final learning rates.
   In this case key can be one of the following formats:
       1. legacy update: single string that indicates the attribute to be
-        updated. E.g. 'lable_map_path', 'eval_input_path', 'shuffle'.
+        updated. E.g. 'label_map_path', 'eval_input_path', 'shuffle'.
         Note that when updating fields (e.g. eval_input_path, eval_shuffle) in
         eval_input_configs, the override will only be applied when
         eval_input_configs has exactly 1 element.
