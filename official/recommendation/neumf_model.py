@@ -107,11 +107,11 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_NAME, value="adam")
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_LR,
                             value=params["learning_rate"])
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_ADAM_BETA1,
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_BETA1,
                             value=params["beta1"])
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_ADAM_BETA2,
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_BETA2,
                             value=params["beta2"])
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_ADAM_EPSILON,
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
     optimizer = tf.train.AdamOptimizer(
