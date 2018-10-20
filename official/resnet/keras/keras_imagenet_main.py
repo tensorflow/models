@@ -101,6 +101,7 @@ def parse_record_keras(raw_record, is_training, dtype):
       is_training=is_training)
 
   image = tf.cast(image, dtype)
+  label = tf.sparse_to_dense(label, (imagenet_main._NUM_CLASSES,), 1)
   return image, label
 
 def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
@@ -121,6 +122,7 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
       dtype=tf.int32,
       name='synthetic_labels')
 
+  labels = tf.one_hot(labels, imagenet_main._NUM_CLASSES)
   dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
   return dataset
