@@ -120,6 +120,7 @@ def main(_):
   with logger.benchmark_context(FLAGS), mlperf_helper.LOGGER(FLAGS.ml_perf):
     mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
     run_ncf(FLAGS)
+    mlperf_helper.stitch_ncf()
 
 
 def run_ncf(_):

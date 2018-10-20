@@ -24,12 +24,56 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from collections import namedtuple
+import json
+import os
+import re
 import subprocess
+import sys
+import typing
 
 import tensorflow as tf
 
-_MIN_VERSION = (0, 0, 5)
+_MIN_VERSION = (0, 0, 6)
 _STACK_OFFSET = 2
+
+# TODO(robieta): move line parsing to mlperf util
+_PREFIX = r":::MLPv([0-9]+).([0-9]+).([0-9]+)"
+_BENCHMARK = "([a-zA-Z0-9_]+)"
+_TIMESTAMP = "([0-9]+\.[0-9]+)"
+_CALLSITE = "\((.+):([0-9]+)\)"
+_TAG = "([a-zA-Z0-9_]+)"
+_VALUE = "(.*)"
+
+PARSED_LINE = namedtuple("ParsedLine", ["version", "benchmark", "timestamp",
+                                        "callsite", "tag", "value"])
+
+LINE_PATTERN = re.compile(
+    "^{prefix} {benchmark} {timestamp} {callsite} {tag}(: |$){value}?$".format(
+        prefix=_PREFIX, benchmark=_BENCHMARK, timestamp=_TIMESTAMP,
+        callsite=_CALLSITE, tag=_TAG, value=_VALUE))
+
+
+def parse_line(line): # type: (str) -> typing.Optional[PARSED_LINE]
+  match = LINE_PATTERN.match(line.strip())
+  if not match:
+    return
+
+  major, minor, micro, benchmark, timestamp = match.groups()[:5]
+  call_file, call_line, tag, _, value = match.groups()[5:]
+
+  return PARSED_LINE(version=(int(major), int(minor), int(micro)),
+                     benchmark=benchmark, timestamp=timestamp,
+                     callsite=(call_file, call_line), tag=tag, value=value)
+
+
+def unparse_line(parsed_line): # type: (PARSED_LINE) -> str
+  version_str = "{}.{}.{}".format(*parsed_line.version)
+  callsite_str = "({}:{})".format(*parsed_line.callsite)
+  value_str = ": {}".format(parsed_line.value) if parsed_line.value else ""
+  return ":::MLPv{} {} {} {} {} {}".format(
+      version_str, parsed_line.benchmark, parsed_line.timestamp, callsite_str,
+      parsed_line.tag, value_str)
 
 
 def get_mlperf_log():
@@ -87,6 +131,12 @@ class Logger(object):
     self.tags._enabled = False
 
   @property
+  def log_file(self):
+    if self._mlperf_log is None:
+      return
+    return self._mlperf_log.LOG_FILE
+
+  @property
   def enabled(self):
     return self._enabled
 
@@ -118,7 +168,59 @@ def clear_system_caches():
     raise ValueError("Failed to clear caches")
 
 
+def stitch_ncf():
+  if not LOGGER.enabled:
+    return
+
+  if LOGGER.log_file is None or not tf.gfile.Exists(LOGGER.log_file):
+    tf.logging.error("Could not find log file to stitch.")
+
+  log_lines = []
+  num_eval_users = None
+  start_time = None
+  stop_time = None
+  with tf.gfile.Open(LOGGER.log_file, "r") as f:
+    for line in f:
+      parsed_line = parse_line(line)
+      if not parsed_line:
+        tf.logging.warning("Failed to parse line: {}".format(line))
+        continue
+      log_lines.append(parsed_line)
+
+      if parsed_line.tag == TAGS.RUN_START:
+        assert start_time is None
+        start_time = float(parsed_line.timestamp)
+
+      if parsed_line.tag == TAGS.RUN_STOP:
+        assert stop_time is None
+        stop_time = float(parsed_line.timestamp)
+
+      if (parsed_line.tag == TAGS.EVAL_HP_NUM_USERS and parsed_line.value
+          is not None and "DEFERRED" not in parsed_line.value):
+        assert num_eval_users is None or num_eval_users == parsed_line.value
+        num_eval_users = parsed_line.value
+        log_lines.pop()
+
+  for i, parsed_line in enumerate(log_lines):
+    if parsed_line.tag == TAGS.EVAL_HP_NUM_USERS:
+      log_lines[i] = PARSED_LINE(*parsed_line[:-1], value=num_eval_users)
+
+  log_lines = sorted([unparse_line(i) for i in log_lines])
+
+  output_path = os.getenv("STITCHED_COMPLIANCE_FILE", None)
+  if output_path:
+    with tf.gfile.Open(output_path, "w") as f:
+      for line in log_lines:
+        f.write(line + "\n")
+  else:
+    for line in log_lines:
+      print(line)
+    sys.stdout.flush()
+
+  if start_time is not None and stop_time is not None:
+    tf.logging.info("MLPerf time: {:.1f} sec.".format(stop_time - start_time))
+
 if __name__ == "__main__":
+  tf.logging.set_verbosity(tf.logging.INFO)
   with LOGGER(True):
-    LOGGER.ncf_print(key=LOGGER.tags.RUN_START)
-    LOGGER.ncf_print(key=LOGGER.tags.RUN_STOP)
+    ncf_print(key=TAGS.RUN_START)
