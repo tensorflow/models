@@ -258,23 +258,27 @@ def run_ncf(_):
                 eval_batch_count, num_eval_steps))
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
-                            value=cycle_index)
+                            value={"epoch": cycle_index})
     eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
     hr = float(eval_results[rconst.HR_KEY])
     ndcg = float(eval_results[rconst.NDCG_KEY])
     tf.logging.info("Evaluation complete.")
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_TARGET,
-                            value=FLAGS.hr_threshold)
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_ACCURACY, value=hr)
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_HP_NUM_NEG,
-                            value=rconst.NUM_EVAL_NEGATIVES)
+    mlperf_helper.ncf_print(
+        key=mlperf_helper.TAGS.EVAL_TARGET,
+        value={"epoch": cycle_index, "value": FLAGS.hr_threshold})
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_ACCURACY,
+                            value={"epoch": cycle_index, "value": hr})
+    mlperf_helper.ncf_print(
+        key=mlperf_helper.TAGS.EVAL_HP_NUM_NEG,
+        value={"epoch": cycle_index, "value": rconst.NUM_EVAL_NEGATIVES})
 
     # Logged by the async process during record creation.
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_HP_NUM_USERS,
                             deferred=True)
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP)
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP,
+                            value={"epoch": cycle_index})
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)
