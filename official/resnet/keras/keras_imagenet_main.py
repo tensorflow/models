@@ -193,9 +193,9 @@ def run_imagenet_with_keras(flags_obj):
 
   # Hardcode learning phase to improve perf by getting rid of a few conds
   # in the graph.
-  tf.keras.backend.set_learning_phase(True)
+  #tf.keras.backend.set_learning_phase(True)
 
-  model.compile(loss=softmax_crossentropy_with_logits,
+  model.compile(loss='categorical_crossentropy',
                 optimizer=opt,
                 metrics=['accuracy'],
                 distribute=strategy)

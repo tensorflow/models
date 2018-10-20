@@ -241,7 +241,7 @@ def ResNet50(include_top=True,
   if include_top:
     x = tf.keras.layers.AveragePooling2D((7, 7), name='avg_pool')(x)
     x = tf.keras.layers.Flatten()(x)
-    x = tf.keras.layers.Dense(classes, activation='linear', name='fc1000')(x)
+    x = tf.keras.layers.Dense(classes, activation='softmax', name='fc1000')(x)
   else:
     if pooling == 'avg':
       x = tf.keras.layers.GlobalAveragePooling2D()(x)
