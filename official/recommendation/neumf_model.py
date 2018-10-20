@@ -97,7 +97,8 @@ def neumf_model_fn(features, labels, mode, params):
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)
     return compute_eval_loss_and_metrics(
         logits, softmax_logits, duplicate_mask, params["num_neg"],
-        params["match_mlperf"], params["use_tpu"])
+        params["match_mlperf"],
+        use_tpu_spec=params["use_tpu"] or params["use_xla_for_gpu"])
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
@@ -234,7 +235,7 @@ def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
                                   duplicate_mask,      # type: tf.Tensor
                                   num_training_neg,    # type: int
                                   match_mlperf=False,  # type: bool
-                                  use_tpu=False        # type: bool
+                                  use_tpu_spec=False   # type: bool
                                  ):
   # type: (...) -> tf.estimator.EstimatorSpec
   """Model evaluation with HR and NDCG metrics.
@@ -293,7 +294,9 @@ def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
 
     match_mlperf: Use the MLPerf reference convention for computing rank.
 
-    use_tpu: Should the evaluation be performed on a TPU.
+    use_tpu_spec: Should a TPUEstimatorSpec be returned instead of an
+      EstimatorSpec. Required for TPUs and if XLA is done on a GPU. Despite its
+      name, TPUEstimatorSpecs work with GPUs
 
   Returns:
     An EstimatorSpec for evaluation.
@@ -334,7 +337,7 @@ def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
         rconst.NDCG_KEY: tf.metrics.mean(ndcg_tensor, weights=weight_tensor),
     }
 
-  if use_tpu:
+  if use_tpu_spec:
     return tf.contrib.tpu.TPUEstimatorSpec(
         mode=tf.estimator.ModeKeys.EVAL, loss=cross_entropy,
         eval_metrics=(metric_fn, [in_top_k, ndcg, metric_weights]))
