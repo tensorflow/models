@@ -258,7 +258,7 @@ def run_ncf(_):
                 eval_batch_count, num_eval_steps))
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
-                            value={"epoch": cycle_index})
+                            value=cycle_index)
     eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
     hr = float(eval_results[rconst.HR_KEY])
     ndcg = float(eval_results[rconst.NDCG_KEY])
@@ -277,8 +277,7 @@ def run_ncf(_):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_HP_NUM_USERS,
                             deferred=True)
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP,
-                            value={"epoch": cycle_index})
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP, value=cycle_index)
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)

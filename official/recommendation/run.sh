@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [ `id -u` != 0 ]; then
+  echo "Calling sudo to gain root for this shell. (Needed to clear caches.)"
+  sudo echo "Success"
+fi
+
 DATASET="ml-20m"
 
 BUCKET=${BUCKET:-""}
