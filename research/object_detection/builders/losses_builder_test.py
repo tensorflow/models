@@ -280,7 +280,7 @@ class ClassificationLossBuilderTest(tf.test.TestCase):
                                losses.WeightedSigmoidClassificationLoss))
     predictions = tf.constant([[[0.0, 1.0, 0.0], [0.0, 0.5, 0.5]]])
     targets = tf.constant([[[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]])
-    weights = tf.constant([[1.0, 1.0]])
+    weights = tf.constant([[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]])
     loss = classification_loss(predictions, targets, weights=weights)
     self.assertEqual(loss.shape, [1, 2, 3])
 

@@ -730,17 +730,20 @@ class SSDMetaArch(model.DetectionModel):
             self.groundtruth_lists(fields.BoxListFields.boxes), match_list)
 
       if self._random_example_sampler:
+        batch_cls_per_anchor_weights = tf.reduce_mean(
+            batch_cls_weights, axis=-1)
         batch_sampled_indicator = tf.to_float(
             shape_utils.static_or_dynamic_map_fn(
                 self._minibatch_subsample_fn,
-                [batch_cls_targets, batch_cls_weights],
+                [batch_cls_targets, batch_cls_per_anchor_weights],
                 dtype=tf.bool,
                 parallel_iterations=self._parallel_iterations,
                 back_prop=True))
         batch_reg_weights = tf.multiply(batch_sampled_indicator,
                                         batch_reg_weights)
-        batch_cls_weights = tf.multiply(batch_sampled_indicator,
-                                        batch_cls_weights)
+        batch_cls_weights = tf.multiply(
+            tf.expand_dims(batch_sampled_indicator, -1),
+            batch_cls_weights)
 
       losses_mask = None
       if self.groundtruth_has_field(fields.InputDataFields.is_annotated):

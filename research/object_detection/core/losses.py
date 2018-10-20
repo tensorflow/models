@@ -225,7 +225,9 @@ class WeightedSigmoidClassificationLoss(Loss):
         num_classes] representing the predicted logits for each class
       target_tensor: A float tensor of shape [batch_size, num_anchors,
         num_classes] representing one-hot encoded classification targets
-      weights: a float tensor of shape [batch_size, num_anchors]
+      weights: a float tensor of shape, either [batch_size, num_anchors,
+        num_classes] or [batch_size, num_anchors, 1]. If the shape is
+        [batch_size, num_anchors, 1], all the classses are equally weighted.
       class_indices: (Optional) A 1-D integer tensor of class indices.
         If provided, computes loss only for the specified class indices.
 
@@ -233,7 +235,6 @@ class WeightedSigmoidClassificationLoss(Loss):
       loss: a float tensor of shape [batch_size, num_anchors, num_classes]
         representing the value of the loss function.
     """
-    weights = tf.expand_dims(weights, 2)
     if class_indices is not None:
       weights *= tf.reshape(
           ops.indices_to_dense_vector(class_indices,
@@ -273,7 +274,9 @@ class SigmoidFocalClassificationLoss(Loss):
         num_classes] representing the predicted logits for each class
       target_tensor: A float tensor of shape [batch_size, num_anchors,
         num_classes] representing one-hot encoded classification targets
-      weights: a float tensor of shape [batch_size, num_anchors]
+      weights: a float tensor of shape, either [batch_size, num_anchors,
+        num_classes] or [batch_size, num_anchors, 1]. If the shape is
+        [batch_size, num_anchors, 1], all the classses are equally weighted.
       class_indices: (Optional) A 1-D integer tensor of class indices.
         If provided, computes loss only for the specified class indices.
 
@@ -281,7 +284,6 @@ class SigmoidFocalClassificationLoss(Loss):
       loss: a float tensor of shape [batch_size, num_anchors, num_classes]
         representing the value of the loss function.
     """
-    weights = tf.expand_dims(weights, 2)
     if class_indices is not None:
       weights *= tf.reshape(
           ops.indices_to_dense_vector(class_indices,
@@ -326,12 +328,15 @@ class WeightedSoftmaxClassificationLoss(Loss):
         num_classes] representing the predicted logits for each class
       target_tensor: A float tensor of shape [batch_size, num_anchors,
         num_classes] representing one-hot encoded classification targets
-      weights: a float tensor of shape [batch_size, num_anchors]
+      weights: a float tensor of shape, either [batch_size, num_anchors,
+        num_classes] or [batch_size, num_anchors, 1]. If the shape is
+        [batch_size, num_anchors, 1], all the classses are equally weighted.
 
     Returns:
       loss: a float tensor of shape [batch_size, num_anchors]
         representing the value of the loss function.
     """
+    weights = tf.reduce_mean(weights, axis=2)
     num_classes = prediction_tensor.get_shape().as_list()[-1]
     prediction_tensor = tf.divide(
         prediction_tensor, self._logit_scale, name='scale_logit')
@@ -372,12 +377,15 @@ class WeightedSoftmaxClassificationAgainstLogitsLoss(Loss):
         num_classes] representing the predicted logits for each class
       target_tensor: A float tensor of shape [batch_size, num_anchors,
         num_classes] representing logit classification targets
-      weights: a float tensor of shape [batch_size, num_anchors]
+      weights: a float tensor of shape, either [batch_size, num_anchors,
+        num_classes] or [batch_size, num_anchors, 1]. If the shape is
+        [batch_size, num_anchors, 1], all the classses are equally weighted.
 
     Returns:
       loss: a float tensor of shape [batch_size, num_anchors]
         representing the value of the loss function.
     """
+    weights = tf.reduce_mean(weights, axis=2)
     num_classes = prediction_tensor.get_shape().as_list()[-1]
     target_tensor = self._scale_and_softmax_logits(target_tensor)
     prediction_tensor = tf.divide(prediction_tensor, self._logit_scale,
@@ -431,7 +439,9 @@ class BootstrappedSigmoidClassificationLoss(Loss):
         num_classes] representing the predicted logits for each class
       target_tensor: A float tensor of shape [batch_size, num_anchors,
         num_classes] representing one-hot encoded classification targets
-      weights: a float tensor of shape [batch_size, num_anchors]
+      weights: a float tensor of shape, either [batch_size, num_anchors,
+        num_classes] or [batch_size, num_anchors, 1]. If the shape is
+        [batch_size, num_anchors, 1], all the classses are equally weighted.
 
     Returns:
       loss: a float tensor of shape [batch_size, num_anchors, num_classes]
@@ -446,7 +456,7 @@ class BootstrappedSigmoidClassificationLoss(Loss):
               tf.sigmoid(prediction_tensor) > 0.5, tf.float32)
     per_entry_cross_ent = (tf.nn.sigmoid_cross_entropy_with_logits(
         labels=bootstrap_target_tensor, logits=prediction_tensor))
-    return per_entry_cross_ent * tf.expand_dims(weights, 2)
+    return per_entry_cross_ent * weights
 
 
 class HardExampleMiner(object):

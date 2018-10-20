@@ -1492,6 +1492,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     # to cls_weights. This could happen as boxes within certain IOU ranges
     # are ignored. If triggered, the selected boxes will still be ignored
     # during loss computation.
+    cls_weights = tf.reduce_mean(cls_weights, axis=-1)
     positive_indicator = tf.greater(tf.argmax(cls_targets, axis=1), 0)
     valid_indicator = tf.logical_and(
         tf.range(proposal_boxlist.num_boxes()) < num_valid_proposals,
@@ -1752,6 +1753,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
            gt_box_batch=groundtruth_boxlists,
            gt_class_targets_batch=(len(groundtruth_boxlists) * [None]),
            gt_weights_batch=groundtruth_weights_list)
+      batch_cls_weights = tf.reduce_mean(batch_cls_weights, axis=2)
       batch_cls_targets = tf.squeeze(batch_cls_targets, axis=2)
 
       def _minibatch_subsample_fn(inputs):
@@ -1782,7 +1784,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
           losses_mask=losses_mask)
       objectness_losses = self._first_stage_objectness_loss(
           rpn_objectness_predictions_with_background,
-          batch_one_hot_targets, weights=batch_sampled_indices,
+          batch_one_hot_targets,
+          weights=tf.expand_dims(batch_sampled_indices, axis=-1),
           losses_mask=losses_mask)
       localization_loss = tf.reduce_mean(
           tf.reduce_sum(localization_losses, axis=1) / normalizer)
@@ -2015,7 +2018,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         mask_losses = self._second_stage_mask_loss(
             reshaped_prediction_masks,
             batch_cropped_gt_mask,
-            weights=mask_losses_weights,
+            weights=tf.expand_dims(mask_losses_weights, axis=-1),
             losses_mask=losses_mask)
         total_mask_loss = tf.reduce_sum(mask_losses)
         normalizer = tf.maximum(
