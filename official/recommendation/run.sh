@@ -48,7 +48,9 @@ do
   echo ""
   echo "Beginning run ${i}"
   echo "  Complete output logs are in ${RUN_LOG}"
-  echo "  Compliance logs are in ${COMPLIANCE_FILE} and ${STITCHED_COMPLIANCE_FILE}"
+  echo "  Compliance logs: (submission log is created after run.)"
+  echo "    ${COMPLIANCE_FILE}"
+  echo "    ${STITCHED_COMPLIANCE_FILE}"
 
   # To reduce variation set the seed flag:
   #   --seed ${i}
