@@ -105,7 +105,8 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
     return train_estimator, eval_estimator
 
   distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
-  run_config = tf.estimator.RunConfig(train_distribute=distribution)
+  run_config = tf.estimator.RunConfig(train_distribute=distribution,
+                                      eval_distribute=distribution)
   params["eval_batch_size"] = eval_batch_size
   model_fn = neumf_model.neumf_model_fn
   if params["use_xla_for_gpu"]:
