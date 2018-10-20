@@ -292,7 +292,7 @@ def run_ncf(_):
       break
 
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_STOP,
-                                 value={"success": target_reached})
+                          value={"success": target_reached})
   cleanup_fn()  # Cleanup data construction artifacts and subprocess.
 
   # Clear the session explicitly to avoid session delete error

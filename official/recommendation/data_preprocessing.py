@@ -135,8 +135,8 @@ def _filter_index_sort(raw_rating_path, match_mlperf):
   original_users = df[movielens.USER_COLUMN].unique()
   original_items = df[movielens.ITEM_COLUMN].unique()
 
-  mlperf_helper.ncf_print(
-    key=mlperf_helper.TAGS.PREPROC_HP_MIN_RATINGS, value=rconst.MIN_NUM_RATINGS)
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_MIN_RATINGS,
+                          value=rconst.MIN_NUM_RATINGS)
 
   # Map the ids of user and item to 0 based index for following processing
   tf.logging.info("Generating user_map and item_map...")

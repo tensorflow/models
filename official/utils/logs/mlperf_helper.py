@@ -45,7 +45,7 @@ _CALLSITE = "\((.+):([0-9]+)\)"
 _TAG = "([a-zA-Z0-9_]+)"
 _VALUE = "(.*)"
 
-PARSED_LINE = namedtuple("ParsedLine", ["version", "benchmark", "timestamp",
+ParsedLine = namedtuple("ParsedLine", ["version", "benchmark", "timestamp",
                                         "callsite", "tag", "value"])
 
 LINE_PATTERN = re.compile(
@@ -54,7 +54,7 @@ LINE_PATTERN = re.compile(
         callsite=_CALLSITE, tag=_TAG, value=_VALUE))
 
 
-def parse_line(line): # type: (str) -> typing.Optional[PARSED_LINE]
+def parse_line(line): # type: (str) -> typing.Optional[ParsedLine]
   match = LINE_PATTERN.match(line.strip())
   if not match:
     return
@@ -62,12 +62,12 @@ def parse_line(line): # type: (str) -> typing.Optional[PARSED_LINE]
   major, minor, micro, benchmark, timestamp = match.groups()[:5]
   call_file, call_line, tag, _, value = match.groups()[5:]
 
-  return PARSED_LINE(version=(int(major), int(minor), int(micro)),
-                     benchmark=benchmark, timestamp=timestamp,
-                     callsite=(call_file, call_line), tag=tag, value=value)
+  return ParsedLine(version=(int(major), int(minor), int(micro)),
+                    benchmark=benchmark, timestamp=timestamp,
+                    callsite=(call_file, call_line), tag=tag, value=value)
 
 
-def unparse_line(parsed_line): # type: (PARSED_LINE) -> str
+def unparse_line(parsed_line): # type: (ParsedLine) -> str
   version_str = "{}.{}.{}".format(*parsed_line.version)
   callsite_str = "({}:{})".format(*parsed_line.callsite)
   value_str = ": {}".format(parsed_line.value) if parsed_line.value else ""
@@ -77,16 +77,17 @@ def unparse_line(parsed_line): # type: (PARSED_LINE) -> str
 
 
 def get_mlperf_log():
+  """Shielded import of mlperf_log module."""
   try:
     import pkg_resources
     import mlperf_compliance
 
-    _version = pkg_resources.get_distribution("mlperf_compliance")
-    _version = tuple(int(i) for i in _version.version.split("."))
-    if _version < _MIN_VERSION:
+    version = pkg_resources.get_distribution("mlperf_compliance")
+    version = tuple(int(i) for i in version.version.split("."))
+    if version < _MIN_VERSION:
       tf.logging.warning(
           "mlperf_compliance is version {}, must be at least version {}".format(
-              ".".join([str(i) for i in _version]),
+              ".".join([str(i) for i in version]),
               ".".join([str(i) for i in _MIN_VERSION])))
       raise ImportError
 
@@ -99,6 +100,11 @@ def get_mlperf_log():
 
 
 class Logger(object):
+  """MLPerf logger indirection class.
+
+  This logger only logs for MLPerf runs, and prevents various errors associated
+  with not having the mlperf_compliance package installed.
+  """
   class Tags(object):
     def __init__(self, mlperf_log):
       self._enabled = False
@@ -140,7 +146,7 @@ class Logger(object):
   def enabled(self):
     return self._enabled
 
-  def ncf_print(self,key, value=None, stack_offset=_STACK_OFFSET,
+  def ncf_print(self, key, value=None, stack_offset=_STACK_OFFSET,
                 deferred=False, extra_print=False):
     if self._mlperf_log is None:
       return
@@ -169,6 +175,7 @@ def clear_system_caches():
 
 
 def stitch_ncf():
+  """Format NCF logs for MLPerf compliance."""
   if not LOGGER.enabled:
     return
 
@@ -203,7 +210,7 @@ def stitch_ncf():
 
   for i, parsed_line in enumerate(log_lines):
     if parsed_line.tag == TAGS.EVAL_HP_NUM_USERS:
-      log_lines[i] = PARSED_LINE(*parsed_line[:-1], value=num_eval_users)
+      log_lines[i] = ParsedLine(*parsed_line[:-1], value=num_eval_users)
 
   log_lines = sorted([unparse_line(i) for i in log_lines])
 
