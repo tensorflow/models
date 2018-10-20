@@ -38,6 +38,7 @@ do
   MODEL_DIR="${TEST_DIR}/model_dir_${i}"
 
   RUN_LOG="${LOCAL_TEST_DIR}/run_${i}.log"
+  export COMPLIANCE_FILE="${LOCAL_TEST_DIR}/run_${i}_compliance_raw.log"
   echo ""
   echo "Beginning run ${i}"
   echo "  Complete logs are in ${RUN_LOG}"
@@ -62,7 +63,7 @@ do
                      --hr_threshold 0.635 \
                      --ml_perf \
  |& tee ${RUN_LOG} \
- | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)|(^:::MLP)"
+ | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)"
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."
