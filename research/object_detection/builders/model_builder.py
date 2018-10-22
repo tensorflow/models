@@ -56,6 +56,7 @@ from object_detection.utils import ops
 import cv2
 from models import builder as saliency_model_builder
 from core import utils as wsod_utils
+from models import utils as model_utils
 from core import imgproc
 
 
@@ -491,6 +492,19 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
             second_stage_mask_prediction_loss_weight),
         **common_kwargs)
 
+def _read_vocabulary(filename):
+  """Reads vocabulary list from file.
+
+  Args:
+    filename: path to the file storing vocabulary info.
+
+  Returns:
+    vocabulary_list: a list of string.
+  """
+  with open(filename, "r") as fid:
+    vocabulary_list = [word.strip('\n') for word in fid.readlines()]
+  return vocabulary_list
+
 
 def _build_wsod_model(frcnn_config, is_training, add_summaries):
   """Builds a Faster R-CNN or R-FCN detection model based on the model config.
@@ -525,8 +539,12 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
         border_ratio=frcnn_config.proposal_saliency_border_ratio,
         alpha=frcnn_config.proposal_saliency_weight_alpha)
 
+  edge_boxes_saliency_fn = model_utils.build_proposal_saliency_fn(
+      frcnn_config.edge_boxes_saliency_fn)
+
   # Create opencv edge_boxes.
   edge_detection, edge_boxes = None, None
+  edge_boxes_max_num_boxes = None
   if proposal_prediction.startswith('edge_boxes'):
     edge_detection = cv2.ximgproc.createStructuredEdgeDetection(
         frcnn_config.structured_edge_detection_model)
@@ -534,6 +552,10 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
         edgeMinMag=frcnn_config.edge_boxes_edge_min_mag, 
         edgeMergeThr=frcnn_config.edge_boxes_edge_merge_thr, 
         clusterMinMag=frcnn_config.edge_boxes_cluster_min_mag)
+    edge_boxes_max_num_boxes = frcnn_config.edge_boxes_max_num_boxes
+
+  # Load category strings.
+  category_strings = _read_vocabulary(frcnn_config.vocabulary_file)
 
   # Original frcnn configurations.
   num_classes = frcnn_config.num_classes
@@ -669,6 +691,9 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       'proposal_saliency_fn': proposal_saliency_fn,
       'edge_detection': edge_detection,
       'edge_boxes': edge_boxes,
+      'edge_boxes_max_num_boxes': edge_boxes_max_num_boxes,
+      'edge_boxes_saliency_fn': edge_boxes_saliency_fn,
+      'category_strings': category_strings,
   }
 
   if isinstance(second_stage_box_predictor,
