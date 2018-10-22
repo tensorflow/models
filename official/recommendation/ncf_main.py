@@ -37,6 +37,7 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
+from tensorflow.contrib.compiler import xla
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
@@ -105,9 +106,12 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
   distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
   run_config = tf.estimator.RunConfig(train_distribute=distribution)
   params["eval_batch_size"] = eval_batch_size
-  estimator = tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
-                                     model_dir=model_dir, config=run_config,
-                                     params=params)
+  model_fn = neumf_model.neumf_model_fn
+  if params["use_xla_for_gpu"]:
+    tf.logging.info("Using XLA for GPU for training and evaluation.")
+    model_fn = xla.estimator_model_fn(model_fn)
+  estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=model_dir,
+                                     config=run_config, params=params)
   return estimator, estimator
 
 
@@ -187,6 +191,7 @@ def run_ncf(_):
           "beta2": FLAGS.beta2,
           "epsilon": FLAGS.epsilon,
           "match_mlperf": FLAGS.ml_perf,
+          "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
       }, batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
 
   # Create hooks that log information about the training and metric values
@@ -408,6 +413,13 @@ def define_ncf_flags():
       "needed to synchronize across multiple workers. Generally this flag will "
       "not need to be set."
   ))
+
+  flags.DEFINE_bool(
+      name="use_xla_for_gpu", default=False, help=flags_core.help_wrap(
+          "If True, use XLA for the model function. Only works when using a "
+          "GPU. On TPUs, XLA is always used"))
+
+  flags.mark_flags_as_mutual_exclusive(["use_xla_for_gpu", "tpu"])
 
 
 if __name__ == "__main__":

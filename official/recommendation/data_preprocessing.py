@@ -511,8 +511,8 @@ def make_deserialize(params, batch_size, training=False):
     items = tf.reshape(tf.decode_raw(
         features[movielens.ITEM_COLUMN], tf.uint16), (batch_size,))
 
-    if params["use_tpu"]:
-      items = tf.cast(items, tf.int32)  # TPU doesn't allow uint16 infeed.
+    if params["use_tpu"] or params["use_xla_for_gpu"]:
+      items = tf.cast(items, tf.int32)  # TPU and XLA disallows uint16 infeed.
 
     if not training:
       dupe_mask = tf.reshape(tf.cast(tf.decode_raw(
