@@ -532,13 +532,15 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       frcnn_config.saliency_model, is_training=False)
   saliency_model_checkpoint_path = frcnn_config.saliency_model_checkpoint_path
 
-  def proposal_saliency_fn(saliency_map, anchors):
-    """A callable to compute the proposal saliency."""
-    return imgproc.calc_box_saliency(
-        saliency_map, anchors, 
-        border_ratio=frcnn_config.proposal_saliency_border_ratio,
-        alpha=frcnn_config.proposal_saliency_weight_alpha)
+#  def proposal_saliency_fn(saliency_map, anchors):
+#    """A callable to compute the proposal saliency."""
+#    return imgproc.calc_box_saliency(
+#        saliency_map, anchors, 
+#        border_ratio=frcnn_config.proposal_saliency_border_ratio,
+#        alpha=frcnn_config.proposal_saliency_weight_alpha)
 
+  proposal_saliency_fn = model_utils.build_proposal_saliency_fn(
+      frcnn_config.edge_boxes_saliency_fn)
   edge_boxes_saliency_fn = model_utils.build_proposal_saliency_fn(
       frcnn_config.edge_boxes_saliency_fn)
 

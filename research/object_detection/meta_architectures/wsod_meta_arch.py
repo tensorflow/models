@@ -1126,7 +1126,9 @@ class WSODMetaArch(model.DetectionModel):
       saliency_map, score_map = self._get_score_map(
           preprocessed_inputs, unused_image_shape)
 
-    prediction_dict = { 'wsod_saliency_map': saliency_map }
+    prediction_dict = { 
+      'wsod_saliency_map': saliency_map,
+      'wsod_score_map': score_map }
 
     # Faster-RCNN anchor saliency.
 
@@ -1137,6 +1139,7 @@ class WSODMetaArch(model.DetectionModel):
           unnormalized_anchor_boxes, height, width)
       anchor_saliency = self._proposal_saliency_fn(
           saliency_map, tf.cast(unnormalized_anchor_boxes, tf.int64))
+      anchor_saliency = tf.reduce_max(anchor_saliency, axis=-1)
 
       prediction_dict.update({
         'wsod_frcnn_anchor_boxes': anchor_boxes,
@@ -1157,12 +1160,9 @@ class WSODMetaArch(model.DetectionModel):
             tf.range(start=self._edge_boxes_max_num_boxes, 
               limit=0, delta=-1, dtype=tf.float32), axis=0), 
           multiples=[batch, 1])
-      # edge_boxes_saliency = self._proposal_saliency_fn(saliency_map, 
-      #     _to_absolute_coordinates(edge_boxes_boxes, height, width))
-      # edge_boxes_saliency = imgproc.calc_cumsum_2d(saliency_map, 
-      #     _to_absolute_coordinates(edge_boxes_boxes, height, width))
       edge_boxes_saliency = self._edge_boxes_saliency_fn(saliency_map, 
           _to_absolute_coordinates(edge_boxes_boxes, height, width))
+      edge_boxes_saliency = tf.reduce_max(edge_boxes_saliency, axis=-1)
 
       prediction_dict.update({
         'wsod_edge_boxes_boxes': edge_boxes_boxes,
@@ -1947,7 +1947,7 @@ class WSODMetaArch(model.DetectionModel):
         understand the image_shape tensor.
 
     Returns:
-      saliency_map: a 3-D tensor of shape [batch, height, width] representing
+      saliency_map: a 4-D tensor of shape [batch, height, width, 1] representing
         image saliency.
       score_map: a 4-D tensor of shape [batch, height, width, num_classes]
         representing class-aware score map.
@@ -1980,9 +1980,8 @@ class WSODMetaArch(model.DetectionModel):
         smoothed_image = imgproc.gaussian_filter(resized_image, ksize=32)
         return smoothed_image
 
-      saliency_map = tf.squeeze(
-          resize_fn(tf.expand_dims(saliency_map, axis=-1)), axis=-1)
       score_map = resize_fn(score_map)
+      saliency_map = resize_fn(tf.expand_dims(saliency_map, axis=-1))
 
     tf.train.init_from_checkpoint(
         self._saliency_model_checkpoint_path, assignment_map={"/": "wsod/"})

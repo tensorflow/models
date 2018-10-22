@@ -177,11 +177,8 @@ message Wsod {
   // Proposal prediction method.
   optional string proposal_prediction = 53 [default = ""];
 
-  // Border ratio to compute the proposal saliency.
-  optional float proposal_saliency_border_ratio = 54 [default = 0.1];
-
-  // Hyperparameter alpha to weigh the saliency inside and outside.
-  optional float proposal_saliency_weight_alpha = 55 [default = 1.0];
+  // Function used to compute proposal saliency.
+  optional string proposal_saliency_fn = 54 [default = "saliency_sum"];
 
   // Path to the OpenCV ximgproc model, for edge detection.
   optional string structured_edge_detection_model = 61;
@@ -194,5 +191,14 @@ message Wsod {
 
   // EdgeBoxes clusterMinMag paramter.
   optional float edge_boxes_cluster_min_mag = 64 [default = 0.5];
+
+  // EdgeBoxes number of boxes to extract.
+  optional int32 edge_boxes_max_num_boxes = 65 [ default = 300 ];
+
+  // Function used to compute EdgeBoxes box saliency.
+  optional string edge_boxes_saliency_fn = 66 [default = "saliency_sum"];
+
+  // Path to the file storing category strings.
+  optional string vocabulary_file = 71;
 }
 
