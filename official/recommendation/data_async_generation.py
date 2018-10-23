@@ -503,6 +503,7 @@ def _parse_flagfile(flagfile):
 
 
 def write_alive_file(cache_paths):
+  """Write file to signal that generation process started correctly."""
   log_msg("Signaling that I am alive.")
   with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
     f.write("Generation subproc has started.")

@@ -409,6 +409,7 @@ def _shutdown(proc):
 
 
 def write_flagfile(flags_, ncf_dataset):
+  """Write flagfile to begin async data generation."""
   if ncf_dataset.deterministic:
     flags_["seed"] = stat_utils.random_int32()
 

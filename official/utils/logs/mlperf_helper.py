@@ -46,7 +46,7 @@ _TAG = r"([a-zA-Z0-9_]+)"
 _VALUE = r"(.*)"
 
 ParsedLine = namedtuple("ParsedLine", ["version", "benchmark", "timestamp",
-                                        "callsite", "tag", "value"])
+                                       "callsite", "tag", "value"])
 
 LINE_PATTERN = re.compile(
     "^{prefix} {benchmark} {timestamp} {callsite} {tag}(: |$){value}?$".format(
@@ -148,7 +148,7 @@ class Logger(object):
 
   def ncf_print(self, key, value=None, stack_offset=_STACK_OFFSET,
                 deferred=False, extra_print=False):
-    if self._mlperf_log is None:
+    if self._mlperf_log is None or not self.enabled:
       return
     self._mlperf_log.ncf_print(key=key, value=value, stack_offset=stack_offset,
                                deferred=deferred, extra_print=extra_print)
