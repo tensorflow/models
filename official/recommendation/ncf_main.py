@@ -451,7 +451,10 @@ def define_ncf_flags():
           "If True, use XLA for the model function. Only works when using a "
           "GPU. On TPUs, XLA is always used"))
 
-  flags.mark_flags_as_mutual_exclusive(["use_xla_for_gpu", "tpu"])
+  xla_message = "--use_xla_for_gpu is incompatible with --tpu"
+  @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
+  def xla_validator(flag_dict):
+    return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
 
 
 if __name__ == "__main__":
