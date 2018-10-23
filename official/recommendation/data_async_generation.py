@@ -418,17 +418,6 @@ def _generation_loop(num_workers,           # type: int
   # type: (...) -> None
   """Primary run loop for data file generation."""
 
-  log_msg("Signaling that I am alive.")
-  with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
-    f.write("Generation subproc has started.")
-
-  @atexit.register
-  def remove_alive_file():
-    try:
-      tf.gfile.Remove(cache_paths.subproc_alive)
-    except tf.errors.NotFoundError:
-      return  # Main thread has already deleted the entire cache dir.
-
   log_msg("Entering generation loop.")
   tf.gfile.MakeDirs(cache_paths.train_epoch_dir)
   tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
@@ -513,10 +502,28 @@ def _parse_flagfile(flagfile):
   tf.gfile.Remove(flagfile_temp)
 
 
+def write_alive_file(cache_paths):
+  log_msg("Signaling that I am alive.")
+  with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
+    f.write("Generation subproc has started.")
+
+  @atexit.register
+  def remove_alive_file():
+    try:
+      tf.gfile.Remove(cache_paths.subproc_alive)
+    except tf.errors.NotFoundError:
+      return  # Main thread has already deleted the entire cache dir.
+
+
 def main(_):
+  # Note: The async process must execute the following two steps in the
+  #       following order BEFORE doing anything else:
+  #       1) Write the alive file
+  #       2) Wait for the flagfile to be written.
   global _log_file
   cache_paths = rconst.Paths(
       data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
+  write_alive_file(cache_paths=cache_paths)
 
   flagfile = os.path.join(cache_paths.cache_root, rconst.FLAGFILE)
   _parse_flagfile(flagfile)

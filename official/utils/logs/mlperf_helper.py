@@ -39,11 +39,11 @@ _STACK_OFFSET = 2
 
 # TODO(robieta): move line parsing to mlperf util
 _PREFIX = r":::MLPv([0-9]+).([0-9]+).([0-9]+)"
-_BENCHMARK = "([a-zA-Z0-9_]+)"
-_TIMESTAMP = "([0-9]+\.[0-9]+)"
-_CALLSITE = "\((.+):([0-9]+)\)"
-_TAG = "([a-zA-Z0-9_]+)"
-_VALUE = "(.*)"
+_BENCHMARK = r"([a-zA-Z0-9_]+)"
+_TIMESTAMP = r"([0-9]+\.[0-9]+)"
+_CALLSITE = r"\((.+):([0-9]+)\)"
+_TAG = r"([a-zA-Z0-9_]+)"
+_VALUE = r"(.*)"
 
 ParsedLine = namedtuple("ParsedLine", ["version", "benchmark", "timestamp",
                                         "callsite", "tag", "value"])
@@ -111,7 +111,7 @@ class Logger(object):
       self._mlperf_log = mlperf_log
 
     def __getattr__(self, item):
-      if self._mlperf_log is None:
+      if self._mlperf_log is None or not self._enabled:
         return
       return getattr(self._mlperf_log, item)
 
