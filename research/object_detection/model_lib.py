@@ -460,6 +460,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
 def create_estimator_and_inputs(run_config,
                                 hparams,
                                 pipeline_config_path,
+                                config_override=None,
                                 train_steps=None,
                                 sample_1_of_n_eval_examples=1,
                                 sample_1_of_n_eval_on_train_examples=1,
@@ -476,6 +477,8 @@ def create_estimator_and_inputs(run_config,
     run_config: A `RunConfig`.
     hparams: A `HParams`.
     pipeline_config_path: A path to a pipeline config file.
+    config_override: A pipeline_pb2.TrainEvalPipelineConfig text proto to
+      override the config from `pipeline_config_path`.
     train_steps: Number of training steps. If None, the number of training steps
       is set from the `TrainConfig` proto.
     sample_1_of_n_eval_examples: Integer representing how often an eval example
@@ -526,7 +529,8 @@ def create_estimator_and_inputs(run_config,
   create_eval_input_fn = MODEL_BUILD_UTIL_MAP['create_eval_input_fn']
   create_predict_input_fn = MODEL_BUILD_UTIL_MAP['create_predict_input_fn']
 
-  configs = get_configs_from_pipeline_file(pipeline_config_path)
+  configs = get_configs_from_pipeline_file(pipeline_config_path,
+                                           config_override=config_override)
   kwargs.update({
       'train_steps': train_steps,
       'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples
