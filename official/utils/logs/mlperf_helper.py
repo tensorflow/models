@@ -37,8 +37,10 @@ import tensorflow as tf
 _MIN_VERSION = (0, 0, 6)
 _STACK_OFFSET = 2
 
+_NCF_PREFIX = "NCF_RAW_"
+
 # TODO(robieta): move line parsing to mlperf util
-_PREFIX = r":::MLPv([0-9]+).([0-9]+).([0-9]+)"
+_PREFIX = r"({})?:::MLPv([0-9]+).([0-9]+).([0-9]+)".format(_NCF_PREFIX)
 _BENCHMARK = r"([a-zA-Z0-9_]+)"
 _TIMESTAMP = r"([0-9]+\.[0-9]+)"
 _CALLSITE = r"\((.+):([0-9]+)\)"
@@ -59,7 +61,7 @@ def parse_line(line): # type: (str) -> typing.Optional[ParsedLine]
   if not match:
     return
 
-  major, minor, micro, benchmark, timestamp = match.groups()[:5]
+  _, major, minor, micro, benchmark, timestamp = match.groups()[:5]
   call_file, call_line, tag, _, value = match.groups()[5:]
 
   return ParsedLine(version=(int(major), int(minor), int(micro)),
@@ -147,11 +149,12 @@ class Logger(object):
     return self._enabled
 
   def ncf_print(self, key, value=None, stack_offset=_STACK_OFFSET,
-                deferred=False, extra_print=False):
+                deferred=False, extra_print=False, prefix=_NCF_PREFIX):
     if self._mlperf_log is None or not self.enabled:
       return
     self._mlperf_log.ncf_print(key=key, value=value, stack_offset=stack_offset,
-                               deferred=deferred, extra_print=extra_print)
+                               deferred=deferred, extra_print=extra_print,
+                               prefix=prefix)
 
   def set_ncf_root(self, path):
     if self._mlperf_log is None:
