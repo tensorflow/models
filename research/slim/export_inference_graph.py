@@ -77,6 +77,10 @@ tf.app.flags.DEFINE_integer(
     'The image size to use, otherwise use the model default_image_size.')
 
 tf.app.flags.DEFINE_integer(
+    'image_num_channels', 3,
+    'The number of channels in the input image, otherwise use default 3 channels as in RGB images.')
+
+tf.app.flags.DEFINE_integer(
     'batch_size', None,
     'Batch size for the exported model. Defaulted to "None" so batch size can '
     'be specified at model runtime.')
@@ -116,7 +120,7 @@ def main(_):
     image_size = FLAGS.image_size or network_fn.default_image_size
     placeholder = tf.placeholder(name='input', dtype=tf.float32,
                                  shape=[FLAGS.batch_size, image_size,
-                                        image_size, 3])
+                                        image_size, FLAGS.image_num_channels])
     network_fn(placeholder)
 
     if FLAGS.quantize:
