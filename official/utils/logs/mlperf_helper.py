@@ -45,7 +45,7 @@ DROP_CACHE_LOC = os.getenv("DROP_CACHE_LOC", "/proc/sys/vm/drop_caches")
 _NCF_PREFIX = "NCF_RAW_"
 
 # TODO(robieta): move line parsing to mlperf util
-_PREFIX = r"({})?:::MLPv([0-9]+).([0-9]+).([0-9]+)".format(_NCF_PREFIX)
+_PREFIX = r"(?:{})?:::MLPv([0-9]+).([0-9]+).([0-9]+)".format(_NCF_PREFIX)
 _BENCHMARK = r"([a-zA-Z0-9_]+)"
 _TIMESTAMP = r"([0-9]+\.[0-9]+)"
 _CALLSITE = r"\((.+):([0-9]+)\)"
@@ -66,8 +66,8 @@ def parse_line(line): # type: (str) -> typing.Optional[ParsedLine]
   if not match:
     return
 
-  _, major, minor, micro, benchmark, timestamp = match.groups()[:6]
-  call_file, call_line, tag, _, value = match.groups()[6:]
+  major, minor, micro, benchmark, timestamp = match.groups()[:5]
+  call_file, call_line, tag, _, value = match.groups()[5:]
 
   return ParsedLine(version=(int(major), int(minor), int(micro)),
                     benchmark=benchmark, timestamp=timestamp,
