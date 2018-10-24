@@ -46,6 +46,7 @@ from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
 from official.recommendation import popen_helper
+from official.utils.logs import mlperf_helper
 
 
 DATASET_TO_NUM_USERS_AND_ITEMS = {
@@ -134,6 +135,9 @@ def _filter_index_sort(raw_rating_path, match_mlperf):
   original_users = df[movielens.USER_COLUMN].unique()
   original_items = df[movielens.ITEM_COLUMN].unique()
 
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_MIN_RATINGS,
+                          value=rconst.MIN_NUM_RATINGS)
+
   # Map the ids of user and item to 0 based index for following processing
   tf.logging.info("Generating user_map and item_map...")
   user_map = {user: index for index, user in enumerate(original_users)}
@@ -146,6 +150,12 @@ def _filter_index_sort(raw_rating_path, match_mlperf):
 
   num_users = len(original_users)
   num_items = len(original_items)
+
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_NUM_EVAL,
+                          value=num_users * (1 + rconst.NUM_EVAL_NEGATIVES))
+  mlperf_helper.ncf_print(
+      key=mlperf_helper.TAGS.PREPROC_HP_SAMPLE_EVAL_REPLACEMENT,
+      value=match_mlperf)
 
   assert num_users <= np.iinfo(np.int32).max
   assert num_items <= np.iinfo(np.uint16).max
@@ -397,6 +407,27 @@ def _shutdown(proc):
     tf.logging.error("Data generation subprocess could not be killed.")
 
 
+
+def write_flagfile(flags_, ncf_dataset):
+  """Write flagfile to begin async data generation."""
+  if ncf_dataset.deterministic:
+    flags_["seed"] = stat_utils.random_int32()
+
+  # We write to a temp file then atomically rename it to the final file,
+  # because writing directly to the final file can cause the data generation
+  # async process to read a partially written JSON file.
+  flagfile_temp = os.path.join(ncf_dataset.cache_paths.cache_root,
+                               rconst.FLAGFILE_TEMP)
+  tf.logging.info("Preparing flagfile for async data generation in {} ..."
+                  .format(flagfile_temp))
+  with tf.gfile.Open(flagfile_temp, "w") as f:
+    for k, v in six.iteritems(flags_):
+      f.write("--{}={}\n".format(k, v))
+  flagfile = os.path.join(ncf_dataset.cache_paths.cache_root, rconst.FLAGFILE)
+  tf.gfile.Rename(flagfile_temp, flagfile)
+  tf.logging.info(
+      "Wrote flagfile for async data generation in {}.".format(flagfile))
+
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                          num_data_readers=None, num_neg=4, epochs_per_cycle=1,
                          match_mlperf=False, deterministic=False,
@@ -405,6 +436,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   """Preprocess data and start negative generation subprocess."""
 
   tf.logging.info("Beginning data preprocessing.")
+  tf.gfile.MakeDirs(data_dir)
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
                                 num_data_readers=num_data_readers,
                                 match_mlperf=match_mlperf,
@@ -430,25 +462,6 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "use_tf_logging": not use_subprocess,
       "ml_perf": match_mlperf,
   }
-
-  if ncf_dataset.deterministic:
-    flags_["seed"] = stat_utils.random_int32()
-  tf.gfile.MakeDirs(data_dir)
-  # We write to a temp file then atomically rename it to the final file,
-  # because writing directly to the final file can cause the data generation
-  # async process to read a partially written JSON file.
-  flagfile_temp = os.path.join(ncf_dataset.cache_paths.cache_root,
-                               rconst.FLAGFILE_TEMP)
-  tf.logging.info("Preparing flagfile for async data generation in {} ..."
-                  .format(flagfile_temp))
-  with tf.gfile.Open(flagfile_temp, "w") as f:
-    for k, v in six.iteritems(flags_):
-      f.write("--{}={}\n".format(k, v))
-  flagfile = os.path.join(ncf_dataset.cache_paths.cache_root, rconst.FLAGFILE)
-  tf.gfile.Rename(flagfile_temp, flagfile)
-  tf.logging.info(
-      "Wrote flagfile for async data generation in {}."
-      .format(flagfile))
 
   if use_subprocess:
     tf.logging.info("Creating training file subprocess.")
@@ -488,6 +501,14 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
     raise ValueError("Generation subprocess did not start correctly. Data will "
                      "not be available; exiting to avoid waiting forever.")
+
+  # We start the async process and wait for it to signal that it is alive. It
+  # will then enter a loop waiting for the flagfile to be written. Once we see
+  # that the async process has signaled that it is alive, we clear the system
+  # caches and begin the run.
+  mlperf_helper.clear_system_caches()
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_START)
+  write_flagfile(flags_, ncf_dataset)
 
   return ncf_dataset, cleanup
 

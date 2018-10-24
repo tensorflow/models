@@ -42,6 +42,7 @@ import tensorflow as tf
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
+from official.utils.logs import mlperf_helper
 
 
 def _sparse_to_dense_grads(grads_and_vars):
@@ -102,12 +103,25 @@ def neumf_model_fn(features, labels, mode, params):
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
+
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_NAME, value="adam")
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_LR,
+                            value=params["learning_rate"])
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_BETA1,
+                            value=params["beta1"])
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_BETA2,
+                            value=params["beta2"])
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
+                            value=params["epsilon"])
+
     optimizer = tf.train.AdamOptimizer(
         learning_rate=params["learning_rate"], beta1=params["beta1"],
         beta2=params["beta2"], epsilon=params["epsilon"])
     if params["use_tpu"]:
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
+                            value=mlperf_helper.TAGS.BCE)
     loss = tf.losses.sparse_softmax_cross_entropy(
         labels=labels,
         logits=softmax_logits
@@ -157,6 +171,10 @@ def construct_model(users, items, params):
   mlp_reg_layers = params["mlp_reg_layers"]
 
   mf_dim = params["mf_dim"]
+
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_MF_DIM, value=mf_dim)
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_MLP_LAYER_SIZES,
+                          value=model_layers)
 
   if model_layers[0] % 2 != 0:
     raise ValueError("The first layer size should be multiple of 2!")

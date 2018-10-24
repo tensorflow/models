@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [ `id -u` != 0 ]; then
+  echo "Calling sudo to gain root for this shell. (Needed to clear caches.)"
+  sudo echo "Success"
+fi
+
 DATASET="ml-20m"
 
 BUCKET=${BUCKET:-""}
@@ -22,7 +27,7 @@ mkdir -p ${LOCAL_TEST_DIR}
 
 TPU=${TPU:-""}
 if [[ -z ${TPU} ]]; then
-  DEVICE_FLAG="--num_gpus -1"
+  DEVICE_FLAG="--num_gpus -1 --use_xla_for_gpu"
 else
   DEVICE_FLAG="--tpu ${TPU} --num_gpus 0"
 fi
@@ -38,9 +43,14 @@ do
   MODEL_DIR="${TEST_DIR}/model_dir_${i}"
 
   RUN_LOG="${LOCAL_TEST_DIR}/run_${i}.log"
+  export COMPLIANCE_FILE="${LOCAL_TEST_DIR}/run_${i}_compliance_raw.log"
+  export STITCHED_COMPLIANCE_FILE="${LOCAL_TEST_DIR}/run_${i}_compliance_submission.log"
   echo ""
   echo "Beginning run ${i}"
-  echo "  Complete logs are in ${RUN_LOG}"
+  echo "  Complete output logs are in ${RUN_LOG}"
+  echo "  Compliance logs: (submission log is created after run.)"
+  echo "    ${COMPLIANCE_FILE}"
+  echo "    ${STITCHED_COMPLIANCE_FILE}"
 
   # To reduce variation set the seed flag:
   #   --seed ${i}
@@ -62,7 +72,7 @@ do
                      --hr_threshold 0.635 \
                      --ml_perf \
  |& tee ${RUN_LOG} \
- | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)"
+ | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)|(MLPerf time:)"
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."
