@@ -61,8 +61,8 @@ def parse_line(line): # type: (str) -> typing.Optional[ParsedLine]
   if not match:
     return
 
-  _, major, minor, micro, benchmark, timestamp = match.groups()[:5]
-  call_file, call_line, tag, _, value = match.groups()[5:]
+  _, major, minor, micro, benchmark, timestamp = match.groups()[:6]
+  call_file, call_line, tag, _, value = match.groups()[6:]
 
   return ParsedLine(version=(int(major), int(minor), int(micro)),
                     benchmark=benchmark, timestamp=timestamp,
