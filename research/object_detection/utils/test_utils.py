@@ -24,6 +24,9 @@ from object_detection.core import box_predictor
 from object_detection.core import matcher
 from object_detection.utils import shape_utils
 
+# Default size (both width and height) used for testing mask predictions.
+DEFAULT_MASK_SIZE = 5
+
 
 class MockBoxCoder(box_coder.BoxCoder):
   """Simple `difference` BoxCoder."""
@@ -42,8 +45,9 @@ class MockBoxCoder(box_coder.BoxCoder):
 class MockBoxPredictor(box_predictor.BoxPredictor):
   """Simple box predictor that ignores inputs and outputs all zeros."""
 
-  def __init__(self, is_training, num_classes):
+  def __init__(self, is_training, num_classes, predict_mask=False):
     super(MockBoxPredictor, self).__init__(is_training, num_classes)
+    self._predict_mask = predict_mask
 
   def _predict(self, image_features, num_predictions_per_location):
     image_feature = image_features[0]
@@ -57,17 +61,29 @@ class MockBoxPredictor(box_predictor.BoxPredictor):
         (batch_size, num_anchors, 1, code_size), dtype=tf.float32)
     class_predictions_with_background = zero + tf.zeros(
         (batch_size, num_anchors, self.num_classes + 1), dtype=tf.float32)
-    return {box_predictor.BOX_ENCODINGS: box_encodings,
-            box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND:
-            class_predictions_with_background}
+    masks = zero + tf.zeros(
+        (batch_size, num_anchors, self.num_classes, DEFAULT_MASK_SIZE,
+         DEFAULT_MASK_SIZE),
+        dtype=tf.float32)
+    predictions_dict = {
+        box_predictor.BOX_ENCODINGS:
+            box_encodings,
+        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND:
+            class_predictions_with_background
+    }
+    if self._predict_mask:
+      predictions_dict[box_predictor.MASK_PREDICTIONS] = masks
+
+    return predictions_dict
 
 
 class MockKerasBoxPredictor(box_predictor.KerasBoxPredictor):
   """Simple box predictor that ignores inputs and outputs all zeros."""
 
-  def __init__(self, is_training, num_classes):
+  def __init__(self, is_training, num_classes, predict_mask=False):
     super(MockKerasBoxPredictor, self).__init__(
         is_training, num_classes, False, False)
+    self._predict_mask = predict_mask
 
   def _predict(self, image_features, **kwargs):
     image_feature = image_features[0]
@@ -81,9 +97,19 @@ class MockKerasBoxPredictor(box_predictor.KerasBoxPredictor):
         (batch_size, num_anchors, 1, code_size), dtype=tf.float32)
     class_predictions_with_background = zero + tf.zeros(
         (batch_size, num_anchors, self.num_classes + 1), dtype=tf.float32)
-    return {box_predictor.BOX_ENCODINGS: box_encodings,
-            box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND:
-                class_predictions_with_background}
+    masks = zero + tf.zeros(
+        (batch_size, num_anchors, self.num_classes, DEFAULT_MASK_SIZE,
+         DEFAULT_MASK_SIZE),
+        dtype=tf.float32)
+    predictions_dict = {
+        box_predictor.BOX_ENCODINGS:
+            box_encodings,
+        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND:
+            class_predictions_with_background
+    }
+    if self._predict_mask:
+      predictions_dict[box_predictor.MASK_PREDICTIONS] = masks
+    return predictions_dict
 
 
 class MockAnchorGenerator(anchor_generator.AnchorGenerator):
@@ -103,7 +129,7 @@ class MockAnchorGenerator(anchor_generator.AnchorGenerator):
 class MockMatcher(matcher.Matcher):
   """Simple matcher that matches first anchor to first groundtruth box."""
 
-  def _match(self, similarity_matrix):
+  def _match(self, similarity_matrix, valid_rows):
     return tf.constant([0, -1, -1, -1], dtype=tf.int32)
 
 

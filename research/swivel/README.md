@@ -155,10 +155,10 @@ You can do some simple exploration using `nearest.py`:
     ...
 
 To evaluate the embeddings using common word similarity and analogy datasets,
-use `eval.mk` to retrieve the data sets and build the tools:
+use `eval.mk` to retrieve the data sets and build the tools. Note that wordsim is currently not compatible with Python 3.x.
 
     make -f eval.mk
-    ./wordsim.py -v vocab.txt -e vecs.bin *.ws.tab
+    ./wordsim.py --vocab vocab.txt --embeddings vecs.bin *.ws.tab
     ./analogy --vocab vocab.txt --embeddings vecs.bin *.an.tab
 
 The word similarity evaluation compares the embeddings' estimate of "similarity"

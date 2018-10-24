@@ -148,6 +148,7 @@ class MaskRCNNMaskHead(head.Head):
           upsampled_features,
           num_outputs=num_masks,
           activation_fn=None,
+          normalizer_fn=None,
           kernel_size=[3, 3])
       return tf.expand_dims(
           tf.transpose(mask_predictions, perm=[0, 3, 1, 2]),

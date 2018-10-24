@@ -48,11 +48,6 @@ class DatasetOpsTest(tf.test.TestCase):
       self.assertEqual([5], tensor_1d.shape)
       self.assertAllEqual([0, 1, 2, 3, 4], tensor_1d.eval())
 
-      # Invalid to pad Tensor with batch size 5 to batch size 3.
-      tensor_1d_pad3 = dataset_ops.pad_tensor_to_batch_size(tensor_1d, 3)
-      with self.assertRaises(tf.errors.InvalidArgumentError):
-        tensor_1d_pad3.eval()
-
       tensor_1d_pad5 = dataset_ops.pad_tensor_to_batch_size(tensor_1d, 5)
       self.assertEqual([5], tensor_1d_pad5.shape)
       self.assertAllEqual([0, 1, 2, 3, 4], tensor_1d_pad5.eval())
@@ -65,11 +60,6 @@ class DatasetOpsTest(tf.test.TestCase):
       tensor_2d = tf.reshape(tf.range(9, dtype=tf.int32), [3, 3])
       self.assertEqual([3, 3], tensor_2d.shape)
       self.assertAllEqual([[0, 1, 2], [3, 4, 5], [6, 7, 8]], tensor_2d.eval())
-
-      tensor_2d_pad2 = dataset_ops.pad_tensor_to_batch_size(tensor_2d, 2)
-      # Invalid to pad Tensor with batch size 2 to batch size 2.
-      with self.assertRaises(tf.errors.InvalidArgumentError):
-        tensor_2d_pad2.eval()
 
       tensor_2d_pad3 = dataset_ops.pad_tensor_to_batch_size(tensor_2d, 3)
       self.assertEqual([3, 3], tensor_2d_pad3.shape)

@@ -23,9 +23,8 @@ import os.path
 from astropy.io import fits
 import numpy as np
 
+from light_curve_util import util
 from tensorflow import gfile
-
-LONG_CADENCE_TIME_DELTA_DAYS = 0.02043422  # Approximately 29.4 minutes.
 
 # Quarter index to filename prefix for long cadence Kepler data.
 # Reference: https://archive.stsci.edu/kepler/software/get_kepler.py
@@ -73,6 +72,14 @@ SHORT_CADENCE_QUARTER_PREFIXES = {
     17: ["2013121191144", "2013131215648"]
 }
 
+# Quarter order for different scrambling procedures.
+# Page 9: https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20170009549.pdf.
+SIMULATED_DATA_SCRAMBLE_ORDERS = {
+    "SCR1": [0, 13, 14, 15, 16, 9, 10, 11, 12, 5, 6, 7, 8, 1, 2, 3, 4, 17],
+    "SCR2": [0, 1, 2, 3, 4, 13, 14, 15, 16, 9, 10, 11, 12, 5, 6, 7, 8, 17],
+    "SCR3": [0, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 17],
+}
+
 
 def kepler_filenames(base_dir,
                      kep_id,
@@ -98,21 +105,21 @@ def kepler_filenames(base_dir,
   Args:
     base_dir: Base directory containing Kepler data.
     kep_id: Id of the Kepler target star. May be an int or a possibly zero-
-        padded string.
+      padded string.
     long_cadence: Whether to read a long cadence (~29.4 min / measurement) light
-        curve as opposed to a short cadence (~1 min / measurement) light curve.
+      curve as opposed to a short cadence (~1 min / measurement) light curve.
     quarters: Optional list of integers in [0, 17]; the quarters of the Kepler
-        mission to return.
+      mission to return.
     injected_group: Optional string indicating injected light curves. One of
-        "inj1", "inj2", "inj3".
+      "inj1", "inj2", "inj3".
     check_existence: If True, only return filenames corresponding to files that
-        exist (not all stars have data for all quarters).
+      exist (not all stars have data for all quarters).
 
   Returns:
     A list of filenames.
   """
   # Pad the Kepler id with zeros to length 9.
-  kep_id = "%.9d" % int(kep_id)
+  kep_id = "{:09d}".format(int(kep_id))
 
   quarter_prefixes, cadence_suffix = ((LONG_CADENCE_QUARTER_PREFIXES, "llc")
                                       if long_cadence else
@@ -128,12 +135,11 @@ def kepler_filenames(base_dir,
   for quarter in quarters:
     for quarter_prefix in quarter_prefixes[quarter]:
       if injected_group:
-        base_name = "kplr%s-%s_INJECTED-%s_%s.fits" % (kep_id, quarter_prefix,
-                                                       injected_group,
-                                                       cadence_suffix)
+        base_name = "kplr{}-{}_INJECTED-{}_{}.fits".format(
+            kep_id, quarter_prefix, injected_group, cadence_suffix)
       else:
-        base_name = "kplr%s-%s_%s.fits" % (kep_id, quarter_prefix,
-                                           cadence_suffix)
+        base_name = "kplr{}-{}_{}.fits".format(kep_id, quarter_prefix,
+                                               cadence_suffix)
       filename = os.path.join(base_dir, base_name)
       # Not all stars have data for all quarters.
       if not check_existence or gfile.Exists(filename):
@@ -142,40 +148,86 @@ def kepler_filenames(base_dir,
   return filenames
 
 
+def scramble_light_curve(all_time, all_flux, all_quarters, scramble_type):
+  """Scrambles a light curve according to a given scrambling procedure.
+
+  Args:
+    all_time: List holding arrays of time values, each containing a quarter of
+      time data.
+    all_flux: List holding arrays of flux values, each containing a quarter of
+      flux data.
+    all_quarters: List of integers specifying which quarters are present in
+      the light curve (max is 18: Q0...Q17).
+    scramble_type: String specifying the scramble order, one of {'SCR1', 'SCR2',
+      'SCR3'}.
+
+  Returns:
+    scr_flux: Scrambled flux values; the same list as the input flux in another
+      order.
+    scr_time: Time values, re-partitioned to match sizes of the scr_flux lists.
+  """
+  order = SIMULATED_DATA_SCRAMBLE_ORDERS[scramble_type]
+  scr_flux = []
+  for quarter in order:
+    # Ignore missing quarters in the scramble order.
+    if quarter in all_quarters:
+      scr_flux.append(all_flux[all_quarters.index(quarter)])
+
+  scr_time = util.reshard_arrays(all_time, scr_flux)
+
+  return scr_time, scr_flux
+
+
 def read_kepler_light_curve(filenames,
                             light_curve_extension="LIGHTCURVE",
-                            invert=False):
+                            scramble_type=None,
+                            interpolate_missing_time=False):
   """Reads time and flux measurements for a Kepler target star.
 
   Args:
     filenames: A list of .fits files containing time and flux measurements.
     light_curve_extension: Name of the HDU 1 extension containing light curves.
-    invert: Whether to invert the flux measurements by multiplying by -1.
+    scramble_type: What scrambling procedure to use: 'SCR1', 'SCR2', or 'SCR3'
+      (pg 9: https://exoplanetarchive.ipac.caltech.edu/docs/KSCI-19114-002.pdf).
+    interpolate_missing_time: Whether to interpolate missing (NaN) time values.
+      This should only affect the output if scramble_type is specified (NaN time
+      values typically come with NaN flux values, which are removed anyway, but
+      scrambing decouples NaN time values from NaN flux values).
 
   Returns:
     all_time: A list of numpy arrays; the time values of the light curve.
-    all_flux: A list of numpy arrays corresponding to the time arrays in
-        all_time.
+    all_flux: A list of numpy arrays; the flux values of the light curve.
   """
   all_time = []
   all_flux = []
+  all_quarters = []
 
   for filename in filenames:
     with fits.open(gfile.Open(filename, "rb")) as hdu_list:
+      quarter = hdu_list["PRIMARY"].header["QUARTER"]
       light_curve = hdu_list[light_curve_extension].data
-      time = light_curve.TIME
-      flux = light_curve.PDCSAP_FLUX
 
-    # Remove NaN flux values.
-    valid_indices = np.where(np.isfinite(flux))
-    time = time[valid_indices]
-    flux = flux[valid_indices]
+    time = light_curve.TIME
+    flux = light_curve.PDCSAP_FLUX
+    if not time.size:
+      continue  # No data.
 
-    if invert:
-      flux *= -1
+    # Possibly interpolate missing time values.
+    if interpolate_missing_time:
+      time = util.interpolate_missing_time(time, light_curve.CADENCENO)
 
-    if time.size:
-      all_time.append(time)
-      all_flux.append(flux)
+    all_time.append(time)
+    all_flux.append(flux)
+    all_quarters.append(quarter)
+
+  if scramble_type:
+    all_time, all_flux = scramble_light_curve(all_time, all_flux, all_quarters,
+                                              scramble_type)
+
+  # Remove timestamps with NaN time or flux values.
+  for i, (time, flux) in enumerate(zip(all_time, all_flux)):
+    flux_and_time_finite = np.logical_and(np.isfinite(flux), np.isfinite(time))
+    all_time[i] = time[flux_and_time_finite]
+    all_flux[i] = flux[flux_and_time_finite]
 
   return all_time, all_flux

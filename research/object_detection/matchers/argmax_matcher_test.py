@@ -182,6 +182,34 @@ class ArgMaxMatcherTest(test_case.TestCase):
     self.assertAllEqual(np.nonzero(res_unmatched_cols)[0],
                         expected_unmatched_cols)
 
+  def test_return_correct_matches_using_force_match_padded_groundtruth(self):
+    def graph_fn(similarity, valid_rows):
+      matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=3.,
+                                             unmatched_threshold=2.,
+                                             force_match_for_each_row=True)
+      match = matcher.match(similarity, valid_rows)
+      matched_cols = match.matched_column_indicator()
+      unmatched_cols = match.unmatched_column_indicator()
+      match_results = match.match_results
+      return (matched_cols, unmatched_cols, match_results)
+
+    similarity = np.array([[1, 1, 1, 3, 1],
+                           [-1, 0, -2, -2, -1],
+                           [0, 0, 0, 0, 0],
+                           [3, 0, -1, 2, 0],
+                           [0, 0, 0, 0, 0]], dtype=np.float32)
+    valid_rows = np.array([True, True, False, True, False])
+    expected_matched_cols = np.array([0, 1, 3])
+    expected_matched_rows = np.array([3, 1, 0])
+    expected_unmatched_cols = np.array([2, 4])  # col 2 has too high max val
+
+    (res_matched_cols, res_unmatched_cols,
+     match_results) = self.execute(graph_fn, [similarity, valid_rows])
+    self.assertAllEqual(match_results[res_matched_cols], expected_matched_rows)
+    self.assertAllEqual(np.nonzero(res_matched_cols)[0], expected_matched_cols)
+    self.assertAllEqual(np.nonzero(res_unmatched_cols)[0],
+                        expected_unmatched_cols)
+
   def test_valid_arguments_corner_case(self):
     argmax_matcher.ArgMaxMatcher(matched_threshold=1,
                                  unmatched_threshold=1)

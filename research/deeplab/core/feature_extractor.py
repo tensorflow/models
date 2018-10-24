@@ -126,7 +126,7 @@ networks_to_feature_maps = {
     },
     'xception_71': {
         DECODER_END_POINTS: [
-            'entry_flow/block2/unit_1/xception_module/'
+            'entry_flow/block3/unit_1/xception_module/'
             'separable_conv2_pointwise',
         ],
     },

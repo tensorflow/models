@@ -10,7 +10,8 @@ quantized kernels that allow smaller and faster (fixed-point math) models.
 
 For this section, you will need to build [TensorFlow from
 source](https://www.tensorflow.org/install/install_sources) to get the
-TensorFlow Lite support for the SSD model. You will also need to install the
+TensorFlow Lite support for the SSD model. At this time only SSD models are supported.
+Models like faster_rcnn are not supported at this time. You will also need to install the
 [bazel build
 tool](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/android#bazel).
 

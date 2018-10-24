@@ -30,7 +30,7 @@ def _metric_variable(name, shape, dtype):
       collections=[tf.GraphKeys.LOCAL_VARIABLES, tf.GraphKeys.METRIC_VARIABLES])
 
 
-def _build_metrics(labels, predictions, weights, batch_losses):
+def _build_metrics(labels, predictions, weights, batch_losses, output_dim=1):
   """Builds TensorFlow operations to compute model evaluation metrics.
 
   Args:
@@ -38,14 +38,16 @@ def _build_metrics(labels, predictions, weights, batch_losses):
     predictions: Tensor with shape [batch_size, output_dim].
     weights: Tensor with shape [batch_size].
     batch_losses: Tensor with shape [batch_size].
+    output_dim: Dimension of model output
 
   Returns:
     A dictionary {metric_name: (metric_value, update_op).
   """
   # Compute the predicted labels.
   assert len(predictions.shape) == 2
-  binary_classification = (predictions.shape[1] == 1)
+  binary_classification = output_dim == 1
   if binary_classification:
+    assert predictions.shape[1] == 1
     predictions = tf.squeeze(predictions, axis=[1])
     predicted_labels = tf.to_int32(
         tf.greater(predictions, 0.5), name="predicted_labels")
@@ -73,34 +75,30 @@ def _build_metrics(labels, predictions, weights, batch_losses):
     metrics["losses/weighted_cross_entropy"] = tf.metrics.mean(
         batch_losses, weights=weights, name="cross_entropy_loss")
 
-    # Possibly create additional metrics for binary classification.
+    def _count_condition(name, labels_value, predicted_value):
+      """Creates a counter for given values of predictions and labels."""
+      count = _metric_variable(name, [], tf.float32)
+      is_equal = tf.to_float(
+          tf.logical_and(
+              tf.equal(labels, labels_value),
+              tf.equal(predicted_labels, predicted_value)))
+      update_op = tf.assign_add(count, tf.reduce_sum(weights * is_equal))
+      return count.read_value(), update_op
+
+    # Confusion matrix metrics.
+    num_labels = 2 if binary_classification else output_dim
+    for gold_label in range(num_labels):
+      for pred_label in range(num_labels):
+        metric_name = "confusion_matrix/label_{}_pred_{}".format(
+            gold_label, pred_label)
+        metrics[metric_name] = _count_condition(
+            metric_name, labels_value=gold_label, predicted_value=pred_label)
+
+    # Possibly create AUC metric for binary classification.
     if binary_classification:
       labels = tf.cast(labels, dtype=tf.bool)
-      predicted_labels = tf.cast(predicted_labels, dtype=tf.bool)
-
-      # AUC.
       metrics["auc"] = tf.metrics.auc(
           labels, predictions, weights=weights, num_thresholds=1000)
-
-      def _count_condition(name, labels_value, predicted_value):
-        """Creates a counter for given values of predictions and labels."""
-        count = _metric_variable(name, [], tf.float32)
-        is_equal = tf.to_float(
-            tf.logical_and(
-                tf.equal(labels, labels_value),
-                tf.equal(predicted_labels, predicted_value)))
-        update_op = tf.assign_add(count, tf.reduce_sum(weights * is_equal))
-        return count.read_value(), update_op
-
-      # Confusion matrix metrics.
-      metrics["confusion_matrix/true_positives"] = _count_condition(
-          "true_positives", labels_value=True, predicted_value=True)
-      metrics["confusion_matrix/false_positives"] = _count_condition(
-          "false_positives", labels_value=False, predicted_value=True)
-      metrics["confusion_matrix/true_negatives"] = _count_condition(
-          "true_negatives", labels_value=False, predicted_value=False)
-      metrics["confusion_matrix/false_negatives"] = _count_condition(
-          "false_negatives", labels_value=True, predicted_value=False)
 
   return metrics
 
@@ -130,7 +128,12 @@ def create_metric_fn(model):
   }
 
   def metric_fn(labels, predictions, weights, batch_losses):
-    return _build_metrics(labels, predictions, weights, batch_losses)
+    return _build_metrics(
+        labels,
+        predictions,
+        weights,
+        batch_losses,
+        output_dim=model.hparams.output_dim)
 
   return metric_fn, metric_fn_inputs
 

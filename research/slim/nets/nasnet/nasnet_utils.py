@@ -300,7 +300,7 @@ class NasNetABaseCell(object):
     return net
 
   def __call__(self, net, scope=None, filter_scaling=1, stride=1,
-               prev_layer=None, cell_num=-1):
+               prev_layer=None, cell_num=-1, current_step=None):
     """Runs the conv cell."""
     self._cell_num = cell_num
     self._filter_scaling = filter_scaling
@@ -325,10 +325,12 @@ class NasNetABaseCell(object):
           # Apply conv operations
           with tf.variable_scope('left'):
             h1 = self._apply_conv_operation(h1, operation_left,
-                                            stride, original_input_left)
+                                            stride, original_input_left,
+                                            current_step)
           with tf.variable_scope('right'):
             h2 = self._apply_conv_operation(h2, operation_right,
-                                            stride, original_input_right)
+                                            stride, original_input_right,
+                                            current_step)
 
           # Combine hidden states using 'add'.
           with tf.variable_scope('combine'):
@@ -343,7 +345,7 @@ class NasNetABaseCell(object):
       return net
 
   def _apply_conv_operation(self, net, operation,
-                            stride, is_from_original_input):
+                            stride, is_from_original_input, current_step):
     """Applies the predicted conv operation to net."""
     # Dont stride if this is not one of the original hiddenstates
     if stride > 1 and not is_from_original_input:
@@ -367,7 +369,7 @@ class NasNetABaseCell(object):
       raise ValueError('Unimplemented operation', operation)
 
     if operation != 'none':
-      net = self._apply_drop_path(net)
+      net = self._apply_drop_path(net, current_step=current_step)
     return net
 
   def _combine_unused_states(self, net):
@@ -433,9 +435,9 @@ class NasNetABaseCell(object):
         drop_path_keep_prob = 1 - layer_ratio * (1 - drop_path_keep_prob)
       if drop_connect_version in ['v1', 'v3']:
         # Decrease the keep probability over time
-        if not current_step:
-          current_step = tf.cast(tf.train.get_or_create_global_step(),
-                                 tf.float32)
+        if current_step is None:
+          current_step = tf.train.get_or_create_global_step()
+        current_step = tf.cast(current_step, tf.float32)
         drop_path_burn_in_steps = self._total_training_steps
         current_ratio = current_step / drop_path_burn_in_steps
         current_ratio = tf.minimum(1.0, current_ratio)

@@ -222,7 +222,8 @@ def run_mnist(flags_obj):
     input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
         'image': image,
     })
-    mnist_classifier.export_savedmodel(flags_obj.export_dir, input_fn)
+    mnist_classifier.export_savedmodel(flags_obj.export_dir, input_fn,
+                                       strip_default_attrs=True)
 
 
 def main(_):

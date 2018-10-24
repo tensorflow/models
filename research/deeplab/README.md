@@ -52,6 +52,18 @@ works:
 }
 ```
 
+*  Architecture search for dense prediction cell:
+
+```
+@inproceedings{dpc2018,
+  title={Searching for Efficient Multi-Scale Architectures for Dense Image Prediction},
+  author={Liang-Chieh Chen and Maxwell D. Collins and Yukun Zhu and George Papandreou and Barret Zoph and Florian Schroff and Hartwig Adam and Jonathon Shlens},
+  booktitle={NIPS},
+  year={2018}
+}
+
+```
+
 In the current implementation, we support adopting the following network
 backbones:
 
@@ -113,6 +125,18 @@ tracker](https://github.com/tensorflow/models/issues), prefixing the issue name
 with "deeplab".
 
 ## Change Logs
+
+### October 1, 2018
+
+Released MobileNet-v2 depth-multiplier = 0.5 COCO-pretrained checkpoints on
+PASCAL VOC 2012, and Xception-65 COCO pretrained checkpoint (i.e., no PASCAL
+pretrained).
+
+
+### September 5, 2018
+
+Released Cityscapes pretrained checkpoints with found best dense prediction cell.
+
 
 ### May 26, 2018
 

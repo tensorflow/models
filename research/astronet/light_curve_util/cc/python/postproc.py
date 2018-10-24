@@ -24,7 +24,8 @@ def ValueErrorOnFalse(ok, *output_args):
   """Raises ValueError if not ok, otherwise returns the output arguments."""
   n_outputs = len(output_args)
   if n_outputs < 2:
-    raise ValueError("Expected 2 or more output_args. Got: %d" % n_outputs)
+    raise ValueError(
+        "Expected 2 or more output_args. Got: {}".format(n_outputs))
 
   if not ok:
     error = output_args[-1]

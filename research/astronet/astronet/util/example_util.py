@@ -28,7 +28,7 @@ def get_feature(ex, name, kind=None, strict=True):
     ex: A tf.train.Example.
     name: Name of the feature to look up.
     kind: Optional: one of 'bytes_list', 'float_list', 'int64_list'. Inferred if
-        not specified.
+      not specified.
     strict: Whether to raise a KeyError if there is no such feature.
 
   Returns:
@@ -48,7 +48,8 @@ def get_feature(ex, name, kind=None, strict=True):
     return np.array([])  # Feature exists, but it's empty.
 
   if kind and kind != inferred_kind:
-    raise TypeError("Requested %s, but Feature has %s" % (kind, inferred_kind))
+    raise TypeError("Requested {}, but Feature has {}".format(
+        kind, inferred_kind))
 
   return np.array(getattr(ex.features.feature[name], inferred_kind).value)
 
@@ -79,7 +80,12 @@ def _infer_kind(value):
     return "bytes_list"
 
 
-def set_feature(ex, name, value, kind=None, allow_overwrite=False):
+def set_feature(ex,
+                name,
+                value,
+                kind=None,
+                allow_overwrite=False,
+                bytes_encoding="latin-1"):
   """Sets a feature value in a tf.train.Example.
 
   Args:
@@ -87,8 +93,9 @@ def set_feature(ex, name, value, kind=None, allow_overwrite=False):
     name: Name of the feature to set.
     value: Feature value to set. Must be a sequence.
     kind: Optional: one of 'bytes_list', 'float_list', 'int64_list'. Inferred if
-        not specified.
+      not specified.
     allow_overwrite: Whether to overwrite the existing value of the feature.
+    bytes_encoding: Codec for encoding strings when kind = 'bytes_list'.
 
   Raises:
     ValueError: If `allow_overwrite` is False and the feature already exists, or
@@ -99,19 +106,20 @@ def set_feature(ex, name, value, kind=None, allow_overwrite=False):
       del ex.features.feature[name]
     else:
       raise ValueError(
-          "Attempting to set duplicate feature with name: %s" % name)
+          "Attempting to overwrite feature with name: {}. "
+          "Set allow_overwrite=True if this is desired.".format(name))
 
   if not kind:
     kind = _infer_kind(value)
 
   if kind == "bytes_list":
-    value = [str(v).encode("latin-1") for v in value]
+    value = [str(v).encode(bytes_encoding) for v in value]
   elif kind == "float_list":
     value = [float(v) for v in value]
   elif kind == "int64_list":
     value = [int(v) for v in value]
   else:
-    raise ValueError("Unrecognized kind: %s" % kind)
+    raise ValueError("Unrecognized kind: {}".format(kind))
 
   getattr(ex.features.feature[name], kind).value.extend(value)
 
@@ -121,9 +129,13 @@ def set_float_feature(ex, name, value, allow_overwrite=False):
   set_feature(ex, name, value, "float_list", allow_overwrite)
 
 
-def set_bytes_feature(ex, name, value, allow_overwrite=False):
+def set_bytes_feature(ex,
+                      name,
+                      value,
+                      allow_overwrite=False,
+                      bytes_encoding="latin-1"):
   """Sets the value of a bytes feature in a tf.train.Example."""
-  set_feature(ex, name, value, "bytes_list", allow_overwrite)
+  set_feature(ex, name, value, "bytes_list", allow_overwrite, bytes_encoding)
 
 
 def set_int64_feature(ex, name, value, allow_overwrite=False):

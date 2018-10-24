@@ -80,36 +80,34 @@ def _provide_custom_dataset(image_file_pattern,
     image_file_pattern: A string of glob pattern of image files.
     batch_size: The number of images in each batch.
     shuffle: Whether to shuffle the read images.  Defaults to True.
-    num_threads: Number of prefetching threads.  Defaults to 1.
+    num_threads: Number of mapping threads.  Defaults to 1.
     patch_size: Size of the path to extract from the image.  Defaults to 128.
 
   Returns:
-    A float `Tensor` of shape [batch_size, patch_size, patch_size, 3]
-    representing a batch of images.
-  """
-  filename_queue = tf.train.string_input_producer(
-      tf.train.match_filenames_once(image_file_pattern),
-      shuffle=shuffle,
-      capacity=5 * batch_size)
-  image_reader = tf.WholeFileReader()
+    A tf.data.Dataset with Tensors of shape
+    [batch_size, patch_size, patch_size, 3] representing a batch of images.
 
-  _, image_bytes = image_reader.read(filename_queue)
-  image = tf.image.decode_image(image_bytes)
-  image_patch = full_image_to_patch(image, patch_size)
+  Raises:
+    ValueError: If no files match `image_file_pattern`.
+  """
+  if not tf.gfile.Glob(image_file_pattern):
+    raise ValueError('No file patterns found.')
+  filenames_ds = tf.data.Dataset.list_files(image_file_pattern)
+  bytes_ds = filenames_ds.map(tf.io.read_file, num_parallel_calls=num_threads)
+  images_ds = bytes_ds.map(
+      tf.image.decode_image, num_parallel_calls=num_threads)
+  patches_ds = images_ds.map(
+      lambda img: full_image_to_patch(img, patch_size),
+      num_parallel_calls=num_threads)
+  patches_ds = patches_ds.repeat()
 
   if shuffle:
-    return tf.train.shuffle_batch(
-        [image_patch],
-        batch_size=batch_size,
-        num_threads=num_threads,
-        capacity=5 * batch_size,
-        min_after_dequeue=batch_size)
-  else:
-    return tf.train.batch(
-        [image_patch],
-        batch_size=batch_size,
-        num_threads=1,  # no threads so it's deterministic
-        capacity=5 * batch_size)
+    patches_ds = patches_ds.shuffle(5 * batch_size)
+
+  patches_ds = patches_ds.prefetch(5 * batch_size)
+  patches_ds = patches_ds.batch(batch_size)
+
+  return patches_ds
 
 
 def provide_custom_datasets(image_file_patterns,
@@ -127,8 +125,8 @@ def provide_custom_datasets(image_file_patterns,
     patch_size: Size of the patch to extract from the image.  Defaults to 128.
 
   Returns:
-    A list of float `Tensor`s with the same size of `image_file_patterns`.
-    Each of the `Tensor` in the list has a shape of
+    A list of tf.data.Datasets the same number as `image_file_patterns`. Each
+    of the datasets have `Tensor`'s in the list has a shape of
     [batch_size, patch_size, patch_size, 3] representing a batch of images.
 
   Raises:
@@ -147,4 +145,41 @@ def provide_custom_datasets(image_file_patterns,
             shuffle=shuffle,
             num_threads=num_threads,
             patch_size=patch_size))
+
   return custom_datasets
+
+
+def provide_custom_data(image_file_patterns,
+                        batch_size,
+                        shuffle=True,
+                        num_threads=1,
+                        patch_size=128):
+  """Provides multiple batches of custom image data.
+
+  Args:
+    image_file_patterns: A list of glob patterns of image files.
+    batch_size: The number of images in each batch.
+    shuffle: Whether to shuffle the read images.  Defaults to True.
+    num_threads: Number of prefetching threads.  Defaults to 1.
+    patch_size: Size of the patch to extract from the image.  Defaults to 128.
+
+  Returns:
+    A list of float `Tensor`s with the same size of `image_file_patterns`. Each
+    of the `Tensor` in the list has a shape of
+    [batch_size, patch_size, patch_size, 3] representing a batch of images. As a
+    side effect, the tf.Dataset initializer is added to the
+    tf.GraphKeys.TABLE_INITIALIZERS collection.
+
+  Raises:
+    ValueError: If image_file_patterns is not a list or tuple.
+  """
+  datasets = provide_custom_datasets(
+      image_file_patterns, batch_size, shuffle, num_threads, patch_size)
+
+  tensors = []
+  for ds in datasets:
+    iterator = ds.make_initializable_iterator()
+    tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
+    tensors.append(iterator.get_next())
+
+  return tensors
