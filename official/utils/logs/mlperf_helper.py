@@ -94,7 +94,7 @@ def get_mlperf_log():
       version = tuple(int(i) for i in version.version.split("."))
       if version < _MIN_VERSION:
         tf.logging.warning(
-            "mlperf_compliance is version {}, must be at least version {}".format(
+            "mlperf_compliance is version {}, must be >= {}".format(
                 ".".join([str(i) for i in version]),
                 ".".join([str(i) for i in _MIN_VERSION])))
         raise ImportError
