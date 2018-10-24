@@ -30,6 +30,7 @@
 /research/lfads/ @jazcollins @susillo
 /research/lm_1b/ @oriolvinyals @panyx0718
 /research/lm_commonsense/ @thtrieu
+/research/lstm_object_detection/ @dreamdragon
 /research/marco/ @vincentvanhoucke
 /research/maskgan/ @a-dai
 /research/morph_net/ @gariel-google
