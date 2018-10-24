@@ -98,9 +98,9 @@ def get_mlperf_log():
                 ".".join([str(i) for i in version]),
                 ".".join([str(i) for i in _MIN_VERSION])))
         raise ImportError
+      return mlperf_compliance.mlperf_log
 
-    test_mlperf_log_pip_version()
-    mlperf_log = mlperf_compliance.mlperf_log
+    mlperf_log = test_mlperf_log_pip_version()
 
   except ImportError:
     mlperf_log = None
