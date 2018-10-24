@@ -86,19 +86,22 @@ def unparse_line(parsed_line): # type: (ParsedLine) -> str
 def get_mlperf_log():
   """Shielded import of mlperf_log module."""
   try:
-    import pkg_resources
     import mlperf_compliance
 
-    version = pkg_resources.get_distribution("mlperf_compliance")
-    version = tuple(int(i) for i in version.version.split("."))
-    if version < _MIN_VERSION:
-      tf.logging.warning(
-          "mlperf_compliance is version {}, must be at least version {}".format(
-              ".".join([str(i) for i in version]),
-              ".".join([str(i) for i in _MIN_VERSION])))
-      raise ImportError
+    def test_mlperf_log_pip_version():
+      """Check that mlperf_compliance is up to date."""
+      import pkg_resources
+      version = pkg_resources.get_distribution("mlperf_compliance")
+      version = tuple(int(i) for i in version.version.split("."))
+      if version < _MIN_VERSION:
+        tf.logging.warning(
+            "mlperf_compliance is version {}, must be >= {}".format(
+                ".".join([str(i) for i in version]),
+                ".".join([str(i) for i in _MIN_VERSION])))
+        raise ImportError
+      return mlperf_compliance.mlperf_log
 
-    mlperf_log = mlperf_compliance.mlperf_log
+    mlperf_log = test_mlperf_log_pip_version()
 
   except ImportError:
     mlperf_log = None
