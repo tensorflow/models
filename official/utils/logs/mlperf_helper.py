@@ -37,6 +37,8 @@ import tensorflow as tf
 _MIN_VERSION = (0, 0, 6)
 _STACK_OFFSET = 2
 
+SUDO = "sudo" if os.geteuid() else ""
+
 _NCF_PREFIX = "NCF_RAW_"
 
 # TODO(robieta): move line parsing to mlperf util
@@ -171,7 +173,8 @@ def clear_system_caches():
   if not LOGGER.enabled:
     return
   ret_code = subprocess.call(
-      ["sync && echo 3 | sudo tee /proc/sys/vm/drop_caches"], shell=True)
+      ["sync && echo 3 | {} tee /proc/sys/vm/drop_caches".format(SUDO)],
+      shell=True)
 
   if ret_code:
     raise ValueError("Failed to clear caches")
