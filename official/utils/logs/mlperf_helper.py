@@ -39,6 +39,9 @@ _STACK_OFFSET = 2
 
 SUDO = "sudo" if os.geteuid() else ""
 
+# This indirection is used in docker.
+DROP_CACHE_LOC = os.getenv("DROP_CACHE_LOC", "/proc/sys/vm/drop_caches")
+
 _NCF_PREFIX = "NCF_RAW_"
 
 # TODO(robieta): move line parsing to mlperf util
@@ -173,7 +176,7 @@ def clear_system_caches():
   if not LOGGER.enabled:
     return
   ret_code = subprocess.call(
-      ["sync && echo 3 | {} tee /proc/sys/vm/drop_caches".format(SUDO)],
+      ["sync && echo 3 | {} tee {}".format(SUDO, DROP_CACHE_LOC)],
       shell=True)
 
   if ret_code:
