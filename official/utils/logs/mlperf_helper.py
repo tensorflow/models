@@ -89,6 +89,7 @@ def get_mlperf_log():
     import mlperf_compliance
 
     def test_mlperf_log_pip_version():
+      """Check that mlperf_compliance is up to date."""
       import pkg_resources
       version = pkg_resources.get_distribution("mlperf_compliance")
       version = tuple(int(i) for i in version.version.split("."))
