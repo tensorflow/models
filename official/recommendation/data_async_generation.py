@@ -479,18 +479,21 @@ def _generation_loop(num_workers,           # type: int
     gc.collect()
 
 
-def _parse_flagfile(flagfile):
-  """Fill flags with flagfile written by the main process."""
-  tf.logging.info("Waiting for flagfile to appear at {}..."
-                  .format(flagfile))
+def wait_for_path(fpath):
   start_time = time.time()
-  while not tf.gfile.Exists(flagfile):
+  while not tf.gfile.Exists(fpath):
     if time.time() - start_time > rconst.TIMEOUT_SECONDS:
       log_msg("Waited more than {} seconds. Concluding that this "
               "process is orphaned and exiting gracefully."
               .format(rconst.TIMEOUT_SECONDS))
       sys.exit()
     time.sleep(1)
+
+def _parse_flagfile(flagfile):
+  """Fill flags with flagfile written by the main process."""
+  tf.logging.info("Waiting for flagfile to appear at {}..."
+                  .format(flagfile))
+  wait_for_path(flagfile)
   tf.logging.info("flagfile found.")
 
   # `flags` module opens `flagfile` with `open`, which does not work on
@@ -504,6 +507,8 @@ def _parse_flagfile(flagfile):
 
 def write_alive_file(cache_paths):
   """Write file to signal that generation process started correctly."""
+  wait_for_path(cache_paths.cache_root)
+
   log_msg("Signaling that I am alive.")
   with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
     f.write("Generation subproc has started.")
