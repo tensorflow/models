@@ -27,8 +27,9 @@ def get_distribution_strategy(num_gpus, all_reduce_alg=None):
   Args:
     num_gpus: Number of GPUs to run this model.
     all_reduce_alg: Specify which algorithm to use when performing all-reduce.
-      See tf.contrib.distribute.AllReduceCrossDeviceOps for available algorithms.
-      If None, DistributionStrategy will choose based on device topology.
+      See tf.contrib.distribute.AllReduceCrossDeviceOps for available
+      algorithms. If None, DistributionStrategy will choose based on device
+      topology.
 
   Returns:
     tf.contrib.distribute.DistibutionStrategy object.
