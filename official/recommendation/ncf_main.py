@@ -403,7 +403,7 @@ def define_ncf_flags():
           "achieved by MLPerf implementation."))
 
   flags.DEFINE_bool(
-      name="ml_perf", default=None,
+      name="ml_perf", default=False,
       help=flags_core.help_wrap(
           "If set, changes the behavior of the model slightly to match the "
           "MLPerf reference implementations here: \n"
