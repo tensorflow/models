@@ -470,6 +470,7 @@ def create_estimator_and_inputs(run_config,
                                 num_shards=1,
                                 params=None,
                                 override_eval_num_epochs=True,
+                                save_final_config=False,
                                 **kwargs):
   """Creates `Estimator`, input functions, and steps.
 
@@ -506,6 +507,8 @@ def create_estimator_and_inputs(run_config,
       `use_tpu_estimator` is True.
     override_eval_num_epochs: Whether to overwrite the number of epochs to
       1 for eval_input.
+    save_final_config: Whether to save final config (obtained after applying
+      overrides) to `estimator.model_dir`.
     **kwargs: Additional keyword arguments for configuration override.
 
   Returns:
@@ -603,7 +606,7 @@ def create_estimator_and_inputs(run_config,
     estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
 
   # Write the as-run pipeline config to disk.
-  if run_config.is_chief:
+  if run_config.is_chief and save_final_config:
     pipeline_config_final = create_pipeline_proto_from_configs(configs)
     config_util.save_pipeline_config(pipeline_config_final, estimator.model_dir)
 
@@ -761,6 +764,7 @@ def populate_experiment(run_config,
       train_steps=train_steps,
       eval_steps=eval_steps,
       model_fn_creator=model_fn_creator,
+      save_final_config=True,
       **kwargs)
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']

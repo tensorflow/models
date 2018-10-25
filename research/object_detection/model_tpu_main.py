@@ -114,6 +114,7 @@ def main(unused_argv):
       use_tpu_estimator=True,
       use_tpu=FLAGS.use_tpu,
       num_shards=FLAGS.num_shards,
+      save_final_config=FLAGS.mode == 'train',
       **kwargs)
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
