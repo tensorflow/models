@@ -192,7 +192,8 @@ def stitch_ncf():
     return
 
   if LOGGER.log_file is None or not tf.gfile.Exists(LOGGER.log_file):
-    tf.logging.error("Could not find log file to stitch.")
+    tf.logging.warning("Could not find log file to stitch.")
+    return
 
   log_lines = []
   num_eval_users = None

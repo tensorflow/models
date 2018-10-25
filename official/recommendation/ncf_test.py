@@ -19,11 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import math
+import mock
 
 import numpy as np
 import tensorflow as tf
 
+from absl.testing import flagsaver
 from official.recommendation import constants as rconst
+from official.recommendation import data_preprocessing
 from official.recommendation import neumf_model
 from official.recommendation import ncf_main
 from official.recommendation import stat_utils
@@ -33,6 +36,12 @@ NUM_TRAIN_NEG = 4
 
 
 class NcfTest(tf.test.TestCase):
+
+  @classmethod
+  def setUpClass(cls):  # pylint: disable=invalid-name
+    super(NcfTest, cls).setUpClass()
+    ncf_main.define_ncf_flags()
+
   def setUp(self):
     self.top_k_old = rconst.TOP_K
     self.num_eval_negatives_old = rconst.NUM_EVAL_NEGATIVES
@@ -223,6 +232,22 @@ class NcfTest(tf.test.TestCase):
     self.assertAlmostEqual(hr, 4 / 4)
     self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3) +
                                   math.log(2) / math.log(4)) / 4)
+
+  _BASE_END_TO_END_FLAGS = {
+      "batch_size": 1024,
+      "train_epochs": 1,
+      "use_synthetic_data": True
+  }
+
+  @flagsaver.flagsaver(**_BASE_END_TO_END_FLAGS)
+  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end(self):
+    ncf_main.main(None)
+
+  @flagsaver.flagsaver(ml_perf=True, **_BASE_END_TO_END_FLAGS)
+  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_mlperf(self):
+    ncf_main.main(None)
 
 
 if __name__ == "__main__":
