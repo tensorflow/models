@@ -33,6 +33,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from collections import namedtuple
 import sys
 import typing
 
@@ -78,7 +79,13 @@ def neumf_model_fn(features, labels, mode, params):
   users = features[movielens.USER_COLUMN]
   items = tf.cast(features[movielens.ITEM_COLUMN], tf.int32)
 
-  logits = construct_model(users=users, items=items, params=params)
+  keras_model = params.get("keras_model")
+  if keras_model:
+    logits = keras_model([users, items],
+                         training=mode == tf.estimator.ModeKeys.TRAIN)
+  else:
+    keras_model = construct_model(users=users, items=items, params=params)
+    logits = keras_model.output
 
   # Softmax with the first column of zeros is equivalent to sigmoid.
   softmax_logits = tf.concat([tf.zeros(logits.shape, dtype=logits.dtype),
@@ -91,12 +98,13 @@ def neumf_model_fn(features, labels, mode, params):
     }
 
     if params["use_tpu"]:
-      return tf.contrib.tpu.TPUEstimatorSpec(mode=mode, predictions=predictions)
-    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+      spec = tf.contrib.tpu.TPUEstimatorSpec(mode=mode, predictions=predictions)
+    else:
+      spec = tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
   elif mode == tf.estimator.ModeKeys.EVAL:
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)
-    return compute_eval_loss_and_metrics(
+    spec = compute_eval_loss_and_metrics(
         logits, softmax_logits, duplicate_mask, params["num_neg"],
         params["match_mlperf"],
         use_tpu_spec=params["use_tpu"] or params["use_xla_for_gpu"])
@@ -141,12 +149,18 @@ def neumf_model_fn(features, labels, mode, params):
     train_op = tf.group(minimize_op, update_ops)
 
     if params["use_tpu"]:
-      return tf.contrib.tpu.TPUEstimatorSpec(
+      spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode, loss=loss, train_op=train_op)
-    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    else:
+      spec = tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
   else:
     raise NotImplementedError
+  if not params["use_estimator"]:
+    EstimatorSpecWithKerasModel = namedtuple("EstimatorSpecWithKerasModel",
+                                             spec._fields + ('keras_model',))
+    spec = EstimatorSpecWithKerasModel(*spec, keras_model=keras_model)
+  return spec
 
 
 def construct_model(users, items, params):
@@ -242,10 +256,11 @@ def construct_model(users, items, params):
       name=movielens.RATING_COLUMN)(predict_vector)
 
   # Print model topology.
-  tf.keras.models.Model([user_input, item_input], logits).summary()
+  model = tf.keras.models.Model([user_input, item_input], logits)
+  model.summary()
   sys.stdout.flush()
 
-  return logits
+  return model
 
 
 def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor

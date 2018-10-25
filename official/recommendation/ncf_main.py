@@ -28,6 +28,7 @@ import math
 import multiprocessing
 import os
 import signal
+import time
 import typing
 
 # pylint: disable=g-bad-import-order
@@ -120,6 +121,113 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
   return estimator, estimator
 
 
+
+class TrainModelState(object):
+
+  def __init__(self, input_fn, record_files_placeholder, params):
+    self.record_files_placeholder = record_files_placeholder
+    dataset = input_fn(params)
+    self.iterator = dataset.make_initializable_iterator()
+    features, labels = self.iterator.get_next()
+    estimator_spec = neumf_model.neumf_model_fn(
+        features, labels, tf.estimator.ModeKeys.TRAIN, params)
+    self.model = estimator_spec.keras_model
+    self.loss = estimator_spec.loss
+    self.train_op = estimator_spec.train_op
+    self.global_step = tf.train.get_or_create_global_step()
+    with tf.control_dependencies([estimator_spec.train_op]):
+      self.train_op = self.global_step.assign_add(1)
+    self.batch_size = params["batch_size"]
+
+  def train(self, session, ncf_dataset, num_train_steps):
+    if self.record_files_placeholder is not None:
+      epoch_metadata, record_dir, template = data_preprocessing.get_epoch_info(
+          is_training=True, ncf_dataset=ncf_dataset)
+      batch_count = epoch_metadata["batch_count"]
+      if batch_count != num_train_steps:
+        raise ValueError(
+            "Step counts do not match. ({} vs. {}) The async process is "
+            "producing incorrect shards.".format(batch_count, num_train_steps))
+      record_files = os.path.join(record_dir, template.format("*"))
+      initializer_feed_dict = {self.record_files_placeholder: record_files}
+      del batch_count
+    else:
+      initializer_feed_dict = None
+      record_dir = None
+
+    session.run(self.iterator.initializer, initializer_feed_dict)
+
+    fetches = (self.loss, self.train_op)
+    start = None
+    for i in range(num_train_steps):
+      loss, _, = session.run(fetches)
+      if i % 100 == 0:
+        if start is None:
+          start = time.time()
+          start_step = i
+        print("Loss = " + str(loss))
+    end = time.time()
+    if start is not None:
+      print("Training peformance: {} examples/sec".format(
+          (i - start_step) * self.batch_size / (end - start)))
+    return record_dir
+
+
+class EvalModelState(object):
+  def __init__(self, input_fn, record_files_placeholder, params):
+    self.record_files_placeholder = record_files_placeholder
+    dataset = input_fn(params)
+    self.iterator = dataset.make_initializable_iterator()
+    features = self.iterator.get_next()
+    labels = None
+    estimator_spec = neumf_model.neumf_model_fn(
+        features, labels, tf.estimator.ModeKeys.EVAL, params)
+    self.model = estimator_spec.keras_model
+    self.loss = estimator_spec.loss
+    self.eval_metric_ops = estimator_spec.eval_metric_ops
+    self.global_step = tf.train.get_or_create_global_step()
+    self.metric_initializer = tf.variables_initializer(
+        tf.get_collection(tf.GraphKeys.METRIC_VARIABLES))
+    self.batch_size = params["batch_size"]
+
+  def eval(self, session, ncf_dataset, num_eval_steps):
+    if self.record_files_placeholder is not None:
+      epoch_metadata, record_dir, template = data_preprocessing.get_epoch_info(
+          is_training=False, ncf_dataset=ncf_dataset)
+      batch_count = epoch_metadata["batch_count"]
+      if batch_count != num_eval_steps:
+        raise ValueError(
+            "Step counts do not match. ({} vs. {}) The async process is "
+            "producing incorrect shards.".format(batch_count, num_eval_steps))
+      record_files = os.path.join(record_dir, template.format("*"))
+      initializer_feed_dict = {self.record_files_placeholder: record_files}
+      del batch_count
+    else:
+      initializer_feed_dict = None
+    session.run(self.metric_initializer)
+    session.run(self.iterator.initializer, initializer_feed_dict)
+    update_ops = tuple(update_op for _, update_op in self.eval_metric_ops.values())
+    fetches = (self.loss,) + update_ops
+    start = None
+    for i in range(num_eval_steps):
+      loss = session.run(fetches)[0]
+      if i % 100 == 0:
+        if start is None:
+          start = time.time()
+          start_step = i
+        print('Loss = ' + str(loss))
+    end = time.time()
+    if start is not None:
+      print("Evaluation peformance: {} examples/sec".format(
+          (i - start_step) * self.batch_size / (end - start)))
+    eval_results = {'global_step': session.run(self.global_step)}
+    for key, (val, _) in self.eval_metric_ops.items():
+      val_ = session.run(val)
+      print("{} = {}".format(key, session.run(val)))
+      eval_results[key] = val_
+    return eval_results
+
+
 def main(_):
   with logger.benchmark_context(FLAGS), \
        mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
@@ -177,30 +285,56 @@ def run_ncf(_):
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  train_estimator, eval_estimator = construct_estimator(
-      num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
-          "use_seed": FLAGS.seed is not None,
-          "hash_pipeline": FLAGS.hash_pipeline,
-          "batch_size": batch_size,
-          "eval_batch_size": eval_batch_size,
-          "learning_rate": FLAGS.learning_rate,
-          "num_users": num_users,
-          "num_items": num_items,
-          "mf_dim": FLAGS.num_factors,
-          "model_layers": [int(layer) for layer in FLAGS.layers],
-          "mf_regularization": FLAGS.mf_regularization,
-          "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
-          "num_neg": FLAGS.num_neg,
-          "use_tpu": FLAGS.tpu is not None,
-          "tpu": FLAGS.tpu,
-          "tpu_zone": FLAGS.tpu_zone,
-          "tpu_gcp_project": FLAGS.tpu_gcp_project,
-          "beta1": FLAGS.beta1,
-          "beta2": FLAGS.beta2,
-          "epsilon": FLAGS.epsilon,
-          "match_mlperf": FLAGS.ml_perf,
-          "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
-      }, batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
+  params = {
+      "use_seed": FLAGS.seed is not None,
+      "hash_pipeline": FLAGS.hash_pipeline,
+      "batch_size": batch_size,
+      "eval_batch_size": eval_batch_size,
+      "learning_rate": FLAGS.learning_rate,
+      "num_users": num_users,
+      "num_items": num_items,
+      "mf_dim": FLAGS.num_factors,
+      "model_layers": [int(layer) for layer in FLAGS.layers],
+      "mf_regularization": FLAGS.mf_regularization,
+      "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
+      "num_neg": FLAGS.num_neg,
+      "use_tpu": FLAGS.tpu is not None,
+      "tpu": FLAGS.tpu,
+      "tpu_zone": FLAGS.tpu_zone,
+      "tpu_gcp_project": FLAGS.tpu_gcp_project,
+      "beta1": FLAGS.beta1,
+      "beta2": FLAGS.beta2,
+      "epsilon": FLAGS.epsilon,
+      "match_mlperf": FLAGS.ml_perf,
+      "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
+      "use_estimator": FLAGS.use_estimator,
+  }
+  if FLAGS.use_estimator:
+    train_estimator, eval_estimator = construct_estimator(
+        num_gpus=num_gpus, model_dir=FLAGS.model_dir, params=params,
+        batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
+  else:
+    train_record_files_placeholder = tf.placeholder(tf.string, ())
+    train_input_fn, _, _ = \
+      data_preprocessing.make_input_fn(
+          ncf_dataset=ncf_dataset, is_training=True,
+          record_files=train_record_files_placeholder)
+    train_model_state = TrainModelState(train_input_fn,
+                                        train_record_files_placeholder, params)
+    params["keras_model"] = train_model_state.model
+    eval_record_files_placeholder = tf.placeholder(tf.string, ())
+    eval_input_fn, _, _ = \
+      data_preprocessing.make_input_fn(
+          ncf_dataset=ncf_dataset, is_training=False,
+          record_files=eval_record_files_placeholder)
+    eval_model_state = EvalModelState(eval_input_fn,
+                                      eval_record_files_placeholder, params)
+
+    initializer = tf.global_variables_initializer()
+    tf.get_default_graph().finalize()
+    session = tf.Session()
+    session.run(initializer)
+
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -237,34 +371,42 @@ def run_ncf(_):
                             value=cycle_index)
 
     # Train the model
-    train_input_fn, train_record_dir, batch_count = \
-      data_preprocessing.make_input_fn(
-          ncf_dataset=ncf_dataset, is_training=True)
+    if FLAGS.use_estimator:
+      train_input_fn, train_record_dir, batch_count = \
+        data_preprocessing.make_input_fn(
+            ncf_dataset=ncf_dataset, is_training=True)
 
-    if batch_count != num_train_steps:
-      raise ValueError(
-          "Step counts do not match. ({} vs. {}) The async process is "
-          "producing incorrect shards.".format(batch_count, num_train_steps))
+      if batch_count != num_train_steps:
+        raise ValueError(
+            "Step counts do not match. ({} vs. {}) The async process is "
+            "producing incorrect shards.".format(batch_count, num_train_steps))
 
-    train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
-                          steps=num_train_steps)
+      train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
+                            steps=num_train_steps)
+    else:
+      train_record_dir = train_model_state.train(session, ncf_dataset,
+                                                 num_train_steps)
     if train_record_dir:
       tf.gfile.DeleteRecursively(train_record_dir)
 
     tf.logging.info("Beginning evaluation.")
-    if pred_input_fn is None:
-      pred_input_fn, _, eval_batch_count = data_preprocessing.make_input_fn(
-          ncf_dataset=ncf_dataset, is_training=False)
+    if FLAGS.use_estimator:
+      if pred_input_fn is None:
+        pred_input_fn, _, eval_batch_count = data_preprocessing.make_input_fn(
+            ncf_dataset=ncf_dataset, is_training=False)
 
-      if eval_batch_count != num_eval_steps:
-        raise ValueError(
-            "Step counts do not match. ({} vs. {}) The async process is "
-            "producing incorrect shards.".format(
-                eval_batch_count, num_eval_steps))
+        if eval_batch_count != num_eval_steps:
+          raise ValueError(
+              "Step counts do not match. ({} vs. {}) The async process is "
+              "producing incorrect shards.".format(
+                  eval_batch_count, num_eval_steps))
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
-                            value=cycle_index)
-    eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
+      mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
+                              value=cycle_index)
+      eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
+
+    else:
+      eval_results = eval_model_state.eval(session, ncf_dataset, num_eval_steps)
     hr = float(eval_results[rconst.HR_KEY])
     ndcg = float(eval_results[rconst.NDCG_KEY])
     tf.logging.info("Evaluation complete.")
@@ -471,6 +613,11 @@ def define_ncf_flags():
   @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
   def xla_validator(flag_dict):
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
+
+  flags.DEFINE_bool(
+      name="use_estimator", default=True, help=flags_core.help_wrap(
+          "If True, use Estimator."))
+
 
 
 if __name__ == "__main__":
