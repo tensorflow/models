@@ -13,8 +13,27 @@ Before trying to run the model we highly encourage you to read all the README.
 
 ## Prerequisite
 
-1. [Install](https://www.tensorflow.org/install/) TensorFlow version 1.9.0 or
-later.
+1. [Install](https://www.tensorflow.org/install/) TensorFlow version 1.11.0 or
+later. Be sure to fix a bug before installing tf as followed:
+
+modify the source code in tensorflow/python/estimator/estimator.py
+
+```
+def get_hooks_from_the_first_device(per_device_hooks):
+  return [
+      self._distribution.unwrap(per_device_hook)[0]
+      for per_device_hook in per_device_hooks
+  ]
+```
+to 
+```
+def get_hooks_from_the_first_device(per_device_hooks):
+  return [
+      self._train_distribution.unwrap(per_device_hook)[0]
+      for per_device_hook in per_device_hooks
+  ]
+```
+then build tensorflow from source code.
 
 2. Download the CIFAR-10 dataset and generate TFRecord files using the provided
 script.  The script and associated command below will download the CIFAR-10
@@ -102,7 +121,12 @@ gcloud ml-engine jobs submit training cifarmultigpu \
     --num-gpus=4 \
     --train-steps=1000
 ```
+### Set distrbute strategy in the code
+Here's an example of distribute strategy.
 
+distribution = tf.contrib.distribute.ParameterServerStrategy()
+
+Note: CollectiveAllReduceStrategy will raise error.
 
 ### Set TF_CONFIG
 

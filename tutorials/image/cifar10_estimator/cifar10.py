@@ -65,7 +65,7 @@ class Cifar10DataSet(object):
     # Custom preprocessing.
     image = self.preprocess(image)
 
-    return image, label
+    return [image], [label]
 
   def make_batch(self, batch_size):
     """Read the images and labels from 'filenames'."""
@@ -91,6 +91,27 @@ class Cifar10DataSet(object):
     image_batch, label_batch = iterator.get_next()
 
     return image_batch, label_batch
+
+  def get_batched_dataset(self, batch_size):
+    filenames = self.get_filenames()
+    # Repeat infinitely.
+    dataset = tf.data.TFRecordDataset(filenames).repeat()
+
+    # Parse records.
+    dataset = dataset.map(
+      self.parser, num_parallel_calls=batch_size)
+
+    # Potentially shuffle records.
+    if self.subset == 'train':
+      min_queue_examples = int(
+        Cifar10DataSet.num_examples_per_epoch(self.subset) * 0.4)
+      # Ensure that the capacity is sufficiently large to provide good random
+      # shuffling.
+      dataset = dataset.shuffle(buffer_size=min_queue_examples + 3 * batch_size)
+
+    # Batch it up.
+    dataset = dataset.batch(batch_size)
+    return dataset
 
   def preprocess(self, image):
     """Preprocess a single image in [height, width, depth] layout."""

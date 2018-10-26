@@ -169,11 +169,13 @@ def get_model_fn(num_gpus, variable_strategy, num_workers):
       optimizer = tf.train.MomentumOptimizer(
           learning_rate=learning_rate, momentum=momentum)
 
-      if params.sync:
-        optimizer = tf.train.SyncReplicasOptimizer(
-            optimizer, replicas_to_aggregate=num_workers)
-        sync_replicas_hook = optimizer.make_session_run_hook(params.is_chief)
-        train_hooks.append(sync_replicas_hook)
+      # remove the SyncReplicasOptimizer because it will raise error, to be fixed
+
+      # if params.sync:
+      #   optimizer = tf.train.SyncReplicasOptimizer(
+      #       optimizer, replicas_to_aggregate=num_workers)
+      #   sync_replicas_hook = optimizer.make_session_run_hook(params.is_chief)
+      #   train_hooks.append(sync_replicas_hook)
 
       # Create single grouped train op
       train_op = [
@@ -265,109 +267,125 @@ def input_fn(data_dir,
     shards.
     use_distortion_for_training: True to use distortions.
   Returns:
-    two lists of tensors for features and labels, each of num_shards length.
+    a tf.data.Dataset object which zips features and labels.
   """
   with tf.device('/cpu:0'):
     use_distortion = subset == 'train' and use_distortion_for_training
     dataset = cifar10.Cifar10DataSet(data_dir, subset, use_distortion)
-    image_batch, label_batch = dataset.make_batch(batch_size)
+
     if num_shards <= 1:
       # No GPU available or only 1 GPU.
-      return [image_batch], [label_batch]
+      batched_dataset = dataset.get_batched_dataset(batch_size)
+      return batched_dataset
 
-    # Note that passing num=batch_size is safe here, even though
-    # dataset.batch(batch_size) can, in some cases, return fewer than batch_size
-    # examples. This is because it does so only when repeating for a limited
-    # number of epochs, but our dataset repeats forever.
-    image_batch = tf.unstack(image_batch, num=batch_size, axis=0)
-    label_batch = tf.unstack(label_batch, num=batch_size, axis=0)
-    feature_shards = [[] for i in range(num_shards)]
-    label_shards = [[] for i in range(num_shards)]
-    for i in xrange(batch_size):
-      idx = i % num_shards
-      feature_shards[idx].append(image_batch[i])
-      label_shards[idx].append(label_batch[i])
-    feature_shards = [tf.parallel_stack(x) for x in feature_shards]
-    label_shards = [tf.parallel_stack(x) for x in label_shards]
-    return feature_shards, label_shards
+    batched_dataset = dataset.get_batched_dataset(batch_size/num_shards)
+    return batched_dataset
 
+# remove the using of experiment and update to tf.estimator
+# def get_experiment_fn(data_dir,
+#                       num_gpus,
+#                       variable_strategy,
+#                       use_distortion_for_training=True):
+#   """Returns an Experiment function.
+#
+#   Experiments perform training on several workers in parallel,
+#   in other words experiments know how to invoke train and eval in a sensible
+#   fashion for distributed training. Arguments passed directly to this
+#   function are not tunable, all other arguments should be passed within
+#   tf.HParams, passed to the enclosed function.
+#
+#   Args:
+#       data_dir: str. Location of the data for input_fns.
+#       num_gpus: int. Number of GPUs on each worker.
+#       variable_strategy: String. CPU to use CPU as the parameter server
+#       and GPU to use the GPUs as the parameter server.
+#       use_distortion_for_training: bool. See cifar10.Cifar10DataSet.
+#   Returns:
+#       A function (tf.estimator.RunConfig, tf.contrib.training.HParams) ->
+#       tf.contrib.learn.Experiment.
+#
+#       Suitable for use by tf.contrib.learn.learn_runner, which will run various
+#       methods on Experiment (train, evaluate) based on information
+#       about the current runner in `run_config`.
+#   """
+#
+#   def _experiment_fn(run_config, hparams):
+#     """Returns an Experiment."""
+#     # Create estimator.
+#     train_input_fn = functools.partial(
+#         input_fn,
+#         data_dir,
+#         subset='train',
+#         num_shards=num_gpus,
+#         batch_size=hparams.train_batch_size,
+#         use_distortion_for_training=use_distortion_for_training)
+#
+#     eval_input_fn = functools.partial(
+#         input_fn,
+#         data_dir,
+#         subset='eval',
+#         batch_size=hparams.eval_batch_size,
+#         num_shards=num_gpus)
+#
+#     num_eval_examples = cifar10.Cifar10DataSet.num_examples_per_epoch('eval')
+#     if num_eval_examples % hparams.eval_batch_size != 0:
+#       raise ValueError(
+#           'validation set size must be multiple of eval_batch_size')
+#
+#     train_steps = hparams.train_steps
+#     eval_steps = num_eval_examples // hparams.eval_batch_size
+#
+#     classifier = tf.estimator.Estimator(
+#         model_fn=get_model_fn(num_gpus, variable_strategy,
+#                               run_config.num_worker_replicas or 1),
+#         config=run_config,
+#         params=hparams)
+#
+#     # Create experiment.
+#     return tf.contrib.learn.Experiment(
+#         classifier,
+#         train_input_fn=train_input_fn,
+#         eval_input_fn=eval_input_fn,
+#         train_steps=train_steps,
+#         eval_steps=eval_steps)
+#
+#   return _experiment_fn
 
-def get_experiment_fn(data_dir,
-                      num_gpus,
-                      variable_strategy,
-                      use_distortion_for_training=True):
-  """Returns an Experiment function.
-
-  Experiments perform training on several workers in parallel,
-  in other words experiments know how to invoke train and eval in a sensible
-  fashion for distributed training. Arguments passed directly to this
-  function are not tunable, all other arguments should be passed within
-  tf.HParams, passed to the enclosed function.
-
-  Args:
-      data_dir: str. Location of the data for input_fns.
-      num_gpus: int. Number of GPUs on each worker.
-      variable_strategy: String. CPU to use CPU as the parameter server
-      and GPU to use the GPUs as the parameter server.
-      use_distortion_for_training: bool. See cifar10.Cifar10DataSet.
-  Returns:
-      A function (tf.estimator.RunConfig, tf.contrib.training.HParams) ->
-      tf.contrib.learn.Experiment.
-
-      Suitable for use by tf.contrib.learn.learn_runner, which will run various
-      methods on Experiment (train, evaluate) based on information
-      about the current runner in `run_config`.
-  """
-
-  def _experiment_fn(run_config, hparams):
-    """Returns an Experiment."""
-    # Create estimator.
-    train_input_fn = functools.partial(
-        input_fn,
-        data_dir,
-        subset='train',
-        num_shards=num_gpus,
-        batch_size=hparams.train_batch_size,
-        use_distortion_for_training=use_distortion_for_training)
-
-    eval_input_fn = functools.partial(
-        input_fn,
-        data_dir,
-        subset='eval',
-        batch_size=hparams.eval_batch_size,
-        num_shards=num_gpus)
-
-    num_eval_examples = cifar10.Cifar10DataSet.num_examples_per_epoch('eval')
-    if num_eval_examples % hparams.eval_batch_size != 0:
-      raise ValueError(
-          'validation set size must be multiple of eval_batch_size')
-
-    train_steps = hparams.train_steps
-    eval_steps = num_eval_examples // hparams.eval_batch_size
- 
-    classifier = tf.estimator.Estimator(
-        model_fn=get_model_fn(num_gpus, variable_strategy,
-                              run_config.num_worker_replicas or 1),
-        config=run_config,
-        params=hparams)
-
-    # Create experiment.
-    return tf.contrib.learn.Experiment(
-        classifier,
-        train_input_fn=train_input_fn,
-        eval_input_fn=eval_input_fn,
-        train_steps=train_steps,
-        eval_steps=eval_steps)
-
-  return _experiment_fn
-
+class ParamsObj:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
 
 def main(job_dir, data_dir, num_gpus, variable_strategy,
          use_distortion_for_training, log_device_placement, num_intra_threads,
          **hparams):
   # The env variable is on deprecation path, default is set to off.
+
   os.environ['TF_SYNC_ON_FINISH'] = '0'
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+
+  # TF_CONFIG example:
+
+  # worker 0:
+
+  # os.environ['TF_CONFIG'] = '{\
+  #      "cluster": {\
+  #           "worker": ["localhost:9101"], \
+  #           "ps": ["localhost:9102"] \
+  #       },\
+  #      "task": {"type": "worker", "index": 0},\
+  #      "rpc_layer": "grpc"\
+  #   }'
+
+  # parameter server 0:
+
+  # os.environ['TF_CONFIG'] = '{\
+  #      "cluster": {\
+  #           "worker": ["localhost:9101"], \
+  #           "ps": ["localhost:9102"] \
+  #       },\
+  #      "task": {"type": "ps", "index": 0},\
+  #      "rpc_layer": "grpc"\
+  #   }'
 
   # Session configuration.
   sess_config = tf.ConfigProto(
@@ -376,15 +394,50 @@ def main(job_dir, data_dir, num_gpus, variable_strategy,
       intra_op_parallelism_threads=num_intra_threads,
       gpu_options=tf.GPUOptions(force_gpu_compatible=True))
 
-  config = cifar10_utils.RunConfig(
-      session_config=sess_config, model_dir=job_dir)
-  tf.contrib.learn.learn_runner.run(
-      get_experiment_fn(data_dir, num_gpus, variable_strategy,
-                        use_distortion_for_training),
-      run_config=config,
-      hparams=tf.contrib.training.HParams(
-          is_chief=config.is_chief,
-          **hparams))
+  # choose a distribution for distribute training
+  # set distribution to none for local training
+  distribution = None
+
+  # distribution = tf.contrib.distribute.MirroredStrategy()
+
+  # Note:CollectiveAllReduceStrategy will raise bug, try to use ParameterServerStrategy
+
+  # distribution = tf.contrib.distribute.CollectiveAllReduceStrategy(num_gpus_per_worker=0)
+  # distribution = tf.contrib.distribute.ParameterServerStrategy()
+
+
+  # set up the config of the estimator
+  config = tf.estimator.RunConfig(
+      train_distribute=distribution, protocol='grpc', session_config=sess_config, model_dir=job_dir)
+  hparams_object = ParamsObj(**hparams)
+  hparams_object.is_chief = None
+  resnet_fn = functools.partial(get_model_fn(num_gpus, variable_strategy,
+                                             config.num_worker_replicas or 1), params=hparams_object)
+  # initial the estimator
+  classifier = tf.estimator.Estimator(model_fn=resnet_fn, config=config)
+
+  # set up the input func
+  train_input_fn = functools.partial(
+      input_fn,
+      data_dir,
+      subset='train',
+      num_shards=num_gpus,
+      batch_size=hparams_object.train_batch_size,
+      use_distortion_for_training=use_distortion_for_training)
+
+  eval_input_fn = functools.partial(
+      input_fn,
+      data_dir,
+      subset='eval',
+      batch_size=hparams_object.eval_batch_size,
+      num_shards=num_gpus)
+
+  train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=hparams_object.train_steps)
+  eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
+
+  print("Train is starting.")
+  tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
+  print("Train finished.")
 
 
 if __name__ == '__main__':
@@ -423,7 +476,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--train-batch-size',
       type=int,
-      default=128,
+      default=64,
       help='Batch size for training.')
   parser.add_argument(
       '--eval-batch-size',
@@ -454,13 +507,16 @@ if __name__ == '__main__':
       type=bool,
       default=True,
       help='If doing image distortion for training.')
-  parser.add_argument(
-      '--sync',
-      action='store_true',
-      default=False,
-      help="""\
-      If present when running in a distributed environment will run on sync mode.\
-      """)
+
+  # the flag sync is removed because SyncReplicasOptimizer raise error
+
+  # parser.add_argument(
+  #     '--sync',
+  #     action='store_true',
+  #     default=False,
+  #     help="""\
+  #     If present when running in a distributed environment will run on sync mode.\
+  #     """)
   parser.add_argument(
       '--num-intra-threads',
       type=int,
