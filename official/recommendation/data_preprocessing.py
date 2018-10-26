@@ -461,6 +461,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "redirect_logs": use_subprocess,
       "use_tf_logging": not use_subprocess,
       "ml_perf": match_mlperf,
+      "output_ml_perf_compliance_logging": mlperf_helper.LOGGER.enabled,
   }
 
   if use_subprocess:
