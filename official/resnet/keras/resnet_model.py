@@ -65,7 +65,7 @@ def identity_block(input_tensor, kernel_size, filters, stage, block, training):
                                          name=bn_name_base + '2a',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)
-                                         (x, training=training)
+                                        (x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size,
