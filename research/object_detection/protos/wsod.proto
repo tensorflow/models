@@ -9,8 +9,10 @@ import "object_detection/protos/image_resizer.proto";
 import "object_detection/protos/losses.proto";
 import "object_detection/protos/post_processing.proto";
 import "object_detection/protos/faster_rcnn.proto";
+import "object_detection/protos/input_reader.proto";
 
 import "protos/model.proto";
+
 
 // Configuration for Faster R-CNN models.
 // See meta_architectures/faster_rcnn_meta_arch.py and models/model_builder.py
@@ -180,6 +182,9 @@ message Wsod {
   // Function used to compute proposal saliency.
   optional string proposal_saliency_fn = 54 [default = "saliency_sum"];
 
+  // The `border_ratio` of the saliency_fn.
+  optional float proposal_saliency_fn_border_ratio = 55 [default = 0.05];
+
   // Path to the OpenCV ximgproc model, for edge detection.
   optional string structured_edge_detection_model = 61;
 
@@ -195,10 +200,16 @@ message Wsod {
   // EdgeBoxes number of boxes to extract.
   optional int32 edge_boxes_max_num_boxes = 65 [ default = 300 ];
 
-  // Function used to compute EdgeBoxes box saliency.
-  optional string edge_boxes_saliency_fn = 66 [default = "saliency_sum"];
+  // If true, use score map instead of saliency map.
+  optional bool use_score_map = 71 [default = false];
+
+  // If true, use external vocabulary, otherwise use the gt captions.
+  optional bool score_map_use_vocabulary = 72 [default = true];
 
   // Path to the file storing category strings.
-  optional string vocabulary_file = 71;
+  optional string score_map_vocabulary_file = 73;
+
+  // If set (greater than 0), only use the top_k words in the vocabulary_file.
+  optional int32 score_map_vocabulary_use_top_k = 74 [default = 0];
 }
 

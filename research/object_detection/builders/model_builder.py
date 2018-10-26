@@ -58,6 +58,7 @@ from models import builder as saliency_model_builder
 from core import utils as wsod_utils
 from models import utils as model_utils
 from core import imgproc
+import tensorflow as tf
 
 
 # A map of names to SSD feature extractors.
@@ -532,32 +533,29 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       frcnn_config.saliency_model, is_training=False)
   saliency_model_checkpoint_path = frcnn_config.saliency_model_checkpoint_path
 
-#  def proposal_saliency_fn(saliency_map, anchors):
-#    """A callable to compute the proposal saliency."""
-#    return imgproc.calc_box_saliency(
-#        saliency_map, anchors, 
-#        border_ratio=frcnn_config.proposal_saliency_border_ratio,
-#        alpha=frcnn_config.proposal_saliency_weight_alpha)
-
+  proposal_saliency_fn_border_ratio = frcnn_config.proposal_saliency_fn_border_ratio
   proposal_saliency_fn = model_utils.build_proposal_saliency_fn(
-      frcnn_config.edge_boxes_saliency_fn)
-  edge_boxes_saliency_fn = model_utils.build_proposal_saliency_fn(
-      frcnn_config.edge_boxes_saliency_fn)
+      frcnn_config.proposal_saliency_fn,
+      border_ratio=proposal_saliency_fn_border_ratio)
 
   # Create opencv edge_boxes.
-  edge_detection, edge_boxes = None, None
-  edge_boxes_max_num_boxes = None
-  if proposal_prediction.startswith('edge_boxes'):
-    edge_detection = cv2.ximgproc.createStructuredEdgeDetection(
-        frcnn_config.structured_edge_detection_model)
-    edge_boxes = cv2.ximgproc.createEdgeBoxes(
-        edgeMinMag=frcnn_config.edge_boxes_edge_min_mag, 
-        edgeMergeThr=frcnn_config.edge_boxes_edge_merge_thr, 
-        clusterMinMag=frcnn_config.edge_boxes_cluster_min_mag)
-    edge_boxes_max_num_boxes = frcnn_config.edge_boxes_max_num_boxes
+  edge_detection = cv2.ximgproc.createStructuredEdgeDetection(
+      frcnn_config.structured_edge_detection_model)
+  edge_boxes = cv2.ximgproc.createEdgeBoxes(
+      edgeMinMag=frcnn_config.edge_boxes_edge_min_mag, 
+      edgeMergeThr=frcnn_config.edge_boxes_edge_merge_thr, 
+      clusterMinMag=frcnn_config.edge_boxes_cluster_min_mag)
+  edge_boxes_max_num_boxes = frcnn_config.edge_boxes_max_num_boxes
+
+  use_score_map = frcnn_config.use_score_map
 
   # Load category strings.
-  category_strings = _read_vocabulary(frcnn_config.vocabulary_file)
+  category_strings = None
+
+  if frcnn_config.score_map_use_vocabulary:
+    category_strings = _read_vocabulary(frcnn_config.score_map_vocabulary_file)
+    if frcnn_config.score_map_vocabulary_use_top_k > 0:
+      category_strings = category_strings[:frcnn_config.score_map_vocabulary_use_top_k]
 
   # Original frcnn configurations.
   num_classes = frcnn_config.num_classes
@@ -596,13 +594,30 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       first_stage_max_proposals):
     raise ValueError('second_stage_batch_size should be no greater than '
                      'first_stage_max_proposals.')
-  first_stage_non_max_suppression_fn = functools.partial(
-      post_processing.batch_multiclass_non_max_suppression,
+  # first_stage_non_max_suppression_fn = functools.partial(
+  #     post_processing.batch_multiclass_non_max_suppression,
+  #     score_thresh=frcnn_config.first_stage_nms_score_threshold,
+  #     iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
+  #     max_size_per_class=frcnn_config.first_stage_max_proposals,
+  #     max_total_size=frcnn_config.first_stage_max_proposals,
+  #     use_static_shapes=use_static_shapes and is_training)
+
+  def first_stage_non_max_suppression_fn(boxes, scores, clip_window=None):
+    min_v = tf.reduce_min(scores, axis=1, keepdims=True)
+    scores -= min_v
+    results = post_processing.batch_multiclass_non_max_suppression(
+      boxes, scores,
       score_thresh=frcnn_config.first_stage_nms_score_threshold,
       iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
       max_size_per_class=frcnn_config.first_stage_max_proposals,
       max_total_size=frcnn_config.first_stage_max_proposals,
+      clip_window=clip_window,
       use_static_shapes=use_static_shapes and is_training)
+
+    results = list(results)
+    results[1] = results[1] + tf.squeeze(min_v, axis=1)
+    return results
+
   first_stage_loc_loss_weight = (
       frcnn_config.first_stage_localization_loss_weight)
   first_stage_obj_loss_weight = frcnn_config.first_stage_objectness_loss_weight
@@ -694,7 +709,7 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       'edge_detection': edge_detection,
       'edge_boxes': edge_boxes,
       'edge_boxes_max_num_boxes': edge_boxes_max_num_boxes,
-      'edge_boxes_saliency_fn': edge_boxes_saliency_fn,
+      'use_score_map': use_score_map,
       'category_strings': category_strings,
   }
 

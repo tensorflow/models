@@ -103,7 +103,7 @@ from object_detection.core import box_list_ops
 from object_detection.core import box_predictor
 from object_detection.core import losses
 from object_detection.core import model
-from object_detection.core import standard_fields as fields
+from object_detection.core import wsod_fields as fields
 from object_detection.core import target_assigner
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
@@ -309,7 +309,7 @@ class WSODMetaArch(model.DetectionModel):
                edge_detection=None,
                edge_boxes=None,
                edge_boxes_max_num_boxes=None,
-               edge_boxes_saliency_fn=None,
+               use_score_map=None,
                category_strings=None):
     """WSODMetaArch Constructor.
 
@@ -533,7 +533,7 @@ class WSODMetaArch(model.DetectionModel):
     self._edge_detection = edge_detection
     self._edge_boxes = edge_boxes
     self._edge_boxes_max_num_boxes = edge_boxes_max_num_boxes
-    self._edge_boxes_saliency_fn = edge_boxes_saliency_fn
+    self._use_score_map = use_score_map
     self._category_strings = category_strings
 
   @property
@@ -752,27 +752,27 @@ class WSODMetaArch(model.DetectionModel):
         'anchors': self._anchors.get()
     }
 
-    # WSOD proposal generation.
-    # The `wsod_proposals` uses normalized coordinates.
-    (saliency_map, anchor_saliency, wsod_proposals, wsod_proposal_scores
-     ) = self._predict_wsod_rpn_proposals(preprocessed_inputs, image_shape,
-       rpn_objectness_predictions_with_background, self._anchors.get())
+    #   # WSOD proposal generation.
+    #   # The `wsod_proposals` uses normalized coordinates.
+    #   (saliency_map, anchor_saliency, wsod_proposals, wsod_proposal_scores
+    #    ) = self._predict_wsod_rpn_proposals(preprocessed_inputs, image_shape,
+    #      rpn_objectness_predictions_with_background, self._anchors.get())
 
-    (nmsed_wsod_proposals, nmsed_wsod_proposal_scores, _, _, _,
-     nmsed_num_wsod_proposals) = self._first_stage_nms_fn(
-         tf.expand_dims(wsod_proposals, axis=2),
-         tf.expand_dims(wsod_proposal_scores, axis=2),
-         clip_window=None)
+    #   (nmsed_wsod_proposals, nmsed_wsod_proposal_scores, _, _, _,
+    #    nmsed_num_wsod_proposals) = self._first_stage_nms_fn(
+    #        tf.expand_dims(wsod_proposals, axis=2),
+    #        tf.expand_dims(wsod_proposal_scores, axis=2),
+    #        clip_window=None)
 
-    prediction_dict.update({
-        'saliency_map': saliency_map,
-        'anchor_saliency': anchor_saliency,
-        'wsod_proposals': wsod_proposals,
-        'wsod_proposal_scores': wsod_proposal_scores,
-        'nmsed_wsod_proposals': nmsed_wsod_proposals,
-        'nmsed_wsod_proposal_scores': nmsed_wsod_proposal_scores,
-        'nmsed_num_wsod_proposals': nmsed_num_wsod_proposals,
-        })
+    #   prediction_dict.update({
+    #       'saliency_map': saliency_map,
+    #       'anchor_saliency': anchor_saliency,
+    #       'wsod_proposals': wsod_proposals,
+    #       'wsod_proposal_scores': wsod_proposal_scores,
+    #       'nmsed_wsod_proposals': nmsed_wsod_proposals,
+    #       'nmsed_wsod_proposal_scores': nmsed_wsod_proposal_scores,
+    #       'nmsed_num_wsod_proposals': nmsed_num_wsod_proposals,
+    #       })
 
     if self._number_of_stages >= 2:
       # If mixed-precision training on TPU is enabled, rpn_box_encodings and
@@ -1091,32 +1091,23 @@ class WSODMetaArch(model.DetectionModel):
     return (rpn_box_predictor_features, rpn_features_to_crop,
             anchors, image_shape)
 
-  def _predict_wsod_rpn_proposals(self, preprocessed_inputs,
-      unused_image_shape, rpn_objectness_predictions_with_background, anchors):
-    """Predicts rpn proposals based on the method specified.
+  def provide_wsod_rpn_groundtruth(self, 
+      preprocessed_inputs, unused_image_shape, vocabulary_list):
+    """Predicts rpn groundtruth based on the method specified.
 
     Args:
       preprocessed_inputs: a [batch, height, width, channels] float tensor
         representing a batch of images.
       unused_image_shape: TODO(yek@) read the details of the implementation to
         understand the image_shape tensor.
-      rpn_objectness_predictions_with_background: A 2-D float tensor of shape
-        [batch_size, num_anchors, 2] containing objectness predictions
-        (logits) for each of the anchors with 0 corresponding to background
-        and 1 corresponding to object.
-      anchors: A 2-D tensor of shape [num_anchors, 4] representing anchors
-        for the first stage RPN.  Note that `num_anchors` can differ depending
-        on whether the model is created in training or inference mode.
+      vocabulary_list: a 1-D string tensor or a list of python strings denoting
+        the vocabulary used to generate score map.
 
     Returns:
-      saliency_map: A 3-D tensor of shape [batch, height, width] representing
-        image saliency.
-      anchor_saliency: A 2-D tensor of shape [batch, num_anchors] representing
-        anchor saliency.
-      proposals: A 3-D tensor of shape [batch, num_anchors, 4] representing the
-        proposals before applying non-maximum suppression.
-      proposal_scores: A 2-D tensor of shape [batch, num_anchors] representing
-        the confidence score of each proposal.
+      anchors: A 3-D tensor of shape [batch, num_anchors, 4] representing the
+        anchors before applying non-maximum suppression.
+      anchor_scores: A 2-D tensor of shape [batch, num_anchors] representing
+        the confidence score of each anchor.
     """
     # Image saliency.
 
@@ -1124,30 +1115,31 @@ class WSODMetaArch(model.DetectionModel):
       (batch, height, width, channels
        ) = shape_utils.combined_static_and_dynamic_shape(preprocessed_inputs)
       saliency_map, score_map = self._get_score_map(
-          preprocessed_inputs, unused_image_shape)
+          preprocessed_inputs, unused_image_shape, vocabulary_list)
 
     prediction_dict = { 
       'wsod_saliency_map': saliency_map,
       'wsod_score_map': score_map }
 
-    # Faster-RCNN anchor saliency.
-
-    with tf.name_scope('AnchorSaliencyProcessor'):
+    # Faster-RCNN anchor scores.
+    anchors = self._anchors.get()
+    with tf.name_scope('FrcnnAnchorProcessor'):
       unnormalized_anchor_boxes = tf.tile(
           tf.expand_dims(anchors, 0), [batch, 1, 1])
       anchor_boxes = _to_normalized_coordinates(
           unnormalized_anchor_boxes, height, width)
-      anchor_saliency = self._proposal_saliency_fn(
-          saliency_map, tf.cast(unnormalized_anchor_boxes, tf.int64))
-      anchor_saliency = tf.reduce_max(anchor_saliency, axis=-1)
+      anchor_scores = self._proposal_saliency_fn(
+          score_map if self._use_score_map else saliency_map,
+          tf.cast(unnormalized_anchor_boxes, tf.int64))
+      anchor_scores = tf.reduce_max(anchor_scores, axis=-1)
 
       prediction_dict.update({
         'wsod_frcnn_anchor_boxes': anchor_boxes,
-        'wsod_frcnn_anchor_saliency': anchor_saliency })
+        'wsod_frcnn_anchor_scores': anchor_scores })
 
-    # Edge-boxes saliency.
+    # Edge-boxes anchor scores.
 
-    with tf.name_scope('EdgeBoxesSaliencyProcessor'):
+    with tf.name_scope('EdgeBoxesProcessor'):
       edge_boxes_inputs = tf.image.resize_images(
           (preprocessed_inputs + 1.0) * 255.0 / 2.0, 
           [height // 2, width // 2])
@@ -1155,57 +1147,180 @@ class WSODMetaArch(model.DetectionModel):
       (_, edge_boxes_boxes) = imgproc.get_edge_boxes( 
           edge_boxes_inputs, self._edge_detection, self._edge_boxes,
           max_num_boxes=self._edge_boxes_max_num_boxes)
-      edge_boxes_scores = tf.tile(
+      edge_boxes_ori_scores = tf.tile(
           tf.expand_dims( 
             tf.range(start=self._edge_boxes_max_num_boxes, 
               limit=0, delta=-1, dtype=tf.float32), axis=0), 
           multiples=[batch, 1])
-      edge_boxes_saliency = self._edge_boxes_saliency_fn(saliency_map, 
+      edge_boxes_scores = self._proposal_saliency_fn(
+          score_map if self._use_score_map else saliency_map,
           _to_absolute_coordinates(edge_boxes_boxes, height, width))
-      edge_boxes_saliency = tf.reduce_max(edge_boxes_saliency, axis=-1)
+      edge_boxes_scores = tf.reduce_max(edge_boxes_scores, axis=-1)
 
       prediction_dict.update({
         'wsod_edge_boxes_boxes': edge_boxes_boxes,
         'wsod_edge_boxes_scores': edge_boxes_scores,
-        'wsod_edge_boxes_saliency': edge_boxes_saliency })
+        'wsod_edge_boxes_ori_scores': edge_boxes_ori_scores })
 
     # Decide the proposal method.
 
     method_mapping = {
-      'frcnn_anchor': (
-          prediction_dict['wsod_frcnn_anchor_boxes'], 
-          prediction_dict['wsod_frcnn_anchor_saliency']),
-      'edge_boxes': (
+      'edge_boxes_ori_scores': (
+          prediction_dict['wsod_edge_boxes_boxes'], 
+          prediction_dict['wsod_edge_boxes_ori_scores']),
+      'edge_boxes_scores': (
           prediction_dict['wsod_edge_boxes_boxes'], 
           prediction_dict['wsod_edge_boxes_scores']),
-      'edge_boxes_saliency': (
-          prediction_dict['wsod_edge_boxes_boxes'], 
-          prediction_dict['wsod_edge_boxes_saliency']),
+      'frcnn_anchor_scores': (
+          prediction_dict['wsod_frcnn_anchor_boxes'], 
+          prediction_dict['wsod_frcnn_anchor_scores']),
     }
+    anchors, anchor_scores = method_mapping[self._proposal_prediction]
 
-    # Visualize to tensorboard.
+    # Convert to heatmap and draw caption.
+    with tf.name_scope("wsod_rpn_groundtruth"):
+      image_uint8 = tf.cast((preprocessed_inputs + 1.0) * 0.5 * 255, tf.uint8)
+      heatmap = tf.maximum(0.0,
+          plotlib.convert_to_heatmap(tf.squeeze(saliency_map, axis=-1), True))
+      score_map_list = []
+      for i, x in enumerate(tf.unstack(score_map, axis=-1)):
+        x = plotlib.convert_to_heatmap(x, False)
+        x = tf.image.convert_image_dtype(x, tf.uint8)
+        x = plotlib.draw_caption(x, tf.expand_dims(vocabulary_list[i], axis=0),
+            org=(5, 20), fontscale=1.0, color=(255, 0, 0), thickness=2)
+        score_map_list.append(tf.image.convert_image_dtype(x, tf.float32))
 
-    image_uint8 = tf.cast((preprocessed_inputs + 1.0) * 0.5 * 255, tf.uint8)
-    (image_with_boxes_list
-     ) = [tf.maximum(0.0, plotlib.convert_to_heatmap(saliency_map, True))]
+      # GT boxes on original image.
+      image_with_boxes = self._draw_top_k_proposals_helper(
+          image=image_uint8,
+          proposals=anchors,
+          proposal_scores=anchor_scores, 
+          k=_TOP_K, color=(0, 255, 0))
+      image_with_boxes = tf.image.convert_image_dtype(image_with_boxes, tf.float32)
+      canvas = tf.concat([image_with_boxes, heatmap] + score_map_list, axis=2)
 
-    for name in ['frcnn_anchor', 'edge_boxes', 'edge_boxes_saliency']:
-      proposals, proposal_scores = method_mapping[name]
-      with tf.name_scope('visualize_{}'.format(name)):
-        image_with_boxes = self._draw_top_k_proposals_helper(
-            image=image_uint8,
-            proposals=proposals,
-            proposal_scores=proposal_scores, 
-            k=_TOP_K, color=(0, 255, 0))
-        image_with_boxes_list.append(
-            tf.image.convert_image_dtype(image_with_boxes, tf.float32))
-    canvas = tf.concat(image_with_boxes_list, axis=2)
-    tf.summary.image("wsod", canvas, max_outputs=10)
+      tf.summary.image("image", canvas, max_outputs=10)
 
-    # Proposal prediction.
+    return (anchors, anchor_scores)
 
-    proposals, proposal_scores = method_mapping[self._proposal_prediction]
-    return (saliency_map, anchor_saliency, proposals, proposal_scores)
+#  def _predict_wsod_rpn_proposals(self, preprocessed_inputs,
+#      unused_image_shape, rpn_objectness_predictions_with_background, anchors):
+#    """Predicts rpn proposals based on the method specified.
+#
+#    Args:
+#      preprocessed_inputs: a [batch, height, width, channels] float tensor
+#        representing a batch of images.
+#      unused_image_shape: TODO(yek@) read the details of the implementation to
+#        understand the image_shape tensor.
+#      rpn_objectness_predictions_with_background: A 2-D float tensor of shape
+#        [batch_size, num_anchors, 2] containing objectness predictions
+#        (logits) for each of the anchors with 0 corresponding to background
+#        and 1 corresponding to object.
+#      anchors: A 2-D tensor of shape [num_anchors, 4] representing anchors
+#        for the first stage RPN.  Note that `num_anchors` can differ depending
+#        on whether the model is created in training or inference mode.
+#
+#    Returns:
+#      saliency_map: A 3-D tensor of shape [batch, height, width] representing
+#        image saliency.
+#      anchor_saliency: A 2-D tensor of shape [batch, num_anchors] representing
+#        anchor saliency.
+#      proposals: A 3-D tensor of shape [batch, num_anchors, 4] representing the
+#        proposals before applying non-maximum suppression.
+#      proposal_scores: A 2-D tensor of shape [batch, num_anchors] representing
+#        the confidence score of each proposal.
+#    """
+#    # Image saliency.
+#
+#    with tf.name_scope('ImageSaliencyProcessor'):
+#      (batch, height, width, channels
+#       ) = shape_utils.combined_static_and_dynamic_shape(preprocessed_inputs)
+#      saliency_map, score_map = self._get_score_map(
+#          preprocessed_inputs, unused_image_shape, self._category_strings)
+#
+#    prediction_dict = { 
+#      'wsod_saliency_map': saliency_map,
+#      'wsod_score_map': score_map }
+#
+#    if not self._use_score_map:
+#      score_map = saliency_map
+#
+#    # Faster-RCNN anchor saliency.
+#
+#    with tf.name_scope('AnchorSaliencyProcessor'):
+#      unnormalized_anchor_boxes = tf.tile(
+#          tf.expand_dims(anchors, 0), [batch, 1, 1])
+#      anchor_boxes = _to_normalized_coordinates(
+#          unnormalized_anchor_boxes, height, width)
+#      anchor_saliency = self._proposal_saliency_fn(
+#          score_map, tf.cast(unnormalized_anchor_boxes, tf.int64))
+#      anchor_saliency = tf.reduce_max(anchor_saliency, axis=-1)
+#
+#      prediction_dict.update({
+#        'wsod_frcnn_anchor_boxes': anchor_boxes,
+#        'wsod_frcnn_anchor_saliency': anchor_saliency })
+#
+#    # Edge-boxes saliency.
+#
+#    with tf.name_scope('EdgeBoxesSaliencyProcessor'):
+#      edge_boxes_inputs = tf.image.resize_images(
+#          (preprocessed_inputs + 1.0) * 255.0 / 2.0, 
+#          [height // 2, width // 2])
+#
+#      (_, edge_boxes_boxes) = imgproc.get_edge_boxes( 
+#          edge_boxes_inputs, self._edge_detection, self._edge_boxes,
+#          max_num_boxes=self._edge_boxes_max_num_boxes)
+#      edge_boxes_scores = tf.tile(
+#          tf.expand_dims( 
+#            tf.range(start=self._edge_boxes_max_num_boxes, 
+#              limit=0, delta=-1, dtype=tf.float32), axis=0), 
+#          multiples=[batch, 1])
+#      edge_boxes_saliency = self._proposal_saliency_fn(score_map, 
+#          _to_absolute_coordinates(edge_boxes_boxes, height, width))
+#      edge_boxes_saliency = tf.reduce_max(edge_boxes_saliency, axis=-1)
+#
+#      prediction_dict.update({
+#        'wsod_edge_boxes_boxes': edge_boxes_boxes,
+#        'wsod_edge_boxes_scores': edge_boxes_scores,
+#        'wsod_edge_boxes_saliency': edge_boxes_saliency })
+#
+#    # Decide the proposal method.
+#
+#    method_mapping = {
+#      'frcnn_anchor': (
+#          prediction_dict['wsod_frcnn_anchor_boxes'], 
+#          prediction_dict['wsod_frcnn_anchor_saliency']),
+#      'edge_boxes': (
+#          prediction_dict['wsod_edge_boxes_boxes'], 
+#          prediction_dict['wsod_edge_boxes_scores']),
+#      'edge_boxes_saliency': (
+#          prediction_dict['wsod_edge_boxes_boxes'], 
+#          prediction_dict['wsod_edge_boxes_saliency']),
+#    }
+#
+#    # # Visualize to tensorboard.
+#
+#    # image_uint8 = tf.cast((preprocessed_inputs + 1.0) * 0.5 * 255, tf.uint8)
+#    # (image_with_boxes_list) = [tf.maximum(
+#    #     0.0, plotlib.convert_to_heatmap(tf.squeeze(saliency_map, axis=-1), True))]
+#
+#    # for name in ['frcnn_anchor', 'edge_boxes', 'edge_boxes_saliency']:
+#    #   proposals, proposal_scores = method_mapping[name]
+#    #   with tf.name_scope('visualize_{}'.format(name)):
+#    #     image_with_boxes = self._draw_top_k_proposals_helper(
+#    #         image=image_uint8,
+#    #         proposals=proposals,
+#    #         proposal_scores=proposal_scores, 
+#    #         k=_TOP_K, color=(0, 255, 0))
+#    #     image_with_boxes_list.append(
+#    #         tf.image.convert_image_dtype(image_with_boxes, tf.float32))
+#    # canvas = tf.concat(image_with_boxes_list, axis=2)
+#    # tf.summary.image("wsod", canvas, max_outputs=10)
+#
+#    # Proposal prediction.
+#
+#    proposals, proposal_scores = method_mapping[self._proposal_prediction]
+#    return (saliency_map, anchor_saliency, proposals, proposal_scores)
 
   def _predict_rpn_proposals(self, rpn_box_predictor_features):
     """Adds box predictors to RPN feature map to predict proposals.
@@ -1863,17 +1978,57 @@ class WSODMetaArch(model.DetectionModel):
     """
     loss_dict = {}
 
-    with tf.name_scope(scope, 'Loss', prediction_dict.values()):
+    #with tf.name_scope(scope, 'Loss', prediction_dict.values()):
+    if True:
       (groundtruth_boxlists, groundtruth_classes_with_background_list,
        groundtruth_masks_list, groundtruth_weights_list
       ) = self._format_groundtruth_data(true_image_shapes)
 
-      # Add regression loss to learn the box saliency.
+      # Read the caption groundtruth and pad it to fixed-length.
+      groundtruth_caption_list = self.groundtruth_lists(
+          fields.InputDataFields.groundtruth_caption)
+      assert len(groundtruth_caption_list) == 1, "only support batch==1."
 
-      if self._proposal_prediction.startswith('anchor'):
-        loss_dict.update(self._loss_saliency_rpn(
-            prediction_dict['anchor_saliency'],
-            prediction_dict['wsod_proposal_scores']))
+      def _pad(cap, max_len):
+        cap_len = tf.minimum(tf.shape(cap)[0], max_len)
+        cap = cap[:cap_len]
+
+        pad_len = max_len - cap_len
+        cap = tf.cond(pad_len > 0,
+            true_fn=lambda: tf.concat([cap, tf.fill([pad_len], 'UNK')], axis=0),
+            false_fn=lambda: cap)
+        cap.set_shape([max_len])
+        return cap_len, cap
+
+      gt_caption_len, gt_caption = _pad(
+          groundtruth_caption_list[0], max_len=10)
+      # (gt_caption_len, gt_caption) = (
+      #     tf.expand_dims(gt_caption_len, axis=0),
+      #     tf.expand_dims(gt_caption, axis=0))
+
+      # Provide the fake groundtruth.
+      vocabulary_list = gt_caption
+      if self._category_strings is not None:
+        vocabulary_list = self._category_strings
+
+      (wsod_anchors, wsod_anchor_scores
+       ) = self.provide_wsod_rpn_groundtruth( 
+         prediction_dict['preprocessed_inputs'], 
+         prediction_dict['image_shape'],
+         vocabulary_list=vocabulary_list)
+
+      # (nmsed_wsod_anchors, nmsed_wsod_anchor_scores, _, _, _,
+      #  nmsed_num_wsod_anchors) = self._first_stage_nms_fn(
+      #      tf.expand_dims(wsod_anchors, axis=2),
+      #      tf.expand_dims(wsod_anchor_scores, axis=2),
+      #      clip_window=None)
+
+      ## Add regression loss to learn the box saliency.
+
+      #if self._proposal_prediction.startswith('anchor'):
+      #  loss_dict.update(self._loss_saliency_rpn(
+      #      prediction_dict['anchor_saliency'],
+      #      prediction_dict['wsod_proposal_scores']))
 
       # loss_dict = self._loss_rpn(
       #     prediction_dict['rpn_box_encodings'],
@@ -1937,7 +2092,7 @@ class WSODMetaArch(model.DetectionModel):
     return plotlib.draw_rectangles(image, 
         top_k_proposals, color=color, thickness=thickness)
 
-  def _get_score_map(self, preprocessed_inputs, unused_image_shape):
+  def _get_score_map(self, preprocessed_inputs, unused_image_shape, vocabulary_list):
     """Gets anchor saliency directly from the saliency map.
 
     Args:
@@ -1945,6 +2100,8 @@ class WSODMetaArch(model.DetectionModel):
         representing a batch of images.
       unused_image_shape: TODO(yek@) read the details of the implementation to
         understand the image_shape tensor.
+      vocabulary_list: a [caption_length] string tensor or a list of python
+        strings denoting the vocabulary used to generate score map.
 
     Returns:
       saliency_map: a 4-D tensor of shape [batch, height, width, 1] representing
@@ -1959,7 +2116,7 @@ class WSODMetaArch(model.DetectionModel):
       prediction_dict = self._saliency_model.build_prediction(
           examples={ 
             'image': saliency_inputs,
-            'category_strings': self._category_strings },
+            'category_strings': vocabulary_list },
           prediction_task='image_score_map')
 
       (saliency_map, score_map) = (
