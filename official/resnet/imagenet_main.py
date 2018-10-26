@@ -345,9 +345,8 @@ def run_imagenet(flags_obj):
   """
   # set the image data format that will be used by the Keras resnet model
   if flags_obj.use_keras_model:
-    if not data_format:
-        data_format = (
-            'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
+    data_format = ('channels_first' if tf.test.is_built_with_cuda()
+                   else 'channels_last')
     tf.keras.backend.set_image_data_format(data_format)
 
   input_function = (flags_obj.use_synthetic_data and
