@@ -555,7 +555,8 @@ def main(_):
     if flags.FLAGS.seed is not None:
       np.random.seed(flags.FLAGS.seed)
 
-    with mlperf_helper.LOGGER(enable=flags.FLAGS.ml_perf):
+    with mlperf_helper.LOGGER(
+        enable=flags.FLAGS.output_ml_perf_compliance_logging):
       mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
       _generation_loop(
           num_workers=flags.FLAGS.num_workers,
@@ -623,6 +624,9 @@ def define_flags():
                             "specified, a seed will not be set.")
   flags.DEFINE_boolean(name="ml_perf", default=None,
                        help="Match MLPerf. See ncf_main.py for details.")
+  flags.DEFINE_bool(name="output_ml_perf_compliance_logging", default=None,
+                    help="Output the MLPerf compliance logging. See "
+                         "ncf_main.py for details.")
 
   flags.mark_flags_as_required(["data_dir", "cache_id"])
 

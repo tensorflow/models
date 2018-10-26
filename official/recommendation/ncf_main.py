@@ -50,6 +50,9 @@ from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
 
+FLAGS = flags.FLAGS
+
+
 def construct_estimator(num_gpus, model_dir, params, batch_size,
                         eval_batch_size):
   """Construct either an Estimator or TPUEstimator for NCF.
@@ -118,7 +121,8 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
 
 
 def main(_):
-  with logger.benchmark_context(FLAGS), mlperf_helper.LOGGER(FLAGS.ml_perf):
+  with logger.benchmark_context(FLAGS), \
+       mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
     mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
     run_ncf(FLAGS)
     mlperf_helper.stitch_ncf()
@@ -417,6 +421,18 @@ def define_ncf_flags():
           "which performs better due to the fact the sorting algorithms are "
           "not stable."))
 
+  flags.DEFINE_bool(
+      name="output_ml_perf_compliance_logging", default=False,
+      help=flags_core.help_wrap(
+          "If set, output the MLPerf compliance logging. This is only useful "
+          "if one is running the model for MLPerf. See "
+          "https://github.com/mlperf/policies/blob/master/training_rules.adoc"
+          "#submission-compliance-logs for details. This uses sudo and so may "
+          "ask for your password, as root access is needed to clear the system "
+          "caches, which is required for MLPerf compliance."
+      )
+  )
+
   flags.DEFINE_integer(
       name="seed", default=None, help=flags_core.help_wrap(
           "This value will be used to seed both NumPy and TensorFlow."))
@@ -460,5 +476,4 @@ def define_ncf_flags():
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
   define_ncf_flags()
-  FLAGS = flags.FLAGS
   absl_app.run(main)
