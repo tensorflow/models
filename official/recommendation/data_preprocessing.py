@@ -431,7 +431,8 @@ def write_flagfile(flags_, ncf_dataset):
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                          num_data_readers=None, num_neg=4, epochs_per_cycle=1,
                          match_mlperf=False, deterministic=False,
-                         use_subprocess=True, cache_id=None):
+                         use_subprocess=True, cache_id=None, num_shards=1,
+                         keep=False):
   # type: (...) -> (NCFDataset, typing.Callable)
   """Preprocess data and start negative generation subprocess."""
 
@@ -461,7 +462,8 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "redirect_logs": use_subprocess,
       "use_tf_logging": not use_subprocess,
       "ml_perf": match_mlperf,
-      "output_ml_perf_compliance_logging": mlperf_helper.LOGGER.enabled,
+      "num_shards": num_shards,
+      "keep": keep,
   }
 
   if use_subprocess:
@@ -488,10 +490,11 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
     if use_subprocess:
       _shutdown(proc)
 
-    try:
-      tf.gfile.DeleteRecursively(ncf_dataset.cache_paths.cache_root)
-    except tf.errors.NotFoundError:
-      pass
+    if not keep:
+      try:
+        tf.gfile.DeleteRecursively(ncf_dataset.cache_paths.cache_root)
+      except tf.errors.NotFoundError:
+        pass
 
     cleanup_called["finished"] = True
 

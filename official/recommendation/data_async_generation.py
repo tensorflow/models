@@ -197,7 +197,8 @@ def _construct_records(
     batch_size,           # type: int
     training_shards,      # type: typing.List[str]
     deterministic=False,  # type: bool
-    match_mlperf=False    # type: bool
+    match_mlperf=False,   # type: bool
+    num_shards=1          # type: int
     ):
   """Generate false negatives and write TFRecords files.
 
@@ -220,6 +221,8 @@ def _construct_records(
       to properly batch data when writing TFRecords.
     training_shards: The picked positive examples from which to generate
       negatives.
+    num_shards: divide `batch_size` into `num_shards` and save in separate
+      files with _i suffices.
   """
   st = timeit.default_timer()
 
@@ -359,28 +362,35 @@ def _construct_records(
 
   batch_count = 0
   for i in range(num_readers):
-    fpath = os.path.join(record_dir, template.format(i))
-    log_msg("Writing {}".format(fpath))
-    with tf.python_io.TFRecordWriter(fpath) as writer:
-      for j in batches_by_file[i]:
-        start_ind = j * batch_size
-        end_ind = start_ind + batch_size
-        record_kwargs = dict(
-            users=data[0][start_ind:end_ind],
-            items=data[1][start_ind:end_ind],
-        )
+    for shard in range(num_shards):
+      if num_shards == 1:
+        fpath = os.path.join(record_dir, template.format(i))
+      else:
+        fpath = os.path.join(record_dir,
+                             template.format(i) + "_{}".format(shard))
+      log_msg("Writing {}".format(fpath))
+      with tf.python_io.TFRecordWriter(fpath) as writer:
+        for j in batches_by_file[i]:
+          batch_size_per_shard = batch_size // num_shards
+          start_ind = j * batch_size + shard * batch_size_per_shard
+          end_ind = start_ind + batch_size_per_shard
+          record_kwargs = dict(
+              users=data[0][start_ind:end_ind],
+              items=data[1][start_ind:end_ind],
+          )
 
-        if is_training:
-          record_kwargs["labels"] = data[2][start_ind:end_ind]
-        else:
-          record_kwargs["dupe_mask"] = stat_utils.mask_duplicates(
-              record_kwargs["items"].reshape(-1, num_neg + 1),
-              axis=1).flatten().astype(np.int8)
+          if is_training:
+            record_kwargs["labels"] = data[2][start_ind:end_ind]
+          else:
+            record_kwargs["dupe_mask"] = stat_utils.mask_duplicates(
+                record_kwargs["items"].reshape(-1, num_neg + 1),
+                axis=1).flatten().astype(np.int8)
 
-        batch_bytes = _construct_record(**record_kwargs)
+          batch_bytes = _construct_record(**record_kwargs)
 
-        writer.write(batch_bytes)
-        batch_count += 1
+          writer.write(batch_bytes)
+          batch_count += 1
+  batch_count = batch_count // num_shards
 
   # We write to a temp file then atomically rename it to the final file, because
   # writing directly to the final file can cause the main process to read a
@@ -390,6 +400,7 @@ def _construct_records(
     json.dump({
         "batch_size": batch_size,
         "batch_count": batch_count,
+        "num_shards": num_shards
     }, f)
   ready_file = os.path.join(record_dir, rconst.READY_FILE)
   tf.gfile.Rename(ready_file_temp, ready_file)
@@ -413,7 +424,9 @@ def _generation_loop(num_workers,           # type: int
                      train_batch_size,      # type: int
                      eval_batch_size,       # type: int
                      deterministic,         # type: bool
-                     match_mlperf           # type: bool
+                     match_mlperf,          # type: bool
+                     num_shards,            # type: int
+                     keep                   # type: bool
                     ):
   # type: (...) -> None
   """Primary run loop for data file generation."""
@@ -429,7 +442,7 @@ def _generation_loop(num_workers,           # type: int
       num_workers=multiprocessing.cpu_count(), cache_paths=cache_paths,
       num_readers=num_readers, num_items=num_items,
       training_shards=training_shards, deterministic=deterministic,
-      match_mlperf=match_mlperf
+      match_mlperf=match_mlperf, num_shards=num_shards
   )
 
   # Training blocks on the creation of the first epoch, so the num_workers
@@ -451,7 +464,7 @@ def _generation_loop(num_workers,           # type: int
   start_time = time.time()
   while True:
     ready_epochs = tf.gfile.ListDirectory(cache_paths.train_epoch_dir)
-    if len(ready_epochs) >= rconst.CYCLES_TO_BUFFER:
+    if not keep and len(ready_epochs) >= rconst.CYCLES_TO_BUFFER:
       wait_count += 1
       sleep_time = max([0, wait_count * 5 - (time.time() - start_time)])
       time.sleep(sleep_time)
@@ -571,6 +584,8 @@ def main(_):
           eval_batch_size=flags.FLAGS.eval_batch_size,
           deterministic=flags.FLAGS.seed is not None,
           match_mlperf=flags.FLAGS.ml_perf,
+          num_shards=flags.FLAGS.num_shards,
+          keep=flags.FLAGS.keep
       )
   except KeyboardInterrupt:
     log_msg("KeyboardInterrupt registered.")
@@ -627,6 +642,15 @@ def define_flags():
   flags.DEFINE_bool(name="output_ml_perf_compliance_logging", default=None,
                     help="Output the MLPerf compliance logging. See "
                          "ncf_main.py for details.")
+  flags.DEFINE_integer(name="num_shards", default=1,
+                       help="By default, each record contains batch_size number"
+                       " of examples. Otherwise, each record contains "
+                       "batch_size/num_shards examples and record files will "
+                       "have _i suffices; it is convenient to feed record with "
+                       "_i suffix into ith host/core.")
+  flags.DEFINE_boolean(name="keep", default=False,
+                       help="Keep the data for training epochs after they have "
+                       "been used.")
 
   flags.mark_flags_as_required(["data_dir", "cache_id"])
 
