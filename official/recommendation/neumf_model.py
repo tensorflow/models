@@ -86,6 +86,10 @@ def neumf_model_fn(features, labels, mode, params):
   else:
     keras_model = construct_model(users=users, items=items, params=params)
     logits = keras_model.output
+  if not params["use_estimator"] and "keras_model" not in params:
+    # When we are not using estimator, we need to return the keras model to
+    # the caller. We do so by mutating params.
+    params["keras_model"] = keras_model
 
   # Softmax with the first column of zeros is equivalent to sigmoid.
   softmax_logits = tf.concat([tf.zeros(logits.shape, dtype=logits.dtype),
@@ -156,10 +160,6 @@ def neumf_model_fn(features, labels, mode, params):
 
   else:
     raise NotImplementedError
-  if not params["use_estimator"]:
-    EstimatorSpecWithKerasModel = namedtuple("EstimatorSpecWithKerasModel",
-                                             spec._fields + ('keras_model',))
-    spec = EstimatorSpecWithKerasModel(*spec, keras_model=keras_model)
   return spec
 
 
