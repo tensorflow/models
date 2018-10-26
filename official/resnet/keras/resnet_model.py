@@ -38,6 +38,7 @@ WEIGHTS_PATH_NO_TOP = ('https://github.com/fchollet/deep-learning-models/'
 
 BATCH_NORM_DECAY = 0.9
 BATCH_NORM_EPSILON = 1e-5
+L2_WEIGHT_DECAY = 1e-4
 
 
 def identity_block(input_tensor, kernel_size, filters, stage, block, training):
@@ -61,30 +62,43 @@ def identity_block(input_tensor, kernel_size, filters, stage, block, training):
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
   x = tf.keras.layers.Conv2D(filters1, (1, 1),
+                             kernel_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             bias_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              name=conv_name_base + '2a')(input_tensor)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2a',
                                          momentum=BATCH_NORM_DECAY,
-                                         epsilon=BATCH_NORM_EPSILON)(x,
-                                         training=training)
+                                         epsilon=BATCH_NORM_EPSILON)(
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size,
                              padding='same',
+                             kernel_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             bias_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              name=conv_name_base + '2b')(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2b',
                                          momentum=BATCH_NORM_DECAY,
-                                         epsilon=BATCH_NORM_EPSILON)(x,
-                                         training=training)
+                                         epsilon=BATCH_NORM_EPSILON)(
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
-  x = tf.keras.layers.Conv2D(filters3, (1, 1), name=conv_name_base + '2c')(x)
+  x = tf.keras.layers.Conv2D(filters3, (1, 1),
+                             kernel_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             bias_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             name=conv_name_base + '2c')(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2c',
                                          momentum=BATCH_NORM_DECAY,
-                                         epsilon=BATCH_NORM_EPSILON)(x,
-                                         training=training)
+                                         epsilon=BATCH_NORM_EPSILON)(
+                                             x, training=training)
 
   x = tf.keras.layers.add([x, input_tensor])
   x = tf.keras.layers.Activation('relu')(x)
@@ -122,6 +136,10 @@ def conv_block(input_tensor,
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
   x = tf.keras.layers.Conv2D(filters1, (1, 1),
+                             kernel_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             bias_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              name=conv_name_base + '2a')(input_tensor)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2a',
@@ -131,6 +149,10 @@ def conv_block(input_tensor,
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size, padding='same',
+                             kernel_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             bias_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              name=conv_name_base + '2b', strides=strides)(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2b',
@@ -139,7 +161,12 @@ def conv_block(input_tensor,
                                              x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
-  x = tf.keras.layers.Conv2D(filters3, (1, 1), name=conv_name_base + '2c')(x)
+  x = tf.keras.layers.Conv2D(filters3, (1, 1),
+                             kernel_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             bias_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             name=conv_name_base + '2c')(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2c',
                                          momentum=BATCH_NORM_DECAY,
@@ -147,6 +174,10 @@ def conv_block(input_tensor,
                                              x, training=training)
 
   shortcut = tf.keras.layers.Conv2D(filters3, (1, 1), strides=strides,
+                                    kernel_regularizer=
+                                    tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                                    bias_regularizer=
+                                    tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                                     name=conv_name_base + '1')(input_tensor)
   shortcut = tf.keras.layers.BatchNormalization(
       axis=bn_axis, name=bn_name_base + '1',
@@ -170,7 +201,8 @@ def ResNet50(include_top=True,
   Optionally loads weights pre-trained on ImageNet.
   Note that the data format convention used by the model is
   the one specified in your Keras config at `~/.keras/keras.json`.
-  # Arguments
+
+  Arguments:
       include_top: whether to include the fully-connected
           layer at the top of the network.
       weights: one of `None` (random initialization),
@@ -202,9 +234,11 @@ def ResNet50(include_top=True,
       training: optional boolean indicating if this model will be
           used for training or evaluation. This boolean is then
           passed to the BatchNorm layer.
-  # Returns
+
+  Returns:
       A Keras model instance.
-  # Raises
+
+  Raises:
       ValueError: in case of invalid argument for `weights`,
           or invalid input shape.
   """
