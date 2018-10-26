@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """ResNet50 model for Keras.
+
 # Reference:
 - [Deep Residual Learning for Image Recognition](
     https://arxiv.org/abs/1512.03385)
@@ -125,8 +126,8 @@ def conv_block(input_tensor,
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2a',
                                          momentum=BATCH_NORM_DECAY,
-                                         epsilon=BATCH_NORM_EPSILON)(x,
-                                         training=training)
+                                         epsilon=BATCH_NORM_EPSILON)(
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size, padding='same',
@@ -134,23 +135,23 @@ def conv_block(input_tensor,
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2b',
                                          momentum=BATCH_NORM_DECAY,
-                                         epsilon=BATCH_NORM_EPSILON)(x,
-                                         training=training)
+                                         epsilon=BATCH_NORM_EPSILON)(
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters3, (1, 1), name=conv_name_base + '2c')(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2c',
                                          momentum=BATCH_NORM_DECAY,
-                                         epsilon=BATCH_NORM_EPSILON)(x,
-                                         training=training)
+                                         epsilon=BATCH_NORM_EPSILON)(
+                                             x, training=training)
 
   shortcut = tf.keras.layers.Conv2D(filters3, (1, 1), strides=strides,
                                     name=conv_name_base + '1')(input_tensor)
   shortcut = tf.keras.layers.BatchNormalization(
       axis=bn_axis, name=bn_name_base + '1',
-      momentum=BATCH_NORM_DECAY, epsilon=BATCH_NORM_EPSILON)(shortcut,
-      training=training)
+      momentum=BATCH_NORM_DECAY, epsilon=BATCH_NORM_EPSILON)(
+          shortcut, training=training)
 
   x = tf.keras.layers.add([x, shortcut])
   x = tf.keras.layers.Activation('relu')(x)
@@ -158,13 +159,14 @@ def conv_block(input_tensor,
 
 
 def ResNet50(include_top=True,
-    weights=None,
-    input_tensor=None,
-    input_shape=None,
-    pooling=None,
-    classes=1000,
-    training=True):
+             weights=None,
+             input_tensor=None,
+             input_shape=None,
+             pooling=None,
+             classes=1000,
+             training=True):
   """Instantiates the ResNet50 architecture.
+
   Optionally loads weights pre-trained on ImageNet.
   Note that the data format convention used by the model is
   the one specified in your Keras config at `~/.keras/keras.json`.
@@ -197,6 +199,9 @@ def ResNet50(include_top=True,
       classes: optional number of classes to classify images
           into, only to be specified if `include_top` is True, and
           if no `weights` argument is specified.
+      training: optional boolean indicating if this model will be
+          used for training or evaluation. This boolean is then
+          passed to the BatchNorm layer.
   # Returns
       A Keras model instance.
   # Raises
@@ -241,8 +246,8 @@ def ResNet50(include_top=True,
                              name='conv1')(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1',
                                          momentum=BATCH_NORM_DECAY,
-                                         epsilon=BATCH_NORM_EPSILON)(x,
-                                         training=training)
+                                         epsilon=BATCH_NORM_EPSILON)(
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
   x = tf.keras.layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
