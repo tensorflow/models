@@ -61,7 +61,7 @@ class BaseTest(tf.test.TestCase):
     fake_dataset = tf.data.FixedLengthRecordDataset(
         filename, cifar10_main._RECORD_BYTES)  # pylint: disable=protected-access
     fake_dataset = fake_dataset.map(
-        lambda val: cifar10_main.parse_record(val, False))
+        lambda val: cifar10_main.parse_record(val, False, tf.float32))
     image, label = fake_dataset.make_one_shot_iterator().get_next()
 
     self.assertAllEqual(label.shape, ())
@@ -77,9 +77,9 @@ class BaseTest(tf.test.TestCase):
           self.assertAllClose(pixel, np.array([-1.225, 0., 1.225]), rtol=1e-3)
 
   def cifar10_model_fn_helper(self, mode, resnet_version, dtype):
-    input_fn = cifar10_main.get_synth_input_fn()
+    input_fn = cifar10_main.get_synth_input_fn(dtype)
     dataset = input_fn(True, '', _BATCH_SIZE)
-    iterator = dataset.make_one_shot_iterator()
+    iterator = dataset.make_initializable_iterator()
     features, labels = iterator.get_next()
     spec = cifar10_main.cifar10_model_fn(
         features, labels, mode, {

@@ -49,17 +49,26 @@ def parse_json(json_string_or_file):
       with tf.gfile.Open(json_string_or_file) as f:
         json_dict = json.load(f)
     except ValueError as json_file_parsing_error:
-      raise ValueError("Unable to parse the content of the json file %s. "
-                       "Parsing error: %s." % (json_string_or_file,
-                                               json_file_parsing_error.message))
+      raise ValueError("Unable to parse the content of the json file {}. "
+                       "Parsing error: {}.".format(
+                           json_string_or_file,
+                           json_file_parsing_error.message))
     except tf.gfile.FileError:
       message = ("Unable to parse the input parameter neither as literal "
                  "JSON nor as the name of a file that exists.\n"
-                 "JSON parsing error: %s\n\n Input parameter:\n%s." %
-                 (literal_json_parsing_error.message, json_string_or_file))
+                 "JSON parsing error: {}\n\n Input parameter:\n{}.".format(
+                     literal_json_parsing_error.message, json_string_or_file))
       raise ValueError(message)
 
   return json_dict
+
+
+def to_json(config):
+  """Converts a JSON-serializable configuration object to a JSON string."""
+  if hasattr(config, "to_json") and callable(config.to_json):
+    return config.to_json(indent=2)
+  else:
+    return json.dumps(config, indent=2)
 
 
 def log_and_save_config(config, output_dir):
@@ -69,10 +78,7 @@ def log_and_save_config(config, output_dir):
     config: A JSON-serializable object.
     output_dir: Destination directory.
   """
-  if hasattr(config, "to_json") and callable(config.to_json):
-    config_json = config.to_json(indent=2)
-  else:
-    config_json = json.dumps(config, indent=2)
+  config_json = to_json(config)
   tf.logging.info("config: %s", config_json)
 
   tf.gfile.MakeDirs(output_dir)
@@ -104,7 +110,7 @@ def unflatten(flat_config):
 
   Args:
     flat_config: A dictionary with strings as keys where nested configuration
-        parameters are represented with period-separated names.
+      parameters are represented with period-separated names.
 
   Returns:
     A dictionary nested according to the keys of the input dictionary.

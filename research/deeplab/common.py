@@ -18,6 +18,7 @@ Common flags from train/eval/vis/export_model.py are collected in this script.
 """
 import collections
 import copy
+import json
 
 import tensorflow as tf
 
@@ -85,6 +86,11 @@ flags.DEFINE_boolean('decoder_use_separable_conv', True,
 flags.DEFINE_enum('merge_method', 'max', ['max', 'avg'],
                   'Scheme to merge multi scale features.')
 
+flags.DEFINE_string(
+    'dense_prediction_cell_json',
+    '',
+    'A JSON file that specifies the dense prediction cell.')
+
 FLAGS = flags.FLAGS
 
 # Constants
@@ -122,6 +128,7 @@ class ModelOptions(
         'logits_kernel_size',
         'model_variant',
         'depth_multiplier',
+        'dense_prediction_cell_config',
     ])):
   """Immutable class to hold model options."""
 
@@ -145,13 +152,19 @@ class ModelOptions(
     Returns:
       A new ModelOptions instance.
     """
+    dense_prediction_cell_config = None
+    if FLAGS.dense_prediction_cell_json:
+      with tf.gfile.Open(FLAGS.dense_prediction_cell_json, 'r') as f:
+        dense_prediction_cell_config = json.load(f)
+
     return super(ModelOptions, cls).__new__(
         cls, outputs_to_num_classes, crop_size, atrous_rates, output_stride,
         FLAGS.merge_method, FLAGS.add_image_level_feature,
         FLAGS.image_pooling_crop_size, FLAGS.aspp_with_batch_norm,
         FLAGS.aspp_with_separable_conv, FLAGS.multi_grid,
         FLAGS.decoder_output_stride, FLAGS.decoder_use_separable_conv,
-        FLAGS.logits_kernel_size, FLAGS.model_variant, FLAGS.depth_multiplier)
+        FLAGS.logits_kernel_size, FLAGS.model_variant, FLAGS.depth_multiplier,
+        dense_prediction_cell_config)
 
   def __deepcopy__(self, memo):
     return ModelOptions(copy.deepcopy(self.outputs_to_num_classes),

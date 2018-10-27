@@ -47,15 +47,10 @@ def fake_features(feature_spec, batch_size):
     Dictionary containing "time_series_features" and "aux_features". Each is a
         dictionary of named numpy arrays of shape [batch_size, length].
   """
-  features = {}
-  features["time_series_features"] = {
-      name: np.random.random([batch_size, spec["length"]])
-      for name, spec in feature_spec.items() if spec["is_time_series"]
-  }
-  features["aux_features"] = {
-      name: np.random.random([batch_size, spec["length"]])
-      for name, spec in feature_spec.items() if not spec["is_time_series"]
-  }
+  features = {"time_series_features": {}, "aux_features": {}}
+  for name, spec in feature_spec.items():
+    ftype = "time_series_features" if spec["is_time_series"] else "aux_features"
+    features[ftype][name] = np.random.random([batch_size, spec["length"]])
   return features
 
 

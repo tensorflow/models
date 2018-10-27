@@ -40,6 +40,10 @@ Full text available at [*The Astronomical Journal*](http://iopscience.iop.org/ar
   * Training and evaluating a new model.
   * Using a trained model to generate new predictions.
 
+[astrowavenet/](astrowavenet/)
+
+* A generative model for light curves.
+
 [light_curve_util/](light_curve_util)
 
 * Utilities for operating on light curves. These include:
@@ -63,11 +67,11 @@ First, ensure that you have installed the following required packages:
 * **TensorFlow** ([instructions](https://www.tensorflow.org/install/))
 * **Pandas** ([instructions](http://pandas.pydata.org/pandas-docs/stable/install.html))
 * **NumPy** ([instructions](https://docs.scipy.org/doc/numpy/user/install.html))
+* **SciPy** ([instructions](https://scipy.org/install.html))
 * **AstroPy** ([instructions](http://www.astropy.org/))
 * **PyDl** ([instructions](https://pypi.python.org/pypi/pydl))
 * **Bazel** ([instructions](https://docs.bazel.build/versions/master/install.html))
 * **Abseil Python Common Libraries** ([instructions](https://github.com/abseil/abseil-py))
-    * Optional: only required for unit tests.
 
 ### Optional: Run Unit Tests
 
@@ -207,7 +211,7 @@ the second deepest transits).
 
 To train a model to identify exoplanets, you will need to provide TensorFlow
 with training data in
-[TFRecord](https://www.tensorflow.org/guide/datasets) format. The
+[TFRecord](https://www.tensorflow.org/programmers_guide/datasets) format. The
 TFRecord format consists of a set of sharded files containing serialized
 `tf.Example` [protocol buffers](https://developers.google.com/protocol-buffers/).
 
@@ -343,7 +347,7 @@ bazel-bin/astronet/train \
   --model_dir=${MODEL_DIR}
 ```
 
-Optionally, you can also run a [TensorBoard](https://www.tensorflow.org/guide/summaries_and_tensorboard)
+Optionally, you can also run a [TensorBoard](https://www.tensorflow.org/programmers_guide/summaries_and_tensorboard)
 server in a separate process for real-time
 monitoring of training progress and evaluation metrics.
 

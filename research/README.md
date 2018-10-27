@@ -22,6 +22,8 @@ request.
     for visual navigation.
 -   [compression](compression): compressing and decompressing images using a
     pre-trained Residual GRU network.
+-   [cvt_text](cvt_text): semi-supervised sequence learning with cross-view
+    training.
 -   [deep_contextual_bandits](deep_contextual_bandits): code for a variety of contextual bandits algorithms using deep neural networks and Thompson sampling.
 -   [deep_speech](deep_speech): automatic speech recognition.
 -   [deeplab](deeplab): deep labeling for semantic image segmentation.
@@ -29,6 +31,8 @@ request.
 -   [differential_privacy](differential_privacy): differential privacy for training
     data.
 -   [domain_adaptation](domain_adaptation): domain separation networks.
+-   [fivo](fivo): filtering variational objectives for training generative
+    sequence models.
 -   [gan](gan): generative adversarial networks.
 -   [im2txt](im2txt): image-to-text neural network for image captioning.
 -   [inception](inception): deep convolutional networks for computer vision.

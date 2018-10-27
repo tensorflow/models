@@ -52,7 +52,10 @@ Alan L. Yuille (* equal contribution)
 (https://arxiv.org/abs/1412.7062)
 """
 import tensorflow as tf
+from deeplab.core import dense_prediction_cell
 from deeplab.core import feature_extractor
+from deeplab.core import utils
+
 
 slim = tf.contrib.slim
 
@@ -62,7 +65,10 @@ IMAGE_POOLING_SCOPE = 'image_pooling'
 ASPP_SCOPE = 'aspp'
 CONCAT_PROJECTION_SCOPE = 'concat_projection'
 DECODER_SCOPE = 'decoder'
+META_ARCHITECTURE_SCOPE = 'meta_architecture'
 
+scale_dimension = utils.scale_dimension
+split_separable_conv2d = utils.split_separable_conv2d
 
 def get_extra_layer_scopes(last_layers_contain_logits_only=False):
   """Gets the scopes for extra layers.
@@ -83,6 +89,7 @@ def get_extra_layer_scopes(last_layers_contain_logits_only=False):
         ASPP_SCOPE,
         CONCAT_PROJECTION_SCOPE,
         DECODER_SCOPE,
+        META_ARCHITECTURE_SCOPE,
     ]
 
 
@@ -186,20 +193,20 @@ def predict_labels(images, model_options, image_pyramid=None):
   return predictions
 
 
-def scale_dimension(dim, scale):
-  """Scales the input dimension.
+def _resize_bilinear(images, size, output_dtype=tf.float32):
+  """Returns resized images as output_type.
 
   Args:
-    dim: Input dimension (a scalar or a scalar Tensor).
-    scale: The amount of scaling applied to the input.
-
+    images: A tensor of size [batch, height_in, width_in, channels].
+    size: A 1-D int32 Tensor of 2 elements: new_height, new_width. The new size
+      for the images.
+    output_dtype: The destination type.
   Returns:
-    Scaled dimension.
+    A tensor of size [batch, height_out, width_out, channels] as a dtype of
+      output_dtype.
   """
-  if isinstance(dim, tf.Tensor):
-    return tf.cast((tf.to_float(dim) - 1.0) * scale + 1.0, dtype=tf.int32)
-  else:
-    return int((float(dim) - 1.0) * scale + 1.0)
+  images = tf.image.resize_bilinear(images, size, align_corners=True)
+  return tf.cast(images, dtype=output_dtype)
 
 
 def multi_scale_logits(images,
@@ -355,92 +362,120 @@ def extract_features(images,
   if not model_options.aspp_with_batch_norm:
     return features, end_points
   else:
-    batch_norm_params = {
+    if model_options.dense_prediction_cell_config is not None:
+      tf.logging.info('Using dense prediction cell config.')
+      dense_prediction_layer = dense_prediction_cell.DensePredictionCell(
+          config=model_options.dense_prediction_cell_config,
+          hparams={
+            'conv_rate_multiplier': 16 // model_options.output_stride,
+          })
+      concat_logits = dense_prediction_layer.build_cell(
+          features,
+          output_stride=model_options.output_stride,
+          crop_size=model_options.crop_size,
+          image_pooling_crop_size=model_options.image_pooling_crop_size,
+          weight_decay=weight_decay,
+          reuse=reuse,
+          is_training=is_training,
+          fine_tune_batch_norm=fine_tune_batch_norm)
+      return concat_logits, end_points
+    else:
+      # The following codes employ the DeepLabv3 ASPP module. Note that We
+      # could express the ASPP module as one particular dense prediction
+      # cell architecture. We do not do so but leave the following codes in
+      # order for backward compatibility.
+      batch_norm_params = {
         'is_training': is_training and fine_tune_batch_norm,
         'decay': 0.9997,
         'epsilon': 1e-5,
         'scale': True,
-    }
+      }
 
-    with slim.arg_scope(
-        [slim.conv2d, slim.separable_conv2d],
-        weights_regularizer=slim.l2_regularizer(weight_decay),
-        activation_fn=tf.nn.relu,
-        normalizer_fn=slim.batch_norm,
-        padding='SAME',
-        stride=1,
-        reuse=reuse):
-      with slim.arg_scope([slim.batch_norm], **batch_norm_params):
-        depth = 256
-        branch_logits = []
+      with slim.arg_scope(
+          [slim.conv2d, slim.separable_conv2d],
+          weights_regularizer=slim.l2_regularizer(weight_decay),
+          activation_fn=tf.nn.relu,
+          normalizer_fn=slim.batch_norm,
+          padding='SAME',
+          stride=1,
+          reuse=reuse):
+        with slim.arg_scope([slim.batch_norm], **batch_norm_params):
+          depth = 256
+          branch_logits = []
 
-        if model_options.add_image_level_feature:
-          if model_options.crop_size is not None:
-            image_pooling_crop_size = model_options.image_pooling_crop_size
-            # If image_pooling_crop_size is not specified, use crop_size.
-            if image_pooling_crop_size is None:
-              image_pooling_crop_size = model_options.crop_size
-            pool_height = scale_dimension(image_pooling_crop_size[0],
-                                          1. / model_options.output_stride)
-            pool_width = scale_dimension(image_pooling_crop_size[1],
-                                         1. / model_options.output_stride)
-            image_feature = slim.avg_pool2d(
-                features, [pool_height, pool_width], [1, 1], padding='VALID')
-            resize_height = scale_dimension(model_options.crop_size[0],
-                                            1. / model_options.output_stride)
-            resize_width = scale_dimension(model_options.crop_size[1],
-                                           1. / model_options.output_stride)
-          else:
-            # If crop_size is None, we simply do global pooling.
-            pool_height = tf.shape(features)[1]
-            pool_width = tf.shape(features)[2]
-            image_feature = tf.reduce_mean(features, axis=[1, 2])[:, tf.newaxis,
-                                                                  tf.newaxis]
-            resize_height = pool_height
-            resize_width = pool_width
-          image_feature = slim.conv2d(
-              image_feature, depth, 1, scope=IMAGE_POOLING_SCOPE)
-          image_feature = tf.image.resize_bilinear(
-              image_feature, [resize_height, resize_width], align_corners=True)
-          # Set shape for resize_height/resize_width if they are not Tensor.
-          if isinstance(resize_height, tf.Tensor):
-            resize_height = None
-          if isinstance(resize_width, tf.Tensor):
-            resize_width = None
-          image_feature.set_shape([None, resize_height, resize_width, depth])
-          branch_logits.append(image_feature)
-
-        # Employ a 1x1 convolution.
-        branch_logits.append(slim.conv2d(features, depth, 1,
-                                         scope=ASPP_SCOPE + str(0)))
-
-        if model_options.atrous_rates:
-          # Employ 3x3 convolutions with different atrous rates.
-          for i, rate in enumerate(model_options.atrous_rates, 1):
-            scope = ASPP_SCOPE + str(i)
-            if model_options.aspp_with_separable_conv:
-              aspp_features = split_separable_conv2d(
-                  features,
-                  filters=depth,
-                  rate=rate,
-                  weight_decay=weight_decay,
-                  scope=scope)
+          if model_options.add_image_level_feature:
+            if model_options.crop_size is not None:
+              image_pooling_crop_size = model_options.image_pooling_crop_size
+              # If image_pooling_crop_size is not specified, use crop_size.
+              if image_pooling_crop_size is None:
+                image_pooling_crop_size = model_options.crop_size
+              pool_height = scale_dimension(
+                  image_pooling_crop_size[0],
+                  1. / model_options.output_stride)
+              pool_width = scale_dimension(
+                  image_pooling_crop_size[1],
+                  1. / model_options.output_stride)
+              image_feature = slim.avg_pool2d(
+                  features, [pool_height, pool_width], [1, 1], padding='VALID')
+              resize_height = scale_dimension(
+                  model_options.crop_size[0],
+                  1. / model_options.output_stride)
+              resize_width = scale_dimension(
+                  model_options.crop_size[1],
+                  1. / model_options.output_stride)
             else:
-              aspp_features = slim.conv2d(
-                  features, depth, 3, rate=rate, scope=scope)
-            branch_logits.append(aspp_features)
+              # If crop_size is None, we simply do global pooling.
+              pool_height = tf.shape(features)[1]
+              pool_width = tf.shape(features)[2]
+              image_feature = tf.reduce_mean(
+                  features, axis=[1, 2], keepdims=True)
+              resize_height = pool_height
+              resize_width = pool_width
+            image_feature = slim.conv2d(
+                image_feature, depth, 1, scope=IMAGE_POOLING_SCOPE)
+            image_feature = _resize_bilinear(
+                image_feature,
+                [resize_height, resize_width],
+                image_feature.dtype)
+            # Set shape for resize_height/resize_width if they are not Tensor.
+            if isinstance(resize_height, tf.Tensor):
+              resize_height = None
+            if isinstance(resize_width, tf.Tensor):
+              resize_width = None
+            image_feature.set_shape([None, resize_height, resize_width, depth])
+            branch_logits.append(image_feature)
 
-        # Merge branch logits.
-        concat_logits = tf.concat(branch_logits, 3)
-        concat_logits = slim.conv2d(
-            concat_logits, depth, 1, scope=CONCAT_PROJECTION_SCOPE)
-        concat_logits = slim.dropout(
-            concat_logits,
-            keep_prob=0.9,
-            is_training=is_training,
-            scope=CONCAT_PROJECTION_SCOPE + '_dropout')
+          # Employ a 1x1 convolution.
+          branch_logits.append(slim.conv2d(features, depth, 1,
+                                           scope=ASPP_SCOPE + str(0)))
 
-        return concat_logits, end_points
+          if model_options.atrous_rates:
+            # Employ 3x3 convolutions with different atrous rates.
+            for i, rate in enumerate(model_options.atrous_rates, 1):
+              scope = ASPP_SCOPE + str(i)
+              if model_options.aspp_with_separable_conv:
+                aspp_features = split_separable_conv2d(
+                    features,
+                    filters=depth,
+                    rate=rate,
+                    weight_decay=weight_decay,
+                    scope=scope)
+              else:
+                aspp_features = slim.conv2d(
+                    features, depth, 3, rate=rate, scope=scope)
+              branch_logits.append(aspp_features)
+
+          # Merge branch logits.
+          concat_logits = tf.concat(branch_logits, 3)
+          concat_logits = slim.conv2d(
+              concat_logits, depth, 1, scope=CONCAT_PROJECTION_SCOPE)
+          concat_logits = slim.dropout(
+              concat_logits,
+              keep_prob=0.9,
+              is_training=is_training,
+              scope=CONCAT_PROJECTION_SCOPE + '_dropout')
+
+          return concat_logits, end_points
 
 
 def _get_logits(images,
@@ -672,52 +707,3 @@ def get_branch_logits(features,
                 scope=scope))
 
       return tf.add_n(branch_logits)
-
-
-def split_separable_conv2d(inputs,
-                           filters,
-                           kernel_size=3,
-                           rate=1,
-                           weight_decay=0.00004,
-                           depthwise_weights_initializer_stddev=0.33,
-                           pointwise_weights_initializer_stddev=0.06,
-                           scope=None):
-  """Splits a separable conv2d into depthwise and pointwise conv2d.
-
-  This operation differs from `tf.layers.separable_conv2d` as this operation
-  applies activation function between depthwise and pointwise conv2d.
-
-  Args:
-    inputs: Input tensor with shape [batch, height, width, channels].
-    filters: Number of filters in the 1x1 pointwise convolution.
-    kernel_size: A list of length 2: [kernel_height, kernel_width] of
-      of the filters. Can be an int if both values are the same.
-    rate: Atrous convolution rate for the depthwise convolution.
-    weight_decay: The weight decay to use for regularizing the model.
-    depthwise_weights_initializer_stddev: The standard deviation of the
-      truncated normal weight initializer for depthwise convolution.
-    pointwise_weights_initializer_stddev: The standard deviation of the
-      truncated normal weight initializer for pointwise convolution.
-    scope: Optional scope for the operation.
-
-  Returns:
-    Computed features after split separable conv2d.
-  """
-  outputs = slim.separable_conv2d(
-      inputs,
-      None,
-      kernel_size=kernel_size,
-      depth_multiplier=1,
-      rate=rate,
-      weights_initializer=tf.truncated_normal_initializer(
-          stddev=depthwise_weights_initializer_stddev),
-      weights_regularizer=None,
-      scope=scope + '_depthwise')
-  return slim.conv2d(
-      outputs,
-      filters,
-      1,
-      weights_initializer=tf.truncated_normal_initializer(
-          stddev=pointwise_weights_initializer_stddev),
-      weights_regularizer=slim.l2_regularizer(weight_decay),
-      scope=scope + '_pointwise')

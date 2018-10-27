@@ -45,6 +45,9 @@ def base():
               "PC": 1,  # Planet Candidate.
               "AFP": 0,  # Astrophysical False Positive.
               "NTP": 0,  # Non-Transiting Phenomenon.
+              "SCR1": 0,  # TCE from scrambled light curve with SCR1 order.
+              "INV": 0,  # TCE from inverted light curve.
+              "INJ1": 1,  # Injected Planet.
           },
       },
       # Hyperparameters for building and training the model.
@@ -60,10 +63,10 @@ def base():
           "pre_logits_dropout_rate": 0.0,
 
           # Number of examples per training batch.
-          "batch_size": 64,
+          "batch_size": 256,
 
           # Learning rate parameters.
-          "learning_rate": 1e-5,
+          "learning_rate": 2e-4,
           "learning_rate_decay_steps": 0,
           "learning_rate_decay_factor": 0,
           "learning_rate_decay_staircase": True,

@@ -621,7 +621,8 @@ def run_transformer(flags_obj):
     # an extra asset rather than a core asset.
     estimator.export_savedmodel(
         flags_obj.export_dir, serving_input_fn,
-        assets_extra={"vocab.txt": flags_obj.vocab_file})
+        assets_extra={"vocab.txt": flags_obj.vocab_file},
+        strip_default_attrs=True)
 
 
 def main(_):

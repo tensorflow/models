@@ -176,6 +176,61 @@ class LightCurveUtilTest(absltest.TestCase):
     self.assertSequenceAlmostEqual([16, 17, 18, 19], output_time[0])
     self.assertSequenceAlmostEqual([160, 170, 180, 190], output_flux[0])
 
+  def testInterpolateMissingTime(self):
+    # Fewer than 2 finite values.
+    with self.assertRaises(ValueError):
+      util.interpolate_missing_time(np.array([]))
+    with self.assertRaises(ValueError):
+      util.interpolate_missing_time(np.array([5.0]))
+    with self.assertRaises(ValueError):
+      util.interpolate_missing_time(np.array([5.0, np.nan]))
+    with self.assertRaises(ValueError):
+      util.interpolate_missing_time(np.array([np.nan, np.nan, np.nan]))
+
+    # Small time arrays.
+    self.assertSequenceAlmostEqual([0.5, 0.6],
+                                   util.interpolate_missing_time(
+                                       np.array([0.5, 0.6])))
+    self.assertSequenceAlmostEqual([0.5, 0.6, 0.7],
+                                   util.interpolate_missing_time(
+                                       np.array([0.5, np.nan, 0.7])))
+
+    # Time array of length 20 with some values NaN.
+    time = np.array([
+        np.nan, 0.5, 1.0, 1.5, 2.0, 2.5, np.nan, 3.5, 4.0, 4.5, 5.0, np.nan,
+        np.nan, np.nan, np.nan, 7.5, 8.0, 8.5, np.nan, np.nan
+    ])
+    interp_time = util.interpolate_missing_time(time)
+    self.assertSequenceAlmostEqual([
+        0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5,
+        7.0, 7.5, 8.0, 8.5, 9.0, 9.5
+    ], interp_time)
+
+    # Fill with 0.0 for missing values at the beginning and end.
+    interp_time = util.interpolate_missing_time(time, fill_value=0.0)
+    self.assertSequenceAlmostEqual([
+        0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5,
+        7.0, 7.5, 8.0, 8.5, 0.0, 0.0
+    ], interp_time)
+
+    # Interpolate with cadences.
+    cadences = np.array([
+        100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113,
+        114, 115, 116, 117, 118, 119
+    ])
+    interp_time = util.interpolate_missing_time(time, cadences)
+    self.assertSequenceAlmostEqual([
+        0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5,
+        7.0, 7.5, 8.0, 8.5, 9.0, 9.5
+    ], interp_time)
+
+    # Interpolate with missing cadences.
+    time = np.array([0.6, 0.7, np.nan, np.nan, np.nan, 1.3, 1.4, 1.5])
+    cadences = np.array([106, 107, 108, 109, 110, 113, 114, 115])
+    interp_time = util.interpolate_missing_time(time, cadences)
+    self.assertSequenceAlmostEqual([0.6, 0.7, 0.8, 0.9, 1.0, 1.3, 1.4, 1.5],
+                                   interp_time)
+
   def testInterpolateMaskedSpline(self):
     all_time = [
         np.arange(0, 10, dtype=np.float),
@@ -197,6 +252,53 @@ class LightCurveUtilTest(absltest.TestCase):
     self.assertSequenceAlmostEqual(
         [120, 122, 124, 126, 128, 130, 132, 132, 132, 132], interp_spline[1])
     self.assertTrue(np.all(np.isnan(interp_spline[2])))
+
+  def testReshardArrays(self):
+    xs = [
+        np.array([1, 2, 3]),
+        np.array([4]),
+        np.array([5, 6, 7, 8, 9]),
+        np.array([]),
+    ]
+    ys = [
+        np.array([]),
+        np.array([10, 20]),
+        np.array([30, 40, 50, 60]),
+        np.array([70]),
+        np.array([80, 90]),
+    ]
+    reshard_xs = util.reshard_arrays(xs, ys)
+    self.assertEqual(5, len(reshard_xs))
+    np.testing.assert_array_equal([], reshard_xs[0])
+    np.testing.assert_array_equal([1, 2], reshard_xs[1])
+    np.testing.assert_array_equal([3, 4, 5, 6], reshard_xs[2])
+    np.testing.assert_array_equal([7], reshard_xs[3])
+    np.testing.assert_array_equal([8, 9], reshard_xs[4])
+
+    with self.assertRaisesRegexp(ValueError,
+                                 "xs and ys do not have the same total length"):
+      util.reshard_arrays(xs, [np.array([10, 20, 30]), np.array([40, 50])])
+
+  def testUniformCadenceLightCurve(self):
+    input_cadence_no = np.array([13, 4, 5, 6, 8, 9, 11, 12])
+    input_time = np.array([130, 40, 50, 60, 80, 90, 110, 120])
+    input_flux = np.array([1300, 400, 500, 600, 800, np.nan, 1100, 1200])
+    cadence_no, time, flux, mask = util.uniform_cadence_light_curve(
+        input_cadence_no, input_time, input_flux)
+    np.testing.assert_array_equal([4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+                                  cadence_no)
+    np.testing.assert_array_equal([40, 50, 60, 0, 80, 0, 0, 110, 120, 130],
+                                  time)
+    np.testing.assert_array_equal(
+        [400, 500, 600, 0, 800, 0, 0, 1100, 1200, 1300], flux)
+    np.testing.assert_array_equal([1, 1, 1, 0, 1, 0, 0, 1, 1, 1], mask)
+
+    # Add duplicate cadence number.
+    input_cadence_no = np.concatenate([input_cadence_no, np.array([13, 14])])
+    input_time = np.concatenate([input_time, np.array([130, 140])])
+    input_flux = np.concatenate([input_flux, np.array([1300, 1400])])
+    with self.assertRaisesRegexp(ValueError, "Duplicate cadence number"):
+      util.uniform_cadence_light_curve(input_cadence_no, input_time, input_flux)
 
   def testCountTransitPoints(self):
     time = np.concatenate([

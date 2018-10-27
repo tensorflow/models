@@ -291,12 +291,11 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
          RUN_STATUS_RUNNING))
 
   def on_finish(self, status):
-    thread.start_new_thread(
-        self._bigquery_uploader.update_run_status,
-        (self._bigquery_data_set,
-         self._bigquery_run_status_table,
-         self._run_id,
-         status))
+    self._bigquery_uploader.update_run_status(
+        self._bigquery_data_set,
+        self._bigquery_run_status_table,
+        self._run_id,
+        status)
 
 
 def _gather_run_info(model_name, dataset_name, run_params, test_id):
@@ -308,11 +307,14 @@ def _gather_run_info(model_name, dataset_name, run_params, test_id):
       "test_id": test_id,
       "run_date": datetime.datetime.utcnow().strftime(
           _DATE_TIME_FORMAT_PATTERN)}
+  session_config = None
+  if "session_config" in run_params:
+    session_config = run_params["session_config"]
   _collect_tensorflow_info(run_info)
   _collect_tensorflow_environment_variables(run_info)
   _collect_run_params(run_info, run_params)
   _collect_cpu_info(run_info)
-  _collect_gpu_info(run_info)
+  _collect_gpu_info(run_info, session_config)
   _collect_memory_info(run_info)
   _collect_test_environment(run_info)
   return run_info
@@ -386,10 +388,10 @@ def _collect_cpu_info(run_info):
     tf.logging.warn("'cpuinfo' not imported. CPU info will not be logged.")
 
 
-def _collect_gpu_info(run_info):
+def _collect_gpu_info(run_info, session_config=None):
   """Collect local GPU information by TF device library."""
   gpu_info = {}
-  local_device_protos = device_lib.list_local_devices()
+  local_device_protos = device_lib.list_local_devices(session_config)
 
   gpu_info["count"] = len([d for d in local_device_protos
                            if d.device_type == "GPU"])

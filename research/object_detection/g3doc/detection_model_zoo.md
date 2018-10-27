@@ -2,13 +2,12 @@
 
 We provide a collection of detection models pre-trained on the [COCO
 dataset](http://mscoco.org), the [Kitti dataset](http://www.cvlibs.net/datasets/kitti/),
-the [Open Images dataset](https://github.com/openimages/dataset) and the
-[AVA v2.1 dataset](https://research.google.com/ava/). These models can
-be useful for
-out-of-the-box inference if you are interested in categories already in COCO
-(e.g., humans, cars, etc) or in Open Images (e.g.,
-surfboard, jacuzzi, etc). They are also useful for initializing your models when
-training on novel datasets.
+the [Open Images dataset](https://github.com/openimages/dataset), the
+[AVA v2.1 dataset](https://research.google.com/ava/) and the
+[iNaturalist Species Detection Dataset](https://github.com/visipedia/inat_comp/blob/master/2017/README.md#bounding-boxes).
+These models can be useful for out-of-the-box inference if you are interested in
+categories already in those datasets. They are also useful for initializing your
+models when training on novel datasets.
 
 In the table below, we list each such pre-trained model including:
 
@@ -112,6 +111,13 @@ Model name                                                                      
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
 [faster_rcnn_inception_resnet_v2_atrous_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28.tar.gz) | 727 | 37              | Boxes
 [faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28.tar.gz) | 347  |               | Boxes
+
+## iNaturalist Species-trained models
+
+Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 | Outputs
+----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
+[faster_rcnn_resnet101_fgvc](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_fgvc_2018_07_19.tar.gz) | 395  | 58              | Boxes
+[faster_rcnn_resnet50_fgvc](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet50_fgvc_2018_07_19.tar.gz) | 366  | 55             | Boxes
 
 
 ## AVA v2.1 trained models

@@ -46,6 +46,7 @@ class Loss(object):
                prediction_tensor,
                target_tensor,
                ignore_nan_targets=False,
+               losses_mask=None,
                scope=None,
                **params):
     """Call the loss function.
@@ -58,6 +59,11 @@ class Loss(object):
       ignore_nan_targets: whether to ignore nan targets in the loss computation.
         E.g. can be used if the target tensor is missing groundtruth data that
         shouldn't be factored into the loss.
+      losses_mask: A [batch] boolean tensor that indicates whether losses should
+        be applied to individual images in the batch. For elements that
+        are True, corresponding prediction, target, and weight tensors will be
+        removed prior to loss computation. If None, no filtering will take place
+        prior to loss computation.
       scope: Op scope name. Defaults to 'Loss' if None.
       **params: Additional keyword arguments for specific implementations of
               the Loss.
@@ -71,7 +77,24 @@ class Loss(object):
         target_tensor = tf.where(tf.is_nan(target_tensor),
                                  prediction_tensor,
                                  target_tensor)
+      if losses_mask is not None:
+        tensor_multiplier = self._get_loss_multiplier_for_tensor(
+            prediction_tensor,
+            losses_mask)
+        prediction_tensor *= tensor_multiplier
+        target_tensor *= tensor_multiplier
+
+        if 'weights' in params:
+          params['weights'] = tf.convert_to_tensor(params['weights'])
+          weights_multiplier = self._get_loss_multiplier_for_tensor(
+              params['weights'],
+              losses_mask)
+          params['weights'] *= weights_multiplier
       return self._compute_loss(prediction_tensor, target_tensor, **params)
+
+  def _get_loss_multiplier_for_tensor(self, tensor, losses_mask):
+    loss_multiplier_shape = tf.stack([-1] + [1] * (len(tensor.shape) - 1))
+    return tf.cast(tf.reshape(losses_mask, loss_multiplier_shape), tf.float32)
 
   @abstractmethod
   def _compute_loss(self, prediction_tensor, target_tensor, **params):

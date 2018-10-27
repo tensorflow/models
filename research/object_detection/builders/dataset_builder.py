@@ -132,6 +132,8 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None):
     dataset = read_dataset(
         functools.partial(tf.data.TFRecordDataset, buffer_size=8 * 1000 * 1000),
         config.input_path[:], input_reader_config)
+    if input_reader_config.sample_1_of_n_examples > 1:
+      dataset = dataset.shard(input_reader_config.sample_1_of_n_examples, 0)
     # TODO(rathodv): make batch size a required argument once the old binaries
     # are deleted.
     if batch_size:

@@ -495,8 +495,7 @@ class TargetAssignerTest(test_case.TestCase):
           priors,
           boxes,
           groundtruth_labels,
-          unmatched_class_label=unmatched_class_label,
-          num_valid_rows=3)
+          unmatched_class_label=unmatched_class_label)
 
   def test_raises_error_on_invalid_groundtruth_labels(self):
     similarity_calc = region_similarity_calculator.NegSqDistSimilarity()
@@ -520,8 +519,7 @@ class TargetAssignerTest(test_case.TestCase):
           priors,
           boxes,
           groundtruth_labels,
-          unmatched_class_label=unmatched_class_label,
-          num_valid_rows=3)
+          unmatched_class_label=unmatched_class_label)
 
 
 class BatchTargetAssignerTest(test_case.TestCase):
