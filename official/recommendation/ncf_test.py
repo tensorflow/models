@@ -257,13 +257,6 @@ class NcfTest(tf.test.TestCase):
     flags.FLAGS.ml_perf = True
     ncf_main.main(None)
 
-  # TODO: Remove this test
-  @flagsaver.flagsaver(use_estimator=False, ml_perf=True, use_xla_for_gpu=True,
-                       **_BASE_END_TO_END_FLAGS)
-  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end_no_estimator_xla(self):
-    ncf_main.main(None)
-
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
