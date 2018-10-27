@@ -33,7 +33,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from collections import namedtuple
 import sys
 import typing
 
@@ -103,13 +102,12 @@ def neumf_model_fn(features, labels, mode, params):
     }
 
     if params["use_tpu"]:
-      spec = tf.contrib.tpu.TPUEstimatorSpec(mode=mode, predictions=predictions)
-    else:
-      spec = tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+      return tf.contrib.tpu.TPUEstimatorSpec(mode=mode, predictions=predictions)
+    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
   elif mode == tf.estimator.ModeKeys.EVAL:
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)
-    spec = compute_eval_loss_and_metrics(
+    return compute_eval_loss_and_metrics(
         logits, softmax_logits, duplicate_mask, params["num_neg"],
         params["match_mlperf"],
         use_tpu_spec=params["use_tpu"] or params["use_xla_for_gpu"])
@@ -154,14 +152,12 @@ def neumf_model_fn(features, labels, mode, params):
     train_op = tf.group(minimize_op, update_ops)
 
     if params["use_tpu"]:
-      spec = tf.contrib.tpu.TPUEstimatorSpec(
+      return tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode, loss=loss, train_op=train_op)
-    else:
-      spec = tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
   else:
     raise NotImplementedError
-  return spec
 
 
 def construct_model(users, items, params):

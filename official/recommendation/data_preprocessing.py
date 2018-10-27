@@ -673,6 +673,7 @@ def get_epoch_info(is_training, ncf_dataset):
     # earlier checked that the subproc_alive file existed.
     raise ValueError("Generation subprocess unexpectedly died. Data will not "
                      "be available; exiting to avoid waiting forever.")
+
   if is_training:
     train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
     while not tf.gfile.Exists(train_epoch_dir):
@@ -685,16 +686,18 @@ def get_epoch_info(is_training, ncf_dataset):
       time.sleep(1)
       train_data_dirs = tf.gfile.ListDirectory(train_epoch_dir)
     train_data_dirs.sort()  # names are zfilled so that
-    # lexicographic sort == numeric sort
+                            # lexicographic sort == numeric sort
     record_dir = os.path.join(train_epoch_dir, train_data_dirs[0])
     template = rconst.TRAIN_RECORD_TEMPLATE
   else:
     record_dir = ncf_dataset.cache_paths.eval_data_subdir
     template = rconst.EVAL_RECORD_TEMPLATE
+
   ready_file = os.path.join(record_dir, rconst.READY_FILE)
   while not tf.gfile.Exists(ready_file):
     tf.logging.info("Waiting for records in {} to be ready".format(record_dir))
     time.sleep(1)
+
   with tf.gfile.Open(ready_file, "r") as f:
     epoch_metadata = json.load(f)
   return epoch_metadata, record_dir, template
