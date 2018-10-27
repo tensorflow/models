@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Contains NcfModelRunner, which is used when Estimator is not used."""
+"""Contains NcfModelRunner, which can train and evaluate an NCF model."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -37,10 +37,10 @@ class NcfModelRunner(object):
   variables are used.
   """
 
-  # _TrainModelState and _EvalModelState store useful properties of the training
-  # and evaluation graphs, respectively. _SHARED_MODEL_STATE_FIELDS is their
-  # shared fields.
-  _SHARED_MODEL_STATE_FIELDS = (
+  # _TrainModelProperties and _EvalModelProperties store useful properties of
+  # the training and evaluation models, respectively.
+  # _SHARED_MODEL_PROPERTY_FIELDS is their shared fields.
+  _SHARED_MODEL_PROPERTY_FIELDS = (
       # A scalar tf.string placeholder tensor, that will be fed the path to the
       # directory storing the TFRecord files for the input data.
       "record_files_placeholder",
@@ -54,27 +54,28 @@ class NcfModelRunner(object):
       # for one step. For the evaluation model, this computes the metrics and
       # updates the metric variables.
       "run_model_op")
-  _TrainModelState = namedtuple("_TrainModelState", _SHARED_MODEL_STATE_FIELDS)
-  _EvalModelState = namedtuple(
-      "_EvalModelState", _SHARED_MODEL_STATE_FIELDS + (
-        # A dict from metric name to (metric, update_op) tuple.
-        "metrics",
-        # Initializes the metric variables.
-        "metric_initializer",))
+  _TrainModelProperties = namedtuple("_TrainModelProperties",  # pylint: disable=invalid-name
+                                     _SHARED_MODEL_PROPERTY_FIELDS)
+  _EvalModelProperties = namedtuple(  # pylint: disable=invalid-name
+      "_EvalModelProperties", _SHARED_MODEL_PROPERTY_FIELDS + (
+          # A dict from metric name to (metric, update_op) tuple.
+          "metrics",
+          # Initializes the metric variables.
+          "metric_initializer",))
 
   def __init__(self, ncf_dataset, params):
     if params["use_xla_for_gpu"]:
       # The XLA functions we use require resource variables.
       tf.enable_resource_variables()
-    self.ncf_dataset = ncf_dataset
-    self.global_step = tf.train.create_global_step()
-    self.train_model_state = self._build_model(params, is_training=True)
-    self.eval_model_state = self._build_model(params, is_training=False)
+    self._ncf_dataset = ncf_dataset
+    self._global_step = tf.train.create_global_step()
+    self._train_model_properties = self._build_model(params, is_training=True)
+    self._eval_model_properties = self._build_model(params, is_training=False)
 
     initializer = tf.global_variables_initializer()
     tf.get_default_graph().finalize()
-    self.session = tf.Session()
-    self.session.run(initializer)
+    self._session = tf.Session()
+    self._session.run(initializer)
 
   def _build_model(self, params, is_training):
     """Builds the NCF model.
@@ -84,13 +85,13 @@ class NcfModelRunner(object):
       is_training: If True, build the training model. If False, build the
         evaluation model.
     Returns:
-      A _TrainModelState if is_training is True, or an _EvalModelState
+      A _TrainModelProperties if is_training is True, or an _EvalModelProperties
       otherwise.
     """
     record_files_placeholder = tf.placeholder(tf.string, ())
     input_fn, _, _ = \
       data_preprocessing.make_input_fn(
-          ncf_dataset=self.ncf_dataset, is_training=is_training,
+          ncf_dataset=self._ncf_dataset, is_training=is_training,
           record_files=record_files_placeholder)
     dataset = input_fn(params)
     iterator = dataset.make_initializable_iterator()
@@ -104,29 +105,29 @@ class NcfModelRunner(object):
       estimator_spec = model_fn(
           features, labels, tf.estimator.ModeKeys.TRAIN, params)
       with tf.control_dependencies([estimator_spec.train_op]):
-        run_model_op = self.global_step.assign_add(1)
-      return self._TrainModelState(
+        run_model_op = self._global_step.assign_add(1)
+      return self._TrainModelProperties(
           record_files_placeholder, iterator,
           estimator_spec.loss, params["batch_size"], run_model_op)
     else:
       features = iterator.get_next()
       estimator_spec = model_fn(
           features, None, tf.estimator.ModeKeys.EVAL, params)
-      run_model_op = tf.group(
-          *(op for _, op in estimator_spec.eval_metric_ops.values()))
+      run_model_op = tf.group(*(update_op for _, update_op in
+                                estimator_spec.eval_metric_ops.values()))
       metric_initializer = tf.variables_initializer(
           tf.get_collection(tf.GraphKeys.METRIC_VARIABLES))
-      return self._EvalModelState(
+      return self._EvalModelProperties(
           record_files_placeholder, iterator, estimator_spec.loss,
           params["eval_batch_size"], run_model_op,
           estimator_spec.eval_metric_ops, metric_initializer)
 
-  def _train_or_eval(self, model_state, num_steps, is_training):
+  def _train_or_eval(self, model_properties, num_steps, is_training):
     """Either trains or evaluates, depending on whether `is_training` is True.
 
     Args:
-      model_state: A _TrainModelState or an _EvalModelState containing the state
-        of the training or eval graph.
+      model_properties: _TrainModelProperties or an _EvalModelProperties
+        containing the properties of the training or evaluation graph.
       num_steps: The number of steps to train or evaluate for.
       is_training: If True, run the training model. If False, run the evaluation
         model.
@@ -135,9 +136,9 @@ class NcfModelRunner(object):
       record_dir: The directory of TFRecords where the training/evaluation input
       data was read from.
     """
-    if model_state.record_files_placeholder is not None:
+    if self._ncf_dataset is not None:
       epoch_metadata, record_dir, template = data_preprocessing.get_epoch_info(
-          is_training=is_training, ncf_dataset=self.ncf_dataset)
+          is_training=is_training, ncf_dataset=self._ncf_dataset)
       batch_count = epoch_metadata["batch_count"]
       if batch_count != num_steps:
         raise ValueError(
@@ -145,18 +146,19 @@ class NcfModelRunner(object):
             "producing incorrect shards.".format(batch_count, num_steps))
       record_files = os.path.join(record_dir, template.format("*"))
       initializer_feed_dict = {
-        model_state.record_files_placeholder: record_files}
+          model_properties.record_files_placeholder: record_files}
       del batch_count
     else:
       initializer_feed_dict = None
       record_dir = None
 
-    self.session.run(model_state.iterator.initializer, initializer_feed_dict)
-    fetches = (model_state.loss, model_state.run_model_op)
+    self._session.run(model_properties.iterator.initializer,
+                      initializer_feed_dict)
+    fetches = (model_properties.loss, model_properties.run_model_op)
     mode = "Train" if is_training else "Eval"
     start = None
     for i in range(num_steps):
-      loss, _, = self.session.run(fetches)
+      loss, _, = self._session.run(fetches)
       if i % 100 == 0:
         if start is None:
           # Only start the timer after 100 steps so there is a warmup.
@@ -166,7 +168,7 @@ class NcfModelRunner(object):
     end = time.time()
     if start is not None:
       print("{} peformance: {} examples/sec".format(
-          mode, (i - start_step) * model_state.batch_size / (end - start)))
+          mode, (i - start_step) * model_properties.batch_size / (end - start)))
     return record_dir
 
 
@@ -176,8 +178,8 @@ class NcfModelRunner(object):
     Args:
       num_train_steps: The number of steps per cycle to train for.
     """
-    record_dir = self._train_or_eval(self.train_model_state, num_train_steps,
-                                     is_training=True)
+    record_dir = self._train_or_eval(self._train_model_properties,
+                                     num_train_steps, is_training=True)
     if record_dir:
       # We delete the record_dir because each cycle, new TFRecords is generated
       # by the async process.
@@ -192,13 +194,13 @@ class NcfModelRunner(object):
     Returns:
       A dict of evaluation results.
     """
-    self.session.run(self.eval_model_state.metric_initializer)
-    self._train_or_eval(self.eval_model_state, num_eval_steps,
+    self._session.run(self._eval_model_properties.metric_initializer)
+    self._train_or_eval(self._eval_model_properties, num_eval_steps,
                         is_training=False)
     eval_results = {
-      'global_step': self.session.run(self.global_step)}
-    for key, (val, _) in self.eval_model_state.metrics.items():
-      val_ = self.session.run(val)
-      tf.logging.info("{} = {}".format(key, self.session.run(val)))
+        'global_step': self._session.run(self._global_step)}
+    for key, (val, _) in self._eval_model_properties.metrics.items():
+      val_ = self._session.run(val)
+      tf.logging.info("{} = {}".format(key, self._session.run(val)))
       eval_results[key] = val_
     return eval_results

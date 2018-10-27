@@ -597,7 +597,7 @@ def make_input_fn(
     ncf_dataset,       # type: typing.Optional[NCFDataset]
     is_training,       # type: bool
     record_files=None  # type: typing.Optional[tf.Tensor]
-  ):
+    ):
   # type: (...) -> (typing.Callable, str, int)
   """Construct training input_fn for the current epoch."""
 
@@ -631,7 +631,7 @@ def make_input_fn(
           "Records were constructed with batch size {}, but input_fn was given "
           "a batch size of {}. This will result in a deserialization error in "
           "tf.parse_single_example."
-            .format(epoch_metadata["batch_size"], batch_size))
+          .format(epoch_metadata["batch_size"], batch_size))
     record_files_ds = tf.data.Dataset.list_files(record_files, shuffle=False)
 
     interleave = tf.contrib.data.parallel_interleave(
@@ -656,6 +656,18 @@ def make_input_fn(
 
 
 def get_epoch_info(is_training, ncf_dataset):
+  """Wait for the epoch input data to be ready and return various info about it.
+
+  Args:
+    is_training: If we should return info for a training or eval epoch.
+    ncf_dataset: An NCFDataset.
+
+  Returns:
+    epoch_metadata: A dict with epoch metadata.
+    record_dir: The directory with the TFRecord files storing the input data.
+    template: A string template of the files in `record_dir`.
+      `template.format('*')` is a glob that matches all the record files.
+  """
   if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
     # The generation subprocess must have been alive at some point, because we
     # earlier checked that the subproc_alive file existed.

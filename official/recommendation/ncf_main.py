@@ -274,7 +274,8 @@ def run_ncf(_):
 
       mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
                               value=cycle_index)
-      eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
+      eval_results = eval_estimator.evaluate(pred_input_fn,
+                                             steps=num_eval_steps)
       tf.logging.info("Evaluation complete.")
     else:
       runner.train(num_train_steps)
@@ -492,10 +493,11 @@ def define_ncf_flags():
   flags.DEFINE_bool(
       name="use_estimator", default=True, help=flags_core.help_wrap(
           "If True, use Estimator to train. Setting to False is slightly "
-          "faster, but when False, the following are unsupported:\n"
+          "faster, but when False, the following are currently unsupported:\n"
           "  * Using TPUs\n"
           "  * Using more than 1 GPU\n"
-          "  * Reloading from checkpoints\n"))
+          "  * Reloading from checkpoints\n"
+          "  * Any hooks specified with --hooks\n"))
 
 
 if __name__ == "__main__":

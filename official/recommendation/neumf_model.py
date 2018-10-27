@@ -87,8 +87,9 @@ def neumf_model_fn(features, labels, mode, params):
     keras_model = construct_model(users=users, items=items, params=params)
     logits = keras_model.output
   if not params["use_estimator"] and "keras_model" not in params:
-    # When we are not using estimator, we need to return the keras model to
-    # the caller. We do so by mutating params.
+    # When we are not using estimator, we need to reuse the Keras model when
+    # this model_fn is called again, so that the variables are shared between
+    # training and eval. So we mutate params to add the Keras model.
     params["keras_model"] = keras_model
 
   # Softmax with the first column of zeros is equivalent to sigmoid.
