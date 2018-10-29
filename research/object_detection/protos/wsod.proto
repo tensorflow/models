@@ -185,6 +185,9 @@ message Wsod {
   // The `border_ratio` of the saliency_fn.
   optional float proposal_saliency_fn_border_ratio = 55 [default = 0.05];
 
+  // The `purity_weight` of the saliency_fn.
+  optional float proposal_saliency_fn_purity_weight = 56 [default = 0.05];
+
   // Path to the OpenCV ximgproc model, for edge detection.
   optional string structured_edge_detection_model = 61;
 
@@ -211,5 +214,15 @@ message Wsod {
 
   // If set (greater than 0), only use the top_k words in the vocabulary_file.
   optional int32 score_map_vocabulary_use_top_k = 74 [default = 0];
+
+  // Non max suppression score threshold applied to first stage RPN proposals.
+  optional float wsod_groundtruth_nms_score_threshold = 81 [default=-1000];
+
+  // Non max suppression IOU threshold applied to first stage RPN proposals.
+  optional float wsod_groundtruth_nms_iou_threshold = 82 [default=0.5];
+
+  // Maximum number of RPN proposals retained after first stage postprocessing.
+  optional int32 wsod_groundtruth_max_proposals = 83 [default=10];
+
 }
 

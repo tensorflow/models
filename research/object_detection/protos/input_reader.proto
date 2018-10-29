@@ -107,6 +107,7 @@ message InputReader {
   oneof input_reader {
     TFRecordInputReader tf_record_input_reader = 8;
     ExternalInputReader external_input_reader = 9;
+    CaptionTFRecordInputReader caption_tf_record_input_reader = 38;
   }
 }
 
@@ -114,10 +115,15 @@ message InputReader {
 message TFRecordInputReader {
   // Path(s) to `TFRecordFile`s.
   repeated string input_path = 1;
-}
-
+} 
 // An externally defined input reader. Users may define an extension to this
 // proto to interface their own input readers.
 message ExternalInputReader {
   extensions 1 to 999;
+}
+
+// Configuration for TF record file with caption annotation.
+message CaptionTFRecordInputReader {
+  // Path(s) to `TFRecordFile`s.
+  repeated string input_path = 1;
 }

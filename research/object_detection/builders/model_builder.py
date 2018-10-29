@@ -603,6 +603,13 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       max_size_per_class=frcnn_config.first_stage_max_proposals,
       max_total_size=frcnn_config.first_stage_max_proposals,
       use_static_shapes=use_static_shapes and is_training)
+  wsod_groundtruth_non_max_suppression_fn = functools.partial(
+      post_processing.batch_multiclass_non_max_suppression,
+      score_thresh=frcnn_config.wsod_groundtruth_nms_score_threshold,
+      iou_thresh=frcnn_config.wsod_groundtruth_nms_iou_threshold,
+      max_size_per_class=frcnn_config.wsod_groundtruth_max_proposals,
+      max_total_size=frcnn_config.wsod_groundtruth_max_proposals,
+      use_static_shapes=use_static_shapes and is_training)
 
   #def first_stage_non_max_suppression_fn(boxes, scores, clip_window=None):
   #  min_v = tf.reduce_min(scores, axis=1, keepdims=True)
@@ -713,6 +720,7 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       'edge_boxes_max_num_boxes': edge_boxes_max_num_boxes,
       'use_score_map': use_score_map,
       'category_strings': category_strings,
+      'wsod_groundtruth_non_max_suppression_fn': wsod_groundtruth_non_max_suppression_fn,
   }
 
   if isinstance(second_stage_box_predictor,
