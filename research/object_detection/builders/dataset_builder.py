@@ -25,6 +25,7 @@ import functools
 import tensorflow as tf
 
 from object_detection.data_decoders import tf_example_decoder
+from object_detection.data_decoders import caption_tf_example_decoder
 from object_detection.protos import input_reader_pb2
 
 
@@ -116,6 +117,52 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None):
     if input_reader_config.HasField('label_map_path'):
       label_map_proto_file = input_reader_config.label_map_path
     decoder = tf_example_decoder.TfExampleDecoder(
+        load_instance_masks=input_reader_config.load_instance_masks,
+        instance_mask_type=input_reader_config.mask_type,
+        label_map_proto_file=label_map_proto_file,
+        use_display_name=input_reader_config.use_display_name,
+        num_additional_channels=input_reader_config.num_additional_channels)
+
+    def process_fn(value):
+      """Sets up tf graph that decodes, transforms and pads input data."""
+      processed_tensors = decoder.decode(value)
+      if transform_input_data_fn is not None:
+        processed_tensors = transform_input_data_fn(processed_tensors)
+      return processed_tensors
+
+    dataset = read_dataset(
+        functools.partial(tf.data.TFRecordDataset, buffer_size=8 * 1000 * 1000),
+        config.input_path[:], input_reader_config)
+    if input_reader_config.sample_1_of_n_examples > 1:
+      dataset = dataset.shard(input_reader_config.sample_1_of_n_examples, 0)
+    # TODO(rathodv): make batch size a required argument once the old binaries
+    # are deleted.
+    if batch_size:
+      num_parallel_calls = batch_size * input_reader_config.num_parallel_batches
+    else:
+      num_parallel_calls = input_reader_config.num_parallel_map_calls
+    dataset = dataset.map(
+        process_fn,
+        num_parallel_calls=num_parallel_calls)
+    if batch_size:
+      dataset = dataset.apply(
+          tf.contrib.data.batch_and_drop_remainder(batch_size))
+    dataset = dataset.prefetch(input_reader_config.num_prefetch_batches)
+    return dataset
+
+  if input_reader_config.WhichOneof('input_reader') == 'caption_tf_record_input_reader':
+
+    # Support to read captions from tf record file.
+
+    config = input_reader_config.caption_tf_record_input_reader
+    if not config.input_path:
+      raise ValueError('At least one input path must be specified in '
+                       '`input_reader_config`.')
+
+    label_map_proto_file = None
+    if input_reader_config.HasField('label_map_path'):
+      label_map_proto_file = input_reader_config.label_map_path
+    decoder = caption_tf_example_decoder.TfExampleDecoder(
         load_instance_masks=input_reader_config.load_instance_masks,
         instance_mask_type=input_reader_config.mask_type,
         label_map_proto_file=label_map_proto_file,

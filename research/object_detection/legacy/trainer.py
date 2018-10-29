@@ -27,7 +27,7 @@ from object_detection.builders import optimizer_builder
 from object_detection.builders import preprocessor_builder
 from object_detection.core import batcher
 from object_detection.core import preprocessor
-from object_detection.core import standard_fields as fields
+from object_detection.core import wsod_fields as fields
 from object_detection.utils import ops as util_ops
 from object_detection.utils import variables_helper
 from deployment import model_deploy
@@ -156,8 +156,10 @@ def get_inputs(input_queue,
       raise NotImplementedError('Multi-label support is only for boxes.')
     weights_gt = read_data.get(
         fields.InputDataFields.groundtruth_weights)
+
+    caption_gt = read_data.get(fields.InputDataFields.groundtruth_caption)
     return (image, key, location_gt, classes_gt, masks_gt, keypoints_gt,
-            weights_gt)
+            weights_gt, caption_gt)
 
   return zip(*map(extract_images_and_targets, read_data_list))
 
@@ -173,7 +175,7 @@ def _create_losses(input_queue, create_model_fn, train_config):
   detection_model = create_model_fn()
   (images, _, groundtruth_boxes_list, groundtruth_classes_list,
    groundtruth_masks_list, groundtruth_keypoints_list,
-   groundtruth_weights_list) = get_inputs(
+   groundtruth_weights_list, groundtruth_caption_list) = get_inputs(
        input_queue,
        detection_model.num_classes,
        train_config.merge_multiple_label_boxes,
@@ -200,6 +202,7 @@ def _create_losses(input_queue, create_model_fn, train_config):
       groundtruth_masks_list,
       groundtruth_keypoints_list,
       groundtruth_weights_list=groundtruth_weights_list)
+  detection_model.provide_captions(groundtruth_caption_list)
   prediction_dict = detection_model.predict(images, true_image_shapes)
 
   losses_dict = detection_model.loss(prediction_dict, true_image_shapes)
@@ -318,6 +321,15 @@ def train(create_tensor_dict_fn,
       total_loss, grads_and_vars = model_deploy.optimize_clones(
           clones, training_optimizer,
           regularization_losses=regularization_losses)
+
+      # Check the gradients, ensure that the `wsod` model is freezed.
+      wsod_grads_and_vars = [(grad, var) for grad, var in grads_and_vars \
+                            if 'wsod' in var.op.name and grad is not None]
+      if wsod_grads_and_vars:
+        for grad, var in wsod_grads_and_vars:
+          tf.logging.warn("Trainable WSOD variable %s.", var.op.name)
+        raise ValueError("Some of the WSOD variables are not freezed.")
+
       total_loss = tf.check_numerics(total_loss, 'LossTensor is inf or nan.')
 
       # Optionally multiply bias gradients by train_config.bias_grad_multiplier.
@@ -390,10 +402,17 @@ def train(create_tensor_dict_fn,
           fine_tune_checkpoint_type=train_config.fine_tune_checkpoint_type,
           load_all_detection_checkpoint_vars=(
               train_config.load_all_detection_checkpoint_vars))
+      var_map['MobilenetV1/Conv2d_12_pointwise/weights'] = var_map.pop("MobilenetV1/Conv2d_12_pointwise/pointwise_weights")
+      var_map['MobilenetV1/Conv2d_12_depthwise/depthwise_weights'] = var_map.pop("MobilenetV1/Conv2d_12_pointwise/depthwise_weights")
+
+      var_map['MobilenetV1/Conv2d_13_pointwise/weights'] = var_map.pop('MobilenetV1/Conv2d_13_pointwise/pointwise_weights')
+      var_map['MobilenetV1/Conv2d_13_depthwise/depthwise_weights'] = var_map.pop('MobilenetV1/Conv2d_13_pointwise/depthwise_weights')
+
       available_var_map = (variables_helper.
                            get_variables_available_in_checkpoint(
                                var_map, train_config.fine_tune_checkpoint,
                                include_global_step=False))
+
       init_saver = tf.train.Saver(available_var_map)
       def initializer_fn(sess):
         init_saver.restore(sess, train_config.fine_tune_checkpoint)
@@ -410,6 +429,7 @@ def train(create_tensor_dict_fn,
         summary_op=summary_op,
         number_of_steps=(
             train_config.num_steps if train_config.num_steps else None),
-        save_summaries_secs=120,
+        save_summaries_secs=15,
+        save_interval_secs=120,
         sync_optimizer=sync_optimizer,
         saver=saver)

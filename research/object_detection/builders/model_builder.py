@@ -534,9 +534,11 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
   saliency_model_checkpoint_path = frcnn_config.saliency_model_checkpoint_path
 
   proposal_saliency_fn_border_ratio = frcnn_config.proposal_saliency_fn_border_ratio
+  proposal_saliency_fn_purity_weight = frcnn_config.proposal_saliency_fn_purity_weight
   proposal_saliency_fn = model_utils.build_proposal_saliency_fn(
       frcnn_config.proposal_saliency_fn,
-      border_ratio=proposal_saliency_fn_border_ratio)
+      border_ratio=proposal_saliency_fn_border_ratio,
+      purity_weight=proposal_saliency_fn_purity_weight)
 
   # Create opencv edge_boxes.
   edge_detection = cv2.ximgproc.createStructuredEdgeDetection(
@@ -594,29 +596,29 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       first_stage_max_proposals):
     raise ValueError('second_stage_batch_size should be no greater than '
                      'first_stage_max_proposals.')
-  # first_stage_non_max_suppression_fn = functools.partial(
-  #     post_processing.batch_multiclass_non_max_suppression,
-  #     score_thresh=frcnn_config.first_stage_nms_score_threshold,
-  #     iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
-  #     max_size_per_class=frcnn_config.first_stage_max_proposals,
-  #     max_total_size=frcnn_config.first_stage_max_proposals,
-  #     use_static_shapes=use_static_shapes and is_training)
-
-  def first_stage_non_max_suppression_fn(boxes, scores, clip_window=None):
-    min_v = tf.reduce_min(scores, axis=1, keepdims=True)
-    scores -= min_v
-    results = post_processing.batch_multiclass_non_max_suppression(
-      boxes, scores,
+  first_stage_non_max_suppression_fn = functools.partial(
+      post_processing.batch_multiclass_non_max_suppression,
       score_thresh=frcnn_config.first_stage_nms_score_threshold,
       iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
       max_size_per_class=frcnn_config.first_stage_max_proposals,
       max_total_size=frcnn_config.first_stage_max_proposals,
-      clip_window=clip_window,
       use_static_shapes=use_static_shapes and is_training)
 
-    results = list(results)
-    results[1] = results[1] + tf.squeeze(min_v, axis=1)
-    return results
+  #def first_stage_non_max_suppression_fn(boxes, scores, clip_window=None):
+  #  min_v = tf.reduce_min(scores, axis=1, keepdims=True)
+  #  scores -= min_v
+  #  results = post_processing.batch_multiclass_non_max_suppression(
+  #    boxes, scores,
+  #    score_thresh=frcnn_config.first_stage_nms_score_threshold,
+  #    iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
+  #    max_size_per_class=frcnn_config.first_stage_max_proposals,
+  #    max_total_size=frcnn_config.first_stage_max_proposals,
+  #    clip_window=clip_window,
+  #    use_static_shapes=use_static_shapes and is_training)
+
+  #  results = list(results)
+  #  results[1] = results[1] + tf.squeeze(min_v, axis=1)
+  #  return results
 
   first_stage_loc_loss_weight = (
       frcnn_config.first_stage_localization_loss_weight)
