@@ -64,17 +64,18 @@ class NcfModelRunner(object):
           "metric_initializer",))
 
   def __init__(self, ncf_dataset, params):
-    if params["use_xla_for_gpu"]:
-      # The XLA functions we use require resource variables.
-      tf.enable_resource_variables()
-    self._ncf_dataset = ncf_dataset
-    self._global_step = tf.train.create_global_step()
-    self._train_model_properties = self._build_model(params, is_training=True)
-    self._eval_model_properties = self._build_model(params, is_training=False)
+    with tf.Graph().as_default() as self._graph:
+      if params["use_xla_for_gpu"]:
+        # The XLA functions we use require resource variables.
+        tf.enable_resource_variables()
+      self._ncf_dataset = ncf_dataset
+      self._global_step = tf.train.create_global_step()
+      self._train_model_properties = self._build_model(params, is_training=True)
+      self._eval_model_properties = self._build_model(params, is_training=False)
 
-    initializer = tf.global_variables_initializer()
-    tf.get_default_graph().finalize()
-    self._session = tf.Session()
+      initializer = tf.global_variables_initializer()
+    self._graph.finalize()
+    self._session = tf.Session(graph=self._graph)
     self._session.run(initializer)
 
   def _build_model(self, params, is_training):
