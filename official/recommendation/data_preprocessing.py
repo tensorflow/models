@@ -593,13 +593,81 @@ def hash_pipeline(dataset, deterministic):
   tf.logging.info("  [pipeline_hash] All batches hash: {}".format(overall_hash))
 
 
-def make_input_fn(ncf_dataset, is_training):
-  # type: (typing.Optional[NCFDataset], bool) -> (typing.Callable, str, int)
+def make_input_fn(
+    ncf_dataset,       # type: typing.Optional[NCFDataset]
+    is_training,       # type: bool
+    record_files=None  # type: typing.Optional[tf.Tensor]
+    ):
+  # type: (...) -> (typing.Callable, str, int)
   """Construct training input_fn for the current epoch."""
 
   if ncf_dataset is None:
     return make_synthetic_input_fn(is_training)
 
+  if record_files is not None:
+    epoch_metadata = None
+    batch_count = None
+    record_dir = None
+  else:
+    epoch_metadata, record_dir, template = get_epoch_info(is_training,
+                                                          ncf_dataset)
+    record_files = os.path.join(record_dir, template.format("*"))
+    # This value is used to check that the batch count from the subprocess
+    # matches the batch count expected by the main thread.
+    batch_count = epoch_metadata["batch_count"]
+
+
+  def input_fn(params):
+    """Generated input_fn for the given epoch."""
+    if is_training:
+      batch_size = params["batch_size"]
+    else:
+      # Estimator has "eval_batch_size" included in the params, but TPUEstimator
+      # populates "batch_size" to the appropriate value.
+      batch_size = params.get("eval_batch_size") or params["batch_size"]
+
+    if epoch_metadata and epoch_metadata["batch_size"] != batch_size:
+      raise ValueError(
+          "Records were constructed with batch size {}, but input_fn was given "
+          "a batch size of {}. This will result in a deserialization error in "
+          "tf.parse_single_example."
+          .format(epoch_metadata["batch_size"], batch_size))
+    record_files_ds = tf.data.Dataset.list_files(record_files, shuffle=False)
+
+    interleave = tf.contrib.data.parallel_interleave(
+        tf.data.TFRecordDataset,
+        cycle_length=4,
+        block_length=100000,
+        sloppy=not ncf_dataset.deterministic,
+        prefetch_input_elements=4,
+    )
+
+    deserialize = make_deserialize(params, batch_size, is_training)
+    dataset = record_files_ds.apply(interleave)
+    dataset = dataset.map(deserialize, num_parallel_calls=4)
+    dataset = dataset.prefetch(32)
+
+    if params.get("hash_pipeline"):
+      hash_pipeline(dataset, ncf_dataset.deterministic)
+
+    return dataset
+
+  return input_fn, record_dir, batch_count
+
+
+def get_epoch_info(is_training, ncf_dataset):
+  """Wait for the epoch input data to be ready and return various info about it.
+
+  Args:
+    is_training: If we should return info for a training or eval epoch.
+    ncf_dataset: An NCFDataset.
+
+  Returns:
+    epoch_metadata: A dict with epoch metadata.
+    record_dir: The directory with the TFRecord files storing the input data.
+    template: A string template of the files in `record_dir`.
+      `template.format('*')` is a glob that matches all the record files.
+  """
   if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
     # The generation subprocess must have been alive at some point, because we
     # earlier checked that the subproc_alive file existed.
@@ -632,49 +700,7 @@ def make_input_fn(ncf_dataset, is_training):
 
   with tf.gfile.Open(ready_file, "r") as f:
     epoch_metadata = json.load(f)
-
-  # This value is used to check that the batch count from the subprocess matches
-  # the batch count expected by the main thread.
-  batch_count = epoch_metadata["batch_count"]
-
-  def input_fn(params):
-    """Generated input_fn for the given epoch."""
-    if is_training:
-      batch_size = params["batch_size"]
-    else:
-      # Estimator has "eval_batch_size" included in the params, but TPUEstimator
-      # populates "batch_size" to the appropriate value.
-      batch_size = params.get("eval_batch_size") or params["batch_size"]
-
-    if epoch_metadata["batch_size"] != batch_size:
-      raise ValueError(
-          "Records were constructed with batch size {}, but input_fn was given "
-          "a batch size of {}. This will result in a deserialization error in "
-          "tf.parse_single_example."
-          .format(epoch_metadata["batch_size"], batch_size))
-
-    record_files = tf.data.Dataset.list_files(
-        os.path.join(record_dir, template.format("*")), shuffle=False)
-
-    interleave = tf.contrib.data.parallel_interleave(
-        tf.data.TFRecordDataset,
-        cycle_length=4,
-        block_length=100000,
-        sloppy=not ncf_dataset.deterministic,
-        prefetch_input_elements=4,
-    )
-
-    deserialize = make_deserialize(params, batch_size, is_training)
-    dataset = record_files.apply(interleave)
-    dataset = dataset.map(deserialize, num_parallel_calls=4)
-    dataset = dataset.prefetch(32)
-
-    if params.get("hash_pipeline"):
-      hash_pipeline(dataset, ncf_dataset.deterministic)
-
-    return dataset
-
-  return input_fn, record_dir, batch_count
+  return epoch_metadata, record_dir, template
 
 
 def make_synthetic_input_fn(is_training):

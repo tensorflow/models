@@ -78,7 +78,18 @@ def neumf_model_fn(features, labels, mode, params):
   users = features[movielens.USER_COLUMN]
   items = tf.cast(features[movielens.ITEM_COLUMN], tf.int32)
 
-  logits = construct_model(users=users, items=items, params=params)
+  keras_model = params.get("keras_model")
+  if keras_model:
+    logits = keras_model([users, items],
+                         training=mode == tf.estimator.ModeKeys.TRAIN)
+  else:
+    keras_model = construct_model(users=users, items=items, params=params)
+    logits = keras_model.output
+  if not params["use_estimator"] and "keras_model" not in params:
+    # When we are not using estimator, we need to reuse the Keras model when
+    # this model_fn is called again, so that the variables are shared between
+    # training and eval. So we mutate params to add the Keras model.
+    params["keras_model"] = keras_model
 
   # Softmax with the first column of zeros is equivalent to sigmoid.
   softmax_logits = tf.concat([tf.zeros(logits.shape, dtype=logits.dtype),
@@ -242,10 +253,11 @@ def construct_model(users, items, params):
       name=movielens.RATING_COLUMN)(predict_vector)
 
   # Print model topology.
-  tf.keras.models.Model([user_input, item_input], logits).summary()
+  model = tf.keras.models.Model([user_input, item_input], logits)
+  model.summary()
   sys.stdout.flush()
 
-  return logits
+  return model
 
 
 def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor

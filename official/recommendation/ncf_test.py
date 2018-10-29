@@ -24,6 +24,7 @@ import mock
 import numpy as np
 import tensorflow as tf
 
+from absl import flags
 from absl.testing import flagsaver
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
@@ -247,6 +248,13 @@ class NcfTest(tf.test.TestCase):
   @flagsaver.flagsaver(ml_perf=True, **_BASE_END_TO_END_FLAGS)
   @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_mlperf(self):
+    ncf_main.main(None)
+
+  @flagsaver.flagsaver(use_estimator=False, **_BASE_END_TO_END_FLAGS)
+  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_no_estimator(self):
+    ncf_main.main(None)
+    flags.FLAGS.ml_perf = True
     ncf_main.main(None)
 
 

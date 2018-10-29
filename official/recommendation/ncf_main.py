@@ -41,6 +41,7 @@ from tensorflow.contrib.compiler import xla
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
+from official.recommendation import model_runner
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
@@ -177,30 +178,36 @@ def run_ncf(_):
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  train_estimator, eval_estimator = construct_estimator(
-      num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
-          "use_seed": FLAGS.seed is not None,
-          "hash_pipeline": FLAGS.hash_pipeline,
-          "batch_size": batch_size,
-          "eval_batch_size": eval_batch_size,
-          "learning_rate": FLAGS.learning_rate,
-          "num_users": num_users,
-          "num_items": num_items,
-          "mf_dim": FLAGS.num_factors,
-          "model_layers": [int(layer) for layer in FLAGS.layers],
-          "mf_regularization": FLAGS.mf_regularization,
-          "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
-          "num_neg": FLAGS.num_neg,
-          "use_tpu": FLAGS.tpu is not None,
-          "tpu": FLAGS.tpu,
-          "tpu_zone": FLAGS.tpu_zone,
-          "tpu_gcp_project": FLAGS.tpu_gcp_project,
-          "beta1": FLAGS.beta1,
-          "beta2": FLAGS.beta2,
-          "epsilon": FLAGS.epsilon,
-          "match_mlperf": FLAGS.ml_perf,
-          "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
-      }, batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
+  params = {
+      "use_seed": FLAGS.seed is not None,
+      "hash_pipeline": FLAGS.hash_pipeline,
+      "batch_size": batch_size,
+      "eval_batch_size": eval_batch_size,
+      "learning_rate": FLAGS.learning_rate,
+      "num_users": num_users,
+      "num_items": num_items,
+      "mf_dim": FLAGS.num_factors,
+      "model_layers": [int(layer) for layer in FLAGS.layers],
+      "mf_regularization": FLAGS.mf_regularization,
+      "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
+      "num_neg": FLAGS.num_neg,
+      "use_tpu": FLAGS.tpu is not None,
+      "tpu": FLAGS.tpu,
+      "tpu_zone": FLAGS.tpu_zone,
+      "tpu_gcp_project": FLAGS.tpu_gcp_project,
+      "beta1": FLAGS.beta1,
+      "beta2": FLAGS.beta2,
+      "epsilon": FLAGS.epsilon,
+      "match_mlperf": FLAGS.ml_perf,
+      "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
+      "use_estimator": FLAGS.use_estimator,
+  }
+  if FLAGS.use_estimator:
+    train_estimator, eval_estimator = construct_estimator(
+        num_gpus=num_gpus, model_dir=FLAGS.model_dir, params=params,
+        batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
+  else:
+    runner = model_runner.NcfModelRunner(ncf_dataset, params)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -237,37 +244,46 @@ def run_ncf(_):
                             value=cycle_index)
 
     # Train the model
-    train_input_fn, train_record_dir, batch_count = \
-      data_preprocessing.make_input_fn(
-          ncf_dataset=ncf_dataset, is_training=True)
+    if FLAGS.use_estimator:
+      train_input_fn, train_record_dir, batch_count = \
+        data_preprocessing.make_input_fn(
+            ncf_dataset=ncf_dataset, is_training=True)
 
-    if batch_count != num_train_steps:
-      raise ValueError(
-          "Step counts do not match. ({} vs. {}) The async process is "
-          "producing incorrect shards.".format(batch_count, num_train_steps))
-
-    train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
-                          steps=num_train_steps)
-    if train_record_dir:
-      tf.gfile.DeleteRecursively(train_record_dir)
-
-    tf.logging.info("Beginning evaluation.")
-    if pred_input_fn is None:
-      pred_input_fn, _, eval_batch_count = data_preprocessing.make_input_fn(
-          ncf_dataset=ncf_dataset, is_training=False)
-
-      if eval_batch_count != num_eval_steps:
+      if batch_count != num_train_steps:
         raise ValueError(
             "Step counts do not match. ({} vs. {}) The async process is "
-            "producing incorrect shards.".format(
-                eval_batch_count, num_eval_steps))
+            "producing incorrect shards.".format(batch_count, num_train_steps))
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
-                            value=cycle_index)
-    eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
+      train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
+                            steps=num_train_steps)
+      if train_record_dir:
+        tf.gfile.DeleteRecursively(train_record_dir)
+
+      tf.logging.info("Beginning evaluation.")
+      if pred_input_fn is None:
+        pred_input_fn, _, eval_batch_count = data_preprocessing.make_input_fn(
+            ncf_dataset=ncf_dataset, is_training=False)
+
+        if eval_batch_count != num_eval_steps:
+          raise ValueError(
+              "Step counts do not match. ({} vs. {}) The async process is "
+              "producing incorrect shards.".format(
+                  eval_batch_count, num_eval_steps))
+
+      mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
+                              value=cycle_index)
+      eval_results = eval_estimator.evaluate(pred_input_fn,
+                                             steps=num_eval_steps)
+      tf.logging.info("Evaluation complete.")
+    else:
+      runner.train(num_train_steps)
+      tf.logging.info("Beginning evaluation.")
+      mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
+                              value=cycle_index)
+      eval_results = runner.eval(num_eval_steps)
+      tf.logging.info("Evaluation complete.")
     hr = float(eval_results[rconst.HR_KEY])
     ndcg = float(eval_results[rconst.NDCG_KEY])
-    tf.logging.info("Evaluation complete.")
 
     mlperf_helper.ncf_print(
         key=mlperf_helper.TAGS.EVAL_TARGET,
@@ -471,6 +487,15 @@ def define_ncf_flags():
   @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
   def xla_validator(flag_dict):
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
+
+  flags.DEFINE_bool(
+      name="use_estimator", default=True, help=flags_core.help_wrap(
+          "If True, use Estimator to train. Setting to False is slightly "
+          "faster, but when False, the following are currently unsupported:\n"
+          "  * Using TPUs\n"
+          "  * Using more than 1 GPU\n"
+          "  * Reloading from checkpoints\n"
+          "  * Any hooks specified with --hooks\n"))
 
 
 if __name__ == "__main__":
