@@ -56,6 +56,7 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
   Args:
     num_gpus: The number of gpus (Used to select distribution strategy)
     model_dir: The model directory for the estimator
+    iterations:  Estimator iterations
     params: The params dict for the estimator
     batch_size: The mini-batch size for training.
     eval_batch_size: The batch size used during evaluation.
@@ -74,12 +75,13 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
     tf.Session.reset(tpu_cluster_resolver.get_master())
 
     tpu_config = tf.contrib.tpu.TPUConfig(
-        iterations_per_loop=100,
+        iterations_per_loop=iterations,
         num_shards=8)
 
     run_config = tf.contrib.tpu.RunConfig(
         cluster=tpu_cluster_resolver,
         model_dir=model_dir,
+        save_checkpoints_secs=600,
         session_config=tf.ConfigProto(
             allow_soft_placement=True, log_device_placement=False),
         tpu_config=tpu_config)
@@ -90,12 +92,13 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
         model_fn=neumf_model.neumf_model_fn,
         use_tpu=True,
         train_batch_size=batch_size,
+        eval_batch_size=eval_batch_size,
         params=tpu_params,
         config=run_config)
 
     eval_estimator = tf.contrib.tpu.TPUEstimator(
         model_fn=neumf_model.neumf_model_fn,
-        use_tpu=False,
+        use_tpu=True,
         train_batch_size=1,
         eval_batch_size=eval_batch_size,
         params=tpu_params,
@@ -170,7 +173,10 @@ def run_ncf(_):
   model_helpers.apply_clean(flags.FLAGS)
 
   train_estimator, eval_estimator = construct_estimator(
-      num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
+      num_gpus=num_gpus,
+      model_dir=FLAGS.model_dir,
+      iterations=num_train_steps,
+      params={
           "use_seed": FLAGS.seed is not None,
           "hash_pipeline": FLAGS.hash_pipeline,
           "batch_size": batch_size,
@@ -192,7 +198,9 @@ def run_ncf(_):
           "epsilon": FLAGS.epsilon,
           "match_mlperf": FLAGS.ml_perf,
           "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
-      }, batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
+      },
+      batch_size=flags.FLAGS.batch_size,
+      eval_batch_size=eval_batch_size)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -216,7 +224,7 @@ def run_ncf(_):
       test_id=FLAGS.benchmark_test_id)
 
 
-  pred_input_fn = None
+  eval_input_fn = None
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
@@ -238,8 +246,8 @@ def run_ncf(_):
       tf.gfile.DeleteRecursively(train_record_dir)
 
     tf.logging.info("Beginning evaluation.")
-    if pred_input_fn is None:
-      pred_input_fn, _, eval_batch_count = data_preprocessing.make_input_fn(
+    if eval_input_fn is None:
+      eval_input_fn, _, eval_batch_count = data_preprocessing.make_input_fn(
           ncf_dataset=ncf_dataset, is_training=False)
 
       if eval_batch_count != num_eval_steps:
@@ -248,7 +256,7 @@ def run_ncf(_):
             "producing incorrect shards.".format(
                 eval_batch_count, num_eval_steps))
 
-    eval_results = eval_estimator.evaluate(pred_input_fn, steps=num_eval_steps)
+    eval_results = eval_estimator.evaluate(eval_input_fn, steps=num_eval_steps)
     tf.logging.info("Evaluation complete.")
 
     # Benchmark the evaluation results
