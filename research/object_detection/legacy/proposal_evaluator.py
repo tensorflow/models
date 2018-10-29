@@ -23,9 +23,17 @@ import tensorflow as tf
 
 from object_detection import eval_util
 from object_detection.core import prefetcher
-from object_detection.core import standard_fields as fields
+from object_detection.core import wsod_fields as fields
 from object_detection.metrics import coco_evaluation
 from object_detection.utils import object_detection_evaluation
+
+flags = tf.app.flags
+flags.DEFINE_integer('max_proposals', 100, 
+    'Specify the max number of proposals to evaluate.')
+flags.DEFINE_float('nms_iou_threshold', 0, 
+    'If greater than 0, apply the nms using the threshold.')
+FLAGS = flags.FLAGS
+
 
 # A dictionary of metric names to classes that implement the metric. The classes
 # in the dictionary must implement
@@ -50,6 +58,7 @@ EVAL_METRICS_CLASS_DICT = {
 }
 
 EVAL_DEFAULT_METRIC = 'coco_detection_metrics'
+#EVAL_DEFAULT_METRIC = 'pascal_voc_detection_metrics'
 
 
 def _extract_predictions_and_losses(model,
@@ -76,7 +85,69 @@ def _extract_predictions_and_losses(model,
   preprocessed_image, true_image_shapes = model.preprocess(
       tf.to_float(original_image))
   prediction_dict = model.predict(preprocessed_image, true_image_shapes)
-  detections = model.postprocess(prediction_dict, true_image_shapes)
+
+  # Evaluate the proposals.
+
+  # detections = model.postprocess(prediction_dict, true_image_shapes)
+
+  model.provide_captions(
+      [input_dict[fields.InputDataFields.groundtruth_caption]])
+
+  (wsod_anchors, wsod_anchor_scores
+   ) = model.provide_wsod_rpn_groundtruth( 
+     prediction_dict['preprocessed_inputs'], 
+     prediction_dict['image_shape'])
+
+  batch = 1
+  max_proposals = FLAGS.max_proposals
+
+  if FLAGS.nms_iou_threshold < 1e-6:
+    top_k_scores, top_k_anchors = tf.nn.top_k(wsod_anchor_scores, max_proposals)
+    top_k_anchors = tf.stack([
+        tf.tile(tf.expand_dims(
+            tf.range(batch, dtype=tf.int32), axis=-1), [1, max_proposals]),
+        top_k_anchors], axis=-1)
+    top_k_anchors = tf.gather_nd(wsod_anchors, top_k_anchors)
+    num_detections = tf.expand_dims(max_proposals, axis=0)
+  else:
+    wsod_anchors_squeezed = tf.squeeze(wsod_anchors, axis=0)
+    wsod_anchor_scores_squeezed = tf.squeeze(wsod_anchor_scores, axis=0)
+
+    selected = tf.image.non_max_suppression(
+        wsod_anchors_squeezed, 
+        wsod_anchor_scores_squeezed,
+        max_output_size=max_proposals, 
+        iou_threshold=FLAGS.nms_iou_threshold)
+    num_detections = tf.expand_dims(tf.shape(selected)[0], axis=0)
+    top_k_anchors = tf.expand_dims(
+        tf.gather(wsod_anchors_squeezed, selected), axis=0)
+    top_k_scores = tf.expand_dims(
+        tf.gather(wsod_anchor_scores_squeezed, selected), axis=0)
+
+  detections = {
+    fields.DetectionResultFields.num_detections:
+      num_detections,
+    fields.DetectionResultFields.detection_boxes:
+      top_k_anchors,
+    fields.DetectionResultFields.detection_scores:
+      top_k_scores,
+  }
+
+  #min_v = tf.reduce_min(wsod_anchor_scores, axis=1, keepdims=True)
+  #wsod_anchor_scores = wsod_anchor_scores - min_v
+  #(nmsed_wsod_anchors, nmsed_wsod_anchor_scores, _, _, _,
+  # nmsed_num_wsod_anchors) = model._first_stage_nms_fn(
+  #     tf.expand_dims(wsod_anchors, axis=2),
+  #     tf.expand_dims(wsod_anchor_scores, axis=2) + min_v,
+  #     clip_window=None)
+  #detections = {
+  #  fields.DetectionResultFields.num_detections:
+  #    nmsed_num_wsod_anchors,
+  #  fields.DetectionResultFields.detection_boxes:
+  #    nmsed_wsod_anchors,
+  #  fields.DetectionResultFields.detection_scores:
+  #    nmsed_wsod_anchor_scores,
+  #}
 
   groundtruth = None
   losses_dict = {}
@@ -114,25 +185,15 @@ def _extract_predictions_and_losses(model,
         [tf.one_hot(input_dict[fields.InputDataFields.groundtruth_classes]
                     - label_id_offset, depth=model.num_classes)],
         groundtruth_masks_list, groundtruth_keypoints_list)
-    losses_dict.update(model.loss(prediction_dict, true_image_shapes))
-
-  # Evaluate the proposals.
-  proposals = {
-    fields.DetectionResultFields.num_detections:
-      prediction_dict['nmsed_num_wsod_proposals'],
-    fields.DetectionResultFields.detection_boxes:
-      prediction_dict['nmsed_wsod_proposals'],
-    fields.DetectionResultFields.detection_scores:
-      prediction_dict['nmsed_wsod_proposal_scores'],
-  }
+    #losses_dict.update(model.loss(prediction_dict, true_image_shapes))
 
   result_dict = eval_util.result_dict_for_single_example(
       original_image,
       input_dict[fields.InputDataFields.source_id],
-      proposals,
+      detections,
       groundtruth,
       class_agnostic=(
-          fields.DetectionResultFields.detection_classes not in proposals),
+          fields.DetectionResultFields.detection_classes not in detections),
       scale_to_absolute=True)
   return result_dict, losses_dict
 
@@ -160,6 +221,7 @@ def get_evaluators(eval_config, categories):
         EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](categories=categories))
   return evaluators_list
 
+global_num_boxes = 0
 
 def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
              checkpoint_dir, eval_dir, graph_hook_fn=None, evaluator_list=None):
@@ -219,10 +281,16 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       result_losses_dict: a dictionary of scalar losses. This is empty if input
         losses_dict is None.
     """
+    global global_num_boxes
     try:
       if not losses_dict:
         losses_dict = {}
       result_dict, result_losses_dict = sess.run([tensor_dict, losses_dict])
+      if len(result_dict['detection_scores']) > 0:
+        #import pdb
+        #pdb.set_trace()
+        j = 1
+      global_num_boxes += len(result_dict['detection_scores'])
       counters['success'] += 1
     except tf.errors.InvalidArgumentError:
       logging.info('Skipping image')
@@ -261,8 +329,9 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
   saver = tf.train.Saver(variables_to_restore)
 
   def _restore_latest_checkpoint(sess):
-    latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
-    saver.restore(sess, latest_checkpoint)
+    if checkpoint_dir:
+      latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
+      saver.restore(sess, latest_checkpoint)
 
   if not evaluator_list:
     evaluator_list = get_evaluators(eval_config, categories)
@@ -286,5 +355,6 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       losses_dict=losses_dict,
       eval_export_path=eval_config.export_path)
 
+  print('evaluated %i boxes' % (global_num_boxes))
   return metrics
 

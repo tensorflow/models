@@ -77,12 +77,13 @@ flags.DEFINE_boolean(
     'run_once', False, 'Option to only run a single pass of '
     'evaluation. Overrides the `max_evals` parameter in the '
     'provided config.')
+
 FLAGS = flags.FLAGS
 
 
 @tf.contrib.framework.deprecated(None, 'Use object_detection/model_main.py.')
 def main(unused_argv):
-  assert FLAGS.checkpoint_dir, '`checkpoint_dir` is missing.'
+  # assert FLAGS.checkpoint_dir, '`checkpoint_dir` is missing.'
   assert FLAGS.eval_dir, '`eval_dir` is missing.'
   tf.gfile.MakeDirs(FLAGS.eval_dir)
   if FLAGS.pipeline_config_path:
@@ -128,7 +129,7 @@ def main(unused_argv):
     graph_rewriter_fn = graph_rewriter_builder.build(
         configs['graph_rewriter_config'], is_training=False)
 
-  evaluator.evaluate(
+  metrics = evaluator.evaluate(
       create_input_dict_fn,
       model_fn,
       eval_config,
@@ -137,6 +138,15 @@ def main(unused_argv):
       FLAGS.eval_dir,
       graph_hook_fn=graph_rewriter_fn)
 
+  metrics = metrics.items()
+  msg = ''
+  for name, value in metrics:
+    msg += ',%s' % (name.split('/')[-1])
+  print(msg)
+  msg = ''
+  for name, value in metrics:
+    msg += ',%.6lf' % (value)
+  print(msg)
 
 if __name__ == '__main__':
   tf.app.run()
