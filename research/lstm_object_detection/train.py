@@ -51,7 +51,7 @@ from lstm_object_detection import model_builder
 from lstm_object_detection import seq_dataset_builder
 from lstm_object_detection import trainer
 from lstm_object_detection.utils import config_util
-from google3.third_party.tensorflow_models.object_detection.builders import preprocessor_builder
+from object_detection.builders import preprocessor_builder
 
 flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
 flags.DEFINE_integer('task', 0, 'task id')

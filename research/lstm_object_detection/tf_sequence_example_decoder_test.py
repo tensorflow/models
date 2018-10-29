@@ -20,7 +20,7 @@ import tensorflow as tf
 from tensorflow.core.example import example_pb2
 from tensorflow.core.example import feature_pb2
 from lstm_object_detection import tf_sequence_example_decoder
-from google3.third_party.tensorflow_models.object_detection.core import standard_fields as fields
+from object_detection.core import standard_fields as fields
 
 
 class TfSequenceExampleDecoderTest(tf.test.TestCase):

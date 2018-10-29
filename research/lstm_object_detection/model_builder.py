@@ -16,17 +16,17 @@
 """A function to build a DetectionModel from configuration."""
 from lstm_object_detection.lstm import lstm_meta_arch
 from lstm_object_detection.models.lstm_ssd_mobilenet_v1_feature_extractor import LSTMMobileNetV1FeatureExtractor
-from google3.third_party.tensorflow_models.object_detection.builders import anchor_generator_builder
-from google3.third_party.tensorflow_models.object_detection.builders import box_coder_builder
-from google3.third_party.tensorflow_models.object_detection.builders import box_predictor_builder
-from google3.third_party.tensorflow_models.object_detection.builders import hyperparams_builder
-from google3.third_party.tensorflow_models.object_detection.builders import image_resizer_builder
-from google3.third_party.tensorflow_models.object_detection.builders import losses_builder
-from google3.third_party.tensorflow_models.object_detection.builders import matcher_builder
-from google3.third_party.tensorflow_models.object_detection.builders import model_builder
-from google3.third_party.tensorflow_models.object_detection.builders import post_processing_builder
-from google3.third_party.tensorflow_models.object_detection.builders import region_similarity_calculator_builder as sim_calc
-from google3.third_party.tensorflow_models.object_detection.core import target_assigner
+from object_detection.builders import anchor_generator_builder
+from object_detection.builders import box_coder_builder
+from object_detection.builders import box_predictor_builder
+from object_detection.builders import hyperparams_builder
+from object_detection.builders import image_resizer_builder
+from object_detection.builders import losses_builder
+from object_detection.builders import matcher_builder
+from object_detection.builders import model_builder
+from object_detection.builders import post_processing_builder
+from object_detection.builders import region_similarity_calculator_builder as sim_calc
+from object_detection.core import target_assigner
 
 model_builder.SSD_FEATURE_EXTRACTOR_CLASS_MAP.update({
     'lstm_mobilenet_v1': LSTMMobileNetV1FeatureExtractor,
@@ -125,7 +125,7 @@ def _build_lstm_model(ssd_config, lstm_config, is_training):
   non_max_suppression_fn, score_conversion_fn = post_processing_builder.build(
       ssd_config.post_processing)
   (classification_loss, localization_loss, classification_weight,
-   localization_weight, miner, _) = losses_builder.build(ssd_config.loss)
+   localization_weight, miner, _, _) = losses_builder.build(ssd_config.loss)
 
   normalize_loss_by_num_matches = ssd_config.normalize_loss_by_num_matches
   encode_background_as_zeros = ssd_config.encode_background_as_zeros

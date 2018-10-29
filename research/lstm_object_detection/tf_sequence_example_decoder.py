@@ -22,8 +22,8 @@ tensorflow.SequenceExample, merge this decoder.
 """
 import tensorflow as tf
 from google3.learning.brain.contrib.slim.data import tfexample_decoder
-from google3.third_party.tensorflow_models.object_detection.core import data_decoder
-from google3.third_party.tensorflow_models.object_detection.core import standard_fields as fields
+from object_detection.core import data_decoder
+from object_detection.core import standard_fields as fields
 
 slim_example_decoder = tf.contrib.slim.tfexample_decoder
 

@@ -33,7 +33,7 @@ from lstm_object_detection import evaluator
 from lstm_object_detection import model_builder
 from lstm_object_detection import seq_dataset_builder
 from lstm_object_detection.utils import config_util
-from google3.third_party.tensorflow_models.object_detection.utils import label_map_util
+from object_detection.utils import label_map_util
 
 tf.logging.set_verbosity(tf.logging.INFO)
 flags = tf.app.flags

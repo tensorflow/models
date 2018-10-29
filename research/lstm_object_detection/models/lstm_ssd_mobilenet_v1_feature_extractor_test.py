@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 from lstm_object_detection.models import lstm_ssd_mobilenet_v1_feature_extractor as feature_extactor
-from google3.third_party.tensorflow_models.object_detection.models import ssd_feature_extractor_test
+from object_detection.models import ssd_feature_extractor_test
 
 slim = tf.contrib.slim
 

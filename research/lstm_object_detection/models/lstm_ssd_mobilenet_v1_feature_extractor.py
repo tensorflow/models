@@ -20,10 +20,10 @@ from tensorflow.python.framework import ops as tf_ops
 from lstm_object_detection.lstm import lstm_cells
 from lstm_object_detection.lstm import lstm_meta_arch
 from lstm_object_detection.lstm import rnn_decoder
-from google3.third_party.tensorflow_models.object_detection.models import feature_map_generators
-from google3.third_party.tensorflow_models.object_detection.utils import context_manager
-from google3.third_party.tensorflow_models.object_detection.utils import ops
-from google3.third_party.tensorflow_models.object_detection.utils import shape_utils
+from object_detection.models import feature_map_generators
+from object_detection.utils import context_manager
+from object_detection.utils import ops
+from object_detection.utils import shape_utils
 from nets import mobilenet_v1
 
 slim = tf.contrib.slim

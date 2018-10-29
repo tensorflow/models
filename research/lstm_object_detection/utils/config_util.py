@@ -24,8 +24,8 @@ import tensorflow as tf
 from google.protobuf import text_format
 from lstm_object_detection.protos import input_reader_google_pb2  # pylint: disable=unused-import
 from lstm_object_detection.protos import pipeline_pb2 as internal_pipeline_pb2
-from google3.third_party.tensorflow_models.object_detection.protos import pipeline_pb2
-from google3.third_party.tensorflow_models.object_detection.utils import config_util
+from object_detection.protos import pipeline_pb2
+from object_detection.utils import config_util
 
 
 def get_configs_from_pipeline_file(pipeline_config_path):
