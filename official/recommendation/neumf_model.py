@@ -214,10 +214,21 @@ def construct_model(users, items, params):
           initializer=tf.glorot_uniform_initializer()),
       ids))(item_input)
 
-      mlp_user_latent = tf.keras.layers.Lambda(lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2]))(cmb_user_latent)
-      mlp_item_latent = tf.keras.layers.Lambda(lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2]))(cmb_item_latent)
-      mf_user_latent = tf.keras.layers.Lambda(lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim]))(cmb_user_latent)
-      mf_item_latent = tf.keras.layers.Lambda(lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim]))(cmb_item_latent)
+      mlp_user_latent = tf.keras.layers.Lambda(
+        lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2])
+      )(cmb_user_latent)
+
+      mlp_item_latent = tf.keras.layers.Lambda(
+        lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2])
+      )(cmb_item_latent)
+
+      mf_user_latent = tf.keras.layers.Lambda(
+        lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim])
+      )(cmb_user_latent)
+
+      mf_item_latent = tf.keras.layers.Lambda(
+        lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim])
+      )(cmb_item_latent)
 
   else:
     # Initializer for embedding layers
