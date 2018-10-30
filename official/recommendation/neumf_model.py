@@ -200,28 +200,25 @@ def construct_model(users, items, params):
 
   if params["use_tpu"]:
     with tf.variable_scope("embed_weights", reuse=tf.AUTO_REUSE):
-      cmb_embedding_user = tf.get_variable(
+      cmb_user_latent = tf.keras.layers.Lambda(lambda ids: tf.gather(
+        tf.get_variable(
           name="embeddings_mf_user",
           shape=[num_users, mf_dim + model_layers[0] // 2],
-          initializer=tf.glorot_uniform_initializer())
-      cmb_embedding_item = tf.get_variable(
+          initializer=tf.glorot_uniform_initializer()),
+        ids))(user_input)
+
+      cmb_item_latent = tf.keras.layers.Lambda(lambda ids: tf.gather(
+        tf.get_variable(
           name="embeddings_mf_item",
           shape=[num_items, mf_dim + model_layers[0] // 2],
-          initializer=tf.glorot_uniform_initializer())
+          initializer=tf.glorot_uniform_initializer()),
+      ids))(item_input)
 
-      cmb_user_latent = tf.gather(cmb_embedding_user, user_input)
-      cmb_item_latent = tf.gather(cmb_embedding_item, item_input)
+      mlp_user_latent = tf.keras.layers.Lambda(lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2]))(cmb_user_latent)
+      mlp_item_latent = tf.keras.layers.Lambda(lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2]))(cmb_item_latent)
+      mf_user_latent = tf.keras.layers.Lambda(lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim]))(cmb_user_latent)
+      mf_item_latent = tf.keras.layers.Lambda(lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim]))(cmb_item_latent)
 
-      mlp_user_latent = tf.slice(cmb_user_latent, [0, 0],
-                                 [batch_size, model_layers[0] // 2])
-      mlp_item_latent = tf.slice(cmb_item_latent, [0, 0],
-                                 [batch_size, model_layers[0] // 2])
-      mlp_vector = tf.keras.layers.concatenate([mlp_user_latent,
-                                                mlp_item_latent])
-      mf_user_latent = tf.slice(cmb_user_latent, [0, model_layers[0] // 2],
-                                [batch_size, mf_dim])
-      mf_item_latent = tf.slice(cmb_item_latent, [0, model_layers[0] // 2],
-                                [batch_size, mf_dim])
   else:
     # Initializer for embedding layers
     embedding_initializer = "glorot_uniform"
