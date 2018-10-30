@@ -559,6 +559,16 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
     if frcnn_config.score_map_vocabulary_use_top_k > 0:
       category_strings = category_strings[:frcnn_config.score_map_vocabulary_use_top_k]
 
+  wsod_mil_cls_loss_weight = frcnn_config.wsod_mil_cls_loss_weight
+
+  # Load the `name_to_class_id` mapping.
+  name_to_class_id = {}
+  with open(frcnn_config.name_to_class_id_file, "r") as fid:
+    for line in fid.readlines():
+      name, class_id = line.strip('\n').split('\t')
+      name_to_class_id[name] = int(class_id)
+      assert 0 < int(class_id) <= frcnn_config.num_classes, "Invalid `class_id`!"
+
   # Original frcnn configurations.
   num_classes = frcnn_config.num_classes
   image_resizer_fn = image_resizer_builder.build(frcnn_config.image_resizer)
@@ -610,22 +620,6 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       max_size_per_class=frcnn_config.wsod_groundtruth_max_proposals,
       max_total_size=frcnn_config.wsod_groundtruth_max_proposals,
       use_static_shapes=use_static_shapes and is_training)
-
-  #def first_stage_non_max_suppression_fn(boxes, scores, clip_window=None):
-  #  min_v = tf.reduce_min(scores, axis=1, keepdims=True)
-  #  scores -= min_v
-  #  results = post_processing.batch_multiclass_non_max_suppression(
-  #    boxes, scores,
-  #    score_thresh=frcnn_config.first_stage_nms_score_threshold,
-  #    iou_thresh=frcnn_config.first_stage_nms_iou_threshold,
-  #    max_size_per_class=frcnn_config.first_stage_max_proposals,
-  #    max_total_size=frcnn_config.first_stage_max_proposals,
-  #    clip_window=clip_window,
-  #    use_static_shapes=use_static_shapes and is_training)
-
-  #  results = list(results)
-  #  results[1] = results[1] + tf.squeeze(min_v, axis=1)
-  #  return results
 
   first_stage_loc_loss_weight = (
       frcnn_config.first_stage_localization_loss_weight)
@@ -721,6 +715,8 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       'use_score_map': use_score_map,
       'category_strings': category_strings,
       'wsod_groundtruth_non_max_suppression_fn': wsod_groundtruth_non_max_suppression_fn,
+      'name_to_class_id': name_to_class_id,
+      'wsod_mil_cls_loss_weight': wsod_mil_cls_loss_weight,
   }
 
   if isinstance(second_stage_box_predictor,

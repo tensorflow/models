@@ -21,6 +21,7 @@ DetectionModel.
 import logging
 import tensorflow as tf
 
+import time
 from object_detection import eval_util
 from object_detection.core import prefetcher
 from object_detection.core import wsod_fields as fields
@@ -32,6 +33,8 @@ flags.DEFINE_integer('max_proposals', 100,
     'Specify the max number of proposals to evaluate.')
 flags.DEFINE_float('nms_iou_threshold', 0, 
     'If greater than 0, apply the nms using the threshold.')
+flags.DEFINE_boolean('evaluate_proposals', False, 
+    'If true, evaluate the proposals, otherwise evaluate the groundtruth.')
 FLAGS = flags.FLAGS
 
 
@@ -93,10 +96,15 @@ def _extract_predictions_and_losses(model,
   model.provide_captions(
       [input_dict[fields.InputDataFields.groundtruth_caption]])
 
-  (wsod_anchors, wsod_anchor_scores
-   ) = model.provide_wsod_rpn_groundtruth( 
-     prediction_dict['preprocessed_inputs'], 
-     prediction_dict['image_shape'])
+  if FLAGS.evaluate_proposals:
+    (wsod_anchors, wsod_anchor_scores) = (
+        prediction_dict['proposal_boxes_normalized'], 
+        prediction_dict['proposal_scores'])
+  else:
+    (wsod_anchors, wsod_anchor_scores
+     ) = model.provide_wsod_rpn_groundtruth( 
+       prediction_dict['preprocessed_inputs'], 
+       prediction_dict['image_shape'])
 
   batch = 1
   max_proposals = FLAGS.max_proposals
@@ -132,22 +140,6 @@ def _extract_predictions_and_losses(model,
     fields.DetectionResultFields.detection_scores:
       top_k_scores,
   }
-
-  #min_v = tf.reduce_min(wsod_anchor_scores, axis=1, keepdims=True)
-  #wsod_anchor_scores = wsod_anchor_scores - min_v
-  #(nmsed_wsod_anchors, nmsed_wsod_anchor_scores, _, _, _,
-  # nmsed_num_wsod_anchors) = model._first_stage_nms_fn(
-  #     tf.expand_dims(wsod_anchors, axis=2),
-  #     tf.expand_dims(wsod_anchor_scores, axis=2) + min_v,
-  #     clip_window=None)
-  #detections = {
-  #  fields.DetectionResultFields.num_detections:
-  #    nmsed_num_wsod_anchors,
-  #  fields.DetectionResultFields.detection_boxes:
-  #    nmsed_wsod_anchors,
-  #  fields.DetectionResultFields.detection_scores:
-  #    nmsed_wsod_anchor_scores,
-  #}
 
   groundtruth = None
   losses_dict = {}
@@ -330,7 +322,11 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
 
   def _restore_latest_checkpoint(sess):
     if checkpoint_dir:
-      latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
+      latest_checkpoint = None
+      while latest_checkpoint is None:
+        time.sleep(10)
+        tf.logging.info('Sleep for 10 secs.')
+        latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
       saver.restore(sess, latest_checkpoint)
 
   if not evaluator_list:

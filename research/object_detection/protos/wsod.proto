@@ -224,5 +224,10 @@ message Wsod {
   // Maximum number of RPN proposals retained after first stage postprocessing.
   optional int32 wsod_groundtruth_max_proposals = 83 [default=10];
 
+  // Feature column vocabulary file.
+  optional string name_to_class_id_file = 91;
+
+  // Multiple Instance Learning loss weight.
+  optional float wsod_mil_cls_loss_weight = 92 [default = 1.0];
 }
 
