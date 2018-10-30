@@ -216,7 +216,7 @@ def construct_model(users, items, params):
                                  [batch_size, model_layers[0] // 2])
       mlp_item_latent = tf.slice(cmb_item_latent, [0, 0],
                                  [batch_size, model_layers[0] // 2])
-      mlp_vector = tf.keras.layers.concatenate([mlp_user_latent, 
+      mlp_vector = tf.keras.layers.concatenate([mlp_user_latent,
                                                 mlp_item_latent])
       mf_user_latent = tf.slice(cmb_user_latent, [0, model_layers[0] // 2],
                                 [batch_size, mf_dim])
