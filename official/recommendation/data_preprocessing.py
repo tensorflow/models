@@ -507,6 +507,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   # will then enter a loop waiting for the flagfile to be written. Once we see
   # that the async process has signaled that it is alive, we clear the system
   # caches and begin the run.
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_CLEAR_CACHES)
   mlperf_helper.clear_system_caches()
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_START)
   write_flagfile(flags_, ncf_dataset)
