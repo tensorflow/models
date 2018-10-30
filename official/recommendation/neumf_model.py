@@ -199,17 +199,17 @@ def construct_model(users, items, params):
   batch_size = user_input.get_shape()[0]
 
   if params["use_tpu"]:
-    cmb_embedding_user = tf.get_variable(
-        name="embeddings_mf_user",
-        shape=[num_users, mf_dim + model_layers[0] // 2],
-        initializer=tf.glorot_uniform_initializer())
-
-    cmb_embedding_item = tf.get_variable(
-        name="embeddings_mf_item",
-        shape=[num_items, mf_dim + model_layers[0] // 2],
-        initializer=tf.glorot_uniform_initializer())
-
     with tf.variable_scope("embed_weights", reuse=tf.AUTO_REUSE):
+      cmb_embedding_user = tf.get_variable(
+          name="embeddings_mf_user",
+          shape=[num_users, mf_dim + model_layers[0] // 2],
+          initializer=tf.glorot_uniform_initializer())
+
+      cmb_embedding_item = tf.get_variable(
+          name="embeddings_mf_item",
+          shape=[num_items, mf_dim + model_layers[0] // 2],
+          initializer=tf.glorot_uniform_initializer())
+
       cmb_user_latent = tf.keras.layers.Lambda(lambda ids: tf.gather(
           cmb_embedding_user, ids))(user_input)
 
