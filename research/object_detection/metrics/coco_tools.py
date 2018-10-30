@@ -251,6 +251,36 @@ class COCOEvalWrapper(cocoeval.COCOeval):
         ('Recall/AR@100 (medium)', self.stats[10]),
         ('Recall/AR@100 (large)', self.stats[11])
     ])
+    # Compute recall, add by yek@.
+    num_gts = 0
+    recall_at_iouthr_level = np.zeros((len(self.params.iouThrs)))
+    for per_image_eval_result in self.evalImgs:
+      if per_image_eval_result:
+        gtMatches = per_image_eval_result['gtMatches']
+        num_gts += gtMatches.shape[1]
+        recall_at_iouthr_level += (gtMatches != 0).sum(axis=1)
+
+    for iouLev, iou in enumerate(self.params.iouThrs):
+      if iou in [0.5, 0.75, 0.95]:
+        recall = recall_at_iouthr_level[iouLev] / num_gts
+        summary_metrics['Wsod/Recall@%.2lfIOU' % (iou)] = recall
+
+    # Compute precision, add by yek@.
+    num_dts = 0
+    precision_at_iouthr_level = np.zeros((len(self.params.iouThrs)))
+
+    for per_image_eval_result in self.evalImgs:
+      if per_image_eval_result:
+        dtMatches = per_image_eval_result['dtMatches']
+        num_dts += dtMatches.shape[1]
+        precision_at_iouthr_level += (dtMatches != 0).sum(axis=1)
+
+    for iouLev, iou in enumerate(self.params.iouThrs):
+      if iou in [0.5, 0.75, 0.95]:
+        precision = precision_at_iouthr_level[iouLev] / num_dts
+        summary_metrics['Wsod/Precision@%.2lfIOU' % (iou)] = precision
+    # End.
+
     if not include_metrics_per_category:
       return summary_metrics, {}
     if not hasattr(self, 'category_stats'):
