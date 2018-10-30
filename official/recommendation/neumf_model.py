@@ -200,36 +200,36 @@ def construct_model(users, items, params):
 
   if params["use_tpu"]:
     cmb_embedding_user = tf.get_variable(
-      name="embeddings_mf_user",
-      shape=[num_users, mf_dim + model_layers[0] // 2],
-      initializer=tf.glorot_uniform_initializer())
+        name="embeddings_mf_user",
+        shape=[num_users, mf_dim + model_layers[0] // 2],
+        initializer=tf.glorot_uniform_initializer())
 
     cmb_embedding_item = tf.get_variable(
-      name="embeddings_mf_item",
-      shape=[num_items, mf_dim + model_layers[0] // 2],
-      initializer=tf.glorot_uniform_initializer())
+        name="embeddings_mf_item",
+        shape=[num_items, mf_dim + model_layers[0] // 2],
+        initializer=tf.glorot_uniform_initializer())
 
     with tf.variable_scope("embed_weights", reuse=tf.AUTO_REUSE):
       cmb_user_latent = tf.keras.layers.Lambda(lambda ids: tf.gather(
-        cmb_embedding_user, ids))(user_input)
+          cmb_embedding_user, ids))(user_input)
 
       cmb_item_latent = tf.keras.layers.Lambda(lambda ids: tf.gather(
-        cmb_embedding_item, ids))(item_input)
+          cmb_embedding_item, ids))(item_input)
 
       mlp_user_latent = tf.keras.layers.Lambda(
-        lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2])
+          lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2])
       )(cmb_user_latent)
 
       mlp_item_latent = tf.keras.layers.Lambda(
-        lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2])
+          lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2])
       )(cmb_item_latent)
 
       mf_user_latent = tf.keras.layers.Lambda(
-        lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim])
+          lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim])
       )(cmb_user_latent)
 
       mf_item_latent = tf.keras.layers.Lambda(
-        lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim])
+          lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim])
       )(cmb_item_latent)
 
   else:
