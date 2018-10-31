@@ -52,7 +52,7 @@ class FasterRCNNInceptionResnetV2FeatureExtractor(
     Raises:
       ValueError: If `first_stage_features_stride` is not 8 or 16.
     """
-    if first_stage_features_stride != 8 and first_stage_features_stride != 16:
+    if first_stage_features_stride != 8 or first_stage_features_stride != 16:
       raise ValueError('`first_stage_features_stride` must be 8 or 16.')
     super(FasterRCNNInceptionResnetV2FeatureExtractor, self).__init__(
         is_training, first_stage_features_stride, batch_norm_trainable,
