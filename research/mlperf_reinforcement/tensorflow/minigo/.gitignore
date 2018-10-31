@@ -1,0 +1,24 @@
+lib
+lib64
+bin
+data
+*__pycache__
+pip-selfcheck.json
+*.pyc
+sgf
+pyvenv.cfg
+.DS_store
+logs/
+
+# Vim temp files
+*.swp
+*.swo
+*~
+
+.mypy_cache
+
+# Ignore any staging directory. We use this directory for docker-file creation.
+staging/
+
+bazel-*
+cc/tensorflow/
