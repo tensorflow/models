@@ -1,55 +1,23 @@
-# 1. Problem 
-This task benchmarks on policy reinforcement learning for the 9x9 version of the boardgame go. The model plays games against itself and uses these games to improve play.
+# 1. Problem
+This task benchmarks on policy reinforcement learning for the 9x9 version of the board game go. The model plays games against itself and uses these games to improve play.
+This implementation is derived from original `mlperf/training/reinforcement` reference implementation, and optimized for Intel® Xeon® scalable processors.
 
 # 2. Directions
 ### Steps to configure machine
-To setup the environment on Ubuntu 16.04 (16 CPUs, one P100, 100 GB disk), you can use these commands. This may vary on a different operating system or graphics card.
+To setup the environment on CentOS 7.4 (112 CPUs, 100 GB disk), you can use these commands. This may vary on a different operating system and hardware environment.
 
-    # Install docker
-    sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+1. Install Python3
 
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    sudo apt-key fingerprint 0EBFCD88
-    sudo add-apt-repository    "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-       $(lsb_release -cs) \
-       stable"
-    sudo apt update
-    # sudo apt install docker-ce -y
-    sudo apt install docker-ce=18.03.0~ce-0~ubuntu -y --allow-downgrades
+​    Install Python3 on your Linux distribution, we verified our implementation on Python 3.4, but any minor version should work.
 
-    # Install nvidia-docker2
-    curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey |   sudo apt-key add -
-    curl -s -L https://nvidia.github.io/nvidia-docker/ubuntu16.04/nvidia-docker.list |   sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-    sudo apt-get update
-    sudo apt install nvidia-docker2 -y
+2. Install requirements
 
+​    `pip3 install -r tensorflow/minigo/requirements.txt`
 
-    sudo tee /etc/docker/daemon.json <<EOF
-    {
-        "runtimes": {
-            "nvidia": {
-                "path": "/usr/bin/nvidia-container-runtime",
-                "runtimeArgs": []
-            }
-        }
-    }
-    EOF
-    sudo pkill -SIGHUP dockerd
+3. Install TensorFlow 1.10
 
-    sudo apt install -y bridge-utils
-    sudo service docker stop
-    sleep 1;
-    sudo iptables -t nat -F
-    sleep 1;
-    sudo ifconfig docker0 down
-    sleep 1;
-    sudo brctl delbr docker0
-    sleep 1;
-    sudo service docker start
-
-    ssh-keyscan github.com >> ~/.ssh/known_hosts
-    git clone git@github.com:mlperf/reference.git
+   This model is measured on TensorFlow branch r1.10.  To build this branch, follow the 'Build TensorFlow from Source with Intel MKL' section in the following link:
+   https://software.intel.com/en-us/articles/intel-optimization-for-tensorflow-installation-guide
 
 ### Steps to download and verify data
 Unlike other benchmarks, there is no data to download. All training data comes from games played during benchmarking.
@@ -58,13 +26,14 @@ Unlike other benchmarks, there is no data to download. All training data comes f
 
 To run, this assumes you checked out the repo into $HOME, adjust paths as necessary.
 
-    cd ~/reference/reinforcement/tensorflow/
-    IMAGE=`sudo docker build . | tail -n 1 | awk '{print $3}'`
-    SEED=1
-    NOW=`date "+%F-%T"`
-    sudo docker run --runtime=nvidia -t -i $IMAGE "./run_and_time.sh" $SEED | tee benchmark-$NOW.log
-    
-To change the quality target, modify `params/final.json` and set the field `TERMINATION_ACCURACY` to be `0.10` for about a 10 hour runtime, or `0.03` for about a 3 hour runtime. Note that you will have to rebuild the docker after modifying `params/final.josn`.
+    cd <repositoryroot>/research/mlperf_reinforcement/tensorflow/
+    ./run.sh | tee benchmark-$NOW.log
+
+The default parameter is set to run with 4 socket Intel® Xeon® Platinum 8180 Processors.  To run it on a different hardware setting, do the following steps:
+
+* Modify `tensorflow/minigo/params/final.json`, change the value `NUM_PARALLEL_SELFPLAY` to the number of hyper threads on your system.
+* Modify `tensorflow/run.sh`, change the value `KMP_HW_SUBSET=28c,2T` to setting match your system. Change `28c` according to number of physical cores per socket, and `2T` to `1T` if hyper-threading are not turned on.
+* Modify `tensorflow/run.sh`, change `ulimit -u 16384` according to system max allowable `ulimit`.  Usually 16384 would be sufficient to support `NUM_PARALLEL_SELFPLAY=224`.
 
 # 3. Model
 ### Publication/Attribution
@@ -110,18 +79,6 @@ The particular games we use are from Iyama Yuta 6 Title Celebration, between con
 
 ### Quality target
 The quality target is predicting 40% of the moves.
-
-### Quality Progression
-Informally, we have observed that quality should improve roughly linearly with time. We observed roughly 0.5% improvement in quality per hour of runtime. An example of approximately how we've seen quality progress over time:
-
-    Approx. Hours to Quality (16 CPU & 1 P100)
-    2h           3%
-    12h          14%
-    24h          19%
-    36h          24%
-    60h          34%
-
-Note that quality does not necessarily monotonically increase. 
 
 ### Evaluation frequency
 Evaluation should be preformed for every model which is trained (regardless if it wins the "model evaluation" round). 

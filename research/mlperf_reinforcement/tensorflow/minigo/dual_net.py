@@ -41,32 +41,63 @@ import go
 EXAMPLES_PER_GENERATION = 100000
 
 # How many positions can fit on a graphics card. 256 for 9s, 16 or 32 for 19s.
-TRAIN_BATCH_SIZE = 16
-#TRAIN_BATCH_SIZE = 256
+TRAIN_BATCH_SIZE = 64
 
 
 class DualNetwork():
-    def __init__(self, save_file, **hparams):
+    def __init__(self, save_file, selfplay=False, inference=False, **hparams):
         self.save_file = save_file
         self.hparams = get_default_hyperparams(**hparams)
         self.inference_input = None
         self.inference_output = None
-        config = tf.ConfigProto()
+        self.inference = inference
+        if selfplay:
+            config = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=0)
+        else:
+            config = tf.ConfigProto(intra_op_parallelism_threads=16, inter_op_parallelism_threads=2)
         config.gpu_options.allow_growth = True
-        self.sess = tf.Session(graph=tf.Graph(), config=config)
+        print (save_file)
+        if self.inference:
+            self.graph = tf.Graph()
+            self.graph_def = tf.GraphDef()
+            graph_path = save_file + ".transformed.pb"
+            file_ext = os.path.splitext(graph_path)[1]
+            with open(graph_path, "rb") as f:
+                if file_ext == ".pbtxt":
+                    text_format.Merge(f.read(), self.graph_def)
+                else:
+                    self.graph_def.ParseFromString(f.read())
+
+        if self.inference:
+            with self.graph.as_default():
+                tf.import_graph_def(self.graph_def)
+                self.sess = tf.Session(graph=self.graph, config=config)
+        else:
+            self.sess = tf.Session(graph=tf.Graph(), config=config)
+
         self.initialize_graph()
 
     def initialize_graph(self):
-        with self.sess.graph.as_default():
-            features, labels = get_inference_input()
-            estimator_spec = model_fn(features, labels,
-                                      tf.estimator.ModeKeys.PREDICT, self.hparams)
-            self.inference_input = features
-            self.inference_output = estimator_spec.predictions
-            if self.save_file is not None:
-                self.initialize_weights(self.save_file)
-            else:
-                self.sess.run(tf.global_variables_initializer())
+        if not self.inference:
+            with self.sess.graph.as_default():
+                features, labels = get_inference_input()
+                estimator_spec = model_fn(features, labels,
+                                        tf.estimator.ModeKeys.PREDICT, self.hparams)
+                self.inference_input = features
+                self.inference_output = estimator_spec.predictions
+                if self.save_file is not None:
+                    self.initialize_weights(self.save_file)
+                else:
+                    self.sess.run(tf.global_variables_initializer())
+        else:
+            input_name = "pos_tensor"
+            input_tensors = self.graph.get_tensor_by_name("import/" + input_name + ":0")
+            self.inference_input = input_tensors
+            output_names = ["policy_output", "value_output"]
+            output_tensors = []
+            for name in output_names:
+                output_tensors.append(self.graph.get_tensor_by_name("import/" + name + ":0"))
+            self.inference_output = output_tensors
 
     def initialize_weights(self, save_file):
         """Initialize the weights from the given save_file.
@@ -86,9 +117,13 @@ class DualNetwork():
         if use_random_symmetry:
             syms_used, processed = symmetries.randomize_symmetries_feat(
                 processed)
+
         outputs = self.sess.run(self.inference_output,
                                 feed_dict={self.inference_input: processed})
-        probabilities, value = outputs['policy_output'], outputs['value_output']
+        if not self.inference:
+            probabilities, value = outputs['policy_output'], outputs['value_output']
+        else:
+            probabilities, value = outputs[0], outputs[1]
         if use_random_symmetry:
             probabilities = symmetries.invert_symmetries_pi(
                 syms_used, probabilities)
@@ -217,8 +252,8 @@ def model_fn(features, labels, mode, params, config=None):
     combined_cost = policy_cost + value_cost + l2_cost
     policy_entropy = -tf.reduce_mean(tf.reduce_sum(
         policy_output * tf.log(policy_output), axis=1))
-    boundaries = [int(1e6), int(2e6)]
-    values = [1e-2, 1e-3, 1e-4]
+    boundaries = [int(1e6*16/TRAIN_BATCH_SIZE), int(2e6*16/TRAIN_BATCH_SIZE)]
+    values = [1e-2*TRAIN_BATCH_SIZE/16, 1e-3*TRAIN_BATCH_SIZE/16, 1e-4*TRAIN_BATCH_SIZE/16]
     learning_rate = tf.train.piecewise_constant(
         global_step, boundaries, values)
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -286,6 +321,9 @@ def bootstrap(working_dir, **hparams):
         sess.run(tf.global_variables_initializer())
         tf.train.Saver().save(sess, save_file)
 
+    with open("./minigo.pbtxt", "w") as f:
+        f.write(str(sess.graph.as_graph_def()))
+
 
 def export_model(working_dir, model_path):
     """Take the latest checkpoint and export it to model_path for selfplay.
@@ -311,11 +349,14 @@ def export_model(working_dir, model_path):
 def train(working_dir, tf_records, generation_num, **hparams):
     assert generation_num > 0, "Model 0 is random weights"
     estimator = get_estimator(working_dir, **hparams)
+    print ("generations = ", generation_num)
     max_steps = generation_num * EXAMPLES_PER_GENERATION // TRAIN_BATCH_SIZE
+    print ("max_steps = ", max_steps)
 
     def input_fn(): return preprocessing.get_input_tensors(
         TRAIN_BATCH_SIZE, tf_records)
     update_ratio_hook = UpdateRatioSessionHook(working_dir)
+    print("Train with TRAIN_BATCH_SIZE=", TRAIN_BATCH_SIZE)
     estimator.train(input_fn, hooks=[update_ratio_hook], max_steps=max_steps)
 
 

@@ -140,6 +140,10 @@ def read_tf_records(batch_size, tf_records, num_repeats=None,
                                      tf.data.TFRecordDataset(
                                          x, compression_type='ZLIB'),
                                      cycle_length=64, block_length=16)
+    # The sampling dataset replaces filter dataset with lambda function below.
+    # Its a faster implemenation of the filter dataset with this specific lambda
+    # function.
+    #dataset = dataset.sampling(filter_amount)
     dataset = dataset.filter(lambda x: tf.less(
         tf.random_uniform([1]), filter_amount)[0])
     # TODO(amj): apply py_func for transforms here.

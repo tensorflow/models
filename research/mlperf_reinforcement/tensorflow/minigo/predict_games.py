@@ -14,9 +14,13 @@ import sgf_wrapper
 import evaluation
 from gtp_wrapper import MCTSPlayer
 import sys
+import random
+import numpy
+import tensorflow as tf
 
 import os
 import glob
+import subprocess
 
 REPLAY_CACHE = {}
 
@@ -47,6 +51,16 @@ def main():
     model_results[model_path], total_pct = report_for_puzzles(model_path, sgf_files, 2, tries_per_move=1)
     report_model_results(model_results)
 
+def do_predict(filename, model_path, tries_per_move, attempt):
+  network = dual_net.DualNetwork(model_path, inference=False)
+  move_ratings = predict_move(filename, network, tries_per_move)
+  ratings = sum(move_ratings)
+  tries = len(move_ratings)
+  with open('{}.{}.result'.format(filename,attempt), 'w') as f:
+    f.write(str(tries))
+    f.write('\n')
+    f.write(str(ratings))
+    f.write('\n')
 
 def report_model_results(model_results):
   for model in sorted(model_results):
@@ -77,6 +91,43 @@ def report_for_puzzles(model_path, sgf_files, rounds, tries_per_move=1):
       sum_ratings += sum(move_ratings)
       results[filename].append(sum(move_ratings) / len(move_ratings))
       report_model_results({model_path: results})
+  return results, sum_ratings * 1.0 / tries
+
+def report_for_puzzles_parallel(model_path, sgf_files, rounds, tries_per_move=1):
+  results = {}
+  tries = 0
+  sum_ratings = 0
+  procs = []
+  for attempt in range(rounds):
+    for filename in sgf_files:
+      if os.path.exists('{}.{}.result'.format(filename,attempt)):
+        os.remove('{}.{}.result'.format(filename,attempt))
+
+  # passing 'randomness' to spawned instances
+  seed = int(sys.argv[1])
+  iteration = int(sys.argv[2])
+  seed = hash(hash(seed) + iteration)
+
+  n_round = 0
+  for attempt in range(rounds):
+    for filename in sgf_files:
+      cmd = 'OMP_NUM_THREADS=8 KMP_HW_SUBSET={} KMP_AFFINITY=granularity=fine python3 predict_games.py {} {} {} {} {}'.format(os.environ['KMP_HW_SUBSET'], seed+n_round, filename, model_path, tries_per_move, attempt)
+      procs.append(subprocess.Popen(cmd, shell=True))
+      n_round = n_round + 1
+
+  for proc in procs:
+    proc.wait()
+  for filename in sgf_files:
+    results[filename] = []
+  for attempt in range(rounds):
+    for filename in sgf_files:
+      with open('{}.{}.result'.format(filename,attempt)) as f:
+        _len = int(f.readline())
+        _sum = float(f.readline())
+        tries += _len
+        sum_ratings += _sum
+        results[filename].append(_sum /_len)
+      os.remove('{}.{}.result'.format(filename,attempt))
   return results, sum_ratings * 1.0 / tries
 
 
@@ -144,4 +195,9 @@ def predict_move(filename, network, tries_per_move=1, readouts=1000):
 
 
 if __name__ == '__main__':
-  main()
+  seed = int(sys.argv[1])
+  random.seed(seed)
+  tf.set_random_seed(seed)
+  numpy.random.seed(seed)
+
+  do_predict(sys.argv[2], sys.argv[3], int(sys.argv[4]), int(sys.argv[5]))

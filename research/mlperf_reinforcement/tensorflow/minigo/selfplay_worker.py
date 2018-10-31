@@ -18,6 +18,7 @@ import argparse
 import cloud_logging
 import logging
 import os
+import os.path
 import main
 import shipname
 import sys
@@ -36,7 +37,6 @@ import logging
 import goparams
 
 import qmeas
-import multiprocessing
 
 # Pull in environment variables. Run `source ./cluster/common` to set these.
 #BUCKET_NAME = os.environ['BUCKET_NAME']
@@ -48,8 +48,11 @@ BASE_DIR = sys.argv[1]
 
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
 SELFPLAY_DIR = os.path.join(BASE_DIR, 'data/selfplay')
+SELFPLAY_BACKUP_DIR = os.path.join(BASE_DIR, 'data/selfplay_backup')
 HOLDOUT_DIR = os.path.join(BASE_DIR, 'data/holdout')
+HOLDOUT_BACKUP_DIR = os.path.join(BASE_DIR, 'data/holdout_backup')
 SGF_DIR = os.path.join(BASE_DIR, 'sgf')
+SGF_BACKUP_DIR = os.path.join(BASE_DIR, 'sgf_backup')
 TRAINING_CHUNK_DIR = os.path.join(BASE_DIR, 'data', 'training_chunks')
 
 ESTIMATOR_WORKING_DIR = os.path.join(BASE_DIR, 'estimator_working_dir')
@@ -65,6 +68,7 @@ def print_flags():
         'BASE_DIR': BASE_DIR,
         'MODELS_DIR': MODELS_DIR,
         'SELFPLAY_DIR': SELFPLAY_DIR,
+        'SELFPLAY_BACKUP_DIR': SELFPLAY_BACKUP_DIR,
         'HOLDOUT_DIR': HOLDOUT_DIR,
         'SGF_DIR': SGF_DIR,
         'TRAINING_CHUNK_DIR': TRAINING_CHUNK_DIR,
@@ -106,17 +110,6 @@ def get_model(model_num):
         raise ValueError("Model {} not found!".format(model_num))
     return models[model_num]
 
-
-def game_counts(n_back=20):
-    """Prints statistics for the most recent n_back models"""
-    all_models = gfile.Glob(os.path.join(MODELS_DIR, '*.meta'))
-    model_filenames = sorted([os.path.basename(m).split('.')[0]
-                              for m in all_models], reverse=True)
-    for m in model_filenames[:n_back]:
-        games = gfile.Glob(os.path.join(SELFPLAY_DIR, m, '*.zz'))
-        print(m, len(games))
-
-
 def bootstrap():
     bootstrap_name = shipname.generate(0)
     bootstrap_model_path = os.path.join(MODELS_DIR, bootstrap_name)
@@ -124,30 +117,16 @@ def bootstrap():
         ESTIMATOR_WORKING_DIR, bootstrap_model_path))
     main.bootstrap(ESTIMATOR_WORKING_DIR, bootstrap_model_path)
 
-
-def selfplay(model_name, readouts=goparams.SP_READOUTS, verbose=1, resign_threshold=0.95):
-    print("Playing a game with model {}".format(model_name))
-    model_save_path = os.path.join(MODELS_DIR, model_name)
-    game_output_dir = os.path.join(SELFPLAY_DIR, model_name)
-    game_holdout_dir = os.path.join(HOLDOUT_DIR, model_name)
-    sgf_dir = os.path.join(SGF_DIR, model_name)
-    main.selfplay(
-        load_file=model_save_path,
-        output_dir=game_output_dir,
-        holdout_dir=game_holdout_dir,
-        output_sgf=sgf_dir,
-        readouts=readouts,
-        holdout_pct=HOLDOUT_PCT,
-        resign_threshold=resign_threshold,
-        verbose=verbose,
-    )
-
-
 def selfplay_cache_model(network, model_name, readouts=goparams.SP_READOUTS, verbose=1, resign_threshold=0.95):
     print("Playing a game with model {}".format(model_name))
-    game_output_dir = os.path.join(SELFPLAY_DIR, model_name)
-    game_holdout_dir = os.path.join(HOLDOUT_DIR, model_name)
-    sgf_dir = os.path.join(SGF_DIR, model_name)
+    if sys.argv[3]=='worker':
+        game_output_dir = os.path.join(SELFPLAY_DIR, model_name)
+        game_holdout_dir = os.path.join(HOLDOUT_DIR, model_name)
+        sgf_dir = os.path.join(SGF_DIR, model_name)
+    else:
+        game_output_dir = SELFPLAY_BACKUP_DIR
+        game_holdout_dir = HOLDOUT_BACKUP_DIR
+        sgf_dir = SGF_BACKUP_DIR
     main.selfplay_cache_model(
         network=network,
         output_dir=game_output_dir,
@@ -159,67 +138,13 @@ def selfplay_cache_model(network, model_name, readouts=goparams.SP_READOUTS, ver
         verbose=verbose,
     )
 
-
-
-def gather():
-    print("Gathering game output...")
-    main.gather(input_directory=SELFPLAY_DIR,
-                output_directory=TRAINING_CHUNK_DIR)
-
-
-def train():
-    model_num, model_name = get_latest_model()
-    print("Training on gathered game data, initializing from {}".format(model_name))
-    new_model_name = shipname.generate(model_num + 1)
-    print("New model will be {}".format(new_model_name))
-    load_file = os.path.join(MODELS_DIR, model_name)
-    save_file = os.path.join(MODELS_DIR, new_model_name)
-    #try:
-    main.train(ESTIMATOR_WORKING_DIR, TRAINING_CHUNK_DIR, save_file,
-               generation_num=model_num + 1)
-    #except:
-    #    print("Got an error training, muddling on...")
-    #    logging.exception("Train error")
-
-
-def validate(model_num=None, validate_name=None):
-    """ Runs validate on the directories up to the most recent model, or up to
-    (but not including) the model specified by `model_num`
-    """
-    if model_num is None:
-        model_num, model_name = get_latest_model()
-    else:
-        model_num = int(model_num)
-        model_name = get_model(model_num)
-
-    # Model N was trained on games up through model N-2, so the validation set
-    # should only be for models through N-2 as well, thus the (model_num - 1)
-    # term.
-    models = list(
-        filter(lambda num_name: num_name[0] < (model_num - 1), get_models()))
-    # Run on the most recent 50 generations,
-    # TODO(brianklee): make this hyperparameter dependency explicit/not hardcoded
-    holdout_dirs = [os.path.join(HOLDOUT_DIR, pair[1])
-                    for pair in models[-50:]]
-
-    main.validate(ESTIMATOR_WORKING_DIR, *holdout_dirs,
-                  checkpoint_name=os.path.join(MODELS_DIR, model_name),
-                  validate_name=validate_name)
-
-
 def echo():
     pass  # Flags are echo'd in the ifmain block below.
 
-
-def selfplay_hook(args):
-  selfplay(**args)
-
-
 def selfplay_laod_model(model_name):
     load_file = os.path.join(MODELS_DIR, model_name)
-    network = dual_net.DualNetwork(load_file)
+    network = dual_net.DualNetwork(load_file, selfplay=True, inference=True)
     return network
-
 
 def rl_loop():
     """Run the reinforcement learning loop
@@ -241,15 +166,21 @@ def rl_loop():
 
     _, model_name = get_latest_model()
     network = selfplay_laod_model(model_name)
+
+    if sys.argv[3]=='worker':
+        selfplay_dir = os.path.join(SELFPLAY_DIR, model_name)
+    else:
+        selfplay_dir = SELFPLAY_BACKUP_DIR
+
     def count_games():
       # returns number of games in the selfplay directory
-      if not os.path.exists(os.path.join(SELFPLAY_DIR, model_name)):
+      if not os.path.exists(selfplay_dir):
         # directory not existing implies no games have been played yet
         return 0
-      return len(gfile.Glob(os.path.join(SELFPLAY_DIR, model_name, '*.zz')))
+      return len(gfile.Glob(os.path.join(selfplay_dir, '*.zz')))
 
-    while count_games() < goparams.MAX_GAMES_PER_GENERATION:
-      selfplay_cache_model(network, model_name)
+    while count_games() < goparams.MAX_GAMES_PER_GENERATION and not os.path.isfile("PK_FLAG"):
+      selfplay_cache_model(network, model_name, verbose=0)
 
     print('Stopping selfplay after finding {} games played.'.format(count_games()))
 

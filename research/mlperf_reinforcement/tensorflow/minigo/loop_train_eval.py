@@ -49,6 +49,7 @@ from mlperf_compliance import mlperf_log
 BASE_DIR = goparams.BASE_DIR
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
 SELFPLAY_DIR = os.path.join(BASE_DIR, 'data/selfplay')
+SELFPLAY_BACKUP_DIR = os.path.join(BASE_DIR, 'data/selfplay_backup')
 BURY_DIR = os.path.join(BASE_DIR, 'bury_models')
 BURY_SELFPLAY_DIR = os.path.join(BASE_DIR, 'bury_selfplay')
 HOLDOUT_DIR = os.path.join(BASE_DIR, 'data/holdout')
@@ -71,6 +72,7 @@ def print_flags():
         'BASE_DIR': BASE_DIR,
         'MODELS_DIR': MODELS_DIR,
         'SELFPLAY_DIR': SELFPLAY_DIR,
+        'SELFPLAY_BACKUP_DIR': SELFPLAY_BACKUP_DIR,
         'HOLDOUT_DIR': HOLDOUT_DIR,
         'SGF_DIR': SGF_DIR,
         'TRAINING_CHUNK_DIR': TRAINING_CHUNK_DIR,
@@ -105,6 +107,15 @@ def get_latest_model():
         models = [(0, '000000-bootstrap')]
     return models[-1]
 
+def get_second_latest_model():
+    """Finds the latest model, returning its model number and name
+
+    Returns: (17, 000017-modelname)
+    """
+    models = get_models()
+    if len(models) == 1:
+        models = [(0, '000000-bootstrap')]
+    return models[-2]
 
 def get_model(model_num):
     models = {k: v for k, v in get_models()}
@@ -120,7 +131,7 @@ def evaluate(prev_model, cur_model, readouts=200, verbose=1, resign_threshold=0.
     game_output_dir = os.path.join(SELFPLAY_DIR, cur_model)
     game_holdout_dir = os.path.join(HOLDOUT_DIR, cur_model)
     sgf_dir = os.path.join(SGF_DIR, cur_model)
-    cur_win_pct = main.evaluate_evenly(prev_model_save_path, cur_model_save_path, game_output_dir, readouts=readouts, games=goparams.EVAL_GAMES_PER_SIDE)
+    cur_win_pct = main.evaluate_evenly_many(prev_model_save_path, cur_model_save_path, game_output_dir, readouts=readouts, games=goparams.EVAL_GAMES_PER_SIDE, verbose=0)
 
     print('Evalute Win Pct = ', cur_win_pct)
 
@@ -177,7 +188,7 @@ def bury_latest_model():
   prev_num, prev_model_name = get_latest_model()
   prev_save_file = os.path.join(MODELS_DIR, prev_model_name)
 
-  suffixes = ['.data-00000-of-00001', '.index', '.meta']
+  suffixes = ['.data-00000-of-00001', '.index', '.meta', '.transformed.pb']
   new_name = '{:06d}-continue'.format(model_num)
   new_save_file = os.path.join(MODELS_DIR, new_name)
 
@@ -186,6 +197,15 @@ def bury_latest_model():
     print('DBUG ', cmd)
     if os.system(cmd) != 0:
       raise Exception('Failed to copy: ' + cmd)
+
+  # move selfplay games from selfplay_backup dir
+  cmd = 'mkdir -p {}'.format(os.path.join(SELFPLAY_DIR, new_name))
+  if os.system(cmd) != 0:
+    print('Failed to mkdir: ' + cmd)
+  cmd = 'mv {}/* {}/'.format(SELFPLAY_BACKUP_DIR, os.path.join(SELFPLAY_DIR, new_name))
+  print('Recover backup games CMD:', cmd)
+  if os.system(cmd) != 0:
+    print('Failed to move: ' + cmd)
 
 
 def validate(model_num=None, validate_name=None):
@@ -216,6 +236,82 @@ def validate(model_num=None, validate_name=None):
 def echo():
     pass  # Flags are echo'd in the ifmain block below.
 
+
+def rl_loop_train():
+    """Run the reinforcement learning loop
+
+    This tries to create a realistic way to run the reinforcement learning with
+    all default parameters.
+    """
+    qmeas.stop_time('selfplay_wait')
+    print("Gathering game output...")
+    gather()
+
+    print("Training on gathered game data...")
+    _, model_name = get_latest_model()
+    new_model = train()
+
+def rl_loop_eval():
+    """Run the reinforcement learning loop
+
+    This tries to create a realistic way to run the reinforcement learning with
+    all default parameters.
+    """
+
+    (_, new_model) = get_latest_model()
+
+    qmeas.start_time('puzzle')
+    new_model_path = os.path.join(MODELS_DIR, new_model)
+    sgf_files = [
+      './benchmark_sgf/9x9_pro_YKSH.sgf',
+      './benchmark_sgf/9x9_pro_IYMD.sgf',
+      './benchmark_sgf/9x9_pro_YSIY.sgf',
+      './benchmark_sgf/9x9_pro_IYHN.sgf',
+    ]
+    result, total_pct = predict_games.report_for_puzzles_parallel(new_model_path, sgf_files, 2, tries_per_move=1)
+    #result, total_pct = predict_games.report_for_puzzles(new_model_path, sgf_files, 2, tries_per_move=1)
+    print('accuracy = ', total_pct)
+    print('result = ', result)
+    mlperf_log.minigo_print(key=mlperf_log.EVAL_ACCURACY,
+                            value={"epoch": iteration, "value": total_pct})
+    mlperf_log.minigo_print(key=mlperf_log.EVAL_TARGET,
+                            value=goparams.TERMINATION_ACCURACY)
+    qmeas.record('puzzle_total', total_pct)
+    qmeas.record('puzzle_result', repr(result))
+    qmeas.record('puzzle_summary', {'results': repr(result), 'total_pct': total_pct, 'model': new_model})
+    qmeas._flush()
+    with open(os.path.join(BASE_DIR, new_model + '-puzzles.txt'), 'w') as f:
+      f.write(repr(result))
+      f.write('\n' + str(total_pct) + '\n')
+    qmeas.stop_time('puzzle')
+    if total_pct >= goparams.TERMINATION_ACCURACY:
+      print('Reaching termination accuracy; ', goparams.TERMINATION_ACCURACY)
+      mlperf_log.minigo_print(key=mlperf_log.RUN_STOP,
+                              value={"success": True})
+      with open('TERMINATE_FLAG', 'w') as f:
+        f.write(repr(result))
+        f.write('\n' + str(total_pct) + '\n')
+    qmeas.end()
+
+def rl_loop_pk():
+    """Run the reinforcement learning loop
+
+    This tries to create a realistic way to run the reinforcement learning with
+    all default parameters.
+    """
+
+    _, new_model = get_latest_model()
+    model_num, model_name = get_second_latest_model()
+
+    if not evaluate(model_name, new_model, verbose=0):
+      print('Flag bury new model')
+      with open('PK_FLAG', 'w') as f:
+        f.write("pk\n")
+    qmeas.end()
+
+def rl_loop_bury():
+    bury_latest_model()
+    qmeas.end()
 
 def rl_loop():
     """Run the reinforcement learning loop
@@ -312,6 +408,13 @@ if __name__ == '__main__':
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
     log.addHandler(fh)
-    rl_loop()
-    qmeas.end()
-    mlperf_log.minigo_print(key=mlperf_log.EVAL_STOP, value=iteration)
+    if sys.argv[3] == 'train':
+        rl_loop_train()
+    if sys.argv[3] == 'eval':
+        mlperf_log.minigo_print(key=mlperf_log.EVAL_START, value=iteration)
+        rl_loop_eval()
+        mlperf_log.minigo_print(key=mlperf_log.EVAL_STOP, value=iteration)
+    if sys.argv[3] == 'pk':
+        rl_loop_pk()
+    if sys.argv[3] == 'bury':
+        rl_loop_bury()

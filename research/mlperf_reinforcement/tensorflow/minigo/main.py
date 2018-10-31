@@ -166,6 +166,29 @@ def evaluate(
 
     # qmeas.report_profiler()
 
+def evaluate_both(
+        prev_model: 'The path to previous model',
+        cur_model: 'The path to current model',
+        output_dir: 'Where to write the evaluation results'='sgf/evaluate',
+        readouts: 'How many readouts to make per move.'=200,
+        games: 'the number of games to play'=20,
+        verbose: 'How verbose the players should be (see selfplay)' = 1):
+    qmeas.start_time('evaluate')
+    _ensure_dir_exists(output_dir)
+
+    winners = []
+    with timer("%d games" % games):
+        winners = evaluation.play_match_many_instance_both(
+            prev_model, cur_model, games, readouts, output_dir, verbose)
+    qmeas.stop_time('evaluate')
+    white_count = 0
+    for win in winners:
+      if 'W' in win or 'w' in win:
+        white_count += 1
+    return white_count * 1.0 / (games*2)
+
+    # qmeas.report_profiler()
+
 def evaluate_evenly(
         black_model: 'The path to the model to play black',
         white_model: 'The path to the model to play white',
@@ -188,7 +211,27 @@ def evaluate_evenly(
     # selfplay.
   return result
 
-
+def evaluate_evenly_many(
+        prev_model: 'The path to previous model',
+        cur_model: 'The path to current model',
+        output_dir: 'Where to write the evaluation results'='sgf/evaluate',
+        readouts: 'How many readouts to make per move.'=200,
+        games: 'the number of games to play'=20,
+        verbose: 'How verbose the players should be (see selfplay)' = 1):
+  ''' Returns the white win rate; playes 'games' number of games on both sides. '''
+  try:
+    result = evaluate_both(prev_model, cur_model, output_dir, readouts, games, verbose)
+  except TypeError:
+    # It is remotely possible that in weird twist of fate results in a type
+    # error... Possibly due to weird corner cases in the evaluation...
+    # Our fall back will be to try agian.
+    result = evaluate_both(prev_model, cur_model, output_dir, readouts, games, verbose)
+    # should this really happen twice, the world really doesn't
+    # want this to be successful... and we will raise the error.
+    # If this is being run by the main loop harness, then the
+    # effect of raising here will be to keep the newest model and go back to
+    # selfplay.
+  return result
 
 def selfplay(
         load_file: "The path to the network model files",
