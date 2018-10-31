@@ -211,7 +211,8 @@ def run_ncf(_):
         iterations=num_train_steps, params=params,
         batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
   else:
-    runner = model_runner.NcfModelRunner(ncf_dataset, params)
+    runner = model_runner.NcfModelRunner(ncf_dataset, params, num_train_steps,
+                                         num_eval_steps, FLAGS.use_while_loop)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -280,11 +281,11 @@ def run_ncf(_):
                                              steps=num_eval_steps)
       tf.logging.info("Evaluation complete.")
     else:
-      runner.train(num_train_steps)
+      runner.train()
       tf.logging.info("Beginning evaluation.")
       mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
                               value=cycle_index)
-      eval_results = runner.eval(num_eval_steps)
+      eval_results = runner.eval()
       tf.logging.info("Evaluation complete.")
     hr = float(eval_results[rconst.HR_KEY])
     ndcg = float(eval_results[rconst.NDCG_KEY])
@@ -500,6 +501,21 @@ def define_ncf_flags():
           "  * Using more than 1 GPU\n"
           "  * Reloading from checkpoints\n"
           "  * Any hooks specified with --hooks\n"))
+
+  flags.DEFINE_bool(
+      name="use_while_loop", default=None, help=flags_core.help_wrap(
+          "If set, run an entire epoch in a session.run() call using a "
+          "TensorFlow while loop. This can improve performance, but will not "
+          "print out losses throughout the epoch. Requires "
+          "--use_estimator=false"
+      ))
+
+  xla_message = "--use_while_loop requires --use_estimator=false"
+  @flags.multi_flags_validator(["use_while_loop", "use_estimator"],
+                               message=xla_message)
+  def while_loop_validator(flag_dict):
+    return (not flag_dict["use_while_loop"] or
+            not flag_dict["use_estimator"])
 
 
 if __name__ == "__main__":

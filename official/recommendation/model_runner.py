@@ -25,6 +25,7 @@ import time
 import tensorflow as tf
 
 from tensorflow.contrib.compiler import xla
+from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
 from official.recommendation import neumf_model
 
@@ -58,27 +59,67 @@ class NcfModelRunner(object):
                                      _SHARED_MODEL_PROPERTY_FIELDS)
   _EvalModelProperties = namedtuple(  # pylint: disable=invalid-name
       "_EvalModelProperties", _SHARED_MODEL_PROPERTY_FIELDS + (
-          # A dict from metric name to (metric, update_op) tuple.
+          # A dict from metric name to metric tensor.
           "metrics",
           # Initializes the metric variables.
           "metric_initializer",))
 
-  def __init__(self, ncf_dataset, params):
+  def __init__(self, ncf_dataset, params, num_train_steps, num_eval_steps,
+               use_while_loop):
+    self._num_train_steps = num_train_steps
+    self._num_eval_steps = num_eval_steps
+    self._use_while_loop = use_while_loop
     with tf.Graph().as_default() as self._graph:
       if params["use_xla_for_gpu"]:
         # The XLA functions we use require resource variables.
         tf.enable_resource_variables()
       self._ncf_dataset = ncf_dataset
       self._global_step = tf.train.create_global_step()
-      self._train_model_properties = self._build_model(params, is_training=True)
-      self._eval_model_properties = self._build_model(params, is_training=False)
+      self._train_model_properties = self._build_model(params, num_train_steps,
+                                                       is_training=True)
+      self._eval_model_properties = self._build_model(params, num_eval_steps,
+                                                      is_training=False)
 
       initializer = tf.global_variables_initializer()
     self._graph.finalize()
     self._session = tf.Session(graph=self._graph)
     self._session.run(initializer)
 
-  def _build_model(self, params, is_training):
+  def _compute_metric_mean(self, metric_name):
+    """Computes the mean from a call tf tf.metrics.mean().
+
+    tf.metrics.mean() already returns the mean, so normally this call is
+    unnecessary. But, if tf.metrics.mean() is called inside a tf.while_loop, the
+    mean cannot be accessed outside the while loop. Calling this function
+    recomputes the mean from the variables created by tf.metrics.mean(),
+    allowing the mean to be accessed outside the while loop.
+
+    Args:
+      metric_name: The string passed to the 'name' argument of tf.metrics.mean()
+
+    Returns:
+      The mean of the metric.
+    """
+    metric_vars = tf.get_collection(tf.GraphKeys.METRIC_VARIABLES)
+    total_suffix = metric_name + "/total:0"
+    total_vars = [v for v in metric_vars if v.name.endswith(total_suffix)]
+    assert len(total_vars) == 1., (
+        "Found {} metric variables ending with '{}' but expected to find "
+        "exactly 1. All metric variables: {}".format(
+            len(total_vars), total_suffix, metric_vars))
+    total_var = total_vars[0]
+
+    count_suffix = metric_name + "/count:0"
+    count_vars = [v for v in metric_vars if v.name.endswith(count_suffix)]
+    assert len(count_vars) == 1., (
+        "Found {} metric variables ending with '{}' but expected to find "
+        "exactly 1. All metric variables: {}".format(
+            len(count_vars), count_suffix, metric_vars))
+    count_var = count_vars[0]
+    return total_var / count_var
+
+
+  def _build_model(self, params, num_steps, is_training):
     """Builds the NCF model.
 
     Args:
@@ -102,26 +143,75 @@ class NcfModelRunner(object):
       model_fn = xla.estimator_model_fn(model_fn)
 
     if is_training:
+      return self._build_train_specific_graph(
+          iterator, model_fn, params, record_files_placeholder, num_steps)
+    else:
+      return self._build_eval_specific_graph(
+          iterator, model_fn, params, record_files_placeholder, num_steps)
+
+  def _build_train_specific_graph(self, iterator, model_fn, params,
+                                  record_files_placeholder, num_train_steps):
+    """Builds the part of the model that is specific to training."""
+
+    def build():
       features, labels = iterator.get_next()
       estimator_spec = model_fn(
           features, labels, tf.estimator.ModeKeys.TRAIN, params)
       with tf.control_dependencies([estimator_spec.train_op]):
         run_model_op = self._global_step.assign_add(1)
-      return self._TrainModelProperties(
-          record_files_placeholder, iterator,
-          estimator_spec.loss, params["batch_size"], run_model_op)
+      return run_model_op, estimator_spec.loss
+
+    if self._use_while_loop:
+      def body(i):
+        run_model_op_single_step, _ = build()
+        with tf.control_dependencies([run_model_op_single_step]):
+          return i + 1
+
+      run_model_op = tf.while_loop(lambda i: i < num_train_steps, body, [0],
+                                   parallel_iterations=1)
+      loss = None
     else:
+      run_model_op, loss = build()
+
+    return self._TrainModelProperties(
+        record_files_placeholder, iterator, loss, params["batch_size"],
+        run_model_op)
+
+  def _build_eval_specific_graph(self, iterator, model_fn, params,
+                                 record_files_placeholder, num_eval_steps):
+    """Builds the part of the model that is specific to evaluation."""
+
+    def build():
       features = iterator.get_next()
       estimator_spec = model_fn(
           features, None, tf.estimator.ModeKeys.EVAL, params)
       run_model_op = tf.group(*(update_op for _, update_op in
                                 estimator_spec.eval_metric_ops.values()))
-      metric_initializer = tf.variables_initializer(
-          tf.get_collection(tf.GraphKeys.METRIC_VARIABLES))
-      return self._EvalModelProperties(
-          record_files_placeholder, iterator, estimator_spec.loss,
-          params["eval_batch_size"], run_model_op,
-          estimator_spec.eval_metric_ops, metric_initializer)
+      eval_metric_tensors = {k: tensor for (k, (tensor, _))
+                             in estimator_spec.eval_metric_ops.items()}
+      return run_model_op, estimator_spec.loss, eval_metric_tensors
+
+    if self._use_while_loop:
+      def body(i):
+        run_model_op_single_step, _, _ = build()
+        with tf.control_dependencies([run_model_op_single_step]):
+          return i + 1
+
+      run_model_op = tf.while_loop(lambda i: i < num_eval_steps, body, [0],
+                                   parallel_iterations=1)
+      loss = None
+      eval_metric_tensors = {
+          "HR": self._compute_metric_mean(rconst.HR_METRIC_NAME),
+          "NDCG": self._compute_metric_mean(rconst.NDCG_METRIC_NAME),
+      }
+    else:
+      run_model_op, loss, eval_metric_tensors = build()
+
+    metric_initializer = tf.variables_initializer(
+        tf.get_collection(tf.GraphKeys.METRIC_VARIABLES))
+    return self._EvalModelProperties(
+        record_files_placeholder, iterator, loss, params["eval_batch_size"],
+        run_model_op, eval_metric_tensors, metric_initializer)
 
   def _train_or_eval(self, model_properties, num_steps, is_training):
     """Either trains or evaluates, depending on whether `is_training` is True.
@@ -155,17 +245,22 @@ class NcfModelRunner(object):
 
     self._session.run(model_properties.iterator.initializer,
                       initializer_feed_dict)
-    fetches = (model_properties.loss, model_properties.run_model_op)
+    fetches = (model_properties.run_model_op,)
+    if model_properties.loss is not None:
+      fetches += (model_properties.loss,)
     mode = "Train" if is_training else "Eval"
     start = None
-    for i in range(num_steps):
-      loss, _, = self._session.run(fetches)
+    times_to_run = 1 if self._use_while_loop else num_steps
+    for i in range(times_to_run):
+      fetches_ = self._session.run(fetches)
       if i % 100 == 0:
         if start is None:
           # Only start the timer after 100 steps so there is a warmup.
           start = time.time()
           start_step = i
-        tf.logging.info("{} Loss = {}".format(mode, loss))
+        if model_properties.loss is not None:
+          _, loss = fetches_
+          tf.logging.info("{} Loss = {}".format(mode, loss))
     end = time.time()
     if start is not None:
       print("{} peformance: {} examples/sec".format(
@@ -173,34 +268,27 @@ class NcfModelRunner(object):
     return record_dir
 
 
-  def train(self, num_train_steps):
-    """Trains the graph for a single cycle.
-
-    Args:
-      num_train_steps: The number of steps per cycle to train for.
-    """
+  def train(self):
+    """Trains the graph for a single cycle."""
     record_dir = self._train_or_eval(self._train_model_properties,
-                                     num_train_steps, is_training=True)
+                                     self._num_train_steps, is_training=True)
     if record_dir:
       # We delete the record_dir because each cycle, new TFRecords is generated
       # by the async process.
       tf.gfile.DeleteRecursively(record_dir)
 
-  def eval(self, num_eval_steps):
+  def eval(self):
     """Evaluates the graph on the eval data.
-
-    Args:
-      num_eval_steps: The number of steps to evaluate for.
 
     Returns:
       A dict of evaluation results.
     """
     self._session.run(self._eval_model_properties.metric_initializer)
-    self._train_or_eval(self._eval_model_properties, num_eval_steps,
+    self._train_or_eval(self._eval_model_properties, self._num_eval_steps,
                         is_training=False)
     eval_results = {
         'global_step': self._session.run(self._global_step)}
-    for key, (val, _) in self._eval_model_properties.metrics.items():
+    for key, val in self._eval_model_properties.metrics.items():
       val_ = self._session.run(val)
       tf.logging.info("{} = {}".format(key, self._session.run(val)))
       eval_results[key] = val_
