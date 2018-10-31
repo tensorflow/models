@@ -158,7 +158,7 @@ class NcfModelRunner(object):
     fetches = (model_properties.loss, model_properties.run_model_op)
     mode = "Train" if is_training else "Eval"
     start = None
-    for i in range(num_steps):
+    for i in range(1, num_steps + 1):
       loss, _, = self._session.run(fetches)
       if i % 100 == 0:
         if start is None:
@@ -167,8 +167,8 @@ class NcfModelRunner(object):
           start_step = i
         tf.logging.info("{} Loss = {}".format(mode, loss))
     end = time.time()
-    if start is not None:
-      print("{} peformance: {} examples/sec".format(
+    if start is not None and start_step != i:
+      tf.logging.info("{} peformance: {} examples/sec".format(
           mode, (i - start_step) * model_properties.batch_size / (end - start)))
     return record_dir
 
