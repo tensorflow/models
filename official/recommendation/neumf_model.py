@@ -404,8 +404,10 @@ def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
 
   def metric_fn(top_k_tensor, ndcg_tensor, weight_tensor):
     return {
-        rconst.HR_KEY: tf.metrics.mean(top_k_tensor, weights=weight_tensor),
-        rconst.NDCG_KEY: tf.metrics.mean(ndcg_tensor, weights=weight_tensor),
+        rconst.HR_KEY: tf.metrics.mean(top_k_tensor, weights=weight_tensor,
+                                       name=rconst.HR_METRIC_NAME),
+        rconst.NDCG_KEY: tf.metrics.mean(ndcg_tensor, weights=weight_tensor,
+                                         name=rconst.NDCG_METRIC_NAME),
     }
 
   if use_tpu_spec:

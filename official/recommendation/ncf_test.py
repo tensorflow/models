@@ -257,6 +257,14 @@ class NcfTest(tf.test.TestCase):
     flags.FLAGS.ml_perf = True
     ncf_main.main(None)
 
+  @flagsaver.flagsaver(use_estimator=False, use_while_loop=True,
+                       **_BASE_END_TO_END_FLAGS)
+  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_while_loop(self):
+    ncf_main.main(None)
+    flags.FLAGS.ml_perf = True
+    ncf_main.main(None)
+
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
