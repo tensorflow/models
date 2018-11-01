@@ -113,6 +113,7 @@ def inception_v2_base(inputs,
             depth_multiplier=depthwise_multiplier,
             stride=2,
             padding='SAME',
+            normalizer_fn=None,
             weights_initializer=trunc_normal(1.0),
             scope=end_point)
       else:

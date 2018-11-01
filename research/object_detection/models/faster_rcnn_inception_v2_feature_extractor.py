@@ -128,7 +128,7 @@ class FasterRCNNInceptionV2FeatureExtractor(
       with tf.variable_scope('InceptionV2',
                              reuse=self._reuse_weights) as scope:
         with _batch_norm_arg_scope([slim.conv2d, slim.separable_conv2d],
-                                   batch_norm_scale=True,
+                                   batch_norm_scale=False,
                                    train_batch_norm=self._train_batch_norm):
           _, activations = inception_v2.inception_v2_base(
               preprocessed_inputs,
@@ -168,7 +168,7 @@ class FasterRCNNInceptionV2FeatureExtractor(
           padding='SAME',
           data_format=data_format):
         with _batch_norm_arg_scope([slim.conv2d, slim.separable_conv2d],
-                                   batch_norm_scale=True,
+                                   batch_norm_scale=False,
                                    train_batch_norm=self._train_batch_norm):
 
           with tf.variable_scope('Mixed_5a'):
