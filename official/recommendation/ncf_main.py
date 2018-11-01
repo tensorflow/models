@@ -143,6 +143,7 @@ def run_ncf(_):
   num_gpus = flags_core.get_num_gpus(FLAGS)
   batch_size = distribution_utils.per_device_batch_size(
       int(FLAGS.batch_size), num_gpus)
+  total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
 
   eval_per_user = rconst.NUM_EVAL_NEGATIVES + 1
   eval_batch_size = int(FLAGS.eval_batch_size or
@@ -167,6 +168,7 @@ def run_ncf(_):
         eval_batch_size=eval_batch_size,
         num_neg=FLAGS.num_neg,
         epochs_per_cycle=FLAGS.epochs_between_evals,
+        num_cycles=total_training_cycle,
         match_mlperf=FLAGS.ml_perf,
         deterministic=FLAGS.seed is not None,
         use_subprocess=FLAGS.use_subprocess,
@@ -237,7 +239,6 @@ def run_ncf(_):
 
 
   eval_input_fn = None
-  total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
   target_reached = False
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.TRAIN_LOOP)
   for cycle_index in range(total_training_cycle):
