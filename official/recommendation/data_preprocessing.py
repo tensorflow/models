@@ -392,7 +392,7 @@ def _shutdown(proc):
   tf.logging.info("Shutting down train data creation subprocess.")
   try:
     try:
-      proc.terminate()
+      proc.send_signal(signal.SIGINT)
       time.sleep(5)
       if proc.poll() is not None:
         tf.logging.info("Train data creation subprocess ended")
