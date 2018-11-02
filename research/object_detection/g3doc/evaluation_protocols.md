@@ -1,10 +1,66 @@
 # Supported object detection evaluation protocols
 
-The Tensorflow Object Detection API currently supports three evaluation protocols,
-that can be configured in `EvalConfig` by setting `metrics_set` to the
-corresponding value.
+The Tensorflow Object Detection API currently supports two evaluation protocols
+to be used during training. They can be configured in `EvalConfig` by setting 
+`metrics_set` to the corresponding value.
 
-## PASCAL VOC 2010 detection metric
+Additional evaluation protocols are available for offline evaluation.
+
+
+## Evaluation metrics
+
+### COCO detection metrics
+
+`EvalConfig.metrics_set='coco_detection_metrics'`
+
+The COCO metrics are the official detection metrics used to score the
+[COCO competition](http://cocodataset.org/) and are similar to Pascal VOC
+metrics but have a slightly different implementation and report additional
+statistics such as mAP at IOU thresholds of .5:.95, and precision/recall
+statistics for small, medium, and large objects.
+See the
+[pycocotools](https://github.com/cocodataset/cocoapi/tree/master/PythonAPI)
+repository for more details.
+
+### COCO mask metrics
+
+`EvalConfig.metrics_set='coco_mask_metrics'`
+
+Similar to the COCO detection metrics, but computes the
+intersection over union based on the object masks instead of object boxes.
+
+
+## Stand-alone evaluation
+
+### OID Challenge Object Detection Metric 2018
+
+Note:
+this is currently a stand-alone metric, that can be used only through the
+`metrics/oid_od_challenge_evaluation.py` util.
+
+The metric for the OID Challenge Object Detection Metric 2018, Object Detection
+track. The description is provided on the [Open Images Challenge
+website](https://storage.googleapis.com/openimages/web/challenge.html).
+
+### OID Challenge Visual Relationship Detection Metric 2018
+
+Note:
+this is currently a stand-alone metric, that can be used only through the
+`metrics/oid_vrd_challenge_evaluation.py` util.
+
+The metric for the OID Challenge Visual Relationship Detection Metric 2018, Visual
+Relationship Detection track. The description is provided on the [Open Images
+Challenge
+website](https://storage.googleapis.com/openimages/web/challenge.html). 
+
+## Legacy evaluation metrics
+There are also additional metrics that can be calculated using the [legacy 
+evaluation script](https://github.com/tensorflow/models/blob/master/research/object_detection/legacy/eval.py)
+
+**Note** : The legacy metric sets below will not work on the current Object
+Detection API
+
+#### PASCAL VOC 2010 detection metric
 
 `EvalConfig.metrics_set='pascal_voc_detection_metrics'`
 
@@ -13,7 +69,7 @@ computed according to the protocol of the PASCAL VOC Challenge 2010-2012. The
 protocol is available
 [here](http://host.robots.ox.ac.uk/pascal/VOC/voc2010/devkit_doc_08-May-2010.pdf).
 
-## Weighted PASCAL VOC detection metric
+#### Weighted PASCAL VOC detection metric
 
 `EvalConfig.metrics_set='weighted_pascal_voc_detection_metrics'`
 
@@ -28,14 +84,14 @@ are ten times more boxes of "cat" than those of "dog". According to PASCAL VOC
 towards the final mAP value, while for the Weighted PASCAL VOC metric the final
 mAP value will be influenced by frequency of each class.
 
-## PASCAL VOC 2010 instance segmentation metric
+#### PASCAL VOC 2010 instance segmentation metric
 
 `EvalConfig.metrics_set='pascal_voc_instance_segmentation_metrics'`
 
 Similar to Pascal VOC 2010 detection metric, but computes the intersection over
 union based on the object masks instead of object boxes.
 
-## Weighted PASCAL VOC instance segmentation metric
+#### Weighted PASCAL VOC instance segmentation metric
 
 `EvalConfig.metrics_set='weighted_pascal_voc_instance_segmentation_metrics'`
 
@@ -43,27 +99,7 @@ Similar to the weighted pascal voc 2010 detection metric, but computes the
 intersection over union based on the object masks instead of object boxes.
 
 
-## COCO detection metrics
-
-`EvalConfig.metrics_set='coco_detection_metrics'`
-
-The COCO metrics are the official detection metrics used to score the
-[COCO competition](http://cocodataset.org/) and are similar to Pascal VOC
-metrics but have a slightly different implementation and report additional
-statistics such as mAP at IOU thresholds of .5:.95, and precision/recall
-statistics for small, medium, and large objects.
-See the
-[pycocotools](https://github.com/cocodataset/cocoapi/tree/master/PythonAPI)
-repository for more details.
-
-## COCO mask metrics
-
-`EvalConfig.metrics_set='coco_mask_metrics'`
-
-Similar to the COCO detection metrics, but computes the
-intersection over union based on the object masks instead of object boxes.
-
-## Open Images V2 detection metric
+#### Open Images V2 detection metric
 
 `EvalConfig.metrics_set='open_images_V2_detection_metrics'`
 
@@ -131,20 +167,3 @@ other kind of car is annotated as "car" (for example, a sedan). Given this
 convention, the evaluation software treats all classes independently, ignoring
 the hierarchy. To achieve high performance values, object detectors should
 output bounding-boxes labelled in the same manner.
-
-## OID Challenge Object Detection Metric 2018
-
-`EvalConfig.metrics_set='oid_challenge_object_detection_metrics'`
-
-The metric for the OID Challenge Object Detection Metric 2018, Object Detection
-track. The description is provided on the [Open Images Challenge
-website](https://storage.googleapis.com/openimages/web/challenge.html).
-
-## OID Challenge Visual Relationship Detection Metric 2018
-
-The metric for the OID Challenge Visual Relationship Detection Metric 2018, Visual
-Relationship Detection track. The description is provided on the [Open Images
-Challenge
-website](https://storage.googleapis.com/openimages/web/challenge.html). Note:
-this is currently a stand-alone metric, that can be used only through the
-`metrics/oid_vrd_challenge_evaluation.py` util.
