@@ -32,7 +32,7 @@ slim = tf.contrib.slim
 
 # A modified config of mobilenet v2 that makes it more detection friendly,
 def _create_modified_mobilenet_config():
-  conv_defs = copy.copy(mobilenet_v2.V2_DEF)
+  conv_defs = copy.deepcopy(mobilenet_v2.V2_DEF)
   conv_defs['spec'][-1] = mobilenet.op(
       slim.conv2d, stride=1, kernel_size=[1, 1], num_outputs=256)
   return conv_defs
