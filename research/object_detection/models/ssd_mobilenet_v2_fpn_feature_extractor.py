@@ -38,9 +38,6 @@ def _create_modified_mobilenet_config():
   return conv_defs
 
 
-_CONV_DEFS = _create_modified_mobilenet_config()
-
-
 class SSDMobileNetV2FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
   """SSD Feature Extractor using MobilenetV2 FPN features."""
 
@@ -142,7 +139,7 @@ class SSDMobileNetV2FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
               ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
               final_endpoint='layer_19',
               depth_multiplier=self._depth_multiplier,
-              conv_defs=_CONV_DEFS if self._use_depthwise else None,
+              conv_defs=_create_modified_mobilenet_config() if self._use_depthwise else None,
               use_explicit_padding=self._use_explicit_padding,
               scope=scope)
       depth_fn = lambda d: max(int(d * self._depth_multiplier), self._min_depth)
