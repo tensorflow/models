@@ -335,8 +335,6 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         [None] containing classes for the boxes.
       fields.InputDataFields.groundtruth_weights - 1D float32 tensor of
         shape [None] indicating the weights of groundtruth boxes.
-      fields.InputDataFields.num_groundtruth_boxes - int32 scalar indicating
-        the number of groundtruth_boxes.
       fields.InputDataFields.groundtruth_area - 1D float32 tensor of shape
         [None] containing containing object mask area in pixel squared.
       fields.InputDataFields.groundtruth_is_crowd - 1D bool tensor of shape
@@ -369,8 +367,6 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     tensor_dict[fields.InputDataFields.image].set_shape([None, None, 3])
     tensor_dict[fields.InputDataFields.original_image_spatial_shape] = tf.shape(
         tensor_dict[fields.InputDataFields.image])[:2]
-    tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
-        tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
 
     if fields.InputDataFields.image_additional_channels in tensor_dict:
       channels = tensor_dict[fields.InputDataFields.image_additional_channels]

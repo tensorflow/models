@@ -76,12 +76,14 @@ def get_spatial_image_size(image_resizer_config):
   raise ValueError("Unknown image resizer type.")
 
 
-def get_configs_from_pipeline_file(pipeline_config_path):
+def get_configs_from_pipeline_file(pipeline_config_path, config_override=None):
   """Reads config from a file containing pipeline_pb2.TrainEvalPipelineConfig.
 
   Args:
     pipeline_config_path: Path to pipeline_pb2.TrainEvalPipelineConfig text
       proto.
+    config_override: A pipeline_pb2.TrainEvalPipelineConfig text proto to
+      override pipeline_config_path.
 
   Returns:
     Dictionary of configuration objects. Keys are `model`, `train_config`,
@@ -92,6 +94,8 @@ def get_configs_from_pipeline_file(pipeline_config_path):
   with tf.gfile.GFile(pipeline_config_path, "r") as f:
     proto_str = f.read()
     text_format.Merge(proto_str, pipeline_config)
+  if config_override:
+    text_format.Merge(config_override, pipeline_config)
   return create_configs_from_pipeline_proto(pipeline_config)
 
 
@@ -430,7 +434,7 @@ def merge_external_params_with_configs(configs, hparams=None, kwargs_dict=None):
   final learning rates.
   In this case key can be one of the following formats:
       1. legacy update: single string that indicates the attribute to be
-        updated. E.g. 'lable_map_path', 'eval_input_path', 'shuffle'.
+        updated. E.g. 'label_map_path', 'eval_input_path', 'shuffle'.
         Note that when updating fields (e.g. eval_input_path, eval_shuffle) in
         eval_input_configs, the override will only be applied when
         eval_input_configs has exactly 1 element.

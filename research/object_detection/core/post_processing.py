@@ -15,6 +15,7 @@
 
 """Post-processing operations on detected boxes."""
 
+import numpy as np
 import tensorflow as tf
 
 from object_detection.core import box_list
@@ -407,28 +408,36 @@ def batch_multiclass_non_max_suppression(boxes,
           for key, value in zip(additional_fields, args[4:-1])
       }
       per_image_num_valid_boxes = args[-1]
-      per_image_boxes = tf.reshape(
-          tf.slice(per_image_boxes, 3 * [0],
-                   tf.stack([per_image_num_valid_boxes, -1, -1])), [-1, q, 4])
-      per_image_scores = tf.reshape(
-          tf.slice(per_image_scores, [0, 0],
-                   tf.stack([per_image_num_valid_boxes, -1])),
-          [-1, num_classes])
-      per_image_masks = tf.reshape(
-          tf.slice(per_image_masks, 4 * [0],
-                   tf.stack([per_image_num_valid_boxes, -1, -1, -1])),
-          [-1, q, per_image_masks.shape[2].value,
-           per_image_masks.shape[3].value])
-      if per_image_additional_fields is not None:
-        for key, tensor in per_image_additional_fields.items():
-          additional_field_shape = tensor.get_shape()
-          additional_field_dim = len(additional_field_shape)
-          per_image_additional_fields[key] = tf.reshape(
-              tf.slice(per_image_additional_fields[key],
-                       additional_field_dim * [0],
-                       tf.stack([per_image_num_valid_boxes] +
-                                (additional_field_dim - 1) * [-1])),
-              [-1] + [dim.value for dim in additional_field_shape[1:]])
+      if use_static_shapes:
+        total_proposals = tf.shape(per_image_scores)
+        per_image_scores = tf.where(
+            tf.less(tf.range(total_proposals[0]), per_image_num_valid_boxes),
+            per_image_scores,
+            tf.fill(total_proposals, np.finfo('float32').min))
+      else:
+        per_image_boxes = tf.reshape(
+            tf.slice(per_image_boxes, 3 * [0],
+                     tf.stack([per_image_num_valid_boxes, -1, -1])), [-1, q, 4])
+        per_image_scores = tf.reshape(
+            tf.slice(per_image_scores, [0, 0],
+                     tf.stack([per_image_num_valid_boxes, -1])),
+            [-1, num_classes])
+        per_image_masks = tf.reshape(
+            tf.slice(per_image_masks, 4 * [0],
+                     tf.stack([per_image_num_valid_boxes, -1, -1, -1])),
+            [-1, q, per_image_masks.shape[2].value,
+             per_image_masks.shape[3].value])
+        if per_image_additional_fields is not None:
+          for key, tensor in per_image_additional_fields.items():
+            additional_field_shape = tensor.get_shape()
+            additional_field_dim = len(additional_field_shape)
+            per_image_additional_fields[key] = tf.reshape(
+                tf.slice(per_image_additional_fields[key],
+                         additional_field_dim * [0],
+                         tf.stack([per_image_num_valid_boxes] +
+                                  (additional_field_dim - 1) * [-1])),
+                [-1] + [dim.value for dim in additional_field_shape[1:]])
+
       nmsed_boxlist, num_valid_nms_boxes = multiclass_non_max_suppression(
           per_image_boxes,
           per_image_scores,

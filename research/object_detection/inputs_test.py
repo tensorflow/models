@@ -630,6 +630,9 @@ class DataTransformationFnTest(test_case.TestCase):
     self.assertAllClose(
         transformed_inputs[fields.InputDataFields.groundtruth_confidences],
         [[1, 0, 1]])
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.num_groundtruth_boxes],
+        1)
 
   def test_returns_resized_masks(self):
     tensor_dict = {

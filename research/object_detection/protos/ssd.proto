@@ -12,7 +12,7 @@ import "object_detection/protos/post_processing.proto";
 import "object_detection/protos/region_similarity_calculator.proto";
 
 // Configuration for Single Shot Detection (SSD) models.
-// Next id: 21
+// Next id: 22
 message Ssd {
 
   // Number of classes to predict.
@@ -92,11 +92,17 @@ message Ssd {
 
   // Minimum number of effective negative samples.
   // Only applies if use_expected_classification_loss_under_sampling is true.
-  optional float minimum_negative_sampling = 19 [default=0];
+  optional float min_num_negative_samples = 19 [default=0];
 
   // Desired number of effective negative samples per positive sample.
   // Only applies if use_expected_classification_loss_under_sampling is true.
   optional float desired_negative_sampling_ratio = 20 [default=3];
+
+  // Whether to add an implicit background class to one-hot encodings of
+  // groundtruth labels. Set to false if using groundtruth labels with an
+  // explicit background class, using multiclass scores, or if training a single
+  // class model.
+  optional bool add_background_class = 21 [default = true];
 }
 
 

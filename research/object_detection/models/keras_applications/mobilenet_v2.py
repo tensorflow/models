@@ -82,6 +82,8 @@ class _LayersOverride(object):
     self._conv_hyperparams = conv_hyperparams
     self._use_explicit_padding = use_explicit_padding
     self._min_depth = min_depth
+    self.regularizer = tf.keras.regularizers.l2(0.00004 * 0.5)
+    self.initializer = tf.truncated_normal_initializer(stddev=0.09)
 
   def _FixedPaddingLayer(self, kernel_size):
     return tf.keras.layers.Lambda(lambda x: ops.fixed_padding(x, kernel_size))
@@ -114,6 +116,9 @@ class _LayersOverride(object):
 
     if self._conv_hyperparams:
       kwargs = self._conv_hyperparams.params(**kwargs)
+    else:
+      kwargs['kernel_regularizer'] = self.regularizer
+      kwargs['kernel_initializer'] = self.initializer
 
     kwargs['padding'] = 'same'
     kernel_size = kwargs.get('kernel_size')
@@ -144,6 +149,8 @@ class _LayersOverride(object):
     """
     if self._conv_hyperparams:
       kwargs = self._conv_hyperparams.params(**kwargs)
+    else:
+      kwargs['depthwise_initializer'] = self.initializer
 
     kwargs['padding'] = 'same'
     kernel_size = kwargs.get('kernel_size')

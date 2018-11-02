@@ -64,6 +64,10 @@ class KerasLayerHyperparams(object):
           hyperparams_config.batch_norm)
 
     self._activation_fn = _build_activation_fn(hyperparams_config.activation)
+    # TODO(kaftan): Unclear if these kwargs apply to separable & depthwise conv
+    # (Those might use depthwise_* instead of kernel_*)
+    # We should probably switch to using build_conv2d_layer and
+    # build_depthwise_conv2d_layer methods instead.
     self._op_params = {
         'kernel_regularizer': _build_keras_regularizer(
             hyperparams_config.regularizer),

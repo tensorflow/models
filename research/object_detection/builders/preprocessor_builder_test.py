@@ -222,6 +222,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
       min_area: 0.25
       max_area: 0.875
       overlap_thresh: 0.5
+      clip_boxes: False
       random_coef: 0.125
     }
     """
@@ -234,6 +235,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         'aspect_ratio_range': (0.75, 1.5),
         'area_range': (0.25, 0.875),
         'overlap_thresh': 0.5,
+        'clip_boxes': False,
         'random_coef': 0.125,
     })
 
@@ -261,6 +263,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
       min_area: 0.25
       max_area: 0.875
       overlap_thresh: 0.5
+      clip_boxes: False
       random_coef: 0.125
     }
     """
@@ -273,6 +276,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         'aspect_ratio_range': (0.75, 1.5),
         'area_range': (0.25, 0.875),
         'overlap_thresh': 0.5,
+        'clip_boxes': False,
         'random_coef': 0.125,
     })
 
@@ -285,6 +289,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
       min_area: 0.25
       max_area: 0.875
       overlap_thresh: 0.5
+      clip_boxes: False
       random_coef: 0.125
       min_padded_size_ratio: 0.5
       min_padded_size_ratio: 0.75
@@ -304,6 +309,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         'aspect_ratio_range': (0.75, 1.5),
         'area_range': (0.25, 0.875),
         'overlap_thresh': 0.5,
+        'clip_boxes': False,
         'random_coef': 0.125,
         'min_padded_size_ratio': (0.5, 0.75),
         'max_padded_size_ratio': (0.5, 0.75),
@@ -315,6 +321,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
     random_crop_to_aspect_ratio {
       aspect_ratio: 0.85
       overlap_thresh: 0.35
+      clip_boxes: False
     }
     """
     preprocessor_proto = preprocessor_pb2.PreprocessingStep()
@@ -322,7 +329,8 @@ class PreprocessorBuilderTest(tf.test.TestCase):
     function, args = preprocessor_builder.build(preprocessor_proto)
     self.assertEqual(function, preprocessor.random_crop_to_aspect_ratio)
     self.assert_dictionary_close(args, {'aspect_ratio': 0.85,
-                                        'overlap_thresh': 0.35})
+                                        'overlap_thresh': 0.35,
+                                        'clip_boxes': False})
 
   def test_build_random_black_patches(self):
     preprocessor_text_proto = """
@@ -411,6 +419,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         min_area: 0.5
         max_area: 1.0
         overlap_thresh: 0.0
+        clip_boxes: False
         random_coef: 0.375
       }
       operations {
@@ -420,6 +429,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         min_area: 0.5
         max_area: 1.0
         overlap_thresh: 0.25
+        clip_boxes: True
         random_coef: 0.375
       }
     }
@@ -432,6 +442,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                             'aspect_ratio_range': [(0.875, 1.125), (0.75, 1.5)],
                             'area_range': [(0.5, 1.0), (0.5, 1.0)],
                             'overlap_thresh': [0.0, 0.25],
+                            'clip_boxes': [False, True],
                             'random_coef': [0.375, 0.375]})
 
   def test_build_ssd_random_crop_empty_operations(self):
@@ -455,6 +466,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         min_area: 0.5
         max_area: 1.0
         overlap_thresh: 0.0
+        clip_boxes: False
         random_coef: 0.375
         min_padded_size_ratio: [1.0, 1.0]
         max_padded_size_ratio: [2.0, 2.0]
@@ -469,6 +481,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         min_area: 0.5
         max_area: 1.0
         overlap_thresh: 0.25
+        clip_boxes: True
         random_coef: 0.375
         min_padded_size_ratio: [1.0, 1.0]
         max_padded_size_ratio: [2.0, 2.0]
@@ -486,6 +499,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                             'aspect_ratio_range': [(0.875, 1.125), (0.75, 1.5)],
                             'area_range': [(0.5, 1.0), (0.5, 1.0)],
                             'overlap_thresh': [0.0, 0.25],
+                            'clip_boxes': [False, True],
                             'random_coef': [0.375, 0.375],
                             'min_padded_size_ratio': [(1.0, 1.0), (1.0, 1.0)],
                             'max_padded_size_ratio': [(2.0, 2.0), (2.0, 2.0)],
@@ -499,6 +513,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         min_area: 0.5
         max_area: 1.0
         overlap_thresh: 0.0
+        clip_boxes: False
         random_coef: 0.375
       }
       operations {
@@ -506,6 +521,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         min_area: 0.5
         max_area: 1.0
         overlap_thresh: 0.25
+        clip_boxes: True
         random_coef: 0.375
       }
       aspect_ratio: 0.875
@@ -519,6 +535,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                             'aspect_ratio': 0.875,
                             'area_range': [(0.5, 1.0), (0.5, 1.0)],
                             'overlap_thresh': [0.0, 0.25],
+                            'clip_boxes': [False, True],
                             'random_coef': [0.375, 0.375]})
 
   def test_build_ssd_random_crop_pad_fixed_aspect_ratio(self):
@@ -531,6 +548,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         min_area: 0.5
         max_area: 1.0
         overlap_thresh: 0.0
+        clip_boxes: False
         random_coef: 0.375
       }
       operations {
@@ -540,6 +558,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         min_area: 0.5
         max_area: 1.0
         overlap_thresh: 0.25
+        clip_boxes: True
         random_coef: 0.375
       }
       aspect_ratio: 0.875
@@ -557,6 +576,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                             'aspect_ratio_range': [(0.875, 1.125), (0.75, 1.5)],
                             'area_range': [(0.5, 1.0), (0.5, 1.0)],
                             'overlap_thresh': [0.0, 0.25],
+                            'clip_boxes': [False, True],
                             'random_coef': [0.375, 0.375],
                             'min_padded_size_ratio': (1.0, 1.0),
                             'max_padded_size_ratio': (2.0, 2.0)})

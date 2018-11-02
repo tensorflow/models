@@ -27,6 +27,7 @@ from object_detection.core import standard_fields as fields
 from object_detection.metrics import coco_evaluation
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
+from object_detection.utils import shape_utils
 from object_detection.utils import visualization_utils as vis_utils
 
 slim = tf.contrib.slim
@@ -321,6 +322,7 @@ def _run_checkpoint_once(tensor_dict,
           # TODO(akuznetsa): result_dict contains batches of images, while
           # add_single_ground_truth_image_info expects a single image. Fix
           if (isinstance(result_dict, dict) and
+              fields.InputDataFields.key in result_dict and
               result_dict[fields.InputDataFields.key]):
             image_id = result_dict[fields.InputDataFields.key]
           else:
@@ -475,6 +477,35 @@ def repeated_checkpoint_run(tensor_dict,
   return metrics
 
 
+def _scale_box_to_absolute(args):
+  boxes, image_shape = args
+  return box_list_ops.to_absolute_coordinates(
+      box_list.BoxList(boxes), image_shape[0], image_shape[1]).get()
+
+
+def _resize_detection_masks(args):
+  detection_boxes, detection_masks, image_shape = args
+  detection_masks_reframed = ops.reframe_box_masks_to_image_masks(
+      detection_masks, detection_boxes, image_shape[0], image_shape[1])
+  return tf.cast(tf.greater(detection_masks_reframed, 0.5), tf.uint8)
+
+
+def _resize_groundtruth_masks(args):
+  mask, image_shape = args
+  mask = tf.expand_dims(mask, 3)
+  mask = tf.image.resize_images(
+      mask,
+      image_shape,
+      method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+      align_corners=True)
+  return tf.cast(tf.squeeze(mask, 3), tf.uint8)
+
+
+def _scale_keypoint_to_absolute(args):
+  keypoints, image_shape = args
+  return keypoint_ops.scale(keypoints, image_shape[0], image_shape[1])
+
+
 def result_dict_for_single_example(image,
                                    key,
                                    detections,
@@ -533,88 +564,224 @@ def result_dict_for_single_example(image,
       (Optional).
 
   """
+
+  if groundtruth:
+    max_gt_boxes = tf.shape(
+        groundtruth[fields.InputDataFields.groundtruth_boxes])[0]
+    for gt_key in groundtruth:
+      # expand groundtruth dict along the batch dimension.
+      groundtruth[gt_key] = tf.expand_dims(groundtruth[gt_key], 0)
+
+  for detection_key in detections:
+    detections[detection_key] = tf.expand_dims(
+        detections[detection_key][0], axis=0)
+
+  batched_output_dict = result_dict_for_batched_example(
+      image,
+      tf.expand_dims(key, 0),
+      detections,
+      groundtruth,
+      class_agnostic,
+      scale_to_absolute,
+      max_gt_boxes=max_gt_boxes)
+
+  exclude_keys = [
+      fields.InputDataFields.original_image,
+      fields.DetectionResultFields.num_detections,
+      fields.InputDataFields.num_groundtruth_boxes,
+      fields.InputDataFields.original_image_spatial_shape
+  ]
+
+  output_dict = {
+      fields.InputDataFields.original_image:
+          batched_output_dict[fields.InputDataFields.original_image]
+  }
+
+  for key in batched_output_dict:
+    # remove the batch dimension.
+    if key not in exclude_keys:
+      output_dict[key] = tf.squeeze(batched_output_dict[key], 0)
+  return output_dict
+
+
+def result_dict_for_batched_example(images,
+                                    keys,
+                                    detections,
+                                    groundtruth=None,
+                                    class_agnostic=False,
+                                    scale_to_absolute=False,
+                                    original_image_spatial_shapes=None,
+                                    max_gt_boxes=None):
+  """Merges all detection and groundtruth information for a single example.
+
+  Note that evaluation tools require classes that are 1-indexed, and so this
+  function performs the offset. If `class_agnostic` is True, all output classes
+  have label 1.
+
+  Args:
+    images: A single 4D uint8 image tensor of shape [batch_size, H, W, C].
+    keys: A [batch_size] string tensor with image identifier.
+    detections: A dictionary of detections, returned from
+      DetectionModel.postprocess().
+    groundtruth: (Optional) Dictionary of groundtruth items, with fields:
+      'groundtruth_boxes': [batch_size, max_number_of_boxes, 4] float32 tensor
+        of boxes, in normalized coordinates.
+      'groundtruth_classes':  [batch_size, max_number_of_boxes] int64 tensor of
+        1-indexed classes.
+      'groundtruth_area': [batch_size, max_number_of_boxes] float32 tensor of
+        bbox area. (Optional)
+      'groundtruth_is_crowd':[batch_size, max_number_of_boxes] int64
+        tensor. (Optional)
+      'groundtruth_difficult': [batch_size, max_number_of_boxes] int64
+        tensor. (Optional)
+      'groundtruth_group_of': [batch_size, max_number_of_boxes] int64
+        tensor. (Optional)
+      'groundtruth_instance_masks': 4D int64 tensor of instance
+        masks (Optional).
+    class_agnostic: Boolean indicating whether the detections are class-agnostic
+      (i.e. binary). Default False.
+    scale_to_absolute: Boolean indicating whether boxes and keypoints should be
+      scaled to absolute coordinates. Note that for IoU based evaluations, it
+      does not matter whether boxes are expressed in absolute or relative
+      coordinates. Default False.
+    original_image_spatial_shapes: A 2D int32 tensor of shape [batch_size, 2]
+      used to resize the image. When set to None, the image size is retained.
+    max_gt_boxes: [batch_size] tensor representing the maximum number of
+      groundtruth boxes to pad.
+
+  Returns:
+    A dictionary with:
+    'original_image': A [batch_size, H, W, C] uint8 image tensor.
+    'original_image_spatial_shape': A [batch_size, 2] tensor containing the
+      original image sizes.
+    'key': A [batch_size] string tensor with image identifier.
+    'detection_boxes': [batch_size, max_detections, 4] float32 tensor of boxes,
+      in normalized or absolute coordinates, depending on the value of
+      `scale_to_absolute`.
+    'detection_scores': [batch_size, max_detections] float32 tensor of scores.
+    'detection_classes': [batch_size, max_detections] int64 tensor of 1-indexed
+      classes.
+    'detection_masks': [batch_size, max_detections, H, W] float32 tensor of
+      binarized masks, reframed to full image masks.
+    'num_detections': [batch_size] int64 tensor containing number of valid
+      detections.
+    'groundtruth_boxes': [batch_size, num_boxes, 4] float32 tensor of boxes, in
+      normalized or absolute coordinates, depending on the value of
+      `scale_to_absolute`. (Optional)
+    'groundtruth_classes': [batch_size, num_boxes] int64 tensor of 1-indexed
+      classes. (Optional)
+    'groundtruth_area': [batch_size, num_boxes] float32 tensor of bbox
+      area. (Optional)
+    'groundtruth_is_crowd': [batch_size, num_boxes] int64 tensor. (Optional)
+    'groundtruth_difficult': [batch_size, num_boxes] int64 tensor. (Optional)
+    'groundtruth_group_of': [batch_size, num_boxes] int64 tensor. (Optional)
+    'groundtruth_instance_masks': 4D int64 tensor of instance masks
+      (Optional).
+    'num_groundtruth_boxes': [batch_size] tensor containing the maximum number
+      of groundtruth boxes per image.
+
+  Raises:
+    ValueError: if original_image_spatial_shape is not 1D int32 tensor of shape
+    [2].
+  """
   label_id_offset = 1  # Applying label id offset (b/63711816)
 
   input_data_fields = fields.InputDataFields
+  if original_image_spatial_shapes is None:
+    original_image_spatial_shapes = tf.tile(
+        tf.expand_dims(tf.shape(images)[1:3], axis=0),
+        multiples=[tf.shape(images)[0], 1])
+  else:
+    if (len(original_image_spatial_shapes.shape) != 2 and
+        original_image_spatial_shapes.shape[1] != 2):
+      raise ValueError(
+          '`original_image_spatial_shape` should be a 2D tensor of shape '
+          '[batch_size, 2].')
+
   output_dict = {
-      input_data_fields.original_image: image,
-      input_data_fields.key: key,
+      input_data_fields.original_image: images,
+      input_data_fields.key: keys,
+      input_data_fields.original_image_spatial_shape: (
+          original_image_spatial_shapes)
   }
 
   detection_fields = fields.DetectionResultFields
-  detection_boxes = detections[detection_fields.detection_boxes][0]
-  image_shape = tf.shape(image)
-  detection_scores = detections[detection_fields.detection_scores][0]
+  detection_boxes = detections[detection_fields.detection_boxes]
+  detection_scores = detections[detection_fields.detection_scores]
+  num_detections = tf.to_int32(detections[detection_fields.num_detections])
 
   if class_agnostic:
     detection_classes = tf.ones_like(detection_scores, dtype=tf.int64)
   else:
     detection_classes = (
-        tf.to_int64(detections[detection_fields.detection_classes][0]) +
+        tf.to_int64(detections[detection_fields.detection_classes]) +
         label_id_offset)
 
-  num_detections = tf.to_int32(detections[detection_fields.num_detections][0])
-  detection_boxes = tf.slice(
-      detection_boxes, begin=[0, 0], size=[num_detections, -1])
-  detection_classes = tf.slice(
-      detection_classes, begin=[0], size=[num_detections])
-  detection_scores = tf.slice(
-      detection_scores, begin=[0], size=[num_detections])
-
   if scale_to_absolute:
-    absolute_detection_boxlist = box_list_ops.to_absolute_coordinates(
-        box_list.BoxList(detection_boxes), image_shape[1], image_shape[2])
     output_dict[detection_fields.detection_boxes] = (
-        absolute_detection_boxlist.get())
+        shape_utils.static_or_dynamic_map_fn(
+            _scale_box_to_absolute,
+            elems=[detection_boxes, original_image_spatial_shapes],
+            dtype=tf.float32))
   else:
     output_dict[detection_fields.detection_boxes] = detection_boxes
   output_dict[detection_fields.detection_classes] = detection_classes
   output_dict[detection_fields.detection_scores] = detection_scores
+  output_dict[detection_fields.num_detections] = num_detections
 
   if detection_fields.detection_masks in detections:
-    detection_masks = detections[detection_fields.detection_masks][0]
+    detection_masks = detections[detection_fields.detection_masks]
     # TODO(rathodv): This should be done in model's postprocess
     # function ideally.
-    detection_masks = tf.slice(
-        detection_masks, begin=[0, 0, 0], size=[num_detections, -1, -1])
-    detection_masks_reframed = ops.reframe_box_masks_to_image_masks(
-        detection_masks, detection_boxes, image_shape[1], image_shape[2])
-    detection_masks_reframed = tf.cast(
-        tf.greater(detection_masks_reframed, 0.5), tf.uint8)
-    output_dict[detection_fields.detection_masks] = detection_masks_reframed
+    output_dict[detection_fields.detection_masks] = (
+        shape_utils.static_or_dynamic_map_fn(
+            _resize_detection_masks,
+            elems=[detection_boxes, detection_masks,
+                   original_image_spatial_shapes],
+            dtype=tf.uint8))
+
   if detection_fields.detection_keypoints in detections:
-    detection_keypoints = detections[detection_fields.detection_keypoints][0]
+    detection_keypoints = detections[detection_fields.detection_keypoints]
     output_dict[detection_fields.detection_keypoints] = detection_keypoints
     if scale_to_absolute:
-      absolute_detection_keypoints = keypoint_ops.scale(
-          detection_keypoints, image_shape[1], image_shape[2])
       output_dict[detection_fields.detection_keypoints] = (
-          absolute_detection_keypoints)
+          shape_utils.static_or_dynamic_map_fn(
+              _scale_keypoint_to_absolute,
+              elems=[detection_keypoints, original_image_spatial_shapes],
+              dtype=tf.float32))
 
   if groundtruth:
+    if max_gt_boxes is None:
+      if input_data_fields.num_groundtruth_boxes in groundtruth:
+        max_gt_boxes = groundtruth[input_data_fields.num_groundtruth_boxes]
+      else:
+        raise ValueError(
+            'max_gt_boxes must be provided when processing batched examples.')
+
     if input_data_fields.groundtruth_instance_masks in groundtruth:
       masks = groundtruth[input_data_fields.groundtruth_instance_masks]
-      masks = tf.expand_dims(masks, 3)
-      masks = tf.image.resize_images(
-          masks,
-          image_shape[1:3],
-          method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
-          align_corners=True)
-      masks = tf.squeeze(masks, 3)
-      groundtruth[input_data_fields.groundtruth_instance_masks] = tf.cast(
-          masks, tf.uint8)
+      groundtruth[input_data_fields.groundtruth_instance_masks] = (
+          shape_utils.static_or_dynamic_map_fn(
+              _resize_groundtruth_masks,
+              elems=[masks, original_image_spatial_shapes],
+              dtype=tf.uint8))
+
     output_dict.update(groundtruth)
     if scale_to_absolute:
       groundtruth_boxes = groundtruth[input_data_fields.groundtruth_boxes]
-      absolute_gt_boxlist = box_list_ops.to_absolute_coordinates(
-          box_list.BoxList(groundtruth_boxes), image_shape[1], image_shape[2])
       output_dict[input_data_fields.groundtruth_boxes] = (
-          absolute_gt_boxlist.get())
+          shape_utils.static_or_dynamic_map_fn(
+              _scale_box_to_absolute,
+              elems=[groundtruth_boxes, original_image_spatial_shapes],
+              dtype=tf.float32))
+
     # For class-agnostic models, groundtruth classes all become 1.
     if class_agnostic:
       groundtruth_classes = groundtruth[input_data_fields.groundtruth_classes]
       groundtruth_classes = tf.ones_like(groundtruth_classes, dtype=tf.int64)
       output_dict[input_data_fields.groundtruth_classes] = groundtruth_classes
+
+    output_dict[input_data_fields.num_groundtruth_boxes] = max_gt_boxes
 
   return output_dict
 
