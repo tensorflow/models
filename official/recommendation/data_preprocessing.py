@@ -394,7 +394,8 @@ def _shutdown(proc):
     try:
       proc.send_signal(signal.SIGINT)
       time.sleep(5)
-      if proc.returncode is not None:
+      if proc.poll() is not None:
+        tf.logging.info("Train data creation subprocess ended")
         return  # SIGINT was handled successfully within 5 seconds
 
     except socket.error:
@@ -403,6 +404,7 @@ def _shutdown(proc):
     # Otherwise another second of grace period and then force kill the process.
     time.sleep(1)
     proc.terminate()
+    tf.logging.info("Train data creation subprocess killed")
   except:  # pylint: disable=broad-except
     tf.logging.error("Data generation subprocess could not be killed.")
 
@@ -429,9 +431,10 @@ def write_flagfile(flags_, ncf_dataset):
       "Wrote flagfile for async data generation in {}.".format(flagfile))
 
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
-                         num_data_readers=None, num_neg=4, epochs_per_cycle=1,
-                         match_mlperf=False, deterministic=False,
-                         use_subprocess=True, cache_id=None):
+                         num_cycles, num_data_readers=None, num_neg=4,
+                         epochs_per_cycle=1, match_mlperf=False,
+                         deterministic=False, use_subprocess=True,
+                         cache_id=None):
   # type: (...) -> (NCFDataset, typing.Callable)
   """Preprocess data and start negative generation subprocess."""
 
@@ -455,6 +458,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "num_users": ncf_dataset.num_users,
       "num_readers": ncf_dataset.num_data_readers,
       "epochs_per_cycle": epochs_per_cycle,
+      "num_cycles": num_cycles,
       "train_batch_size": batch_size,
       "eval_batch_size": eval_batch_size,
       "num_workers": num_workers,
@@ -656,6 +660,16 @@ def make_input_fn(
   return input_fn, record_dir, batch_count
 
 
+def _check_subprocess_alive(ncf_dataset, directory):
+  if (not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive) and
+      not tf.gfile.Exists(directory)):
+    # The generation subprocess must have been alive at some point, because we
+    # earlier checked that the subproc_alive file existed.
+    raise ValueError("Generation subprocess unexpectedly died. Data will not "
+                     "be available; exiting to avoid waiting forever.")
+
+
+
 def get_epoch_info(is_training, ncf_dataset):
   """Wait for the epoch input data to be ready and return various info about it.
 
@@ -669,14 +683,10 @@ def get_epoch_info(is_training, ncf_dataset):
     template: A string template of the files in `record_dir`.
       `template.format('*')` is a glob that matches all the record files.
   """
-  if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
-    # The generation subprocess must have been alive at some point, because we
-    # earlier checked that the subproc_alive file existed.
-    raise ValueError("Generation subprocess unexpectedly died. Data will not "
-                     "be available; exiting to avoid waiting forever.")
-
   if is_training:
     train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
+    _check_subprocess_alive(ncf_dataset, train_epoch_dir)
+
     while not tf.gfile.Exists(train_epoch_dir):
       tf.logging.info("Waiting for {} to exist.".format(train_epoch_dir))
       time.sleep(1)
@@ -692,6 +702,7 @@ def get_epoch_info(is_training, ncf_dataset):
     template = rconst.TRAIN_RECORD_TEMPLATE
   else:
     record_dir = ncf_dataset.cache_paths.eval_data_subdir
+    _check_subprocess_alive(ncf_dataset, record_dir)
     template = rconst.EVAL_RECORD_TEMPLATE
 
   ready_file = os.path.join(record_dir, rconst.READY_FILE)
