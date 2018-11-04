@@ -393,7 +393,7 @@ class NcfTPUModelRunner(object):
         if is_training:
           unflattened_inputs = data_nest.pack_sequence_as(self.train_feature_structure, args)
           features = unflattened_inputs['features']
-          mode = tf.estimator.ModeKeys.TRAIN
+          mode = tf.estimator.ModeKeys.TRAIN if is_training else tf.estimator.ModeKeys.EVAL
           labels = unflattened_inputs['labels']
           estimator_spec = model_fn (features, labels, mode, params)
           loss, train_op = estimator_spec.loss, estimator_spec.train_op
