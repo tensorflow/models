@@ -207,14 +207,20 @@ def run_ncf(_):
       "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
       "use_estimator": FLAGS.use_estimator,
   }
+
+  shutdown_runner = lambda :None
   if FLAGS.use_estimator:
     train_estimator, eval_estimator = construct_estimator(
         num_gpus=num_gpus, model_dir=FLAGS.model_dir,
         iterations=num_train_steps, params=params,
         batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
   else:
-    runner = model_runner.NcfModelRunner(ncf_dataset, params, num_train_steps,
-                                         num_eval_steps, FLAGS.use_while_loop)
+    if FLAGS.tpu is not None:
+      runner = model_runner.NcfTPUModelRunner(
+        ncf_dataset, params, num_train_steps, num_eval_steps)
+    else:
+      runner = model_runner.NcfModelRunner(ncf_dataset, params, num_train_steps,
+                                           num_eval_steps, FLAGS.use_while_loop)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -306,8 +312,10 @@ def run_ncf(_):
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP, value=cycle_index)
 
-    # Benchmark the evaluation results
-    benchmark_logger.log_evaluation_result(eval_results)
+    if FLAGS.use_estimator:
+      # Benchmark the evaluation results
+      benchmark_logger.log_evaluation_result(eval_results)
+
     # Log the HR and NDCG results.
     tf.logging.info(
         "Iteration {}: HR = {:.4f}, NDCG = {:.4f}".format(
@@ -321,6 +329,7 @@ def run_ncf(_):
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_STOP,
                           value={"success": target_reached})
   cleanup_fn()  # Cleanup data construction artifacts and subprocess.
+  shutdown_runner()  # No-op if model runner is not used.
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()

@@ -34,7 +34,7 @@ import typing
 
 import tensorflow as tf
 
-_MIN_VERSION = (0, 0, 6)
+_MIN_VERSION = (0, 0, 10)
 _STACK_OFFSET = 2
 
 SUDO = "sudo" if os.geteuid() else ""
