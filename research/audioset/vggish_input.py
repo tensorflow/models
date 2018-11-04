@@ -15,12 +15,12 @@
 
 """Compute input examples for VGGish from audio waveform."""
 
+from . import mel_features
+from . import vggish_params
+
 import numpy as np
 import resampy
 from scipy.io import wavfile
-
-import mel_features
-import vggish_params
 
 
 def waveform_to_examples(data, sample_rate):
