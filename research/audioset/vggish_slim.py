@@ -30,8 +30,8 @@ For comparison, here is TF-Slim's VGG definition:
 https://github.com/tensorflow/models/blob/master/research/slim/nets/vgg.py
 """
 
-from . import vggish_params as params
 import tensorflow as tf
+import vggish_params as params
 
 slim = tf.contrib.slim
 

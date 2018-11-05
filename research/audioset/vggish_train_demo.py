@@ -47,12 +47,12 @@ from __future__ import print_function
 
 from random import shuffle
 
-from . import vggish_input
-from . import vggish_params
-from . import vggish_slim
-
 import numpy as np
 import tensorflow as tf
+
+import vggish_input
+import vggish_params
+import vggish_slim
 
 flags = tf.app.flags
 slim = tf.contrib.slim
