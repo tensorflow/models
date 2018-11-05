@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from collections import namedtuple
 import os
+from six.moves import xrange
 import threading
 import time
 
@@ -156,7 +157,7 @@ class NcfModelRunner(object):
           iterator, model_fn, params, record_files_placeholder, num_steps)
 
   def _build_train_specific_graph(self, iterator, model_fn, params,
-                                  record_files_placeholder, num_train_steps):
+                                  record_files_placeholder):
     """Builds the part of the model that is specific to training."""
 
     def build():
@@ -173,8 +174,8 @@ class NcfModelRunner(object):
         with tf.control_dependencies([run_model_op_single_step]):
           return i + 1
 
-      run_model_op = tf.while_loop(lambda i: i < num_train_steps, body, [0],
-                                   parallel_iterations=1)
+      run_model_op = tf.while_loop(lambda i: i < self._num_train_steps, body,
+                                   [0], parallel_iterations=1)
       loss = None
     else:
       run_model_op, loss = build()
@@ -184,7 +185,7 @@ class NcfModelRunner(object):
         run_model_op)
 
   def _build_eval_specific_graph(self, iterator, model_fn, params,
-                                 record_files_placeholder, num_eval_steps):
+                                 record_files_placeholder):
     """Builds the part of the model that is specific to evaluation."""
 
     def build():
@@ -203,8 +204,8 @@ class NcfModelRunner(object):
         with tf.control_dependencies([run_model_op_single_step]):
           return i + 1
 
-      run_model_op = tf.while_loop(lambda i: i < num_eval_steps, body, [0],
-                                   parallel_iterations=1)
+      run_model_op = tf.while_loop(lambda i: i < self._num_eval_steps, body,
+                                   [0], parallel_iterations=1)
       loss = None
       eval_metric_tensors = {
           "HR": self._compute_metric_mean(rconst.HR_METRIC_NAME),
@@ -353,6 +354,7 @@ class NcfTPUModelRunner(object):
     self.dequeue_ops = None
     self._global_step = None
     self.delete_thread = None
+    self._num_shards = params["num_shards"]
     with tf.Graph().as_default() as self._graph:
       tf.enable_resource_variables()
       self._ncf_dataset = ncf_dataset
@@ -367,7 +369,8 @@ class NcfTPUModelRunner(object):
       self._local_initializer = tf.local_variables_initializer()
       self._saver = tf.train.Saver()
 
-    self._sess = tf.Session(FLAGS.tpu, graph=self._graph)
+    self._tpu_cluster = tf.contrib.cluster_resolver.TPUClusterResolver(params["tpu"])
+    self._sess = tf.Session(self._tpu_cluster.get_master(), graph=self._graph)
     self._sess.run(self._tpu_init)
     self._sess.run(initializer)
     self._sess.run(self._local_initializer)
@@ -433,7 +436,7 @@ class NcfTPUModelRunner(object):
         infeed = tpu.InfeedQueue(
           tuple_types=[t.dtype for t in flattened_inputs],
           tuple_shapes=[t.shape for t in flattened_inputs])
-        infeed.set_number_of_shards(FLAGS.num_shards)
+        infeed.set_number_of_shards(self._num_shards)
 
         infeed_queue.append(infeed)
         enqueue_ops = infeed.split_inputs_and_generate_enqueue_ops(
@@ -464,7 +467,7 @@ class NcfTPUModelRunner(object):
         tensor_shapes.append(v.shape)
         tf.logging.info("appending %s" % v.name)
 
-      for i in xrange(FLAGS.num_shards):
+      for i in xrange(self._num_shards):
         with tf.device('/job:tpu_worker/task:0/CPU:0'):
           outfeed_tensors = tpu.outfeed_dequeue_tuple(
             dtypes=tensor_dtypes,
@@ -481,7 +484,7 @@ class NcfTPUModelRunner(object):
       (loss, ) = tpu.shard(
         tpu_loop,
         inputs=[],
-        num_shards=FLAGS.num_shards,
+        num_shards=self._num_shards,
         outputs_from_all_shards=False)
       return self._TrainModelProperties(
         record_files_placeholder, iterator,
@@ -490,7 +493,7 @@ class NcfTPUModelRunner(object):
       (loss, ) = tpu.shard(
         tpu_loop,
         inputs=[],
-        num_shards=FLAGS.num_shards,
+        num_shards=self._num_shards,
         outputs_from_all_shards=False)
 
       self.dequeue_ops = create_dequeue_ops()
@@ -565,13 +568,9 @@ class NcfTPUModelRunner(object):
 
 
   def train(self):
-    """Trains the graph for a single cycle.
-
-    Args:
-      num_train_steps: The number of steps per cycle to train for.
-    """
+    """Trains the graph for a single cycle."""
     record_dir = self._train_or_eval(self._train_model_properties,
-                                     self.num_train_steps, is_training=True)
+                                     self._num_train_steps, is_training=True)
 
     def delete_dir(record_dir):
       # We delete the record_dir because each cycle, new TFRecords is generated
@@ -597,7 +596,7 @@ class NcfTPUModelRunner(object):
 
     def outfeed_thread_fn():
       tf.logging.info("start dequeue ops")
-      for i in range(self.num_eval_steps):
+      for i in range(self._num_eval_steps):
         # Execute outfeed tensors
         _ = self._sess.run(self.metric_update_ops)
       # Compute eval metrics
@@ -610,7 +609,7 @@ class NcfTPUModelRunner(object):
     outfeed_thread = threading.Thread(target=outfeed_thread_fn)
     outfeed_thread.start()
     self._sess.run(self._eval_model_properties.metric_initializer)
-    self._train_or_eval(self._eval_model_properties, self.num_eval_steps,
+    self._train_or_eval(self._eval_model_properties, self._num_eval_steps,
                         is_training=False)
     if self.delete_thread is not None:
       self.delete_thread.join()

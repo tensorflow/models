@@ -641,7 +641,7 @@ def make_input_fn(
 
     interleave = tf.contrib.data.parallel_interleave(
         tf.data.TFRecordDataset,
-        cycle_length=4,
+        cycle_length=8,
         block_length=100000,
         sloppy=not ncf_dataset.deterministic,
         prefetch_input_elements=4,
@@ -649,7 +649,7 @@ def make_input_fn(
 
     deserialize = make_deserialize(params, batch_size, is_training)
     dataset = record_files_ds.apply(interleave)
-    dataset = dataset.map(deserialize, num_parallel_calls=4)
+    dataset = dataset.map(deserialize, num_parallel_calls=32)
     dataset = dataset.prefetch(32)
 
     if params.get("hash_pipeline"):

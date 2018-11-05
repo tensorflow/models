@@ -206,6 +206,7 @@ def run_ncf(_):
       "match_mlperf": FLAGS.ml_perf,
       "use_xla_for_gpu": FLAGS.use_xla_for_gpu,
       "use_estimator": FLAGS.use_estimator,
+      "num_shards": FLAGS.num_shards,
   }
 
   shutdown_runner = lambda :None
@@ -526,6 +527,11 @@ def define_ncf_flags():
   def while_loop_validator(flag_dict):
     return (not flag_dict["use_while_loop"] or
             not flag_dict["use_estimator"])
+
+
+  flags.DEFINE_integer(
+    name="num_shards", default=8, help=flags_core.help_wrap(
+      "Number of TPU shards"))
 
 
 if __name__ == "__main__":
