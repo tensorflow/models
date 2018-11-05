@@ -77,7 +77,7 @@ cp -r pycocotools <path_to_tensorflow>/models/research/
 The Tensorflow Object Detection API uses Protobufs to configure model and
 training parameters. Before the framework can be used, the Protobuf libraries
 must be compiled. This should be done by running the following command from
-the tensorflow/models/research/ [directory](https://github.com/tensorflow/models/tree/master/research):
+the [tensorflow/models/research/](https://github.com/tensorflow/models/tree/master/research/) directory:
 
 
 ``` bash
