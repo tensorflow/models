@@ -259,7 +259,13 @@ def resnet_model_fn(features, labels, mode, model_class,
   assert features.dtype == dtype
 
   if use_keras_model:
-    model = keras_resnet_model.ResNet50(classes=num_classes, weights=None)
+    model = keras_resnet_model.ResNet50(classes=num_classes, weights=None,
+                                        training=(mode == tf.estimator.ModeKeys.TRAIN))
+    bn_updates = []
+    if mode == tf.estimator.ModeKeys.TRAIN:
+      for l in model.layers:
+        if 'bn' in l.name:
+          bn_updates.append(l.get_updates_for(features))
   else:
     model = model_class(resnet_size, data_format, resnet_version=resnet_version,
                         dtype=dtype)
@@ -355,6 +361,10 @@ def resnet_model_fn(features, labels, mode, model_class,
       minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    if use_keras_model:
+      update_ops = bn_updates
+    else:
+      update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
   else:
     train_op = None
