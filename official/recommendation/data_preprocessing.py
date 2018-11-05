@@ -447,7 +447,12 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                                 cache_id=cache_id)
   # By limiting the number of workers we guarantee that the worker
   # pool underlying the training generation doesn't starve other processes.
-  num_workers = int(multiprocessing.cpu_count() * 0.75) or 1
+  num_cores = multiprocessing.cpu_count()
+  if num_cores < 8:
+    num_workers = int(multiprocessing.cpu_count() * 0.75) or 1
+  else:
+    num_workers = num_cores - 2
+
 
   flags_ = {
       "data_dir": data_dir,
