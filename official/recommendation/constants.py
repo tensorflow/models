@@ -67,6 +67,7 @@ NDCG_METRIC_NAME = "NDCG_METRIC"
 # ==============================================================================
 CYCLES_TO_BUFFER = 3  # The number of train cycles worth of data to "run ahead"
                       # of the main training loop.
+PARALLEL_GEN_EPOCHS = 8  # Number of epochs worth of data to generate at once.
 
 FLAGFILE_TEMP = "flagfile.temp"
 FLAGFILE = "flagfile"

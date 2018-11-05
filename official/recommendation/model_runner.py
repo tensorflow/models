@@ -82,10 +82,8 @@ class NcfModelRunner(object):
         tf.enable_resource_variables()
       self._ncf_dataset = ncf_dataset
       self._global_step = tf.train.create_global_step()
-      self._train_model_properties = self._build_model(params, num_train_steps,
-                                                       is_training=True)
-      self._eval_model_properties = self._build_model(params, num_eval_steps,
-                                                      is_training=False)
+      self._train_model_properties = self._build_model(params, is_training=True)
+      self._eval_model_properties = self._build_model(params, is_training=False)
 
       initializer = tf.global_variables_initializer()
     self._graph.finalize()
@@ -126,7 +124,7 @@ class NcfModelRunner(object):
     return total_var / count_var
 
 
-  def _build_model(self, params, num_steps, is_training):
+  def _build_model(self, params, is_training):
     """Builds the NCF model.
 
     Args:
@@ -151,10 +149,10 @@ class NcfModelRunner(object):
 
     if is_training:
       return self._build_train_specific_graph(
-          iterator, model_fn, params, record_files_placeholder, num_steps)
+          iterator, model_fn, params, record_files_placeholder)
     else:
       return self._build_eval_specific_graph(
-          iterator, model_fn, params, record_files_placeholder, num_steps)
+          iterator, model_fn, params, record_files_placeholder)
 
   def _build_train_specific_graph(self, iterator, model_fn, params,
                                   record_files_placeholder):
