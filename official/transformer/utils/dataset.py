@@ -154,8 +154,8 @@ def _batch_examples(dataset, batch_size, max_length):
   buckets_min, buckets_max = _create_min_max_boundaries(max_length)
 
   # Create list of batch sizes for each bucket_id, so that
-  # bucket_batch_size[bucket_id] * buckets_max[bucket_id] <= batch_size
-  bucket_batch_sizes = [batch_size // x for x in buckets_max]
+  # bucket_batch_size[bucket_id] * (buckets_max[bucket_id] - 1) <= batch_size
+  bucket_batch_sizes = [batch_size // (x - 1) for x in buckets_max]
   # bucket_id will be a tensor, so convert this list to a tensor as well.
   bucket_batch_sizes = tf.constant(bucket_batch_sizes, dtype=tf.int64)
 
