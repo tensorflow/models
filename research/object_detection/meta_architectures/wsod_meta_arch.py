@@ -311,7 +311,9 @@ class WSODMetaArch(model.DetectionModel):
                category_strings=None,
                wsod_groundtruth_non_max_suppression_fn=None,
                name_to_class_id=None,
-               wsod_mil_cls_loss_weight=None):
+               class_id_to_name=None,
+               wsod_mil_cls_loss_weight=None,
+               train_only_rpn=None):
     """WSODMetaArch Constructor.
 
     Args:
@@ -538,7 +540,9 @@ class WSODMetaArch(model.DetectionModel):
     self._category_strings = category_strings
     self._wsod_groundtruth_non_max_suppression_fn = wsod_groundtruth_non_max_suppression_fn
     self._name_to_class_id = name_to_class_id
+    self._class_id_to_name = class_id_to_name
     self._wsod_mil_cls_loss_weight = wsod_mil_cls_loss_weight
+    self._train_only_rpn = train_only_rpn
 
   @property
   def first_stage_feature_extractor_scope(self):
@@ -772,19 +776,31 @@ class WSODMetaArch(model.DetectionModel):
           rpn_features_to_crop,
           self._anchors.get(), image_shape, true_image_shapes))
 
-      # # Visualize proposal boxes.
-      # with tf.name_scope("final_proposals"):
-      #   image_uint8 = tf.cast(
-      #       (prediction_dict['preprocessed_inputs'] + 1.0) * 0.5 * 255, tf.uint8)
-      #   proposals = prediction_dict['proposal_boxes_normalized']
-      #   proposal_scores = prediction_dict['proposal_scores']
-      #   image_with_dt = self._draw_top_k_proposals_helper(
-      #       image=image_uint8,
-      #       proposals=proposals,
-      #       proposal_scores=proposal_scores, 
-      #       k=5, nms=False, color=(0, 0, 255))
-      #   tf.summary.image("image", 
-      #       tf.concat([image_with_dt], axis=2), max_outputs=10)
+      # TODO(yek@) Remove the regression of the second stage.
+      prediction_dict['refined_box_encodings'] = tf.zeros_like(prediction_dict['refined_box_encodings'])
+
+      detections = self.postprocess(prediction_dict, true_image_shapes)
+      with tf.name_scope("final_detections"):
+        image_uint8 = tf.cast(
+            (prediction_dict['preprocessed_inputs'] + 1.0) * 0.5 * 255, tf.uint8)
+
+        rtable = tf.contrib.lookup.HashTable(
+            tf.contrib.lookup.KeyValueTensorInitializer( 
+              keys=[x for x in self._class_id_to_name.keys()],
+              values=[x for x in self._class_id_to_name.values()],
+              key_dtype=tf.int64),
+            default_value="")
+        detection_classes = tf.cast(detections['detection_classes'], tf.int64)
+        detection_classes = rtable.lookup(detection_classes + 1)
+
+        image_with_dt = self._draw_top_k_proposals_helper(
+            image=image_uint8,
+            proposals=detections['detection_boxes'],
+            proposal_scores=detections['detection_scores'], 
+            proposal_labels=detection_classes, 
+            k=5, nms=False, color=(255, 0, 0))
+        tf.summary.image("image", 
+            tf.concat([image_with_dt], axis=2), max_outputs=10)
 
     if self._number_of_stages == 3:
       prediction_dict = self._predict_third_stage(
@@ -1104,6 +1120,75 @@ class WSODMetaArch(model.DetectionModel):
     cap.set_shape([max_len])
     return cap_len, cap
 
+  def _string_join_helper(self, 
+      groundtruth_caption_list, groundtruth_class_ids_list):
+    """Helper function used to join the strings in the list.
+
+    Args:
+      groundtruth_caption_list: a list (length `batch`) of 2-D tensors of shape [batch, 
+        caption_length] representing the groundtruth captions.
+      groundtruth_class_ids_list: a list (length `batch`) of 1-D tensors of
+        shape [1 + num_classes] denoting the existence of each class, the 0-th
+        entry is reserved for background (pad with `0`) .
+
+    Returns:
+      caption_string_list: a list (length `batch`) of 0-D string tensors 
+        denoting caption strings to be visualized.
+      class_string_list: a list (length `batch`) of 0-D string tensors denoting
+        class strings to be visualized.
+    """
+    with tf.name_scope('string_join_helper'):
+      rtable = tf.contrib.lookup.HashTable(
+          tf.contrib.lookup.KeyValueTensorInitializer( 
+            keys=[x for x in self._class_id_to_name.keys()],
+            values=[x for x in self._class_id_to_name.values()],
+            key_dtype=tf.int64),
+          default_value="")
+
+      caption_string_list, class_string_list = [], []
+      for caption, class_ids in zip(groundtruth_caption_list, groundtruth_class_ids_list):
+        indices = tf.where(tf.not_equal(class_ids[:], 0))[:, 0]
+        class_names = rtable.lookup(indices)
+        class_string_list.append(
+            tf.reduce_join(rtable.lookup(indices), separator=','))
+        caption_string_list.append(
+            tf.reduce_join(caption, separator=' '))
+    return (caption_string_list, class_string_list)
+
+
+  def provide_wsod_class_groundtruth(self):
+    """Extract wsod image level class groundtruth.
+
+    Returns:
+      groundtruth_caption_list: a list (length `batch`) of 2-D tensors of shape [batch, 
+        caption_length] representing the groundtruth captions.
+      groundtruth_class_ids_list: a list (length `batch`) of 1-D tensors of
+        shape [1 + num_classes] denoting the existence of each class, the 0-th
+        entry is reserved for background (pad with `0`) .
+    """
+    with tf.name_scope('CaptionProcessor'):
+      table = tf.contrib.lookup.HashTable(
+          tf.contrib.lookup.KeyValueTensorInitializer( 
+            keys=[x for x in self._name_to_class_id.keys()],
+            values=[x for x in self._name_to_class_id.values()],
+            value_dtype=tf.int64),
+          default_value=0)
+
+      groundtruth_caption_list = self.groundtruth_lists(
+          fields.InputDataFields.groundtruth_caption)
+      groundtruth_class_ids_list = []
+
+      for groundtruth_caption in groundtruth_caption_list:
+        class_ids = table.lookup(groundtruth_caption)
+        class_ids = tf.sparse_to_dense(class_ids, 
+            output_shape=[1 + self.num_classes], 
+            sparse_values=1,
+            default_value=0,
+            validate_indices=False)
+        class_ids = tf.concat([[0], class_ids[1:]], axis=0)
+        groundtruth_class_ids_list.append(class_ids)
+    return (groundtruth_caption_list, groundtruth_class_ids_list)
+
 
   def provide_wsod_rpn_groundtruth(self, 
       preprocessed_inputs, unused_image_shape):
@@ -1247,7 +1332,7 @@ class WSODMetaArch(model.DetectionModel):
             proposal_scores=anchor_per_channel_scores[:, :, i],
             k=3, nms=False, color=(0, 255, 0))
         x = plotlib.draw_caption(x, tf.expand_dims(vocabulary_list[i], axis=0),
-            org=(5, 20), fontscale=1.0, color=(255, 0, 0), thickness=2)
+            org=(5, 5), fontscale=1.0, color=(255, 0, 0), thickness=1)
         x = tf.image.convert_image_dtype(x, tf.float32)
 
         image_with_boxes = tf.cond(
@@ -1975,91 +2060,78 @@ class WSODMetaArch(model.DetectionModel):
         groundtruth_weights_list=None,  # Can be `None`.
         )
 
-    # if self._number_of_stages > 1:
+    if self._number_of_stages > 1 and not self._train_only_rpn:
 
-    #   # Stage 2 Multiple Instance Learning.
+      # Stage 2 Multiple Instance Learning.
 
-    #   # Generate the ground-truth box classes using caption.
-    #   # Note, for the unused `groundtruth_classes_with_background_list`:
-    #   #   It should be a list of length `batch`.
-    #   #   Each of the element is a [num_boxes, num_classes + 1] tensor.
-    #   #   However, to support MIL, we require `num_boxes` == 1.
-    #   # Note, for the `groundtruth_image_classes_with_background_list`:
-    #   #   It should be a list of length `batch`.
-    #   #   Each of the element is a [num_classes + 1] tensor, representing image level annotation.
+      # Generate the ground-truth box classes using caption.
+      # Note, for the unused `groundtruth_classes_with_background_list`:
+      #   It should be a list of length `batch`.
+      #   Each of the element is a [num_boxes, num_classes + 1] tensor.
+      #   However, to support MIL, we require `num_boxes` == 1.
+      # Note, for the `groundtruth_image_classes_with_background_list` (i.e., `class_ids`):
+      #   It should be a list of length `batch`.
+      #   Each of the element is a [num_classes + 1] tensor, representing image level annotation.
 
-    #   unused_groundtruth_classes_with_background_list = [
-    #     tf.zeros([tf.shape(wsod_groundtruth_boxes)[1], self.num_classes + 1]) ]
+      unused_groundtruth_classes_with_background_list = [
+        tf.zeros([tf.shape(wsod_groundtruth_boxes)[1], self.num_classes + 1]) ]
 
-    #   groundtruth_image_classes_with_background_list = None
+      (groundtruth_caption_list, groundtruth_class_ids_list
+       ) = self.provide_wsod_class_groundtruth()
+      caption_string_list, class_string_list = self._string_join_helper(
+          groundtruth_caption_list, groundtruth_class_ids_list)
 
-    #   groundtruth_caption_list = self.groundtruth_lists(
-    #       fields.InputDataFields.groundtruth_caption)
+      # Reverse mapping from id to name.
 
-    #   table = tf.contrib.lookup.HashTable(
-    #       tf.contrib.lookup.KeyValueTensorInitializer( 
-    #         keys=[x for x in self._name_to_class_id.keys()],
-    #         values=[x for x in self._name_to_class_id.values()],
-    #         value_dtype=tf.int64),
-    #       default_value=0)
-    #   class_ids = table.lookup(groundtruth_caption_list[0])
-    #   class_ids = tf.sparse_to_dense(class_ids, 
-    #       output_shape=[self.num_classes + 1], 
-    #       sparse_values=1,
-    #       default_value=0,
-    #       validate_indices=False)
-    #   class_ids = tf.concat([[0], class_ids[1:]], axis=0)  # Set background to 0 for the groundtruth.
-    #   class_ids = tf.expand_dims(class_ids, axis=0)
+      loss_dict.update(
+          self._loss_box_classifier(
+              prediction_dict['refined_box_encodings'],
+              prediction_dict['class_predictions_with_background'],
+              prediction_dict['proposal_boxes'],
+              prediction_dict['num_proposals'],
+              groundtruth_boxlists,
+              unused_groundtruth_classes_with_background_list,
+              groundtruth_weights_list=None,  # Can be `None`.
+              image_shape=prediction_dict['image_shape'],
+              prediction_masks=None,  # Dont care.
+              groundtruth_masks_list=None,  # Dont care.
+              groundtruth_image_level_classes=tf.stack(
+                groundtruth_class_ids_list, axis=0),
+          ))
 
-    #   loss_dict.update(
-    #       self._loss_box_classifier(
-    #           prediction_dict['refined_box_encodings'],
-    #           prediction_dict['class_predictions_with_background'],
-    #           prediction_dict['proposal_boxes'],
-    #           prediction_dict['num_proposals'],
-    #           groundtruth_boxlists,
-    #           unused_groundtruth_classes_with_background_list,
-    #           groundtruth_weights_list=None,  # Can be `None`.
-    #           image_shape=prediction_dict['image_shape'],
-    #           prediction_masks=None,  # Dont care.
-    #           groundtruth_masks_list=None,  # Dont care.
-    #           groundtruth_image_level_classes=class_ids,
-    #       ))
+      ###################################################################
+      # Visualization
+      ###################################################################
 
-    ###################################################################
-    # Visualization
-    ###################################################################
+      # Visualize ground-truth boxes and predictions.
 
-    # Visualize ground-truth boxes and predictions.
+      image_uint8 = tf.cast(
+          (prediction_dict['preprocessed_inputs'] + 1.0) * 0.5 * 255, tf.uint8)
 
-    # proposal_boxes, proposal_scores, num_proposals = self._postprocess_rpn(
-    #     prediction_dict['rpn_box_encodings'],
-    #     prediction_dict['rpn_objectness_predictions_with_background'],
-    #     prediction_dict['anchors'],
-    #     self._image_batch_shape_2d(prediction_dict['image_shape']) ,
-    #     prediction_dict['true_image_shapes'])
-
-    image_uint8 = tf.cast(
-        (prediction_dict['preprocessed_inputs'] + 1.0) * 0.5 * 255, tf.uint8)
-
-    with tf.name_scope("wsod_rpn_prediction"):
-      image_with_gt = self._draw_top_k_proposals_helper(
-          image=image_uint8,
-          proposals=wsod_groundtruth_boxes,
-          proposal_scores=wsod_groundtruth_box_scores, 
-          k=3, nms=False, color=(0, 255, 0))
-      image_with_dt = self._draw_top_k_proposals_helper(
-          image=image_uint8,
-          proposals=prediction_dict['proposal_boxes_normalized'],
-          proposal_scores=prediction_dict['proposal_scores'], 
-          k=5, nms=False, color=(0, 0, 255))
-      tf.summary.image("image", 
-          tf.concat([image_with_gt, image_with_dt], axis=2), max_outputs=10)
+      with tf.name_scope("wsod_rpn_prediction"):
+        image_with_gt = self._draw_top_k_proposals_helper(
+            image=image_uint8,
+            proposals=wsod_groundtruth_boxes,
+            proposal_scores=wsod_groundtruth_box_scores, 
+            k=3, nms=False, color=(0, 255, 0))
+        image_with_dt = self._draw_top_k_proposals_helper(
+            image=image_uint8,
+            proposals=prediction_dict['proposal_boxes_normalized'],
+            proposal_scores=prediction_dict['proposal_scores'], 
+            k=5, nms=False, color=(0, 0, 255))
+        image_with_gt = plotlib.draw_caption(
+            image_with_gt, tf.stack(caption_string_list, axis=0),
+            org=(5, 5), fontscale=0.7, color=(0, 255, 0), thickness=1)
+        image_with_gt = plotlib.draw_caption(
+            image_with_gt, tf.stack(class_string_list, axis=0),
+            org=(5, 45), fontscale=0.7, color=(0, 255, 0), thickness=1)
+        tf.summary.image("image", 
+            tf.concat([image_with_gt, image_with_dt], axis=2), max_outputs=10)
 
     return loss_dict
 
-  def _draw_top_k_proposals_helper(self, image, proposals, 
-      proposal_scores, k=1, nms=True, color=(0, 0, 255), thickness=4):
+  def _draw_top_k_proposals_helper(self, image, proposals, proposal_scores,
+      proposal_labels=None, k=1, nms=True, color=(0, 0, 255), thickness=1):
     """Helper function used to draw top_k proposals on the image.
 
     Args:
@@ -2077,7 +2149,8 @@ class WSODMetaArch(model.DetectionModel):
     (batch, height, width, channels
      ) = shape_utils.combined_static_and_dynamic_shape(image)
 
-    if nms:
+    if nms:  # TODO(yek@): remove the nms parameter.
+      assert proposal_labels is None
       (nmsed_proposals, nmsed_proposal_scores, _, _, _,
        nmsed_num_proposals) = self._first_stage_nms_fn(
            tf.expand_dims(proposals, axis=2),
@@ -2088,15 +2161,19 @@ class WSODMetaArch(model.DetectionModel):
     max_num_proposals = tf.shape(proposals)[1]
     k = tf.minimum(k, max_num_proposals)
 
-    top_k_scores, top_k_proposals = tf.nn.top_k(proposal_scores, k)
-    top_k_proposals = tf.stack([
+    top_k_scores, top_k_indices = tf.nn.top_k(proposal_scores, k)
+    top_k_indices = tf.stack([
         tf.tile(tf.expand_dims(
             tf.range(batch, dtype=tf.int32), axis=-1), [1, k]),
-        top_k_proposals], axis=-1)
-    top_k_proposals = tf.gather_nd(proposals, top_k_proposals)
+        top_k_indices], axis=-1)
+    top_k_proposals = tf.gather_nd(proposals, top_k_indices)
+
+    top_k_labels = None
+    if proposal_labels is not None:
+      top_k_labels = tf.gather_nd(proposal_labels, top_k_indices)
 
     return plotlib.draw_rectangles(image, boxes=top_k_proposals, 
-        labels=top_k_scores, color=color, thickness=thickness)
+        scores=top_k_scores, labels=top_k_labels, color=color, thickness=thickness)
 
   def _get_score_map(self, preprocessed_inputs, unused_image_shape, vocabulary_list):
     """Gets anchor saliency directly from the saliency map.
@@ -2146,8 +2223,11 @@ class WSODMetaArch(model.DetectionModel):
       score_map = resize_fn(score_map)
       saliency_map = resize_fn(tf.expand_dims(saliency_map, axis=-1))
 
-    tf.train.init_from_checkpoint(
-        self._saliency_model_checkpoint_path, assignment_map={"/": "wsod/"})
+    if self._saliency_model_checkpoint_path:
+      tf.train.init_from_checkpoint(
+          self._saliency_model_checkpoint_path, assignment_map={"/": "wsod/"})
+    else:
+      tf.logging.warn('Make sure the saliency model is initialized from a directory.')
 
     return tf.stop_gradient(saliency_map), tf.stop_gradient(score_map)
   
@@ -2276,10 +2356,17 @@ class WSODMetaArch(model.DetectionModel):
     class_predictions_with_background = tf.reduce_max(
         class_predictions_with_background, axis=1)
 
+    # If not annotation exists, ignore the examaple.
+    mask = tf.reduce_any(
+        tf.greater(groundtruth_image_level_classes, 0), axis=1, keepdims=True)
+    mask = tf.cast(mask, tf.float32)
+    tf.summary.scalar('mil_box_classifier/mask', 
+        tf.reduce_mean(tf.reduce_sum(groundtruth_image_level_classes, axis=1)))
+
     losses = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=groundtruth_image_level_classes,
         logits=class_predictions_with_background)
-    return tf.reduce_mean(losses)
+    return tf.reduce_mean(losses * mask)
 
   def _loss_box_classifier(self,
                            refined_box_encodings,
@@ -2408,15 +2495,11 @@ class WSODMetaArch(model.DetectionModel):
 
       second_stage_cls_losses = ops.reduce_sum_trailing_dimensions(
           self._second_stage_classification_loss(
-              class_predictions_with_background,
+              tf.stop_gradient(class_predictions_with_background),
               batch_cls_targets_with_background,
               weights=batch_cls_weights,
               losses_mask=losses_mask),
           ndims=2) / normalizer
-
-      # Hide the box-confidence loss, by yek@.
-
-      second_stage_cls_losses = tf.stop_gradient(second_stage_cls_losses)
 
       second_stage_loc_loss = tf.reduce_sum(
           second_stage_loc_losses * tf.to_float(paddings_indicator))
@@ -2446,14 +2529,17 @@ class WSODMetaArch(model.DetectionModel):
       wsod_mil_cls_loss = self._loss_mil_box_classifier(
           class_predictions_with_background, groundtruth_image_level_classes)
 
-      wsod_mil_cls_loss =  tf.multiply(
-          self._wsod_mil_cls_loss_weight, 
-          wsod_mil_cls_loss, 
-          name='classification_mil_loss')
+      wsod_mil_cls_loss = tf.multiply(self._wsod_mil_cls_loss_weight, 
+                                      wsod_mil_cls_loss, 
+                                      name='classification_mil_loss')
 
-      loss_dict = {localization_loss.op.name: localization_loss,
-                   # classification_loss.op.name: classification_loss,
+      loss_dict = {# localization_loss.op.name: tf.stop_gradient(localization_loss),
+                   # classification_loss.op.name: tf.stop_gradient(classification_loss),
                    wsod_mil_cls_loss.op.name: wsod_mil_cls_loss}
+
+      # Object detection loss ends here, by yek@.
+
+      return loss_dict
 
       second_stage_mask_loss = None
       if prediction_masks is not None:

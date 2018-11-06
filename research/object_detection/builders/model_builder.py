@@ -493,20 +493,6 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
             second_stage_mask_prediction_loss_weight),
         **common_kwargs)
 
-def _read_vocabulary(filename):
-  """Reads vocabulary list from file.
-
-  Args:
-    filename: path to the file storing vocabulary info.
-
-  Returns:
-    vocabulary_list: a list of string.
-  """
-  with open(filename, "r") as fid:
-    vocabulary_list = [word.strip('\n') for word in fid.readlines()]
-  return vocabulary_list
-
-
 def _build_wsod_model(frcnn_config, is_training, add_summaries):
   """Builds a Faster R-CNN or R-FCN detection model based on the model config.
 
@@ -555,11 +541,17 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
   category_strings = None
 
   if frcnn_config.score_map_use_vocabulary:
-    category_strings = _read_vocabulary(frcnn_config.score_map_vocabulary_file)
+    category_strings = []
+    with open(frcnn_config.score_map_vocabulary_file, "r") as fid:
+      for line in fid.readlines():
+        name, class_id = line.strip('\n').split('\t')
+        category_strings.append(name)
+        assert 0 < int(class_id) <= frcnn_config.num_classes, "Invalid `class_id`!"
     if frcnn_config.score_map_vocabulary_use_top_k > 0:
-      category_strings = category_strings[:frcnn_config.score_map_vocabulary_use_top_k]
+      tf.logging.warn('score_map_vocabulary_use_top_k is deprecated')
 
   wsod_mil_cls_loss_weight = frcnn_config.wsod_mil_cls_loss_weight
+  train_only_rpn = frcnn_config.train_only_rpn
 
   # Load the `name_to_class_id` mapping.
   name_to_class_id = {}
@@ -567,6 +559,14 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
     for line in fid.readlines():
       name, class_id = line.strip('\n').split('\t')
       name_to_class_id[name] = int(class_id)
+      assert 0 < int(class_id) <= frcnn_config.num_classes, "Invalid `class_id`!"
+
+  # Load the `class_id_to_name` mapping.
+  class_id_to_name = {}
+  with open(frcnn_config.class_id_to_name_file, "r") as fid:
+    for line in fid.readlines():
+      class_id, name = line.strip('\n').split('\t')
+      class_id_to_name[int(class_id)] = name
       assert 0 < int(class_id) <= frcnn_config.num_classes, "Invalid `class_id`!"
 
   # Original frcnn configurations.
@@ -716,7 +716,9 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       'category_strings': category_strings,
       'wsod_groundtruth_non_max_suppression_fn': wsod_groundtruth_non_max_suppression_fn,
       'name_to_class_id': name_to_class_id,
+      'class_id_to_name': class_id_to_name,
       'wsod_mil_cls_loss_weight': wsod_mil_cls_loss_weight,
+      'train_only_rpn': train_only_rpn,
   }
 
   if isinstance(second_stage_box_predictor,

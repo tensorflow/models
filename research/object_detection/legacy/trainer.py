@@ -402,11 +402,15 @@ def train(create_tensor_dict_fn,
           fine_tune_checkpoint_type=train_config.fine_tune_checkpoint_type,
           load_all_detection_checkpoint_vars=(
               train_config.load_all_detection_checkpoint_vars))
-      var_map['MobilenetV1/Conv2d_12_pointwise/weights'] = var_map.pop("MobilenetV1/Conv2d_12_pointwise/pointwise_weights")
-      var_map['MobilenetV1/Conv2d_12_depthwise/depthwise_weights'] = var_map.pop("MobilenetV1/Conv2d_12_pointwise/depthwise_weights")
+      if 'MobilenetV1/Conv2d_12_pointwise/pointwise_weights' in var_map:
+        var_map['MobilenetV1/Conv2d_12_pointwise/weights'] = var_map.pop("MobilenetV1/Conv2d_12_pointwise/pointwise_weights")
+      if 'MobilenetV1/Conv2d_12_pointwise/depthwise_weights' in var_map:
+        var_map['MobilenetV1/Conv2d_12_depthwise/depthwise_weights'] = var_map.pop("MobilenetV1/Conv2d_12_pointwise/depthwise_weights")
 
-      var_map['MobilenetV1/Conv2d_13_pointwise/weights'] = var_map.pop('MobilenetV1/Conv2d_13_pointwise/pointwise_weights')
-      var_map['MobilenetV1/Conv2d_13_depthwise/depthwise_weights'] = var_map.pop('MobilenetV1/Conv2d_13_pointwise/depthwise_weights')
+      if 'MobilenetV1/Conv2d_13_pointwise/pointwise_weights' in var_map:
+        var_map['MobilenetV1/Conv2d_13_pointwise/weights'] = var_map.pop('MobilenetV1/Conv2d_13_pointwise/pointwise_weights')
+      if 'MobilenetV1/Conv2d_13_pointwise/depthwise_weights' in var_map:
+        var_map['MobilenetV1/Conv2d_13_depthwise/depthwise_weights'] = var_map.pop('MobilenetV1/Conv2d_13_pointwise/depthwise_weights')
 
       available_var_map = (variables_helper.
                            get_variables_available_in_checkpoint(
@@ -429,7 +433,7 @@ def train(create_tensor_dict_fn,
         summary_op=summary_op,
         number_of_steps=(
             train_config.num_steps if train_config.num_steps else None),
-        save_summaries_secs=15,
-        save_interval_secs=120,
+        save_summaries_secs=60,
+        save_interval_secs=60,
         sync_optimizer=sync_optimizer,
         saver=saver)

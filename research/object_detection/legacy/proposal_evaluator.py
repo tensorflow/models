@@ -35,6 +35,8 @@ flags.DEFINE_float('nms_iou_threshold', 0,
     'If greater than 0, apply the nms using the threshold.')
 flags.DEFINE_boolean('evaluate_proposals', False, 
     'If true, evaluate the proposals, otherwise evaluate the groundtruth.')
+flags.DEFINE_string('score_map_path', '',
+    'Path to the score map checkpoint.')
 FLAGS = flags.FLAGS
 
 
@@ -63,6 +65,7 @@ EVAL_METRICS_CLASS_DICT = {
 EVAL_DEFAULT_METRIC = 'coco_detection_metrics'
 #EVAL_DEFAULT_METRIC = 'pascal_voc_detection_metrics'
 
+previous_score_map_ckpt = None
 
 def _extract_predictions_and_losses(model,
                                     create_input_dict_fn,
@@ -313,21 +316,47 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
 
   variables_to_restore = tf.global_variables()
   global_step = tf.train.get_or_create_global_step()
-  variables_to_restore.append(global_step)
 
   if eval_config.use_moving_averages:
     variable_averages = tf.train.ExponentialMovingAverage(0.0)
     variables_to_restore = variable_averages.variables_to_restore()
+
+  score_map_path = FLAGS.score_map_path
+  score_map_variables = dict([(var.op.name[5:], var) \
+      for var in tf.global_variables() if var.op.name.startswith('wsod/')])
+  if FLAGS.score_map_path:
+    score_map_variables['global_step'] = global_step
+  else:
+    variables_to_restore.append(global_step)
+  #tensor_dict['global_step'] = global_step
+
   saver = tf.train.Saver(variables_to_restore)
+  score_map_saver=  tf.train.Saver(score_map_variables)
 
   def _restore_latest_checkpoint(sess):
+    global previous_score_map_ckpt
+
     if checkpoint_dir:
       latest_checkpoint = None
       while latest_checkpoint is None:
         time.sleep(10)
         tf.logging.info('Sleep for 10 secs.')
         latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
+      tf.logging.info('Restore from %s', latest_checkpoint)
       saver.restore(sess, latest_checkpoint)
+
+    if FLAGS.score_map_path:
+      latest_checkpoint = None
+      while True: 
+        time.sleep(10)
+        tf.logging.info('Sleep for 10 secs.')
+        latest_checkpoint = tf.train.latest_checkpoint(FLAGS.score_map_path)
+        if latest_checkpoint != previous_score_map_ckpt:
+          break
+
+      tf.logging.info('Restore from %s', latest_checkpoint)
+      score_map_saver.restore(sess, latest_checkpoint)
+      previous_score_map_ckpt = latest_checkpoint
 
   if not evaluator_list:
     evaluator_list = get_evaluators(eval_config, categories)
