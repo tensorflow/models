@@ -201,117 +201,6 @@ def init_worker():
   signal.signal(signal.SIGINT, sigint_handler)
 
 
-def write_record_files(
-    is_training, data, batch_size, num_pts, num_pts_with_padding, num_readers,
-    cache_paths, train_cycle, st, dupe_mask):
-  log_msg("Beginning shard write function...")
-  if is_training:
-    # The number of points is slightly larger than num_pts due to padding.
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_SIZE,
-                            value=int(data[0].shape[0]))
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_BATCH_SIZE,
-                            value=batch_size)
-  else:
-    # num_pts is logged instead of int(data[0].shape[0]), because the size
-    # of the data vector includes zero pads which are ignored.
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_SIZE, value=num_pts)
-
-  batches_per_file = np.ceil(num_pts_with_padding / batch_size / num_readers)
-  current_file_id = -1
-  current_batch_id = -1
-  batches_by_file = [[] for _ in range(num_readers)]
-
-  while True:
-    current_batch_id += 1
-    if (current_batch_id % batches_per_file) == 0:
-      current_file_id += 1
-
-    start_ind = current_batch_id * batch_size
-    end_ind = start_ind + batch_size
-    if end_ind > num_pts_with_padding:
-      if start_ind != num_pts_with_padding:
-        raise ValueError("Batch padding does not line up")
-      break
-    batches_by_file[current_file_id].append(current_batch_id)
-
-  # Drop shards which were not assigned batches
-  batches_by_file = [i for i in batches_by_file if i]
-  num_readers = len(batches_by_file)
-
-  if is_training:
-    # Empirically it is observed that placing the batch with repeated values at
-    # the start rather than the end improves convergence.
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_ORDER)
-    batches_by_file[0][0], batches_by_file[-1][-1] = \
-      batches_by_file[-1][-1], batches_by_file[0][0]
-
-  if is_training:
-    template = rconst.TRAIN_RECORD_TEMPLATE
-    record_dir = os.path.join(cache_paths.train_epoch_dir,
-                              get_cycle_folder_name(train_cycle))
-    tf.gfile.MakeDirs(record_dir)
-  else:
-    template = rconst.EVAL_RECORD_TEMPLATE
-    record_dir = cache_paths.eval_data_subdir
-
-  temp_dir = None
-  if record_dir.startswith("gs://"):
-    temp_dir = tempfile.mkdtemp()
-
-  log_msg("Begin writing records.")
-
-  for i in range(num_readers):
-    fpath = os.path.join(temp_dir if temp_dir else record_dir, template.format(i))
-    log_msg("Writing {}".format(fpath))
-    with tf.python_io.TFRecordWriter(fpath) as writer:
-      for j in batches_by_file[i]:
-        start_ind = j * batch_size
-        end_ind = start_ind + batch_size
-        record_kwargs = dict(
-          users=data[0][start_ind:end_ind],
-          items=data[1][start_ind:end_ind],
-        )
-
-        if is_training:
-          record_kwargs["labels"] = data[2][start_ind:end_ind]
-        else:
-          record_kwargs["dupe_mask"] = dupe_mask[start_ind:end_ind]
-
-        batch_bytes = _construct_record(**record_kwargs)
-
-        writer.write(batch_bytes)
-
-  if temp_dir:
-    # for i in tf.gfile.ListDirectory(temp_dir):
-    #   tf.gfile.Copy(os.path.join(temp_dir, i), os.path.join(record_dir, i))
-
-    # Lean on subprocess
-    subprocess.call(["gsutil", "-m", "cp", "-r", temp_dir + "/*", record_dir + "/"])
-
-    tf.gfile.DeleteRecursively(temp_dir)
-
-  batch_count = sum([len(i) for i in batches_by_file])
-
-  # We write to a temp file then atomically rename it to the final file, because
-  # writing directly to the final file can cause the main process to read a
-  # partially written JSON file.
-  log_msg("Preparing ready file.")
-  ready_file_temp = os.path.join(record_dir, rconst.READY_FILE_TEMP)
-  with tf.gfile.Open(ready_file_temp, "w") as f:
-    json.dump({
-      "batch_size": batch_size,
-      "batch_count": batch_count,
-    }, f)
-  ready_file = os.path.join(record_dir, rconst.READY_FILE)
-  tf.gfile.Rename(ready_file_temp, ready_file)
-
-  if is_training:
-    log_msg("Cycle {} complete. Total time: {:.1f} seconds"
-            .format(train_cycle, timeit.default_timer() - st))
-  else:
-    log_msg("Eval construction complete. Total time: {:.1f} seconds"
-            .format(timeit.default_timer() - st))
-
 
 def _construct_records(
     is_training,          # type: bool
@@ -489,9 +378,114 @@ def _construct_records(
   log_msg("Data generation complete. (time: {:.1f} seconds) Beginning file write."
           .format(timeit.default_timer() - st))
 
-  write_record_files(
-      is_training, data, batch_size, num_pts, num_pts_with_padding, num_readers,
-      cache_paths, train_cycle, st, dupe_mask)
+  log_msg("Beginning shard write function...")
+  if is_training:
+    # The number of points is slightly larger than num_pts due to padding.
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_SIZE,
+                            value=int(data[0].shape[0]))
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_BATCH_SIZE,
+                            value=batch_size)
+  else:
+    # num_pts is logged instead of int(data[0].shape[0]), because the size
+    # of the data vector includes zero pads which are ignored.
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_SIZE, value=num_pts)
+
+  batches_per_file = np.ceil(num_pts_with_padding / batch_size / num_readers)
+  current_file_id = -1
+  current_batch_id = -1
+  batches_by_file = [[] for _ in range(num_readers)]
+
+  while True:
+    current_batch_id += 1
+    if (current_batch_id % batches_per_file) == 0:
+      current_file_id += 1
+
+    start_ind = current_batch_id * batch_size
+    end_ind = start_ind + batch_size
+    if end_ind > num_pts_with_padding:
+      if start_ind != num_pts_with_padding:
+        raise ValueError("Batch padding does not line up")
+      break
+    batches_by_file[current_file_id].append(current_batch_id)
+
+  # Drop shards which were not assigned batches
+  batches_by_file = [i for i in batches_by_file if i]
+  num_readers = len(batches_by_file)
+
+  if is_training:
+    # Empirically it is observed that placing the batch with repeated values at
+    # the start rather than the end improves convergence.
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.INPUT_ORDER)
+    batches_by_file[0][0], batches_by_file[-1][-1] = \
+      batches_by_file[-1][-1], batches_by_file[0][0]
+
+  if is_training:
+    template = rconst.TRAIN_RECORD_TEMPLATE
+    record_dir = os.path.join(cache_paths.train_epoch_dir,
+                              get_cycle_folder_name(train_cycle))
+    tf.gfile.MakeDirs(record_dir)
+  else:
+    template = rconst.EVAL_RECORD_TEMPLATE
+    record_dir = cache_paths.eval_data_subdir
+
+  temp_dir = None
+  if record_dir.startswith("gs://"):
+    temp_dir = tempfile.mkdtemp()
+
+  log_msg("Begin writing records.")
+
+  for i in range(num_readers):
+    fpath = os.path.join(temp_dir if temp_dir else record_dir, template.format(i))
+    log_msg("Writing {}".format(fpath))
+    with tf.python_io.TFRecordWriter(fpath) as writer:
+      for j in batches_by_file[i]:
+        start_ind = j * batch_size
+        end_ind = start_ind + batch_size
+        record_kwargs = dict(
+          users=data[0][start_ind:end_ind],
+          items=data[1][start_ind:end_ind],
+        )
+
+        if is_training:
+          record_kwargs["labels"] = data[2][start_ind:end_ind]
+        else:
+          record_kwargs["dupe_mask"] = dupe_mask[start_ind:end_ind]
+
+        batch_bytes = _construct_record(**record_kwargs)
+
+        writer.write(batch_bytes)
+
+  if temp_dir:
+    if worker_ind <= 1:
+      # Lean on subprocess for first epoch and eval data for "-m"
+      subprocess.call(["gsutil", "-m", "cp", "-r", temp_dir + "/*", record_dir + "/"])
+    else:
+      for i in tf.gfile.ListDirectory(temp_dir):
+        tf.gfile.Copy(os.path.join(temp_dir, i), os.path.join(record_dir, i))
+
+    tf.gfile.DeleteRecursively(temp_dir)
+
+  batch_count = sum([len(i) for i in batches_by_file])
+
+  # We write to a temp file then atomically rename it to the final file, because
+  # writing directly to the final file can cause the main process to read a
+  # partially written JSON file.
+  log_msg("Preparing ready file.")
+  ready_file_temp = os.path.join(record_dir, rconst.READY_FILE_TEMP)
+  with tf.gfile.Open(ready_file_temp, "w") as f:
+    json.dump({
+      "batch_size": batch_size,
+      "batch_count": batch_count,
+    }, f)
+  ready_file = os.path.join(record_dir, rconst.READY_FILE)
+  tf.gfile.Rename(ready_file_temp, ready_file)
+
+  if is_training:
+    log_msg("Cycle {} complete. Total time: {:.1f} seconds"
+            .format(train_cycle, timeit.default_timer() - st))
+  else:
+    log_msg("Eval construction complete. Total time: {:.1f} seconds"
+            .format(timeit.default_timer() - st))
 
 
 def _generation_loop(num_workers,           # type: int
