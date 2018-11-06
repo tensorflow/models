@@ -83,6 +83,16 @@ class NcfModelRunner(object):
     self._session = tf.Session(graph=self._graph)
     self._session.run(initializer)
 
+    # Initilize the eval dataset iterator, just once.
+    _, eval_record_dir, eval_record_template = data_preprocessing.get_epoch_info(
+        is_training=False, ncf_dataset=self._ncf_dataset)
+    eval_record_files = os.path.join(
+        eval_record_dir, eval_record_template.format("*"))
+    eval_initializer_feed_dict = {
+        self._eval_model_properties.record_files_placeholder: eval_record_files}
+    self._sess.run(self._eval_model_properties.iterator.initializer,
+                  eval_initializer_feed_dict)
+
   def _compute_metric_mean(self, metric_name):
     """Computes the mean from a call tf tf.metrics.mean().
 
@@ -134,6 +144,10 @@ class NcfModelRunner(object):
           ncf_dataset=self._ncf_dataset, is_training=is_training,
           record_files=record_files_placeholder)
     dataset = input_fn(params)
+    # For eval, repeat the dataset indefinitely.
+    if not is_training:
+      dataset = dataset.cache()
+      dataset = dataset.repeat()
     iterator = dataset.make_initializable_iterator()
 
     model_fn = neumf_model.neumf_model_fn
@@ -241,8 +255,12 @@ class NcfModelRunner(object):
       initializer_feed_dict = None
       record_dir = None
 
-    self._session.run(model_properties.iterator.initializer,
-                      initializer_feed_dict)
+    # Only initialize the dataset on a per-call basis for training.
+    # Eval will be initialized once and repeated.
+    if is_training:
+      self._session.run(model_properties.iterator.initializer,
+                        initializer_feed_dict)
+
     fetches = (model_properties.run_model_op,)
     if model_properties.loss is not None:
       fetches += (model_properties.loss,)
