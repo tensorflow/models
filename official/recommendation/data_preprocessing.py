@@ -152,7 +152,7 @@ def _filter_index_sort(raw_rating_path, match_mlperf):
   num_items = len(original_items)
 
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_NUM_EVAL,
-                          value=num_users * (1 + rconst.NUM_EVAL_NEGATIVES))
+                          value=rconst.NUM_EVAL_NEGATIVES)
   mlperf_helper.ncf_print(
       key=mlperf_helper.TAGS.PREPROC_HP_SAMPLE_EVAL_REPLACEMENT,
       value=match_mlperf)
