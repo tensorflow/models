@@ -129,10 +129,10 @@ def _to_normalized_coordinates(box, height, width):
   """
   (ymin, xmin, ymax, xmax) = tf.unstack(box, axis=-1)
   return tf.stack([
-      ymin / tf.cast(height, tf.float32),
-      xmin / tf.cast(width, tf.float32),
-      ymax / tf.cast(height, tf.float32),
-      xmax / tf.cast(width, tf.float32)], axis=-1)
+      ymin / tf.cast(height, tf.float32), xmin / tf.cast(width, tf.float32),
+      ymax / tf.cast(height, tf.float32), xmax / tf.cast(width, tf.float32)
+  ],
+                  axis=-1)
 
 
 def _to_absolute_coordinates(box, height, width):
@@ -151,8 +151,10 @@ def _to_absolute_coordinates(box, height, width):
       tf.cast(ymin * tf.cast(height, tf.float32), tf.int64),
       tf.cast(xmin * tf.cast(width, tf.float32), tf.int64),
       tf.cast(ymax * tf.cast(height, tf.float32), tf.int64),
-      tf.cast(xmax * tf.cast(width, tf.float32), tf.int64)], 
-      axis=-1)
+      tf.cast(xmax * tf.cast(width, tf.float32), tf.int64)
+  ],
+                  axis=-1)
+
 
 class FasterRCNNFeatureExtractor(object):
   """Faster R-CNN Feature Extractor definition."""
@@ -234,8 +236,7 @@ class FasterRCNNFeatureExtractor(object):
     pass
 
   def restore_from_classification_checkpoint_fn(
-      self,
-      first_stage_feature_extractor_scope,
+      self, first_stage_feature_extractor_scope,
       second_stage_feature_extractor_scope):
     """Returns a map of variables to load from a foreign checkpoint.
 
@@ -251,8 +252,10 @@ class FasterRCNNFeatureExtractor(object):
     """
     variables_to_restore = {}
     for variable in tf.global_variables():
-      for scope_name in [first_stage_feature_extractor_scope,
-                         second_stage_feature_extractor_scope]:
+      for scope_name in [
+          first_stage_feature_extractor_scope,
+          second_stage_feature_extractor_scope
+      ]:
         if variable.op.name.startswith(scope_name):
           var_name = variable.op.name.replace(scope_name + '/', '')
           variables_to_restore[var_name] = variable
@@ -514,8 +517,7 @@ class WSODMetaArch(model.DetectionModel):
     self._second_stage_localization_loss = (
         losses.WeightedSmoothL1LocalizationLoss())
     self._second_stage_classification_loss = second_stage_classification_loss
-    self._second_stage_mask_loss = (
-        losses.WeightedSigmoidClassificationLoss())
+    self._second_stage_mask_loss = (losses.WeightedSigmoidClassificationLoss())
     self._second_stage_loc_loss_weight = second_stage_localization_loss_weight
     self._second_stage_cls_loss_weight = second_stage_classification_loss_weight
     self._second_stage_mask_loss_weight = (
@@ -586,7 +588,8 @@ class WSODMetaArch(model.DetectionModel):
 
   def provide_captions(self, groundtruth_caption_list):
     if groundtruth_caption_list:
-      self._groundtruth_lists[fields.InputDataFields.groundtruth_caption] = groundtruth_caption_list
+      self._groundtruth_lists[fields.InputDataFields.
+                              groundtruth_caption] = groundtruth_caption_list
 
   def preprocess(self, inputs):
     """Feature-extractor specific preprocessing.
@@ -640,9 +643,12 @@ class WSODMetaArch(model.DetectionModel):
     """
     clip_heights = image_shapes[:, 0]
     clip_widths = image_shapes[:, 1]
-    clip_window = tf.to_float(tf.stack([tf.zeros_like(clip_heights),
-                                        tf.zeros_like(clip_heights),
-                                        clip_heights, clip_widths], axis=1))
+    clip_window = tf.to_float(
+        tf.stack([
+            tf.zeros_like(clip_heights),
+            tf.zeros_like(clip_heights), clip_heights, clip_widths
+        ],
+                 axis=1))
     return clip_window
 
   def predict(self, preprocessed_inputs, true_image_shapes):
@@ -725,11 +731,13 @@ class WSODMetaArch(model.DetectionModel):
     # TODO(yek@): add model instances that are allowed.
     # TODO(yek@): eliminate all the constants.
 
-    # if not isinstance(self._feature_extractor, 
+    # if not isinstance(self._feature_extractor,
     #     FasterRCNNInceptionV2FeatureExtractor):
     #   raise ValueError("The WSOD model is only tested under the inception family.")
     if len(tf.global_variables()) > 1:
-      raise ValueError("At the time, no variable should be in the graph except the `global_step`.")
+      raise ValueError(
+          "At the time, no variable should be in the graph except the `global_step`."
+      )
 
     (rpn_box_predictor_features, rpn_features_to_crop, anchors_boxlist,
      image_shape) = self._extract_rpn_feature_maps(preprocessed_inputs)
@@ -749,20 +757,27 @@ class WSODMetaArch(model.DetectionModel):
              rpn_box_encodings, rpn_objectness_predictions_with_background,
              anchors_boxlist, clip_window)
     else:
-      anchors_boxlist = box_list_ops.clip_to_window(
-          anchors_boxlist, clip_window)
+      anchors_boxlist = box_list_ops.clip_to_window(anchors_boxlist,
+                                                    clip_window)
 
     self._anchors = anchors_boxlist
     prediction_dict = {
-        'rpn_box_predictor_features': rpn_box_predictor_features,
-        'rpn_features_to_crop': rpn_features_to_crop,
-        'preprocessed_inputs': preprocessed_inputs,
-        'image_shape': image_shape,
-        'true_image_shapes': true_image_shapes,
-        'rpn_box_encodings': rpn_box_encodings,
+        'rpn_box_predictor_features':
+        rpn_box_predictor_features,
+        'rpn_features_to_crop':
+        rpn_features_to_crop,
+        'preprocessed_inputs':
+        preprocessed_inputs,
+        'image_shape':
+        image_shape,
+        'true_image_shapes':
+        true_image_shapes,
+        'rpn_box_encodings':
+        rpn_box_encodings,
         'rpn_objectness_predictions_with_background':
         rpn_objectness_predictions_with_background,
-        'anchors': self._anchors.get()
+        'anchors':
+        self._anchors.get()
     }
 
     if self._number_of_stages >= 2:
@@ -770,25 +785,28 @@ class WSODMetaArch(model.DetectionModel):
       # rpn_objectness_predictions_with_background are bfloat16 tensors.
       # Considered prediction results, they need to be casted to float32
       # tensors for correct postprocess_rpn computation in predict_second_stage.
-      prediction_dict.update(self._predict_second_stage(
-          tf.to_float(rpn_box_encodings),
-          tf.to_float(rpn_objectness_predictions_with_background),
-          rpn_features_to_crop,
-          self._anchors.get(), image_shape, true_image_shapes))
+      prediction_dict.update(
+          self._predict_second_stage(
+              tf.to_float(rpn_box_encodings),
+              tf.to_float(rpn_objectness_predictions_with_background),
+              rpn_features_to_crop, self._anchors.get(), image_shape,
+              true_image_shapes))
 
       # TODO(yek@) Remove the regression of the second stage.
-      prediction_dict['refined_box_encodings'] = tf.zeros_like(prediction_dict['refined_box_encodings'])
+      prediction_dict['refined_box_encodings'] = tf.zeros_like(
+          prediction_dict['refined_box_encodings'])
 
       detections = self.postprocess(prediction_dict, true_image_shapes)
       with tf.name_scope("final_detections"):
         image_uint8 = tf.cast(
-            (prediction_dict['preprocessed_inputs'] + 1.0) * 0.5 * 255, tf.uint8)
+            (prediction_dict['preprocessed_inputs'] + 1.0) * 0.5 * 255,
+            tf.uint8)
 
         rtable = tf.contrib.lookup.HashTable(
-            tf.contrib.lookup.KeyValueTensorInitializer( 
-              keys=[x for x in self._class_id_to_name.keys()],
-              values=[x for x in self._class_id_to_name.values()],
-              key_dtype=tf.int64),
+            tf.contrib.lookup.KeyValueTensorInitializer(
+                keys=[x for x in self._class_id_to_name.keys()],
+                values=[x for x in self._class_id_to_name.values()],
+                key_dtype=tf.int64),
             default_value="")
         detection_classes = tf.cast(detections['detection_classes'], tf.int64)
         detection_classes = rtable.lookup(detection_classes + 1)
@@ -796,16 +814,18 @@ class WSODMetaArch(model.DetectionModel):
         image_with_dt = self._draw_top_k_proposals_helper(
             image=image_uint8,
             proposals=detections['detection_boxes'],
-            proposal_scores=detections['detection_scores'], 
-            proposal_labels=detection_classes, 
-            k=5, nms=False, color=(255, 0, 0))
-        tf.summary.image("image", 
-            tf.concat([image_with_dt], axis=2), max_outputs=10)
+            proposal_scores=detections['detection_scores'],
+            proposal_labels=detection_classes,
+            k=5,
+            nms=False,
+            color=(255, 0, 0))
+        tf.summary.image(
+            "image", tf.concat([image_with_dt], axis=2), max_outputs=10)
 
     if self._number_of_stages == 3:
-      prediction_dict = self._predict_third_stage(
-          prediction_dict, true_image_shapes)
-  
+      prediction_dict = self._predict_third_stage(prediction_dict,
+                                                  true_image_shapes)
+
     return prediction_dict
 
   def _image_batch_shape_2d(self, image_batch_shape_1d):
@@ -823,15 +843,13 @@ class WSODMetaArch(model.DetectionModel):
       image_batch_shape_2d: 2-D tensor of shape [batch_size, 3] were each row is
         of the form [height, width, channels].
     """
-    return tf.tile(tf.expand_dims(image_batch_shape_1d[1:], 0),
-                   [image_batch_shape_1d[0], 1])
+    return tf.tile(
+        tf.expand_dims(image_batch_shape_1d[1:], 0),
+        [image_batch_shape_1d[0], 1])
 
-  def _predict_second_stage(self, rpn_box_encodings,
-                            rpn_objectness_predictions_with_background,
-                            rpn_features_to_crop,
-                            anchors,
-                            image_shape,
-                            true_image_shapes):
+  def _predict_second_stage(
+      self, rpn_box_encodings, rpn_objectness_predictions_with_background,
+      rpn_features_to_crop, anchors, image_shape, true_image_shapes):
     """Predicts the output tensors from second stage of Faster R-CNN.
 
     Args:
@@ -886,8 +904,8 @@ class WSODMetaArch(model.DetectionModel):
     """
     image_shape_2d = self._image_batch_shape_2d(image_shape)
     proposal_boxes_normalized, proposal_scores, num_proposals = self._postprocess_rpn(
-        rpn_box_encodings, rpn_objectness_predictions_with_background,
-        anchors, image_shape_2d, true_image_shapes)
+        rpn_box_encodings, rpn_objectness_predictions_with_background, anchors,
+        image_shape_2d, true_image_shapes)
 
     # If mixed-precision training on TPU is enabled, the dtype of
     # rpn_features_to_crop is bfloat16, otherwise it is float32. tf.cast is
@@ -904,9 +922,8 @@ class WSODMetaArch(model.DetectionModel):
             scope=self.second_stage_feature_extractor_scope))
 
     if self._mask_rcnn_box_predictor.is_keras_model:
-      box_predictions = self._mask_rcnn_box_predictor(
-          [box_classifier_features],
-          prediction_stage=2)
+      box_predictions = self._mask_rcnn_box_predictor([box_classifier_features],
+                                                      prediction_stage=2)
     else:
       box_predictions = self._mask_rcnn_box_predictor.predict(
           [box_classifier_features],
@@ -916,18 +933,19 @@ class WSODMetaArch(model.DetectionModel):
 
     refined_box_encodings = tf.squeeze(
         box_predictions[box_predictor.BOX_ENCODINGS],
-        axis=1, name='all_refined_box_encodings')
+        axis=1,
+        name='all_refined_box_encodings')
     class_predictions_with_background = tf.squeeze(
         box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
-        axis=1, name='all_class_predictions_with_background')
+        axis=1,
+        name='all_class_predictions_with_background')
 
     absolute_proposal_boxes = ops.normalized_to_image_coordinates(
         proposal_boxes_normalized, image_shape, self._parallel_iterations)
 
     prediction_dict = {
         'refined_box_encodings': refined_box_encodings,
-        'class_predictions_with_background':
-        class_predictions_with_background,
+        'class_predictions_with_background': class_predictions_with_background,
         'num_proposals': num_proposals,
         'proposal_boxes': absolute_proposal_boxes,
         'proposal_scores': proposal_scores,
@@ -984,34 +1002,32 @@ class WSODMetaArch(model.DetectionModel):
       detection_classes = prediction_dict['class_predictions_with_background']
       if self._mask_rcnn_box_predictor.is_keras_model:
         mask_predictions = self._mask_rcnn_box_predictor(
-            [curr_box_classifier_features],
-            prediction_stage=3)
+            [curr_box_classifier_features], prediction_stage=3)
       else:
         mask_predictions = self._mask_rcnn_box_predictor.predict(
             [curr_box_classifier_features],
             num_predictions_per_location=[1],
             scope=self.second_stage_box_predictor_scope,
             prediction_stage=3)
-      prediction_dict['mask_predictions'] = tf.squeeze(mask_predictions[
-          box_predictor.MASK_PREDICTIONS], axis=1)
+      prediction_dict['mask_predictions'] = tf.squeeze(
+          mask_predictions[box_predictor.MASK_PREDICTIONS], axis=1)
     else:
       detections_dict = self._postprocess_box_classifier(
           prediction_dict['refined_box_encodings'],
           prediction_dict['class_predictions_with_background'],
-          prediction_dict['proposal_boxes'],
-          prediction_dict['num_proposals'],
+          prediction_dict['proposal_boxes'], prediction_dict['num_proposals'],
           image_shapes)
       prediction_dict.update(detections_dict)
-      detection_boxes = detections_dict[
-          fields.DetectionResultFields.detection_boxes]
-      detection_classes = detections_dict[
-          fields.DetectionResultFields.detection_classes]
+      detection_boxes = detections_dict[fields.DetectionResultFields.
+                                        detection_boxes]
+      detection_classes = detections_dict[fields.DetectionResultFields.
+                                          detection_classes]
       rpn_features_to_crop = prediction_dict['rpn_features_to_crop']
       batch_size = tf.shape(detection_boxes)[0]
       max_detection = tf.shape(detection_boxes)[1]
       flattened_detected_feature_maps = (
-          self._compute_second_stage_input_feature_maps(
-              rpn_features_to_crop, detection_boxes))
+          self._compute_second_stage_input_feature_maps(rpn_features_to_crop,
+                                                        detection_boxes))
       curr_box_classifier_features = (
           self._feature_extractor.extract_box_classifier_features(
               flattened_detected_feature_maps,
@@ -1019,8 +1035,7 @@ class WSODMetaArch(model.DetectionModel):
 
       if self._mask_rcnn_box_predictor.is_keras_model:
         mask_predictions = self._mask_rcnn_box_predictor(
-            [curr_box_classifier_features],
-            prediction_stage=3)
+            [curr_box_classifier_features], prediction_stage=3)
       else:
         mask_predictions = self._mask_rcnn_box_predictor.predict(
             [curr_box_classifier_features],
@@ -1028,15 +1043,15 @@ class WSODMetaArch(model.DetectionModel):
             scope=self.second_stage_box_predictor_scope,
             prediction_stage=3)
 
-      detection_masks = tf.squeeze(mask_predictions[
-          box_predictor.MASK_PREDICTIONS], axis=1)
+      detection_masks = tf.squeeze(
+          mask_predictions[box_predictor.MASK_PREDICTIONS], axis=1)
 
       _, num_classes, mask_height, mask_width = (
           detection_masks.get_shape().as_list())
       _, max_detection = detection_classes.get_shape().as_list()
       if num_classes > 1:
-        detection_masks = self._gather_instance_masks(
-            detection_masks, detection_classes)
+        detection_masks = self._gather_instance_masks(detection_masks,
+                                                      detection_classes)
 
       prediction_dict[fields.DetectionResultFields.detection_masks] = (
           tf.reshape(detection_masks,
@@ -1106,22 +1121,23 @@ class WSODMetaArch(model.DetectionModel):
           activation_fn=tf.nn.relu6,
           scope='Conv',
           reuse=reuse)
-    return (rpn_box_predictor_features, rpn_features_to_crop,
-            anchors, image_shape)
+    return (rpn_box_predictor_features, rpn_features_to_crop, anchors,
+            image_shape)
 
   def _pad(self, cap, max_len):
     cap_len = tf.minimum(tf.shape(cap)[0], max_len)
     cap = cap[:cap_len]
 
     pad_len = max_len - cap_len
-    cap = tf.cond(pad_len > 0,
+    cap = tf.cond(
+        pad_len > 0,
         true_fn=lambda: tf.concat([cap, tf.fill([pad_len], 'UNK')], axis=0),
         false_fn=lambda: cap)
     cap.set_shape([max_len])
     return cap_len, cap
 
-  def _string_join_helper(self, 
-      groundtruth_caption_list, groundtruth_class_ids_list):
+  def _string_join_helper(self, groundtruth_caption_list,
+                          groundtruth_class_ids_list):
     """Helper function used to join the strings in the list.
 
     Args:
@@ -1139,22 +1155,21 @@ class WSODMetaArch(model.DetectionModel):
     """
     with tf.name_scope('string_join_helper'):
       rtable = tf.contrib.lookup.HashTable(
-          tf.contrib.lookup.KeyValueTensorInitializer( 
-            keys=[x for x in self._class_id_to_name.keys()],
-            values=[x for x in self._class_id_to_name.values()],
-            key_dtype=tf.int64),
+          tf.contrib.lookup.KeyValueTensorInitializer(
+              keys=[x for x in self._class_id_to_name.keys()],
+              values=[x for x in self._class_id_to_name.values()],
+              key_dtype=tf.int64),
           default_value="")
 
       caption_string_list, class_string_list = [], []
-      for caption, class_ids in zip(groundtruth_caption_list, groundtruth_class_ids_list):
+      for caption, class_ids in zip(groundtruth_caption_list,
+                                    groundtruth_class_ids_list):
         indices = tf.where(tf.not_equal(class_ids[:], 0))[:, 0]
         class_names = rtable.lookup(indices)
         class_string_list.append(
             tf.reduce_join(rtable.lookup(indices), separator=','))
-        caption_string_list.append(
-            tf.reduce_join(caption, separator=' '))
+        caption_string_list.append(tf.reduce_join(caption, separator=' '))
     return (caption_string_list, class_string_list)
-
 
   def provide_wsod_class_groundtruth(self):
     """Extract wsod image level class groundtruth.
@@ -1168,10 +1183,10 @@ class WSODMetaArch(model.DetectionModel):
     """
     with tf.name_scope('CaptionProcessor'):
       table = tf.contrib.lookup.HashTable(
-          tf.contrib.lookup.KeyValueTensorInitializer( 
-            keys=[x for x in self._name_to_class_id.keys()],
-            values=[x for x in self._name_to_class_id.values()],
-            value_dtype=tf.int64),
+          tf.contrib.lookup.KeyValueTensorInitializer(
+              keys=[x for x in self._name_to_class_id.keys()],
+              values=[x for x in self._name_to_class_id.values()],
+              value_dtype=tf.int64),
           default_value=0)
 
       groundtruth_caption_list = self.groundtruth_lists(
@@ -1180,8 +1195,9 @@ class WSODMetaArch(model.DetectionModel):
 
       for groundtruth_caption in groundtruth_caption_list:
         class_ids = table.lookup(groundtruth_caption)
-        class_ids = tf.sparse_to_dense(class_ids, 
-            output_shape=[1 + self.num_classes], 
+        class_ids = tf.sparse_to_dense(
+            class_ids,
+            output_shape=[1 + self.num_classes],
             sparse_values=1,
             default_value=0,
             validate_indices=False)
@@ -1189,9 +1205,8 @@ class WSODMetaArch(model.DetectionModel):
         groundtruth_class_ids_list.append(class_ids)
     return (groundtruth_caption_list, groundtruth_class_ids_list)
 
-
-  def provide_wsod_rpn_groundtruth(self, 
-      preprocessed_inputs, unused_image_shape):
+  def provide_wsod_rpn_groundtruth(self, preprocessed_inputs,
+                                   unused_image_shape):
     """Predicts rpn groundtruth based on the method specified.
 
     Args:
@@ -1220,22 +1235,22 @@ class WSODMetaArch(model.DetectionModel):
       assert len(groundtruth_caption_list) == 1, "only support batch==1."
 
       cap_max_len = 15
-      (vocabulary_list_len, vocabulary_list
-       )= self._pad(groundtruth_caption_list[0], max_len=cap_max_len)
-      vocabulary_mask = tf.sequence_mask(
-          vocabulary_list_len, cap_max_len, tf.float32)
+      (vocabulary_list_len, vocabulary_list) = self._pad(
+          groundtruth_caption_list[0], max_len=cap_max_len)
+      vocabulary_mask = tf.sequence_mask(vocabulary_list_len, cap_max_len,
+                                         tf.float32)
 
     # Image saliency.
 
     with tf.name_scope('ImageSaliencyProcessor'):
       (batch, height, width, channels
-       ) = shape_utils.combined_static_and_dynamic_shape(preprocessed_inputs)
+      ) = shape_utils.combined_static_and_dynamic_shape(preprocessed_inputs)
       saliency_map, score_map = self._get_score_map(
           preprocessed_inputs, unused_image_shape, vocabulary_list)
 
-    prediction_dict = { 
-      'wsod_image_saliency_map': saliency_map,
-      'wsod_image_score_map': score_map 
+    prediction_dict = {
+        'wsod_image_saliency_map': saliency_map,
+        'wsod_image_score_map': score_map
     }
 
     # Concatenate `saliency_map` and `score_map` to compute box saliency.
@@ -1244,13 +1259,13 @@ class WSODMetaArch(model.DetectionModel):
     score_map = tf.concat([saliency_map, score_map], axis=-1)
 
     # Use Faster-RCNN anchors.
-    if self._proposal_prediction.startswith('frcnn'): 
+    if self._proposal_prediction.startswith('frcnn'):
       anchors = self._anchors.get()
       with tf.name_scope('FrcnnAnchorProcessor'):
         unnormalized_anchor_boxes = tf.tile(
             tf.expand_dims(anchors, 0), [batch, 1, 1])
-        anchor_boxes = _to_normalized_coordinates(
-            unnormalized_anchor_boxes, height, width)
+        anchor_boxes = _to_normalized_coordinates(unnormalized_anchor_boxes,
+                                                  height, width)
         anchor_per_channel_scores = self._proposal_saliency_fn(
             score_map, tf.cast(unnormalized_anchor_boxes, tf.int64))
 
@@ -1258,17 +1273,19 @@ class WSODMetaArch(model.DetectionModel):
     elif self._proposal_prediction.startswith('edge_boxes'):
       with tf.name_scope('EdgeBoxesProcessor'):
         edge_boxes_inputs = tf.image.resize_images(
-            (preprocessed_inputs + 1.0) * 255.0 / 2.0, 
+            (preprocessed_inputs + 1.0) * 255.0 / 2.0,
             [height // 2, width // 2])
-        (_, anchor_boxes) = imgproc.get_edge_boxes( 
-            edge_boxes_inputs, self._edge_detection, self._edge_boxes,
+        (_, anchor_boxes) = imgproc.get_edge_boxes(
+            edge_boxes_inputs,
+            self._edge_detection,
+            self._edge_boxes,
             max_num_boxes=self._edge_boxes_max_num_boxes)
         anchor_per_channel_scores = self._proposal_saliency_fn(
             score_map, _to_absolute_coordinates(anchor_boxes, height, width))
 
     else:
       raise ValueError('Invalid proposal prediction method {}.'.format(
-            self._proposal_prediction))
+          self._proposal_prediction))
 
     # Decide the anchor scores.
     #   anchor_boxes shape=[batch, num_anchor_boxes, 4].
@@ -1277,9 +1294,13 @@ class WSODMetaArch(model.DetectionModel):
 
     if self._proposal_prediction == 'edge_boxes_ori_scores':
       anchor_scores = tf.tile(
-          tf.expand_dims( 
-            tf.range(start=self._edge_boxes_max_num_boxes, 
-              limit=0, delta=-1, dtype=tf.float32), axis=0), 
+          tf.expand_dims(
+              tf.range(
+                  start=self._edge_boxes_max_num_boxes,
+                  limit=0,
+                  delta=-1,
+                  dtype=tf.float32),
+              axis=0),
           multiples=[batch, 1])
 
     elif not self._use_score_map:
@@ -1294,7 +1315,8 @@ class WSODMetaArch(model.DetectionModel):
       min_v = 0
       max_v = tf.reduce_max(
           anchor_per_channel_scores[:, :, 1:], axis=[1, 2], keepdims=True)
-      normalized_scores = (anchor_per_channel_scores[:, :, 1:] - min_v) / (1e-8 + max_v - min_v)
+      normalized_scores = (anchor_per_channel_scores[:, :, 1:] - min_v) / (
+          1e-8 + max_v - min_v)
       anchor_per_channel_scores = tf.concat(
           [anchor_per_channel_scores[:, :, :1], normalized_scores], axis=2)
 
@@ -1302,7 +1324,8 @@ class WSODMetaArch(model.DetectionModel):
           tf.expand_dims(vocabulary_mask, axis=0), axis=0)
       anchor_scores = utils.masked_maximum(
           data=anchor_per_channel_scores[:, :, 1:],
-          mask=vocabulary_mask, dim=-1)
+          mask=vocabulary_mask,
+          dim=-1)
       anchor_scores = tf.squeeze(anchor_scores, axis=-1)
 
     # Convert to heatmap and draw caption.
@@ -1316,29 +1339,40 @@ class WSODMetaArch(model.DetectionModel):
       image_with_boxes = self._draw_top_k_proposals_helper(
           image=image_uint8,
           proposals=anchor_boxes,
-          proposal_scores=anchor_scores, 
-          k=3, nms=True, color=(0, 255, 0))
-      image_with_boxes = tf.image.convert_image_dtype(image_with_boxes, tf.float32)
+          proposal_scores=anchor_scores,
+          k=3,
+          nms=True,
+          color=(0, 255, 0))
+      image_with_boxes = tf.image.convert_image_dtype(image_with_boxes,
+                                                      tf.float32)
 
       # Draw the proposals on the saliency map and score map.
 
       score_map_list = []
       for i, x in enumerate(tf.unstack(score_map, axis=-1)):
-        x = plotlib.convert_to_heatmap(x, normalize=(i==0))
+        x = plotlib.convert_to_heatmap(x, normalize=(i == 0))
         x = tf.image.convert_image_dtype(x, tf.uint8)
         x = self._draw_top_k_proposals_helper(
             image=x,
             proposals=anchor_boxes,
             proposal_scores=anchor_per_channel_scores[:, :, i],
-            k=3, nms=False, color=(0, 255, 0))
-        x = plotlib.draw_caption(x, tf.expand_dims(vocabulary_list[i], axis=0),
-            org=(5, 5), fontscale=1.0, color=(255, 0, 0), thickness=1)
+            k=3,
+            nms=False,
+            color=(0, 255, 0))
+        x = plotlib.draw_caption(
+            x,
+            tf.expand_dims(vocabulary_list[i], axis=0),
+            org=(5, 5),
+            fontscale=1.0,
+            color=(255, 0, 0),
+            thickness=1)
         x = tf.image.convert_image_dtype(x, tf.float32)
 
         image_with_boxes = tf.cond(
             tf.logical_or(
-              tf.equal(i, 0), 
-              tf.greater(tf.reduce_max(anchor_per_channel_scores[:, :, i]), 0.5)),
+                tf.equal(i, 0),
+                tf.greater(
+                    tf.reduce_max(anchor_per_channel_scores[:, :, i]), 0.5)),
             true_fn=lambda: tf.concat([image_with_boxes, x], axis=2),
             false_fn=lambda: image_with_boxes)
 
@@ -1394,11 +1428,8 @@ class WSODMetaArch(model.DetectionModel):
             objectness_predictions_with_background)
 
   def _remove_invalid_anchors_and_predictions(
-      self,
-      box_encodings,
-      objectness_predictions_with_background,
-      anchors_boxlist,
-      clip_window):
+      self, box_encodings, objectness_predictions_with_background,
+      anchors_boxlist, clip_window):
     """Removes anchors that (partially) fall outside an image.
 
     Also removes associated box encodings and objectness predictions.
@@ -1430,6 +1461,7 @@ class WSODMetaArch(model.DetectionModel):
     """
     pruned_anchors_boxlist, keep_indices = box_list_ops.prune_outside_window(
         anchors_boxlist, clip_window)
+
     def _batch_gather_kept_indices(predictions_tensor):
       return shape_utils.static_or_dynamic_map_fn(
           partial(tf.gather, indices=keep_indices),
@@ -1437,6 +1469,7 @@ class WSODMetaArch(model.DetectionModel):
           dtype=tf.float32,
           parallel_iterations=self._parallel_iterations,
           back_prop=True)
+
     return (_batch_gather_kept_indices(box_encodings),
             _batch_gather_kept_indices(objectness_predictions_with_background),
             pruned_anchors_boxlist)
@@ -1503,14 +1536,12 @@ class WSODMetaArch(model.DetectionModel):
         proposal_boxes, proposal_scores, num_proposals = self._postprocess_rpn(
             prediction_dict['rpn_box_encodings'],
             prediction_dict['rpn_objectness_predictions_with_background'],
-            prediction_dict['anchors'],
-            true_image_shapes,
-            true_image_shapes)
+            prediction_dict['anchors'], true_image_shapes, true_image_shapes)
         return {
             fields.DetectionResultFields.detection_boxes: proposal_boxes,
             fields.DetectionResultFields.detection_scores: proposal_scores,
             fields.DetectionResultFields.num_detections:
-                tf.to_float(num_proposals),
+            tf.to_float(num_proposals),
         }
 
     # TODO(jrru): Remove mask_predictions from _post_process_box_classifier.
@@ -1538,12 +1569,9 @@ class WSODMetaArch(model.DetectionModel):
           detections_dict[key] = prediction_dict[key]
       return detections_dict
 
-  def _postprocess_rpn(self,
-                       rpn_box_encodings_batch,
+  def _postprocess_rpn(self, rpn_box_encodings_batch,
                        rpn_objectness_predictions_with_background_batch,
-                       anchors,
-                       image_shapes,
-                       true_image_shapes):
+                       anchors, image_shapes, true_image_shapes):
     """Converts first stage prediction tensors from the RPN to proposals.
 
     This function decodes the raw RPN predictions, runs non-max suppression
@@ -1616,21 +1644,20 @@ class WSODMetaArch(model.DetectionModel):
       proposal_boxes_per_image = args[0]
       image_shape = args[1]
       normalized_boxes_per_image = box_list_ops.to_normalized_coordinates(
-          box_list.BoxList(proposal_boxes_per_image), image_shape[0],
-          image_shape[1], check_range=False).get()
+          box_list.BoxList(proposal_boxes_per_image),
+          image_shape[0],
+          image_shape[1],
+          check_range=False).get()
       return normalized_boxes_per_image
+
     normalized_proposal_boxes = shape_utils.static_or_dynamic_map_fn(
         normalize_boxes, elems=[proposal_boxes, image_shapes], dtype=tf.float32)
     return normalized_proposal_boxes, proposal_scores, num_proposals
 
-  def _sample_box_classifier_batch(
-      self,
-      proposal_boxes,
-      proposal_scores,
-      num_proposals,
-      groundtruth_boxlists,
-      groundtruth_classes_with_background_list,
-      groundtruth_weights_list):
+  def _sample_box_classifier_batch(self, proposal_boxes, proposal_scores,
+                                   num_proposals, groundtruth_boxlists,
+                                   groundtruth_classes_with_background_list,
+                                   groundtruth_weights_list):
     """Samples a minibatch for second stage.
 
     Args:
@@ -1667,33 +1694,27 @@ class WSODMetaArch(model.DetectionModel):
     single_image_proposal_box_sample = []
     single_image_proposal_score_sample = []
     single_image_num_proposals_sample = []
-    for (single_image_proposal_boxes,
-         single_image_proposal_scores,
-         single_image_num_proposals,
-         single_image_groundtruth_boxlist,
+    for (single_image_proposal_boxes, single_image_proposal_scores,
+         single_image_num_proposals, single_image_groundtruth_boxlist,
          single_image_groundtruth_classes_with_background,
          single_image_groundtruth_weights) in zip(
-             tf.unstack(proposal_boxes),
-             tf.unstack(proposal_scores),
-             tf.unstack(num_proposals),
-             groundtruth_boxlists,
+             tf.unstack(proposal_boxes), tf.unstack(proposal_scores),
+             tf.unstack(num_proposals), groundtruth_boxlists,
              groundtruth_classes_with_background_list,
              groundtruth_weights_list):
       single_image_boxlist = box_list.BoxList(single_image_proposal_boxes)
       single_image_boxlist.add_field(fields.BoxListFields.scores,
                                      single_image_proposal_scores)
       sampled_boxlist = self._sample_box_classifier_minibatch_single_image(
-          single_image_boxlist,
-          single_image_num_proposals,
+          single_image_boxlist, single_image_num_proposals,
           single_image_groundtruth_boxlist,
           single_image_groundtruth_classes_with_background,
           single_image_groundtruth_weights)
       sampled_padded_boxlist = box_list_ops.pad_or_clip_box_list(
-          sampled_boxlist,
-          num_boxes=self._second_stage_batch_size)
-      single_image_num_proposals_sample.append(tf.minimum(
-          sampled_boxlist.num_boxes(),
-          self._second_stage_batch_size))
+          sampled_boxlist, num_boxes=self._second_stage_batch_size)
+      single_image_num_proposals_sample.append(
+          tf.minimum(sampled_boxlist.num_boxes(),
+                     self._second_stage_batch_size))
       bb = sampled_padded_boxlist.get()
       single_image_proposal_box_sample.append(bb)
       single_image_proposal_score_sample.append(
@@ -1733,15 +1754,14 @@ class WSODMetaArch(model.DetectionModel):
     groundtruth_boxlists = [
         box_list_ops.to_absolute_coordinates(
             box_list.BoxList(boxes), true_image_shapes[i, 0],
-            true_image_shapes[i, 1])
-        for i, boxes in enumerate(
-            self.groundtruth_lists(fields.BoxListFields.boxes))
+            true_image_shapes[i, 1]) for i, boxes in enumerate(
+                self.groundtruth_lists(fields.BoxListFields.boxes))
     ]
     groundtruth_classes_with_background_list = [
         tf.to_float(
-            tf.pad(one_hot_encoding, [[0, 0], [1, 0]], mode='CONSTANT'))
-        for one_hot_encoding in self.groundtruth_lists(
-            fields.BoxListFields.classes)]
+            tf.pad(one_hot_encoding, [[0, 0], [1, 0]], mode='CONSTANT')) for
+        one_hot_encoding in self.groundtruth_lists(fields.BoxListFields.classes)
+    ]
 
     groundtruth_masks_list = self._groundtruth_lists.get(
         fields.BoxListFields.masks)
@@ -1812,12 +1832,9 @@ class WSODMetaArch(model.DetectionModel):
     positive_indicator = tf.greater(tf.argmax(cls_targets, axis=1), 0)
     valid_indicator = tf.logical_and(
         tf.range(proposal_boxlist.num_boxes()) < num_valid_proposals,
-        cls_weights > 0
-    )
+        cls_weights > 0)
     selected_positions = self._second_stage_sampler.subsample(
-        valid_indicator,
-        self._second_stage_batch_size,
-        positive_indicator)
+        valid_indicator, self._second_stage_batch_size, positive_indicator)
     return box_list_ops.boolean_mask(
         proposal_boxlist,
         selected_positions,
@@ -1848,8 +1865,7 @@ class WSODMetaArch(model.DetectionModel):
             features_to_crop, proposal_boxes_normalized,
             [self._initial_crop_size, self._initial_crop_size]))
     return slim.max_pool2d(
-        cropped_regions,
-        [self._maxpool_kernel_size, self._maxpool_kernel_size],
+        cropped_regions, [self._maxpool_kernel_size, self._maxpool_kernel_size],
         stride=self._maxpool_stride)
 
   def _postprocess_box_classifier(self,
@@ -1893,34 +1909,30 @@ class WSODMetaArch(model.DetectionModel):
           that a pixel-wise sigmoid score converter is applied to the detection
           masks.
     """
-    refined_box_encodings_batch = tf.reshape(
-        refined_box_encodings,
-        [-1,
-         self.max_num_proposals,
-         refined_box_encodings.shape[1],
-         self._box_coder.code_size])
+    refined_box_encodings_batch = tf.reshape(refined_box_encodings, [
+        -1, self.max_num_proposals, refined_box_encodings.shape[1],
+        self._box_coder.code_size
+    ])
     class_predictions_with_background_batch = tf.reshape(
         class_predictions_with_background,
-        [-1, self.max_num_proposals, self.num_classes + 1]
-    )
+        [-1, self.max_num_proposals, self.num_classes + 1])
     refined_decoded_boxes_batch = self._batch_decode_boxes(
         refined_box_encodings_batch, proposal_boxes)
     class_predictions_with_background_batch = (
         self._second_stage_score_conversion_fn(
             class_predictions_with_background_batch))
     class_predictions_batch = tf.reshape(
-        tf.slice(class_predictions_with_background_batch,
-                 [0, 0, 1], [-1, -1, -1]),
-        [-1, self.max_num_proposals, self.num_classes])
+        tf.slice(class_predictions_with_background_batch, [0, 0, 1],
+                 [-1, -1, -1]), [-1, self.max_num_proposals, self.num_classes])
     clip_window = self._compute_clip_window(image_shapes)
     mask_predictions_batch = None
     if mask_predictions is not None:
       mask_height = mask_predictions.shape[2].value
       mask_width = mask_predictions.shape[3].value
       mask_predictions = tf.sigmoid(mask_predictions)
-      mask_predictions_batch = tf.reshape(
-          mask_predictions, [-1, self.max_num_proposals,
-                             self.num_classes, mask_height, mask_width])
+      mask_predictions_batch = tf.reshape(mask_predictions, [
+          -1, self.max_num_proposals, self.num_classes, mask_height, mask_width
+      ])
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks, _,
      num_detections) = self._second_stage_nms_fn(
          refined_decoded_boxes_batch,
@@ -1969,9 +1981,9 @@ class WSODMetaArch(model.DetectionModel):
     decoded_boxes = self._box_coder.decode(
         tf.reshape(box_encodings, [-1, self._box_coder.code_size]),
         tiled_anchors_boxlist)
-    return tf.reshape(decoded_boxes.get(),
-                      tf.stack([combined_shape[0], combined_shape[1],
-                                num_classes, 4]))
+    return tf.reshape(
+        decoded_boxes.get(),
+        tf.stack([combined_shape[0], combined_shape[1], num_classes, 4]))
 
   def loss(self, prediction_dict, true_image_shapes, scope=None):
     """Compute scalar loss tensors given prediction tensors.
@@ -2012,17 +2024,16 @@ class WSODMetaArch(model.DetectionModel):
     #   The `wsod_groundtruth_boxes` uses normalized coordinates.
     #   In most cases, the `num_wsod_groundtruth_boxes` equals `wsod_groundtruth_max_proposals`.
 
-    (wsod_groundtruth_boxes, wsod_groundtruth_box_scores
-     ) = self.provide_wsod_rpn_groundtruth( 
-       prediction_dict['preprocessed_inputs'],
-       prediction_dict['image_shape'])
+    (wsod_groundtruth_boxes,
+     wsod_groundtruth_box_scores) = self.provide_wsod_rpn_groundtruth(
+         prediction_dict['preprocessed_inputs'], prediction_dict['image_shape'])
 
     (wsod_groundtruth_boxes, wsod_groundtruth_box_scores, _, _, _,
      num_wsod_groundtruth_boxes
-     ) = self._wsod_groundtruth_non_max_suppression_fn( 
-       tf.expand_dims(wsod_groundtruth_boxes, axis=2),
-       tf.expand_dims(wsod_groundtruth_box_scores, axis=2),
-       clip_window=None)
+    ) = self._wsod_groundtruth_non_max_suppression_fn(
+        tf.expand_dims(wsod_groundtruth_boxes, axis=2),
+        tf.expand_dims(wsod_groundtruth_box_scores, axis=2),
+        clip_window=None)
 
     # Convert to boxlist as required by `_loss_rpn`.
     # Note:
@@ -2030,9 +2041,9 @@ class WSODMetaArch(model.DetectionModel):
     #   The coordinates of `groundtruth_boxlists` are absolute coordinates.
     #   Each element in `groundtruth_boxlists` is a Boxlist object.
 
-    (batch, height, width, channels
-     ) = shape_utils.combined_static_and_dynamic_shape(
-       prediction_dict['preprocessed_inputs'])
+    (batch, height, width,
+     channels) = shape_utils.combined_static_and_dynamic_shape(
+         prediction_dict['preprocessed_inputs'])
 
     #unnormalized_wsod_groundtruth_boxes = tf.cast(
     #    _to_absolute_coordinates(
@@ -2048,7 +2059,6 @@ class WSODMetaArch(model.DetectionModel):
         for i, boxes in enumerate(groundtruth_boxlists)
     ]
 
-
     # Compute the first stage rpn loss using `teacher-student` model.
 
     loss_dict = self._loss_rpn(
@@ -2058,7 +2068,7 @@ class WSODMetaArch(model.DetectionModel):
         groundtruth_boxlists=groundtruth_boxlists,  # Careful about the changes.
         groundtruth_classes_with_background_list=None,  # Not used in `_loss_rpn`.
         groundtruth_weights_list=None,  # Can be `None`.
-        )
+    )
 
     if self._number_of_stages > 1 and not self._train_only_rpn:
 
@@ -2074,10 +2084,11 @@ class WSODMetaArch(model.DetectionModel):
       #   Each of the element is a [num_classes + 1] tensor, representing image level annotation.
 
       unused_groundtruth_classes_with_background_list = [
-        tf.zeros([tf.shape(wsod_groundtruth_boxes)[1], self.num_classes + 1]) ]
+          tf.zeros([tf.shape(wsod_groundtruth_boxes)[1], self.num_classes + 1])
+      ]
 
-      (groundtruth_caption_list, groundtruth_class_ids_list
-       ) = self.provide_wsod_class_groundtruth()
+      (groundtruth_caption_list,
+       groundtruth_class_ids_list) = self.provide_wsod_class_groundtruth()
       caption_string_list, class_string_list = self._string_join_helper(
           groundtruth_caption_list, groundtruth_class_ids_list)
 
@@ -2096,7 +2107,7 @@ class WSODMetaArch(model.DetectionModel):
               prediction_masks=None,  # Dont care.
               groundtruth_masks_list=None,  # Dont care.
               groundtruth_image_level_classes=tf.stack(
-                groundtruth_class_ids_list, axis=0),
+                  groundtruth_class_ids_list, axis=0),
           ))
 
       ###################################################################
@@ -2112,26 +2123,47 @@ class WSODMetaArch(model.DetectionModel):
         image_with_gt = self._draw_top_k_proposals_helper(
             image=image_uint8,
             proposals=wsod_groundtruth_boxes,
-            proposal_scores=wsod_groundtruth_box_scores, 
-            k=3, nms=False, color=(0, 255, 0))
+            proposal_scores=wsod_groundtruth_box_scores,
+            k=3,
+            nms=False,
+            color=(0, 255, 0))
         image_with_dt = self._draw_top_k_proposals_helper(
             image=image_uint8,
             proposals=prediction_dict['proposal_boxes_normalized'],
-            proposal_scores=prediction_dict['proposal_scores'], 
-            k=5, nms=False, color=(0, 0, 255))
+            proposal_scores=prediction_dict['proposal_scores'],
+            k=5,
+            nms=False,
+            color=(0, 0, 255))
         image_with_gt = plotlib.draw_caption(
-            image_with_gt, tf.stack(caption_string_list, axis=0),
-            org=(5, 5), fontscale=0.7, color=(0, 255, 0), thickness=1)
+            image_with_gt,
+            tf.stack(caption_string_list, axis=0),
+            org=(5, 5),
+            fontscale=0.7,
+            color=(0, 255, 0),
+            thickness=1)
         image_with_gt = plotlib.draw_caption(
-            image_with_gt, tf.stack(class_string_list, axis=0),
-            org=(5, 45), fontscale=0.7, color=(0, 255, 0), thickness=1)
-        tf.summary.image("image", 
-            tf.concat([image_with_gt, image_with_dt], axis=2), max_outputs=10)
+            image_with_gt,
+            tf.stack(class_string_list, axis=0),
+            org=(5, 45),
+            fontscale=0.7,
+            color=(0, 255, 0),
+            thickness=1)
+        tf.summary.image(
+            "image",
+            tf.concat([image_with_gt, image_with_dt], axis=2),
+            max_outputs=10)
 
     return loss_dict
 
-  def _draw_top_k_proposals_helper(self, image, proposals, proposal_scores,
-      proposal_labels=None, k=1, nms=True, color=(0, 0, 255), thickness=1):
+  def _draw_top_k_proposals_helper(self,
+                                   image,
+                                   proposals,
+                                   proposal_scores,
+                                   proposal_labels=None,
+                                   k=1,
+                                   nms=True,
+                                   color=(0, 0, 255),
+                                   thickness=1):
     """Helper function used to draw top_k proposals on the image.
 
     Args:
@@ -2146,8 +2178,8 @@ class WSODMetaArch(model.DetectionModel):
     Returns:
       image_with_boxes: a [batch, height, width, channels] uint8 tensor.
     """
-    (batch, height, width, channels
-     ) = shape_utils.combined_static_and_dynamic_shape(image)
+    (batch, height, width,
+     channels) = shape_utils.combined_static_and_dynamic_shape(image)
 
     if nms:  # TODO(yek@): remove the nms parameter.
       assert proposal_labels is None
@@ -2163,19 +2195,27 @@ class WSODMetaArch(model.DetectionModel):
 
     top_k_scores, top_k_indices = tf.nn.top_k(proposal_scores, k)
     top_k_indices = tf.stack([
-        tf.tile(tf.expand_dims(
-            tf.range(batch, dtype=tf.int32), axis=-1), [1, k]),
-        top_k_indices], axis=-1)
+        tf.tile(
+            tf.expand_dims(tf.range(batch, dtype=tf.int32), axis=-1), [1, k]),
+        top_k_indices
+    ],
+                             axis=-1)
     top_k_proposals = tf.gather_nd(proposals, top_k_indices)
 
     top_k_labels = None
     if proposal_labels is not None:
       top_k_labels = tf.gather_nd(proposal_labels, top_k_indices)
 
-    return plotlib.draw_rectangles(image, boxes=top_k_proposals, 
-        scores=top_k_scores, labels=top_k_labels, color=color, thickness=thickness)
+    return plotlib.draw_rectangles(
+        image,
+        boxes=top_k_proposals,
+        scores=top_k_scores,
+        labels=top_k_labels,
+        color=color,
+        thickness=thickness)
 
-  def _get_score_map(self, preprocessed_inputs, unused_image_shape, vocabulary_list):
+  def _get_score_map(self, preprocessed_inputs, unused_image_shape,
+                     vocabulary_list):
     """Gets anchor saliency directly from the saliency map.
 
     Args:
@@ -2193,44 +2233,28 @@ class WSODMetaArch(model.DetectionModel):
         representing class-aware score map.
     """
     (batch, height, width, channels
-     ) = shape_utils.combined_static_and_dynamic_shape(preprocessed_inputs)
+    ) = shape_utils.combined_static_and_dynamic_shape(preprocessed_inputs)
     with tf.variable_scope('wsod'):
       saliency_inputs = (preprocessed_inputs + 1.0) * 255.0 / 2.0
       prediction_dict = self._saliency_model.build_prediction(
-          examples={ 
-            'image': saliency_inputs,
-            'category_strings': vocabulary_list },
+          examples={
+              'image': saliency_inputs,
+              'category_strings': vocabulary_list
+          },
           prediction_task='image_score_map')
 
-      (saliency_map, score_map) = (
-          prediction_dict['image_saliency'], prediction_dict['image_score_map'])
-
-      def resize_fn(image):
-        """Upsamples the image and applies smoothing to the image.
-
-        Args:
-          image: a [batch, feature_height, feature_width, channels] float tensor
-            representing the feature map.
-
-        Returns:
-          resized_image: a [batch, height, width, channels] float tensor
-            representing the resized image.
-        """
-        resized_image = tf.image.resize_images(image, [height, width])
-        smoothed_image = imgproc.gaussian_filter(resized_image, ksize=32)
-        return smoothed_image
-
-      score_map = resize_fn(score_map)
-      saliency_map = resize_fn(tf.expand_dims(saliency_map, axis=-1))
+      (saliency_map, score_map) = (prediction_dict['image_saliency'],
+                                   prediction_dict['image_score_map'])
 
     if self._saliency_model_checkpoint_path:
       tf.train.init_from_checkpoint(
           self._saliency_model_checkpoint_path, assignment_map={"/": "wsod/"})
     else:
-      tf.logging.warn('Make sure the saliency model is initialized from a directory.')
+      tf.logging.warn(
+          'Make sure the saliency model is initialized from a directory.')
 
     return tf.stop_gradient(saliency_map), tf.stop_gradient(score_map)
-  
+
   def _loss_saliency_rpn(self, anchor_saliency, proposal_scores):
     """Computes scalar saliency RPN loss tensors.
 
@@ -2245,9 +2269,12 @@ class WSODMetaArch(model.DetectionModel):
         corresponding loss values.
     """
     with tf.name_scope('AnchorSaliencyLoss'):
-      loss = tf.losses.absolute_difference(anchor_saliency, proposal_scores,
-          loss_collection=None, reduction=tf.losses.Reduction.MEAN)
-    return { 'rpn_anchor_saliency_loss': loss }
+      loss = tf.losses.absolute_difference(
+          anchor_saliency,
+          proposal_scores,
+          loss_collection=None,
+          reduction=tf.losses.Reduction.MEAN)
+    return {'rpn_anchor_saliency_loss': loss}
 
   def _loss_rpn(self, rpn_box_encodings,
                 rpn_objectness_predictions_with_background, anchors,
@@ -2296,14 +2323,15 @@ class WSODMetaArch(model.DetectionModel):
       def _minibatch_subsample_fn(inputs):
         cls_targets, cls_weights = inputs
         return self._first_stage_sampler.subsample(
-            tf.cast(cls_weights, tf.bool),
-            self._first_stage_minibatch_size, tf.cast(cls_targets, tf.bool))
-      batch_sampled_indices = tf.to_float(shape_utils.static_or_dynamic_map_fn(
-          _minibatch_subsample_fn,
-          [batch_cls_targets, batch_cls_weights],
-          dtype=tf.bool,
-          parallel_iterations=self._parallel_iterations,
-          back_prop=True))
+            tf.cast(cls_weights, tf.bool), self._first_stage_minibatch_size,
+            tf.cast(cls_targets, tf.bool))
+
+      batch_sampled_indices = tf.to_float(
+          shape_utils.static_or_dynamic_map_fn(
+              _minibatch_subsample_fn, [batch_cls_targets, batch_cls_weights],
+              dtype=tf.bool,
+              parallel_iterations=self._parallel_iterations,
+              back_prop=True))
 
       # Normalize by number of examples in sampled minibatch
       normalizer = tf.reduce_sum(batch_sampled_indices, axis=1)
@@ -2314,31 +2342,39 @@ class WSODMetaArch(model.DetectionModel):
 
       losses_mask = None
       if self.groundtruth_has_field(fields.InputDataFields.is_annotated):
-        losses_mask = tf.stack(self.groundtruth_lists(
-            fields.InputDataFields.is_annotated))
+        losses_mask = tf.stack(
+            self.groundtruth_lists(fields.InputDataFields.is_annotated))
       localization_losses = self._first_stage_localization_loss(
-          rpn_box_encodings, batch_reg_targets, weights=sampled_reg_indices,
+          rpn_box_encodings,
+          batch_reg_targets,
+          weights=sampled_reg_indices,
           losses_mask=losses_mask)
       objectness_losses = self._first_stage_objectness_loss(
           rpn_objectness_predictions_with_background,
-          batch_one_hot_targets, weights=batch_sampled_indices,
+          batch_one_hot_targets,
+          weights=batch_sampled_indices,
           losses_mask=losses_mask)
       localization_loss = tf.reduce_mean(
           tf.reduce_sum(localization_losses, axis=1) / normalizer)
       objectness_loss = tf.reduce_mean(
           tf.reduce_sum(objectness_losses, axis=1) / normalizer)
 
-      localization_loss = tf.multiply(self._first_stage_loc_loss_weight,
-                                      localization_loss,
-                                      name='localization_loss')
-      objectness_loss = tf.multiply(self._first_stage_obj_loss_weight,
-                                    objectness_loss, name='objectness_loss')
-      loss_dict = {localization_loss.op.name: localization_loss,
-                   objectness_loss.op.name: objectness_loss}
+      localization_loss = tf.multiply(
+          self._first_stage_loc_loss_weight,
+          localization_loss,
+          name='localization_loss')
+      objectness_loss = tf.multiply(
+          self._first_stage_obj_loss_weight,
+          objectness_loss,
+          name='objectness_loss')
+      loss_dict = {
+          localization_loss.op.name: localization_loss,
+          objectness_loss.op.name: objectness_loss
+      }
     return loss_dict
 
-  def _loss_mil_box_classifier(self, 
-      class_predictions_with_background, groundtruth_image_level_classes):
+  def _loss_mil_box_classifier(self, class_predictions_with_background,
+                               groundtruth_image_level_classes):
     """Computes the MIL box classification loss.
 
     Args:
@@ -2351,8 +2387,8 @@ class WSODMetaArch(model.DetectionModel):
 
     # TODO(yek@): consider the varlen case.
 
-    groundtruth_image_level_classes = tf.cast(
-        groundtruth_image_level_classes, tf.float32)
+    groundtruth_image_level_classes = tf.cast(groundtruth_image_level_classes,
+                                              tf.float32)
     class_predictions_with_background = tf.reduce_max(
         class_predictions_with_background, axis=1)
 
@@ -2360,7 +2396,8 @@ class WSODMetaArch(model.DetectionModel):
     mask = tf.reduce_any(
         tf.greater(groundtruth_image_level_classes, 0), axis=1, keepdims=True)
     mask = tf.cast(mask, tf.float32)
-    tf.summary.scalar('mil_box_classifier/mask', 
+    tf.summary.scalar(
+        'mil_box_classifier/mask',
         tf.reduce_mean(tf.reduce_sum(groundtruth_image_level_classes, axis=1)))
 
     losses = tf.nn.sigmoid_cross_entropy_with_logits(
@@ -2438,11 +2475,13 @@ class WSODMetaArch(model.DetectionModel):
           num_proposals, self.max_num_proposals)
       proposal_boxlists = [
           box_list.BoxList(proposal_boxes_single_image)
-          for proposal_boxes_single_image in tf.unstack(proposal_boxes)]
+          for proposal_boxes_single_image in tf.unstack(proposal_boxes)
+      ]
       batch_size = len(proposal_boxlists)
 
-      num_proposals_or_one = tf.to_float(tf.expand_dims(
-          tf.maximum(num_proposals, tf.ones_like(num_proposals)), 1))
+      num_proposals_or_one = tf.to_float(
+          tf.expand_dims(
+              tf.maximum(num_proposals, tf.ones_like(num_proposals)), 1))
       normalizer = tf.tile(num_proposals_or_one,
                            [1, self.max_num_proposals]) * batch_size
 
@@ -2480,13 +2519,13 @@ class WSODMetaArch(model.DetectionModel):
       else:
         reshaped_refined_box_encodings = (
             self._get_refined_encodings_for_postitive_class(
-                refined_box_encodings,
-                one_hot_flat_cls_targets_with_background, batch_size))
+                refined_box_encodings, one_hot_flat_cls_targets_with_background,
+                batch_size))
 
       losses_mask = None
       if self.groundtruth_has_field(fields.InputDataFields.is_annotated):
-        losses_mask = tf.stack(self.groundtruth_lists(
-            fields.InputDataFields.is_annotated))
+        losses_mask = tf.stack(
+            self.groundtruth_lists(fields.InputDataFields.is_annotated))
       second_stage_loc_losses = self._second_stage_localization_loss(
           reshaped_refined_box_encodings,
           batch_reg_targets,
@@ -2507,17 +2546,19 @@ class WSODMetaArch(model.DetectionModel):
           second_stage_cls_losses * tf.to_float(paddings_indicator))
 
       if self._hard_example_miner:
-        (second_stage_loc_loss, second_stage_cls_loss
-        ) = self._unpad_proposals_and_apply_hard_mining(
-            proposal_boxlists, second_stage_loc_losses,
-            second_stage_cls_losses, num_proposals)
-      localization_loss = tf.multiply(self._second_stage_loc_loss_weight,
-                                      second_stage_loc_loss,
-                                      name='localization_loss')
+        (second_stage_loc_loss,
+         second_stage_cls_loss) = self._unpad_proposals_and_apply_hard_mining(
+             proposal_boxlists, second_stage_loc_losses,
+             second_stage_cls_losses, num_proposals)
+      localization_loss = tf.multiply(
+          self._second_stage_loc_loss_weight,
+          second_stage_loc_loss,
+          name='localization_loss')
 
-      classification_loss = tf.multiply(self._second_stage_cls_loss_weight,
-                                        second_stage_cls_loss,
-                                        name='classification_loss')
+      classification_loss = tf.multiply(
+          self._second_stage_cls_loss_weight,
+          second_stage_cls_loss,
+          name='classification_loss')
 
       # Apply the MIL learning loss.
       # Note:
@@ -2529,13 +2570,16 @@ class WSODMetaArch(model.DetectionModel):
       wsod_mil_cls_loss = self._loss_mil_box_classifier(
           class_predictions_with_background, groundtruth_image_level_classes)
 
-      wsod_mil_cls_loss = tf.multiply(self._wsod_mil_cls_loss_weight, 
-                                      wsod_mil_cls_loss, 
-                                      name='classification_mil_loss')
+      wsod_mil_cls_loss = tf.multiply(
+          self._wsod_mil_cls_loss_weight,
+          wsod_mil_cls_loss,
+          name='classification_mil_loss')
 
-      loss_dict = {# localization_loss.op.name: tf.stop_gradient(localization_loss),
-                   # classification_loss.op.name: tf.stop_gradient(classification_loss),
-                   wsod_mil_cls_loss.op.name: wsod_mil_cls_loss}
+      loss_dict = {  # localization_loss.op.name: tf.stop_gradient(localization_loss),
+          # classification_loss.op.name: tf.stop_gradient(classification_loss),
+          wsod_mil_cls_loss.op.name:
+          wsod_mil_cls_loss
+      }
 
       # Object detection loss ends here, by yek@.
 
@@ -2578,9 +2622,9 @@ class WSODMetaArch(model.DetectionModel):
             [batch_size, -1, mask_height * mask_width])
 
         batch_mask_targets_shape = tf.shape(batch_mask_targets)
-        flat_gt_masks = tf.reshape(batch_mask_targets,
-                                   [-1, batch_mask_targets_shape[2],
-                                    batch_mask_targets_shape[3]])
+        flat_gt_masks = tf.reshape(
+            batch_mask_targets,
+            [-1, batch_mask_targets_shape[2], batch_mask_targets_shape[3]])
 
         # Use normalized proposals to crop mask targets from image masks.
         flat_normalized_proposals = box_list_ops.to_normalized_coordinates(
@@ -2593,8 +2637,7 @@ class WSODMetaArch(model.DetectionModel):
             [mask_height, mask_width])
 
         batch_cropped_gt_mask = tf.reshape(
-            flat_cropped_gt_mask,
-            [batch_size, -1, mask_height * mask_width])
+            flat_cropped_gt_mask, [batch_size, -1, mask_height * mask_width])
 
         second_stage_mask_losses = ops.reduce_sum_trailing_dimensions(
             self._second_stage_mask_loss(
@@ -2602,18 +2645,19 @@ class WSODMetaArch(model.DetectionModel):
                 batch_cropped_gt_mask,
                 weights=batch_mask_target_weights,
                 losses_mask=losses_mask),
-            ndims=2) / (
-                mask_height * mask_width * tf.maximum(
-                    tf.reduce_sum(
-                        batch_mask_target_weights, axis=1, keep_dims=True
-                    ), tf.ones((batch_size, 1))))
+            ndims=2) / (mask_height * mask_width * tf.maximum(
+                tf.reduce_sum(
+                    batch_mask_target_weights, axis=1, keep_dims=True),
+                tf.ones((batch_size, 1))))
         second_stage_mask_loss = tf.reduce_sum(
             tf.where(paddings_indicator, second_stage_mask_losses,
                      tf.zeros_like(second_stage_mask_losses)))
 
       if second_stage_mask_loss is not None:
-        mask_loss = tf.multiply(self._second_stage_mask_loss_weight,
-                                second_stage_mask_loss, name='mask_loss')
+        mask_loss = tf.multiply(
+            self._second_stage_mask_loss_weight,
+            second_stage_mask_loss,
+            name='mask_loss')
         loss_dict[mask_loss.op.name] = mask_loss
     return loss_dict
 
@@ -2625,23 +2669,19 @@ class WSODMetaArch(model.DetectionModel):
     # predictions
     refined_box_encodings_with_background = tf.pad(refined_box_encodings,
                                                    [[0, 0], [1, 0], [0, 0]])
-    refined_box_encodings_masked_by_class_targets = (
-        box_list_ops.boolean_mask(
-            box_list.BoxList(
-                tf.reshape(refined_box_encodings_with_background,
-                           [-1, self._box_coder.code_size])),
-            tf.reshape(tf.greater(flat_cls_targets_with_background, 0), [-1]),
-            use_static_shapes=self._use_static_shapes,
-            indicator_sum=batch_size * self.max_num_proposals
-            if self._use_static_shapes else None).get())
+    refined_box_encodings_masked_by_class_targets = (box_list_ops.boolean_mask(
+        box_list.BoxList(
+            tf.reshape(refined_box_encodings_with_background,
+                       [-1, self._box_coder.code_size])),
+        tf.reshape(tf.greater(flat_cls_targets_with_background, 0), [-1]),
+        use_static_shapes=self._use_static_shapes,
+        indicator_sum=batch_size * self.max_num_proposals
+        if self._use_static_shapes else None).get())
     return tf.reshape(
-        refined_box_encodings_masked_by_class_targets, [
-            batch_size, self.max_num_proposals,
-            self._box_coder.code_size
-        ])
+        refined_box_encodings_masked_by_class_targets,
+        [batch_size, self.max_num_proposals, self._box_coder.code_size])
 
-  def _padded_batched_proposals_indicator(self,
-                                          num_proposals,
+  def _padded_batched_proposals_indicator(self, num_proposals,
                                           max_num_proposals):
     """Creates indicator matrix of non-pad elements of padded batch proposals.
 
@@ -2659,11 +2699,9 @@ class WSODMetaArch(model.DetectionModel):
         tf.expand_dims(tf.range(max_num_proposals), 0), [batch_size, 1])
     return tf.greater(tiled_num_proposals, tiled_proposal_index)
 
-  def _unpad_proposals_and_apply_hard_mining(self,
-                                             proposal_boxlists,
-                                             second_stage_loc_losses,
-                                             second_stage_cls_losses,
-                                             num_proposals):
+  def _unpad_proposals_and_apply_hard_mining(
+      self, proposal_boxlists, second_stage_loc_losses, second_stage_cls_losses,
+      num_proposals):
     """Unpads proposals and applies hard mining.
 
     Args:
@@ -2687,18 +2725,17 @@ class WSODMetaArch(model.DetectionModel):
         stage classification loss.
     """
     for (proposal_boxlist, single_image_loc_loss, single_image_cls_loss,
-         single_image_num_proposals) in zip(
-             proposal_boxlists,
-             tf.unstack(second_stage_loc_losses),
-             tf.unstack(second_stage_cls_losses),
-             tf.unstack(num_proposals)):
+         single_image_num_proposals) in zip(proposal_boxlists,
+                                            tf.unstack(second_stage_loc_losses),
+                                            tf.unstack(second_stage_cls_losses),
+                                            tf.unstack(num_proposals)):
       proposal_boxlist = box_list.BoxList(
-          tf.slice(proposal_boxlist.get(),
-                   [0, 0], [single_image_num_proposals, -1]))
-      single_image_loc_loss = tf.slice(single_image_loc_loss,
-                                       [0], [single_image_num_proposals])
-      single_image_cls_loss = tf.slice(single_image_cls_loss,
-                                       [0], [single_image_num_proposals])
+          tf.slice(proposal_boxlist.get(), [0, 0],
+                   [single_image_num_proposals, -1]))
+      single_image_loc_loss = tf.slice(single_image_loc_loss, [0],
+                                       [single_image_num_proposals])
+      single_image_cls_loss = tf.slice(single_image_cls_loss, [0],
+                                       [single_image_num_proposals])
       return self._hard_example_miner(
           location_losses=tf.expand_dims(single_image_loc_loss, 0),
           cls_losses=tf.expand_dims(single_image_cls_loss, 0),
