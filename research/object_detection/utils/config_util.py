@@ -233,7 +233,7 @@ def get_configs_from_multiple_files(model_config_path="",
     eval_input_config = input_reader_pb2.InputReader()
     with tf.gfile.GFile(eval_input_config_path, "r") as f:
       text_format.Merge(f.read(), eval_input_config)
-      configs["eval_input_configs"] = [eval_input_config]
+      configs["eval_input_config"] = eval_input_config
 
   if graph_rewriter_config_path:
     configs["graph_rewriter_config"] = get_graph_rewriter_config_from_file(
