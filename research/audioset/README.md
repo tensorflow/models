@@ -49,6 +49,7 @@ VGGish depends on the following Python packages:
 * [`resampy`](http://resampy.readthedocs.io/en/latest/)
 * [`tensorflow`](http://www.tensorflow.org/)
 * [`six`](https://pythonhosted.org/six/)
+* [`pysoundfile`](https://pysoundfile.readthedocs.io/)
 
 These are all easily installable via, e.g., `pip install numpy` (as in the
 example command sequence below).
