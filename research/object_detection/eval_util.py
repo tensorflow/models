@@ -271,9 +271,13 @@ def _run_checkpoint_once(tensor_dict,
       one element.
     ValueError: if save_graph is True and save_graph_dir is not defined.
   """
+  config = tf.ConfigProto()
+  config.allow_soft_placement = True
+  config.gpu_options.allow_growth = True
+
   if save_graph and not save_graph_dir:
     raise ValueError('`save_graph_dir` must be defined.')
-  sess = tf.Session(master, graph=tf.get_default_graph())
+  sess = tf.Session(master, graph=tf.get_default_graph(), config=config)
   sess.run(tf.global_variables_initializer())
   sess.run(tf.local_variables_initializer())
   sess.run(tf.tables_initializer())
@@ -439,11 +443,13 @@ def repeated_checkpoint_run(tensor_dict,
     start = time.time()
     tf.logging.info('Starting evaluation at ' + time.strftime(
         '%Y-%m-%d-%H:%M:%S', time.gmtime()))
-    model_path = tf.train.latest_checkpoint(checkpoint_dirs[0])
-    if not model_path:
-      tf.logging.info('No model found in %s. Will try again in %d seconds',
-                      checkpoint_dirs[0], eval_interval_secs)
-    elif model_path == last_evaluated_model_path:
+    model_path = None
+    if checkpoint_dirs[0]:
+      model_path = tf.train.latest_checkpoint(checkpoint_dirs[0])
+    # if not model_path:
+    #   tf.logging.info('No model found in %s. Will try again in %d seconds',
+    #                   checkpoint_dirs[0], eval_interval_secs)
+    if model_path and model_path == last_evaluated_model_path:
       tf.logging.info('Found already evaluated checkpoint. Will try again in '
                       '%d seconds', eval_interval_secs)
     else:

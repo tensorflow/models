@@ -303,12 +303,12 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     for idx in range(per_class_ap.size):
       if idx + self._label_id_offset in category_index:
         category_name = category_index[idx + self._label_id_offset]['name']
-        try:
-          category_name = unicode(category_name, 'utf-8')
-        except TypeError:
-          pass
-        category_name = unicodedata.normalize(
-            'NFKD', category_name).encode('ascii', 'ignore')
+        # try:
+        #   category_name = unicode(category_name, 'utf-8')
+        # except TypeError:
+        #   pass
+        # category_name = unicodedata.normalize(
+        #     'NFKD', category_name).encode('ascii', 'ignore')
         display_name = (
             self._metric_prefix + 'PerformanceByCategory/AP@{}IOU/{}'.format(
                 self._matching_iou_threshold, category_name))

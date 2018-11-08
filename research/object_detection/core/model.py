@@ -57,7 +57,7 @@ instance masks and keypoints.
 from abc import ABCMeta
 from abc import abstractmethod
 
-from object_detection.core import standard_fields as fields
+from object_detection.core import wsod_fields as fields
 
 
 class DetectionModel(object):

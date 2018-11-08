@@ -224,10 +224,16 @@ message Wsod {
   // Maximum number of RPN proposals retained after first stage postprocessing.
   optional int32 wsod_groundtruth_max_proposals = 83 [default=10];
 
-  // Feature column vocabulary file.
+  // File containing the mapping from name to class id.
   optional string name_to_class_id_file = 91;
 
+  // File containing the mapping from class id to name.
+  optional string class_id_to_name_file = 92;
+
   // Multiple Instance Learning loss weight.
-  optional float wsod_mil_cls_loss_weight = 92 [default = 1.0];
+  optional float wsod_mil_cls_loss_weight = 93 [default = 1.0];
+
+  // If true, only train the first stage, i.e., region proposal network.
+  optional bool train_only_rpn = 94 [default = false];
 }
 

@@ -331,7 +331,10 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
   #tensor_dict['global_step'] = global_step
 
   saver = tf.train.Saver(variables_to_restore)
-  score_map_saver=  tf.train.Saver(score_map_variables)
+
+  score_map_saver = None
+  if score_map_variables:
+    score_map_saver =  tf.train.Saver(score_map_variables)
 
   def _restore_latest_checkpoint(sess):
     global previous_score_map_ckpt
@@ -345,7 +348,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       tf.logging.info('Restore from %s', latest_checkpoint)
       saver.restore(sess, latest_checkpoint)
 
-    if FLAGS.score_map_path:
+    if FLAGS.score_map_path and score_map_saver is not None:
       latest_checkpoint = None
       while True: 
         time.sleep(10)

@@ -2246,24 +2246,6 @@ class WSODMetaArch(model.DetectionModel):
       (saliency_map, score_map) = (prediction_dict['image_saliency'],
                                    prediction_dict['image_score_map'])
 
-      def resize_fn(image):
-        """Upsamples the image and applies smoothing to the image.
-
-        Args:
-          image: a [batch, feature_height, feature_width, channels] float tensor
-            representing the feature map.
-
-        Returns:
-          resized_image: a [batch, height, width, channels] float tensor
-            representing the resized image.
-        """
-        resized_image = tf.image.resize_images(image, [height, width])
-        smoothed_image = imgproc.gaussian_filter(resized_image, ksize=32)
-        return smoothed_image
-
-      score_map = resize_fn(score_map)
-      saliency_map = resize_fn(tf.expand_dims(saliency_map, axis=-1))
-
     if self._saliency_model_checkpoint_path:
       tf.train.init_from_checkpoint(
           self._saliency_model_checkpoint_path, assignment_map={"/": "wsod/"})

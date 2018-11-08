@@ -55,6 +55,8 @@ flags.DEFINE_boolean(
 )
 FLAGS = flags.FLAGS
 
+tf.logging.set_verbosity(tf.logging.INFO)
+
 
 def main(unused_argv):
   flags.mark_flag_as_required('model_dir')
