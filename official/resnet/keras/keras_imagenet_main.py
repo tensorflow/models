@@ -75,34 +75,6 @@ class TimeHistory(tf.keras.callbacks.Callback):
                         (batch, last_100_batches, examples_per_second))
 
 
-def parse_record_keras(raw_record, is_training, dtype):
-  """Parses a record containing a training example of an image.
-
-  The input record is parsed into a label and image, and the image is passed
-  through preprocessing steps (cropping, flipping, and so on).
-
-  Args:
-    raw_record: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
-    is_training: A boolean denoting whether the input is for training.
-    dtype: dtype to use.
-
-  Returns:
-    Tuple with processed image tensor and one-hot-encoded label tensor.
-  """
-  image_buffer, label, bbox = imagenet_main._parse_example_proto(raw_record)
-
-  image = imagenet_preprocessing.preprocess_image(
-      image_buffer=image_buffer,
-      bbox=bbox,
-      output_height=imagenet_main._DEFAULT_IMAGE_SIZE,
-      output_width=imagenet_main._DEFAULT_IMAGE_SIZE,
-      num_channels=imagenet_main._NUM_CHANNELS,
-      is_training=is_training)
-
-  image = tf.cast(image, dtype)
-  return image, label
-
 def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
                        dtype=tf.float32):
   """Returns dataset filled with random data."""
@@ -165,7 +137,7 @@ def run_imagenet_with_keras(flags_obj):
         batch_size=per_device_batch_size,
         num_epochs=flags_obj.train_epochs,
         num_gpus=flags_obj.num_gpus,
-        parse_record_fn=parse_record_keras)
+        parse_record_fn=imagenet_main.parse_record)
 
     eval_input_dataset = imagenet_main.input_fn(
         False,
@@ -173,7 +145,7 @@ def run_imagenet_with_keras(flags_obj):
         batch_size=per_device_batch_size,
         num_epochs=flags_obj.train_epochs,
         num_gpus=flags_obj.num_gpus,
-        parse_record_fn=parse_record_keras)
+        parse_record_fn=imagenet_main.parse_record)
 
   # Set environment vars and session config
   session_config = resnet_run_loop.set_environment_vars(flags_obj)
@@ -182,7 +154,7 @@ def run_imagenet_with_keras(flags_obj):
 
   # Use Keras ResNet50 applications model and native keras APIs
   # initialize RMSprop optimizer
-  # opt = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
+  # TODO(anjalisridhar): Move to using MomentumOptimizer.
   opt = tf.train.GradientDescentOptimizer(learning_rate=0.0001)
 
   strategy = distribution_utils.get_distribution_strategy(
@@ -191,9 +163,13 @@ def run_imagenet_with_keras(flags_obj):
   model = resnet_model.ResNet50(classes=imagenet_main._NUM_CLASSES,
                                 weights=None)
 
-  # Hardcode learning phase to improve perf by getting rid of a few conds
-  # in the graph.
-  #tf.keras.backend.set_learning_phase(True)
+  # Hardcode learning phase to improve perf by getting rid of conds
+  # in the graph. You can do this if you are either only training or evaluating.
+  if flags_obj.train_only:
+    tf.keras.backend.set_learning_phase(True)
+
+  if flags_obj.eval_only:
+    tf.keras.backend.set_learning_phase(False)    
 
   model.compile(loss=softmax_crossentropy_with_logits,
                 optimizer=opt,
