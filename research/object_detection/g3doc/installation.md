@@ -137,6 +137,12 @@ tensorflow/models/research/:
 export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
 ```
 
+For Windows:
+``` bash
+# From tensorflow/models/research/
+SET PYTHONPATH=%cd%;%cd%\slim
+```
+
 Note: This command needs to run from every new terminal you start. If you wish
 to avoid running this manually, you can add it as a new line to the end of your
 ~/.bashrc file, replacing \`pwd\` with the absolute path of
