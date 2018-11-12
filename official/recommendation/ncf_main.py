@@ -181,7 +181,10 @@ def construct_estimator(num_gpus, model_dir, params, batch_size,
     return train_estimator, eval_estimator
 
   distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
-  run_config = tf.estimator.RunConfig(train_distribute=distribution)
+  cpu_config = tf.ConfigProto(inter_op_parallelism_threads=FLAGS.inter_op_parallelism_threads,
+                              intra_op_parallelism_threads=FLAGS.intra_op_parallelism_threads)
+  run_config = tf.estimator.RunConfig(train_distribute=distribution,
+                                      session_config=cpu_config)
   params["eval_batch_size"] = eval_batch_size
   estimator = tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
                                      model_dir=model_dir, config=run_config,
@@ -301,8 +304,8 @@ def define_ncf_flags():
   flags_core.define_base(export_dir=False)
   flags_core.define_performance(
       num_parallel_calls=False,
-      inter_op=False,
-      intra_op=False,
+      inter_op=True,
+      intra_op=True,
       synthetic_data=False,
       max_train_steps=False,
       dtype=False,
