@@ -247,7 +247,8 @@ def mobilenet_base(  # pylint: disable=invalid-name
     scopes = {}
     for i, opdef in enumerate(conv_defs['spec']):
       params = dict(opdef.params)
-      opdef.multiplier_func(params, multiplier)
+      if i != len(conv_defs['spec']) - 1 or multiplier >= 1:
+        opdef.multiplier_func(params, multiplier)
       stride = params.get('stride', 1)
       if output_stride is not None and current_stride == output_stride:
         # If we have reached the target output_stride, then we need to employ
