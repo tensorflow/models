@@ -55,10 +55,9 @@ These are all easily installable via, e.g., `pip install numpy` (as in the
 example command sequence below).
 
 Any reasonably recent version of these packages should work. TensorFlow should
-be at least version 1.0.  We have tested on an Ubuntu-like system with
-Python 2.7.6 and 3.4.3, NumPy v1.13.1, SciPy v0.19.1, resampy v0.1.5, TensorFlow
-v1.2.1, Six v1.10.0 as well on Ubuntu and Windows 10 with Python 3.6.6, Numpy v1.15.4,
-SciPy v1.1.0, resampy v0.2.1, TensorFlow v1.3.0, Six v1.11.0 and PySoundFile 0.9.0. 
+be at least version 1.0.  We have tested that everything works on Ubuntu and
+Windows 10 with Python 3.6.6, Numpy v1.15.4, SciPy v1.1.0, resampy v0.2.1,
+TensorFlow v1.3.0, Six v1.11.0 and PySoundFile 0.9.0.
 
 VGGish also requires downloading two data files:
 
