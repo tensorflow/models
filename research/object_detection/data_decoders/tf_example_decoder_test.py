@@ -256,8 +256,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
                                 bbox_xmaxs]).transpose()
     self.assertAllEqual(expected_boxes,
                         tensor_dict[fields.InputDataFields.groundtruth_boxes])
-    self.assertAllEqual(
-        2, tensor_dict[fields.InputDataFields.num_groundtruth_boxes])
 
   @test_util.enable_c_shapes
   def testDecodeKeypoint(self):
@@ -305,8 +303,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
                                 bbox_xmaxs]).transpose()
     self.assertAllEqual(expected_boxes,
                         tensor_dict[fields.InputDataFields.groundtruth_boxes])
-    self.assertAllEqual(
-        2, tensor_dict[fields.InputDataFields.num_groundtruth_boxes])
 
     expected_keypoints = (
         np.vstack([keypoint_ys, keypoint_xs]).transpose().reshape((2, 3, 2)))

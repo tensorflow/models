@@ -58,6 +58,10 @@ HR_KEY = "HR"
 NDCG_KEY = "NDCG"
 DUPLICATE_MASK = "duplicate_mask"
 
+# Metric names
+HR_METRIC_NAME = "HR_METRIC"
+NDCG_METRIC_NAME = "NDCG_METRIC"
+
 # ==============================================================================
 # == Subprocess Data Generation ================================================
 # ==============================================================================

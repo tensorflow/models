@@ -872,7 +872,8 @@ def merge_boxes_with_multiple_labels(boxes,
             merged_box_indices)
 
 
-def nearest_neighbor_upsampling(input_tensor, scale):
+def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
+                                width_scale=None):
   """Nearest neighbor upsampling implementation.
 
   Nearest neighbor upsampling function that maps input tensor with shape
@@ -883,19 +884,33 @@ def nearest_neighbor_upsampling(input_tensor, scale):
   Args:
     input_tensor: A float32 tensor of size [batch, height_in, width_in,
       channels].
-    scale: An integer multiple to scale resolution of input data.
+    scale: An integer multiple to scale resolution of input data in both height
+      and width dimensions.
+    height_scale: An integer multiple to scale the height of input image. This
+      option when provided overrides `scale` option.
+    width_scale: An integer multiple to scale the width of input image. This
+      option when provided overrides `scale` option.
   Returns:
     data_up: A float32 tensor of size
       [batch, height_in*scale, width_in*scale, channels].
+
+  Raises:
+    ValueError: If both scale and height_scale or if both scale and width_scale
+      are None.
   """
+  if not scale and (height_scale is None or width_scale is None):
+    raise ValueError('Provide either `scale` or `height_scale` and'
+                     ' `width_scale`.')
   with tf.name_scope('nearest_neighbor_upsampling'):
+    h_scale = scale if height_scale is None else height_scale
+    w_scale = scale if width_scale is None else width_scale
     (batch_size, height, width,
      channels) = shape_utils.combined_static_and_dynamic_shape(input_tensor)
     output_tensor = tf.reshape(
         input_tensor, [batch_size, height, 1, width, 1, channels]) * tf.ones(
-            [1, 1, scale, 1, scale, 1], dtype=input_tensor.dtype)
+            [1, 1, h_scale, 1, w_scale, 1], dtype=input_tensor.dtype)
     return tf.reshape(output_tensor,
-                      [batch_size, height * scale, width * scale, channels])
+                      [batch_size, height * h_scale, width * w_scale, channels])
 
 
 def matmul_gather_on_zeroth_axis(params, indices, scope=None):
@@ -1072,29 +1087,35 @@ def native_crop_and_resize(image, boxes, crop_size, scope=None):
     return tf.reshape(cropped_regions, final_shape)
 
 
-def expected_classification_loss_under_sampling(batch_cls_targets, cls_losses,
-                                                desired_negative_sampling_ratio,
-                                                minimum_negative_sampling):
+def expected_classification_loss_under_sampling(
+    batch_cls_targets, cls_losses, unmatched_cls_losses,
+    desired_negative_sampling_ratio, min_num_negative_samples):
   """Computes classification loss by background/foreground weighting.
 
   The weighting is such that the effective background/foreground weight ratio
   is the desired_negative_sampling_ratio. if p_i is the foreground probability
-  of anchor a_i, L(a_i) is the anchors loss, N is the number of anchors, and M
-  is the sum of foreground probabilities across anchors, then the total loss L
-  is calculated as:
+  of anchor a_i, L(a_i) is the anchors loss, N is the number of anchors, M
+  is the sum of foreground probabilities across anchors, and K is the desired
+  ratio between the number of negative and positive samples, then the total loss
+  L is calculated as:
 
   beta = K*M/(N-M)
-  L = sum_{i=1}^N [p_i + beta * (1 - p_i)] * (L(a_i))
+  L = sum_{i=1}^N [p_i * L_p(a_i) + beta * (1 - p_i) * L_n(a_i)]
+  where L_p(a_i) is the loss against target assuming the anchor was matched,
+  otherwise zero, and L_n(a_i) is the loss against the background target
+  assuming the anchor was unmatched, otherwise zero.
 
   Args:
-    batch_cls_targets: A tensor with shape [batch_size, num_anchors,
-        num_classes + 1], where 0'th index is the background class, containing
-        the class distrubution for the target assigned to a given anchor.
-    cls_losses: Float tensor of shape [batch_size, num_anchors]
-        representing anchorwise classification losses.
+    batch_cls_targets: A tensor with shape [batch_size, num_anchors, num_classes
+      + 1], where 0'th index is the background class, containing the class
+      distrubution for the target assigned to a given anchor.
+    cls_losses: Float tensor of shape [batch_size, num_anchors] representing
+      anchorwise classification losses.
+    unmatched_cls_losses: loss for each anchor against the unmatched class
+      target.
     desired_negative_sampling_ratio: The desired background/foreground weight
       ratio.
-    minimum_negative_sampling: Minimum number of effective negative samples.
+    min_num_negative_samples: Minimum number of effective negative samples.
       Used only when there are no positive examples.
 
   Returns:
@@ -1103,36 +1124,44 @@ def expected_classification_loss_under_sampling(batch_cls_targets, cls_losses,
   num_anchors = tf.cast(tf.shape(batch_cls_targets)[1], tf.float32)
 
   # find the p_i
-  foreground_probabilities = (
-      foreground_probabilities_from_targets(batch_cls_targets))
+  foreground_probabilities = 1 - batch_cls_targets[:, :, 0]
+
   foreground_sum = tf.reduce_sum(foreground_probabilities, axis=-1)
+
+  # for each anchor, expected_j is the expected number of positive anchors
+  # given that this anchor was sampled as negative.
+  tiled_foreground_sum = tf.tile(
+      tf.reshape(foreground_sum, [-1, 1]),
+      [1, tf.cast(num_anchors, tf.int32)])
+  expected_j = tiled_foreground_sum - foreground_probabilities
 
   k = desired_negative_sampling_ratio
 
   # compute beta
-  denominators = (num_anchors - foreground_sum)
-  beta = tf.where(
-      tf.equal(denominators, 0), tf.zeros_like(foreground_sum),
-      k * foreground_sum / denominators)
+  expected_negatives = tf.to_float(num_anchors) - expected_j
+  desired_negatives = k * expected_j
+  desired_negatives = tf.where(
+      tf.greater(desired_negatives, expected_negatives), expected_negatives,
+      desired_negatives)
+
+  # probability that an anchor is sampled for the loss computation given that it
+  # is negative.
+  beta = desired_negatives / expected_negatives
 
   # where the foreground sum is zero, use a minimum negative weight.
-  min_negative_weight = 1.0 * minimum_negative_sampling / num_anchors
+  min_negative_weight = 1.0 * min_num_negative_samples / num_anchors
   beta = tf.where(
-      tf.equal(foreground_sum, 0), min_negative_weight * tf.ones_like(beta),
-      beta)
-  beta = tf.reshape(beta, [-1, 1])
+      tf.equal(tiled_foreground_sum, 0),
+      min_negative_weight * tf.ones_like(beta), beta)
 
-  cls_loss_weights = foreground_probabilities + (
-      1 - foreground_probabilities) * beta
+  foreground_weights = foreground_probabilities
+  background_weights = (1 - foreground_weights) * beta
 
-  weighted_losses = cls_loss_weights * cls_losses
+  weighted_foreground_losses = foreground_weights * cls_losses
+  weighted_background_losses = background_weights * unmatched_cls_losses
 
-  cls_losses = tf.reduce_sum(weighted_losses, axis=-1)
+  cls_losses = tf.reduce_sum(
+      weighted_foreground_losses, axis=-1) + tf.reduce_sum(
+          weighted_background_losses, axis=-1)
 
   return cls_losses
-
-
-def foreground_probabilities_from_targets(batch_cls_targets):
-  foreground_probabilities = 1 - batch_cls_targets[:, :, 0]
-
-  return foreground_probabilities

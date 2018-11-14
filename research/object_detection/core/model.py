@@ -290,6 +290,18 @@ class DetectionModel(object):
           fields.InputDataFields.is_annotated] = is_annotated_list
 
   @abstractmethod
+  def regularization_losses(self):
+    """Returns a list of regularization losses for this model.
+
+    Returns a list of regularization losses for this model that the estimator
+    needs to use during training/optimization.
+
+    Returns:
+      A list of regularization loss tensors.
+    """
+    pass
+
+  @abstractmethod
   def restore_map(self, fine_tune_checkpoint_type='detection'):
     """Returns a map of variables to load from a foreign checkpoint.
 
@@ -310,5 +322,18 @@ class DetectionModel(object):
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    """
+    pass
+
+  @abstractmethod
+  def updates(self):
+    """Returns a list of update operators for this model.
+
+    Returns a list of update operators for this model that must be executed at
+    each training step. The estimator's train op needs to have a control
+    dependency on these updates.
+
+    Returns:
+      A list of update operators.
     """
     pass

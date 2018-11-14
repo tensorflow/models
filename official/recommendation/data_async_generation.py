@@ -410,6 +410,7 @@ def _generation_loop(num_workers,           # type: int
                      num_items,             # type: int
                      num_users,             # type: int
                      epochs_per_cycle,      # type: int
+                     num_cycles,            # type: int
                      train_batch_size,      # type: int
                      eval_batch_size,       # type: int
                      deterministic,         # type: bool
@@ -449,7 +450,7 @@ def _generation_loop(num_workers,           # type: int
 
   wait_count = 0
   start_time = time.time()
-  while True:
+  while train_cycle < num_cycles:
     ready_epochs = tf.gfile.ListDirectory(cache_paths.train_epoch_dir)
     if len(ready_epochs) >= rconst.CYCLES_TO_BUFFER:
       wait_count += 1
@@ -567,6 +568,7 @@ def main(_):
           num_items=flags.FLAGS.num_items,
           num_users=flags.FLAGS.num_users,
           epochs_per_cycle=flags.FLAGS.epochs_per_cycle,
+          num_cycles=flags.FLAGS.num_cycles,
           train_batch_size=flags.FLAGS.train_batch_size,
           eval_batch_size=flags.FLAGS.eval_batch_size,
           deterministic=flags.FLAGS.seed is not None,
@@ -608,6 +610,9 @@ def define_flags():
   flags.DEFINE_integer(name="epochs_per_cycle", default=1,
                        help="The number of epochs of training data to produce"
                             "at a time.")
+  flags.DEFINE_integer(name="num_cycles", default=None,
+                       help="The number of cycles to produce training data "
+                            "for.")
   flags.DEFINE_integer(name="train_batch_size", default=None,
                        help="The batch size with which training TFRecords will "
                             "be chunked.")

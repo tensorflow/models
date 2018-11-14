@@ -234,11 +234,15 @@ def export_tflite_graph(pipeline_config, trained_checkpoint_prefix, output_dir,
   tf.train.get_or_create_global_step()
 
   # graph rewriter
-  if pipeline_config.HasField('graph_rewriter'):
+  is_quantized = pipeline_config.HasField('graph_rewriter')
+  if is_quantized:
     graph_rewriter_config = pipeline_config.graph_rewriter
     graph_rewriter_fn = graph_rewriter_builder.build(
         graph_rewriter_config, is_training=False)
     graph_rewriter_fn()
+
+  if pipeline_config.model.ssd.feature_extractor.HasField('fpn'):
+    exporter.rewrite_nn_resize_op(is_quantized)
 
   # freeze the graph
   saver_kwargs = {}

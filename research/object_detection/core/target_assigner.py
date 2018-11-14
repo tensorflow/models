@@ -130,7 +130,8 @@ class TargetAssigner(object):
       cls_targets: a float32 tensor with shape [num_anchors, d_1, d_2 ... d_k],
         where the subshape [d_1, ..., d_k] is compatible with groundtruth_labels
         which has shape [num_gt_boxes, d_1, d_2, ... d_k].
-      cls_weights: a float32 tensor with shape [num_anchors]
+      cls_weights: a float32 tensor with shape [num_anchors, d_1, d_2 ... d_k],
+        representing weights for each element in cls_targets.
       reg_targets: a float32 tensor with shape [num_anchors, box_code_dimension]
       reg_weights: a float32 tensor with shape [num_anchors]
       match: a matcher.Match object encoding the match between anchors and
@@ -195,6 +196,15 @@ class TargetAssigner(object):
 
       cls_weights = self._create_classification_weights(match,
                                                         groundtruth_weights)
+      # convert cls_weights from per-anchor to per-class.
+      class_label_shape = tf.shape(cls_targets)[1:]
+      weights_shape = tf.shape(cls_weights)
+      weights_multiple = tf.concat(
+          [tf.ones_like(weights_shape), class_label_shape],
+          axis=0)
+      for _ in range(len(cls_targets.get_shape()[1:])):
+        cls_weights = tf.expand_dims(cls_weights, -1)
+      cls_weights = tf.tile(cls_weights, weights_multiple)
 
     num_anchors = anchors.num_boxes_static()
     if num_anchors is not None:
@@ -445,7 +455,8 @@ def batch_assign_targets(target_assigner,
   Returns:
     batch_cls_targets: a tensor with shape [batch_size, num_anchors,
       num_classes],
-    batch_cls_weights: a tensor with shape [batch_size, num_anchors],
+    batch_cls_weights: a tensor with shape [batch_size, num_anchors,
+      num_classes],
     batch_reg_targets: a tensor with shape [batch_size, num_anchors,
       box_code_dimension]
     batch_reg_weights: a tensor with shape [batch_size, num_anchors],

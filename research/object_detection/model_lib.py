@@ -25,6 +25,7 @@ import os
 import tensorflow as tf
 
 from object_detection import eval_util
+from object_detection import exporter as exporter_lib
 from object_detection import inputs
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
@@ -306,8 +307,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           prediction_dict, features[fields.InputDataFields.true_image_shape])
       losses = [loss_tensor for loss_tensor in losses_dict.values()]
       if train_config.add_regularization_loss:
-        regularization_losses = tf.get_collection(
-            tf.GraphKeys.REGULARIZATION_LOSSES)
+        regularization_losses = detection_model.regularization_losses()
         if regularization_losses:
           regularization_loss = tf.add_n(
               regularization_losses, name='regularization_loss')
@@ -353,20 +353,24 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         for var in optimizer_summary_vars:
           tf.summary.scalar(var.op.name, var)
       summaries = [] if use_tpu else None
+      if train_config.summarize_gradients:
+        summaries = ['gradients', 'gradient_norm', 'global_gradient_norm']
       train_op = tf.contrib.layers.optimize_loss(
           loss=total_loss,
           global_step=global_step,
           learning_rate=None,
           clip_gradients=clip_gradients_value,
           optimizer=training_optimizer,
+          update_ops=detection_model.updates(),
           variables=trainable_variables,
           summaries=summaries,
           name='')  # Preventing scope prefix on all variables.
 
     if mode == tf.estimator.ModeKeys.PREDICT:
+      exported_output = exporter_lib.add_output_tensor_nodes(detections)
       export_outputs = {
           tf.saved_model.signature_constants.PREDICT_METHOD_NAME:
-              tf.estimator.export.PredictOutput(detections)
+              tf.estimator.export.PredictOutput(exported_output)
       }
 
     eval_metric_ops = None
@@ -456,6 +460,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
 def create_estimator_and_inputs(run_config,
                                 hparams,
                                 pipeline_config_path,
+                                config_override=None,
                                 train_steps=None,
                                 sample_1_of_n_eval_examples=1,
                                 sample_1_of_n_eval_on_train_examples=1,
@@ -465,6 +470,7 @@ def create_estimator_and_inputs(run_config,
                                 num_shards=1,
                                 params=None,
                                 override_eval_num_epochs=True,
+                                save_final_config=False,
                                 **kwargs):
   """Creates `Estimator`, input functions, and steps.
 
@@ -472,6 +478,8 @@ def create_estimator_and_inputs(run_config,
     run_config: A `RunConfig`.
     hparams: A `HParams`.
     pipeline_config_path: A path to a pipeline config file.
+    config_override: A pipeline_pb2.TrainEvalPipelineConfig text proto to
+      override the config from `pipeline_config_path`.
     train_steps: Number of training steps. If None, the number of training steps
       is set from the `TrainConfig` proto.
     sample_1_of_n_eval_examples: Integer representing how often an eval example
@@ -499,6 +507,8 @@ def create_estimator_and_inputs(run_config,
       `use_tpu_estimator` is True.
     override_eval_num_epochs: Whether to overwrite the number of epochs to
       1 for eval_input.
+    save_final_config: Whether to save final config (obtained after applying
+      overrides) to `estimator.model_dir`.
     **kwargs: Additional keyword arguments for configuration override.
 
   Returns:
@@ -522,7 +532,8 @@ def create_estimator_and_inputs(run_config,
   create_eval_input_fn = MODEL_BUILD_UTIL_MAP['create_eval_input_fn']
   create_predict_input_fn = MODEL_BUILD_UTIL_MAP['create_predict_input_fn']
 
-  configs = get_configs_from_pipeline_file(pipeline_config_path)
+  configs = get_configs_from_pipeline_file(pipeline_config_path,
+                                           config_override=config_override)
   kwargs.update({
       'train_steps': train_steps,
       'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples
@@ -595,7 +606,7 @@ def create_estimator_and_inputs(run_config,
     estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
 
   # Write the as-run pipeline config to disk.
-  if run_config.is_chief:
+  if run_config.is_chief and save_final_config:
     pipeline_config_final = create_pipeline_proto_from_configs(configs)
     config_util.save_pipeline_config(pipeline_config_final, estimator.model_dir)
 
@@ -641,11 +652,17 @@ def create_train_and_eval_specs(train_input_fn,
       input_fn=train_input_fn, max_steps=train_steps)
 
   if eval_spec_names is None:
-    eval_spec_names = [ str(i) for i in range(len(eval_input_fns)) ]
+    eval_spec_names = [str(i) for i in range(len(eval_input_fns))]
 
   eval_specs = []
-  for eval_spec_name, eval_input_fn in zip(eval_spec_names, eval_input_fns):
-    exporter_name = '{}_{}'.format(final_exporter_name, eval_spec_name)
+  for index, (eval_spec_name, eval_input_fn) in enumerate(
+      zip(eval_spec_names, eval_input_fns)):
+    # Uses final_exporter_name as exporter_name for the first eval spec for
+    # backward compatibility.
+    if index == 0:
+      exporter_name = final_exporter_name
+    else:
+      exporter_name = '{}_{}'.format(final_exporter_name, eval_spec_name)
     exporter = tf.estimator.FinalExporter(
         name=exporter_name, serving_input_receiver_fn=predict_input_fn)
     eval_specs.append(
@@ -747,6 +764,7 @@ def populate_experiment(run_config,
       train_steps=train_steps,
       eval_steps=eval_steps,
       model_fn_creator=model_fn_creator,
+      save_final_config=True,
       **kwargs)
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']

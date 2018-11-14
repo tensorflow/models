@@ -29,7 +29,7 @@ class ConvolutionalClassHead(head.KerasHead):
 
   def __init__(self,
                is_training,
-               num_classes,
+               num_class_slots,
                use_dropout,
                dropout_keep_prob,
                kernel_size,
@@ -43,7 +43,8 @@ class ConvolutionalClassHead(head.KerasHead):
 
     Args:
       is_training: Indicates whether the BoxPredictor is in training mode.
-      num_classes: Number of classes.
+      num_class_slots: number of class slots. Note that num_class_slots may or
+        may not include an implicit background category.
       use_dropout: Option to use dropout or not.  Note that a single dropout
         op is applied here prior to both box and class predictions, which stands
         in contrast to the ConvolutionalBoxPredictor below.
@@ -73,13 +74,12 @@ class ConvolutionalClassHead(head.KerasHead):
     """
     super(ConvolutionalClassHead, self).__init__(name=name)
     self._is_training = is_training
-    self._num_classes = num_classes
     self._use_dropout = use_dropout
     self._dropout_keep_prob = dropout_keep_prob
     self._kernel_size = kernel_size
     self._class_prediction_bias_init = class_prediction_bias_init
     self._use_depthwise = use_depthwise
-    self._num_class_slots = self._num_classes + 1
+    self._num_class_slots = num_class_slots
 
     self._class_predictor_layers = []
 
@@ -110,7 +110,7 @@ class ConvolutionalClassHead(head.KerasHead):
           tf.keras.layers.Conv2D(
               num_predictions_per_location * self._num_class_slots, [1, 1],
               name='ClassPredictor',
-              **conv_hyperparams.params(activation=None)))
+              **conv_hyperparams.params(use_bias=True)))
     else:
       self._class_predictor_layers.append(
           tf.keras.layers.Conv2D(
@@ -120,7 +120,7 @@ class ConvolutionalClassHead(head.KerasHead):
               name='ClassPredictor',
               bias_initializer=tf.constant_initializer(
                   self._class_prediction_bias_init),
-              **conv_hyperparams.params(activation=None)))
+              **conv_hyperparams.params(use_bias=True)))
 
   def _predict(self, features):
     """Predicts boxes.
@@ -131,7 +131,7 @@ class ConvolutionalClassHead(head.KerasHead):
 
     Returns:
       class_predictions_with_background: A float tensor of shape
-        [batch_size, num_anchors, num_classes + 1] representing the class
+        [batch_size, num_anchors, num_class_slots] representing the class
         predictions for the proposals.
     """
     # Add a slot for the background class.
