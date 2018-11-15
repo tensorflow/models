@@ -49,7 +49,7 @@ from tensorflow.contrib.data.python.ops import threadpool
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_gpus=None,
                            examples_per_epoch=None, dtype=tf.float32,
-                           datasets_num_private_threads=None,
+                           num_private_threads=None,
                            num_parallel_batches=1):
   """Given a Dataset with raw records, return an iterator over the records.
 
@@ -66,7 +66,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     num_gpus: The number of gpus used for training.
     examples_per_epoch: The number of examples in an epoch.
     dtype: Data type to use for images/features.
-    datasets_num_private_threads: Number of threads for a private
+    num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
     num_parallel_batches: Number of parallel batches for tf.data.
 
@@ -104,11 +104,11 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # on how many devices are present.
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
 
-  if datasets_num_private_threads:
+  if num_private_threads:
     dataset = threadpool.override_threadpool(
         dataset,
         threadpool.PrivateThreadPool(
-            datasets_num_private_threads,
+            num_private_threads,
             display_name='input_pipeline_thread_pool'))
 
   return dataset

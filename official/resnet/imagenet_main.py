@@ -160,8 +160,8 @@ def parse_record(raw_record, is_training, dtype):
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
-             dtype=tf.float32, datasets_num_private_threads=None,
-             num_parallel_batches=1, parse_record_fn=parse_record):
+             dtype=tf.float32, num_private_threads=None,
+             num_parallel_calls=1, parse_record_fn=parse_record):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -171,8 +171,11 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
     dtype: Data type to use for images/features
-    datasets_num_private_threads: Number of private threads for tf.data.
-    num_parallel_batches: Number of parallel batches for tf.data.
+    num_private_threads: Number of threads for a private
+      threadpool created for all datasets computation.
+    num_parallel_calls: This is used to parallelize the map transformation.
+      Typically we set the value of num_parallel_calls to the number of
+      CPU cores.
 
   Returns:
     A dataset that can be used for iteration.
@@ -202,8 +205,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
       num_gpus=num_gpus,
       examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
       dtype=dtype,
-      datasets_num_private_threads=datasets_num_private_threads,
-      num_parallel_batches=num_parallel_batches
+      num_private_threads=num_private_threads,
+      num_parallel_calls=num_parallel_calls
   )
 
 
