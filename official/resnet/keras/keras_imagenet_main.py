@@ -87,29 +87,6 @@ def softmax_crossentropy_with_logits(y_true, y_pred):
       labels=tf.reshape(tf.cast(y_true, tf.int64), [-1,]))
 
 
-def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
-                       dtype=tf.float32):
-  """Returns dataset filled with random data."""
-  # Synthetic input should be within [0, 255].
-  inputs = tf.truncated_normal(
-      [batch_size] + [height, width, num_channels],
-      dtype=dtype,
-      mean=127,
-      stddev=60,
-      name='synthetic_inputs')
-
-  labels = tf.random_uniform(
-      [batch_size],
-      minval=0,
-      maxval=num_classes - 1,
-      dtype=tf.int32,
-      name='synthetic_labels')
-
-  dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
-  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
-  return dataset
-
-
 def run_imagenet_with_keras(flags_obj):
   """Run ResNet ImageNet training and eval loop using native Keras APIs.
 
@@ -133,18 +110,20 @@ def run_imagenet_with_keras(flags_obj):
         imagenet_main._DEFAULT_IMAGE_SIZE, imagenet_main._DEFAULT_IMAGE_SIZE,
         imagenet_main._NUM_CHANNELS, imagenet_main._NUM_CLASSES,
         dtype=flags_core.get_tf_dtype(flags_obj))
-    train_input_dataset = synth_input_fn(batch_size=per_device_batch_size,
-                                         height=imagenet_main._DEFAULT_IMAGE_SIZE,
-                                         width=imagenet_main._DEFAULT_IMAGE_SIZE,
-                                         num_channels=imagenet_main._NUM_CHANNELS,
-                                         num_classes=imagenet_main._NUM_CLASSES,
-                                         dtype=dtype)
-    eval_input_dataset = synth_input_fn(batch_size=per_device_batch_size,
-                                        height=imagenet_main._DEFAULT_IMAGE_SIZE,
-                                        width=imagenet_main._DEFAULT_IMAGE_SIZE,
-                                        num_channels=imagenet_main._NUM_CHANNELS,
-                                        num_classes=imagenet_main._NUM_CLASSES,
-                                        dtype=dtype)
+    train_input_dataset = synth_input_fn(
+        batch_size=per_device_batch_size,
+        height=imagenet_main._DEFAULT_IMAGE_SIZE,
+        width=imagenet_main._DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_main._NUM_CHANNELS,
+        num_classes=imagenet_main._NUM_CLASSES,
+        dtype=dtype)
+    eval_input_dataset = synth_input_fn(
+        batch_size=per_device_batch_size,
+        height=imagenet_main._DEFAULT_IMAGE_SIZE,
+        width=imagenet_main._DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_main._NUM_CHANNELS,
+        num_classes=imagenet_main._NUM_CLASSES,
+        dtype=dtype)
   # pylint: enable=protected-access
 
   else:
