@@ -143,7 +143,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
       examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
       dtype=dtype,
       num_private_threads=num_private_threads,
-      num_parallel_batches=num_parallel_batches
+      num_parallel_calls=num_parallel_calls
   )
 
 
@@ -195,7 +195,7 @@ class Cifar10Model(resnet_model.Model):
         final_size=64,
         resnet_version=resnet_version,
         data_format=data_format,
-        dtype=dtype,
+        dtype=dtype
     )
 
 

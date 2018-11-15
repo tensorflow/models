@@ -50,7 +50,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_gpus=None,
                            examples_per_epoch=None, dtype=tf.float32,
                            num_private_threads=None,
-                           num_parallel_batches=1):
+                           num_parallel_calls=1):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -68,8 +68,9 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     dtype: Data type to use for images/features.
     num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
-    num_parallel_batches: Number of parallel batches for tf.data.
-
+    num_parallel_calls: This is used to parallelize the map transformation.
+      Typically we set the value of num_parallel_calls to the number of
+      CPU cores.
   Returns:
     Dataset of (image, label) pairs ready for iteration.
   """
@@ -86,14 +87,12 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # dataset for the appropriate number of epochs.
   dataset = dataset.repeat(num_epochs)
 
-  # Parse the raw records into images and labels. Testing has shown that setting
-  # num_parallel_batches > 1 produces no improvement in throughput, since
-  # batch_size is almost always much greater than the number of CPU cores.
+  # Parse the raw records into images and labels.
   dataset = dataset.apply(
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training, dtype),
           batch_size=batch_size,
-          num_parallel_batches=num_parallel_batches,
+          num_parallel_calls=num_parallel_calls,
           drop_remainder=False))
 
   # Operations between the final prefetch and the get_next call to the iterator
@@ -393,7 +392,18 @@ def resnet_model_fn(features, labels, mode, model_class,
       eval_metric_ops=metrics)
 
 
-def set_environment_vars(flags_obj):
+def set_environ_and_config(flags_obj):
+  """Sets required environment variables and session config.
+
+  Sets environment variables and returns a tf.ConfigProto for the
+  tf.Session based on flags
+
+  Arguments:
+    flags_obj: Flags object used to access all flags values.
+
+  Returns:
+    tf.ConfigProto that is set based on the flag values.
+  """
 
   if flags_obj.tf_gpu_thread_mode in ['gpu_private']:
     cpu_count = multiprocessing.cpu_count()
@@ -511,8 +521,8 @@ def resnet_main(
         num_epochs=num_epochs,
         num_gpus=flags_core.get_num_gpus(flags_obj),
         dtype=flags_core.get_tf_dtype(flags_obj),
-        datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-        num_parallel_batches=flags_obj.num_parallel_calls
+        num_private_threads=flags_obj.datasets_num_private_threads,
+        num_parallel_calls=flags_obj.num_parallel_calls
         )
 
   def input_fn_eval():

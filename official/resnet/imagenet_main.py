@@ -140,7 +140,7 @@ def parse_record(raw_record, is_training, dtype):
     raw_record: scalar Tensor tf.string containing a serialized
       Example protocol buffer.
     is_training: A boolean denoting whether the input is for training.
-    dtype: data type to use for images/features.
+    dtype: Data type to use for input images.
 
   Returns:
     Tuple with processed image tensor and one-hot-encoded label tensor.
@@ -170,7 +170,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of gpus used for training.
-    dtype: Data type to use for images/features
+    dtype: Data type to use for input images.
     num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
     num_parallel_calls: This is used to parallelize the map transformation.

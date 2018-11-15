@@ -47,15 +47,15 @@ class TimeHistory(tf.keras.callbacks.Callback):
     super(TimeHistory, self).__init__()
 
   def on_train_begin(self, logs=None):
-    self.epoch_times = []
-    self.batch_times = []
+    self.epoch_times_secs = []
+    self.batch_times_secs = []
     self.record_batch = True
 
   def on_epoch_begin(self, epoch, logs=None):
     self.epoch_time_start = time.time()
 
   def on_epoch_end(self, epoch, logs=None):
-    self.epoch_times.append(time.time() - self.epoch_time_start)
+    self.epoch_times_secs.append(time.time() - self.epoch_time_start)
 
   def on_batch_begin(self, batch, logs=None):
     if self.record_batch:
@@ -66,13 +66,25 @@ class TimeHistory(tf.keras.callbacks.Callback):
     if batch % 100 == 0:
       last_100_batches = time.time() - self.batch_time_start
       examples_per_second = (self._batch_size * 100) / last_100_batches
-      self.batch_times.append(last_100_batches)
+      self.batch_times_secs.append(last_100_batches)
       self.record_batch = True
       # TODO(anjalisridhar): add timestamp as well.
       if batch != 0:
         tf.logging.info("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
                         "'images_per_second': %f}" %
                         (batch, last_100_batches, examples_per_second))
+
+
+def softmax_crossentropy_with_logits(y_true, y_pred):
+  """A loss function replicating tf's sparse_softmax_cross_entropy
+
+  Args:
+    y_true: True labels. Tensor of shape [batch_size,]
+    y_pred: Predictions. Tensor of shape [batch_size, num_classes]
+  """
+  return tf.losses.sparse_softmax_cross_entropy(
+      logits=y_pred,
+      labels=tf.reshape(tf.cast(y_true, tf.int64), [-1,]))
 
 
 def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
@@ -107,28 +119,33 @@ def run_imagenet_with_keras(flags_obj):
   Raises:
     ValueError: If fp16 is passed as it is not currently supported.
   """
-  if flags_obj.dtype == 'fp16':
+  dtype = flags_core.get_tf_dtype(flags_obj)
+  if dtype == 'fp16':
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
                      'value(fp32).')
 
   per_device_batch_size = distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
 
+  # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
-    train_input_dataset = synthetic_input_fn(per_device_batch_size,
-                                             imagenet_main._DEFAULT_IMAGE_SIZE,
-                                             imagenet_main._DEFAULT_IMAGE_SIZE,
-                                             imagenet_main._NUM_CHANNELS,
-                                             imagenet_main._NUM_CLASSES,
-                                             dtype=flags_core.get_tf_dtype(
-                                                 flags_obj))
-    eval_input_dataset = synthetic_input_fn(per_device_batch_size,
-                                            imagenet_main._DEFAULT_IMAGE_SIZE,
-                                            imagenet_main._DEFAULT_IMAGE_SIZE,
-                                            imagenet_main._NUM_CHANNELS,
-                                            imagenet_main._NUM_CLASSES,
-                                            dtype=flags_core.get_tf_dtype(
-                                                flags_obj))
+    synth_input_fn = resnet_run_loop.get_synth_input_fn(
+        imagenet_main._DEFAULT_IMAGE_SIZE, imagenet_main._DEFAULT_IMAGE_SIZE,
+        imagenet_main._NUM_CHANNELS, imagenet_main._NUM_CLASSES,
+        dtype=flags_core.get_tf_dtype(flags_obj))
+    train_input_dataset = synth_input_fn(batch_size=per_device_batch_size,
+                                         height=imagenet_main._DEFAULT_IMAGE_SIZE,
+                                         width=imagenet_main._DEFAULT_IMAGE_SIZE,
+                                         num_channels=imagenet_main._NUM_CHANNELS,
+                                         num_classes=imagenet_main._NUM_CLASSES,
+                                         dtype=dtype)
+    eval_input_dataset = synth_input_fn(batch_size=per_device_batch_size,
+                                        height=imagenet_main._DEFAULT_IMAGE_SIZE,
+                                        width=imagenet_main._DEFAULT_IMAGE_SIZE,
+                                        num_channels=imagenet_main._NUM_CHANNELS,
+                                        num_classes=imagenet_main._NUM_CLASSES,
+                                        dtype=dtype)
+  # pylint: enable=protected-access
 
   else:
     train_input_dataset = imagenet_main.input_fn(
@@ -175,9 +192,10 @@ def run_imagenet_with_keras(flags_obj):
                 optimizer=opt,
                 metrics=['accuracy'],
                 distribute=strategy)
-  time_callback = TimeHistory(flags_obj.batch_size)
-
   steps_per_epoch = imagenet_main._NUM_IMAGES['train'] // flags_obj.batch_size
+
+  time_callback = TimeHistory(flags_obj.batch_size, steps_per_epoch)
+
   model.fit(train_input_dataset,
             epochs=flags_obj.train_epochs,
             steps_per_epoch=steps_per_epoch,
@@ -189,42 +207,6 @@ def run_imagenet_with_keras(flags_obj):
                                steps=num_eval_steps,
                                verbose=0)
   print('Test loss:', eval_output[0])
-
-  # If you have set FLAGS.train_epochs to be 1 then we cannot calculate
-  # samples/s in a meaningful way since the first epoch takes the longest.
-  if flags_obj.train_epochs == 1:
-    print('Please increase the number of train_epochs if you want to '
-          'calculate samples/s.')
-    return
-
-  total_time = 0
-  for i in range(1, flags_obj.train_epochs):
-    # time taken for n-1 epochs.
-    total_time += time_callback.epoch_times[i]
-
-  if flags_obj.train_epochs > 1:
-    time_per_epoch = total_time // (flags_obj.train_epochs - 1)
-    if time_per_epoch == 0:
-      print('Please verify that you are processing data since the time taken to'
-            'process each epoch is ~0.')
-    samples_per_second = ((flags_obj.batch_size * steps_per_epoch)
-                          / time_per_epoch)
-    print("BenchmarkMetric: {'time_per_epoch':%f, 'global_batch_size': %d, "
-          "'steps_per_epoch': %d, 'examples_per_s': %f}" %
-          (time_per_epoch, flags_obj.batch_size,
-           steps_per_epoch, samples_per_second))
-
-
-def softmax_crossentropy_with_logits(y_true, y_pred):
-  """A loss function replicating tf's sparse_softmax_cross_entropy
-
-  Args:
-    y_true: True labels. Tensor of shape [batch_size,]
-    y_pred: Predictions. Tensor of shape [batch_size, num_classes]
-  """
-  return tf.losses.sparse_softmax_cross_entropy(
-      logits=y_pred,
-      labels=tf.reshape(tf.cast(y_true, tf.int64), [-1,]))
 
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
