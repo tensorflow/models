@@ -216,7 +216,7 @@ To start training and evaluation, execute the following command from the
 ```bash
 # From tensorflow/models/research/
 gcloud ml-engine jobs submit training `whoami`_object_detection_pets_`date +%m_%d_%Y_%H_%M_%S` \
-    --runtime-version 1.8 \
+    --runtime-version 1.9 \
     --job-dir=gs://${YOUR_GCS_BUCKET}/model_dir \
     --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz,/tmp/pycocotools/pycocotools-2.0.tar.gz \
     --module-name object_detection.model_main \
