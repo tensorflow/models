@@ -74,6 +74,7 @@ request.
 -   [slim](slim): image classification models in TF-Slim.
 -   [street](street): identify the name of a street (in France) from an image
     using a Deep RNN.
+-   [struct2depth](struct2depth): unsupervised learning of depth and ego-motion.
 -   [swivel](swivel): the Swivel algorithm for generating word embeddings.
 -   [syntaxnet](syntaxnet): neural models of natural language syntax.
 -   [tcn](tcn): Self-supervised representation learning from multi-view video.
