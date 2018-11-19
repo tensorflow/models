@@ -144,7 +144,7 @@ def run_imagenet_with_keras(flags_obj):
         parse_record_fn=imagenet_main.parse_record)
 
   # Set environment vars and session config
-  session_config = resnet_run_loop.set_environment_vars(flags_obj)
+  session_config = resnet_run_loop.set_environ_and_config(flags_obj)
   session = tf.Session(config=session_config)
   tf.keras.backend.set_session(session)
 
