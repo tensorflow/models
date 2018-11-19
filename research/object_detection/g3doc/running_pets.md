@@ -208,7 +208,7 @@ For running the training Cloud ML job, we'll configure the cluster to use 5
 training jobs and three parameters servers. The
 configuration file can be found at `object_detection/samples/cloud/cloud.yml`.
 
-Note: This sample is supported for use with 1.8 runtime version.
+Note: The code sample below is supported for use with 1.9 runtime version.
 
 To start training and evaluation, execute the following command from the
 `tensorflow/models/research/` directory:
