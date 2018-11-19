@@ -76,44 +76,24 @@ def neumf_model_fn(features, labels, mode, params):
     tf.set_random_seed(stat_utils.random_int32())
 
   users = features[movielens.USER_COLUMN]
-  items = tf.cast(features[movielens.ITEM_COLUMN], tf.int32)
+  items = features[movielens.ITEM_COLUMN]
 
-  keras_model = params.get("keras_model")
-  if keras_model:
-    logits = keras_model([users, items],
-                         training=mode == tf.estimator.ModeKeys.TRAIN)
-  else:
-    keras_model = construct_model(users=users, items=items, params=params)
-    logits = keras_model.output
-  if not params["use_estimator"] and "keras_model" not in params:
-    # When we are not using estimator, we need to reuse the Keras model when
-    # this model_fn is called again, so that the variables are shared between
-    # training and eval. So we mutate params to add the Keras model.
-    params["keras_model"] = keras_model
+  logits = construct_model(users, items, params).output
 
   # Softmax with the first column of zeros is equivalent to sigmoid.
   softmax_logits = tf.concat([tf.zeros(logits.shape, dtype=logits.dtype),
                               logits], axis=1)
 
-  if mode == tf.estimator.ModeKeys.PREDICT:
-    predictions = {
-        movielens.ITEM_COLUMN: items,
-        movielens.RATING_COLUMN: logits,
-    }
-
-    if params["use_tpu"]:
-      return tf.contrib.tpu.TPUEstimatorSpec(mode=mode, predictions=predictions)
-    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
-
-  elif mode == tf.estimator.ModeKeys.EVAL:
+  if mode == tf.estimator.ModeKeys.EVAL:
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)
     return compute_eval_loss_and_metrics(
         logits, softmax_logits, duplicate_mask, params["num_neg"],
         params["match_mlperf"],
-        use_tpu_spec=params["use_tpu"] or params["use_xla_for_gpu"])
+        use_tpu_spec=params["use_xla_for_gpu"])
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
+    valid_pt_mask = features[rconst.VALID_POINT_MASK]
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_NAME, value="adam")
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_LR,
@@ -135,7 +115,8 @@ def neumf_model_fn(features, labels, mode, params):
                             value=mlperf_helper.TAGS.BCE)
     loss = tf.losses.sparse_softmax_cross_entropy(
         labels=labels,
-        logits=softmax_logits
+        logits=softmax_logits,
+        weights=tf.cast(valid_pt_mask, tf.float32)
     )
 
     # This tensor is used by logging hooks.
@@ -151,9 +132,6 @@ def neumf_model_fn(features, labels, mode, params):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
 
-    if params["use_tpu"]:
-      return tf.contrib.tpu.TPUEstimatorSpec(
-          mode=mode, loss=loss, train_op=train_op)
     return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
   else:
@@ -161,21 +139,18 @@ def neumf_model_fn(features, labels, mode, params):
 
 
 def construct_model(users, items, params):
-  # type: (tf.Tensor, tf.Tensor, dict) -> tf.Tensor
+  # type: (tf.Tensor, tf.Tensor, dict) -> tf.keras.Model
   """Initialize NeuMF model.
 
   Args:
     users: Tensor of user ids.
     items: Tensor of item ids.
     params: Dict of hyperparameters.
-
   Raises:
     ValueError: if the first model layer is not even.
-
   Returns:
-    logits:  network logits
+    model:  a keras Model for computing the logits
   """
-
   num_users = params["num_users"]
   num_items = params["num_items"]
 
@@ -194,82 +169,39 @@ def construct_model(users, items, params):
     raise ValueError("The first layer size should be multiple of 2!")
 
   # Input variables
-  user_input = tf.keras.layers.Input(tensor=users)
-  item_input = tf.keras.layers.Input(tensor=items)
-  batch_size = user_input.get_shape()[0]
+  user_input = tf.keras.layers.Input(tensor=users, name="user_input")
+  item_input = tf.keras.layers.Input(tensor=items, name="item_input")
 
-  if params["use_tpu"]:
-    with tf.variable_scope("embed_weights", reuse=tf.AUTO_REUSE):
-      cmb_embedding_user = tf.get_variable(
-          name="embeddings_mf_user",
-          shape=[num_users, mf_dim + model_layers[0] // 2],
-          initializer=tf.glorot_uniform_initializer())
+  # Initializer for embedding layers
+  embedding_initializer = "glorot_uniform"
 
-      cmb_embedding_item = tf.get_variable(
-          name="embeddings_mf_item",
-          shape=[num_items, mf_dim + model_layers[0] // 2],
-          initializer=tf.glorot_uniform_initializer())
+  # It turns out to be significantly more effecient to store the MF and MLP
+  # embedding portions in the same table, and then slice as needed.
+  mf_slice_fn = lambda x: x[:, :mf_dim]
+  mlp_slice_fn = lambda x: x[:, mf_dim:]
+  embedding_user = tf.keras.layers.Embedding(
+      num_users, mf_dim + model_layers[0] // 2,
+      embeddings_initializer=embedding_initializer,
+      embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+      input_length=1, name="embedding_user")(user_input)
 
-      cmb_user_latent = tf.keras.layers.Lambda(lambda ids: tf.gather(
-          cmb_embedding_user, ids))(user_input)
+  embedding_item = tf.keras.layers.Embedding(
+      num_items, mf_dim + model_layers[0] // 2,
+      embeddings_initializer=embedding_initializer,
+      embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+      input_length=1, name="embedding_item")(item_input)
 
-      cmb_item_latent = tf.keras.layers.Lambda(lambda ids: tf.gather(
-          cmb_embedding_item, ids))(item_input)
+  # GMF part
+  mf_user_latent = tf.keras.layers.Lambda(
+      mf_slice_fn, name="embedding_user_mf")(embedding_user)
+  mf_item_latent = tf.keras.layers.Lambda(
+      mf_slice_fn, name="embedding_item_mf")(embedding_item)
 
-      mlp_user_latent = tf.keras.layers.Lambda(
-          lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2])
-      )(cmb_user_latent)
-
-      mlp_item_latent = tf.keras.layers.Lambda(
-          lambda x: tf.slice(x, [0, 0], [batch_size, model_layers[0] // 2])
-      )(cmb_item_latent)
-
-      mf_user_latent = tf.keras.layers.Lambda(
-          lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim])
-      )(cmb_user_latent)
-
-      mf_item_latent = tf.keras.layers.Lambda(
-          lambda x: tf.slice(x, [0, model_layers[0] // 2], [batch_size, mf_dim])
-      )(cmb_item_latent)
-
-  else:
-    # Initializer for embedding layers
-    embedding_initializer = "glorot_uniform"
-
-    # Embedding layers of GMF and MLP
-    mf_embedding_user = tf.keras.layers.Embedding(
-        num_users,
-        mf_dim,
-        embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
-        input_length=1)
-    mf_embedding_item = tf.keras.layers.Embedding(
-        num_items,
-        mf_dim,
-        embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
-        input_length=1)
-
-    mlp_embedding_user = tf.keras.layers.Embedding(
-        num_users,
-        model_layers[0]//2,
-        embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[0]),
-        input_length=1)
-    mlp_embedding_item = tf.keras.layers.Embedding(
-        num_items,
-        model_layers[0]//2,
-        embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[0]),
-        input_length=1)
-
-    # GMF part
-    mf_user_latent = mf_embedding_user(user_input)
-    mf_item_latent = mf_embedding_item(item_input)
-
-    # MLP part
-    mlp_user_latent = mlp_embedding_user(user_input)
-    mlp_item_latent = mlp_embedding_item(item_input)
+  # MLP part
+  mlp_user_latent = tf.keras.layers.Lambda(
+      mlp_slice_fn, name="embedding_user_mlp")(embedding_user)
+  mlp_item_latent = tf.keras.layers.Lambda(
+      mlp_slice_fn, name="embedding_item_mlp")(embedding_item)
 
   # Element-wise multiply
   mf_vector = tf.keras.layers.multiply([mf_user_latent, mf_item_latent])
@@ -352,7 +284,7 @@ def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
   Args:
     logits: A tensor containing the predicted logits for each user. The shape
       of logits is (num_users_per_batch * (1 + NUM_EVAL_NEGATIVES),) Logits
-      for a user are grouped, and the first element of the group is the true
+      for a user are grouped, and the last element of the group is the true
       element.
 
     softmax_logits: The same tensor, but with zeros left-appended.
@@ -377,9 +309,9 @@ def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
 
   # Examples are provided by the eval Dataset in a structured format, so eval
   # labels can be reconstructed on the fly.
-  eval_labels = tf.reshape(tf.one_hot(
-      tf.zeros(shape=(logits_by_user.shape[0],), dtype=tf.int32),
-      logits_by_user.shape[1], dtype=tf.int32), (-1,))
+  eval_labels = tf.reshape(shape=(-1,), tensor=tf.one_hot(
+      tf.zeros(shape=(logits_by_user.shape[0],), dtype=tf.int32) +
+      rconst.NUM_EVAL_NEGATIVES, logits_by_user.shape[1], dtype=tf.int32))
 
   eval_labels_float = tf.cast(eval_labels, tf.float32)
 
@@ -463,7 +395,8 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
   # perform matrix multiplications very quickly. This is similar to np.argwhere.
   # However this is a special case because the target will only appear in
   # sort_indices once.
-  one_hot_position = tf.cast(tf.equal(sort_indices, 0), tf.int32)
+  one_hot_position = tf.cast(tf.equal(sort_indices, rconst.NUM_EVAL_NEGATIVES),
+                             tf.int32)
   sparse_positions = tf.multiply(
       one_hot_position, tf.range(logits_by_user.shape[1])[tf.newaxis, :])
   position_vector = tf.reduce_sum(sparse_positions, axis=1)
