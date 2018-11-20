@@ -115,6 +115,7 @@ approximately 10 times slower.
 First ensure that you have installed the following required packages:
 
 * **Bazel** ([instructions](http://bazel.io/docs/install.html))
+* **Python 2.7**
 * **TensorFlow** 1.0 or greater ([instructions](https://www.tensorflow.org/install/))
 * **NumPy** ([instructions](http://www.scipy.org/install.html))
 * **Natural Language Toolkit (NLTK)**:
