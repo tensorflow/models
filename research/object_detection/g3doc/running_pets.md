@@ -248,6 +248,8 @@ web browser. You should see something similar to the following:
 
 ![](img/tensorboard.png)
 
+Make sure your Tensorboard version is the same minor version as your Tensorflow (1.x)
+
 You will also want to click on the images tab to see example detections made by
 the model while it trains. After about an hour and a half of training, you can
 expect to see something like this:
