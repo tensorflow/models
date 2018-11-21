@@ -463,7 +463,7 @@ def resnet_main(
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  session_config = set_environment_vars(flags_obj)
+  session_config = set_environ_and_config(flags_obj)
 
   distribution_strategy = distribution_utils.get_distribution_strategy(
       flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
