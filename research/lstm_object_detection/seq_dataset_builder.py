@@ -24,7 +24,6 @@ that wraps the build function.
 """
 import tensorflow as tf
 import tensorflow.google as google_tf
-from google3.learning.brain.contrib.slim.data import parallel_reader
 from tensorflow.contrib.training.python.training import sequence_queueing_state_saver as sqss
 from lstm_object_detection import tf_sequence_example_decoder
 from lstm_object_detection.protos import input_reader_google_pb2
@@ -34,6 +33,7 @@ from object_detection.core import standard_fields as fields
 from object_detection.protos import input_reader_pb2
 from object_detection.utils import ops as util_ops
 
+parallel_reader = tf.contrib.slim.parallel_reader
 # TODO(yinxiao): Make the following variable into configurable proto.
 # Padding size for the labeled objects in each frame. Here we assume each
 # frame has a total number of objects less than _PADDING_SIZE.
@@ -142,7 +142,7 @@ def build(input_reader_config,
       min_after_dequeue=input_reader_config.min_after_dequeue)
 
   # TODO(yinxiao): Add loading instance mask option.
-  decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder()
+  decoder = tf_sequence_example_decoder.TFSequenceExampleDecoder()
 
   keys_to_decode = [
       fields.InputDataFields.image, fields.InputDataFields.groundtruth_boxes,

@@ -21,14 +21,74 @@ TODO(yinxiao): When TensorFlow object detection API officially supports
 tensorflow.SequenceExample, merge this decoder.
 """
 import tensorflow as tf
-from google3.learning.brain.contrib.slim.data import tfexample_decoder
 from object_detection.core import data_decoder
 from object_detection.core import standard_fields as fields
 
-slim_example_decoder = tf.contrib.slim.tfexample_decoder
+tfexample_decoder = tf.contrib.slim.tfexample_decoder
 
 
-class TfSequenceExampleDecoder(data_decoder.DataDecoder):
+class BoundingBoxSequence(tfexample_decoder.ItemHandler):
+  """An ItemHandler that concatenates SparseTensors to Bounding Boxes.
+  """
+
+  def __init__(self, keys=None, prefix=None, return_dense=True,
+               default_value=-1.0):
+    """Initialize the bounding box handler.
+
+    Args:
+      keys: A list of four key names representing the ymin, xmin, ymax, xmax
+        in the Example or SequenceExample.
+      prefix: An optional prefix for each of the bounding box keys in the
+        Example or SequenceExample. If provided, `prefix` is prepended to each
+        key in `keys`.
+      return_dense: if True, returns a dense tensor; if False, returns as
+        sparse tensor.
+      default_value: The value used when the `tensor_key` is not found in a
+        particular `TFExample`.
+
+    Raises:
+      ValueError: if keys is not `None` and also not a list of exactly 4 keys
+    """
+    if keys is None:
+      keys = ['ymin', 'xmin', 'ymax', 'xmax']
+    elif len(keys) != 4:
+      raise ValueError('BoundingBoxSequence expects 4 keys but got {}'.format(
+          len(keys)))
+    self._prefix = prefix
+    self._keys = keys
+    self._full_keys = [prefix + k for k in keys]
+    self._return_dense = return_dense
+    self._default_value = default_value
+    super(BoundingBoxSequence, self).__init__(self._full_keys)
+
+  def tensors_to_item(self, keys_to_tensors):
+    """Maps the given dictionary of tensors to a concatenated list of bboxes.
+
+    Args:
+      keys_to_tensors: a mapping of TF-Example keys to parsed tensors.
+
+    Returns:
+      [time, num_boxes, 4] tensor of bounding box coordinates, in order
+          [y_min, x_min, y_max, x_max]. Whether the tensor is a SparseTensor
+          or a dense Tensor is determined by the return_dense parameter. Empty
+          positions in the sparse tensor are filled with -1.0 values.
+    """
+    sides = []
+    for key in self._full_keys:
+      value = keys_to_tensors[key]
+      expanded_dims = tf.concat(
+          [tf.to_int64(tf.shape(value)),
+           tf.constant([1], dtype=tf.int64)], 0)
+      side = tf.sparse_reshape(value, expanded_dims)
+      sides.append(side)
+    bounding_boxes = tf.sparse_concat(2, sides)
+    if self._return_dense:
+      bounding_boxes = tf.sparse_tensor_to_dense(
+          bounding_boxes, default_value=self._default_value)
+    return bounding_boxes
+
+
+class TFSequenceExampleDecoder(data_decoder.DataDecoder):
   """Tensorflow Sequence Example proto decoder."""
 
   def __init__(self):
@@ -62,30 +122,30 @@ class TfSequenceExampleDecoder(data_decoder.DataDecoder):
     }
     self.items_to_handlers = {
         fields.InputDataFields.image:
-            slim_example_decoder.Image(
+            tfexample_decoder.Image(
                 image_key='image/encoded',
                 format_key='image/format',
                 channels=3,
                 repeated=True),
         fields.InputDataFields.source_id: (
-            slim_example_decoder.Tensor('image/source_id')),
+            tfexample_decoder.Tensor('image/source_id')),
         fields.InputDataFields.key: (
-            slim_example_decoder.Tensor('image/key/sha256')),
+            tfexample_decoder.Tensor('image/key/sha256')),
         fields.InputDataFields.filename: (
-            slim_example_decoder.Tensor('image/filename')),
+            tfexample_decoder.Tensor('image/filename')),
         # Object boxes and classes.
         fields.InputDataFields.groundtruth_boxes:
-            tfexample_decoder.BoundingBoxSequence(prefix='bbox/'),
+            BoundingBoxSequence(prefix='bbox/'),
         fields.InputDataFields.groundtruth_classes: (
-            slim_example_decoder.Tensor('bbox/label/index')),
+            tfexample_decoder.Tensor('bbox/label/index')),
         fields.InputDataFields.groundtruth_area:
-            slim_example_decoder.Tensor('area'),
+            tfexample_decoder.Tensor('area'),
         fields.InputDataFields.groundtruth_is_crowd: (
-            slim_example_decoder.Tensor('is_crowd')),
+            tfexample_decoder.Tensor('is_crowd')),
         fields.InputDataFields.groundtruth_difficult: (
-            slim_example_decoder.Tensor('difficult')),
+            tfexample_decoder.Tensor('difficult')),
         fields.InputDataFields.groundtruth_group_of: (
-            slim_example_decoder.Tensor('group_of'))
+            tfexample_decoder.Tensor('group_of'))
     }
 
   def decode(self, tf_seq_example_string_tensor, items=None):

@@ -15,10 +15,10 @@
 
 """BottleneckConvLSTMCell implementation."""
 
-import google3
-import tensorflow.google as tf
-import google3.learning.brain.contrib.slim as slim
+import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import variables
+
+slim = tf.contrib.slim
 
 _batch_norm = tf.contrib.layers.batch_norm
 
@@ -195,4 +195,5 @@ class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
       ]
     for s, r in zip(state_size, ret_flat):
       r.set_shape([None] + s)
-    return tf.nest.pack_sequence_as(structure=[1, 1], flat_sequence=ret_flat)
+    return tf.contrib.framework.nest.pack_sequence_as(
+        structure=[1, 1], flat_sequence=ret_flat)
