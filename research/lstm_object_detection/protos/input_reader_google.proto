@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package lstm_object_detection.input_readers;
 
-import "third_party/tensorflow_models/object_detection/protos/input_reader.proto";
+import "object_detection/protos/input_reader.proto";
 
 message GoogleInputReader {
   extend object_detection.protos.ExternalInputReader {

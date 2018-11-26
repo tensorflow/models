@@ -18,7 +18,7 @@
 import numpy as np
 import tensorflow as tf
 from lstm_object_detection.metrics import coco_evaluation_all_frames
-from google3.third_party.tensorflow_models.object_detection.core import standard_fields
+from object_detection.core import standard_fields
 
 
 class CocoEvaluationAllFramesTest(tf.test.TestCase):

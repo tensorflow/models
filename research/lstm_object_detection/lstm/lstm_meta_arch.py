@@ -23,11 +23,11 @@ See https://arxiv.org/abs/1711.06368 for details.
 import re
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.object_detection.core import box_list_ops
-from google3.third_party.tensorflow_models.object_detection.core import standard_fields as fields
-from google3.third_party.tensorflow_models.object_detection.meta_architectures import ssd_meta_arch
-from google3.third_party.tensorflow_models.object_detection.utils import ops
-from google3.third_party.tensorflow_models.object_detection.utils import shape_utils
+from object_detection.core import box_list_ops
+from object_detection.core import standard_fields as fields
+from object_detection.meta_architectures import ssd_meta_arch
+from object_detection.utils import ops
+from object_detection.utils import shape_utils
 
 slim = tf.contrib.slim
 

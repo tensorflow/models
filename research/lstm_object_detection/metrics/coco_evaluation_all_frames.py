@@ -17,9 +17,9 @@
 
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.object_detection.core import standard_fields
-from google3.third_party.tensorflow_models.object_detection.metrics import coco_evaluation
-from google3.third_party.tensorflow_models.object_detection.metrics import coco_tools
+from object_detection.core import standard_fields
+from object_detection.metrics import coco_evaluation
+from object_detection.metrics import coco_tools
 
 
 class CocoEvaluationAllFrames(coco_evaluation.CocoDetectionEvaluator):
