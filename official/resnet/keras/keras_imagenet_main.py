@@ -264,8 +264,8 @@ def run_imagenet_with_keras(flags_obj):
   time_callback = TimeHistory(flags_obj.batch_size)
 
   tesorboard_callback = tf.keras.callbacks.TensorBoard(
-    log_dir=flags_obj.model_dir,
-    update_freq="batch")  # Remove this if don't want per batch logging.
+    log_dir=flags_obj.model_dir)
+    # update_freq="batch")  # Add this if want per batch logging.
 
   lr_callback = LearningRateBatchScheduler(
     learning_rate_schedule,
@@ -277,7 +277,7 @@ def run_imagenet_with_keras(flags_obj):
   
   model.fit(train_input_dataset,
             epochs=flags_obj.train_epochs,
-            steps_per_epoch=5, #steps_per_epoch,
+            steps_per_epoch=steps_per_epoch,
             callbacks=[
               time_callback,
               lr_callback,
