@@ -33,7 +33,6 @@ import collections
 import logging
 import unicodedata
 import numpy as np
-import six
 
 from object_detection.core import standard_fields
 from object_detection.utils import label_map_util
@@ -305,8 +304,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if idx + self._label_id_offset in category_index:
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
-          category_name = six.text_type(category_name).encode('utf-8')
-        except TypeError:
+          category_name = unicode(category_name, 'utf-8')
+        except (NameError, TypeError):
           pass
         category_name = unicodedata.normalize(
             'NFKD', category_name).encode('ascii', 'ignore')
