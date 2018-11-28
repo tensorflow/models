@@ -15,9 +15,11 @@
 
 """A function to build localization and classification losses from config."""
 
+import functools
 from object_detection.core import balanced_positive_negative_sampler as sampler
 from object_detection.core import losses
 from object_detection.protos import losses_pb2
+from object_detection.utils import ops
 
 
 def build(loss_config):
@@ -66,8 +68,28 @@ def build(loss_config):
     random_example_sampler = sampler.BalancedPositiveNegativeSampler(
         positive_fraction=loss_config.random_example_sampler.
         positive_sample_fraction)
+
+  if loss_config.expected_loss_weights == loss_config.NONE:
+    expected_loss_weights_fn = None
+  elif loss_config.expected_loss_weights == loss_config.EXPECTED_SAMPLING:
+    expected_loss_weights_fn = functools.partial(
+        ops.expected_classification_loss_by_expected_sampling,
+        min_num_negative_samples=loss_config.min_num_negative_samples,
+        desired_negative_sampling_ratio=loss_config
+        .desired_negative_sampling_ratio)
+  elif (loss_config.expected_loss_weights == loss_config
+        .REWEIGHTING_UNMATCHED_ANCHORS):
+    expected_loss_weights_fn = functools.partial(
+        ops.expected_classification_loss_by_reweighting_unmatched_anchors,
+        min_num_negative_samples=loss_config.min_num_negative_samples,
+        desired_negative_sampling_ratio=loss_config
+        .desired_negative_sampling_ratio)
+  else:
+    raise ValueError('Not a valid value for expected_classification_loss.')
+
   return (classification_loss, localization_loss, classification_weight,
-          localization_weight, hard_example_miner, random_example_sampler)
+          localization_weight, hard_example_miner, random_example_sampler,
+          expected_loss_weights_fn)
 
 
 def build_hard_example_miner(config,

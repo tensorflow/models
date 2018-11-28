@@ -16,7 +16,6 @@
 """Function to build box predictor from configuration."""
 
 import collections
-from absl import logging
 import tensorflow as tf
 from object_detection.predictors import convolutional_box_predictor
 from object_detection.predictors import convolutional_keras_box_predictor
@@ -26,7 +25,6 @@ from object_detection.predictors.heads import box_head
 from object_detection.predictors.heads import class_head
 from object_detection.predictors.heads import keras_box_head
 from object_detection.predictors.heads import keras_class_head
-from object_detection.predictors.heads import keras_mask_head
 from object_detection.predictors.heads import mask_head
 from object_detection.protos import box_predictor_pb2
 
@@ -44,8 +42,7 @@ def build_convolutional_box_predictor(is_training,
                                       apply_sigmoid_to_scores=False,
                                       add_background_class=True,
                                       class_prediction_bias_init=0.0,
-                                      use_depthwise=False,
-                                      mask_head_config=None):
+                                      use_depthwise=False,):
   """Builds the ConvolutionalBoxPredictor from the arguments.
 
   Args:
@@ -80,8 +77,6 @@ def build_convolutional_box_predictor(is_training,
       conv2d layer before class prediction.
     use_depthwise: Whether to use depthwise convolutions for prediction
       steps. Default is False.
-    mask_head_config: An optional MaskHead object containing configs for mask
-      head construction.
 
   Returns:
     A ConvolutionalBoxPredictor class.
@@ -101,21 +96,6 @@ def build_convolutional_box_predictor(is_training,
       class_prediction_bias_init=class_prediction_bias_init,
       use_depthwise=use_depthwise)
   other_heads = {}
-  if mask_head_config is not None:
-    if not mask_head_config.masks_are_class_agnostic:
-      logging.warning('Note that class specific mask prediction for SSD '
-                      'models is memory consuming.')
-    other_heads[convolutional_box_predictor.MASK_PREDICTIONS] = (
-        mask_head.ConvolutionalMaskHead(
-            is_training=is_training,
-            num_classes=num_classes,
-            use_dropout=use_dropout,
-            dropout_keep_prob=dropout_keep_prob,
-            kernel_size=kernel_size,
-            use_depthwise=use_depthwise,
-            mask_height=mask_head_config.mask_height,
-            mask_width=mask_head_config.mask_width,
-            masks_are_class_agnostic=mask_head_config.masks_are_class_agnostic))
   return convolutional_box_predictor.ConvolutionalBoxPredictor(
       is_training=is_training,
       num_classes=num_classes,
@@ -144,7 +124,6 @@ def build_convolutional_keras_box_predictor(is_training,
                                             add_background_class=True,
                                             class_prediction_bias_init=0.0,
                                             use_depthwise=False,
-                                            mask_head_config=None,
                                             name='BoxPredictor'):
   """Builds the Keras ConvolutionalBoxPredictor from the arguments.
 
@@ -189,8 +168,6 @@ def build_convolutional_keras_box_predictor(is_training,
       conv2d layer before class prediction.
     use_depthwise: Whether to use depthwise convolutions for prediction
       steps. Default is False.
-    mask_head_config: An optional MaskHead object containing configs for mask
-      head construction.
     name: A string name scope to assign to the box predictor. If `None`, Keras
       will auto-generate one from the class name.
 
@@ -199,11 +176,7 @@ def build_convolutional_keras_box_predictor(is_training,
   """
   box_prediction_heads = []
   class_prediction_heads = []
-  mask_prediction_heads = []
   other_heads = {}
-  if mask_head_config is not None:
-    other_heads[convolutional_box_predictor.MASK_PREDICTIONS] = \
-      mask_prediction_heads
 
   for stack_index, num_predictions_per_location in enumerate(
       num_predictions_per_location_list):
@@ -231,26 +204,6 @@ def build_convolutional_keras_box_predictor(is_training,
             class_prediction_bias_init=class_prediction_bias_init,
             use_depthwise=use_depthwise,
             name='ConvolutionalClassHead_%d' % stack_index))
-    if mask_head_config is not None:
-      if not mask_head_config.masks_are_class_agnostic:
-        logging.warning('Note that class specific mask prediction for SSD '
-                        'models is memory consuming.')
-      mask_prediction_heads.append(
-          keras_mask_head.ConvolutionalMaskHead(
-              is_training=is_training,
-              num_classes=num_classes,
-              use_dropout=use_dropout,
-              dropout_keep_prob=dropout_keep_prob,
-              kernel_size=kernel_size,
-              conv_hyperparams=conv_hyperparams,
-              freeze_batchnorm=freeze_batchnorm,
-              num_predictions_per_location=num_predictions_per_location,
-              use_depthwise=use_depthwise,
-              mask_height=mask_head_config.mask_height,
-              mask_width=mask_head_config.mask_width,
-              masks_are_class_agnostic=mask_head_config.
-              masks_are_class_agnostic,
-              name='ConvolutionalMaskHead_%d' % stack_index))
 
   return convolutional_keras_box_predictor.ConvolutionalBoxPredictor(
       is_training=is_training,
@@ -282,7 +235,6 @@ def build_weight_shared_convolutional_box_predictor(
     share_prediction_tower=False,
     apply_batch_norm=True,
     use_depthwise=False,
-    mask_head_config=None,
     score_converter_fn=tf.identity,
     box_encodings_clip_range=None):
   """Builds and returns a WeightSharedConvolutionalBoxPredictor class.
@@ -310,8 +262,6 @@ def build_weight_shared_convolutional_box_predictor(
     apply_batch_norm: Whether to apply batch normalization to conv layers in
       this predictor.
     use_depthwise: Whether to use depthwise separable conv2d instead of conv2d.
-    mask_head_config: An optional MaskHead object containing configs for mask
-      head construction.
     score_converter_fn: Callable score converter to perform elementwise op on
       class scores.
     box_encodings_clip_range: Min and max values for clipping the box_encodings.
@@ -335,19 +285,6 @@ def build_weight_shared_convolutional_box_predictor(
           use_depthwise=use_depthwise,
           score_converter_fn=score_converter_fn))
   other_heads = {}
-  if mask_head_config is not None:
-    if not mask_head_config.masks_are_class_agnostic:
-      logging.warning('Note that class specific mask prediction for SSD '
-                      'models is memory consuming.')
-    other_heads[convolutional_box_predictor.MASK_PREDICTIONS] = (
-        mask_head.WeightSharedConvolutionalMaskHead(
-            num_classes=num_classes,
-            kernel_size=kernel_size,
-            use_dropout=use_dropout,
-            dropout_keep_prob=dropout_keep_prob,
-            mask_height=mask_head_config.mask_height,
-            mask_width=mask_head_config.mask_width,
-            masks_are_class_agnostic=mask_head_config.masks_are_class_agnostic))
   return convolutional_box_predictor.WeightSharedConvolutionalBoxPredictor(
       is_training=is_training,
       num_classes=num_classes,
@@ -520,9 +457,6 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
     config_box_predictor = box_predictor_config.convolutional_box_predictor
     conv_hyperparams_fn = argscope_fn(config_box_predictor.conv_hyperparams,
                                       is_training)
-    mask_head_config = (
-        config_box_predictor.mask_head
-        if config_box_predictor.HasField('mask_head') else None)
     return build_convolutional_box_predictor(
         is_training=is_training,
         num_classes=num_classes,
@@ -539,8 +473,7 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
         apply_sigmoid_to_scores=config_box_predictor.apply_sigmoid_to_scores,
         class_prediction_bias_init=(
             config_box_predictor.class_prediction_bias_init),
-        use_depthwise=config_box_predictor.use_depthwise,
-        mask_head_config=mask_head_config)
+        use_depthwise=config_box_predictor.use_depthwise)
 
   if  box_predictor_oneof == 'weight_shared_convolutional_box_predictor':
     config_box_predictor = (
@@ -549,9 +482,6 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
                                       is_training)
     apply_batch_norm = config_box_predictor.conv_hyperparams.HasField(
         'batch_norm')
-    mask_head_config = (
-        config_box_predictor.mask_head
-        if config_box_predictor.HasField('mask_head') else None)
     # During training phase, logits are used to compute the loss. Only apply
     # sigmoid at inference to make the inference graph TPU friendly.
     score_converter_fn = build_score_converter(
@@ -581,7 +511,6 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
         share_prediction_tower=config_box_predictor.share_prediction_tower,
         apply_batch_norm=apply_batch_norm,
         use_depthwise=config_box_predictor.use_depthwise,
-        mask_head_config=mask_head_config,
         score_converter_fn=score_converter_fn,
         box_encodings_clip_range=box_encodings_clip_range)
 
@@ -680,10 +609,6 @@ def build_keras(conv_hyperparams_fn, freeze_batchnorm, inplace_batchnorm_update,
     config_box_predictor = box_predictor_config.convolutional_box_predictor
     conv_hyperparams = conv_hyperparams_fn(
         config_box_predictor.conv_hyperparams)
-
-    mask_head_config = (
-        config_box_predictor.mask_head
-        if config_box_predictor.HasField('mask_head') else None)
     return build_convolutional_keras_box_predictor(
         is_training=is_training,
         num_classes=num_classes,
@@ -702,8 +627,7 @@ def build_keras(conv_hyperparams_fn, freeze_batchnorm, inplace_batchnorm_update,
         max_depth=config_box_predictor.max_depth,
         class_prediction_bias_init=(
             config_box_predictor.class_prediction_bias_init),
-        use_depthwise=config_box_predictor.use_depthwise,
-        mask_head_config=mask_head_config)
+        use_depthwise=config_box_predictor.use_depthwise)
 
   raise ValueError(
       'Unknown box predictor for Keras: {}'.format(box_predictor_oneof))

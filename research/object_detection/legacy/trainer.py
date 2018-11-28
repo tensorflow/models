@@ -75,6 +75,7 @@ def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
     tensor_dict = preprocessor.preprocess(
         tensor_dict, data_augmentation_options,
         func_arg_map=preprocessor.get_default_func_arg_map(
+            include_label_weights=True,
             include_multiclass_scores=include_multiclass_scores,
             include_instance_masks=include_instance_masks,
             include_keypoints=include_keypoints))

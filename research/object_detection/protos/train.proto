@@ -20,7 +20,7 @@ message TrainConfig {
   optional bool sync_replicas = 3 [default=false];
 
   // How frequently to keep checkpoints.
-  optional uint32 keep_checkpoint_every_n_hours = 4 [default=1000];
+  optional float keep_checkpoint_every_n_hours = 4 [default=10000.0];
 
   // Optimizer used to train the DetectionModel.
   optional Optimizer optimizer = 5;

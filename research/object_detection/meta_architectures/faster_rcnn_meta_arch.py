@@ -1568,7 +1568,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     Returns:
       A dictionary containing:
-        `detection_boxes`: [batch, max_detection, 4]
+        `detection_boxes`: [batch, max_detection, 4] in normalized co-ordinates.
         `detection_scores`: [batch, max_detections]
         `detection_classes`: [batch, max_detections]
         `num_detections`: [batch]
@@ -1701,14 +1701,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 prediction_dict['refined_box_encodings'],
                 prediction_dict['class_predictions_with_background'],
                 prediction_dict['proposal_boxes'],
-                prediction_dict['num_proposals'],
-                groundtruth_boxlists,
+                prediction_dict['num_proposals'], groundtruth_boxlists,
                 groundtruth_classes_with_background_list,
-                groundtruth_weights_list,
-                prediction_dict['image_shape'],
-                prediction_dict.get('mask_predictions'),
-                groundtruth_masks_list,
-            ))
+                groundtruth_weights_list, prediction_dict['image_shape'],
+                prediction_dict.get('mask_predictions'), groundtruth_masks_list,
+                prediction_dict.get(
+                    fields.DetectionResultFields.detection_boxes),
+                prediction_dict.get(
+                    fields.DetectionResultFields.num_detections)))
     return loss_dict
 
   def _loss_rpn(self, rpn_box_encodings,
@@ -1811,7 +1811,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
                            groundtruth_weights_list,
                            image_shape,
                            prediction_masks=None,
-                           groundtruth_masks_list=None):
+                           groundtruth_masks_list=None,
+                           detection_boxes=None,
+                           num_detections=None):
     """Computes scalar box classifier loss tensors.
 
     Uses self._detector_target_assigner to obtain regression and classification
@@ -1854,6 +1856,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
       groundtruth_masks_list: an optional list of 3-D tensors of shape
         [num_boxes, image_height, image_width] containing the instance masks for
         each of the boxes.
+      detection_boxes: 3-D float tensor of shape [batch,
+        max_total_detections, 4] containing post-processed detection boxes in
+        normalized co-ordinates.
+      num_detections: 1-D int32 tensor of shape [batch] containing number of
+        valid detections in `detection_boxes`.
 
     Returns:
       a dictionary mapping loss keys ('second_stage_localization_loss',
@@ -1867,7 +1874,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     """
     with tf.name_scope('BoxClassifierLoss'):
       paddings_indicator = self._padded_batched_proposals_indicator(
-          num_proposals, self.max_num_proposals)
+          num_proposals, proposal_boxes.shape[1])
       proposal_boxlists = [
           box_list.BoxList(proposal_boxes_single_image)
           for proposal_boxes_single_image in tf.unstack(proposal_boxes)]
@@ -1958,6 +1965,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
           raise ValueError('Groundtruth instance masks not provided. '
                            'Please configure input reader.')
 
+        if not self._is_training:
+          (proposal_boxes, proposal_boxlists, paddings_indicator,
+           one_hot_flat_cls_targets_with_background
+          ) = self._get_mask_proposal_boxes_and_classes(
+              detection_boxes, num_detections, image_shape,
+              groundtruth_boxlists, groundtruth_classes_with_background_list,
+              groundtruth_weights_list)
         unmatched_mask_label = tf.zeros(image_shape[1:3], dtype=tf.float32)
         (batch_mask_targets, _, _, batch_mask_target_weights,
          _) = target_assigner.batch_assign_targets(
@@ -2030,6 +2044,64 @@ class FasterRCNNMetaArch(model.DetectionModel):
                                 second_stage_mask_loss, name='mask_loss')
         loss_dict[mask_loss.op.name] = mask_loss
     return loss_dict
+
+  def _get_mask_proposal_boxes_and_classes(
+      self, detection_boxes, num_detections, image_shape, groundtruth_boxlists,
+      groundtruth_classes_with_background_list, groundtruth_weights_list):
+    """Returns proposal boxes and class targets to compute evaluation mask loss.
+
+    During evaluation, detection boxes are used to extract features for mask
+    prediction. Therefore, to compute mask loss during evaluation detection
+    boxes must be used to compute correct class and mask targets. This function
+    returns boxes and classes in the correct format for computing mask targets
+    during evaluation.
+
+    Args:
+      detection_boxes: A 3-D float tensor of shape [batch, max_detection_boxes,
+        4] containing detection boxes in normalized co-ordinates.
+      num_detections: A 1-D float tensor of shape [batch] containing number of
+        valid boxes in `detection_boxes`.
+      image_shape: A 1-D tensor of shape [4] containing image tensor shape.
+      groundtruth_boxlists: A list of groundtruth boxlists.
+      groundtruth_classes_with_background_list: A list of groundtruth classes.
+      groundtruth_weights_list: A list of groundtruth weights.
+    Return:
+      mask_proposal_boxes: detection boxes to use for mask proposals in absolute
+        co-ordinates.
+      mask_proposal_boxlists: `mask_proposal_boxes` in a list of BoxLists in
+        absolute co-ordinates.
+      mask_proposal_paddings_indicator: a tensor indicating valid boxes.
+      mask_proposal_one_hot_flat_cls_targets_with_background: Class targets
+        computed using detection boxes.
+    """
+    batch, max_num_detections, _ = detection_boxes.shape.as_list()
+    proposal_boxes = tf.reshape(box_list_ops.to_absolute_coordinates(
+        box_list.BoxList(tf.reshape(detection_boxes, [-1, 4])), image_shape[1],
+        image_shape[2]).get(), [batch, max_num_detections, 4])
+    proposal_boxlists = [
+        box_list.BoxList(detection_boxes_single_image)
+        for detection_boxes_single_image in tf.unstack(proposal_boxes)
+    ]
+    paddings_indicator = self._padded_batched_proposals_indicator(
+        tf.to_int32(num_detections), detection_boxes.shape[1])
+    (batch_cls_targets_with_background, _, _, _,
+     _) = target_assigner.batch_assign_targets(
+         target_assigner=self._detector_target_assigner,
+         anchors_batch=proposal_boxlists,
+         gt_box_batch=groundtruth_boxlists,
+         gt_class_targets_batch=groundtruth_classes_with_background_list,
+         unmatched_class_label=tf.constant(
+             [1] + self._num_classes * [0], dtype=tf.float32),
+         gt_weights_batch=groundtruth_weights_list)
+    flat_cls_targets_with_background = tf.reshape(
+        batch_cls_targets_with_background, [-1, self._num_classes + 1])
+    one_hot_flat_cls_targets_with_background = tf.argmax(
+        flat_cls_targets_with_background, axis=1)
+    one_hot_flat_cls_targets_with_background = tf.one_hot(
+        one_hot_flat_cls_targets_with_background,
+        flat_cls_targets_with_background.get_shape()[1])
+    return (proposal_boxes, proposal_boxlists, paddings_indicator,
+            one_hot_flat_cls_targets_with_background)
 
   def _get_refined_encodings_for_postitive_class(
       self, refined_box_encodings, flat_cls_targets_with_background,
@@ -2185,4 +2257,3 @@ class FasterRCNNMetaArch(model.DetectionModel):
       A list of update operators.
     """
     return tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-

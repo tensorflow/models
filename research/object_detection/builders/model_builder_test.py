@@ -150,9 +150,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
             }
           }
         }
-        use_expected_classification_loss_under_sampling: true
-        min_num_negative_samples: 10
-        desired_negative_sampling_ratio: 2
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
@@ -160,12 +157,8 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
     self.assertIsInstance(model._feature_extractor,
                           SSDInceptionV2FeatureExtractor)
-    self.assertIsNotNone(model._expected_classification_loss_under_sampling)
-    self.assertEqual(
-        model._expected_classification_loss_under_sampling.keywords, {
-            'min_num_negative_samples': 10,
-            'desired_negative_sampling_ratio': 2
-        })
+    self.assertIsNone(model._expected_loss_weights_fn)
+
 
 
   def test_create_ssd_inception_v3_model_from_config(self):
@@ -708,7 +701,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
             }
           }
         }
-        weight_regression_loss_by_score: true
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
@@ -719,7 +711,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(model._box_predictor,
                           convolutional_box_predictor.ConvolutionalBoxPredictor)
     self.assertTrue(model._normalize_loc_loss_by_codesize)
-    self.assertTrue(model._target_assigner._weight_regression_loss_by_score)
 
   def test_create_ssd_mobilenet_v2_keras_model_from_config(self):
     model_text_proto = """
@@ -785,7 +776,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
             }
           }
         }
-        weight_regression_loss_by_score: true
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
@@ -797,7 +787,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
         model._box_predictor,
         convolutional_keras_box_predictor.ConvolutionalBoxPredictor)
     self.assertTrue(model._normalize_loc_loss_by_codesize)
-    self.assertTrue(model._target_assigner._weight_regression_loss_by_score)
 
   def test_create_ssd_mobilenet_v2_fpn_model_from_config(self):
     model_text_proto = """
@@ -1037,7 +1026,7 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
   def test_create_faster_rcnn_resnet_v1_models_from_config(self):
     model_text_proto = """
       faster_rcnn {
-        inplace_batchnorm_update: true
+        inplace_batchnorm_update: false
         num_classes: 3
         image_resizer {
           keep_aspect_ratio_resizer {

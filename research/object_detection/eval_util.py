@@ -26,6 +26,7 @@ from object_detection.core import keypoint_ops
 from object_detection.core import standard_fields as fields
 from object_detection.metrics import coco_evaluation
 from object_detection.utils import label_map_util
+from object_detection.utils import object_detection_evaluation
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from object_detection.utils import visualization_utils as vis_utils
@@ -40,6 +41,18 @@ EVAL_METRICS_CLASS_DICT = {
         coco_evaluation.CocoDetectionEvaluator,
     'coco_mask_metrics':
         coco_evaluation.CocoMaskEvaluator,
+    'oid_challenge_detection_metrics':
+        object_detection_evaluation.OpenImagesDetectionChallengeEvaluator,
+    'pascal_voc_detection_metrics':
+        object_detection_evaluation.PascalDetectionEvaluator,
+    'weighted_pascal_voc_detection_metrics':
+        object_detection_evaluation.WeightedPascalDetectionEvaluator,
+    'pascal_voc_instance_segmentation_metrics':
+        object_detection_evaluation.PascalInstanceSegmentationEvaluator,
+    'weighted_pascal_voc_instance_segmentation_metrics':
+        object_detection_evaluation.WeightedPascalInstanceSegmentationEvaluator,
+    'oid_V2_detection_metrics':
+        object_detection_evaluation.OpenImagesDetectionEvaluator,
 }
 
 EVAL_DEFAULT_METRIC = 'coco_detection_metrics'
@@ -588,8 +601,7 @@ def result_dict_for_single_example(image,
   exclude_keys = [
       fields.InputDataFields.original_image,
       fields.DetectionResultFields.num_detections,
-      fields.InputDataFields.num_groundtruth_boxes,
-      fields.InputDataFields.original_image_spatial_shape
+      fields.InputDataFields.num_groundtruth_boxes
   ]
 
   output_dict = {
@@ -611,6 +623,7 @@ def result_dict_for_batched_example(images,
                                     class_agnostic=False,
                                     scale_to_absolute=False,
                                     original_image_spatial_shapes=None,
+                                    true_image_shapes=None,
                                     max_gt_boxes=None):
   """Merges all detection and groundtruth information for a single example.
 
@@ -646,6 +659,8 @@ def result_dict_for_batched_example(images,
       coordinates. Default False.
     original_image_spatial_shapes: A 2D int32 tensor of shape [batch_size, 2]
       used to resize the image. When set to None, the image size is retained.
+    true_image_shapes: A 2D int32 tensor of shape [batch_size, 3]
+      containing the size of the unpadded original_image.
     max_gt_boxes: [batch_size] tensor representing the maximum number of
       groundtruth boxes to pad.
 
@@ -654,6 +669,8 @@ def result_dict_for_batched_example(images,
     'original_image': A [batch_size, H, W, C] uint8 image tensor.
     'original_image_spatial_shape': A [batch_size, 2] tensor containing the
       original image sizes.
+    'true_image_shape': A [batch_size, 3] tensor containing the size of
+      the unpadded original_image.
     'key': A [batch_size] string tensor with image identifier.
     'detection_boxes': [batch_size, max_detections, 4] float32 tensor of boxes,
       in normalized or absolute coordinates, depending on the value of
@@ -681,8 +698,10 @@ def result_dict_for_batched_example(images,
       of groundtruth boxes per image.
 
   Raises:
-    ValueError: if original_image_spatial_shape is not 1D int32 tensor of shape
-    [2].
+    ValueError: if original_image_spatial_shape is not 2D int32 tensor of shape
+      [2].
+    ValueError: if true_image_shapes is not 2D int32 tensor of shape
+      [3].
   """
   label_id_offset = 1  # Applying label id offset (b/63711816)
 
@@ -698,11 +717,25 @@ def result_dict_for_batched_example(images,
           '`original_image_spatial_shape` should be a 2D tensor of shape '
           '[batch_size, 2].')
 
+  if true_image_shapes is None:
+    true_image_shapes = tf.tile(
+        tf.expand_dims(tf.shape(images)[1:4], axis=0),
+        multiples=[tf.shape(images)[0], 1])
+  else:
+    if (len(true_image_shapes.shape) != 2
+        and true_image_shapes.shape[1] != 3):
+      raise ValueError('`true_image_shapes` should be a 2D tensor of '
+                       'shape [batch_size, 3].')
+
   output_dict = {
-      input_data_fields.original_image: images,
-      input_data_fields.key: keys,
+      input_data_fields.original_image:
+          images,
+      input_data_fields.key:
+          keys,
       input_data_fields.original_image_spatial_shape: (
-          original_image_spatial_shapes)
+          original_image_spatial_shapes),
+      input_data_fields.true_image_shape:
+          true_image_shapes
   }
 
   detection_fields = fields.DetectionResultFields

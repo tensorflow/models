@@ -52,6 +52,9 @@ class VisualizationUtilsTest(tf.test.TestCase):
   def create_test_image_with_five_channels(self):
     return np.full([100, 200, 5], 255, dtype=np.uint8)
 
+  def create_test_grayscale_image(self):
+    return np.full([100, 200, 1], 255, dtype=np.uint8)
+
   def test_draw_bounding_box_on_image(self):
     test_image = self.create_colorful_test_image()
     test_image = Image.fromarray(test_image)
@@ -119,9 +122,11 @@ class VisualizationUtilsTest(tf.test.TestCase):
     fname = os.path.join(_TESTDATA_PATH, 'image1.jpg')
     image_np = np.array(Image.open(fname))
     images_np = np.stack((image_np, image_np), axis=0)
+    original_image_shape = [[636, 512], [636, 512]]
 
     with tf.Graph().as_default():
       images_tensor = tf.constant(value=images_np, dtype=tf.uint8)
+      image_shape = tf.constant(original_image_shape, dtype=tf.int32)
       boxes = tf.constant([[[0.4, 0.25, 0.75, 0.75], [0.5, 0.3, 0.6, 0.9]],
                            [[0.25, 0.25, 0.75, 0.75], [0.1, 0.3, 0.6, 1.0]]])
       classes = tf.constant([[1, 1], [1, 2]], dtype=tf.int64)
@@ -133,6 +138,8 @@ class VisualizationUtilsTest(tf.test.TestCase):
               classes,
               scores,
               category_index,
+              original_image_spatial_shape=image_shape,
+              true_image_shape=image_shape,
               min_score_thresh=0.2))
 
       with self.test_session() as sess:
@@ -140,7 +147,10 @@ class VisualizationUtilsTest(tf.test.TestCase):
 
         # Write output images for visualization.
         images_with_boxes_np = sess.run(images_with_boxes)
-        self.assertEqual(images_np.shape, images_with_boxes_np.shape)
+        self.assertEqual(images_np.shape[0], images_with_boxes_np.shape[0])
+        self.assertEqual(images_np.shape[3], images_with_boxes_np.shape[3])
+        self.assertEqual(
+            tuple(original_image_shape[0]), images_with_boxes_np.shape[1:3])
         for i in range(images_with_boxes_np.shape[0]):
           img_name = 'image_' + str(i) + '.png'
           output_file = os.path.join(self.get_temp_dir(), img_name)
@@ -166,6 +176,35 @@ class VisualizationUtilsTest(tf.test.TestCase):
               classes,
               scores,
               category_index,
+              min_score_thresh=0.2))
+
+      with self.test_session() as sess:
+        sess.run(tf.global_variables_initializer())
+
+        final_images_np = sess.run(images_with_boxes)
+        self.assertEqual((2, 100, 200, 3), final_images_np.shape)
+
+  def test_draw_bounding_boxes_on_image_tensors_grayscale(self):
+    """Tests the case where input image tensor has one channel."""
+    category_index = {1: {'id': 1, 'name': 'dog'}}
+    image_np = self.create_test_grayscale_image()
+    images_np = np.stack((image_np, image_np), axis=0)
+
+    with tf.Graph().as_default():
+      images_tensor = tf.constant(value=images_np, dtype=tf.uint8)
+      image_shape = tf.constant([[100, 200], [100, 200]], dtype=tf.int32)
+      boxes = tf.constant(0, dtype=tf.float32, shape=[2, 0, 4])
+      classes = tf.constant(0, dtype=tf.int64, shape=[2, 0])
+      scores = tf.constant(0, dtype=tf.float32, shape=[2, 0])
+      images_with_boxes = (
+          visualization_utils.draw_bounding_boxes_on_image_tensors(
+              images_tensor,
+              boxes,
+              classes,
+              scores,
+              category_index,
+              original_image_spatial_shape=image_shape,
+              true_image_shape=image_shape,
               min_score_thresh=0.2))
 
       with self.test_session() as sess:
@@ -234,34 +273,46 @@ class VisualizationUtilsTest(tf.test.TestCase):
         category_index,
         max_examples_to_draw=max_examples_to_draw,
         summary_name_prefix=metric_op_base)
-    original_image = tf.placeholder(tf.uint8, [1, None, None, 3])
-    detection_boxes = tf.random_uniform([20, 4],
+    original_image = tf.placeholder(tf.uint8, [4, None, None, 3])
+    original_image_spatial_shape = tf.placeholder(tf.int32, [4, 2])
+    true_image_shape = tf.placeholder(tf.int32, [4, 3])
+    detection_boxes = tf.random_uniform([4, 20, 4],
                                         minval=0.0,
                                         maxval=1.0,
                                         dtype=tf.float32)
-    detection_classes = tf.random_uniform([20],
+    detection_classes = tf.random_uniform([4, 20],
                                           minval=1,
                                           maxval=3,
                                           dtype=tf.int64)
-    detection_scores = tf.random_uniform([20],
+    detection_scores = tf.random_uniform([4, 20],
                                          minval=0.,
                                          maxval=1.,
                                          dtype=tf.float32)
-    groundtruth_boxes = tf.random_uniform([8, 4],
+    groundtruth_boxes = tf.random_uniform([4, 8, 4],
                                           minval=0.0,
                                           maxval=1.0,
                                           dtype=tf.float32)
-    groundtruth_classes = tf.random_uniform([8],
+    groundtruth_classes = tf.random_uniform([4, 8],
                                             minval=1,
                                             maxval=3,
                                             dtype=tf.int64)
     eval_dict = {
-        fields.DetectionResultFields.detection_boxes: detection_boxes,
-        fields.DetectionResultFields.detection_classes: detection_classes,
-        fields.DetectionResultFields.detection_scores: detection_scores,
-        fields.InputDataFields.original_image: original_image,
-        fields.InputDataFields.groundtruth_boxes: groundtruth_boxes,
-        fields.InputDataFields.groundtruth_classes: groundtruth_classes}
+        fields.DetectionResultFields.detection_boxes:
+            detection_boxes,
+        fields.DetectionResultFields.detection_classes:
+            detection_classes,
+        fields.DetectionResultFields.detection_scores:
+            detection_scores,
+        fields.InputDataFields.original_image:
+            original_image,
+        fields.InputDataFields.original_image_spatial_shape: (
+            original_image_spatial_shape),
+        fields.InputDataFields.true_image_shape: (true_image_shape),
+        fields.InputDataFields.groundtruth_boxes:
+            groundtruth_boxes,
+        fields.InputDataFields.groundtruth_classes:
+            groundtruth_classes
+    }
     metric_ops = eval_metric_ops.get_estimator_eval_metric_ops(eval_dict)
     _, update_op = metric_ops[metric_ops.keys()[0]]
 
@@ -274,12 +325,20 @@ class VisualizationUtilsTest(tf.test.TestCase):
       # First run enough update steps to surpass `max_examples_to_draw`.
       for i in range(max_examples_to_draw):
         # Use a unique image shape on each eval image.
-        sess.run(update_op, feed_dict={
-            original_image: np.random.randint(low=0,
-                                              high=256,
-                                              size=(1, 6 + i, 7 + i, 3),
-                                              dtype=np.uint8)
-        })
+        sess.run(
+            update_op,
+            feed_dict={
+                original_image:
+                    np.random.randint(
+                        low=0,
+                        high=256,
+                        size=(4, 6 + i, 7 + i, 3),
+                        dtype=np.uint8),
+                original_image_spatial_shape: [[6 + i, 7 + i], [6 + i, 7 + i],
+                                               [6 + i, 7 + i], [6 + i, 7 + i]],
+                true_image_shape: [[6 + i, 7 + i, 3], [6 + i, 7 + i, 3],
+                                   [6 + i, 7 + i, 3], [6 + i, 7 + i, 3]]
+            })
       value_ops_out = sess.run(value_ops)
       for key, value_op in value_ops_out.iteritems():
         self.assertNotEqual('', value_op)
@@ -289,12 +348,20 @@ class VisualizationUtilsTest(tf.test.TestCase):
       # produced.
       for i in range(max_examples_to_draw - 1):
         # Use a unique image shape on each eval image.
-        sess.run(update_op, feed_dict={
-            original_image: np.random.randint(low=0,
-                                              high=256,
-                                              size=(1, 6 + i, 7 + i, 3),
-                                              dtype=np.uint8)
-        })
+        sess.run(
+            update_op,
+            feed_dict={
+                original_image:
+                    np.random.randint(
+                        low=0,
+                        high=256,
+                        size=(4, 6 + i, 7 + i, 3),
+                        dtype=np.uint8),
+                original_image_spatial_shape: [[6 + i, 7 + i], [6 + i, 7 + i],
+                                               [6 + i, 7 + i], [6 + i, 7 + i]],
+                true_image_shape: [[6 + i, 7 + i, 3], [6 + i, 7 + i, 3],
+                                   [6 + i, 7 + i, 3], [6 + i, 7 + i, 3]]
+            })
       value_ops_out = sess.run(value_ops)
       self.assertEqual(
           '',

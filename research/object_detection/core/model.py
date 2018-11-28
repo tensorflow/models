@@ -241,6 +241,7 @@ class DetectionModel(object):
                           groundtruth_masks_list=None,
                           groundtruth_keypoints_list=None,
                           groundtruth_weights_list=None,
+                          groundtruth_confidences_list=None,
                           groundtruth_is_crowd_list=None,
                           is_annotated_list=None):
     """Provide groundtruth tensors.
@@ -265,6 +266,9 @@ class DetectionModel(object):
         missing keypoints should be encoded as NaN.
       groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
         [num_boxes] containing weights for groundtruth boxes.
+      groundtruth_confidences_list: A list of 2-D tf.float32 tensors of shape
+        [num_boxes, num_classes] containing class confidences for groundtruth
+        boxes.
       groundtruth_is_crowd_list: A list of 1-D tf.bool tensors of shape
         [num_boxes] containing is_crowd annotations
       is_annotated_list: A list of scalar tf.bool tensors indicating whether
@@ -276,6 +280,9 @@ class DetectionModel(object):
     if groundtruth_weights_list:
       self._groundtruth_lists[fields.BoxListFields.
                               weights] = groundtruth_weights_list
+    if groundtruth_confidences_list:
+      self._groundtruth_lists[fields.BoxListFields.
+                              confidences] = groundtruth_confidences_list
     if groundtruth_masks_list:
       self._groundtruth_lists[
           fields.BoxListFields.masks] = groundtruth_masks_list
