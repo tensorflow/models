@@ -390,5 +390,21 @@ class NASNetTest(tf.test.TestCase):
     self.assertListEqual(predictions.get_shape().as_list(),
                          [batch_size, num_classes])
 
+  def testUseBoundedAcitvationCifarModel(self):
+    batch_size = 1
+    height, width = 32, 32
+    num_classes = 10
+    for use_bounded_activation in (True, False):
+      tf.reset_default_graph()
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      config = nasnet.cifar_config()
+      config.set_hparam('use_bounded_activation', use_bounded_activation)
+      with slim.arg_scope(nasnet.nasnet_cifar_arg_scope()):
+        _, _ = nasnet.build_nasnet_cifar(
+            inputs, num_classes, config=config)
+      for node in tf.get_default_graph().as_graph_def().node:
+        if node.op.startswith('Relu'):
+          self.assertEqual(node.op == 'Relu6', use_bounded_activation)
+
 if __name__ == '__main__':
   tf.test.main()
