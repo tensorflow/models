@@ -80,7 +80,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
-BASE_LEARNING_RATE = 0.4 #0.128
+BASE_LEARNING_RATE = 3.2 #0.128
 
 def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch):
   """Handles linear scaling rule, gradual warmup, and LR decay.
