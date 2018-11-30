@@ -197,13 +197,8 @@ def cifar10_model_fn(features, labels, mode, params):
   """Model function for CIFAR-10."""
   features = tf.reshape(features, [-1, _HEIGHT, _WIDTH, _NUM_CHANNELS])
   # Learning rate schedule follows arXiv:1512.03385 for ResNet-56 and under.
-  #learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-  #    batch_size=params['batch_size'], batch_denom=128,
-  #    num_images=_NUM_IMAGES['train'], boundary_epochs=[91, 136, 182],
-  #    decay_rates=[1, 0.1, 0.01, 0.001])
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
-      num_images=_NUM_IMAGES['train'], boundary_epochs=[100, 150, 200],
       num_images=_NUM_IMAGES['train'], boundary_epochs=[91, 136, 182],
       decay_rates=[1, 0.1, 0.01, 0.001])
 
