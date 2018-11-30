@@ -15,7 +15,7 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":input_ops",
-        "//astronet/util:configdict",
+        "//tf_util:configdict",
     ],
 )
 
@@ -33,7 +33,7 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":dataset_ops",
-        "//astronet/util:configdict",
+        "//tf_util:configdict",
     ],
 )
 

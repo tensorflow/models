@@ -27,9 +27,9 @@ import tensorflow as tf
 
 from astronet import models
 from astronet.data import preprocess
-from astronet.util import config_util
-from astronet.util import configdict
 from astronet.util import estimator_util
+from tf_util import config_util
+from tf_util import configdict
 
 parser = argparse.ArgumentParser()
 
@@ -102,8 +102,9 @@ def _process_tce(feature_config):
         "Only 'global_view' and 'local_view' features are supported.")
 
   # Read and process the light curve.
-  time, flux = preprocess.read_and_process_light_curve(FLAGS.kepler_id,
-                                                       FLAGS.kepler_data_dir)
+  all_time, all_flux = preprocess.read_light_curve(FLAGS.kepler_id,
+                                                   FLAGS.kepler_data_dir)
+  time, flux = preprocess.process_light_curve(all_time, all_flux)
   time, flux = preprocess.phase_fold_and_sort_light_curve(
       time, flux, FLAGS.period, FLAGS.t0)
 
@@ -158,11 +159,7 @@ def main(_):
 
   # Create an input function.
   def input_fn():
-    return {
-        "time_series_features":
-            tf.estimator.inputs.numpy_input_fn(
-                features, batch_size=1, shuffle=False, queue_capacity=1)()
-    }
+    return tf.data.Dataset.from_tensors({"time_series_features": features})
 
   # Generate the predictions.
   for predictions in estimator.predict(input_fn):

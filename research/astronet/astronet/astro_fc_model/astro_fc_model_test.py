@@ -25,7 +25,7 @@ from astronet.astro_fc_model import astro_fc_model
 from astronet.astro_fc_model import configurations
 from astronet.ops import input_ops
 from astronet.ops import testing
-from astronet.util import configdict
+from tf_util import configdict
 
 
 class AstroFCModelTest(tf.test.TestCase):

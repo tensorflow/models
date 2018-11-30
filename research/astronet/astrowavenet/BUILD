@@ -11,12 +11,12 @@ py_binary(
     deps = [
         ":astrowavenet_model",
         ":configurations",
-        "//astronet/util:config_util",
-        "//astronet/util:configdict",
-        "//astronet/util:estimator_runner",
         "//astrowavenet/data:kepler_light_curves",
         "//astrowavenet/data:synthetic_transits",
         "//astrowavenet/util:estimator_util",
+        "//tf_util:config_util",
+        "//tf_util:configdict",
+        "//tf_util:estimator_runner",
     ],
 )
 
@@ -44,6 +44,6 @@ py_test(
     deps = [
         ":astrowavenet_model",
         ":configurations",
-        "//astronet/util:configdict",
+        "//tf_util:configdict",
     ],
 )

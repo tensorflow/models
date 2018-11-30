@@ -32,6 +32,6 @@ py_test(
         ":configurations",
         "//astronet/ops:input_ops",
         "//astronet/ops:testing",
-        "//astronet/util:configdict",
+        "//tf_util:configdict",
     ],
 )

@@ -9,7 +9,7 @@ py_library(
     ],
     deps = [
         "//astronet/ops:dataset_ops",
-        "//astronet/util:configdict",
+        "//tf_util:configdict",
     ],
 )
 
@@ -28,7 +28,7 @@ py_library(
     ],
     deps = [
         ":base",
-        "//astronet/util:configdict",
+        "//tf_util:configdict",
     ],
 )
 
@@ -40,7 +40,7 @@ py_library(
     deps = [
         ":base",
         ":synthetic_transit_maker",
-        "//astronet/util:configdict",
+        "//tf_util:configdict",
     ],
 )
 
