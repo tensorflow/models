@@ -12,8 +12,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_VIEW_GENERATOR_H_
-#define TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_VIEW_GENERATOR_H_
+#ifndef TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_VIEW_GENERATOR_H_
+#define TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_VIEW_GENERATOR_H_
 
 #include <memory>
 #include <string>
@@ -24,9 +24,10 @@ namespace astronet {
 // Helper class for phase-folding a light curve and then generating "views" of
 // the light curve using a median filter.
 //
-// This class wraps the functions in light_curve_util.h for intended use as a
-// a Python extension. It keeps the phase-folded light curve in the class state
-// to minimize expensive copies between the language barrier.
+// This class wraps functions for phase folding, median filtering, and
+// normalizing for efficient use as a Python extension. It keeps the
+// phase-folded light curve in the class state to minimize expensive copies
+// between the language barrier.
 class ViewGenerator {
  public:
   // Factory function to create a new ViewGenerator.
@@ -96,4 +97,4 @@ class ViewGenerator {
 
 }  // namespace astronet
 
-#endif  // TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_VIEW_GENERATOR_H_
+#endif  // TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_VIEW_GENERATOR_H_

@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from absl.testing import absltest
 
-from light_curve_util.periodic_event import Event
+from light_curve.periodic_event import Event
 
 
 class EventTest(absltest.TestCase):

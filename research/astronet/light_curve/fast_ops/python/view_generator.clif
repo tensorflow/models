@@ -16,10 +16,10 @@
 #
 # See https://github.com/google/clif
 
-from light_curve_util.cc.python.postproc import ValueErrorOnFalse
-from light_curve_util.cc.python.postproc import ValueErrorOnNull
+from light_curve.fast_ops.python.postproc import ValueErrorOnFalse
+from light_curve.fast_ops.python.postproc import ValueErrorOnNull
 
-from "third_party/tensorflow_models/astronet/light_curve_util/cc/view_generator.h":
+from "third_party/tensorflow_models/astronet/light_curve/fast_ops/view_generator.h":
   namespace `astronet`:
     class ViewGenerator:
       def `GenerateView` as generate_view (self,

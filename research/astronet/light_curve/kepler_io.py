@@ -23,7 +23,7 @@ import os.path
 from astropy.io import fits
 import numpy as np
 
-from light_curve_util import util
+from light_curve import util
 from tensorflow import gfile
 
 # Quarter index to filename prefix for long cadence Kepler data.

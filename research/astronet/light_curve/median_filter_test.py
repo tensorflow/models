@@ -21,7 +21,7 @@ from __future__ import print_function
 from absl.testing import absltest
 import numpy as np
 
-from light_curve_util import median_filter
+from light_curve import median_filter
 
 
 class MedianFilterTest(absltest.TestCase):

@@ -21,9 +21,9 @@ from __future__ import print_function
 from absl.testing import absltest
 import numpy as np
 
-from light_curve_util import periodic_event
+from light_curve import periodic_event
 
-from light_curve_util import util
+from light_curve import util
 
 
 class LightCurveUtilTest(absltest.TestCase):
@@ -89,13 +89,13 @@ class LightCurveUtilTest(absltest.TestCase):
     ]
     all_flux = [np.ones(25), np.ones(10)]
 
-    self.assertEqual(len(all_time), 2)
-    self.assertEqual(len(all_time[0]), 25)
-    self.assertEqual(len(all_time[1]), 10)
+    self.assertLen(all_time, 2)
+    self.assertLen(all_time[0], 25)
+    self.assertLen(all_time[1], 10)
 
-    self.assertEqual(len(all_flux), 2)
-    self.assertEqual(len(all_flux[0]), 25)
-    self.assertEqual(len(all_flux[1]), 10)
+    self.assertLen(all_flux, 2)
+    self.assertLen(all_flux[0], 25)
+    self.assertLen(all_flux[1], 10)
 
     # Gap width 0.5.
     split_time, split_flux = util.split(all_time, all_flux, gap_width=0.5)
@@ -268,7 +268,7 @@ class LightCurveUtilTest(absltest.TestCase):
         np.array([80, 90]),
     ]
     reshard_xs = util.reshard_arrays(xs, ys)
-    self.assertEqual(5, len(reshard_xs))
+    self.assertLen(reshard_xs, 5)
     np.testing.assert_array_equal([], reshard_xs[0])
     np.testing.assert_array_equal([1, 2], reshard_xs[1])
     np.testing.assert_array_equal([3, 4, 5, 6], reshard_xs[2])

@@ -16,9 +16,9 @@
 #
 # See https://github.com/google/clif
 
-from light_curve_util.cc.python.postproc import ValueErrorOnFalse
+from light_curve.fast_ops.python.postproc import ValueErrorOnFalse
 
-from "third_party/tensorflow_models/astronet/light_curve_util/cc/phase_fold.h":
+from "third_party/tensorflow_models/astronet/light_curve/fast_ops/phase_fold.h":
   namespace `astronet`:
     def `PhaseFoldTime` as phase_fold_time (time: list<float>,
                                             period: float,

@@ -12,12 +12,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "light_curve_util/cc/view_generator.h"
+#include "light_curve/fast_ops/view_generator.h"
 
 #include "absl/memory/memory.h"
-#include "light_curve_util/cc/median_filter.h"
-#include "light_curve_util/cc/normalize.h"
-#include "light_curve_util/cc/phase_fold.h"
+#include "light_curve/fast_ops/median_filter.h"
+#include "light_curve/fast_ops/normalize.h"
+#include "light_curve/fast_ops/phase_fold.h"
 
 using std::vector;
 

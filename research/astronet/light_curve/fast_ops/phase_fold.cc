@@ -12,7 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "light_curve_util/cc/phase_fold.h"
+#include "light_curve/fast_ops/phase_fold.h"
 
 #include <math.h>
 #include <algorithm>

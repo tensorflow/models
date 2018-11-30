@@ -21,7 +21,7 @@ from __future__ import print_function
 from absl.testing import absltest
 import numpy as np
 
-from light_curve_util.cc.python import view_generator
+from light_curve.fast_ops.python import view_generator
 
 
 class ViewGeneratorTest(absltest.TestCase):

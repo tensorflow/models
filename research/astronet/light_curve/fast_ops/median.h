@@ -12,8 +12,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_MEDIAN_H_
-#define TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_MEDIAN_H_
+#ifndef TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_MEDIAN_H_
+#define TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_MEDIAN_H_
 
 #include <algorithm>
 #include <iterator>
@@ -70,4 +70,4 @@ typename std::iterator_traits<ForwardIterator>::value_type Median(
 
 }  // namespace astronet
 
-#endif  // TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_MEDIAN_H_
+#endif  // TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_MEDIAN_H_

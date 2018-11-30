@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Postprocessing utility function for CLIF."""
+"""Postprocessing utility functions for CLIF."""
 
 
 # CLIF postprocessor for a C++ function with signature:

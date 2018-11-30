@@ -24,16 +24,17 @@ from absl import flags
 from absl.testing import absltest
 import numpy as np
 
-from light_curve_util import kepler_io
+from light_curve import kepler_io
 
 FLAGS = flags.FLAGS
 
-_DATA_DIR = "light_curve_util/test_data/"
+_DATA_DIR = "light_curve/test_data/"
 
 
 class KeplerIoTest(absltest.TestCase):
 
   def setUp(self):
+    super(KeplerIoTest, self).setUp()
     self.data_dir = os.path.join(FLAGS.test_srcdir, _DATA_DIR)
 
   def testScrambleLightCurve(self):
@@ -49,8 +50,8 @@ class KeplerIoTest(absltest.TestCase):
     gold_flux = [[41, 42], [np.nan, np.nan, 33], [11, 12], [21]]
     gold_time = [[101, 102], [201, 301, 302], [303, 401], [402]]
 
-    self.assertEqual(len(gold_flux), len(scr_flux))
-    self.assertEqual(len(gold_time), len(scr_time))
+    self.assertLen(gold_flux, len(scr_flux))
+    self.assertLen(gold_time, len(scr_time))
 
     for i in range(len(gold_flux)):
       np.testing.assert_array_equal(gold_flux[i], scr_flux[i])
@@ -60,7 +61,7 @@ class KeplerIoTest(absltest.TestCase):
     # All quarters.
     filenames = kepler_io.kepler_filenames(
         "/my/dir/", 1234567, check_existence=False)
-    self.assertItemsEqual([
+    self.assertCountEqual([
         "/my/dir/0012/001234567/kplr001234567-2009131105131_llc.fits",
         "/my/dir/0012/001234567/kplr001234567-2009166043257_llc.fits",
         "/my/dir/0012/001234567/kplr001234567-2009259160929_llc.fits",
@@ -85,7 +86,7 @@ class KeplerIoTest(absltest.TestCase):
     # Subset of quarters.
     filenames = kepler_io.kepler_filenames(
         "/my/dir/", 1234567, quarters=[3, 4], check_existence=False)
-    self.assertItemsEqual([
+    self.assertCountEqual([
         "/my/dir/0012/001234567/kplr001234567-2009350155506_llc.fits",
         "/my/dir/0012/001234567/kplr001234567-2010078095331_llc.fits",
         "/my/dir/0012/001234567/kplr001234567-2010009091648_llc.fits"
@@ -99,7 +100,7 @@ class KeplerIoTest(absltest.TestCase):
         injected_group="inj1",
         check_existence=False)
     # pylint:disable=line-too-long
-    self.assertItemsEqual([
+    self.assertCountEqual([
         "/my/dir/0012/001234567/kplr001234567-2009350155506_INJECTED-inj1_llc.fits",
         "/my/dir/0012/001234567/kplr001234567-2010078095331_INJECTED-inj1_llc.fits",
         "/my/dir/0012/001234567/kplr001234567-2010009091648_INJECTED-inj1_llc.fits"
@@ -113,7 +114,7 @@ class KeplerIoTest(absltest.TestCase):
         long_cadence=False,
         quarters=[0, 1],
         check_existence=False)
-    self.assertItemsEqual([
+    self.assertCountEqual([
         "/my/dir/0012/001234567/kplr001234567-2009131110544_slc.fits",
         "/my/dir/0012/001234567/kplr001234567-2009166044711_slc.fits"
     ], filenames)
@@ -126,7 +127,7 @@ class KeplerIoTest(absltest.TestCase):
                      "0114/011442793/kplr011442793-{}_llc.fits".format(q))
         for q in ["2009350155506", "2010009091648", "2010174085026"]
     ]
-    self.assertItemsEqual(expected_filenames, filenames)
+    self.assertCountEqual(expected_filenames, filenames)
 
   def testReadKeplerLightCurve(self):
     filenames = [

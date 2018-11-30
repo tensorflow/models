@@ -12,11 +12,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "light_curve_util/cc/view_generator.h"
+#include "light_curve/fast_ops/view_generator.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "light_curve_util/cc/test_util.h"
+#include "light_curve/fast_ops/test_util.h"
 
 using std::vector;
 using testing::Pointwise;
@@ -49,7 +49,7 @@ TEST(ViewGenerator, GenerateViews) {
   vector<double> result;
 
   // Error: t_max <= t_min. We do not test all failure cases here since they
-  // are tested in light_curve_util_test.cc.
+  // are covered by the median filter's tests.
   EXPECT_FALSE(generator->GenerateView(10, 1, -1, -1, false, &result, &error));
   EXPECT_FALSE(error.empty());
   error.clear();

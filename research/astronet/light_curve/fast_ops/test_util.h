@@ -12,8 +12,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_TEST_UTIL_H_
-#define TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_TEST_UTIL_H_
+#ifndef TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_TEST_UTIL_H_
+#define TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_TEST_UTIL_H_
 
 #include <vector>
 
@@ -42,4 +42,4 @@ inline std::vector<double> range(double start, double stop, double step) {
 
 }  // namespace astronet
 
-#endif  // TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_TEST_UTIL_H_
+#endif  // TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_TEST_UTIL_H_

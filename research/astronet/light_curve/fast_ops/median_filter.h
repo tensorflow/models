@@ -12,8 +12,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_MEDIAN_FILTER_H_
-#define TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_MEDIAN_FILTER_H_
+#ifndef TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_MEDIAN_FILTER_H_
+#define TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_MEDIAN_FILTER_H_
 
 #include <iostream>
 
@@ -56,4 +56,4 @@ bool MedianFilter(const std::vector<double>& x, const std::vector<double>& y,
 
 }  // namespace astronet
 
-#endif  // TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_UTIL_CC_MEDIAN_FILTER_H_
+#endif  // TENSORFLOW_MODELS_ASTRONET_LIGHT_CURVE_FAST_OPS_MEDIAN_FILTER_H_

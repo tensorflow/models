@@ -12,10 +12,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "light_curve_util/cc/median_filter.h"
+#include "light_curve/fast_ops/median_filter.h"
 
 #include "absl/strings/substitute.h"
-#include "light_curve_util/cc/median.h"
+#include "light_curve/fast_ops/median.h"
 
 using absl::Substitute;
 using std::min;

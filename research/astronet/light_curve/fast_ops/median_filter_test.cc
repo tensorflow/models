@@ -12,11 +12,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "light_curve_util/cc/median_filter.h"
+#include "light_curve/fast_ops/median_filter.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "light_curve_util/cc/test_util.h"
+#include "light_curve/fast_ops/test_util.h"
 
 using std::vector;
 using testing::Pointwise;
