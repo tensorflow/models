@@ -116,6 +116,7 @@ def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch):
   # return learning_rate
 
   epoch = current_epoch + float(current_batch) / batches_per_epoch
+  learning_rate = BASE_LEARNING_RATE
   for mult, start_epoch in LR_SCHEDULE:
     if epoch >= start_epoch:
       learning_rate = BASE_LEARNING_RATE * mult
