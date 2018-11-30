@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from absl.testing import absltest
 
-from astronet.util import configdict
+from tf_util import configdict
 
 
 class ConfigDictTest(absltest.TestCase):

@@ -45,6 +45,8 @@ def evaluate(estimator, eval_args):
   latest_checkpoint = estimator.latest_checkpoint()
   if not latest_checkpoint:
     # This is expected if the training job has not yet saved a checkpoint.
+    tf.logging.info("No checkpoint in %s, skipping evaluation.",
+                    estimator.model_dir)
     return global_step, values
 
   tf.logging.info("Starting evaluation on checkpoint %s", latest_checkpoint)
@@ -54,7 +56,7 @@ def evaluate(estimator, eval_args):
           input_fn, steps=eval_steps, name=eval_name)
       if global_step is None:
         global_step = values[eval_name].get("global_step")
-  except (tf.errors.NotFoundError, ValueError):
+  except tf.errors.NotFoundError:
     # Expected under some conditions, e.g. checkpoint is already deleted by the
     # trainer process. Increasing RunConfig.keep_checkpoint_max may prevent this
     # in some cases.

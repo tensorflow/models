@@ -25,7 +25,7 @@ import numpy as np
 import tensorflow as tf
 
 from astronet.ops import dataset_ops
-from astronet.util import configdict
+from tf_util import configdict
 
 FLAGS = flags.FLAGS
 

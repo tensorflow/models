@@ -21,10 +21,10 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from astronet.util import example_util
-from light_curve_util import kepler_io
-from light_curve_util import median_filter
-from light_curve_util import util
+from light_curve import kepler_io
+from light_curve import median_filter
+from light_curve import util
+from tf_util import example_util
 from third_party.kepler_spline import kepler_spline
 
 

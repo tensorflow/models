@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from astronet.util import config_util
+from tf_util import config_util
 
 
 class ConfigUtilTest(tf.test.TestCase):
