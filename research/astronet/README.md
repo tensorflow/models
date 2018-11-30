@@ -43,7 +43,7 @@ Full text available at [*The Astronomical Journal*](http://iopscience.iop.org/ar
 * [light_curve/fast_ops/](light_curve/fast_ops) contains optimized C++ light
 curve operations.
 
-[tf_util](tf_util)
+[tf_util/](tf_util)
 
 * Shared TensorFlow utilities.
 
