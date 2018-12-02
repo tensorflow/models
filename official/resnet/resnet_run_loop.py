@@ -400,7 +400,7 @@ def resnet_model_fn(features, labels, mode, model_class,
 
       # Once the gradient computation is complete we can scale the gradients
       # back to the correct scale before passing them to the optimizer.
-      unscaled_grad_vars = [(grad / loss_scale, var)
+      unscaled_grad_vars = [(grad / loss_scale, var) if grad != None else (grad, var)
                             for grad, var in scaled_grad_vars]
       minimize_op = optimizer.apply_gradients(unscaled_grad_vars, global_step)
     else:
