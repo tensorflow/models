@@ -31,7 +31,7 @@ from google3.pyglib import app
 from google3.pyglib import flags
 from lstm_object_detection import evaluator
 from lstm_object_detection import model_builder
-from lstm_object_detection import seq_dataset_builder
+from lstm_object_detection.inputs import seq_dataset_builder
 from lstm_object_detection.utils import config_util
 from object_detection.utils import label_map_util
 

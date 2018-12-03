@@ -21,7 +21,7 @@ from tensorflow.core.example import example_pb2
 from tensorflow.core.example import feature_pb2
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import parsing_ops
-from lstm_object_detection import tf_sequence_example_decoder
+from lstm_object_detection.inputs import tf_sequence_example_decoder
 from object_detection.core import standard_fields as fields
 
 
