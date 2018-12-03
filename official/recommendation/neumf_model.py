@@ -83,7 +83,9 @@ def neumf_model_fn(features, labels, mode, params):
     logits = keras_model([users, items],
                          training=mode == tf.estimator.ModeKeys.TRAIN)
   else:
-    keras_model = construct_model(users=users, items=items, params=params)
+    user_input = tf.keras.layers.Input(tensor=users)
+    item_input = tf.keras.layers.Input(tensor=items)
+    keras_model = construct_model(user_input, item_input, params=params)
     logits = keras_model.output
   if not params["use_estimator"] and "keras_model" not in params:
     # When we are not using estimator, we need to reuse the Keras model when
@@ -125,12 +127,7 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
-    optimizer = tf.train.AdamOptimizer(
-        learning_rate=params["learning_rate"], beta1=params["beta1"],
-        beta2=params["beta2"], epsilon=params["epsilon"])
-    if params["use_tpu"]:
-      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
-
+    optimizer = get_optimizer(params)
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
     loss = tf.losses.sparse_softmax_cross_entropy(
@@ -159,8 +156,15 @@ def neumf_model_fn(features, labels, mode, params):
   else:
     raise NotImplementedError
 
+def get_optimizer(params):
+  optimizer = tf.train.AdamOptimizer(
+      learning_rate=params["learning_rate"], beta1=params["beta1"],
+      beta2=params["beta2"], epsilon=params["epsilon"])
+  if params["use_tpu"]:
+    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+  return optimizer
 
-def construct_model(users, items, params):
+def construct_model(user_input, item_input, params):
   # type: (tf.Tensor, tf.Tensor, dict) -> tf.Tensor
   """Initialize NeuMF model.
 
@@ -194,8 +198,6 @@ def construct_model(users, items, params):
     raise ValueError("The first layer size should be multiple of 2!")
 
   # Input variables
-  user_input = tf.keras.layers.Input(tensor=users)
-  item_input = tf.keras.layers.Input(tensor=items)
   batch_size = user_input.get_shape()[0]
 
   if params["use_tpu"]:

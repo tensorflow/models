@@ -131,6 +131,17 @@ def main(_):
     run_ncf(FLAGS)
     mlperf_helper.stitch_ncf()
 
+def _logitfy(inputs, base_model):
+  logits = base_model(inputs)
+  zero_tensor = tf.keras.layers.Lambda(lambda x: x * 0)(logits)
+  to_concatenate = [zero_tensor, logits]
+  concat_layer = tf.keras.layers.Concatenate(axis=1)(to_concatenate)
+
+  reshape_layer = tf.keras.layers.Reshape(
+      target_shape=(concat_layer.shape[1].value,))(concat_layer)
+
+  model = tf.keras.Model(inputs=inputs, outputs=reshape_layer)
+  return model
 
 def run_ncf(_):
   """Run NCF training and eval loop."""
@@ -212,6 +223,21 @@ def run_ncf(_):
         num_gpus=num_gpus, model_dir=FLAGS.model_dir,
         iterations=num_train_steps, params=params,
         batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
+
+  elif FLAGS.use_keras:
+    train_input_fn, _, _= data_preprocessing.make_input_fn(
+      ncf_dataset=ncf_dataset, is_training=True)
+
+    user_input = tf.keras.layers.Input(
+      shape=(1,), batch_size=FLAGS.batch_size, name="user_id", dtype=tf.int32)
+    item_input = tf.keras.layers.Input(
+      shape=(1,), batch_size=FLAGS.batch_size, name="item_id", dtype=tf.int32)
+
+    base_model = neumf_model.construct_model(user_input, item_input, params)
+    keras_model = _logitfy([user_input, item_input], base_model) 
+    
+    keras_model.summary()
+
   else:
     runner = model_runner.NcfModelRunner(ncf_dataset, params, num_train_steps,
                                          num_eval_steps, FLAGS.use_while_loop)
@@ -281,6 +307,39 @@ def run_ncf(_):
       eval_results = eval_estimator.evaluate(eval_input_fn,
                                              steps=num_eval_steps)
       tf.logging.info("Evaluation complete.")
+
+    elif FLAGS.use_keras:
+      tf.logging.info("Using Keras instead of Estimator")
+
+      def softmax_crossentropy_with_logits(y_true, y_pred):
+        """A loss function replicating tf's sparse_softmax_cross_entropy
+        Args:
+          y_true: True labels. Tensor of shape [batch_size,]
+          y_pred: Predictions. Tensor of shape [batch_size, num_classes]
+        """
+        y_true = tf.cast(y_true, tf.int32)
+        return tf.losses.sparse_softmax_cross_entropy(
+          labels=tf.reshape(y_true, [FLAGS.batch_size,]),
+          logits=tf.reshape(y_pred, [FLAGS.batch_size, 2]))
+
+      opt = neumf_model.get_optimizer(params)
+      strategy = distribution_utils.get_distribution_strategy(num_gpus=1)
+
+      keras_model.compile(loss=softmax_crossentropy_with_logits,
+                    optimizer=opt,
+                    metrics=['accuracy'],
+                    distribute=None)
+
+      total_examples = 1000210
+      steps_per_epoch = total_examples // FLAGS.batch_size
+
+      train_input_dataset = train_input_fn(params)
+
+      keras_model.fit(train_input_dataset,
+                epochs=FLAGS.train_epochs,
+                steps_per_epoch=steps_per_epoch,
+                callbacks=[],
+                verbose=0)
     else:
       runner.train()
       tf.logging.info("Beginning evaluation.")
@@ -288,44 +347,46 @@ def run_ncf(_):
                               value=cycle_index)
       eval_results = runner.eval()
       tf.logging.info("Evaluation complete.")
-    hr = float(eval_results[rconst.HR_KEY])
-    ndcg = float(eval_results[rconst.NDCG_KEY])
+    
+    if not FLAGS.use_keras:
+      hr = float(eval_results[rconst.HR_KEY])
+      ndcg = float(eval_results[rconst.NDCG_KEY])
 
-    mlperf_helper.ncf_print(
-        key=mlperf_helper.TAGS.EVAL_TARGET,
-        value={"epoch": cycle_index, "value": FLAGS.hr_threshold})
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_ACCURACY,
-                            value={"epoch": cycle_index, "value": hr})
-    mlperf_helper.ncf_print(
-        key=mlperf_helper.TAGS.EVAL_HP_NUM_NEG,
-        value={"epoch": cycle_index, "value": rconst.NUM_EVAL_NEGATIVES})
+      mlperf_helper.ncf_print(
+          key=mlperf_helper.TAGS.EVAL_TARGET,
+          value={"epoch": cycle_index, "value": FLAGS.hr_threshold})
+      mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_ACCURACY,
+                              value={"epoch": cycle_index, "value": hr})
+      mlperf_helper.ncf_print(
+          key=mlperf_helper.TAGS.EVAL_HP_NUM_NEG,
+          value={"epoch": cycle_index, "value": rconst.NUM_EVAL_NEGATIVES})
 
-    # Logged by the async process during record creation.
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_HP_NUM_USERS,
-                            deferred=True)
+      # Logged by the async process during record creation.
+      mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_HP_NUM_USERS,
+                              deferred=True)
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP, value=cycle_index)
+      mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP, value=cycle_index)
 
-    # Benchmark the evaluation results
-    benchmark_logger.log_evaluation_result(eval_results)
-    # Log the HR and NDCG results.
-    tf.logging.info(
-        "Iteration {}: HR = {:.4f}, NDCG = {:.4f}".format(
-            cycle_index + 1, hr, ndcg))
+      # Benchmark the evaluation results
+      benchmark_logger.log_evaluation_result(eval_results)
+      # Log the HR and NDCG results.
+      tf.logging.info(
+          "Iteration {}: HR = {:.4f}, NDCG = {:.4f}".format(
+              cycle_index + 1, hr, ndcg))
 
-    # If some evaluation threshold is met
-    if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
-      target_reached = True
-      break
+      # If some evaluation threshold is met
+      if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
+        target_reached = True
+        break
 
-  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_STOP,
-                          value={"success": target_reached})
-  cleanup_fn()  # Cleanup data construction artifacts and subprocess.
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_STOP,
+                            value={"success": target_reached})
+    cleanup_fn()  # Cleanup data construction artifacts and subprocess.
 
-  # Clear the session explicitly to avoid session delete error
-  tf.keras.backend.clear_session()
+    # Clear the session explicitly to avoid session delete error
+    tf.keras.backend.clear_session()
 
-  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_FINAL)
+    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_FINAL)
 
 
 def define_ncf_flags():
@@ -510,6 +571,9 @@ def define_ncf_flags():
           "print out losses throughout the epoch. Requires "
           "--use_estimator=false"
       ))
+  flags.DEFINE_bool(
+      name="use_keras", default=None, help=flags_core.help_wrap(
+        "Use keras instead of estimator"))
 
   xla_message = "--use_while_loop requires --use_estimator=false"
   @flags.multi_flags_validator(["use_while_loop", "use_estimator"],
