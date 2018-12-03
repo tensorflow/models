@@ -550,7 +550,14 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
     if frcnn_config.score_map_vocabulary_use_top_k > 0:
       tf.logging.warn('score_map_vocabulary_use_top_k is deprecated')
 
-  wsod_mil_cls_loss_weight = frcnn_config.wsod_mil_cls_loss_weight
+  wsod_second_stage_obj_loss_weight = frcnn_config.wsod_second_stage_obj_loss_weight
+  wsod_second_stage_loc_loss_weight = frcnn_config.wsod_second_stage_loc_loss_weight
+  wsod_second_stage_cls_loss_weight = frcnn_config.wsod_second_stage_cls_loss_weight
+  wsod_second_stage_refine_location = frcnn_config.wsod_second_stage_refine_location
+  wsod_second_stage_use_mil_loss = frcnn_config.wsod_second_stage_use_mil_loss
+  wsod_second_stage_cls_loss_use_sigmoid = frcnn_config.wsod_second_stage_cls_loss_use_sigmoid
+  wsod_loss_back_propogate_to_coordinate = frcnn_config.wsod_loss_back_propogate_to_coordinate
+  wsod_second_stage_mil_use_avg = frcnn_config.wsod_second_stage_mil_use_avg
   train_only_rpn = frcnn_config.train_only_rpn
 
   # Load the `name_to_class_id` mapping.
@@ -565,6 +572,7 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
   class_id_to_name = {}
   with open(frcnn_config.class_id_to_name_file, "r") as fid:
     for line in fid.readlines():
+      print(line)
       class_id, name = line.strip('\n').split('\t')
       class_id_to_name[int(class_id)] = name
       assert 0 < int(class_id) <= frcnn_config.num_classes, "Invalid `class_id`!"
@@ -717,8 +725,15 @@ def _build_wsod_model(frcnn_config, is_training, add_summaries):
       'wsod_groundtruth_non_max_suppression_fn': wsod_groundtruth_non_max_suppression_fn,
       'name_to_class_id': name_to_class_id,
       'class_id_to_name': class_id_to_name,
-      'wsod_mil_cls_loss_weight': wsod_mil_cls_loss_weight,
       'train_only_rpn': train_only_rpn,
+      'wsod_second_stage_obj_loss_weight': wsod_second_stage_obj_loss_weight,
+      'wsod_second_stage_loc_loss_weight': wsod_second_stage_loc_loss_weight,
+      'wsod_second_stage_cls_loss_weight': wsod_second_stage_cls_loss_weight,
+      'wsod_second_stage_refine_location': wsod_second_stage_refine_location,
+      'wsod_second_stage_use_mil_loss': wsod_second_stage_use_mil_loss,
+      'wsod_second_stage_cls_loss_use_sigmoid': wsod_second_stage_cls_loss_use_sigmoid,
+      'wsod_loss_back_propogate_to_coordinate': wsod_loss_back_propogate_to_coordinate,
+      'wsod_second_stage_mil_use_avg': wsod_second_stage_mil_use_avg,
   }
 
   if isinstance(second_stage_box_predictor,

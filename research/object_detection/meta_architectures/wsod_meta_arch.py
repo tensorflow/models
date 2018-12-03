@@ -115,6 +115,11 @@ from core import plotlib
 
 slim = tf.contrib.slim
 
+flags = tf.app.flags
+flags.DEFINE_boolean('coco_eval_on_voc', False, 
+    'If true, eval the COCO model on Pascal VOC.')
+FLAGS = flags.FLAGS
+
 
 def _to_normalized_coordinates(box, height, width):
   """Normalizes box to make it ranging from 0.0 to 1.0.
@@ -322,7 +327,8 @@ class WSODMetaArch(model.DetectionModel):
                wsod_second_stage_refine_location=None,
                wsod_second_stage_use_mil_loss=None,
                wsod_second_stage_cls_loss_use_sigmoid=None,
-               wsod_loss_back_propogate_to_coordinate=None):
+               wsod_loss_back_propogate_to_coordinate=None,
+               wsod_second_stage_mil_use_avg=None):
     """WSODMetaArch Constructor.
 
     Args:
@@ -557,6 +563,7 @@ class WSODMetaArch(model.DetectionModel):
     self._wsod_second_stage_use_mil_loss = wsod_second_stage_use_mil_loss
     self._wsod_second_stage_cls_loss_use_sigmoid = wsod_second_stage_cls_loss_use_sigmoid
     self._wsod_loss_back_propogate_to_coordinate = wsod_loss_back_propogate_to_coordinate
+    self._wsod_second_stage_mil_use_avg = wsod_second_stage_mil_use_avg
 
   @property
   def first_stage_feature_extractor_scope(self):
@@ -1412,7 +1419,7 @@ class WSODMetaArch(model.DetectionModel):
             proposals=anchor_boxes,
             proposal_scores=anchor_per_channel_scores[:, :, i],
             k=5,
-            nms=False,
+            nms=True,
             color=(0, 255, 0))
         x = plotlib.draw_caption(
             x,
@@ -2011,6 +2018,14 @@ class WSODMetaArch(model.DetectionModel):
          num_valid_boxes=num_proposals,
          masks=mask_predictions_batch,
          additional_fields={'wsod_classes': box_classes})
+
+    wsod_detection_classes = tf.argmax(nmsed_additional_fields['wsod_classes'], axis=-1)
+    if FLAGS.coco_eval_on_voc:
+      score_tensors = []
+      for i in [5, 2, 16, 9, 44, 6, 3, 17, 62, 21, 67, 18, 19, 4, 1, 64, 20, 63, 7, 72]:
+        score_tensors.append(nmsed_additional_fields['wsod_classes'][:, :, i - 1])
+      wsod_detection_classes = tf.argmax(tf.stack(score_tensors, axis=-1), axis=-1)
+
     detections = {
         fields.DetectionResultFields.detection_boxes:
         nmsed_boxes,
@@ -2018,8 +2033,7 @@ class WSODMetaArch(model.DetectionModel):
         nmsed_scores,
         'detection_softmax_scores': nmsed_additional_fields['wsod_classes'],
         #fields.DetectionResultFields.detection_classes: nmsed_classes,
-        fields.DetectionResultFields.detection_classes:
-        tf.argmax(nmsed_additional_fields['wsod_classes'], axis=-1),
+        fields.DetectionResultFields.detection_classes: wsod_detection_classes,
         fields.DetectionResultFields.num_detections:
         tf.to_float(num_detections)
     }
@@ -2479,10 +2493,16 @@ class WSODMetaArch(model.DetectionModel):
     per_instance_prediction = tf.boolean_mask(
         class_predictions_with_background[:, :, 1:], matched_indicator)
     labels = groundtruth_image_level_classes[0][1:]
-    prediction = tf.cond(
-        tf.shape(per_instance_prediction)[0] > 1,
-        true_fn=lambda: tf.reduce_max(per_instance_prediction, axis=0),
-        false_fn=lambda: tf.zeros([self.num_classes]))
+    if not self._wsod_second_stage_mil_use_avg:
+      prediction = tf.cond(
+          tf.shape(per_instance_prediction)[0] > 1,
+          true_fn=lambda: tf.reduce_max(per_instance_prediction, axis=0),
+          false_fn=lambda: tf.zeros([self.num_classes]))
+    else:
+      prediction = tf.cond(
+          tf.shape(per_instance_prediction)[0] > 1,
+          true_fn=lambda: tf.reduce_mean(per_instance_prediction, axis=0),
+          false_fn=lambda: tf.zeros([self.num_classes]))
 
     tf.summary.histogram('per_instance_prediction', per_instance_prediction)
     tf.summary.histogram('reduced_prediction', prediction)
@@ -2571,8 +2591,12 @@ class WSODMetaArch(model.DetectionModel):
                                             tf.logical_not(unmatched_mask))
 
       groundtruth_image_level_classes = groundtruth_image_level_classes[0]
-      matched_predictions_aggregated = tf.reduce_max(
-          matched_predictions, axis=0)
+      if not self._wsod_second_stage_mil_use_avg:
+        matched_predictions_aggregated = tf.reduce_max(
+            matched_predictions, axis=0)
+      else:
+        matched_predictions_aggregated = tf.reduce_mean(
+            matched_predictions, axis=0)
 
       def _mil_loss_fn():
         return tf.nn.softmax_cross_entropy_with_logits_v2(
