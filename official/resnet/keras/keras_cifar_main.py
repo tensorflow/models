@@ -83,10 +83,10 @@ class TimeHistory(tf.keras.callbacks.Callback):
 LR_SCHEDULE = [ # (multiplier, epoch to start) tuples
 (0.1, 91), (0.01, 136), (0.001, 182)
 ]
-NUM_GPUS = flags_core.get_num_gpus(flags.FLAGS)
-BASE_LEARNING_RATE = 0.1 * NUM_GPUS
 
-def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch):
+BASE_LEARNING_RATE = 0.1
+
+def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch, batch_size):
   """Handles linear scaling rule, gradual warmup, and LR decay.
 
   The learning rate starts at 0, then it increases linearly per step.
@@ -115,11 +115,11 @@ def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch):
   #     break
   # return learning_rate
 
-  epoch = current_epoch + float(current_batch) / batches_per_epoch
-  learning_rate = BASE_LEARNING_RATE
+  initial_learning_rate = BASE_LEARNING_RATE * batch_size / 128
+  learning_rate = initial_learning_rate
   for mult, start_epoch in LR_SCHEDULE:
-    if epoch >= start_epoch:
-      learning_rate = BASE_LEARNING_RATE * mult
+    if current_epoch >= start_epoch:
+      learning_rate = initial_learning_rate * mult
     else:
       break
   return learning_rate
@@ -140,6 +140,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     super(LearningRateBatchScheduler, self).__init__()
     self.schedule = schedule
     self.batches_per_epoch = num_images / batch_size
+    self.batch_size = batch_size
     self.epochs = -1
     self.prev_lr = -1
 
@@ -149,7 +150,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     self.epochs += 1
 
   def on_batch_begin(self, batch, logs=None):
-    lr = self.schedule(self.epochs, batch, self.batches_per_epoch)
+    lr = self.schedule(self.epochs, batch, self.batches_per_epoch, self.batch_size)
     if not isinstance(lr, (float, np.float32, np.float64)):
       raise ValueError('The output of the "schedule" function should be float.')
     if lr != self.prev_lr:
@@ -273,7 +274,7 @@ def run_cifar_with_keras(flags_obj):
 
   tesorboard_callback = tf.keras.callbacks.TensorBoard(
     log_dir=flags_obj.model_dir)
-    # update_freq="batch")  # Add this if want per batch logging.
+    #update_freq="batch")  # Add this if want per batch logging.
 
   lr_callback = LearningRateBatchScheduler(
     learning_rate_schedule,
