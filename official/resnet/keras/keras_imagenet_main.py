@@ -250,11 +250,11 @@ def run_imagenet_with_keras(flags_obj):
   # opt = tf.train.GradientDescentOptimizer(learning_rate=0.0001)
   # I am setting an initial LR of 0.001 since this will be reset
   # at the beginning of the training loop.
-  # opt = gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
+  opt = gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
 
   # TF Optimizer:
-  learning_rate = BASE_LEARNING_RATE * flags_obj.batch_size / 256
-  opt = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
+  # learning_rate = BASE_LEARNING_RATE * flags_obj.batch_size / 256
+  # opt = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
   
   strategy = distribution_utils.get_distribution_strategy(
       num_gpus=flags_obj.num_gpus)
@@ -292,7 +292,7 @@ def run_imagenet_with_keras(flags_obj):
             steps_per_epoch=steps_per_epoch,
             callbacks=[
               time_callback,
-              #lr_callback,
+              lr_callback,
               tesorboard_callback
             ],
             verbose=1)
