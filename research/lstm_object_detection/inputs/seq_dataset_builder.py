@@ -25,7 +25,7 @@ that wraps the build function.
 import tensorflow as tf
 import tensorflow.google as google_tf
 from tensorflow.contrib.training.python.training import sequence_queueing_state_saver as sqss
-from lstm_object_detection import tf_sequence_example_decoder
+from lstm_object_detection.inputs import tf_sequence_example_decoder
 from lstm_object_detection.protos import input_reader_google_pb2
 from object_detection.core import preprocessor
 from object_detection.core import preprocessor_cache
