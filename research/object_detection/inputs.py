@@ -124,6 +124,8 @@ def transform_input_data(tensor_dict,
   if fields.InputDataFields.groundtruth_instance_masks in tensor_dict:
     masks = tensor_dict[fields.InputDataFields.groundtruth_instance_masks]
     _, resized_masks, _ = image_resizer_fn(image, masks)
+    if use_bfloat16:
+      resized_masks = tf.cast(resized_masks, tf.bfloat16)
     tensor_dict[fields.InputDataFields.
                 groundtruth_instance_masks] = resized_masks
 
@@ -161,6 +163,9 @@ def transform_input_data(tensor_dict,
     tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
     tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
         merged_confidences)
+  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
+    tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
+        tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
 
   return tensor_dict
 
@@ -282,12 +287,9 @@ def augment_input_data(tensor_dict, data_augmentation_options):
                             in tensor_dict)
   include_keypoints = (fields.InputDataFields.groundtruth_keypoints
                        in tensor_dict)
-  include_label_scores = (fields.InputDataFields.groundtruth_confidences in
-                          tensor_dict)
   tensor_dict = preprocessor.preprocess(
       tensor_dict, data_augmentation_options,
       func_arg_map=preprocessor.get_default_func_arg_map(
-          include_label_scores=include_label_scores,
           include_instance_masks=include_instance_masks,
           include_keypoints=include_keypoints))
   tensor_dict[fields.InputDataFields.image] = tf.squeeze(

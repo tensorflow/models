@@ -72,6 +72,8 @@ class FasterRCNNResnetV1FeatureExtractor(
 
     VGG style channel mean subtraction as described here:
     https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
+    Note that if the number of channels is not equal to 3, the mean subtraction
+    will be skipped and the original resized_inputs will be returned.
 
     Args:
       resized_inputs: A [batch, height_in, width_in, channels] float32 tensor
@@ -82,8 +84,11 @@ class FasterRCNNResnetV1FeatureExtractor(
         tensor representing a batch of images.
 
     """
-    channel_means = [123.68, 116.779, 103.939]
-    return resized_inputs - [[channel_means]]
+    if resized_inputs.shape.as_list()[3] == 3:
+      channel_means = [123.68, 116.779, 103.939]
+      return resized_inputs - [[channel_means]]
+    else:
+      return resized_inputs
 
   def _extract_proposal_features(self, preprocessed_inputs, scope):
     """Extracts first stage RPN features.

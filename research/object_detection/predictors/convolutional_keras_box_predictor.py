@@ -134,26 +134,32 @@ class ConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
                        (len(self._prediction_heads[BOX_ENCODINGS]),
                         len(input_shapes)))
     for stack_index, input_shape in enumerate(input_shapes):
-      net = tf.keras.Sequential(name='PreHeadConvolutions_%d' % stack_index)
-      self._shared_nets.append(net)
+      net = []
 
       # Add additional conv layers before the class predictor.
       features_depth = static_shape.get_depth(input_shape)
       depth = max(min(features_depth, self._max_depth), self._min_depth)
       tf.logging.info(
           'depth of additional conv before box predictor: {}'.format(depth))
+
       if depth > 0 and self._num_layers_before_predictor > 0:
         for i in range(self._num_layers_before_predictor):
-          net.add(keras.Conv2D(depth, [1, 1],
-                               name='Conv2d_%d_1x1_%d' % (i, depth),
-                               padding='SAME',
-                               **self._conv_hyperparams.params()))
-          net.add(self._conv_hyperparams.build_batch_norm(
+          net.append(keras.Conv2D(depth, [1, 1],
+                                  name='SharedConvolutions_%d/Conv2d_%d_1x1_%d'
+                                  % (stack_index, i, depth),
+                                  padding='SAME',
+                                  **self._conv_hyperparams.params()))
+          net.append(self._conv_hyperparams.build_batch_norm(
               training=(self._is_training and not self._freeze_batchnorm),
-              name='Conv2d_%d_1x1_%d_norm' % (i, depth)))
-          net.add(self._conv_hyperparams.build_activation_layer(
-              name='Conv2d_%d_1x1_%d_activation' % (i, depth),
+              name='SharedConvolutions_%d/Conv2d_%d_1x1_%d_norm'
+              % (stack_index, i, depth)))
+          net.append(self._conv_hyperparams.build_activation_layer(
+              name='SharedConvolutions_%d/Conv2d_%d_1x1_%d_activation'
+              % (stack_index, i, depth),
           ))
+      # Until certain bugs are fixed in checkpointable lists,
+      # this net must be appended only once it's been filled with layers
+      self._shared_nets.append(net)
     self.built = True
 
   def _predict(self, image_features):
@@ -175,10 +181,11 @@ class ConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
     """
     predictions = collections.defaultdict(list)
 
-    for (index, image_feature) in enumerate(image_features):
+    for (index, net) in enumerate(image_features):
 
       # Apply shared conv layers before the head predictors.
-      net = self._shared_nets[index](image_feature)
+      for layer in self._shared_nets[index]:
+        net = layer(net)
 
       for head_name in self._prediction_heads:
         head_obj = self._prediction_heads[head_name][index]

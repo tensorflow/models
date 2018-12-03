@@ -21,7 +21,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from astronet.util import configdict
+from tf_util import configdict
 from astrowavenet.data import base
 from astrowavenet.data import synthetic_transit_maker
 

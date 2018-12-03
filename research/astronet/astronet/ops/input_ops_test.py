@@ -21,7 +21,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from astronet.ops import input_ops
-from astronet.util import configdict
+from tf_util import configdict
 
 
 class InputOpsTest(tf.test.TestCase):

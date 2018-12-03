@@ -280,7 +280,7 @@ class ClassificationLossBuilderTest(tf.test.TestCase):
                                losses.WeightedSigmoidClassificationLoss))
     predictions = tf.constant([[[0.0, 1.0, 0.0], [0.0, 0.5, 0.5]]])
     targets = tf.constant([[[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]])
-    weights = tf.constant([[1.0, 1.0]])
+    weights = tf.constant([[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]])
     loss = classification_loss(predictions, targets, weights=weights)
     self.assertEqual(loss.shape, [1, 2, 3])
 
@@ -472,6 +472,19 @@ class FasterRcnnClassificationLossBuilderTest(tf.test.TestCase):
     self.assertTrue(
         isinstance(classification_loss,
                    losses.WeightedSoftmaxClassificationAgainstLogitsLoss))
+
+  def test_build_sigmoid_focal_loss(self):
+    losses_text_proto = """
+      weighted_sigmoid_focal {
+      }
+    """
+    losses_proto = losses_pb2.ClassificationLoss()
+    text_format.Merge(losses_text_proto, losses_proto)
+    classification_loss = losses_builder.build_faster_rcnn_classification_loss(
+        losses_proto)
+    self.assertTrue(
+        isinstance(classification_loss,
+                   losses.SigmoidFocalClassificationLoss))
 
   def test_build_softmax_loss_by_default(self):
     losses_text_proto = """

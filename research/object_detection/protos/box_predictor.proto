@@ -138,6 +138,7 @@ message WeightSharedConvolutionalBoxPredictor {
 
 // TODO(alirezafathi): Refactor the proto file to be able to configure mask rcnn
 // head easily.
+// Next id: 15
 message MaskRCNNBoxPredictor {
   // Hyperparameters for fully connected ops used in the box predictor.
   optional Hyperparams fc_hyperparams = 1;
@@ -178,6 +179,12 @@ message MaskRCNNBoxPredictor {
   // Whether to use one box for all classes rather than a different box for each
   // class.
   optional bool share_box_across_classes = 13 [default = false];
+
+  // Whether to apply convolutions on mask features before upsampling using
+  // nearest neighbor resizing.
+  // By default, mask features are resized to [`mask_height`, `mask_width`]
+  // before applying convolutions and predicting masks.
+  optional bool convolve_then_upsample_masks = 14 [default = false];
 }
 
 message RfcnBoxPredictor {

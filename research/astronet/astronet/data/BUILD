@@ -12,10 +12,10 @@ py_library(
     name = "preprocess",
     srcs = ["preprocess.py"],
     deps = [
-        "//astronet/util:example_util",
-        "//light_curve_util:kepler_io",
-        "//light_curve_util:median_filter",
-        "//light_curve_util:util",
+        "//light_curve:kepler_io",
+        "//light_curve:median_filter",
+        "//light_curve:util",
+        "//tf_util:example_util",
         "//third_party/kepler_spline",
     ],
 )

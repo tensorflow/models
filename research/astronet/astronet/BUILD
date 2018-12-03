@@ -13,7 +13,7 @@ py_library(
         "//astronet/astro_fc_model:configurations",
         "//astronet/astro_model",
         "//astronet/astro_model:configurations",
-        "//astronet/util:configdict",
+        "//tf_util:configdict",
     ],
 )
 
@@ -23,10 +23,10 @@ py_binary(
     srcs_version = "PY2AND3",
     deps = [
         ":models",
-        "//astronet/util:config_util",
-        "//astronet/util:configdict",
-        "//astronet/util:estimator_runner",
         "//astronet/util:estimator_util",
+        "//tf_util:config_util",
+        "//tf_util:configdict",
+        "//tf_util:estimator_runner",
     ],
 )
 
@@ -36,10 +36,10 @@ py_binary(
     srcs_version = "PY2AND3",
     deps = [
         ":models",
-        "//astronet/util:config_util",
-        "//astronet/util:configdict",
-        "//astronet/util:estimator_runner",
         "//astronet/util:estimator_util",
+        "//tf_util:config_util",
+        "//tf_util:configdict",
+        "//tf_util:estimator_runner",
     ],
 )
 
@@ -50,8 +50,8 @@ py_binary(
     deps = [
         ":models",
         "//astronet/data:preprocess",
-        "//astronet/util:config_util",
-        "//astronet/util:configdict",
         "//astronet/util:estimator_util",
+        "//tf_util:config_util",
+        "//tf_util:configdict",
     ],
 )

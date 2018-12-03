@@ -152,7 +152,7 @@ def _filter_index_sort(raw_rating_path, match_mlperf):
   num_items = len(original_items)
 
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_NUM_EVAL,
-                          value=num_users * (1 + rconst.NUM_EVAL_NEGATIVES))
+                          value=rconst.NUM_EVAL_NEGATIVES)
   mlperf_helper.ncf_print(
       key=mlperf_helper.TAGS.PREPROC_HP_SAMPLE_EVAL_REPLACEMENT,
       value=match_mlperf)
@@ -394,7 +394,8 @@ def _shutdown(proc):
     try:
       proc.send_signal(signal.SIGINT)
       time.sleep(5)
-      if proc.returncode is not None:
+      if proc.poll() is not None:
+        tf.logging.info("Train data creation subprocess ended")
         return  # SIGINT was handled successfully within 5 seconds
 
     except socket.error:
@@ -403,6 +404,7 @@ def _shutdown(proc):
     # Otherwise another second of grace period and then force kill the process.
     time.sleep(1)
     proc.terminate()
+    tf.logging.info("Train data creation subprocess killed")
   except:  # pylint: disable=broad-except
     tf.logging.error("Data generation subprocess could not be killed.")
 
@@ -429,9 +431,10 @@ def write_flagfile(flags_, ncf_dataset):
       "Wrote flagfile for async data generation in {}.".format(flagfile))
 
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
-                         num_data_readers=None, num_neg=4, epochs_per_cycle=1,
-                         match_mlperf=False, deterministic=False,
-                         use_subprocess=True, cache_id=None):
+                         num_cycles, num_data_readers=None, num_neg=4,
+                         epochs_per_cycle=1, match_mlperf=False,
+                         deterministic=False, use_subprocess=True,
+                         cache_id=None):
   # type: (...) -> (NCFDataset, typing.Callable)
   """Preprocess data and start negative generation subprocess."""
 
@@ -455,12 +458,14 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "num_users": ncf_dataset.num_users,
       "num_readers": ncf_dataset.num_data_readers,
       "epochs_per_cycle": epochs_per_cycle,
+      "num_cycles": num_cycles,
       "train_batch_size": batch_size,
       "eval_batch_size": eval_batch_size,
       "num_workers": num_workers,
       "redirect_logs": use_subprocess,
       "use_tf_logging": not use_subprocess,
       "ml_perf": match_mlperf,
+      "output_ml_perf_compliance_logging": mlperf_helper.LOGGER.enabled,
   }
 
   if use_subprocess:
@@ -506,6 +511,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   # will then enter a loop waiting for the flagfile to be written. Once we see
   # that the async process has signaled that it is alive, we clear the system
   # caches and begin the run.
+  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_CLEAR_CACHES)
   mlperf_helper.clear_system_caches()
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_START)
   write_flagfile(flags_, ncf_dataset)
@@ -592,21 +598,95 @@ def hash_pipeline(dataset, deterministic):
   tf.logging.info("  [pipeline_hash] All batches hash: {}".format(overall_hash))
 
 
-def make_input_fn(ncf_dataset, is_training):
-  # type: (typing.Optional[NCFDataset], bool) -> (typing.Callable, str, int)
+def make_input_fn(
+    ncf_dataset,       # type: typing.Optional[NCFDataset]
+    is_training,       # type: bool
+    record_files=None  # type: typing.Optional[tf.Tensor]
+    ):
+  # type: (...) -> (typing.Callable, str, int)
   """Construct training input_fn for the current epoch."""
 
   if ncf_dataset is None:
     return make_synthetic_input_fn(is_training)
 
-  if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
+  if record_files is not None:
+    epoch_metadata = None
+    batch_count = None
+    record_dir = None
+  else:
+    epoch_metadata, record_dir, template = get_epoch_info(is_training,
+                                                          ncf_dataset)
+    record_files = os.path.join(record_dir, template.format("*"))
+    # This value is used to check that the batch count from the subprocess
+    # matches the batch count expected by the main thread.
+    batch_count = epoch_metadata["batch_count"]
+
+
+  def input_fn(params):
+    """Generated input_fn for the given epoch."""
+    if is_training:
+      batch_size = params["batch_size"]
+    else:
+      # Estimator has "eval_batch_size" included in the params, but TPUEstimator
+      # populates "batch_size" to the appropriate value.
+      batch_size = params.get("eval_batch_size") or params["batch_size"]
+
+    if epoch_metadata and epoch_metadata["batch_size"] != batch_size:
+      raise ValueError(
+          "Records were constructed with batch size {}, but input_fn was given "
+          "a batch size of {}. This will result in a deserialization error in "
+          "tf.parse_single_example."
+          .format(epoch_metadata["batch_size"], batch_size))
+    record_files_ds = tf.data.Dataset.list_files(record_files, shuffle=False)
+
+    interleave = tf.contrib.data.parallel_interleave(
+        tf.data.TFRecordDataset,
+        cycle_length=4,
+        block_length=100000,
+        sloppy=not ncf_dataset.deterministic,
+        prefetch_input_elements=4,
+    )
+
+    deserialize = make_deserialize(params, batch_size, is_training)
+    dataset = record_files_ds.apply(interleave)
+    dataset = dataset.map(deserialize, num_parallel_calls=4)
+    dataset = dataset.prefetch(32)
+
+    if params.get("hash_pipeline"):
+      hash_pipeline(dataset, ncf_dataset.deterministic)
+
+    return dataset
+
+  return input_fn, record_dir, batch_count
+
+
+def _check_subprocess_alive(ncf_dataset, directory):
+  if (not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive) and
+      not tf.gfile.Exists(directory)):
     # The generation subprocess must have been alive at some point, because we
     # earlier checked that the subproc_alive file existed.
     raise ValueError("Generation subprocess unexpectedly died. Data will not "
                      "be available; exiting to avoid waiting forever.")
 
+
+
+def get_epoch_info(is_training, ncf_dataset):
+  """Wait for the epoch input data to be ready and return various info about it.
+
+  Args:
+    is_training: If we should return info for a training or eval epoch.
+    ncf_dataset: An NCFDataset.
+
+  Returns:
+    epoch_metadata: A dict with epoch metadata.
+    record_dir: The directory with the TFRecord files storing the input data.
+    template: A string template of the files in `record_dir`.
+      `template.format('*')` is a glob that matches all the record files.
+  """
   if is_training:
     train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
+    _check_subprocess_alive(ncf_dataset, train_epoch_dir)
+
     while not tf.gfile.Exists(train_epoch_dir):
       tf.logging.info("Waiting for {} to exist.".format(train_epoch_dir))
       time.sleep(1)
@@ -622,6 +702,7 @@ def make_input_fn(ncf_dataset, is_training):
     template = rconst.TRAIN_RECORD_TEMPLATE
   else:
     record_dir = ncf_dataset.cache_paths.eval_data_subdir
+    _check_subprocess_alive(ncf_dataset, record_dir)
     template = rconst.EVAL_RECORD_TEMPLATE
 
   ready_file = os.path.join(record_dir, rconst.READY_FILE)
@@ -631,49 +712,7 @@ def make_input_fn(ncf_dataset, is_training):
 
   with tf.gfile.Open(ready_file, "r") as f:
     epoch_metadata = json.load(f)
-
-  # This value is used to check that the batch count from the subprocess matches
-  # the batch count expected by the main thread.
-  batch_count = epoch_metadata["batch_count"]
-
-  def input_fn(params):
-    """Generated input_fn for the given epoch."""
-    if is_training:
-      batch_size = params["batch_size"]
-    else:
-      # Estimator has "eval_batch_size" included in the params, but TPUEstimator
-      # populates "batch_size" to the appropriate value.
-      batch_size = params.get("eval_batch_size") or params["batch_size"]
-
-    if epoch_metadata["batch_size"] != batch_size:
-      raise ValueError(
-          "Records were constructed with batch size {}, but input_fn was given "
-          "a batch size of {}. This will result in a deserialization error in "
-          "tf.parse_single_example."
-          .format(epoch_metadata["batch_size"], batch_size))
-
-    record_files = tf.data.Dataset.list_files(
-        os.path.join(record_dir, template.format("*")), shuffle=False)
-
-    interleave = tf.contrib.data.parallel_interleave(
-        tf.data.TFRecordDataset,
-        cycle_length=4,
-        block_length=100000,
-        sloppy=not ncf_dataset.deterministic,
-        prefetch_input_elements=4,
-    )
-
-    deserialize = make_deserialize(params, batch_size, is_training)
-    dataset = record_files.apply(interleave)
-    dataset = dataset.map(deserialize, num_parallel_calls=4)
-    dataset = dataset.prefetch(32)
-
-    if params.get("hash_pipeline"):
-      hash_pipeline(dataset, ncf_dataset.deterministic)
-
-    return dataset
-
-  return input_fn, record_dir, batch_count
+  return epoch_metadata, record_dir, template
 
 
 def make_synthetic_input_fn(is_training):

@@ -118,7 +118,7 @@ class BaseTest(tf.test.TestCase):
     ncf_dataset, _ = data_preprocessing.instantiate_pipeline(
         dataset=DATASET, data_dir=self.temp_data_dir,
         batch_size=BATCH_SIZE, eval_batch_size=EVAL_BATCH_SIZE,
-        num_data_readers=2, num_neg=NUM_NEG)
+        num_cycles=1, num_data_readers=2, num_neg=NUM_NEG)
 
     g = tf.Graph()
     with g.as_default():

@@ -24,10 +24,10 @@ import sys
 import tensorflow as tf
 
 from astronet import models
-from astronet.util import config_util
-from astronet.util import configdict
-from astronet.util import estimator_runner
 from astronet.util import estimator_util
+from tf_util import config_util
+from tf_util import configdict
+from tf_util import estimator_runner
 
 parser = argparse.ArgumentParser()
 

@@ -410,6 +410,7 @@ def _generation_loop(num_workers,           # type: int
                      num_items,             # type: int
                      num_users,             # type: int
                      epochs_per_cycle,      # type: int
+                     num_cycles,            # type: int
                      train_batch_size,      # type: int
                      eval_batch_size,       # type: int
                      deterministic,         # type: bool
@@ -449,7 +450,7 @@ def _generation_loop(num_workers,           # type: int
 
   wait_count = 0
   start_time = time.time()
-  while True:
+  while train_cycle < num_cycles:
     ready_epochs = tf.gfile.ListDirectory(cache_paths.train_epoch_dir)
     if len(ready_epochs) >= rconst.CYCLES_TO_BUFFER:
       wait_count += 1
@@ -479,18 +480,21 @@ def _generation_loop(num_workers,           # type: int
     gc.collect()
 
 
-def _parse_flagfile(flagfile):
-  """Fill flags with flagfile written by the main process."""
-  tf.logging.info("Waiting for flagfile to appear at {}..."
-                  .format(flagfile))
+def wait_for_path(fpath):
   start_time = time.time()
-  while not tf.gfile.Exists(flagfile):
+  while not tf.gfile.Exists(fpath):
     if time.time() - start_time > rconst.TIMEOUT_SECONDS:
       log_msg("Waited more than {} seconds. Concluding that this "
               "process is orphaned and exiting gracefully."
               .format(rconst.TIMEOUT_SECONDS))
       sys.exit()
     time.sleep(1)
+
+def _parse_flagfile(flagfile):
+  """Fill flags with flagfile written by the main process."""
+  tf.logging.info("Waiting for flagfile to appear at {}..."
+                  .format(flagfile))
+  wait_for_path(flagfile)
   tf.logging.info("flagfile found.")
 
   # `flags` module opens `flagfile` with `open`, which does not work on
@@ -504,6 +508,8 @@ def _parse_flagfile(flagfile):
 
 def write_alive_file(cache_paths):
   """Write file to signal that generation process started correctly."""
+  wait_for_path(cache_paths.cache_root)
+
   log_msg("Signaling that I am alive.")
   with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
     f.write("Generation subproc has started.")
@@ -550,7 +556,8 @@ def main(_):
     if flags.FLAGS.seed is not None:
       np.random.seed(flags.FLAGS.seed)
 
-    with mlperf_helper.LOGGER(enable=flags.FLAGS.ml_perf):
+    with mlperf_helper.LOGGER(
+        enable=flags.FLAGS.output_ml_perf_compliance_logging):
       mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
       _generation_loop(
           num_workers=flags.FLAGS.num_workers,
@@ -561,6 +568,7 @@ def main(_):
           num_items=flags.FLAGS.num_items,
           num_users=flags.FLAGS.num_users,
           epochs_per_cycle=flags.FLAGS.epochs_per_cycle,
+          num_cycles=flags.FLAGS.num_cycles,
           train_batch_size=flags.FLAGS.train_batch_size,
           eval_batch_size=flags.FLAGS.eval_batch_size,
           deterministic=flags.FLAGS.seed is not None,
@@ -602,6 +610,9 @@ def define_flags():
   flags.DEFINE_integer(name="epochs_per_cycle", default=1,
                        help="The number of epochs of training data to produce"
                             "at a time.")
+  flags.DEFINE_integer(name="num_cycles", default=None,
+                       help="The number of cycles to produce training data "
+                            "for.")
   flags.DEFINE_integer(name="train_batch_size", default=None,
                        help="The batch size with which training TFRecords will "
                             "be chunked.")
@@ -618,6 +629,9 @@ def define_flags():
                             "specified, a seed will not be set.")
   flags.DEFINE_boolean(name="ml_perf", default=None,
                        help="Match MLPerf. See ncf_main.py for details.")
+  flags.DEFINE_bool(name="output_ml_perf_compliance_logging", default=None,
+                    help="Output the MLPerf compliance logging. See "
+                         "ncf_main.py for details.")
 
   flags.mark_flags_as_required(["data_dir", "cache_id"])
 

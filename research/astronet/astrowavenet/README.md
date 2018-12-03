@@ -15,13 +15,10 @@ Chris Shallue: [@cshallue](https://github.com/cshallue)
 
 ## Additional Dependencies
 
-This package requires TensorFlow 1.12 or greater. As of October 2018, this
-requires the **TensorFlow nightly build**
-([instructions](https://www.tensorflow.org/install/pip)).
+In addition to the [required packages](../README.md#required-packages) listed in
+the top-level README, this package requires:
 
-In addition to the dependencies listed in the top-level README, this package
-requires:
-
+* **TensorFlow 1.12 or greater** ([instructions](https://www.tensorflow.org/install/))
 * **TensorFlow Probability** ([instructions](https://www.tensorflow.org/probability/install))
 * **Six** ([instructions](https://pypi.org/project/six/))
 

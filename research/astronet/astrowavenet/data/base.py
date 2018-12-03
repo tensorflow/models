@@ -23,7 +23,7 @@ import six
 
 import tensorflow as tf
 
-from astronet.util import configdict
+from tf_util import configdict
 from astronet.ops import dataset_ops
 
 

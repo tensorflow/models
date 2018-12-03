@@ -70,7 +70,7 @@ validation data roughly once per epoch.
 Note that there are a number of other options you can specify, including
 `--model_dir` to choose where to store the model and `--resnet_size` to choose
 the model size (options include ResNet-18 through ResNet-200). See
-[`resnet.py`](resnet.py) for the full list of options.
+[`resnet_run_loop.py`](resnet_run_loop.py) for the full list of options.
 
 
 ## Compute Devices

@@ -6,7 +6,7 @@ import "object_detection/protos/optimizer.proto";
 import "object_detection/protos/preprocessor.proto";
 
 // Message for configuring DetectionModel training jobs (train.py).
-// Next id: 27
+// Next id: 28
 message TrainConfig {
   // Effective batch size to use for training.
   // For TPU (or sync SGD jobs), the batch size per core (or GPU) is going to be
@@ -115,4 +115,7 @@ message TrainConfig {
 
   // Whether to use bfloat16 for training.
   optional bool use_bfloat16 = 26 [default=false];
+
+  // Whether to summarize gradients.
+  optional bool summarize_gradients = 27 [default=false];
 }
