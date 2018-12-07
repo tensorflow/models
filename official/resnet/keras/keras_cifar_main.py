@@ -45,6 +45,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
     """
     self._batch_size = batch_size
+    self.last_exp_per_sec = 0
     super(TimeHistory, self).__init__()
 
   def on_train_begin(self, logs=None):
@@ -69,6 +70,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
       last_n_batches = time.time() - self.batch_time_start
       examples_per_second = (self._batch_size * n) / last_n_batches
       self.batch_times_secs.append(last_n_batches)
+      self.last_exp_per_sec = examples_per_second
       self.record_batch = True
       # TODO(anjalisridhar): add timestamp as well.
       if batch != 0:
@@ -229,19 +231,18 @@ def run_cifar_with_keras(flags_obj):
 
   else:
     train_input_dataset = cifar_main.input_fn(
-          True,
-          flags_obj.data_dir,
-          batch_size=per_device_batch_size,
-          num_epochs=flags_obj.train_epochs,
-          parse_record_fn=parse_record_keras)
+        True,
+        flags_obj.data_dir,
+        batch_size=per_device_batch_size,
+        num_epochs=flags_obj.train_epochs,
+        parse_record_fn=parse_record_keras)
 
     eval_input_dataset = cifar_main.input_fn(
-          False,
-          flags_obj.data_dir,
-          batch_size=per_device_batch_size,
-          num_epochs=flags_obj.train_epochs,
-          parse_record_fn=parse_record_keras)
-
+        False,
+        flags_obj.data_dir,
+        batch_size=per_device_batch_size,
+        num_epochs=flags_obj.train_epochs,
+        parse_record_fn=parse_record_keras)
 
   # Use Keras ResNet50 applications model and native keras APIs
   # initialize RMSprop optimizer
@@ -253,20 +254,20 @@ def run_cifar_with_keras(flags_obj):
 
   # TF Optimizer:
   # opt = tf.train.MomentumOptimizer(learning_rate=0.1, momentum=0.9)
-  
+
   strategy = distribution_utils.get_distribution_strategy(
       num_gpus=flags_obj.num_gpus)
 
   model = keras_resnet_model.ResNet56(input_shape=(32, 32, 3),
-                                       include_top=True,
-                                       classes=cifar_main._NUM_CLASSES,
-                                       weights=None)
-    
+                                      include_top=True,
+                                      classes=cifar_main._NUM_CLASSES,
+                                      weights=None)
 
   loss = 'categorical_crossentropy'
   accuracy = 'categorical_accuracy'
 
-  if flags_obj.num_gpus == 1:
+  if flags_obj.num_gpus == 1 and flags_obj.dist_strat_off:
+    print('Not using distribution strategies.')
     model.compile(loss=loss,
                   optimizer=opt,
                   metrics=[accuracy])
@@ -281,41 +282,54 @@ def run_cifar_with_keras(flags_obj):
   time_callback = TimeHistory(flags_obj.batch_size)
 
   tesorboard_callback = tf.keras.callbacks.TensorBoard(
-    log_dir=flags_obj.model_dir)
-    #update_freq="batch")  # Add this if want per batch logging.
+      log_dir=flags_obj.model_dir)
+    #  update_freq="batch")  # Add this if want per batch logging.
 
   lr_callback = LearningRateBatchScheduler(
-    learning_rate_schedule,
-    batch_size=flags_obj.batch_size,
-    num_images=cifar_main._NUM_IMAGES['train'])
-    
-  num_eval_steps = (cifar_main._NUM_IMAGES['validation'] //
-                  flags_obj.batch_size)
+      learning_rate_schedule,
+      batch_size=flags_obj.batch_size,
+      num_images=cifar_main._NUM_IMAGES['train'])
 
-  print("Executing eagerly?:", tf.executing_eagerly())
-  model.fit(train_input_dataset,
-            epochs=flags_obj.train_epochs,
-            steps_per_epoch=steps_per_epoch,
-            callbacks=[
-              time_callback,
-              lr_callback,
-              tesorboard_callback
-            ],
-            verbose=1)
-  
+  num_eval_steps = (cifar_main._NUM_IMAGES['validation'] //
+                    flags_obj.batch_size)
+
+  print('Executing eagerly?:', tf.executing_eagerly())
+  history = model.fit(train_input_dataset,
+                      epochs=flags_obj.train_epochs,
+                      steps_per_epoch=steps_per_epoch,
+                      callbacks=[
+                          time_callback,
+                          lr_callback,
+                          tesorboard_callback
+                      ],
+                      verbose=1)
+
   eval_output = model.evaluate(eval_input_dataset,
                                steps=num_eval_steps,
                                verbose=1)
-  print('Test loss:', eval_output[0])
+
+  stats = {}
+  stats['accuracy_top_1'] = eval_output[1]
+  stats['eval_loss'] = eval_output[0]
+  stats['training_loss'] = history.history['loss'][-1]
+  stats['training_accuracy_top_1'] = history.history['categorical_accuracy'][-1]
+
+  print('top_1 accuracy:{}'.format(stats['accuracy_top_1']))
+  print('top_1_training_accuracy:{}'.format(stats['training_accuracy_top_1']))
+  return stats
+
+
+def define_keras_cifar_flags():
+  flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
+
 
 def main(_):
-
   with logger.benchmark_context(flags.FLAGS):
     run_cifar_with_keras(flags.FLAGS)
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.DEBUG)
+  define_keras_cifar_flags()
   cifar_main.define_cifar_flags()
-  flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   absl_app.run(main)
