@@ -82,8 +82,8 @@ class TimeHistory(tf.keras.callbacks.Callback):
 # LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
 #     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 # ]
-LR_SCHEDULE = [ # (multiplier, epoch to start) tuples
-(0.1, 91), (0.01, 136), (0.001, 182)
+LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
+    (0.1, 91), (0.01, 136), (0.001, 182)
 ]
 
 BASE_LEARNING_RATE = 0.1
@@ -302,6 +302,8 @@ def run_cifar_with_keras(flags_obj):
                           lr_callback,
                           tesorboard_callback
                       ],
+                      validation_steps=num_eval_steps,
+                      validation_data=eval_input_dataset,
                       verbose=1)
 
   eval_output = model.evaluate(eval_input_dataset,

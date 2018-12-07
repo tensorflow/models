@@ -189,15 +189,6 @@ def run_imagenet_with_keras(flags_obj):
   Raises:
     ValueError: If fp16 is passed as it is not currently supported.
   """
-  # Set all random seeds to fixed values.
-  import random
-  import numpy as np
-  seed = 87654321
-  random.seed(seed)
-  np.random.seed(seed)
-  tf.random.set_random_seed(seed)
-  
-  
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
@@ -276,8 +267,8 @@ def run_imagenet_with_keras(flags_obj):
   time_callback = TimeHistory(flags_obj.batch_size)
 
   tesorboard_callback = tf.keras.callbacks.TensorBoard(
-    log_dir=flags_obj.model_dir,
-    update_freq="batch")  # Add this if want per batch logging.
+    log_dir=flags_obj.model_dir)
+    # update_freq="batch")  # Add this if want per batch logging.
 
   lr_callback = LearningRateBatchScheduler(
     learning_rate_schedule,
@@ -295,6 +286,8 @@ def run_imagenet_with_keras(flags_obj):
               lr_callback,
               tesorboard_callback
             ],
+            validation_steps=num_eval_steps,
+            validation_data=eval_input_dataset,
             verbose=1)
   
   eval_output = model.evaluate(eval_input_dataset,
@@ -308,6 +301,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.DEBUG)
+  tf.logging.set_verbosity(tf.logging.INFO)
   imagenet_main.define_imagenet_flags()
   absl_app.run(main)
