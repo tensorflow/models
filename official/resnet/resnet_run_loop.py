@@ -628,7 +628,10 @@ def define_resnet_flags(resnet_size_choices=None):
           'the expense of image resize/cropping being done as part of model '
           'inference. Note, this flag only applies to ImageNet and cannot '
           'be used for CIFAR.'))
-
+  flags.DEFINE_boolean(
+      name='dist_strat_off', default=False,
+      help=flags_core.help_wrap('Set to true to not use distribution '
+                                'strategies.'))
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
       help=flags_core.help_wrap('The size of the ResNet model to use.'))
