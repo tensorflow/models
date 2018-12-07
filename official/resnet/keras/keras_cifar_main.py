@@ -301,6 +301,8 @@ def run_cifar_with_keras(flags_obj):
               lr_callback,
               tesorboard_callback
             ],
+            validation_steps=num_eval_steps,
+            validation_data=eval_input_dataset,
             verbose=1)
   
   eval_output = model.evaluate(eval_input_dataset,
