@@ -29,6 +29,7 @@ from official.resnet import imagenet_main
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.keras import keras_resnet_model
+from official.resnet.keras import resnet_model_tpu
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -81,7 +82,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
-BASE_LEARNING_RATE = 0.128
+BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 
 def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch, batch_size):
   """Handles linear scaling rule, gradual warmup, and LR decay.
@@ -250,10 +251,12 @@ def run_imagenet_with_keras(flags_obj):
   strategy = distribution_utils.get_distribution_strategy(
       num_gpus=flags_obj.num_gpus)
 
-  model = keras_resnet_model.ResNet50(classes=imagenet_main._NUM_CLASSES,
-                                      weights=None)
+  if flags_obj.use_tpu_model:
+    model = resnet_model_tpu.ResNet50(num_classes=imagenet_main._NUM_CLASSES)
+  else:
+    model = keras_resnet_model.ResNet50(classes=imagenet_main._NUM_CLASSES,
+                                        weights=None)
     
-
   loss = 'categorical_crossentropy'
   accuracy = 'categorical_accuracy'
  
@@ -268,7 +271,7 @@ def run_imagenet_with_keras(flags_obj):
 
   tesorboard_callback = tf.keras.callbacks.TensorBoard(
     log_dir=flags_obj.model_dir)
-    # update_freq="batch")  # Add this if want per batch logging.
+    #update_freq="batch")  # Add this if want per batch logging.
 
   lr_callback = LearningRateBatchScheduler(
     learning_rate_schedule,
@@ -303,4 +306,5 @@ def main(_):
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
   imagenet_main.define_imagenet_flags()
+  flags.DEFINE_boolean(name='use_tpu_model', default=False, help='Use resnet model from tpu.')
   absl_app.run(main)
