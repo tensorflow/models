@@ -189,6 +189,9 @@ def run_imagenet_with_keras(flags_obj):
   Raises:
     ValueError: If fp16 is passed as it is not currently supported.
   """
+  if flags_obj.enable_eager:
+    tf.enable_eager_execution()
+  
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
@@ -246,6 +249,7 @@ def run_imagenet_with_keras(flags_obj):
   # TF Optimizer:
   # learning_rate = BASE_LEARNING_RATE * flags_obj.batch_size / 256
   # opt = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
+
   
   strategy = distribution_utils.get_distribution_strategy(
       num_gpus=flags_obj.num_gpus)
@@ -295,6 +299,10 @@ def run_imagenet_with_keras(flags_obj):
                                verbose=1)
   print('Test loss:', eval_output[0])
 
+def define_keras_imagenet_flags():
+  flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
+    
+  
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
     run_imagenet_with_keras(flags.FLAGS)
@@ -302,5 +310,6 @@ def main(_):
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
+  define_keras_imagenet_flags()
   imagenet_main.define_imagenet_flags()
   absl_app.run(main)
