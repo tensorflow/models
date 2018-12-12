@@ -111,7 +111,7 @@ def preprocess_image(image, is_training):
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1,
              dtype=tf.float32, datasets_num_private_threads=None,
-             num_parallel_batches=1):
+             num_parallel_batches=1, parse_record_fn=parse_record):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -122,6 +122,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
     dtype: Data type to use for images/features
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
+    parse_record_fn: Function to use for parsing the records.
 
   Returns:
     A dataset that can be used for iteration.
@@ -134,7 +135,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
       is_training=is_training,
       batch_size=batch_size,
       shuffle_buffer=_NUM_IMAGES['train'],
-      parse_record_fn=parse_record,
+      parse_record_fn=parse_record_fn,
       num_epochs=num_epochs,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
