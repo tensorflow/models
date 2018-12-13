@@ -39,9 +39,10 @@ from __future__ import print_function
 from datetime import datetime
 import time
 
+import google3
 import tensorflow as tf
 
-import cifar10
+from google3.third_party.tensorflow_models.tutorials.image.cifar10 import cifar10
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -116,7 +117,6 @@ def train():
 
 
 def main(argv=None):  # pylint: disable=unused-argument
-  cifar10.maybe_download_and_extract()
   if tf.gfile.Exists(FLAGS.train_dir):
     tf.gfile.DeleteRecursively(FLAGS.train_dir)
   tf.gfile.MakeDirs(FLAGS.train_dir)
