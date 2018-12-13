@@ -14,8 +14,8 @@
 # ==============================================================================
 
 from environments.maze_env import MazeEnv
-from environments.ant import AntEnv
+from environments.point import PointEnv
 
 
-class AntMazeEnv(MazeEnv):
-    MODEL_CLASS = AntEnv
+class PointMazeEnv(MazeEnv):
+    MODEL_CLASS = PointEnv

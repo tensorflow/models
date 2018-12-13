@@ -13,9 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 
-from environments.maze_env import MazeEnv
-from environments.ant import AntEnv
+"""Import gin configurable modules.
+"""
 
-
-class AntMazeEnv(MazeEnv):
-    MODEL_CLASS = AntEnv
+# pylint: disable=unused-import
+from context import context
+from context import context_transition_functions
+from context import gin_utils
+from context import rewards_functions
+from context import samplers
+# pylint: disable=unused-import
