@@ -76,10 +76,11 @@ def run_keras_model_benchmark(_):
   else:
     tf.logging.info("Using CIFAR-10 dataset...")
     dataset_name = "CIFAR-10"
-    (train_dataset, val_dataset, input_shape,
-     num_classes) = dataset.generate_cifar10_dataset(FLAGS.batch_size)
+    ds = dataset.Cifar10Dataset(FLAGS.batch_size)
+    train_dataset = ds.train_dataset
+    val_dataset = ds.test_dataset
     model = keras_model(
-        weights=None, input_shape=input_shape, classes=num_classes)
+        weights=None, input_shape=ds.input_shape, classes=ds.num_classes)
 
   num_gpus = flags_core.get_num_gpus(FLAGS)
 

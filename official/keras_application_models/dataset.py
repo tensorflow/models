@@ -49,29 +49,26 @@ def generate_synthetic_input_dataset(model, batch_size):
   return dataset
 
 
-def generate_cifar10_dataset(batch_size):
-  """Generates CIFAR10 dataset.
+class Cifar10Dataset(object):
+  """CIFAR10 dataset, including train and test set.
 
   Each sample consists of a 32x32 color image, and label is from 10 classes.
-
-  Args:
-    batch_size: int, the number of batch size.
-
-  Returns:
-    A tuple (train_dataset, test_dataset, image_shape, num_classes) where
-      train_dataset & test_dataset have shape ((batch, 32, 32, 3), (batch, 10)),
-      input_shape is the input image shape,
-      num_classes is number of output classes.
   """
-  input_shape, num_classes = (32, 32, 3), 10
-  (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-  x_train, x_test = x_train / 255.0, x_test / 255.0
-  y_train, y_test = y_train.astype(np.int64), y_test.astype(np.int64)
-  y_train = tf.keras.utils.to_categorical(y_train, num_classes)
-  y_test = tf.keras.utils.to_categorical(y_test, num_classes)
-  train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-  test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 
-  train_dataset = train_dataset.shuffle(2000).batch(batch_size)
-  test_dataset = test_dataset.shuffle(2000).batch(batch_size)
-  return train_dataset, test_dataset, input_shape, num_classes
+  def __init__(self, batch_size):
+    """Initializes train/test datasets.
+
+    Args:
+      batch_size: int, the number of batch size.
+    """
+    self.input_shape = (32, 32, 3)
+    self.num_classes = 10
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    x_train, x_test = x_train / 255.0, x_test / 255.0
+    y_train, y_test = y_train.astype(np.int64), y_test.astype(np.int64)
+    y_train = tf.keras.utils.to_categorical(y_train, self.num_classes)
+    y_test = tf.keras.utils.to_categorical(y_test, self.num_classes)
+    self.train_dataset = tf.data.Dataset.from_tensor_slices(
+        (x_train, y_train)).shuffle(2000).batch(batch_size)
+    self.test_dataset = tf.data.Dataset.from_tensor_slices(
+        (x_test, y_test)).shuffle(2000).batch(batch_size)
