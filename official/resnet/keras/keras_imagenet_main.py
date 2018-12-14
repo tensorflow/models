@@ -114,7 +114,7 @@ def run_imagenet_with_keras(flags_obj):
   """
   if flags_obj.enable_eager:
     tf.enable_eager_execution()
-  
+
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
@@ -166,18 +166,19 @@ def run_imagenet_with_keras(flags_obj):
 
   model = resnet_model_tpu.ResNet50(num_classes=imagenet_main._NUM_CLASSES)
                                         weights=None)
- 
+
   model.compile(loss=loss,
                 optimizer=opt,
                 metrics=[accuracy],
                 distribute=strategy)
-  
-  time_callback, tensorboard_callback, lr_callback = keras_common.get_fit_callbacks()
+
+  time_callback, tensorboard_callback, lr_callback = keras_common.get_fit_callbacks(
+      learning_rate_schedule)
 
   steps_per_epoch = imagenet_main._NUM_IMAGES['train'] // flags_obj.batch_size
   num_eval_steps = (imagenet_main._NUM_IMAGES['validation'] //
                   flags_obj.batch_size)
-  
+
   model.fit(train_input_dataset,
             epochs=flags_obj.train_epochs,
             steps_per_epoch=steps_per_epoch,
@@ -189,7 +190,7 @@ def run_imagenet_with_keras(flags_obj):
             validation_steps=num_eval_steps,
             validation_data=eval_input_dataset,
             verbose=1)
-  
+
   eval_output = model.evaluate(eval_input_dataset,
                                steps=num_eval_steps,
                                verbose=1)
@@ -200,8 +201,8 @@ def run_imagenet_with_keras(flags_obj):
 
 def define_keras_imagenet_flags():
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
-    
-  
+
+
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
     run_imagenet_with_keras(flags.FLAGS)

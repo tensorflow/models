@@ -175,7 +175,8 @@ def run_cifar_with_keras(flags_obj):
                 optimizer=opt,
                 metrics=[accuracy],
                 distribute=strategy)
-  time_callback, tensorboard_callback, lr_callback = keras_common.get_fit_callbacks()
+  time_callback, tensorboard_callback, lr_callback = keras_common.get_fit_callbacks(
+      learning_rate_schedule)
 
   steps_per_epoch = cifar_main._NUM_IMAGES['train'] // flags_obj.batch_size
   num_eval_steps = (cifar_main._NUM_IMAGES['validation'] //
@@ -187,7 +188,7 @@ def run_cifar_with_keras(flags_obj):
                       callbacks=[
                           time_callback,
                           lr_callback,
-                          tesorboard_callback
+                          tensorboard_callback
                       ],
                       validation_steps=num_eval_steps,
                       validation_data=eval_input_dataset,
