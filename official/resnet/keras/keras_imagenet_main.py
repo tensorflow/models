@@ -152,32 +152,12 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
 
 
 def parse_record_keras(raw_record, is_training, dtype):
-  """Parses a record containing a training example of an image.
-
-  The input record is parsed into a label and image, and the image is passed
-  through preprocessing steps (cropping, flipping, and so on).
-
-  Args:
-    raw_record: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
-    is_training: A boolean denoting whether the input is for training.
-    dtype: Data type to use for input images.
-
-  Returns:
-    Tuple with processed image tensor and one-hot-encoded label tensor.
-  """
-  image_buffer, label, bbox = imagenet_main._parse_example_proto(raw_record)
-
-  image = imagenet_preprocessing.preprocess_image(
-      image_buffer=image_buffer,
-      bbox=bbox,
-      output_height=imagenet_main._DEFAULT_IMAGE_SIZE,
-      output_width=imagenet_main._DEFAULT_IMAGE_SIZE,
-      num_channels=imagenet_main._NUM_CHANNELS,
-      is_training=is_training)
-  image = tf.cast(image, dtype)
-  label = tf.sparse_to_dense(label, (imagenet_main._NUM_CLASSES,), 1)
-
+  """Adjust the shape of label."""
+  image, label = imagenet_main.parse_record(raw_record, is_training, dtype)
+  # Subtract one so that labels are in [0, 1000), and cast to float32 for
+  # Keras model.
+  label = tf.cast(tf.cast(tf.reshape(label, shape=[1]), dtype=tf.int32) - 1,
+                  dtype=tf.float32)
   return image, label
 
 
@@ -261,8 +241,8 @@ def run_imagenet_with_keras(flags_obj):
     model = keras_resnet_model.ResNet50(classes=imagenet_main._NUM_CLASSES,
                                         weights=None)
     
-  loss = 'categorical_crossentropy'
-  accuracy = 'categorical_accuracy'
+  loss = 'sparse_categorical_crossentropy'
+  accuracy = 'sparse_categorical_accuracy'
  
   model.compile(loss=loss,
                 optimizer=opt,
