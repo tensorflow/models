@@ -48,8 +48,8 @@ import os
 from absl import flags
 import tensorflow as tf
 from lstm_object_detection import model_builder
-from lstm_object_detection import seq_dataset_builder
 from lstm_object_detection import trainer
+from lstm_object_detection.inputs import seq_dataset_builder
 from lstm_object_detection.utils import config_util
 from object_detection.builders import preprocessor_builder
 

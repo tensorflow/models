@@ -122,6 +122,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
     dtype: Data type to use for images/features
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
+    parse_record_fn: Function to use for parsing the records.
 
   Returns:
     A dataset that can be used for iteration.

@@ -13,9 +13,33 @@
 # limitations under the License.
 # ==============================================================================
 
-from environments.maze_env import MazeEnv
-from environments.ant import AntEnv
+"""Gin configurable utility functions.
+"""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import numpy as np
+import gin.tf
 
 
-class AntMazeEnv(MazeEnv):
-    MODEL_CLASS = AntEnv
+@gin.configurable
+def gin_sparse_array(size, values, indices, fill_value=0):
+  arr = np.zeros(size)
+  arr.fill(fill_value)
+  arr[indices] = values
+  return arr
+
+
+@gin.configurable
+def gin_sum(values):
+  result = values[0]
+  for value in values[1:]:
+    result += value
+  return result
+
+
+@gin.configurable
+def gin_range(n):
+  return range(n)
