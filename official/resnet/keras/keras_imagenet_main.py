@@ -165,7 +165,6 @@ def run_imagenet_with_keras(flags_obj):
   strategy = keras_common.get_dist_strategy()
 
   model = resnet_model_tpu.ResNet50(num_classes=imagenet_main._NUM_CLASSES)
-                                        weights=None)
 
   model.compile(loss=loss,
                 optimizer=opt,
