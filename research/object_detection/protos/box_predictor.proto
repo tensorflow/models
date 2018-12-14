@@ -15,18 +15,6 @@ message BoxPredictor {
   }
 }
 
-// Configuration proto for MaskHead in predictors.
-// Next id: 4
-message MaskHead {
-  // The height and the width of the predicted mask. Only used when
-  // predict_instance_masks is true.
-  optional int32 mask_height = 1 [default = 15];
-  optional int32 mask_width = 2 [default = 15];
-
-  // Whether to predict class agnostic masks. Only used when
-  // predict_instance_masks is true.
-  optional bool masks_are_class_agnostic = 3 [default = true];
-}
 
 // Configuration proto for Convolutional box predictor.
 // Next id: 13
@@ -69,9 +57,6 @@ message ConvolutionalBoxPredictor {
 
   // Whether to use depthwise separable convolution for box predictor layers.
   optional bool use_depthwise = 11 [default = false];
-
-  // Configs for a mask prediction head.
-  optional MaskHead mask_head = 12;
 }
 
 // Configuration proto for weight shared convolutional box predictor.
@@ -112,9 +97,6 @@ message WeightSharedConvolutionalBoxPredictor {
 
   // Whether to use depthwise separable convolution for box predictor layers.
   optional bool use_depthwise = 14 [default = false];
-
-  // Configs for a mask prediction head.
-  optional MaskHead mask_head = 15;
 
   // Enum to specify how to convert the detection scores at inference time.
   enum ScoreConverter {

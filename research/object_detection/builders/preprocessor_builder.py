@@ -189,11 +189,12 @@ def build(preprocessor_step_config):
     if config.HasField('max_image_height'):
       max_image_size = (config.max_image_height, config.max_image_width)
 
-    pad_color = config.pad_color
-    if pad_color and len(pad_color) != 3:
-      raise ValueError('pad_color should have 3 elements (RGB) if set!')
-    if not pad_color:
-      pad_color = None
+    pad_color = config.pad_color or None
+    if pad_color:
+      if len(pad_color) == 3:
+        pad_color = tf.to_float([x for x in config.pad_color])
+      else:
+        raise ValueError('pad_color should have 3 elements (RGB) if set!')
     return (preprocessor.random_pad_image,
             {
                 'min_image_size': min_image_size,

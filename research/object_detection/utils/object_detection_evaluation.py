@@ -33,6 +33,7 @@ import collections
 import logging
 import unicodedata
 import numpy as np
+import tensorflow as tf
 
 from object_detection.core import standard_fields
 from object_detection.utils import label_map_util
@@ -126,6 +127,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
                categories,
                matching_iou_threshold=0.5,
                evaluate_corlocs=False,
+               evaluate_precision_recall=False,
                metric_prefix=None,
                use_weighted_mean_ap=False,
                evaluate_masks=False,
@@ -140,6 +142,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         boxes to detection boxes.
       evaluate_corlocs: (optional) boolean which determines if corloc scores
         are to be returned or not.
+      evaluate_precision_recall: (optional) boolean which determines if
+        precision and recall values are to be returned or not.
       metric_prefix: (optional) string prefix for metric name; if None, no
         prefix is used.
       use_weighted_mean_ap: (optional) boolean which determines if the mean
@@ -174,7 +178,50 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         group_of_weight=self._group_of_weight)
     self._image_ids = set([])
     self._evaluate_corlocs = evaluate_corlocs
+    self._evaluate_precision_recall = evaluate_precision_recall
     self._metric_prefix = (metric_prefix + '_') if metric_prefix else ''
+    self._expected_keys = set([
+        standard_fields.InputDataFields.key,
+        standard_fields.InputDataFields.groundtruth_boxes,
+        standard_fields.InputDataFields.groundtruth_classes,
+        standard_fields.InputDataFields.groundtruth_difficult,
+        standard_fields.InputDataFields.groundtruth_instance_masks,
+        standard_fields.DetectionResultFields.detection_boxes,
+        standard_fields.DetectionResultFields.detection_scores,
+        standard_fields.DetectionResultFields.detection_classes,
+        standard_fields.DetectionResultFields.detection_masks
+    ])
+    self._build_metric_names()
+
+  def _build_metric_names(self):
+    """Builds a list with metric names."""
+
+    self._metric_names = [
+        self._metric_prefix + 'Precision/mAP@{}IOU'.format(
+            self._matching_iou_threshold)
+    ]
+    if self._evaluate_corlocs:
+      self._metric_names.append(
+          self._metric_prefix +
+          'Precision/meanCorLoc@{}IOU'.format(self._matching_iou_threshold))
+
+    category_index = label_map_util.create_category_index(self._categories)
+    for idx in range(self._num_classes):
+      if idx + self._label_id_offset in category_index:
+        category_name = category_index[idx + self._label_id_offset]['name']
+        try:
+          category_name = unicode(category_name, 'utf-8')
+        except TypeError:
+          pass
+        category_name = unicodedata.normalize('NFKD', category_name).encode(
+            'ascii', 'ignore')
+        self._metric_names.append(
+            self._metric_prefix + 'PerformanceByCategory/AP@{}IOU/{}'.format(
+                self._matching_iou_threshold, category_name))
+        if self._evaluate_corlocs:
+          self._metric_names.append(
+              self._metric_prefix + 'PerformanceByCategory/CorLoc@{}IOU/{}'
+              .format(self._matching_iou_threshold, category_name))
 
   def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
     """Adds groundtruth for a single image to be used for evaluation.
@@ -283,22 +330,19 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       A dictionary of metrics with the following fields -
 
       1. summary_metrics:
-        'Precision/mAP@<matching_iou_threshold>IOU': mean average precision at
-        the specified IOU threshold.
+        '<prefix if not empty>_Precision/mAP@<matching_iou_threshold>IOU': mean
+        average precision at the specified IOU threshold.
 
       2. per_category_ap: category specific results with keys of the form
-        'PerformanceByCategory/mAP@<matching_iou_threshold>IOU/category'.
+        '<prefix if not empty>_PerformanceByCategory/
+        mAP@<matching_iou_threshold>IOU/category'.
     """
-    (per_class_ap, mean_ap, _, _, per_class_corloc, mean_corloc) = (
-        self._evaluation.evaluate())
-    pascal_metrics = {
-        self._metric_prefix +
-        'Precision/mAP@{}IOU'.format(self._matching_iou_threshold):
-            mean_ap
-    }
+    (per_class_ap, mean_ap, per_class_precision, per_class_recall,
+     per_class_corloc, mean_corloc) = (
+         self._evaluation.evaluate())
+    pascal_metrics = {self._metric_names[0]: mean_ap}
     if self._evaluate_corlocs:
-      pascal_metrics[self._metric_prefix + 'Precision/meanCorLoc@{}IOU'.format(
-          self._matching_iou_threshold)] = mean_corloc
+      pascal_metrics[self._metric_names[1]] = mean_corloc
     category_index = label_map_util.create_category_index(self._categories)
     for idx in range(per_class_ap.size):
       if idx + self._label_id_offset in category_index:
@@ -313,6 +357,19 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
             self._metric_prefix + 'PerformanceByCategory/AP@{}IOU/{}'.format(
                 self._matching_iou_threshold, category_name))
         pascal_metrics[display_name] = per_class_ap[idx]
+
+        # Optionally add precision and recall values
+        if self._evaluate_precision_recall:
+          display_name = (
+              self._metric_prefix +
+              'PerformanceByCategory/Precision@{}IOU/{}'.format(
+                  self._matching_iou_threshold, category_name))
+          pascal_metrics[display_name] = per_class_precision[idx]
+          display_name = (
+              self._metric_prefix +
+              'PerformanceByCategory/Recall@{}IOU/{}'.format(
+                  self._matching_iou_threshold, category_name))
+          pascal_metrics[display_name] = per_class_recall[idx]
 
         # Optionally add CorLoc metrics.classes
         if self._evaluate_corlocs:
@@ -331,6 +388,74 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         use_weighted_mean_ap=self._use_weighted_mean_ap,
         label_id_offset=self._label_id_offset)
     self._image_ids.clear()
+
+  def get_estimator_eval_metric_ops(self, eval_dict):
+    """Returns dict of metrics to use with `tf.estimator.EstimatorSpec`.
+
+    Note that this must only be implemented if performing evaluation with a
+    `tf.estimator.Estimator`.
+
+    Args:
+      eval_dict: A dictionary that holds tensors for evaluating an object
+        detection model, returned from
+        eval_util.result_dict_for_single_example(). It must contain
+        standard_fields.InputDataFields.key.
+
+    Returns:
+      A dictionary of metric names to tuple of value_op and update_op that can
+      be used as eval metric ops in `tf.estimator.EstimatorSpec`.
+    """
+    # remove unexpected fields
+    eval_dict_filtered = dict()
+    for key, value in eval_dict.items():
+      if key in self._expected_keys:
+        eval_dict_filtered[key] = value
+
+    eval_dict_keys = eval_dict_filtered.keys()
+
+    def update_op(image_id, *eval_dict_batched_as_list):
+      """Update operation that adds batch of images to ObjectDetectionEvaluator.
+
+      Args:
+        image_id: image id (single id or an array)
+        *eval_dict_batched_as_list: the values of the dictionary of tensors.
+      """
+      if np.isscalar(image_id):
+        single_example_dict = dict(
+            zip(eval_dict_keys, eval_dict_batched_as_list))
+        self.add_single_ground_truth_image_info(image_id, single_example_dict)
+        self.add_single_detected_image_info(image_id, single_example_dict)
+      else:
+        for unzipped_tuple in zip(*eval_dict_batched_as_list):
+          single_example_dict = dict(zip(eval_dict_keys, unzipped_tuple))
+          image_id = single_example_dict[standard_fields.InputDataFields.key]
+          self.add_single_ground_truth_image_info(image_id, single_example_dict)
+          self.add_single_detected_image_info(image_id, single_example_dict)
+
+    args = [eval_dict_filtered[standard_fields.InputDataFields.key]]
+    args.extend(eval_dict_filtered.values())
+    update_op = tf.py_func(update_op, args, [])
+
+    def first_value_func():
+      self._metrics = self.evaluate()
+      self.clear()
+      return np.float32(self._metrics[self._metric_names[0]])
+
+    def value_func_factory(metric_name):
+
+      def value_func():
+        return np.float32(self._metrics[metric_name])
+
+      return value_func
+
+    # Ensure that the metrics are only evaluated once.
+    first_value_op = tf.py_func(first_value_func, [], tf.float32)
+    eval_metric_ops = {self._metric_names[0]: (first_value_op, update_op)}
+    with tf.control_dependencies([first_value_op]):
+      for metric_name in self._metric_names[1:]:
+        eval_metric_ops[metric_name] = (tf.py_func(
+            value_func_factory(metric_name), [], np.float32), update_op)
+    return eval_metric_ops
 
 
 class PascalDetectionEvaluator(ObjectDetectionEvaluator):
@@ -442,6 +567,15 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
         evaluate_corlocs,
         metric_prefix=metric_prefix,
         group_of_weight=group_of_weight)
+    self._expected_keys = set([
+        standard_fields.InputDataFields.key,
+        standard_fields.InputDataFields.groundtruth_boxes,
+        standard_fields.InputDataFields.groundtruth_classes,
+        standard_fields.InputDataFields.groundtruth_group_of,
+        standard_fields.DetectionResultFields.detection_boxes,
+        standard_fields.DetectionResultFields.detection_scores,
+        standard_fields.DetectionResultFields.detection_classes,
+    ])
 
   def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
     """Adds groundtruth for a single image to be used for evaluation.
@@ -535,6 +669,16 @@ class OpenImagesDetectionChallengeEvaluator(OpenImagesDetectionEvaluator):
         group_of_weight=group_of_weight)
 
     self._evaluatable_labels = {}
+    self._expected_keys = set([
+        standard_fields.InputDataFields.key,
+        standard_fields.InputDataFields.groundtruth_boxes,
+        standard_fields.InputDataFields.groundtruth_classes,
+        standard_fields.InputDataFields.groundtruth_group_of,
+        standard_fields.InputDataFields.groundtruth_image_classes,
+        standard_fields.DetectionResultFields.detection_boxes,
+        standard_fields.DetectionResultFields.detection_scores,
+        standard_fields.DetectionResultFields.detection_classes,
+    ])
 
   def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
     """Adds groundtruth for a single image to be used for evaluation.
@@ -890,15 +1034,14 @@ class ObjectDetectionEvaluation(object):
       if self.use_weighted_mean_ap:
         all_scores = np.append(all_scores, scores)
         all_tp_fp_labels = np.append(all_tp_fp_labels, tp_fp_labels)
-      logging.info('Scores and tpfp per class label: %d', class_index)
-      logging.info(tp_fp_labels)
-      logging.info(scores)
       precision, recall = metrics.compute_precision_recall(
           scores, tp_fp_labels, self.num_gt_instances_per_class[class_index])
+
       self.precisions_per_class[class_index] = precision
       self.recalls_per_class[class_index] = recall
       average_precision = metrics.compute_average_precision(precision, recall)
       self.average_precision_per_class[class_index] = average_precision
+      logging.info('average_precision: %f', average_precision)
 
     self.corloc_per_class = metrics.compute_cor_loc(
         self.num_gt_imgs_per_class,

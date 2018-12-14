@@ -54,49 +54,59 @@ MODEL_BUILD_UTIL_MAP = {
 }
 
 
-def _prepare_groundtruth_for_eval(detection_model, class_agnostic):
+def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
+                                  max_number_of_boxes):
   """Extracts groundtruth data from detection_model and prepares it for eval.
 
   Args:
     detection_model: A `DetectionModel` object.
     class_agnostic: Whether the detections are class_agnostic.
+    max_number_of_boxes: Max number of groundtruth boxes.
 
   Returns:
     A tuple of:
     groundtruth: Dictionary with the following fields:
-      'groundtruth_boxes': [num_boxes, 4] float32 tensor of boxes, in
-        normalized coordinates.
-      'groundtruth_classes': [num_boxes] int64 tensor of 1-indexed classes.
-      'groundtruth_masks': 3D float32 tensor of instance masks (if provided in
+      'groundtruth_boxes': [batch_size, num_boxes, 4] float32 tensor of boxes,
+        in normalized coordinates.
+      'groundtruth_classes': [batch_size, num_boxes] int64 tensor of 1-indexed
+        classes.
+      'groundtruth_masks': 4D float32 tensor of instance masks (if provided in
         groundtruth)
-      'groundtruth_is_crowd': [num_boxes] bool tensor indicating is_crowd
-        annotations (if provided in groundtruth).
+      'groundtruth_is_crowd': [batch_size, num_boxes] bool tensor indicating
+        is_crowd annotations (if provided in groundtruth).
+      'num_groundtruth_boxes': [batch_size] tensor containing the maximum number
+        of groundtruth boxes per image..
     class_agnostic: Boolean indicating whether detections are class agnostic.
   """
   input_data_fields = fields.InputDataFields()
-  groundtruth_boxes = detection_model.groundtruth_lists(
-      fields.BoxListFields.boxes)[0]
+  groundtruth_boxes = tf.stack(
+      detection_model.groundtruth_lists(fields.BoxListFields.boxes))
+  groundtruth_boxes_shape = tf.shape(groundtruth_boxes)
   # For class-agnostic models, groundtruth one-hot encodings collapse to all
   # ones.
   if class_agnostic:
-    groundtruth_boxes_shape = tf.shape(groundtruth_boxes)
-    groundtruth_classes_one_hot = tf.ones([groundtruth_boxes_shape[0], 1])
+    groundtruth_classes_one_hot = tf.ones(
+        [groundtruth_boxes_shape[0], groundtruth_boxes_shape[1], 1])
   else:
-    groundtruth_classes_one_hot = detection_model.groundtruth_lists(
-        fields.BoxListFields.classes)[0]
+    groundtruth_classes_one_hot = tf.stack(
+        detection_model.groundtruth_lists(fields.BoxListFields.classes))
   label_id_offset = 1  # Applying label id offset (b/63711816)
   groundtruth_classes = (
-      tf.argmax(groundtruth_classes_one_hot, axis=1) + label_id_offset)
+      tf.argmax(groundtruth_classes_one_hot, axis=2) + label_id_offset)
   groundtruth = {
       input_data_fields.groundtruth_boxes: groundtruth_boxes,
       input_data_fields.groundtruth_classes: groundtruth_classes
   }
   if detection_model.groundtruth_has_field(fields.BoxListFields.masks):
-    groundtruth[input_data_fields.groundtruth_instance_masks] = (
-        detection_model.groundtruth_lists(fields.BoxListFields.masks)[0])
+    groundtruth[input_data_fields.groundtruth_instance_masks] = tf.stack(
+        detection_model.groundtruth_lists(fields.BoxListFields.masks))
+
   if detection_model.groundtruth_has_field(fields.BoxListFields.is_crowd):
-    groundtruth[input_data_fields.groundtruth_is_crowd] = (
-        detection_model.groundtruth_lists(fields.BoxListFields.is_crowd)[0])
+    groundtruth[input_data_fields.groundtruth_is_crowd] = tf.stack(
+        detection_model.groundtruth_lists(fields.BoxListFields.is_crowd))
+
+  groundtruth[input_data_fields.num_groundtruth_boxes] = (
+      tf.tile([max_number_of_boxes], multiples=[groundtruth_boxes_shape[0]]))
   return groundtruth
 
 
@@ -226,7 +236,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       boxes_shape = (
           labels[fields.InputDataFields.groundtruth_boxes].get_shape()
           .as_list())
-      unpad_groundtruth_tensors = True if boxes_shape[1] is not None else False
+      unpad_groundtruth_tensors = boxes_shape[1] is not None and not use_tpu
       labels = unstack_batch(
           labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
@@ -243,12 +253,17 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       gt_weights_list = None
       if fields.InputDataFields.groundtruth_weights in labels:
         gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
+      gt_confidences_list = None
+      if fields.InputDataFields.groundtruth_confidences in labels:
+        gt_confidences_list = labels[
+            fields.InputDataFields.groundtruth_confidences]
       gt_is_crowd_list = None
       if fields.InputDataFields.groundtruth_is_crowd in labels:
         gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
       detection_model.provide_groundtruth(
           groundtruth_boxes_list=gt_boxes_list,
           groundtruth_classes_list=gt_classes_list,
+          groundtruth_confidences_list=gt_confidences_list,
           groundtruth_masks_list=gt_masks_list,
           groundtruth_keypoints_list=gt_keypoints_list,
           groundtruth_weights_list=gt_weights_list,
@@ -378,24 +393,30 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
     if mode == tf.estimator.ModeKeys.EVAL:
       class_agnostic = (
           fields.DetectionResultFields.detection_classes not in detections)
-      groundtruth = _prepare_groundtruth_for_eval(detection_model,
-                                                  class_agnostic)
+      groundtruth = _prepare_groundtruth_for_eval(
+          detection_model, class_agnostic,
+          eval_input_config.max_number_of_boxes)
       use_original_images = fields.InputDataFields.original_image in features
       if use_original_images:
-        eval_images = tf.cast(tf.image.resize_bilinear(
-            features[fields.InputDataFields.original_image][0:1],
-            features[fields.InputDataFields.original_image_spatial_shape][0]),
-                              tf.uint8)
+        eval_images = features[fields.InputDataFields.original_image]
+        true_image_shapes = tf.slice(
+            features[fields.InputDataFields.true_image_shape], [0, 0], [-1, 3])
+        original_image_spatial_shapes = features[fields.InputDataFields
+                                                 .original_image_spatial_shape]
       else:
         eval_images = features[fields.InputDataFields.image]
+        true_image_shapes = None
+        original_image_spatial_shapes = None
 
-      eval_dict = eval_util.result_dict_for_single_example(
-          eval_images[0:1],
-          features[inputs.HASH_KEY][0],
+      eval_dict = eval_util.result_dict_for_batched_example(
+          eval_images,
+          features[inputs.HASH_KEY],
           detections,
           groundtruth,
           class_agnostic=class_agnostic,
-          scale_to_absolute=True)
+          scale_to_absolute=True,
+          original_image_spatial_shapes=original_image_spatial_shapes,
+          true_image_shapes=true_image_shapes)
 
       if class_agnostic:
         category_index = label_map_util.create_class_agnostic_category_index()
@@ -445,6 +466,15 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           eval_metrics=eval_metric_ops,
           export_outputs=export_outputs)
     else:
+      if scaffold is None:
+        keep_checkpoint_every_n_hours = (
+            train_config.keep_checkpoint_every_n_hours)
+        saver = tf.train.Saver(
+            sharded=True,
+            keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours,
+            save_relative_paths=True)
+        tf.add_to_collection(tf.GraphKeys.SAVERS, saver)
+        scaffold = tf.train.Scaffold(saver=saver)
       return tf.estimator.EstimatorSpec(
           mode=mode,
           predictions=detections,

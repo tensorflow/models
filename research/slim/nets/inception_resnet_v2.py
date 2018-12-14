@@ -370,7 +370,8 @@ def inception_resnet_v2_arg_scope(
     batch_norm_decay=0.9997,
     batch_norm_epsilon=0.001,
     activation_fn=tf.nn.relu,
-    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS,
+    batch_norm_scale=False):
   """Returns the scope with the default parameters for inception_resnet_v2.
 
   Args:
@@ -380,6 +381,8 @@ def inception_resnet_v2_arg_scope(
     activation_fn: Activation function for conv2d.
     batch_norm_updates_collections: Collection for the update ops for
       batch norm.
+    batch_norm_scale: If True, uses an explicit `gamma` multiplier to scale the
+      activations in the batch normalization layer.
 
   Returns:
     a arg_scope with the parameters needed for inception_resnet_v2.
@@ -394,6 +397,7 @@ def inception_resnet_v2_arg_scope(
         'epsilon': batch_norm_epsilon,
         'updates_collections': batch_norm_updates_collections,
         'fused': None,  # Use fused batch norm if possible.
+        'scale': batch_norm_scale,
     }
     # Set activation_fn and parameters for batch_norm.
     with slim.arg_scope([slim.conv2d], activation_fn=activation_fn,

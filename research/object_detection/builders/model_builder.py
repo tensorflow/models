@@ -50,6 +50,7 @@ from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMo
 from object_detection.models.ssd_mobilenet_v2_keras_feature_extractor import SSDMobileNetV2KerasFeatureExtractor
 from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
 from object_detection.predictors import rfcn_box_predictor
+from object_detection.predictors.heads import mask_head
 from object_detection.protos import model_pb2
 from object_detection.utils import ops
 
@@ -261,28 +262,23 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
   non_max_suppression_fn, score_conversion_fn = post_processing_builder.build(
       ssd_config.post_processing)
   (classification_loss, localization_loss, classification_weight,
-   localization_weight, hard_example_miner,
-   random_example_sampler) = losses_builder.build(ssd_config.loss)
+   localization_weight, hard_example_miner, random_example_sampler,
+   expected_loss_weights_fn) = losses_builder.build(ssd_config.loss)
   normalize_loss_by_num_matches = ssd_config.normalize_loss_by_num_matches
   normalize_loc_loss_by_codesize = ssd_config.normalize_loc_loss_by_codesize
-  weight_regression_loss_by_score = (ssd_config.weight_regression_loss_by_score)
+
+  equalization_loss_config = ops.EqualizationLossConfig(
+      weight=ssd_config.loss.equalization_loss.weight,
+      exclude_prefixes=ssd_config.loss.equalization_loss.exclude_prefixes)
 
   target_assigner_instance = target_assigner.TargetAssigner(
       region_similarity_calculator,
       matcher,
       box_coder,
-      negative_class_weight=negative_class_weight,
-      weight_regression_loss_by_score=weight_regression_loss_by_score)
-
-  expected_classification_loss_under_sampling = None
-  if ssd_config.use_expected_classification_loss_under_sampling:
-    expected_classification_loss_under_sampling = functools.partial(
-        ops.expected_classification_loss_under_sampling,
-        min_num_negative_samples=ssd_config.min_num_negative_samples,
-        desired_negative_sampling_ratio=ssd_config.
-        desired_negative_sampling_ratio)
+      negative_class_weight=negative_class_weight)
 
   ssd_meta_arch_fn = ssd_meta_arch.SSDMetaArch
+  kwargs = {}
 
   return ssd_meta_arch_fn(
       is_training=is_training,
@@ -306,9 +302,13 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       freeze_batchnorm=ssd_config.freeze_batchnorm,
       inplace_batchnorm_update=ssd_config.inplace_batchnorm_update,
       add_background_class=ssd_config.add_background_class,
+      explicit_background_class=ssd_config.explicit_background_class,
       random_example_sampler=random_example_sampler,
-      expected_classification_loss_under_sampling=
-      expected_classification_loss_under_sampling)
+      expected_loss_weights_fn=expected_loss_weights_fn,
+      use_confidences_as_targets=ssd_config.use_confidences_as_targets,
+      implicit_example_weight=ssd_config.implicit_example_weight,
+      equalization_loss_config=equalization_loss_config,
+      **kwargs)
 
 
 def _build_faster_rcnn_feature_extractor(
@@ -374,7 +374,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
 
   feature_extractor = _build_faster_rcnn_feature_extractor(
       frcnn_config.feature_extractor, is_training,
-      frcnn_config.inplace_batchnorm_update)
+      inplace_batchnorm_update=frcnn_config.inplace_batchnorm_update)
 
   number_of_stages = frcnn_config.number_of_stages
   first_stage_anchor_generator = anchor_generator_builder.build(
@@ -391,7 +391,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       frcnn_config.first_stage_box_predictor_kernel_size)
   first_stage_box_predictor_depth = frcnn_config.first_stage_box_predictor_depth
   first_stage_minibatch_size = frcnn_config.first_stage_minibatch_size
-  use_static_shapes = frcnn_config.use_static_shapes
+  use_static_shapes = frcnn_config.use_static_shapes and (
+      frcnn_config.use_static_shapes_for_eval or is_training)
   first_stage_sampler = sampler.BalancedPositiveNegativeSampler(
       positive_fraction=frcnn_config.first_stage_positive_balance_fraction,
       is_static=(frcnn_config.use_static_balanced_label_sampler and

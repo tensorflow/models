@@ -52,6 +52,7 @@ def cifar_config():
       # This is used for the drop path probabilities since it needs to increase
       # the drop out probability over the course of training.
       total_training_steps=937500,
+      use_bounded_activation=False,
   )
 
 
@@ -78,6 +79,7 @@ def large_imagenet_config():
       data_format='NHWC',
       skip_reduction_layer_input=1,
       total_training_steps=250000,
+      use_bounded_activation=False,
   )
 
 
@@ -104,6 +106,7 @@ def mobile_imagenet_config():
       data_format='NHWC',
       skip_reduction_layer_input=0,
       total_training_steps=250000,
+      use_bounded_activation=False,
   )
 
 
@@ -223,6 +226,7 @@ def nasnet_large_arg_scope(weight_decay=5e-5,
 
 def _build_aux_head(net, end_points, num_classes, hparams, scope):
   """Auxiliary head used for all models across all datasets."""
+  activation_fn = tf.nn.relu6 if hparams.use_bounded_activation else tf.nn.relu
   with tf.variable_scope(scope):
     aux_logits = tf.identity(net)
     with tf.variable_scope('aux_logits'):
@@ -230,7 +234,7 @@ def _build_aux_head(net, end_points, num_classes, hparams, scope):
           aux_logits, [5, 5], stride=3, padding='VALID')
       aux_logits = slim.conv2d(aux_logits, 128, [1, 1], scope='proj')
       aux_logits = slim.batch_norm(aux_logits, scope='aux_bn0')
-      aux_logits = tf.nn.relu(aux_logits)
+      aux_logits = activation_fn(aux_logits)
       # Shape of feature map before the final layer.
       shape = aux_logits.shape
       if hparams.data_format == 'NHWC':
@@ -239,7 +243,7 @@ def _build_aux_head(net, end_points, num_classes, hparams, scope):
         shape = shape[2:4]
       aux_logits = slim.conv2d(aux_logits, 768, shape, padding='VALID')
       aux_logits = slim.batch_norm(aux_logits, scope='aux_bn1')
-      aux_logits = tf.nn.relu(aux_logits)
+      aux_logits = activation_fn(aux_logits)
       aux_logits = tf.contrib.layers.flatten(aux_logits)
       aux_logits = slim.fully_connected(aux_logits, num_classes)
       end_points['AuxLogits'] = aux_logits
@@ -306,10 +310,12 @@ def build_nasnet_cifar(images, num_classes,
 
   normal_cell = nasnet_utils.NasNetANormalCell(
       hparams.num_conv_filters, hparams.drop_path_keep_prob,
-      total_num_cells, hparams.total_training_steps)
+      total_num_cells, hparams.total_training_steps,
+      hparams.use_bounded_activation)
   reduction_cell = nasnet_utils.NasNetAReductionCell(
       hparams.num_conv_filters, hparams.drop_path_keep_prob,
-      total_num_cells, hparams.total_training_steps)
+      total_num_cells, hparams.total_training_steps,
+      hparams.use_bounded_activation)
   with arg_scope([slim.dropout, nasnet_utils.drop_path, slim.batch_norm],
                  is_training=is_training):
     with arg_scope([slim.avg_pool2d,
@@ -358,10 +364,12 @@ def build_nasnet_mobile(images, num_classes,
 
   normal_cell = nasnet_utils.NasNetANormalCell(
       hparams.num_conv_filters, hparams.drop_path_keep_prob,
-      total_num_cells, hparams.total_training_steps)
+      total_num_cells, hparams.total_training_steps,
+      hparams.use_bounded_activation)
   reduction_cell = nasnet_utils.NasNetAReductionCell(
       hparams.num_conv_filters, hparams.drop_path_keep_prob,
-      total_num_cells, hparams.total_training_steps)
+      total_num_cells, hparams.total_training_steps,
+      hparams.use_bounded_activation)
   with arg_scope([slim.dropout, nasnet_utils.drop_path, slim.batch_norm],
                  is_training=is_training):
     with arg_scope([slim.avg_pool2d,
@@ -411,10 +419,12 @@ def build_nasnet_large(images, num_classes,
 
   normal_cell = nasnet_utils.NasNetANormalCell(
       hparams.num_conv_filters, hparams.drop_path_keep_prob,
-      total_num_cells, hparams.total_training_steps)
+      total_num_cells, hparams.total_training_steps,
+      hparams.use_bounded_activation)
   reduction_cell = nasnet_utils.NasNetAReductionCell(
       hparams.num_conv_filters, hparams.drop_path_keep_prob,
-      total_num_cells, hparams.total_training_steps)
+      total_num_cells, hparams.total_training_steps,
+      hparams.use_bounded_activation)
   with arg_scope([slim.dropout, nasnet_utils.drop_path, slim.batch_norm],
                  is_training=is_training):
     with arg_scope([slim.avg_pool2d,
@@ -478,6 +488,7 @@ def _build_nasnet_base(images,
   filter_scaling = 1.0
   # true_cell_num accounts for the stem cells
   true_cell_num = 2 if stem_type == 'imagenet' else 0
+  activation_fn = tf.nn.relu6 if hparams.use_bounded_activation else tf.nn.relu
   for cell_num in range(hparams.num_cells):
     stride = 1
     if hparams.skip_reduction_layer_input:
@@ -513,14 +524,14 @@ def _build_nasnet_base(images,
     true_cell_num += 1
     if (hparams.use_aux_head and cell_num in aux_head_cell_idxes and
         num_classes and is_training):
-      aux_net = tf.nn.relu(net)
+      aux_net = activation_fn(net)
       _build_aux_head(aux_net, end_points, num_classes, hparams,
                       scope='aux_{}'.format(cell_num))
     cell_outputs.append(net)
 
   # Final softmax layer
   with tf.variable_scope('final_layer'):
-    net = tf.nn.relu(net)
+    net = activation_fn(net)
     net = nasnet_utils.global_avg_pool(net)
     if add_and_check_endpoint('global_pool', net) or not num_classes:
       return net, end_points

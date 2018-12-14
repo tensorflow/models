@@ -40,6 +40,9 @@ slim = tf.contrib.slim
 DATA_FORMAT_NCHW = 'NCHW'
 DATA_FORMAT_NHWC = 'NHWC'
 INVALID = 'null'
+# The cap for tf.clip_by_value, it's hinted from the activation distribution
+# that the majority of activation values are in the range [-6, 6].
+CLIP_BY_VALUE_CAP = 6
 
 
 def calc_reduction_layers(num_cells, num_reduction_layers):
@@ -172,11 +175,13 @@ def _operation_to_info(operation):
   return num_layers, filter_shape
 
 
-def _stacked_separable_conv(net, stride, operation, filter_size):
+def _stacked_separable_conv(net, stride, operation, filter_size,
+                            use_bounded_activation):
   """Takes in an operations and parses it to the correct sep operation."""
   num_layers, kernel_size = _operation_to_info(operation)
+  activation_fn = tf.nn.relu6 if use_bounded_activation else tf.nn.relu
   for layer_num in range(num_layers - 1):
-    net = tf.nn.relu(net)
+    net = activation_fn(net)
     net = slim.separable_conv2d(
         net,
         filter_size,
@@ -187,7 +192,7 @@ def _stacked_separable_conv(net, stride, operation, filter_size):
     net = slim.batch_norm(
         net, scope='bn_sep_{0}x{0}_{1}'.format(kernel_size, layer_num + 1))
     stride = 1
-  net = tf.nn.relu(net)
+  net = activation_fn(net)
   net = slim.separable_conv2d(
       net,
       filter_size,
@@ -223,10 +228,12 @@ def _operation_to_pooling_info(operation):
   return pooling_type, pooling_shape
 
 
-def _pooling(net, stride, operation):
+def _pooling(net, stride, operation, use_bounded_activation):
   """Parses operation and performs the correct pooling operation on net."""
   padding = 'SAME'
   pooling_type, pooling_shape = _operation_to_pooling_info(operation)
+  if use_bounded_activation:
+    net = tf.nn.relu6(net)
   if pooling_type == 'avg':
     net = slim.avg_pool2d(net, pooling_shape, stride=stride, padding=padding)
   elif pooling_type == 'max':
@@ -248,11 +255,13 @@ class NasNetABaseCell(object):
       should be concatenated together.
     hiddenstate_indices: Determines what hiddenstates should be combined
       together with the specified operations to create the NASNet cell.
+    use_bounded_activation: Whether or not to use bounded activations. Bounded
+      activations better lend themselves to quantized inference.
   """
 
   def __init__(self, num_conv_filters, operations, used_hiddenstates,
                hiddenstate_indices, drop_path_keep_prob, total_num_cells,
-               total_training_steps):
+               total_training_steps, use_bounded_activation=False):
     self._num_conv_filters = num_conv_filters
     self._operations = operations
     self._used_hiddenstates = used_hiddenstates
@@ -260,6 +269,7 @@ class NasNetABaseCell(object):
     self._drop_path_keep_prob = drop_path_keep_prob
     self._total_num_cells = total_num_cells
     self._total_training_steps = total_training_steps
+    self._use_bounded_activation = use_bounded_activation
 
   def _reduce_prev_layer(self, prev_layer, curr_layer):
     """Matches dimension of prev_layer to the curr_layer."""
@@ -270,12 +280,13 @@ class NasNetABaseCell(object):
     prev_num_filters = get_channel_dim(prev_layer.shape)
     curr_filter_shape = int(curr_layer.shape[2])
     prev_filter_shape = int(prev_layer.shape[2])
+    activation_fn = tf.nn.relu6 if self._use_bounded_activation else tf.nn.relu
     if curr_filter_shape != prev_filter_shape:
-      prev_layer = tf.nn.relu(prev_layer)
+      prev_layer = activation_fn(prev_layer)
       prev_layer = factorized_reduction(
           prev_layer, curr_num_filters, stride=2)
     elif curr_num_filters != prev_num_filters:
-      prev_layer = tf.nn.relu(prev_layer)
+      prev_layer = activation_fn(prev_layer)
       prev_layer = slim.conv2d(
           prev_layer, curr_num_filters, 1, scope='prev_1x1')
       prev_layer = slim.batch_norm(prev_layer, scope='prev_bn')
@@ -288,14 +299,11 @@ class NasNetABaseCell(object):
     # Check to be sure prev layer stuff is setup correctly
     prev_layer = self._reduce_prev_layer(prev_layer, net)
 
-    net = tf.nn.relu(net)
+    net = tf.nn.relu6(net) if self._use_bounded_activation else tf.nn.relu(net)
     net = slim.conv2d(net, num_filters, 1, scope='1x1')
     net = slim.batch_norm(net, scope='beginning_bn')
-    split_axis = get_channel_index()
-    net = tf.split(axis=split_axis, num_or_size_splits=1, value=net)
-    for split in net:
-      assert int(split.shape[split_axis] == int(self._num_conv_filters *
-                                                self._filter_scaling))
+    # num_or_size_splits=1
+    net = [net]
     net.append(prev_layer)
     return net
 
@@ -335,6 +343,8 @@ class NasNetABaseCell(object):
           # Combine hidden states using 'add'.
           with tf.variable_scope('combine'):
             h = h1 + h2
+            if self._use_bounded_activation:
+              h = tf.nn.relu6(h)
 
           # Add hiddenstate to the list of hiddenstates we can choose from
           net.append(h)
@@ -353,18 +363,28 @@ class NasNetABaseCell(object):
     input_filters = get_channel_dim(net.shape)
     filter_size = self._filter_size
     if 'separable' in operation:
-      net = _stacked_separable_conv(net, stride, operation, filter_size)
+      net = _stacked_separable_conv(net, stride, operation, filter_size,
+                                    self._use_bounded_activation)
+      if self._use_bounded_activation:
+        net = tf.clip_by_value(net, -CLIP_BY_VALUE_CAP, CLIP_BY_VALUE_CAP)
     elif operation in ['none']:
+      if self._use_bounded_activation:
+        net = tf.nn.relu6(net)
       # Check if a stride is needed, then use a strided 1x1 here
       if stride > 1 or (input_filters != filter_size):
-        net = tf.nn.relu(net)
+        if not self._use_bounded_activation:
+          net = tf.nn.relu(net)
         net = slim.conv2d(net, filter_size, 1, stride=stride, scope='1x1')
         net = slim.batch_norm(net, scope='bn_1')
+        if self._use_bounded_activation:
+          net = tf.clip_by_value(net, -CLIP_BY_VALUE_CAP, CLIP_BY_VALUE_CAP)
     elif 'pool' in operation:
-      net = _pooling(net, stride, operation)
+      net = _pooling(net, stride, operation, self._use_bounded_activation)
       if input_filters != filter_size:
         net = slim.conv2d(net, filter_size, 1, stride=1, scope='1x1')
         net = slim.batch_norm(net, scope='bn_1')
+      if self._use_bounded_activation:
+        net = tf.clip_by_value(net, -CLIP_BY_VALUE_CAP, CLIP_BY_VALUE_CAP)
     else:
       raise ValueError('Unimplemented operation', operation)
 
@@ -456,7 +476,7 @@ class NasNetANormalCell(NasNetABaseCell):
   """NASNetA Normal Cell."""
 
   def __init__(self, num_conv_filters, drop_path_keep_prob, total_num_cells,
-               total_training_steps):
+               total_training_steps, use_bounded_activation=False):
     operations = ['separable_5x5_2',
                   'separable_3x3_2',
                   'separable_5x5_2',
@@ -474,14 +494,15 @@ class NasNetANormalCell(NasNetABaseCell):
                                             hiddenstate_indices,
                                             drop_path_keep_prob,
                                             total_num_cells,
-                                            total_training_steps)
+                                            total_training_steps,
+                                            use_bounded_activation)
 
 
 class NasNetAReductionCell(NasNetABaseCell):
   """NASNetA Reduction Cell."""
 
   def __init__(self, num_conv_filters, drop_path_keep_prob, total_num_cells,
-               total_training_steps):
+               total_training_steps, use_bounded_activation=False):
     operations = ['separable_5x5_2',
                   'separable_7x7_2',
                   'max_pool_3x3',
@@ -499,4 +520,5 @@ class NasNetAReductionCell(NasNetABaseCell):
                                                hiddenstate_indices,
                                                drop_path_keep_prob,
                                                total_num_cells,
-                                               total_training_steps)
+                                               total_training_steps,
+                                               use_bounded_activation)

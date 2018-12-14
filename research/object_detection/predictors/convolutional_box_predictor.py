@@ -301,8 +301,6 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
                     num_predictions_per_location):
     if head_name == CLASS_PREDICTIONS_WITH_BACKGROUND:
       tower_name_scope = 'ClassPredictionTower'
-    elif head_name == MASK_PREDICTIONS:
-      tower_name_scope = 'MaskPredictionTower'
     else:
       raise ValueError('Unknown head')
     if self._share_prediction_tower:

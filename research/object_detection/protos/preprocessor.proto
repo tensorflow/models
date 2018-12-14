@@ -166,13 +166,13 @@ message RandomCropImage {
 message RandomPadImage {
   // Minimum dimensions for padded image. If unset, will use original image
   // dimension as a lower bound.
-  optional float min_image_height = 1;
-  optional float min_image_width = 2;
+  optional int32 min_image_height = 1;
+  optional int32 min_image_width = 2;
 
   // Maximum dimensions for padded image. If unset, will use double the original
   // image dimension as a lower bound.
-  optional float max_image_height = 3;
-  optional float max_image_width = 4;
+  optional int32 max_image_height = 3;
+  optional int32 max_image_width = 4;
 
   // Color of the padding. If unset, will pad using average color of the input
   // image.
