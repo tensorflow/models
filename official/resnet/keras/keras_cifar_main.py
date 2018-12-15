@@ -112,6 +112,7 @@ def run_cifar_with_keras(flags_obj):
   Raises:
     ValueError: If fp16 is passed as it is not currently supported.
   """
+  print(">>>>>>>>>>>>>>>>>>>>> eager: ", flags_obj.enable_eager)
   if flags_obj.enable_eager:
     tf.enable_eager_execution()
 
@@ -199,13 +200,13 @@ def run_cifar_with_keras(flags_obj):
                                verbose=1)
 
   print('Test loss:', eval_output[0])
-  stats = keras_common.analyze_eval_result(eval_output)
+  stats = keras_common.analyze_fit_and_eval_result(history, eval_output)
 
   return stats
 
 
 def define_keras_cifar_flags():
-  flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
+  flags.DEFINE_boolean(name='enable_eager', default=True, help='Enable eager?')
 
 
 def main(_):

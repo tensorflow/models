@@ -178,23 +178,24 @@ def run_imagenet_with_keras(flags_obj):
   num_eval_steps = (imagenet_main._NUM_IMAGES['validation'] //
                   flags_obj.batch_size)
 
-  model.fit(train_input_dataset,
-            epochs=flags_obj.train_epochs,
-            steps_per_epoch=steps_per_epoch,
-            callbacks=[
-              time_callback,
-              lr_callback,
-              tensorboard_callback
-            ],
-            validation_steps=num_eval_steps,
-            validation_data=eval_input_dataset,
-            verbose=1)
+  history = model.fit(train_input_dataset,
+                      epochs=flags_obj.train_epochs,
+                      steps_per_epoch=steps_per_epoch,
+                      callbacks=[
+                        time_callback,
+                        lr_callback,
+                        tensorboard_callback
+                      ],
+                      validation_steps=num_eval_steps,
+                      validation_data=eval_input_dataset,
+                      verbose=1)
 
   eval_output = model.evaluate(eval_input_dataset,
                                steps=num_eval_steps,
                                verbose=1)
+
   print('Test loss:', eval_output[0])
-  stats = keras_common.analyze_eval_result(eval_output)
+  stats = keras_common.analyze_fit_and_eval_result(history, eval_output)
 
   return stats
 

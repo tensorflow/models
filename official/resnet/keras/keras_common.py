@@ -138,6 +138,7 @@ def get_dist_strategy():
     print('Not using distribution strategies.')
     strategy = None
   else:
+    print(">>>>>>>>>>>>>>>>>>strategy!!!!!!! ", FLAGS.num_gpus)
     strategy = distribution_utils.get_distribution_strategy(
         num_gpus=FLAGS.num_gpus)
 
@@ -158,7 +159,7 @@ def get_fit_callbacks(learning_rate_schedule_fn):
 
   return time_callback, tensorboard_callback, lr_callback
 
-def analyze_eval_result(eval_output):
+def analyze_fit_and_eval_result(history, eval_output):
   stats = {}
   stats['accuracy_top_1'] = eval_output[1]
   stats['eval_loss'] = eval_output[0]
