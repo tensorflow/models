@@ -22,10 +22,12 @@ import os
 import six.moves.urllib.request as request
 import tensorflow as tf
 
+from distutils.version import StrictVersion
+
 # Check that we have correct TensorFlow version installed
 tf_version = tf.__version__
 print("TensorFlow version: {}".format(tf_version))
-assert "1.4" <= tf_version, "TensorFlow r1.4 or later is needed"
+assert StrictVersion("1.4") <= StrictVersion(tf_version), "TensorFlow r1.4 or later is needed"
 
 # Windows users: You only need to change PATH, rest is platform independent
 PATH = "/tmp/tf_dataset_and_estimator_apis"
