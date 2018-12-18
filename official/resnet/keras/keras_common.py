@@ -135,7 +135,7 @@ def get_optimizer_loss_and_metrics():
 
 
 def get_dist_strategy():
-  if True: # FLAGS.num_gpus == 1 and FLAGS.dist_strat_off:
+  if FLAGS.num_gpus == 1 and FLAGS.dist_strat_off:
     print('Not using distribution strategies.')
     strategy = None
   else:
