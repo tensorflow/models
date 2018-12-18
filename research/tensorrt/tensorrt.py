@@ -538,7 +538,7 @@ class TensorRTParser(argparse.ArgumentParser):
         "--input_node", "-in", default="input_tensor",
         help="[default: %(default)s] The name of the graph input node where "
         "the float image array should be fed for prediction.",
-        metavar="<ON>",
+        metavar="<IN>",
     )
 
     self.add_argument(
