@@ -210,7 +210,11 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if idx + self._label_id_offset in category_index:
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
-          category_name = unicode(category_name, 'utf-8')
+            import sys
+            if sys.version_info >= (3, 0):
+                category_name = str(category_name, 'utf-8')
+            else:
+                category_name = unicode(category_name, 'utf-8')
         except TypeError:
           pass
         category_name = unicodedata.normalize('NFKD', category_name).encode(
@@ -348,7 +352,11 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if idx + self._label_id_offset in category_index:
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
-          category_name = unicode(category_name, 'utf-8')
+            import sys
+            if sys.version_info >= (3, 0):
+                category_name = str(category_name, 'utf-8')
+            else:
+                category_name = unicode(category_name, 'utf-8')
         except TypeError:
           pass
         category_name = unicodedata.normalize(
@@ -606,7 +614,7 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
     # (unless there are no annotations for the groundtruth on this image)
     # use values from the dictionary or insert None otherwise.
     if (standard_fields.InputDataFields.groundtruth_group_of in
-        groundtruth_dict.keys() and
+        groundtruth_dict.keys() and not (groundtruth_dict[standard_fields.InputDataFields.groundtruth_group_of] == None) and
         (groundtruth_dict[standard_fields.InputDataFields.groundtruth_group_of]
          .size or not groundtruth_classes.size)):
       groundtruth_group_of = groundtruth_dict[
