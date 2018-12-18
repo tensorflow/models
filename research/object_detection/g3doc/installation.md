@@ -69,7 +69,7 @@ file.
 git clone https://github.com/cocodataset/cocoapi.git
 cd cocoapi/PythonAPI
 make
-cp -r pycocotools <path_to_tensorflow>/models/research/
+cp -r pycocotools <path_to_models>/research/
 ```
 
 ## Protobuf Compilation
