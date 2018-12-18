@@ -110,7 +110,8 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     if not isinstance(lr, (float, np.float32, np.float64)):
       raise ValueError('The output of the "schedule" function should be float.')
     if lr != self.prev_lr:
-      tf.keras.backend.set_value(self.model.optimizer.learning_rate, lr)
+      self.model.optimizer.learning_rate = lr  # lr should be a float here
+      # tf.keras.backend.set_value(self.model.optimizer.learning_rate, lr)
       self.prev_lr = lr
       tf.logging.debug('Epoch %05d Batch %05d: LearningRateBatchScheduler change '
                    'learning rate to %s.', self.epochs, batch, lr)
@@ -134,11 +135,10 @@ def get_optimizer_loss_and_metrics():
 
 
 def get_dist_strategy():
-  if FLAGS.num_gpus == 1 and FLAGS.dist_strat_off:
+  if True: # FLAGS.num_gpus == 1 and FLAGS.dist_strat_off:
     print('Not using distribution strategies.')
     strategy = None
   else:
-    print(">>>>>>>>>>>>>>>>>>strategy!!!!!!! ", FLAGS.num_gpus)
     strategy = distribution_utils.get_distribution_strategy(
         num_gpus=FLAGS.num_gpus)
 
