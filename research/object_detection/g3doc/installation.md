@@ -48,6 +48,17 @@ pip install --user jupyter
 pip install --user matplotlib
 ```
 
+## Research Models Installation
+
+Clone this repository and set up the research models, if you have not done so already.
+
+```bash
+git clone https://github.com/tensorflow/models
+cd models/research
+python setup.py build
+python setup.py install
+```
+
 <!-- common_typos_disable -->
 **Note**: sometimes "sudo apt-get install protobuf-compiler" will install
 Protobuf 3+ versions for you and some users have issues when using 3.5.
