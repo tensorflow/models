@@ -1,5 +1,7 @@
 # Installation
 
+You must clone this repository if you have not done so already. The models directory is not part of the TensorFlow installation from pip.
+
 ## Dependencies
 
 Tensorflow Object Detection API depends on the following libraries:
