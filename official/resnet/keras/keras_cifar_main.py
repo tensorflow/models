@@ -28,7 +28,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import cifar10_main as cifar_main
 from official.resnet import resnet_run_loop
 from official.resnet.keras import keras_common
-from official.resnet.keras import keras_resnet_model
+from official.resnet.keras import resnet56
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -146,13 +146,12 @@ def run(flags_obj):
   optimizer = keras_common.get_optimizer()
   strategy = keras_common.get_dist_strategy()
 
-  model = keras_resnet_model.ResNet56(input_shape=(32, 32, 3),
-                                      classes=cifar_main._NUM_CLASSES)
+  model = resnet56.ResNet56(input_shape=(32, 32, 3),
+          classes=cifar_main._NUM_CLASSES)
 
   model.compile(loss='categorical_crossentropy',
                 optimizer=optimizer,
                 metrics=['categorical_accuracy'],
-                distribute=strategy)
 
   time_callback, tensorboard_callback, lr_callback = keras_common.get_fit_callbacks(
       learning_rate_schedule)
