@@ -37,7 +37,7 @@ WEIGHTS_PATH_NO_TOP = ('https://github.com/fchollet/deep-learning-models/'
 
 BATCH_NORM_DECAY = 0.9
 BATCH_NORM_EPSILON = 1e-5
-L2_WEIGHT_DECAY = 1e-4
+L2_WEIGHT_DECAY = 2e-4
 
 
 def _obtain_input_shape(input_shape,
@@ -492,6 +492,7 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
 
   x = tf.keras.layers.Conv2D(filters1, kernel_size,
                              padding='same',
+                             kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              bias_regularizer=
@@ -506,6 +507,7 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size,
                              padding='same',
+                             kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              bias_regularizer=
@@ -556,13 +558,14 @@ def conv_building_block(input_tensor,
   conv_name_base = 'res' + str(stage) + block + '_branch'
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-  x = tf.keras.layers.Conv2D(filters1, kernel_size,
+  x = tf.keras.layers.Conv2D(filters1, 3, strides=strides,
                              padding='same',
+                             kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              bias_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
-                             name=conv_name_base + '2a', strides=strides)(input_tensor)
+                             name=conv_name_base + '2a')(input_tensor)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2a',
                                          momentum=BATCH_NORM_DECAY,
@@ -570,7 +573,8 @@ def conv_building_block(input_tensor,
       x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
-  x = tf.keras.layers.Conv2D(filters2, kernel_size, padding='same',
+  x = tf.keras.layers.Conv2D(filters2, 3, padding='same',
+                             kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              bias_regularizer=
@@ -582,7 +586,8 @@ def conv_building_block(input_tensor,
                                          epsilon=BATCH_NORM_EPSILON)(
       x, training=training)
 
-  shortcut = tf.keras.layers.Conv2D(filters2, (1, 1), strides=strides,
+  shortcut = tf.keras.layers.Conv2D(filters2, 1, strides=strides,
+                                    kernel_initializer='he_normal',
                                     kernel_regularizer=
                                     tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                                     bias_regularizer=
@@ -686,6 +691,9 @@ def ResNet56(include_top=True,
   x = tf.keras.layers.Conv2D(16, (3, 3),
                              strides=(1, 1),
                              padding='valid',
+                             kernel_initializer='he_normal',
+                             kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             bias_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              name='conv1')(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1',
                                          momentum=BATCH_NORM_DECAY,
@@ -752,9 +760,14 @@ def ResNet56(include_top=True,
                               training=training)
 
   if include_top:
-    x = tf.keras.layers.AveragePooling2D((8, 8), name='avg_pool')(x)
-    x = tf.keras.layers.Flatten()(x)
-    x = tf.keras.layers.Dense(classes, activation='softmax', name='fc10')(x)
+    #x = tf.keras.layers.AveragePooling2D((8, 8), name='avg_pool')(x)
+    #x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
+    x = tf.keras.layers.Dense(classes, activation='softmax',
+                              kernel_initializer='he_normal',
+                              kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                              bias_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                              name='fc10')(x)
   else:
     if pooling == 'avg':
       x = tf.keras.layers.GlobalAveragePooling2D()(x)
