@@ -26,18 +26,12 @@ import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
-from official.resnet import imagenet_preprocessing
-from official.resnet import resnet_run_loop
-from official.resnet.keras import keras_resnet_model
-from official.resnet.keras import resnet_model_tpu
-from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
 
 
 FLAGS = flags.FLAGS
-
+BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 
 class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
@@ -116,28 +110,23 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
       tf.logging.debug('Epoch %05d Batch %05d: LearningRateBatchScheduler change '
                    'learning rate to %s.', self.epochs, batch, lr)
 
-def get_optimizer_loss_and_metrics():
-  # Use Keras ResNet50 applications model and native keras APIs
-  # initialize RMSprop optimizer
-  # TODO(anjalisridhar): Move to using MomentumOptimizer.
-  # opt = tf.train.GradientDescentOptimizer(learning_rate=0.0001)
-  # I am setting an initial LR of 0.001 since this will be reset
-  # at the beginning of the training loop.
-  opt = gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
+def get_optimizer():
+  if FLAGS.use_tf_momentum_optimizer:
+    learning_rate = BASE_LEARNING_RATE * FLAGS.batch_size / 256
+    optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
+  else:
+    optimizer = gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
 
-  # TF Optimizer:
-  # learning_rate = BASE_LEARNING_RATE * FLAGS.batch_size / 256
-  # opt = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
-  loss = 'categorical_crossentropy'
-  accuracy = 'categorical_accuracy'
-
-  return opt, loss, accuracy
+  return optimizer
 
 
 def get_dist_strategy():
-  if FLAGS.num_gpus == 1 and FLAGS.dist_strat_off:
+  if FLAGS.num_gpus == 1 and not FLAGS.use_one_device_strategy:
     print('Not using distribution strategies.')
     strategy = None
+  elif FLAGS.num_gpus > 1 and FLAGS.use_one_device_strategy:
+    rase ValueError("When %d GPUs are specified, use_one_device_strategy'
+        'flag cannot be set to True.")
   else:
     strategy = distribution_utils.get_distribution_strategy(
         num_gpus=FLAGS.num_gpus)

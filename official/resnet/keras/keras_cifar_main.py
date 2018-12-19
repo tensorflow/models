@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Runs a ResNet model on the ImageNet dataset."""
+"""Runs a ResNet model on the Cifar-10 dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -32,27 +32,18 @@ from official.resnet.keras import keras_resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
-from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
 
 
-# LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-#     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
-# ]
 LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
     (0.1, 91), (0.01, 136), (0.001, 182)
 ]
 
-BASE_LEARNING_RATE = 0.1
 
 def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch, batch_size):
   """Handles linear scaling rule, gradual warmup, and LR decay.
 
-  The learning rate starts at 0, then it increases linearly per step.
-  After 5 epochs we reach the base learning rate (scaled to account
-    for batch size).
-  After 30, 60 and 80 epochs the learning rate is divided by 10.
-  After 90 epochs training stops and the LR is set to 0. This ensures
-    that we train for exactly 90 epochs for reproducibility.
+  The learning rate starts at base learning_rate, then after 91, 136 and
+  182 epochs, the learning rate is divided by 10.
 
   Args:
     current_epoch: integer, current epoch indexed from 0.
@@ -61,19 +52,7 @@ def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch, batc
   Returns:
     Adjusted learning rate.
   """
-  # epoch = current_epoch + float(current_batch) / batches_per_epoch
-  # warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
-  # if epoch < warmup_end_epoch:
-  #   # Learning rate increases linearly per step.
-  #   return BASE_LEARNING_RATE * warmup_lr_multiplier * epoch / warmup_end_epoch
-  # for mult, start_epoch in LR_SCHEDULE:
-  #   if epoch >= start_epoch:
-  #     learning_rate = BASE_LEARNING_RATE * mult
-  #   else:
-  #     break
-  # return learning_rate
-
-  initial_learning_rate = BASE_LEARNING_RATE * batch_size / 128
+  initial_learning_rate = keras_common.BASE_LEARNING_RATE * batch_size / 128
   learning_rate = initial_learning_rate
   for mult, start_epoch in LR_SCHEDULE:
     if current_epoch >= start_epoch:
@@ -103,8 +82,8 @@ def parse_record_keras(raw_record, is_training, dtype):
   return image, label
 
 
-def run_cifar_with_keras(flags_obj):
-  """Run ResNet ImageNet training and eval loop using native Keras APIs.
+def run(flags_obj):
+  """Run ResNet Cifar-10 training and eval loop using native Keras APIs.
 
   Args:
     flags_obj: An object containing parsed flag values.
@@ -164,17 +143,17 @@ def run_cifar_with_keras(flags_obj):
         num_epochs=flags_obj.train_epochs,
         parse_record_fn=parse_record_keras)
 
-  opt, loss, accuracy = keras_common.get_optimizer_loss_and_metrics()
+  optimizer = keras_common.get_optimizer()
   strategy = keras_common.get_dist_strategy()
 
   model = keras_resnet_model.ResNet56(input_shape=(32, 32, 3),
-                                      include_top=True,
-                                      classes=cifar_main._NUM_CLASSES,
-                                      weights=None)
-  model.compile(loss=loss,
-                optimizer=opt,
-                metrics=[accuracy],
+                                      classes=cifar_main._NUM_CLASSES)
+
+  model.compile(loss='categorical_crossentropy',
+                optimizer=optimizer,
+                metrics=['categorical_accuracy'],
                 distribute=strategy)
+
   time_callback, tensorboard_callback, lr_callback = keras_common.get_fit_callbacks(
       learning_rate_schedule)
 
@@ -204,17 +183,12 @@ def run_cifar_with_keras(flags_obj):
   return stats
 
 
-def define_keras_cifar_flags():
-  flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
-
-
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
-    run_cifar_with_keras(flags.FLAGS)
+    run(flags.FLAGS)
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.DEBUG)
-  define_keras_cifar_flags()
   cifar_main.define_cifar_flags()
   absl_app.run(main)
