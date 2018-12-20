@@ -37,7 +37,7 @@ WEIGHTS_PATH_NO_TOP = ('https://github.com/fchollet/deep-learning-models/'
 
 BATCH_NORM_DECAY = 0.9
 BATCH_NORM_EPSILON = 1e-5
-L2_WEIGHT_DECAY = 2e-4
+L2_WEIGHT_DECAY = 1e-4
 
 
 def _obtain_input_shape(input_shape,
@@ -468,7 +468,12 @@ def ResNet50(include_top=True,
   return model
 
 
-def identity_building_block(input_tensor, kernel_size, filters, stage, block, training):
+def identity_building_block(input_tensor,
+                            kernel_size,
+                            filters,
+                            stage,
+                            block,
+                            training):
   """The identity block is the block that has no conv layer at shortcut.
 
   Arguments:
@@ -502,7 +507,7 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
                                          name=bn_name_base + '2a',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=training)
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size,
@@ -517,7 +522,7 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
                                          name=bn_name_base + '2b',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=training)
+                                             x, training=training)
 
   x = tf.keras.layers.add([x, input_tensor])
   x = tf.keras.layers.Activation('relu')(x)
@@ -525,12 +530,12 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
 
 
 def conv_building_block(input_tensor,
-    kernel_size,
-    filters,
-    stage,
-    block,
-    strides=(2, 2),
-    training=True):
+                        kernel_size,
+                        filters,
+                        stage,
+                        block,
+                        strides=(2, 2),
+                        training=True):
   """A block that has a conv layer at shortcut.
 
   Arguments:
@@ -558,7 +563,7 @@ def conv_building_block(input_tensor,
   conv_name_base = 'res' + str(stage) + block + '_branch'
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-  x = tf.keras.layers.Conv2D(filters1, 3, strides=strides,
+  x = tf.keras.layers.Conv2D(filters1, kernel_size, strides=strides,
                              padding='same',
                              kernel_initializer='he_normal',
                              kernel_regularizer=
@@ -570,10 +575,10 @@ def conv_building_block(input_tensor,
                                          name=bn_name_base + '2a',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=training)
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
-  x = tf.keras.layers.Conv2D(filters2, 3, padding='same',
+  x = tf.keras.layers.Conv2D(filters2, kernel_size, padding='same',
                              kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
@@ -584,9 +589,9 @@ def conv_building_block(input_tensor,
                                          name=bn_name_base + '2b',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=training)
+                                             x, training=training)
 
-  shortcut = tf.keras.layers.Conv2D(filters2, 1, strides=strides,
+  shortcut = tf.keras.layers.Conv2D(filters2, (1, 1), strides=strides,
                                     kernel_initializer='he_normal',
                                     kernel_regularizer=
                                     tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
@@ -596,7 +601,7 @@ def conv_building_block(input_tensor,
   shortcut = tf.keras.layers.BatchNormalization(
       axis=bn_axis, name=bn_name_base + '1',
       momentum=BATCH_NORM_DECAY, epsilon=BATCH_NORM_EPSILON)(
-      shortcut, training=training)
+          shortcut, training=training)
 
   x = tf.keras.layers.add([x, shortcut])
   x = tf.keras.layers.Activation('relu')(x)
@@ -604,12 +609,12 @@ def conv_building_block(input_tensor,
 
 
 def ResNet56(include_top=True,
-    weights=None,
-    input_tensor=None,
-    input_shape=None,
-    pooling=None,
-    classes=1000,
-    training=True):
+             weights=None,
+             input_tensor=None,
+             input_shape=None,
+             pooling=None,
+             classes=100,
+             training=True):
   """Instantiates the ResNet50 architecture.
 
   Optionally loads weights pre-trained on ImageNet.
@@ -698,9 +703,8 @@ def ResNet56(include_top=True,
   x = tf.keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=training)
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
-  # x = tf.keras.layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
   x = conv_building_block(x, 3, [16, 16], stage=2, block='a', strides=(1, 1),
                           training=training)
@@ -760,8 +764,8 @@ def ResNet56(include_top=True,
                               training=training)
 
   if include_top:
-    #x = tf.keras.layers.AveragePooling2D((8, 8), name='avg_pool')(x)
-    #x = tf.keras.layers.Flatten()(x)
+    # x = tf.keras.layers.AveragePooling2D((8, 8), name='avg_pool')(x)
+    # x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
     x = tf.keras.layers.Dense(classes, activation='softmax',
                               kernel_initializer='he_normal',
