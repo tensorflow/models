@@ -105,7 +105,7 @@ def get_optimizer():
     learning_rate = BASE_LEARNING_RATE * FLAGS.batch_size / 256
     optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
   else:
-    optimizer = gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
 
   return optimizer
 
@@ -138,6 +138,8 @@ def analyze_fit_and_eval_result(history, eval_output):
 
 def define_keras_flags():
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
+  flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_integer(
       name="train_steps", default=None,
       help="The number of steps to run for training")
+

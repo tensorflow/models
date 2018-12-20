@@ -172,9 +172,10 @@ def run_imagenet_with_keras(flags_obj):
                       validation_data=eval_input_dataset,
                       verbose=1)
 
-  eval_output = model.evaluate(eval_input_dataset,
-                               steps=num_eval_steps,
-                               verbose=1)
+  if not flags_obj.skip_eval:
+    eval_output = model.evaluate(eval_input_dataset,
+                                 steps=num_eval_steps,
+                                 verbose=1)
 
   stats = keras_common.analyze_fit_and_eval_result(history, eval_output)
 
