@@ -250,6 +250,9 @@ def run_cifar(flags_obj):
 
   Args:
     flags_obj: An object containing parsed flag values.
+
+  Returns:
+    Dictionary of results. Including final accuracy.
   """
   if flags_obj.image_bytes_as_serving_input:
     tf.logging.fatal('--image_bytes_as_serving_input cannot be set to True '
@@ -259,9 +262,11 @@ def run_cifar(flags_obj):
   input_function = (flags_obj.use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
-  resnet_run_loop.resnet_main(
+  result = resnet_run_loop.resnet_main(
       flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
       shape=[HEIGHT, WIDTH, NUM_CHANNELS])
+
+  return result
 
 
 def main(_):
