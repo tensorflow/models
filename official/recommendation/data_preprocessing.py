@@ -639,7 +639,7 @@ def make_input_fn(
           .format(epoch_metadata["batch_size"], batch_size))
     record_files_ds = tf.data.Dataset.list_files(record_files, shuffle=False)
 
-    interleave = tf.contrib.data.parallel_interleave(
+    interleave = tf.data.experimental.parallel_interleave(
         tf.data.TFRecordDataset,
         cycle_length=4,
         block_length=100000,
