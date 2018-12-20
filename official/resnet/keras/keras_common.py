@@ -105,7 +105,8 @@ def get_optimizer():
     learning_rate = BASE_LEARNING_RATE * FLAGS.batch_size / 256
     optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
   else:
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
+    # optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
+    optimizer = gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
 
   return optimizer
 
