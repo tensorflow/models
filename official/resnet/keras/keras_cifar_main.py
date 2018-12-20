@@ -18,11 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import time
-
 from absl import app as absl_app
 from absl import flags
-import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
@@ -68,6 +65,8 @@ def parse_record_keras(raw_record, is_training, dtype):
   The input record is parsed into a label and image, and the image is passed
   through preprocessing steps (cropping, flipping, and so on).
 
+  This method converts the label to onhot to fit the loss function.
+
   Args:
     raw_record: scalar Tensor tf.string containing a serialized
       Example protocol buffer.
@@ -78,7 +77,7 @@ def parse_record_keras(raw_record, is_training, dtype):
     Tuple with processed image tensor and one-hot-encoded label tensor.
   """
   image, label = cifar_main.parse_record(raw_record, is_training, dtype)
-  label = tf.sparse_to_dense(label, (cifar_main._NUM_CLASSES,), 1)
+  label = tf.sparse_to_dense(label, (cifar_main.NUM_CLASSES,), 1)
   return image, label
 
 
@@ -105,26 +104,26 @@ def run(flags_obj):
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
     synth_input_fn = resnet_run_loop.get_synth_input_fn(
-        cifar_main._HEIGHT, cifar_main._WIDTH,
-        cifar_main._NUM_CHANNELS, cifar_main._NUM_CLASSES,
+        cifar_main.HEIGHT, cifar_main.WIDTH,
+        cifar_main.NUM_CHANNELS, cifar_main.NUM_CLASSES,
         dtype=flags_core.get_tf_dtype(flags_obj))
     train_input_dataset = synth_input_fn(
         True,
         flags_obj.data_dir,
         batch_size=per_device_batch_size,
-        height=cifar_main._HEIGHT,
-        width=cifar_main._WIDTH,
-        num_channels=cifar_main._NUM_CHANNELS,
-        num_classes=cifar_main._NUM_CLASSES,
+        height=cifar_main.HEIGHT,
+        width=cifar_main.WIDTH,
+        num_channels=cifar_main.NUM_CHANNELS,
+        num_classes=cifar_main.NUM_CLASSES,
         dtype=dtype)
     eval_input_dataset = synth_input_fn(
         False,
         flags_obj.data_dir,
         batch_size=per_device_batch_size,
-        height=cifar_main._HEIGHT,
-        width=cifar_main._WIDTH,
-        num_channels=cifar_main._NUM_CHANNELS,
-        num_classes=cifar_main._NUM_CLASSES,
+        height=cifar_main.HEIGHT,
+        width=cifar_main.WIDTH,
+        num_channels=cifar_main.NUM_CHANNELS,
+        num_classes=cifar_main.NUM_CLASSES,
         dtype=dtype)
   # pylint: enable=protected-access
 
@@ -144,20 +143,22 @@ def run(flags_obj):
         parse_record_fn=parse_record_keras)
 
   optimizer = keras_common.get_optimizer()
-  strategy = keras_common.get_dist_strategy()
+  strategy = distribution_utils.get_distribution_strategy(
+    flags_obj.num_gpus, flags_obj.use_one_device_strategy)
 
   model = resnet56.ResNet56(input_shape=(32, 32, 3),
-          classes=cifar_main._NUM_CLASSES)
+          classes=cifar_main.NUM_CLASSES)
 
   model.compile(loss='categorical_crossentropy',
                 optimizer=optimizer,
                 metrics=['categorical_accuracy'],
+                strategy=strategy)
 
-  time_callback, tensorboard_callback, lr_callback = keras_common.get_fit_callbacks(
-      learning_rate_schedule)
+  time_callback, tensorboard_callback, lr_callback = keras_common.get_callbacks(
+      learning_rate_schedule, cifar_main.NUM_IMAGES['train'])
 
-  steps_per_epoch = cifar_main._NUM_IMAGES['train'] // flags_obj.batch_size
-  num_eval_steps = (cifar_main._NUM_IMAGES['validation'] //
+  steps_per_epoch = cifar_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  num_eval_steps = (cifar_main.NUM_IMAGES['validation'] //
                     flags_obj.batch_size)
 
   history = model.fit(train_input_dataset,
@@ -176,7 +177,6 @@ def run(flags_obj):
                                steps=num_eval_steps,
                                verbose=1)
 
-  print('Test loss:', eval_output[0])
   stats = keras_common.analyze_fit_and_eval_result(history, eval_output)
 
   return stats
@@ -188,6 +188,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.DEBUG)
+  tf.logging.set_verbosity(tf.logging.INFO)
   cifar_main.define_cifar_flags()
   absl_app.run(main)

@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Common util functions an classes used by both keras cifar and imagenet."""
+"""Common util functions and classes used by both keras cifar and imagenet."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -20,13 +20,10 @@ from __future__ import print_function
 
 import time
 
-from absl import app as absl_app
 from absl import flags
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet import imagenet_main
-from official.utils.misc import distribution_utils
 from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
 
 
@@ -37,7 +34,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
 
   def __init__(self, batch_size):
-    """Callback for Keras models.
+    """Callback for logging performance (# image/second).
 
     Args:
       batch_size: Total batch size.
@@ -45,17 +42,11 @@ class TimeHistory(tf.keras.callbacks.Callback):
     """
     self._batch_size = batch_size
     super(TimeHistory, self).__init__()
+    self.log_batch_size = 100
 
   def on_train_begin(self, logs=None):
-    self.epoch_times_secs = []
     self.batch_times_secs = []
     self.record_batch = True
-
-  def on_epoch_begin(self, epoch, logs=None):
-    self.epoch_time_start = time.time()
-
-  def on_epoch_end(self, epoch, logs=None):
-    self.epoch_times_secs.append(time.time() - self.epoch_time_start)
 
   def on_batch_begin(self, batch, logs=None):
     if self.record_batch:
@@ -63,10 +54,10 @@ class TimeHistory(tf.keras.callbacks.Callback):
       self.record_batch = False
 
   def on_batch_end(self, batch, logs=None):
-    n = 100
-    if batch % n == 0:
+    if batch % self.log_batch_size == 0:
       last_n_batches = time.time() - self.batch_time_start
-      examples_per_second = (self._batch_size * n) / last_n_batches
+      examples_per_second = 
+        (self._batch_size * self.log_batch_size) / last_n_batches
       self.batch_times_secs.append(last_n_batches)
       self.record_batch = True
       # TODO(anjalisridhar): add timestamp as well.
@@ -95,8 +86,8 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     self.prev_lr = -1
 
   def on_epoch_begin(self, epoch, logs=None):
-    #if not hasattr(self.model.optimizer, 'learning_rate'):
-    #  raise ValueError('Optimizer must have a "learning_rate" attribute.')
+    if not hasattr(self.model.optimizer, 'learning_rate'):
+      raise ValueError('Optimizer must have a "learning_rate" attribute.')
     self.epochs += 1
 
   def on_batch_begin(self, batch, logs=None):
@@ -120,31 +111,16 @@ def get_optimizer():
   return optimizer
 
 
-def get_dist_strategy():
-  if FLAGS.num_gpus == 1 and not FLAGS.use_one_device_strategy:
-    print('Not using distribution strategies.')
-    strategy = None
-  elif FLAGS.num_gpus > 1 and FLAGS.use_one_device_strategy:
-    rase ValueError("When %d GPUs are specified, use_one_device_strategy'
-        'flag cannot be set to True.")
-  else:
-    strategy = distribution_utils.get_distribution_strategy(
-        num_gpus=FLAGS.num_gpus)
-
-  return strategy
-
-
-def get_fit_callbacks(learning_rate_schedule_fn):
+def get_callbacks(learning_rate_schedule_fn, num_images):
   time_callback = TimeHistory(FLAGS.batch_size)
 
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
     log_dir=FLAGS.model_dir)
-    #update_freq="batch")  # Add this if want per batch logging.
 
   lr_callback = LearningRateBatchScheduler(
     learning_rate_schedule_fn,
     batch_size=FLAGS.batch_size,
-    num_images=imagenet_main._NUM_IMAGES['train'])
+    num_images=num_images)
 
   return time_callback, tensorboard_callback, lr_callback
 
@@ -155,6 +131,7 @@ def analyze_fit_and_eval_result(history, eval_output):
   stats['training_loss'] = history.history['loss'][-1]
   stats['training_accuracy_top_1'] = history.history['categorical_accuracy'][-1]
 
+  print('Test loss:{}'.format(stats['']))
   print('top_1 accuracy:{}'.format(stats['accuracy_top_1']))
   print('top_1_training_accuracy:{}'.format(stats['training_accuracy_top_1']))
 

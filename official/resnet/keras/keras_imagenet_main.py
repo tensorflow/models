@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,15 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import time
-
 from absl import app as absl_app
 from absl import flags
-import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
-from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet50
@@ -104,22 +100,22 @@ def run_imagenet_with_keras(flags_obj):
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
     synth_input_fn = resnet_run_loop.get_synth_input_fn(
-        imagenet_main._DEFAULT_IMAGE_SIZE, imagenet_main._DEFAULT_IMAGE_SIZE,
-        imagenet_main._NUM_CHANNELS, imagenet_main._NUM_CLASSES,
+        imagenet_main.DEFAULT_IMAGE_SIZE, imagenet_main.DEFAULT_IMAGE_SIZE,
+        imagenet_main.NUM_CHANNELS, imagenet_main.NUM_CLASSES,
         dtype=flags_core.get_tf_dtype(flags_obj))
     train_input_dataset = synth_input_fn(
         batch_size=per_device_batch_size,
-        height=imagenet_main._DEFAULT_IMAGE_SIZE,
-        width=imagenet_main._DEFAULT_IMAGE_SIZE,
-        num_channels=imagenet_main._NUM_CHANNELS,
-        num_classes=imagenet_main._NUM_CLASSES,
+        height=imagenet_main.DEFAULT_IMAGE_SIZE,
+        width=imagenet_main.DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_main.NUM_CHANNELS,
+        num_classes=imagenet_main.NUM_CLASSES,
         dtype=dtype)
     eval_input_dataset = synth_input_fn(
         batch_size=per_device_batch_size,
-        height=imagenet_main._DEFAULT_IMAGE_SIZE,
-        width=imagenet_main._DEFAULT_IMAGE_SIZE,
-        num_channels=imagenet_main._NUM_CHANNELS,
-        num_classes=imagenet_main._NUM_CLASSES,
+        height=imagenet_main.DEFAULT_IMAGE_SIZE,
+        width=imagenet_main.DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_main.NUM_CHANNELS,
+        num_classes=imagenet_main.NUM_CLASSES,
         dtype=dtype)
   # pylint: enable=protected-access
 
@@ -140,20 +136,21 @@ def run_imagenet_with_keras(flags_obj):
 
 
   optimizer = keras_common.get_optimizer()
-  strategy = keras_common.get_dist_strategy()
+  strategy = distribution_utils.get_distribution_strategy(
+    flags_obj.num_gpus, flags_obj.use_one_device_strategy)
 
-  model = resnet50.ResNet50(num_classes=imagenet_main._NUM_CLASSES)
+  model = resnet50.ResNet50(num_classes=imagenet_main.NUM_CLASSES)
 
   model.compile(loss='categorical_crossentropy',
                 optimizer=optimizer,
                 metrics=['categorical_accuracy'],
                 distribute=strategy)
 
-  time_callback, tensorboard_callback, lr_callback = keras_common.get_fit_callbacks(
-      learning_rate_schedule)
+  time_callback, tensorboard_callback, lr_callback = keras_common.get_callbacks(
+      learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])
 
-  steps_per_epoch = imagenet_main._NUM_IMAGES['train'] // flags_obj.batch_size
-  num_eval_steps = (imagenet_main._NUM_IMAGES['validation'] //
+  steps_per_epoch = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  num_eval_steps = (imagenet_main.NUM_IMAGES['validation'] //
                   flags_obj.batch_size)
 
   history = model.fit(train_input_dataset,
@@ -172,7 +169,6 @@ def run_imagenet_with_keras(flags_obj):
                                steps=num_eval_steps,
                                verbose=1)
 
-  print('Test loss:', eval_output[0])
   stats = keras_common.analyze_fit_and_eval_result(history, eval_output)
 
   return stats

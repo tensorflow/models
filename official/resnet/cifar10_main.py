@@ -29,13 +29,13 @@ from official.utils.logs import logger
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
 
-_HEIGHT = 32
-_WIDTH = 32
-_NUM_CHANNELS = 3
-_DEFAULT_IMAGE_BYTES = _HEIGHT * _WIDTH * _NUM_CHANNELS
+HEIGHT = 32
+WIDTH = 32
+NUM_CHANNELS = 3
+_DEFAULT_IMAGE_BYTES = HEIGHT * WIDTH * NUM_CHANNELS
 # The record is the image plus a one-byte label
 _RECORD_BYTES = _DEFAULT_IMAGE_BYTES + 1
-_NUM_CLASSES = 10
+NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
 # TODO(tobyboyd): Change to best practice 45K(train)/5K(val)/10K(test) splits.
@@ -79,7 +79,7 @@ def parse_record(raw_record, is_training, dtype):
   # The remaining bytes after the label represent the image, which we reshape
   # from [depth * height * width] to [depth, height, width].
   depth_major = tf.reshape(record_vector[1:_RECORD_BYTES],
-                           [_NUM_CHANNELS, _HEIGHT, _WIDTH])
+                           [NUM_CHANNELS, HEIGHT, WIDTH])
 
   # Convert from [depth, height, width] to [height, width, depth], and cast as
   # float32.
@@ -96,10 +96,10 @@ def preprocess_image(image, is_training):
   if is_training:
     # Resize the image to add four extra pixels on each side.
     image = tf.image.resize_image_with_crop_or_pad(
-        image, _HEIGHT + 8, _WIDTH + 8)
+        image, HEIGHT + 8, WIDTH + 8)
 
-    # Randomly crop a [_HEIGHT, _WIDTH] section of the image.
-    image = tf.random_crop(image, [_HEIGHT, _WIDTH, _NUM_CHANNELS])
+    # Randomly crop a [HEIGHT, WIDTH] section of the image.
+    image = tf.random_crop(image, [HEIGHT, WIDTH, NUM_CHANNELS])
 
     # Randomly flip the image horizontally.
     image = tf.image.random_flip_left_right(image)
@@ -145,7 +145,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 
 def get_synth_input_fn(dtype):
   return resnet_run_loop.get_synth_input_fn(
-      _HEIGHT, _WIDTH, _NUM_CHANNELS, _NUM_CLASSES, dtype=dtype)
+      HEIGHT, WIDTH, NUM_CHANNELS, NUM_CLASSES, dtype=dtype)
 
 
 ###############################################################################
@@ -154,7 +154,7 @@ def get_synth_input_fn(dtype):
 class Cifar10Model(resnet_model.Model):
   """Model class with appropriate defaults for CIFAR-10 data."""
 
-  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
+  def __init__(self, resnet_size, data_format=None, num_classes=NUM_CLASSES,
                resnet_version=resnet_model.DEFAULT_VERSION,
                dtype=resnet_model.DEFAULT_DTYPE):
     """These are the parameters that work for CIFAR-10 data.
@@ -196,7 +196,7 @@ class Cifar10Model(resnet_model.Model):
 
 def cifar10_model_fn(features, labels, mode, params):
   """Model function for CIFAR-10."""
-  features = tf.reshape(features, [-1, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+  features = tf.reshape(features, [-1, HEIGHT, WIDTH, NUM_CHANNELS])
   # Learning rate schedule follows arXiv:1512.03385 for ResNet-56 and under.
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
@@ -261,7 +261,7 @@ def run_cifar(flags_obj):
                     input_fn)
   resnet_run_loop.resnet_main(
       flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
-      shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])
+      shape=[HEIGHT, WIDTH, NUM_CHANNELS])
 
 
 def main(_):
