@@ -127,19 +127,15 @@ def train_input_fn(params):
   # computed according to the input pipeline deployment. See
   # `tf.contrib.tpu.RunConfig` for details.
   ds = dataset.train(data_dir).cache().repeat().shuffle(
-      buffer_size=50000).apply(
-          tf.contrib.data.batch_and_drop_remainder(batch_size))
-  images, labels = ds.make_one_shot_iterator().get_next()
-  return images, labels
+      buffer_size=50000).batch(batch_size, drop_remainder=True)
+  return ds
 
 
 def eval_input_fn(params):
   batch_size = params["batch_size"]
   data_dir = params["data_dir"]
-  ds = dataset.test(data_dir).apply(
-      tf.contrib.data.batch_and_drop_remainder(batch_size))
-  images, labels = ds.make_one_shot_iterator().get_next()
-  return images, labels
+  ds = dataset.test(data_dir).batch(batch_size, drop_remainder=True)
+  return ds
 
 
 def predict_input_fn(params):
