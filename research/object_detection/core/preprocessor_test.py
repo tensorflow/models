@@ -1734,7 +1734,7 @@ class PreprocessorTest(tf.test.TestCase):
     }
 
     preprocessor_arg_map = preprocessor.get_default_func_arg_map(
-        include_label_scores=True,
+        include_label_weights=True,
         include_instance_masks=True)
 
     preprocessing_options = [

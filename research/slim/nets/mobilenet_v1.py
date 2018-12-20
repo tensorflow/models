@@ -263,7 +263,6 @@ def mobilenet_v1_base(inputs,
             net = _fixed_padding(net, conv_def.kernel)
           net = slim.conv2d(net, depth(conv_def.depth), conv_def.kernel,
                             stride=conv_def.stride,
-                            normalizer_fn=slim.batch_norm,
                             scope=end_point)
           end_points[end_point] = net
           if end_point == final_endpoint:
@@ -280,7 +279,6 @@ def mobilenet_v1_base(inputs,
                                       depth_multiplier=1,
                                       stride=layer_stride,
                                       rate=layer_rate,
-                                      normalizer_fn=slim.batch_norm,
                                       scope=end_point)
 
           end_points[end_point] = net
@@ -291,7 +289,6 @@ def mobilenet_v1_base(inputs,
 
           net = slim.conv2d(net, depth(conv_def.depth), [1, 1],
                             stride=1,
-                            normalizer_fn=slim.batch_norm,
                             scope=end_point)
 
           end_points[end_point] = net
@@ -432,7 +429,8 @@ def mobilenet_v1_arg_scope(
     regularize_depthwise=False,
     batch_norm_decay=0.9997,
     batch_norm_epsilon=0.001,
-    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS,
+    normalizer_fn=slim.batch_norm):
   """Defines the default MobilenetV1 arg scope.
 
   Args:
@@ -446,6 +444,7 @@ def mobilenet_v1_arg_scope(
       in batch norm.
     batch_norm_updates_collections: Collection for the update ops for
       batch norm.
+    normalizer_fn: Normalization function to apply after convolution.
 
   Returns:
     An `arg_scope` to use for the mobilenet v1 model.
@@ -469,7 +468,7 @@ def mobilenet_v1_arg_scope(
     depthwise_regularizer = None
   with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                       weights_initializer=weights_init,
-                      activation_fn=tf.nn.relu6, normalizer_fn=slim.batch_norm):
+                      activation_fn=tf.nn.relu6, normalizer_fn=normalizer_fn):
     with slim.arg_scope([slim.batch_norm], **batch_norm_params):
       with slim.arg_scope([slim.conv2d], weights_regularizer=regularizer):
         with slim.arg_scope([slim.separable_conv2d],

@@ -216,7 +216,7 @@ tf_record_input_reader: { input_path: '${SPLIT}_detections.tfrecord@${NUM_SHARDS
 " > ${SPLIT}_eval_metrics/${SPLIT}_input_config.pbtxt
 
 echo "
-metrics_set: 'open_images_V2_detection_metrics'
+metrics_set: 'oid_V2_detection_metrics'
 " > ${SPLIT}_eval_metrics/${SPLIT}_eval_config.pbtxt
 ```
 

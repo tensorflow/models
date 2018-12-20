@@ -47,7 +47,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     if batch_size == 1:
       key = tf.constant('image1')
     else:
-      key = tf.constant([str(range(batch_size))])
+      key = tf.constant([str(i) for i in range(batch_size)])
     detection_boxes = tf.tile(tf.constant([[[0., 0., 1., 1.]]]),
                               multiples=[batch_size, 1, 1])
     detection_scores = tf.tile(tf.constant([[0.8]]), multiples=[batch_size, 1])

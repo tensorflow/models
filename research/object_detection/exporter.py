@@ -195,6 +195,8 @@ def add_output_tensor_nodes(postprocessed_tensors,
       'detection_classes': [batch, max_detections]
       'detection_masks': [batch, max_detections, mask_height, mask_width]
         (optional).
+      'detection_keypoints': [batch, max_detections, num_keypoints, 2]
+        (optional).
       'num_detections': [batch]
     output_collection_name: Name of collection to add output tensors to.
 

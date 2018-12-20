@@ -119,6 +119,10 @@ class ConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
     if other_heads:
       self._prediction_heads.update(other_heads)
 
+    # We generate a consistent ordering for the prediction head names,
+    # So that all workers build the model in the exact same order
+    self._sorted_head_names = sorted(self._prediction_heads.keys())
+
     self._conv_hyperparams = conv_hyperparams
     self._min_depth = min_depth
     self._max_depth = max_depth
@@ -187,7 +191,7 @@ class ConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
       for layer in self._shared_nets[index]:
         net = layer(net)
 
-      for head_name in self._prediction_heads:
+      for head_name in self._sorted_head_names:
         head_obj = self._prediction_heads[head_name][index]
         prediction = head_obj(net)
         predictions[head_name].append(prediction)
