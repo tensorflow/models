@@ -39,7 +39,7 @@ NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
 # TODO(tobyboyd): Change to best practice 45K(train)/5K(val)/10K(test) splits.
-_NUM_IMAGES = {
+NUM_IMAGES = {
     'train': 50000,
     'validation': 10000,
 }
@@ -134,7 +134,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
       dataset=dataset,
       is_training=is_training,
       batch_size=batch_size,
-      shuffle_buffer=_NUM_IMAGES['train'],
+      shuffle_buffer=NUM_IMAGES['train'],
       parse_record_fn=parse_record_fn,
       num_epochs=num_epochs,
       dtype=dtype,
@@ -200,7 +200,7 @@ def cifar10_model_fn(features, labels, mode, params):
   # Learning rate schedule follows arXiv:1512.03385 for ResNet-56 and under.
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
-      num_images=_NUM_IMAGES['train'], boundary_epochs=[91, 136, 182],
+      num_images=NUM_IMAGES['train'], boundary_epochs=[91, 136, 182],
       decay_rates=[1, 0.1, 0.01, 0.001])
 
   # Weight decay of 2e-4 diverges from 1e-4 decay used in the ResNet paper

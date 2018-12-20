@@ -56,8 +56,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
   def on_batch_end(self, batch, logs=None):
     if batch % self.log_batch_size == 0:
       last_n_batches = time.time() - self.batch_time_start
-      examples_per_second = 
-        (self._batch_size * self.log_batch_size) / last_n_batches
+      examples_per_second = (self._batch_size * self.log_batch_size) / last_n_batches
       self.batch_times_secs.append(last_n_batches)
       self.record_batch = True
       # TODO(anjalisridhar): add timestamp as well.
@@ -131,8 +130,14 @@ def analyze_fit_and_eval_result(history, eval_output):
   stats['training_loss'] = history.history['loss'][-1]
   stats['training_accuracy_top_1'] = history.history['categorical_accuracy'][-1]
 
-  print('Test loss:{}'.format(stats['']))
+  print('Test loss:{}'.format(stats['eval_loss']))
   print('top_1 accuracy:{}'.format(stats['accuracy_top_1']))
   print('top_1_training_accuracy:{}'.format(stats['training_accuracy_top_1']))
 
   return stats
+
+def define_keras_flags():
+  flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
+  flags.DEFINE_integer(
+      name="train_steps", default=None,
+      help="The number of steps to run for training")

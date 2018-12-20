@@ -22,7 +22,7 @@ import tensorflow as tf
 
 
 def get_distribution_strategy(
-  num_gpus, all_reduce_alg=None, use_one_device_strategy):
+  num_gpus, all_reduce_alg=None, use_one_device_strategy=True):
   """Return a DistributionStrategy for running the model.
 
   Args:
@@ -31,8 +31,8 @@ def get_distribution_strategy(
       See tf.contrib.distribute.AllReduceCrossDeviceOps for available
       algorithms. If None, DistributionStrategy will choose based on device
       topology.
-    use_one_device_strategy: Should only be set to Truen when num_gpus is 1. 
-      If True, then use OneDeviceStrategy; otherwise, do not use any 
+    use_one_device_strategy: Should only be set to Truen when num_gpus is 1.
+      If True, then use OneDeviceStrategy; otherwise, do not use any
       distribution strategy.
 
   Returns:
@@ -47,7 +47,7 @@ def get_distribution_strategy(
   elif num_gpus == 1:
     return None
   elif use_one_device_strategy:
-    rase ValueError("When %d GPUs are specified, use_one_device_strategy"
+    raise ValueError("When %d GPUs are specified, use_one_device_strategy"
         " flag cannot be set to True.".format(num_gpus))
   else: # num_gpus > 1 and not use_one_device_strategy
     if all_reduce_alg:

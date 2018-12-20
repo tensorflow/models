@@ -152,18 +152,24 @@ def run(flags_obj):
   model.compile(loss='categorical_crossentropy',
                 optimizer=optimizer,
                 metrics=['categorical_accuracy'],
-                strategy=strategy)
+                distribute=strategy)
 
   time_callback, tensorboard_callback, lr_callback = keras_common.get_callbacks(
       learning_rate_schedule, cifar_main.NUM_IMAGES['train'])
 
-  steps_per_epoch = cifar_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_steps = cifar_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_epochs = flags_obj.train_epochs
+
+  if flags_obj.train_steps:
+    train_steps = min(flags_obj.train_steps, train_steps)
+    train_epochs = 1
+
   num_eval_steps = (cifar_main.NUM_IMAGES['validation'] //
                     flags_obj.batch_size)
 
   history = model.fit(train_input_dataset,
-                      epochs=flags_obj.train_epochs,
-                      steps_per_epoch=steps_per_epoch,
+                      epochs=train_epochs,
+                      steps_per_epoch=train_steps,
                       callbacks=[
                           time_callback,
                           lr_callback,
@@ -190,4 +196,5 @@ def main(_):
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
   cifar_main.define_cifar_flags()
+  keras_common.define_keras_flags()
   absl_app.run(main)

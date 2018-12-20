@@ -632,7 +632,6 @@ def define_resnet_flags(resnet_size_choices=None):
       name='use_one_device_strategy', default=True,
       help=flags_core.help_wrap('Set to False to not use distribution '
                                 'strategies.'))
-  flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='use_tf_momentum_optimizer', default=False,
           help='Use tf MomentumOptimizer.')
 

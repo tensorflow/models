@@ -68,12 +68,12 @@ def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch, batc
 
 
 def parse_record_keras(raw_record, is_training, dtype):
-	"""Adjust the shape of label."""
+  """Adjust the shape of label."""
   image, label = imagenet_main.parse_record(raw_record, is_training, dtype)
   # Subtract one so that labels are in [0, 1000), and cast to float32 for
   # Keras model.
   label = tf.cast(tf.cast(tf.reshape(label, shape=[1]), dtype=tf.int32) - 1,
-                  dtype=tf.float32)
+      dtype=tf.float32)
   return image, label
 
 
@@ -153,9 +153,16 @@ def run_imagenet_with_keras(flags_obj):
   num_eval_steps = (imagenet_main.NUM_IMAGES['validation'] //
                   flags_obj.batch_size)
 
+  train_steps = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_epochs = flags_obj.train_epochs
+
+  if flags_obj.train_steps:
+    train_steps = min(flags_obj.train_steps, train_steps)
+    train_epochs = 1
+
   history = model.fit(train_input_dataset,
-                      epochs=flags_obj.train_epochs,
-                      steps_per_epoch=steps_per_epoch,
+                      epochs=train_epochs,
+                      steps_per_epoch=train_steps,
                       callbacks=[
                         time_callback,
                         lr_callback,
@@ -182,4 +189,5 @@ def main(_):
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
   imagenet_main.define_imagenet_flags()
+  keras_common.define_keras_flags()
   absl_app.run(main)
