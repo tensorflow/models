@@ -129,8 +129,7 @@ class BaseTest(tf.test.TestCase):
   def test_end_to_end(self):
     params = self.make_params(train_epochs=1)
     _, _, producer = data_preprocessing.instantiate_pipeline(
-        dataset=DATASET, data_dir=self.temp_data_dir, deterministic=False,
-        params=params)
+        dataset=DATASET, data_dir=self.temp_data_dir, params=params)
 
     producer.start()
     producer.join()
@@ -233,8 +232,7 @@ class BaseTest(tf.test.TestCase):
     train_epochs = 5
     params = self.make_params(train_epochs=train_epochs)
     _, _, producer = data_preprocessing.instantiate_pipeline(
-        dataset=DATASET, data_dir=self.temp_data_dir, deterministic=False,
-        params=params)
+        dataset=DATASET, data_dir=self.temp_data_dir, params=params)
 
     producer.start()
 
