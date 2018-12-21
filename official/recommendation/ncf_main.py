@@ -195,6 +195,8 @@ def run_ncf(_):
 
   if FLAGS.seed is not None:
     np.random.seed(FLAGS.seed)
+    tf.logging.warning("Values may still vary from run to run due to thread "
+                       "execution ordering.")
 
   params = parse_flags(FLAGS)
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
@@ -207,8 +209,7 @@ def run_ncf(_):
     num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
   else:
     num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
-        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
-        deterministic=FLAGS.seed is not None, params=params)
+        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params)
 
     num_train_steps = (producer.train_batches_per_epoch //
                        params["batches_per_step"])

@@ -197,15 +197,14 @@ def _filter_index_sort(raw_rating_path, cache_path, match_mlperf):
   return data, valid_cache
 
 
-def instantiate_pipeline(dataset, data_dir, deterministic, params):
-  # type: (str, str, bool, dict) -> (NCFDataset, typing.Callable)
+def instantiate_pipeline(dataset, data_dir, params):
+  # type: (str, str, dict) -> (NCFDataset, typing.Callable)
   """Load and digest data CSV into a usable form.
 
   Args:
     dataset: The name of the dataset to be used.
     data_dir: The root directory of the dataset.
-    deterministic: Try to enforce repeatable behavior, even at the cost of
-      performance.
+    params: dict of parameters for the run.
   """
   tf.logging.info("Beginning data preprocessing.")
 
@@ -224,9 +223,6 @@ def instantiate_pipeline(dataset, data_dir, deterministic, params):
   if num_items != len(item_map):
     raise ValueError("Expected to find {} items, but found {}".format(
         num_items, len(item_map)))
-
-  if deterministic:
-    raise NotImplementedError("Fixed seed behavior has not been implemented.")
 
   producer = data_pipeline.MaterializedDataConstructor(
       maximum_number_epochs=params["train_epochs"],
