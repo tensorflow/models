@@ -42,28 +42,26 @@ class TimeHistory(tf.keras.callbacks.Callback):
     """
     self._batch_size = batch_size
     super(TimeHistory, self).__init__()
-    self.log_batch_size = 100
+    self.log_steps = 100
 
   def on_train_begin(self, logs=None):
-    self.batch_times_secs = []
     self.record_batch = True
 
   def on_batch_begin(self, batch, logs=None):
     if self.record_batch:
-      self.batch_time_start = time.time()
+      self.start_time= time.time()
       self.record_batch = False
 
   def on_batch_end(self, batch, logs=None):
-    if batch % self.log_batch_size == 0:
-      last_n_batches = time.time() - self.batch_time_start
-      examples_per_second = (self._batch_size * self.log_batch_size) / last_n_batches
-      self.batch_times_secs.append(last_n_batches)
+    if batch % self.log_steps == 0:
+      elapsed_time = time.time() - self.start_time
+      examples_per_second = (self._batch_size * self.log_steps) / elapsed_time
       self.record_batch = True
       # TODO(anjalisridhar): add timestamp as well.
       if batch != 0:
         tf.logging.info("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
                         "'images_per_second': %f}" %
-                        (batch, last_n_batches, examples_per_second))
+                        (batch, elapsed_time, examples_per_second))
 
 class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
   """Callback to update learning rate on every batch (not epoch boundaries).
@@ -95,20 +93,14 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
       raise ValueError('The output of the "schedule" function should be float.')
     if lr != self.prev_lr:
       self.model.optimizer.learning_rate = lr  # lr should be a float here
-      # tf.keras.backend.set_value(self.model.optimizer.learning_rate, lr)
       self.prev_lr = lr
       tf.logging.debug('Epoch %05d Batch %05d: LearningRateBatchScheduler change '
                    'learning rate to %s.', self.epochs, batch, lr)
 
 def get_optimizer():
-  if FLAGS.use_tf_momentum_optimizer:
-    learning_rate = BASE_LEARNING_RATE * FLAGS.batch_size / 256
-    optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
-  else:
-    # optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
-    optimizer = gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
-
-  return optimizer
+  # The learning rate set here is a placeholder and not use. It will be overwritten
+  # at the beginning of each batch by callback
+  return gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
 
 
 def get_callbacks(learning_rate_schedule_fn, num_images):
@@ -124,25 +116,15 @@ def get_callbacks(learning_rate_schedule_fn, num_images):
 
   return time_callback, tensorboard_callback, lr_callback
 
-def analyze_fit_and_eval_result(history, eval_output):
-  stats = {}
-  stats['accuracy_top_1'] = eval_output[1]
-  stats['eval_loss'] = eval_output[0]
-  stats['training_loss'] = history.history['loss'][-1]
-  stats['training_accuracy_top_1'] = history.history['categorical_accuracy'][-1]
-
-  print('Test loss:{}'.format(stats['eval_loss']))
-  print('top_1 accuracy:{}'.format(stats['accuracy_top_1']))
-  print('top_1_training_accuracy:{}'.format(stats['training_accuracy_top_1']))
-
-  return stats
 
 def define_keras_flags():
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_integer(
       name="train_steps", default=None,
-      help="The number of steps to run for training")
+      help="The number of steps to run for training. If it is larger than "
+      "# batches per epoch, then use # bathes per epoch. When this flag is "
+      "set, only one epoch is going to run for training.")
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
@@ -152,7 +134,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   This input_fn returns a data set that iterates over a set of random data and
   bypasses all preprocessing, e.g. jpeg decode and copy. The host to device
   copy is still included. This used to find the upper throughput bound when
-  tunning the full input pipeline.
+  tuning the full input pipeline.
 
   Args:
     height: Integer height that will be used to create a fake image tensor.

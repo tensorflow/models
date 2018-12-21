@@ -15,6 +15,7 @@
 """ResNet50 model for Keras.
 
 Adapted from tf.keras.applications.resnet50.ResNet50().
+This is ResNet model version 1.5.
 
 Related papers/blogs:
 - https://arxiv.org/abs/1512.03385
@@ -179,7 +180,7 @@ def conv_block(input_tensor,
   return x
 
 
-def ResNet50(num_classes):
+def resnet50(num_classes):
   """Instantiates the ResNet50 architecture.
 
   Args:

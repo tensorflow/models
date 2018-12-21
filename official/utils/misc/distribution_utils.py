@@ -22,7 +22,7 @@ import tensorflow as tf
 
 
 def get_distribution_strategy(
-  num_gpus, all_reduce_alg=None, use_one_device_strategy=True):
+  num_gpus, all_reduce_alg=None, turn_off_distribution_strategy=False):
   """Return a DistributionStrategy for running the model.
 
   Args:
@@ -31,25 +31,30 @@ def get_distribution_strategy(
       See tf.contrib.distribute.AllReduceCrossDeviceOps for available
       algorithms. If None, DistributionStrategy will choose based on device
       topology.
-    use_one_device_strategy: Should only be set to Truen when num_gpus is 1.
-      If True, then use OneDeviceStrategy; otherwise, do not use any
-      distribution strategy.
+      turn_off_distribution_strategy: when set to True, do not use any
+      distribution strategy. Note that when it is True, and num_gpus is
+      larger than 1, it will raise a ValueError.
 
   Returns:
     tf.contrib.distribute.DistibutionStrategy object.
+  Raises:
+    ValueError: if turn_off_distribution_strategy is True and num_gpus is
+    larger than 1
   """
-  if num_gpus == 0 and use_one_device_strategy:
-    return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
-  elif num_gpus == 0:
-    return None
-  elif num_gpus == 1 and use_one_device_strategy:
-    return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
+  if num_gpus == 0:
+      if turn_off_distribution_strategy:
+          return None
+      else:
+        return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
   elif num_gpus == 1:
-    return None
-  elif use_one_device_strategy:
-    raise ValueError("When %d GPUs are specified, use_one_device_strategy"
+    if turn_off_distribution_strategy:
+      return None
+    else:
+      return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
+  elif turn_off_distribution_strategy:
+    raise ValueError("When %d GPUs are specified, turn_off_distribution_strategy"
         " flag cannot be set to True.".format(num_gpus))
-  else: # num_gpus > 1 and not use_one_device_strategy
+  else: # num_gpus > 1 and not turn_off_distribution_strategy
     if all_reduce_alg:
       return tf.contrib.distribute.MirroredStrategy(
           num_gpus=num_gpus,

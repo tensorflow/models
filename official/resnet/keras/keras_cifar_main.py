@@ -25,7 +25,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import cifar10_main as cifar_main
 from official.resnet import resnet_run_loop
 from official.resnet.keras import keras_common
-from official.resnet.keras import resnet56
+from official.resnet.keras import resnet_cifar_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -39,8 +39,8 @@ LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
 def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch, batch_size):
   """Handles linear scaling rule, gradual warmup, and LR decay.
 
-  The learning rate starts at base learning_rate, then after 91, 136 and
-  182 epochs, the learning rate is divided by 10.
+  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the provided scaling
+  factor.
 
   Args:
     current_epoch: integer, current epoch indexed from 0.
@@ -65,7 +65,7 @@ def parse_record_keras(raw_record, is_training, dtype):
   The input record is parsed into a label and image, and the image is passed
   through preprocessing steps (cropping, flipping, and so on).
 
-  This method converts the label to onhot to fit the loss function.
+  This method converts the label to one hot to fit the loss function.
 
   Args:
     raw_record: scalar Tensor tf.string containing a serialized
@@ -127,9 +127,9 @@ def run(flags_obj):
 
   optimizer = keras_common.get_optimizer()
   strategy = distribution_utils.get_distribution_strategy(
-    flags_obj.num_gpus, flags_obj.use_one_device_strategy)
+    flags_obj.num_gpus, flags_obj.turn_off_distribution_strategy)
 
-  model = resnet56.ResNet56(input_shape=(32, 32, 3),
+  model = resnet_cifar_model.resnet56(input_shape=(32, 32, 3),
           classes=cifar_main.NUM_CLASSES)
 
   model.compile(loss='categorical_crossentropy',
@@ -150,26 +150,27 @@ def run(flags_obj):
   num_eval_steps = (cifar_main.NUM_IMAGES['validation'] //
                     flags_obj.batch_size)
 
+  validation_data = eval_input_dataset
+  if flags_obj.skip_eval:
+    num_eval_steps = None
+    validation_data = None
+
   history = model.fit(train_input_dataset,
-                      epochs=train_epochs,
-                      steps_per_epoch=train_steps,
-                      callbacks=[
-                          time_callback,
-                          lr_callback,
-                          tensorboard_callback
-                      ],
-                      validation_steps=num_eval_steps,
-                      validation_data=eval_input_dataset,
-                      verbose=1)
+      epochs=train_epochs,
+      steps_per_epoch=train_steps,
+      callbacks=[
+        time_callback,
+        lr_callback,
+        tensorboard_callback
+        ],
+      validation_steps=num_eval_steps,
+      validation_data=validation_data,
+      verbose=1)
 
   if not flags_obj.skip_eval:
-      eval_output = model.evaluate(eval_input_dataset,
-                                   steps=num_eval_steps,
-                                   verbose=1)
-
-  stats = keras_common.analyze_fit_and_eval_result(history, eval_output)
-
-  return stats
+    eval_output = model.evaluate(eval_input_dataset,
+                                 steps=num_eval_steps,
+                                 verbose=1)
 
 
 def main(_):
