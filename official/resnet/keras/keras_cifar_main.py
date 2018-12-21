@@ -101,46 +101,29 @@ def run(flags_obj):
   per_device_batch_size = distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
 
-  # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
-    synth_input_fn = resnet_run_loop.get_synth_input_fn(
-        cifar_main.HEIGHT, cifar_main.WIDTH,
-        cifar_main.NUM_CHANNELS, cifar_main.NUM_CLASSES,
+    input_fn = keras_common.get_synth_input_fn(
+        height=cifar_main.HEIGHT,
+        width=cifar_main.WIDTH,
+        num_channels=cifar_main.NUM_CHANNELS,
+        num_classes=cifar_main.NUM_CLASSES,
         dtype=flags_core.get_tf_dtype(flags_obj))
-    train_input_dataset = synth_input_fn(
-        True,
-        flags_obj.data_dir,
-        batch_size=per_device_batch_size,
-        height=cifar_main.HEIGHT,
-        width=cifar_main.WIDTH,
-        num_channels=cifar_main.NUM_CHANNELS,
-        num_classes=cifar_main.NUM_CLASSES,
-        dtype=dtype)
-    eval_input_dataset = synth_input_fn(
-        False,
-        flags_obj.data_dir,
-        batch_size=per_device_batch_size,
-        height=cifar_main.HEIGHT,
-        width=cifar_main.WIDTH,
-        num_channels=cifar_main.NUM_CHANNELS,
-        num_classes=cifar_main.NUM_CLASSES,
-        dtype=dtype)
-  # pylint: enable=protected-access
-
   else:
-    train_input_dataset = cifar_main.input_fn(
-        True,
-        flags_obj.data_dir,
-        batch_size=per_device_batch_size,
-        num_epochs=flags_obj.train_epochs,
-        parse_record_fn=parse_record_keras)
+    input_fn = cifar_main.input_fn
 
-    eval_input_dataset = cifar_main.input_fn(
-        False,
-        flags_obj.data_dir,
-        batch_size=per_device_batch_size,
-        num_epochs=flags_obj.train_epochs,
-        parse_record_fn=parse_record_keras)
+  train_input_dataset = input_fn(
+      is_training=True,
+      data_dir=flags_obj.data_dir,
+      batch_size=per_device_batch_size,
+      num_epochs=flags_obj.train_epochs,
+      parse_record_fn=parse_record_keras)
+
+  eval_input_dataset = input_fn(
+      is_training=False,
+      data_dir=flags_obj.data_dir,
+      batch_size=per_device_batch_size,
+      num_epochs=flags_obj.train_epochs,
+      parse_record_fn=parse_record_keras)
 
   optimizer = keras_common.get_optimizer()
   strategy = distribution_utils.get_distribution_strategy(
