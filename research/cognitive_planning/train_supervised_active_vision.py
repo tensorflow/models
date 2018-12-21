@@ -49,6 +49,7 @@ python train_supervised_active_vision.py
   --gin_params='ActiveVisionDatasetEnv.dataset_root="$datadir"' \
   --logtostderr
 """
+from __future__ import print_function
 
 import collections
 import os
@@ -182,7 +183,7 @@ def create_task_io_config(
   inputs[task_env.ModalityTypes.PREV_ACTION] = (tf.float32, [
       sequence_length, action_size + 1
   ])
-  print inputs
+  print(inputs)
   return tasks.UnrolledTaskIOConfig(
       inputs=inputs,
       output=(tf.float32, [sequence_length, action_size]),
@@ -366,7 +367,7 @@ def unroll_policy_for_eval(
   # logging.info('distance = %d, id = %s, #steps = %d', distances_to_goal[-1],
   output_path = os.path.join(output_folder, unique_id + '.npy')
   with tf.gfile.Open(output_path, 'w') as f:
-    print 'saving path information to {}'.format(output_path)
+    print('saving path information to {}'.format(output_path))
     np.save(f, {'states': states, 'distance': distances_to_goal})
   return states, distances_to_goal
 
@@ -425,7 +426,7 @@ def test():
     while not sv.should_stop():
       while True:
         new_checkpoint = tf.train.latest_checkpoint(FLAGS.logdir)
-        print 'new_checkpoint ', new_checkpoint
+        print('new_checkpoint ', new_checkpoint)
         if not new_checkpoint:
           time.sleep(1)
           continue
@@ -440,14 +441,14 @@ def test():
 
       checkpoint_step = int(new_checkpoint[new_checkpoint.rfind('-') + 1:])
       sv.saver.restore(sess, new_checkpoint)
-      print '--------------------'
-      print 'evaluating checkpoint {}'.format(new_checkpoint)
+      print('--------------------')
+      print('evaluating checkpoint {}'.format(new_checkpoint))
       folder_path = os.path.join(FLAGS.logdir, 'evals', str(checkpoint_step))
       if not tf.gfile.Exists(folder_path):
         tf.gfile.MakeDirs(folder_path)
       eval_stats = {c: [] for c in env.possible_targets}
       for test_iter in range(FLAGS.test_iters):
-        print 'evaluating {} of {}'.format(test_iter, FLAGS.test_iters)
+        print('evaluating {} of {}'.format(test_iter, FLAGS.test_iters))
         _, distance_to_goal = unroll_policy_for_eval(
             sess,
             env,
@@ -457,11 +458,11 @@ def test():
             FLAGS.max_eval_episode_length,
             folder_path,
         )
-        print 'goal = {}'.format(env.goal_string)
+        print('goal = {}'.format(env.goal_string))
         eval_stats[env.goal_string].append(float(distance_to_goal[-1] <= 7))
       eval_stats = {k: np.mean(v) for k, v in eval_stats.iteritems()}
       eval_stats['mean'] = np.mean(eval_stats.values())
-      print eval_stats
+      print(eval_stats)
       feed_dict = {summary_op[1][c]: eval_stats[c] for c in eval_stats}
       summary_str = sess.run(summary_op[0], feed_dict=feed_dict)
       writer = sv.summary_writer

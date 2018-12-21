@@ -19,6 +19,7 @@ import abc
 import numpy as np
 import tensorflow as tf
 import preprocessing
+from six.moves import xrange
 from tensorflow.contrib.slim.nets import resnet_v2
 
 slim = tf.contrib.slim

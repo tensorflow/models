@@ -21,6 +21,7 @@ tasks. See go/navigation_tasks for a list.
 
 import abc
 import collections
+import logging
 import math
 import threading
 import networkx as nx
