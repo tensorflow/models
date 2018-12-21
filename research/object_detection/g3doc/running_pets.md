@@ -316,5 +316,5 @@ dogs! There different things you can do now:
 
 1. [Test your exported model using the provided Jupyter notebook.](running_notebook.md)
 2. [Experiment with different model configurations.](configuring_jobs.md)
-3. [Bring in your own dataset](using_your_own_dataset.md)
+3. [Bring in your own dataset.](using_your_own_dataset.md)
 4. Train an object detector using your own data.
