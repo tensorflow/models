@@ -59,7 +59,7 @@ If that is your case, try the [manual](#Manual-protobuf-compiler-installation-an
 
 Download the
 [cocoapi](https://github.com/cocodataset/cocoapi) and
-copy the pycocotools subfolder to the tensorflow/models/research directory if
+copy the pycocotools subfolder to the <path_to_models>/research directory if
 you are interested in using COCO evaluation metrics. The default metrics are
 based on those used in Pascal VOC evaluation. To use the COCO object detection
 metrics add `metrics_set: "coco_detection_metrics"` to the `eval_config` message
@@ -79,11 +79,11 @@ cp -r pycocotools <path_to_models>/research/
 The Tensorflow Object Detection API uses Protobufs to configure model and
 training parameters. Before the framework can be used, the Protobuf libraries
 must be compiled. This should be done by running the following command from
-the tensorflow/models/research/ directory:
+the <path_to_models>/research/ directory:
 
 
 ``` bash
-# From tensorflow/models/research/
+# From <path_to_models>/research/
 protoc object_detection/protos/*.proto --python_out=.
 ```
 
@@ -96,7 +96,7 @@ protoc object_detection/protos/*.proto --python_out=.
 Download and install the 3.0 release of protoc, then unzip the file.
 
 ```bash
-# From tensorflow/models/research/
+# From <path_to_models>/research/
 wget -O protobuf.zip https://github.com/google/protobuf/releases/download/v3.0.0/protoc-3.0.0-linux-x86_64.zip
 unzip protobuf.zip
 ```
@@ -104,7 +104,7 @@ unzip protobuf.zip
 Run the compilation process again, but use the downloaded version of protoc
 
 ```bash
-# From tensorflow/models/research/
+# From <path_to_models>/research/
 ./bin/protoc object_detection/protos/*.proto --python_out=.
 ```
 
@@ -123,7 +123,7 @@ rm -f $PROTOC_ZIP
 Run the compilation process again:
 
 ``` bash
-# From tensorflow/models/research/
+# From <path_to_models>/research/
 protoc object_detection/protos/*.proto --python_out=.
 ```
 
@@ -135,7 +135,7 @@ tensorflow/models/research/:
 
 
 ``` bash
-# From tensorflow/models/research/
+# From <path_to_models>/research/
 export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
 ```
 
