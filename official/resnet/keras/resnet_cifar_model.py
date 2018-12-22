@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""ResNet50 model for Keras adapted from tf.keras.applications.ResNet50.
+"""ResNet56 model for Keras adapted from tf.keras.applications.ResNet50.
 
 # Reference:
 - [Deep Residual Learning for Image Recognition](
