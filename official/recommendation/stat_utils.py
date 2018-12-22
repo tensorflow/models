@@ -18,18 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import atexit
-from collections import deque
-import multiprocessing
 import os
-import struct
-import sys
-import threading
-import time
 
 import numpy as np
-
-from official.recommendation import popen_helper
 
 
 def random_int32():
@@ -37,8 +28,22 @@ def random_int32():
 
 
 def permutation(args):
+  """Fork safe permutation function.
+
+  This function can be called within a multiprocessing worker and give
+  appropriately random results.
+
+  Args:
+    args: A size two tuple that will unpacked into the size of the permutation
+      and the random seed. This form is used because starmap is not universally
+      available.
+
+  returns:
+    A NumPy array containing a random permutation.
+  """
   x, seed = args
-  seed = seed or struct.unpack("<L", os.urandom(4))[0]
+
+  # If seed is None NumPy will seed randomly.
   state = np.random.RandomState(seed=seed)  # pylint: disable=no-member
   output = np.arange(x, dtype=np.int32)
   state.shuffle(output)

@@ -114,7 +114,7 @@ def construct_estimator(model_dir, params):
 
 
 def log_and_get_hooks(eval_batch_size):
-  """Convenience method for hook and logger creation."""
+  """Convenience function for hook and logger creation."""
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
       FLAGS.hooks,
@@ -140,19 +140,16 @@ def log_and_get_hooks(eval_batch_size):
 
 
 def parse_flags(flags_obj):
-  """Convenience method to turn flags into params."""
+  """Convenience function to turn flags into params."""
   num_gpus = flags_core.get_num_gpus(flags_obj)
   num_devices = FLAGS.num_tpu_shards if FLAGS.tpu else num_gpus or 1
 
-  batch_size = distribution_utils.per_device_batch_size(
-      (int(flags_obj.batch_size) + num_devices - 1) //
-      num_devices * num_devices, num_devices)
+  batch_size = (flags_obj.batch_size + num_devices - 1) // num_devices
 
   eval_divisor = (rconst.NUM_EVAL_NEGATIVES + 1) * num_devices
-  eval_batch_size = int(flags_obj.eval_batch_size or flags_obj.batch_size or 1)
-  eval_batch_size = distribution_utils.per_device_batch_size(
-      (eval_batch_size + eval_divisor - 1) //
-      eval_divisor * eval_divisor, num_devices)
+  eval_batch_size = flags_obj.eval_batch_size or flags_obj.batch_size
+  eval_batch_size = ((eval_batch_size + eval_divisor - 1) //
+                     eval_divisor * eval_divisor // num_devices)
 
   return {
       "train_epochs": flags_obj.train_epochs,
