@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""ResNet56 model for Keras adapted from tf.keras.applications.ResNet50.
+"""ResNet50 model for Keras adapted from tf.keras.applications.ResNet50.
 
 # Reference:
 - [Deep Residual Learning for Image Recognition](
@@ -23,7 +23,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import warnings
 
 import tensorflow as tf
@@ -70,7 +69,12 @@ def _obtain_input_shape(input_shape,
   return input_shape
 
 
-def identity_building_block(input_tensor, kernel_size, filters, stage, block, training):
+def identity_building_block(input_tensor,
+                            kernel_size,
+                            filters,
+                            stage,
+                            block,
+                            training=None):
   """The identity block is the block that has no conv layer at shortcut.
 
   Arguments:
@@ -80,6 +84,8 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
     filters: list of integers, the filters of 3 conv layer at main path
     stage: integer, current stage label, used for generating layer names
     block: 'a','b'..., current block label, used for generating layer names
+    training: Only used if training keras model with Estimator.  In other
+      scenarios it is handled automatically.
 
   Returns:
     Output tensor for the block.
@@ -94,6 +100,7 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
 
   x = tf.keras.layers.Conv2D(filters1, kernel_size,
                              padding='same',
+                             kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              bias_regularizer=
@@ -103,11 +110,12 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
                                          name=bn_name_base + '2a',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=True)
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size,
                              padding='same',
+                             kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              bias_regularizer=
@@ -117,7 +125,7 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
                                          name=bn_name_base + '2b',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=True)
+                                             x, training=training)
 
   x = tf.keras.layers.add([x, input_tensor])
   x = tf.keras.layers.Activation('relu')(x)
@@ -125,12 +133,12 @@ def identity_building_block(input_tensor, kernel_size, filters, stage, block, tr
 
 
 def conv_building_block(input_tensor,
-    kernel_size,
-    filters,
-    stage,
-    block,
-    strides=(2, 2),
-    training=True):
+                        kernel_size,
+                        filters,
+                        stage,
+                        block,
+                        strides=(2, 2),
+                        training=None):
   """A block that has a conv layer at shortcut.
 
   Arguments:
@@ -141,7 +149,8 @@ def conv_building_block(input_tensor,
     stage: integer, current stage label, used for generating layer names
     block: 'a','b'..., current block label, used for generating layer names
     strides: Strides for the first conv layer in the block.
-    training: Boolean to indicate if we are in the training loop.
+    training: Only used if training keras model with Estimator.  In other
+      scenarios it is handled automatically.
 
   Returns:
     Output tensor for the block.
@@ -158,21 +167,23 @@ def conv_building_block(input_tensor,
   conv_name_base = 'res' + str(stage) + block + '_branch'
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-  x = tf.keras.layers.Conv2D(filters1, kernel_size,
+  x = tf.keras.layers.Conv2D(filters1, kernel_size, strides=strides,
                              padding='same',
+                             kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              bias_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
-                             name=conv_name_base + '2a', strides=strides)(input_tensor)
+                             name=conv_name_base + '2a')(input_tensor)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                          name=bn_name_base + '2a',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=True)
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
   x = tf.keras.layers.Conv2D(filters2, kernel_size, padding='same',
+                             kernel_initializer='he_normal',
                              kernel_regularizer=
                              tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              bias_regularizer=
@@ -182,9 +193,10 @@ def conv_building_block(input_tensor,
                                          name=bn_name_base + '2b',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=True)
+                                             x, training=training)
 
   shortcut = tf.keras.layers.Conv2D(filters2, (1, 1), strides=strides,
+                                    kernel_initializer='he_normal',
                                     kernel_regularizer=
                                     tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                                     bias_regularizer=
@@ -193,19 +205,21 @@ def conv_building_block(input_tensor,
   shortcut = tf.keras.layers.BatchNormalization(
       axis=bn_axis, name=bn_name_base + '1',
       momentum=BATCH_NORM_DECAY, epsilon=BATCH_NORM_EPSILON)(
-      shortcut, training=True)
+          shortcut, training=training)
 
   x = tf.keras.layers.add([x, shortcut])
   x = tf.keras.layers.Activation('relu')(x)
   return x
 
 
-def resnet56(input_shape=None, classes=1000):
+def resnet56(input_shape=None, classes=100, training=None):
   """Instantiates the ResNet56 architecture.
 
   Arguments:
       input_shape: optional shape tuple
       classes: optional number of classes to classify images into
+      training: Only used if training keras model with Estimator.  In other
+      scenarios it is handled automatically.
 
   Returns:
       A Keras model instance.
@@ -226,74 +240,83 @@ def resnet56(input_shape=None, classes=1000):
   x = tf.keras.layers.Conv2D(16, (3, 3),
                              strides=(1, 1),
                              padding='valid',
+                             kernel_initializer='he_normal',
+                             kernel_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                             bias_regularizer=
+                             tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                              name='conv1')(x)
   x = tf.keras.layers.BatchNormalization(axis=bn_axis, name='bn_conv1',
                                          momentum=BATCH_NORM_DECAY,
                                          epsilon=BATCH_NORM_EPSILON)(
-      x, training=True)
+                                             x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
-  # x = tf.keras.layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
   x = conv_building_block(x, 3, [16, 16], stage=2, block='a', strides=(1, 1),
-                          training=True)
+                          training=training)
   x = identity_building_block(x, 3, [16, 16], stage=2, block='b',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [16, 16], stage=2, block='c',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [16, 16], stage=2, block='d',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [16, 16], stage=2, block='e',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [16, 16], stage=2, block='f',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [16, 16], stage=2, block='g',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [16, 16], stage=2, block='h',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [16, 16], stage=2, block='i',
-                              training=True)
+                              training=training)
 
   x = conv_building_block(x, 3, [32, 32], stage=3, block='a',
-                          training=True)
+                          training=training)
   x = identity_building_block(x, 3, [32, 32], stage=3, block='b',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [32, 32], stage=3, block='c',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [32, 32], stage=3, block='d',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [32, 32], stage=3, block='e',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [32, 32], stage=3, block='f',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [32, 32], stage=3, block='g',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [32, 32], stage=3, block='h',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [32, 32], stage=3, block='i',
-                              training=True)
+                              training=training)
 
   x = conv_building_block(x, 3, [64, 64], stage=4, block='a',
-                          training=True)
+                          training=training)
   x = identity_building_block(x, 3, [64, 64], stage=4, block='b',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [64, 64], stage=4, block='c',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [64, 64], stage=4, block='d',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [64, 64], stage=4, block='e',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [64, 64], stage=4, block='f',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [64, 64], stage=4, block='g',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [64, 64], stage=4, block='h',
-                              training=True)
+                              training=training)
   x = identity_building_block(x, 3, [64, 64], stage=4, block='i',
-                              training=True)
+                              training=training)
 
-  x = tf.keras.layers.AveragePooling2D((8, 8), name='avg_pool')(x)
-  x = tf.keras.layers.Flatten()(x)
-  x = tf.keras.layers.Dense(classes, activation='softmax', name='fc10')(x)
+  x = tf.keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
+  x = tf.keras.layers.Dense(classes, activation='softmax',
+                            kernel_initializer='he_normal',
+                            kernel_regularizer=
+                            tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                            bias_regularizer=
+                            tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+                            name='fc10')(x)
 
   inputs = img_input
   # Create model.
