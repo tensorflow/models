@@ -23,7 +23,6 @@ from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
-from official.resnet import resnet_run_loop
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_cifar_model
 from official.utils.flags import core as flags_core
@@ -36,15 +35,20 @@ LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
 ]
 
 
-def learning_rate_schedule(current_epoch, current_batch, batches_per_epoch, batch_size):
+def learning_rate_schedule(current_epoch,
+                           current_batch,
+                           batches_per_epoch,
+                           batch_size):
   """Handles linear scaling rule, gradual warmup, and LR decay.
 
-  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the provided scaling
-  factor.
+  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
+  provided scaling factor.
 
   Args:
     current_epoch: integer, current epoch indexed from 0.
     current_batch: integer, current batch in the current epoch, indexed from 0.
+    batches_per_epoch: integer, number of steps in an epoch.
+    batch_size: integer, total batch sized.
 
   Returns:
     Adjusted learning rate.
@@ -89,6 +93,9 @@ def run(flags_obj):
 
   Raises:
     ValueError: If fp16 is passed as it is not currently supported.
+
+  Returns:
+    Dictionary of training and eval stats.
   """
   if flags_obj.enable_eager:
     tf.enable_eager_execution()
@@ -127,10 +134,10 @@ def run(flags_obj):
 
   optimizer = keras_common.get_optimizer()
   strategy = distribution_utils.get_distribution_strategy(
-    flags_obj.num_gpus, flags_obj.turn_off_distribution_strategy)
+      flags_obj.num_gpus, flags_obj.turn_off_distribution_strategy)
 
   model = resnet_cifar_model.resnet56(input_shape=(32, 32, 3),
-          classes=cifar_main.NUM_CLASSES)
+                                      classes=cifar_main.NUM_CLASSES)
 
   model.compile(loss='categorical_crossentropy',
                 optimizer=optimizer,
@@ -156,21 +163,23 @@ def run(flags_obj):
     validation_data = None
 
   history = model.fit(train_input_dataset,
-      epochs=train_epochs,
-      steps_per_epoch=train_steps,
-      callbacks=[
-        time_callback,
-        lr_callback,
-        tensorboard_callback
-        ],
-      validation_steps=num_eval_steps,
-      validation_data=validation_data,
-      verbose=1)
-
+                      epochs=train_epochs,
+                      steps_per_epoch=train_steps,
+                      callbacks=[
+                          time_callback,
+                          lr_callback,
+                          tensorboard_callback
+                      ],
+                      validation_steps=num_eval_steps,
+                      validation_data=validation_data,
+                      verbose=1)
+  eval_output = None
   if not flags_obj.skip_eval:
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=1)
+  stats = keras_common.build_stats(history, eval_output)
+  return stats
 
 
 def main(_):

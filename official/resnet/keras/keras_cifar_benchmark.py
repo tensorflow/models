@@ -66,9 +66,8 @@ class KerasCifar10BenchmarkTests(object):
 
   def _fill_report_object(self, stats):
     if self.oss_report_object:
-      self.oss_report_object.top_1 = stats['accuracy_top_1'].item()
-      self.oss_report_object.add_other_quality(stats['training_accuracy_top_1']
-                                               .item(),
+      self.oss_report_object.top_1 = stats['accuracy_top_1']
+      self.oss_report_object.add_other_quality(stats['training_accuracy_top_1'],
                                                'top_1_train_accuracy')
     else:
       raise ValueError('oss_report_object has not been set.')

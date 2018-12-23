@@ -29,6 +29,8 @@ from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_de
 
 FLAGS = flags.FLAGS
 BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
+TRAIN_TOP_1 = 'training_accuracy_top_1'
+
 
 class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
@@ -49,7 +51,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
   def on_batch_begin(self, batch, logs=None):
     if self.record_batch:
-      self.start_time= time.time()
+      self.start_time = time.time()
       self.record_batch = False
 
   def on_batch_end(self, batch, logs=None):
@@ -62,6 +64,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
         tf.logging.info("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
                         "'images_per_second': %f}" %
                         (batch, elapsed_time, examples_per_second))
+
 
 class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
   """Callback to update learning rate on every batch (not epoch boundaries).
@@ -88,43 +91,77 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     self.epochs += 1
 
   def on_batch_begin(self, batch, logs=None):
-    lr = self.schedule(self.epochs, batch, self.batches_per_epoch, self.batch_size)
+    lr = self.schedule(self.epochs,
+                       batch,
+                       self.batches_per_epoch,
+                       self.batch_size)
     if not isinstance(lr, (float, np.float32, np.float64)):
       raise ValueError('The output of the "schedule" function should be float.')
     if lr != self.prev_lr:
       self.model.optimizer.learning_rate = lr  # lr should be a float here
       self.prev_lr = lr
-      tf.logging.debug('Epoch %05d Batch %05d: LearningRateBatchScheduler change '
-                   'learning rate to %s.', self.epochs, batch, lr)
+      tf.logging.debug('Epoch %05d Batch %05d: LearningRateBatchScheduler '
+                       'change learning rate to %s.', self.epochs, batch, lr)
+
 
 def get_optimizer():
-  # The learning rate set here is a placeholder and not use. It will be overwritten
-  # at the beginning of each batch by callback
+  """Returns optimizer to use."""
+  # The learning_rate is overwritten at the beginning of each step by callback.
   return gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
 
 
 def get_callbacks(learning_rate_schedule_fn, num_images):
+  """Returns common callbacks."""
   time_callback = TimeHistory(FLAGS.batch_size)
 
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-    log_dir=FLAGS.model_dir)
+      log_dir=FLAGS.model_dir)
 
   lr_callback = LearningRateBatchScheduler(
-    learning_rate_schedule_fn,
-    batch_size=FLAGS.batch_size,
-    num_images=num_images)
+      learning_rate_schedule_fn,
+      batch_size=FLAGS.batch_size,
+      num_images=num_images)
 
   return time_callback, tensorboard_callback, lr_callback
+
+
+def build_stats(history, eval_output):
+  """Normalizes and returns dictionary of stats.
+
+  Args:
+    history: Results of the training step. Supports both categorical_accuracy
+      and sparse_categorical_accuracy.
+    eval_output: Output of the eval step. Assumes first value is eval_loss and
+      second value is accuracy_top_1.
+
+  Returns:
+    Dictionary of normalized results.
+  """
+  stats = {}
+  if eval_output:
+    stats['accuracy_top_1'] = eval_output[1].item()
+    stats['eval_loss'] = eval_output[0].item()
+  if history and history.history:
+    train_hist = history.history
+    # Gets final loss from training.
+    stats['loss'] = train_hist['loss'][-1].item()
+    # Gets top_1 training accuracy.
+    if 'categorical_accuracy' in train_hist:
+      stats[TRAIN_TOP_1] = train_hist['categorical_accuracy'][-1].item()
+    elif 'sparse_categorical_accuracy' in train_hist:
+      stats[TRAIN_TOP_1] = train_hist['sparse_categorical_accuracy'][-1].item()
+
+  return stats
 
 
 def define_keras_flags():
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_integer(
-      name="train_steps", default=None,
-      help="The number of steps to run for training. If it is larger than "
-      "# batches per epoch, then use # bathes per epoch. When this flag is "
-      "set, only one epoch is going to run for training.")
+      name='train_steps', default=None,
+      help='The number of steps to run for training. If it is larger than '
+      '# batches per epoch, then use # bathes per epoch. When this flag is '
+      'set, only one epoch is going to run for training.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
