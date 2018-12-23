@@ -28,9 +28,9 @@ import warnings
 import tensorflow as tf
 
 
-BATCH_NORM_DECAY = 0.9
+BATCH_NORM_DECAY = 0.997
 BATCH_NORM_EPSILON = 1e-5
-L2_WEIGHT_DECAY = 1e-4
+L2_WEIGHT_DECAY = 2e-4
 
 
 def _obtain_input_shape(input_shape,
