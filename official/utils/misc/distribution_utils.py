@@ -21,8 +21,9 @@ from __future__ import print_function
 import tensorflow as tf
 
 
-def get_distribution_strategy(
-  num_gpus, all_reduce_alg=None, turn_off_distribution_strategy=False):
+def get_distribution_strategy(num_gpus,
+                              all_reduce_alg=None,
+                              turn_off_distribution_strategy=False):
   """Return a DistributionStrategy for running the model.
 
   Args:
@@ -42,19 +43,20 @@ def get_distribution_strategy(
     larger than 1
   """
   if num_gpus == 0:
-      if turn_off_distribution_strategy:
-          return None
-      else:
-        return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
+    if turn_off_distribution_strategy:
+      return None
+    else:
+      return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
   elif num_gpus == 1:
     if turn_off_distribution_strategy:
       return None
     else:
       return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
   elif turn_off_distribution_strategy:
-    raise ValueError("When %d GPUs are specified, turn_off_distribution_strategy"
-        " flag cannot be set to True.".format(num_gpus))
-  else: # num_gpus > 1 and not turn_off_distribution_strategy
+    raise ValueError("When {} GPUs are specified, "
+                     "turn_off_distribution_strategy flag cannot be set to"
+                     "True.".format(num_gpus))
+  else:  # num_gpus > 1 and not turn_off_distribution_strategy
     if all_reduce_alg:
       return tf.contrib.distribute.MirroredStrategy(
           num_gpus=num_gpus,
