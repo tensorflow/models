@@ -57,8 +57,6 @@ FLAGS = flags.FLAGS
 
 
 def main(unused_argv):
-  flags.mark_flag_as_required('model_dir')
-  flags.mark_flag_as_required('pipeline_config_path')
   config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir)
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
@@ -106,4 +104,6 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
+  flags.mark_flag_as_required('model_dir')
+  flags.mark_flag_as_required('pipeline_config_path')
   tf.app.run()
