@@ -20,9 +20,10 @@ from __future__ import print_function
 
 import time
 
+import numpy as np
+
 # pylint: disable=g-bad-import-order
 from absl import flags
-import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
                                                   gradient_descent_v2)
