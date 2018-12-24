@@ -20,11 +20,12 @@ from __future__ import print_function
 
 import time
 
-from absl import flags
+from absl import flags  # pylint: disable=g-bad-import-order
 import numpy as np  # pylint: disable=g-bad-import-order
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
+from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
+                                                  gradient_descent_v2)
 
 
 FLAGS = flags.FLAGS
@@ -91,6 +92,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     self.epochs += 1
 
   def on_batch_begin(self, batch, logs=None):
+    """Executes before step begins."""
     lr = self.schedule(self.epochs,
                        batch,
                        self.batches_per_epoch,
