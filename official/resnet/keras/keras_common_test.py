@@ -72,4 +72,3 @@ class KerasCommonTests(tf.test.TestCase):
   def _build_eval_output(self, top_1, eval_loss):
     eval_output = [np.float64(eval_loss), np.float64(top_1)]
     return eval_output
-

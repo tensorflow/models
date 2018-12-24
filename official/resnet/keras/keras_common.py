@@ -21,7 +21,7 @@ from __future__ import print_function
 import time
 
 from absl import flags
-import numpy as np
+import numpy as np  # pylint: disable=g-bad-import-order
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
@@ -207,4 +207,3 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     return data
 
   return input_fn
-
