@@ -47,7 +47,7 @@ NPZ_FILE = "HIGGS.csv.gz.npz"  # numpy compressed file to contain "data" array.
 
 def _download_higgs_data_and_save_npz(data_dir):
   """Download higgs data and store as a numpy compressed file."""
-  input_url = os.path.join(URL_ROOT, INPUT_FILE)
+  input_url = URL_ROOT + "/" + INPUT_FILE
   np_filename = os.path.join(data_dir, NPZ_FILE)
   if tf.gfile.Exists(np_filename):
     raise ValueError("data_dir already has the processed data file: {}".format(

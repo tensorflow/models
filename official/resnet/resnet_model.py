@@ -248,7 +248,7 @@ def _bottleneck_block_v1(inputs, filters, training, projection_shortcut,
 
 def _bottleneck_block_v2(inputs, filters, training, projection_shortcut,
                          strides, data_format):
-  """A single block for ResNet v2, without a bottleneck.
+  """A single block for ResNet v2, with a bottleneck.
 
   Similar to _building_block_v2(), except using the "bottleneck" blocks
   described in:
@@ -354,7 +354,7 @@ class Model(object):
                kernel_size,
                conv_stride, first_pool_size, first_pool_stride,
                block_sizes, block_strides,
-               final_size, resnet_version=DEFAULT_VERSION, data_format=None,
+               resnet_version=DEFAULT_VERSION, data_format=None,
                dtype=DEFAULT_DTYPE):
     """Creates a model for classifying an image.
 
@@ -376,7 +376,6 @@ class Model(object):
         i-th set.
       block_strides: List of integers representing the desired stride size for
         each of the sets of block layers. Should be same length as block_sizes.
-      final_size: The expected size of the model after the second pooling.
       resnet_version: Integer representing which version of the ResNet network
         to use. See README for details. Valid values: [1, 2]
       data_format: Input format ('channels_last', 'channels_first', or None).
@@ -422,7 +421,6 @@ class Model(object):
     self.first_pool_stride = first_pool_stride
     self.block_sizes = block_sizes
     self.block_strides = block_strides
-    self.final_size = final_size
     self.dtype = dtype
     self.pre_activation = resnet_version == 2
 
@@ -542,7 +540,7 @@ class Model(object):
       inputs = tf.reduce_mean(inputs, axes, keepdims=True)
       inputs = tf.identity(inputs, 'final_reduce_mean')
 
-      inputs = tf.reshape(inputs, [-1, self.final_size])
+      inputs = tf.squeeze(inputs, axes)
       inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
       inputs = tf.identity(inputs, 'final_dense')
       return inputs

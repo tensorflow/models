@@ -58,8 +58,6 @@ import tensorflow as tf
 
 from official.utils.misc import model_helpers
 
-# Use the number of training files as the shuffle buffer.
-_FILE_SHUFFLE_BUFFER = 100
 # Buffer size for reading records from a TFRecord file. Each training file is
 # 7.2 MB, so 8 MB allows an entire file to be kept in memory.
 _READ_RECORD_BUFFER = 8 * 1000 * 1000
@@ -220,11 +218,7 @@ def _read_and_batch_from_files(
   Returns:
     tf.data.Dataset object containing examples loaded from the files.
   """
-  dataset = tf.data.Dataset.list_files(file_pattern)
-
-  if shuffle:
-    # Shuffle filenames
-    dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
+  dataset = tf.data.Dataset.list_files(file_pattern, shuffle=shuffle)
 
   # Read files and interleave results. When training, the order of the examples
   # will be non-deterministic.

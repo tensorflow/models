@@ -347,13 +347,11 @@ class Worker(threading.Thread):
     value_loss = advantage ** 2
 
     # Calculate our policy loss
-    actions_one_hot = tf.one_hot(memory.actions, self.action_size, dtype=tf.float32)
-
     policy = tf.nn.softmax(logits)
-    entropy = tf.reduce_sum(policy * tf.log(policy + 1e-20), axis=1)
+    entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=policy, logits=logits)
 
-    policy_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=actions_one_hot,
-                                                             logits=logits)
+    policy_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=memory.actions,
+                                                                 logits=logits)
     policy_loss *= tf.stop_gradient(advantage)
     policy_loss -= 0.01 * entropy
     total_loss = tf.reduce_mean((0.5 * value_loss + policy_loss))

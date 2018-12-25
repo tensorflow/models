@@ -83,7 +83,7 @@ tf_record_input_reader: { input_path: '${INPUT_TFRECORDS_WITH_DETECTIONS}' }
 " > ${OUTPUT_CONFIG_DIR}/input_config.pbtxt
 
 echo "
-metrics_set: 'oid_challenge_object_detection_metrics'
+metrics_set: 'oid_challenge_detection_metrics'
 " > ${OUTPUT_CONFIG_DIR}/eval_config.pbtxt
 
 OUTPUT_METRICS_DIR=/path/to/metrics_csv

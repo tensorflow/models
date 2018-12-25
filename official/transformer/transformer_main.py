@@ -22,7 +22,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import functools
 import os
 import tempfile
 
@@ -111,9 +110,10 @@ def model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.EVAL:
       if params["use_tpu"]:
         # host call functions should only have tensors as arguments.
-        # functools.partial() pre-populates params so that metric_fn is
+        # This lambda pre-populates params so that metric_fn is
         # TPUEstimator compliant.
-        metric_fn = functools.partial(metrics.get_eval_metrics, params=params)
+        metric_fn = lambda logits, labels: (
+            metrics.get_eval_metrics(logits, labels, params=params))
         eval_metrics = (metric_fn, [logits, labels])
         return tf.contrib.tpu.TPUEstimatorSpec(
             mode=mode, loss=loss, predictions={"predictions": logits},
@@ -610,7 +610,7 @@ def run_transformer(flags_obj):
       bleu_threshold=flags_obj.stop_threshold,
       vocab_file=flags_obj.vocab_file)
 
-  if flags_obj.export_dir:
+  if flags_obj.export_dir and not params["use_tpu"]:
     serving_input_fn = export.build_tensor_serving_input_receiver_fn(
         shape=[None], dtype=tf.int64, batch_size=None)
     # Export saved model, and save the vocab file as an extra asset. The vocab
@@ -621,7 +621,8 @@ def run_transformer(flags_obj):
     # an extra asset rather than a core asset.
     estimator.export_savedmodel(
         flags_obj.export_dir, serving_input_fn,
-        assets_extra={"vocab.txt": flags_obj.vocab_file})
+        assets_extra={"vocab.txt": flags_obj.vocab_file},
+        strip_default_attrs=True)
 
 
 def main(_):

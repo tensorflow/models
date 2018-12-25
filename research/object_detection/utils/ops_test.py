@@ -21,6 +21,8 @@ from object_detection.core import standard_fields as fields
 from object_detection.utils import ops
 from object_detection.utils import test_case
 
+slim = tf.contrib.slim
+
 
 class NormalizedToImageCoordinatesTest(tf.test.TestCase):
 
@@ -1147,42 +1149,82 @@ class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
          [0.25, 0.25, 0.75, 0.75]],
         dtype=tf.float32)
     class_indices = tf.constant([0, 4, 2], dtype=tf.int32)
+    class_confidences = tf.constant([0.8, 0.2, 0.1], dtype=tf.float32)
     num_classes = 5
-    merged_boxes, merged_classes, merged_box_indices = (
-        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
     expected_merged_boxes = np.array(
         [[0.25, 0.25, 0.75, 0.75], [0.0, 0.0, 0.5, 0.75]], dtype=np.float32)
     expected_merged_classes = np.array(
         [[1, 0, 1, 0, 0], [0, 0, 0, 0, 1]], dtype=np.int32)
+    expected_merged_confidences = np.array(
+        [[0.8, 0, 0.1, 0, 0], [0, 0, 0, 0, 0.2]], dtype=np.float32)
     expected_merged_box_indices = np.array([0, 1], dtype=np.int32)
     with self.test_session() as sess:
-      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
-          [merged_boxes, merged_classes, merged_box_indices])
-      if np_merged_classes[0, 0] != 1:
-        expected_merged_boxes = expected_merged_boxes[::-1, :]
-        expected_merged_classes = expected_merged_classes[::-1, :]
-        expected_merged_box_indices = expected_merged_box_indices[::-1, :]
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
       self.assertAllClose(np_merged_boxes, expected_merged_boxes)
       self.assertAllClose(np_merged_classes, expected_merged_classes)
+      self.assertAllClose(np_merged_confidences, expected_merged_confidences)
+      self.assertAllClose(np_merged_box_indices, expected_merged_box_indices)
+
+  def testMergeBoxesWithMultipleLabelsCornerCase(self):
+    boxes = tf.constant(
+        [[0, 0, 1, 1], [0, 1, 1, 1], [1, 0, 1, 1], [1, 1, 1, 1],
+         [1, 1, 1, 1], [1, 0, 1, 1], [0, 1, 1, 1], [0, 0, 1, 1]],
+        dtype=tf.float32)
+    class_indices = tf.constant([0, 1, 2, 3, 2, 1, 0, 3], dtype=tf.int32)
+    class_confidences = tf.constant([0.1, 0.9, 0.2, 0.8, 0.3, 0.7, 0.4, 0.6],
+                                    dtype=tf.float32)
+    num_classes = 4
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
+    expected_merged_boxes = np.array(
+        [[0, 0, 1, 1], [0, 1, 1, 1], [1, 0, 1, 1], [1, 1, 1, 1]],
+        dtype=np.float32)
+    expected_merged_classes = np.array(
+        [[1, 0, 0, 1], [1, 1, 0, 0], [0, 1, 1, 0], [0, 0, 1, 1]],
+        dtype=np.int32)
+    expected_merged_confidences = np.array(
+        [[0.1, 0, 0, 0.6], [0.4, 0.9, 0, 0],
+         [0, 0.7, 0.2, 0], [0, 0, 0.3, 0.8]], dtype=np.float32)
+    expected_merged_box_indices = np.array([0, 1, 2, 3], dtype=np.int32)
+    with self.test_session() as sess:
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
+      self.assertAllClose(np_merged_boxes, expected_merged_boxes)
+      self.assertAllClose(np_merged_classes, expected_merged_classes)
+      self.assertAllClose(np_merged_confidences, expected_merged_confidences)
       self.assertAllClose(np_merged_box_indices, expected_merged_box_indices)
 
   def testMergeBoxesWithEmptyInputs(self):
-    boxes = tf.constant([[]])
-    class_indices = tf.constant([])
+    boxes = tf.zeros([0, 4], dtype=tf.float32)
+    class_indices = tf.constant([], dtype=tf.int32)
+    class_confidences = tf.constant([], dtype=tf.float32)
     num_classes = 5
-    merged_boxes, merged_classes, merged_box_indices = (
-        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    merged_boxes, merged_classes, merged_confidences, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(
+            boxes, class_indices, class_confidences, num_classes))
     with self.test_session() as sess:
-      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
-          [merged_boxes, merged_classes, merged_box_indices])
+      (np_merged_boxes, np_merged_classes, np_merged_confidences,
+       np_merged_box_indices) = sess.run(
+           [merged_boxes, merged_classes, merged_confidences,
+            merged_box_indices])
       self.assertAllEqual(np_merged_boxes.shape, [0, 4])
       self.assertAllEqual(np_merged_classes.shape, [0, 5])
+      self.assertAllEqual(np_merged_confidences.shape, [0, 5])
       self.assertAllEqual(np_merged_box_indices.shape, [0])
 
 
 class NearestNeighborUpsamplingTest(test_case.TestCase):
 
-  def test_upsampling(self):
+  def test_upsampling_with_single_scale(self):
 
     def graph_fn(inputs):
       custom_op_output = ops.nearest_neighbor_upsampling(inputs, scale=2)
@@ -1194,6 +1236,22 @@ class NearestNeighborUpsamplingTest(test_case.TestCase):
                         [[0], [0], [1], [1]],
                         [[2], [2], [3], [3]],
                         [[2], [2], [3], [3]]]]
+    self.assertAllClose(custom_op_output, expected_output)
+
+  def test_upsampling_with_separate_height_width_scales(self):
+
+    def graph_fn(inputs):
+      custom_op_output = ops.nearest_neighbor_upsampling(inputs,
+                                                         height_scale=2,
+                                                         width_scale=3)
+      return custom_op_output
+    inputs = np.reshape(np.arange(4).astype(np.float32), [1, 2, 2, 1])
+    custom_op_output = self.execute(graph_fn, [inputs])
+
+    expected_output = [[[[0], [0], [0], [1], [1], [1]],
+                        [[0], [0], [0], [1], [1], [1]],
+                        [[2], [2], [2], [3], [3], [3]],
+                        [[2], [2], [2], [3], [3], [3]]]]
     self.assertAllClose(custom_op_output, expected_output)
 
 
@@ -1268,8 +1326,8 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
 
     image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[0, 0, 1, 1]], dtype=np.float32)
-    expected_output = [[[[2.5]]]]
+    boxes = np.array([[[0, 0, 1, 1]]], dtype=np.float32)
+    expected_output = [[[[[2.5]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1279,8 +1337,8 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
 
     image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[1, 1, 0, 0]], dtype=np.float32)
-    expected_output = [[[[2.5]]]]
+    boxes = np.array([[[1, 1, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[2.5]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1290,10 +1348,10 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
 
     image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[0, 0, 1, 1]], dtype=np.float32)
-    expected_output = [[[[1.0], [1.5], [2.0]],
-                        [[2.0], [2.5], [3.0]],
-                        [[3.0], [3.5], [4.0]]]]
+    boxes = np.array([[[0, 0, 1, 1]]], dtype=np.float32)
+    expected_output = [[[[[1.0], [1.5], [2.0]],
+                         [[2.0], [2.5], [3.0]],
+                         [[3.0], [3.5], [4.0]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1303,10 +1361,10 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
 
     image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[1, 1, 0, 0]], dtype=np.float32)
-    expected_output = [[[[4.0], [3.5], [3.0]],
-                        [[3.0], [2.5], [2.0]],
-                        [[2.0], [1.5], [1.0]]]]
+    boxes = np.array([[[1, 1, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[4.0], [3.5], [3.0]],
+                         [[3.0], [2.5], [2.0]],
+                         [[2.0], [1.5], [1.0]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1318,14 +1376,14 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
     image = np.array([[[[1], [2], [3]],
                        [[4], [5], [6]],
                        [[7], [8], [9]]]], dtype=np.float32)
-    boxes = np.array([[0, 0, 1, 1],
-                      [0, 0, .5, .5]], dtype=np.float32)
-    expected_output = [[[[1], [3]], [[7], [9]]],
-                       [[[1], [2]], [[4], [5]]]]
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]]], dtype=np.float32)
+    expected_output = [[[[[1], [3]], [[7], [9]]],
+                        [[[1], [2]], [[4], [5]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
-  def testMatMulCropAndResize3x3To2x2MultiChannel(self):
+  def testMatMulCropAndResize3x3To2x2_2Channels(self):
 
     def graph_fn(image, boxes):
       return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
@@ -1333,10 +1391,32 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
     image = np.array([[[[1, 0], [2, 1], [3, 2]],
                        [[4, 3], [5, 4], [6, 5]],
                        [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-    boxes = np.array([[0, 0, 1, 1],
-                      [0, 0, .5, .5]], dtype=np.float32)
-    expected_output = [[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-                       [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]]
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]]], dtype=np.float32)
+    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testBatchMatMulCropAndResize3x3To2x2_2Channels(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
+
+    image = np.array([[[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]],
+                      [[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]],
+                      [[1, 1, 0, 0],
+                       [.5, .5, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
+                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
+                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1348,10 +1428,10 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
     image = np.array([[[[1], [2], [3]],
                        [[4], [5], [6]],
                        [[7], [8], [9]]]], dtype=np.float32)
-    boxes = np.array([[1, 1, 0, 0],
-                      [.5, .5, 0, 0]], dtype=np.float32)
-    expected_output = [[[[9], [7]], [[3], [1]]],
-                       [[[5], [4]], [[2], [1]]]]
+    boxes = np.array([[[1, 1, 0, 0],
+                       [.5, .5, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[9], [7]], [[3], [1]]],
+                        [[[5], [4]], [[2], [1]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
@@ -1363,85 +1443,34 @@ class OpsTestMatMulCropAndResize(test_case.TestCase):
       _ = ops.matmul_crop_and_resize(image, boxes, crop_size)
 
 
-class OpsTestExpectedClassificationLoss(test_case.TestCase):
+class OpsTestCropAndResize(test_case.TestCase):
 
-  def testExpectedClassificationLossUnderSamplingWithHardLabels(self):
+  def testBatchCropAndResize3x3To2x2_2Channels(self):
 
-    def graph_fn(batch_cls_targets, cls_losses, negative_to_positive_ratio,
-                 minimum_negative_sampling):
-      return ops.expected_classification_loss_under_sampling(
-          batch_cls_targets, cls_losses, negative_to_positive_ratio,
-          minimum_negative_sampling)
+    def graph_fn(image, boxes):
+      return ops.native_crop_and_resize(image, boxes, crop_size=[2, 2])
 
-    batch_cls_targets = np.array(
-        [[[1., 0, 0], [0, 1., 0]], [[1., 0, 0], [0, 1., 0]]], dtype=np.float32)
-    cls_losses = np.array([[1, 2], [3, 4]], dtype=np.float32)
-    negative_to_positive_ratio = np.array([2], dtype=np.float32)
-    minimum_negative_sampling = np.array([1], dtype=np.float32)
+    image = np.array([[[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]],
+                      [[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]],
+                      [[1, 1, 0, 0],
+                       [.5, .5, 0, 0]]], dtype=np.float32)
+    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
+                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
+                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
+    crop_output = self.execute_cpu(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
 
-    classification_loss = self.execute(graph_fn, [
-        batch_cls_targets, cls_losses, negative_to_positive_ratio,
-        minimum_negative_sampling
-    ])
 
-    # expected_foregorund_sum = [1,1]
-    # expected_beta = [2,2]
-    # expected_cls_loss_weights = [2,1],[2,1]
-    # expected_classification_loss_under_sampling = [2*1+1*2, 2*3+1*4]
-    expected_classification_loss_under_sampling = [2 + 2, 6 + 4]
 
-    self.assertAllClose(expected_classification_loss_under_sampling,
-                        classification_loss)
 
-  def testExpectedClassificationLossUnderSamplingWithAllNegative(self):
 
-    def graph_fn(batch_cls_targets, cls_losses):
-      return ops.expected_classification_loss_under_sampling(
-          batch_cls_targets, cls_losses, negative_to_positive_ratio,
-          minimum_negative_sampling)
-
-    batch_cls_targets = np.array(
-        [[[1, 0, 0], [1, 0, 0]], [[1, 0, 0], [1, 0, 0]]], dtype=np.float32)
-    cls_losses = np.array([[1, 2], [3, 4]], dtype=np.float32)
-    negative_to_positive_ratio = np.array([2], dtype=np.float32)
-    minimum_negative_sampling = np.array([1], dtype=np.float32)
-
-    classification_loss = self.execute(graph_fn,
-                                       [batch_cls_targets, cls_losses])
-
-    # expected_foregorund_sum = [0,0]
-    # expected_beta = [0.5,0.5]
-    # expected_cls_loss_weights = [0.5,0.5],[0.5,0.5]
-    # expected_classification_loss_under_sampling = [.5*1+.5*2, .5*3+.5*4]
-    expected_classification_loss_under_sampling = [1.5, 3.5]
-
-    self.assertAllClose(expected_classification_loss_under_sampling,
-                        classification_loss)
-
-  def testExpectedClassificationLossUnderSamplingWithAllPositive(self):
-
-    def graph_fn(batch_cls_targets, cls_losses):
-      return ops.expected_classification_loss_under_sampling(
-          batch_cls_targets, cls_losses, negative_to_positive_ratio,
-          minimum_negative_sampling)
-
-    batch_cls_targets = np.array(
-        [[[0, 1., 0], [0, 1., 0]], [[0, 1, 0], [0, 0, 1]]], dtype=np.float32)
-    cls_losses = np.array([[1, 2], [3, 4]], dtype=np.float32)
-    negative_to_positive_ratio = np.array([2], dtype=np.float32)
-    minimum_negative_sampling = np.array([1], dtype=np.float32)
-
-    classification_loss = self.execute(graph_fn,
-                                       [batch_cls_targets, cls_losses])
-
-    # expected_foregorund_sum = [2,2]
-    # expected_beta = [0,0]
-    # expected_cls_loss_weights = [1,1],[1,1]
-    # expected_classification_loss_under_sampling = [1*1+1*2, 1*3+1*4]
-    expected_classification_loss_under_sampling = [1 + 2, 3 + 4]
-
-    self.assertAllClose(expected_classification_loss_under_sampling,
-                        classification_loss)
 
 
 if __name__ == '__main__':

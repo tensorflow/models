@@ -27,8 +27,9 @@ def get_distribution_strategy(num_gpus, all_reduce_alg=None):
   Args:
     num_gpus: Number of GPUs to run this model.
     all_reduce_alg: Specify which algorithm to use when performing all-reduce.
-      See tf.contrib.distribute.AllReduceCrossTowerOps for available algorithms.
-      If None, DistributionStrategy will choose based on device topology.
+      See tf.contrib.distribute.AllReduceCrossDeviceOps for available
+      algorithms. If None, DistributionStrategy will choose based on device
+      topology.
 
   Returns:
     tf.contrib.distribute.DistibutionStrategy object.
@@ -41,8 +42,8 @@ def get_distribution_strategy(num_gpus, all_reduce_alg=None):
     if all_reduce_alg:
       return tf.contrib.distribute.MirroredStrategy(
           num_gpus=num_gpus,
-          cross_tower_ops=tf.contrib.distribute.AllReduceCrossTowerOps(
-              all_reduce_alg, num_packs=num_gpus))
+          cross_device_ops=tf.contrib.distribute.AllReduceCrossDeviceOps(
+              all_reduce_alg, num_packs=2))
     else:
       return tf.contrib.distribute.MirroredStrategy(num_gpus=num_gpus)
 

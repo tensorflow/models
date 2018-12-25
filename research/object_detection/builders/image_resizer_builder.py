@@ -106,10 +106,35 @@ def build(image_resizer_config):
     raise ValueError(
         'Invalid image resizer option: \'%s\'.' % image_resizer_oneof)
 
-  def grayscale_image_resizer(image):
-    [resized_image, resized_image_shape] = image_resizer_fn(image)
-    grayscale_image = preprocessor.rgb_to_gray(resized_image)
-    grayscale_image_shape = tf.concat([resized_image_shape[:-1], [1]], 0)
-    return [grayscale_image, grayscale_image_shape]
+  def grayscale_image_resizer(image, masks=None):
+    """Convert to grayscale before applying image_resizer_fn.
+
+    Args:
+      image: A 3D tensor of shape [height, width, 3]
+      masks: (optional) rank 3 float32 tensor with shape [num_instances, height,
+        width] containing instance masks.
+
+    Returns:
+    Note that the position of the resized_image_shape changes based on whether
+    masks are present.
+    resized_image: A 3D tensor of shape [new_height, new_width, 1],
+      where the image has been resized (with bilinear interpolation) so that
+      min(new_height, new_width) == min_dimension or
+      max(new_height, new_width) == max_dimension.
+    resized_masks: If masks is not None, also outputs masks. A 3D tensor of
+      shape [num_instances, new_height, new_width].
+    resized_image_shape: A 1D tensor of shape [3] containing shape of the
+      resized image.
+    """
+    # image_resizer_fn returns [resized_image, resized_image_shape] if
+    # mask==None, otherwise it returns
+    # [resized_image, resized_mask, resized_image_shape]. In either case, we
+    # only deal with first and last element of the returned list.
+    retval = image_resizer_fn(image, masks)
+    resized_image = retval[0]
+    resized_image_shape = retval[-1]
+    retval[0] = preprocessor.rgb_to_gray(resized_image)
+    retval[-1] = tf.concat([resized_image_shape[:-1], [1]], 0)
+    return retval
 
   return functools.partial(grayscale_image_resizer)

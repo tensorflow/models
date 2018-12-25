@@ -14,6 +14,8 @@
 # ==============================================================================
 """Helper file for running the async data generation process in OSS."""
 
+import contextlib
+import multiprocessing
 import os
 import sys
 
@@ -27,3 +29,8 @@ _ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__),
                                "data_async_generation.py")
 
 INVOCATION = [_PYTHON, _ASYNC_GEN_PATH]
+
+
+def get_pool(num_workers, init_worker=None):
+  return contextlib.closing(multiprocessing.Pool(
+      processes=num_workers, initializer=init_worker))

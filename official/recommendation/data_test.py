@@ -19,14 +19,18 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import pickle
 import time
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 from official.datasets import movielens
 from official.recommendation import constants as rconst
+from official.recommendation import data_async_generation
 from official.recommendation import data_preprocessing
+from official.recommendation import stat_utils
 
 
 DATASET = "ml-test"
@@ -34,6 +38,7 @@ NUM_USERS = 1000
 NUM_ITEMS = 2000
 NUM_PTS = 50000
 BATCH_SIZE = 2048
+EVAL_BATCH_SIZE = 4000
 NUM_NEG = 4
 
 
@@ -77,12 +82,22 @@ class BaseTest(tf.test.TestCase):
 
     movielens.download = mock_download
     movielens.NUM_RATINGS[DATASET] = NUM_PTS
+    data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS,
+                                                                  NUM_ITEMS)
 
   def test_preprocessing(self):
     # For the most part the necessary checks are performed within
     # construct_cache()
     ncf_dataset = data_preprocessing.construct_cache(
-        dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2)
+        dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2,
+        match_mlperf=False, deterministic=False)
+    assert ncf_dataset.num_users == NUM_USERS
+    assert ncf_dataset.num_items == NUM_ITEMS
+
+    time.sleep(1)  # Ensure we create the next cache in a new directory.
+    ncf_dataset = data_preprocessing.construct_cache(
+        dataset=DATASET, data_dir=self.temp_data_dir, num_data_readers=2,
+        match_mlperf=True, deterministic=False)
     assert ncf_dataset.num_users == NUM_USERS
     assert ncf_dataset.num_items == NUM_ITEMS
 
@@ -100,21 +115,17 @@ class BaseTest(tf.test.TestCase):
     return output
 
   def test_end_to_end(self):
-    ncf_dataset = data_preprocessing.instantiate_pipeline(
+    ncf_dataset, _ = data_preprocessing.instantiate_pipeline(
         dataset=DATASET, data_dir=self.temp_data_dir,
-        batch_size=BATCH_SIZE, eval_batch_size=BATCH_SIZE, num_data_readers=2,
-        num_neg=NUM_NEG)
-
-    for _ in range(30):
-      if tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
-        break
-      time.sleep(1)  # allow `alive` file to be written
+        batch_size=BATCH_SIZE, eval_batch_size=EVAL_BATCH_SIZE,
+        num_cycles=1, num_data_readers=2, num_neg=NUM_NEG)
 
     g = tf.Graph()
     with g.as_default():
       input_fn, record_dir, batch_count = \
-        data_preprocessing.make_train_input_fn(ncf_dataset)
-      dataset = input_fn({"batch_size": BATCH_SIZE, "use_tpu": False})
+        data_preprocessing.make_input_fn(ncf_dataset, True)
+      dataset = input_fn({"batch_size": BATCH_SIZE, "use_tpu": False,
+                          "use_xla_for_gpu": False})
     first_epoch = self.drain_dataset(dataset=dataset, g=g)
     user_inv_map = {v: k for k, v in ncf_dataset.user_map.items()}
     item_inv_map = {v: k for k, v in ncf_dataset.item_map.items()}
@@ -126,6 +137,7 @@ class BaseTest(tf.test.TestCase):
     for features, labels in first_epoch:
       for u, i, l in zip(features[movielens.USER_COLUMN],
                          features[movielens.ITEM_COLUMN], labels):
+
         u_raw = user_inv_map[u]
         i_raw = item_inv_map[i]
         if ((u_raw, i_raw) in self.seen_pairs) != l:
@@ -137,13 +149,57 @@ class BaseTest(tf.test.TestCase):
         train_examples[l].add((u_raw, i_raw))
     num_positives_seen = len(train_examples[True])
 
-    # The numbers don't match exactly because the last batch spills over into
-    # the next epoch
-    assert ncf_dataset.num_train_positives - num_positives_seen < BATCH_SIZE
+    assert ncf_dataset.num_train_positives == num_positives_seen
 
     # This check is more heuristic because negatives are sampled with
     # replacement. It only checks that negative generation is reasonably random.
     assert len(train_examples[False]) / NUM_NEG / num_positives_seen > 0.9
+
+  def test_shard_randomness(self):
+    users = [0, 0, 0, 0, 1, 1, 1, 1]
+    items = [0, 2, 4, 6, 0, 2, 4, 6]
+    times = [1, 2, 3, 4, 1, 2, 3, 4]
+    df = pd.DataFrame({movielens.USER_COLUMN: users,
+                       movielens.ITEM_COLUMN: items,
+                       movielens.TIMESTAMP_COLUMN: times})
+    cache_paths = rconst.Paths(data_dir=self.temp_data_dir)
+    np.random.seed(1)
+
+    num_shards = 2
+    num_items = 10
+    data_preprocessing.generate_train_eval_data(
+        df, approx_num_shards=num_shards, num_items=num_items,
+        cache_paths=cache_paths, match_mlperf=True)
+
+    raw_shards = tf.gfile.ListDirectory(cache_paths.train_shard_subdir)
+    assert len(raw_shards) == num_shards
+
+    sharded_eval_data = []
+    for i in range(2):
+      sharded_eval_data.append(data_async_generation._process_shard(
+          (os.path.join(cache_paths.train_shard_subdir, raw_shards[i]),
+           num_items, rconst.NUM_EVAL_NEGATIVES, stat_utils.random_int32(),
+           False, True)))
+
+    if sharded_eval_data[0][0][0] == 1:
+      # Order is not assured for this part of the pipeline.
+      sharded_eval_data.reverse()
+
+    eval_data = [np.concatenate([shard[i] for shard in sharded_eval_data])
+                 for i in range(3)]
+    eval_data = {
+        movielens.USER_COLUMN: eval_data[0],
+        movielens.ITEM_COLUMN: eval_data[1],
+    }
+
+    eval_items_per_user = rconst.NUM_EVAL_NEGATIVES + 1
+    self.assertAllClose(eval_data[movielens.USER_COLUMN],
+                        [0] * eval_items_per_user + [1] * eval_items_per_user)
+
+    # Each shard process should generate different random items.
+    self.assertNotAllClose(
+        eval_data[movielens.ITEM_COLUMN][:eval_items_per_user],
+        eval_data[movielens.ITEM_COLUMN][eval_items_per_user:])
 
 
 if __name__ == "__main__":
