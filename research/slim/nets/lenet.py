@@ -78,6 +78,7 @@ def lenet(images, num_classes=10, is_training=False,
 
   return logits, end_points
 lenet.default_image_size = 28
+lenet.default_image_channel = 1
 
 
 def lenet_arg_scope(weight_decay=0.0):
