@@ -136,8 +136,7 @@ def run(flags_obj):
   strategy = distribution_utils.get_distribution_strategy(
       flags_obj.num_gpus, flags_obj.turn_off_distribution_strategy)
 
-  model = resnet_cifar_model.resnet56(input_shape=(32, 32, 3),
-                                      classes=cifar_main.NUM_CLASSES)
+  model = resnet_cifar_model.resnet56(classes=cifar_main.NUM_CLASSES)
 
   model.compile(loss='categorical_crossentropy',
                 optimizer=optimizer,

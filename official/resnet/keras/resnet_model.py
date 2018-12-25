@@ -181,6 +181,7 @@ def conv_block(input_tensor,
 
 
 def resnet50(num_classes):
+  # TODO(tfboyd): add training argument, just lik resnet56.
   """Instantiates the ResNet50 architecture.
 
   Args:

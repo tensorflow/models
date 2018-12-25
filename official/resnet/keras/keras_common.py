@@ -163,7 +163,7 @@ def define_keras_flags():
   flags.DEFINE_integer(
       name='train_steps', default=None,
       help='The number of steps to run for training. If it is larger than '
-      '# batches per epoch, then use # bathes per epoch. When this flag is '
+      '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
 
 
