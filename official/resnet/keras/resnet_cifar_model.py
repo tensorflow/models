@@ -23,9 +23,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import warnings
-
 import tensorflow as tf
+from tensorflow.python.keras import backend
+from tensorflow.python.keras import layers
 
 
 BATCH_NORM_DECAY = 0.997
@@ -180,7 +180,6 @@ def resnet56(classes=100, training=None):
   """Instantiates the ResNet56 architecture.
 
   Arguments:
-      input_shape: optional shape tuple
       classes: optional number of classes to classify images into
       training: Only used if training keras model with Estimator.  In other
       scenarios it is handled automatically.
@@ -192,10 +191,11 @@ def resnet56(classes=100, training=None):
   if backend.image_data_format() == 'channels_first':
     input_shape = (3, 32, 32)
     bn_axis = 1
-  else: # channel_last
+  else:  # channel_last
     input_shape = (32, 32, 3)
     bn_axis = 3
 
+  img_input = layers.Input(shape=input_shape)
   x = tf.keras.layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(img_input)
   x = tf.keras.layers.Conv2D(16, (3, 3),
                              strides=(1, 1),
