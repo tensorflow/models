@@ -321,7 +321,7 @@ def define_ncf_flags():
       name="download_if_missing", default=True, help=flags_core.help_wrap(
           "Download data to data_dir if it is not already present."))
 
-  flags.DEFINE_string(
+  flags.DEFINE_integer(
       name="eval_batch_size", default=None, help=flags_core.help_wrap(
           "The batch size used for evaluation. This should generally be larger"
           "than the training batch size as the lack of back propagation during"
