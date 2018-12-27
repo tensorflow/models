@@ -52,7 +52,7 @@ class KerasCifar10BenchmarkTests(object):
   def keras_resnet56_no_dist_strat_1_gpu(self):
     """Test keras based model with Keras fit but not distribution strategies."""
     self._setup()
-    flags.FLAGS.dist_strat_off = True
+    flags.FLAGS.turn_off_distribution_strategy = True
     flags.FLAGS.num_gpus = 1
     flags.FLAGS.data_dir = DATA_DIR
     flags.FLAGS.batch_size = 128

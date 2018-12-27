@@ -180,12 +180,12 @@ def resnet56(classes=100, training=None):
   """Instantiates the ResNet56 architecture.
 
   Arguments:
-      classes: optional number of classes to classify images into
-      training: Only used if training keras model with Estimator.  In other
-      scenarios it is handled automatically.
+    classes: optional number of classes to classify images into
+    training: Only used if training keras model with Estimator.  In other
+    scenarios it is handled automatically.
 
   Returns:
-      A Keras model instance.
+    A Keras model instance.
   """
   # Determine proper input shape
   if backend.image_data_format() == 'channels_first':

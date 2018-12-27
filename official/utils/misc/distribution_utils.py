@@ -32,7 +32,7 @@ def get_distribution_strategy(num_gpus,
       See tf.contrib.distribute.AllReduceCrossDeviceOps for available
       algorithms. If None, DistributionStrategy will choose based on device
       topology.
-      turn_off_distribution_strategy: when set to True, do not use any
+    turn_off_distribution_strategy: when set to True, do not use any
       distribution strategy. Note that when it is True, and num_gpus is
       larger than 1, it will raise a ValueError.
 

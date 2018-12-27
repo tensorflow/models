@@ -39,7 +39,7 @@ def learning_rate_schedule(current_epoch,
                            current_batch,
                            batches_per_epoch,
                            batch_size):
-  """Handles linear scaling rule, gradual warmup, and LR decay.
+  """Handles linear scaling rule and LR decay.
 
   Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
   provided scaling factor.
