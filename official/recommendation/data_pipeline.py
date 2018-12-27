@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import atexit
+import collections
 import functools
 import os
 import sys
@@ -79,8 +80,8 @@ class DatasetManager(object):
   management, tf.Dataset creation, etc.).
   """
   def __init__(self, is_training, stream_files, batches_per_epoch,
-               shard_root=None):
-    # type: (bool, bool, int, typing.Optional[str]) -> None
+               shard_root=None, deterministic=False):
+    # type: (bool, bool, int, typing.Optional[str], bool) -> None
     """Constructs a `DatasetManager` instance.
     Args:
       is_training: Boolean of whether the data provided is training or
@@ -91,8 +92,10 @@ class DatasetManager(object):
         written to file shards.
       batches_per_epoch: The number of batches in a single epoch.
       shard_root: The base directory to be used when stream_files=True.
+      deterministic: Forgo non-deterministic speedups. (i.e. sloppy=True)
     """
     self._is_training = is_training
+    self._deterministic = deterministic
     self._stream_files = stream_files
     self._writers = []
     self._write_locks = [threading.RLock() for _ in
@@ -259,7 +262,8 @@ class DatasetManager(object):
           epoch_data_dir, rconst.SHARD_TEMPLATE.format("*"))
       dataset = StreamingFilesDataset(
           files=file_pattern, worker_job="worker",
-          num_parallel_reads=rconst.NUM_FILE_SHARDS, num_epochs=1)
+          num_parallel_reads=rconst.NUM_FILE_SHARDS, num_epochs=1,
+          sloppy=not self._deterministic)
       map_fn = functools.partial(self._deserialize, batch_size=batch_size)
       dataset = dataset.map(map_fn, num_parallel_calls=16)
 
@@ -332,7 +336,8 @@ class BaseDataConstructor(threading.Thread):
                eval_pos_items,          # type: np.ndarray
                eval_batch_size,         # type: int
                batches_per_eval_step,   # type: int
-               stream_files             # type: bool
+               stream_files,            # type: bool
+               deterministic=False      # type: bool
               ):
     # General constants
     self._maximum_number_epochs = maximum_number_epochs
@@ -381,15 +386,18 @@ class BaseDataConstructor(threading.Thread):
       self._shard_root = None
 
     self._train_dataset = DatasetManager(
-        True, stream_files, self.train_batches_per_epoch, self._shard_root)
+        True, stream_files, self.train_batches_per_epoch, self._shard_root,
+        deterministic)
     self._eval_dataset = DatasetManager(
-        False, stream_files, self.eval_batches_per_epoch, self._shard_root)
+        False, stream_files, self.eval_batches_per_epoch, self._shard_root,
+        deterministic)
 
     # Threading details
     super(BaseDataConstructor, self).__init__()
     self.daemon = True
     self._stop_loop = False
     self._fatal_exception = None
+    self.deterministic = deterministic
 
   def __str__(self):
     multiplier = ("(x{} devices)".format(self._batches_per_train_step)
@@ -428,6 +436,7 @@ class BaseDataConstructor(threading.Thread):
     self._construct_eval_epoch()
     for _ in range(self._maximum_number_epochs - 1):
       self._construct_training_epoch()
+    self.stop_loop()
 
   def run(self):
     try:
@@ -445,7 +454,8 @@ class BaseDataConstructor(threading.Thread):
     atexit.register(pool.close)
     args = [(self._elements_in_epoch, stat_utils.random_int32())
             for _ in range(self._maximum_number_epochs)]
-    self._shuffle_iterator = pool.imap_unordered(stat_utils.permutation, args)
+    imap = pool.imap if self.deterministic else pool.imap_unordered
+    self._shuffle_iterator = imap(stat_utils.permutation, args)
 
   def _get_training_batch(self, i):
     """Construct a single batch of training data.
@@ -511,7 +521,9 @@ class BaseDataConstructor(threading.Thread):
     map_args = list(range(self.train_batches_per_epoch))
     self._current_epoch_order = next(self._shuffle_iterator)
 
-    with popen_helper.get_threadpool(6) as pool:
+    get_pool = (popen_helper.get_fauxpool if self.deterministic else
+                popen_helper.get_threadpool)
+    with get_pool(6) as pool:
       pool.map(self._get_training_batch, map_args)
     self._train_dataset.end_construction()
 
@@ -590,7 +602,10 @@ class BaseDataConstructor(threading.Thread):
 
     self._eval_dataset.start_construction()
     map_args = [i for i in range(self.eval_batches_per_epoch)]
-    with popen_helper.get_threadpool(6) as pool:
+
+    get_pool = (popen_helper.get_fauxpool if self.deterministic else
+                popen_helper.get_threadpool)
+    with get_pool(6) as pool:
       pool.map(self._get_eval_batch, map_args)
     self._eval_dataset.end_construction()
 
@@ -733,3 +748,119 @@ class MaterializedDataConstructor(BaseDataConstructor):
     negative_item_choice = stat_utils.very_slightly_biased_randint(
         self._per_user_neg_count[negative_users])
     return self._negative_table[negative_users, negative_item_choice]
+
+
+class BisectionDataConstructor(BaseDataConstructor):
+  """Use bisection to index within positive examples.
+
+  This class tallies the number of negative items which appear before each
+  positive item for a user. This means that in order to select the ith negative
+  item for a user, it only needs to determine which two positive items bound
+  it at which point the item id for the ith negative is a simply algebraic
+  expression.
+  """
+  def __init__(self, *args, **kwargs):
+    super(BisectionDataConstructor, self).__init__(*args, **kwargs)
+    self.index_bounds = None
+    self._sorted_train_pos_items = None
+    self._total_negatives = None
+
+  def _index_segment(self, user):
+    lower, upper = self.index_bounds[user:user+2]
+    items = self._sorted_train_pos_items[lower:upper]
+
+    negatives_since_last_positive = np.concatenate(
+        [items[0][np.newaxis], items[1:] - items[:-1] - 1])
+
+    return np.cumsum(negatives_since_last_positive)
+
+  def construct_lookup_variables(self):
+    start_time = timeit.default_timer()
+    inner_bounds = np.argwhere(self._train_pos_users[1:] -
+                               self._train_pos_users[:-1])[:, 0] + 1
+    (upper_bound,) = self._train_pos_users.shape
+    self.index_bounds = np.array([0] + inner_bounds.tolist() + [upper_bound])
+
+    # Later logic will assume that the users are in sequential ascending order.
+    assert np.array_equal(self._train_pos_users[self.index_bounds[:-1]],
+                          np.arange(self._num_users))
+
+    self._sorted_train_pos_items = self._train_pos_items.copy()
+
+    for i in range(self._num_users):
+      lower, upper = self.index_bounds[i:i+2]
+      self._sorted_train_pos_items[lower:upper].sort()
+
+    self._total_negatives = np.concatenate([
+        self._index_segment(i) for i in range(self._num_users)])
+
+    tf.logging.info("Negative total vector built. Time: {:.1f} seconds".format(
+        timeit.default_timer() - start_time))
+
+  def lookup_negative_items(self, negative_users, **kwargs):
+    output = np.zeros(shape=negative_users.shape, dtype=rconst.ITEM_DTYPE) - 1
+
+    left_index = self.index_bounds[negative_users]
+    right_index = self.index_bounds[negative_users + 1] - 1
+
+    num_positives = right_index - left_index + 1
+    num_negatives = self._num_items - num_positives
+    neg_item_choice = stat_utils.very_slightly_biased_randint(num_negatives)
+
+    # Shortcuts:
+    # For points where the negative is greater than or equal to the tally before
+    # the last positive point there is no need to bisect. Instead the item id
+    # corresponding to the negative item choice is simply:
+    #   last_postive_index + 1 + (neg_choice - last_negative_tally)
+    # Similarly, if the selection is less than the tally at the first positive
+    # then the item_id is simply the selection.
+    #
+    # Because MovieLens organizes popular movies into low integers (which is
+    # preserved through the preprocessing), the first shortcut is very
+    # efficient, allowing ~60% of samples to bypass the bisection. For the same
+    # reason, the second shortcut is rarely triggered (<0.02%) and is therefore
+    # not worth implementing.
+    use_shortcut = neg_item_choice >= self._total_negatives[right_index]
+    output[use_shortcut] = (
+        self._sorted_train_pos_items[right_index] + 1 +
+        (neg_item_choice - self._total_negatives[right_index])
+    )[use_shortcut]
+
+    not_use_shortcut = np.logical_not(use_shortcut)
+    left_index = left_index[not_use_shortcut]
+    right_index = right_index[not_use_shortcut]
+    neg_item_choice = neg_item_choice[not_use_shortcut]
+
+    num_loops = np.max(
+        np.ceil(np.log2(num_positives[not_use_shortcut])).astype(np.int32))
+
+    for i in range(num_loops):
+      mid_index = (left_index + right_index) // 2
+      right_criteria = self._total_negatives[mid_index] > neg_item_choice
+      left_criteria = np.logical_not(right_criteria)
+
+      right_index[right_criteria] = mid_index[right_criteria]
+      left_index[left_criteria] = mid_index[left_criteria]
+
+    # Expected state after bisection pass:
+    #   The right index is the smallest index whose tally is greater than the
+    #   negative item choice index.
+
+    assert np.all((right_index - left_index) <= 1)
+
+    output[not_use_shortcut] = (
+        self._sorted_train_pos_items[right_index] -
+        (self._total_negatives[right_index] - neg_item_choice)
+    )
+
+    assert np.all(output >= 0)
+
+    return output
+
+
+def get_constructor(name):
+  if name == "bisection":
+    return BisectionDataConstructor
+  if name == "materialized":
+    return MaterializedDataConstructor
+  raise ValueError("Unrecognized constructor: {}".format(name))

@@ -197,14 +197,18 @@ def _filter_index_sort(raw_rating_path, cache_path, match_mlperf):
   return data, valid_cache
 
 
-def instantiate_pipeline(dataset, data_dir, params):
-  # type: (str, str, dict) -> (NCFDataset, typing.Callable)
+def instantiate_pipeline(dataset, data_dir, params, constructor_type=None,
+                         deterministic=False):
+  # type: (str, str, dict, typing.Optional[str], bool) -> (NCFDataset, typing.Callable)
   """Load and digest data CSV into a usable form.
 
   Args:
     dataset: The name of the dataset to be used.
     data_dir: The root directory of the dataset.
     params: dict of parameters for the run.
+    constructor_type: The name of the constructor subclass that should be used
+      for the input pipeline.
+    deterministic: Tell the data constructor to produce deterministically.
   """
   tf.logging.info("Beginning data preprocessing.")
 
@@ -224,7 +228,7 @@ def instantiate_pipeline(dataset, data_dir, params):
     raise ValueError("Expected to find {} items, but found {}".format(
         num_items, len(item_map)))
 
-  producer = data_pipeline.MaterializedDataConstructor(
+  producer = data_pipeline.get_constructor(constructor_type or "materialized")(
       maximum_number_epochs=params["train_epochs"],
       num_users=num_users,
       num_items=num_items,
@@ -239,7 +243,8 @@ def instantiate_pipeline(dataset, data_dir, params):
       eval_pos_items=raw_data[rconst.EVAL_ITEM_KEY],
       eval_batch_size=params["eval_batch_size"],
       batches_per_eval_step=params["batches_per_step"],
-      stream_files=params["use_tpu"]
+      stream_files=params["use_tpu"],
+      deterministic=deterministic
   )
 
   run_time = timeit.default_timer() - st

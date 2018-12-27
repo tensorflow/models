@@ -192,8 +192,6 @@ def run_ncf(_):
 
   if FLAGS.seed is not None:
     np.random.seed(FLAGS.seed)
-    tf.logging.warning("Values may still vary from run to run due to thread "
-                       "execution ordering.")
 
   params = parse_flags(FLAGS)
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
@@ -206,7 +204,9 @@ def run_ncf(_):
     num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
   else:
     num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
-        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params)
+        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
+        constructor_type=FLAGS.constructor_type,
+        deterministic=FLAGS.seed is not None)
 
     num_train_steps = (producer.train_batches_per_epoch //
                        params["batches_per_step"])
@@ -383,6 +383,14 @@ def define_ncf_flags():
           "For dataset ml-20m, the threshold can be set as 0.95 which is "
           "achieved by MLPerf implementation."))
 
+  flags.DEFINE_enum(
+      name="constructor_type", default="bisection",
+      enum_values=["bisection", "materialized"], case_sensitive=False,
+      help=flags_core.help_wrap(
+          "Strategy to use for generating false negatives. materialized has a"
+          "precompute that scales badly, but a faster per-epoch construction"
+          "time and can be faster on very large systems."))
+
   flags.DEFINE_bool(
       name="ml_perf", default=False,
       help=flags_core.help_wrap(
@@ -413,13 +421,6 @@ def define_ncf_flags():
   flags.DEFINE_integer(
       name="seed", default=None, help=flags_core.help_wrap(
           "This value will be used to seed both NumPy and TensorFlow."))
-
-  flags.DEFINE_bool(
-      name="hash_pipeline", default=False, help=flags_core.help_wrap(
-          "This flag will perform a separate run of the pipeline and hash "
-          "batches as they are produced. \nNOTE: this will significantly slow "
-          "training. However it is useful to confirm that a random seed is "
-          "does indeed make the data pipeline deterministic."))
 
   @flags.validator("eval_batch_size", "eval_batch_size must be at least {}"
                    .format(rconst.NUM_EVAL_NEGATIVES + 1))

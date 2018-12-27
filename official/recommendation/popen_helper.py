@@ -28,3 +28,33 @@ def get_threadpool(num_workers, init_worker=None, closing=True):
   pool = multiprocessing.pool.ThreadPool(processes=num_workers,
                                          initializer=init_worker)
   return contextlib.closing(pool) if closing else pool
+
+
+class FauxPool(object):
+  """Mimic a pool using for loops.
+
+  This class is used in place of proper pools when true determinism is desired
+  for testing or debugging.
+  """
+  def __init__(self, *args, **kwargs):
+    pass
+
+  def map(self, func, iterable, chunksize=None):
+    return [func(i) for i in iterable]
+
+  def imap(self, func, iterable, chunksize=1):
+    for i in iterable:
+      yield func(i)
+
+  def close(self):
+    pass
+
+  def terminate(self):
+    pass
+
+  def join(self):
+    pass
+
+def get_fauxpool(num_workers, init_worker=None, closing=True):
+  pool = FauxPool(processes=num_workers, initializer=init_worker)
+  return contextlib.closing(pool) if closing else pool

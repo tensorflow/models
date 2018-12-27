@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from collections import defaultdict
+import hashlib
 import os
 import pickle
 import time
@@ -31,6 +32,7 @@ import tensorflow as tf
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
+from official.recommendation import popen_helper
 from official.recommendation import stat_utils
 
 
@@ -43,12 +45,23 @@ EVAL_BATCH_SIZE = 4000
 NUM_NEG = 4
 
 
+END_TO_END_TRAIN_MD5 = "b218738e915e825d03939c5e305a2698"
+END_TO_END_EVAL_MD5 = "d753d0f3186831466d6e218163a9501e"
+FRESH_RANDOMNESS_MD5 = "63d0dff73c0e5f1048fbdc8c65021e22"
+
+
 def mock_download(*args, **kwargs):
   return
 
 
 class BaseTest(tf.test.TestCase):
   def setUp(self):
+    # The forkpool used by data producers interacts badly with the threading
+    # used by TestCase. Without this monkey patch tests will hang, and no amount
+    # of diligent closing and joining within the producer will prevent it.
+    self._get_forkpool = popen_helper.get_forkpool
+    popen_helper.get_forkpool = popen_helper.get_fauxpool
+
     self.temp_data_dir = self.get_temp_dir()
     ratings_folder = os.path.join(self.temp_data_dir, DATASET)
     tf.gfile.MakeDirs(ratings_folder)
@@ -85,6 +98,9 @@ class BaseTest(tf.test.TestCase):
     movielens.NUM_RATINGS[DATASET] = NUM_PTS
     data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS,
                                                                   NUM_ITEMS)
+
+  def tearDown(self):
+    popen_helper.get_forkpool = self._get_forkpool
 
   def make_params(self, train_epochs=1):
     return {
@@ -126,10 +142,11 @@ class BaseTest(tf.test.TestCase):
           break
     return output
 
-  def test_end_to_end(self):
+  def _test_end_to_end(self, constructor_type):
     params = self.make_params(train_epochs=1)
     _, _, producer = data_preprocessing.instantiate_pipeline(
-        dataset=DATASET, data_dir=self.temp_data_dir, params=params)
+        dataset=DATASET, data_dir=self.temp_data_dir, params=params,
+        constructor_type=constructor_type, deterministic=True)
 
     producer.start()
     producer.join()
@@ -154,10 +171,13 @@ class BaseTest(tf.test.TestCase):
         False: set(),
     }
 
+    md5 = hashlib.md5()
     for features, labels in first_epoch:
-      for u, i, v, l in zip(
+      data_list = [
           features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
-          features[rconst.VALID_POINT_MASK], labels):
+          features[rconst.VALID_POINT_MASK], labels]
+      [md5.update(i.tobytes()) for i in data_list]
+      for u, i, v, l in zip(*data_list):
         if not v:
           continue  # ignore padding
 
@@ -172,8 +192,9 @@ class BaseTest(tf.test.TestCase):
         train_examples[l].add((u_raw, i_raw))
         counts[(u_raw, i_raw)] += 1
 
-    num_positives_seen = len(train_examples[True])
+    self.assertRegexpMatches(md5.hexdigest(), END_TO_END_TRAIN_MD5)
 
+    num_positives_seen = len(train_examples[True])
     self.assertEqual(producer._train_pos_users.shape[0], num_positives_seen)
 
     # This check is more heuristic because negatives are sampled with
@@ -196,10 +217,13 @@ class BaseTest(tf.test.TestCase):
     eval_data = self.drain_dataset(dataset=dataset, g=g)
 
     current_user = None
+    md5 = hashlib.md5()
     for features in eval_data:
-      for idx, (u, i, d) in enumerate(zip(features[movielens.USER_COLUMN],
-                                          features[movielens.ITEM_COLUMN],
-                                          features[rconst.DUPLICATE_MASK])):
+      data_list = [
+          features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
+          features[rconst.DUPLICATE_MASK]]
+      [md5.update(i.tobytes()) for i in data_list]
+      for idx, (u, i, d) in enumerate(zip(*data_list)):
         u_raw = user_inv_map[u]
         i_raw = item_inv_map[i]
         if current_user is None:
@@ -228,11 +252,14 @@ class BaseTest(tf.test.TestCase):
           # from the negatives.
           assert (u_raw, i_raw) not in self.seen_pairs
 
-  def test_fresh_randomness(self):
+    self.assertRegexpMatches(md5.hexdigest(), END_TO_END_EVAL_MD5)
+
+  def _test_fresh_randomness(self, constructor_type):
     train_epochs = 5
     params = self.make_params(train_epochs=train_epochs)
     _, _, producer = data_preprocessing.instantiate_pipeline(
-        dataset=DATASET, data_dir=self.temp_data_dir, params=params)
+        dataset=DATASET, data_dir=self.temp_data_dir, params=params,
+        constructor_type=constructor_type, deterministic=True)
 
     producer.start()
 
@@ -248,10 +275,13 @@ class BaseTest(tf.test.TestCase):
     assert producer._fatal_exception is None
 
     positive_counts, negative_counts = defaultdict(int), defaultdict(int)
+    md5 = hashlib.md5()
     for features, labels in results:
-      for u, i, v, l in zip(
+      data_list = [
           features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
-          features[rconst.VALID_POINT_MASK], labels):
+          features[rconst.VALID_POINT_MASK], labels]
+      [md5.update(i.tobytes()) for i in data_list]
+      for u, i, v, l in zip(*data_list):
         if not v:
           continue  # ignore padding
 
@@ -259,6 +289,8 @@ class BaseTest(tf.test.TestCase):
           positive_counts[(u, i)] += 1
         else:
           negative_counts[(u, i)] += 1
+
+    self.assertRegexpMatches(md5.hexdigest(), FRESH_RANDOMNESS_MD5)
 
     # The positive examples should appear exactly once each epoch
     self.assertAllEqual(list(positive_counts.values()),
@@ -300,6 +332,18 @@ class BaseTest(tf.test.TestCase):
                    (observed_fraction + approx_pdf[i]))
 
       self.assertLess(deviation, 0.2)
+
+  def test_end_to_end_materialized(self):
+    self._test_end_to_end("materialized")
+
+  def test_end_to_end_bisection(self):
+    self._test_end_to_end("bisection")
+
+  def test_fresh_randomness_materialized(self):
+    self._test_fresh_randomness("materialized")
+
+  def test_fresh_randomness_bisection(self):
+    self._test_fresh_randomness("bisection")
 
 
 if __name__ == "__main__":
