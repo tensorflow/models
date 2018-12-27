@@ -826,6 +826,10 @@ class BisectionDataConstructor(BaseDataConstructor):
         (neg_item_choice - self._total_negatives[right_index])
     )[use_shortcut]
 
+    if np.all(use_shortcut):
+      # The bisection code is ill-posed when there are no elements.
+      return output
+
     not_use_shortcut = np.logical_not(use_shortcut)
     left_index = left_index[not_use_shortcut]
     right_index = right_index[not_use_shortcut]
