@@ -155,7 +155,6 @@ def parse_flags(flags_obj):
       "train_epochs": flags_obj.train_epochs,
       "batches_per_step": num_devices,
       "use_seed": flags_obj.seed is not None,
-      "hash_pipeline": flags_obj.hash_pipeline,
       "batch_size": batch_size,
       "eval_batch_size": eval_batch_size,
       "learning_rate": flags_obj.learning_rate,

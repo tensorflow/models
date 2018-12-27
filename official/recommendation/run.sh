@@ -54,11 +54,7 @@ do
 
   # To reduce variation set the seed flag:
   #   --seed ${i}
-  #
-  # And to confirm that the pipeline is deterministic pass the flag:
-  #   --hash_pipeline
-  #
-  # (`--hash_pipeline` will slow down training, though not as much as one might imagine.)
+
   python ncf_main.py --model_dir ${MODEL_DIR} \
                      --data_dir ${DATA_DIR} \
                      --dataset ${DATASET} --hooks "" \
