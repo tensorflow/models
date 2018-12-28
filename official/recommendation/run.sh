@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if ! which unbuffer > /dev/null; then
+  echo "Could not find unbuffer command. Make sure the expect package is installed."
+  exit 1
+fi
+
 if [ `id -u` != 0 ]; then
   echo "Calling sudo to gain root for this shell. (Needed to clear caches.)"
   sudo echo "Success"
@@ -55,21 +60,22 @@ do
   # To reduce variation set the seed flag:
   #   --seed ${i}
 
-  python ncf_main.py --model_dir ${MODEL_DIR} \
-                     --data_dir ${DATA_DIR} \
-                     --dataset ${DATASET} --hooks "" \
-                     ${DEVICE_FLAG} \
-                     --clean \
-                     --train_epochs 14 \
-                     --batch_size 98304 \
-                     --eval_batch_size 160000 \
-                     --learning_rate 0.00382059 \
-                     --beta1 0.783529 \
-                     --beta2 0.909003 \
-                     --epsilon 1.45439e-07 \
-                     --layers 256,256,128,64 --num_factors 64 \
-                     --hr_threshold 0.635 \
-                     --ml_perf \
+  unbuffer python ncf_main.py \
+      --model_dir ${MODEL_DIR} \
+      --data_dir ${DATA_DIR} \
+      --dataset ${DATASET} --hooks "" \
+      ${DEVICE_FLAG} \
+      --clean \
+      --train_epochs 14 \
+      --batch_size 98304 \
+      --eval_batch_size 160000 \
+      --learning_rate 0.00382059 \
+      --beta1 0.783529 \
+      --beta2 0.909003 \
+      --epsilon 1.45439e-07 \
+      --layers 256,256,128,64 --num_factors 64 \
+      --hr_threshold 0.635 \
+      --ml_perf \
  |& tee ${RUN_LOG} \
  | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+, Loss = [0-9\.]+)|(pipeline_hash)|(MLPerf time:)"
 
