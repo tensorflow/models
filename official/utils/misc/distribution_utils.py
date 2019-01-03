@@ -43,15 +43,9 @@ def get_distribution_strategy(num_gpus,
     larger than 1
   """
   if num_gpus == 0:
-    if turn_off_distribution_strategy:
-      return None
-    else:
-      return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
+    return None if turn_off_distribution_strategy else tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
   elif num_gpus == 1:
-    if turn_off_distribution_strategy:
-      return None
-    else:
-      return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
+    return None if turn_off_distribution_strategy else tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
   elif turn_off_distribution_strategy:
     raise ValueError("When {} GPUs are specified, "
                      "turn_off_distribution_strategy flag cannot be set to"
