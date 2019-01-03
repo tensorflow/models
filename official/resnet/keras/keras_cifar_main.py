@@ -135,7 +135,9 @@ def run(flags_obj):
   strategy = distribution_utils.get_distribution_strategy(
       flags_obj.num_gpus, flags_obj.turn_off_distribution_strategy)
 
-  with strategy.scope():
+  strategy_scope = keras_common.get_strategy_scope(strategy)
+
+  with strategy_scope:
     optimizer = keras_common.get_optimizer()
     model = resnet_cifar_model.resnet56(classes=cifar_main.NUM_CLASSES)
 

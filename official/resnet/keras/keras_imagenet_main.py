@@ -124,9 +124,12 @@ def run(flags_obj):
   strategy = distribution_utils.get_distribution_strategy(
       flags_obj.num_gpus, flags_obj.turn_off_distribution_strategy)
 
-  with strategy.scope():
+  strategy_scope = keras_common.get_strategy_scope(strategy)
+
+  with strategy_scope:
     optimizer = keras_common.get_optimizer()
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES)
+
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,
                   metrics=['sparse_categorical_accuracy'])
