@@ -121,16 +121,18 @@ def run(flags_obj):
                                 num_epochs=flags_obj.train_epochs,
                                 parse_record_fn=parse_record_keras)
 
-  optimizer = keras_common.get_optimizer()
   strategy = distribution_utils.get_distribution_strategy(
       flags_obj.num_gpus, flags_obj.turn_off_distribution_strategy)
 
-  model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES)
+  strategy_scope = keras_common.get_strategy_scope(strategy)
 
-  model.compile(loss='sparse_categorical_crossentropy',
-                optimizer=optimizer,
-                metrics=['sparse_categorical_accuracy'],
-                distribute=strategy)
+  with strategy_scope:
+    optimizer = keras_common.get_optimizer()
+    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES)
+
+    model.compile(loss='sparse_categorical_crossentropy',
+                  optimizer=optimizer,
+                  metrics=['sparse_categorical_accuracy'])
 
   time_callback, tensorboard_callback, lr_callback = keras_common.get_callbacks(
       learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])
