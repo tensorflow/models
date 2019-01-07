@@ -1,11 +1,6 @@
 #!/bin/bash
 set -e
 
-if ! which unbuffer > /dev/null; then
-  echo "Could not find unbuffer command. Make sure the expect package is installed."
-  exit 1
-fi
-
 if [ `id -u` != 0 ]; then
   echo "Calling sudo to gain root for this shell. (Needed to clear caches.)"
   sudo echo "Success"
@@ -60,7 +55,7 @@ do
   # To reduce variation set the seed flag:
   #   --seed ${i}
 
-  unbuffer python ncf_main.py \
+  python -u ncf_main.py \
       --model_dir ${MODEL_DIR} \
       --data_dir ${DATA_DIR} \
       --dataset ${DATASET} --hooks "" \

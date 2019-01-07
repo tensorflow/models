@@ -24,14 +24,11 @@ import mock
 import numpy as np
 import tensorflow as tf
 
-from absl import flags
 from absl.testing import flagsaver
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
-from official.recommendation import data_preprocessing
 from official.recommendation import neumf_model
 from official.recommendation import ncf_main
-from official.recommendation import stat_utils
 
 
 NUM_TRAIN_NEG = 4

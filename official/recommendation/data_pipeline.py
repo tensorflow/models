@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import atexit
-import collections
 import functools
 import os
 import sys

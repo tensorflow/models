@@ -20,12 +20,10 @@ from __future__ import print_function
 
 from collections import defaultdict
 import hashlib
+import mock
 import os
-import pickle
-import time
 
 import numpy as np
-import pandas as pd
 import scipy.stats
 import tensorflow as tf
 
@@ -33,7 +31,6 @@ from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
 from official.recommendation import popen_helper
-from official.recommendation import stat_utils
 
 
 DATASET = "ml-test"
@@ -53,15 +50,12 @@ FRESH_RANDOMNESS_MD5 = "63d0dff73c0e5f1048fbdc8c65021e22"
 def mock_download(*args, **kwargs):
   return
 
-
+# The forkpool used by data producers interacts badly with the threading
+# used by TestCase. Without this patch tests will hang, and no amount
+# of diligent closing and joining within the producer will prevent it.
+@mock.patch.object(popen_helper, "get_forkpool", popen_helper.get_fauxpool)
 class BaseTest(tf.test.TestCase):
   def setUp(self):
-    # The forkpool used by data producers interacts badly with the threading
-    # used by TestCase. Without this monkey patch tests will hang, and no amount
-    # of diligent closing and joining within the producer will prevent it.
-    self._get_forkpool = popen_helper.get_forkpool
-    popen_helper.get_forkpool = popen_helper.get_fauxpool
-
     self.temp_data_dir = self.get_temp_dir()
     ratings_folder = os.path.join(self.temp_data_dir, DATASET)
     tf.gfile.MakeDirs(ratings_folder)
@@ -98,9 +92,6 @@ class BaseTest(tf.test.TestCase):
     movielens.NUM_RATINGS[DATASET] = NUM_PTS
     data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS,
                                                                   NUM_ITEMS)
-
-  def tearDown(self):
-    popen_helper.get_forkpool = self._get_forkpool
 
   def make_params(self, train_epochs=1):
     return {
@@ -176,7 +167,9 @@ class BaseTest(tf.test.TestCase):
       data_list = [
           features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
           features[rconst.VALID_POINT_MASK], labels]
-      [md5.update(i.tobytes()) for i in data_list]
+      for i in data_list:
+        md5.update(i.tobytes())
+
       for u, i, v, l in zip(*data_list):
         if not v:
           continue  # ignore padding
@@ -222,7 +215,9 @@ class BaseTest(tf.test.TestCase):
       data_list = [
           features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
           features[rconst.DUPLICATE_MASK]]
-      [md5.update(i.tobytes()) for i in data_list]
+      for i in data_list:
+        md5.update(i.tobytes())
+
       for idx, (u, i, d) in enumerate(zip(*data_list)):
         u_raw = user_inv_map[u]
         i_raw = item_inv_map[i]
@@ -280,7 +275,9 @@ class BaseTest(tf.test.TestCase):
       data_list = [
           features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
           features[rconst.VALID_POINT_MASK], labels]
-      [md5.update(i.tobytes()) for i in data_list]
+      for i in data_list:
+        md5.update(i.tobytes())
+
       for u, i, v, l in zip(*data_list):
         if not v:
           continue  # ignore padding
