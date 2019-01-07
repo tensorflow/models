@@ -44,7 +44,7 @@ DATASET_TO_NUM_USERS_AND_ITEMS = {
 
 _EXPECTED_CACHE_KEYS = (
     rconst.TRAIN_USER_KEY, rconst.TRAIN_ITEM_KEY, rconst.EVAL_USER_KEY,
-    rconst.EVAL_ITEM_KEY, rconst.USER_MAP, rconst.ITEM_MAP, "match_mlperf")
+    rconst.EVAL_ITEM_KEY, rconst.USER_MAP, rconst.ITEM_MAP)
 
 
 def _filter_index_sort(raw_rating_path, cache_path):
