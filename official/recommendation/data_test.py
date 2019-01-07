@@ -110,14 +110,12 @@ class BaseTest(tf.test.TestCase):
     # For the most part the necessary checks are performed within
     # _filter_index_sort()
 
-    for match_mlperf in [True, False]:
-      cache_path = os.path.join(self.temp_data_dir, "test_cache.pickle")
-      data, valid_cache = data_preprocessing._filter_index_sort(
-          self.rating_file, cache_path=cache_path)
+    cache_path = os.path.join(self.temp_data_dir, "test_cache.pickle")
+    data, valid_cache = data_preprocessing._filter_index_sort(
+        self.rating_file, cache_path=cache_path)
 
-      assert len(data[rconst.USER_MAP]) == NUM_USERS
-      assert len(data[rconst.ITEM_MAP]) == NUM_ITEMS
-      assert not valid_cache
+    assert len(data[rconst.USER_MAP]) == NUM_USERS
+    assert len(data[rconst.ITEM_MAP]) == NUM_ITEMS
 
   def drain_dataset(self, dataset, g):
     # type: (tf.data.Dataset, tf.Graph) -> list
