@@ -22,7 +22,6 @@ from collections import defaultdict
 import hashlib
 import os
 
-import mock
 import numpy as np
 import scipy.stats
 import tensorflow as tf
@@ -50,12 +49,15 @@ FRESH_RANDOMNESS_MD5 = "63d0dff73c0e5f1048fbdc8c65021e22"
 def mock_download(*args, **kwargs):
   return
 
-# The forkpool used by data producers interacts badly with the threading
-# used by TestCase. Without this patch tests will hang, and no amount
-# of diligent closing and joining within the producer will prevent it.
-@mock.patch.object(popen_helper, "get_forkpool", popen_helper.get_fauxpool)
+
 class BaseTest(tf.test.TestCase):
   def setUp(self):
+    # The forkpool used by data producers interacts badly with the threading
+    # used by TestCase. Without this patch tests will hang, and no amount
+    # of diligent closing and joining within the producer will prevent it.
+    self._get_forkpool = popen_helper.get_forkpool
+    popen_helper.get_forkpool = popen_helper.get_fauxpool
+
     self.temp_data_dir = self.get_temp_dir()
     ratings_folder = os.path.join(self.temp_data_dir, DATASET)
     tf.gfile.MakeDirs(ratings_folder)
@@ -92,6 +94,9 @@ class BaseTest(tf.test.TestCase):
     movielens.NUM_RATINGS[DATASET] = NUM_PTS
     data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS,
                                                                   NUM_ITEMS)
+
+  def tearDown(self):
+    popen_helper.get_forkpool = self._get_forkpool
 
   def make_params(self, train_epochs=1):
     return {
