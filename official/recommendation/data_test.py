@@ -20,9 +20,9 @@ from __future__ import print_function
 
 from collections import defaultdict
 import hashlib
-import mock
 import os
 
+import mock
 import numpy as np
 import scipy.stats
 import tensorflow as tf
@@ -113,8 +113,7 @@ class BaseTest(tf.test.TestCase):
     for match_mlperf in [True, False]:
       cache_path = os.path.join(self.temp_data_dir, "test_cache.pickle")
       data, valid_cache = data_preprocessing._filter_index_sort(
-          self.rating_file, cache_path=cache_path,
-          match_mlperf=match_mlperf)
+          self.rating_file, cache_path=cache_path)
 
       assert len(data[rconst.USER_MAP]) == NUM_USERS
       assert len(data[rconst.ITEM_MAP]) == NUM_ITEMS
