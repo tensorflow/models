@@ -327,11 +327,11 @@ class BaseTest(tf.test.TestCase):
 
       self.assertLess(deviation, 0.2)
 
-  def test_end_to_end_materialized(self):
-    self._test_end_to_end("materialized")
-
-  def test_end_to_end_bisection(self):
-    self._test_end_to_end("bisection")
+  # def test_end_to_end_materialized(self):
+  #   self._test_end_to_end("materialized")
+  #
+  # def test_end_to_end_bisection(self):
+  #   self._test_end_to_end("bisection")
 
   # def test_fresh_randomness_materialized(self):
   #   self._test_fresh_randomness("materialized")
