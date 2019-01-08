@@ -95,7 +95,7 @@ def construct_estimator(model_dir, params):
     os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
 
     distribution = tf.contrib.distribute.TPUStrategy(
-        tpu_cluster_resolver, 100, params["batches_per_step"])
+        tpu_cluster_resolver, steps_per_run=100)
 
   else:
     distribution = distribution_utils.get_distribution_strategy(
