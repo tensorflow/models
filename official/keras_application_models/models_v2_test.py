@@ -29,6 +29,7 @@ from official.keras_application_models import models
 _BATCH_SIZE = 5
 _NUM_IMAGES = 10
 
+
 _MODELS = models.MODELS
 _MODEL_KEYS = models.MODELS.keys()
 
