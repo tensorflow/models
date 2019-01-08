@@ -26,25 +26,12 @@ import tensorflow as tf
 
 from official.keras_application_models import dataset
 from official.keras_application_models import model_callbacks
+from official.keras_application_models import models
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 
-# Define a dictionary that maps model names to their model classes inside Keras
-MODELS = {
-    "vgg16": tf.keras.applications.VGG16,
-    "vgg19": tf.keras.applications.VGG19,
-    "inceptionv3": tf.keras.applications.InceptionV3,
-    "xception": tf.keras.applications.Xception,
-    "resnet50": tf.keras.applications.ResNet50,
-    "inceptionresnetv2": tf.keras.applications.InceptionResNetV2,
-    "mobilenet": tf.keras.applications.MobileNet,
-    "densenet121": tf.keras.applications.DenseNet121,
-    "densenet169": tf.keras.applications.DenseNet169,
-    "densenet201": tf.keras.applications.DenseNet201,
-    "nasnetlarge": tf.keras.applications.NASNetLarge,
-    "nasnetmobile": tf.keras.applications.NASNetMobile,
-}
+MODELS = models.MODELS
 
 
 def run_keras_model_benchmark(_):
