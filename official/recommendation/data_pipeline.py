@@ -378,6 +378,7 @@ class BaseDataConstructor(threading.Thread):
     self._current_epoch_order = np.empty(shape=(0,))
     self._shuffle_iterator = None
 
+    self._shuffle_with_forkpool = stream_files
     if stream_files:
       self._shard_root = tempfile.mkdtemp(prefix="ncf_")
       atexit.register(tf.gfile.DeleteRecursively, dirname=self._shard_root)
@@ -449,7 +450,10 @@ class BaseDataConstructor(threading.Thread):
       raise
 
   def _start_shuffle_iterator(self):
-    pool = popen_helper.get_forkpool(3, closing=False)
+    if self._shuffle_with_forkpool:
+      pool = popen_helper.get_forkpool(3, closing=False)
+    else:
+      pool = popen_helper.get_threadpool(1, closing=False)
     atexit.register(pool.close)
     args = [(self._elements_in_epoch, stat_utils.random_int32())
             for _ in range(self._maximum_number_epochs)]
