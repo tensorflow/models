@@ -327,19 +327,19 @@ class BaseTest(tf.test.TestCase):
 
       self.assertLess(deviation, 0.2)
 
-  # def test_end_to_end_materialized(self):
-  #   self._test_end_to_end("materialized")
-  #
-  # def test_end_to_end_bisection(self):
-  #   self._test_end_to_end("bisection")
+  def test_end_to_end_materialized(self):
+    self._test_end_to_end("materialized")
 
-  # def test_fresh_randomness_materialized(self):
-  #   self._test_fresh_randomness("materialized")
-  #
-  # def test_fresh_randomness_bisection(self):
-  #   self._test_fresh_randomness("bisection")
+  def test_end_to_end_bisection(self):
+    self._test_end_to_end("bisection")
+
+  def test_fresh_randomness_materialized(self):
+    self._test_fresh_randomness("materialized")
+
+  def test_fresh_randomness_bisection(self):
+    self._test_fresh_randomness("bisection")
 
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
-  # tf.test.main()
+  tf.test.main()
