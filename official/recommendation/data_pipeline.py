@@ -378,7 +378,7 @@ class BaseDataConstructor(threading.Thread):
     self._current_epoch_order = np.empty(shape=(0,))
     self._shuffle_iterator = None
 
-    self._shuffle_with_forkpool = stream_files
+    self._shuffle_with_forkpool = not stream_files
     if stream_files:
       self._shard_root = tempfile.mkdtemp(prefix="ncf_")
       atexit.register(tf.gfile.DeleteRecursively, dirname=self._shard_root)
