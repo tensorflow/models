@@ -28,7 +28,6 @@ from official.resnet.keras import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
-from tensorflow.python.keras import backend
 
 
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
@@ -96,7 +95,7 @@ def run(flags_obj):
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
                      'value(fp32).')
 
-  backend.set_image_data_format(flags_obj.data_format)
+  tf.keras.backend.set_image_data_format(flags_obj.data_format)
 
   per_device_batch_size = distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
@@ -152,7 +151,7 @@ def run(flags_obj):
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
-    backend.set_learning_phase(1)
+    tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
 
