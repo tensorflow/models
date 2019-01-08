@@ -27,9 +27,8 @@ parser.add_argument('--train_steps', default=1000, type=int,
                     help='number of training steps')
 
 def my_model(features, labels, mode, params):
-    """DNN with three hidden layers, and dropout of 0.1 probability."""
-    # Create three fully connected layers each layer having a dropout
-    # probability of 0.1.
+    """DNN with three hidden layers and learning_rate=0.1."""
+    # Create three fully connected layers.
     net = tf.feature_column.input_layer(features, params['feature_columns'])
     for units in params['hidden_units']:
         net = tf.layers.dense(net, units=units, activation=tf.nn.relu)

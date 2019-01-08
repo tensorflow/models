@@ -6,7 +6,7 @@ import "object_detection/protos/optimizer.proto";
 import "object_detection/protos/preprocessor.proto";
 
 // Message for configuring DetectionModel training jobs (train.py).
-// Next id: 26
+// Next id: 28
 message TrainConfig {
   // Effective batch size to use for training.
   // For TPU (or sync SGD jobs), the batch size per core (or GPU) is going to be
@@ -20,7 +20,7 @@ message TrainConfig {
   optional bool sync_replicas = 3 [default=false];
 
   // How frequently to keep checkpoints.
-  optional uint32 keep_checkpoint_every_n_hours = 4 [default=1000];
+  optional float keep_checkpoint_every_n_hours = 4 [default=10000.0];
 
   // Optimizer used to train the DetectionModel.
   optional Optimizer optimizer = 5;
@@ -112,4 +112,10 @@ message TrainConfig {
   // dictionary, so that they can be displayed in Tensorboard. Note that this
   // will lead to a larger memory footprint.
   optional bool retain_original_images = 23 [default=false];
+
+  // Whether to use bfloat16 for training.
+  optional bool use_bfloat16 = 26 [default=false];
+
+  // Whether to summarize gradients.
+  optional bool summarize_gradients = 27 [default=false];
 }

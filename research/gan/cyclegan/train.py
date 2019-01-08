@@ -169,10 +169,13 @@ def main(_):
 
   with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
     with tf.name_scope('inputs'):
-      images_x, images_y = data_provider.provide_custom_datasets(
+      images_x, images_y = data_provider.provide_custom_data(
           [FLAGS.image_set_x_file_pattern, FLAGS.image_set_y_file_pattern],
           batch_size=FLAGS.batch_size,
           patch_size=FLAGS.patch_size)
+      # Set batch size for summaries.
+      images_x.set_shape([FLAGS.batch_size, None, None, None])
+      images_y.set_shape([FLAGS.batch_size, None, None, None])
 
     # Define CycleGAN model.
     cyclegan_model = _define_model(images_x, images_y)

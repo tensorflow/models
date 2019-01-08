@@ -88,6 +88,9 @@ protoc object_detection/protos/*.proto --python_out=.
 **Note**: If you're getting errors while compiling, you might be using an incompatible protobuf compiler. If that's the case, use the following manual installation
 
 ## Manual protobuf-compiler installation and usage
+
+**If you are on linux:**
+
 Download and install the 3.0 release of protoc, then unzip the file.
 
 ```bash
@@ -101,6 +104,25 @@ Run the compilation process again, but use the downloaded version of protoc
 ```bash
 # From tensorflow/models/research/
 ./bin/protoc object_detection/protos/*.proto --python_out=.
+```
+
+**If you are on MacOS:**
+
+If you have homebrew, download and install the protobuf with
+```brew install protobuf```
+
+Alternately, run:
+```PROTOC_ZIP=protoc-3.3.0-osx-x86_64.zip
+curl -OL https://github.com/google/protobuf/releases/download/v3.3.0/$PROTOC_ZIP
+sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+rm -f $PROTOC_ZIP
+```
+
+Run the compilation process again:
+
+``` bash
+# From tensorflow/models/research/
+protoc object_detection/protos/*.proto --python_out=.
 ```
 
 ## Add Libraries to PYTHONPATH

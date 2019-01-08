@@ -58,6 +58,22 @@ class MaskRCNNMaskHeadTest(test_case.TestCase):
         features=roi_pooled_features, num_predictions_per_location=1)
     self.assertAllEqual([64, 1, 20, 14, 14], prediction.get_shape().as_list())
 
+  def test_prediction_size_with_convolve_then_upsample(self):
+    mask_prediction_head = mask_head.MaskRCNNMaskHead(
+        num_classes=20,
+        conv_hyperparams_fn=self._build_arg_scope_with_hyperparams(),
+        mask_height=28,
+        mask_width=28,
+        mask_prediction_num_conv_layers=2,
+        mask_prediction_conv_depth=256,
+        masks_are_class_agnostic=True,
+        convolve_then_upsample=True)
+    roi_pooled_features = tf.random_uniform(
+        [64, 14, 14, 1024], minval=-10.0, maxval=10.0, dtype=tf.float32)
+    prediction = mask_prediction_head.predict(
+        features=roi_pooled_features, num_predictions_per_location=1)
+    self.assertAllEqual([64, 1, 1, 28, 28], prediction.get_shape().as_list())
+
 
 class ConvolutionalMaskPredictorTest(test_case.TestCase):
 

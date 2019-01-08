@@ -22,7 +22,12 @@ enum InstanceMaskType {
   PNG_MASKS = 2;        // Encoded PNG masks.
 }
 
+// Next id: 24
 message InputReader {
+  // Name of input reader. Typically used to describe the dataset that is read
+  // by this input reader.
+  optional string name = 23 [default=""];
+
   // Path to StringIntLabelMap pbtxt file specifying the mapping from string
   // labels to integer ids.
   optional string label_map_path = 1 [default=""];
@@ -40,6 +45,12 @@ message InputReader {
   // The number of times a data source is read. If set to zero, the data source
   // will be reused indefinitely.
   optional uint32 num_epochs = 5 [default=0];
+
+  // Integer representing how often an example should be sampled. To feed
+  // only 1/3 of your data into your model, set `sample_1_of_n_examples` to 3.
+  // This is particularly useful for evaluation, where you might not prefer to
+  // evaluate all of your samples.
+  optional uint32 sample_1_of_n_examples = 22 [default=1];
 
   // Number of file shards to read in parallel.
   optional uint32 num_readers = 6 [default=64];
@@ -61,7 +72,6 @@ message InputReader {
   // Minimum number of records to keep in reader queue. A large value is needed
   // to generate a good random shuffle.
   optional uint32 min_after_dequeue = 4 [default=1000, deprecated=true];
-
 
   // Number of records to read from each reader at once.
   optional uint32 read_block_length = 15 [default=32];

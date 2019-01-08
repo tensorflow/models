@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """Convolutional Box Predictors with and without weight sharing."""
+import functools
 import tensorflow as tf
 from object_detection.core import box_predictor
 from object_detection.utils import static_shape
@@ -163,7 +164,7 @@ class ConvolutionalBoxPredictor(box_predictor.BoxPredictor):
               else:
                 head_obj = self._other_heads[head_name]
               prediction = head_obj.predict(
-                  features=image_feature,
+                  features=net,
                   num_predictions_per_location=num_predictions_per_location)
               predictions[head_name].append(prediction)
     return predictions
@@ -203,7 +204,8 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
                num_layers_before_predictor,
                kernel_size=3,
                apply_batch_norm=False,
-               share_prediction_tower=False):
+               share_prediction_tower=False,
+               use_depthwise=False):
     """Constructor.
 
     Args:
@@ -226,6 +228,8 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
         this predictor.
       share_prediction_tower: Whether to share the multi-layer tower between box
         prediction and class prediction heads.
+      use_depthwise: Whether to use depthwise separable conv2d instead of
+       regular conv2d.
     """
     super(WeightSharedConvolutionalBoxPredictor, self).__init__(is_training,
                                                                 num_classes)
@@ -238,6 +242,7 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
     self._kernel_size = kernel_size
     self._apply_batch_norm = apply_batch_norm
     self._share_prediction_tower = share_prediction_tower
+    self._use_depthwise = use_depthwise
 
   @property
   def num_classes(self):
@@ -270,7 +275,11 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
                           inserted_layer_counter):
     net = image_feature
     for i in range(self._num_layers_before_predictor):
-      net = slim.conv2d(
+      if self._use_depthwise:
+        conv_op = functools.partial(slim.separable_conv2d, depth_multiplier=1)
+      else:
+        conv_op = slim.conv2d
+      net = conv_op(
           net,
           self._depth, [self._kernel_size, self._kernel_size],
           stride=1,
@@ -292,8 +301,6 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
                     num_predictions_per_location):
     if head_name == CLASS_PREDICTIONS_WITH_BACKGROUND:
       tower_name_scope = 'ClassPredictionTower'
-    elif head_name == MASK_PREDICTIONS:
-      tower_name_scope = 'MaskPredictionTower'
     else:
       raise ValueError('Unknown head')
     if self._share_prediction_tower:

@@ -16,14 +16,13 @@
 """Tests for object_detection.core.box_list_ops."""
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.framework import errors
-from tensorflow.python.framework import ops
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
+from object_detection.utils import test_case
 
 
-class BoxListOpsTest(tf.test.TestCase):
+class BoxListOpsTest(test_case.TestCase):
   """Tests for common bounding box operations."""
 
   def test_area(self):
@@ -364,11 +363,35 @@ class BoxListOpsTest(tf.test.TestCase):
       subset_output = sess.run(subset.get())
       self.assertAllClose(subset_output, expected_subset)
 
-  def test_boolean_mask_with_field(self):
-    corners = tf.constant(
-        [4 * [0.0], 4 * [1.0], 4 * [2.0], 4 * [3.0], 4 * [4.0]])
-    indicator = tf.constant([True, False, True, False, True], tf.bool)
-    weights = tf.constant([[.1], [.3], [.5], [.7], [.9]], tf.float32)
+  def test_static_boolean_mask_with_field(self):
+
+    def graph_fn(corners, weights, indicator):
+      boxes = box_list.BoxList(corners)
+      boxes.add_field('weights', weights)
+      subset = box_list_ops.boolean_mask(
+          boxes,
+          indicator, ['weights'],
+          use_static_shapes=True,
+          indicator_sum=3)
+      return (subset.get_field('boxes'), subset.get_field('weights'))
+
+    corners = np.array(
+        [4 * [0.0], 4 * [1.0], 4 * [2.0], 4 * [3.0], 4 * [4.0]],
+        dtype=np.float32)
+    indicator = np.array([True, False, True, False, True], dtype=np.bool)
+    weights = np.array([[.1], [.3], [.5], [.7], [.9]], dtype=np.float32)
+    result_boxes, result_weights = self.execute(graph_fn,
+                                                [corners, weights, indicator])
+    expected_boxes = [4 * [0.0], 4 * [2.0], 4 * [4.0]]
+    expected_weights = [[.1], [.5], [.9]]
+
+    self.assertAllClose(result_boxes, expected_boxes)
+    self.assertAllClose(result_weights, expected_weights)
+
+  def test_dynamic_boolean_mask_with_field(self):
+    corners = tf.placeholder(tf.float32, [None, 4])
+    indicator = tf.placeholder(tf.bool, [None])
+    weights = tf.placeholder(tf.float32, [None, 1])
     expected_subset = [4 * [0.0], 4 * [2.0], 4 * [4.0]]
     expected_weights = [[.1], [.5], [.9]]
 
@@ -377,7 +400,16 @@ class BoxListOpsTest(tf.test.TestCase):
     subset = box_list_ops.boolean_mask(boxes, indicator, ['weights'])
     with self.test_session() as sess:
       subset_output, weights_output = sess.run(
-          [subset.get(), subset.get_field('weights')])
+          [subset.get(), subset.get_field('weights')],
+          feed_dict={
+              corners:
+                  np.array(
+                      [4 * [0.0], 4 * [1.0], 4 * [2.0], 4 * [3.0], 4 * [4.0]]),
+              indicator:
+                  np.array([True, False, True, False, True]).astype(np.bool),
+              weights:
+                  np.array([[.1], [.3], [.5], [.7], [.9]])
+          })
       self.assertAllClose(subset_output, expected_subset)
       self.assertAllClose(weights_output, expected_weights)
 
@@ -392,19 +424,50 @@ class BoxListOpsTest(tf.test.TestCase):
       subset_output = sess.run(subset.get())
       self.assertAllClose(subset_output, expected_subset)
 
-  def test_gather_with_field(self):
-    corners = tf.constant([4*[0.0], 4*[1.0], 4*[2.0], 4*[3.0], 4*[4.0]])
-    indices = tf.constant([0, 2, 4], tf.int32)
-    weights = tf.constant([[.1], [.3], [.5], [.7], [.9]], tf.float32)
+  def test_static_gather_with_field(self):
+
+    def graph_fn(corners, weights, indices):
+      boxes = box_list.BoxList(corners)
+      boxes.add_field('weights', weights)
+      subset = box_list_ops.gather(
+          boxes, indices, ['weights'], use_static_shapes=True)
+      return (subset.get_field('boxes'), subset.get_field('weights'))
+
+    corners = np.array([4 * [0.0], 4 * [1.0], 4 * [2.0], 4 * [3.0],
+                        4 * [4.0]], dtype=np.float32)
+    weights = np.array([[.1], [.3], [.5], [.7], [.9]], dtype=np.float32)
+    indices = np.array([0, 2, 4], dtype=np.int32)
+
+    result_boxes, result_weights = self.execute(graph_fn,
+                                                [corners, weights, indices])
+    expected_boxes = [4 * [0.0], 4 * [2.0], 4 * [4.0]]
+    expected_weights = [[.1], [.5], [.9]]
+    self.assertAllClose(result_boxes, expected_boxes)
+    self.assertAllClose(result_weights, expected_weights)
+
+  def test_dynamic_gather_with_field(self):
+    corners = tf.placeholder(tf.float32, [None, 4])
+    indices = tf.placeholder(tf.int32, [None])
+    weights = tf.placeholder(tf.float32, [None, 1])
     expected_subset = [4 * [0.0], 4 * [2.0], 4 * [4.0]]
     expected_weights = [[.1], [.5], [.9]]
 
     boxes = box_list.BoxList(corners)
     boxes.add_field('weights', weights)
-    subset = box_list_ops.gather(boxes, indices, ['weights'])
+    subset = box_list_ops.gather(boxes, indices, ['weights'],
+                                 use_static_shapes=True)
     with self.test_session() as sess:
       subset_output, weights_output = sess.run(
-          [subset.get(), subset.get_field('weights')])
+          [subset.get(), subset.get_field('weights')],
+          feed_dict={
+              corners:
+                  np.array(
+                      [4 * [0.0], 4 * [1.0], 4 * [2.0], 4 * [3.0], 4 * [4.0]]),
+              indices:
+                  np.array([0, 2, 4]).astype(np.int32),
+              weights:
+                  np.array([[.1], [.3], [.5], [.7], [.9]])
+          })
       self.assertAllClose(subset_output, expected_subset)
       self.assertAllClose(weights_output, expected_weights)
 
@@ -503,20 +566,14 @@ class BoxListOpsTest(tf.test.TestCase):
     boxes.add_field('misc', misc)
     boxes.add_field('weights', weights)
 
-    with self.test_session() as sess:
-      with self.assertRaises(ValueError):
-        box_list_ops.sort_by_field(boxes, 'area')
+    with self.assertRaises(ValueError):
+      box_list_ops.sort_by_field(boxes, 'area')
 
-      with self.assertRaises(ValueError):
-        box_list_ops.sort_by_field(boxes, 'misc')
+    with self.assertRaises(ValueError):
+      box_list_ops.sort_by_field(boxes, 'misc')
 
-      if ops._USE_C_API:
-        with self.assertRaises(ValueError):
-          box_list_ops.sort_by_field(boxes, 'weights')
-      else:
-        with self.assertRaisesWithPredicateMatch(errors.InvalidArgumentError,
-                                                 'Incorrect field size'):
-          sess.run(box_list_ops.sort_by_field(boxes, 'weights').get())
+    with self.assertRaises(ValueError):
+      box_list_ops.sort_by_field(boxes, 'weights')
 
   def test_visualize_boxes_in_image(self):
     image = tf.zeros((6, 4, 3))
@@ -1030,6 +1087,21 @@ class BoxRefinementTest(tf.test.TestCase):
       self.assertAllClose(expected_boxes, boxes_out)
       self.assertAllClose(expected_scores, scores_out)
       self.assertAllEqual(extra_field_out, [0, 1, 1])
+
+  def test_sample_boxes_by_jittering(self):
+    boxes = box_list.BoxList(
+        tf.constant([[0.1, 0.1, 0.4, 0.4],
+                     [0.1, 0.1, 0.5, 0.5],
+                     [0.6, 0.6, 0.8, 0.8],
+                     [0.2, 0.2, 0.3, 0.3]], tf.float32))
+    sampled_boxes = box_list_ops.sample_boxes_by_jittering(
+        boxlist=boxes, num_boxes_to_sample=10)
+    iou = box_list_ops.iou(boxes, sampled_boxes)
+    iou_max = tf.reduce_max(iou, axis=0)
+    with self.test_session() as sess:
+      (np_sampled_boxes, np_iou_max) = sess.run([sampled_boxes.get(), iou_max])
+      self.assertAllEqual(np_sampled_boxes.shape, [10, 4])
+      self.assertAllGreater(np_iou_max, 0.5)
 
 
 if __name__ == '__main__':

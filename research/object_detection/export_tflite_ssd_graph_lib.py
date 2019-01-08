@@ -59,9 +59,15 @@ def get_const_center_size_encoded_anchors(anchors):
   return encoded_anchors
 
 
-def append_postprocessing_op(frozen_graph_def, max_detections,
-                             max_classes_per_detection, nms_score_threshold,
-                             nms_iou_threshold, num_classes, scale_values):
+def append_postprocessing_op(frozen_graph_def,
+                             max_detections,
+                             max_classes_per_detection,
+                             nms_score_threshold,
+                             nms_iou_threshold,
+                             num_classes,
+                             scale_values,
+                             detections_per_class=100,
+                             use_regular_nms=False):
   """Appends postprocessing custom op.
 
   Args:
@@ -77,6 +83,10 @@ def append_postprocessing_op(frozen_graph_def, max_detections,
     scale_values: scale values is a dict with following key-value pairs
       {y_scale: 10, x_scale: 10, h_scale: 5, w_scale: 5} that are used in decode
       centersize boxes
+    detections_per_class: In regular NonMaxSuppression, number of anchors used
+    for NonMaxSuppression per class
+    use_regular_nms: Flag to set postprocessing op to use Regular NMS instead
+      of Fast NMS.
 
   Returns:
     transformed_graph_def: Frozen GraphDef with postprocessing custom op
@@ -121,6 +131,10 @@ def append_postprocessing_op(frozen_graph_def, max_detections,
       attr_value_pb2.AttrValue(f=scale_values['h_scale'].pop()))
   new_output.attr['w_scale'].CopyFrom(
       attr_value_pb2.AttrValue(f=scale_values['w_scale'].pop()))
+  new_output.attr['detections_per_class'].CopyFrom(
+      attr_value_pb2.AttrValue(i=detections_per_class))
+  new_output.attr['use_regular_nms'].CopyFrom(
+      attr_value_pb2.AttrValue(b=use_regular_nms))
 
   new_output.input.extend(
       ['raw_outputs/box_encodings', 'raw_outputs/class_predictions', 'anchors'])
@@ -133,9 +147,14 @@ def append_postprocessing_op(frozen_graph_def, max_detections,
   return transformed_graph_def
 
 
-def export_tflite_graph(pipeline_config, trained_checkpoint_prefix, output_dir,
-                        add_postprocessing_op, max_detections,
-                        max_classes_per_detection):
+def export_tflite_graph(pipeline_config,
+                        trained_checkpoint_prefix,
+                        output_dir,
+                        add_postprocessing_op,
+                        max_detections,
+                        max_classes_per_detection,
+                        detections_per_class=100,
+                        use_regular_nms=False):
   """Exports a tflite compatible graph and anchors for ssd detection model.
 
   Anchors are written to a tensor and tflite compatible graph
@@ -151,7 +170,10 @@ def export_tflite_graph(pipeline_config, trained_checkpoint_prefix, output_dir,
       TFLite_Detection_PostProcess custom op
     max_detections: Maximum number of detections (boxes) to show
     max_classes_per_detection: Number of classes to display per detection
-
+    detections_per_class: In regular NonMaxSuppression, number of anchors used
+    for NonMaxSuppression per class
+    use_regular_nms: Flag to set postprocessing op to use Regular NMS instead
+      of Fast NMS.
 
   Raises:
     ValueError: if the pipeline config contains models other than ssd or uses an
@@ -234,11 +256,15 @@ def export_tflite_graph(pipeline_config, trained_checkpoint_prefix, output_dir,
   tf.train.get_or_create_global_step()
 
   # graph rewriter
-  if pipeline_config.HasField('graph_rewriter'):
+  is_quantized = pipeline_config.HasField('graph_rewriter')
+  if is_quantized:
     graph_rewriter_config = pipeline_config.graph_rewriter
     graph_rewriter_fn = graph_rewriter_builder.build(
         graph_rewriter_config, is_training=False)
     graph_rewriter_fn()
+
+  if pipeline_config.model.ssd.feature_extractor.HasField('fpn'):
+    exporter.rewrite_nn_resize_op(is_quantized)
 
   # freeze the graph
   saver_kwargs = {}
@@ -272,7 +298,8 @@ def export_tflite_graph(pipeline_config, trained_checkpoint_prefix, output_dir,
   if add_postprocessing_op:
     transformed_graph_def = append_postprocessing_op(
         frozen_graph_def, max_detections, max_classes_per_detection,
-        nms_score_threshold, nms_iou_threshold, num_classes, scale_values)
+        nms_score_threshold, nms_iou_threshold, num_classes, scale_values,
+        detections_per_class, use_regular_nms)
   else:
     # Return frozen without adding post-processing custom op
     transformed_graph_def = frozen_graph_def

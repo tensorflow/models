@@ -12,7 +12,7 @@ import "object_detection/protos/post_processing.proto";
 import "object_detection/protos/region_similarity_calculator.proto";
 
 // Configuration for Single Shot Detection (SSD) models.
-// Next id: 21
+// Next id: 26
 message Ssd {
 
   // Number of classes to predict.
@@ -35,7 +35,7 @@ message Ssd {
 
   // Whether background targets are to be encoded as an all
   // zeros vector or a one-hot vector (where background is the 0th class).
-  optional bool encode_background_as_zeros = 12 [default=false];
+  optional bool encode_background_as_zeros = 12 [default = false];
 
   // classification weight to be associated to negative
   // anchors (default: 1.0). The weight must be in [0., 1.].
@@ -52,11 +52,11 @@ message Ssd {
 
   // Whether to normalize the loss by number of groundtruth boxes that match to
   // the anchors.
-  optional bool normalize_loss_by_num_matches = 10 [default=true];
+  optional bool normalize_loss_by_num_matches = 10 [default = true];
 
   // Whether to normalize the localization loss by the code size of the box
   // encodings. This is applied along with other normalization factors.
-  optional bool normalize_loc_loss_by_codesize = 14 [default=false];
+  optional bool normalize_loc_loss_by_codesize = 14 [default = false];
 
   // Loss configuration for training.
   optional Loss loss = 11;
@@ -82,23 +82,66 @@ message Ssd {
   // to update the batch norm moving average parameters.
   optional bool inplace_batchnorm_update = 15 [default = false];
 
-  // Whether to weight the regression loss by the score of the ground truth box
-  // the anchor matches to.
-  optional bool weight_regression_loss_by_score = 17 [default=false];
+  // Whether to add an implicit background class to one-hot encodings of
+  // groundtruth labels. Set to false if training a single
+  // class model or using an explicit background class.
+  optional bool add_background_class = 21 [default = true];
 
-  // Whether to compute expected loss with respect to balanced positive/negative
-  // sampling scheme. If false, use explicit sampling.
-  optional bool use_expected_classification_loss_under_sampling = 18 [default=false];
+  // Whether to use an explicit background class. Set to true if using
+  // groundtruth labels with an explicit background class, as in multiclass
+  // scores.
+  optional bool explicit_background_class = 24 [default = false];
 
-  // Minimum number of effective negative samples.
-  // Only applies if use_expected_classification_loss_under_sampling is true.
-  optional float minimum_negative_sampling = 19 [default=0];
+  optional bool use_confidences_as_targets = 22 [default = false];
 
-  // Desired number of effective negative samples per positive sample.
-  // Only applies if use_expected_classification_loss_under_sampling is true.
-  optional float desired_negative_sampling_ratio = 20 [default=3];
+  optional float implicit_example_weight = 23 [default = 1.0];
+
+  // Configuration proto for MaskHead.
+  // Next id: 11
+  message MaskHead {
+    // The height and the width of the predicted mask. Only used when
+    // predict_instance_masks is true.
+    optional int32 mask_height = 1 [default = 15];
+    optional int32 mask_width = 2 [default = 15];
+
+    // Whether to predict class agnostic masks. Only used when
+    // predict_instance_masks is true.
+    optional bool masks_are_class_agnostic = 3 [default = true];
+
+    // The depth for the first conv2d_transpose op applied to the
+    // image_features in the mask prediction branch. If set to 0, the value
+    // will be set automatically based on the number of channels in the image
+    // features and the number of classes.
+    optional int32 mask_prediction_conv_depth = 4 [default = 256];
+
+    // The number of convolutions applied to image_features in the mask prediction
+    // branch.
+    optional int32 mask_prediction_num_conv_layers = 5 [default = 2];
+
+    // Whether to apply convolutions on mask features before upsampling using
+    // nearest neighbor resizing.
+    // By default, mask features are resized to [`mask_height`, `mask_width`]
+    // before applying convolutions and predicting masks.
+    optional bool convolve_then_upsample_masks = 6 [default = false];
+
+    // Mask loss weight.
+    optional float mask_loss_weight = 7 [default=5.0];
+
+    // Number of boxes to be generated at training time for computing mask loss.
+    optional int32 mask_loss_sample_size = 8 [default=16];
+
+    // Hyperparameters for convolution ops used in the box predictor.
+    optional Hyperparams conv_hyperparams = 9;
+
+    // Output size (width and height are set to be the same) of the initial
+    // bilinear interpolation based cropping during ROI pooling. Only used when
+    // we have second stage prediction head enabled (e.g. mask head).
+    optional int32 initial_crop_size = 10 [default = 15];
+  }
+
+  // Configs for mask head.
+  optional MaskHead mask_head_config = 25;
 }
-
 
 message SsdFeatureExtractor {
   reserved 6;
@@ -107,10 +150,10 @@ message SsdFeatureExtractor {
   optional string type = 1;
 
   // The factor to alter the depth of the channels in the feature extractor.
-  optional float depth_multiplier = 2 [default=1.0];
+  optional float depth_multiplier = 2 [default = 1.0];
 
   // Minimum number of the channels in the feature extractor.
-  optional int32 min_depth = 3 [default=16];
+  optional int32 min_depth = 3 [default = 16];
 
   // Hyperparameters that affect the layers of feature extractor added on top
   // of the base feature extractor.
@@ -122,7 +165,8 @@ message SsdFeatureExtractor {
   // layers while base feature extractor uses its own default hyperparams. If
   // this value is set to true, the base feature extractor's hyperparams will be
   // overridden with the `conv_hyperparams`.
-  optional bool override_base_feature_extractor_hyperparams = 9 [default = false];
+  optional bool override_base_feature_extractor_hyperparams = 9
+      [default = false];
 
   // The nearest multiple to zero-pad the input height and width dimensions to.
   // For example, if pad_to_multiple = 2, input dimensions are zero-padded
@@ -132,11 +176,11 @@ message SsdFeatureExtractor {
   // Whether to use explicit padding when extracting SSD multiresolution
   // features. This will also apply to the base feature extractor if a MobileNet
   // architecture is used.
-  optional bool use_explicit_padding = 7 [default=false];
+  optional bool use_explicit_padding = 7 [default = false];
 
   // Whether to use depthwise separable convolutions for to extract additional
   // feature maps added by SSD.
-  optional bool use_depthwise = 8 [default=false];
+  optional bool use_depthwise = 8 [default = false];
 
   // Feature Pyramid Networks config.
   optional FeaturePyramidNetworks fpn = 10;
@@ -163,5 +207,7 @@ message FeaturePyramidNetworks {
 
   // maximum level in feature pyramid
   optional int32 max_level = 2 [default = 7];
-}
 
+  // channel depth for additional coarse feature layers.
+  optional int32 additional_layer_depth = 3 [default = 256];
+}

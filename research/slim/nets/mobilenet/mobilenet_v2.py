@@ -91,6 +91,7 @@ def mobilenet(input_tensor,
               finegrain_classification_mode=False,
               min_depth=None,
               divisible_by=None,
+              activation_fn=None,
               **kwargs):
   """Creates mobilenet V2 network.
 
@@ -117,6 +118,8 @@ def mobilenet(input_tensor,
     many channels after application of depth multiplier.
     divisible_by: If provided will ensure that all layers # channels
     will be divisible by this number.
+    activation_fn: Activation function to use, defaults to tf.nn.relu6 if not
+      specified.
     **kwargs: passed directly to mobilenet.mobilenet:
       prediction_fn- what prediction function to use.
       reuse-: whether to reuse variables (if reuse set to true, scope
@@ -136,6 +139,12 @@ def mobilenet(input_tensor,
     conv_defs = copy.deepcopy(conv_defs)
     if depth_multiplier < 1:
       conv_defs['spec'][-1].params['num_outputs'] /= depth_multiplier
+  if activation_fn:
+    conv_defs = copy.deepcopy(conv_defs)
+    defaults = conv_defs['defaults']
+    conv_defaults = (
+        defaults[(slim.conv2d, slim.fully_connected, slim.separable_conv2d)])
+    conv_defaults['activation_fn'] = activation_fn
 
   depth_args = {}
   # NB: do not set depth_args unless they are provided to avoid overriding
@@ -153,6 +162,8 @@ def mobilenet(input_tensor,
         scope=scope,
         multiplier=depth_multiplier,
         **kwargs)
+
+mobilenet.default_image_size = 224
 
 
 def wrapped_partial(func, *args, **kwargs):

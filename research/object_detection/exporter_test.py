@@ -19,12 +19,15 @@ import numpy as np
 import six
 import tensorflow as tf
 from google.protobuf import text_format
+from tensorflow.python.framework import dtypes
+from tensorflow.python.ops import array_ops
 from object_detection import exporter
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
 from object_detection.core import model
 from object_detection.protos import graph_rewriter_pb2
 from object_detection.protos import pipeline_pb2
+from object_detection.utils import ops
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
@@ -72,6 +75,12 @@ class FakeModel(model.DetectionModel):
     pass
 
   def loss(self, prediction_dict, true_image_shapes):
+    pass
+
+  def regularization_losses(self):
+    pass
+
+  def updates(self):
     pass
 
 
@@ -927,6 +936,52 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
         self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
         self.assertAllClose(num_detections_np, [2, 1])
+
+  def test_rewrite_nn_resize_op(self):
+    g = tf.Graph()
+    with g.as_default():
+      x = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
+      y = array_ops.placeholder(dtypes.float32, shape=(8, 20, 20, 8))
+      s = ops.nearest_neighbor_upsampling(x, 2)
+      t = s + y
+      exporter.rewrite_nn_resize_op()
+
+    resize_op_found = False
+    for op in g.get_operations():
+      if op.type == 'ResizeNearestNeighbor':
+        resize_op_found = True
+        self.assertEqual(op.inputs[0], x)
+        self.assertEqual(op.outputs[0].consumers()[0], t.op)
+        break
+
+    self.assertTrue(resize_op_found)
+
+  def test_rewrite_nn_resize_op_quantized(self):
+    g = tf.Graph()
+    with g.as_default():
+      x = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
+      x_conv = tf.contrib.slim.conv2d(x, 8, 1)
+      y = array_ops.placeholder(dtypes.float32, shape=(8, 20, 20, 8))
+      s = ops.nearest_neighbor_upsampling(x_conv, 2)
+      t = s + y
+
+      graph_rewriter_config = graph_rewriter_pb2.GraphRewriter()
+      graph_rewriter_config.quantization.delay = 500000
+      graph_rewriter_fn = graph_rewriter_builder.build(
+          graph_rewriter_config, is_training=False)
+      graph_rewriter_fn()
+
+      exporter.rewrite_nn_resize_op(is_quantized=True)
+
+    resize_op_found = False
+    for op in g.get_operations():
+      if op.type == 'ResizeNearestNeighbor':
+        resize_op_found = True
+        self.assertEqual(op.inputs[0].op.type, 'FakeQuantWithMinMaxVars')
+        self.assertEqual(op.outputs[0].consumers()[0], t.op)
+        break
+
+    self.assertTrue(resize_op_found)
 
 
 if __name__ == '__main__':

@@ -155,6 +155,9 @@ message RandomCropImage {
   // value, it is removed from the new image.
   optional float overlap_thresh = 6 [default=0.3];
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 8 [default=true];
+
   // Probability of keeping the original image.
   optional float random_coef = 7 [default=0.0];
 }
@@ -163,13 +166,13 @@ message RandomCropImage {
 message RandomPadImage {
   // Minimum dimensions for padded image. If unset, will use original image
   // dimension as a lower bound.
-  optional float min_image_height = 1;
-  optional float min_image_width = 2;
+  optional int32 min_image_height = 1;
+  optional int32 min_image_width = 2;
 
   // Maximum dimensions for padded image. If unset, will use double the original
   // image dimension as a lower bound.
-  optional float max_image_height = 3;
-  optional float max_image_width = 4;
+  optional int32 max_image_height = 3;
+  optional int32 max_image_width = 4;
 
   // Color of the padding. If unset, will pad using average color of the input
   // image.
@@ -194,6 +197,9 @@ message RandomCropPadImage {
   // value, it is removed from the new image.
   optional float overlap_thresh = 6 [default=0.3];
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 11 [default=true];
+
   // Probability of keeping the original image during the crop operation.
   optional float random_coef = 7 [default=0.0];
 
@@ -217,6 +223,9 @@ message RandomCropToAspectRatio {
   // ratio between a cropped bounding box and the original is less than this
   // value, it is removed from the new image.
   optional float overlap_thresh = 2 [default=0.3];
+
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 3 [default=true];
 }
 
 // Randomly adds black square patches to an image.
@@ -285,6 +294,9 @@ message SSDRandomCropOperation {
   // Cropped box area ratio must be above this threhold to be kept.
   optional float overlap_thresh = 6;
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 8 [default=true];
+
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
 }
@@ -314,6 +326,9 @@ message SSDRandomCropPadOperation {
 
   // Cropped box area ratio must be above this threhold to be kept.
   optional float overlap_thresh = 6;
+
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 13 [default=true];
 
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
@@ -353,6 +368,9 @@ message SSDRandomCropFixedAspectRatioOperation {
   // Cropped box area ratio must be above this threhold to be kept.
   optional float overlap_thresh = 6;
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 8 [default=true];
+
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
 }
@@ -386,6 +404,9 @@ message SSDRandomCropPadFixedAspectRatioOperation {
 
   // Cropped box area ratio must be above this threhold to be kept.
   optional float overlap_thresh = 6;
+
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 8 [default=true];
 
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
