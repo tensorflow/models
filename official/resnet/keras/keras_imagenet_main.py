@@ -95,7 +95,11 @@ def run(flags_obj):
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
                      'value(fp32).')
 
-  tf.keras.backend.set_image_data_format(flags_obj.data_format)
+  data_format = flags_obj.data_format
+  if data_format is None:
+    data_format = ('channels_first'
+                   if tf.test.is_built_with_cuda() else 'channels_last')
+  tf.keras.backend.set_image_data_format(data_format)
 
   per_device_batch_size = distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))

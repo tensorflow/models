@@ -108,7 +108,11 @@ def run(flags_obj):
   per_device_batch_size = distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
 
-  tf.keras.backend.set_image_data_format(flags_obj.data_format)
+  data_format = flags_obj.data_format
+  if data_format is None:
+    data_format = ('channels_first'
+                   if tf.test.is_built_with_cuda() else 'channels_last')
+  tf.keras.backend.set_image_data_format(data_format)
 
   if flags_obj.use_synthetic_data:
     input_fn = keras_common.get_synth_input_fn(

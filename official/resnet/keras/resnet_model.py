@@ -67,7 +67,6 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
   x = layers.Conv2D(filters1, (1, 1), use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
-                    bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2a')(input_tensor)
   x = layers.BatchNormalization(axis=bn_axis,
                                 momentum=BATCH_NORM_DECAY,
@@ -79,7 +78,6 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
                     padding='same', use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
-                    bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2b')(x)
   x = layers.BatchNormalization(axis=bn_axis,
                                 momentum=BATCH_NORM_DECAY,
@@ -90,7 +88,6 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
   x = layers.Conv2D(filters3, (1, 1), use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
-                    bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2c')(x)
   x = layers.BatchNormalization(axis=bn_axis,
                                 momentum=BATCH_NORM_DECAY,
@@ -137,7 +134,6 @@ def conv_block(input_tensor,
   x = layers.Conv2D(filters1, (1, 1), use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
-                    bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2a')(input_tensor)
   x = layers.BatchNormalization(axis=bn_axis,
                                 momentum=BATCH_NORM_DECAY,
@@ -148,7 +144,6 @@ def conv_block(input_tensor,
   x = layers.Conv2D(filters2, kernel_size, strides=strides, padding='same',
                     use_bias=False, kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
-                    bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2b')(x)
   x = layers.BatchNormalization(axis=bn_axis,
                                 momentum=BATCH_NORM_DECAY,
@@ -159,7 +154,6 @@ def conv_block(input_tensor,
   x = layers.Conv2D(filters3, (1, 1), use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
-                    bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2c')(x)
   x = layers.BatchNormalization(axis=bn_axis,
                                 momentum=BATCH_NORM_DECAY,
@@ -169,7 +163,6 @@ def conv_block(input_tensor,
   shortcut = layers.Conv2D(filters3, (1, 1), strides=strides, use_bias=False,
                            kernel_initializer='he_normal',
                            kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
-                           bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                            name=conv_name_base + '1')(input_tensor)
   shortcut = layers.BatchNormalization(axis=bn_axis,
                                        momentum=BATCH_NORM_DECAY,
@@ -208,7 +201,6 @@ def resnet50(num_classes):
                     padding='valid', use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
-                    bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name='conv1')(x)
   x = layers.BatchNormalization(axis=bn_axis,
                                 momentum=BATCH_NORM_DECAY,
