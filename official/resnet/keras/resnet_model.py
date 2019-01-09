@@ -64,7 +64,7 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
   conv_name_base = 'res' + str(stage) + block + '_branch'
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-  x = layers.Conv2D(filters1, (1, 1),
+  x = layers.Conv2D(filters1, (1, 1), use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
@@ -76,7 +76,7 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
   x = layers.Activation('relu')(x)
 
   x = layers.Conv2D(filters2, kernel_size,
-                    padding='same',
+                    padding='same', use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
@@ -87,7 +87,7 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
                                 name=bn_name_base + '2b')(x)
   x = layers.Activation('relu')(x)
 
-  x = layers.Conv2D(filters3, (1, 1),
+  x = layers.Conv2D(filters3, (1, 1), use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
@@ -134,7 +134,8 @@ def conv_block(input_tensor,
   conv_name_base = 'res' + str(stage) + block + '_branch'
   bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-  x = layers.Conv2D(filters1, (1, 1), kernel_initializer='he_normal',
+  x = layers.Conv2D(filters1, (1, 1), use_bias=False,
+                    kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2a')(input_tensor)
@@ -145,7 +146,7 @@ def conv_block(input_tensor,
   x = layers.Activation('relu')(x)
 
   x = layers.Conv2D(filters2, kernel_size, strides=strides, padding='same',
-                    kernel_initializer='he_normal',
+                    use_bias=False, kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2b')(x)
@@ -155,7 +156,7 @@ def conv_block(input_tensor,
                                 name=bn_name_base + '2b')(x)
   x = layers.Activation('relu')(x)
 
-  x = layers.Conv2D(filters3, (1, 1),
+  x = layers.Conv2D(filters3, (1, 1), use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
@@ -165,7 +166,7 @@ def conv_block(input_tensor,
                                 epsilon=BATCH_NORM_EPSILON,
                                 name=bn_name_base + '2c')(x)
 
-  shortcut = layers.Conv2D(filters3, (1, 1), strides=strides,
+  shortcut = layers.Conv2D(filters3, (1, 1), strides=strides, use_bias=False,
                            kernel_initializer='he_normal',
                            kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                            bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
@@ -204,7 +205,7 @@ def resnet50(num_classes):
   x = layers.ZeroPadding2D(padding=(3, 3), name='conv1_pad')(x)
   x = layers.Conv2D(64, (7, 7),
                     strides=(2, 2),
-                    padding='valid',
+                    padding='valid', use_bias=False,
                     kernel_initializer='he_normal',
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
