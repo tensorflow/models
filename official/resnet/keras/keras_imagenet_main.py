@@ -151,6 +151,9 @@ def run(flags_obj):
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
+    # Only build the training graph. This reduces memory usage introduced by
+    # control flow ops in layers that have different implementations for
+    # training and inference (e.g., batch norm).
     tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
