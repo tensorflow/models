@@ -95,6 +95,8 @@ def run(flags_obj):
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
                      'value(fp32).')
 
+  tf.keras.backend.set_image_data_format(flags_obj.data_format)
+
   per_device_batch_size = distribution_utils.per_device_batch_size(
       flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
 
@@ -149,6 +151,10 @@ def run(flags_obj):
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
+    # Only build the training graph. This reduces memory usage introduced by
+    # control flow ops in layers that have different implementations for
+    # training and inference (e.g., batch norm).
+    tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
 

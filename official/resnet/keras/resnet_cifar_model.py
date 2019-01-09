@@ -187,16 +187,18 @@ def resnet56(classes=100, training=None):
   Returns:
     A Keras model instance.
   """
-  # Determine proper input shape
+  input_shape = (32, 32, 3)
+  img_input = layers.Input(shape=input_shape)
+
   if backend.image_data_format() == 'channels_first':
-    input_shape = (3, 32, 32)
+    x = layers.Lambda(lambda x: backend.permute_dimensions(x, (0, 3, 1, 2)),
+                      name='transpose')(img_input)
     bn_axis = 1
   else:  # channel_last
-    input_shape = (32, 32, 3)
+    x = img_input
     bn_axis = 3
 
-  img_input = layers.Input(shape=input_shape)
-  x = tf.keras.layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(img_input)
+  x = tf.keras.layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(x)
   x = tf.keras.layers.Conv2D(16, (3, 3),
                              strides=(1, 1),
                              padding='valid',
