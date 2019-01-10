@@ -94,5 +94,3 @@ class EstimatorCifar10BenchmarkTests(object):
       EstimatorCifar10BenchmarkTests.local_flags = saved_flag_values
       return
     flagsaver.restore_flag_values(EstimatorCifar10BenchmarkTests.local_flags)
-
-
