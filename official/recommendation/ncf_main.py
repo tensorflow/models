@@ -186,33 +186,11 @@ def main(_):
 
 def run_ncf(_):
   """Run NCF training and eval loop."""
-  if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
-    movielens.download(FLAGS.dataset, FLAGS.data_dir)
+  num_users, num_items,
+  num_train_steps,
+  num_eval_steps,
+  producer = ncf_common.get_inputs()
 
-  if FLAGS.seed is not None:
-    np.random.seed(FLAGS.seed)
-
-  params = parse_flags(FLAGS)
-  total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
-
-  if FLAGS.use_synthetic_data:
-    producer = data_pipeline.DummyConstructor()
-    num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
-        FLAGS.dataset]
-    num_train_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
-    num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
-  else:
-    num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
-        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
-        constructor_type=FLAGS.constructor_type,
-        deterministic=FLAGS.seed is not None)
-
-    num_train_steps = (producer.train_batches_per_epoch //
-                       params["batches_per_step"])
-    num_eval_steps = (producer.eval_batches_per_epoch //
-                      params["batches_per_step"])
-    assert not producer.train_batches_per_epoch % params["batches_per_step"]
-    assert not producer.eval_batches_per_epoch % params["batches_per_step"]
   producer.start()
 
   params["num_users"], params["num_items"] = num_users, num_items
