@@ -13,7 +13,7 @@ DATA_DIR = '/data/cifar10_data/'
 
 
 class EstimatorCifar10BenchmarkTests(object):
-  """Benchmarks and accuracy tests for KerasCifar10."""
+  """Benchmarks and accuracy tests for Estimator ResNet56."""
 
   local_flags = None
 
