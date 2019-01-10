@@ -34,6 +34,14 @@ BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 TRAIN_TOP_1 = 'training_accuracy_top_1'
 
 
+class BatchTimestamp(object):
+  """A structure to store batch time stamp."""
+
+  def __init__(self, batch_index):
+    self.batch_index = batch_index
+    self.timestamp = time.time()
+
+
 class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
 
@@ -47,14 +55,20 @@ class TimeHistory(tf.keras.callbacks.Callback):
     self._batch_size = batch_size
     super(TimeHistory, self).__init__()
     self.log_steps = 100
+    self.train_timestamp_history = []
 
   def on_train_begin(self, logs=None):
     self.record_batch = True
+
+  def on_train_end(self, logs=None):
+    self.train_finish_time = time.time()
 
   def on_batch_begin(self, batch, logs=None):
     if self.record_batch:
       self.start_time = time.time()
       self.record_batch = False
+
+    self.train_timestamp_history.append(BatchTimestamp(batch))
 
   def on_batch_end(self, batch, logs=None):
     if batch % self.log_steps == 0:
@@ -128,7 +142,7 @@ def get_callbacks(learning_rate_schedule_fn, num_images):
   return time_callback, tensorboard_callback, lr_callback
 
 
-def build_stats(history, eval_output):
+def build_stats(history, eval_output, time_callback):
   """Normalizes and returns dictionary of stats.
 
   Args:
@@ -144,6 +158,7 @@ def build_stats(history, eval_output):
   if eval_output:
     stats['accuracy_top_1'] = eval_output[1].item()
     stats['eval_loss'] = eval_output[0].item()
+
   if history and history.history:
     train_hist = history.history
     # Gets final loss from training.
@@ -153,6 +168,10 @@ def build_stats(history, eval_output):
       stats[TRAIN_TOP_1] = train_hist['categorical_accuracy'][-1].item()
     elif 'sparse_categorical_accuracy' in train_hist:
       stats[TRAIN_TOP_1] = train_hist['sparse_categorical_accuracy'][-1].item()
+
+  if time_callback:
+    status['train_timestamp_history'] = time_callback.train_timestamp_history
+    status['train_finish_time'] = time_callback.train_finish_time
 
   return stats
 
