@@ -82,7 +82,7 @@ class KerasImagenetBenchmarkTests(object):
     if KerasImagenetBenchmarkTests.local_flags is None:
       keras_common.define_keras_flags()
       imagenet_main.define_imagenet_flags()
-      # Loads flags to get defaults to then override.
+      # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
       saved_flag_values = flagsaver.save_flag_values()
       KerasImagenetBenchmarkTests.local_flags = saved_flag_values
