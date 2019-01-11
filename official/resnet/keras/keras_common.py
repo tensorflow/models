@@ -56,9 +56,9 @@ class TimeHistory(tf.keras.callbacks.Callback):
     self.log_steps = log_steps
 
     # has stats for all batches
-    self.batch_start_timestamps= []
+    self.batch_start_timestamps = []
     # only has stats for batch_index % log_steps == 0 (excluding 0)
-    self.batch_end_timestamps= []
+    self.batch_end_timestamps = []
 
   def on_train_begin(self, logs=None):
     self.record_batch = True
