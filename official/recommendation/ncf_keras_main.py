@@ -44,6 +44,7 @@ from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
+from official.recommendation import ncf_common
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
@@ -58,7 +59,7 @@ FLAGS = flags.FLAGS
 
 def main(_):
   with logger.benchmark_context(FLAGS), \
-       mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
+      mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
     mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
     run_ncf(FLAGS)
 
@@ -78,11 +79,13 @@ def _logitfy(inputs, base_model):
 
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
+  params = ncf_common.parse_flags(FLAGS)
+
   num_users, \
-  num_items, \
-  num_train_steps, \
-  num_eval_steps, \
-  producer = ncf_common.get_inputs()
+      num_items, \
+      num_train_steps, \
+      num_eval_steps, \
+      producer = ncf_common.get_inputs(params)
 
   params["num_users"], params["num_items"] = num_users, num_items
   producer.start()
@@ -98,14 +101,14 @@ def run_ncf(_):
   model.summary()
 
   optimizer = get_optimizer(params)
-  distribution = ncf_common.get_distribution_strategy()
+  distribution = ncf_common.get_distribution_strategy(params)
   train_input_dataset = train_input_fn(params).repeat(FLAGS.train_epochs)
 
- 	keras_model.compile(
-        loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
-        optimizer=opt,
-        metrics=["accuracy"],
-        distribute=None)
+  keras_model.compile(
+      loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+      optimizer=opt,
+      metrics=["accuracy"],
+      distribute=None)
 
   keras_model.fit(train_input_dataset.map(training_data_map_fn()),
       epochs=FLAGS.train_epochs,
@@ -126,6 +129,6 @@ def run_ncf(_):
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
-  define_ncf_flags()
-  absl_app.run(main):x
+  ncf_common.define_ncf_flags()
+  absl_app.run(main)
 
