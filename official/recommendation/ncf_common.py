@@ -56,7 +56,7 @@ from official.utils.misc import model_helpers
 FLAGS = flags.FLAGS
 
 
-def get_inputs():
+def get_inputs()
   if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
@@ -68,12 +68,10 @@ def get_inputs():
 
   if FLAGS.use_synthetic_data:
     producer = data_pipeline.DummyConstructor()
-    num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
-        FLAGS.dataset]
     num_train_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
     num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
   else:
-    num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
+    _, _, producer = data_preprocessing.instantiate_pipeline(
         dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
         constructor_type=FLAGS.constructor_type,
         deterministic=FLAGS.seed is not None)
@@ -85,5 +83,5 @@ def get_inputs():
     assert not producer.train_batches_per_epoch % params["batches_per_step"]
     assert not producer.eval_batches_per_epoch % params["batches_per_step"]
 
-  return num_users, num_items, num_train_steps, num_eval_steps, producer
+  return num_train_steps, num_eval_steps, producer
 

@@ -186,14 +186,11 @@ def main(_):
 
 def run_ncf(_):
   """Run NCF training and eval loop."""
-  num_users, num_items,
-  num_train_steps,
-  num_eval_steps,
-  producer = ncf_common.get_inputs()
+
+  num_train_steps, num_eval_steps, producer = ncf_common.get_inputs()
 
   producer.start()
 
-  params["num_users"], params["num_items"] = num_users, num_items
   model_helpers.apply_clean(flags.FLAGS)
 
   estimator = construct_estimator(model_dir=FLAGS.model_dir, params=params)

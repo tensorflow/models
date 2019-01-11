@@ -64,7 +64,14 @@ def main(_):
 
 
 def run_ncf(_):
+  """Run NCF training and eval with Keras."""
 
+  num_users, num_items, \
+  num_train_steps, \
+  num_eval_steps, \
+  producer = ncf_common.get_inputs()
+
+  producer.start()
 
 
 if __name__ == "__main__":
