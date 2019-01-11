@@ -85,11 +85,12 @@ class KerasCommonTests(tf.test.TestCase):
     th.on_batch_end(6)
     th.on_train_end()
 
-    self.assertEqual(7, len(th.batch_start_timestamps))
+    self.assertEqual(3, len(th.batch_start_timestamps))
     self.assertEqual(2, len(th.batch_end_timestamps))
 
-    for index in range(7):
-      self.assertEqual(index, th.batch_start_timestamps[index].batch_index)
+    self.assertEqual(0, th.batch_start_timestamps[0].batch_index)
+    self.assertEqual(1, th.batch_start_timestamps[1].batch_index)
+    self.assertEqual(4, th.batch_start_timestamps[2].batch_index)
 
     self.assertEqual(3, th.batch_end_timestamps[0].batch_index)
     self.assertEqual(6, th.batch_end_timestamps[1].batch_index)
