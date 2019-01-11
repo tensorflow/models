@@ -38,20 +38,6 @@ class KerasImagenetBenchmarkTests(object):
     self.oss_report_object = None
     self.output_dir = output_dir
 
-  def keras_resnet50_short_1_gpu(self):
-    """Test Keras model with Keras fit/dist_strat quick test."""
-    self._setup()
-    flags.FLAGS.num_gpus = 1
-    flags.FLAGS.data_dir = DATA_DIR
-    flags.FLAGS.batch_size = 32
-    flags.FLAGS.train_epochs = 1
-    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet50_short_1_gpu')
-    flags.FLAGS.resnet_size = 50
-    flags.FLAGS.dtype = 'fp32'
-    flags.FLAGS.train_steps = 100
-    stats = keras_imagenet_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
-
   def keras_resnet50_8_gpu(self):
     """Test Keras model with Keras fit/dist_strat and 8 GPUs."""
     self._setup()
@@ -60,7 +46,6 @@ class KerasImagenetBenchmarkTests(object):
     flags.FLAGS.batch_size = 64*8
     flags.FLAGS.train_epochs = 90
     flags.FLAGS.model_dir = self._get_model_dir('keras_resnet50_8_gpu')
-    flags.FLAGS.resnet_size = 50
     flags.FLAGS.dtype = 'fp32'
     stats = keras_imagenet_main.run(flags.FLAGS)
     self._fill_report_object(stats)
