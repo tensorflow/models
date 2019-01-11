@@ -334,12 +334,6 @@ def _check_and_convert_legacy_input_config_key(key):
   elif field_name == "eval_input_path":
     key_name = "eval_input_configs"
     field_name = "input_path"
-  elif field_name == "train_input_path":
-    key_name = "train_input_config"
-    field_name = "input_path"
-  elif field_name == "eval_input_path":
-    key_name = "eval_input_configs"
-    field_name = "input_path"
   elif field_name == "append_train_input_path":
     key_name = "train_input_config"
     field_name = "input_path"
