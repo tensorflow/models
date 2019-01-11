@@ -186,13 +186,13 @@ def run(flags_obj):
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=1)
-  stats = keras_common.build_stats(history, eval_output)
+  stats = keras_common.build_stats(history, eval_output, time_callback)
   return stats
 
 
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
-    run(flags.FLAGS)
+    return run(flags.FLAGS)
 
 
 if __name__ == '__main__':

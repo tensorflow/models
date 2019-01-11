@@ -36,7 +36,12 @@ class KerasCommonTests(tf.test.TestCase):
 
     history = self._build_history(1.145, cat_accuracy=.99988)
     eval_output = self._build_eval_output(.56432111, 5.990)
-    stats = keras_common.build_stats(history, eval_output)
+    th = keras_common.TimeHistory(128, 100)
+
+    th.batch_start_timestamps = [1, 2, 3]
+    th.batch_end_timestamps = [4, 5, 6]
+    th.train_finish_time = 12345
+    stats = keras_common.build_stats(history, eval_output, th)
 
     self.assertEqual(1.145, stats['loss'])
     self.assertEqual(.99988, stats['training_accuracy_top_1'])
@@ -44,17 +49,51 @@ class KerasCommonTests(tf.test.TestCase):
     self.assertEqual(.56432111, stats['accuracy_top_1'])
     self.assertEqual(5.990, stats['eval_loss'])
 
+    self.assertItemsEqual([1, 2, 3], stats['batch_start_timestamps'])
+    self.assertItemsEqual([4, 5, 6], stats['batch_end_timestamps'])
+    self.assertEqual(12345, stats['train_finish_time'])
+
   def test_build_stats_sparse(self):
 
     history = self._build_history(1.145, cat_accuracy_sparse=.99988)
     eval_output = self._build_eval_output(.928, 1.9844)
-    stats = keras_common.build_stats(history, eval_output)
+    stats = keras_common.build_stats(history, eval_output, None)
 
     self.assertEqual(1.145, stats['loss'])
     self.assertEqual(.99988, stats['training_accuracy_top_1'])
 
     self.assertEqual(.928, stats['accuracy_top_1'])
     self.assertEqual(1.9844, stats['eval_loss'])
+
+  def test_time_history(self):
+    th = keras_common.TimeHistory(batch_size=128, log_steps=3)
+
+    th.on_train_begin()
+    th.on_batch_begin(0)
+    th.on_batch_end(0)
+    th.on_batch_begin(1)
+    th.on_batch_end(1)
+    th.on_batch_begin(2)
+    th.on_batch_end(2)
+    th.on_batch_begin(3)
+    th.on_batch_end(3)
+    th.on_batch_begin(4)
+    th.on_batch_end(4)
+    th.on_batch_begin(5)
+    th.on_batch_end(5)
+    th.on_batch_begin(6)
+    th.on_batch_end(6)
+    th.on_train_end()
+
+    self.assertEqual(3, len(th.batch_start_timestamps))
+    self.assertEqual(2, len(th.batch_end_timestamps))
+
+    self.assertEqual(0, th.batch_start_timestamps[0].batch_index)
+    self.assertEqual(1, th.batch_start_timestamps[1].batch_index)
+    self.assertEqual(4, th.batch_start_timestamps[2].batch_index)
+
+    self.assertEqual(3, th.batch_end_timestamps[0].batch_index)
+    self.assertEqual(6, th.batch_end_timestamps[1].batch_index)
 
   def _build_history(self, loss, cat_accuracy=None,
                      cat_accuracy_sparse=None):
