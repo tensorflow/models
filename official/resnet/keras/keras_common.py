@@ -28,7 +28,6 @@ import tensorflow as tf
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
                                                   gradient_descent_v2)
 
-
 FLAGS = flags.FLAGS
 BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 TRAIN_TOP_1 = 'training_accuracy_top_1'
@@ -37,15 +36,15 @@ TRAIN_TOP_1 = 'training_accuracy_top_1'
 class BatchTimestamp(object):
   """A structure to store batch time stamp."""
 
-  def __init__(self, batch_index):
+  def __init__(self, batch_index, timestamp):
     self.batch_index = batch_index
-    self.timestamp = time.time()
+    self.timestamp = timestamp
 
 
 class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
 
-  def __init__(self, batch_size):
+  def __init__(self, batch_size, log_steps):
     """Callback for logging performance (# image/second).
 
     Args:
@@ -54,8 +53,12 @@ class TimeHistory(tf.keras.callbacks.Callback):
     """
     self._batch_size = batch_size
     super(TimeHistory, self).__init__()
-    self.log_steps = 100
-    self.train_timestamp_history = []
+    self.log_steps = log_steps
+
+    # has stats for all batches
+    self.batch_start_timestamps= []
+    # only has stats for batch_index % log_steps == 0 (excluding 0)
+    self.batch_end_timestamps= []
 
   def on_train_begin(self, logs=None):
     self.record_batch = True
@@ -64,19 +67,20 @@ class TimeHistory(tf.keras.callbacks.Callback):
     self.train_finish_time = time.time()
 
   def on_batch_begin(self, batch, logs=None):
+    timestamp = time.time()
     if self.record_batch:
-      self.start_time = time.time()
+      self.start_time = timestamp
       self.record_batch = False
-
-    self.train_timestamp_history.append(BatchTimestamp(batch))
+    self.batch_start_timestamps.append(BatchTimestamp(batch, timestamp))
 
   def on_batch_end(self, batch, logs=None):
     if batch % self.log_steps == 0:
-      elapsed_time = time.time() - self.start_time
+      timestamp = time.time()
+      elapsed_time = timestamp - self.start_time
       examples_per_second = (self._batch_size * self.log_steps) / elapsed_time
       self.record_batch = True
-      # TODO(anjalisridhar): add timestamp as well.
       if batch != 0:
+        self.batch_end_timestamps.append(BatchTimestamp(batch, timestamp))
         tf.logging.info("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
                         "'images_per_second': %f}" %
                         (batch, elapsed_time, examples_per_second))
@@ -129,7 +133,7 @@ def get_optimizer():
 
 def get_callbacks(learning_rate_schedule_fn, num_images):
   """Returns common callbacks."""
-  time_callback = TimeHistory(FLAGS.batch_size)
+  time_callback = TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
 
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=FLAGS.model_dir)
@@ -170,8 +174,9 @@ def build_stats(history, eval_output, time_callback):
       stats[TRAIN_TOP_1] = train_hist['sparse_categorical_accuracy'][-1].item()
 
   if time_callback:
-    status['train_timestamp_history'] = time_callback.train_timestamp_history
-    status['train_finish_time'] = time_callback.train_finish_time
+    stats['batch_start_timestamps'] = time_callback.batch_start_timestamps
+    stats['batch_end_timestamps'] = time_callback.batch_end_timestamps
+    stats['train_finish_time'] = time_callback.train_finish_time
 
   return stats
 
@@ -184,6 +189,11 @@ def define_keras_flags():
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
+  flags.DEFINE_integer(
+      name='log_steps', default=100,
+      help='For every log_steps, we log the timing information such as '
+      'examples per second. Besides, for every log_steps, we store the '
+      'timestamp of a batch end.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
