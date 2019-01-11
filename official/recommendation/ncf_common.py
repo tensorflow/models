@@ -71,7 +71,7 @@ def get_inputs()
     num_train_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
     num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
   else:
-    _, _, producer = data_preprocessing.instantiate_pipeline(
+    num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
         dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
         constructor_type=FLAGS.constructor_type,
         deterministic=FLAGS.seed is not None)
@@ -83,5 +83,42 @@ def get_inputs()
     assert not producer.train_batches_per_epoch % params["batches_per_step"]
     assert not producer.eval_batches_per_epoch % params["batches_per_step"]
 
-  return num_train_steps, num_eval_steps, producer
+  return num_users, num_items, num_train_steps, num_eval_steps, producer
 
+
+def get_distribution_strategy():
+  if params["use_tpu"]:
+    # Some of the networking libraries are quite chatty.
+    for name in ["googleapiclient.discovery", "googleapiclient.discovery_cache",
+                 "oauth2client.transport"]:
+      logging.getLogger(name).setLevel(logging.ERROR)
+
+    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+        tpu=params["tpu"],
+        zone=params["tpu_zone"],
+        project=params["tpu_gcp_project"],
+        coordinator_name="coordinator"
+    )
+
+    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
+    tf.Session.reset(tpu_cluster_resolver.get_master())
+
+    # Estimator looks at the master it connects to for MonitoredTrainingSession
+    # by reading the `TF_CONFIG` environment variable, and the coordinator
+    # is used by StreamingFilesDataset.
+    tf_config_env = {
+        "session_master": tpu_cluster_resolver.get_master(),
+        "eval_session_master": tpu_cluster_resolver.get_master(),
+        "coordinator": tpu_cluster_resolver.cluster_spec()
+                       .as_dict()["coordinator"]
+    }
+    os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
+
+    distribution = tf.contrib.distribute.TPUStrategy(
+        tpu_cluster_resolver, steps_per_run=100)
+
+  else:
+    distribution = distribution_utils.get_distribution_strategy(
+        num_gpus=params["num_gpus"])
+
+  return distribution

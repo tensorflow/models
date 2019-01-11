@@ -63,19 +63,69 @@ def main(_):
     run_ncf(FLAGS)
 
 
+def _logitfy(inputs, base_model):
+  logits = base_model(inputs)
+  zero_tensor = tf.keras.layers.Lambda(lambda x: x * 0)(logits)
+  to_concatenate = [zero_tensor, logits]
+  concat_layer = tf.keras.layers.Concatenate(axis=1)(to_concatenate)
+
+  reshape_layer = tf.keras.layers.Reshape(
+      target_shape=(concat_layer.shape[1].value,))(concat_layer)
+
+  model = tf.keras.Model(inputs=inputs, outputs=reshape_layer)
+  return model
+
+
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
-
-  num_users, num_items, \
+  num_users, \
+  num_items, \
   num_train_steps, \
   num_eval_steps, \
   producer = ncf_common.get_inputs()
 
+  params["num_users"], params["num_items"] = num_users, num_items
   producer.start()
+  model_helpers.apply_clean(flags.FLAGS)
+
+  user_input = tf.keras.layers.Input(
+      shape=(1,), batch_size=FLAGS.batch_size, name="user_id", dtype=tf.int32)
+  item_input = tf.keras.layers.Input(
+      shape=(1,), batch_size=FLAGS.batch_size, name="item_id", dtype=tf.int32)
+
+  base_model = neumf_model.construct_model(user_input, item_input, params)
+  model = _logitfy([user_input, item_input], base_model)
+  model.summary()
+
+  optimizer = get_optimizer(params)
+  distribution = ncf_common.get_distribution_strategy()
+  train_input_dataset = train_input_fn(params).repeat(FLAGS.train_epochs)
+
+ 	keras_model.compile(
+        loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+        optimizer=opt,
+        metrics=["accuracy"],
+        distribute=None)
+
+  keras_model.fit(train_input_dataset.map(training_data_map_fn()),
+      epochs=FLAGS.train_epochs,
+      steps_per_epoch=num_train_steps,
+      callbacks=[],
+      verbose=0)
+
+  tf.logging.info("Training done. Start evaluating")
+
+  """
+  eval_input_fn = data_preprocessing.make_input_fn(
+      producer, is_training=False, use_tpu=False)
+  eval_input_dataset = eval_input_fn(params)
+  eval_results = keras_model.evaluate(eval_input_dataset, stesp=num_eval_steps)
+  tf.logging.info("Keras fit is done. Start evaluating")
+  """
 
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
   define_ncf_flags()
-  absl_app.run(main)
+  absl_app.run(main):x
 

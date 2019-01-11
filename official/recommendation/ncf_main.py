@@ -66,41 +66,7 @@ def construct_estimator(model_dir, params):
   Returns:
     An Estimator or TPUEstimator.
   """
-
-  if params["use_tpu"]:
-    # Some of the networking libraries are quite chatty.
-    for name in ["googleapiclient.discovery", "googleapiclient.discovery_cache",
-                 "oauth2client.transport"]:
-      logging.getLogger(name).setLevel(logging.ERROR)
-
-    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-        tpu=params["tpu"],
-        zone=params["tpu_zone"],
-        project=params["tpu_gcp_project"],
-        coordinator_name="coordinator"
-    )
-
-    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
-    tf.Session.reset(tpu_cluster_resolver.get_master())
-
-    # Estimator looks at the master it connects to for MonitoredTrainingSession
-    # by reading the `TF_CONFIG` environment variable, and the coordinator
-    # is used by StreamingFilesDataset.
-    tf_config_env = {
-        "session_master": tpu_cluster_resolver.get_master(),
-        "eval_session_master": tpu_cluster_resolver.get_master(),
-        "coordinator": tpu_cluster_resolver.cluster_spec()
-                       .as_dict()["coordinator"]
-    }
-    os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
-
-    distribution = tf.contrib.distribute.TPUStrategy(
-        tpu_cluster_resolver, steps_per_run=100)
-
-  else:
-    distribution = distribution_utils.get_distribution_strategy(
-        num_gpus=params["num_gpus"])
-
+  distributed = ncf_common.get_distribution_strategy()
   run_config = tf.estimator.RunConfig(train_distribute=distribution,
                                       eval_distribute=distribution)
 
@@ -186,11 +152,14 @@ def main(_):
 
 def run_ncf(_):
   """Run NCF training and eval loop."""
+  num_users, \
+  num_items, \
+  num_train_steps, \
+  num_eval_steps, \
+  producer = ncf_common.get_inputs()
 
-  num_train_steps, num_eval_steps, producer = ncf_common.get_inputs()
-
+  params["num_users"], params["num_items"] = num_users, num_items
   producer.start()
-
   model_helpers.apply_clean(flags.FLAGS)
 
   estimator = construct_estimator(model_dir=FLAGS.model_dir, params=params)

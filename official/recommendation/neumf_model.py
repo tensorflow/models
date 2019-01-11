@@ -78,7 +78,9 @@ def neumf_model_fn(features, labels, mode, params):
   users = features[movielens.USER_COLUMN]
   items = features[movielens.ITEM_COLUMN]
 
-  logits = construct_model(users, items, params).output
+  user_input = tf.keras.layers.Input(tensor=users)
+  item_input = tf.keras.layers.Input(tensor=items)
+  logits = construct_model(user_input, item_input, params).output
 
   # Softmax with the first column of zeros is equivalent to sigmoid.
   softmax_logits = tf.concat([tf.zeros(logits.shape, dtype=logits.dtype),
@@ -105,11 +107,7 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
-    optimizer = tf.train.AdamOptimizer(
-        learning_rate=params["learning_rate"], beta1=params["beta1"],
-        beta2=params["beta2"], epsilon=params["epsilon"])
-    if params["use_tpu"]:
-      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+    optimizer = get_optimizer(params)
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
@@ -138,13 +136,23 @@ def neumf_model_fn(features, labels, mode, params):
     raise NotImplementedError
 
 
-def construct_model(users, items, params):
+def get_optimizer(params):
+  optimizer = tf.train.AdamOptimizer(
+      learning_rate=params["learning_rate"], beta1=params["beta1"],
+      beta2=params["beta2"], epsilon=params["epsilon"])
+  if params["use_tpu"]:
+    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+
+  return optimizer
+
+
+def construct_model(user_input, item_input, params):
   # type: (tf.Tensor, tf.Tensor, dict) -> tf.keras.Model
   """Initialize NeuMF model.
 
   Args:
-    users: Tensor of user ids.
-    items: Tensor of item ids.
+    user_input: keras input layer for users
+    item_input: keras input layer for items
     params: Dict of hyperparameters.
   Raises:
     ValueError: if the first model layer is not even.
@@ -167,10 +175,6 @@ def construct_model(users, items, params):
 
   if model_layers[0] % 2 != 0:
     raise ValueError("The first layer size should be multiple of 2!")
-
-  # Input variables
-  user_input = tf.keras.layers.Input(tensor=users, name="user_input")
-  item_input = tf.keras.layers.Input(tensor=items, name="item_input")
 
   # Initializer for embedding layers
   embedding_initializer = "glorot_uniform"
