@@ -50,6 +50,19 @@ class KerasImagenetBenchmarkTests(object):
     stats = keras_imagenet_main.run(flags.FLAGS)
     self._fill_report_object(stats)
 
+  def keras_resnet50_eager_8_gpu(self):
+    """Test Keras model with eager, dist_strat and 8 GPUs."""
+    self._setup()
+    flags.FLAGS.num_gpus = 8
+    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.batch_size = 64*8
+    flags.FLAGS.train_epochs = 90
+    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet50_eager_8_gpu')
+    flags.FLAGS.dtype = 'fp32'
+    flags.FLAGS.enable_eager = True
+    stats = keras_imagenet_main.run(flags.FLAGS)
+    self._fill_report_object(stats)
+
   def _fill_report_object(self, stats):
     if self.oss_report_object:
       self.oss_report_object.top_1 = stats['accuracy_top_1']
