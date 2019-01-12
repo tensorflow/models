@@ -181,7 +181,7 @@ def build_stats(history, eval_output, time_callback):
       stats['avg_exp_per_second'] = (
           time_callback.batch_size * time_callback.log_steps *
           (len(time_callback.timestamp_log)-1) /
-          timestamp_log[-1].timestamp - timestamp_log[0].timestamp)
+          (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
 
   return stats
 
