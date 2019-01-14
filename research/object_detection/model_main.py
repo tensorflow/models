@@ -53,6 +53,8 @@ flags.DEFINE_boolean(
     'run_once', False, 'If running in eval-only mode, whether to run just '
     'one round of eval vs running continuously (default).'
 )
+flags.mark_flag_as_required('model_dir')
+flags.mark_flag_as_required('pipeline_config_path')
 FLAGS = flags.FLAGS
 
 
@@ -104,6 +106,4 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
-  flags.mark_flag_as_required('model_dir')
-  flags.mark_flag_as_required('pipeline_config_path')
   tf.app.run()
