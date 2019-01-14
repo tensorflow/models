@@ -92,25 +92,27 @@ def run_ncf(_):
   model_helpers.apply_clean(flags.FLAGS)
 
   user_input = tf.keras.layers.Input(
-      shape=(1,), batch_size=FLAGS.batch_size, name="user_id", dtype=tf.int32)
+      shape=(), batch_size=FLAGS.batch_size, name="user_id", dtype=tf.int32)
   item_input = tf.keras.layers.Input(
-      shape=(1,), batch_size=FLAGS.batch_size, name="item_id", dtype=tf.int32)
+      shape=(), batch_size=FLAGS.batch_size, name="item_id", dtype=tf.int32)
 
   base_model = neumf_model.construct_model(user_input, item_input, params)
-  model = _logitfy([user_input, item_input], base_model)
-  model.summary()
+  keras_model = _logitfy([user_input, item_input], base_model)
+  keras_model.summary()
 
-  optimizer = get_optimizer(params)
+  optimizer = neumf_model.get_optimizer(params)
   distribution = ncf_common.get_distribution_strategy(params)
+  train_input_fn = producer.make_input_fn(is_training=True)
+  print(">>>>>>>>>>>>>>before get train data set")
   train_input_dataset = train_input_fn(params).repeat(FLAGS.train_epochs)
 
   keras_model.compile(
       loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
-      optimizer=opt,
+      optimizer=optimizer,
       metrics=["accuracy"],
       distribute=None)
 
-  keras_model.fit(train_input_dataset.map(training_data_map_fn()),
+  keras_model.fit(train_input_dataset,
       epochs=FLAGS.train_epochs,
       steps_per_epoch=num_train_steps,
       callbacks=[],
