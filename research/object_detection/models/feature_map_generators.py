@@ -515,7 +515,7 @@ def pooling_pyramid_feature_maps(base_feature_map_depth, num_layers,
   """
   if len(image_features) != 1:
     raise ValueError('image_features should be a dictionary of length 1.')
-  image_features = image_features[image_features.keys()[0]]
+  image_features = image_features[list(image_features.keys())[0]]
 
   feature_map_keys = []
   feature_maps = []
