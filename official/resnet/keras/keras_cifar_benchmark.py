@@ -30,6 +30,8 @@ from official.resnet.keras import keras_common
 
 
 DATA_DIR = '/data/cifar10_data/'
+MIN_TOP_1_ACCURACY = 0.925
+MAX_TOP_1_ACCURACY = 0.938
 
 
 class KerasCifar10BenchmarkTests(object):
@@ -49,20 +51,44 @@ class KerasCifar10BenchmarkTests(object):
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_1_gpu')
-    flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
     stats = keras_cifar_main.run(flags.FLAGS)
     self._fill_report_object(stats)
 
-  def keras_resnet56_4_gpu(self):
+  def keras_resnet56_eager_1_gpu(self):
+    """Test keras based model with eager and distribution strategies."""
+    self._setup()
+    flags.FLAGS.num_gpus = 1
+    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.batch_size = 128
+    flags.FLAGS.train_epochs = 182
+    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_eager_1_gpu')
+    flags.FLAGS.dtype = 'fp32'
+    flags.FLAGS.enable_eager = True
+    stats = keras_cifar_main.run(flags.FLAGS)
+    self._fill_report_object(stats)
+
+  def keras_resnet56_eager_2_gpu(self):
+    """Test keras based model with eager and distribution strategies."""
+    self._setup()
+    flags.FLAGS.num_gpus = 2
+    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.batch_size = 128
+    flags.FLAGS.train_epochs = 182
+    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_eager_2_gpu')
+    flags.FLAGS.dtype = 'fp32'
+    flags.FLAGS.enable_eager = True
+    stats = keras_cifar_main.run(flags.FLAGS)
+    self._fill_report_object(stats)
+
+  def keras_resnet56_2_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
-    flags.FLAGS.num_gpus = 4
-    flags.FLAGS.data_dir = self._get_model_dir('keras_resnet56_4_gpu')
+    flags.FLAGS.num_gpus = 2
+    flags.FLAGS.data_dir = self._get_model_dir('keras_resnet56_2_gpu')
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = ''
-    flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
     stats = keras_cifar_main.run(flags.FLAGS)
     self._fill_report_object(stats)
@@ -77,14 +103,15 @@ class KerasCifar10BenchmarkTests(object):
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir(
         'keras_resnet56_no_dist_strat_1_gpu')
-    flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
     stats = keras_cifar_main.run(flags.FLAGS)
     self._fill_report_object(stats)
 
   def _fill_report_object(self, stats):
     if self.oss_report_object:
-      self.oss_report_object.top_1 = stats['accuracy_top_1']
+      self.oss_report_object.add_top_1(stats['accuracy_top_1'],
+                                       expected_min=MIN_TOP_1_ACCURACY,
+                                       expected_max=MAX_TOP_1_ACCURACY)
       self.oss_report_object.add_other_quality(stats['training_accuracy_top_1'],
                                                'top_1_train_accuracy')
     else:
@@ -99,7 +126,7 @@ class KerasCifar10BenchmarkTests(object):
     if KerasCifar10BenchmarkTests.local_flags is None:
       keras_common.define_keras_flags()
       cifar_main.define_cifar_flags()
-      # Loads flags to get defaults to then override.
+      # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
       saved_flag_values = flagsaver.save_flag_values()
       KerasCifar10BenchmarkTests.local_flags = saved_flag_values
