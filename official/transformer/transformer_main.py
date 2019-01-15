@@ -232,8 +232,8 @@ def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file):
   uncased_score, cased_score = translate_and_compute_bleu(
       estimator, subtokenizer, bleu_source, bleu_ref)
 
-  tf.logging.info("Bleu score (uncased):", uncased_score)
-  tf.logging.info("Bleu score (cased):", cased_score)
+  tf.logging.info("Bleu score (uncased): %d", uncased_score)
+  tf.logging.info("Bleu score (cased): %d", cased_score)
   return uncased_score, cased_score
 
 
