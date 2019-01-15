@@ -69,6 +69,6 @@ class Cifar10Dataset(object):
     y_train = tf.keras.utils.to_categorical(y_train, self.num_classes)
     y_test = tf.keras.utils.to_categorical(y_test, self.num_classes)
     self.train_dataset = tf.data.Dataset.from_tensor_slices(
-        (x_train, y_train)).shuffle(2000).batch(batch_size)
+        (x_train, y_train)).shuffle(2000).batch(batch_size).repeat()
     self.test_dataset = tf.data.Dataset.from_tensor_slices(
-        (x_test, y_test)).shuffle(2000).batch(batch_size)
+        (x_test, y_test)).shuffle(2000).batch(batch_size).repeat()

@@ -112,8 +112,6 @@ Model name                                                                      
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------: | :---------------------: | :-----:
 [faster_rcnn_inception_resnet_v2_atrous_oidv2](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28.tar.gz)                           | 727        | 37                      | Boxes
 [faster_rcnn_inception_resnet_v2_atrous_lowproposals_oidv2](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28.tar.gz) | 347        |                         | Boxes
-[faster_rcnn_inception_resnet_v2_atrous_oidv4](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oidv4_2018_10_30.tar.gz)                         | 455        |                         | Boxes
-[ssd_mobilenetv2_oidv4](http://download.tensorflow.org/models/object_detection/ssd_mobilenetv2_oidv4_2018_10_30.tar.gz)                                                                       | 24         |                         | Boxes
 [facessd_mobilenet_v2_quantized_open_image_v4](http://download.tensorflow.org/models/object_detection/facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz) [^3]                       | 20         | 73 (faces)              | Boxes
 
 ## iNaturalist Species-trained models
