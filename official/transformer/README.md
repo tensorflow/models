@@ -120,6 +120,37 @@ big | 28.9
    Arguments:
    * `--data_dir`: Path where the preprocessed TFRecord data, and vocab file will be saved.
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
+   
+    #### Training on your own data
+    
+    [data_preprocess.py](data_preprocess.py) helps in preprocessing your own data to train the transformer model. 
+    
+    Export the following variables, or modify the values in each of the snippets below:
+   ```
+   PARAM_SET=base
+   DATA_DIR=$HOME/transformer/data
+   RAW_DIR=$HOME/transformer/raw_data
+   MODEL_DIR=$HOME/transformer/model_$PARAM_SET
+   VOCAB_FILE=$DATA_DIR/vocab.my-data
+    ```
+    It requires the training and development data to be stored in separate directories, i.e `$RAW_DIR/train/` and `$RAW_DATA/dev/`. 
+    
+    Command to run:
+    ```
+    python data_preprocess.py --data_dir=$DATA_DIR --raw_dir=$RAW_DIR --src_tag=src --tgt_tag=tgt
+    ```
+    
+    Arguments:
+   * `--data_dir`: Path where the preprocessed TFRecord data, and vocab file will be saved.
+   * `--raw_dir` : Path where the raw training and development data is located. It should contain two separate directories,
+   `$RAW_DIR/train/` and `$RAW_DIR/dev/`, where training and development files are located.
+   * `--src_tag` : substring to be present in source(language) filename in the `$RAW_DIR/train/` and `$RAW_DIR/dev/`  
+                   directories. For example, `$RAW_DIR/train/train-src.txt` and `$RAW_DIR/dev/dev-src.txt` with `--                            src_tag=src` will identify the above two files as source(language) data files.
+   * `--tgt_tag` : substring to be present in target(language) filename in the `$RAW_DIR/train/` and `$RAW_DIR/dev/`  
+                   directories. For example, `$RAW_DIR/train/train-tgt.txt` and `$RAW_DIR/dev/dev-tgt.txt` with `--                            tgt_tag=tgt` will identify the above two files as target(language) data files.
+                   
+    
+    
 
 2. ### Model training and evaluation
 
