@@ -14,18 +14,23 @@ module.exports = {
     port: 9000,
   },
   module: {
-    loaders: [{
+    rules: [{
       // Uses some new-style (ECMA 2015) classes ... compile them out.
       test: /\.jsx?$/,
+
       exclude: /node_modules/,
-      loader: 'babel-loader',
-      query: {
-        presets: ['es2015'],
-        plugins: [
-          'transform-object-rest-spread',
-          ['transform-react-jsx', {'pragma': 'preact.h'}],
-        ],
-      }
+
+      use: [{
+        loader: 'babel-loader',
+
+        options: {
+          presets: [['@babel/preset-env', {targets: 'cover 99.5%'}]],
+          plugins: [
+            '@babel/plugin-proposal-object-rest-spread',
+            ['@babel/plugin-transform-react-jsx', {'pragma': 'preact.h'}],
+          ],
+        }
+      }]
     }]
   }
 };
