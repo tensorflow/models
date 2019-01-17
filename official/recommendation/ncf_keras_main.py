@@ -61,6 +61,8 @@ def main(_):
   with logger.benchmark_context(FLAGS), \
       mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
     mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
+    if FLAGS.tpu:
+      raise ValueError("NCF in Keras does not support TPU for now")
     run_ncf(FLAGS)
 
 
@@ -103,7 +105,6 @@ def run_ncf(_):
   optimizer = neumf_model.get_optimizer(params)
   distribution = ncf_common.get_distribution_strategy(params)
   train_input_fn = producer.make_input_fn(is_training=True)
-  print(">>>>>>>>>>>>>>before get train data set")
   train_input_dataset = train_input_fn(params).repeat(FLAGS.train_epochs)
 
   keras_model.compile(
@@ -115,7 +116,7 @@ def run_ncf(_):
   keras_model.fit(train_input_dataset,
       epochs=FLAGS.train_epochs,
       steps_per_epoch=num_train_steps,
-      callbacks=[],
+      callbacks=[IncrementEpochCallback(producer)],
       verbose=0)
 
   tf.logging.info("Training done. Start evaluating")
@@ -128,6 +129,14 @@ def run_ncf(_):
   tf.logging.info("Keras fit is done. Start evaluating")
   """
 
+
+class IncrementEpochCallback(tf.keras.callbacks.Callback):
+
+  def __init__(self, producer):
+    self._producer = producer
+
+  def on_epoch_begin(self, epoch, logs=None):
+    self._producer.increment_request_epoch()
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
