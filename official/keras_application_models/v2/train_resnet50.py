@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 # pylint: disable=g-bad-import-order
+import os
 import numpy as np
 from absl import app as absl_app
 from absl import flags
@@ -31,7 +32,6 @@ from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 
 # Define a dictionary that maps model names to their model classes inside Keras
-MODEL = tf.keras.applications.ResNet50
 
 
 def train_resnet50(_):
@@ -43,14 +43,15 @@ def train_resnet50(_):
     tf.logging.info("Eager execution is enabled...")
     tf.enable_eager_execution()
 
-  # Load the model
-  model = "resnet50"
-  keras_model = MODEL
-
   tf.logging.info("Using CIFAR-10 dataset...")
   dataset_name = "CIFAR-10"
   ds = dataset.Cifar10Dataset(FLAGS.batch_size)
-  x_train, y_train, x_test, y_test = ds.x_train, ds.y_train, ds.x_test, ds.y_test
+  x_train, y_train = ds.x_train, ds.y_train
+  x_test, y_test = ds.x_test, ds.y_test
+  # Subtract pixel mean from data
+  x_train_mean = np.mean(x_train, axis=0)
+  x_train -= x_train_mean
+  x_test -= x_train_mean
   # Apply data augmentation
   datagen = tf.keras.preprocessing.image.ImageDataGenerator(
         # set input mean to 0 over the dataset
@@ -78,7 +79,7 @@ def train_resnet50(_):
         # set range for random channel shifts
         channel_shift_range=0.,
         # set mode for filling points outside the input boundaries
-        fill_mode='nearest',
+        fill_mode='constant',
         # value used for fill_mode = "constant"
         cval=0.,
         # randomly flip images
@@ -94,9 +95,20 @@ def train_resnet50(_):
         # fraction of images reserved for validation (strictly between 0 and 1)
         validation_split=0.0)
 
-  model = keras_model(
-      weights=None, input_shape=ds.input_shape, classes=ds.num_classes)
+  base_model = tf.keras.applications.ResNet50(
+      # Using imagenet pretrained weights require input_shape and pooling.
+      weights='imagenet',
+      input_shape=ds.input_shape,
+      pooling='avg',
+      # When include_top is False, we need manually add FC layers.
+      include_top=False)
+  # Manually add FC layer.
+  x = base_model.output
+  x = tf.keras.layers.Dense(ds.num_classes, activation='softmax', name='fc')(x)
+  model = tf.keras.Model(inputs=base_model.inputs, outputs=x)
+  model.summary()
 
+  # Set up running strategy
   num_gpus = flags_core.get_num_gpus(FLAGS)
 
   distribution = None
@@ -117,46 +129,40 @@ def train_resnet50(_):
   # Adam optimizer and some other optimizers doesn't work well with
   # distribution strategy (b/113076709)
   # Use keras.SGD (SGD + Momentum) according to ResNet paper.
-  optimizer = tf.keras.optimizers.SGD(lr=0.1, momentum=0.9)
-  optimization_callbacks = [
-    tf.keras.callbacks.LearningRateScheduler(
-        lambda x: 0.1 if x <= 80 else 0.01 if x <= 120 else 0.001,
-        verbose=1)
-  ]
-  # Add weight decay based on ResNet paper
-  weight_decay = 0.001
+  optimizer = tf.keras.optimizers.SGD(
+      learning_rate=tf.keras.backend.variable(1e-3), momentum=0.9)
+  lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
+      lambda x: 1e-3 if x <= 80 else 1e-4 if x <= 160 else 1e-5,
+      verbose=1)
+
+  # Add L1L2 regularization to avoid overfitting
+  l1 = 0.
+  l2 = 0.0001
   for layer in model.layers:
     if hasattr(layer, "kernel_regularizer"):
-      layer.kerner_regularizer = tf.keras.regularizers.l2(weight_decay)
+      layer.kerner_regularizer = tf.keras.regularizers.l1_l2(l1, l2)
+
+  # Prepare model model saving directory.
+  save_dir = os.path.join(os.getcwd(), 'saved_models')
+  model_name = 'cifar10_resnet50_model.{epoch:03d}.h5' 
+  if not os.path.isdir(save_dir):
+    os.makedirs(save_dir)
+  filepath = os.path.join(save_dir, model_name)
+
+  # Prepare callbacks for model saving and for learning rate adjustment.
+  checkpoint = tf.keras.callbacks.ModelCheckpoint(
+      filepath=filepath, monitor='val_acc', verbose=1, save_best_only=True)
+
+  callbacks = [lr_scheduler, checkpoint]
+
   model.compile(loss="categorical_crossentropy",
                 optimizer=optimizer,
                 metrics=["accuracy"],
                 distribute=distribution)
 
-  # Create benchmark logger for benchmark logging
-  run_params = {
-      "batch_size": FLAGS.batch_size,
-      "synthetic_data": False,
-      "train_epochs": FLAGS.train_epochs,
-      "num_train_images": FLAGS.num_train_images,
-      "num_eval_images": FLAGS.num_eval_images,
-  }
-
-  benchmark_logger = logger.get_benchmark_logger()
-  benchmark_logger.log_run_info(
-      model_name=model,
-      dataset_name=dataset_name,
-      run_params=run_params,
-      test_id=FLAGS.benchmark_test_id)
-
-  # Create callbacks that log metric values about the training and evaluation
-  callbacks = model_callbacks.get_model_callbacks(
-      FLAGS.callbacks,
-      batch_size=FLAGS.batch_size,
-      metric_logger=benchmark_logger)
-  callbacks.extend(optimization_callbacks)
   # Train and evaluate the model
-  history = model.fit(
+  datagen.fit(x_train)
+  history = model.fit_generator(
       datagen.flow(x_train, y_train, batch_size=FLAGS.batch_size),
       epochs=FLAGS.train_epochs,
       callbacks=callbacks,
@@ -164,16 +170,6 @@ def train_resnet50(_):
       steps_per_epoch=int(np.ceil(FLAGS.num_train_images / FLAGS.batch_size)),
       validation_steps=int(np.ceil(FLAGS.num_eval_images / FLAGS.batch_size))
   )
-
-  tf.logging.info("Logging the evaluation results...")
-  for epoch in range(FLAGS.train_epochs):
-    eval_results = {
-        "accuracy": history.history["val_acc"][epoch],
-        "loss": history.history["val_loss"][epoch],
-        tf.GraphKeys.GLOBAL_STEP: (epoch + 1) * np.ceil(
-            FLAGS.num_eval_images/FLAGS.batch_size)
-    }
-    benchmark_logger.log_evaluation_result(eval_results)
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
@@ -216,7 +212,7 @@ def define_keras_benchmark_flags():
 
   flags.DEFINE_list(
       name="callbacks",
-      default=["LoggingEpochMetricCallback"],
+      default=[],
       help=flags_core.help_wrap(
           "A list of (case insensitive) strings to specify the names of "
           "callbacks. For example: `--callbacks ExamplesPerSecondCallback,"
