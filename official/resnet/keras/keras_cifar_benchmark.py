@@ -29,7 +29,7 @@ from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
 
 
-DATA_DIR = '/data/cifar10_data/'
+DATA_DIR = '/data/cifar10_data/cifar-10-batches-bin'
 MIN_TOP_1_ACCURACY = 0.925
 MAX_TOP_1_ACCURACY = 0.938
 
