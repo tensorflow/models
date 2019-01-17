@@ -113,30 +113,6 @@ class LoggingMetricCallback(tf.keras.callbacks.Callback):
           global_step=self._global_step)
 
 
-class LoggingEpochMetricCallback(tf.keras.callbacks.Callback):
-  """LoggingEpochMetricCallback.
-
-  Log the predefined _PER_EPOCH_METRICS after each epoch.
-  """
-
-  def __init__(self, metric_logger=None):
-    self._logger = metric_logger or logger.BaseBenchmarkLogger()
-    self._per_epoch_metrics = _PER_EPOCH_METRICS
-    self._global_step = 0  # Initialize it in __init__
-    super(LoggingEpochMetricCallback, self).__init__()
-
-  def on_batch_end(self, batch, logs=None):
-    self._global_step += 1
-
-  def on_epoch_end(self, epoch, logs=None):
-    """Log metrics after each epoch."""
-    for metric in _PER_EPOCH_METRICS:
-      self._logger.log_metric(
-          _PER_EPOCH_METRICS[metric],
-          logs.get(metric),
-          global_step=self._global_step)
-
-
 def get_model_callbacks(name_list, **kwargs):
   """Factory for getting a list of TensorFlow hooks for training by name.
 
@@ -182,15 +158,8 @@ def get_logging_metric_callback(metric_logger=None, **kwargs):  # pylint: disabl
       metric_logger=metric_logger or logger.get_benchmark_logger())
 
 
-def get_logging_epoch_metric_callback(metric_logger=None, **kwargs):  # pylint: disable=unused-argument
-  """Function to get LoggingMetricCallback."""
-  return LoggingEpochMetricCallback(
-      metric_logger=metric_logger or logger.get_benchmark_logger())
-
-
 # A dictionary to map the callback name and its corresponding function
 CALLBACKS = {
     "examplespersecondcallback": get_examples_per_second_callback,
     "loggingmetriccallback": get_logging_metric_callback,
-    "loggingepochmetriccallback": get_logging_epoch_metric_callback,
 }
