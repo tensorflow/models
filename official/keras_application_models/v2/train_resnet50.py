@@ -96,17 +96,16 @@ def train_resnet50(_):
         validation_split=0.0)
 
   base_model = tf.keras.applications.ResNet50(
-      # Using imagenet pretrained weights require input_shape and pooling.
+      # Use imagenet pretrained weights require input_shape and pooling.
       weights='imagenet',
       input_shape=ds.input_shape,
       pooling='avg',
       # When include_top is False, we need manually add FC layers.
       include_top=False)
-  # Manually add FC layer.
+  # Manually add FC layer
   x = base_model.output
-  x = tf.keras.layers.Dense(ds.num_classes, activation='softmax', name='fc')(x)
+  x = tf.keras.layers.Dense(10, activation='softmax', name='fc10')(x)
   model = tf.keras.Model(inputs=base_model.inputs, outputs=x)
-  model.summary()
 
   # Set up running strategy
   num_gpus = flags_core.get_num_gpus(FLAGS)
@@ -132,7 +131,7 @@ def train_resnet50(_):
   optimizer = tf.keras.optimizers.SGD(
       learning_rate=tf.keras.backend.variable(1e-3), momentum=0.9)
   lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
-      lambda x: 1e-3 if x <= 80 else 1e-4 if x <= 160 else 1e-5,
+      lambda x: 1e-3 if x <= 10 else 1e-4 if x <= 30 else 1e-5,
       verbose=1)
 
   # Add L1L2 regularization to avoid overfitting
