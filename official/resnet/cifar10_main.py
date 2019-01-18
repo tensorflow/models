@@ -24,10 +24,10 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
+from official.utils.flags import core as flags_core
+from official.utils.logs import logger
 
 HEIGHT = 32
 WIDTH = 32
@@ -52,7 +52,7 @@ DATASET_NAME = 'CIFAR-10'
 ###############################################################################
 def get_filenames(is_training, data_dir):
   """Returns a list of filenames."""
-  assert os.path.exists(data_dir), (
+  assert tf.gfile.Exists(data_dir), (
       'Run cifar10_download_and_extract.py first to download and extract the '
       'CIFAR-10 data.')
 

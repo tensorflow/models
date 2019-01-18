@@ -26,7 +26,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
 
-DATA_DIR = '/data/cifar10_data/'
+DATA_DIR = '/data/cifar10_data/cifar-10-batches-bin'
 
 
 class EstimatorCifar10BenchmarkTests(object):
