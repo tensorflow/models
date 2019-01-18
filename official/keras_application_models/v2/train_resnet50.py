@@ -26,7 +26,6 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.keras_application_models import dataset
-from official.keras_application_models import model_callbacks
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -107,24 +106,6 @@ def train_resnet50(_):
   x = tf.keras.layers.Dense(10, activation='softmax', name='fc10')(x)
   model = tf.keras.Model(inputs=base_model.inputs, outputs=x)
 
-  # Set up running strategy
-  num_gpus = flags_core.get_num_gpus(FLAGS)
-
-  distribution = None
-  # Use distribution strategy
-  if FLAGS.dist_strat:
-    distribution = distribution_utils.get_distribution_strategy(
-        num_gpus=num_gpus)
-  elif num_gpus > 1:
-    # Run with multi_gpu_model
-    # If eager execution is enabled, only one GPU is utilized even if multiple
-    # GPUs are provided.
-    if FLAGS.eager:
-      tf.logging.warning(
-          "{} GPUs are provided, but only one GPU is utilized as "
-          "eager execution is enabled.".format(num_gpus))
-    model = tf.keras.utils.multi_gpu_model(model, gpus=num_gpus)
-
   # Adam optimizer and some other optimizers doesn't work well with
   # distribution strategy (b/113076709)
   # Use keras.SGD (SGD + Momentum) according to ResNet paper.
@@ -154,10 +135,10 @@ def train_resnet50(_):
 
   callbacks = [lr_scheduler, checkpoint]
 
+  
   model.compile(loss="categorical_crossentropy",
                 optimizer=optimizer,
-                metrics=["accuracy"],
-                distribute=distribution)
+                metrics=["accuracy"])
 
   # Train and evaluate the model
   datagen.fit(x_train)
@@ -203,12 +184,6 @@ def define_keras_benchmark_flags():
           "only one GPU is utilized even if multiple GPUs are provided and "
           "multi_gpu_model is used."))
 
-  flags.DEFINE_boolean(
-      name="dist_strat", default=False, help=flags_core.help_wrap(
-          "To enable distribution strategy for model training and evaluation. "
-          "Number of GPUs used for distribution strategy can be set by the "
-          "argument --num_gpus."))
-
   flags.DEFINE_list(
       name="callbacks",
       default=[],
@@ -217,11 +192,6 @@ def define_keras_benchmark_flags():
           "callbacks. For example: `--callbacks ExamplesPerSecondCallback,"
           "LoggingMetricCallback`"))
 
-  @flags.multi_flags_validator(
-      ["eager", "dist_strat"],
-      message="Both --eager and --dist_strat were set. Only one can be "
-              "defined, as DistributionStrategy is not supported in Eager "
-              "execution currently.")
   # pylint: disable=unused-variable
   def _check_eager_dist_strat(flag_dict):
     return not(flag_dict["eager"] and flag_dict["dist_strat"])
