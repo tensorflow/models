@@ -199,6 +199,14 @@ def define_keras_flags():
       help='For every log_steps, we log the timing information such as '
       'examples per second. Besides, for every log_steps, we store the '
       'timestamp of a batch end.')
+  flags.DEFINE_integer(
+      name='validation_freq', default=None,
+      help='Specify how many training epochs to run before invoking each '
+      'validation.')
+  flags.DEFINE_string(
+      name='validation_freq_list', default=None,
+      help='A comma separated list of integers specifying training epochs. '
+      'After each of these training epochs are finished, invoke validation.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,

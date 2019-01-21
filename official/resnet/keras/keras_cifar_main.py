@@ -165,6 +165,17 @@ def run(flags_obj):
                     flags_obj.batch_size)
 
   validation_data = eval_input_dataset
+  if flags_obj.validation_freq and flags_obj.validation_freq_list:
+    raise ValueError('At most one of --validation_freq and '
+                     '--validation_freq_list must be specified.')
+  validation_freq = flags_obj.validation_freq or 1
+  if flags_obj.validation_freq_list:
+    try:
+      validation_freq = map(int, flags_obj.validation_freq_list.split(','))
+    except ValueError:
+      raise ValueError('Param --validation_freq_list value of %s cannot be '
+                       'converted to a list of integers.' %
+                       (flags_obj.validation_freq_list))
   if flags_obj.skip_eval:
     tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
@@ -180,6 +191,7 @@ def run(flags_obj):
                       ],
                       validation_steps=num_eval_steps,
                       validation_data=validation_data,
+                      validation_freq=validation_freq,
                       verbose=1)
   eval_output = None
   if not flags_obj.skip_eval:
