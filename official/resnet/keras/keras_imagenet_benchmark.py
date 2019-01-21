@@ -60,6 +60,7 @@ class KerasImagenetBenchmarkTests(object):
     flags.FLAGS.model_dir = self._get_model_dir('keras_resnet50_eager_8_gpu')
     flags.FLAGS.dtype = 'fp32'
     flags.FLAGS.enable_eager = True
+    flags.FLAGS.validation_freq = 20
     stats = keras_imagenet_main.run(flags.FLAGS)
     self._fill_report_object(stats)
 

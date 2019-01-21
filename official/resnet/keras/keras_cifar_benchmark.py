@@ -78,6 +78,7 @@ class KerasCifar10BenchmarkTests(object):
     flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_eager_2_gpu')
     flags.FLAGS.dtype = 'fp32'
     flags.FLAGS.enable_eager = True
+    flags.FLAGS.validation_freq = 30
     stats = keras_cifar_main.run(flags.FLAGS)
     self._fill_report_object(stats)
 
