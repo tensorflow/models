@@ -38,7 +38,7 @@ single activation all the way to a full complex network.
 
 `OpRegularizer` is the most primitive element in the framework. An
 `OpRegularizer` refers to TensorFlow op, and has two methods,
-`regularization_vector` and `alive_vector`, both return `tf.Tensor`s or rank 1
+`regularization_vector` and `alive_vector`, both return `tf.Tensor`s of rank 1
 (vectors). `regularization_vector` is of type float, and its `i`-th entry is the
 regularizer of the `i`-th activation of the op the `OpRegularizer` refers to.
 In order to regularize away that activation, one would need to add the `i`-th
@@ -307,7 +307,7 @@ class NetworkRegularizer(object):
 
   @abc.abstractmethod
   def get_regularization_term(self, ops=None):
-    """Compute the FluidNet regularization term.
+    """Compute the MorphNet regularization term.
 
     Args:
       ops: A list of tf.Operation. If specified, only the regularization term
