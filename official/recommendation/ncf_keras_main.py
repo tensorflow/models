@@ -69,6 +69,7 @@ def main(_):
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
   params = ncf_common.parse_flags(FLAGS)
+  batch_size = params['batch_size']
 
   num_users, \
       num_items, \
@@ -81,28 +82,26 @@ def run_ncf(_):
   model_helpers.apply_clean(flags.FLAGS)
 
   user_input = tf.keras.layers.Input(
-      shape=(), batch_size=FLAGS.batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
+      shape=(), batch_size=batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
   item_input = tf.keras.layers.Input(
-      shape=(), batch_size=FLAGS.batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
+      shape=(), batch_size=batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
 
   # Dummy duplicate mask
   dup_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=FLAGS.batch_size, name=rconst.DUPLICATE_MASK, dtype=tf.int32)
+      shape=(), batch_size=batch_size, name=rconst.DUPLICATE_MASK, dtype=tf.int32)
+  # Labels as input for the custom loss function
   labels_input = tf.keras.layers.Input(
-      shape=(), batch_size=FLAGS.batch_size, name="labels", dtype=tf.int32)
+      shape=(), batch_size=batch_size, name="labels", dtype=tf.int32)
+  # valid_point_mask as input for the custom loss function
   valid_pt_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=FLAGS.batch_size, name=rconst.VALID_POINT_MASK, dtype=tf.int32)
+      shape=(), batch_size=batch_size, name=rconst.VALID_POINT_MASK, dtype=tf.int32)
 
   base_model = neumf_model.construct_model(user_input, item_input, params)
   keras_model_input = base_model.input
-  print(">>>>>>>>>>>keras_model_input 0: ", keras_model_input)
 
   keras_model_input.append(dup_mask_input)
-  print(">>>>>>>>>>>keras_model_input 1: ", keras_model_input)
   keras_model_input.append(labels_input)
-  print(">>>>>>>>>>>keras_model_input 2: ", keras_model_input)
   keras_model_input.append(valid_pt_mask_input)
-  print(">>>>>>>>>>>keras_model_input 3: ", keras_model_input)
 
   keras_model = tf.keras.Model(
       inputs=keras_model_input,
@@ -118,58 +117,48 @@ def run_ncf(_):
 
   optimizer = neumf_model.get_optimizer(params)
   distribution = ncf_common.get_distribution_strategy(params)
+
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params).map(
       lambda features, labels: pre_process_training_input(features, labels))
   train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
 
-
-  class NCFMetrics(tf.keras.metrics.Mean):
-
-    def __init__(self, dup_mask, name):
-      print(">>>>>>>>>>>>>>> here here")
-      self._dup_mask = dup_mask
-      self._dup_mask= tf.cast(self._dup_mask, tf.float32)
-      return super(NCFMetrics, self).__init__(name=name)
-
-    def update_state(self, labels, predictions, sample_weight=None):
-      logits = predictions
-      softmax_logits = ncf_common.softmax_logitfy(logits)
-
-      cross_entropy, \
-      metric_fn, \
-      in_top_k, \
-      ndcg, \
-      metric_weights = ncf_common.compute_eval_loss_and_metrics_helper(
-          logits,
-          softmax_logits,
-          self._dup_mask,
-          params["num_neg"],
-          params["match_mlperf"],
-          use_tpu_spec=params["use_xla_for_gpu"])
-
-      values = in_top_k
-
-      values = tf.cond(
-          tf.keras.backend.learning_phase(),
-          lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
-          lambda: values)
-
-      return super(NCFMetrics, self).update_state(values, sample_weight)
-
+  # Custom loss function to include the valid point mask
   softmax_logits = ncf_common.softmax_logitfy(keras_model.output)
   loss_tensor = tf.losses.sparse_softmax_cross_entropy(
       labels=labels_input,
       logits=softmax_logits,
-      weights=tf.cast(valid_pt_mask_input, tf.float32)
+      weights=tf.cast(valid_pt_mask_input, tf.float32),
   )
-
+  loss_tensor= tf.identity(loss_tensor, name="train_loss")
   keras_model.add_loss(loss_tensor)
 
-  keras_model.compile(
-      optimizer=optimizer,
-      metrics=[NCFMetrics(dup_mask_input, "hit_rate")],
-      distribute=None)
+  # Custom loss function for the hit rate
+  logits = keras_model.output
+  softmax_logits = ncf_common.softmax_logitfy(logits)
+
+  cross_entropy, \
+  metric_fn, \
+  in_top_k, \
+  ndcg, \
+  metric_weights = ncf_common.compute_eval_loss_and_metrics_helper(
+      logits,
+      softmax_logits,
+      tf.cast(dup_mask_input, tf.float32),
+      params["num_neg"],
+      params["match_mlperf"],
+      use_tpu_spec=params["use_xla_for_gpu"])
+
+  values = in_top_k
+
+  values = tf.cond(
+      tf.keras.backend.learning_phase(),
+      lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
+      lambda: values)
+  values = tf.identity(values, "hit_rate")
+  keras_model.add_metric(values, name='hit_rate', aggregation='mean')
+
+  keras_model.compile(optimizer=optimizer, distribute=distribution)
 
   keras_model.fit(train_input_dataset,
       epochs=FLAGS.train_epochs,
@@ -179,18 +168,22 @@ def run_ncf(_):
 
   tf.logging.info("Training done. Start evaluating")
 
-  '''
-  def pre_process_eval_input(features, labels):
-    # Add a dummy dup_mask to the input dataset
-    features['duplicate_mask'] = tf.zeros_like(features['user_id'], dtype=tf.float32)
-    return features, labels, features.pop(rconst.VALID_POINT_MASK)
+  def pre_process_eval_input(features):
+    features["labels"] = tf.zeros_like(features['user_id'], dtype=tf.float32)
+    features[rconst.VALID_POINT_MASK] = tf.zeros_like(features['user_id'], dtype=tf.float32)
+    return features
 
   eval_input_fn = producer.make_input_fn(is_training=False)
   eval_input_dataset = eval_input_fn(params)
-  eval_results = keras_model.evaluate(eval_input_dataset, steps=num_eval_steps)
+  eval_input_dataset = eval_input_dataset.map(
+      lambda features : pre_process_eval_input(features))
+  eval_results = keras_model.evaluate(
+      eval_input_dataset,
+      steps=num_eval_steps,
+      verbose=2)
 
-  tf.logging.info("Keras fit is done. Start evaluating")
-  '''
+  tf.logging.info("Keras evaluation is done.")
+  return eval_results
 
 
 class IncrementEpochCallback(tf.keras.callbacks.Callback):
