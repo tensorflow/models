@@ -313,3 +313,180 @@ def define_ncf_flags():
   @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
   def xla_validator(flag_dict):
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
+
+
+def softmax_logitfy(logits):
+  '''Convert the logits returned by the base model to softmax logits.'''
+  softmax_logits = tf.concat([logits * 0, logits], axis=1)
+  return softmax_logits
+
+
+def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
+                                         softmax_logits,      # type: tf.Tensor
+                                         duplicate_mask,      # type: tf.Tensor
+                                         num_training_neg,    # type: int
+                                         match_mlperf=False,  # type: bool
+                                         use_tpu_spec=False   # type: bool
+                                        ):
+  # type: (...) -> tf.estimator.EstimatorSpec
+  """Model evaluation with HR and NDCG metrics.
+
+  The evaluation protocol is to rank the test interacted item (truth items)
+  among the randomly chosen 999 items that are not interacted by the user.
+  The performance of the ranked list is judged by Hit Ratio (HR) and Normalized
+  Discounted Cumulative Gain (NDCG).
+
+  For evaluation, the ranked list is truncated at 10 for both metrics. As such,
+  the HR intuitively measures whether the test item is present on the top-10
+  list, and the NDCG accounts for the position of the hit by assigning higher
+  scores to hits at top ranks. Both metrics are calculated for each test user,
+  and the average scores are reported.
+
+  If `match_mlperf` is True, then the HR and NDCG computations are done in a
+  slightly unusual way to match the MLPerf reference implementation.
+  Specifically, if the evaluation negatives contain duplicate items, it will be
+  treated as if the item only appeared once. Effectively, for duplicate items in
+  a row, the predicted score for all but one of the items will be set to
+  -infinity
+
+  For example, suppose we have that following inputs:
+  logits_by_user:     [[ 2,  3,  3],
+                       [ 5,  4,  4]]
+
+  items_by_user:     [[10, 20, 20],
+                      [30, 40, 40]]
+
+  # Note: items_by_user is not explicitly present. Instead the relevant \
+          information is contained within `duplicate_mask`
+
+  top_k: 2
+
+  Then with match_mlperf=True, the HR would be 2/2 = 1.0. With
+  match_mlperf=False, the HR would be 1/2 = 0.5. This is because each user has
+  predicted scores for only 2 unique items: 10 and 20 for the first user, and 30
+  and 40 for the second. Therefore, with match_mlperf=True, it's guaranteed the
+  first item's score is in the top 2. With match_mlperf=False, this function
+  would compute the first user's first item is not in the top 2, because item 20
+  has a higher score, and item 20 occurs twice.
+
+  Args:
+    logits: A tensor containing the predicted logits for each user. The shape
+      of logits is (num_users_per_batch * (1 + NUM_EVAL_NEGATIVES),) Logits
+      for a user are grouped, and the last element of the group is the true
+      element.
+
+    softmax_logits: The same tensor, but with zeros left-appended.
+
+    duplicate_mask: A vector with the same shape as logits, with a value of 1
+      if the item corresponding to the logit at that position has already
+      appeared for that user.
+
+    num_training_neg: The number of negatives per positive during training.
+
+    match_mlperf: Use the MLPerf reference convention for computing rank.
+
+    use_tpu_spec: Should a TPUEstimatorSpec be returned instead of an
+      EstimatorSpec. Required for TPUs and if XLA is done on a GPU. Despite its
+      name, TPUEstimatorSpecs work with GPUs
+
+  Returns:
+    An EstimatorSpec for evaluation.
+  """
+  in_top_k, ndcg, metric_weights, logits_by_user = compute_top_k_and_ndcg(
+      logits, duplicate_mask, match_mlperf)
+
+  # Examples are provided by the eval Dataset in a structured format, so eval
+  # labels can be reconstructed on the fly.
+  eval_labels = tf.reshape(shape=(-1,), tensor=tf.one_hot(
+      tf.zeros(shape=(logits_by_user.shape[0],), dtype=tf.int32) +
+      rconst.NUM_EVAL_NEGATIVES, logits_by_user.shape[1], dtype=tf.int32))
+
+  eval_labels_float = tf.cast(eval_labels, tf.float32)
+
+  # During evaluation, the ratio of negatives to positives is much higher
+  # than during training. (Typically 999 to 1 vs. 4 to 1) By adjusting the
+  # weights for the negative examples we compute a loss which is consistent with
+  # the training data. (And provides apples-to-apples comparison)
+  negative_scale_factor = num_training_neg / rconst.NUM_EVAL_NEGATIVES
+  example_weights = (
+      (eval_labels_float + (1 - eval_labels_float) * negative_scale_factor) *
+      (1 + rconst.NUM_EVAL_NEGATIVES) / (1 + num_training_neg))
+
+  # Tile metric weights back to logit dimensions
+  expanded_metric_weights = tf.reshape(tf.tile(
+      metric_weights[:, tf.newaxis], (1, rconst.NUM_EVAL_NEGATIVES + 1)), (-1,))
+
+  # ignore padded examples
+  example_weights *= tf.cast(expanded_metric_weights, tf.float32)
+
+  cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+      logits=softmax_logits, labels=eval_labels, weights=example_weights)
+
+  def metric_fn(top_k_tensor, ndcg_tensor, weight_tensor):
+    return {
+        rconst.HR_KEY: tf.metrics.mean(top_k_tensor, weights=weight_tensor,
+                                       name=rconst.HR_METRIC_NAME),
+        rconst.NDCG_KEY: tf.metrics.mean(ndcg_tensor, weights=weight_tensor,
+                                         name=rconst.NDCG_METRIC_NAME),
+    }
+
+  return cross_entropy, metric_fn, in_top_k, ndcg, metric_weights
+
+
+def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
+                           duplicate_mask,      # type: tf.Tensor
+                           match_mlperf=False   # type: bool
+                          ):
+  """Compute inputs of metric calculation.
+
+  Args:
+    logits: A tensor containing the predicted logits for each user. The shape
+      of logits is (num_users_per_batch * (1 + NUM_EVAL_NEGATIVES),) Logits
+      for a user are grouped, and the first element of the group is the true
+      element.
+    duplicate_mask: A vector with the same shape as logits, with a value of 1
+      if the item corresponding to the logit at that position has already
+      appeared for that user.
+    match_mlperf: Use the MLPerf reference convention for computing rank.
+
+  Returns:
+    is_top_k, ndcg and weights, all of which has size (num_users_in_batch,), and
+    logits_by_user which has size
+    (num_users_in_batch, (rconst.NUM_EVAL_NEGATIVES + 1)).
+  """
+  print(">>>>>>>>>>>>>>>logits: ", logits)
+  logits_by_user = tf.reshape(logits, (-1, rconst.NUM_EVAL_NEGATIVES + 1))
+  duplicate_mask_by_user = tf.reshape(duplicate_mask,
+                                      (-1, rconst.NUM_EVAL_NEGATIVES + 1))
+
+  if match_mlperf:
+    # Set duplicate logits to the min value for that dtype. The MLPerf
+    # reference dedupes during evaluation.
+    logits_by_user *= (1 - duplicate_mask_by_user)
+    logits_by_user += duplicate_mask_by_user * logits_by_user.dtype.min
+
+  # Determine the location of the first element in each row after the elements
+  # are sorted.
+  sort_indices = tf.contrib.framework.argsort(
+      logits_by_user, axis=1, direction="DESCENDING")
+
+  # Use matrix multiplication to extract the position of the true item from the
+  # tensor of sorted indices. This approach is chosen because both GPUs and TPUs
+  # perform matrix multiplications very quickly. This is similar to np.argwhere.
+  # However this is a special case because the target will only appear in
+  # sort_indices once.
+  one_hot_position = tf.cast(tf.equal(sort_indices, rconst.NUM_EVAL_NEGATIVES),
+                             tf.int32)
+  sparse_positions = tf.multiply(
+      one_hot_position, tf.range(logits_by_user.shape[1])[tf.newaxis, :])
+  position_vector = tf.reduce_sum(sparse_positions, axis=1)
+
+  in_top_k = tf.cast(tf.less(position_vector, rconst.TOP_K), tf.float32)
+  ndcg = tf.log(2.) / tf.log(tf.cast(position_vector, tf.float32) + 2)
+  ndcg *= in_top_k
+
+  # If a row is a padded row, all but the first element will be a duplicate.
+  metric_weights = tf.not_equal(tf.reduce_sum(duplicate_mask_by_user, axis=1),
+                                rconst.NUM_EVAL_NEGATIVES)
+
+  return in_top_k, ndcg, metric_weights, logits_by_user

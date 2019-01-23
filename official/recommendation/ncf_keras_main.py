@@ -66,19 +66,6 @@ def main(_):
     run_ncf(FLAGS)
 
 
-def _logitfy(inputs, base_model):
-  logits = base_model(inputs)
-  zero_tensor = tf.keras.layers.Lambda(lambda x: x * 0)(logits)
-  to_concatenate = [zero_tensor, logits]
-  concat_layer = tf.keras.layers.Concatenate(axis=1)(to_concatenate)
-
-  reshape_layer = tf.keras.layers.Reshape(
-      target_shape=(concat_layer.shape[1].value,))(concat_layer)
-
-  model = tf.keras.Model(inputs=inputs, outputs=reshape_layer)
-  return model
-
-
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
   params = ncf_common.parse_flags(FLAGS)
@@ -97,37 +84,100 @@ def run_ncf(_):
       shape=(), batch_size=FLAGS.batch_size, name="user_id", dtype=tf.int32)
   item_input = tf.keras.layers.Input(
       shape=(), batch_size=FLAGS.batch_size, name="item_id", dtype=tf.int32)
+  dup_mask_input = tf.keras.layers.Input(
+      shape=(), batch_size=FLAGS.batch_size, name="duplicate_mask", dtype=tf.int32)
 
   base_model = neumf_model.construct_model(user_input, item_input, params)
-  keras_model = _logitfy([user_input, item_input], base_model)
+  keras_model_input = base_model.input
+  keras_model_input.append(dup_mask_input)
+  keras_model = tf.keras.Model(
+      inputs=keras_model_input,
+      outputs=base_model.output)
   keras_model.summary()
+
+  def pre_process_training_input(features, labels):
+    # Add a dummy dup_mask to the input dataset
+    features['duplicate_mask'] = tf.zeros_like(features['user_id'], dtype=tf.float32)
+    return features, labels, features.pop(rconst.VALID_POINT_MASK)
 
   optimizer = neumf_model.get_optimizer(params)
   distribution = ncf_common.get_distribution_strategy(params)
   train_input_fn = producer.make_input_fn(is_training=True)
-  train_input_dataset = train_input_fn(params).repeat(FLAGS.train_epochs)
+  train_input_dataset = train_input_fn(params).map(
+      lambda features, labels: pre_process_training_input(features, labels))
+  train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
+
+
+  class NCFMetrics(tf.keras.metrics.Mean):
+
+    def __init__(self, dup_mask, name):
+      print(">>>>>>>>>>>>>>> here here")
+      self._dup_mask = dup_mask
+      self._dup_mask= tf.cast(self._dup_mask, tf.float32)
+      return super(NCFMetrics, self).__init__(name=name)
+
+    def update_state(self, labels, predictions, sample_weight=None):
+      logits = predictions
+      softmax_logits = ncf_common.softmax_logitfy(logits)
+
+      cross_entropy, \
+      metric_fn, \
+      in_top_k, \
+      ndcg, \
+      metric_weights = ncf_common.compute_eval_loss_and_metrics_helper(
+          logits,
+          softmax_logits,
+          self._dup_mask,
+          params["num_neg"],
+          params["match_mlperf"],
+          use_tpu_spec=params["use_xla_for_gpu"])
+
+      # values = metric_fn(in_top_k, ndcg, metric_weights)
+      values = in_top_k
+
+      values = tf.cond(
+          tf.keras.backend.learning_phase(),
+          lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
+          lambda: values)
+
+      return super(NCFMetrics, self).update_state(values, sample_weight)
+
+
+  def loss_fn(y_true, y_pred):
+    softmax_logits = ncf_common.softmax_logitfy(y_pred)
+    return tf.losses.sparse_softmax_cross_entropy(
+        labels=y_true,
+        logits=softmax_logits,
+        weights=tf.cast(valid_pt_mask, tf.float32)
+    )
 
   keras_model.compile(
       loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+      # loss=loss_fn,
       optimizer=optimizer,
-      metrics=["accuracy"],
+      metrics=[NCFMetrics(dup_mask_input, "hit_rate")],
       distribute=None)
 
   keras_model.fit(train_input_dataset,
       epochs=FLAGS.train_epochs,
       steps_per_epoch=num_train_steps,
       callbacks=[IncrementEpochCallback(producer)],
-      verbose=0)
+      verbose=2)
 
   tf.logging.info("Training done. Start evaluating")
 
-  """
-  eval_input_fn = data_preprocessing.make_input_fn(
-      producer, is_training=False, use_tpu=False)
+  '''
+  def pre_process_eval_input(features, labels):
+    # Add a dummy dup_mask to the input dataset
+    features['duplicate_mask'] = tf.zeros_like(features['user_id'], dtype=tf.float32)
+    return features, labels, features.pop(rconst.VALID_POINT_MASK)
+
+  eval_input_fn = producer.make_input_fn(is_training=False)
   eval_input_dataset = eval_input_fn(params)
-  eval_results = keras_model.evaluate(eval_input_dataset, stesp=num_eval_steps)
+  eval_results = keras_model.evaluate(eval_input_dataset, steps=num_eval_steps)
+
   tf.logging.info("Keras fit is done. Start evaluating")
-  """
+  '''
 
 
 class IncrementEpochCallback(tf.keras.callbacks.Callback):
@@ -137,6 +187,7 @@ class IncrementEpochCallback(tf.keras.callbacks.Callback):
 
   def on_epoch_begin(self, epoch, logs=None):
     self._producer.increment_request_epoch()
+
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
