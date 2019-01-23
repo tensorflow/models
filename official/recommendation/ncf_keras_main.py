@@ -88,7 +88,7 @@ def run_ncf(_):
   # Dummy duplicate mask
   dup_mask_input = tf.keras.layers.Input(
       shape=(), batch_size=FLAGS.batch_size, name=rconst.DUPLICATE_MASK, dtype=tf.int32)
-  label_input = tf.keras.layers.Input(
+  labels_input = tf.keras.layers.Input(
       shape=(), batch_size=FLAGS.batch_size, name="labels", dtype=tf.int32)
   valid_pt_mask_input = tf.keras.layers.Input(
       shape=(), batch_size=FLAGS.batch_size, name=rconst.VALID_POINT_MASK, dtype=tf.int32)
@@ -99,7 +99,7 @@ def run_ncf(_):
 
   keras_model_input.append(dup_mask_input)
   print(">>>>>>>>>>>keras_model_input 1: ", keras_model_input)
-  keras_model_input.append(label_input)
+  keras_model_input.append(labels_input)
   print(">>>>>>>>>>>keras_model_input 2: ", keras_model_input)
   keras_model_input.append(valid_pt_mask_input)
   print(">>>>>>>>>>>keras_model_input 3: ", keras_model_input)
@@ -157,9 +157,12 @@ def run_ncf(_):
 
       return super(NCFMetrics, self).update_state(values, sample_weight)
 
-  loss_tensor = tf.keras.losses.CategoricalCrossentropy(from_logits=True)(
-      label_input, keras_model.output)
-  loss_tensor = tf.multiply(loss_tensor, tf.cast(valid_pt_mask_input, tf.float32))
+  softmax_logits = ncf_common.softmax_logitfy(keras_model.output)
+  loss_tensor = tf.losses.sparse_softmax_cross_entropy(
+      labels=labels_input,
+      logits=softmax_logits,
+      weights=tf.cast(valid_pt_mask_input, tf.float32)
+  )
 
   keras_model.add_loss(loss_tensor)
 
