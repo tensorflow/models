@@ -197,8 +197,10 @@ class Match(object):
         The shape of the gathered tensor is [match_results.shape[0]] +
         input_tensor.shape[1:].
     """
-    input_tensor = tf.concat([tf.stack([ignored_value, unmatched_value]),
-                              input_tensor], axis=0)
+    input_tensor = tf.concat(
+        [tf.stack([ignored_value, unmatched_value]),
+         tf.to_float(input_tensor)],
+        axis=0)
     gather_indices = tf.maximum(self.match_results + 2, 0)
     gathered_tensor = self._gather_op(input_tensor, gather_indices)
     return gathered_tensor

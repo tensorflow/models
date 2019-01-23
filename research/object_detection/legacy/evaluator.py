@@ -39,12 +39,18 @@ EVAL_METRICS_CLASS_DICT = {
         object_detection_evaluation.PascalInstanceSegmentationEvaluator,
     'weighted_pascal_voc_instance_segmentation_metrics':
         object_detection_evaluation.WeightedPascalInstanceSegmentationEvaluator,
+    'oid_V2_detection_metrics':
+        object_detection_evaluation.OpenImagesDetectionEvaluator,
+    # DEPRECATED: please use oid_V2_detection_metrics instead
     'open_images_V2_detection_metrics':
         object_detection_evaluation.OpenImagesDetectionEvaluator,
     'coco_detection_metrics':
         coco_evaluation.CocoDetectionEvaluator,
     'coco_mask_metrics':
         coco_evaluation.CocoMaskEvaluator,
+    'oid_challenge_detection_metrics':
+        object_detection_evaluation.OpenImagesDetectionChallengeEvaluator,
+    # DEPRECATED: please use oid_challenge_detection_metrics instead
     'oid_challenge_object_detection_metrics':
         object_detection_evaluation.OpenImagesDetectionChallengeEvaluator,
 }
@@ -146,6 +152,16 @@ def get_evaluators(eval_config, categories):
   for eval_metric_fn_key in eval_metric_fn_keys:
     if eval_metric_fn_key not in EVAL_METRICS_CLASS_DICT:
       raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
+    if eval_metric_fn_key == 'oid_challenge_object_detection_metrics':
+      logging.warning(
+          'oid_challenge_object_detection_metrics is deprecated; '
+          'use oid_challenge_detection_metrics instead'
+      )
+    if eval_metric_fn_key == 'oid_V2_detection_metrics':
+      logging.warning(
+          'open_images_V2_detection_metrics is deprecated; '
+          'use oid_V2_detection_metrics instead'
+      )
     evaluators_list.append(
         EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](categories=categories))
   return evaluators_list

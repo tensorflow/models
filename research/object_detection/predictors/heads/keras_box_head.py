@@ -91,7 +91,7 @@ class ConvolutionalBoxHead(head.KerasHead):
           tf.keras.layers.Conv2D(
               num_predictions_per_location * self._box_code_size, [1, 1],
               name='BoxEncodingPredictor',
-              **conv_hyperparams.params(activation=None)))
+              **conv_hyperparams.params(use_bias=True)))
     else:
       self._box_encoder_layers.append(
           tf.keras.layers.Conv2D(
@@ -99,7 +99,7 @@ class ConvolutionalBoxHead(head.KerasHead):
               [self._kernel_size, self._kernel_size],
               padding='SAME',
               name='BoxEncodingPredictor',
-              **conv_hyperparams.params(activation=None)))
+              **conv_hyperparams.params(use_bias=True)))
 
   def _predict(self, features):
     """Predicts boxes.

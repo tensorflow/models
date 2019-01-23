@@ -146,7 +146,6 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
       use_depthwise = feature_map_layout['use_depthwise']
     for index, from_layer in enumerate(feature_map_layout['from_layer']):
       net = []
-      self.convolutions.append(net)
       layer_depth = feature_map_layout['layer_depth'][index]
       conv_kernel_size = 3
       if 'conv_kernel_size' in feature_map_layout:
@@ -231,6 +230,10 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
               conv_hyperparams.build_activation_layer(
                   name=layer_name))
 
+      # Until certain bugs are fixed in checkpointable lists,
+      # this net must be appended only once it's been filled with layers
+      self.convolutions.append(net)
+
   def call(self, image_features):
     """Generate the multi-resolution feature maps.
 
@@ -263,7 +266,8 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
 
 
 def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
-                                  min_depth, insert_1x1_conv, image_features):
+                                  min_depth, insert_1x1_conv, image_features,
+                                  pool_residual=False):
   """Generates multi resolution feature maps from input image features.
 
   Generates multi-scale feature maps for detection as in the SSD papers by
@@ -317,6 +321,13 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
       should be inserted before shrinking the feature map.
     image_features: A dictionary of handles to activation tensors from the
       base feature extractor.
+    pool_residual: Whether to add an average pooling layer followed by a
+      residual connection between subsequent feature maps when the channel
+      depth match. For example, with option 'layer_depth': [-1, 512, 256, 256],
+      a pooling and residual layer is added between the third and forth feature
+      map. This option is better used with Weight Shared Convolution Box
+      Predictor when all feature maps have the same channel depth to encourage
+      more consistent features across multi-scale feature maps.
 
   Returns:
     feature_maps: an OrderedDict mapping keys (feature map names) to
@@ -350,6 +361,7 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
       feature_map_keys.append(from_layer)
     else:
       pre_layer = feature_maps[-1]
+      pre_layer_depth = pre_layer.get_shape().as_list()[3]
       intermediate_layer = pre_layer
       if insert_1x1_conv:
         layer_name = '{}_1_Conv2d_{}_1x1_{}'.format(
@@ -383,6 +395,12 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
             padding='SAME',
             stride=1,
             scope=layer_name)
+        if pool_residual and pre_layer_depth == depth_fn(layer_depth):
+          feature_map += slim.avg_pool2d(
+              pre_layer, [3, 3],
+              padding='SAME',
+              stride=2,
+              scope=layer_name + '_pool')
       else:
         feature_map = slim.conv2d(
             intermediate_layer,
@@ -399,6 +417,7 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
 def fpn_top_down_feature_maps(image_features,
                               depth,
                               use_depthwise=False,
+                              use_explicit_padding=False,
                               scope=None):
   """Generates `top-down` feature maps for Feature Pyramid Networks.
 
@@ -409,7 +428,9 @@ def fpn_top_down_feature_maps(image_features,
       Spatial resolutions of succesive tensors must reduce exactly by a factor
       of 2.
     depth: depth of output feature maps.
-    use_depthwise: use depthwise separable conv instead of regular conv.
+    use_depthwise: whether to use depthwise separable conv instead of regular
+      conv.
+    use_explicit_padding: whether to use explicit padding.
     scope: A scope name to wrap this op under.
 
   Returns:
@@ -420,8 +441,10 @@ def fpn_top_down_feature_maps(image_features,
     num_levels = len(image_features)
     output_feature_maps_list = []
     output_feature_map_keys = []
+    padding = 'VALID' if use_explicit_padding else 'SAME'
+    kernel_size = 3
     with slim.arg_scope(
-        [slim.conv2d, slim.separable_conv2d], padding='SAME', stride=1):
+        [slim.conv2d, slim.separable_conv2d], padding=padding, stride=1):
       top_down = slim.conv2d(
           image_features[-1][1],
           depth, [1, 1], activation_fn=None, normalizer_fn=None,
@@ -436,14 +459,20 @@ def fpn_top_down_feature_maps(image_features,
             image_features[level][1], depth, [1, 1],
             activation_fn=None, normalizer_fn=None,
             scope='projection_%d' % (level + 1))
+        if use_explicit_padding:
+          # slice top_down to the same shape as residual
+          residual_shape = tf.shape(residual)
+          top_down = top_down[:, :residual_shape[1], :residual_shape[2], :]
         top_down += residual
         if use_depthwise:
           conv_op = functools.partial(slim.separable_conv2d, depth_multiplier=1)
         else:
           conv_op = slim.conv2d
+        if use_explicit_padding:
+          top_down = ops.fixed_padding(top_down, kernel_size)
         output_feature_maps_list.append(conv_op(
             top_down,
-            depth, [3, 3],
+            depth, [kernel_size, kernel_size],
             scope='smoothing_%d' % (level + 1)))
         output_feature_map_keys.append('top_down_%s' % image_features[level][0])
       return collections.OrderedDict(reversed(

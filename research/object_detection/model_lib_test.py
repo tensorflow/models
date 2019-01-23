@@ -310,7 +310,7 @@ class ModelLibTest(tf.test.TestCase):
     self.assertEqual(2, len(eval_specs))
     self.assertEqual(None, eval_specs[0].steps)
     self.assertEqual('holdout', eval_specs[0].name)
-    self.assertEqual('exporter_holdout', eval_specs[0].exporters[0].name)
+    self.assertEqual('exporter', eval_specs[0].exporters[0].name)
     self.assertEqual(None, eval_specs[1].steps)
     self.assertEqual('eval_on_train', eval_specs[1].name)
 

@@ -94,16 +94,16 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(tf.float32,
                      labels[fields.InputDataFields.groundtruth_classes].dtype)
     self.assertAllEqual(
+        [1, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_weights].dtype)
+    self.assertAllEqual(
         [1, 100, model_config.faster_rcnn.num_classes],
         labels[fields.InputDataFields.groundtruth_confidences].shape.as_list())
     self.assertEqual(
         tf.float32,
         labels[fields.InputDataFields.groundtruth_confidences].dtype)
-    self.assertAllEqual(
-        [1, 100],
-        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
-    self.assertEqual(tf.float32,
-                     labels[fields.InputDataFields.groundtruth_weights].dtype)
 
   @parameterized.parameters(
       {'eval_batch_size': 1},
@@ -141,11 +141,11 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(tf.float32,
                      labels[fields.InputDataFields.groundtruth_classes].dtype)
     self.assertAllEqual(
-        [eval_batch_size, 100, model_config.faster_rcnn.num_classes],
-        labels[fields.InputDataFields.groundtruth_confidences].shape.as_list())
+        [eval_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
     self.assertEqual(
         tf.float32,
-        labels[fields.InputDataFields.groundtruth_confidences].dtype)
+        labels[fields.InputDataFields.groundtruth_weights].dtype)
     self.assertAllEqual(
         [eval_batch_size, 100],
         labels[fields.InputDataFields.groundtruth_area].shape.as_list())
@@ -194,17 +194,12 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(tf.float32,
                      labels[fields.InputDataFields.groundtruth_classes].dtype)
     self.assertAllEqual(
-        [batch_size, 100, model_config.ssd.num_classes],
+        [batch_size, 100],
         labels[
-            fields.InputDataFields.groundtruth_confidences].shape.as_list())
+            fields.InputDataFields.groundtruth_weights].shape.as_list())
     self.assertEqual(
         tf.float32,
-        labels[fields.InputDataFields.groundtruth_confidences].dtype)
-    self.assertAllEqual(
-        [batch_size, 100],
-        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
-    self.assertEqual(tf.float32,
-                     labels[fields.InputDataFields.groundtruth_weights].dtype)
+        labels[fields.InputDataFields.groundtruth_weights].dtype)
 
   @parameterized.parameters(
       {'eval_batch_size': 1},
@@ -242,12 +237,12 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(tf.float32,
                      labels[fields.InputDataFields.groundtruth_classes].dtype)
     self.assertAllEqual(
-        [eval_batch_size, 100, model_config.ssd.num_classes],
+        [eval_batch_size, 100],
         labels[
-            fields.InputDataFields.groundtruth_confidences].shape.as_list())
+            fields.InputDataFields.groundtruth_weights].shape.as_list())
     self.assertEqual(
         tf.float32,
-        labels[fields.InputDataFields.groundtruth_confidences].dtype)
+        labels[fields.InputDataFields.groundtruth_weights].dtype)
     self.assertAllEqual(
         [eval_batch_size, 100],
         labels[fields.InputDataFields.groundtruth_area].shape.as_list())
@@ -447,7 +442,7 @@ class DataAugmentationFnTest(test_case.TestCase):
             tf.constant(np.array([[.5, .5, 1., 1.]], np.float32)),
         fields.InputDataFields.groundtruth_classes:
             tf.constant(np.array([1.0], np.float32)),
-        fields.InputDataFields.groundtruth_confidences:
+        fields.InputDataFields.groundtruth_weights:
             tf.constant(np.array([0.8], np.float32)),
     }
     augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
@@ -468,7 +463,7 @@ class DataAugmentationFnTest(test_case.TestCase):
     )
     self.assertAllClose(
         augmented_tensor_dict_out[
-            fields.InputDataFields.groundtruth_confidences],
+            fields.InputDataFields.groundtruth_weights],
         [0.8]
     )
 
@@ -630,6 +625,37 @@ class DataTransformationFnTest(test_case.TestCase):
     self.assertAllClose(
         transformed_inputs[fields.InputDataFields.groundtruth_confidences],
         [[1, 0, 1]])
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.num_groundtruth_boxes],
+        1)
+
+  def test_returns_correct_groundtruth_confidences_when_input_present(self):
+    tensor_dict = {
+        fields.InputDataFields.image:
+            tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
+        fields.InputDataFields.groundtruth_boxes:
+            tf.constant(np.array([[0, 0, 1, 1], [.5, .5, 1, 1]], np.float32)),
+        fields.InputDataFields.groundtruth_classes:
+            tf.constant(np.array([3, 1], np.int32)),
+        fields.InputDataFields.groundtruth_confidences:
+            tf.constant(np.array([1.0, -1.0], np.float32))
+    }
+    num_classes = 3
+    input_transformation_fn = functools.partial(
+        inputs.transform_input_data,
+        model_preprocess_fn=_fake_model_preprocessor_fn,
+        image_resizer_fn=_fake_image_resizer_fn,
+        num_classes=num_classes)
+    with self.test_session() as sess:
+      transformed_inputs = sess.run(
+          input_transformation_fn(tensor_dict=tensor_dict))
+
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.groundtruth_classes],
+        [[0, 0, 1], [1, 0, 0]])
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.groundtruth_confidences],
+        [[0, 0, 1], [-1, 0, 0]])
 
   def test_returns_resized_masks(self):
     tensor_dict = {
@@ -872,6 +898,41 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
     self.assertAllEqual(
         padded_tensor_dict[fields.InputDataFields.image].shape.as_list(),
         [5, 6, 5])
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.image_additional_channels]
+        .shape.as_list(), [5, 6, 2])
+
+  def test_gray_images(self):
+    input_tensor_dict = {
+        fields.InputDataFields.image:
+            tf.placeholder(tf.float32, [None, None, 1]),
+    }
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=3,
+        spatial_image_shape=[5, 6])
+
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.image].shape.as_list(),
+        [5, 6, 1])
+
+  def test_gray_images_and_additional_channels(self):
+    input_tensor_dict = {
+        fields.InputDataFields.image:
+            tf.placeholder(tf.float32, [None, None, 1]),
+        fields.InputDataFields.image_additional_channels:
+            tf.placeholder(tf.float32, [None, None, 2]),
+    }
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=3,
+        spatial_image_shape=[5, 6])
+
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.image].shape.as_list(),
+        [5, 6, 3])
     self.assertAllEqual(
         padded_tensor_dict[fields.InputDataFields.image_additional_channels]
         .shape.as_list(), [5, 6, 2])

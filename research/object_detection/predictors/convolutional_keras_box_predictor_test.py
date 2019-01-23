@@ -181,13 +181,15 @@ class ConvolutionalKerasBoxPredictorTest(test_case.TestCase):
       self.assertAllEqual(objectness_predictions_shape,
                           [4, expected_num_anchors, 1])
     expected_variable_set = set([
-        'BoxPredictor/PreHeadConvolutions_0/Conv2d_0_1x1_32/bias',
-        'BoxPredictor/PreHeadConvolutions_0/Conv2d_0_1x1_32/kernel',
+        'BoxPredictor/SharedConvolutions_0/Conv2d_0_1x1_32/bias',
+        'BoxPredictor/SharedConvolutions_0/Conv2d_0_1x1_32/kernel',
         'BoxPredictor/ConvolutionalBoxHead_0/BoxEncodingPredictor/bias',
         'BoxPredictor/ConvolutionalBoxHead_0/BoxEncodingPredictor/kernel',
         'BoxPredictor/ConvolutionalClassHead_0/ClassPredictor/bias',
         'BoxPredictor/ConvolutionalClassHead_0/ClassPredictor/kernel'])
     self.assertEqual(expected_variable_set, actual_variable_set)
+    self.assertEqual(conv_box_predictor._sorted_head_names,
+                     ['box_encodings', 'class_predictions_with_background'])
 
   # TODO(kaftan): Remove conditional after CMLE moves to TF 1.10
 

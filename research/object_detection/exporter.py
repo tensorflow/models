@@ -17,6 +17,7 @@
 import os
 import tempfile
 import tensorflow as tf
+from tensorflow.contrib.quantize.python import graph_matcher
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.client import session
 from tensorflow.python.platform import gfile
@@ -28,10 +29,56 @@ from object_detection.builders import model_builder
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.utils import config_util
+from object_detection.utils import shape_utils
 
 slim = tf.contrib.slim
 
 freeze_graph_with_def_protos = freeze_graph.freeze_graph_with_def_protos
+
+
+def rewrite_nn_resize_op(is_quantized=False):
+  """Replaces a custom nearest-neighbor resize op with the Tensorflow version.
+
+  Some graphs use this custom version for TPU-compatibility.
+
+  Args:
+    is_quantized: True if the default graph is quantized.
+  """
+  input_pattern = graph_matcher.OpTypePattern(
+      'FakeQuantWithMinMaxVars' if is_quantized else '*')
+  reshape_1_pattern = graph_matcher.OpTypePattern(
+      'Reshape', inputs=[input_pattern, 'Const'], ordered_inputs=False)
+  mul_pattern = graph_matcher.OpTypePattern(
+      'Mul', inputs=[reshape_1_pattern, 'Const'], ordered_inputs=False)
+  # The quantization script may or may not insert a fake quant op after the
+  # Mul. In either case, these min/max vars are not needed once replaced with
+  # the TF version of NN resize.
+  fake_quant_pattern = graph_matcher.OpTypePattern(
+      'FakeQuantWithMinMaxVars',
+      inputs=[mul_pattern, 'Identity', 'Identity'],
+      ordered_inputs=False)
+  reshape_2_pattern = graph_matcher.OpTypePattern(
+      'Reshape',
+      inputs=[graph_matcher.OneofPattern([fake_quant_pattern, mul_pattern]),
+              'Const'],
+      ordered_inputs=False)
+  add_pattern = graph_matcher.OpTypePattern(
+      'Add', inputs=[reshape_2_pattern, '*'], ordered_inputs=False)
+
+  matcher = graph_matcher.GraphMatcher(add_pattern)
+  for match in matcher.match_graph(tf.get_default_graph()):
+    projection_op = match.get_op(input_pattern)
+    reshape_2_op = match.get_op(reshape_2_pattern)
+    add_op = match.get_op(add_pattern)
+    nn_resize = tf.image.resize_nearest_neighbor(
+        projection_op.outputs[0],
+        add_op.outputs[0].shape.dims[1:3],
+        align_corners=False)
+
+    for index, op_input in enumerate(add_op.inputs):
+      if op_input == reshape_2_op.outputs[0]:
+        add_op._update_input(index, nn_resize)  # pylint: disable=protected-access
+        break
 
 
 def replace_variable_values_with_moving_averages(graph,
@@ -82,11 +129,12 @@ def _tf_example_input_placeholder():
     image_tensor = tensor_dict[fields.InputDataFields.image]
     return image_tensor
   return (batch_tf_example_placeholder,
-          tf.map_fn(decode,
-                    elems=batch_tf_example_placeholder,
-                    dtype=tf.uint8,
-                    parallel_iterations=32,
-                    back_prop=False))
+          shape_utils.static_or_dynamic_map_fn(
+              decode,
+              elems=batch_tf_example_placeholder,
+              dtype=tf.uint8,
+              parallel_iterations=32,
+              back_prop=False))
 
 
 def _encoded_image_string_tensor_input_placeholder():
@@ -121,8 +169,8 @@ input_placeholder_fn_map = {
 }
 
 
-def _add_output_tensor_nodes(postprocessed_tensors,
-                             output_collection_name='inference_op'):
+def add_output_tensor_nodes(postprocessed_tensors,
+                            output_collection_name='inference_op'):
   """Adds output nodes for detection boxes and scores.
 
   Adds the following nodes for output tensors -
@@ -146,6 +194,8 @@ def _add_output_tensor_nodes(postprocessed_tensors,
       'detection_scores': [batch, max_detections]
       'detection_classes': [batch, max_detections]
       'detection_masks': [batch, max_detections, mask_height, mask_width]
+        (optional).
+      'detection_keypoints': [batch, max_detections, num_keypoints, 2]
         (optional).
       'num_detections': [batch]
     output_collection_name: Name of collection to add output tensors to.
@@ -254,8 +304,8 @@ def _get_outputs_from_inputs(input_tensors, detection_model,
       preprocessed_inputs, true_image_shapes)
   postprocessed_tensors = detection_model.postprocess(
       output_tensors, true_image_shapes)
-  return _add_output_tensor_nodes(postprocessed_tensors,
-                                  output_collection_name)
+  return add_output_tensor_nodes(postprocessed_tensors,
+                                 output_collection_name)
 
 
 def _build_detection_graph(input_type, detection_model, input_shape,

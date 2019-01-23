@@ -42,12 +42,25 @@ class MockBoxCoder(box_coder.BoxCoder):
     return box_list.BoxList(rel_codes + anchors.get())
 
 
+class MockMaskHead(object):
+  """Simple maskhead that returns all zeros as mask predictions."""
+
+  def __init__(self, num_classes):
+    self._num_classes = num_classes
+
+  def predict(self, features):
+    batch_size = tf.shape(features)[0]
+    return tf.zeros((batch_size, 1, self._num_classes, DEFAULT_MASK_SIZE,
+                     DEFAULT_MASK_SIZE),
+                    dtype=tf.float32)
+
+
 class MockBoxPredictor(box_predictor.BoxPredictor):
   """Simple box predictor that ignores inputs and outputs all zeros."""
 
-  def __init__(self, is_training, num_classes, predict_mask=False):
+  def __init__(self, is_training, num_classes, add_background_class=True):
     super(MockBoxPredictor, self).__init__(is_training, num_classes)
-    self._predict_mask = predict_mask
+    self._add_background_class = add_background_class
 
   def _predict(self, image_features, num_predictions_per_location):
     image_feature = image_features[0]
@@ -57,33 +70,29 @@ class MockBoxPredictor(box_predictor.BoxPredictor):
     num_anchors = (combined_feature_shape[1] * combined_feature_shape[2])
     code_size = 4
     zero = tf.reduce_sum(0 * image_feature)
+    num_class_slots = self.num_classes
+    if self._add_background_class:
+      num_class_slots = num_class_slots + 1
     box_encodings = zero + tf.zeros(
         (batch_size, num_anchors, 1, code_size), dtype=tf.float32)
     class_predictions_with_background = zero + tf.zeros(
-        (batch_size, num_anchors, self.num_classes + 1), dtype=tf.float32)
-    masks = zero + tf.zeros(
-        (batch_size, num_anchors, self.num_classes, DEFAULT_MASK_SIZE,
-         DEFAULT_MASK_SIZE),
-        dtype=tf.float32)
+        (batch_size, num_anchors, num_class_slots), dtype=tf.float32)
     predictions_dict = {
         box_predictor.BOX_ENCODINGS:
             box_encodings,
         box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND:
             class_predictions_with_background
     }
-    if self._predict_mask:
-      predictions_dict[box_predictor.MASK_PREDICTIONS] = masks
-
     return predictions_dict
 
 
 class MockKerasBoxPredictor(box_predictor.KerasBoxPredictor):
   """Simple box predictor that ignores inputs and outputs all zeros."""
 
-  def __init__(self, is_training, num_classes, predict_mask=False):
+  def __init__(self, is_training, num_classes, add_background_class=True):
     super(MockKerasBoxPredictor, self).__init__(
         is_training, num_classes, False, False)
-    self._predict_mask = predict_mask
+    self._add_background_class = add_background_class
 
   def _predict(self, image_features, **kwargs):
     image_feature = image_features[0]
@@ -93,22 +102,19 @@ class MockKerasBoxPredictor(box_predictor.KerasBoxPredictor):
     num_anchors = (combined_feature_shape[1] * combined_feature_shape[2])
     code_size = 4
     zero = tf.reduce_sum(0 * image_feature)
+    num_class_slots = self.num_classes
+    if self._add_background_class:
+      num_class_slots = num_class_slots + 1
     box_encodings = zero + tf.zeros(
         (batch_size, num_anchors, 1, code_size), dtype=tf.float32)
     class_predictions_with_background = zero + tf.zeros(
-        (batch_size, num_anchors, self.num_classes + 1), dtype=tf.float32)
-    masks = zero + tf.zeros(
-        (batch_size, num_anchors, self.num_classes, DEFAULT_MASK_SIZE,
-         DEFAULT_MASK_SIZE),
-        dtype=tf.float32)
+        (batch_size, num_anchors, num_class_slots), dtype=tf.float32)
     predictions_dict = {
         box_predictor.BOX_ENCODINGS:
             box_encodings,
         box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND:
             class_predictions_with_background
     }
-    if self._predict_mask:
-      predictions_dict[box_predictor.MASK_PREDICTIONS] = masks
     return predictions_dict
 
 

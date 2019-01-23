@@ -124,6 +124,8 @@ def transform_input_data(tensor_dict,
   if fields.InputDataFields.groundtruth_instance_masks in tensor_dict:
     masks = tensor_dict[fields.InputDataFields.groundtruth_instance_masks]
     _, resized_masks, _ = image_resizer_fn(image, masks)
+    if use_bfloat16:
+      resized_masks = tf.cast(resized_masks, tf.bfloat16)
     tensor_dict[fields.InputDataFields.
                 groundtruth_instance_masks] = resized_masks
 
@@ -137,12 +139,10 @@ def transform_input_data(tensor_dict,
   if fields.InputDataFields.groundtruth_confidences in tensor_dict:
     groundtruth_confidences = tensor_dict[
         fields.InputDataFields.groundtruth_confidences]
+    # Map the confidences to the one-hot encoding of classes
     tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
-        tf.sparse_to_dense(
-            zero_indexed_groundtruth_classes,
-            [num_classes],
-            groundtruth_confidences,
-            validate_indices=False))
+        tf.reshape(groundtruth_confidences, [-1, 1]) *
+        tensor_dict[fields.InputDataFields.groundtruth_classes])
   else:
     groundtruth_confidences = tf.ones_like(
         zero_indexed_groundtruth_classes, dtype=tf.float32)
@@ -161,6 +161,9 @@ def transform_input_data(tensor_dict,
     tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
     tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
         merged_confidences)
+  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
+    tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
+        tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
 
   return tensor_dict
 
@@ -195,10 +198,14 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
   if fields.InputDataFields.image_additional_channels in tensor_dict:
     num_additional_channels = tensor_dict[
         fields.InputDataFields.image_additional_channels].shape[2].value
+  num_image_channels = 3
+  if fields.InputDataFields.image in tensor_dict:
+    num_image_channels = tensor_dict[fields.InputDataFields
+                                     .image].shape[2].value
   padding_shapes = {
       # Additional channels are merged before batching.
       fields.InputDataFields.image: [
-          height, width, 3 + num_additional_channels
+          height, width, num_image_channels + num_additional_channels
       ],
       fields.InputDataFields.original_image_spatial_shape: [2],
       fields.InputDataFields.image_additional_channels: [
@@ -210,8 +217,6 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
       fields.InputDataFields.groundtruth_difficult: [max_num_boxes],
       fields.InputDataFields.groundtruth_boxes: [max_num_boxes, 4],
       fields.InputDataFields.groundtruth_classes: [max_num_boxes, num_classes],
-      fields.InputDataFields.groundtruth_confidences: [
-          max_num_boxes, num_classes],
       fields.InputDataFields.groundtruth_instance_masks: [
           max_num_boxes, height, width
       ],
@@ -219,9 +224,12 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
       fields.InputDataFields.groundtruth_group_of: [max_num_boxes],
       fields.InputDataFields.groundtruth_area: [max_num_boxes],
       fields.InputDataFields.groundtruth_weights: [max_num_boxes],
+      fields.InputDataFields.groundtruth_confidences: [
+          max_num_boxes, num_classes
+      ],
       fields.InputDataFields.num_groundtruth_boxes: [],
       fields.InputDataFields.groundtruth_label_types: [max_num_boxes],
-      fields.InputDataFields.groundtruth_label_scores: [max_num_boxes],
+      fields.InputDataFields.groundtruth_label_weights: [max_num_boxes],
       fields.InputDataFields.true_image_shape: [3],
       fields.InputDataFields.multiclass_scores: [
           max_num_boxes, num_classes + 1 if num_classes is not None else None
@@ -232,7 +240,7 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
 
   if fields.InputDataFields.original_image in tensor_dict:
     padding_shapes[fields.InputDataFields.original_image] = [
-        height, width, 3 + num_additional_channels
+        height, width, num_image_channels + num_additional_channels
     ]
   if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
     tensor_shape = (
@@ -282,12 +290,15 @@ def augment_input_data(tensor_dict, data_augmentation_options):
                             in tensor_dict)
   include_keypoints = (fields.InputDataFields.groundtruth_keypoints
                        in tensor_dict)
-  include_label_scores = (fields.InputDataFields.groundtruth_confidences in
-                          tensor_dict)
+  include_label_weights = (fields.InputDataFields.groundtruth_weights
+                           in tensor_dict)
+  include_label_confidences = (fields.InputDataFields.groundtruth_confidences
+                               in tensor_dict)
   tensor_dict = preprocessor.preprocess(
       tensor_dict, data_augmentation_options,
       func_arg_map=preprocessor.get_default_func_arg_map(
-          include_label_scores=include_label_scores,
+          include_label_weights=include_label_weights,
+          include_label_confidences=include_label_confidences,
           include_instance_masks=include_instance_masks,
           include_keypoints=include_keypoints))
   tensor_dict[fields.InputDataFields.image] = tf.squeeze(
@@ -301,7 +312,7 @@ def _get_labels_dict(input_dict):
       fields.InputDataFields.num_groundtruth_boxes,
       fields.InputDataFields.groundtruth_boxes,
       fields.InputDataFields.groundtruth_classes,
-      fields.InputDataFields.groundtruth_weights
+      fields.InputDataFields.groundtruth_weights,
   ]
   labels_dict = {}
   for key in required_label_keys:

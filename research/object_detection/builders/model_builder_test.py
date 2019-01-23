@@ -39,6 +39,9 @@ from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMo
 from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
+from object_detection.models.ssd_mobilenet_v2_keras_feature_extractor import SSDMobileNetV2KerasFeatureExtractor
+from object_detection.predictors import convolutional_box_predictor
+from object_detection.predictors import convolutional_keras_box_predictor
 from object_detection.protos import model_pb2
 
 FRCNN_RESNET_FEAT_MAPS = {
@@ -147,9 +150,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
             }
           }
         }
-        use_expected_classification_loss_under_sampling: true
-        minimum_negative_sampling: 10
-        desired_negative_sampling_ratio: 2
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
@@ -157,12 +157,8 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
     self.assertIsInstance(model._feature_extractor,
                           SSDInceptionV2FeatureExtractor)
-    self.assertIsNotNone(model._expected_classification_loss_under_sampling)
-    self.assertEqual(
-        model._expected_classification_loss_under_sampling.keywords, {
-            'minimum_negative_sampling': 10,
-            'desired_negative_sampling_ratio': 2
-        })
+    self.assertIsNone(model._expected_loss_weights_fn)
+
 
 
   def test_create_ssd_inception_v3_model_from_config(self):
@@ -705,7 +701,6 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
             }
           }
         }
-        weight_regression_loss_by_score: true
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
@@ -713,8 +708,85 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
     self.assertIsInstance(model._feature_extractor,
                           SSDMobileNetV2FeatureExtractor)
+    self.assertIsInstance(model._box_predictor,
+                          convolutional_box_predictor.ConvolutionalBoxPredictor)
     self.assertTrue(model._normalize_loc_loss_by_codesize)
-    self.assertTrue(model._target_assigner._weight_regression_loss_by_score)
+
+  def test_create_ssd_mobilenet_v2_keras_model_from_config(self):
+    model_text_proto = """
+      ssd {
+        feature_extractor {
+          type: 'ssd_mobilenet_v2_keras'
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+        }
+        box_coder {
+          faster_rcnn_box_coder {
+          }
+        }
+        matcher {
+          argmax_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          convolutional_box_predictor {
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        normalize_loc_loss_by_codesize: true
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_smooth_l1 {
+            }
+          }
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = self.create_model(model_proto)
+    self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
+    self.assertIsInstance(model._feature_extractor,
+                          SSDMobileNetV2KerasFeatureExtractor)
+    self.assertIsInstance(
+        model._box_predictor,
+        convolutional_keras_box_predictor.ConvolutionalBoxPredictor)
+    self.assertTrue(model._normalize_loc_loss_by_codesize)
 
   def test_create_ssd_mobilenet_v2_fpn_model_from_config(self):
     model_text_proto = """
@@ -954,7 +1026,7 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
   def test_create_faster_rcnn_resnet_v1_models_from_config(self):
     model_text_proto = """
       faster_rcnn {
-        inplace_batchnorm_update: true
+        inplace_batchnorm_update: false
         num_classes: 3
         image_resizer {
           keep_aspect_ratio_resizer {

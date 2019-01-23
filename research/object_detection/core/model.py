@@ -241,6 +241,7 @@ class DetectionModel(object):
                           groundtruth_masks_list=None,
                           groundtruth_keypoints_list=None,
                           groundtruth_weights_list=None,
+                          groundtruth_confidences_list=None,
                           groundtruth_is_crowd_list=None,
                           is_annotated_list=None):
     """Provide groundtruth tensors.
@@ -265,6 +266,9 @@ class DetectionModel(object):
         missing keypoints should be encoded as NaN.
       groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
         [num_boxes] containing weights for groundtruth boxes.
+      groundtruth_confidences_list: A list of 2-D tf.float32 tensors of shape
+        [num_boxes, num_classes] containing class confidences for groundtruth
+        boxes.
       groundtruth_is_crowd_list: A list of 1-D tf.bool tensors of shape
         [num_boxes] containing is_crowd annotations
       is_annotated_list: A list of scalar tf.bool tensors indicating whether
@@ -276,6 +280,9 @@ class DetectionModel(object):
     if groundtruth_weights_list:
       self._groundtruth_lists[fields.BoxListFields.
                               weights] = groundtruth_weights_list
+    if groundtruth_confidences_list:
+      self._groundtruth_lists[fields.BoxListFields.
+                              confidences] = groundtruth_confidences_list
     if groundtruth_masks_list:
       self._groundtruth_lists[
           fields.BoxListFields.masks] = groundtruth_masks_list
@@ -288,6 +295,18 @@ class DetectionModel(object):
     if is_annotated_list:
       self._groundtruth_lists[
           fields.InputDataFields.is_annotated] = is_annotated_list
+
+  @abstractmethod
+  def regularization_losses(self):
+    """Returns a list of regularization losses for this model.
+
+    Returns a list of regularization losses for this model that the estimator
+    needs to use during training/optimization.
+
+    Returns:
+      A list of regularization loss tensors.
+    """
+    pass
 
   @abstractmethod
   def restore_map(self, fine_tune_checkpoint_type='detection'):
@@ -310,5 +329,18 @@ class DetectionModel(object):
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    """
+    pass
+
+  @abstractmethod
+  def updates(self):
+    """Returns a list of update operators for this model.
+
+    Returns a list of update operators for this model that must be executed at
+    each training step. The estimator's train op needs to have a control
+    dependency on these updates.
+
+    Returns:
+      A list of update operators.
     """
     pass

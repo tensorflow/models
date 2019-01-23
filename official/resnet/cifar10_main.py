@@ -24,22 +24,22 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
+from official.utils.flags import core as flags_core
+from official.utils.logs import logger
 
-_HEIGHT = 32
-_WIDTH = 32
-_NUM_CHANNELS = 3
-_DEFAULT_IMAGE_BYTES = _HEIGHT * _WIDTH * _NUM_CHANNELS
+HEIGHT = 32
+WIDTH = 32
+NUM_CHANNELS = 3
+_DEFAULT_IMAGE_BYTES = HEIGHT * WIDTH * NUM_CHANNELS
 # The record is the image plus a one-byte label
 _RECORD_BYTES = _DEFAULT_IMAGE_BYTES + 1
-_NUM_CLASSES = 10
+NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
 # TODO(tobyboyd): Change to best practice 45K(train)/5K(val)/10K(test) splits.
-_NUM_IMAGES = {
+NUM_IMAGES = {
     'train': 50000,
     'validation': 10000,
 }
@@ -52,9 +52,7 @@ DATASET_NAME = 'CIFAR-10'
 ###############################################################################
 def get_filenames(is_training, data_dir):
   """Returns a list of filenames."""
-  data_dir = os.path.join(data_dir, 'cifar-10-batches-bin')
-
-  assert os.path.exists(data_dir), (
+  assert tf.gfile.Exists(data_dir), (
       'Run cifar10_download_and_extract.py first to download and extract the '
       'CIFAR-10 data.')
 
@@ -79,7 +77,7 @@ def parse_record(raw_record, is_training, dtype):
   # The remaining bytes after the label represent the image, which we reshape
   # from [depth * height * width] to [depth, height, width].
   depth_major = tf.reshape(record_vector[1:_RECORD_BYTES],
-                           [_NUM_CHANNELS, _HEIGHT, _WIDTH])
+                           [NUM_CHANNELS, HEIGHT, WIDTH])
 
   # Convert from [depth, height, width] to [height, width, depth], and cast as
   # float32.
@@ -96,10 +94,10 @@ def preprocess_image(image, is_training):
   if is_training:
     # Resize the image to add four extra pixels on each side.
     image = tf.image.resize_image_with_crop_or_pad(
-        image, _HEIGHT + 8, _WIDTH + 8)
+        image, HEIGHT + 8, WIDTH + 8)
 
-    # Randomly crop a [_HEIGHT, _WIDTH] section of the image.
-    image = tf.random_crop(image, [_HEIGHT, _WIDTH, _NUM_CHANNELS])
+    # Randomly crop a [HEIGHT, WIDTH] section of the image.
+    image = tf.random_crop(image, [HEIGHT, WIDTH, NUM_CHANNELS])
 
     # Randomly flip the image horizontally.
     image = tf.image.random_flip_left_right(image)
@@ -111,7 +109,7 @@ def preprocess_image(image, is_training):
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1,
              dtype=tf.float32, datasets_num_private_threads=None,
-             num_parallel_batches=1):
+             num_parallel_batches=1, parse_record_fn=parse_record):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -122,6 +120,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
     dtype: Data type to use for images/features
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
+    parse_record_fn: Function to use for parsing the records.
 
   Returns:
     A dataset that can be used for iteration.
@@ -133,8 +132,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
       dataset=dataset,
       is_training=is_training,
       batch_size=batch_size,
-      shuffle_buffer=_NUM_IMAGES['train'],
-      parse_record_fn=parse_record,
+      shuffle_buffer=NUM_IMAGES['train'],
+      parse_record_fn=parse_record_fn,
       num_epochs=num_epochs,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
@@ -144,7 +143,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 
 def get_synth_input_fn(dtype):
   return resnet_run_loop.get_synth_input_fn(
-      _HEIGHT, _WIDTH, _NUM_CHANNELS, _NUM_CLASSES, dtype=dtype)
+      HEIGHT, WIDTH, NUM_CHANNELS, NUM_CLASSES, dtype=dtype)
 
 
 ###############################################################################
@@ -153,7 +152,7 @@ def get_synth_input_fn(dtype):
 class Cifar10Model(resnet_model.Model):
   """Model class with appropriate defaults for CIFAR-10 data."""
 
-  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
+  def __init__(self, resnet_size, data_format=None, num_classes=NUM_CLASSES,
                resnet_version=resnet_model.DEFAULT_VERSION,
                dtype=resnet_model.DEFAULT_DTYPE):
     """These are the parameters that work for CIFAR-10 data.
@@ -195,11 +194,11 @@ class Cifar10Model(resnet_model.Model):
 
 def cifar10_model_fn(features, labels, mode, params):
   """Model function for CIFAR-10."""
-  features = tf.reshape(features, [-1, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+  features = tf.reshape(features, [-1, HEIGHT, WIDTH, NUM_CHANNELS])
   # Learning rate schedule follows arXiv:1512.03385 for ResNet-56 and under.
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
-      num_images=_NUM_IMAGES['train'], boundary_epochs=[91, 136, 182],
+      num_images=NUM_IMAGES['train'], boundary_epochs=[91, 136, 182],
       decay_rates=[1, 0.1, 0.01, 0.001])
 
   # Weight decay of 2e-4 diverges from 1e-4 decay used in the ResNet paper
@@ -249,6 +248,9 @@ def run_cifar(flags_obj):
 
   Args:
     flags_obj: An object containing parsed flag values.
+
+  Returns:
+    Dictionary of results. Including final accuracy.
   """
   if flags_obj.image_bytes_as_serving_input:
     tf.logging.fatal('--image_bytes_as_serving_input cannot be set to True '
@@ -258,9 +260,11 @@ def run_cifar(flags_obj):
   input_function = (flags_obj.use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
-  resnet_run_loop.resnet_main(
+  result = resnet_run_loop.resnet_main(
       flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
-      shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])
+      shape=[HEIGHT, WIDTH, NUM_CHANNELS])
+
+  return result
 
 
 def main(_):

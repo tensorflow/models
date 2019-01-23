@@ -49,14 +49,14 @@ will output the frozen graph that we can input to TensorFlow Lite directly and
 is the one we’ll be using.
 
 Next we’ll use TensorFlow Lite to get the optimized model by using
-[TOCO](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/lite/toco),
+[TOCO](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/toco),
 the TensorFlow Lite Optimizing Converter. This will convert the resulting frozen
 graph (tflite_graph.pb) to the TensorFlow Lite flatbuffer format (detect.tflite)
 via the following command. For a quantized model, run this from the tensorflow/
 directory:
 
 ```shell
-bazel run --config=opt tensorflow/contrib/lite/toco:toco -- \
+bazel run --config=opt tensorflow/lite/toco:toco -- \
 --input_file=$OUTPUT_DIR/tflite_graph.pb \
 --output_file=$OUTPUT_DIR/detect.tflite \
 --input_shapes=1,300,300,3 \
@@ -75,14 +75,14 @@ are named 'TFLite_Detection_PostProcess', 'TFLite_Detection_PostProcess:1',
 'TFLite_Detection_PostProcess:2', and 'TFLite_Detection_PostProcess:3' and
 represent four arrays: detection_boxes, detection_classes, detection_scores, and
 num_detections. The documentation for other flags used in this command is
-[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/lite/toco/g3doc/cmdline_reference.md).
+[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/g3doc/convert/cmdline_reference.md).
 If things ran successfully, you should now see a third file in the /tmp/tflite
 directory called detect.tflite. This file contains the graph and all model
 parameters and can be run via the TensorFlow Lite interpreter on the Android
 device. For a floating point model, run this from the tensorflow/ directory:
 
 ```shell
-bazel run --config=opt tensorflow/contrib/lite/toco:toco -- \
+bazel run --config=opt tensorflow/lite/toco:toco -- \
 --input_file=$OUTPUT_DIR/tflite_graph.pb \
 --output_file=$OUTPUT_DIR/detect.tflite \
 --input_shapes=1,300,300,3 \
@@ -105,7 +105,7 @@ Studio](https://developer.android.com/studio/index.html). To build the
 TensorFlow Lite Android demo, build tools require API >= 23 (but it will run on
 devices with API >= 21). Additional details are available on the [TensorFlow
 Lite Android App
-page](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/lite/java/demo/README.md).
+page](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/java/demo/README.md).
 
 Next we need to point the app to our new detect.tflite file and give it the
 names of our new labels. Specifically, we will copy our TensorFlow Lite
@@ -113,24 +113,24 @@ flatbuffer to the app assets directory with the following command:
 
 ```shell
 cp /tmp/tflite/detect.tflite \
-//tensorflow/contrib/lite/examples/android/app/src/main/assets
+//tensorflow/lite/examples/android/app/src/main/assets
 ```
 
 You will also need to copy your new labelmap labels_list.txt to the assets
 directory.
 
 We will now edit the BUILD file to point to this new model. First, open the
-BUILD file tensorflow/contrib/lite/examples/android/BUILD. Then find the assets
+BUILD file tensorflow/lite/examples/android/BUILD. Then find the assets
 section, and replace the line “@tflite_mobilenet_ssd_quant//:detect.tflite”
 (which by default points to a COCO pretrained model) with the path to your new
 TFLite model
-“//tensorflow/contrib/lite/examples/android/app/src/main/assets:detect.tflite”.
+“//tensorflow/lite/examples/android/app/src/main/assets:detect.tflite”.
 Finally, change the last line in assets section to use the new label map as
 well.
 
 We will also need to tell our app to use the new label map. In order to do this,
 open up the
-tensorflow/contrib/lite/examples/android/app/src/main/java/org/tensorflow/demo/DetectorActivity.java
+tensorflow/lite/examples/android/app/src/main/java/org/tensorflow/demo/DetectorActivity.java
 file in a text editor and find the definition of TF_OD_API_LABELS_FILE. Update
 this path to point to your new label map file:
 "file:///android_asset/labels_list.txt". Note that if your model is quantized,
@@ -150,7 +150,7 @@ from the tensorflow directory:
 
 ```shell
  bazel build -c opt --config=android_arm{,64} --cxxopt='--std=c++11'
-"//tensorflow/contrib/lite/examples/android:tflite_demo"
+"//tensorflow/lite/examples/android:tflite_demo"
 ```
 
 Now install the demo on a
@@ -159,5 +159,5 @@ Android phone via [Android Debug
 Bridge](https://developer.android.com/studio/command-line/adb) (adb):
 
 ```shell
-adb install bazel-bin/tensorflow/contrib/lite/examples/android/tflite_demo.apk
+adb install bazel-bin/tensorflow/lite/examples/android/tflite_demo.apk
 ```

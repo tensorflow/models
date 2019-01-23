@@ -30,11 +30,11 @@ from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
 
-_DEFAULT_IMAGE_SIZE = 224
-_NUM_CHANNELS = 3
-_NUM_CLASSES = 1001
+DEFAULT_IMAGE_SIZE = 224
+NUM_CHANNELS = 3
+NUM_CLASSES = 1001
 
-_NUM_IMAGES = {
+NUM_IMAGES = {
     'train': 1281167,
     'validation': 50000,
 }
@@ -149,9 +149,9 @@ def parse_record(raw_record, is_training, dtype):
   image = imagenet_preprocessing.preprocess_image(
       image_buffer=image_buffer,
       bbox=bbox,
-      output_height=_DEFAULT_IMAGE_SIZE,
-      output_width=_DEFAULT_IMAGE_SIZE,
-      num_channels=_NUM_CHANNELS,
+      output_height=DEFAULT_IMAGE_SIZE,
+      output_width=DEFAULT_IMAGE_SIZE,
+      num_channels=NUM_CHANNELS,
       is_training=is_training)
   image = tf.cast(image, dtype)
 
@@ -160,7 +160,7 @@ def parse_record(raw_record, is_training, dtype):
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1,
              dtype=tf.float32, datasets_num_private_threads=None,
-             num_parallel_batches=1):
+             num_parallel_batches=1, parse_record_fn=parse_record):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -171,6 +171,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
     dtype: Data type to use for images/features
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
+    parse_record_fn: Function to use for parsing the records.
 
   Returns:
     A dataset that can be used for iteration.
@@ -195,7 +196,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
       is_training=is_training,
       batch_size=batch_size,
       shuffle_buffer=_SHUFFLE_BUFFER,
-      parse_record_fn=parse_record,
+      parse_record_fn=parse_record_fn,
       num_epochs=num_epochs,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
@@ -205,7 +206,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 
 def get_synth_input_fn(dtype):
   return resnet_run_loop.get_synth_input_fn(
-      _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS, _NUM_CLASSES,
+      DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, NUM_CHANNELS, NUM_CLASSES,
       dtype=dtype)
 
 
@@ -215,7 +216,7 @@ def get_synth_input_fn(dtype):
 class ImagenetModel(resnet_model.Model):
   """Model class with appropriate defaults for Imagenet data."""
 
-  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
+  def __init__(self, resnet_size, data_format=None, num_classes=NUM_CLASSES,
                resnet_version=resnet_model.DEFAULT_VERSION,
                dtype=resnet_model.DEFAULT_DTYPE):
     """These are the parameters that work for Imagenet data.
@@ -302,7 +303,7 @@ def imagenet_model_fn(features, labels, mode, params):
 
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=256,
-      num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
+      num_images=NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
       decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=warmup, base_lr=base_lr)
 
   return resnet_run_loop.resnet_model_fn(
@@ -342,7 +343,7 @@ def run_imagenet(flags_obj):
 
   resnet_run_loop.resnet_main(
       flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
-      shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
+      shape=[DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, NUM_CHANNELS])
 
 
 def main(_):
