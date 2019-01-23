@@ -23,9 +23,9 @@ subclasses of `NetworkRegularizer`. Each subclass represents a resource that we
 wish to target/constrain when optimizing the network. The MorphNet package
 provides several `NetworkRegularizer`s in the `network_regularizers` directory,
 as well as a framework for writing your own. The framework is described in
-detail [here](g3doc/regularizers_framework.md). The interface of
+detail [here](framework/README.md). The interface of
 `NetworkRegularizer` is given
-[here](g3doc/regularizers_framework.md?#network-regularizers).
+[here](framework/README.md?#network-regularizers).
 
 To apply a `NetworkRegularizer` to your network, your code would look similar to
 the example below. The example refers to a specific type of `NetworkRegularizer`
