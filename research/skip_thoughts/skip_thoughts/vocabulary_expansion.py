@@ -107,12 +107,9 @@ def _load_vocabulary(filename):
   """
   tf.logging.info("Reading vocabulary from %s", filename)
   vocab = collections.OrderedDict()
-  with tf.gfile.GFile(filename, mode="r") as f:
+  with tf.gfile.GFile(filename, mode="rb") as f:
     for i, line in enumerate(f):
-      try:
-        word = line.decode("utf-8").strip()
-      except AttributeError:
-        word = line.strip()
+      word = line.decode("utf-8").strip()
       assert word not in vocab, "Attempting to add word twice: %s" % word
       vocab[word] = i
   tf.logging.info("Read vocabulary of size %d", len(vocab))
