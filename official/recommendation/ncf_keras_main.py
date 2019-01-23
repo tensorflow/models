@@ -81,15 +81,29 @@ def run_ncf(_):
   model_helpers.apply_clean(flags.FLAGS)
 
   user_input = tf.keras.layers.Input(
-      shape=(), batch_size=FLAGS.batch_size, name="user_id", dtype=tf.int32)
+      shape=(), batch_size=FLAGS.batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
   item_input = tf.keras.layers.Input(
-      shape=(), batch_size=FLAGS.batch_size, name="item_id", dtype=tf.int32)
+      shape=(), batch_size=FLAGS.batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
+
+  # Dummy duplicate mask
   dup_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=FLAGS.batch_size, name="duplicate_mask", dtype=tf.int32)
+      shape=(), batch_size=FLAGS.batch_size, name=rconst.DUPLICATE_MASK, dtype=tf.int32)
+  label_input = tf.keras.layers.Input(
+      shape=(), batch_size=FLAGS.batch_size, name="labels", dtype=tf.int32)
+  valid_pt_mask_input = tf.keras.layers.Input(
+      shape=(), batch_size=FLAGS.batch_size, name=rconst.VALID_POINT_MASK, dtype=tf.int32)
 
   base_model = neumf_model.construct_model(user_input, item_input, params)
   keras_model_input = base_model.input
+  print(">>>>>>>>>>>keras_model_input 0: ", keras_model_input)
+
   keras_model_input.append(dup_mask_input)
+  print(">>>>>>>>>>>keras_model_input 1: ", keras_model_input)
+  keras_model_input.append(label_input)
+  print(">>>>>>>>>>>keras_model_input 2: ", keras_model_input)
+  keras_model_input.append(valid_pt_mask_input)
+  print(">>>>>>>>>>>keras_model_input 3: ", keras_model_input)
+
   keras_model = tf.keras.Model(
       inputs=keras_model_input,
       outputs=base_model.output)
@@ -97,8 +111,10 @@ def run_ncf(_):
 
   def pre_process_training_input(features, labels):
     # Add a dummy dup_mask to the input dataset
-    features['duplicate_mask'] = tf.zeros_like(features['user_id'], dtype=tf.float32)
-    return features, labels, features.pop(rconst.VALID_POINT_MASK)
+    features[rconst.DUPLICATE_MASK] = tf.zeros_like(
+        features[movielens.USER_COLUMN], dtype=tf.float32)
+    features["labels"] = labels
+    return features, labels
 
   optimizer = neumf_model.get_optimizer(params)
   distribution = ncf_common.get_distribution_strategy(params)
@@ -132,7 +148,6 @@ def run_ncf(_):
           params["match_mlperf"],
           use_tpu_spec=params["use_xla_for_gpu"])
 
-      # values = metric_fn(in_top_k, ndcg, metric_weights)
       values = in_top_k
 
       values = tf.cond(
@@ -142,18 +157,13 @@ def run_ncf(_):
 
       return super(NCFMetrics, self).update_state(values, sample_weight)
 
+  loss_tensor = tf.keras.losses.CategoricalCrossentropy(from_logits=True)(
+      label_input, keras_model.output)
+  loss_tensor = tf.multiply(loss_tensor, tf.cast(valid_pt_mask_input, tf.float32))
 
-  def loss_fn(y_true, y_pred):
-    softmax_logits = ncf_common.softmax_logitfy(y_pred)
-    return tf.losses.sparse_softmax_cross_entropy(
-        labels=y_true,
-        logits=softmax_logits,
-        weights=tf.cast(valid_pt_mask, tf.float32)
-    )
+  keras_model.add_loss(loss_tensor)
 
   keras_model.compile(
-      loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
-      # loss=loss_fn,
       optimizer=optimizer,
       metrics=[NCFMetrics(dup_mask_input, "hit_rate")],
       distribute=None)

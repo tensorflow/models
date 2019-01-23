@@ -285,7 +285,7 @@ class DatasetManager(object):
         types[rconst.DUPLICATE_MASK] = np.bool
         shapes[rconst.DUPLICATE_MASK] = tf.TensorShape([batch_size])
 
-        print(">>>>>>>types:", types)
+      print(">>>>>>>types:", types)
 
       data_generator = functools.partial(
           self.data_generator, epochs_between_evals=epochs_between_evals)

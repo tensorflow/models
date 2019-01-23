@@ -454,7 +454,6 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
     logits_by_user which has size
     (num_users_in_batch, (rconst.NUM_EVAL_NEGATIVES + 1)).
   """
-  print(">>>>>>>>>>>>>>>logits: ", logits)
   logits_by_user = tf.reshape(logits, (-1, rconst.NUM_EVAL_NEGATIVES + 1))
   duplicate_mask_by_user = tf.reshape(duplicate_mask,
                                       (-1, rconst.NUM_EVAL_NEGATIVES + 1))
