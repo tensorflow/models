@@ -115,8 +115,6 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
 
-    print(">>>>>>>>>>>>>>labels: ", labels)
-    print(">>>>>>>>>>>>>>softmax_logits: ", softmax_logits)
     loss = tf.losses.sparse_softmax_cross_entropy(
         labels=labels,
         logits=softmax_logits,
