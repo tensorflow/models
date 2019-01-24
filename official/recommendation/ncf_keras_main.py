@@ -158,7 +158,9 @@ def run_ncf(_):
   values = tf.identity(values, "hit_rate")
   keras_model.add_metric(values, name='hit_rate', aggregation='mean')
 
-  keras_model.compile(optimizer=optimizer, distribute=distribution)
+  # TODO(shiningsun): Both MirroredStrategy and OneDeviceStrategy error out.
+  # Find out why and change the distribute to distribution
+  keras_model.compile(optimizer=optimizer, distribute=None)
 
   keras_model.fit(train_input_dataset,
       epochs=FLAGS.train_epochs,
