@@ -162,27 +162,30 @@ def run(flags_obj):
     num_eval_steps = None
     validation_data = None
 
-  model.fit(train_input_dataset,
-            epochs=train_epochs,
-            steps_per_epoch=train_steps,
-            callbacks=[
-                time_callback,
-                lr_callback,
-                tensorboard_callback
-                ],
-            validation_steps=num_eval_steps,
-            validation_data=validation_data,
-            verbose=1)
+  history = model.fit(train_input_dataset,
+                      epochs=train_epochs,
+                      steps_per_epoch=train_steps,
+                      callbacks=[
+                          time_callback,
+                          lr_callback,
+                          tensorboard_callback
+                      ],
+                      validation_steps=num_eval_steps,
+                      validation_data=validation_data,
+                      verbose=1)
 
+  eval_output = None
   if not flags_obj.skip_eval:
-    model.evaluate(eval_input_dataset,
-                   steps=num_eval_steps,
-                   verbose=1)
+    eval_output = model.evaluate(eval_input_dataset,
+                                 steps=num_eval_steps,
+                                 verbose=1)
+  stats = keras_common.build_stats(history, eval_output, time_callback)
+  return stats
 
 
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
-    run(flags.FLAGS)
+    return run(flags.FLAGS)
 
 
 if __name__ == '__main__':

@@ -452,6 +452,9 @@ def resnet_main(
       used for logging purpose.
     shape: list of ints representing the shape of the images used for training.
       This is only used if flags_obj.export_dir is passed.
+
+  Returns:
+    Dict of results of the run.
   """
 
   model_helpers.apply_clean(flags.FLAGS)
@@ -588,7 +591,7 @@ def resnet_main(
           shape, batch_size=flags_obj.batch_size, dtype=export_dtype)
     classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn,
                                  strip_default_attrs=True)
-
+  return eval_results
 
 def define_resnet_flags(resnet_size_choices=None):
   """Add flags and validators for ResNet."""

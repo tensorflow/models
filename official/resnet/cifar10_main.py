@@ -24,10 +24,10 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
+from official.utils.flags import core as flags_core
+from official.utils.logs import logger
 
 HEIGHT = 32
 WIDTH = 32
@@ -52,9 +52,7 @@ DATASET_NAME = 'CIFAR-10'
 ###############################################################################
 def get_filenames(is_training, data_dir):
   """Returns a list of filenames."""
-  data_dir = os.path.join(data_dir, 'cifar-10-batches-bin')
-
-  assert os.path.exists(data_dir), (
+  assert tf.gfile.Exists(data_dir), (
       'Run cifar10_download_and_extract.py first to download and extract the '
       'CIFAR-10 data.')
 
@@ -250,6 +248,9 @@ def run_cifar(flags_obj):
 
   Args:
     flags_obj: An object containing parsed flag values.
+
+  Returns:
+    Dictionary of results. Including final accuracy.
   """
   if flags_obj.image_bytes_as_serving_input:
     tf.logging.fatal('--image_bytes_as_serving_input cannot be set to True '
@@ -259,9 +260,11 @@ def run_cifar(flags_obj):
   input_function = (flags_obj.use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
-  resnet_run_loop.resnet_main(
+  result = resnet_run_loop.resnet_main(
       flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
       shape=[HEIGHT, WIDTH, NUM_CHANNELS])
+
+  return result
 
 
 def main(_):
