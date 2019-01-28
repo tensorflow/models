@@ -2,8 +2,8 @@
 set -e
 
 # Example settings:
-# TPU="taylorrobie-tpu-0"
-# BUCKET="gs://taylorrobie-tpu-test-bucket-2"
+# export TPU="taylorrobie-tpu-0"
+# export BUCKET="gs://taylorrobie-tpu-test-bucket-2"
 
 # Remove IDE "not assigned" warning highlights.
 TPU=${TPU:-""}
