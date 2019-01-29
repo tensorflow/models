@@ -24,11 +24,6 @@ from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-
-DATA_DIR = '/data/cifar10_data/cifar-10-batches-bin'
-MIN_TOP_1_ACCURACY = 0.925
-MAX_TOP_1_ACCURACY = 0.938
-
 FLAGS = flags.FLAGS
 
 
@@ -47,7 +42,7 @@ class KerasBenchmark(object):
     return os.path.join(self.output_dir, folder_name)
 
   def _setup(self, flag_methods=None):
-    """Sets ups up and resets flags before each test.
+    """Sets up and resets flags before each test.
 
     Args:
       flag_methods: list of methods to execute that add global flags.
@@ -55,6 +50,7 @@ class KerasBenchmark(object):
     """
     tf.logging.set_verbosity(tf.logging.DEBUG)
     if KerasBenchmark.local_flags is None:
+      # TODO(tobyboyd): Move to init and initialize to empty object if None.
       if flag_methods:
         for flag_method in flag_methods:
           flag_method()

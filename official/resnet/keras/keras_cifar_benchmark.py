@@ -210,8 +210,6 @@ class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
     def_flags['data_dir'] = DATA_DIR
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
-    FLAGS.skip_eval = True
-    FLAGS.use_synthetic_data = False
 
     super(Resnet56KerasBenchmarkReal, self).__init__(output_dir=output_dir,
                                                      default_flags=def_flags)
