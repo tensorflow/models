@@ -31,12 +31,12 @@ class KerasBenchmark(object):
   """Base benchmark class with methods to simplify testing."""
   local_flags = None
 
-  def __init__(self, output_dir=None, default_flags=None):
+  def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
     self.oss_report_object = None
     self.output_dir = output_dir
     self.default_flags = {}
-    if default_flags:
-      self.default_flags = default_flags
+    self.default_flags = default_flags or {}
+    self.flag_methods = flag_methods or {}
 
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)
@@ -50,19 +50,17 @@ class KerasBenchmark(object):
     """
     tf.logging.set_verbosity(tf.logging.DEBUG)
     if KerasBenchmark.local_flags is None:
-      # TODO(tobyboyd): Move to init and initialize to empty object if None.
-      if flag_methods:
-        for flag_method in flag_methods:
-          flag_method()
+      for flag_method in flag_methods:
+        flag_method()
       # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
+      # Overrides flag values with defaults for the class of tests.
+      for k, v in self.default_flags.items():
+        setattr(FLAGS, k, v)
       saved_flag_values = flagsaver.save_flag_values()
       KerasBenchmark.local_flags = saved_flag_values
     else:
       flagsaver.restore_flag_values(KerasBenchmark.local_flags)
-    # Overrides flag values with defaults for the class of tests.
-    for k, v in self.default_flags.items():
-      setattr(FLAGS, k, v)
 
   def fill_report_object(self, stats, top_1_max=None, top_1_min=None,
                          log_steps=None, total_batch_size=None, warmup=1):

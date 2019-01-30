@@ -35,6 +35,13 @@ FLAGS = flags.FLAGS
 class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
   """Accuracy tests for ResNet56 Keras CIFAR-10."""
 
+  def __init__(self, output_dir=None):
+    flag_methods = [keras_common.define_keras_flags,
+                    cifar_main.define_cifar_flags]
+
+    super(Resnet56KerasAccuracy, self).__init__(output_dir=output_dir,
+                                                flag_methods=flag_methods)
+
   def keras_resnet56_1_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
@@ -116,6 +123,15 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
 
 class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   """Short performance tests for ResNet56 via Keras and CIFAR-10."""
+
+  def __init__(self, output_dir=None, default_flags=None):
+    flag_methods = [keras_common.define_keras_flags,
+                    cifar_main.define_cifar_flags]
+
+    super(Resnet56KerasBenchmarkBase, self).__init__(
+        output_dir=output_dir,
+        flag_methods=flag_methods,
+        default_flags=default_flags)
 
   def _run_benchmark(self):
     stats = keras_cifar_main.run(FLAGS)
