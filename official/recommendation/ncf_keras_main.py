@@ -115,7 +115,7 @@ def run_ncf(_):
     features["labels"] = labels
     return features, labels
 
-  optimizer = neumf_model.get_optimizer(params)
+  optimizer = ncf_common.get_optimizer(params)
   distribution = ncf_common.get_distribution_strategy(params)
 
   train_input_fn = producer.make_input_fn(is_training=True)

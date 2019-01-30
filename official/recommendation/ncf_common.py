@@ -121,6 +121,16 @@ def parse_flags(flags_obj):
   }
 
 
+def get_optimizer(params):
+  optimizer = tf.train.AdamOptimizer(
+      learning_rate=params["learning_rate"], beta1=params["beta1"],
+      beta2=params["beta2"], epsilon=params["epsilon"])
+  if params["use_tpu"]:
+    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+
+  return optimizer
+
+
 def get_distribution_strategy(params):
   if params["use_tpu"]:
     # Some of the networking libraries are quite chatty.
