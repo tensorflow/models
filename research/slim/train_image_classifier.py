@@ -556,15 +556,13 @@ def main(_):
 
     # Add config to avoid 'could not satisfy explicit device' problem 
     sess_config = tf.ConfigProto(allow_soft_placement=True)
-
-    # new saver
-    saver = tf.train.Saver(write_version = saver_pb2.SaverDef.V1)
+    #sess_config.gpu_options.allow_growth = True
+    
     ###########################
     # Kicks off the training. #
     ###########################
     slim.learning.train(
         train_tensor,
-        saver=saver,
         logdir=FLAGS.train_dir,
         master=FLAGS.master,
         is_chief=(FLAGS.task == 0),
