@@ -105,9 +105,6 @@ def run(flags_obj):
     raise ValueError('dtype fp16 is not supported in Keras. Use the default '
                      'value(fp32).')
 
-  per_device_batch_size = distribution_utils.per_device_batch_size(
-      flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
-
   data_format = flags_obj.data_format
   if data_format is None:
     data_format = ('channels_first'
@@ -127,14 +124,14 @@ def run(flags_obj):
   train_input_dataset = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
-      batch_size=per_device_batch_size,
+      batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
       parse_record_fn=parse_record_keras)
 
   eval_input_dataset = input_fn(
       is_training=False,
       data_dir=flags_obj.data_dir,
-      batch_size=per_device_batch_size,
+      batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
       parse_record_fn=parse_record_keras)
 
