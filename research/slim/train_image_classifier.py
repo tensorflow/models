@@ -556,8 +556,7 @@ def main(_):
 
     # Add config to avoid 'could not satisfy explicit device' problem 
     sess_config = tf.ConfigProto(allow_soft_placement=True)
-    #sess_config.gpu_options.allow_growth = True
-    
+
     ###########################
     # Kicks off the training. #
     ###########################
