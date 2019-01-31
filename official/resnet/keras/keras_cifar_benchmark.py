@@ -123,7 +123,7 @@ class KerasCifar10BenchmarkTests(object):
 
   def _setup(self):
     """Setups up and resets flags before each test."""
-    tf.logging.set_verbosity(tf.logging.DEBUG)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
     if KerasCifar10BenchmarkTests.local_flags is None:
       keras_common.define_keras_flags()
       cifar_main.define_cifar_flags()

@@ -76,7 +76,7 @@ class KerasImagenetBenchmarkTests(object):
 
   def _setup(self):
     """Setups up and resets flags before each test."""
-    tf.logging.set_verbosity(tf.logging.DEBUG)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
     if KerasImagenetBenchmarkTests.local_flags is None:
       keras_common.define_keras_flags()
       imagenet_main.define_imagenet_flags()

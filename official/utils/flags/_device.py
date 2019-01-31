@@ -39,7 +39,7 @@ def require_cloud_storage(flag_names):
     valid_flags = True
     for key in flag_names:
       if not flag_values[key].startswith("gs://"):
-        tf.logging.error("{} must be a GCS path.".format(key))
+        tf.compat.v1.logging.error("{} must be a GCS path.".format(key))
         valid_flags = False
 
     return valid_flags

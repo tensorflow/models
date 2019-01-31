@@ -72,10 +72,10 @@ class BaseTest(reference_data.BaseTest):
 
     g = tf.Graph()
     with g.as_default():
-      tf.set_random_seed(self.name_to_seed(name))
-      input_tensor = tf.get_variable(
+      tf.compat.v1.set_random_seed(self.name_to_seed(name))
+      input_tensor = tf.compat.v1.get_variable(
           "input_tensor", dtype=tf.float32,
-          initializer=tf.random_uniform((32, 16, 16, 3), maxval=1)
+          initializer=tf.random.uniform((32, 16, 16, 3), maxval=1)
       )
       layer = resnet_model.batch_norm(
           inputs=input_tensor, data_format=DATA_FORMAT, training=True)
@@ -137,7 +137,7 @@ class BaseTest(reference_data.BaseTest):
 
     g = tf.Graph()
     with g.as_default():
-      tf.set_random_seed(self.name_to_seed(name))
+      tf.compat.v1.set_random_seed(self.name_to_seed(name))
       strides = 1
       channels_out = channels
       projection_shortcut = None
@@ -151,9 +151,9 @@ class BaseTest(reference_data.BaseTest):
       if bottleneck:
         filters = channels_out // 4
 
-      input_tensor = tf.get_variable(
+      input_tensor = tf.compat.v1.get_variable(
           "input_tensor", dtype=tf.float32,
-          initializer=tf.random_uniform((batch_size, width, width, channels),
+          initializer=tf.random.uniform((batch_size, width, width, channels),
                                         maxval=1)
       )
 
