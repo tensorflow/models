@@ -41,7 +41,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     super(Resnet50KerasAccuracy, self).__init__(output_dir=output_dir,
                                                 flag_methods=flag_methods)
 
-  def keras_resnet50_8_gpu(self):
+  def benchmark_graph_8_gpu(self):
     """Test Keras model with Keras fit/dist_strat and 8 GPUs."""
     self._setup()
     FLAGS.num_gpus = 1
@@ -53,7 +53,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     stats = keras_imagenet_main.run(FLAGS)
     self._fill_report_object(stats, FLAGS.batch_size)
 
-  def keras_resnet50_eager_8_gpu(self):
+  def benchmark_8_gpu(self):
     """Test Keras model with eager, dist_strat and 8 GPUs."""
     self._setup()
     FLAGS.num_gpus = 8
@@ -104,7 +104,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     self._run_benchmark()
 
-  def benchmark_graph_1_gpu_without_dist_strat(self):
+  def benchmark_graph_1_gpu_no_dist_strat(self):
     self._setup()
 
     FLAGS.num_gpus = 1
