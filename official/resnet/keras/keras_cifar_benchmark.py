@@ -229,4 +229,3 @@ class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
 
     super(Resnet56KerasBenchmarkReal, self).__init__(output_dir=output_dir,
                                                      default_flags=def_flags)
-

@@ -86,12 +86,11 @@ class KerasBenchmark(object):
       if (warmup and
           'step_timestamp_log' in stats and
           len(stats['step_timestamp_log']) > warmup):
-        # first entry in the train_time_log is start of step 1. The rest of the
+        # first entry in the time_log is start of step 1. The rest of the
         # entries are the end of each step recorded
-        train_time_log = stats['step_timestamp_log']
-        elapsed = train_time_log[-1].timestamp - train_time_log[warmup].timestamp
-        num_examples = (total_batch_size * log_steps *
-                        (len(train_time_log)-warmup-1))
+        time_log = stats['step_timestamp_log']
+        elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
+        num_examples = (total_batch_size * log_steps * (len(time_log)-warmup-1))
         examples_per_sec = num_examples / elapsed
         self.oss_report_object.add_examples_per_second(examples_per_sec)
 
