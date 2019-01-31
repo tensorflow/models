@@ -59,7 +59,7 @@ def main(_):
     print('\n--iteration must be between 0 and 15 inclusive.\n')
     return
 
-  with tf.gfile.FastGFile(FLAGS.input_image) as input_image:
+  with tf.gfile.FastGFile(FLAGS.input_image, 'rb') as input_image:
     input_image_str = input_image.read()
 
   with tf.Graph().as_default() as graph:

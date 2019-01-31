@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
 import numpy as np
 import scipy.misc
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -29,7 +30,6 @@ from mnist import data_provider
 from mnist import networks
 
 tfgan = tf.contrib.gan
-flags = tf.flags
 
 flags.DEFINE_integer('batch_size', 32,
                      'The number of images in each train batch.')

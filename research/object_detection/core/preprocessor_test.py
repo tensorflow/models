@@ -70,11 +70,8 @@ class PreprocessorTest(tf.test.TestCase):
         [[0.0, 0.25, 0.75, 1.0], [0.25, 0.5, 0.75, 1.0]], dtype=tf.float32)
     return boxes
 
-  def createTestLabelScores(self):
+  def createTestGroundtruthWeights(self):
     return tf.constant([1.0, 0.5], dtype=tf.float32)
-
-  def createTestLabelScoresWithMissingScore(self):
-    return tf.constant([0.5, np.nan], dtype=tf.float32)
 
   def createTestMasks(self):
     mask = np.array([
@@ -118,6 +115,9 @@ class PreprocessorTest(tf.test.TestCase):
     boxes = tf.constant(
         [[-0.1, 0.25, 0.75, 1], [0.25, 0.5, 0.75, 1.1]], dtype=tf.float32)
     return boxes
+
+  def createTestMultiClassScores(self):
+    return tf.constant([[1.0, 0.0], [0.5, 0.5]], dtype=tf.float32)
 
   def expectedImagesAfterNormalization(self):
     images_r = tf.constant([[[0, 0, 0, 0], [-1, -1, 0, 0],
@@ -269,6 +269,9 @@ class PreprocessorTest(tf.test.TestCase):
   def expectedLabelsAfterThresholding(self):
     return tf.constant([1], dtype=tf.float32)
 
+  def expectedMultiClassScoresAfterThresholding(self):
+    return tf.constant([[1.0, 0.0]], dtype=tf.float32)
+
   def expectedMasksAfterThresholding(self):
     mask = np.array([
         [[255.0, 0.0, 0.0],
@@ -326,15 +329,15 @@ class PreprocessorTest(tf.test.TestCase):
   def testRetainBoxesAboveThreshold(self):
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    label_scores = self.createTestLabelScores()
+    weights = self.createTestGroundtruthWeights()
     (retained_boxes, retained_labels,
-     retained_label_scores) = preprocessor.retain_boxes_above_threshold(
-         boxes, labels, label_scores, threshold=0.6)
+     retained_weights) = preprocessor.retain_boxes_above_threshold(
+         boxes, labels, weights, threshold=0.6)
     with self.test_session() as sess:
-      (retained_boxes_, retained_labels_, retained_label_scores_,
+      (retained_boxes_, retained_labels_, retained_weights_,
        expected_retained_boxes_, expected_retained_labels_,
-       expected_retained_label_scores_) = sess.run([
-           retained_boxes, retained_labels, retained_label_scores,
+       expected_retained_weights_) = sess.run([
+           retained_boxes, retained_labels, retained_weights,
            self.expectedBoxesAfterThresholding(),
            self.expectedLabelsAfterThresholding(),
            self.expectedLabelScoresAfterThresholding()])
@@ -343,15 +346,37 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllClose(
           retained_labels_, expected_retained_labels_)
       self.assertAllClose(
-          retained_label_scores_, expected_retained_label_scores_)
+          retained_weights_, expected_retained_weights_)
+
+  def testRetainBoxesAboveThresholdWithMultiClassScores(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    multiclass_scores = self.createTestMultiClassScores()
+    (_, _, _,
+     retained_multiclass_scores) = preprocessor.retain_boxes_above_threshold(
+         boxes,
+         labels,
+         weights,
+         multiclass_scores=multiclass_scores,
+         threshold=0.6)
+    with self.test_session() as sess:
+      (retained_multiclass_scores_,
+       expected_retained_multiclass_scores_) = sess.run([
+           retained_multiclass_scores,
+           self.expectedMultiClassScoresAfterThresholding()
+       ])
+
+      self.assertAllClose(retained_multiclass_scores_,
+                          expected_retained_multiclass_scores_)
 
   def testRetainBoxesAboveThresholdWithMasks(self):
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    label_scores = self.createTestLabelScores()
+    weights = self.createTestGroundtruthWeights()
     masks = self.createTestMasks()
     _, _, _, retained_masks = preprocessor.retain_boxes_above_threshold(
-        boxes, labels, label_scores, masks, threshold=0.6)
+        boxes, labels, weights, masks, threshold=0.6)
     with self.test_session() as sess:
       retained_masks_, expected_retained_masks_ = sess.run([
           retained_masks, self.expectedMasksAfterThresholding()])
@@ -362,10 +387,10 @@ class PreprocessorTest(tf.test.TestCase):
   def testRetainBoxesAboveThresholdWithKeypoints(self):
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    label_scores = self.createTestLabelScores()
+    weights = self.createTestGroundtruthWeights()
     keypoints = self.createTestKeypoints()
     (_, _, _, retained_keypoints) = preprocessor.retain_boxes_above_threshold(
-        boxes, labels, label_scores, keypoints=keypoints, threshold=0.6)
+        boxes, labels, weights, keypoints=keypoints, threshold=0.6)
     with self.test_session() as sess:
       (retained_keypoints_,
        expected_retained_keypoints_) = sess.run([
@@ -374,28 +399,6 @@ class PreprocessorTest(tf.test.TestCase):
 
       self.assertAllClose(
           retained_keypoints_, expected_retained_keypoints_)
-
-  def testRetainBoxesAboveThresholdWithMissingScore(self):
-    boxes = self.createTestBoxes()
-    labels = self.createTestLabels()
-    label_scores = self.createTestLabelScoresWithMissingScore()
-    (retained_boxes, retained_labels,
-     retained_label_scores) = preprocessor.retain_boxes_above_threshold(
-         boxes, labels, label_scores, threshold=0.6)
-    with self.test_session() as sess:
-      (retained_boxes_, retained_labels_, retained_label_scores_,
-       expected_retained_boxes_, expected_retained_labels_,
-       expected_retained_label_scores_) = sess.run([
-           retained_boxes, retained_labels, retained_label_scores,
-           self.expectedBoxesAfterThresholdingWithMissingScore(),
-           self.expectedLabelsAfterThresholdingWithMissingScore(),
-           self.expectedLabelScoresAfterThresholdingWithMissingScore()])
-      self.assertAllClose(
-          retained_boxes_, expected_retained_boxes_)
-      self.assertAllClose(
-          retained_labels_, expected_retained_labels_)
-      self.assertAllClose(
-          retained_label_scores_, expected_retained_label_scores_)
 
   def testFlipBoxesLeftRight(self):
     boxes = self.createTestBoxes()
@@ -454,6 +457,7 @@ class PreprocessorTest(tf.test.TestCase):
     cache = preprocessor_cache.PreprocessorCache()
     images = self.createTestImages()
     boxes = self.createTestBoxes()
+    weights = self.createTestGroundtruthWeights()
     classes = self.createTestLabels()
     masks = self.createTestMasks()
     keypoints = self.createTestKeypoints()
@@ -463,6 +467,7 @@ class PreprocessorTest(tf.test.TestCase):
     for i in range(num_runs):
       tensor_dict = {
           fields.InputDataFields.image: images,
+          fields.InputDataFields.groundtruth_weights: weights
       }
       num_outputs = 1
       if test_boxes:
@@ -1047,10 +1052,12 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
     }
     distorted_tensor_dict = preprocessor.preprocess(tensor_dict,
                                                     preprocessing_options)
@@ -1098,10 +1105,12 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
     }
     distorted_tensor_dict = preprocessor.preprocess(
         tensor_dict, preprocessing_options)
@@ -1135,10 +1144,12 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     boxes = self.createTestBoxesOutOfImage()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
         }
     distorted_tensor_dict = preprocessor.preprocess(tensor_dict,
                                                     preprocessing_options)
@@ -1169,12 +1180,12 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    label_scores = self.createTestLabelScores()
+    weights = self.createTestGroundtruthWeights()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
-        fields.InputDataFields.groundtruth_label_scores: label_scores
+        fields.InputDataFields.groundtruth_weights: weights
     }
     tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
     images = tensor_dict[fields.InputDataFields.image]
@@ -1190,8 +1201,8 @@ class PreprocessorTest(tf.test.TestCase):
         fields.InputDataFields.groundtruth_boxes]
     distorted_labels = distorted_tensor_dict[
         fields.InputDataFields.groundtruth_classes]
-    distorted_label_scores = distorted_tensor_dict[
-        fields.InputDataFields.groundtruth_label_scores]
+    distorted_weights = distorted_tensor_dict[
+        fields.InputDataFields.groundtruth_weights]
     boxes_shape = tf.shape(boxes)
     distorted_boxes_shape = tf.shape(distorted_boxes)
     images_shape = tf.shape(images)
@@ -1201,17 +1212,17 @@ class PreprocessorTest(tf.test.TestCase):
       (boxes_shape_, distorted_boxes_shape_, images_shape_,
        distorted_images_shape_, images_, distorted_images_,
        boxes_, distorted_boxes_, labels_, distorted_labels_,
-       label_scores_, distorted_label_scores_) = sess.run(
+       weights_, distorted_weights_) = sess.run(
            [boxes_shape, distorted_boxes_shape, images_shape,
             distorted_images_shape, images, distorted_images,
             boxes, distorted_boxes, labels, distorted_labels,
-            label_scores, distorted_label_scores])
+            weights, distorted_weights])
       self.assertAllEqual(boxes_shape_, distorted_boxes_shape_)
       self.assertAllEqual(images_shape_, distorted_images_shape_)
       self.assertAllClose(images_, distorted_images_)
       self.assertAllClose(boxes_, distorted_boxes_)
       self.assertAllEqual(labels_, distorted_labels_)
-      self.assertAllEqual(label_scores_, distorted_label_scores_)
+      self.assertAllEqual(weights_, distorted_weights_)
 
   def testRandomCropWithMockSampleDistortedBoundingBox(self):
     preprocessing_options = [(preprocessor.normalize_image, {
@@ -1226,11 +1237,13 @@ class PreprocessorTest(tf.test.TestCase):
                          [0.2, 0.4, 0.75, 0.75],
                          [0.3, 0.1, 0.4, 0.7]], dtype=tf.float32)
     labels = tf.constant([1, 7, 11], dtype=tf.int32)
+    weights = tf.constant([1.0, 0.5, 0.6], dtype=tf.float32)
 
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
     }
     tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
     images = tensor_dict[fields.InputDataFields.image]
@@ -1251,24 +1264,156 @@ class PreprocessorTest(tf.test.TestCase):
           fields.InputDataFields.groundtruth_boxes]
       distorted_labels = distorted_tensor_dict[
           fields.InputDataFields.groundtruth_classes]
+      distorted_weights = distorted_tensor_dict[
+          fields.InputDataFields.groundtruth_weights]
       expected_boxes = tf.constant([[0.178947, 0.07173, 0.75789469, 0.66244733],
                                     [0.28421, 0.0, 0.38947365, 0.57805908]],
                                    dtype=tf.float32)
       expected_labels = tf.constant([7, 11], dtype=tf.int32)
+      expected_weights = tf.constant([0.5, 0.6], dtype=tf.float32)
 
       with self.test_session() as sess:
-        (distorted_boxes_, distorted_labels_,
-         expected_boxes_, expected_labels_) = sess.run(
-             [distorted_boxes, distorted_labels,
-              expected_boxes, expected_labels])
+        (distorted_boxes_, distorted_labels_, distorted_weights_,
+         expected_boxes_, expected_labels_, expected_weights_) = sess.run(
+             [distorted_boxes, distorted_labels, distorted_weights,
+              expected_boxes, expected_labels, expected_weights])
         self.assertAllClose(distorted_boxes_, expected_boxes_)
         self.assertAllEqual(distorted_labels_, expected_labels_)
+        self.assertAllEqual(distorted_weights_, expected_weights_)
 
-  def testStrictRandomCropImageWithLabelScores(self):
+  def testRandomCropWithoutClipBoxes(self):
+    preprocessing_options = [(preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    })]
+
+    images = self.createColorfulTestImage()
+    boxes = tf.constant([[0.1, 0.1, 0.8, 0.3],
+                         [0.2, 0.4, 0.75, 0.75],
+                         [0.3, 0.1, 0.4, 0.7]], dtype=tf.float32)
+    keypoints = tf.constant([
+        [[0.1, 0.1], [0.8, 0.3]],
+        [[0.2, 0.4], [0.75, 0.75]],
+        [[0.3, 0.1], [0.4, 0.7]],
+    ], dtype=tf.float32)
+    labels = tf.constant([1, 7, 11], dtype=tf.int32)
+    weights = tf.constant([1.0, 0.5, 0.6], dtype=tf.float32)
+
+    tensor_dict = {
+        fields.InputDataFields.image: images,
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_keypoints: keypoints,
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
+    }
+    tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+
+    preprocessing_options = [(preprocessor.random_crop_image, {
+        'clip_boxes': False,
+    })]
+    with mock.patch.object(
+        tf.image,
+        'sample_distorted_bounding_box') as mock_sample_distorted_bounding_box:
+      mock_sample_distorted_bounding_box.return_value = (tf.constant(
+          [6, 143, 0], dtype=tf.int32), tf.constant(
+              [190, 237, -1], dtype=tf.int32), tf.constant(
+                  [[[0.03, 0.3575, 0.98, 0.95]]], dtype=tf.float32))
+
+      preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+          include_keypoints=True)
+      distorted_tensor_dict = preprocessor.preprocess(
+          tensor_dict, preprocessing_options, func_arg_map=preprocessor_arg_map)
+
+      distorted_boxes = distorted_tensor_dict[
+          fields.InputDataFields.groundtruth_boxes]
+      distorted_keypoints = distorted_tensor_dict[
+          fields.InputDataFields.groundtruth_keypoints]
+      distorted_labels = distorted_tensor_dict[
+          fields.InputDataFields.groundtruth_classes]
+      distorted_weights = distorted_tensor_dict[
+          fields.InputDataFields.groundtruth_weights]
+      expected_boxes = tf.constant(
+          [[0.178947, 0.07173, 0.75789469, 0.66244733],
+           [0.28421, -0.434599, 0.38947365, 0.57805908]],
+          dtype=tf.float32)
+      expected_keypoints = tf.constant(
+          [[[0.178947, 0.07173], [0.75789469, 0.66244733]],
+           [[0.28421, -0.434599], [0.38947365, 0.57805908]]],
+          dtype=tf.float32)
+      expected_labels = tf.constant([7, 11], dtype=tf.int32)
+      expected_weights = tf.constant([0.5, 0.6], dtype=tf.float32)
+
+      with self.test_session() as sess:
+        (distorted_boxes_, distorted_keypoints_, distorted_labels_,
+         distorted_weights_, expected_boxes_, expected_keypoints_,
+         expected_labels_, expected_weights_) = sess.run(
+             [distorted_boxes, distorted_keypoints, distorted_labels,
+              distorted_weights, expected_boxes, expected_keypoints,
+              expected_labels, expected_weights])
+        self.assertAllClose(distorted_boxes_, expected_boxes_)
+        self.assertAllClose(distorted_keypoints_, expected_keypoints_)
+        self.assertAllEqual(distorted_labels_, expected_labels_)
+        self.assertAllEqual(distorted_weights_, expected_weights_)
+
+  def testRandomCropImageWithMultiClassScores(self):
+    preprocessing_options = []
+    preprocessing_options.append((preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }))
+    preprocessing_options.append((preprocessor.random_crop_image, {}))
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    multiclass_scores = self.createTestMultiClassScores()
+
+    tensor_dict = {
+        fields.InputDataFields.image: images,
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
+        fields.InputDataFields.multiclass_scores: multiclass_scores
+    }
+    distorted_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    distorted_images = distorted_tensor_dict[fields.InputDataFields.image]
+    distorted_boxes = distorted_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes]
+    distorted_multiclass_scores = distorted_tensor_dict[
+        fields.InputDataFields.multiclass_scores]
+    boxes_rank = tf.rank(boxes)
+    distorted_boxes_rank = tf.rank(distorted_boxes)
+    images_rank = tf.rank(images)
+    distorted_images_rank = tf.rank(distorted_images)
+    multiclass_scores_rank = tf.rank(multiclass_scores)
+    distorted_multiclass_scores_rank = tf.rank(distorted_multiclass_scores)
+
+    with self.test_session() as sess:
+      (boxes_rank_, distorted_boxes_, distorted_boxes_rank_, images_rank_,
+       distorted_images_rank_, multiclass_scores_rank_,
+       distorted_multiclass_scores_rank_,
+       distorted_multiclass_scores_) = sess.run([
+           boxes_rank, distorted_boxes, distorted_boxes_rank, images_rank,
+           distorted_images_rank, multiclass_scores_rank,
+           distorted_multiclass_scores_rank, distorted_multiclass_scores
+       ])
+      self.assertAllEqual(boxes_rank_, distorted_boxes_rank_)
+      self.assertAllEqual(images_rank_, distorted_images_rank_)
+      self.assertAllEqual(multiclass_scores_rank_,
+                          distorted_multiclass_scores_rank_)
+      self.assertAllEqual(distorted_boxes_.shape[0],
+                          distorted_multiclass_scores_.shape[0])
+
+  def testStrictRandomCropImageWithGroundtruthWeights(self):
     image = self.createColorfulTestImage()[0]
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    label_scores = self.createTestLabelScores()
+    weights = self.createTestGroundtruthWeights()
     with mock.patch.object(
         tf.image,
         'sample_distorted_bounding_box'
@@ -1277,20 +1422,20 @@ class PreprocessorTest(tf.test.TestCase):
           tf.constant([6, 143, 0], dtype=tf.int32),
           tf.constant([190, 237, -1], dtype=tf.int32),
           tf.constant([[[0.03, 0.3575, 0.98, 0.95]]], dtype=tf.float32))
-      new_image, new_boxes, new_labels, new_label_scores = (
+      new_image, new_boxes, new_labels, new_groundtruth_weights = (
           preprocessor._strict_random_crop_image(
-              image, boxes, labels, label_scores))
+              image, boxes, labels, weights))
       with self.test_session() as sess:
-        new_image, new_boxes, new_labels, new_label_scores = (
+        new_image, new_boxes, new_labels, new_groundtruth_weights = (
             sess.run(
-                [new_image, new_boxes, new_labels, new_label_scores])
+                [new_image, new_boxes, new_labels, new_groundtruth_weights])
         )
 
         expected_boxes = np.array(
             [[0.0, 0.0, 0.75789469, 1.0],
              [0.23157893, 0.24050637, 0.75789469, 1.0]], dtype=np.float32)
         self.assertAllEqual(new_image.shape, [190, 237, 3])
-        self.assertAllEqual(new_label_scores, [1.0, 0.5])
+        self.assertAllEqual(new_groundtruth_weights, [1.0, 0.5])
         self.assertAllClose(
             new_boxes.flatten(), expected_boxes.flatten())
 
@@ -1298,6 +1443,7 @@ class PreprocessorTest(tf.test.TestCase):
     image = self.createColorfulTestImage()[0]
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     masks = tf.random_uniform([2, 200, 400], dtype=tf.float32)
     with mock.patch.object(
         tf.image,
@@ -1307,12 +1453,12 @@ class PreprocessorTest(tf.test.TestCase):
           tf.constant([6, 143, 0], dtype=tf.int32),
           tf.constant([190, 237, -1], dtype=tf.int32),
           tf.constant([[[0.03, 0.3575, 0.98, 0.95]]], dtype=tf.float32))
-      new_image, new_boxes, new_labels, new_masks = (
+      new_image, new_boxes, new_labels, new_weights, new_masks = (
           preprocessor._strict_random_crop_image(
-              image, boxes, labels, masks=masks))
+              image, boxes, labels, weights, masks=masks))
       with self.test_session() as sess:
-        new_image, new_boxes, new_labels, new_masks = sess.run(
-            [new_image, new_boxes, new_labels, new_masks])
+        new_image, new_boxes, new_labels, new_weights, new_masks = sess.run(
+            [new_image, new_boxes, new_labels, new_weights, new_masks])
         expected_boxes = np.array(
             [[0.0, 0.0, 0.75789469, 1.0],
              [0.23157893, 0.24050637, 0.75789469, 1.0]], dtype=np.float32)
@@ -1325,6 +1471,7 @@ class PreprocessorTest(tf.test.TestCase):
     image = self.createColorfulTestImage()[0]
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     keypoints = self.createTestKeypoints()
     with mock.patch.object(
         tf.image,
@@ -1334,12 +1481,12 @@ class PreprocessorTest(tf.test.TestCase):
           tf.constant([6, 143, 0], dtype=tf.int32),
           tf.constant([190, 237, -1], dtype=tf.int32),
           tf.constant([[[0.03, 0.3575, 0.98, 0.95]]], dtype=tf.float32))
-      new_image, new_boxes, new_labels, new_keypoints = (
+      new_image, new_boxes, new_labels, new_weights, new_keypoints = (
           preprocessor._strict_random_crop_image(
-              image, boxes, labels, keypoints=keypoints))
+              image, boxes, labels, weights, keypoints=keypoints))
       with self.test_session() as sess:
-        new_image, new_boxes, new_labels, new_keypoints = sess.run(
-            [new_image, new_boxes, new_labels, new_keypoints])
+        new_image, new_boxes, new_labels, new_weights, new_keypoints = sess.run(
+            [new_image, new_boxes, new_labels, new_weights, new_keypoints])
 
         expected_boxes = np.array([
             [0.0, 0.0, 0.75789469, 1.0],
@@ -1362,12 +1509,14 @@ class PreprocessorTest(tf.test.TestCase):
     image = self.createColorfulTestImage()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     masks = tf.random_uniform([2, 200, 400], dtype=tf.float32)
 
     tensor_dict = {
         fields.InputDataFields.image: image,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
         fields.InputDataFields.groundtruth_instance_masks: masks,
     }
 
@@ -1413,13 +1562,15 @@ class PreprocessorTest(tf.test.TestCase):
     image = self.createColorfulTestImage()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     keypoints = self.createTestKeypointsInsideCrop()
 
     tensor_dict = {
         fields.InputDataFields.image: image,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
-        fields.InputDataFields.groundtruth_keypoints: keypoints
+        fields.InputDataFields.groundtruth_keypoints: keypoints,
+        fields.InputDataFields.groundtruth_weights: weights
     }
 
     preprocessor_arg_map = preprocessor.get_default_func_arg_map(
@@ -1473,12 +1624,14 @@ class PreprocessorTest(tf.test.TestCase):
     image = self.createColorfulTestImage()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     keypoints = self.createTestKeypointsOutsideCrop()
 
     tensor_dict = {
         fields.InputDataFields.image: image,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
         fields.InputDataFields.groundtruth_keypoints: keypoints
     }
 
@@ -1532,33 +1685,32 @@ class PreprocessorTest(tf.test.TestCase):
   def testRunRetainBoxesAboveThreshold(self):
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    label_scores = self.createTestLabelScores()
+    weights = self.createTestGroundtruthWeights()
 
     tensor_dict = {
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
-        fields.InputDataFields.groundtruth_label_scores: label_scores
+        fields.InputDataFields.groundtruth_weights: weights,
     }
 
     preprocessing_options = [
         (preprocessor.retain_boxes_above_threshold, {'threshold': 0.6})
     ]
-    preprocessor_arg_map = preprocessor.get_default_func_arg_map(
-        include_label_scores=True)
+    preprocessor_arg_map = preprocessor.get_default_func_arg_map()
     retained_tensor_dict = preprocessor.preprocess(
         tensor_dict, preprocessing_options, func_arg_map=preprocessor_arg_map)
     retained_boxes = retained_tensor_dict[
         fields.InputDataFields.groundtruth_boxes]
     retained_labels = retained_tensor_dict[
         fields.InputDataFields.groundtruth_classes]
-    retained_label_scores = retained_tensor_dict[
-        fields.InputDataFields.groundtruth_label_scores]
+    retained_weights = retained_tensor_dict[
+        fields.InputDataFields.groundtruth_weights]
 
     with self.test_session() as sess:
       (retained_boxes_, retained_labels_,
-       retained_label_scores_, expected_retained_boxes_,
-       expected_retained_labels_, expected_retained_label_scores_) = sess.run(
-           [retained_boxes, retained_labels, retained_label_scores,
+       retained_weights_, expected_retained_boxes_,
+       expected_retained_labels_, expected_retained_weights_) = sess.run(
+           [retained_boxes, retained_labels, retained_weights,
             self.expectedBoxesAfterThresholding(),
             self.expectedLabelsAfterThresholding(),
             self.expectedLabelScoresAfterThresholding()])
@@ -1566,23 +1718,23 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllClose(retained_boxes_, expected_retained_boxes_)
       self.assertAllClose(retained_labels_, expected_retained_labels_)
       self.assertAllClose(
-          retained_label_scores_, expected_retained_label_scores_)
+          retained_weights_, expected_retained_weights_)
 
   def testRunRetainBoxesAboveThresholdWithMasks(self):
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    label_scores = self.createTestLabelScores()
+    weights = self.createTestGroundtruthWeights()
     masks = self.createTestMasks()
 
     tensor_dict = {
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
-        fields.InputDataFields.groundtruth_label_scores: label_scores,
+        fields.InputDataFields.groundtruth_weights: weights,
         fields.InputDataFields.groundtruth_instance_masks: masks
     }
 
     preprocessor_arg_map = preprocessor.get_default_func_arg_map(
-        include_label_scores=True,
+        include_label_weights=True,
         include_instance_masks=True)
 
     preprocessing_options = [
@@ -1603,18 +1755,17 @@ class PreprocessorTest(tf.test.TestCase):
   def testRunRetainBoxesAboveThresholdWithKeypoints(self):
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    label_scores = self.createTestLabelScores()
+    weights = self.createTestGroundtruthWeights()
     keypoints = self.createTestKeypoints()
 
     tensor_dict = {
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
-        fields.InputDataFields.groundtruth_label_scores: label_scores,
+        fields.InputDataFields.groundtruth_weights: weights,
         fields.InputDataFields.groundtruth_keypoints: keypoints
     }
 
     preprocessor_arg_map = preprocessor.get_default_func_arg_map(
-        include_label_scores=True,
         include_keypoints=True)
 
     preprocessing_options = [
@@ -1643,12 +1794,14 @@ class PreprocessorTest(tf.test.TestCase):
     image = self.createColorfulTestImage()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     masks = tf.random_uniform([2, 200, 400], dtype=tf.float32)
 
     tensor_dict = {
         fields.InputDataFields.image: image,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
         fields.InputDataFields.groundtruth_instance_masks: masks
     }
 
@@ -1686,12 +1839,14 @@ class PreprocessorTest(tf.test.TestCase):
     image = self.createColorfulTestImage()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     keypoints = self.createTestKeypoints()
 
     tensor_dict = {
         fields.InputDataFields.image: image,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
         fields.InputDataFields.groundtruth_keypoints: keypoints
     }
 
@@ -1735,6 +1890,41 @@ class PreprocessorTest(tf.test.TestCase):
                                 test_boxes=True,
                                 test_masks=True,
                                 test_keypoints=True)
+
+  def testRunRandomPadToAspectRatioWithMinMaxPaddedSizeRatios(self):
+    image = self.createColorfulTestImage()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+
+    tensor_dict = {
+        fields.InputDataFields.image: image,
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels
+    }
+
+    preprocessor_arg_map = preprocessor.get_default_func_arg_map()
+    preprocessing_options = [(preprocessor.random_pad_to_aspect_ratio,
+                              {'min_padded_size_ratio': (4.0, 4.0),
+                               'max_padded_size_ratio': (4.0, 4.0)})]
+
+    distorted_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options, func_arg_map=preprocessor_arg_map)
+    distorted_image = distorted_tensor_dict[fields.InputDataFields.image]
+    distorted_boxes = distorted_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes]
+    distorted_labels = distorted_tensor_dict[
+        fields.InputDataFields.groundtruth_classes]
+    with self.test_session() as sess:
+      distorted_image_, distorted_boxes_, distorted_labels_ = sess.run([
+          distorted_image, distorted_boxes, distorted_labels])
+
+      expected_boxes = np.array(
+          [[0.0, 0.125, 0.1875, 0.5], [0.0625, 0.25, 0.1875, 0.5]],
+          dtype=np.float32)
+      self.assertAllEqual(distorted_image_.shape, [1, 800, 800, 3])
+      self.assertAllEqual(distorted_labels_, [1, 2])
+      self.assertAllClose(distorted_boxes_.flatten(),
+                          expected_boxes.flatten())
 
   def testRunRandomPadToAspectRatioWithMasks(self):
     image = self.createColorfulTestImage()
@@ -1903,10 +2093,12 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
     }
     tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
     images = tensor_dict[fields.InputDataFields.image]
@@ -1944,10 +2136,12 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
     }
     tensor_dict = preprocessor.preprocess(tensor_dict, [])
     images = tensor_dict[fields.InputDataFields.image]
@@ -2118,6 +2312,33 @@ class PreprocessorTest(tf.test.TestCase):
         self.assertAllEqual(out_image_shape, expected_image_shape)
         self.assertAllEqual(out_masks_shape, expected_mask_shape)
 
+  def testResizeImageWithMasksTensorInputHeightAndWidth(self):
+    """Tests image resizing, checking output sizes."""
+    in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
+    in_masks_shape_list = [[15, 60, 40], [10, 15, 30]]
+    height = tf.constant(50, dtype=tf.int32)
+    width = tf.constant(100, dtype=tf.int32)
+    expected_image_shape_list = [[50, 100, 3], [50, 100, 3]]
+    expected_masks_shape_list = [[15, 50, 100], [10, 50, 100]]
+
+    for (in_image_shape, expected_image_shape, in_masks_shape,
+         expected_mask_shape) in zip(in_image_shape_list,
+                                     expected_image_shape_list,
+                                     in_masks_shape_list,
+                                     expected_masks_shape_list):
+      in_image = tf.random_uniform(in_image_shape)
+      in_masks = tf.random_uniform(in_masks_shape)
+      out_image, out_masks, _ = preprocessor.resize_image(
+          in_image, in_masks, new_height=height, new_width=width)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape])
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
+
   def testResizeImageWithNoInstanceMask(self):
     """Tests image resizing, checking output sizes."""
     in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
@@ -2176,6 +2397,46 @@ class PreprocessorTest(tf.test.TestCase):
                                               np.random.randn(*in_shape)})
         self.assertAllEqual(out_image_shape, expected_shape)
 
+  def testResizeToRangeWithPadToMaxDimensionReturnsCorrectShapes(self):
+    in_shape_list = [[60, 40, 3], [15, 30, 3], [15, 50, 3]]
+    min_dim = 50
+    max_dim = 100
+    expected_shape_list = [[100, 100, 3], [100, 100, 3], [100, 100, 3]]
+
+    for in_shape, expected_shape in zip(in_shape_list, expected_shape_list):
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      out_image, _ = preprocessor.resize_to_range(
+          in_image,
+          min_dimension=min_dim,
+          max_dimension=max_dim,
+          pad_to_max_dimension=True)
+      self.assertAllEqual(out_image.shape.as_list(), expected_shape)
+      out_image_shape = tf.shape(out_image)
+      with self.test_session() as sess:
+        out_image_shape = sess.run(
+            out_image_shape, feed_dict={in_image: np.random.randn(*in_shape)})
+        self.assertAllEqual(out_image_shape, expected_shape)
+
+  def testResizeToRangeWithPadToMaxDimensionReturnsCorrectTensor(self):
+    in_image_np = np.array([[[0, 1, 2]]], np.float32)
+    ex_image_np = np.array(
+        [[[0, 1, 2], [123.68, 116.779, 103.939]],
+         [[123.68, 116.779, 103.939], [123.68, 116.779, 103.939]]], np.float32)
+    min_dim = 1
+    max_dim = 2
+
+    in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+    out_image, _ = preprocessor.resize_to_range(
+        in_image,
+        min_dimension=min_dim,
+        max_dimension=max_dim,
+        pad_to_max_dimension=True,
+        per_channel_pad_value=(123.68, 116.779, 103.939))
+
+    with self.test_session() as sess:
+      out_image_np = sess.run(out_image, feed_dict={in_image: in_image_np})
+      self.assertAllClose(ex_image_np, out_image_np)
+
   def testResizeToRangeWithMasksPreservesStaticSpatialShape(self):
     """Tests image resizing, checking output sizes."""
     in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
@@ -2196,6 +2457,40 @@ class PreprocessorTest(tf.test.TestCase):
           in_image, in_masks, min_dimension=min_dim, max_dimension=max_dim)
       self.assertAllEqual(out_masks.get_shape().as_list(), expected_mask_shape)
       self.assertAllEqual(out_image.get_shape().as_list(), expected_image_shape)
+
+  def testResizeToRangeWithMasksAndPadToMaxDimension(self):
+    """Tests image resizing, checking output sizes."""
+    in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
+    in_masks_shape_list = [[15, 60, 40], [10, 15, 30]]
+    min_dim = 50
+    max_dim = 100
+    expected_image_shape_list = [[100, 100, 3], [100, 100, 3]]
+    expected_masks_shape_list = [[15, 100, 100], [10, 100, 100]]
+
+    for (in_image_shape,
+         expected_image_shape, in_masks_shape, expected_mask_shape) in zip(
+             in_image_shape_list, expected_image_shape_list,
+             in_masks_shape_list, expected_masks_shape_list):
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      in_masks = tf.placeholder(tf.float32, shape=(None, None, None))
+      out_image, out_masks, _ = preprocessor.resize_to_range(
+          in_image,
+          in_masks,
+          min_dimension=min_dim,
+          max_dimension=max_dim,
+          pad_to_max_dimension=True)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape],
+            feed_dict={
+                in_image: np.random.randn(*in_image_shape),
+                in_masks: np.random.randn(*in_masks_shape)
+            })
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
 
   def testResizeToRangeWithMasksAndDynamicSpatialShape(self):
     """Tests image resizing, checking output sizes."""
@@ -2424,10 +2719,12 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
     }
     distorted_tensor_dict = preprocessor.preprocess(tensor_dict,
                                                     preprocessing_options)
@@ -2448,10 +2745,64 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllEqual(boxes_rank_, distorted_boxes_rank_)
       self.assertAllEqual(images_rank_, distorted_images_rank_)
 
+  def testSSDRandomCropWithMultiClassScores(self):
+    preprocessing_options = [(preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }), (preprocessor.ssd_random_crop, {})]
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    multiclass_scores = self.createTestMultiClassScores()
+
+    tensor_dict = {
+        fields.InputDataFields.image: images,
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.multiclass_scores: multiclass_scores,
+        fields.InputDataFields.groundtruth_weights: weights,
+    }
+    preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+        include_multiclass_scores=True)
+    distorted_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options, func_arg_map=preprocessor_arg_map)
+    distorted_images = distorted_tensor_dict[fields.InputDataFields.image]
+    distorted_boxes = distorted_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes]
+    distorted_multiclass_scores = distorted_tensor_dict[
+        fields.InputDataFields.multiclass_scores]
+
+    images_rank = tf.rank(images)
+    distorted_images_rank = tf.rank(distorted_images)
+    boxes_rank = tf.rank(boxes)
+    distorted_boxes_rank = tf.rank(distorted_boxes)
+    multiclass_scores_rank = tf.rank(multiclass_scores)
+    distorted_multiclass_scores_rank = tf.rank(distorted_multiclass_scores)
+
+    with self.test_session() as sess:
+      (boxes_rank_, distorted_boxes_, distorted_boxes_rank_, images_rank_,
+       distorted_images_rank_, multiclass_scores_rank_,
+       distorted_multiclass_scores_,
+       distorted_multiclass_scores_rank_) = sess.run([
+           boxes_rank, distorted_boxes, distorted_boxes_rank, images_rank,
+           distorted_images_rank, multiclass_scores_rank,
+           distorted_multiclass_scores, distorted_multiclass_scores_rank
+       ])
+      self.assertAllEqual(boxes_rank_, distorted_boxes_rank_)
+      self.assertAllEqual(images_rank_, distorted_images_rank_)
+      self.assertAllEqual(multiclass_scores_rank_,
+                          distorted_multiclass_scores_rank_)
+      self.assertAllEqual(distorted_boxes_.shape[0],
+                          distorted_multiclass_scores_.shape[0])
+
   def testSSDRandomCropPad(self):
     images = self.createTestImages()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
     preprocessing_options = [
         (preprocessor.normalize_image, {
             'original_minval': 0,
@@ -2464,6 +2815,7 @@ class PreprocessorTest(tf.test.TestCase):
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
     }
     distorted_tensor_dict = preprocessor.preprocess(tensor_dict,
                                                     preprocessing_options)
@@ -2499,29 +2851,29 @@ class PreprocessorTest(tf.test.TestCase):
                                 test_keypoints=False)
 
   def _testSSDRandomCropFixedAspectRatio(self,
-                                         include_label_scores,
+                                         include_multiclass_scores,
                                          include_instance_masks,
                                          include_keypoints):
     images = self.createTestImages()
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
-    preprocessing_options = [
-        (preprocessor.normalize_image, {
-            'original_minval': 0,
-            'original_maxval': 255,
-            'target_minval': 0,
-            'target_maxval': 1
-        }),
-        (preprocessor.ssd_random_crop_fixed_aspect_ratio, {})]
+    weights = self.createTestGroundtruthWeights()
+    preprocessing_options = [(preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }), (preprocessor.ssd_random_crop_fixed_aspect_ratio, {})]
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
-        fields.InputDataFields.groundtruth_classes: labels
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights
     }
-    if include_label_scores:
-      label_scores = self.createTestLabelScores()
-      tensor_dict[fields.InputDataFields.groundtruth_label_scores] = (
-          label_scores)
+    if include_multiclass_scores:
+      multiclass_scores = self.createTestMultiClassScores()
+      tensor_dict[fields.InputDataFields.multiclass_scores] = (
+          multiclass_scores)
     if include_instance_masks:
       masks = self.createTestMasks()
       tensor_dict[fields.InputDataFields.groundtruth_instance_masks] = masks
@@ -2530,7 +2882,7 @@ class PreprocessorTest(tf.test.TestCase):
       tensor_dict[fields.InputDataFields.groundtruth_keypoints] = keypoints
 
     preprocessor_arg_map = preprocessor.get_default_func_arg_map(
-        include_label_scores=include_label_scores,
+        include_multiclass_scores=include_multiclass_scores,
         include_instance_masks=include_instance_masks,
         include_keypoints=include_keypoints)
     distorted_tensor_dict = preprocessor.preprocess(
@@ -2552,19 +2904,43 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllEqual(images_rank_, distorted_images_rank_)
 
   def testSSDRandomCropFixedAspectRatio(self):
-    self._testSSDRandomCropFixedAspectRatio(include_label_scores=False,
+    self._testSSDRandomCropFixedAspectRatio(include_multiclass_scores=False,
+                                            include_instance_masks=False,
+                                            include_keypoints=False)
+
+  def testSSDRandomCropFixedAspectRatioWithMultiClassScores(self):
+    self._testSSDRandomCropFixedAspectRatio(include_multiclass_scores=True,
                                             include_instance_masks=False,
                                             include_keypoints=False)
 
   def testSSDRandomCropFixedAspectRatioWithMasksAndKeypoints(self):
-    self._testSSDRandomCropFixedAspectRatio(include_label_scores=False,
+    self._testSSDRandomCropFixedAspectRatio(include_multiclass_scores=False,
                                             include_instance_masks=True,
                                             include_keypoints=True)
 
   def testSSDRandomCropFixedAspectRatioWithLabelScoresMasksAndKeypoints(self):
-    self._testSSDRandomCropFixedAspectRatio(include_label_scores=True,
+    self._testSSDRandomCropFixedAspectRatio(include_multiclass_scores=False,
                                             include_instance_masks=True,
                                             include_keypoints=True)
+
+  def testConvertClassLogitsToSoftmax(self):
+    multiclass_scores = tf.constant(
+        [[1.0, 0.0], [0.5, 0.5], [1000, 1]], dtype=tf.float32)
+    temperature = 2.0
+
+    converted_multiclass_scores = (
+        preprocessor.convert_class_logits_to_softmax(
+            multiclass_scores=multiclass_scores, temperature=temperature))
+
+    expected_converted_multiclass_scores = [[[0.62245935, 0.37754068],
+                                             [0.5, 0.5], [1, 0]]]
+
+    with self.test_session() as sess:
+      (converted_multiclass_scores_) = sess.run([converted_multiclass_scores])
+
+      self.assertAllClose(converted_multiclass_scores_,
+                          expected_converted_multiclass_scores)
+
 
 if __name__ == '__main__':
   tf.test.main()

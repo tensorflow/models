@@ -1,0 +1,11 @@
+google-api-python-client>=1.6.7
+google-cloud-bigquery>=0.31.0
+kaggle>=1.3.9
+mlperf_compliance==0.0.10
+numpy>=1.15.4
+oauth2client>=4.1.2
+pandas>=0.22.0
+psutil>=5.4.3
+py-cpuinfo>=3.3.0
+scipy>=0.19.1
+typing

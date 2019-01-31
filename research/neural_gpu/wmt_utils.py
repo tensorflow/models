@@ -43,7 +43,7 @@ _CHAR_MARKER = "_CHAR_"
 _CHAR_MARKER_LEN = len(_CHAR_MARKER)
 _SPEC_CHARS = "" + chr(226) + chr(153) + chr(128)
 _PUNCTUATION = "][.,!?\"':;%$#@&*+}{|><=/^~)(_`,0123456789" + _SPEC_CHARS + "-"
-_WORD_SPLIT = re.compile(b"([" + _PUNCTUATION + "])")
+_WORD_SPLIT = re.compile("([" + _PUNCTUATION + "])")
 _OLD_WORD_SPLIT = re.compile(b"([.,!?\"':;)(])")
 _DIGIT_RE = re.compile(br"\d")
 

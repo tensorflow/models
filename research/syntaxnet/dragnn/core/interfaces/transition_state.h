@@ -29,8 +29,8 @@ namespace dragnn {
 // another, and every backend should define one. Note that inheriting from
 // TransitionState directly is not sufficient to use the Beam class, which
 // requires extra functionality given by inheriting from the
-// ClonableTransitionState interface. (ClonableTransitionState is a subclass
-// of TransitionState, so inheriting from ClonableTransitionState is sufficient
+// CloneableTransitionState interface. (CloneableTransitionState is a subclass
+// of TransitionState, so inheriting from CloneableTransitionState is sufficient
 // to allow Components to pass your backing states.)
 
 class TransitionState {

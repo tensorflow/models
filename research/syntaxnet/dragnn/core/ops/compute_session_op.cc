@@ -62,6 +62,10 @@ void ComputeSessionOp::Compute(OpKernelContext *context) {
                     "Must declare at least one output of type string "
                     "for the ComputeSession handle if OutputsHandle is true."));
   }
+  OP_REQUIRES(
+      context, context->input(0).dims() == 1,
+      InvalidArgument("Input to ComputeSession must be a vector, got rank ",
+                      context->input(0).dims()));
 
   // Gets the relevant ComputeSessionResource and computes with it.
   auto handle = context->input(0).vec<string>();

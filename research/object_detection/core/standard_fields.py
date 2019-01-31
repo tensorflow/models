@@ -34,13 +34,18 @@ class InputDataFields(object):
 
   Attributes:
     image: image.
+    image_additional_channels: additional channels.
     original_image: image in the original input size.
+    original_image_spatial_shape: image in the original input size.
     key: unique key corresponding to image.
     source_id: source of the original image.
     filename: original filename of the dataset (without common path).
     groundtruth_image_classes: image-level class labels.
+    groundtruth_image_confidences: image-level class confidences.
     groundtruth_boxes: coordinates of the ground truth boxes in the image.
     groundtruth_classes: box-level class labels.
+    groundtruth_confidences: box-level class confidences. The shape should be
+      the same as the shape of groundtruth_classes.
     groundtruth_label_types: box-level label types (e.g. explicit negative).
     groundtruth_is_crowd: [DEPRECATED, use groundtruth_group_of instead]
       is the groundtruth a single object or a crowd.
@@ -56,20 +61,26 @@ class InputDataFields(object):
     groundtruth_instance_classes: instance mask-level class labels.
     groundtruth_keypoints: ground truth keypoints.
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
-    groundtruth_label_scores: groundtruth label scores.
+    groundtruth_label_weights: groundtruth label weights.
     groundtruth_weights: groundtruth weight factor for bounding boxes.
     num_groundtruth_boxes: number of groundtruth boxes.
+    is_annotated: whether an image has been labeled or not.
     true_image_shapes: true shapes of images in the resized images, as resized
       images can be padded with zeros.
+    multiclass_scores: the label score per class for each box.
   """
   image = 'image'
+  image_additional_channels = 'image_additional_channels'
   original_image = 'original_image'
+  original_image_spatial_shape = 'original_image_spatial_shape'
   key = 'key'
   source_id = 'source_id'
   filename = 'filename'
   groundtruth_image_classes = 'groundtruth_image_classes'
+  groundtruth_image_confidences = 'groundtruth_image_confidences'
   groundtruth_boxes = 'groundtruth_boxes'
   groundtruth_classes = 'groundtruth_classes'
+  groundtruth_confidences = 'groundtruth_confidences'
   groundtruth_label_types = 'groundtruth_label_types'
   groundtruth_is_crowd = 'groundtruth_is_crowd'
   groundtruth_area = 'groundtruth_area'
@@ -82,10 +93,12 @@ class InputDataFields(object):
   groundtruth_instance_classes = 'groundtruth_instance_classes'
   groundtruth_keypoints = 'groundtruth_keypoints'
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
-  groundtruth_label_scores = 'groundtruth_label_scores'
+  groundtruth_label_weights = 'groundtruth_label_weights'
   groundtruth_weights = 'groundtruth_weights'
   num_groundtruth_boxes = 'num_groundtruth_boxes'
+  is_annotated = 'is_annotated'
   true_image_shape = 'true_image_shape'
+  multiclass_scores = 'multiclass_scores'
 
 
 class DetectionResultFields(object):
@@ -127,16 +140,19 @@ class BoxListFields(object):
     boundaries: boundaries per bounding box.
     keypoints: keypoints per bounding box.
     keypoint_heatmaps: keypoint heatmaps per bounding box.
+    is_crowd: is_crowd annotation per bounding box.
   """
   boxes = 'boxes'
   classes = 'classes'
   scores = 'scores'
   weights = 'weights'
+  confidences = 'confidences'
   objectness = 'objectness'
   masks = 'masks'
   boundaries = 'boundaries'
   keypoints = 'keypoints'
   keypoint_heatmaps = 'keypoint_heatmaps'
+  is_crowd = 'is_crowd'
 
 
 class TfExampleFields(object):
@@ -154,6 +170,8 @@ class TfExampleFields(object):
     height: height of image in pixels, e.g. 462
     width: width of image in pixels, e.g. 581
     source_id: original source of the image
+    image_class_text: image-level label in text format
+    image_class_label: image-level label in numerical format
     object_class_text: labels in text format, e.g. ["person", "cat"]
     object_class_label: labels in numbers, e.g. [16, 8]
     object_bbox_xmin: xmin coordinates of groundtruth box, e.g. 10, 30
@@ -188,6 +206,8 @@ class TfExampleFields(object):
   height = 'image/height'
   width = 'image/width'
   source_id = 'image/source_id'
+  image_class_text = 'image/class/text'
+  image_class_label = 'image/class/label'
   object_class_text = 'image/object/class/text'
   object_class_label = 'image/object/class/label'
   object_bbox_ymin = 'image/object/bbox/ymin'

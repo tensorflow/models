@@ -20,6 +20,47 @@ message Loss {
 
   // Localization loss weight.
   optional float localization_weight = 5 [default=1.0];
+
+  // If not left to default, applies random example sampling.
+  optional RandomExampleSampler random_example_sampler = 6;
+
+  // Equalization loss.
+  message EqualizationLoss {
+    // Weight equalization loss strength.
+    optional float weight = 1 [default=0.0];
+
+    // When computing equalization loss, ops that start with
+    // equalization_exclude_prefixes will be ignored. Only used when
+    // equalization_weight > 0.
+    repeated string exclude_prefixes = 2;
+  }
+
+  optional EqualizationLoss equalization_loss = 7;
+
+  enum ExpectedLossWeights {
+    NONE = 0;
+    // Use expected_classification_loss_by_expected_sampling
+    // from third_party/tensorflow_models/object_detection/utils/ops.py
+    EXPECTED_SAMPLING = 1;
+    // Use expected_classification_loss_by_reweighting_unmatched_anchors
+    // from third_party/tensorflow_models/object_detection/utils/ops.py
+    REWEIGHTING_UNMATCHED_ANCHORS = 2;
+  }
+
+  // Method to compute expected loss weights with respect to balanced
+  // positive/negative sampling scheme. If NONE, use explicit sampling.
+  // TODO(birdbrain): Move under ExpectedLossWeights.
+  optional ExpectedLossWeights expected_loss_weights = 18 [default = NONE];
+
+  // Minimum number of effective negative samples.
+  // Only applies if expected_loss_weights is not NONE.
+  // TODO(birdbrain): Move under ExpectedLossWeights.
+  optional float min_num_negative_samples = 19 [default=0];
+
+  // Desired number of effective negative samples per positive sample.
+  // Only applies if expected_loss_weights is not NONE.
+  // TODO(birdbrain): Move under ExpectedLossWeights.
+  optional float desired_negative_sampling_ratio = 20 [default=3];
 }
 
 // Configuration for bounding box localization loss function.
@@ -38,11 +79,17 @@ message WeightedL2LocalizationLoss {
   optional bool anchorwise_output = 1 [default=false];
 }
 
-// SmoothL1 (Huber) location loss: .5 * x ^ 2 if |x| < 1 else |x| - .5
+// SmoothL1 (Huber) location loss.
+// The smooth L1_loss is defined elementwise as .5 x^2 if |x| <= delta and
+// delta * (|x|-0.5*delta) otherwise, where x is the difference between
+// predictions and target.
 message WeightedSmoothL1LocalizationLoss {
   // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
+
+  // Delta value for huber loss.
+  optional float delta = 2 [default=1.0];
 }
 
 // Intersection over union location loss: 1 - IOU
@@ -54,6 +101,7 @@ message ClassificationLoss {
   oneof classification_loss {
     WeightedSigmoidClassificationLoss weighted_sigmoid = 1;
     WeightedSoftmaxClassificationLoss weighted_softmax = 2;
+    WeightedSoftmaxClassificationAgainstLogitsLoss weighted_logits_softmax = 5;
     BootstrappedSigmoidClassificationLoss bootstrapped_sigmoid = 3;
     SigmoidFocalClassificationLoss weighted_sigmoid_focal = 4;
   }
@@ -87,6 +135,17 @@ message WeightedSoftmaxClassificationLoss {
   optional float logit_scale = 2 [default = 1.0];
 }
 
+// Classification loss using a softmax function over class predictions and
+// a softmax function over the groundtruth labels (assumed to be logits).
+message WeightedSoftmaxClassificationAgainstLogitsLoss {
+  // DEPRECATED, do not use.
+  optional bool anchorwise_output = 1 [default = false];
+  // Scale and softmax groundtruth logits before calculating softmax
+  // classification loss. Typically used for softmax distillation with teacher
+  // annotations stored as logits.
+  optional float logit_scale = 2 [default = 1.0];
+}
+
 // Classification loss using a sigmoid function over the class prediction with
 // the highest prediction score.
 message BootstrappedSigmoidClassificationLoss {
@@ -103,7 +162,7 @@ message BootstrappedSigmoidClassificationLoss {
   optional bool anchorwise_output = 3 [default=false];
 }
 
-// Configuation for hard example miner.
+// Configuration for hard example miner.
 message HardExampleMiner {
   // Maximum number of hard examples to be selected per image (prior to
   // enforcing max negative to positive ratio constraint).  If set to 0,
@@ -133,4 +192,11 @@ message HardExampleMiner {
   // positive anchors and thus not bias the model towards having at least one
   // detection per image.
   optional int32 min_negatives_per_image = 5 [default=0];
+}
+
+// Configuration for random example sampler.
+message RandomExampleSampler {
+  // The desired fraction of positive samples in batch when applying random
+  // example sampling.
+  optional float positive_sample_fraction = 1 [default = 0.01];
 }

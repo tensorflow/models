@@ -72,6 +72,8 @@ class FasterRCNNResnetV1FeatureExtractor(
 
     VGG style channel mean subtraction as described here:
     https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
+    Note that if the number of channels is not equal to 3, the mean subtraction
+    will be skipped and the original resized_inputs will be returned.
 
     Args:
       resized_inputs: A [batch, height_in, width_in, channels] float32 tensor
@@ -82,8 +84,11 @@ class FasterRCNNResnetV1FeatureExtractor(
         tensor representing a batch of images.
 
     """
-    channel_means = [123.68, 116.779, 103.939]
-    return resized_inputs - [[channel_means]]
+    if resized_inputs.shape.as_list()[3] == 3:
+      channel_means = [123.68, 116.779, 103.939]
+      return resized_inputs - [[channel_means]]
+    else:
+      return resized_inputs
 
   def _extract_proposal_features(self, preprocessed_inputs, scope):
     """Extracts first stage RPN features.
@@ -95,6 +100,9 @@ class FasterRCNNResnetV1FeatureExtractor(
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      activations: A dictionary mapping feature extractor tensor names to
+        tensors
+
     Raises:
       InvalidArgumentError: If the spatial size of `preprocessed_inputs`
         (height or width) is less than 33.
@@ -111,7 +119,7 @@ class FasterRCNNResnetV1FeatureExtractor(
 
     with tf.control_dependencies([shape_assert]):
       # Disables batchnorm for fine-tuning with smaller batch sizes.
-      # TODO: Figure out if it is needed when image
+      # TODO(chensun): Figure out if it is needed when image
       # batch size is bigger.
       with slim.arg_scope(
           resnet_utils.resnet_arg_scope(
@@ -130,7 +138,7 @@ class FasterRCNNResnetV1FeatureExtractor(
               scope=var_scope)
 
     handle = scope + '/%s/block3' % self._architecture
-    return activations[handle]
+    return activations[handle], activations
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.

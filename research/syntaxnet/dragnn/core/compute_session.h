@@ -22,6 +22,7 @@
 #include "dragnn/core/index_translator.h"
 #include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/component.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/spec.pb.h"
 #include "dragnn/protos/trace.pb.h"
 
@@ -102,7 +103,7 @@ class ComputeSession {
       const string &component_name, int channel_id) = 0;
 
   // Get the oracle labels for the given component.
-  virtual std::vector<std::vector<int>> EmitOracleLabels(
+  virtual std::vector<std::vector<std::vector<Label>>> EmitOracleLabels(
       const string &component_name) = 0;
 
   // Returns true if the given component is terminal.
@@ -125,6 +126,9 @@ class ComputeSession {
   // Like SetInputData(), but accepts an InputBatchCache directly, potentially
   // bypassing de-serialization.
   virtual void SetInputBatchCache(std::unique_ptr<InputBatchCache> batch) = 0;
+
+  // Returns the current InputBatchCache, or null if there is none.
+  virtual InputBatchCache *GetInputBatchCache() = 0;
 
   // Resets all components owned by this ComputeSession.
   virtual void ResetSession() = 0;

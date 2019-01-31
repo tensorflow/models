@@ -113,7 +113,9 @@ class TfExampleDetectionAndGTParser(data_parser.DataToNumpyParser):
         fields.InputDataFields.groundtruth_difficult:
             Int64Parser(fields.TfExampleFields.object_difficult),
         fields.InputDataFields.groundtruth_group_of:
-            Int64Parser(fields.TfExampleFields.object_group_of)
+            Int64Parser(fields.TfExampleFields.object_group_of),
+        fields.InputDataFields.groundtruth_image_classes:
+            Int64Parser(fields.TfExampleFields.image_class_label),
     }
 
   def parse(self, tf_example):
@@ -134,6 +136,8 @@ class TfExampleDetectionAndGTParser(data_parser.DataToNumpyParser):
       groundtruth group of flag (optional, None if not specified).
       fields.InputDataFields.groundtruth_difficult - a numpy array containing
       groundtruth difficult flag (optional, None if not specified).
+      fields.InputDataFields.groundtruth_image_classes - a numpy array
+      containing groundtruth image-level labels.
       fields.DetectionResultFields.detection_boxes - a numpy array containing
       detection boxes.
       fields.DetectionResultFields.detection_classes - a numpy array containing

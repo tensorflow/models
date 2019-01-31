@@ -23,6 +23,7 @@
 #include "dragnn/core/resource_container.h"
 #include "dragnn/core/test/generic.h"
 #include "dragnn/core/test/mock_compute_session.h"
+#include "dragnn/core/util/label.h"
 
 #include <gmock/gmock.h>
 
@@ -44,26 +45,26 @@ namespace syntaxnet {
 namespace dragnn {
 
 using tensorflow::AllocatorAttributes;
-using tensorflow::checkpoint::TensorSliceReaderCacheWrapper;
 using tensorflow::DT_BOOL;
 using tensorflow::DT_FLOAT;
-using tensorflow::DT_STRING;
 using tensorflow::DT_INT32;
-using tensorflow::FrameAndIter;
+using tensorflow::DT_STRING;
 using tensorflow::DataType;
+using tensorflow::FrameAndIter;
 using tensorflow::NodeDefBuilder;
 using tensorflow::OpKernelContext;
 using tensorflow::ResourceMgr;
 using tensorflow::ScopedStepContainer;
 using tensorflow::Status;
-using tensorflow::test::SetOutputAttrs;
 using tensorflow::TensorShape;
+using tensorflow::checkpoint::TensorSliceReaderCacheWrapper;
+using tensorflow::test::SetOutputAttrs;
 
-using testing::_;
 using testing::ElementsAreArray;
 using testing::Invoke;
 using testing::Pointwise;
 using testing::Return;
+using testing::_;
 
 typedef ResourceContainer<ComputeSession> ComputeSessionResource;
 typedef ResourceContainer<ComputeSessionPool> ComputeSessionPoolResource;
@@ -126,12 +127,18 @@ class TestComponent : public Component {
       int batch_size_padding, int num_steps_padding, int output_array_size,
       const vector<const float *> &per_channel_embeddings,
       float *embedding_matrix) override {}
+  void BulkEmbedDenseFixedFeatures(
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output, int embedding_output_size,
+      int *offset_array_output, int offset_array_size) override {}
+  int BulkDenseFeatureSize() const override { return 0; }
   std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override {
     std::vector<LinkFeatures> ret;
     return ret;
   }
-  std::vector<std::vector<int>> GetOracleLabels() const override {
-    std::vector<std::vector<int>> ret;
+  std::vector<std::vector<std::vector<Label>>> GetOracleLabels()
+      const override {
+    std::vector<std::vector<std::vector<Label>>> ret;
     return ret;
   }
   void FinalizeData() override {}
@@ -482,6 +489,201 @@ TEST_F(DragnnOpKernelsTest, GetSessionCountsOpTest) {
             GetOutput(0)->vec<int64>()(1));
 }
 
+// The RebatchDensor op should rebatch densors.
+TEST_F(DragnnOpKernelsTest, RebatchDensorOpTest) {
+  int sequence_length = 3;
+  int pad_length = 2;
+  TF_ASSERT_OK(NodeDefBuilder("rebatch_densor", "RebatchDensor")
+                   .Attr("sequence_length", sequence_length)
+                   .Attr("lr_padding", pad_length)
+                   .Input(FakeInput(DT_FLOAT))  // The dense data tensor.
+                   .Input(FakeInput(DT_INT32))  // The offsets tensor.
+                   .Finalize(node_def()));
+  TF_ASSERT_OK(InitOp());
+
+  // Set the input data.
+  const std::vector<float> weights = {
+      // PASSAGE 1
+      1.01, 1.02,  //
+      1.04, 1.05,  //
+      1.07, 1.08,  //
+      1.10, 1.11,  //
+      // PASSAGE 2
+      2.01, 2.02,  //
+      2.03, 2.04,  //
+      2.05, 2.06,  //
+      2.07, 2.08,  //
+      2.09, 2.10,  //
+      2.11, 2.12   //
+  };
+  AddInputFromArray<float>(TensorShape({10, 2}), weights);
+  const std::vector<int> offsets = {0, 4, 10};
+  AddInputFromArray<int>(TensorShape({3}), offsets);
+
+  // Reset the test context to ensure it's clean.
+  ResetOpKernelContext();
+
+  // Run the kernel.
+  TF_EXPECT_OK(RunOpKernelWithContext());
+
+  // The first two embeddings in the 1st and 3rd output should be {0.0}
+  // The first two embeddings in the 2nd output should be embeddings from token
+  // 1 and 2 (so vector items 4 through 10).
+  // The last 2 embeddings in row 1 should be from token 4, then 0s.
+  // The last 4 embeddings in rows 2 and 3 should be 0.
+  const std::vector<float> expected_weights = {
+      // BATCH 0
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      1.01, 1.02,  //
+      1.04, 1.05,  //
+      1.07, 1.08,  //
+      1.10, 1.11,  //
+      0.0, 0.0,    //
+      // BATCH 1
+      1.04, 1.05,  //
+      1.07, 1.08,  //
+      1.10, 1.11,  //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      // BATCH 2
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      2.01, 2.02,  //
+      2.03, 2.04,  //
+      2.05, 2.06,  //
+      2.07, 2.08,  //
+      2.09, 2.10,  //
+      // BATCH 3
+      2.03, 2.04,  //
+      2.05, 2.06,  //
+      2.07, 2.08,  //
+      2.09, 2.10,  //
+      2.11, 2.12,  //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+  };
+
+  for (int i = 0; i < expected_weights.size(); ++i) {
+    LOG(INFO) << GetOutput(0)->flat<float>()(i);
+  }
+
+  // The output should have dimensions {4, 7, 2}.
+  EXPECT_EQ(4, GetOutput(0)->dim_size(0));
+  EXPECT_EQ(7, GetOutput(0)->dim_size(1));
+  EXPECT_EQ(2, GetOutput(0)->dim_size(2));
+
+  // The output should match the expected tensor.
+  for (int i = 0; i < expected_weights.size(); ++i) {
+    EXPECT_EQ(expected_weights[i], GetOutput(0)->flat<float>()(i))
+        << "Failed at index " << i;
+  }
+
+  // The offsets output shout have dimension {3}.
+  EXPECT_EQ(4, GetOutput(1)->dim_size(0));
+  std::vector<int> expected_indices = {0, 0, 1, 1};
+  for (int i = 0; i < expected_indices.size(); ++i) {
+    EXPECT_EQ(expected_indices[i], GetOutput(1)->flat<int32>()(i))
+        << "Failed at index " << i;
+  }
+}
+
+// Todo(me): write this
+TEST_F(DragnnOpKernelsTest, UnbatchSubsequences) {
+  TF_ASSERT_OK(NodeDefBuilder("unbatch_subsequences", "UnbatchSubsequences")
+                   .Input(FakeInput(DT_FLOAT))  // The data tensor.
+                   .Input(FakeInput(DT_INT32))  // The index tensor.
+                   .Input(FakeInput(DT_INT32))  // The offsets tensor.
+                   .Finalize(node_def()));
+  TF_ASSERT_OK(InitOp());
+
+  // Set the input data.
+  const std::vector<float> input = {
+      // BATCH 0
+      1.01, 1.02,  //
+      1.04, 1.05,  //
+      1.07, 1.08,  //
+      1.10, 1.11,  //
+      1.12, 1.13,  //
+      // BATCH 1
+      1.14, 1.15,  //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      // BATCH 2
+      2.01, 2.02,  //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      // BATCH 3
+      3.01, 3.02,  //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0     //
+  };
+
+  AddInputFromArray<float>(TensorShape({4, 1, 5, 2}), input);
+  const std::vector<int> indices = {0, 0, 1, 2};
+  AddInputFromArray<int>(TensorShape({4}), indices);
+  const std::vector<int> offsets = {0, 6, 7, 8};
+  AddInputFromArray<int>(TensorShape({4}), offsets);
+
+  // Reset the test context to ensure it's clean.
+  ResetOpKernelContext();
+
+  // Run the kernel.
+  TF_EXPECT_OK(RunOpKernelWithContext());
+
+  // The first two embeddings in the 1st and 3rd output should be {0.0}
+  // The first two embeddings in the 2nd output should be embeddings from token
+  // 1 and 2 (so vector items 4 through 10).
+  // The last 2 embeddings in row 1 should be from token 4, then 0s.
+  // The last 4 embeddings in rows 2 and 3 should be 0.
+  const std::vector<float> expected_weights = {
+      // BATCH 0
+      1.01, 1.02,  //
+      1.04, 1.05,  //
+      1.07, 1.08,  //
+      1.10, 1.11,  //
+      1.12, 1.13,  //
+      1.14, 1.15,  //
+      // BATCH 1
+      2.01, 2.02,  //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      // BATCH 2
+      3.01, 3.02,  //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0,    //
+      0.0, 0.0     //
+  };
+
+  for (int i = 0; i < expected_weights.size(); ++i) {
+    LOG(INFO) << GetOutput(0)->flat<float>()(i);
+  }
+
+  // The output should have dimensions {3, 7, 2}.
+  EXPECT_EQ(3, GetOutput(0)->dim_size(0));
+  EXPECT_EQ(6, GetOutput(0)->dim_size(1));
+  EXPECT_EQ(2, GetOutput(0)->dim_size(2));
+
+  // The output should match the expected tensor.
+  for (int i = 0; i < expected_weights.size(); ++i) {
+    EXPECT_EQ(expected_weights[i], GetOutput(0)->flat<float>()(i))
+        << "Failed at index " << i;
+  }
+}
+
 // The AdvanceFromOracle op should call AdvanceFromOracle on the specified
 // component name.
 TEST_F(DragnnOpKernelsTest, AdvanceFromOracleOpTest) {
@@ -651,7 +853,8 @@ TEST_F(DragnnOpKernelsTest, ExtractFixedFeaturesOpTest) {
   // If we have 3 features, for a given channel, we might have:
   //   feature a: (5, 1)
   //   feature b: (5, 0.5), (6, 0.7)
-  //   feature c: (3, 0.1), (7, [empty]) <- Empty weights are equivalent to 1.0.
+  //   feature c: (3, 0.1), (7, [empty]) <- Empty weights are equivalent
+  //   to 1.0.
   // In this case:
   //   indices should look like  [0  , 1  , 1  , 2  , 2  ]
   //   ids should be             [5  , 5  , 6  , 3  , 7  ]
@@ -727,15 +930,15 @@ TEST_F(DragnnOpKernelsTest, ExtractLinkFeaturesOpTest) {
   MockComputeSession *mock_session_ptr = mock_session.get();
 
   // This op will return link features in two flat arrays using batch-major
-  // ordering. So, if we have a batch of 2 and a beam of 3, with data as follows
-  // (note that the features are {batch,beam,step} and [] is 'empty')
+  // ordering. So, if we have a batch of 2 and a beam of 3, with data as
+  // follows (note that the features are {batch,beam,step} and [] is 'empty')
   // batch 1 features: {{02,03,[]},{01,00,04},{08,06,01}}
   // batch 2 features: {{12,13,14},{11,12,-1},{18,16,20}}
   //
-  // and a **source component** beam size of 5 should result in output tensors:
-  // step_idx  (tensor 0): {-1,  4,  1, 14, -1, 20}
-  // array_idx (tensor 1): { 0,  5, 46, 73,  0, 106}
-  // (0 [step=-1]),(5=1*5+0),(46=8*5+6),(73=12*5+13),(0 [step=-1]),(96=18*5+16)
+  // and a **source component** beam size of 5 should result in output
+  // tensors: step_idx  (tensor 0): {-1,  4,  1, 14, -1, 20} array_idx (tensor
+  // 1): { 0,  5, 46, 73,  0, 106} (0
+  // [step=-1]),(5=1*5+0),(46=8*5+6),(73=12*5+13),(0 [step=-1]),(96=18*5+16)
   constexpr int kSourceComponentBeamSize = 5;
 
   std::vector<LinkFeatures> features;
@@ -814,8 +1017,11 @@ TEST_F(DragnnOpKernelsTest, EmitOracleLabelsOpTest) {
 
   constexpr int kBatchSize = 2;
   constexpr int kBeamSize = 4;
-  const std::vector<std::vector<int>> oracle_labels(
-      {{1, 3, 5, 7}, {2, 4, 6, 8}});
+
+  // Vectors containing, respectively, label ids and the corresponding Labels.
+  const std::vector<std::vector<std::vector<Label>>> oracle_labels(
+      {{{{1, 1.f}}, {{3, 1.f}}, {{5, 1.f}}, {{7, 1.f}}},
+       {{{2, 1.f}}, {{4, 1.f}}, {{6, 1.f}}, {{8, 1.f}}}});
 
   EXPECT_CALL(*mock_session_ptr, BatchSize(component_name))
       .WillRepeatedly(Return(kBatchSize));
@@ -833,6 +1039,73 @@ TEST_F(DragnnOpKernelsTest, EmitOracleLabelsOpTest) {
   EXPECT_EQ(expected_labels.size(), GetOutput(0)->NumElements());
   for (int i = 0; i < expected_labels.size(); ++i) {
     EXPECT_EQ(expected_labels[i], GetOutput(0)->vec<int32>()(i));
+  }
+}
+
+// The EmitOracleLabelsAndProbabilities op returns vectors of instance
+// indices, labels, and probabilities corresponding to the elements in the
+// beams in the batch.
+TEST_F(DragnnOpKernelsTest, EmitOracleLabelsAndProbabilitiesOpTest) {
+  // Create and initialize the kernel under test.
+  const string component_name = "TESTING_COMPONENT_NAME";
+  TF_ASSERT_OK(
+      NodeDefBuilder("emit_oracle_labels_and_probabilities",
+                     "EmitOracleLabelsAndProbabilities")
+          .Attr("component", component_name)
+          .Input(FakeInput(DT_STRING))  // The handle for the ComputeSession.
+          .Finalize(node_def()));
+  TF_ASSERT_OK(InitOp());
+
+  // Set the input data.
+  const string container_string = "container_str";
+  const string id_string = "id_str";
+  AddInputFromList<string>(TensorShape({2}), {container_string, id_string});
+
+  // Reset the test context to ensure it's clean.
+  ResetOpKernelContext();
+
+  // Create a MockComputeSession and set expectations.
+  std::unique_ptr<MockComputeSession> mock_session(new MockComputeSession());
+  MockComputeSession *mock_session_ptr = mock_session.get();
+
+  // Wrap the ComputeSessionResource and put it into the resource manager.
+  TF_ASSERT_OK(resource_mgr()->Create<ComputeSessionResource>(
+      container_string, id_string,
+      new ComputeSessionResource(std::move(mock_session))));
+
+  // The op should request the oracle labels, and probabilities. They should
+  // be returned in batch major order, so if the label:probability pairs are:
+  //   batch 1 oracle labels: {{1:0.6, 2:0.8}, {3:1.0}, {5:0.7}}
+  //   batch 2 oracle labels: {{2:0.9}, {4:1.0}, {6:0.3, 8:0.6}}
+  // then the resulting output tensors are:
+  //   indices_output: {0, 0, 1, 2, 3, 4, 5, 5}
+  //   label_output:   {1, 2, 3, 5, 2, 4, 6, 8}
+  //   prob_output:    {0.6, 0.8, 1.0, 0.7, 0.9, 1.0, 0.3, 0.6}
+
+  // Oracle labels along with their probabilities.
+  const std::vector<std::vector<std::vector<Label>>> oracle_labels(
+      {{{{1, 0.6}, {2, 0.8}}, {{3, 1.0}}, {{5, 0.7}}},
+       {{{2, 0.9}}, {{4, 1.0}}, {{6, 0.3}, {8, 0.6}}}});
+
+  EXPECT_CALL(*mock_session_ptr, EmitOracleLabels(component_name))
+      .WillOnce(Return(oracle_labels));
+
+  const std::vector<int> expected_indices({0, 0, 1, 2, 3, 4, 5, 5});
+  const std::vector<int> expected_labels({1, 2, 3, 5, 2, 4, 6, 8});
+  const std::vector<float> expected_probs(
+      {0.6, 0.8, 1.0, 0.7, 0.9, 1.0, 0.3, 0.6});
+
+  // Run the kernel.
+  TF_EXPECT_OK(RunOpKernelWithContext());
+
+  // Validate the outputs.
+  EXPECT_EQ(expected_indices.size(), GetOutput(0)->NumElements());
+  EXPECT_EQ(expected_labels.size(), GetOutput(1)->NumElements());
+  EXPECT_EQ(expected_probs.size(), GetOutput(2)->NumElements());
+  for (int i = 0; i < expected_indices.size(); ++i) {
+    EXPECT_EQ(expected_indices[i], GetOutput(0)->vec<int32>()(i));
+    EXPECT_EQ(expected_labels[i], GetOutput(1)->vec<int32>()(i));
+    EXPECT_EQ(expected_probs[i], GetOutput(2)->vec<float>()(i));
   }
 }
 

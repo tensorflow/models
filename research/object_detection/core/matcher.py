@@ -197,8 +197,10 @@ class Match(object):
         The shape of the gathered tensor is [match_results.shape[0]] +
         input_tensor.shape[1:].
     """
-    input_tensor = tf.concat([tf.stack([ignored_value, unmatched_value]),
-                              input_tensor], axis=0)
+    input_tensor = tf.concat(
+        [tf.stack([ignored_value, unmatched_value]),
+         tf.to_float(input_tensor)],
+        axis=0)
     gather_indices = tf.maximum(self.match_results + 2, 0)
     gathered_tensor = self._gather_op(input_tensor, gather_indices)
     return gathered_tensor
@@ -219,7 +221,7 @@ class Matcher(object):
     """
     self._use_matmul_gather = use_matmul_gather
 
-  def match(self, similarity_matrix, scope=None, **params):
+  def match(self, similarity_matrix, valid_rows=None, scope=None):
     """Computes matches among row and column indices and returns the result.
 
     Computes matches among the row and column indices based on the similarity
@@ -228,27 +230,28 @@ class Matcher(object):
     Args:
       similarity_matrix: Float tensor of shape [N, M] with pairwise similarity
         where higher value means more similar.
+      valid_rows: A boolean tensor of shape [N] indicating the rows that are
+        valid for matching.
       scope: Op scope name. Defaults to 'Match' if None.
-      **params: Additional keyword arguments for specific implementations of
-        the Matcher.
 
     Returns:
       A Match object with the results of matching.
     """
-    with tf.name_scope(scope, 'Match', [similarity_matrix, params]) as scope:
-      return Match(self._match(similarity_matrix, **params),
+    with tf.name_scope(scope, 'Match') as scope:
+      if valid_rows is None:
+        valid_rows = tf.ones(tf.shape(similarity_matrix)[0], dtype=tf.bool)
+      return Match(self._match(similarity_matrix, valid_rows),
                    self._use_matmul_gather)
 
   @abstractmethod
-  def _match(self, similarity_matrix, **params):
+  def _match(self, similarity_matrix, valid_rows):
     """Method to be overridden by implementations.
 
     Args:
       similarity_matrix: Float tensor of shape [N, M] with pairwise similarity
         where higher value means more similar.
-      **params: Additional keyword arguments for specific implementations of
-        the Matcher.
-
+      valid_rows: A boolean tensor of shape [N] indicating the rows that are
+        valid for matching.
     Returns:
       match_results: Integer tensor of shape [M]: match_results[i]>=0 means
         that column i is matched to row match_results[i], match_results[i]=-1
