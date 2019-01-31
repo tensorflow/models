@@ -81,86 +81,89 @@ def run_ncf(_):
   producer.start()
   model_helpers.apply_clean(flags.FLAGS)
 
-  user_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
-  item_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
-
-  # Dummy duplicate mask
-  dup_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=rconst.DUPLICATE_MASK, dtype=tf.int32)
-  # Labels as input for the custom loss function
-  labels_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name="labels", dtype=tf.int32)
-  # valid_point_mask as input for the custom loss function
-  valid_pt_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=rconst.VALID_POINT_MASK, dtype=tf.int32)
-
-  base_model = neumf_model.construct_model(user_input, item_input, params)
-  keras_model_input = base_model.input
-
-  keras_model_input.append(dup_mask_input)
-  keras_model_input.append(labels_input)
-  keras_model_input.append(valid_pt_mask_input)
-
-  keras_model = tf.keras.Model(
-      inputs=keras_model_input,
-      outputs=base_model.output)
-  keras_model.summary()
-
-  def pre_process_training_input(features, labels):
-    # Add a dummy dup_mask to the input dataset
-    features[rconst.DUPLICATE_MASK] = tf.zeros_like(
-        features[movielens.USER_COLUMN], dtype=tf.float32)
-    features["labels"] = labels
-    return features, labels
-
-  optimizer = ncf_common.get_optimizer(params)
   distribution = ncf_common.get_distribution_strategy(params)
+  with distribution_utils.MaybeDistributionScope(distribution):
+    user_input = tf.keras.layers.Input(
+        shape=(), batch_size=batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
+    item_input = tf.keras.layers.Input(
+        shape=(), batch_size=batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
 
-  train_input_fn = producer.make_input_fn(is_training=True)
-  train_input_dataset = train_input_fn(params).map(
-      lambda features, labels: pre_process_training_input(features, labels))
-  train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
+    # Dummy duplicate mask
+    dup_mask_input = tf.keras.layers.Input(
+        shape=(), batch_size=batch_size, name=rconst.DUPLICATE_MASK, dtype=tf.int32)
+    # Labels as input for the custom loss function
+    labels_input = tf.keras.layers.Input(
+        shape=(), batch_size=batch_size, name="labels", dtype=tf.int32)
+    # valid_point_mask as input for the custom loss function
+    valid_pt_mask_input = tf.keras.layers.Input(
+        shape=(), batch_size=batch_size, name=rconst.VALID_POINT_MASK, dtype=tf.int32)
 
-  # Custom loss function to include the valid point mask
-  softmax_logits = ncf_common.softmax_logitfy(keras_model.output)
-  loss_tensor = tf.losses.sparse_softmax_cross_entropy(
-      labels=labels_input,
-      logits=softmax_logits,
-      weights=tf.cast(valid_pt_mask_input, tf.float32),
-  )
-  loss_tensor= tf.identity(loss_tensor, name="train_loss")
-  keras_model.add_loss(loss_tensor)
+    base_model = neumf_model.construct_model(user_input, item_input, params)
+    keras_model_input = base_model.input
 
-  # Custom loss function for the hit rate
-  logits = keras_model.output
-  softmax_logits = ncf_common.softmax_logitfy(logits)
+    keras_model_input.append(dup_mask_input)
+    keras_model_input.append(labels_input)
+    keras_model_input.append(valid_pt_mask_input)
 
-  cross_entropy, \
-  metric_fn, \
-  in_top_k, \
-  ndcg, \
-  metric_weights = ncf_common.compute_eval_loss_and_metrics_helper(
-      logits,
-      softmax_logits,
-      tf.cast(dup_mask_input, tf.float32),
-      params["num_neg"],
-      params["match_mlperf"],
-      use_tpu_spec=params["use_xla_for_gpu"])
+    keras_model = tf.keras.Model(
+        inputs=keras_model_input,
+        outputs=base_model.output)
+    keras_model.summary()
 
-  values = in_top_k
+    def pre_process_training_input(features, labels):
+      # Add a dummy dup_mask to the input dataset
+      features[rconst.DUPLICATE_MASK] = tf.zeros_like(
+          features[movielens.USER_COLUMN], dtype=tf.float32)
+      features["labels"] = labels
+      return features, labels
 
-  values = tf.cond(
-      tf.keras.backend.learning_phase(),
-      lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
-      lambda: values)
-  values = tf.identity(values, "hit_rate")
-  keras_model.add_metric(values, name='hit_rate', aggregation='mean')
+    optimizer = ncf_common.get_optimizer(params)
 
-  # TODO(shiningsun): Both MirroredStrategy and OneDeviceStrategy error out.
-  # Find out why and change the distribute to distribution
-  keras_model.compile(optimizer=optimizer, distribute=None)
+    train_input_fn = producer.make_input_fn(is_training=True)
+    train_input_dataset = train_input_fn(params).map(
+        lambda features, labels: pre_process_training_input(features, labels))
+    train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
+
+    # Custom loss function to include the valid point mask
+    softmax_logits = ncf_common.softmax_logitfy(keras_model.output)
+    loss_tensor = tf.losses.sparse_softmax_cross_entropy(
+        labels=labels_input,
+        logits=softmax_logits,
+        weights=tf.cast(valid_pt_mask_input, tf.float32),
+    )
+    loss_tensor= tf.identity(loss_tensor, name="train_loss")
+    # keras_model.add_loss(loss_tensor)
+
+    # Custom loss function for the hit rate
+    logits = keras_model.output
+    softmax_logits = ncf_common.softmax_logitfy(logits)
+
+    cross_entropy, \
+    metric_fn, \
+    in_top_k, \
+    ndcg, \
+    metric_weights = neumf_model.compute_eval_loss_and_metrics_helper(
+        logits,
+        softmax_logits,
+        tf.cast(dup_mask_input, tf.float32),
+        params["num_neg"],
+        params["match_mlperf"],
+        use_tpu_spec=params["use_xla_for_gpu"])
+
+    values = in_top_k
+
+    values = tf.cond(
+        tf.keras.backend.learning_phase(),
+        lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
+        lambda: values)
+    values = tf.identity(values, "hit_rate")
+    # keras_model.add_metric(values, name='hit_rate', aggregation='mean')
+
+    # TODO(shiningsun): Both MirroredStrategy and OneDeviceStrategy error out.
+    # Find out why and change the distribute to distribution
+    keras_model.compile(
+        optimizer=optimizer,
+        distribute=None)
 
   keras_model.fit(train_input_dataset,
       epochs=FLAGS.train_epochs,
