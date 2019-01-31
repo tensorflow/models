@@ -130,7 +130,7 @@ def run(flags_obj):
   strategy = distribution_utils.get_distribution_strategy(
       flags_obj.num_gpus, flags_obj.turn_off_distribution_strategy)
 
-  strategy_scope = keras_common.get_strategy_scope(strategy)
+  strategy_scope = distribution_utils.MaybeDistributionScope(strategy)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()

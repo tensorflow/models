@@ -245,20 +245,3 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
 
   return input_fn
 
-
-def get_strategy_scope(strategy):
-  if strategy:
-    strategy_scope = strategy.scope()
-  else:
-    strategy_scope = DummyContextManager()
-
-  return strategy_scope
-
-
-class DummyContextManager(object):
-
-  def __enter__(self):
-    pass
-
-  def __exit__(self, *args):
-    pass

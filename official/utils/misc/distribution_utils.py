@@ -95,3 +95,20 @@ def per_device_batch_size(batch_size, num_gpus):
           ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
   return int(batch_size / num_gpus)
+
+class MaybeDistributionScope(object):
+	"""Provides a context allowing no distribution strategy."""
+
+  def __init__(self, distribution):
+      self._distribution = distribution
+    self._scope = None
+
+  def __enter__(self):
+      if self._distribution:
+	  self._scope = self._distribution.scope()
+      self._scope.__enter__()
+
+  def __exit__(self, exc_type, value, traceback):
+      if self._distribution:
+	  self._scope.__exit__(exc_type, value, traceback)
+      self._scope = None
