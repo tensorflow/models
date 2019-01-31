@@ -42,7 +42,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     super(Resnet56KerasAccuracy, self).__init__(output_dir=output_dir,
                                                 flag_methods=flag_methods)
 
-  def keras_resnet56_1_gpu(self):
+  def benchmark_graph_1_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
     FLAGS.num_gpus = 1
@@ -54,7 +54,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     stats = keras_cifar_main.run(FLAGS)
     self.fill_report_object(stats, FLAGS.batch_size)
 
-  def keras_resnet56_eager_1_gpu(self):
+  def benchmark_1_gpu(self):
     """Test keras based model with eager and distribution strategies."""
     self._setup()
     FLAGS.num_gpus = 1
@@ -67,7 +67,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     stats = keras_cifar_main.run(flags.FLAGS)
     self.fill_report_object(stats, FLAGS.batch_size)
 
-  def keras_resnet56_eager_2_gpu(self):
+  def benchmark_2_gpu(self):
     """Test keras based model with eager and distribution strategies."""
     self._setup()
     FLAGS.num_gpus = 2
@@ -80,7 +80,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     stats = keras_cifar_main.run(FLAGS)
     self.fill_report_object(stats, FLAGS.batch_size)
 
-  def keras_resnet56_2_gpu(self):
+  def benchmark_graph_2_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
     FLAGS.num_gpus = 2
@@ -93,7 +93,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     stats = keras_cifar_main.run(FLAGS)
     self.fill_report_object(stats, FLAGS.batch_size)
 
-  def keras_resnet56_no_dist_strat_1_gpu(self):
+  def benchmark_graph_1_gpu_no_dist_strat(self):
     """Test keras based model with Keras fit but not distribution strategies."""
     self._setup()
     FLAGS.turn_off_distribution_strategy = True
