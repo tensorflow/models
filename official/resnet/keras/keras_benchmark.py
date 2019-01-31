@@ -34,23 +34,17 @@ class KerasBenchmark(object):
   def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
     self.oss_report_object = None
     self.output_dir = output_dir
-    self.default_flags = {}
     self.default_flags = default_flags or {}
     self.flag_methods = flag_methods or {}
 
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)
 
-  def _setup(self, flag_methods=None):
-    """Sets up and resets flags before each test.
-
-    Args:
-      flag_methods: list of methods to execute that add global flags.
-
-    """
+  def _setup(self):
+    """Sets up and resets flags before each test."""
     tf.logging.set_verbosity(tf.logging.DEBUG)
     if KerasBenchmark.local_flags is None:
-      for flag_method in flag_methods:
+      for flag_method in self.flag_methods:
         flag_method()
       # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])

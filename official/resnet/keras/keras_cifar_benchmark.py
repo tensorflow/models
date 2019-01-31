@@ -114,11 +114,6 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
         total_batch_size=total_batch_size,
         log_steps=100)
 
-  def _setup(self):
-    flag_methods = [keras_common.define_keras_flags,
-                    cifar_main.define_cifar_flags]
-    super(Resnet56KerasAccuracy, self)._setup(flag_methods=flag_methods)
-
 
 class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   """Short performance tests for ResNet56 via Keras and CIFAR-10."""
@@ -195,11 +190,6 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         stats,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps)
-
-  def _setup(self):
-    flag_methods = [keras_common.define_keras_flags,
-                    cifar_main.define_cifar_flags]
-    super(Resnet56KerasBenchmarkBase, self)._setup(flag_methods=flag_methods)
 
 
 class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
