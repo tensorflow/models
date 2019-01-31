@@ -82,6 +82,8 @@ def run_ncf(_):
   model_helpers.apply_clean(flags.FLAGS)
 
   distribution = ncf_common.get_distribution_strategy(params)
+  # TODO(shiningsun): Both MirroredStrategy and OneDeviceStrategy error out.
+  # Find out why and change the distribute to distribution
   with distribution_utils.MaybeDistributionScope(distribution):
     user_input = tf.keras.layers.Input(
         shape=(), batch_size=batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
@@ -131,7 +133,6 @@ def run_ncf(_):
         logits=softmax_logits,
         weights=tf.cast(valid_pt_mask_input, tf.float32),
     )
-    loss_tensor= tf.identity(loss_tensor, name="train_loss")
     # keras_model.add_loss(loss_tensor)
 
     # Custom loss function for the hit rate
@@ -150,18 +151,19 @@ def run_ncf(_):
         params["match_mlperf"],
         use_tpu_spec=params["use_xla_for_gpu"])
 
-    values = in_top_k
+    hit_rate_metric = in_top_k
 
-    values = tf.cond(
+    hit_rate_metric = tf.cond(
         tf.keras.backend.learning_phase(),
         lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
-        lambda: values)
-    values = tf.identity(values, "hit_rate")
-    # keras_model.add_metric(values, name='hit_rate', aggregation='mean')
+        lambda: hit_rate_metric)
+    # keras_model.add_metric(
+    #     hit_rate_metric,
+    #     name='hit_rate',
+    #     aggregation='mean')
 
-    # TODO(shiningsun): Both MirroredStrategy and OneDeviceStrategy error out.
-    # Find out why and change the distribute to distribution
     keras_model.compile(
+        loss='categorical_crossentropy',
         optimizer=optimizer,
         distribute=None)
 
