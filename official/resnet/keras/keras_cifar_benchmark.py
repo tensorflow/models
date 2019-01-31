@@ -85,10 +85,9 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._setup()
     FLAGS.num_gpus = 2
     FLAGS.data_dir = DATA_DIR
-    FLAGS.data_dir = self._get_model_dir('keras_resnet56_2_gpu')
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
-    FLAGS.model_dir = ''
+    FLAGS.model_dir = self._get_model_dir('keras_resnet56_2_gpu')
     FLAGS.dtype = 'fp32'
     stats = keras_cifar_main.run(FLAGS)
     self.fill_report_object(stats, FLAGS.batch_size)
