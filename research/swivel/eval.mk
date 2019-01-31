@@ -59,9 +59,9 @@ simlex999.ws.tab: SimLex-999.zip
 mikolov.an.tab: questions-words.txt
 	egrep -v -E '^:' $^ | tr '[A-Z] ' '[a-z]\t' > $@
 
-msr.an.tab: myz_naacl13_test_set.tgz
-	tar Oxfz $^ test_set/word_relationship.questions | tr ' ' '\t' > /tmp/q
-	tar Oxfz $^ test_set/word_relationship.answers | cut -f2 -d ' ' > /tmp/a
+msr.an.tab: word_relationship.questions word_relationship.answers
+	cat word_relationship.questions | tr ' ' '\t' > /tmp/q
+	cat word_relationship.answers | cut -f2 -d ' ' > /tmp/a
 	paste /tmp/q /tmp/a > $@
 	rm -f /tmp/q /tmp/a
 
@@ -75,7 +75,7 @@ MEN.tar.gz:
 	wget http://clic.cimec.unitn.it/~elia.bruni/resources/MEN.tar.gz
 
 Mtruk.csv:
-	wget http://tx.technion.ac.il/~kirar/files/Mtruk.csv
+	wget http://www.kiraradinsky.com/files/Mtruk.csv
 
 rw.zip:
 	wget http://www-nlp.stanford.edu/~lmthang/morphoNLM/rw.zip
@@ -84,10 +84,13 @@ SimLex-999.zip:
 	wget http://www.cl.cam.ac.uk/~fh295/SimLex-999.zip
 
 questions-words.txt:
-	wget http://word2vec.googlecode.com/svn/trunk/questions-words.txt
+	wget http://download.tensorflow.org/data/questions-words.txt
 
-myz_naacl13_test_set.tgz:
-	wget http://research.microsoft.com/en-us/um/people/gzweig/Pubs/myz_naacl13_test_set.tgz
+word_relationship.questions:
+	wget https://github.com/darshanhegde/SNLPProject/raw/master/word2vec/eval/word_relationship.questions
+
+word_relationship.answers:
+	wget https://github.com/darshanhegde/SNLPProject/raw/master/word2vec/eval/word_relationship.answers
 
 analogy: analogy.cc
 
@@ -95,4 +98,4 @@ clean:
 	rm -f *.ws.tab *.an.tab analogy *.pyc
 
 distclean: clean
-	rm -f *.tgz *.tar.gz *.zip Mtruk.csv questions-words.txt
+	rm -f *.tgz *.tar.gz *.zip Mtruk.csv questions-words.txt word_relationship.{questions,answers}

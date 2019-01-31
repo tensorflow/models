@@ -22,6 +22,7 @@
 #include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/component.h"
 #include "dragnn/core/interfaces/transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/io/sentence_input_batch.h"
 #include "dragnn/io/syntaxnet_sentence.h"
 #include "syntaxnet/parser_state.h"
@@ -29,13 +30,12 @@
 #include "syntaxnet/task_spec.pb.h"
 #include "syntaxnet/utils.h"
 #include "tensorflow/core/lib/strings/str_util.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/logging.h"
+#include "util/utf8/unicodetext.h"
 
 namespace syntaxnet {
 namespace dragnn {
-
-using tensorflow::strings::StrCat;
-
 namespace {
 
 // Returns a new step in a trace based on a ComponentSpec.
@@ -103,7 +103,7 @@ void SyntaxNetComponent::InitializeComponent(const ComponentSpec &spec) {
     names.push_back(channel.name());
     fml.push_back(channel.fml());
     predicate_maps.push_back(channel.predicate_map());
-    dims.push_back(StrCat(channel.embedding_dim()));
+    dims.push_back(tensorflow::strings::StrCat(channel.embedding_dim()));
   }
 
 
@@ -125,7 +125,7 @@ void SyntaxNetComponent::InitializeComponent(const ComponentSpec &spec) {
   for (const LinkedFeatureChannel &channel : spec.linked_feature()) {
     names.push_back(channel.name());
     fml.push_back(channel.fml());
-    dims.push_back(StrCat(channel.embedding_dim()));
+    dims.push_back(tensorflow::strings::StrCat(channel.embedding_dim()));
     source_components.push_back(channel.source_component());
     source_layers.push_back(channel.source_layer());
     source_translators.push_back(channel.source_translator());
@@ -332,6 +332,22 @@ std::function<int(int, int, int)> SyntaxNetComponent::GetStepLookupFunction(
         return -1;
       }
     };
+  } else if (method == "reverse-char") {
+    // Reverses the character-level index.
+    return [this](int batch_index, int beam_index, int value) {
+      SyntaxNetTransitionState *state =
+          batch_.at(batch_index)->beam_state(beam_index);
+      const auto *sentence = state->sentence()->sentence();
+      const string &text = sentence->text();
+      const int start_byte = sentence->token(0).start();
+      const int end_byte = sentence->token(sentence->token_size() - 1).end();
+      UnicodeText unicode;
+      unicode.PointToUTF8(text.data() + start_byte, end_byte - start_byte + 1);
+      const int num_chars = distance(unicode.begin(), unicode.end());
+      const int result = num_chars - value - 1;
+      if (result >= 0 && result < num_chars) return result;
+      return -1;
+    };
   } else {
     LOG(FATAL) << "Unable to find step lookup function " << method;
   }
@@ -418,12 +434,12 @@ int SyntaxNetComponent::GetFixedFeatures(
           const bool has_weights = f.weight_size() != 0;
           for (int i = 0; i < f.description_size(); ++i) {
             if (has_weights) {
-              fixed_features.add_value_name(StrCat("id: ", f.id(i),
-                                                   " name: ", f.description(i),
-                                                   " weight: ", f.weight(i)));
+              fixed_features.add_value_name(tensorflow::strings::StrCat(
+                  "id: ", f.id(i), " name: ", f.description(i),
+                  " weight: ", f.weight(i)));
             } else {
-              fixed_features.add_value_name(
-                  StrCat("id: ", f.id(i), " name: ", f.description(i)));
+              fixed_features.add_value_name(tensorflow::strings::StrCat(
+                  "id: ", f.id(i), " name: ", f.description(i)));
             }
           }
           fixed_features.set_feature_name("");
@@ -615,16 +631,19 @@ std::vector<LinkFeatures> SyntaxNetComponent::GetRawLinkFeatures(
   return features;
 }
 
-std::vector<std::vector<int>> SyntaxNetComponent::GetOracleLabels() const {
-  std::vector<std::vector<int>> oracle_labels;
-  for (const auto &beam : batch_) {
-    oracle_labels.emplace_back();
+std::vector<std::vector<std::vector<Label>>>
+SyntaxNetComponent::GetOracleLabels() const {
+  std::vector<std::vector<std::vector<Label>>> oracle_labels(batch_.size());
+  for (int batch_idx = 0; batch_idx < batch_.size(); ++batch_idx) {
+    const auto &beam = batch_[batch_idx];
+    std::vector<std::vector<Label>> &output_beam = oracle_labels[batch_idx];
     for (int beam_idx = 0; beam_idx < beam->size(); ++beam_idx) {
       // Get the raw link features from the linked feature extractor.
       auto state = beam->beam_state(beam_idx);
 
       // Arbitrarily choose the first vector element.
-      oracle_labels.back().push_back(GetOracleVector(state).front());
+      output_beam.emplace_back();
+      output_beam.back().emplace_back(GetOracleVector(state).front());
     }
   }
   return oracle_labels;

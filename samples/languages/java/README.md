@@ -14,3 +14,7 @@ numerical computation of a model.
 
 - [Slides](https://docs.google.com/presentation/d/e/2PACX-1vQ6DzxNTBrJo7K5P8t5_rBRGnyJoPUPBVOJR4ooHCwi4TlBFnIriFmI719rDNpcQzojqsV58aUqmBBx/pub?start=false&loop=false&delayms=3000) from January 2018.
 - See README.md in each subdirectory for details.
+
+For a recent real-world example, see the use of this API to [assess microscope
+image quality](https://research.googleblog.com/2018/03/using-deep-learning-to-facilitate.html)
+in the image processing package [Fiji (ImageJ)](https://fiji.sc/).

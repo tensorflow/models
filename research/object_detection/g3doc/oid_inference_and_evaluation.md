@@ -13,8 +13,8 @@ inferred detections.
 
 Inferred detections will look like the following:
 
-![](img/oid_bus_72e19c28aac34ed8.jpg){height="300"}
-![](img/oid_monkey_3b4168c89cecbc5b.jpg){height="300"}
+![](img/oid_bus_72e19c28aac34ed8.jpg)
+![](img/oid_monkey_3b4168c89cecbc5b.jpg)
 
 On the validation set of Open Images, this tutorial requires 27GB of free disk
 space and the inference step takes approximately 9 hours on a single NVIDIA
@@ -93,12 +93,14 @@ mkdir ${SPLIT}_tfrecords
 
 PYTHONPATH=$PYTHONPATH:$(readlink -f ..) \
 python -m object_detection/dataset_tools/create_oid_tf_record \
-  --input_annotations_csv 2017_07/$SPLIT/annotations-human-bbox.csv \
+  --input_box_annotations_csv 2017_07/$SPLIT/annotations-human-bbox.csv \
   --input_images_directory raw_images_${SPLIT} \
   --input_label_map ../object_detection/data/oid_bbox_trainable_label_map.pbtxt \
   --output_tf_record_path_prefix ${SPLIT}_tfrecords/$SPLIT.tfrecord \
   --num_shards=100
 ```
+
+To add image-level labels, use the `--input_image_label_annotations_csv` flag.
 
 This results in 100 TFRecord files (shards), written to
 `oid/${SPLIT}_tfrecords`, with filenames matching
@@ -146,7 +148,7 @@ access to the images, `infer_detections` can optionally discard them with the
 `--discard_image_pixels` flag. Discarding the images drastically reduces the
 size of the output TFRecord.
 
-### Accelerating inference {#accelerating_inference}
+### Accelerating inference
 
 Running inference on the whole validation or test set can take a long time to
 complete due to the large number of images present in these sets (41,620 and
@@ -196,7 +198,7 @@ After all `infer_detections` processes finish, `tensorflow/models/research/oid`
 will contain one output TFRecord from each process, with name matching
 `validation_detections.tfrecord-0000[0-3]-of-00004`.
 
-## Computing evaluation measures {#compute_evaluation_measures}
+## Computing evaluation measures
 
 To compute evaluation measures on the inferred detections you first need to
 create the appropriate configuration files:
@@ -214,7 +216,7 @@ tf_record_input_reader: { input_path: '${SPLIT}_detections.tfrecord@${NUM_SHARDS
 " > ${SPLIT}_eval_metrics/${SPLIT}_input_config.pbtxt
 
 echo "
-metrics_set: 'open_images_metrics'
+metrics_set: 'oid_V2_detection_metrics'
 " > ${SPLIT}_eval_metrics/${SPLIT}_eval_config.pbtxt
 ```
 
@@ -237,7 +239,7 @@ file contains an `object_detection.protos.EvalConfig` message that describes the
 evaluation metric. For more information about these protos see the corresponding
 source files.
 
-### Expected mAPs {#expected-maps}
+### Expected mAPs
 
 The result of running `offline_eval_map_corloc` is a CSV file located at
 `${SPLIT}_eval_metrics/metrics.csv`. With the above configuration, the file will

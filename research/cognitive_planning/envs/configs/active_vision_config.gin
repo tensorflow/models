@@ -1,0 +1,27 @@
+#-*-Python-*-
+ActiveVisionDatasetEnv.episode_length = 200
+ActiveVisionDatasetEnv.actions = [
+    'right', 'rotate_cw', 'rotate_ccw', 'forward', 'left', 'backward', 'stop'
+]
+ActiveVisionDatasetEnv.confidence_threshold = 0.5
+ActiveVisionDatasetEnv.output_size = 64
+ActiveVisionDatasetEnv.worlds = [
+    'Home_001_1', 'Home_001_2', 'Home_002_1', 'Home_003_1', 'Home_003_2',
+    'Home_004_1', 'Home_004_2', 'Home_005_1', 'Home_005_2', 'Home_006_1',
+    'Home_007_1', 'Home_010_1', 'Home_011_1', 'Home_013_1', 'Home_014_1',
+    'Home_014_2', 'Home_015_1', 'Home_016_1'
+]
+ActiveVisionDatasetEnv.targets = [
+    'tv', 'dining_table', 'fridge', 'microwave', 'couch'
+]
+ActiveVisionDatasetEnv.compute_distance = False
+ActiveVisionDatasetEnv.should_draw_detections = False
+ActiveVisionDatasetEnv.dataset_root = '/usr/local/google/home/kosecka/AVD_Minimal/'
+ActiveVisionDatasetEnv.labelmap_path = 'label_map.txt'
+ActiveVisionDatasetEnv.reward_collision = 0
+ActiveVisionDatasetEnv.reward_goal_range = 2
+ActiveVisionDatasetEnv.num_detection_classes = 90
+ActiveVisionDatasetEnv.segmentation_file_name='sseg_crf'
+ActiveVisionDatasetEnv.detection_folder_name='Detections'
+ActiveVisionDatasetEnv.targets_file_name='annotated_targets'
+ActiveVisionDatasetEnv.shaped_reward=False

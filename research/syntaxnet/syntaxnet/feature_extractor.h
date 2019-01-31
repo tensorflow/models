@@ -250,6 +250,7 @@ class GenericFeatureFunction {
   string GetParameter(const string &name) const;
   int GetIntParameter(const string &name, int default_value) const;
   bool GetBoolParameter(const string &name, bool default_value) const;
+  double GetFloatParameter(const string &name, double default_value) const;
 
   // Returns the FML function description for the feature function, i.e. the
   // name and parameters without the nested features.

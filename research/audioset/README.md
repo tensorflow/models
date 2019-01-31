@@ -49,14 +49,15 @@ VGGish depends on the following Python packages:
 * [`resampy`](http://resampy.readthedocs.io/en/latest/)
 * [`tensorflow`](http://www.tensorflow.org/)
 * [`six`](https://pythonhosted.org/six/)
+* [`pysoundfile`](https://pysoundfile.readthedocs.io/)
 
 These are all easily installable via, e.g., `pip install numpy` (as in the
 example command sequence below).
 
 Any reasonably recent version of these packages should work. TensorFlow should
-be at least version 1.0.  We have tested with Python 2.7.6 and 3.4.3 on an
-Ubuntu-like system with NumPy v1.13.1, SciPy v0.19.1, resampy v0.1.5, TensorFlow
-v1.2.1, and Six v1.10.0.
+be at least version 1.0.  We have tested that everything works on Ubuntu and
+Windows 10 with Python 3.6.6, Numpy v1.15.4, SciPy v1.1.0, resampy v0.2.1,
+TensorFlow v1.3.0, Six v1.11.0 and PySoundFile 0.9.0.
 
 VGGish also requires downloading two data files:
 
@@ -208,6 +209,11 @@ the postprocessor can be run after inference.
 
 If you don't need to use the released embeddings or YouTube-8M, then you could
 skip postprocessing and use raw embeddings.
+
+A [Colab](https://colab.research.google.com/)
+showing how to download the model and calculate the embeddings on your
+own sound data is available here:
+[AudioSet Embedding Colab](https://colab.research.google.com/drive/1TbX92UL9sYWbdwdGE0rJ9owmezB-Rl1C).
 
 ### Future Work
 

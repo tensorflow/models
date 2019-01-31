@@ -22,6 +22,7 @@ import os
 import os.path
 import random
 import time
+from absl import flags
 import tensorflow as tf
 
 from tensorflow.python.framework import errors
@@ -45,7 +46,6 @@ from dragnn.python import trainer_lib
 
 from syntaxnet.util import check
 
-flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('tf_master', '',

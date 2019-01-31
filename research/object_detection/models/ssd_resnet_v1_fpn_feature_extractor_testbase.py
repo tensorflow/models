@@ -1,3 +1,17 @@
+# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 """Tests for ssd resnet v1 FPN feature extractors."""
 import abc
 import numpy as np
@@ -68,12 +82,15 @@ class SSDResnetFPNFeatureExtractorTestBase(
     image_width = 128
     depth_multiplier = 1
     pad_to_multiple = 1
-    test_image = np.random.rand(4, image_height, image_width, 3)
+    test_image = tf.constant(np.random.rand(4, image_height, image_width, 3))
     feature_extractor = self._create_feature_extractor(depth_multiplier,
                                                        pad_to_multiple)
     preprocessed_image = feature_extractor.preprocess(test_image)
-    self.assertAllClose(preprocessed_image,
-                        test_image - [[123.68, 116.779, 103.939]])
+    with self.test_session() as sess:
+      test_image_out, preprocessed_image_out = sess.run(
+          [test_image, preprocessed_image])
+      self.assertAllClose(preprocessed_image_out,
+                          test_image_out - [[123.68, 116.779, 103.939]])
 
   def test_variables_only_created_in_scope(self):
     depth_multiplier = 1
@@ -89,5 +106,3 @@ class SSDResnetFPNFeatureExtractorTestBase(
         self.assertTrue(
             variable.name.startswith(self._resnet_scope_name())
             or variable.name.startswith(self._fpn_scope_name()))
-
-

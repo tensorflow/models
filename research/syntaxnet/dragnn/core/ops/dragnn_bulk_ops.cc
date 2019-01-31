@@ -13,6 +13,7 @@
 // limitations under the License.
 // =============================================================================
 
+#include "dragnn/core/ops/shape_helpers.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 
@@ -28,6 +29,15 @@ REGISTER_OP("BulkFixedFeatures")
     .Output("num_steps: int32")
     .Attr("component: string")
     .Attr("num_channels: int")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      int num_channels;
+      TF_RETURN_IF_ERROR(context->GetAttr("num_channels", &num_channels));
+      for (int i = 1; i <= 3 * num_channels; ++i) {
+        VectorOutputShape(i, context);
+      }
+      ScalarOutputShape(3 * num_channels + 1, context);
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession and a component, outputs fixed features for all steps.
 
@@ -60,6 +70,16 @@ REGISTER_OP("BulkFixedEmbeddings")
     .Attr("pad_to_batch: int=-1")
     .Attr("pad_to_steps: int=-1")
     .SetIsStateful()
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      int num_channels;
+      TF_RETURN_IF_ERROR(context->GetAttr("num_channels", &num_channels));
+      for (int i = 1; i <= num_channels; ++i) {
+        TF_RETURN_IF_ERROR(MatrixInputShape(i, context));
+      }
+      MatrixOutputShape(1, context);
+      ScalarOutputShape(2, context);
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
     .Doc(R"doc(
 This op is a more efficient version of BulkFixedFeatures.
 
@@ -91,6 +111,16 @@ REGISTER_OP("BulkEmbedFixedFeatures")
     .Attr("pad_to_batch: int")
     .Attr("pad_to_steps: int")
     .SetIsStateful()
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      int num_channels;
+      TF_RETURN_IF_ERROR(context->GetAttr("num_channels", &num_channels));
+      for (int i = 1; i <= num_channels; ++i) {
+        TF_RETURN_IF_ERROR(MatrixInputShape(i, context));
+      }
+      MatrixOutputShape(1, context);
+      ScalarOutputShape(2, context);
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
     .Doc(R"doc(
 This op is a more efficient version of BulkFixedFeatures.
 
@@ -112,11 +142,55 @@ pad_to_batch: The op will pad/truncate to this number of elements.
 pad_to_steps: The op will pad/truncate to this number of steps.
 )doc");
 
+REGISTER_OP("BulkEmbedDenseFixedFeatures")
+    .Input("handle: string")
+    .Input("embedding_matrix: num_channels * float")
+    .Output("output_handle: string")
+    .Output("embedding_vectors: float")
+    .Output("offset_array: int32")
+    .Attr("component: string")
+    .Attr("num_channels: int")
+    .SetIsStateful()
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      int num_channels;
+      TF_RETURN_IF_ERROR(context->GetAttr("num_channels", &num_channels));
+      for (int i = 1; i <= num_channels; ++i) {
+        TF_RETURN_IF_ERROR(MatrixInputShape(i, context));
+      }
+      MatrixOutputShape(1, context);
+      VectorOutputShape(2, context);
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
+    .Doc(R"doc(
+This op is a more efficient version of BulkFixedFeatures.
+
+It is intended to be run with large batch sizes at inference time. The op takes
+a handle to ComputeSession and embedding matrices as tensor inputs, and directly
+outputs concatenated embedding vectors. It calls the BulkEmbedFixedFeatures
+method on the underlying component directly, so it requires a padding vector
+to be passed.
+
+handle: A handle to ComputeSession.
+embedding_matrix: Embedding matrices.
+output_handle: A handle to the same ComputeSession after advancement.
+embedding_vectors: (matrix of float) Concatenated embeddings, in a dense
+array.
+offset_array: An array of integers representing the offset of each batch element
+in the embedding_vectors array. It is of size (batch+1) and the last element is
+the total size of the embedding array.
+component: The name of a Component instance, matching the ComponentSpec.name.
+num_channels: The number of FixedFeature channels.
+)doc");
+
 REGISTER_OP("BulkAdvanceFromOracle")
     .Input("handle: string")
     .Output("output_handle: string")
     .Output("gold_labels: int32")
     .Attr("component: string")
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      VectorOutputShape(1, context);
+      return ComputeSessionHandleInputAndOutputShape(context);
+    })
     .Doc(R"doc(
 Given a ComputeSession, advances until all states are final.
 
@@ -140,14 +214,9 @@ REGISTER_OP("BulkAdvanceFromPrediction")
     .Output("output_handle: string")
     .Attr("component: string")
     .Attr("T: type")
-    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *c) {
-      tensorflow::shape_inference::ShapeHandle handle;
-      TF_RETURN_IF_ERROR(c->Merge(c->input(0), c->Vector(2), &handle));
-      c->set_output(0, handle);
-
-      auto scores = c->input(1);
-      TF_RETURN_IF_ERROR(c->WithRank(scores, 2, &scores));
-      return tensorflow::Status::OK();
+    .SetShapeFn([](tensorflow::shape_inference::InferenceContext *context) {
+      TF_RETURN_IF_ERROR(MatrixInputShape(1, context));
+      return ComputeSessionHandleInputAndOutputShape(context);
     })
     .Doc(R"doc(
 Given a ComputeSession and a tensor of scores, advances the state.

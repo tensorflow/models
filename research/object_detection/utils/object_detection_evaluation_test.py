@@ -15,9 +15,10 @@
 
 """Tests for object_detection.utils.object_detection_evaluation."""
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-
+from object_detection import eval_util
 from object_detection.core import standard_fields
 from object_detection.utils import object_detection_evaluation
 
@@ -98,6 +99,126 @@ class OpenImagesV2EvaluationTest(tf.test.TestCase):
                            0.05555555)
     oiv2_evaluator.clear()
     self.assertFalse(oiv2_evaluator._image_ids)
+
+
+class OpenImagesDetectionChallengeEvaluatorTest(tf.test.TestCase):
+
+  def test_returns_correct_metric_values(self):
+    categories = [{
+        'id': 1,
+        'name': 'cat'
+    }, {
+        'id': 2,
+        'name': 'dog'
+    }, {
+        'id': 3,
+        'name': 'elephant'
+    }]
+    oivchallenge_evaluator = (
+        object_detection_evaluation.OpenImagesDetectionChallengeEvaluator(
+            categories, group_of_weight=0.5))
+
+    image_key = 'img1'
+    groundtruth_boxes = np.array(
+        [[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]], dtype=float)
+    groundtruth_class_labels = np.array([1, 3, 1], dtype=int)
+    groundtruth_is_group_of_list = np.array([False, False, True], dtype=bool)
+    groundtruth_verified_labels = np.array([1, 2, 3], dtype=int)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels,
+            standard_fields.InputDataFields.groundtruth_group_of:
+                groundtruth_is_group_of_list,
+            standard_fields.InputDataFields.groundtruth_image_classes:
+                groundtruth_verified_labels,
+        })
+    image_key = 'img2'
+    groundtruth_boxes = np.array(
+        [[10, 10, 11, 11], [500, 500, 510, 510], [10, 10, 12, 12]], dtype=float)
+    groundtruth_class_labels = np.array([1, 1, 3], dtype=int)
+    groundtruth_is_group_of_list = np.array([False, False, True], dtype=bool)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels,
+            standard_fields.InputDataFields.groundtruth_group_of:
+                groundtruth_is_group_of_list
+        })
+    image_key = 'img3'
+    groundtruth_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    groundtruth_class_labels = np.array([2], dtype=int)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels
+        })
+    image_key = 'img1'
+    detected_boxes = np.array(
+        [[10, 10, 11, 11], [100, 100, 120, 120]], dtype=float)
+    detected_class_labels = np.array([2, 2], dtype=int)
+    detected_scores = np.array([0.7, 0.8], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    image_key = 'img2'
+    detected_boxes = np.array(
+        [[10, 10, 11, 11], [100, 100, 120, 120], [100, 100, 220, 220],
+         [10, 10, 11, 11]],
+        dtype=float)
+    detected_class_labels = np.array([1, 1, 2, 3], dtype=int)
+    detected_scores = np.array([0.7, 0.8, 0.5, 0.9], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    image_key = 'img3'
+    detected_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    detected_class_labels = np.array([2], dtype=int)
+    detected_scores = np.array([0.5], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    metrics = oivchallenge_evaluator.evaluate()
+
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/dog'],
+        0.3333333333)
+    self.assertAlmostEqual(
+        metrics[
+            'OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/elephant'],
+        0.333333333333)
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/cat'],
+        0.142857142857)
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_Precision/mAP@0.5IOU'], 0.269841269)
+
+    oivchallenge_evaluator.clear()
+    self.assertFalse(oivchallenge_evaluator._image_ids)
 
 
 class PascalEvaluationTest(tf.test.TestCase):
@@ -561,6 +682,142 @@ class ObjectDetectionEvaluationTest(tf.test.TestCase):
     self.assertTrue(np.allclose(expected_corloc_per_class, corloc_per_class))
     self.assertAlmostEqual(expected_mean_ap, mean_ap)
     self.assertAlmostEqual(expected_mean_corloc, mean_corloc)
+
+
+class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
+
+  def setUp(self):
+    self.categories = [{
+        'id': 1,
+        'name': 'person'
+    }, {
+        'id': 2,
+        'name': 'dog'
+    }, {
+        'id': 3,
+        'name': 'cat'
+    }]
+    self.od_eval = object_detection_evaluation.ObjectDetectionEvaluator(
+        categories=self.categories)
+
+  def _make_evaluation_dict(self,
+                            resized_groundtruth_masks=False,
+                            batch_size=1,
+                            max_gt_boxes=None,
+                            scale_to_absolute=False):
+    input_data_fields = standard_fields.InputDataFields
+    detection_fields = standard_fields.DetectionResultFields
+
+    image = tf.zeros(shape=[batch_size, 20, 20, 3], dtype=tf.uint8)
+    if batch_size == 1:
+      key = tf.constant('image1')
+    else:
+      key = tf.constant([str(i) for i in range(batch_size)])
+    detection_boxes = tf.concat([
+        tf.tile(
+            tf.constant([[[0., 0., 1., 1.]]]), multiples=[batch_size - 1, 1, 1
+                                                         ]),
+        tf.constant([[[0., 0., 0.5, 0.5]]])
+    ],
+                                axis=0)
+    detection_scores = tf.concat([
+        tf.tile(tf.constant([[0.5]]), multiples=[batch_size - 1, 1]),
+        tf.constant([[0.8]])
+    ],
+                                 axis=0)
+    detection_classes = tf.tile(tf.constant([[0]]), multiples=[batch_size, 1])
+    detection_masks = tf.tile(
+        tf.ones(shape=[1, 2, 20, 20], dtype=tf.float32),
+        multiples=[batch_size, 1, 1, 1])
+    groundtruth_boxes = tf.constant([[0., 0., 1., 1.]])
+    groundtruth_classes = tf.constant([1])
+    groundtruth_instance_masks = tf.ones(shape=[1, 20, 20], dtype=tf.uint8)
+    num_detections = tf.ones([batch_size])
+    if resized_groundtruth_masks:
+      groundtruth_instance_masks = tf.ones(shape=[1, 10, 10], dtype=tf.uint8)
+
+    if batch_size > 1:
+      groundtruth_boxes = tf.tile(
+          tf.expand_dims(groundtruth_boxes, 0), multiples=[batch_size, 1, 1])
+      groundtruth_classes = tf.tile(
+          tf.expand_dims(groundtruth_classes, 0), multiples=[batch_size, 1])
+      groundtruth_instance_masks = tf.tile(
+          tf.expand_dims(groundtruth_instance_masks, 0),
+          multiples=[batch_size, 1, 1, 1])
+
+    detections = {
+        detection_fields.detection_boxes: detection_boxes,
+        detection_fields.detection_scores: detection_scores,
+        detection_fields.detection_classes: detection_classes,
+        detection_fields.detection_masks: detection_masks,
+        detection_fields.num_detections: num_detections
+    }
+    groundtruth = {
+        input_data_fields.groundtruth_boxes:
+            groundtruth_boxes,
+        input_data_fields.groundtruth_classes:
+            groundtruth_classes,
+        input_data_fields.groundtruth_instance_masks:
+            groundtruth_instance_masks,
+    }
+    if batch_size > 1:
+      return eval_util.result_dict_for_batched_example(
+          image,
+          key,
+          detections,
+          groundtruth,
+          scale_to_absolute=scale_to_absolute,
+          max_gt_boxes=max_gt_boxes)
+    else:
+      return eval_util.result_dict_for_single_example(
+          image,
+          key,
+          detections,
+          groundtruth,
+          scale_to_absolute=scale_to_absolute)
+
+  @parameterized.parameters({
+      'batch_size': 1,
+      'expected_map': 0,
+      'max_gt_boxes': None,
+      'scale_to_absolute': True
+  }, {
+      'batch_size': 8,
+      'expected_map': 0.765625,
+      'max_gt_boxes': [1],
+      'scale_to_absolute': True
+  }, {
+      'batch_size': 1,
+      'expected_map': 0,
+      'max_gt_boxes': None,
+      'scale_to_absolute': False
+  }, {
+      'batch_size': 8,
+      'expected_map': 0.765625,
+      'max_gt_boxes': [1],
+      'scale_to_absolute': False
+  })
+  def test_get_estimator_eval_metric_ops(self,
+                                         batch_size=1,
+                                         expected_map=1,
+                                         max_gt_boxes=None,
+                                         scale_to_absolute=False):
+
+    eval_dict = self._make_evaluation_dict(
+        batch_size=batch_size,
+        max_gt_boxes=max_gt_boxes,
+        scale_to_absolute=scale_to_absolute)
+    tf.logging.info('eval_dict: {}'.format(eval_dict))
+    metric_ops = self.od_eval.get_estimator_eval_metric_ops(eval_dict)
+    _, update_op = metric_ops['Precision/mAP@0.5IOU']
+
+    with self.test_session() as sess:
+      metrics = {}
+      for key, (value_op, _) in metric_ops.iteritems():
+        metrics[key] = value_op
+      sess.run(update_op)
+      metrics = sess.run(metrics)
+      self.assertAlmostEqual(expected_map, metrics['Precision/mAP@0.5IOU'])
 
 
 if __name__ == '__main__':

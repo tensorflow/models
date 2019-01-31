@@ -18,6 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 
+from absl import flags
+from absl import logging
 import tensorflow as tf
 
 import data_provider
@@ -25,7 +27,6 @@ import networks
 
 
 tfgan = tf.contrib.gan
-flags = tf.flags
 
 flags.DEFINE_integer('batch_size', 32, 'The number of images in each batch.')
 
@@ -67,6 +68,13 @@ flags.DEFINE_integer(
     'backup_workers', 1,
     'Number of workers to be kept as backup in the sync replicas case.')
 
+flags.DEFINE_integer(
+    'inter_op_parallelism_threads', 0,
+    'Number of threads to use for inter-op parallelism. If left as default value of 0, the system will pick an appropriate number.')
+
+flags.DEFINE_integer(
+    'intra_op_parallelism_threads', 0,
+    'Number of threads to use for intra-op parallelism. If left as default value of 0, the system will pick an appropriate number.')
 
 FLAGS = flags.FLAGS
 
@@ -133,6 +141,9 @@ def main(_):
          tf.as_string(tf.train.get_or_create_global_step())],
         name='status_message')
     if FLAGS.max_number_of_steps == 0: return
+    sess_config = tf.ConfigProto(
+            inter_op_parallelism_threads=FLAGS.inter_op_parallelism_threads,
+            intra_op_parallelism_threads=FLAGS.intra_op_parallelism_threads)
     tfgan.gan_train(
         train_ops,
         hooks=(
@@ -141,7 +152,8 @@ def main(_):
             sync_hooks),
         logdir=FLAGS.train_log_dir,
         master=FLAGS.master,
-        is_chief=FLAGS.task == 0)
+        is_chief=FLAGS.task == 0,
+        config=sess_config)
 
 
 def _learning_rate():
@@ -173,6 +185,6 @@ def _optimizer(gen_lr, dis_lr, use_sync_replicas):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   tf.app.run()
 

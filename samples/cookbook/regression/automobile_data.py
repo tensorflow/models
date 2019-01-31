@@ -109,19 +109,19 @@ def load_data(y_name="price", train_fraction=0.7, seed=None):
 
   return (x_train, y_train), (x_test, y_test)
 
-def make_dataset(x, y=None):
+
+def make_dataset(batch_sz, x, y=None, shuffle=False, shuffle_buffer_size=1000):
     """Create a slice Dataset from a pandas DataFrame and labels"""
-    # TODO(markdaooust): simplify this after the 1.4 cut.
-    # Convert the DataFrame to a dict
-    x = dict(x)
 
-    # Convert the pd.Series to np.arrays
-    for key in x:
-        x[key] = np.array(x[key])
+    def input_fn():
+        if y is not None:
+            dataset = tf.data.Dataset.from_tensor_slices((dict(x), y))
+        else:
+            dataset = tf.data.Dataset.from_tensor_slices(dict(x))
+        if shuffle:
+            dataset = dataset.shuffle(shuffle_buffer_size).batch(batch_sz).repeat()
+        else:
+            dataset = dataset.batch(batch_sz)
+        return dataset.make_one_shot_iterator().get_next()
 
-    items = [x]
-    if y is not None:
-        items.append(np.array(y, dtype=np.float32))
-
-    # Create a Dataset of slices
-    return tf.data.Dataset.from_tensor_slices(tuple(items))
+    return input_fn

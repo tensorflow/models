@@ -23,7 +23,7 @@ import tensorflow as tf
 slim = tf.contrib.slim
 
 
-# TODO: Consider replacing with tf.contrib.filter_variables in
+# TODO(derekjchow): Consider replacing with tf.contrib.filter_variables in
 # tensorflow/contrib/framework/python/ops/variables.py
 def filter_variables(variables, filter_regex_list, invert=False):
   """Filters out the variables matching the filter_regex.
@@ -104,7 +104,7 @@ def get_variables_available_in_checkpoint(variables,
   Inspects given checkpoint and returns the subset of variables that are
   available in it.
 
-  TODO: force input and output to be a dictionary.
+  TODO(rathodv): force input and output to be a dictionary.
 
   Args:
     variables: a list or dictionary of variables to find in checkpoint.
@@ -134,8 +134,11 @@ def get_variables_available_in_checkpoint(variables,
         vars_in_ckpt[variable_name] = variable
       else:
         logging.warning('Variable [%s] is available in checkpoint, but has an '
-                        'incompatible shape with model variable.',
-                        variable_name)
+                        'incompatible shape with model variable. Checkpoint '
+                        'shape: [%s], model variable shape: [%s]. This '
+                        'variable will not be initialized from the checkpoint.',
+                        variable_name, ckpt_vars_to_shape_map[variable_name],
+                        variable.shape.as_list())
     else:
       logging.warning('Variable [%s] is not available in checkpoint',
                       variable_name)

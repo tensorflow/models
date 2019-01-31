@@ -27,7 +27,8 @@
 namespace syntaxnet {
 namespace test {
 
-MATCHER_P(EqualsProto, a, "Protos are not equivalent:") {
+MATCHER_P(EqualsProto, a,
+          "Protos " + string(negation ? "aren't" : "are") + " equivalent:") {
   return a.DebugString() == arg.DebugString();
 }
 
@@ -37,6 +38,16 @@ MATCHER_P(IsErrorWithSubstr, substr,
           " an error Status whose message matches the substring '" +
           ::testing::PrintToString(substr) + "'") {
   return !arg.ok() && arg.error_message().find(substr) != string::npos;
+}
+
+// Matches an error status whose code and message match |code| and |substr|.
+MATCHER_P2(IsErrorWithCodeAndSubstr, code, substr,
+           string(negation ? "isn't" : "is") +
+           " an error Status whose code is " + ::testing::PrintToString(code) +
+           " and whose message matches the substring '" +
+           ::testing::PrintToString(substr) + "'") {
+  return !arg.ok() && arg.code() == code &&
+         arg.error_message().find(substr) != string::npos;
 }
 
 // Returns the prefix for where the test data is stored.
