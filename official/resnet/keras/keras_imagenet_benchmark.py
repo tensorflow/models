@@ -32,7 +32,7 @@ FLAGS = flags.FLAGS
 
 
 class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
-  """Benchmark accuracy test for ResNet50 in Keras."""
+  """Benchmark accuracy tests for ResNet50 in Keras."""
 
   def __init__(self, output_dir=None):
     flag_methods = [keras_common.define_keras_flags,
@@ -156,6 +156,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
 
 class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
+  """Resnet50 synthetic benchmark tests."""
 
   def __init__(self, output_dir=None):
     def_flags = {}
@@ -169,6 +170,7 @@ class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
 
 
 class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
+  """Resnet50 real data benchmark tests."""
 
   def __init__(self, output_dir=None):
     def_flags = {}
