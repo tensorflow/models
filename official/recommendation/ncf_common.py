@@ -325,8 +325,11 @@ def define_ncf_flags():
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
 
 
-def softmax_logitfy(logits):
-  '''Convert the logits returned by the base model to softmax logits.'''
+def convert_to_softmax_logits(logits):
+  '''Convert the logits returned by the base model to softmax logits.
+
+  Softmax with the first column of zeros is equivalent to sigmoid.
+  '''
   softmax_logits = tf.concat([logits * 0, logits], axis=1)
   return softmax_logits
 

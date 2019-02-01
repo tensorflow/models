@@ -84,7 +84,7 @@ def neumf_model_fn(features, labels, mode, params):
   logits = construct_model(user_input, item_input, params).output
 
   # Softmax with the first column of zeros is equivalent to sigmoid.
-  softmax_logits = ncf_common.softmax_logitfy(logits)
+  softmax_logits = ncf_common.convert_to_softmax_logits(logits)
 
   if mode == tf.estimator.ModeKeys.EVAL:
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)

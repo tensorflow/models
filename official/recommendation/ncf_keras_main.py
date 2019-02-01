@@ -138,7 +138,7 @@ def _get_keras_model(params):
   keras_model.summary()
 
   logits = keras_model.output
-  softmax_logits = ncf_common.softmax_logitfy(logits)
+  softmax_logits = ncf_common.convert_to_softmax_logits(logits)
 
   _add_custom_loss(
       keras_model,
@@ -169,7 +169,7 @@ def _add_custom_loss(keras_model, logits, softmax_logits, labels_input, weights)
 
 def _add_custom_metric(keras_model, logits, softmax_logits, dup_mask, params):
   logits = keras_model.output
-  softmax_logits = ncf_common.softmax_logitfy(logits)
+  softmax_logits = ncf_common.convert_to_softmax_logits(logits)
   cross_entropy, metric_fn, in_top_k, ndcg, metric_weights =(
       neumf_model.compute_eval_loss_and_metrics_helper(
         logits,
