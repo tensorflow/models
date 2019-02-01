@@ -1171,8 +1171,6 @@ def combined_non_max_suppression(boxes,
       valid detections per batch item. Only the top num_detections[i] entries in
       nms_boxes[i], nms_scores[i] and nms_class[i] are valid. The rest of the
       entries are zero paddings.
-    'selected_indices':  A [batch_size, max_detections] int32 tensor
-      containing the indices of the selected boxes
 
   Raises:
     ValueError: if `q` in boxes.shape is not 1 or not equal to number of
@@ -1180,7 +1178,7 @@ def combined_non_max_suppression(boxes,
   """
 
   with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
-    nmsed_boxes, nmsed_scores, nmsed_classes, num_detections, selected_indices = tf.image.combined_non_max_suppression(
+    nmsed_boxes, nmsed_scores, nmsed_classes, num_detections = tf.image.combined_non_max_suppression(
             boxes, scores, max_size_per_class, max_total_size, iou_thresh,
             score_thresh, use_static_shapes)
 
