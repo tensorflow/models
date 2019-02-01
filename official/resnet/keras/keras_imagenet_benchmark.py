@@ -154,6 +154,12 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     self._run_benchmark()
 
+  def fill_report_object(self, stats):
+    super(Resnet50KerasBenchmarkBase, self).fill_report_object(
+        stats,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps)
+
 
 class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
   """Resnet50 synthetic benchmark tests."""
