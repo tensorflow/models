@@ -57,21 +57,22 @@ def get_distribution_strategy(num_gpus,
                      "turn_off_distribution_strategy flag cannot be set to"
                      "True.".format(num_gpus))
   else:  # num_gpus > 1 and not turn_off_distribution_strategy
+    devices = ["device:GPU:%d" % i for i in range(num_gpus)]
     if all_reduce_alg:
-      return tf.contrib.distribute.MirroredStrategy(
-          num_gpus=num_gpus,
+      return tf.distribute.MirroredStrategy(
+          devices=devices,
           cross_device_ops=tf.contrib.distribute.AllReduceCrossDeviceOps(
               all_reduce_alg, num_packs=2))
     else:
-      return tf.contrib.distribute.MirroredStrategy(num_gpus=num_gpus)
+      return tf.distribute.MirroredStrategy(devices=devices)
 
 
 def per_device_batch_size(batch_size, num_gpus):
   """For multi-gpu, batch-size must be a multiple of the number of GPUs.
 
-  Note that this should eventually be handled by DistributionStrategies
-  directly. Multi-GPU support is currently experimental, however,
-  so doing the work here until that feature is in place.
+
+  Note that distribution strategy handles this automatically when used with
+  Keras. For using with Estimator, we need to get per GPU batch.
 
   Args:
     batch_size: Global batch size to be divided among devices. This should be
