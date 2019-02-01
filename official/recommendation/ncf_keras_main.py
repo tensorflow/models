@@ -140,54 +140,54 @@ def _get_keras_model(params):
   logits = keras_model.output
   softmax_logits = ncf_common.convert_to_softmax_logits(logits)
 
-  _add_custom_loss(
-      keras_model,
-      logits,
-      softmax_logits,
-      labels_input,
-      tf.cast(valid_pt_mask_input, tf.float32))
+  loss_tensor = tf.losses.sparse_softmax_cross_entropy(
+      labels=labels_input,
+      logits=softmax_logits,
+      weights=tf.cast(valid_pt_mask_input, tf.float32))
 
-  _add_custom_metric(
-      keras_model,
+  keras_model.add_loss(loss_tensor)
+
+  hit_rate_metric = _get_hit_rate_metric(
       logits,
       softmax_logits,
       tf.cast(dup_mask_input, tf.float32),
-      params)
+        params["num_neg"],
+        params["match_mlperf"],
+        params["use_xla_for_gpu"])
+
+
+  keras_model.add_metric(
+      hit_rate_metric,
+      name='hit_rate',
+      aggregation='mean')
 
   return keras_model
 
 
-def _add_custom_loss(keras_model, logits, softmax_logits, labels_input, weights):
-  loss_tensor = tf.losses.sparse_softmax_cross_entropy(
-      labels=labels_input,
-      logits=softmax_logits,
-      weights=weights
-  )
+def _get_hit_rate_metric(
+    logits,
+    softmax_logits,
+    dup_mask,
+    num_neg,
+    match_mlperf,
+    use_xla_for_gpu):
 
-  keras_model.add_loss(loss_tensor)
-
-
-def _add_custom_metric(keras_model, logits, softmax_logits, dup_mask, params):
-  logits = keras_model.output
-  softmax_logits = ncf_common.convert_to_softmax_logits(logits)
   cross_entropy, metric_fn, in_top_k, ndcg, metric_weights =(
       neumf_model.compute_eval_loss_and_metrics_helper(
         logits,
         softmax_logits,
         dup_mask,
-        params["num_neg"],
-        params["match_mlperf"],
-        use_tpu_spec=params["use_xla_for_gpu"]))
+        num_neg,
+        match_mlperf,
+        use_tpu_spec=use_xla_for_gpu))
 
   in_top_k = tf.cond(
       tf.keras.backend.learning_phase(),
       lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
       lambda: in_top_k)
 
-  keras_model.add_metric(
-      in_top_k,
-      name='hit_rate',
-      aggregation='mean')
+  return in_top_k
+
 
 
 def _get_train_and_eval_data(producer, params):
