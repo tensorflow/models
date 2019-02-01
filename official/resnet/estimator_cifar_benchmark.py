@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
+import time
 import os
 
 from absl import flags
@@ -29,13 +31,12 @@ from official.resnet import cifar10_main as cifar_main
 DATA_DIR = '/data/cifar10_data/cifar-10-batches-bin'
 
 
-class EstimatorCifar10BenchmarkTests(object):
+class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
   """Benchmarks and accuracy tests for Estimator ResNet56."""
 
   local_flags = None
 
   def __init__(self, output_dir=None):
-    self.oss_report_object = None
     self.output_dir = output_dir
 
   def resnet56_1_gpu(self):
@@ -48,8 +49,7 @@ class EstimatorCifar10BenchmarkTests(object):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_1_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
-    stats = cifar_main.run_cifar(flags.FLAGS)
-    self._fill_report_object(stats)
+    self._run_and_report_benchmark()
 
   def resnet56_fp16_1_gpu(self):
     """Test layers FP16 model with Estimator and distribution strategies."""
@@ -61,8 +61,7 @@ class EstimatorCifar10BenchmarkTests(object):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_fp16_1_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp16'
-    stats = cifar_main.run_cifar(flags.FLAGS)
-    self._fill_report_object(stats)
+    self._run_and_report_benchmark()
 
   def resnet56_2_gpu(self):
     """Test layers model with Estimator and dist_strat. 2 GPUs."""
@@ -74,8 +73,7 @@ class EstimatorCifar10BenchmarkTests(object):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_2_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
-    stats = cifar_main.run_cifar(flags.FLAGS)
-    self._fill_report_object(stats)
+    self._run_and_report_benchmark()
 
   def resnet56_fp16_2_gpu(self):
     """Test layers FP16 model with Estimator and dist_strat. 2 GPUs."""
@@ -87,16 +85,60 @@ class EstimatorCifar10BenchmarkTests(object):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_fp16_2_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp16'
-    stats = cifar_main.run_cifar(flags.FLAGS)
-    self._fill_report_object(stats)
+    self._run_and_report_benchmark()
 
-  def _fill_report_object(self, stats):
-    # Also "available global_step"
-    if self.oss_report_object:
-      self.oss_report_object.top_1 = stats['accuracy'].item()
-      self.oss_report_object.top_5 = stats['accuracy_top_5'].item()
-    else:
-      raise ValueError('oss_report_object has not been set.')
+  def unit_test(self):
+    """A lightweigth test that can finish quickly"""
+    self._setup()
+    flags.FLAGS.num_gpus = 1
+    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.batch_size = 128
+    flags.FLAGS.train_epochs = 1
+    flags.FLAGS.model_dir = self._get_model_dir('resnet56_1_gpu')
+    flags.FLAGS.resnet_size = 8
+    flags.FLAGS.dtype = 'fp32'
+    self._run_and_report_benchmark()
+
+  def _run_and_report_benchmark(self):
+    start_time_sec = time.time()
+    stats = cifar_main.run_cifar(flags.FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+
+    self.report_benchmark(
+        iters=stats['global_step'],
+        wall_time=wall_time_sec,
+        extras={
+            'accuracy':
+                self._json_description(stats['accuracy'].item(), priority=0),
+            'accuracy_top_5':
+                self._json_description(stats['accuracy_top_5'].item()),
+        })
+
+  def _json_description(self,
+                        value,
+                        priority=None,
+                        min_value=None,
+                        max_value=None):
+    """Get a json-formatted string describing the attributes for a metric"""
+
+    attributes = {}
+    attributes['value'] = value
+    if priority:
+      attributes['priority'] = priority
+    if min_value:
+      attributes['min_value'] = min_value
+    if max_value:
+      attributes['max_value'] = max_value
+
+    if min_value or max_value:
+      succeeded = True
+      if min_value and value < min_value:
+        succeeded = False
+      if max_value and value > max_value:
+        succeeded = False
+      attributes['succeeded'] = succeeded
+
+    return json.dumps(attributes)
 
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)
