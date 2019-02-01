@@ -160,7 +160,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
           total_batch_size=FLAGS.batch_size,
           log_steps=FLAGS.log_steps)
 
-    
 class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
   """Resnet50 synthetic benchmark tests."""
 

@@ -101,9 +101,6 @@ def run(flags_obj):
                    if tf.test.is_built_with_cuda() else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
 
-  per_device_batch_size = distribution_utils.per_device_batch_size(
-      flags_obj.batch_size, flags_core.get_num_gpus(flags_obj))
-
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
     input_fn = keras_common.get_synth_input_fn(
@@ -117,13 +114,13 @@ def run(flags_obj):
 
   train_input_dataset = input_fn(is_training=True,
                                  data_dir=flags_obj.data_dir,
-                                 batch_size=per_device_batch_size,
+                                 batch_size=flags_obj.batch_size,
                                  num_epochs=flags_obj.train_epochs,
                                  parse_record_fn=parse_record_keras)
 
   eval_input_dataset = input_fn(is_training=False,
                                 data_dir=flags_obj.data_dir,
-                                batch_size=per_device_batch_size,
+                                batch_size=flags_obj.batch_size,
                                 num_epochs=flags_obj.train_epochs,
                                 parse_record_fn=parse_record_keras)
 
