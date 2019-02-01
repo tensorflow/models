@@ -44,7 +44,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
   def benchmark_graph_8_gpu(self):
     """Test Keras model with Keras fit/dist_strat and 8 GPUs."""
     self._setup()
-    FLAGS.num_gpus = 1
+    FLAGS.num_gpus = 8
     FLAGS.data_dir = DATA_DIR
     FLAGS.batch_size = 128*8
     FLAGS.train_epochs = 90
