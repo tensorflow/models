@@ -108,11 +108,19 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
         iters=stats['global_step'],
         wall_time=wall_time_sec,
         extras={
-            'accuracy': self._json_description(stats['accuracy'].item(), priority=0),
-            'accuracy_top_5': self._json_description(stats['accuracy_top_5'].item()),
+            'accuracy':
+                self._json_description(stats['accuracy'].item(), priority=0),
+            'accuracy_top_5':
+                self._json_description(stats['accuracy_top_5'].item()),
         })
 
-  def _json_description(self, value, priority=None, min_value=None, max_value=None):
+  def _json_description(self,
+                        value,
+                        priority=None,
+                        min_value=None,
+                        max_value=None):
+    """Get a json-formatted string describing the attributes for a metric"""
+
     attributes = {}
     attributes['value'] = value
     if priority:

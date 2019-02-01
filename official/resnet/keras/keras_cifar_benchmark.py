@@ -37,11 +37,12 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
   """Accuracy tests for ResNet56 Keras CIFAR-10."""
 
   def __init__(self, output_dir=None):
-    flag_methods = [keras_common.define_keras_flags,
-                    cifar_main.define_cifar_flags]
+    flag_methods = [
+        keras_common.define_keras_flags, cifar_main.define_cifar_flags
+    ]
 
-    super(Resnet56KerasAccuracy, self).__init__(output_dir=output_dir,
-                                                flag_methods=flag_methods)
+    super(Resnet56KerasAccuracy, self).__init__(
+        output_dir=output_dir, flag_methods=flag_methods)
 
   def benchmark_graph_1_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
@@ -97,8 +98,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = DATA_DIR
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
-    FLAGS.model_dir = self._get_model_dir(
-        'keras_resnet56_no_dist_strat_1_gpu')
+    FLAGS.model_dir = self._get_model_dir('keras_resnet56_no_dist_strat_1_gpu')
     FLAGS.dtype = 'fp32'
     self._run_and_report_benchmark()
 
@@ -108,20 +108,21 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     wall_time_sec = time.time() - start_time_sec
 
     super(Resnet56KerasAccuracy, self)._report_benchmark(
-          stats,
-          wall_time_sec,
-          top_1_min=MIN_TOP_1_ACCURACY,
-          top_1_max=MAX_TOP_1_ACCURACY,
-          total_batch_size=FLAGS.batch_size,
-          log_steps=100)
+        stats,
+        wall_time_sec,
+        top_1_min=MIN_TOP_1_ACCURACY,
+        top_1_max=MAX_TOP_1_ACCURACY,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=100)
 
 
 class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   """Short performance tests for ResNet56 via Keras and CIFAR-10."""
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [keras_common.define_keras_flags,
-                    cifar_main.define_cifar_flags]
+    flag_methods = [
+        keras_common.define_keras_flags, cifar_main.define_cifar_flags
+    ]
 
     super(Resnet56KerasBenchmarkBase, self).__init__(
         output_dir=output_dir,
@@ -134,10 +135,10 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     wall_time_sec = time.time() - start_time_sec
 
     super(Resnet56KerasBenchmarkBase, self)._report_benchmark(
-          stats,
-          wall_time_sec,
-          total_batch_size=FLAGS.batch_size,
-          log_steps=FLAGS.log_steps)
+        stats,
+        wall_time_sec,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps)
 
   def benchmark_1_gpu_no_dist_strat(self):
     self._setup()
@@ -198,8 +199,8 @@ class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
-    super(Resnet56KerasBenchmarkSynth, self).__init__(output_dir=output_dir,
-                                                      default_flags=def_flags)
+    super(Resnet56KerasBenchmarkSynth, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
 
 
 class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
@@ -212,5 +213,5 @@ class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
-    super(Resnet56KerasBenchmarkReal, self).__init__(output_dir=output_dir,
-                                                     default_flags=def_flags)
+    super(Resnet56KerasBenchmarkReal, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)

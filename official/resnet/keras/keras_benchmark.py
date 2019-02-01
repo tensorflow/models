@@ -57,8 +57,14 @@ class KerasBenchmark(tf.test.Benchmark):
     else:
       flagsaver.restore_flag_values(KerasBenchmark.local_flags)
 
-  def _report_benchmark(self, stats, wall_time_sec, top_1_max=None, top_1_min=None,
-                        log_steps=None, total_batch_size=None, warmup=1):
+  def _report_benchmark(self,
+                        stats,
+                        wall_time_sec,
+                        top_1_max=None,
+                        top_1_min=None,
+                        log_steps=None,
+                        total_batch_size=None,
+                        warmup=1):
     """Report benchmark results by writing to local protobuf file
 
     Args:
@@ -73,30 +79,39 @@ class KerasBenchmark(tf.test.Benchmark):
 
     extras = {}
     if 'accuracy_top_1' in stats:
-      extras['accuracy'] = self._json_description(stats['accuracy_top_1'],
-          priority=0, min_value=top_1_min, max_value=top_1_max)
-      extras['top_1_train_accuracy'] = self._json_description(stats['training_accuracy_top_1'], priority=1)
+      extras['accuracy'] = self._json_description(
+          stats['accuracy_top_1'],
+          priority=0,
+          min_value=top_1_min,
+          max_value=top_1_max)
+      extras['top_1_train_accuracy'] = self._json_description(
+          stats['training_accuracy_top_1'], priority=1)
 
-    if (warmup and
-        'step_timestamp_log' in stats and
+    if (warmup and 'step_timestamp_log' in stats and
         len(stats['step_timestamp_log']) > warmup):
       # first entry in the time_log is start of step 1. The rest of the
       # entries are the end of each step recorded
       time_log = stats['step_timestamp_log']
       elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
-      num_examples = (total_batch_size * log_steps * (len(time_log)-warmup-1))
+      num_examples = (
+          total_batch_size * log_steps * (len(time_log) - warmup - 1))
       examples_per_sec = num_examples / elapsed
-      extras['exp_per_second'] = self._json_description(examples_per_sec, priority=2)
+      extras['exp_per_second'] = self._json_description(
+          examples_per_sec, priority=2)
 
     if 'avg_exp_per_second' in stats:
-      extras['avg_exp_per_second'] = self._json_description(stats['avg_exp_per_second'], priority=3)
+      extras['avg_exp_per_second'] = self._json_description(
+          stats['avg_exp_per_second'], priority=3)
 
-    self.report_benchmark(
-        iters=-1,
-        wall_time=wall_time_sec,
-        extras=extras)
+    self.report_benchmark(iters=-1, wall_time=wall_time_sec, extras=extras)
 
-  def _json_description(self, value, priority=None, min_value=None, max_value=None):
+  def _json_description(self,
+                        value,
+                        priority=None,
+                        min_value=None,
+                        max_value=None):
+    """Get a json-formatted string describing the attributes for a metric"""
+
     attributes = {}
     attributes['value'] = value
     if priority:
@@ -115,7 +130,3 @@ class KerasBenchmark(tf.test.Benchmark):
       attributes['succeeded'] = succeeded
 
     return json.dumps(attributes)
-
-  def _get_model_dir(self, folder_name):
-    return os.path.join(self.output_dir, folder_name)
-
