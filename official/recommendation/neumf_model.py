@@ -267,6 +267,7 @@ def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
                                          use_tpu_spec=False   # type: bool
                                         ):
   # type: (...) -> tf.estimator.EstimatorSpec
+  # type: (...) -> cross_entropy, metric_fn, in_top_k, ndcg, metric_weights
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -328,7 +329,11 @@ def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
       name, TPUEstimatorSpecs work with GPUs
 
   Returns:
-    An EstimatorSpec for evaluation.
+    cross_entropy: the loss
+    metric_fn: the metrics function
+    in_top_k: hit rate metric
+    ndcg: ndcg metric
+    metric_weights: metric weights
   """
   in_top_k, ndcg, metric_weights, logits_by_user = compute_top_k_and_ndcg(
       logits, duplicate_mask, match_mlperf)

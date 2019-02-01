@@ -117,11 +117,8 @@ def run_ncf(_):
   """Run NCF training and eval loop."""
   params = ncf_common.parse_flags(FLAGS)
 
-  num_users, \
-  num_items, \
-  num_train_steps, \
-  num_eval_steps, \
-  producer = ncf_common.get_inputs(params)
+  num_users, num_items, num_train_steps, num_eval_steps, producer = (
+      ncf_common.get_inputs(params))
 
   params["num_users"], params["num_items"] = num_users, num_items
   producer.start()
