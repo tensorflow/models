@@ -153,6 +153,12 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
     FLAGS.turn_off_distribution_strategy = True
+    # Test errors only if all 1_gpu test are run together. Adding
+    # FLAGS.model_dir to this test fixes the problem for unknown reason.
+    # Error is: tensorflow.python.framework.errors_impl.NotFoundError:
+    # Resource localhost/logdir:/tmp/cifar10_model/
+    # N10tensorflow22SummaryWriterInterfaceE does not exist.
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
