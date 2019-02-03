@@ -178,7 +178,7 @@ def run(flags_obj):
                       ],
                       validation_steps=num_eval_steps,
                       validation_data=validation_data,
-                      verbose=1)
+                      verbose=2)
   eval_output = None
   if not flags_obj.skip_eval:
     eval_output = model.evaluate(eval_input_dataset,
