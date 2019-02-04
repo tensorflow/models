@@ -80,7 +80,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
       if batch != 0:
         self.record_batch = True
         self.timestamp_log.append(BatchTimestamp(batch, timestamp))
-        tf.logging.info("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
+        tf.compat.v1.logging.info("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
                         "'images_per_second': %f}" %
                         (batch, elapsed_time, examples_per_second))
 
@@ -120,7 +120,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     if lr != self.prev_lr:
       self.model.optimizer.learning_rate = lr  # lr should be a float here
       self.prev_lr = lr
-      tf.logging.debug('Epoch %05d Batch %05d: LearningRateBatchScheduler '
+      tf.compat.v1.logging.debug('Epoch %05d Batch %05d: LearningRateBatchScheduler '
                        'change learning rate to %s.', self.epochs, batch, lr)
 
 
@@ -226,14 +226,14 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
     """Returns dataset filled with random data."""
     # Synthetic input should be within [0, 255].
-    inputs = tf.truncated_normal(
+    inputs = tf.random.truncated_normal(
         [height, width, num_channels],
         dtype=dtype,
         mean=127,
         stddev=60,
         name='synthetic_inputs')
 
-    labels = tf.random_uniform(
+    labels = tf.random.uniform(
         [1],
         minval=0,
         maxval=num_classes - 1,
@@ -241,7 +241,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
         name='synthetic_labels')
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
     data = data.batch(batch_size)
-    data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+    data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return data
 
   return input_fn
