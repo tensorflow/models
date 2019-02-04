@@ -232,7 +232,6 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
         mean=127,
         stddev=60,
         name='synthetic_inputs')
-
     labels = tf.random.uniform(
         [1],
         minval=0,
