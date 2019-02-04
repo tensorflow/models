@@ -18,118 +18,200 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-
+import time
 from absl import flags
-from absl.testing import flagsaver
-import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
+from official.resnet.keras import keras_benchmark
 from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
-
 
 DATA_DIR = '/data/cifar10_data/cifar-10-batches-bin'
 MIN_TOP_1_ACCURACY = 0.925
 MAX_TOP_1_ACCURACY = 0.938
 
+FLAGS = flags.FLAGS
 
-class KerasCifar10BenchmarkTests(object):
-  """Benchmarks and accuracy tests for KerasCifar10."""
 
-  local_flags = None
+class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
+  """Accuracy tests for ResNet56 Keras CIFAR-10."""
 
   def __init__(self, output_dir=None):
-    self.oss_report_object = None
-    self.output_dir = output_dir
+    flag_methods = [
+        keras_common.define_keras_flags, cifar_main.define_cifar_flags
+    ]
 
-  def keras_resnet56_1_gpu(self):
+    super(Resnet56KerasAccuracy, self).__init__(
+        output_dir=output_dir, flag_methods=flag_methods)
+
+  def benchmark_graph_1_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
-    flags.FLAGS.num_gpus = 1
-    flags.FLAGS.data_dir = DATA_DIR
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_1_gpu')
-    flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
+    FLAGS.num_gpus = 1
+    FLAGS.data_dir = DATA_DIR
+    FLAGS.batch_size = 128
+    FLAGS.train_epochs = 182
+    FLAGS.model_dir = self._get_model_dir('keras_resnet56_1_gpu')
+    FLAGS.dtype = 'fp32'
+    self._run_and_report_benchmark()
 
-  def keras_resnet56_eager_1_gpu(self):
+  def benchmark_1_gpu(self):
     """Test keras based model with eager and distribution strategies."""
     self._setup()
-    flags.FLAGS.num_gpus = 1
-    flags.FLAGS.data_dir = DATA_DIR
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_eager_1_gpu')
-    flags.FLAGS.dtype = 'fp32'
-    flags.FLAGS.enable_eager = True
-    stats = keras_cifar_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
+    FLAGS.num_gpus = 1
+    FLAGS.data_dir = DATA_DIR
+    FLAGS.batch_size = 128
+    FLAGS.train_epochs = 182
+    FLAGS.model_dir = self._get_model_dir('keras_resnet56_eager_1_gpu')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    self._run_and_report_benchmark()
 
-  def keras_resnet56_eager_2_gpu(self):
+  def benchmark_2_gpu(self):
     """Test keras based model with eager and distribution strategies."""
     self._setup()
-    flags.FLAGS.num_gpus = 2
-    flags.FLAGS.data_dir = DATA_DIR
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_eager_2_gpu')
-    flags.FLAGS.dtype = 'fp32'
-    flags.FLAGS.enable_eager = True
-    stats = keras_cifar_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
+    FLAGS.num_gpus = 2
+    FLAGS.data_dir = DATA_DIR
+    FLAGS.batch_size = 128
+    FLAGS.train_epochs = 182
+    FLAGS.model_dir = self._get_model_dir('keras_resnet56_eager_2_gpu')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    self._run_and_report_benchmark()
 
-  def keras_resnet56_2_gpu(self):
+  def benchmark_graph_2_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
-    flags.FLAGS.num_gpus = 2
-    flags.FLAGS.data_dir = DATA_DIR
-    flags.FLAGS.data_dir = self._get_model_dir('keras_resnet56_2_gpu')
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = ''
-    flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
+    FLAGS.num_gpus = 2
+    FLAGS.data_dir = DATA_DIR
+    FLAGS.batch_size = 128
+    FLAGS.train_epochs = 182
+    FLAGS.model_dir = self._get_model_dir('keras_resnet56_2_gpu')
+    FLAGS.dtype = 'fp32'
+    self._run_and_report_benchmark()
 
-  def keras_resnet56_no_dist_strat_1_gpu(self):
+  def benchmark_graph_1_gpu_no_dist_strat(self):
     """Test keras based model with Keras fit but not distribution strategies."""
     self._setup()
-    flags.FLAGS.turn_off_distribution_strategy = True
-    flags.FLAGS.num_gpus = 1
-    flags.FLAGS.data_dir = DATA_DIR
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = self._get_model_dir(
-        'keras_resnet56_no_dist_strat_1_gpu')
-    flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
+    FLAGS.turn_off_distribution_strategy = True
+    FLAGS.num_gpus = 1
+    FLAGS.data_dir = DATA_DIR
+    FLAGS.batch_size = 128
+    FLAGS.train_epochs = 182
+    FLAGS.model_dir = self._get_model_dir('keras_resnet56_no_dist_strat_1_gpu')
+    FLAGS.dtype = 'fp32'
+    self._run_and_report_benchmark()
 
-  def _fill_report_object(self, stats):
-    if self.oss_report_object:
-      self.oss_report_object.add_top_1(stats['accuracy_top_1'],
-                                       expected_min=MIN_TOP_1_ACCURACY,
-                                       expected_max=MAX_TOP_1_ACCURACY)
-      self.oss_report_object.add_other_quality(stats['training_accuracy_top_1'],
-                                               'top_1_train_accuracy')
-    else:
-      raise ValueError('oss_report_object has not been set.')
+  def _run_and_report_benchmark(self):
+    start_time_sec = time.time()
+    stats = keras_cifar_main.run(FLAGS)
+    wall_time_sec = time.time() - start_time_sec
 
-  def _get_model_dir(self, folder_name):
-    return os.path.join(self.output_dir, folder_name)
+    super(Resnet56KerasAccuracy, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        top_1_min=MIN_TOP_1_ACCURACY,
+        top_1_max=MAX_TOP_1_ACCURACY,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=100)
 
-  def _setup(self):
-    """Setups up and resets flags before each test."""
-    tf.logging.set_verbosity(tf.logging.DEBUG)
-    if KerasCifar10BenchmarkTests.local_flags is None:
-      keras_common.define_keras_flags()
-      cifar_main.define_cifar_flags()
-      # Loads flags to get defaults to then override. List cannot be empty.
-      flags.FLAGS(['foo'])
-      saved_flag_values = flagsaver.save_flag_values()
-      KerasCifar10BenchmarkTests.local_flags = saved_flag_values
-      return
-    flagsaver.restore_flag_values(KerasCifar10BenchmarkTests.local_flags)
+
+class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
+  """Short performance tests for ResNet56 via Keras and CIFAR-10."""
+
+  def __init__(self, output_dir=None, default_flags=None):
+    flag_methods = [
+        keras_common.define_keras_flags, cifar_main.define_cifar_flags
+    ]
+
+    super(Resnet56KerasBenchmarkBase, self).__init__(
+        output_dir=output_dir,
+        flag_methods=flag_methods,
+        default_flags=default_flags)
+
+  def _run_and_report_benchmark(self):
+    start_time_sec = time.time()
+    stats = keras_cifar_main.run(FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+
+    super(Resnet56KerasBenchmarkBase, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps)
+
+  def benchmark_1_gpu_no_dist_strat(self):
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.turn_off_distribution_strategy = True
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_1_gpu_no_dist_strat(self):
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.turn_off_distribution_strategy = True
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu(self):
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.turn_off_distribution_strategy = False
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_1_gpu(self):
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.turn_off_distribution_strategy = False
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_2_gpu(self):
+    self._setup()
+    FLAGS.num_gpus = 2
+    FLAGS.enable_eager = True
+    FLAGS.turn_off_distribution_strategy = False
+    FLAGS.batch_size = 128 * 2  # 2 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_2_gpu(self):
+    self._setup()
+    FLAGS.num_gpus = 2
+    FLAGS.enable_eager = False
+    FLAGS.turn_off_distribution_strategy = False
+    FLAGS.batch_size = 128 * 2  # 2 GPUs
+    self._run_and_report_benchmark()
+
+
+class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
+  """Synthetic benchmarks for ResNet56 and Keras."""
+
+  def __init__(self, output_dir=None):
+    def_flags = {}
+    def_flags['skip_eval'] = True
+    def_flags['use_synthetic_data'] = True
+    def_flags['train_steps'] = 110
+    def_flags['log_steps'] = 10
+
+    super(Resnet56KerasBenchmarkSynth, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
+
+
+class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
+  """Real data benchmarks for ResNet56 and Keras."""
+
+  def __init__(self, output_dir=None):
+    def_flags = {}
+    def_flags['skip_eval'] = True
+    def_flags['data_dir'] = DATA_DIR
+    def_flags['train_steps'] = 110
+    def_flags['log_steps'] = 10
+
+    super(Resnet56KerasBenchmarkReal, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
