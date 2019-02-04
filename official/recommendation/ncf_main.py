@@ -99,8 +99,7 @@ def construct_estimator(model_dir, params):
 
   else:
     distribution = distribution_utils.get_distribution_strategy(
-        num_gpus=params["num_gpus"],
-        distribution_strategy=FLAGS.distribute_strategy)
+        num_gpus=params["num_gpus"])
 
   run_config = tf.estimator.RunConfig(train_distribute=distribution,
                                       eval_distribute=distribution)

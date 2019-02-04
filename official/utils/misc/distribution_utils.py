@@ -36,8 +36,8 @@ def get_distribution_strategy(num_gpus,
     turn_off_distribution_strategy: when set to True, do not use any
       distribution strategy. Note that when it is True, and num_gpus is
       larger than 1, it will raise a ValueError.
-    distribute_strategy: if set and `turn_off_distribution_strategy` is False,
-      use the specified distribute_strategy.
+    distribute_strategy: If set and `turn_off_distribution_strategy` is False,
+      use the specified Distribution Strategy.
 
   Returns:
     tf.contrib.distribute.DistibutionStrategy object.
