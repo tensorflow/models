@@ -23,7 +23,8 @@ import tensorflow as tf
 
 def get_distribution_strategy(num_gpus,
                               all_reduce_alg=None,
-                              turn_off_distribution_strategy=False):
+                              turn_off_distribution_strategy=False,
+                              distribute_strategy=None):
   """Return a DistributionStrategy for running the model.
 
   Args:
@@ -35,6 +36,8 @@ def get_distribution_strategy(num_gpus,
     turn_off_distribution_strategy: when set to True, do not use any
       distribution strategy. Note that when it is True, and num_gpus is
       larger than 1, it will raise a ValueError.
+    distribute_strategy: if set and `turn_off_distribution_strategy` is False,
+      use the specified distribute_strategy.
 
   Returns:
     tf.contrib.distribute.DistibutionStrategy object.
@@ -42,21 +45,26 @@ def get_distribution_strategy(num_gpus,
     ValueError: if turn_off_distribution_strategy is True and num_gpus is
     larger than 1
   """
-  if num_gpus == 0:
-    if turn_off_distribution_strategy:
-      return None
-    else:
+  if turn_off_distribution_strategy:
+    if num_gpus > 1:
+      raise ValueError("When {} GPUs are specified, "
+                       "turn_off_distribution_strategy flag cannot be set to"
+                       "True.".format(num_gpus))
+     return None
+
+  if distribute_strategy:
+    distribute_strategy = distribute_strategy.lower()
+  
+  if distribute_strategy == "one_device" or num_gpus <= 1:
+    if num_gpus == 0:
       return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
-  elif num_gpus == 1:
-    if turn_off_distribution_strategy:
-      return None
     else:
+      if num_gpus > 1:
+        raise ValueError("`OneDeviceStrategy` can not be used for more than "
+                        "one device.")
       return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
-  elif turn_off_distribution_strategy:
-    raise ValueError("When {} GPUs are specified, "
-                     "turn_off_distribution_strategy flag cannot be set to"
-                     "True.".format(num_gpus))
-  else:  # num_gpus > 1 and not turn_off_distribution_strategy
+
+  if distribute_strategy == "mirrored":
     devices = ["device:GPU:%d" % i for i in range(num_gpus)]
     if all_reduce_alg:
       return tf.distribute.MirroredStrategy(
@@ -65,6 +73,17 @@ def get_distribution_strategy(num_gpus,
               all_reduce_alg, num_packs=2))
     else:
       return tf.distribute.MirroredStrategy(devices=devices)
+
+  if distribute_strategy == "collective":
+    return tf.contrib.distribute.CollectiveAllReduceStrategy(
+        num_gpus_per_worker=num_gpus)
+
+  if distribute_strategy == "parameter_server":
+    return tf.contrib.distribute.ParameterServerStrategy(
+        num_gpus_per_worker=num_gpus)
+
+  return ValueError(
+      "Uncognized Distribution Strategy: %r" % distribute_strategy)
 
 
 def per_device_batch_size(batch_size, num_gpus):
