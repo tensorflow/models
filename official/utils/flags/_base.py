@@ -42,7 +42,7 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
     num_gpu: Create a flag to specify the number of GPUs used.
     hooks: Create a flag to specify hooks for logging.
     export_dir: Create a flag to specify where a SavedModel should be exported.
-    distribution_strategy: Create a flag to specify which distribution_strategy
+    distribution_strategy: Create a flag to specify which Distribution Strategy
       to use.
   Returns:
     A list of flags for core.py to marks as key flags.
