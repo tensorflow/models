@@ -81,7 +81,7 @@ def parse_record_keras(raw_record, is_training, dtype):
     Tuple with processed image tensor and one-hot-encoded label tensor.
   """
   image, label = cifar_main.parse_record(raw_record, is_training, dtype)
-  label = tf.sparse_to_dense(label, (cifar_main.NUM_CLASSES,), 1)
+  label = tf.compat.v1.sparse_to_dense(label, (cifar_main.NUM_CLASSES,), 1)
   return image, label
 
 
@@ -98,7 +98,7 @@ def run(flags_obj):
     Dictionary of training and eval stats.
   """
   if flags_obj.enable_eager:
-    tf.enable_eager_execution()
+    tf.compat.v1.enable_eager_execution()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
@@ -194,7 +194,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   cifar_main.define_cifar_flags()
   keras_common.define_keras_flags()
   absl_app.run(main)

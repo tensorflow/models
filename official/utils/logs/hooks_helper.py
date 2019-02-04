@@ -57,7 +57,7 @@ def get_train_hooks(name_list, use_tpu=False, **kwargs):
     return []
 
   if use_tpu:
-    tf.logging.warning("hooks_helper received name_list `{}`, but a TPU is "
+    tf.compat.v1.logging.warning("hooks_helper received name_list `{}`, but a TPU is "
                        "specified. No hooks will be used.".format(name_list))
     return []
 
@@ -89,7 +89,7 @@ def get_logging_tensor_hook(every_n_iter=100, tensors_to_log=None, **kwargs):  #
   if tensors_to_log is None:
     tensors_to_log = _TENSORS_TO_LOG
 
-  return tf.train.LoggingTensorHook(
+  return tf.estimator.LoggingTensorHook(
       tensors=tensors_to_log,
       every_n_iter=every_n_iter)
 
@@ -106,7 +106,7 @@ def get_profiler_hook(model_dir, save_steps=1000, **kwargs):  # pylint: disable=
     Returns a ProfilerHook that writes out timelines that can be loaded into
     profiling tools like chrome://tracing.
   """
-  return tf.train.ProfilerHook(save_steps=save_steps, output_dir=model_dir)
+  return tf.estimator.ProfilerHook(save_steps=save_steps, output_dir=model_dir)
 
 
 def get_examples_per_second_hook(every_n_steps=100,

@@ -63,12 +63,12 @@ class GoldenBaseTest(reference_data.BaseTest):
     with g.as_default():
       seed = self.name_to_seed(name)
       seed = seed + 1 if bad_seed else seed
-      tf.set_random_seed(seed)
+      tf.compat.v1.set_random_seed(seed)
       tensor_name = "wrong_tensor" if wrong_name else "input_tensor"
       tensor_shape = (1, 2) if wrong_shape else (1, 1)
-      input_tensor = tf.get_variable(
+      input_tensor = tf.compat.v1.get_variable(
           tensor_name, dtype=tf.float32,
-          initializer=tf.random_uniform(tensor_shape, maxval=1)
+          initializer=tf.random.uniform(tensor_shape, maxval=1)
       )
 
     def correctness_function(tensor_result):
@@ -86,13 +86,13 @@ class GoldenBaseTest(reference_data.BaseTest):
 
     g = tf.Graph()
     with g.as_default():
-      tf.set_random_seed(self.name_to_seed(name))
-      input_tensor = tf.get_variable(
+      tf.compat.v1.set_random_seed(self.name_to_seed(name))
+      input_tensor = tf.compat.v1.get_variable(
           "input_tensor", dtype=tf.float32,
-          initializer=tf.random_uniform((1, 2), maxval=1)
+          initializer=tf.random.uniform((1, 2), maxval=1)
       )
-      layer = tf.layers.dense(inputs=input_tensor, units=4)
-      layer = tf.layers.dense(inputs=layer, units=1)
+      layer = tf.compat.v1.layers.dense(inputs=input_tensor, units=4)
+      layer = tf.compat.v1.layers.dense(inputs=layer, units=1)
 
     self._save_or_test_ops(
         name=name, graph=g, ops_to_eval=[layer], test=test,

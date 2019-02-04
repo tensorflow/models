@@ -88,7 +88,7 @@ def run(flags_obj):
     ValueError: If fp16 is passed as it is not currently supported.
   """
   if flags_obj.enable_eager:
-    tf.enable_eager_execution()
+    tf.compat.v1.enable_eager_execution()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
@@ -187,7 +187,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   imagenet_main.define_imagenet_flags()
   keras_common.define_keras_flags()
   absl_app.run(main)
