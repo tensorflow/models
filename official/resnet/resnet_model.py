@@ -73,11 +73,13 @@ def fixed_padding(inputs, kernel_size, data_format):
   pad_end = pad_total - pad_beg
 
   if data_format == 'channels_first':
-    padded_inputs = tf.pad(tensor=inputs, paddings=[[0, 0], [0, 0],
-                                    [pad_beg, pad_end], [pad_beg, pad_end]])
+    padded_inputs = tf.pad(tensor=inputs,
+                           paddings=[[0, 0], [0, 0], [pad_beg, pad_end],
+                                     [pad_beg, pad_end]])
   else:
-    padded_inputs = tf.pad(tensor=inputs, paddings=[[0, 0], [pad_beg, pad_end],
-                                    [pad_beg, pad_end], [0, 0]])
+    padded_inputs = tf.pad(tensor=inputs,
+                           paddings=[[0, 0], [pad_beg, pad_end],
+                                     [pad_beg, pad_end], [0, 0]])
   return padded_inputs
 
 
@@ -476,7 +478,7 @@ class Model(object):
     """
 
     return tf.compat.v1.variable_scope('resnet_model',
-                             custom_getter=self._custom_dtype_getter)
+                                       custom_getter=self._custom_dtype_getter)
 
   def __call__(self, inputs, training):
     """Add operations to classify a batch of input images.

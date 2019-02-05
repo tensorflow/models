@@ -45,7 +45,8 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
     self.graph = tf.Graph()
     with self.graph.as_default():
       tf.compat.v1.train.create_global_step()
-      self.train_op = tf.compat.v1.assign_add(tf.compat.v1.train.get_global_step(), 1)
+      self.train_op = tf.compat.v1.assign_add(
+          tf.compat.v1.train.get_global_step(), 1)
       self.global_step = tf.compat.v1.train.get_global_step()
 
   def test_raise_in_both_secs_and_steps(self):

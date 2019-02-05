@@ -253,8 +253,9 @@ def run_cifar(flags_obj):
     Dictionary of results. Including final accuracy.
   """
   if flags_obj.image_bytes_as_serving_input:
-    tf.compat.v1.logging.fatal('--image_bytes_as_serving_input cannot be set to True '
-                     'for CIFAR. This flag is only applicable to ImageNet.')
+    tf.compat.v1.logging.fatal(
+        '--image_bytes_as_serving_input cannot be set to True for CIFAR. '
+        'This flag is only applicable to ImageNet.')
     return
 
   input_function = (flags_obj.use_synthetic_data and
