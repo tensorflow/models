@@ -44,9 +44,13 @@ class StringParser(data_parser.DataToNumpyParser):
     self.field_name = field_name
 
   def parse(self, tf_example):
-    return "".join(tf_example.features.feature[self.field_name]
-                   .bytes_list.value) if tf_example.features.feature[
-                       self.field_name].HasField("bytes_list") else None
+    if tf_example.features.feature[self.field_name].HasField("bytes_list"):
+      return "".join(
+        [element.decode("utf-8") for element in
+         tf_example.features.feature[self.field_name].bytes_list.value]
+      )
+    else:
+      return None
 
 
 class Int64Parser(data_parser.DataToNumpyParser):
