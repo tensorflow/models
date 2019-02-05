@@ -195,7 +195,7 @@ class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
   def __init__(self, output_dir=None):
     def_flags = {}
     def_flags['skip_eval'] = True
-    def_flags['use_synthetic_data'] = True
+    def_flags['data_source_type'] = 'synthetic_data'
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 

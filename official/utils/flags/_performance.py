@@ -44,7 +44,7 @@ def get_loss_scale(flags_obj):
 
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
-                       all_data_types=True, max_train_steps=True, dtype=True,
+                       data_source_type=True, max_train_steps=True, dtype=True,
                        all_reduce_alg=True, tf_gpu_thread_mode=False,
                        datasets_num_private_threads=False,
                        datasets_num_parallel_batches=False):
@@ -54,7 +54,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     num_parallel_calls: Create a flag to specify parallelism of data loading.
     inter_op: Create a flag to allow specification of inter op threads.
     intra_op: Create a flag to allow specification of intra op threads.
-    all_data_types: Create a flag to allow specification of which data type to use
+    data_source_type: Create a flag to allow specification of which data type to use
     max_train_steps: Create a flags to allow specification of maximum number
       of training steps
     dtype: Create flags for specifying dtype.
@@ -92,9 +92,9 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         help=help_wrap("Number of intra_op_parallelism_threads to use for CPU. "
                        "See TensorFlow config.proto for details."))
 
-  if all_data_types:
+  if data_source_type:
     flags.DEFINE_enum(
-        name="data_type",
+        name="data_source_type",
         default="real_data",
         enum_values=[
           "real_data",

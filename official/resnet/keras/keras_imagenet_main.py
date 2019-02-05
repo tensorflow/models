@@ -102,7 +102,8 @@ def run(flags_obj):
   tf.keras.backend.set_image_data_format(data_format)
 
   # pylint: disable=protected-access
-  if flags_obj.use_synthetic_data:
+  use_synthetic_data = (falgs_obj.data_source_type == "synthetic_data")
+  if use_synthetic_data:
     input_fn = keras_common.get_synth_input_fn(
         height=imagenet_main.DEFAULT_IMAGE_SIZE,
         width=imagenet_main.DEFAULT_IMAGE_SIZE,

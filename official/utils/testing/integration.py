@@ -52,7 +52,7 @@ def run_synthetic(main, tmp_root, extra_flags=None, synth=True, max_train=1):
           "--epochs_between_evals", "1"] + extra_flags
 
   if synth:
-    args.append("--use_synthetic_data")
+    args.extend("--data_source_type", "synthetic_data")
 
   if max_train is not None:
     args.extend(["--max_train_steps", str(max_train)])

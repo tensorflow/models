@@ -75,9 +75,9 @@ class BaseTester(unittest.TestCase):
     """Test to ensure boolean flags trigger as expected.
     """
 
-    flags_core.parse_flags([__file__, "--use_synthetic_data"])
+    flags_core.parse_flags([__file__, "--clean"])
 
-    assert flags.FLAGS.use_synthetic_data
+    assert flags.FLAGS.clean
 
   def test_parse_dtype_info(self):
     for dtype_str, tf_dtype, loss_scale in [["fp16", tf.float16, 128],

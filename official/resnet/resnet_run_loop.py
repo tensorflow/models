@@ -500,15 +500,16 @@ def resnet_main(
           'fine_tune': flags_obj.fine_tune
       })
 
+  use_synthetic_data = (flags_obj.data_source_type == "synthetic_data")
   run_params = {
       'batch_size': flags_obj.batch_size,
       'dtype': flags_core.get_tf_dtype(flags_obj),
       'resnet_size': flags_obj.resnet_size,
       'resnet_version': flags_obj.resnet_version,
-      'synthetic_data': flags_obj.use_synthetic_data,
+      'synthetic_data': use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
   }
-  if flags_obj.use_synthetic_data:
+  if use_synthetic_data:
     dataset_name = dataset_name + '-synthetic'
 
   benchmark_logger = logger.get_benchmark_logger()

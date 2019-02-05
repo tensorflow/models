@@ -257,7 +257,8 @@ def run_cifar(flags_obj):
                      'for CIFAR. This flag is only applicable to ImageNet.')
     return
 
-  input_function = (flags_obj.use_synthetic_data and
+  use_synthetic_data = (flags_obj.data_source_type == "synthetic_data")
+  input_function = (use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
   result = resnet_run_loop.resnet_main(
