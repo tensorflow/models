@@ -186,6 +186,10 @@ def main(_):
 
 def run_ncf(_):
   """Run NCF training and eval loop."""
+
+  if FLAGS.data_source_type == "cached_real_data":
+    raise ValueError("cached_real_data is not supported by this model.")
+
   use_synthetic_data = (FLAGS.data_source_type == "synthetic_data")
   if FLAGS.download_if_missing and not use_synthetic_data:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)

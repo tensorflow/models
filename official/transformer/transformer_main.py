@@ -553,6 +553,9 @@ def run_transformer(flags_obj):
   params["static_batch"] = flags_obj.static_batch or params["use_tpu"]
   params["allow_ffn_pad"] = not params["use_tpu"]
 
+  if FLAGS.data_source_type == "cached_real_data":
+    raise ValueError("cached_real_data is not supported by this model.")
+
   use_synthetic_data = (flags_obj.data_source_type == "synthetic_data")
   params["use_synthetic_data"] = use_synthetic_data
 
