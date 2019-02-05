@@ -62,7 +62,8 @@ class BaseTest(tf.test.TestCase):
         filename, cifar10_main._RECORD_BYTES)  # pylint: disable=protected-access
     fake_dataset = fake_dataset.map(
         lambda val: cifar10_main.parse_record(val, False, tf.float32))
-    image, label = tf.compat.v1.data.make_one_shot_iterator(fake_dataset).get_next()
+    image, label = tf.compat.v1.data.make_one_shot_iterator(
+        fake_dataset).get_next()
 
     self.assertAllEqual(label.shape, ())
     self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))

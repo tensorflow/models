@@ -240,8 +240,10 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     run_info = {}
     logger._collect_tensorflow_info(run_info)
     self.assertNotEqual(run_info["tensorflow_version"], {})
-    self.assertEqual(run_info["tensorflow_version"]["version"], tf.version.VERSION)
-    self.assertEqual(run_info["tensorflow_version"]["git_hash"], tf.version.GIT_VERSION)
+    self.assertEqual(run_info["tensorflow_version"]["version"],
+                     tf.version.VERSION)
+    self.assertEqual(run_info["tensorflow_version"]["git_hash"],
+                     tf.version.GIT_VERSION)
 
   def test_collect_run_params(self):
     run_info = {}

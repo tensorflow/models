@@ -105,7 +105,7 @@ def process_record_dataset(dataset,
   # Defines a specific size thread pool for tf.data operations.
   if datasets_num_private_threads:
     tf.compat.v1.logging.info('datasets_num_private_threads: %s',
-                    datasets_num_private_threads)
+                              datasets_num_private_threads)
     dataset = threadpool.override_threadpool(
         dataset,
         threadpool.PrivateThreadPool(
@@ -204,8 +204,10 @@ def override_flags_and_set_envars_for_gpu_thread_pool(flags_obj):
   total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
   os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s', os.environ['TF_GPU_THREAD_COUNT'])
-  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s', os.environ['TF_GPU_THREAD_MODE'])
+  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
+                            os.environ['TF_GPU_THREAD_COUNT'])
+  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
+                            os.environ['TF_GPU_THREAD_MODE'])
 
   # Reduces general thread pool by number of threads used for GPU pool.
   main_thread_count = cpu_count - total_gpu_thread_count
@@ -262,7 +264,9 @@ def learning_rate_with_decay(
       warmup_lr = (
           initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
               warmup_steps, tf.float32))
-      return tf.cond(pred=global_step < warmup_steps, true_fn=lambda: warmup_lr, false_fn=lambda: lr)
+      return tf.cond(pred=global_step < warmup_steps,
+                     true_fn=lambda: warmup_lr,
+                     false_fn=lambda: lr)
     return lr
 
   return learning_rate_fn
@@ -358,8 +362,8 @@ def resnet_model_fn(features, labels, mode, model_class,
   # Add weight decay to the loss.
   l2_loss = weight_decay * tf.add_n(
       # loss is computed using fp32 for numerical stability.
-      [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.compat.v1.trainable_variables()
-       if loss_filter_fn(v.name)])
+      [tf.nn.l2_loss(tf.cast(v, tf.float32))
+       for v in tf.compat.v1.trainable_variables() if loss_filter_fn(v.name)])
   tf.compat.v1.summary.scalar('l2_loss', l2_loss)
   loss = cross_entropy + l2_loss
 
@@ -415,10 +419,8 @@ def resnet_model_fn(features, labels, mode, model_class,
     train_op = None
 
   accuracy = tf.compat.v1.metrics.accuracy(labels, predictions['classes'])
-  accuracy_top_5 = tf.compat.v1.metrics.mean(tf.nn.in_top_k(predictions=logits,
-                                                  targets=labels,
-                                                  k=5,
-                                                  name='top_5_op'))
+  accuracy_top_5 = tf.compat.v1.metrics.mean(
+      tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
   metrics = {'accuracy': accuracy,
              'accuracy_top_5': accuracy_top_5}
 
@@ -557,7 +559,8 @@ def resnet_main(
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
   for cycle_index, num_train_epochs in enumerate(schedule):
-    tf.compat.v1.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
+    tf.compat.v1.logging.info('Starting cycle: %d/%d', cycle_index,
+                              int(n_loops))
 
     if num_train_epochs:
       classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
