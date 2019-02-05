@@ -44,7 +44,7 @@ def get_loss_scale(flags_obj):
 
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
-                       synthetic_data=True, max_train_steps=True, dtype=True,
+                       all_data_types=True, max_train_steps=True, dtype=True,
                        all_reduce_alg=True, tf_gpu_thread_mode=False,
                        datasets_num_private_threads=False,
                        datasets_num_parallel_batches=False):
@@ -54,7 +54,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     num_parallel_calls: Create a flag to specify parallelism of data loading.
     inter_op: Create a flag to allow specification of inter op threads.
     intra_op: Create a flag to allow specification of intra op threads.
-    synthetic_data: Create a flag to allow the use of synthetic data.
+    all_data_types: Create a flag to allow specification of which data type to use
     max_train_steps: Create a flags to allow specification of maximum number
       of training steps
     dtype: Create flags for specifying dtype.
@@ -92,13 +92,16 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         help=help_wrap("Number of intra_op_parallelism_threads to use for CPU. "
                        "See TensorFlow config.proto for details."))
 
-  if synthetic_data:
-    flags.DEFINE_bool(
-        name="use_synthetic_data", short_name="synth", default=False,
-        help=help_wrap(
-            "If set, use fake data (zeroes) instead of a real dataset. "
-            "This mode is useful for performance debugging, as it removes "
-            "input processing steps, but will not learn anything."))
+  if all_data_types:
+    flags.DEFINE_enum(
+        name="data_type",
+        default="real_data",
+        enum_values=[
+          "real_data",
+          "synthetic_data",
+          "cached_real_data"  # also known as "fake data"
+        ],
+        help=help_wrap("Specifying which data type to use.")
 
   if max_train_steps:
     flags.DEFINE_integer(
