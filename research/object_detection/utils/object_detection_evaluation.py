@@ -32,6 +32,7 @@ from abc import abstractmethod
 import collections
 import logging
 import unicodedata
+import sys
 import numpy as np
 import tensorflow as tf
 
@@ -210,7 +211,10 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if idx + self._label_id_offset in category_index:
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
-          category_name = unicode(category_name, 'utf-8')
+          if sys.version_info >= (3, 0):
+            category_name = str(category_name, 'utf-8')
+          else:
+            category_name = unicode(category_name, 'utf-8')
         except TypeError:
           pass
         category_name = unicodedata.normalize('NFKD', category_name).encode(
@@ -348,7 +352,10 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if idx + self._label_id_offset in category_index:
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
-          category_name = unicode(category_name, 'utf-8')
+          if sys.version_info >= (3, 0):
+            category_name = str(category_name, 'utf-8')
+          else:
+            category_name = unicode(category_name, 'utf-8')
         except TypeError:
           pass
         category_name = unicodedata.normalize(
