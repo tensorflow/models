@@ -159,7 +159,7 @@ def main(argv):
       eval_config_path=FLAGS.eval_config_path)
 
   eval_config = configs['eval_config']
-  input_config = configs['eval_input_config']
+  input_config = configs['eval_input_configs'][0]
 
   metrics = read_data_and_evaluate(input_config, eval_config)
 
