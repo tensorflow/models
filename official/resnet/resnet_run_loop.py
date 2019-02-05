@@ -24,6 +24,7 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+import json
 import math
 import multiprocessing
 import os
@@ -463,6 +464,28 @@ def resnet_main(
   if flags_obj.tf_gpu_thread_mode:
     override_flags_and_set_envars_for_gpu_thread_pool(flags_obj)
 
+  # Configures cluster spec for distribution strategy.
+  tf_config = json.loads(os.environ.get('TF_CONFIG', '{}'))
+  if tf_config:
+    num_workers = len(tf_config['cluster']['worker'])
+  elif flags_obj.worker_hosts:
+    workers = flags_obj.worker_hosts.split(',')
+    num_workers = len(workers)
+    if num_workers > 1 and flags_obj.task_index < 0:
+      raise ValueError('Must specify task_index when number of workers > 1')
+    task_index = 0 if num_workers == 1 else flags_obj.task_index
+    os.environ['TF_CONFIG'] = json.dumps({
+        'cluster': {
+            'worker': workers
+        },
+        'task': {'type': 'worker', 'index': task_index}
+    })
+  else:
+    num_workers = 1
+    if flags_obj.all_reduce_alg == 'collective':
+      raise ValueError('Must specify worker_hosts with collective all-reduce')
+
+
   # Creates session config. allow_soft_placement = True, is required for
   # multi-GPU and is not harmful for other modes.
   session_config = tf.ConfigProto(
@@ -471,7 +494,7 @@ def resnet_main(
       allow_soft_placement=True)
 
   distribution_strategy = distribution_utils.get_distribution_strategy(
-      flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
+      flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg, num_workers)
 
   # Creates a `RunConfig` that checkpoints every 24 hours which essentially
   # results in checkpoints determined only by `epochs_between_evals`.
@@ -560,10 +583,17 @@ def resnet_main(
     tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
     if num_train_epochs:
-      classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
-                       hooks=train_hooks, max_steps=flags_obj.max_train_steps)
-
-    tf.logging.info('Starting to evaluate.')
+      if num_workers > 1:
+        train_spec = tf.estimator.TrainSpec(
+            input_fn=lambda: input_fn_train(num_train_epochs), hooks=train_hooks,
+            max_steps=flags_obj.max_train_steps)
+      else:
+        classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
+                         hooks=train_hooks, max_steps=flags_obj.max_train_steps)
+    elif num_workers > 1:
+      train_spec = tf.estimator.TrainSpec(
+          input_fn=lambda: None, hooks=train_hooks,
+          max_steps=flags_obj.max_train_steps)
 
     # flags_obj.max_train_steps is generally associated with testing and
     # profiling. As a result it is frequently called with synthetic data, which
@@ -571,8 +601,16 @@ def resnet_main(
     # eval (which is generally unimportant in those circumstances) to terminate.
     # Note that eval will run for max_train_steps each loop, regardless of the
     # global_step count.
-    eval_results = classifier.evaluate(input_fn=input_fn_eval,
-                                       steps=flags_obj.max_train_steps)
+    if num_workers > 1:
+      eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval,
+                                        steps=flags_obj.max_train_steps)
+      tf.logging.info('Starting to train and evaluate.')
+      eval_results, _ = tf.estimator.train_and_evaluate(classifier, train_spec,
+                                                        eval_spec)
+    else:
+      tf.logging.info('Starting to evaluate.')
+      eval_results = classifier.evaluate(input_fn=input_fn_eval,
+                                         steps=flags_obj.max_train_steps)
 
     benchmark_logger.log_evaluation_result(eval_results)
 
@@ -635,6 +673,15 @@ def define_resnet_flags(resnet_size_choices=None):
       name='turn_off_distribution_strategy', default=False,
       help=flags_core.help_wrap('Set to True to not use distribution '
                                 'strategies.'))
+  flags.DEFINE_string(
+      name='worker_hosts', default=None,
+      help=flags_core.help_wrap(
+          'Comma-separated list of worker ip:port pairs for running '
+          'multi-worker models with DistributionStrategy.'))
+  flags.DEFINE_integer(
+      name='task_index', default=None,
+      help=flags_core.help_wrap('If multi-worker training, the task_index of '
+                                'this worker'))
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
       help=flags_core.help_wrap('The size of the ResNet model to use.'))

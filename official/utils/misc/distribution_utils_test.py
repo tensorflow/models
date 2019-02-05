@@ -44,6 +44,12 @@ class GetDistributionStrategyTest(tf.test.TestCase):
     for device in ds.extended.worker_devices:
       self.assertIn('GPU', device)
 
+  def test_turn_off_distribution_strategy(self):
+    self.assertEquals(distribution_utils.get_distribution_strategy(
+        0, turn_off_distribution_strategy=True), None)
+    self.assertEquals(distribution_utils.get_distribution_strategy(
+        1, turn_off_distribution_strategy=True), None)
+
 
 class PerDeviceBatchSizeTest(tf.test.TestCase):
   """Tests for per_device_batch_size."""

@@ -22,12 +22,14 @@ import tensorflow as tf
 
 
 def get_distribution_strategy(num_gpus,
+                              num_workers=1,
                               all_reduce_alg=None,
                               turn_off_distribution_strategy=False):
   """Return a DistributionStrategy for running the model.
 
   Args:
-    num_gpus: Number of GPUs to run this model.
+    num_gpus: Number of GPUs per worker to run this model.
+    num_workers: Number of workers to run this model.
     all_reduce_alg: Specify which algorithm to use when performing all-reduce.
       See tf.contrib.distribute.AllReduceCrossDeviceOps for available
       algorithms. If None, DistributionStrategy will choose based on device
@@ -42,29 +44,28 @@ def get_distribution_strategy(num_gpus,
     ValueError: if turn_off_distribution_strategy is True and num_gpus is
     larger than 1
   """
-  if num_gpus == 0:
-    if turn_off_distribution_strategy:
-      return None
+  if turn_off_distribution_strategy:
+    if num_gpus > 1 or num_workers > 1:
+      raise ValueError("When {} GPUs and {} workers are specified, "
+                       "turn_off_distribution_strategy flag cannot be set to"
+                       "True.".format(num_gpus, num_workers))
     else:
-      return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
-  elif num_gpus == 1:
-    if turn_off_distribution_strategy:
       return None
-    else:
-      return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
-  elif turn_off_distribution_strategy:
-    raise ValueError("When {} GPUs are specified, "
-                     "turn_off_distribution_strategy flag cannot be set to"
-                     "True.".format(num_gpus))
-  else:  # num_gpus > 1 and not turn_off_distribution_strategy
-    devices = ["device:GPU:%d" % i for i in range(num_gpus)]
+  if all_reduce_alg == "collective" or num_workers > 1:
+    return tf.contrib.distribute.CollectiveAllReduceStrategy(
+        num_gpus_per_worker=num_gpus)
+  elif num_gpus <= 1:
+    device = "GPU" if num_gpus == 1 else "CPU"
+    return tf.contrib.distribute.OneDeviceStrategy("device:{}:0".format(device))
+  else:  # num_gpus > 1 and num_workers == 1
     if all_reduce_alg:
-      return tf.distribute.MirroredStrategy(
-          devices=devices,
-          cross_device_ops=tf.contrib.distribute.AllReduceCrossDeviceOps(
-              all_reduce_alg, num_packs=2))
+      cross_device_ops = tf.contrib.distribute.AllReduceCrossDeviceOps(
+          all_reduce_alg, num_packs=2)
     else:
-      return tf.distribute.MirroredStrategy(devices=devices)
+      cross_device_ops = None
+    return tf.distribute.MirroredStrategy(
+        devices=["device:GPU:%d" % i for i in range(num_gpus)],
+        cross_device_ops=cross_device_ops)
 
 
 def per_device_batch_size(batch_size, num_gpus):
