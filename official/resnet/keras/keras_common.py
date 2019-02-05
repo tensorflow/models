@@ -227,19 +227,20 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     """Returns dataset filled with random data."""
     # Synthetic input should be within [0, 255].
     inputs = tf.truncated_normal(
-        [batch_size] + [height, width, num_channels],
+        [height, width, num_channels],
         dtype=dtype,
         mean=127,
         stddev=60,
         name='synthetic_inputs')
 
     labels = tf.random_uniform(
-        [batch_size] + [1],
+        [1],
         minval=0,
         maxval=num_classes - 1,
         dtype=tf.int32,
         name='synthetic_labels')
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
+    data = data.batch(batch_size)
     data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
     return data
 
