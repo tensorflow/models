@@ -102,6 +102,8 @@ def process_record_dataset(dataset,
   # on how many devices are present.
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
 
+  dataset = dataset.take(1).cache().repeat()
+
   # Defines a specific size thread pool for tf.data operations.
   if datasets_num_private_threads:
     tf.logging.info('datasets_num_private_threads: %s',
