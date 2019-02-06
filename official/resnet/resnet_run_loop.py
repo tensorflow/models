@@ -482,8 +482,6 @@ def resnet_main(
     })
   else:
     num_workers = 1
-    if flags_obj.all_reduce_alg == 'collective':
-      raise ValueError('Must specify worker_hosts with collective all-reduce')
 
 
   # Creates session config. allow_soft_placement = True, is required for
@@ -579,18 +577,20 @@ def resnet_main(
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
+  use_train_and_evaluate = (num_workers > 1 or
+                            flags_obj.all_reduce_alg == 'collective')
   for cycle_index, num_train_epochs in enumerate(schedule):
     tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
     if num_train_epochs:
-      if num_workers > 1:
+      if use_train_and_evaluate:
         train_spec = tf.estimator.TrainSpec(
             input_fn=lambda: input_fn_train(num_train_epochs), hooks=train_hooks,
             max_steps=flags_obj.max_train_steps)
       else:
         classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                          hooks=train_hooks, max_steps=flags_obj.max_train_steps)
-    elif num_workers > 1:
+    elif use_train_and_evaluate:
       train_spec = tf.estimator.TrainSpec(
           input_fn=lambda: None, hooks=train_hooks,
           max_steps=flags_obj.max_train_steps)
@@ -601,7 +601,7 @@ def resnet_main(
     # eval (which is generally unimportant in those circumstances) to terminate.
     # Note that eval will run for max_train_steps each loop, regardless of the
     # global_step count.
-    if num_workers > 1:
+    if use_train_and_evaluate:
       eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval,
                                         steps=flags_obj.max_train_steps)
       tf.logging.info('Starting to train and evaluate.')
