@@ -94,7 +94,7 @@ def get_mlperf_log():
       version = pkg_resources.get_distribution("mlperf_compliance")
       version = tuple(int(i) for i in version.version.split("."))
       if version < _MIN_VERSION:
-        tf.logging.warning(
+        tf.compat.v1.logging.warning(
             "mlperf_compliance is version {}, must be >= {}".format(
                 ".".join([str(i) for i in version]),
                 ".".join([str(i) for i in _MIN_VERSION])))
@@ -187,6 +187,6 @@ def clear_system_caches():
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   with LOGGER(True):
     ncf_print(key=TAGS.RUN_START)

@@ -52,7 +52,7 @@ DATASET_NAME = 'CIFAR-10'
 ###############################################################################
 def get_filenames(is_training, data_dir):
   """Returns a list of filenames."""
-  assert tf.gfile.Exists(data_dir), (
+  assert tf.io.gfile.exists(data_dir), (
       'Run cifar10_download_and_extract.py first to download and extract the '
       'CIFAR-10 data.')
 
@@ -68,7 +68,7 @@ def get_filenames(is_training, data_dir):
 def parse_record(raw_record, is_training, dtype):
   """Parse CIFAR-10 image and label from a raw record."""
   # Convert bytes to a vector of uint8 that is record_bytes long.
-  record_vector = tf.decode_raw(raw_record, tf.uint8)
+  record_vector = tf.io.decode_raw(raw_record, tf.uint8)
 
   # The first byte represents the label, which we convert from uint8 to int32
   # and then to one-hot.
@@ -81,7 +81,7 @@ def parse_record(raw_record, is_training, dtype):
 
   # Convert from [depth, height, width] to [height, width, depth], and cast as
   # float32.
-  image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
+  image = tf.cast(tf.transpose(a=depth_major, perm=[1, 2, 0]), tf.float32)
 
   image = preprocess_image(image, is_training)
   image = tf.cast(image, dtype)
@@ -97,7 +97,7 @@ def preprocess_image(image, is_training):
         image, HEIGHT + 8, WIDTH + 8)
 
     # Randomly crop a [HEIGHT, WIDTH] section of the image.
-    image = tf.random_crop(image, [HEIGHT, WIDTH, NUM_CHANNELS])
+    image = tf.image.random_crop(image, [HEIGHT, WIDTH, NUM_CHANNELS])
 
     # Randomly flip the image horizontally.
     image = tf.image.random_flip_left_right(image)
@@ -253,8 +253,9 @@ def run_cifar(flags_obj):
     Dictionary of results. Including final accuracy.
   """
   if flags_obj.image_bytes_as_serving_input:
-    tf.logging.fatal('--image_bytes_as_serving_input cannot be set to True '
-                     'for CIFAR. This flag is only applicable to ImageNet.')
+    tf.compat.v1.logging.fatal(
+        '--image_bytes_as_serving_input cannot be set to True for CIFAR. '
+        'This flag is only applicable to ImageNet.')
     return
 
   input_function = (flags_obj.use_synthetic_data and
@@ -273,6 +274,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   define_cifar_flags()
   absl_app.run(main)
