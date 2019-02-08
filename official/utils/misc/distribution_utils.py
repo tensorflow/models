@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import random
+import string
 import tensorflow as tf
 
 
@@ -138,9 +140,8 @@ def make_dataset_iterator(self, dataset):
 
 
 def set_up_synthetic_data():
-  if flags.FLAGS.use_synthetic_data:
-    tf.distribute.MirroredStrategy.make_dataset_iterator = make_dataset_iterator
-    tf.contrib.distribute.OneDeviceStrategy.make_dataset_iterator = (
-        make_dataset_iterator)
-    tf.contrib.distribute.MirroredStrategy.make_dataset_iterator = (
-        make_dataset_iterator)
+  tf.distribute.MirroredStrategy.make_dataset_iterator = make_dataset_iterator
+  tf.contrib.distribute.OneDeviceStrategy.make_dataset_iterator = (
+      make_dataset_iterator)
+  tf.contrib.distribute.MirroredStrategy.make_dataset_iterator = (
+      make_dataset_iterator)
