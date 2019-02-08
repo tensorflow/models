@@ -100,8 +100,9 @@ def per_device_batch_size(batch_size, num_gpus):
   return int(batch_size / num_gpus)
 
 # The `SyntheticDataset` is a temporary solution for generating synthetic data
-# directly on devices. We will have better support in `tf.data` or Distribution
-# Strategy later.
+# directly on devices. It is only useful for Keras with Distribution
+# Strategies. We will have better support in `tf.data` or Distribution Strategy
+# later.
 class SyntheticDataset(object):
   """A dataset that generates synthetic data on each device."""
 
@@ -149,7 +150,8 @@ def _monkey_patch_dataset_method(strategy):
 
 
 def _undo_monkey_patch_dataset_method(strategy):
-  strategy.make_dataset_iterator = strategy.org_make_data_set_iterator
+  if hasattr(strategy, "org_make_data_set_iterator"):
+    strategy.make_dataset_iterator = strategy.org_make_data_set_iterator
 
 
 def set_up_synthetic_data():
