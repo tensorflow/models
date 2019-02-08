@@ -134,17 +134,31 @@ class SyntheticDataset(object):
     return "".join(random.choice(chars) for _ in range(size))
 
 
-def make_dataset_iterator(self, dataset):
-  tf.logging.info("Using pure synthetic data.")
-  with self.scope():
-    if self.extended._global_batch_size:  # pylint: disable=protected-access
-      return SyntheticDataset(dataset, self.num_replicas_in_sync)
-    else:
-      return SyntheticDataset(dataset)
+def _monkey_patch_dataset_method(strategy):
+  """Monkey-patch `strategy`'s make_dataset_iterator method."""
+  def make_dataset_iterator(self, dataset):
+    tf.logging.info("Using pure synthetic data.")
+    with self.scope():
+      if self.extended._global_batch_size:  # pylint: disable=protected-access
+        return SyntheticDataset(dataset, self.num_replicas_in_sync)
+      else:
+        return SyntheticDataset(dataset)
+
+  strategy.org_make_data_set_iterator = strategy.make_dataset_iterator
+  strategy.make_dataset_iterator = make_dataset_iterator
+
+
+def _undo_monkey_patch_dataset_method(strategy):
+  strategy.make_dataset_iterator = strategy.org_make_data_set_iterator
+
 
 def set_up_synthetic_data():
-  tf.distribute.MirroredStrategy.make_dataset_iterator = make_dataset_iterator
-  tf.contrib.distribute.OneDeviceStrategy.make_dataset_iterator = (
-      make_dataset_iterator)
-  tf.contrib.distribute.MirroredStrategy.make_dataset_iterator = (
-      make_dataset_iterator)
+  _monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
+  _monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
+  _monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
+
+
+def undo_set_up_synthetic_data():
+  _undo_monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
+  _undo_monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
+  _undo_monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
