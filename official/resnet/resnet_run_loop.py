@@ -88,7 +88,7 @@ def process_record_dataset(dataset,
 
   # Parses the raw records into images and labels.
   dataset = dataset.apply(
-      tf.contrib.data.map_and_batch(
+      tf.data.experimental.map_and_batch(
           lambda value: parse_record_fn(value, is_training, dtype),
           batch_size=batch_size,
           num_parallel_batches=num_parallel_batches,
@@ -100,12 +100,12 @@ def process_record_dataset(dataset,
   # critical training path. Setting buffer_size to tf.contrib.data.AUTOTUNE
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
-  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
   # Defines a specific size thread pool for tf.data operations.
   if datasets_num_private_threads:
-    tf.logging.info('datasets_num_private_threads: %s',
-                    datasets_num_private_threads)
+    tf.compat.v1.logging.info('datasets_num_private_threads: %s',
+                              datasets_num_private_threads)
     dataset = threadpool.override_threadpool(
         dataset,
         threadpool.PrivateThreadPool(
@@ -140,21 +140,21 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
     """Returns dataset filled with random data."""
     # Synthetic input should be within [0, 255].
-    inputs = tf.truncated_normal(
+    inputs = tf.random.truncated_normal(
         [batch_size] + [height, width, num_channels],
         dtype=dtype,
         mean=127,
         stddev=60,
         name='synthetic_inputs')
 
-    labels = tf.random_uniform(
+    labels = tf.random.uniform(
         [batch_size],
         minval=0,
         maxval=num_classes - 1,
         dtype=tf.int32,
         name='synthetic_labels')
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
-    data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+    data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return data
 
   return input_fn
@@ -172,7 +172,7 @@ def image_bytes_serving_input_fn(image_shape, dtype=tf.float32):
         image_bytes, bbox, height, width, num_channels, is_training=False)
     return image
 
-  image_bytes_list = tf.placeholder(
+  image_bytes_list = tf.compat.v1.placeholder(
       shape=[None], dtype=tf.string, name='input_tensor')
   images = tf.map_fn(
       _preprocess_image, image_bytes_list, back_prop=False, dtype=dtype)
@@ -197,15 +197,17 @@ def override_flags_and_set_envars_for_gpu_thread_pool(flags_obj):
     what has been set by the user on the command-line.
   """
   cpu_count = multiprocessing.cpu_count()
-  tf.logging.info('Logical CPU cores: %s', cpu_count)
+  tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
 
   # Sets up thread pool for each GPU for op scheduling.
   per_gpu_thread_count = 1
   total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
   os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  tf.logging.info('TF_GPU_THREAD_COUNT: %s', os.environ['TF_GPU_THREAD_COUNT'])
-  tf.logging.info('TF_GPU_THREAD_MODE: %s', os.environ['TF_GPU_THREAD_MODE'])
+  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
+                            os.environ['TF_GPU_THREAD_COUNT'])
+  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
+                            os.environ['TF_GPU_THREAD_MODE'])
 
   # Reduces general thread pool by number of threads used for GPU pool.
   main_thread_count = cpu_count - total_gpu_thread_count
@@ -256,13 +258,15 @@ def learning_rate_with_decay(
 
   def learning_rate_fn(global_step):
     """Builds scaled learning rate function with 5 epoch warm up."""
-    lr = tf.train.piecewise_constant(global_step, boundaries, vals)
+    lr = tf.compat.v1.train.piecewise_constant(global_step, boundaries, vals)
     if warmup:
       warmup_steps = int(batches_per_epoch * 5)
       warmup_lr = (
           initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
               warmup_steps, tf.float32))
-      return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
+      return tf.cond(pred=global_step < warmup_steps,
+                     true_fn=lambda: warmup_lr,
+                     false_fn=lambda: lr)
     return lr
 
   return learning_rate_fn
@@ -313,7 +317,7 @@ def resnet_model_fn(features, labels, mode, model_class,
   """
 
   # Generate a summary node for the images
-  tf.summary.image('images', features, max_outputs=6)
+  tf.compat.v1.summary.image('images', features, max_outputs=6)
   # Checks that features/images have same data type being used for calculations.
   assert features.dtype == dtype
 
@@ -328,7 +332,7 @@ def resnet_model_fn(features, labels, mode, model_class,
   logits = tf.cast(logits, tf.float32)
 
   predictions = {
-      'classes': tf.argmax(logits, axis=1),
+      'classes': tf.argmax(input=logits, axis=1),
       'probabilities': tf.nn.softmax(logits, name='softmax_tensor')
   }
 
@@ -342,12 +346,12 @@ def resnet_model_fn(features, labels, mode, model_class,
         })
 
   # Calculate loss, which includes softmax cross entropy and L2 regularization.
-  cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+  cross_entropy = tf.compat.v1.losses.sparse_softmax_cross_entropy(
       logits=logits, labels=labels)
 
   # Create a tensor named cross_entropy for logging purposes.
   tf.identity(cross_entropy, name='cross_entropy')
-  tf.summary.scalar('cross_entropy', cross_entropy)
+  tf.compat.v1.summary.scalar('cross_entropy', cross_entropy)
 
   # If no loss_filter_fn is passed, assume we want the default behavior,
   # which is that batch_normalization variables are excluded from loss.
@@ -358,21 +362,21 @@ def resnet_model_fn(features, labels, mode, model_class,
   # Add weight decay to the loss.
   l2_loss = weight_decay * tf.add_n(
       # loss is computed using fp32 for numerical stability.
-      [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
-       if loss_filter_fn(v.name)])
-  tf.summary.scalar('l2_loss', l2_loss)
+      [tf.nn.l2_loss(tf.cast(v, tf.float32))
+       for v in tf.compat.v1.trainable_variables() if loss_filter_fn(v.name)])
+  tf.compat.v1.summary.scalar('l2_loss', l2_loss)
   loss = cross_entropy + l2_loss
 
   if mode == tf.estimator.ModeKeys.TRAIN:
-    global_step = tf.train.get_or_create_global_step()
+    global_step = tf.compat.v1.train.get_or_create_global_step()
 
     learning_rate = learning_rate_fn(global_step)
 
     # Create a tensor named learning_rate for logging purposes
     tf.identity(learning_rate, name='learning_rate')
-    tf.summary.scalar('learning_rate', learning_rate)
+    tf.compat.v1.summary.scalar('learning_rate', learning_rate)
 
-    optimizer = tf.train.MomentumOptimizer(
+    optimizer = tf.compat.v1.train.MomentumOptimizer(
         learning_rate=learning_rate,
         momentum=momentum
     )
@@ -409,24 +413,22 @@ def resnet_model_fn(features, labels, mode, model_class,
         grad_vars = _dense_grad_filter(grad_vars)
       minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
   else:
     train_op = None
 
-  accuracy = tf.metrics.accuracy(labels, predictions['classes'])
-  accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
-                                                  targets=labels,
-                                                  k=5,
-                                                  name='top_5_op'))
+  accuracy = tf.compat.v1.metrics.accuracy(labels, predictions['classes'])
+  accuracy_top_5 = tf.compat.v1.metrics.mean(
+      tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
   metrics = {'accuracy': accuracy,
              'accuracy_top_5': accuracy_top_5}
 
   # Create a tensor named train_accuracy for logging purposes
   tf.identity(accuracy[1], name='train_accuracy')
   tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
-  tf.summary.scalar('train_accuracy', accuracy[1])
-  tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
+  tf.compat.v1.summary.scalar('train_accuracy', accuracy[1])
+  tf.compat.v1.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
   return tf.estimator.EstimatorSpec(
       mode=mode,
@@ -465,7 +467,7 @@ def resnet_main(
 
   # Creates session config. allow_soft_placement = True, is required for
   # multi-GPU and is not harmful for other modes.
-  session_config = tf.ConfigProto(
+  session_config = tf.compat.v1.ConfigProto(
       inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
       intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
       allow_soft_placement=True)
@@ -557,13 +559,14 @@ def resnet_main(
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
   for cycle_index, num_train_epochs in enumerate(schedule):
-    tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
+    tf.compat.v1.logging.info('Starting cycle: %d/%d', cycle_index,
+                              int(n_loops))
 
     if num_train_epochs:
       classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                        hooks=train_hooks, max_steps=flags_obj.max_train_steps)
 
-    tf.logging.info('Starting to evaluate.')
+    tf.compat.v1.logging.info('Starting to evaluate.')
 
     # flags_obj.max_train_steps is generally associated with testing and
     # profiling. As a result it is frequently called with synthetic data, which

@@ -144,7 +144,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     return os.path.join(self.output_dir, folder_name)
 
   def _setup(self):
-    tf.logging.set_verbosity(tf.logging.DEBUG)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
     if EstimatorCifar10BenchmarkTests.local_flags is None:
       cifar_main.define_cifar_flags()
       # Loads flags to get defaults to then override.
