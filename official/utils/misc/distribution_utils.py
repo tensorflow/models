@@ -135,7 +135,7 @@ class SyntheticDataset(object):
 
 
 def _monkey_patch_dataset_method(strategy):
-  """Monkey-patch `strategy`'s make_dataset_iterator method."""
+  """Monkey-patch `strategy`'s `make_dataset_iterator` method."""
   def make_dataset_iterator(self, dataset):
     tf.logging.info("Using pure synthetic data.")
     with self.scope():
