@@ -103,6 +103,7 @@ def run(flags_obj):
 
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
+    distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(
         height=imagenet_main.DEFAULT_IMAGE_SIZE,
         width=imagenet_main.DEFAULT_IMAGE_SIZE,

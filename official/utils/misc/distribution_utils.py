@@ -96,3 +96,51 @@ def per_device_batch_size(batch_size, num_gpus):
           ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
   return int(batch_size / num_gpus)
+
+
+class SyntheticDataset(object):
+  """A dataset that generates synthetic data on each device."""
+
+  def __init__(self, dataset, split_by=1):
+    self._input_data = {}
+    # dataset.take(1) doesn't have GPU kernel.
+    with tf.device("device:CPU:0"):
+      tensor = tf.data.experimental.get_single_element(dataset.take(1))
+    flat_tensor = tf.nest.flatten(tensor)
+    variable_data = []
+    self._initializers = []
+    for t in flat_tensor:
+      rebatched_t = tf.split(t, num_or_size_splits=split_by, axis=0)[0]
+      assert rebatched_t.shape.is_fully_defined(), rebatched_t.shape
+      # v should be MirroredVariable.
+      v = tf.get_local_variable(self.random_name(), initializer=rebatched_t)  # pylint: disable=cell-var-from-loop
+      variable_data.append(v)
+      self._initializers.append(v.initializer)
+    self._input_data = tf.nest.pack_sequence_as(tensor, variable_data)
+
+  def get_next(self):
+    return self._input_data
+
+  def initialize(self):
+    if tf.executing_eagerly():
+      return tf.no_op()
+    else:
+      return self._initializers
+
+  def random_name(self, size=10, chars=string.ascii_uppercase + string.digits):
+    return "".join(random.choice(chars) for _ in range(size))
+
+
+def make_dataset_iterator(self, dataset):
+  tf.logging.info("Using pure synthetic data.")
+  with self.scope():
+    return SyntheticDataset(dataset, self.num_replicas_in_sync)
+
+
+def set_up_synthetic_data():
+  if flags.FLAGS.use_synthetic_data:
+    tf.distribute.MirroredStrategy.make_dataset_iterator = make_dataset_iterator
+    tf.contrib.distribute.OneDeviceStrategy.make_dataset_iterator = (
+        make_dataset_iterator)
+    tf.contrib.distribute.MirroredStrategy.make_dataset_iterator = (
+        make_dataset_iterator)
