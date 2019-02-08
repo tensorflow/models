@@ -99,7 +99,9 @@ def per_device_batch_size(batch_size, num_gpus):
     raise ValueError(err)
   return int(batch_size / num_gpus)
 
-
+# The `SyntheticDataset` is a temporary solution for generating synthetic data
+# directly on devices. We will have better support in `tf.data` or Distribution
+# Strategy later.
 class SyntheticDataset(object):
   """A dataset that generates synthetic data on each device."""
 
@@ -114,7 +116,6 @@ class SyntheticDataset(object):
     for t in flat_tensor:
       rebatched_t = tf.split(t, num_or_size_splits=split_by, axis=0)[0]
       assert rebatched_t.shape.is_fully_defined(), rebatched_t.shape
-      # v should be MirroredVariable.
       v = tf.get_local_variable(self.random_name(), initializer=rebatched_t)  # pylint: disable=cell-var-from-loop
       variable_data.append(v)
       self._initializers.append(v.initializer)
@@ -136,8 +137,10 @@ class SyntheticDataset(object):
 def make_dataset_iterator(self, dataset):
   tf.logging.info("Using pure synthetic data.")
   with self.scope():
-    return SyntheticDataset(dataset, self.num_replicas_in_sync)
-
+    if self.extended._global_batch_size:  # pylint: disable=protected-access
+      return SyntheticDataset(dataset, self.num_replicas_in_sync)
+    else:
+      return SyntheticDataset(dataset)
 
 def set_up_synthetic_data():
   tf.distribute.MirroredStrategy.make_dataset_iterator = make_dataset_iterator
