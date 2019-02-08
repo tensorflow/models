@@ -240,7 +240,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
         dtype=tf.int32,
         name='synthetic_labels')
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
-    data = data.batch(batch_size)
+    data = data.batch(batch_size, drop_remainder=True)
     data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
     return data
 
