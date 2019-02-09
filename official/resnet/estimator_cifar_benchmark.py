@@ -45,7 +45,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     flags.FLAGS.num_gpus = 1
     flags.FLAGS.data_dir = DATA_DIR
     flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 5
+    flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_1_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
