@@ -31,7 +31,6 @@ import os
 # pylint: disable=g-bad-import-order
 from absl import flags
 import tensorflow as tf
-# from tensorflow.contrib.data.python.ops import threadpool
 
 from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
