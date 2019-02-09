@@ -145,13 +145,13 @@ def _monkey_patch_dataset_method(strategy):
       else:
         return SyntheticDataset(dataset)
 
-  strategy.org_make_data_set_iterator = strategy.make_dataset_iterator
+  strategy.org_make_dataset_iterator = strategy.make_dataset_iterator
   strategy.make_dataset_iterator = make_dataset_iterator
 
 
 def _undo_monkey_patch_dataset_method(strategy):
-  if hasattr(strategy, "org_make_data_set_iterator"):
-    strategy.make_dataset_iterator = strategy.org_make_data_set_iterator
+  if hasattr(strategy, "org_make_dataset_iterator"):
+    strategy.make_dataset_iterator = strategy.org_make_dataset_iterator
 
 
 def set_up_synthetic_data():
