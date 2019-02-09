@@ -395,10 +395,16 @@ def train(create_tensor_dict_fn,
                            get_variables_available_in_checkpoint(
                                var_map, train_config.fine_tune_checkpoint,
                                include_global_step=False))
-      init_saver = tf.train.Saver(available_var_map)
-      def initializer_fn(sess):
-        init_saver.restore(sess, train_config.fine_tune_checkpoint)
-      init_fn = initializer_fn
+
+      # It is possible that all the checkpoint vars cannot be applied to current model
+      if len(available_var_map) > 0:
+        init_saver = tf.train.Saver(available_var_map)
+        def initializer_fn(sess):
+          init_saver.restore(sess, train_config.fine_tune_checkpoint)
+        init_fn = initializer_fn
+      else:
+        tf.logging.warning('the checkpoint does not have variables that can '
+                           'be mapped to current model')
 
     slim.learning.train(
         train_tensor,
