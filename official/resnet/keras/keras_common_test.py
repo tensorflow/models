@@ -22,7 +22,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet.keras import keras_common
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 class KerasCommonTests(tf.test.TestCase):
