@@ -97,6 +97,8 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
+  resnet_run_loop.resolve_flag_conflict()
+
   if flags_obj.enable_eager:
     tf.compat.v1.enable_eager_execution()
 
@@ -111,7 +113,9 @@ def run(flags_obj):
                    if tf.test.is_built_with_cuda() else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
 
-  use_synthetic_data = (flags_obj.data_source_type == "synthetic_data")
+  use_synthetic_data = ((flags_obj.data_source_type == "synthetic_data") or
+      flags_obj.use_synthetic_data)
+
   if use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(

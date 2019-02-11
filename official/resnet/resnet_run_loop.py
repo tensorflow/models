@@ -641,6 +641,15 @@ def define_resnet_flags(resnet_size_choices=None):
       name='turn_off_distribution_strategy', default=False,
       help=flags_core.help_wrap('Set to True to not use distribution '
                                 'strategies.'))
+  flags.DEFINE_enum(
+      name='data_source_type',
+      default='real_data',
+      enum_values=[
+        "real_data",
+        "synthetic_data",
+        "cached_real_data"  # also known as "fake data"
+        ],
+      help=help_wrap("Specifying which data type to use."))
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
       help=flags_core.help_wrap('The size of the ResNet model to use.'))
@@ -649,3 +658,11 @@ def define_resnet_flags(resnet_size_choices=None):
     flags.DEFINE_string(**choice_kwargs)
   else:
     flags.DEFINE_enum(enum_values=resnet_size_choices, **choice_kwargs)
+
+
+def resolve_flag_conflict():
+  if (flags.FLAGS.use_synthetic_data and
+    and flags.FLAGS.data_source_type != 'synthetic_data'):
+    raise ValueError("use_synthetic_data flag and data_source_type "
+        "flag do not match.")
+
