@@ -43,7 +43,7 @@ class KerasBenchmark(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    tf.logging.set_verbosity(tf.logging.DEBUG)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
     if KerasBenchmark.local_flags is None:
       for flag_method in self.flag_methods:
         flag_method()
@@ -65,7 +65,7 @@ class KerasBenchmark(tf.test.Benchmark):
                         log_steps=None,
                         total_batch_size=None,
                         warmup=1):
-    """Report benchmark results by writing to local protobuf file
+    """Report benchmark results by writing to local protobuf file.
 
     Args:
       stats: dict returned from keras models with known entries.
@@ -79,7 +79,7 @@ class KerasBenchmark(tf.test.Benchmark):
 
     extras = {}
     if 'accuracy_top_1' in stats:
-      extras['accuracy'] = self._json_description(
+      extras['accuracy_top_1'] = self._json_description(
           stats['accuracy_top_1'],
           priority=0,
           min_value=top_1_min,
