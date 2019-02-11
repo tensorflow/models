@@ -64,15 +64,11 @@ class Cifar10Dataset(object):
     self.input_shape = (32, 32, 3)
     self.num_classes = 10
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-    x_train = x_train.astype('float32') / 255.0
-    x_test = x_test.astype('float32') / 255.0
+    x_train, x_test = x_train / 255.0, x_test / 255.0
     y_train, y_test = y_train.astype(np.int64), y_test.astype(np.int64)
     y_train = tf.keras.utils.to_categorical(y_train, self.num_classes)
     y_test = tf.keras.utils.to_categorical(y_test, self.num_classes)
     self.train_dataset = tf.data.Dataset.from_tensor_slices(
-        (x_train, y_train)).shuffle(50000).batch(batch_size).repeat()
+        (x_train, y_train)).shuffle(2000).batch(batch_size).repeat()
     self.test_dataset = tf.data.Dataset.from_tensor_slices(
-        (x_test, y_test)).shuffle(10000).batch(batch_size).repeat()
-    self.x_train, self.y_train, self.x_test, self.y_test = (
-        x_train, y_train, x_test, y_test)
-
+        (x_test, y_test)).shuffle(2000).batch(batch_size).repeat()
