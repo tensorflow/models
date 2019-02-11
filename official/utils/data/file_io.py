@@ -186,8 +186,8 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
 
   tf.io.gfile.makedirs(os.path.split(buffer_path)[0])
 
-  tf.compat.v1.logging.info("Constructing TFRecordDataset buffer: {}".
-                            format(buffer_path))
+  tf.compat.v1.logging.info("Constructing TFRecordDataset buffer: {}"
+                            .format(buffer_path))
 
   count = 0
   pool = multiprocessing.Pool(multiprocessing.cpu_count())

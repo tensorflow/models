@@ -74,6 +74,15 @@ def process_record_dataset(dataset,
   Returns:
     Dataset of (image, label) pairs ready for iteration.
   """
+  # Defines a specific size thread pool for tf.data operations.
+  if datasets_num_private_threads:
+    options = tf.data.Options()
+    options.experimental_threading = tf.data.experimental.ThreadingOptions()
+    options.experimental_threading.private_threadpool_size = (
+        datasets_num_private_threads)
+    dataset = dataset.with_options(options)
+    tf.compat.v1.logging.info('datasets_num_private_threads: %s',
+                              datasets_num_private_threads)
 
   # Prefetches a batch at a time to smooth out the time taken to load input
   # files for shuffling and processing.
@@ -100,16 +109,6 @@ def process_record_dataset(dataset,
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
   dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
-  # Defines a specific size thread pool for tf.data operations.
-  if datasets_num_private_threads:
-    options = tf.data.Options()
-    options.experimental_threading = tf.data.experimental.ThreadingOptions()
-    options.experimental_threading.private_threadpool_size = (
-        datasets_num_private_threads)
-    dataset = dataset.with_options(options)
-    tf.compat.v1.logging.info('datasets_num_private_threads: %s',
-                              datasets_num_private_threads)
 
   return dataset
 
