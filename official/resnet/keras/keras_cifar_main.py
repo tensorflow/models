@@ -72,8 +72,8 @@ def parse_record_keras(raw_record, is_training, dtype):
   This method converts the label to one hot to fit the loss function.
 
   Args:
-    raw_record: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
+    raw_record: scalar Tensor tf.string containing a serialized Example protocol
+        buffer.
     is_training: A boolean denoting whether the input is for training.
     dtype: Data type to use for input images.
 
