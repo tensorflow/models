@@ -139,7 +139,7 @@ class SyntheticDataset(object):
 def _monkey_patch_dataset_method(strategy):
   """Monkey-patch `strategy`'s `make_dataset_iterator` method."""
   def make_dataset_iterator(self, dataset):
-    tf.logging.info("Using pure synthetic data.")
+    tf.compat.v1.logging.info('Using pure synthetic data.')
     with self.scope():
       if self.extended._global_batch_size:  # pylint: disable=protected-access
         return SyntheticDataset(dataset, self.num_replicas_in_sync)
@@ -151,7 +151,7 @@ def _monkey_patch_dataset_method(strategy):
 
 
 def _undo_monkey_patch_dataset_method(strategy):
-  if hasattr(strategy, "org_make_dataset_iterator"):
+  if hasattr(strategy, 'org_make_dataset_iterator'):
     strategy.make_dataset_iterator = strategy.org_make_dataset_iterator
 
 
@@ -163,7 +163,6 @@ def set_up_synthetic_data():
     _monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
   else:
     print('Contrib missing: Skip monkey patch tf.contrib.distribute.*')
-
 
 
 def undo_set_up_synthetic_data():
