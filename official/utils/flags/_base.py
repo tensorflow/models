@@ -132,10 +132,14 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
 
   if distribution_strategy:
     flags.DEFINE_string(
-        name="distribution_strategy", short_name="ds", default=None,
-        help=help_wrap("If set, use the specified Distribution Strategy. "
-                       "Accepted values are 'one_device', 'mirrored', "
-                       "'parameter_server', 'collective', case insensitive.")
+        name="distribution_strategy", short_name="ds", default="default",
+        help=help_wrap("The Distribution Strategy to use for training. "
+                       "Accepted values are 'off', 'default', 'one_device', "
+                       "'mirrored', 'parameter_server', 'collective', "
+                       "case insensitive. 'off' means not to use "
+                       "Distribution Strategy; 'default' means to choose "
+                       "from `MirroredStrategy` or `OneDeviceStrategy` "
+                       "according to the number of GPUs.")
     )
 
   return key_flags
