@@ -111,8 +111,7 @@ def run(flags_obj):
         num_classes=imagenet_main.NUM_CLASSES,
         dtype=flags_core.get_tf_dtype(flags_obj))
   else:
-    if not flags_obj.turn_off_distribution_strategy:
-      distribution_utils.undo_set_up_synthetic_data()
+    distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_main.input_fn
 
   train_input_dataset = input_fn(is_training=True,
