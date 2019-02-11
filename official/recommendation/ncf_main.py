@@ -186,12 +186,7 @@ def main(_):
 
 def run_ncf(_):
   """Run NCF training and eval loop."""
-
-  if FLAGS.data_source_type == "cached_real_data":
-    raise ValueError("cached_real_data is not supported by this model.")
-
-  use_synthetic_data = (FLAGS.data_source_type == "synthetic_data")
-  if FLAGS.download_if_missing and not use_synthetic_data:
+  if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
   if FLAGS.seed is not None:
@@ -200,7 +195,7 @@ def run_ncf(_):
   params = parse_flags(FLAGS)
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
 
-  if use_synthetic_data:
+  if FLAGS.use_synthetic_data:
     producer = data_pipeline.DummyConstructor()
     num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
         FLAGS.dataset]

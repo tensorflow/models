@@ -65,12 +65,7 @@ def run_keras_model_benchmark(_):
 
   # Get dataset
   dataset_name = "ImageNet"
-
-  if FLAGS.data_source_type == "cached_real_data":
-    raise ValueError("cached_real_data is not supported by this model.")
-
-  use_synthetic_data = (FLAGS.data_source_type == "synthetic_data")
-  if use_synthetic_data:
+  if FLAGS.use_synthetic_data:
     tf.logging.info("Using synthetic dataset...")
     dataset_name += "_Synthetic"
     train_dataset = dataset.generate_synthetic_input_dataset(
@@ -116,7 +111,7 @@ def run_keras_model_benchmark(_):
   # Create benchmark logger for benchmark logging
   run_params = {
       "batch_size": FLAGS.batch_size,
-      "synthetic_data": use_synthetic_data,
+      "synthetic_data": FLAGS.use_synthetic_data,
       "train_epochs": FLAGS.train_epochs,
       "num_train_images": FLAGS.num_train_images,
       "num_eval_images": FLAGS.num_eval_images,
@@ -168,7 +163,7 @@ def define_keras_benchmark_flags():
 
   flags_core.set_defaults(
       data_format="channels_last",
-      data_source_type="synthetic_data",
+      use_synthetic_data=True,
       batch_size=32,
       train_epochs=2)
 
