@@ -156,6 +156,7 @@ def _serialize_shards(df_shards, columns, pool, writer):
     for example in s:
       writer.write(example)
 
+
 def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
   """Write a dataframe to a binary file for a dataset to consume.
 
@@ -169,7 +170,8 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
   Returns:
     The path of the buffer.
   """
-  if tf.io.gfile.exists(buffer_path) and tf.io.gfile.stat(buffer_path).length > 0:
+  if (tf.io.gfile.exists(buffer_path) and
+      tf.io.gfile.stat(buffer_path).length > 0):
     actual_size = tf.io.gfile.stat(buffer_path).length
     if expected_size == actual_size:
       return buffer_path
@@ -184,7 +186,8 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
 
   tf.io.gfile.makedirs(os.path.split(buffer_path)[0])
 
-  tf.compat.v1.logging.info("Constructing TFRecordDataset buffer: {}".format(buffer_path))
+  tf.compat.v1.logging.info("Constructing TFRecordDataset buffer: {}"
+                            .format(buffer_path))
 
   count = 0
   pool = multiprocessing.Pool(multiprocessing.cpu_count())
@@ -195,7 +198,7 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
         _serialize_shards(df_shards, columns, pool, writer)
         count += sum([len(s) for s in df_shards])
         tf.compat.v1.logging.info("{}/{} examples written."
-                        .format(str(count).ljust(8), len(dataframe)))
+                                  .format(str(count).ljust(8), len(dataframe)))
   finally:
     pool.terminate()
 

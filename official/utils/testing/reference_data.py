@@ -191,10 +191,11 @@ class BaseTest(tf.test.TestCase):
 
       if correctness_function is not None:
         results = correctness_function(*eval_results)
-        with tf.io.gfile.GFile(os.path.join(data_dir, "results.json"), "w") as f:
+        result_json = os.path.join(data_dir, "results.json")
+        with tf.io.gfile.GFile(result_json, "w") as f:
           json.dump(results, f)
-
-      with tf.io.gfile.GFile(os.path.join(data_dir, "tf_version.json"), "w") as f:
+      tf_version_json = os.path.join(data_dir, "tf_version.json")
+      with tf.io.gfile.GFile(tf_version_json, "w") as f:
         json.dump([tf.version.VERSION, tf.version.GIT_VERSION], f)
 
   def _evaluate_test_case(self, name, graph, ops_to_eval, correctness_function):
@@ -262,7 +263,8 @@ class BaseTest(tf.test.TestCase):
       eval_results = [op.eval() for op in ops_to_eval]
       if correctness_function is not None:
         results = correctness_function(*eval_results)
-        with tf.io.gfile.GFile(os.path.join(data_dir, "results.json"), "r") as f:
+        result_json = os.path.join(data_dir, "results.json")
+        with tf.io.gfile.GFile(result_json, "r") as f:
           expected_results = json.load(f)
         self.assertAllClose(results, expected_results)
 
