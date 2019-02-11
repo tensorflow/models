@@ -113,8 +113,7 @@ def run(flags_obj):
                    if tf.test.is_built_with_cuda() else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
 
-  use_synthetic_data = ((flags_obj.data_source_type == "synthetic_data") or
-      flags_obj.use_synthetic_data)
+  use_synthetic_data = (flags_obj.data_source_type == "synthetic_data")
 
   if use_synthetic_data:
     distribution_utils.set_up_synthetic_data()

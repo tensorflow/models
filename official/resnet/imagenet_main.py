@@ -340,8 +340,7 @@ def run_imagenet(flags_obj):
   """
   resnet_run_loop.resolve_flag_conflict()
 
-  use_synthetic_data = ((flags_obj.data_source_type == "synthetic_data") or
-          flags_obj.use_synthetic_data)
+  use_synthetic_data = (flags_obj.data_source_type == "synthetic_data")
 
   input_function = (use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or

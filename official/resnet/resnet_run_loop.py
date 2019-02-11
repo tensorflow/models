@@ -662,7 +662,7 @@ def define_resnet_flags(resnet_size_choices=None):
 
 def resolve_flag_conflict():
   if (flags.FLAGS.use_synthetic_data and
-    and flags.FLAGS.data_source_type != 'synthetic_data'):
+    flags.FLAGS.data_source_type != 'synthetic_data'):
     raise ValueError("use_synthetic_data flag and data_source_type "
         "flag do not match.")
 
