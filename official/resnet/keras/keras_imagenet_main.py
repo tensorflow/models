@@ -127,7 +127,7 @@ def run(flags_obj):
                                 parse_record_fn=parse_record_keras)
 
   strategy = distribution_utils.get_distribution_strategy(
-      distribute_strategy=flags_obj.distribute_strategy,
+      distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus)
 
   strategy_scope = keras_common.get_strategy_scope(strategy)
