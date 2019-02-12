@@ -66,7 +66,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
   def resnet56_2_gpu(self):
     """Test layers model with Estimator and dist_strat. 2 GPUs."""
     self._setup()
-    flags.FLAGS.num_gpus = 1
+    flags.FLAGS.num_gpus = 2
     flags.FLAGS.data_dir = DATA_DIR
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
