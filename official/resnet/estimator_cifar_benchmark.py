@@ -66,7 +66,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
   def resnet56_2_gpu(self):
     """Test layers model with Estimator and dist_strat. 2 GPUs."""
     self._setup()
-    flags.FLAGS.num_gpus = 1
+    flags.FLAGS.num_gpus = 2
     flags.FLAGS.data_dir = DATA_DIR
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
@@ -88,7 +88,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     self._run_and_report_benchmark()
 
   def unit_test(self):
-    """A lightweigth test that can finish quickly"""
+    """A lightweigth test that can finish quickly."""
     self._setup()
     flags.FLAGS.num_gpus = 1
     flags.FLAGS.data_dir = DATA_DIR
