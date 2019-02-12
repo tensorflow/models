@@ -88,7 +88,7 @@ def run(flags_obj):
     ValueError: If fp16 is passed as it is not currently supported.
   """
   if flags_obj.enable_eager:
-    tf.enable_eager_execution()
+    tf.compat.v1.enable_eager_execution()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
@@ -103,6 +103,7 @@ def run(flags_obj):
 
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
+    distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(
         height=imagenet_main.DEFAULT_IMAGE_SIZE,
         width=imagenet_main.DEFAULT_IMAGE_SIZE,
@@ -110,6 +111,7 @@ def run(flags_obj):
         num_classes=imagenet_main.NUM_CLASSES,
         dtype=flags_core.get_tf_dtype(flags_obj))
   else:
+    distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_main.input_fn
 
   train_input_dataset = input_fn(is_training=True,
@@ -170,13 +172,14 @@ def run(flags_obj):
                       ],
                       validation_steps=num_eval_steps,
                       validation_data=validation_data,
-                      verbose=1)
+                      validation_freq=flags_obj.epochs_between_evals,
+                      verbose=2)
 
   eval_output = None
   if not flags_obj.skip_eval:
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
-                                 verbose=1)
+                                 verbose=2)
   stats = keras_common.build_stats(history, eval_output, time_callback)
   return stats
 
@@ -187,7 +190,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   imagenet_main.define_imagenet_flags()
   keras_common.define_keras_flags()
   absl_app.run(main)
