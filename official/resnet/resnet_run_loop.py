@@ -31,7 +31,6 @@ import os
 # pylint: disable=g-bad-import-order
 from absl import flags
 import tensorflow as tf
-from tensorflow.contrib.data.python.ops import threadpool
 
 from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
@@ -75,6 +74,15 @@ def process_record_dataset(dataset,
   Returns:
     Dataset of (image, label) pairs ready for iteration.
   """
+  # Defines a specific size thread pool for tf.data operations.
+  if datasets_num_private_threads:
+    options = tf.data.Options()
+    options.experimental_threading = tf.data.experimental.ThreadingOptions()
+    options.experimental_threading.private_threadpool_size = (
+        datasets_num_private_threads)
+    dataset = dataset.with_options(options)
+    tf.compat.v1.logging.info('datasets_num_private_threads: %s',
+                              datasets_num_private_threads)
 
   # Prefetches a batch at a time to smooth out the time taken to load input
   # files for shuffling and processing.
@@ -101,16 +109,6 @@ def process_record_dataset(dataset,
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
   dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
-  # Defines a specific size thread pool for tf.data operations.
-  if datasets_num_private_threads:
-    tf.compat.v1.logging.info('datasets_num_private_threads: %s',
-                              datasets_num_private_threads)
-    dataset = threadpool.override_threadpool(
-        dataset,
-        threadpool.PrivateThreadPool(
-            datasets_num_private_threads,
-            display_name='input_pipeline_thread_pool'))
 
   return dataset
 
