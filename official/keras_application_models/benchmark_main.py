@@ -88,8 +88,8 @@ def run_keras_model_benchmark(_):
   # Use distribution strategy
   if FLAGS.dist_strat:
     distribution = distribution_utils.get_distribution_strategy(
-        num_gpus=num_gpus,
-        distribution_strategy=FLAGS.distribute_strategy)
+        distribute_strategy=FLAGS.distribute_strategy,
+        num_gpus=num_gpus)
   elif num_gpus > 1:
     # Run with multi_gpu_model
     # If eager execution is enabled, only one GPU is utilized even if multiple
