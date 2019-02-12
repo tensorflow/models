@@ -172,13 +172,14 @@ def run(flags_obj):
                       ],
                       validation_steps=num_eval_steps,
                       validation_data=validation_data,
+                      validation_freq=flags_obj.epochs_between_evals,
                       verbose=2)
 
   eval_output = None
   if not flags_obj.skip_eval:
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
-                                 verbose=1)
+                                 verbose=2)
   stats = keras_common.build_stats(history, eval_output, time_callback)
   return stats
 
