@@ -118,7 +118,8 @@ class SyntheticDataset(object):
     for t in flat_tensor:
       rebatched_t = tf.split(t, num_or_size_splits=split_by, axis=0)[0]
       assert rebatched_t.shape.is_fully_defined(), rebatched_t.shape
-      v = tf.get_local_variable(self.random_name(), initializer=rebatched_t)  # pylint: disable=cell-var-from-loop
+      v = tf.compat.v1.get_local_variable(self.random_name(),
+                                          initializer=rebatched_t)
       variable_data.append(v)
       self._initializers.append(v.initializer)
     self._input_data = tf.nest.pack_sequence_as(tensor, variable_data)
