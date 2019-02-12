@@ -88,7 +88,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     self._run_and_report_benchmark()
 
   def unit_test(self):
-    """A lightweigth test that can finish quickly."""
+    """A lightweight test that can finish quickly."""
     self._setup()
     flags.FLAGS.num_gpus = 1
     flags.FLAGS.data_dir = DATA_DIR
