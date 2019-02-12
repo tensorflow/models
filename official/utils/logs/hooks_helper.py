@@ -57,8 +57,9 @@ def get_train_hooks(name_list, use_tpu=False, **kwargs):
     return []
 
   if use_tpu:
-    tf.compat.v1.logging.warning("hooks_helper received name_list `{}`, but a TPU is "
-                       "specified. No hooks will be used.".format(name_list))
+    tf.compat.v1.logging.warning('hooks_helper received name_list `{}`, but a '
+                                 'TPU is specified. No hooks will be used.'
+                                 .format(name_list))
     return []
 
   train_hooks = []
@@ -142,6 +143,7 @@ def get_logging_metric_hook(tensors_to_log=None,
       names. If not set, log _TENSORS_TO_LOG by default.
     every_n_secs: `int`, the frequency for logging the metric. Default to every
       10 mins.
+    **kwargs: a dictionary of arguments.
 
   Returns:
     Returns a LoggingMetricHook that saves tensor values in a JSON format.

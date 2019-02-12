@@ -112,6 +112,7 @@ def run(flags_obj):
   tf.keras.backend.set_image_data_format(data_format)
 
   if flags_obj.use_synthetic_data:
+    distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(
         height=cifar_main.HEIGHT,
         width=cifar_main.WIDTH,
@@ -119,6 +120,7 @@ def run(flags_obj):
         num_classes=cifar_main.NUM_CLASSES,
         dtype=flags_core.get_tf_dtype(flags_obj))
   else:
+    distribution_utils.undo_set_up_synthetic_data()
     input_fn = cifar_main.input_fn
 
   train_input_dataset = input_fn(

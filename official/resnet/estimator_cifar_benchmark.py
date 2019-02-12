@@ -19,8 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import time
 import os
+import time
 
 from absl import flags
 from absl.testing import flagsaver
@@ -88,7 +88,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     self._run_and_report_benchmark()
 
   def unit_test(self):
-    """A lightweigth test that can finish quickly"""
+    """A lightweight test that can finish quickly."""
     self._setup()
     flags.FLAGS.num_gpus = 1
     flags.FLAGS.data_dir = DATA_DIR
@@ -108,7 +108,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
         iters=stats['global_step'],
         wall_time=wall_time_sec,
         extras={
-            'accuracy':
+            'accuracy_top_1':
                 self._json_description(stats['accuracy'].item(), priority=0),
             'accuracy_top_5':
                 self._json_description(stats['accuracy_top_5'].item()),
@@ -119,7 +119,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
                         priority=None,
                         min_value=None,
                         max_value=None):
-    """Get a json-formatted string describing the attributes for a metric"""
+    """Get a json-formatted string describing the attributes for a metric."""
 
     attributes = {}
     attributes['value'] = value
