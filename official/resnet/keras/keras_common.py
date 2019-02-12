@@ -239,8 +239,13 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
                                maxval=num_classes - 1,
                                dtype=tf.int32,
                                name='synthetic_labels')
+    # Cast to float32 for Keras model.
+    labels = tf.cast(labels, dtype=tf.float32)
+
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
-    data = data.batch(batch_size)
+
+    # `drop_remainder` will make dataset produce outputs with known shapes.
+    data = data.batch(batch_size, drop_remainder=True)
     data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return data
 
