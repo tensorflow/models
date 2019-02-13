@@ -130,7 +130,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
-    FLAGS.turn_off_distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'default'
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
@@ -139,7 +139,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
-    FLAGS.turn_off_distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'default'
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
@@ -148,7 +148,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
-    FLAGS.turn_off_distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'default'
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
@@ -157,7 +157,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = False
-    FLAGS.turn_off_distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'default'
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
