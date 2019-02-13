@@ -471,7 +471,9 @@ def resnet_main(
       allow_soft_placement=True)
 
   distribution_strategy = distribution_utils.get_distribution_strategy(
-      flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
+      distribution_strategy=flags_obj.distribution_strategy,
+      num_gpus=flags_core.get_num_gpus(flags_obj),
+      all_reduce_alg=flags_obj.all_reduce_alg)
 
   # Creates a `RunConfig` that checkpoints every 24 hours which essentially
   # results in checkpoints determined only by `epochs_between_evals`.
@@ -632,10 +634,6 @@ def define_resnet_flags(resnet_size_choices=None):
           'the expense of image resize/cropping being done as part of model '
           'inference. Note, this flag only applies to ImageNet and cannot '
           'be used for CIFAR.'))
-  flags.DEFINE_boolean(
-      name='turn_off_distribution_strategy', default=False,
-      help=flags_core.help_wrap('Set to True to not use distribution '
-                                'strategies.'))
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
       help=flags_core.help_wrap('The size of the ResNet model to use.'))
