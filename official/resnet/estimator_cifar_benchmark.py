@@ -96,7 +96,6 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     """A lightweight test that can finish quickly."""
     self._setup()
     flags.FLAGS.num_gpus = 1
-    flags.FLAGS.turn_off_distribution_strategy = True
     flags.FLAGS.data_dir = DATA_DIR
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 1
