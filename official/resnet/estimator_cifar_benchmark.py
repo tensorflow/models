@@ -125,7 +125,8 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
         eval_results['accuracy_top_5'].item())
     if examples_per_sec_hook:
       exp_per_second_list = examples_per_sec_hook.current_examples_per_sec_list
-      exp_per_sec = sum(exp_per_second_list[1:]) / (len(exp_per_second_list)-1)
+      # ExamplesPerSecondHook skips the first 10 steps.
+      exp_per_sec = sum(exp_per_second_list) / (len(exp_per_second_list))
       extras['exp_per_second'] = self._json_description(exp_per_sec)
 
     self.report_benchmark(
