@@ -6,6 +6,9 @@ if [ `id -u` != 0 ]; then
   sudo echo "Success"
 fi
 
+SCRIPT_DIR=`dirname "$BASH_SOURCE"`
+export PYTHONPATH="${SCRIPT_DIR}/../../"
+
 DATASET="ml-20m"
 
 BUCKET=${BUCKET:-""}
@@ -33,7 +36,7 @@ else
 fi
 
 DATA_DIR="${ROOT_DIR}/movielens_data"
-python ../datasets/movielens.py --data_dir ${DATA_DIR} --dataset ${DATASET}
+python "${SCRIPT_DIR}/../datasets/movielens.py" --data_dir ${DATA_DIR} --dataset ${DATASET}
 
 {
 
@@ -55,7 +58,7 @@ do
   # To reduce variation set the seed flag:
   #   --seed ${i}
 
-  python -u ncf_main.py \
+  python -u "${SCRIPT_DIR}/ncf_main.py" \
       --model_dir ${MODEL_DIR} \
       --data_dir ${DATA_DIR} \
       --dataset ${DATASET} --hooks "" \

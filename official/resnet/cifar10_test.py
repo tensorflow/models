@@ -25,7 +25,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import cifar10_main
 from official.utils.testing import integration
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 _BATCH_SIZE = 128
 _HEIGHT = 32
@@ -44,7 +44,7 @@ class BaseTest(tf.test.TestCase):
 
   def tearDown(self):
     super(BaseTest, self).tearDown()
-    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    tf.io.gfile.rmtree(self.get_temp_dir())
 
   def test_dataset_input_fn(self):
     fake_data = bytearray()
@@ -62,7 +62,8 @@ class BaseTest(tf.test.TestCase):
         filename, cifar10_main._RECORD_BYTES)  # pylint: disable=protected-access
     fake_dataset = fake_dataset.map(
         lambda val: cifar10_main.parse_record(val, False, tf.float32))
-    image, label = fake_dataset.make_one_shot_iterator().get_next()
+    image, label = tf.compat.v1.data.make_one_shot_iterator(
+        fake_dataset).get_next()
 
     self.assertAllEqual(label.shape, ())
     self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))
@@ -79,7 +80,7 @@ class BaseTest(tf.test.TestCase):
   def cifar10_model_fn_helper(self, mode, resnet_version, dtype):
     input_fn = cifar10_main.get_synth_input_fn(dtype)
     dataset = input_fn(True, '', _BATCH_SIZE)
-    iterator = dataset.make_initializable_iterator()
+    iterator = tf.compat.v1.data.make_initializable_iterator(dataset)
     features, labels = iterator.get_next()
     spec = cifar10_main.cifar10_model_fn(
         features, labels, mode, {
@@ -142,7 +143,7 @@ class BaseTest(tf.test.TestCase):
     model = cifar10_main.Cifar10Model(32, data_format='channels_last',
                                       num_classes=num_classes,
                                       resnet_version=resnet_version)
-    fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+    fake_input = tf.random.uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
     output = model(fake_input, training=True)
 
     self.assertAllEqual(output.shape, (batch_size, num_classes))

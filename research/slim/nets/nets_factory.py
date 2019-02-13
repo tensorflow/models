@@ -23,16 +23,19 @@ import tensorflow as tf
 
 from nets import alexnet
 from nets import cifarnet
+from nets import i3d
 from nets import inception
 from nets import lenet
 from nets import mobilenet_v1
 from nets import overfeat
 from nets import resnet_v1
 from nets import resnet_v2
+from nets import s3dg
 from nets import vgg
 from nets.mobilenet import mobilenet_v2
 from nets.nasnet import nasnet
 from nets.nasnet import pnasnet
+
 
 slim = tf.contrib.slim
 
@@ -47,6 +50,8 @@ networks_map = {'alexnet_v2': alexnet.alexnet_v2,
                 'inception_v3': inception.inception_v3,
                 'inception_v4': inception.inception_v4,
                 'inception_resnet_v2': inception.inception_resnet_v2,
+                'i3d': i3d.i3d,
+                's3dg': s3dg.s3dg,
                 'lenet': lenet.lenet,
                 'resnet_v1_50': resnet_v1.resnet_v1_50,
                 'resnet_v1_101': resnet_v1.resnet_v1_101,
@@ -82,6 +87,8 @@ arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
                   'inception_v4': inception.inception_v4_arg_scope,
                   'inception_resnet_v2':
                   inception.inception_resnet_v2_arg_scope,
+                  'i3d': i3d.i3d_arg_scope,
+                  's3dg': s3dg.s3dg_arg_scope,
                   'lenet': lenet.lenet_arg_scope,
                   'resnet_v1_50': resnet_v1.resnet_arg_scope,
                   'resnet_v1_101': resnet_v1.resnet_arg_scope,
@@ -144,7 +151,8 @@ def get_network_fn(name, num_classes, weight_decay=0.0, is_training=False):
   def network_fn(images, **kwargs):
     arg_scope = arg_scopes_map[name](weight_decay=weight_decay)
     with slim.arg_scope(arg_scope):
-      return func(images, num_classes, is_training=is_training, **kwargs)
+      return func(images, num_classes=num_classes, is_training=is_training,
+                  **kwargs)
   if hasattr(func, 'default_image_size'):
     network_fn.default_image_size = func.default_image_size
 

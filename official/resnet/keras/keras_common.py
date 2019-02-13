@@ -51,14 +51,12 @@ class TimeHistory(tf.keras.callbacks.Callback):
       batch_size: Total batch size.
 
     """
-    self._batch_size = batch_size
+    self.batch_size = batch_size
     super(TimeHistory, self).__init__()
     self.log_steps = log_steps
 
-    # has stats for all batches
-    self.batch_start_timestamps = []
-    # only has stats for batch_index % log_steps == 0 (excluding 0)
-    self.batch_end_timestamps = []
+    # Logs start of step 0 then end of each step based on log_steps interval.
+    self.timestamp_log = []
 
   def on_train_begin(self, logs=None):
     self.record_batch = True
@@ -71,19 +69,21 @@ class TimeHistory(tf.keras.callbacks.Callback):
       timestamp = time.time()
       self.start_time = timestamp
       self.record_batch = False
-      self.batch_start_timestamps.append(BatchTimestamp(batch, timestamp))
+      if batch == 0:
+        self.timestamp_log.append(BatchTimestamp(batch, timestamp))
 
   def on_batch_end(self, batch, logs=None):
     if batch % self.log_steps == 0:
       timestamp = time.time()
       elapsed_time = timestamp - self.start_time
-      examples_per_second = (self._batch_size * self.log_steps) / elapsed_time
-      self.record_batch = True
+      examples_per_second = (self.batch_size * self.log_steps) / elapsed_time
       if batch != 0:
-        self.batch_end_timestamps.append(BatchTimestamp(batch, timestamp))
-        tf.logging.info("BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
-                        "'images_per_second': %f}" %
-                        (batch, elapsed_time, examples_per_second))
+        self.record_batch = True
+        self.timestamp_log.append(BatchTimestamp(batch, timestamp))
+        tf.compat.v1.logging.info(
+            "BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
+            "'images_per_second': %f}" %
+            (batch, elapsed_time, examples_per_second))
 
 
 class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
@@ -121,8 +121,9 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     if lr != self.prev_lr:
       self.model.optimizer.learning_rate = lr  # lr should be a float here
       self.prev_lr = lr
-      tf.logging.debug('Epoch %05d Batch %05d: LearningRateBatchScheduler '
-                       'change learning rate to %s.', self.epochs, batch, lr)
+      tf.compat.v1.logging.debug(
+          'Epoch %05d Batch %05d: LearningRateBatchScheduler '
+          'change learning rate to %s.', self.epochs, batch, lr)
 
 
 def get_optimizer():
@@ -154,6 +155,7 @@ def build_stats(history, eval_output, time_callback):
       and sparse_categorical_accuracy.
     eval_output: Output of the eval step. Assumes first value is eval_loss and
       second value is accuracy_top_1.
+    time_callback: Time tracking callback likely used during keras.fit.
 
   Returns:
     Dictionary of normalized results.
@@ -174,9 +176,14 @@ def build_stats(history, eval_output, time_callback):
       stats[TRAIN_TOP_1] = train_hist['sparse_categorical_accuracy'][-1].item()
 
   if time_callback:
-    stats['batch_start_timestamps'] = time_callback.batch_start_timestamps
-    stats['batch_end_timestamps'] = time_callback.batch_end_timestamps
+    timestamp_log = time_callback.timestamp_log
+    stats['step_timestamp_log'] = timestamp_log
     stats['train_finish_time'] = time_callback.train_finish_time
+    if len(timestamp_log) > 1:
+      stats['avg_exp_per_second'] = (
+          time_callback.batch_size * time_callback.log_steps *
+          (len(time_callback.timestamp_log)-1) /
+          (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
 
   return stats
 
@@ -221,21 +228,25 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
     """Returns dataset filled with random data."""
     # Synthetic input should be within [0, 255].
-    inputs = tf.truncated_normal(
-        [batch_size] + [height, width, num_channels],
-        dtype=dtype,
-        mean=127,
-        stddev=60,
-        name='synthetic_inputs')
+    inputs = tf.random.truncated_normal([height, width, num_channels],
+                                        dtype=dtype,
+                                        mean=127,
+                                        stddev=60,
+                                        name='synthetic_inputs')
 
-    labels = tf.random_uniform(
-        [batch_size] + [1],
-        minval=0,
-        maxval=num_classes - 1,
-        dtype=tf.int32,
-        name='synthetic_labels')
+    labels = tf.random.uniform([1],
+                               minval=0,
+                               maxval=num_classes - 1,
+                               dtype=tf.int32,
+                               name='synthetic_labels')
+    # Cast to float32 for Keras model.
+    labels = tf.cast(labels, dtype=tf.float32)
+
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
-    data = data.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+
+    # `drop_remainder` will make dataset produce outputs with known shapes.
+    data = data.batch(batch_size, drop_remainder=True)
+    data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return data
 
   return input_fn
