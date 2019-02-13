@@ -67,7 +67,11 @@ def get_distribution_strategy(distribution_strategy="default",
       return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
 
   if distribution_strategy in ("mirrored", "default"):
-    devices = ["device:GPU:%d" % i for i in range(num_gpus)]
+    if num_gpus == 0:
+      assert distribution_strategy == "mirrored"
+      devices = ["device:CPU:0"]
+    else:
+      devices = ["device:GPU:%d" % i for i in range(num_gpus)]
     if all_reduce_alg:
       return tf.distribute.MirroredStrategy(
           devices=devices,
