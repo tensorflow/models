@@ -118,6 +118,7 @@ def parse_flags(flags_obj):
       "match_mlperf": flags_obj.ml_perf,
       "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
       "epochs_between_evals": FLAGS.epochs_between_evals,
+      "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
   }
 
 
@@ -132,6 +133,9 @@ def get_optimizer(params):
 
 
 def get_distribution_strategy(params):
+  if params["turn_off_distribution_strategy"]:
+    return None
+
   if params["use_tpu"]:
     # Some of the networking libraries are quite chatty.
     for name in ["googleapiclient.discovery", "googleapiclient.discovery_cache",
@@ -307,6 +311,12 @@ def define_ncf_flags():
   flags.DEFINE_integer(
       name="seed", default=None, help=flags_core.help_wrap(
           "This value will be used to seed both NumPy and TensorFlow."))
+
+  flags.DEFINE_boolean(
+      name="turn_off_distribution_strategy",
+      default=False,
+      help=flags_core.help_wrap(
+        "If set, do not use any distribution strategy."))
 
   @flags.validator("eval_batch_size", "eval_batch_size must be at least {}"
                    .format(rconst.NUM_EVAL_NEGATIVES + 1))

@@ -39,7 +39,6 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from tensorflow.contrib.compiler import xla
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
@@ -53,6 +52,8 @@ from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
+
+tf.enable_eager_execution()
 
 FLAGS = flags.FLAGS
 
@@ -79,15 +80,23 @@ def run_ncf(_):
   producer.start()
   model_helpers.apply_clean(flags.FLAGS)
 
-  # TODO(shiningsun): Both MirroredStrategy and OneDeviceStrategy error out.
-  # Find out why and change the distribute to distribution
-  with distribution_utils.MaybeDistributionScope(None):
-    keras_model = _get_keras_model(params)
-
+  with distribution_utils.MaybeDistributionScope(distribution):
+    keras_model = _get_compiled_keras_model(params)
     optimizer = ncf_common.get_optimizer(params)
-    keras_model.compile(optimizer=optimizer)
+    keras_model.compile(
+        loss=_keras_loss_fn,
+        metrics=[_get_metrics_fn(params)],
+        optimizer=optimizer)
 
-    train_input_dataset, eval_input_dataset = _get_train_and_eval_data(producer, params)
+    train_input_dataset, eval_input_dataset = _get_train_and_eval_data(
+        producer, params)
+
+    batches_per_step = params["batches_per_step"]
+    if FLAGS.turn_off_distribution_strategy:
+      batches_per_step = 1
+
+    train_input_dataset = train_input_dataset.batch(batches_per_step)
+    eval_input_dataset = eval_input_dataset.batch(batches_per_step)
 
     keras_model.fit(train_input_dataset,
         epochs=FLAGS.train_epochs,
@@ -107,61 +116,104 @@ def run_ncf(_):
   return eval_results
 
 
-def _get_keras_model(params):
+def _strip_first_and_last_dimension(x, batch_size):
+  return tf.reshape(x[0, :], (batch_size,))
+
+def _get_compiled_keras_model(params):
   batch_size = params['batch_size']
+
   user_input = tf.keras.layers.Input(
       shape=(), batch_size=batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
   item_input = tf.keras.layers.Input(
       shape=(), batch_size=batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
 
-  # Dummy duplicate mask. We need it because it is part of the eval input
-  dup_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=rconst.DUPLICATE_MASK, dtype=tf.int32)
-  # Labels as input for the custom loss function
-  labels_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name="labels", dtype=tf.int32)
+  base_model = neumf_model.construct_model(
+      user_input, item_input, params)
+
+  # The following two layers act as the input layer to the keras_model.
+  # The reason for them is that we did a dataset.batch() for the purpose of using
+  # distribution strategies in data_pipeline.py
+  user_input_1 = tf.keras.layers.Input(
+      shape=(batch_size, 1),
+      batch_size=1,
+      name=movielens.USER_COLUMN,
+      dtype=tf.int32)
+  item_input_1 = tf.keras.layers.Input(
+      shape=(batch_size, 1),
+      batch_size=1,
+      name=movielens.ITEM_COLUMN,
+      dtype=tf.int32)
   # valid_point_mask as input for the custom loss function
   valid_pt_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=rconst.VALID_POINT_MASK, dtype=tf.int32)
+      shape=(batch_size,),
+      batch_size=1,
+      name=rconst.VALID_POINT_MASK,
+      dtype=tf.bool)
 
-  base_model = neumf_model.construct_model(user_input, item_input, params)
+  user_input_reshape = tf.keras.layers.Lambda(
+      lambda x: _strip_first_and_last_dimension(
+          x, batch_size))(user_input_1)
+  item_input_reshape = tf.keras.layers.Lambda(
+      lambda x: _strip_first_and_last_dimension(
+          x, batch_size))(item_input_1)
+  valid_pt_mask_input_reshape = tf.keras.layers.Lambda(
+      lambda x: _strip_first_and_last_dimension(
+          x, batch_size))(valid_pt_mask_input)
 
-  keras_model_inputs = base_model.inputs
+  base_model_output = base_model([user_input_reshape, item_input_reshape])
+  logits= tf.keras.layers.Lambda(
+          lambda x: tf.expand_dims(x, 0),
+          name="logits")(base_model_output)
 
-  keras_model_inputs.append(dup_mask_input)
-  keras_model_inputs.append(labels_input)
-  keras_model_inputs.append(valid_pt_mask_input)
+  zeros = tf.keras.layers.Lambda(
+      lambda x: x * 0)(logits)
+
+  softmax_output = tf.keras.layers.concatenate(
+          [zeros, logits],
+          axis=-1)
 
   keras_model = tf.keras.Model(
-      inputs=keras_model_inputs,
-      outputs=base_model.outputs)
+      inputs=[user_input_1, item_input_1],
+      outputs=softmax_output)
+
   keras_model.summary()
-
-  logits = keras_model.output
-  softmax_logits = ncf_common.convert_to_softmax_logits(logits)
-
-  loss_tensor = tf.losses.sparse_softmax_cross_entropy(
-      labels=labels_input,
-      logits=softmax_logits,
-      weights=tf.cast(valid_pt_mask_input, tf.float32))
-
-  keras_model.add_loss(loss_tensor)
-
-  hit_rate_metric = _get_hit_rate_metric(
-      logits,
-      softmax_logits,
-      tf.cast(dup_mask_input, tf.float32),
-        params["num_neg"],
-        params["match_mlperf"],
-        params["use_xla_for_gpu"])
-
-
-  keras_model.add_metric(
-      hit_rate_metric,
-      name='hit_rate',
-      aggregation='mean')
-
   return keras_model
+
+
+def _get_metrics_fn(params):
+  num_neg = params["num_neg"]
+  match_mlperf = params["match_mlperf"]
+  use_xla_for_gpu = params["use_xla_for_gpu"]
+  batch_size = params["batch_size"]
+
+  def metric_fn(y_true, y_pred):
+    softmax_logits = y_pred[0, :]
+    logits = tf.slice(softmax_logits, [0, 1], [batch_size, 1])
+
+    # TODO(shiningsun): this mask should come from feature's
+    # DUPLICATE_MASK
+    dup_mask = tf.zeros([batch_size, 1])
+
+    return _get_hit_rate_metric(
+        logits,
+        softmax_logits,
+        dup_mask,
+        num_neg,
+        match_mlperf,
+        use_xla_for_gpu)
+
+  return metric_fn
+
+
+def _keras_loss_fn(y_true, y_pred, sample_weights=None):
+  batch_losses = tf.keras.losses.sparse_categorical_crossentropy(
+      y_true,
+      y_pred,
+      from_logits=True)
+
+  #TODO(shiningsun): this result should be masked by VALID_POINT_MASK
+  # from features
+  return batch_losses
 
 
 def _get_hit_rate_metric(
@@ -181,36 +233,48 @@ def _get_hit_rate_metric(
         match_mlperf,
         use_tpu_spec=use_xla_for_gpu))
 
+  '''
   in_top_k = tf.cond(
       tf.keras.backend.learning_phase(),
       lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
       lambda: in_top_k)
+  '''
 
   return in_top_k
 
 
-
 def _get_train_and_eval_data(producer, params):
+  train_input_fn = producer.make_input_fn(is_training=True)
+  train_input_dataset = train_input_fn(params)
 
   def preprocess_training_input(features, labels):
-    # Add a dummy dup_mask to the input dataset, because it is part of the
-    # model's input layres, which is because it is part of the eval input
-    # data
-    features[rconst.DUPLICATE_MASK] = tf.zeros_like(
-        features[movielens.USER_COLUMN], dtype=tf.float32)
-    features["labels"] = labels
+    # weights = features.pop(rconst.VALID_POINT_MASK)
+    for k in features:
+        tensor = features[k]
+        features[k] = tf.expand_dims(tensor, -1)
+
+    labels = tf.expand_dims(labels, -1)
+
+    # TODO(shiningsun): the following stmt should not be needed.
+    # but needed here due to b/124362769
+    features.pop(rconst.VALID_POINT_MASK)
+
     return features, labels
 
-
-  train_input_fn = producer.make_input_fn(is_training=True)
-  train_input_dataset = train_input_fn(params).map(
-      lambda features, labels: preprocess_training_input(features, labels))
-  train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
+  train_input_dataset = train_input_dataset.map(
+      lambda features, labels : preprocess_training_input(features, labels))
 
   def preprocess_eval_input(features):
-    features["labels"] = tf.zeros_like(features['user_id'], dtype=tf.float32)
-    features[rconst.VALID_POINT_MASK] = tf.zeros_like(features['user_id'], dtype=tf.float32)
-    return features
+    for k in features:
+        tensor = features[k]
+        features[k] = tf.expand_dims(tensor, -1)
+
+    # TODO(shiningsun): the following stmt should not be needed.
+    # but needed here due to b/124362769
+    features.pop(rconst.DUPLICATE_MASK)
+
+    labels = tf.zeros_like(features['user_id'], dtype=tf.float32)
+    return features, labels
 
   eval_input_fn = producer.make_input_fn(is_training=False)
   eval_input_dataset = eval_input_fn(params)
