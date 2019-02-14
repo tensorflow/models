@@ -81,7 +81,7 @@ def run_ncf(_):
   model_helpers.apply_clean(flags.FLAGS)
 
   with distribution_utils.MaybeDistributionScope(distribution):
-    keras_model = _get_compiled_keras_model(params)
+    keras_model = _get_keras_model(params)
     optimizer = ncf_common.get_optimizer(params)
     keras_model.compile(
         loss=_keras_loss_fn,
@@ -116,51 +116,33 @@ def run_ncf(_):
   return eval_results
 
 
-def _strip_first_and_last_dimension(x, batch_size):
-  return tf.reshape(x[0, :], (batch_size,))
-
-def _get_compiled_keras_model(params):
+def _get_keras_model(params):
   batch_size = params['batch_size']
-
-  user_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
-  item_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
-
-  base_model = neumf_model.construct_model(
-      user_input, item_input, params)
+  print(">>>>>>>>>>>>>> batch_size: ", batch_size)
 
   # The following two layers act as the input layer to the keras_model.
   # The reason for them is that we did a dataset.batch() for the purpose of using
   # distribution strategies in data_pipeline.py
-  user_input_1 = tf.keras.layers.Input(
+  user_input = tf.keras.layers.Input(
       shape=(batch_size, 1),
       batch_size=1,
       name=movielens.USER_COLUMN,
       dtype=tf.int32)
-  item_input_1 = tf.keras.layers.Input(
+
+  item_input = tf.keras.layers.Input(
       shape=(batch_size, 1),
       batch_size=1,
       name=movielens.ITEM_COLUMN,
       dtype=tf.int32)
-  # valid_point_mask as input for the custom loss function
-  valid_pt_mask_input = tf.keras.layers.Input(
-      shape=(batch_size,),
-      batch_size=1,
-      name=rconst.VALID_POINT_MASK,
-      dtype=tf.bool)
 
-  user_input_reshape = tf.keras.layers.Lambda(
-      lambda x: _strip_first_and_last_dimension(
-          x, batch_size))(user_input_1)
-  item_input_reshape = tf.keras.layers.Lambda(
-      lambda x: _strip_first_and_last_dimension(
-          x, batch_size))(item_input_1)
-  valid_pt_mask_input_reshape = tf.keras.layers.Lambda(
-      lambda x: _strip_first_and_last_dimension(
-          x, batch_size))(valid_pt_mask_input)
+  base_model = neumf_model.construct_model(
+          user_input,
+          item_input,
+          params,
+          need_strip=True)
 
-  base_model_output = base_model([user_input_reshape, item_input_reshape])
+  base_model_output = base_model.output
+
   logits= tf.keras.layers.Lambda(
           lambda x: tf.expand_dims(x, 0),
           name="logits")(base_model_output)
@@ -173,9 +155,12 @@ def _get_compiled_keras_model(params):
           axis=-1)
 
   keras_model = tf.keras.Model(
-      inputs=[user_input_1, item_input_1],
+      inputs=[user_input, item_input],
       outputs=softmax_output)
 
+  print("")
+  print("")
+  print("")
   keras_model.summary()
   return keras_model
 
