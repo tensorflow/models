@@ -167,7 +167,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     # Use BFC allocator with limited memory on CPU as a workaround for memory
     # spikes in eager mode.
-    # TODO(yuefengz): get rid of this is test once we fix the memory issue.
+    # TODO(yuefengz): get rid of this test once we fix the memory issue.
     os.environ['TF_CPU_ALLOCATOR_USE_BFC'] = 'true'
     os.environ['TF_CPU_BFC_MEM_LIMIT_IN_MB'] = '100000'
     self._run_and_report_benchmark()
