@@ -106,6 +106,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     self._run_and_report_benchmark()
 
   def _run_and_report_benchmark(self):
+    """Executes benchmark and reports result."""
     start_time_sec = time.time()
     stats = cifar_main.run_cifar(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
