@@ -73,6 +73,8 @@ class ExamplesPerSecondHook(tf.estimator.SessionRunHook):
     self._total_steps = 0
     self._batch_size = batch_size
     self._warm_steps = warm_steps
+    # List of examples per second logged every_n_steps.
+    self.current_examples_per_sec_list = []
 
   def begin(self):
     """Called once before using the session to check global step."""
@@ -117,7 +119,8 @@ class ExamplesPerSecondHook(tf.estimator.SessionRunHook):
         # and training time per batch
         current_examples_per_sec = self._batch_size * (
             elapsed_steps / elapsed_time)
-
+        # Logs entries to be read from hook during or after run.
+        self.current_examples_per_sec_list.append(current_examples_per_sec)
         self._logger.log_metric(
             "average_examples_per_sec", average_examples_per_sec,
             global_step=global_step)

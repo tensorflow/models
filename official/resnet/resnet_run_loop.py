@@ -599,7 +599,13 @@ def resnet_main(
           shape, batch_size=flags_obj.batch_size, dtype=export_dtype)
     classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn,
                                  strip_default_attrs=True)
-  return eval_results
+
+  stats = {}
+  stats['eval_results'] = eval_results
+  stats['train_hooks'] = train_hooks
+
+  return stats
+
 
 def define_resnet_flags(resnet_size_choices=None):
   """Add flags and validators for ResNet."""
