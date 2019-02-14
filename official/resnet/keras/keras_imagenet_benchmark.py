@@ -67,6 +67,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_bfc_allocator(self):
+    """Restricts CPU memory allocation."""
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
