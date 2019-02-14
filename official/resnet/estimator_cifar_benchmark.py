@@ -27,6 +27,7 @@ from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
+from official.utils.logs import hooks
 
 DATA_DIR = '/data/cifar10_data/cifar-10-batches-bin'
 
@@ -49,6 +50,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_1_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
+    flags.FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
   def resnet56_fp16_1_gpu(self):
@@ -61,6 +63,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_fp16_1_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp16'
+    flags.FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
   def resnet56_2_gpu(self):
@@ -73,6 +76,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_2_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
+    flags.FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
   def resnet56_fp16_2_gpu(self):
@@ -85,6 +89,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_fp16_2_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp16'
+    flags.FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
   def unit_test(self):
@@ -97,6 +102,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_1_gpu')
     flags.FLAGS.resnet_size = 8
     flags.FLAGS.dtype = 'fp32'
+    flags.FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
   def _run_and_report_benchmark(self):
@@ -104,15 +110,29 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     stats = cifar_main.run_cifar(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
+    examples_per_sec_hook = None
+    for hook in stats['train_hooks']:
+      if isinstance(hook, hooks.ExamplesPerSecondHook):
+        examples_per_sec_hook = hook
+        break
+
+    eval_results = stats['eval_results']
+    extras = {}
+    extras['accuracy_top_1'] = self._json_description(
+        eval_results['accuracy'].item(),
+        priority=0)
+    extras['accuracy_top_5'] = self._json_description(
+        eval_results['accuracy_top_5'].item())
+    if examples_per_sec_hook:
+      exp_per_second_list = examples_per_sec_hook.current_examples_per_sec_list
+      # ExamplesPerSecondHook skips the first 10 steps.
+      exp_per_sec = sum(exp_per_second_list) / (len(exp_per_second_list))
+      extras['exp_per_second'] = self._json_description(exp_per_sec)
+
     self.report_benchmark(
-        iters=stats['global_step'],
+        iters=eval_results['global_step'],
         wall_time=wall_time_sec,
-        extras={
-            'accuracy_top_1':
-                self._json_description(stats['accuracy'].item(), priority=0),
-            'accuracy_top_5':
-                self._json_description(stats['accuracy_top_5'].item()),
-        })
+        extras=extras)
 
   def _json_description(self,
                         value,

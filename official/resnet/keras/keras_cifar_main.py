@@ -97,7 +97,9 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  if flags_obj.enable_eager:
+  # TODO(tobyboyd): Remove eager flag when tf 1.0 testing ends.
+  # Eager is default in tf 2.0 and should not be toggled
+  if flags_obj.enable_eager and not keras_common.is_v2_0():
     tf.compat.v1.enable_eager_execution()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
@@ -138,8 +140,8 @@ def run(flags_obj):
       parse_record_fn=parse_record_keras)
 
   strategy = distribution_utils.get_distribution_strategy(
-      num_gpus=flags_obj.num_gpus,
-      turn_off_distribution_strategy=flags_obj.turn_off_distribution_strategy)
+      distribution_strategy=flags_obj.distribution_strategy,
+      num_gpus=flags_obj.num_gpus)
 
   strategy_scope = keras_common.get_strategy_scope(strategy)
 

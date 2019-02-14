@@ -252,6 +252,11 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   return input_fn
 
 
+def is_v2_0():
+  """Returns true if using tf 2.0."""
+  return tf.__version__.startswith('2')
+
+
 def get_strategy_scope(strategy):
   if strategy:
     strategy_scope = strategy.scope()
