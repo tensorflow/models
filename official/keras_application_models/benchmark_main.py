@@ -88,6 +88,7 @@ def run_keras_model_benchmark(_):
   # Use distribution strategy
   if FLAGS.dist_strat:
     distribution = distribution_utils.get_distribution_strategy(
+        distribution_strategy=FLAGS.distribution_strategy,
         num_gpus=num_gpus)
   elif num_gpus > 1:
     # Run with multi_gpu_model
