@@ -64,7 +64,6 @@ def get_distribution_strategy(distribution_strategy="default",
       if num_gpus > 1:
         raise ValueError("`OneDeviceStrategy` can not be used for more than "
                          "one device.")
-      print('ONE DEVICE !!!!!!!!!!!!!!!!!!!!!!!!')
       return tf.distribute.OneDeviceStrategy("device:GPU:0")
 
   if distribution_strategy in ("mirrored", "default"):
