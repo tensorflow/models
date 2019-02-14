@@ -195,6 +195,7 @@ if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   # Use BFC allocator with limited memory on CPU as a workaround for memory
   # spikes in eager mode.
+  # TODO(yuefengz): get rid of of these environment variables.
   os.environ['TF_CPU_ALLOCATOR_USE_BFC'] = 'true'
   os.environ['TF_CPU_BFC_MEM_LIMIT_IN_MB'] = '100000'
   imagenet_main.define_imagenet_flags()
