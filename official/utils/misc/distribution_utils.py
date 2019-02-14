@@ -197,4 +197,3 @@ def undo_set_up_synthetic_data():
     _undo_monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
   else:
     print('Contrib missing: Skip remove monkey patch tf.contrib.distribute.*')
->>>>>>> 5d3a7d04b3b73cc8ffecdfa4768a883b8a35632e
