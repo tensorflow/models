@@ -19,7 +19,6 @@ import os
 import time
 
 from absl import flags
-import tensorflow as tf
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_benchmark
@@ -169,10 +168,11 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     # Use BFC allocator with limited memory on CPU as a workaround for memory
     # spikes in eager mode.
     # TODO(yuefengz): get rid of this is test once we fix the memory issue.
-    with tf.test.mock.patch.dict('os.environ',
-                                 {'TF_CPU_ALLOCATOR_USE_BFC': 'true',
-                                  'TF_CPU_BFC_MEM_LIMIT_IN_MB': '100000'}):
-      self._run_and_report_benchmark()
+    os.environ['TF_CPU_ALLOCATOR_USE_BFC'] = 'true'
+    os.environ['TF_CPU_BFC_MEM_LIMIT_IN_MB'] = '100000'
+    self._run_and_report_benchmark()
+    del os.environ['TF_CPU_ALLOCATOR_USE_BFC']
+    del os.environ['TF_CPU_BFC_MEM_LIMIT_IN_MB']
 
   def benchmark_graph_8_gpu(self):
     self._setup()
