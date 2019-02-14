@@ -364,7 +364,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       # loss is computed using fp32 for numerical stability.
       [
           tf.nn.l2_loss(tf.cast(v, tf.float32))
-          for v in tf.trainable_variables()
+          for v in tf.compat.v1.trainable_variables()
           if loss_filter_fn(v.name)
       ]) / tf.distribute.get_strategy().num_replicas_in_sync
   tf.compat.v1.summary.scalar('l2_loss', l2_loss)
