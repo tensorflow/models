@@ -59,12 +59,12 @@ def get_distribution_strategy(distribution_strategy="default",
   if (distribution_strategy == "one_device" or
       (distribution_strategy == "default" and num_gpus <= 1)):
     if num_gpus == 0:
-      return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
+      return tf.distribute.OneDeviceStrategy("device:CPU:0")
     else:
       if num_gpus > 1:
         raise ValueError("`OneDeviceStrategy` can not be used for more than "
                          "one device.")
-      return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
+      return tf.distribute.OneDeviceStrategy("device:GPU:0")
 
   if distribution_strategy in ("mirrored", "default"):
     if num_gpus == 0:
