@@ -85,7 +85,10 @@ def run_ncf(_):
     keras_model = _get_keras_model(params)
 
     optimizer = ncf_common.get_optimizer(params)
-    keras_model.compile(optimizer=optimizer)
+    keras_model.compile(
+        loss="sparse_categorical_crossentropy",
+        metrics=[_get_metric_fn(params)],
+        optimizer=optimizer)
 
     train_input_dataset, eval_input_dataset = _get_train_and_eval_data(producer, params)
 
@@ -107,59 +110,50 @@ def run_ncf(_):
   return eval_results
 
 
+def _get_metric_fn(params):
+  batch_size = params["batch_size"]
+
+  def metric_fn(y_true, y_pred):
+    softmax_logits = y_pred
+    logits = tf.slice(softmax_logits, [0, 1], [batch_size, 1])
+
+    dup_mask = tf.zeros([batch_size, 1])
+
+    return _get_hit_rate_metric(
+        logits,
+        softmax_logits,
+        dup_mask,
+        params["num_neg"],
+        params["match_mlperf"],
+        params["use_xla_for_gpu"])
+
+  return metric_fn
+
+
 def _get_keras_model(params):
   batch_size = params['batch_size']
+
   user_input = tf.keras.layers.Input(
       shape=(), batch_size=batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
   item_input = tf.keras.layers.Input(
       shape=(), batch_size=batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
 
-  # Dummy duplicate mask. We need it because it is part of the eval input
-  dup_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=rconst.DUPLICATE_MASK, dtype=tf.int32)
-  # Labels as input for the custom loss function
-  labels_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name="labels", dtype=tf.int32)
-  # valid_point_mask as input for the custom loss function
-  valid_pt_mask_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=rconst.VALID_POINT_MASK, dtype=tf.int32)
-
   base_model = neumf_model.construct_model(user_input, item_input, params)
+  base_model_output = base_model.output
 
-  keras_model_inputs = base_model.inputs
+  zeros = tf.keras.layers.Lambda(
+      lambda x: x * 0)(base_model_output)
 
-  keras_model_inputs.append(dup_mask_input)
-  keras_model_inputs.append(labels_input)
-  keras_model_inputs.append(valid_pt_mask_input)
+  softmax_logits = tf.keras.layers.concatenate(
+      [zeros, base_model_output],
+      axis=-1)
 
   keras_model = tf.keras.Model(
-      inputs=keras_model_inputs,
-      outputs=base_model.outputs)
+      inputs=[user_input, item_input],
+      outputs=softmax_logits)
+
   keras_model.summary()
 
-  logits = keras_model.output
-  softmax_logits = ncf_common.convert_to_softmax_logits(logits)
-
-  loss_tensor = tf.losses.sparse_softmax_cross_entropy(
-      labels=labels_input,
-      logits=softmax_logits,
-      weights=tf.cast(valid_pt_mask_input, tf.float32))
-
-  keras_model.add_loss(loss_tensor)
-
-  hit_rate_metric = _get_hit_rate_metric(
-      logits,
-      softmax_logits,
-      tf.cast(dup_mask_input, tf.float32),
-        params["num_neg"],
-        params["match_mlperf"],
-        params["use_xla_for_gpu"])
-
-
-  keras_model.add_metric(
-      hit_rate_metric,
-      name='hit_rate',
-      aggregation='mean')
 
   return keras_model
 
@@ -196,10 +190,8 @@ def _get_train_and_eval_data(producer, params):
     # Add a dummy dup_mask to the input dataset, because it is part of the
     # model's input layres, which is because it is part of the eval input
     # data
-    features[rconst.DUPLICATE_MASK] = tf.zeros_like(
-        features[movielens.USER_COLUMN], dtype=tf.float32)
-    features["labels"] = labels
-    return features, labels
+    weights = features.pop(rconst.VALID_POINT_MASK)
+    return features, labels, weights
 
 
   train_input_fn = producer.make_input_fn(is_training=True)
@@ -208,9 +200,8 @@ def _get_train_and_eval_data(producer, params):
   train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
 
   def preprocess_eval_input(features):
-    features["labels"] = tf.zeros_like(features['user_id'], dtype=tf.float32)
-    features[rconst.VALID_POINT_MASK] = tf.zeros_like(features['user_id'], dtype=tf.float32)
-    return features
+    labels = tf.zeros_like(features[movielens.USER_COLUMN])
+    return features, labels
 
   eval_input_fn = producer.make_input_fn(is_training=False)
   eval_input_dataset = eval_input_fn(params)
