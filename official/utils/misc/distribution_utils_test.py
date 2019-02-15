@@ -48,7 +48,7 @@ class GetDistributionStrategyTest(tf.test.TestCase):
     ds = distribution_utils.get_distribution_strategy(
         distribution_strategy='collective', num_gpus=2)
     self.assertTrue(
-            isinstance(ds, tf.contrib.distribute.CollectiveAllReduceStrategy))
+        isinstance(ds, tf.contrib.distribute.CollectiveAllReduceStrategy))
 
 
 class PerDeviceBatchSizeTest(tf.test.TestCase):
