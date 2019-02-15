@@ -50,7 +50,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = DATA_DIR
     FLAGS.batch_size = 128 * 8
     FLAGS.train_epochs = 90
-    FLAGS.model_dir = self._get_model_dir('keras_resnet50_8_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.dtype = 'fp32'
     self._run_and_report_benchmark()
 
@@ -61,10 +61,25 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = DATA_DIR
     FLAGS.batch_size = 128 * 8
     FLAGS.train_epochs = 90
-    FLAGS.model_dir = self._get_model_dir('keras_resnet50_eager_8_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
     self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_bfc_allocator(self):
+    """Restricts CPU memory allocation."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_bfc_allocator')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    # Limits CPU memory to work around memory spikes in eager mode.
+    # TODO(yuefengz): get rid of this test once we fix the memory issue.
+    os.environ['TF_CPU_ALLOCATOR_USE_BFC'] = 'true'
+    os.environ['TF_CPU_BFC_MEM_LIMIT_IN_MB'] = '100000'
+    self._run_and_report_benchmark()
+    del os.environ['TF_CPU_ALLOCATOR_USE_BFC']
+    del os.environ['TF_CPU_BFC_MEM_LIMIT_IN_MB']
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
@@ -112,7 +127,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
-    FLAGS.turn_off_distribution_strategy = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
@@ -121,7 +137,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
-    FLAGS.turn_off_distribution_strategy = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
@@ -130,7 +147,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
-    FLAGS.turn_off_distribution_strategy = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
@@ -139,7 +157,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
-    FLAGS.turn_off_distribution_strategy = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
@@ -148,7 +167,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
-    FLAGS.turn_off_distribution_strategy = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
@@ -157,7 +177,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = False
-    FLAGS.turn_off_distribution_strategy = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 

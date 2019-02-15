@@ -95,14 +95,14 @@ def _parse_example_proto(example_serialized):
   """
   # Dense features in Example proto.
   feature_map = {
-      'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
-                                          default_value=''),
-      'image/class/label': tf.FixedLenFeature([], dtype=tf.int64,
-                                              default_value=-1),
-      'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
+      'image/encoded': tf.io.FixedLenFeature([], dtype=tf.string,
                                              default_value=''),
+      'image/class/label': tf.io.FixedLenFeature([], dtype=tf.int64,
+                                                 default_value=-1),
+      'image/class/text': tf.io.FixedLenFeature([], dtype=tf.string,
+                                                default_value=''),
   }
-  sparse_float32 = tf.VarLenFeature(dtype=tf.float32)
+  sparse_float32 = tf.io.VarLenFeature(dtype=tf.float32)
   # Sparse features in Example proto.
   feature_map.update(
       {k: sparse_float32 for k in ['image/object/bbox/xmin',
@@ -110,7 +110,8 @@ def _parse_example_proto(example_serialized):
                                    'image/object/bbox/xmax',
                                    'image/object/bbox/ymax']})
 
-  features = tf.parse_single_example(example_serialized, feature_map)
+  features = tf.io.parse_single_example(serialized=example_serialized,
+                                        features=feature_map)
   label = tf.cast(features['image/class/label'], dtype=tf.int32)
 
   xmin = tf.expand_dims(features['image/object/bbox/xmin'].values, 0)
@@ -124,7 +125,7 @@ def _parse_example_proto(example_serialized):
   # Force the variable number of bounding boxes into the shape
   # [1, num_boxes, coords].
   bbox = tf.expand_dims(bbox, 0)
-  bbox = tf.transpose(bbox, [0, 2, 1])
+  bbox = tf.transpose(a=bbox, perm=[0, 2, 1])
 
   return features['image/encoded'], label, bbox
 
@@ -188,7 +189,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
   # This number is low enough to not cause too much contention on small systems
   # but high enough to provide the benefits of parallelization. You may want
   # to increase this number if you have a large number of CPU cores.
-  dataset = dataset.apply(tf.contrib.data.parallel_interleave(
+  dataset = dataset.apply(tf.data.experimental.parallel_interleave(
       tf.data.TFRecordDataset, cycle_length=10))
 
   return resnet_run_loop.process_record_dataset(
@@ -352,6 +353,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   define_imagenet_flags()
   absl_app.run(main)
