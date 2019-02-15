@@ -70,9 +70,11 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     """Restricts CPU memory allocation."""
     self._setup()
     FLAGS.num_gpus = 8
-    FLAGS.enable_eager = True
+    FLAGS.data_dir = DATA_DIR
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_bfc_allocator')
+    FLAGS.dtype = 'fp32'
     FLAGS.batch_size = 128 * 8  # 8 GPUs
+    FLAGS.enable_eager = True
     # Limits CPU memory to work around memory spikes in eager mode.
     # TODO(yuefengz): get rid of this test once we fix the memory issue.
     os.environ['TF_CPU_ALLOCATOR_USE_BFC'] = 'true'
