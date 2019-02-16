@@ -28,6 +28,8 @@ employ ASPP and decoder modules for fast computation.
 
 Checkpoint name             | Network backbone | Pretrained  dataset | ASPP  | Decoder
 --------------------------- | :--------------: | :-----------------: | :---: | :-----:
+mobilenetv2_dm05_coco_voc_trainaug | MobileNet-v2 <br> Depth-Multiplier = 0.5  | MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
+mobilenetv2_dm05_coco_voc_trainval | MobileNet-v2 <br> Depth-Multiplier = 0.5  | MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
 mobilenetv2_coco_voc_trainaug | MobileNet-v2  | MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
 mobilenetv2_coco_voc_trainval | MobileNet-v2  | MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
 xception65_coco_voc_trainaug  | Xception_65  | MS-COCO <br> VOC 2012 train_aug set| [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
@@ -37,6 +39,8 @@ In the table, **OS** denotes output stride.
 
 Checkpoint name                                                                                                          | Eval OS   | Eval scales                | Left-right Flip | Multiply-Adds        | Runtime (sec)  | PASCAL mIOU                    | File Size
 ------------------------------------------------------------------------------------------------------------------------ | :-------: | :------------------------: | :-------------: | :------------------: | :------------: | :----------------------------: | :-------:
+[mobilenetv2_dm05_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_mnv2_dm05_pascal_trainaug_2018_10_01.tar.gz)  | 16 | [1.0] | No  | 0.88B  | -  | 70.19% (val)  | 7.6MB
+[mobilenetv2_dm05_coco_voc_trainval](http://download.tensorflow.org/models/deeplabv3_mnv2_dm05_pascal_trainval_2018_10_01.tar.gz)  | 8  | [1.0] | No  | 2.84B  | -  | 71.83% (test)  | 7.6MB
 [mobilenetv2_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_mnv2_pascal_train_aug_2018_01_29.tar.gz) | 16 <br> 8 | [1.0] <br> [0.5:0.25:1.75] | No <br> Yes     | 2.75B <br> 152.59B   | 0.1 <br> 26.9  | 75.32% (val) <br> 77.33 (val)  | 23MB
 [mobilenetv2_coco_voc_trainval](http://download.tensorflow.org/models/deeplabv3_mnv2_pascal_trainval_2018_01_29.tar.gz)  | 8         | [0.5:0.25:1.75]            | Yes             | 152.59B              | 26.9           | 80.25% (**test**)              | 23MB
 [xception65_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_pascal_train_aug_2018_01_04.tar.gz)         | 16 <br> 8 | [1.0] <br> [0.5:0.25:1.75] | No <br> Yes     | 54.17B <br> 3055.35B | 0.7 <br> 223.2 | 82.20% (val) <br> 83.58% (val) | 439MB
@@ -84,13 +88,18 @@ We provide some checkpoints that have been pretrained on ADE20K training set.
 Note that the model has only been pretrained on ImageNet, following the
 dataset rule.
 
-Checkpoint name                       | Network backbone | Pretrained dataset                      | ASPP                                             | Decoder
-------------------------------------- | :--------------: | :-------------------------------------: | :----------------------------------------------: | :-----:
-xception65_ade20k_train                 | Xception_65      | ImageNet <br> ADE20K training set       | [6, 12, 18] for OS=16 <br> [12, 24, 36] for OS=8 | OS = 4
+Checkpoint name                       | Network backbone | Pretrained dataset                      | ASPP                                             | Decoder | Input size
+------------------------------------- | :--------------: | :-------------------------------------: | :----------------------------------------------: | :-----: | :-----:
+mobilenetv2_ade20k_train              | MobileNet-v2     | ImageNet <br> ADE20K training set       | N/A                                              | OS = 4  | 257x257
+xception65_ade20k_train               | Xception_65      | ImageNet <br> ADE20K training set       | [6, 12, 18] for OS=16 <br> [12, 24, 36] for OS=8 | OS = 4  | 513x513
+
+The input dimensions of ADE20K have a huge amount of variation. We resize inputs so that the longest size is 257 for MobileNet-v2 (faster inference) and 513 for Xception_65 (better performation). Note that we also include the decoder module in the MobileNet-v2 checkpoint.
 
 Checkpoint name                       | Eval OS   | Eval scales                 | Left-right Flip |  mIOU                 | Pixel-wise Accuracy | File Size
 ------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :-------------------: | :-------:
-[xception65_ade20k_train](http://download.tensorflow.org/models/deeplabv3_xception_ade20k_train_2018_05_29.tar.gz)              | 8 | [0.5:0.25:1.75] | Yes     | 45.65% (val) | 82.52% (val) | 439MB
+[mobilenetv2_ade20k_train](http://download.tensorflow.org/models/deeplabv3_mnv2_ade20k_train_2018_12_03.tar.gz)           | 16 | [1.0] | No     | 32.04% (val) | 75.41% (val) | 24.8MB
+[xception65_ade20k_train](http://download.tensorflow.org/models/deeplabv3_xception_ade20k_train_2018_05_29.tar.gz)        | 8 | [0.5:0.25:1.75] | Yes     | 45.65% (val) | 82.52% (val) | 439MB
+
 
 ## Checkpoints pretrained on ImageNet
 

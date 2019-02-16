@@ -19,6 +19,22 @@ import tensorflow as tf
 slim = tf.contrib.slim
 
 
+def resize_bilinear(images, size, output_dtype=tf.float32):
+  """Returns resized images as output_type.
+
+  Args:
+    images: A tensor of size [batch, height_in, width_in, channels].
+    size: A 1-D int32 Tensor of 2 elements: new_height, new_width. The new size
+      for the images.
+    output_dtype: The destination type.
+  Returns:
+    A tensor of size [batch, height_out, width_out, channels] as a dtype of
+      output_dtype.
+  """
+  images = tf.image.resize_bilinear(images, size, align_corners=True)
+  return tf.cast(images, dtype=output_dtype)
+
+
 def scale_dimension(dim, scale):
   """Scales the input dimension.
 
@@ -36,13 +52,13 @@ def scale_dimension(dim, scale):
 
 
 def split_separable_conv2d(inputs,
-    filters,
-    kernel_size=3,
-    rate=1,
-    weight_decay=0.00004,
-    depthwise_weights_initializer_stddev=0.33,
-    pointwise_weights_initializer_stddev=0.06,
-    scope=None):
+                           filters,
+                           kernel_size=3,
+                           rate=1,
+                           weight_decay=0.00004,
+                           depthwise_weights_initializer_stddev=0.33,
+                           pointwise_weights_initializer_stddev=0.06,
+                           scope=None):
   """Splits a separable conv2d into depthwise and pointwise conv2d.
 
   This operation differs from `tf.layers.separable_conv2d` as this operation

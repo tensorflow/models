@@ -15,7 +15,7 @@
 """Exports trained model to TensorFlow frozen graph."""
 
 import os
-import tensorflow as tf
+import tensorflow.google as tf
 
 from tensorflow.python.tools import freeze_graph
 from deeplab import common
@@ -53,11 +53,15 @@ flags.DEFINE_multi_float('inference_scales', [1.0],
 flags.DEFINE_bool('add_flipped_images', False,
                   'Add flipped images during inference or not.')
 
+flags.DEFINE_bool('save_inference_graph', False,
+                  'Save inference graph in text proto.')
+
 # Input name of the exported model.
 _INPUT_NAME = 'ImageTensor'
 
 # Output name of the exported model.
 _OUTPUT_NAME = 'SemanticPredictions'
+_RAW_OUTPUT_NAME = 'RawSemanticPredictions'
 
 
 def _create_input_tensors():
@@ -127,8 +131,10 @@ def main(unused_argv):
           add_flipped_images=FLAGS.add_flipped_images)
 
     # Crop the valid regions from the predictions.
+    raw_predictions = tf.identity(
+        predictions[common.OUTPUT_TYPE], _RAW_OUTPUT_NAME)
     semantic_predictions = tf.slice(
-        predictions[common.OUTPUT_TYPE],
+        raw_predictions,
         [0, 0, 0],
         [1, resized_image_size[0], resized_image_size[1]])
     # Resize back the prediction to the original image size.
@@ -146,9 +152,11 @@ def main(unused_argv):
 
     saver = tf.train.Saver(tf.model_variables())
 
-    tf.gfile.MakeDirs(os.path.dirname(FLAGS.export_path))
+    dirname = os.path.dirname(FLAGS.export_path)
+    tf.gfile.MakeDirs(dirname)
+    graph_def = tf.get_default_graph().as_graph_def(add_shapes=True)
     freeze_graph.freeze_graph_with_def_protos(
-        tf.get_default_graph().as_graph_def(add_shapes=True),
+        graph_def,
         saver.as_saver_def(),
         FLAGS.checkpoint_path,
         _OUTPUT_NAME,
@@ -157,6 +165,9 @@ def main(unused_argv):
         output_graph=FLAGS.export_path,
         clear_devices=True,
         initializer_nodes=None)
+
+    if FLAGS.save_inference_graph:
+      tf.train.write_graph(graph_def, dirname, 'inference_graph.pbtxt')
 
 
 if __name__ == '__main__':
