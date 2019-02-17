@@ -142,6 +142,14 @@ to avoid running this manually, you can add it as a new line to the end of your
 ~/.bashrc file, replacing \`pwd\` with the absolute path of
 tensorflow/models/research on your system.
 
+## Run `setup.py`
+
+```bash
+# From tensorflow/models/research/
+python setup.py build
+python setup.py install
+```
+
 # Testing the Installation
 
 You can test that you have correctly installed the Tensorflow Object Detection\
