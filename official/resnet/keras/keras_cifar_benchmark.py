@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import time
 from absl import flags
 
@@ -26,7 +27,6 @@ from official.resnet.keras import keras_benchmark
 from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
 
-DATA_DIR = '/data/cifar10_data/cifar-10-batches-bin'
 MIN_TOP_1_ACCURACY = 0.925
 MAX_TOP_1_ACCURACY = 0.938
 
@@ -36,7 +36,20 @@ FLAGS = flags.FLAGS
 class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
   """Accuracy tests for ResNet56 Keras CIFAR-10."""
 
-  def __init__(self, output_dir=None):
+  def __init__(self, output_dir=None, root_data_dir=None):
+    """A benchmark class.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+    """
+
+    if root_data_dir is None:
+      self.data_dir = '/data/cifar10_data/cifar-10-batches-bin'
+    else:
+      self.data_dir = os.path.join(root_data_dir,
+                                   'cifar10_data/cifar-10-batches-bin')
+
     flag_methods = [
         keras_common.define_keras_flags, cifar_main.define_cifar_flags
     ]
@@ -48,7 +61,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.data_dir = DATA_DIR
+    FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
@@ -59,7 +72,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     """Test keras based model with eager and distribution strategies."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.data_dir = DATA_DIR
+    FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
@@ -71,7 +84,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     """Test keras based model with eager and distribution strategies."""
     self._setup()
     FLAGS.num_gpus = 2
-    FLAGS.data_dir = DATA_DIR
+    FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu')
@@ -83,7 +96,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
     FLAGS.num_gpus = 2
-    FLAGS.data_dir = DATA_DIR
+    FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_2_gpu')
@@ -95,7 +108,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._setup()
     FLAGS.distribution_strategy = 'off'
     FLAGS.num_gpus = 1
-    FLAGS.data_dir = DATA_DIR
+    FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
@@ -215,7 +228,7 @@ class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
   def __init__(self, output_dir=None):
     def_flags = {}
     def_flags['skip_eval'] = True
-    def_flags['data_dir'] = DATA_DIR
+    def_flags['data_dir'] = self.data_dir
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
