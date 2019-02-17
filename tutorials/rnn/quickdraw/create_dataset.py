@@ -120,7 +120,7 @@ def convert_data(trainingdata_dir,
           break
 
   writers = []
-  for i in range(FLAGS.output_shards):
+  for i in range(output_shards):
     writers.append(
         tf.python_io.TFRecordWriter("%s-%05i-of-%05i" % (output_file, i,
                                                          output_shards)))
