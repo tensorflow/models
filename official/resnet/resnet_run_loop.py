@@ -77,7 +77,6 @@ def process_record_dataset(dataset,
   # Defines a specific size thread pool for tf.data operations.
   if datasets_num_private_threads:
     options = tf.data.Options()
-    options.experimental_threading = tf.data.experimental.ThreadingOptions()
     options.experimental_threading.private_threadpool_size = (
         datasets_num_private_threads)
     dataset = dataset.with_options(options)
