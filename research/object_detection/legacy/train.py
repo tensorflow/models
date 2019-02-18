@@ -91,12 +91,7 @@ flags.DEFINE_string('gpuid', '0',
                     'Which GPU device to use. Separated by commas. Default is 0.')
 FLAGS = flags.FLAGS
 
-def start_inline():
-
-@tf.contrib.framework.deprecated(None, 'Use object_detection/model_main.py.')
 def main(_):
-  start_inline()
-  
   assert FLAGS.train_dir, '`train_dir` is missing.'
   if FLAGS.task == 0: tf.gfile.MakeDirs(FLAGS.train_dir)
   if FLAGS.pipeline_config_path:

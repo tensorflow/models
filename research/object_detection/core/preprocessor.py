@@ -2268,7 +2268,8 @@ def resize_to_range(image,
       new_masks = tf.squeeze(new_masks, 3)
       result.append(new_masks)
 
-    result.append(new_size)
+    #result.append(new_size)
+    result.append(tf.shape(image))
     return result
 
 

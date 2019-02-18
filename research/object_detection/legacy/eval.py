@@ -85,7 +85,6 @@ flags.DEFINE_string('gpuid', '0',
 FLAGS = flags.FLAGS
 os.environ['CUDA_VISIBLE_DEVICES'] = str(FLAGS.gpuid)
 
-@tf.contrib.framework.deprecated(None, 'Use object_detection/model_main.py.')
 def main(unused_argv):
   assert FLAGS.checkpoint_dir, '`checkpoint_dir` is missing.'
   assert FLAGS.eval_dir, '`eval_dir` is missing.'

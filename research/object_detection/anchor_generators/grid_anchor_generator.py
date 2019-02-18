@@ -143,14 +143,13 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
       ValueError: if feature_map_shape_list does not consist of pairs of
         integers
     """
-    #if not (isinstance(feature_map_shape_list, list)
-    #        and len(feature_map_shape_list) == 1):
-    #  raise ValueError('feature_map_shape_list must be a list of length 1.')
+    if not (isinstance(feature_map_shape_list, list)
+            and len(feature_map_shape_list) == 1):
+        raise ValueError('feature_map_shape_list must be a list of length 1.')
     if not all([isinstance(list_item, tuple) and len(list_item) == 2
                 for list_item in feature_map_shape_list]):
-      raise ValueError('feature_map_shape_list must be a list of pairs.')
-
-    
+        raise ValueError('feature_map_shape_list must be a list of pairs.')
+    grid_height, grid_width = feature_map_shape_list[0]
     scales_grid, aspect_ratios_grid = ops.meshgrid(self._scales,
                                                    self._aspect_ratios)
     scales_grid = tf.reshape(scales_grid, [-1])
