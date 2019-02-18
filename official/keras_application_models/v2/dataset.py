@@ -20,6 +20,39 @@ from __future__ import print_function
 import numpy as np
 import cv2
 import tensorflow as tf
+import tensorflow_datasets as tfds
+
+
+class ImageNetDataset():
+
+  def __init__(self):
+    builder = tfds.builder("imagenet2012")
+    assert builder.info.features["label"].num_classes == 1000
+    builder.download_and_prepare()
+    assert builder.info.splits["validation"].num_examples == 50000
+    self.builder = builder
+    self.num_classes = builder.info.features["label"].num_classes
+    self.num_train = builder.info.splits["train"].num_examples
+    self.num_test = builder.info.splits["validation"].num_examples
+
+
+  def to_tf_dataset(self, batch_size, image_shape):
+    ds = self.builder.as_dataset()
+    return (self._preprocess(ds["train"], batch_size, image_shape),
+            self._preprocess(ds["validation"], batch_size, image_shape))
+
+
+  def _preprocess(self, ds, batch_size, image_shape):
+    def _convert_example(example):
+      label = example["label"]
+      label = tf.one_hot(label, self.num_classes, dtype=tf.int64)
+      image = example["image"]
+      image = tf.dtypes.cast(image, tf.float32)
+      image = tf.image.resize(image, image_shape)
+      image = image / 127.5 - 1
+      return (image, label)
+
+    return ds.map(_convert_example).shuffle(2000).repeat().batch(batch_size)
 
 
 class Cifar10Dataset():

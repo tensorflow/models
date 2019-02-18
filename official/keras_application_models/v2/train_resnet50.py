@@ -30,27 +30,6 @@ from official.keras_application_models.v2 import dataset
 from official.keras_application_models.v2 import utils
 
 
-def get_model(input_shape, classes, no_pretrained_weights):
-  if no_pretrained_weights:
-    return tf.keras.applications.ResNet50(
-        weights=None,
-        input_shape=input_shape,
-        include_top=True,
-        classes=classes)
-  else:
-    base_model = tf.keras.applications.ResNet50(
-        # Use imagenet pretrained weights require input_shape and pooling.
-        weights='imagenet',
-        input_shape=input_shape,
-        pooling='avg',
-        # When include_top is False, we need manually add FC layers.
-        include_top=False)
-    # Manually add FC layer
-    x = base_model.output
-    x = tf.keras.layers.Dense(10, activation='softmax', name='fc10')(x)
-    return tf.keras.Model(inputs=base_model.inputs, outputs=x)
-
-
 def get_cifar_model(input_shape=(32, 32, 3),
                     classes=10,
                     no_pretrained_weights=False,
@@ -59,6 +38,9 @@ def get_cifar_model(input_shape=(32, 32, 3),
     input_tensor = tf.keras.layers.Input(shape=input_shape)
     x = input_tensor
   else:
+    # The ResNet50 starts with 2 consequtive 2-stride convolution, which is not
+    # suitable for small images in CIFAR dataset. Applying upsampling here could
+    # neutralize the effect.
     input_tensor = tf.keras.layers.Input(shape=input_shape)
     x = tf.keras.layers.UpSampling2D(
         size=up_sampling, interpolation="bilinear")(input_tensor)

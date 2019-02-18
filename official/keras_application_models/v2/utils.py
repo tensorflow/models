@@ -94,8 +94,8 @@ def add_global_regularization(model, l1=0., l2=0.):
 
 def prepare_model_saving(name):
   """Prepare directory for saving model and returns the callback."""
-  save_dir = os.path.join(os.getcwd(), 'saved_models')
-  model_name = 'cifar10_%s_model.{epoch:03d}.h5' % name
+  save_dir = os.path.join(os.getcwd(), '%s_keras_ckpt' % name)
+  model_name = 'model.{epoch:03d}.h5'
   if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
   filepath = os.path.join(save_dir, model_name)
