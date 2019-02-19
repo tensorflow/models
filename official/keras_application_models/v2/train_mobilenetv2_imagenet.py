@@ -84,9 +84,11 @@ def train_mobilenetv2(_):
         train_ds,
         epochs=FLAGS.train_epochs,
         callbacks=callbacks,
-        validation_data=test_ds,
         steps_per_epoch=int(
             np.ceil(dataset_builder.num_train / FLAGS.batch_size)),
+        validation_data=test_ds,
+        validation_steps=int(
+            np.ceil(dataset_builder.num_test / FLAGS.batch_size)),
     )
 
   # Clear the session explicitly to avoid session delete error
