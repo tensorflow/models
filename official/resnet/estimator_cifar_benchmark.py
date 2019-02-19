@@ -44,12 +44,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     """
 
     self.output_dir = output_dir
-
-    if root_data_dir is None:
-      self.data_dir = '/data/cifar10_data/cifar-10-batches-bin'
-    else:
-      self.data_dir = os.path.join(root_data_dir,
-                                   'cifar10_data/cifar-10-batches-bin')
+    self.data_dir = os.path.join(root_data_dir, 'cifar-10-batches-bin')
 
   def resnet56_1_gpu(self):
     """Test layers model with Estimator and distribution strategies."""

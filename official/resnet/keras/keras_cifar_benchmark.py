@@ -44,12 +44,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
       root_data_dir: directory under which to look for dataset
     """
 
-    if root_data_dir is None:
-      self.data_dir = '/data/cifar10_data/cifar-10-batches-bin'
-    else:
-      self.data_dir = os.path.join(root_data_dir,
-                                   'cifar10_data/cifar-10-batches-bin')
-
+    self.data_dir = os.path.join(root_data_dir, 'cifar-10-batches-bin')
     flag_methods = [
         keras_common.define_keras_flags, cifar_main.define_cifar_flags
     ]
@@ -211,7 +206,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
   """Synthetic benchmarks for ResNet56 and Keras."""
 
-  def __init__(self, output_dir=None):
+  def __init__(self, output_dir=None, root_data_dir=None):
     def_flags = {}
     def_flags['skip_eval'] = True
     def_flags['use_synthetic_data'] = True
@@ -225,7 +220,7 @@ class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
 class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
   """Real data benchmarks for ResNet56 and Keras."""
 
-  def __init__(self, output_dir=None):
+  def __init__(self, output_dir=None, root_data_dir=None):
     def_flags = {}
     def_flags['skip_eval'] = True
     def_flags['data_dir'] = self.data_dir

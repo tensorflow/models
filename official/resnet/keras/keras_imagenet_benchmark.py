@@ -46,11 +46,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
         keras_common.define_keras_flags, imagenet_main.define_imagenet_flags
     ]
 
-    if root_data_dir is None:
-      self.data_dir = '/data/imagenet/'
-    else:
-      self.data_dir = os.path.join(root_data_dir, 'imagenet')
-
+    self.data_dir = os.path.join(root_data_dir, 'imagenet')
     super(Resnet50KerasAccuracy, self).__init__(
         output_dir=output_dir, flag_methods=flag_methods)
 
