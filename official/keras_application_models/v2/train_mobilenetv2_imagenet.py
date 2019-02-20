@@ -30,14 +30,6 @@ from official.keras_application_models.v2 import dataset
 from official.keras_application_models.v2 import utils
 
 
-def get_model(input_shape, classes, no_pretrained_weights):
-  return tf.keras.applications.MobileNetV2(
-      weights=(None if no_pretrained_weights else "imagenet"),
-      input_shape=input_shape,
-      include_top=True,
-      classes=classes)
-
-
 def train_mobilenetv2(_):
   """Train MobileNetV2 on ImageNet from the scratch."""
 
@@ -45,28 +37,32 @@ def train_mobilenetv2(_):
   strategy = utils.get_distribution_strategy(
     FLAGS.num_gpus, no_distribution_strategy=not FLAGS.dist_strat)
 
+  global_batch_size = FLAGS.batch_size * FLAGS.num_gpus
+
   with strategy.scope():
     dataset_builder = dataset.ImageNetDataset()
+    image_shape = (224, 224)
     train_ds, test_ds = dataset_builder.to_tf_dataset(
-        FLAGS.batch_size, (224, 224))
+        global_batch_size, image_shape)
 
-    model = get_model(
-        (224, 224, 3),
-        dataset_builder.num_classes,
-        FLAGS.no_pretrained_weights)
+    model = tf.keras.applications.MobileNetV2(
+        weights=(None if FLAGS.no_pretrained_weights else "imagenet"),
+        input_shape=image_shape + (3,),
+        include_top=True,
+        classes=dataset_builder.num_classes)
 
+    initial_lr = 0.045 * FLAGS.num_gpus
     '''
-    initial_lr = 0.045 if FLAGS.no_pretrained_weights else 0.0045
     optimizer = tf.keras.optimizers.RMSprop(
         learning_rate=tf.keras.backend.variable(initial_lr),
         rho=0.9,
         momentum=0.9)
     '''
     optimizer = tf.keras.optimizers.SGD(
-        learning_rate=tf.keras.backend.variable(1e-3), momentum=0.9)
+        learning_rate=tf.keras.backend.variable(initial_lr), momentum=0.9)
 
     lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
-        lambda x, lr: lr * 0.98, verbose=1)
+        lambda x, lr: lr * 0.98 if x > 0 else lr)
 
     # Add L1L2 regularization to avoid overfitting
     if FLAGS.no_pretrained_weights:
@@ -85,10 +81,10 @@ def train_mobilenetv2(_):
         epochs=FLAGS.train_epochs,
         callbacks=callbacks,
         steps_per_epoch=int(
-            np.ceil(dataset_builder.num_train / FLAGS.batch_size)),
+            np.ceil(dataset_builder.num_train / global_batch_size)),
         validation_data=test_ds,
         validation_steps=int(
-            np.ceil(dataset_builder.num_test / FLAGS.batch_size)),
+            np.ceil(dataset_builder.num_test / global_batch_size)),
     )
 
   # Clear the session explicitly to avoid session delete error
