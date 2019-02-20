@@ -32,6 +32,9 @@ from official.keras_application_models.v2 import dataset
 from official.keras_application_models.v2 import utils
 
 
+FLAGS = flags.FLAGS
+
+
 def get_cifar_model(input_shape,
                     classes,
                     no_pretrained_weights=False,
@@ -66,7 +69,7 @@ def get_cifar_model(input_shape,
   return tf.keras.Model(inputs=input_tensor, outputs=x)
 
 
-def train_resnet50(_):
+def run(_):
   """Train Resnet50 on CIFAR from the scratch."""
 
   # Enable/Disable eager based on flags. It's enabled by default.
@@ -90,6 +93,8 @@ def train_resnet50(_):
                             up_sampling=4)
 
     # Prepare optimizers, regularization and lr schedulers.
+    # TODO(xunkai): Dist Strat seems not supporting LR Scheduler callback yet.
+    # Refactor this part, although it doesn't really affect fine tuning.
     if FLAGS.no_pretrained_weights:
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
           lambda x: 1e-2 if x < 50 else 1e-3 if x < 70 else 1e-4,
@@ -99,7 +104,7 @@ def train_resnet50(_):
           lambda x: 1e-3 if x < 10 else 1e-4 if x < 30 else 1e-5,
           verbose=1)
     optimizer = tf.keras.optimizers.SGD(
-        learning_rate=K.variable(0), momentum=0.9) # 0 is only a placeholder
+        learning_rate=K.variable(1e-3), momentum=0.9)
     utils.add_global_regularization(model, l2=0.0001)
 
     # Prepare model saving checkpoint.
@@ -121,14 +126,14 @@ def train_resnet50(_):
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
+  return history
 
 
 def main(_):
-  train_resnet50(FLAGS)
+  return run(FLAGS)
 
 
 if __name__ == "__main__":
   absl.logging.set_verbosity(absl.logging.INFO)
   utils.define_flags()
-  FLAGS = flags.FLAGS
   absl_app.run(main)
