@@ -22,9 +22,9 @@ from __future__ import print_function
 import tensorflow as tf
 
 from deeplab.core import nas_genotypes
-from google3.third_party.tensorflow_models.deeplab.core.nas_cell import NASBaseCell
-from google3.third_party.tensorflow_models.deeplab.core.utils import resize_bilinear
-from google3.third_party.tensorflow_models.deeplab.core.utils import scale_dimension
+from deeplab.core.nas_cell import NASBaseCell
+from deeplab.core.utils import resize_bilinear
+from deeplab.core.utils import scale_dimension
 
 arg_scope = tf.contrib.framework.arg_scope
 slim = tf.contrib.slim
