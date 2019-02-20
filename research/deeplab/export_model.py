@@ -130,6 +130,7 @@ def main(unused_argv):
           eval_scales=FLAGS.inference_scales,
           add_flipped_images=FLAGS.add_flipped_images)
 
+    predictions = tf.cast(predictions[common.OUTPUT_TYPE], tf.float32)
     # Crop the valid regions from the predictions.
     raw_predictions = tf.identity(
         predictions[common.OUTPUT_TYPE], _RAW_OUTPUT_NAME)
@@ -146,7 +147,7 @@ def main(unused_argv):
           label_size,
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
           align_corners=True)
-      return tf.squeeze(resized_label, 3)
+      return tf.cast(tf.squeeze(resized_label, 3), tf.int32)
     semantic_predictions = _resize_label(semantic_predictions, image_size)
     semantic_predictions = tf.identity(semantic_predictions, name=_OUTPUT_NAME)
 

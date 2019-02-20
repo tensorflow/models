@@ -14,12 +14,14 @@
 # ==============================================================================
 
 """Tests for box_predictor_builder."""
+
 import mock
 import tensorflow as tf
 
 from google.protobuf import text_format
 from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
+from object_detection.predictors import mask_rcnn_box_predictor
 from object_detection.protos import box_predictor_pb2
 from object_detection.protos import hyperparams_pb2
 
@@ -109,17 +111,20 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         argscope_fn=mock_conv_argscope_builder,
         box_predictor_config=box_predictor_proto,
         is_training=False,
-        num_classes=10)
+        num_classes=10,
+        add_background_class=False)
+    class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._min_depth, 2)
     self.assertEqual(box_predictor._max_depth, 16)
     self.assertEqual(box_predictor._num_layers_before_predictor, 2)
-    self.assertFalse(box_predictor._use_dropout)
-    self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.4)
-    self.assertTrue(box_predictor._apply_sigmoid_to_scores)
-    self.assertAlmostEqual(box_predictor._class_prediction_bias_init, 4.0)
+    self.assertFalse(class_head._use_dropout)
+    self.assertAlmostEqual(class_head._dropout_keep_prob, 0.4)
+    self.assertTrue(class_head._apply_sigmoid_to_scores)
+    self.assertAlmostEqual(class_head._class_prediction_bias_init, 4.0)
+    self.assertEqual(class_head._num_class_slots, 10)
     self.assertEqual(box_predictor.num_classes, 10)
     self.assertFalse(box_predictor._is_training)
-    self.assertTrue(box_predictor._use_depthwise)
+    self.assertTrue(class_head._use_depthwise)
 
   def test_construct_default_conv_box_predictor(self):
     box_predictor_text_proto = """
@@ -142,15 +147,17 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         box_predictor_config=box_predictor_proto,
         is_training=True,
         num_classes=90)
+    class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._min_depth, 0)
     self.assertEqual(box_predictor._max_depth, 0)
     self.assertEqual(box_predictor._num_layers_before_predictor, 0)
-    self.assertTrue(box_predictor._use_dropout)
-    self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.8)
-    self.assertFalse(box_predictor._apply_sigmoid_to_scores)
+    self.assertTrue(class_head._use_dropout)
+    self.assertAlmostEqual(class_head._dropout_keep_prob, 0.8)
+    self.assertFalse(class_head._apply_sigmoid_to_scores)
+    self.assertEqual(class_head._num_class_slots, 91)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
-    self.assertFalse(box_predictor._use_depthwise)
+    self.assertFalse(class_head._use_depthwise)
 
 
 class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
@@ -233,10 +240,58 @@ class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         argscope_fn=mock_conv_argscope_builder,
         box_predictor_config=box_predictor_proto,
         is_training=False,
-        num_classes=10)
+        num_classes=10,
+        add_background_class=False)
+    class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._depth, 2)
     self.assertEqual(box_predictor._num_layers_before_predictor, 2)
-    self.assertAlmostEqual(box_predictor._class_prediction_bias_init, 4.0)
+    self.assertAlmostEqual(class_head._class_prediction_bias_init, 4.0)
+    self.assertEqual(box_predictor.num_classes, 10)
+    self.assertFalse(box_predictor._is_training)
+    self.assertEqual(box_predictor._apply_batch_norm, False)
+
+  def test_construct_non_default_depthwise_conv_box_predictor(self):
+    box_predictor_text_proto = """
+      weight_shared_convolutional_box_predictor {
+        depth: 2
+        num_layers_before_predictor: 2
+        kernel_size: 7
+        box_code_size: 3
+        class_prediction_bias_init: 4.0
+        use_depthwise: true
+      }
+    """
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l1_regularizer {
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+    """
+    hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Merge(conv_hyperparams_text_proto, hyperparams_proto)
+    def mock_conv_argscope_builder(conv_hyperparams_arg, is_training):
+      return (conv_hyperparams_arg, is_training)
+
+    box_predictor_proto = box_predictor_pb2.BoxPredictor()
+    text_format.Merge(box_predictor_text_proto, box_predictor_proto)
+    (box_predictor_proto.weight_shared_convolutional_box_predictor.
+     conv_hyperparams.CopyFrom(hyperparams_proto))
+    box_predictor = box_predictor_builder.build(
+        argscope_fn=mock_conv_argscope_builder,
+        box_predictor_config=box_predictor_proto,
+        is_training=False,
+        num_classes=10,
+        add_background_class=False)
+    class_head = box_predictor._class_prediction_head
+    self.assertEqual(box_predictor._depth, 2)
+    self.assertEqual(box_predictor._num_layers_before_predictor, 2)
+    self.assertEqual(box_predictor._apply_batch_norm, False)
+    self.assertEqual(box_predictor._use_depthwise, True)
+    self.assertAlmostEqual(class_head._class_prediction_bias_init, 4.0)
     self.assertEqual(box_predictor.num_classes, 10)
     self.assertFalse(box_predictor._is_training)
 
@@ -265,6 +320,37 @@ class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertEqual(box_predictor._num_layers_before_predictor, 0)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
+    self.assertEqual(box_predictor._apply_batch_norm, False)
+
+  def test_construct_default_conv_box_predictor_with_batch_norm(self):
+    box_predictor_text_proto = """
+      weight_shared_convolutional_box_predictor {
+        conv_hyperparams {
+          regularizer {
+            l1_regularizer {
+            }
+          }
+          batch_norm {
+            train: true
+          }
+          initializer {
+            truncated_normal_initializer {
+            }
+          }
+        }
+      }"""
+    box_predictor_proto = box_predictor_pb2.BoxPredictor()
+    text_format.Merge(box_predictor_text_proto, box_predictor_proto)
+    box_predictor = box_predictor_builder.build(
+        argscope_fn=hyperparams_builder.build,
+        box_predictor_config=box_predictor_proto,
+        is_training=True,
+        num_classes=90)
+    self.assertEqual(box_predictor._depth, 0)
+    self.assertEqual(box_predictor._num_layers_before_predictor, 0)
+    self.assertEqual(box_predictor.num_classes, 90)
+    self.assertTrue(box_predictor._is_training)
+    self.assertEqual(box_predictor._apply_batch_norm, True)
 
 
 class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
@@ -297,7 +383,10 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
         is_training=False,
         num_classes=10)
     mock_argscope_fn.assert_called_with(hyperparams_proto, False)
-    self.assertEqual(box_predictor._fc_hyperparams_fn, 'arg_scope')
+    self.assertEqual(box_predictor._box_prediction_head._fc_hyperparams_fn,
+                     'arg_scope')
+    self.assertEqual(box_predictor._class_prediction_head._fc_hyperparams_fn,
+                     'arg_scope')
 
   def test_non_default_mask_rcnn_box_predictor(self):
     fc_hyperparams_text_proto = """
@@ -334,12 +423,16 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
         box_predictor_config=box_predictor_proto,
         is_training=True,
         num_classes=90)
-    self.assertTrue(box_predictor._use_dropout)
-    self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.8)
+    box_head = box_predictor._box_prediction_head
+    class_head = box_predictor._class_prediction_head
+    self.assertTrue(box_head._use_dropout)
+    self.assertTrue(class_head._use_dropout)
+    self.assertAlmostEqual(box_head._dropout_keep_prob, 0.8)
+    self.assertAlmostEqual(class_head._dropout_keep_prob, 0.8)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
-    self.assertEqual(box_predictor._box_code_size, 3)
-    self.assertEqual(box_predictor._share_box_across_classes, True)
+    self.assertEqual(box_head._box_code_size, 3)
+    self.assertEqual(box_head._share_box_across_classes, True)
 
   def test_build_default_mask_rcnn_box_predictor(self):
     box_predictor_proto = box_predictor_pb2.BoxPredictor()
@@ -350,13 +443,15 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
         box_predictor_config=box_predictor_proto,
         is_training=True,
         num_classes=90)
-    self.assertFalse(box_predictor._use_dropout)
-    self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.5)
+    box_head = box_predictor._box_prediction_head
+    class_head = box_predictor._class_prediction_head
+    self.assertFalse(box_head._use_dropout)
+    self.assertFalse(class_head._use_dropout)
+    self.assertAlmostEqual(box_head._dropout_keep_prob, 0.5)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
-    self.assertEqual(box_predictor._box_code_size, 4)
-    self.assertFalse(box_predictor._predict_instance_masks)
-    self.assertFalse(box_predictor._predict_keypoints)
+    self.assertEqual(box_head._box_code_size, 4)
+    self.assertEqual(len(box_predictor._third_stage_heads.keys()), 0)
 
   def test_build_box_predictor_with_mask_branch(self):
     box_predictor_proto = box_predictor_pb2.BoxPredictor()
@@ -379,14 +474,63 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
                    True),
          mock.call(box_predictor_proto.mask_rcnn_box_predictor.conv_hyperparams,
                    True)], any_order=True)
-    self.assertFalse(box_predictor._use_dropout)
-    self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.5)
+    box_head = box_predictor._box_prediction_head
+    class_head = box_predictor._class_prediction_head
+    third_stage_heads = box_predictor._third_stage_heads
+    self.assertFalse(box_head._use_dropout)
+    self.assertFalse(class_head._use_dropout)
+    self.assertAlmostEqual(box_head._dropout_keep_prob, 0.5)
+    self.assertAlmostEqual(class_head._dropout_keep_prob, 0.5)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
-    self.assertEqual(box_predictor._box_code_size, 4)
-    self.assertTrue(box_predictor._predict_instance_masks)
-    self.assertEqual(box_predictor._mask_prediction_conv_depth, 512)
-    self.assertFalse(box_predictor._predict_keypoints)
+    self.assertEqual(box_head._box_code_size, 4)
+    self.assertTrue(
+        mask_rcnn_box_predictor.MASK_PREDICTIONS in third_stage_heads)
+    self.assertEqual(
+        third_stage_heads[mask_rcnn_box_predictor.MASK_PREDICTIONS]
+        ._mask_prediction_conv_depth, 512)
+
+  def test_build_box_predictor_with_convlve_then_upsample_masks(self):
+    box_predictor_proto = box_predictor_pb2.BoxPredictor()
+    box_predictor_proto.mask_rcnn_box_predictor.fc_hyperparams.op = (
+        hyperparams_pb2.Hyperparams.FC)
+    box_predictor_proto.mask_rcnn_box_predictor.conv_hyperparams.op = (
+        hyperparams_pb2.Hyperparams.CONV)
+    box_predictor_proto.mask_rcnn_box_predictor.predict_instance_masks = True
+    box_predictor_proto.mask_rcnn_box_predictor.mask_prediction_conv_depth = 512
+    box_predictor_proto.mask_rcnn_box_predictor.mask_height = 24
+    box_predictor_proto.mask_rcnn_box_predictor.mask_width = 24
+    box_predictor_proto.mask_rcnn_box_predictor.convolve_then_upsample_masks = (
+        True)
+
+    mock_argscope_fn = mock.Mock(return_value='arg_scope')
+    box_predictor = box_predictor_builder.build(
+        argscope_fn=mock_argscope_fn,
+        box_predictor_config=box_predictor_proto,
+        is_training=True,
+        num_classes=90)
+    mock_argscope_fn.assert_has_calls(
+        [mock.call(box_predictor_proto.mask_rcnn_box_predictor.fc_hyperparams,
+                   True),
+         mock.call(box_predictor_proto.mask_rcnn_box_predictor.conv_hyperparams,
+                   True)], any_order=True)
+    box_head = box_predictor._box_prediction_head
+    class_head = box_predictor._class_prediction_head
+    third_stage_heads = box_predictor._third_stage_heads
+    self.assertFalse(box_head._use_dropout)
+    self.assertFalse(class_head._use_dropout)
+    self.assertAlmostEqual(box_head._dropout_keep_prob, 0.5)
+    self.assertAlmostEqual(class_head._dropout_keep_prob, 0.5)
+    self.assertEqual(box_predictor.num_classes, 90)
+    self.assertTrue(box_predictor._is_training)
+    self.assertEqual(box_head._box_code_size, 4)
+    self.assertTrue(
+        mask_rcnn_box_predictor.MASK_PREDICTIONS in third_stage_heads)
+    self.assertEqual(
+        third_stage_heads[mask_rcnn_box_predictor.MASK_PREDICTIONS]
+        ._mask_prediction_conv_depth, 512)
+    self.assertTrue(third_stage_heads[mask_rcnn_box_predictor.MASK_PREDICTIONS]
+                    ._convolve_then_upsample)
 
 
 class RfcnBoxPredictorBuilderTest(tf.test.TestCase):

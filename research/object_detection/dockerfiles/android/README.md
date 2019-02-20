@@ -14,7 +14,7 @@ A couple words of warning:
    the container. When running through the tutorial,
    **do not close the container**.
 2. To be able to deploy the [Android app](
-   https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/lite/examples/android/app)
+   https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/examples/android/app)
    (which you will build at the end of the tutorial),
    you will need to kill any instances of `adb` running on the host machine. You
    can accomplish this by closing all instances of Android Studio, and then

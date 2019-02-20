@@ -44,6 +44,8 @@ def define_movie_flags():
                           model_type="deep",
                           train_epochs=50,
                           epochs_between_evals=5,
+                          inter_op_parallelism_threads=0,
+                          intra_op_parallelism_threads=0,
                           batch_size=256)
 
   @flags.validator("stop_threshold",
@@ -52,13 +54,17 @@ def define_movie_flags():
     return stop_threshold is None
 
 
-def build_estimator(model_dir, model_type, model_column_fn):
+def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
   """Build an estimator appropriate for the given model type."""
   if model_type != "deep":
     raise NotImplementedError("movie dataset only supports `deep` model_type")
   _, deep_columns = model_column_fn()
   hidden_units = [256, 256, 256, 128]
 
+  run_config = tf.estimator.RunConfig().replace(
+      session_config=tf.ConfigProto(device_count={'GPU': 0},
+                                    inter_op_parallelism_threads=inter_op,
+                                    intra_op_parallelism_threads=intra_op))
   return tf.estimator.DNNRegressor(
       model_dir=model_dir,
       feature_columns=deep_columns,

@@ -72,7 +72,7 @@ NUM_USER_IDS = {
     ML_20M: 138493,
 }
 
-# Note: Users are indexed [1, k], not [0, k-1]
+# Note: Movies are indexed [1, k], not [0, k-1]
 # Both the 1m and 20m datasets use the same movie set.
 NUM_ITEM_IDS = 3952
 
@@ -111,12 +111,7 @@ def _download_and_clean(dataset, data_dir):
   temp_dir = tempfile.mkdtemp()
   try:
     zip_path = os.path.join(temp_dir, "{}.zip".format(dataset))
-    def _progress(count, block_size, total_size):
-      sys.stdout.write("\r>> Downloading {} {:.1f}%".format(
-          zip_path, 100.0 * count * block_size / total_size))
-      sys.stdout.flush()
-
-    zip_path, _ = urllib.request.urlretrieve(url, zip_path, _progress)
+    zip_path, _ = urllib.request.urlretrieve(url, zip_path)
     statinfo = os.stat(zip_path)
     # A new line to clear the carriage return from download progress
     # tf.logging.info is not applicable here
@@ -133,8 +128,12 @@ def _download_and_clean(dataset, data_dir):
       _regularize_20m_dataset(temp_dir)
 
     for fname in tf.gfile.ListDirectory(temp_dir):
-      tf.gfile.Copy(os.path.join(temp_dir, fname),
-                    os.path.join(data_subdir, fname))
+      if not tf.gfile.Exists(os.path.join(data_subdir, fname)):
+        tf.gfile.Copy(os.path.join(temp_dir, fname),
+                      os.path.join(data_subdir, fname))
+      else:
+        tf.logging.info("Skipping copy of {}, as it already exists in the "
+                        "destination folder.".format(fname))
 
   finally:
     tf.gfile.DeleteRecursively(temp_dir)

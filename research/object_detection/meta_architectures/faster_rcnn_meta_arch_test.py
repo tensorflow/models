@@ -189,7 +189,7 @@ class FasterRCNNMetaArchTest(
           set(expected_shapes.keys()).union(
               set([
                   'detection_boxes', 'detection_scores', 'detection_classes',
-                  'detection_masks', 'num_detections'
+                  'detection_masks', 'num_detections', 'mask_predictions',
               ])))
       for key in expected_shapes:
         self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
@@ -199,6 +199,9 @@ class FasterRCNNMetaArchTest(
       self.assertAllEqual(tensor_dict_out['detection_classes'].shape, [2, 5])
       self.assertAllEqual(tensor_dict_out['detection_scores'].shape, [2, 5])
       self.assertAllEqual(tensor_dict_out['num_detections'].shape, [2])
+      num_classes = 1 if masks_are_class_agnostic else 2
+      self.assertAllEqual(tensor_dict_out['mask_predictions'].shape,
+                          [10, num_classes, 14, 14])
 
   @parameterized.parameters(
       {'masks_are_class_agnostic': False},
@@ -230,9 +233,14 @@ class FasterRCNNMetaArchTest(
           tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
           tf.constant([[1, 0], [1, 0]], dtype=tf.float32)
       ]
+      groundtruth_weights_list = [
+          tf.constant([1, 1], dtype=tf.float32),
+          tf.constant([1, 1], dtype=tf.float32)]
       _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-      model.provide_groundtruth(groundtruth_boxes_list,
-                                groundtruth_classes_list)
+      model.provide_groundtruth(
+          groundtruth_boxes_list,
+          groundtruth_classes_list,
+          groundtruth_weights_list=groundtruth_weights_list)
 
       result_tensor_dict = model.predict(preprocessed_inputs, true_image_shapes)
       mask_shape_1 = 1 if masks_are_class_agnostic else model._num_classes

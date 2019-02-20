@@ -170,12 +170,12 @@ class BaseTest(tf.test.TestCase):
     # Serialize graph for comparison.
     graph_bytes = graph.as_graph_def().SerializeToString()
     expected_file = os.path.join(data_dir, "expected_graph")
-    with tf.gfile.Open(expected_file, "wb") as f:
+    with tf.io.gfile.GFile(expected_file, "wb") as f:
       f.write(graph_bytes)
 
     with graph.as_default():
-      init = tf.global_variables_initializer()
-      saver = tf.train.Saver()
+      init = tf.compat.v1.global_variables_initializer()
+      saver = tf.compat.v1.train.Saver()
 
     with self.test_session(graph=graph) as sess:
       sess.run(init)
@@ -191,11 +191,12 @@ class BaseTest(tf.test.TestCase):
 
       if correctness_function is not None:
         results = correctness_function(*eval_results)
-        with tf.gfile.Open(os.path.join(data_dir, "results.json"), "w") as f:
+        result_json = os.path.join(data_dir, "results.json")
+        with tf.io.gfile.GFile(result_json, "w") as f:
           json.dump(results, f)
-
-      with tf.gfile.Open(os.path.join(data_dir, "tf_version.json"), "w") as f:
-        json.dump([tf.VERSION, tf.GIT_VERSION], f)
+      tf_version_json = os.path.join(data_dir, "tf_version.json")
+      with tf.io.gfile.GFile(tf_version_json, "w") as f:
+        json.dump([tf.version.VERSION, tf.version.GIT_VERSION], f)
 
   def _evaluate_test_case(self, name, graph, ops_to_eval, correctness_function):
     """Determine if a graph agrees with the reference data.
@@ -216,7 +217,7 @@ class BaseTest(tf.test.TestCase):
     # Serialize graph for comparison.
     graph_bytes = graph.as_graph_def().SerializeToString()
     expected_file = os.path.join(data_dir, "expected_graph")
-    with tf.gfile.Open(expected_file, "rb") as f:
+    with tf.io.gfile.GFile(expected_file, "rb") as f:
       expected_graph_bytes = f.read()
       # The serialization is non-deterministic byte-for-byte. Instead there is
       # a utility which evaluates the semantics of the two graphs to test for
@@ -228,19 +229,19 @@ class BaseTest(tf.test.TestCase):
         graph_bytes, expected_graph_bytes).decode("utf-8")
 
     with graph.as_default():
-      init = tf.global_variables_initializer()
-      saver = tf.train.Saver()
+      init = tf.compat.v1.global_variables_initializer()
+      saver = tf.compat.v1.train.Saver()
 
-    with tf.gfile.Open(os.path.join(data_dir, "tf_version.json"), "r") as f:
+    with tf.io.gfile.GFile(os.path.join(data_dir, "tf_version.json"), "r") as f:
       tf_version_reference, tf_git_version_reference = json.load(f)  # pylint: disable=unpacking-non-sequence
 
     tf_version_comparison = ""
-    if tf.GIT_VERSION != tf_git_version_reference:
+    if tf.version.GIT_VERSION != tf_git_version_reference:
       tf_version_comparison = (
           "Test was built using:     {} (git = {})\n"
           "Local TensorFlow version: {} (git = {})"
           .format(tf_version_reference, tf_git_version_reference,
-                  tf.VERSION, tf.GIT_VERSION)
+                  tf.version.VERSION, tf.version.GIT_VERSION)
       )
 
     with self.test_session(graph=graph) as sess:
@@ -249,7 +250,7 @@ class BaseTest(tf.test.TestCase):
         saver.restore(sess=sess, save_path=os.path.join(
             data_dir, self.ckpt_prefix))
         if differences:
-          tf.logging.warn(
+          tf.compat.v1.logging.warn(
               "The provided graph is different than expected:\n  {}\n"
               "However the weights were still able to be loaded.\n{}".format(
                   differences, tf_version_comparison)
@@ -262,7 +263,8 @@ class BaseTest(tf.test.TestCase):
       eval_results = [op.eval() for op in ops_to_eval]
       if correctness_function is not None:
         results = correctness_function(*eval_results)
-        with tf.gfile.Open(os.path.join(data_dir, "results.json"), "r") as f:
+        result_json = os.path.join(data_dir, "results.json")
+        with tf.io.gfile.GFile(result_json, "r") as f:
           expected_results = json.load(f)
         self.assertAllClose(results, expected_results)
 
@@ -298,7 +300,7 @@ class BaseTest(tf.test.TestCase):
             correctness_function=correctness_function
         )
       except:
-        tf.logging.error("Failed unittest {}".format(name))
+        tf.compat.v1.logging.error("Failed unittest {}".format(name))
         raise
     else:
       self._construct_and_save_reference_files(

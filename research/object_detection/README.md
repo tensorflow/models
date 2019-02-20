@@ -79,7 +79,7 @@ Extras:
       Run the evaluation for the Open Images Challenge 2018</a><br>
   * <a href='g3doc/tpu_compatibility.md'>
       TPU compatible detection pipelines</a><br>
-  *  <a href='g3doc/running_on_mobile_tensorflowlite.md'>
+  * <a href='g3doc/running_on_mobile_tensorflowlite.md'>
       Running object detection on mobile devices with TensorFlow Lite</a><br>
 
 ## Getting Help
@@ -98,6 +98,16 @@ reporting an issue.
 
 
 ## Release information
+
+### Sep 17, 2018
+
+We have released Faster R-CNN detectors with ResNet-50 / ResNet-101 feature
+extractors trained on the [iNaturalist Species Detection Dataset](https://github.com/visipedia/inat_comp/blob/master/2017/README.md#bounding-boxes).
+The models are trained on the training split of the iNaturalist data for 4M
+iterations, they achieve 55% and 58% mean AP@.5 over 2854 classes respectively.
+For more details please refer to this [paper](https://arxiv.org/abs/1707.06642).
+
+<b>Thanks to contributors</b>: Chen Sun
 
 ### July 13, 2018
 

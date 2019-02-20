@@ -38,7 +38,7 @@ class Vecs(object):
             'unexpected file size for binary vector file %s' % rows_filename)
 
       # Memory map the rows.
-      dim = size / (4 * n)
+      dim = round(size / (4 * n))
       rows_mm = mmap.mmap(rows_fh.fileno(), 0, prot=mmap.PROT_READ)
       rows = np.matrix(
           np.frombuffer(rows_mm, dtype=np.float32).reshape(n, dim))

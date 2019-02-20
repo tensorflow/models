@@ -18,27 +18,10 @@ import numpy as np
 import tensorflow as tf
 from object_detection.core import post_processing
 from object_detection.core import standard_fields as fields
+from object_detection.utils import test_case
 
 
-class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
-
-  def test_with_invalid_scores_size(self):
-    boxes = tf.constant([[[0, 0, 1, 1]],
-                         [[0, 0.1, 1, 1.1]],
-                         [[0, -0.1, 1, 0.9]],
-                         [[0, 10, 1, 11]],
-                         [[0, 10.1, 1, 11.1]],
-                         [[0, 100, 1, 101]]], tf.float32)
-    scores = tf.constant([[.9], [.75], [.6], [.95], [.5]])
-    iou_thresh = .5
-    score_thresh = 0.6
-    max_output_size = 3
-    nms = post_processing.multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh, max_output_size)
-    with self.test_session() as sess:
-      with self.assertRaisesWithPredicateMatch(
-          tf.errors.InvalidArgumentError, 'Incorrect scores field length'):
-        sess.run(nms.get())
+class MulticlassNonMaxSuppressionTest(test_case.TestCase):
 
   def test_multiclass_nms_select_with_shared_boxes(self):
     boxes = tf.constant([[[0, 0, 1, 1]],
@@ -64,7 +47,7 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_scores = [.95, .9, .85, .3]
     exp_nms_classes = [0, 0, 1, 0]
 
-    nms = post_processing.multiclass_non_max_suppression(
+    nms, _ = post_processing.multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh, max_output_size)
     with self.test_session() as sess:
       nms_corners_output, nms_scores_output, nms_classes_output = sess.run(
@@ -73,6 +56,8 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
       self.assertAllClose(nms_corners_output, exp_nms_corners)
       self.assertAllClose(nms_scores_output, exp_nms_scores)
       self.assertAllClose(nms_classes_output, exp_nms_classes)
+
+  # TODO(bhattad): Remove conditional after CMLE moves to TF 1.9
 
   def test_multiclass_nms_select_with_shared_boxes_given_keypoints(self):
     boxes = tf.constant([[[0, 0, 1, 1]],
@@ -105,10 +90,13 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
         tf.reshape(tf.constant([3, 0, 6, 5], dtype=tf.float32), [4, 1, 1]),
         [1, num_keypoints, 2])
 
-    nms = post_processing.multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh, max_output_size,
-        additional_fields={
-            fields.BoxListFields.keypoints: keypoints})
+    nms, _ = post_processing.multiclass_non_max_suppression(
+        boxes,
+        scores,
+        score_thresh,
+        iou_thresh,
+        max_output_size,
+        additional_fields={fields.BoxListFields.keypoints: keypoints})
 
     with self.test_session() as sess:
       (nms_corners_output,
@@ -163,10 +151,15 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_keypoint_heatmaps = np.ones(
         (4, heatmap_height, heatmap_width, num_keypoints), dtype=np.float32)
 
-    nms = post_processing.multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh, max_output_size,
+    nms, _ = post_processing.multiclass_non_max_suppression(
+        boxes,
+        scores,
+        score_thresh,
+        iou_thresh,
+        max_output_size,
         additional_fields={
-            fields.BoxListFields.keypoint_heatmaps: keypoint_heatmaps})
+            fields.BoxListFields.keypoint_heatmaps: keypoint_heatmaps
+        })
 
     with self.test_session() as sess:
       (nms_corners_output,
@@ -226,8 +219,12 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_scores = [.95, .9, .85, .3]
     exp_nms_classes = [0, 0, 1, 0]
 
-    nms = post_processing.multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh, max_output_size,
+    nms, _ = post_processing.multiclass_non_max_suppression(
+        boxes,
+        scores,
+        score_thresh,
+        iou_thresh,
+        max_output_size,
         additional_fields={coarse_boxes_key: coarse_boxes})
 
     with self.test_session() as sess:
@@ -278,11 +275,8 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
         tf.reshape(tf.constant([3, 0, 6, 5], dtype=tf.float32), [4, 1, 1]),
         [1, mask_height, mask_width])
 
-    nms = post_processing.multiclass_non_max_suppression(boxes, scores,
-                                                         score_thresh,
-                                                         iou_thresh,
-                                                         max_output_size,
-                                                         masks=masks)
+    nms, _ = post_processing.multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh, max_output_size, masks=masks)
     with self.test_session() as sess:
       (nms_corners_output,
        nms_scores_output,
@@ -311,8 +305,12 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_scores = [.9]
     exp_nms_classes = [0]
 
-    nms = post_processing.multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh, max_output_size,
+    nms, _ = post_processing.multiclass_non_max_suppression(
+        boxes,
+        scores,
+        score_thresh,
+        iou_thresh,
+        max_output_size,
         clip_window=clip_window)
     with self.test_session() as sess:
       nms_corners_output, nms_scores_output, nms_classes_output = sess.run(
@@ -335,9 +333,14 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_scores = [.9]
     exp_nms_classes = [0]
 
-    nms = post_processing.multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh, max_output_size,
-        clip_window=clip_window, change_coordinate_frame=True)
+    nms, _ = post_processing.multiclass_non_max_suppression(
+        boxes,
+        scores,
+        score_thresh,
+        iou_thresh,
+        max_output_size,
+        clip_window=clip_window,
+        change_coordinate_frame=True)
     with self.test_session() as sess:
       nms_corners_output, nms_scores_output, nms_classes_output = sess.run(
           [nms.get(), nms.get_field(fields.BoxListFields.scores),
@@ -369,7 +372,7 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_scores = [.95, .9, .85]
     exp_nms_classes = [0, 0, 1]
 
-    nms = post_processing.multiclass_non_max_suppression(
+    nms, _ = post_processing.multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh, max_size_per_class)
     with self.test_session() as sess:
       nms_corners_output, nms_scores_output, nms_classes_output = sess.run(
@@ -402,7 +405,7 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_scores = [.95, .9]
     exp_nms_classes = [0, 0]
 
-    nms = post_processing.multiclass_non_max_suppression(
+    nms, _ = post_processing.multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh, max_size_per_class,
         max_total_size)
     with self.test_session() as sess:
@@ -430,7 +433,7 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms = [[0, 10, 1, 11],
                [0, 0, 1, 1],
                [0, 100, 1, 101]]
-    nms = post_processing.multiclass_non_max_suppression(
+    nms, _ = post_processing.multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh, max_output_size)
     with self.test_session() as sess:
       nms_output = sess.run(nms.get())
@@ -461,7 +464,7 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_scores = [.95, .9, .85, .3]
     exp_nms_classes = [0, 0, 1, 0]
 
-    nms = post_processing.multiclass_non_max_suppression(
+    nms, _ = post_processing.multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh, max_output_size)
     with self.test_session() as sess:
       nms_corners_output, nms_scores_output, nms_classes_output = sess.run(
@@ -1073,6 +1076,7 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
                             exp_nms_additional_fields[key])
       self.assertAllClose(num_detections, [1, 1])
 
+  # TODO(bhattad): Remove conditional after CMLE moves to TF 1.9
 
 if __name__ == '__main__':
   tf.test.main()

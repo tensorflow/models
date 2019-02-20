@@ -255,6 +255,29 @@ class InceptionTest(tf.test.TestCase):
       output = sess.run(predictions)
       self.assertEquals(output.shape, (eval_batch_size,))
 
+  def testNoBatchNormScaleByDefault(self):
+    height, width = 299, 299
+    num_classes = 1000
+    inputs = tf.placeholder(tf.float32, (1, height, width, 3))
+    with tf.contrib.slim.arg_scope(inception.inception_v4_arg_scope()):
+      inception.inception_v4(inputs, num_classes, is_training=False)
+
+    self.assertEqual(tf.global_variables('.*/BatchNorm/gamma:0$'), [])
+
+  def testBatchNormScale(self):
+    height, width = 299, 299
+    num_classes = 1000
+    inputs = tf.placeholder(tf.float32, (1, height, width, 3))
+    with tf.contrib.slim.arg_scope(
+        inception.inception_v4_arg_scope(batch_norm_scale=True)):
+      inception.inception_v4(inputs, num_classes, is_training=False)
+
+    gamma_names = set(
+        v.op.name for v in tf.global_variables('.*/BatchNorm/gamma:0$'))
+    self.assertGreater(len(gamma_names), 0)
+    for v in tf.global_variables('.*/BatchNorm/moving_mean:0$'):
+      self.assertIn(v.op.name[:-len('moving_mean')] + 'gamma', gamma_names)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -2,13 +2,12 @@
 
 We provide a collection of detection models pre-trained on the [COCO
 dataset](http://mscoco.org), the [Kitti dataset](http://www.cvlibs.net/datasets/kitti/),
-the [Open Images dataset](https://github.com/openimages/dataset) and the
-[AVA v2.1 dataset](https://research.google.com/ava/). These models can
-be useful for
-out-of-the-box inference if you are interested in categories already in COCO
-(e.g., humans, cars, etc) or in Open Images (e.g.,
-surfboard, jacuzzi, etc). They are also useful for initializing your models when
-training on novel datasets.
+the [Open Images dataset](https://github.com/openimages/dataset), the
+[AVA v2.1 dataset](https://research.google.com/ava/) and the
+[iNaturalist Species Detection Dataset](https://github.com/visipedia/inat_comp/blob/master/2017/README.md#bounding-boxes).
+These models can be useful for out-of-the-box inference if you are interested in
+categories already in those datasets. They are also useful for initializing your
+models when training on novel datasets.
 
 In the table below, we list each such pre-trained model including:
 
@@ -79,6 +78,7 @@ Some remarks on frozen inference graphs:
 | [ssd_mobilenet_v1_fpn_coco ☆](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03.tar.gz) | 56 | 32 | Boxes |
 | [ssd_resnet_50_fpn_coco ☆](http://download.tensorflow.org/models/object_detection/ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03.tar.gz) | 76 | 35 | Boxes |
 | [ssd_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz) | 31 | 22 | Boxes |
+| [ssd_mobilenet_v2_quantized_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_quantized_300x300_coco_2018_09_14.tar.gz) | 29 | 22 | Boxes |
 | [ssdlite_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssdlite_mobilenet_v2_coco_2018_05_09.tar.gz) | 27 | 22 | Boxes |
 | [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2018_01_28.tar.gz) | 42 | 24 | Boxes |
 | [faster_rcnn_inception_v2_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_v2_coco_2018_01_28.tar.gz) | 58 | 28 | Boxes |
@@ -108,10 +108,18 @@ Model name                                                                      
 
 ## Open Images-trained models
 
-Model name                                                                                                                                                        | Speed (ms) | Open Images mAP@0.5[^2] | Outputs
+Model name                                                                                                                                                                                    | Speed (ms) | Open Images mAP@0.5[^2] | Outputs
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------: | :---------------------: | :-----:
+[faster_rcnn_inception_resnet_v2_atrous_oidv2](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28.tar.gz)                           | 727        | 37                      | Boxes
+[faster_rcnn_inception_resnet_v2_atrous_lowproposals_oidv2](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28.tar.gz) | 347        |                         | Boxes
+[facessd_mobilenet_v2_quantized_open_image_v4](http://download.tensorflow.org/models/object_detection/facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz) [^3]                       | 20         | 73 (faces)              | Boxes
+
+## iNaturalist Species-trained models
+
+Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 | Outputs
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
-[faster_rcnn_inception_resnet_v2_atrous_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28.tar.gz) | 727 | 37              | Boxes
-[faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28.tar.gz) | 347  |               | Boxes
+[faster_rcnn_resnet101_fgvc](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_fgvc_2018_07_19.tar.gz) | 395  | 58              | Boxes
+[faster_rcnn_resnet50_fgvc](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet50_fgvc_2018_07_19.tar.gz) | 366  | 55             | Boxes
 
 
 ## AVA v2.1 trained models
@@ -124,4 +132,5 @@ Model name                                                                      
 [^1]: See [MSCOCO evaluation protocol](http://cocodataset.org/#detections-eval).
 
 [^2]: This is PASCAL mAP with a slightly different way of true positives computation: see [Open Images evaluation protocol](evaluation_protocols.md#open-images).
+[^3]: Non-face boxes are dropped during training and non-face groundtruth boxes are ignored when evaluating.
 

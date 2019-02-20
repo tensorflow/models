@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+import "object_detection/protos/pipeline.proto";
+
+extend TrainEvalPipelineConfig {
+  optional LstmModel lstm_model = 205743444;
+}
+
+// Message for extra fields needed for configuring LSTM model.
+message LstmModel {
+  // Unroll length for training LSTMs.
+  optional int32 train_unroll_length = 1;
+
+  // Unroll length for evaluating LSTMs.
+  optional int32 eval_unroll_length = 2;
+
+  // Depth of the lstm feature map.
+  optional int32 lstm_state_depth = 3 [default = 256];
+}
