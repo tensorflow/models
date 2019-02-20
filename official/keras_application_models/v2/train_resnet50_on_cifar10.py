@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Retrain the keras built-in ResNet50 on CIFAR-10."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
