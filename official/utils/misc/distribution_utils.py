@@ -34,9 +34,10 @@ def get_distribution_strategy(distribution_strategy="default",
   Args:
     distribution_strategy: a string specify which distribution strategy to use.
       Accepted values are 'off', 'default', 'one_device', 'mirrored',
-      'parameter_server', 'collective', case insensitive. 'off' means not to use
-      Distribution Strategy; 'default' means to choose from `MirroredStrategy`
-      or `OneDeviceStrategy` according to the number of GPUs."
+      'parameter_server', 'multi_worker_mirrored', case insensitive. 'off' means
+      not to use Distribution Strategy; 'default' means to choose from
+      `MirroredStrategy`, `MultiWorkerMirroredStrategy`, or `OneDeviceStrategy`
+      according to the number of GPUs and number of workers.
     num_gpus: Number of GPUs to run this model.
     num_workers: Number of workers to run this model.
     all_reduce_alg: Optional. Specify which algorithm to use when performing
@@ -55,12 +56,13 @@ def get_distribution_strategy(distribution_strategy="default",
 
   distribution_strategy = distribution_strategy.lower()
   if distribution_strategy == "off":
-    if num_gpus > 1:
-      raise ValueError("When {} GPUs are specified, distribution_strategy flag "
-                       "cannot be set to 'off'.".format(num_gpus))
+    if num_gpus > 1 or num_workers > 1:
+      raise ValueError(
+          "When {} GPUs and  {} workers are specified, distribution_strategy "
+          "flag cannot be set to 'off'.".format(num_gpus, num_workers))
     return None
 
-  if distribution_strategy == "collective" or num_workers > 1:
+  if distribution_strategy == "multi_worker_mirrored" or num_workers > 1:
     return tf.contrib.distribute.CollectiveAllReduceStrategy(
         num_gpus_per_worker=num_gpus)
 
