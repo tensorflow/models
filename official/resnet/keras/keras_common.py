@@ -51,6 +51,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
     Args:
       batch_size: Total batch size.
+      log_steps: Interval of time history logs.
 
     """
     self.batch_size = batch_size
@@ -205,6 +206,7 @@ def build_stats(history, eval_output, time_callback):
 
 
 def define_keras_flags():
+  """Define flags for Keras models."""
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_boolean(
