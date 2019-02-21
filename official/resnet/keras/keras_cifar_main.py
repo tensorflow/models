@@ -53,6 +53,7 @@ def learning_rate_schedule(current_epoch,
   Returns:
     Adjusted learning rate.
   """
+  del current_batch, batches_per_epoch  # not used
   initial_learning_rate = keras_common.BASE_LEARNING_RATE * batch_size / 128
   learning_rate = initial_learning_rate
   for mult, start_epoch in LR_SCHEDULE:
@@ -97,10 +98,16 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
+  config = keras_common.get_config_proto()
   # TODO(tobyboyd): Remove eager flag when tf 1.0 testing ends.
   # Eager is default in tf 2.0 and should not be toggled
-  if flags_obj.enable_eager and not keras_common.is_v2_0():
-    tf.compat.v1.enable_eager_execution()
+  if not keras_common.is_v2_0():
+    if flags_obj.enable_eager:
+      tf.compat.v1.enable_eager_execution(config=config)
+    else:
+      sess = tf.Session(config=config)
+      tf.keras.backend.set_session(sess)
+  # TODO(haoyuzhang): Set config properly in TF2.0 when the config API is ready.
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
