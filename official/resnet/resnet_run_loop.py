@@ -467,6 +467,10 @@ def resnet_main(
   if flags_obj.tf_gpu_thread_mode:
     override_flags_and_set_envars_for_gpu_thread_pool(flags_obj)
 
+  # Configures cluster spec for distribution strategy.
+  num_workers = distribution_utils.configure_cluster(flags_obj.worker_hosts,
+                                                     flags_obj.task_index)
+
   # Creates session config. allow_soft_placement = True, is required for
   # multi-GPU and is not harmful for other modes.
   session_config = tf.compat.v1.ConfigProto(
@@ -477,6 +481,7 @@ def resnet_main(
   distribution_strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_core.get_num_gpus(flags_obj),
+      num_workers=num_workers,
       all_reduce_alg=flags_obj.all_reduce_alg)
 
   # Creates a `RunConfig` that checkpoints every 24 hours which essentially
@@ -546,46 +551,61 @@ def resnet_main(
         num_epochs=1,
         dtype=flags_core.get_tf_dtype(flags_obj))
 
-  if flags_obj.eval_only or not flags_obj.train_epochs:
-    # If --eval_only is set, perform a single loop with zero train epochs.
-    schedule, n_loops = [0], 1
-  else:
-    # Compute the number of times to loop while training. All but the last
-    # pass will train for `epochs_between_evals` epochs, while the last will
-    # train for the number needed to reach `training_epochs`. For instance if
-    #   train_epochs = 25 and epochs_between_evals = 10
-    # schedule will be set to [10, 10, 5]. That is to say, the loop will:
-    #   Train for 10 epochs and then evaluate.
-    #   Train for another 10 epochs and then evaluate.
-    #   Train for a final 5 epochs (to reach 25 epochs) and then evaluate.
-    n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
-    schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
-    schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
+  train_epochs = (0 if flags_obj.eval_only or not flags_obj.train_epochs else
+                  flags_obj.train_epochs)
 
-  for cycle_index, num_train_epochs in enumerate(schedule):
-    tf.compat.v1.logging.info('Starting cycle: %d/%d', cycle_index,
-                              int(n_loops))
-
-    if num_train_epochs:
-      classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
-                       hooks=train_hooks, max_steps=flags_obj.max_train_steps)
-
-    tf.compat.v1.logging.info('Starting to evaluate.')
-
-    # flags_obj.max_train_steps is generally associated with testing and
-    # profiling. As a result it is frequently called with synthetic data, which
-    # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
-    # eval (which is generally unimportant in those circumstances) to terminate.
-    # Note that eval will run for max_train_steps each loop, regardless of the
-    # global_step count.
-    eval_results = classifier.evaluate(input_fn=input_fn_eval,
-                                       steps=flags_obj.max_train_steps)
-
+  use_train_and_evaluate = flags_obj.use_train_and_evaluate or isinstance(
+      distribution_strategy, tf.contrib.distribute.CollectiveAllReduceStrategy)
+  if use_train_and_evaluate:
+    train_spec = tf.estimator.TrainSpec(
+        input_fn=lambda: input_fn_train(train_epochs), hooks=train_hooks,
+        max_steps=flags_obj.max_train_steps)
+    eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval,
+                                      steps=flags_obj.max_train_steps)
+    tf.compat.v1.logging.info('Starting to train and evaluate.')
+    eval_results, _ = tf.estimator.train_and_evaluate(classifier, train_spec,
+                                                      eval_spec)
     benchmark_logger.log_evaluation_result(eval_results)
+  else:
+    if train_epochs == 0:
+      # If --eval_only is set, perform a single loop with zero train epochs.
+      schedule, n_loops = [0], 1
+    else:
+      # Compute the number of times to loop while training. All but the last
+      # pass will train for `epochs_between_evals` epochs, while the last will
+      # train for the number needed to reach `training_epochs`. For instance if
+      #   train_epochs = 25 and epochs_between_evals = 10
+      # schedule will be set to [10, 10, 5]. That is to say, the loop will:
+      #   Train for 10 epochs and then evaluate.
+      #   Train for another 10 epochs and then evaluate.
+      #   Train for a final 5 epochs (to reach 25 epochs) and then evaluate.
+      n_loops = math.ceil(train_epochs / flags_obj.epochs_between_evals)
+      schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
+      schedule[-1] = train_epochs - sum(schedule[:-1])  # over counting.
 
-    if model_helpers.past_stop_threshold(
-        flags_obj.stop_threshold, eval_results['accuracy']):
-      break
+    for cycle_index, num_train_epochs in enumerate(schedule):
+      tf.compat.v1.logging.info('Starting cycle: %d/%d', cycle_index,
+                                int(n_loops))
+
+      if num_train_epochs:
+        classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
+                         hooks=train_hooks, max_steps=flags_obj.max_train_steps)
+
+      # flags_obj.max_train_steps is generally associated with testing and
+      # profiling. As a result it is frequently called with synthetic data,
+      # which will iterate forever. Passing steps=flags_obj.max_train_steps
+      # allows the eval (which is generally unimportant in those circumstances)
+      # to terminate.  Note that eval will run for max_train_steps each loop,
+      # regardless of the global_step count.
+      tf.compat.v1.logging.info('Starting to evaluate.')
+      eval_results = classifier.evaluate(input_fn=input_fn_eval,
+                                         steps=flags_obj.max_train_steps)
+
+      benchmark_logger.log_evaluation_result(eval_results)
+
+      if model_helpers.past_stop_threshold(
+          flags_obj.stop_threshold, eval_results['accuracy']):
+        break
 
   if flags_obj.export_dir is not None:
     # Exports a saved model for the given classifier.
@@ -644,6 +664,22 @@ def define_resnet_flags(resnet_size_choices=None):
           'the expense of image resize/cropping being done as part of model '
           'inference. Note, this flag only applies to ImageNet and cannot '
           'be used for CIFAR.'))
+  flags.DEFINE_boolean(
+      name='use_train_and_evaluate', default=False,
+      help=flags_core.help_wrap(
+          'If True, uses `tf.estimator.train_and_evaluate` for the training '
+          'and evaluation loop, instead of separate calls to `classifier.train '
+          'and `classifier.evaluate`, which is the default behavior.'))
+  flags.DEFINE_string(
+      name='worker_hosts', default=None,
+      help=flags_core.help_wrap(
+          'Comma-separated list of worker ip:port pairs for running '
+          'multi-worker models with DistributionStrategy.  The user would '
+          'start the program on each host with identical value for this flag.'))
+  flags.DEFINE_integer(
+      name='task_index', default=-1,
+      help=flags_core.help_wrap('If multi-worker training, the task_index of '
+                                'this worker.'))
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
       help=flags_core.help_wrap('The size of the ResNet model to use.'))
