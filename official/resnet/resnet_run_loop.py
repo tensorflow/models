@@ -24,7 +24,6 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
-import json
 import math
 import multiprocessing
 import os
@@ -470,23 +469,8 @@ def resnet_main(
     override_flags_and_set_envars_for_gpu_thread_pool(flags_obj)
 
   # Configures cluster spec for distribution strategy.
-  tf_config = json.loads(os.environ.get('TF_CONFIG', '{}'))
-  if tf_config:
-    num_workers = len(tf_config['cluster']['worker'])
-  elif flags_obj.worker_hosts:
-    workers = flags_obj.worker_hosts.split(',')
-    num_workers = len(workers)
-    if num_workers > 1 and flags_obj.task_index < 0:
-      raise ValueError('Must specify task_index when number of workers > 1')
-    task_index = 0 if num_workers == 1 else flags_obj.task_index
-    os.environ['TF_CONFIG'] = json.dumps({
-        'cluster': {
-            'worker': workers
-        },
-        'task': {'type': 'worker', 'index': task_index}
-    })
-  else:
-    num_workers = 1
+  num_workers = distribution_utils.configure_cluster(flags_obj.worker_hosts,
+                                                     flags_obj.task_index)
 
   # Creates session config. allow_soft_placement = True, is required for
   # multi-GPU and is not harmful for other modes.
@@ -689,7 +673,7 @@ def define_resnet_flags(resnet_size_choices=None):
           'Comma-separated list of worker ip:port pairs for running '
           'multi-worker models with DistributionStrategy.'))
   flags.DEFINE_integer(
-      name='task_index', default=None,
+      name='task_index', default=-1,
       help=flags_core.help_wrap('If multi-worker training, the task_index of '
                                 'this worker'))
   choice_kwargs = dict(
