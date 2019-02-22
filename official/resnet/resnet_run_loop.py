@@ -555,7 +555,7 @@ def resnet_main(
                   flags_obj.train_epochs)
 
   use_train_and_evaluate = flags_obj.use_train_and_evaluate or (
-    distribution_strategy.__class__.__name__ == CollectiveAllReduceStrategy)
+    distribution_strategy.__class__.__name__ == "CollectiveAllReduceStrategy")
   if use_train_and_evaluate:
     train_spec = tf.estimator.TrainSpec(
         input_fn=lambda: input_fn_train(train_epochs), hooks=train_hooks,
