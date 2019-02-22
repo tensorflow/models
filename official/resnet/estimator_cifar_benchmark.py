@@ -29,22 +29,28 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import cifar10_main as cifar_main
 from official.utils.logs import hooks
 
-DATA_DIR = '/data/cifar10_data/cifar-10-batches-bin'
-
 
 class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
   """Benchmarks and accuracy tests for Estimator ResNet56."""
 
   local_flags = None
 
-  def __init__(self, output_dir=None):
+  def __init__(self, output_dir=None, root_data_dir=None):
+    """A benchmark class.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+    """
+
     self.output_dir = output_dir
+    self.data_dir = os.path.join(root_data_dir, 'cifar-10-batches-bin')
 
   def resnet56_1_gpu(self):
     """Test layers model with Estimator and distribution strategies."""
     self._setup()
     flags.FLAGS.num_gpus = 1
-    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.data_dir = self.data_dir
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_1_gpu')
@@ -57,7 +63,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     """Test layers FP16 model with Estimator and distribution strategies."""
     self._setup()
     flags.FLAGS.num_gpus = 1
-    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.data_dir = self.data_dir
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_fp16_1_gpu')
@@ -70,7 +76,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     """Test layers model with Estimator and dist_strat. 2 GPUs."""
     self._setup()
     flags.FLAGS.num_gpus = 2
-    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.data_dir = self.data_dir
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_2_gpu')
@@ -83,7 +89,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     """Test layers FP16 model with Estimator and dist_strat. 2 GPUs."""
     self._setup()
     flags.FLAGS.num_gpus = 2
-    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.data_dir = self.data_dir
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_fp16_2_gpu')
@@ -96,7 +102,7 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     """A lightweight test that can finish quickly."""
     self._setup()
     flags.FLAGS.num_gpus = 1
-    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.data_dir = self.data_dir
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 1
     flags.FLAGS.model_dir = self._get_model_dir('resnet56_1_gpu')
