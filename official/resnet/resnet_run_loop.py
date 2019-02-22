@@ -555,7 +555,7 @@ def resnet_main(
                   flags_obj.train_epochs)
 
   use_train_and_evaluate = flags_obj.use_train_and_evaluate or (
-    distribution_strategy.__class__.__name__ == 'CollectiveAllReduceStrategy')
+      distribution_strategy.__class__.__name__ == 'CollectiveAllReduceStrategy')
   if use_train_and_evaluate:
     train_spec = tf.estimator.TrainSpec(
         input_fn=lambda: input_fn_train(train_epochs), hooks=train_hooks,
@@ -588,6 +588,10 @@ def resnet_main(
                                 int(n_loops))
 
       if num_train_epochs:
+        # Since we are calling classifier.train immediately in each loop, the
+        # value of num_train_epochs in the lambda function will not be changed
+        # before it is used. So it is safe to ignore the pylint error here
+        # pylint: disable=cell-var-from-loop
         classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                          hooks=train_hooks, max_steps=flags_obj.max_train_steps)
 
