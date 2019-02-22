@@ -153,10 +153,10 @@ def dict_to_tf_example(data,
         ymin = float(obj['bndbox']['ymin'])
         ymax = float(obj['bndbox']['ymax'])
       else:
-        xmin = float(np.min(nonzero_x_indices))
-        xmax = float(np.max(nonzero_x_indices))
-        ymin = float(np.min(nonzero_y_indices))
-        ymax = float(np.max(nonzero_y_indices))
+        xmin = float(np.min(nonzero_x_indices[0]))
+        xmax = float(np.max(nonzero_x_indices[0]))
+        ymin = float(np.min(nonzero_y_indices[0]))
+        ymax = float(np.max(nonzero_y_indices[0]))
 
       xmins.append(xmin / width)
       ymins.append(ymin / height)
