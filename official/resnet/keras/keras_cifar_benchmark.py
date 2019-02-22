@@ -31,6 +31,7 @@ MIN_TOP_1_ACCURACY = 0.925
 MAX_TOP_1_ACCURACY = 0.938
 
 FLAGS = flags.FLAGS
+CIFAR_DATA_DIR_NAME = 'cifar-10-batches-bin'
 
 
 class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
@@ -47,7 +48,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
                 named arguments before updating the constructor.
     """
 
-    self.data_dir = os.path.join(root_data_dir, 'cifar-10-batches-bin')
+    self.data_dir = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)
     flag_methods = [
         keras_common.define_keras_flags, cifar_main.define_cifar_flags
     ]
@@ -210,25 +211,25 @@ class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
   """Synthetic benchmarks for ResNet56 and Keras."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    def_flags = {}
-    def_flags['skip_eval'] = True
-    def_flags['use_synthetic_data'] = True
-    def_flags['train_steps'] = 110
-    def_flags['log_steps'] = 10
+    default_flags = {}
+    default_flags['skip_eval'] = True
+    default_flags['use_synthetic_data'] = True
+    default_flags['train_steps'] = 110
+    default_flags['log_steps'] = 10
 
     super(Resnet56KerasBenchmarkSynth, self).__init__(
-        output_dir=output_dir, default_flags=def_flags)
+        output_dir=output_dir, default_flags=default_flags)
 
 
 class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
   """Real data benchmarks for ResNet56 and Keras."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    def_flags = {}
-    def_flags['skip_eval'] = True
-    def_flags['data_dir'] = self.data_dir
-    def_flags['train_steps'] = 110
-    def_flags['log_steps'] = 10
+    default_flags = {}
+    default_flags['skip_eval'] = True
+    default_flags['data_dir'] = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)
+    default_flags['train_steps'] = 110
+    default_flags['log_steps'] = 10
 
     super(Resnet56KerasBenchmarkReal, self).__init__(
-        output_dir=output_dir, default_flags=def_flags)
+        output_dir=output_dir, default_flags=default_flags)
