@@ -19,7 +19,11 @@ import six
 import tensorflow as tf
 from deeplab.core import preprocess_utils
 
-slim = tf.contrib.slim
+
+def _div_maybe_zero(total_loss, num_present):
+  """Normalizes the total loss with the number of present pixels."""
+  return tf.to_float(num_present > 0) * tf.div(total_loss,
+                                               tf.maximum(1e-5, num_present))
 
 
 def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
@@ -28,6 +32,8 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
                                                   ignore_label,
                                                   loss_weight=1.0,
                                                   upsample_logits=True,
+                                                  hard_example_mining_step=0,
+                                                  top_k_percent_pixels=1.0,
                                                   scope=None):
   """Adds softmax cross entropy loss for logits of each scale.
 
@@ -39,6 +45,15 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
     ignore_label: Integer, label to ignore.
     loss_weight: Float, loss weight.
     upsample_logits: Boolean, upsample logits or not.
+    hard_example_mining_step: An integer, the training step in which the hard
+      exampling mining kicks off. Note that we gradually reduce the mining
+      percent to the top_k_percent_pixels. For example, if
+      hard_example_mining_step = 100K and top_k_percent_pixels = 0.25, then
+      mining percent will gradually reduce from 100% to 25% until 100K steps
+      after which we only mine top 25% pixels.
+    top_k_percent_pixels: A float, the value lies in [0.0, 1.0]. When its value
+      < 1.0, only compute the loss for the top k percent pixels (e.g., the top
+      20% pixels). This is useful for hard pixel mining.
     scope: String, the scope for the loss.
 
   Raises:
@@ -69,13 +84,48 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
     scaled_labels = tf.reshape(scaled_labels, shape=[-1])
     not_ignore_mask = tf.to_float(tf.not_equal(scaled_labels,
                                                ignore_label)) * loss_weight
-    one_hot_labels = slim.one_hot_encoding(
+    one_hot_labels = tf.one_hot(
         scaled_labels, num_classes, on_value=1.0, off_value=0.0)
-    tf.losses.softmax_cross_entropy(
-        one_hot_labels,
-        tf.reshape(logits, shape=[-1, num_classes]),
-        weights=not_ignore_mask,
-        scope=loss_scope)
+
+    if top_k_percent_pixels == 1.0:
+      # Compute the loss for all pixels.
+      tf.losses.softmax_cross_entropy(
+          one_hot_labels,
+          tf.reshape(logits, shape=[-1, num_classes]),
+          weights=not_ignore_mask,
+          scope=loss_scope)
+    else:
+      logits = tf.reshape(logits, shape=[-1, num_classes])
+      weights = not_ignore_mask
+      with tf.name_scope(loss_scope, 'softmax_hard_example_mining',
+                         [logits, one_hot_labels, weights]):
+        one_hot_labels = tf.stop_gradient(
+            one_hot_labels, name='labels_stop_gradient')
+        pixel_losses = tf.nn.softmax_cross_entropy_with_logits_v2(
+            labels=one_hot_labels,
+            logits=logits,
+            name='pixel_losses')
+        weighted_pixel_losses = tf.multiply(pixel_losses, weights)
+        num_pixels = tf.to_float(tf.shape(logits)[0])
+        # Compute the top_k_percent pixels based on current training step.
+        if hard_example_mining_step == 0:
+          # Directly focus on the top_k pixels.
+          top_k_pixels = tf.to_int32(top_k_percent_pixels * num_pixels)
+        else:
+          # Gradually reduce the mining percent to top_k_percent_pixels.
+          global_step = tf.to_float(tf.train.get_or_create_global_step())
+          ratio = tf.minimum(1.0, global_step / hard_example_mining_step)
+          top_k_pixels = tf.to_int32(
+              (ratio * top_k_percent_pixels + (1.0 - ratio)) * num_pixels)
+        top_k_losses, _ = tf.nn.top_k(weighted_pixel_losses,
+                                      k=top_k_pixels,
+                                      sorted=True,
+                                      name='top_k_percent_pixels')
+        total_loss = tf.reduce_sum(top_k_losses)
+        num_present = tf.reduce_sum(
+            tf.to_float(tf.not_equal(top_k_losses, 0.0)))
+        loss = _div_maybe_zero(total_loss, num_present)
+        tf.losses.add_loss(loss)
 
 
 def get_model_init_fn(train_logdir,
@@ -110,13 +160,22 @@ def get_model_init_fn(train_logdir,
   if not initialize_last_layer:
     exclude_list.extend(last_layers)
 
-  variables_to_restore = slim.get_variables_to_restore(exclude=exclude_list)
+  variables_to_restore = tf.contrib.framework.get_variables_to_restore(
+      exclude=exclude_list)
 
   if variables_to_restore:
-    return slim.assign_from_checkpoint_fn(
+    init_op, init_feed_dict = tf.contrib.framework.assign_from_checkpoint(
         tf_initial_checkpoint,
         variables_to_restore,
         ignore_missing_vars=ignore_missing_vars)
+    global_step = tf.train.get_or_create_global_step()
+
+    def restore_fn(unused_scaffold, sess):
+      sess.run(init_op, init_feed_dict)
+      sess.run([global_step])
+
+    return restore_fn
+
   return None
 
 
@@ -138,7 +197,7 @@ def get_model_gradient_multipliers(last_layers, last_layer_gradient_multiplier):
   """
   gradient_multipliers = {}
 
-  for var in slim.get_model_variables():
+  for var in tf.model_variables():
     # Double the learning rate for biases.
     if 'biases' in var.op.name:
       gradient_multipliers[var.op.name] = 2.
@@ -155,10 +214,15 @@ def get_model_gradient_multipliers(last_layers, last_layer_gradient_multiplier):
   return gradient_multipliers
 
 
-def get_model_learning_rate(
-    learning_policy, base_learning_rate, learning_rate_decay_step,
-    learning_rate_decay_factor, training_number_of_steps, learning_power,
-    slow_start_step, slow_start_learning_rate):
+def get_model_learning_rate(learning_policy,
+                            base_learning_rate,
+                            learning_rate_decay_step,
+                            learning_rate_decay_factor,
+                            training_number_of_steps,
+                            learning_power,
+                            slow_start_step,
+                            slow_start_learning_rate,
+                            slow_start_burnin_type='none'):
   """Gets model's learning rate.
 
   Computes the model's learning rate for different learning policy.
@@ -181,31 +245,51 @@ def get_model_learning_rate(
     slow_start_step: Training model with small learning rate for the first
       few steps.
     slow_start_learning_rate: The learning rate employed during slow start.
+    slow_start_burnin_type: The burnin type for the slow start stage. Can be
+      `none` which means no burnin or `linear` which means the learning rate
+      increases linearly from slow_start_learning_rate and reaches
+      base_learning_rate after slow_start_steps.
 
   Returns:
     Learning rate for the specified learning policy.
 
   Raises:
-    ValueError: If learning policy is not recognized.
+    ValueError: If learning policy or slow start burnin type is not recognized.
   """
   global_step = tf.train.get_or_create_global_step()
+  adjusted_global_step = global_step
+
+  if slow_start_burnin_type != 'none':
+    adjusted_global_step -= slow_start_step
+
   if learning_policy == 'step':
     learning_rate = tf.train.exponential_decay(
         base_learning_rate,
-        global_step,
+        adjusted_global_step,
         learning_rate_decay_step,
         learning_rate_decay_factor,
         staircase=True)
   elif learning_policy == 'poly':
     learning_rate = tf.train.polynomial_decay(
         base_learning_rate,
-        global_step,
+        adjusted_global_step,
         training_number_of_steps,
         end_learning_rate=0,
         power=learning_power)
   else:
     raise ValueError('Unknown learning policy.')
 
+  adjusted_slow_start_learning_rate = slow_start_learning_rate
+  if slow_start_burnin_type == 'linear':
+    # Do linear burnin. Increase linearly from slow_start_learning_rate and
+    # reach base_learning_rate after (global_step >= slow_start_steps).
+    adjusted_slow_start_learning_rate = (
+        slow_start_learning_rate +
+        (base_learning_rate - slow_start_learning_rate) *
+        tf.to_float(global_step) / slow_start_step)
+  elif slow_start_burnin_type != 'none':
+    raise ValueError('Unknown burnin type.')
+
   # Employ small learning rate at the first few steps for warm start.
-  return tf.where(global_step < slow_start_step, slow_start_learning_rate,
-                  learning_rate)
+  return tf.where(global_step < slow_start_step,
+                  adjusted_slow_start_learning_rate, learning_rate)

@@ -82,7 +82,7 @@ def preprocess_image_and_label(image,
     label = tf.cast(label, tf.int32)
 
   # Resize image and label to the desired range.
-  if min_resize_value is not None or max_resize_value is not None:
+  if min_resize_value or max_resize_value:
     [processed_image, label] = (
         preprocess_utils.resize_to_range(
             image=processed_image,
