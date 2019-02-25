@@ -79,12 +79,14 @@ ${PATH_TO_DATASET} is the directory in which the Cityscapes dataset resides.
 3.  The users could skip the flag, `decoder_output_stride`, if you do not want
     to use the decoder structure.
 
-4.  Change and add the following flags in order to use the provided dense prediction cell.
+4.  Change and add the following flags in order to use the provided dense
+    prediction cell. Note we need to set decoder_output_stride if you want to
+    use the provided checkpoints which include the decoder module.
 
 ```bash
 --model_variant="xception_71"
 --dense_prediction_cell_json="deeplab/core/dense_prediction_cell_branch5_top1_cityscapes.json"
-
+--decoder_output_stride=4
 ```
 
 A local evaluation job using `xception_65` can be run with the following

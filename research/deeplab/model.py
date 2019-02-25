@@ -56,7 +56,6 @@ from deeplab.core import dense_prediction_cell
 from deeplab.core import feature_extractor
 from deeplab.core import utils
 
-
 slim = tf.contrib.slim
 
 LOGITS_SCOPE_NAME = 'logits'
@@ -67,8 +66,10 @@ CONCAT_PROJECTION_SCOPE = 'concat_projection'
 DECODER_SCOPE = 'decoder'
 META_ARCHITECTURE_SCOPE = 'meta_architecture'
 
+_resize_bilinear = utils.resize_bilinear
 scale_dimension = utils.scale_dimension
 split_separable_conv2d = utils.split_separable_conv2d
+
 
 def get_extra_layer_scopes(last_layers_contain_logits_only=False):
   """Gets the scopes for extra layers.
@@ -135,20 +136,20 @@ def predict_labels_multi_scale(images,
 
     for output in sorted(outputs_to_scales_to_logits):
       scales_to_logits = outputs_to_scales_to_logits[output]
-      logits = tf.image.resize_bilinear(
+      logits = _resize_bilinear(
           scales_to_logits[MERGED_LOGITS_SCOPE],
           tf.shape(images)[1:3],
-          align_corners=True)
+          scales_to_logits[MERGED_LOGITS_SCOPE].dtype)
       outputs_to_predictions[output].append(
           tf.expand_dims(tf.nn.softmax(logits), 4))
 
       if add_flipped_images:
         scales_to_logits_reversed = (
             outputs_to_scales_to_logits_reversed[output])
-        logits_reversed = tf.image.resize_bilinear(
+        logits_reversed = _resize_bilinear(
             tf.reverse_v2(scales_to_logits_reversed[MERGED_LOGITS_SCOPE], [2]),
             tf.shape(images)[1:3],
-            align_corners=True)
+            scales_to_logits_reversed[MERGED_LOGITS_SCOPE].dtype)
         outputs_to_predictions[output].append(
             tf.expand_dims(tf.nn.softmax(logits_reversed), 4))
 
@@ -184,29 +185,26 @@ def predict_labels(images, model_options, image_pyramid=None):
   predictions = {}
   for output in sorted(outputs_to_scales_to_logits):
     scales_to_logits = outputs_to_scales_to_logits[output]
-    logits = tf.image.resize_bilinear(
-        scales_to_logits[MERGED_LOGITS_SCOPE],
-        tf.shape(images)[1:3],
-        align_corners=True)
-    predictions[output] = tf.argmax(logits, 3)
+    logits = scales_to_logits[MERGED_LOGITS_SCOPE]
+    # There are two ways to obtain the final prediction results: (1) bilinear
+    # upsampling the logits followed by argmax, or (2) argmax followed by
+    # nearest neighbor upsampling. The second option may introduce the "blocking
+    # effect" but is computationally efficient.
+    if model_options.prediction_with_upsampled_logits:
+      logits = _resize_bilinear(logits,
+                                tf.shape(images)[1:3],
+                                scales_to_logits[MERGED_LOGITS_SCOPE].dtype)
+      predictions[output] = tf.argmax(logits, 3)
+    else:
+      argmax_results = tf.argmax(logits, 3)
+      argmax_results = tf.image.resize_nearest_neighbor(
+          tf.expand_dims(argmax_results, 3),
+          tf.shape(images)[1:3],
+          align_corners=True,
+          name='resize_prediction')
+      predictions[output] = tf.squeeze(argmax_results, 3)
 
   return predictions
-
-
-def _resize_bilinear(images, size, output_dtype=tf.float32):
-  """Returns resized images as output_type.
-
-  Args:
-    images: A tensor of size [batch, height_in, width_in, channels].
-    size: A 1-D int32 Tensor of 2 elements: new_height, new_width. The new size
-      for the images.
-    output_dtype: The destination type.
-  Returns:
-    A tensor of size [batch, height_out, width_out, channels] as a dtype of
-      output_dtype.
-  """
-  images = tf.image.resize_bilinear(images, size, align_corners=True)
-  return tf.cast(images, dtype=output_dtype)
 
 
 def multi_scale_logits(images,
@@ -214,7 +212,8 @@ def multi_scale_logits(images,
                        image_pyramid,
                        weight_decay=0.0001,
                        is_training=False,
-                       fine_tune_batch_norm=False):
+                       fine_tune_batch_norm=False,
+                       nas_training_hyper_parameters=None):
   """Gets the logits for multi-scale inputs.
 
   The returned logits are all downsampled (due to max-pooling layers)
@@ -227,6 +226,12 @@ def multi_scale_logits(images,
     weight_decay: The weight decay for model variables.
     is_training: Is training or not.
     fine_tune_batch_norm: Fine-tune the batch norm parameters or not.
+    nas_training_hyper_parameters: A dictionary storing hyper-parameters for
+      training nas models. Its keys are:
+      - `drop_path_keep_prob`: Probability to keep each path in the cell when
+        training.
+      - `total_training_steps`: Total training steps to help drop path
+        probability calculation.
 
   Returns:
     outputs_to_scales_to_logits: A map of maps from output_type (e.g.,
@@ -250,10 +255,15 @@ def multi_scale_logits(images,
   crop_width = (
       model_options.crop_size[1]
       if model_options.crop_size else tf.shape(images)[2])
+  if model_options.image_pooling_crop_size:
+    image_pooling_crop_height = model_options.image_pooling_crop_size[0]
+    image_pooling_crop_width = model_options.image_pooling_crop_size[1]
 
   # Compute the height, width for the output logits.
-  logits_output_stride = (
-      model_options.decoder_output_stride or model_options.output_stride)
+  if model_options.decoder_output_stride:
+    logits_output_stride = min(model_options.decoder_output_stride)
+  else:
+    logits_output_stride = model_options.output_stride
 
   logits_height = scale_dimension(
       crop_height,
@@ -268,33 +278,45 @@ def multi_scale_logits(images,
       for k in model_options.outputs_to_num_classes
   }
 
+  num_channels = images.get_shape().as_list()[-1]
+
   for image_scale in image_pyramid:
     if image_scale != 1.0:
       scaled_height = scale_dimension(crop_height, image_scale)
       scaled_width = scale_dimension(crop_width, image_scale)
       scaled_crop_size = [scaled_height, scaled_width]
-      scaled_images = tf.image.resize_bilinear(
-          images, scaled_crop_size, align_corners=True)
+      scaled_images = _resize_bilinear(images, scaled_crop_size, images.dtype)
       if model_options.crop_size:
-        scaled_images.set_shape([None, scaled_height, scaled_width, 3])
+        scaled_images.set_shape(
+            [None, scaled_height, scaled_width, num_channels])
+      # Adjust image_pooling_crop_size accordingly.
+      scaled_image_pooling_crop_size = None
+      if model_options.image_pooling_crop_size:
+        scaled_image_pooling_crop_size = [
+            scale_dimension(image_pooling_crop_height, image_scale),
+            scale_dimension(image_pooling_crop_width, image_scale)]
     else:
       scaled_crop_size = model_options.crop_size
       scaled_images = images
+      scaled_image_pooling_crop_size = model_options.image_pooling_crop_size
 
-    updated_options = model_options._replace(crop_size=scaled_crop_size)
+    updated_options = model_options._replace(
+        crop_size=scaled_crop_size,
+        image_pooling_crop_size=scaled_image_pooling_crop_size)
     outputs_to_logits = _get_logits(
         scaled_images,
         updated_options,
         weight_decay=weight_decay,
         reuse=tf.AUTO_REUSE,
         is_training=is_training,
-        fine_tune_batch_norm=fine_tune_batch_norm)
+        fine_tune_batch_norm=fine_tune_batch_norm,
+        nas_training_hyper_parameters=nas_training_hyper_parameters)
 
     # Resize the logits to have the same dimension before merging.
     for output in sorted(outputs_to_logits):
-      outputs_to_logits[output] = tf.image.resize_bilinear(
+      outputs_to_logits[output] = _resize_bilinear(
           outputs_to_logits[output], [logits_height, logits_width],
-          align_corners=True)
+          outputs_to_logits[output].dtype)
 
     # Return when only one input scale.
     if len(image_pyramid) == 1:
@@ -330,7 +352,8 @@ def extract_features(images,
                      weight_decay=0.0001,
                      reuse=None,
                      is_training=False,
-                     fine_tune_batch_norm=False):
+                     fine_tune_batch_norm=False,
+                     nas_training_hyper_parameters=None):
   """Extracts features by the particular model_variant.
 
   Args:
@@ -340,6 +363,12 @@ def extract_features(images,
     reuse: Reuse the model variables or not.
     is_training: Is training or not.
     fine_tune_batch_norm: Fine-tune the batch norm parameters or not.
+    nas_training_hyper_parameters: A dictionary storing hyper-parameters for
+      training nas models. Its keys are:
+      - `drop_path_keep_prob`: Probability to keep each path in the cell when
+        training.
+      - `total_training_steps`: Total training steps to help drop path
+        probability calculation.
 
   Returns:
     concat_logits: A tensor of size [batch, feature_height, feature_width,
@@ -354,10 +383,16 @@ def extract_features(images,
       multi_grid=model_options.multi_grid,
       model_variant=model_options.model_variant,
       depth_multiplier=model_options.depth_multiplier,
+      divisible_by=model_options.divisible_by,
       weight_decay=weight_decay,
       reuse=reuse,
       is_training=is_training,
-      fine_tune_batch_norm=fine_tune_batch_norm)
+      preprocessed_images_dtype=model_options.preprocessed_images_dtype,
+      fine_tune_batch_norm=fine_tune_batch_norm,
+      nas_stem_output_num_conv_filters=(
+          model_options.nas_stem_output_num_conv_filters),
+      nas_training_hyper_parameters=nas_training_hyper_parameters,
+      use_bounded_activation=model_options.use_bounded_activation)
 
   if not model_options.aspp_with_batch_norm:
     return features, end_points
@@ -367,7 +402,7 @@ def extract_features(images,
       dense_prediction_layer = dense_prediction_cell.DensePredictionCell(
           config=model_options.dense_prediction_cell_config,
           hparams={
-            'conv_rate_multiplier': 16 // model_options.output_stride,
+              'conv_rate_multiplier': 16 // model_options.output_stride,
           })
       concat_logits = dense_prediction_layer.build_cell(
           features,
@@ -380,21 +415,24 @@ def extract_features(images,
           fine_tune_batch_norm=fine_tune_batch_norm)
       return concat_logits, end_points
     else:
-      # The following codes employ the DeepLabv3 ASPP module. Note that We
+      # The following codes employ the DeepLabv3 ASPP module. Note that we
       # could express the ASPP module as one particular dense prediction
-      # cell architecture. We do not do so but leave the following codes in
-      # order for backward compatibility.
+      # cell architecture. We do not do so but leave the following codes
+      # for backward compatibility.
       batch_norm_params = {
-        'is_training': is_training and fine_tune_batch_norm,
-        'decay': 0.9997,
-        'epsilon': 1e-5,
-        'scale': True,
+          'is_training': is_training and fine_tune_batch_norm,
+          'decay': 0.9997,
+          'epsilon': 1e-5,
+          'scale': True,
       }
+
+      activation_fn = (
+          tf.nn.relu6 if model_options.use_bounded_activation else tf.nn.relu)
 
       with slim.arg_scope(
           [slim.conv2d, slim.separable_conv2d],
           weights_regularizer=slim.l2_regularizer(weight_decay),
-          activation_fn=tf.nn.relu,
+          activation_fn=activation_fn,
           normalizer_fn=slim.batch_norm,
           padding='SAME',
           stride=1,
@@ -416,7 +454,8 @@ def extract_features(images,
                   image_pooling_crop_size[1],
                   1. / model_options.output_stride)
               image_feature = slim.avg_pool2d(
-                  features, [pool_height, pool_width], [1, 1], padding='VALID')
+                  features, [pool_height, pool_width],
+                  model_options.image_pooling_stride, padding='VALID')
               resize_height = scale_dimension(
                   model_options.crop_size[0],
                   1. / model_options.output_stride)
@@ -483,7 +522,8 @@ def _get_logits(images,
                 weight_decay=0.0001,
                 reuse=None,
                 is_training=False,
-                fine_tune_batch_norm=False):
+                fine_tune_batch_norm=False,
+                nas_training_hyper_parameters=None):
   """Gets the logits by atrous/image spatial pyramid pooling.
 
   Args:
@@ -493,6 +533,12 @@ def _get_logits(images,
     reuse: Reuse the model variables or not.
     is_training: Is training or not.
     fine_tune_batch_norm: Fine-tune the batch norm parameters or not.
+    nas_training_hyper_parameters: A dictionary storing hyper-parameters for
+      training nas models. Its keys are:
+      - `drop_path_keep_prob`: Probability to keep each path in the cell when
+        training.
+      - `total_training_steps`: Total training steps to help drop path
+        probability calculation.
 
   Returns:
     outputs_to_logits: A map from output_type to logits.
@@ -503,29 +549,22 @@ def _get_logits(images,
       weight_decay=weight_decay,
       reuse=reuse,
       is_training=is_training,
-      fine_tune_batch_norm=fine_tune_batch_norm)
+      fine_tune_batch_norm=fine_tune_batch_norm,
+      nas_training_hyper_parameters=nas_training_hyper_parameters)
 
   if model_options.decoder_output_stride is not None:
-    if model_options.crop_size is None:
-      height = tf.shape(images)[1]
-      width = tf.shape(images)[2]
-    else:
-      height, width = model_options.crop_size
-    decoder_height = scale_dimension(height,
-                                     1.0 / model_options.decoder_output_stride)
-    decoder_width = scale_dimension(width,
-                                    1.0 / model_options.decoder_output_stride)
     features = refine_by_decoder(
         features,
         end_points,
-        decoder_height=decoder_height,
-        decoder_width=decoder_width,
+        crop_size=model_options.crop_size,
+        decoder_output_stride=model_options.decoder_output_stride,
         decoder_use_separable_conv=model_options.decoder_use_separable_conv,
         model_variant=model_options.model_variant,
         weight_decay=weight_decay,
         reuse=reuse,
         is_training=is_training,
-        fine_tune_batch_norm=fine_tune_batch_norm)
+        fine_tune_batch_norm=fine_tune_batch_norm,
+        use_bounded_activation=model_options.use_bounded_activation)
 
   outputs_to_logits = {}
   for output in sorted(model_options.outputs_to_num_classes):
@@ -544,14 +583,15 @@ def _get_logits(images,
 
 def refine_by_decoder(features,
                       end_points,
-                      decoder_height,
-                      decoder_width,
+                      crop_size=None,
+                      decoder_output_stride=None,
                       decoder_use_separable_conv=False,
                       model_variant=None,
                       weight_decay=0.0001,
                       reuse=None,
                       is_training=False,
-                      fine_tune_batch_norm=False):
+                      fine_tune_batch_norm=False,
+                      use_bounded_activation=False):
   """Adds the decoder to obtain sharper segmentation results.
 
   Args:
@@ -559,19 +599,28 @@ def refine_by_decoder(features,
       features_channels].
     end_points: A dictionary from components of the network to the corresponding
       activation.
-    decoder_height: The height of decoder feature maps.
-    decoder_width: The width of decoder feature maps.
+    crop_size: A tuple [crop_height, crop_width] specifying whole patch crop
+      size.
+    decoder_output_stride: A list of integers specifying the output stride of
+      low-level features used in the decoder module.
     decoder_use_separable_conv: Employ separable convolution for decoder or not.
     model_variant: Model variant for feature extraction.
     weight_decay: The weight decay for model variables.
     reuse: Reuse the model variables or not.
     is_training: Is training or not.
     fine_tune_batch_norm: Fine-tune the batch norm parameters or not.
+    use_bounded_activation: Whether or not to use bounded activations. Bounded
+      activations better lend themselves to quantized inference.
 
   Returns:
     Decoder output with size [batch, decoder_height, decoder_width,
       decoder_channels].
+
+  Raises:
+    ValueError: If crop_size is None.
   """
+  if crop_size is None:
+    raise ValueError('crop_size must be provided when using decoder.')
   batch_norm_params = {
       'is_training': is_training and fine_tune_batch_norm,
       'decay': 0.9997,
@@ -582,25 +631,28 @@ def refine_by_decoder(features,
   with slim.arg_scope(
       [slim.conv2d, slim.separable_conv2d],
       weights_regularizer=slim.l2_regularizer(weight_decay),
-      activation_fn=tf.nn.relu,
+      activation_fn=tf.nn.relu6 if use_bounded_activation else tf.nn.relu,
       normalizer_fn=slim.batch_norm,
       padding='SAME',
       stride=1,
       reuse=reuse):
     with slim.arg_scope([slim.batch_norm], **batch_norm_params):
       with tf.variable_scope(DECODER_SCOPE, DECODER_SCOPE, [features]):
-        feature_list = feature_extractor.networks_to_feature_maps[
-            model_variant][feature_extractor.DECODER_END_POINTS]
-        if feature_list is None:
-          tf.logging.info('Not found any decoder end points.')
-          return features
-        else:
-          decoder_features = features
+        decoder_features = features
+        decoder_stage = 0
+        scope_suffix = ''
+        for output_stride in decoder_output_stride:
+          feature_list = feature_extractor.networks_to_feature_maps[
+              model_variant][
+                  feature_extractor.DECODER_END_POINTS][output_stride]
+          # If only one decoder stage, we do not change the scope name in
+          # order for backward compactibility.
+          if decoder_stage:
+            scope_suffix = '_{}'.format(decoder_stage)
           for i, name in enumerate(feature_list):
             decoder_features_list = [decoder_features]
-
-            # MobileNet variants use different naming convention.
-            if 'mobilenet' in model_variant:
+            # MobileNet and NAS variants use different naming convention.
+            if 'mobilenet' in model_variant or model_variant.startswith('nas'):
               feature_name = name
             else:
               feature_name = '{}/{}'.format(
@@ -610,11 +662,14 @@ def refine_by_decoder(features,
                     end_points[feature_name],
                     48,
                     1,
-                    scope='feature_projection' + str(i)))
+                    scope='feature_projection' + str(i) + scope_suffix))
+            # Determine the output size.
+            decoder_height = scale_dimension(crop_size[0], 1.0 / output_stride)
+            decoder_width = scale_dimension(crop_size[1], 1.0 / output_stride)
             # Resize to decoder_height/decoder_width.
             for j, feature in enumerate(decoder_features_list):
-              decoder_features_list[j] = tf.image.resize_bilinear(
-                  feature, [decoder_height, decoder_width], align_corners=True)
+              decoder_features_list[j] = _resize_bilinear(
+                  feature, [decoder_height, decoder_width], feature.dtype)
               h = (None if isinstance(decoder_height, tf.Tensor)
                    else decoder_height)
               w = (None if isinstance(decoder_width, tf.Tensor)
@@ -627,13 +682,13 @@ def refine_by_decoder(features,
                   filters=decoder_depth,
                   rate=1,
                   weight_decay=weight_decay,
-                  scope='decoder_conv0')
+                  scope='decoder_conv0' + scope_suffix)
               decoder_features = split_separable_conv2d(
                   decoder_features,
                   filters=decoder_depth,
                   rate=1,
                   weight_decay=weight_decay,
-                  scope='decoder_conv1')
+                  scope='decoder_conv1' + scope_suffix)
             else:
               num_convs = 2
               decoder_features = slim.repeat(
@@ -642,8 +697,9 @@ def refine_by_decoder(features,
                   slim.conv2d,
                   decoder_depth,
                   3,
-                  scope='decoder_conv' + str(i))
-          return decoder_features
+                  scope='decoder_conv' + str(i) + scope_suffix)
+          decoder_stage += 1
+        return decoder_features
 
 
 def get_branch_logits(features,
