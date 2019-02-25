@@ -204,7 +204,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
   """Resnet50 synthetic benchmark tests."""
 
-  def __init__(self, output_dir=None):
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
     def_flags['use_synthetic_data'] = True
@@ -218,10 +218,10 @@ class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
 class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
   """Resnet50 real data benchmark tests."""
 
-  def __init__(self, output_dir=None):
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
-    def_flags['data_dir'] = self.data_dir
+    def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
