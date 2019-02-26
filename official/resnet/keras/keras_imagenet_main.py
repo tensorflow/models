@@ -102,9 +102,11 @@ def run(flags_obj):
   # TODO(haoyuzhang): Set config properly in TF2.0 when the config API is ready.
 
   dtype = flags_core.get_tf_dtype(flags_obj)
-  if dtype == 'fp16':
-    raise ValueError('dtype fp16 is not supported in Keras. Use the default '
-                     'value(fp32).')
+  if dtype == tf.float16:
+    lsm = tf.keras.mixed_precision.experimental.FixedLossScaleManager(128)
+    # lsm = tf.keras.mixed_precision.experimental.ExponentialUpdateLossScaleManager(128)
+    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars', lsm)
+    tf.keras.mixed_precision.experimental.set_policy(policy)
 
   data_format = flags_obj.data_format
   if data_format is None:
@@ -120,13 +122,14 @@ def run(flags_obj):
         width=imagenet_main.DEFAULT_IMAGE_SIZE,
         num_channels=imagenet_main.NUM_CHANNELS,
         num_classes=imagenet_main.NUM_CLASSES,
-        dtype=flags_core.get_tf_dtype(flags_obj))
+        dtype=dtype)
   else:
     distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_main.input_fn
 
   train_input_dataset = input_fn(
       is_training=True,
+      dtype=dtype,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
@@ -135,6 +138,7 @@ def run(flags_obj):
 
   eval_input_dataset = input_fn(
       is_training=False,
+      dtype=dtype,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
@@ -148,7 +152,8 @@ def run(flags_obj):
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
-    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES)
+    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
+                                  dtype=dtype)
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,

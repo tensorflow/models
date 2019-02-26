@@ -174,7 +174,7 @@ def conv_block(input_tensor,
   return x
 
 
-def resnet50(num_classes):
+def resnet50(num_classes, dtype):
   # TODO(tfboyd): add training argument, just lik resnet56.
   """Instantiates the ResNet50 architecture.
 
@@ -185,7 +185,7 @@ def resnet50(num_classes):
       A Keras model instance.
   """
   input_shape = (224, 224, 3)
-  img_input = layers.Input(shape=input_shape)
+  img_input = layers.Input(shape=input_shape, dtype=dtype)
 
   if backend.image_data_format() == 'channels_first':
     x = layers.Lambda(lambda x: backend.permute_dimensions(x, (0, 3, 1, 2)),
@@ -231,6 +231,7 @@ def resnet50(num_classes):
   x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
 
   x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
+  x = layers.Lambda(lambda x: backend.cast(x, 'float32'))(x)
   x = layers.Dense(
       num_classes, activation='softmax',
       kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
