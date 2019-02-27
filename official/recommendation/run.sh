@@ -58,7 +58,7 @@ do
   # To reduce variation set the seed flag:
   #   --seed ${i}
 
-  python -u "${SCRIPT_DIR}/ncf_main.py" \
+  python -u "${SCRIPT_DIR}/ncf_estimator_main.py" \
       --model_dir ${MODEL_DIR} \
       --data_dir ${DATA_DIR} \
       --dataset ${DATASET} --hooks "" \

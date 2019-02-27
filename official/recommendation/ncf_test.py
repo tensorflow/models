@@ -71,7 +71,7 @@ class NcfTest(tf.test.TestCase):
                                   logits], axis=1)
       duplicate_mask = tf.convert_to_tensor(duplicate_mask, tf.float32)
 
-      metric_ops = neumf_model.compute_eval_loss_and_metrics(
+      metric_ops = neumf_model._get_estimator_spec_with_metrics(
           logits=logits, softmax_logits=softmax_logits,
           duplicate_mask=duplicate_mask, num_training_neg=NUM_TRAIN_NEG,
           match_mlperf=match_mlperf).eval_metric_ops
