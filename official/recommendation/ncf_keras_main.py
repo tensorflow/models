@@ -55,7 +55,6 @@ def _get_metric_fn(params):
   def metric_fn(y_true, y_pred):
     softmax_logits = y_pred
     logits = tf.slice(softmax_logits, [0, 1], [batch_size, 1])
-
     dup_mask = tf.zeros([batch_size, 1])
 
     return _get_hit_rate_metric(
