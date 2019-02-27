@@ -32,7 +32,7 @@ def weighted_sigmoid_cross_entropy_with_logits(labels,
   different types of errors.
   For brevity, let `x = logits`, `z = labels`, `c = positive_weights`,
   `d = negative_weights`  The
-  weighed logistic loss is
+  weighted logistic loss is
 
   ```
   c * z * -log(sigmoid(x)) + d * (1 - z) * -log(1 - sigmoid(x))
@@ -171,7 +171,7 @@ def weighted_surrogate_loss(labels,
     name: A name for the operation (optional).
 
   Returns:
-    The weigthed loss.
+    The weighted loss.
 
   Raises:
     ValueError: If value of `surrogate_type` is not supported.
