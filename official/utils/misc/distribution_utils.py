@@ -94,6 +94,10 @@ def get_distribution_strategy(distribution_strategy="default",
     return tf.contrib.distribute.ParameterServerStrategy(
         num_gpus_per_worker=num_gpus)
 
+  if distribution_strategy == "collective":
+    return tf.contrib.distribute.CollectiveAllReduceStrategy(
+        num_gpus_per_worker=num_gpus)
+
   raise ValueError(
       "Unrecognized Distribution Strategy: %r" % distribution_strategy)
 
