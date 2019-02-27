@@ -316,7 +316,7 @@ def define_ncf_flags():
       name="turn_off_distribution_strategy",
       default=False,
       help=flags_core.help_wrap(
-        "If set, do not use any distribution strategy."))
+          "If set, do not use any distribution strategy."))
 
   @flags.validator("eval_batch_size", "eval_batch_size must be at least {}"
                    .format(rconst.NUM_EVAL_NEGATIVES + 1))

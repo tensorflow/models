@@ -79,12 +79,12 @@ def _get_hit_rate_metric(
 
   cross_entropy, metric_fn, in_top_k, ndcg, metric_weights =(
       neumf_model.compute_eval_loss_and_metrics_helper(
-        logits,
-        softmax_logits,
-        dup_mask,
-        num_neg,
-        match_mlperf,
-        use_tpu_spec=use_xla_for_gpu))
+          logits,
+          softmax_logits,
+          dup_mask,
+          num_neg,
+          match_mlperf,
+          use_tpu_spec=use_xla_for_gpu))
 
   in_top_k = tf.cond(
       tf.keras.backend.learning_phase(),
