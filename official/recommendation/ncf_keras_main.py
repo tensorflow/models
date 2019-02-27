@@ -181,6 +181,7 @@ def run_ncf(_):
 
   train_input_dataset, eval_input_dataset = _get_train_and_eval_data(
       producer, params)
+
   keras_model.fit(
       train_input_dataset,
       epochs=FLAGS.train_epochs,
