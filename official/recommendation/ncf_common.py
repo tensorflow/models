@@ -19,34 +19,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import contextlib
-import heapq
 import json
 import logging
-import math
-import multiprocessing
 import os
-import signal
-import typing
 
 # pylint: disable=g-bad-import-order
 import numpy as np
-from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from tensorflow.contrib.compiler import xla
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks_helper
-from official.utils.logs import logger
-from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
-from official.utils.misc import model_helpers
 
 
 FLAGS = flags.FLAGS
