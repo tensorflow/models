@@ -77,7 +77,7 @@ def _get_hit_rate_metric(
     match_mlperf,
     use_xla_for_gpu):
 
-  cross_entropy, metric_fn, in_top_k, ndcg, metric_weights =(
+  cross_entropy, metric_fn, in_top_k, ndcg, metric_weights = (
       neumf_model.compute_eval_loss_and_metrics_helper(
           logits,
           softmax_logits,
@@ -105,7 +105,7 @@ def _get_train_and_eval_data(producer, params):
 
   eval_input_fn = producer.make_input_fn(is_training=False)
   eval_input_dataset = eval_input_fn(params).map(
-      lambda features : preprocess_eval_input(features))
+      lambda features: preprocess_eval_input(features))
 
   return train_input_dataset, eval_input_dataset
 
@@ -113,9 +113,9 @@ def _get_train_and_eval_data(producer, params):
 class IncrementEpochCallback(tf.keras.callbacks.Callback):
   """A callback to increase the requested epoch for the data producer.
 
-  The reason why we need this is because we can only buffer a limited amount of data.
-  So we keep a moving window to represent the buffer. This is to move the one of the
-  window's boundaries for each epoch.
+  The reason why we need this is because we can only buffer a limited amount of
+  data. So we keep a moving window to represent the buffer. This is to move the
+  one of the window's boundaries for each epoch.
   """
 
   def __init__(self, producer):
@@ -129,9 +129,16 @@ def _get_keras_model(params):
   batch_size = params['batch_size']
 
   user_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=movielens.USER_COLUMN, dtype=tf.int32)
+      shape=(),
+      batch_size=batch_size,
+      name=movielens.USER_COLUMN,
+      dtype=tf.int32)
+
   item_input = tf.keras.layers.Input(
-      shape=(), batch_size=batch_size, name=movielens.ITEM_COLUMN, dtype=tf.int32)
+      shape=(),
+      batch_size=batch_size,
+      name=movielens.ITEM_COLUMN,
+      dtype=tf.int32)
 
   base_model = neumf_model.construct_model(user_input, item_input, params)
   base_model_output = base_model.output
@@ -170,8 +177,10 @@ def run_ncf(_):
       metrics=[_get_metric_fn(params)],
       optimizer=optimizer)
 
-  train_input_dataset, eval_input_dataset = _get_train_and_eval_data(producer, params)
-  keras_model.fit(train_input_dataset,
+  train_input_dataset, eval_input_dataset = _get_train_and_eval_data(
+      producer, params)
+  keras_model.fit(
+      train_input_dataset,
       epochs=FLAGS.train_epochs,
       callbacks=[IncrementEpochCallback(producer)],
       verbose=2)
@@ -195,7 +204,7 @@ def main(_):
       raise ValueError("NCF in Keras does not support TPU for now")
     if FLAGS.num_gpus > 1:
       raise ValueError("NCF in Keras does not support distribution strategies. "
-          "Please set num_gpus to 1")
+                       "Please set num_gpus to 1")
     run_ncf(FLAGS)
 
 
