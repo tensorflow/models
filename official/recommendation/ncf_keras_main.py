@@ -71,13 +71,13 @@ def _get_metric_fn(params):
 
 
 def _get_hit_rate_metric(
-  """Compute the hit rate metrix"""
     logits,
     softmax_logits,
     dup_mask,
     num_neg,
     match_mlperf,
     use_xla_for_gpu):
+  """Compute the hit rate metrix"""
 
   cross_entropy, metric_fn, in_top_k, ndcg, metric_weights = (
       neumf_model.compute_eval_loss_and_metrics_helper(

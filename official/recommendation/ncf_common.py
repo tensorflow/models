@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""NCF framework to train and evaluate the NeuMF model.
-
-The NeuMF model assembles both MF and MLP models under the NCF framework. Check
-`neumf_model.py` for more details about the models.
+"""Common functionalities used by both Keras and Estimator implementations.
 """
 
 from __future__ import absolute_import
@@ -44,7 +41,6 @@ from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
-from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger

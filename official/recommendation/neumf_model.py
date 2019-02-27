@@ -254,7 +254,7 @@ def _get_estimator_spec_with_metrics(logits,              # type: tf.Tensor
                                      num_training_neg,    # type: int
                                      match_mlperf=False,  # type: bool
                                      use_tpu_spec=False   # type: bool
-                                     ):
+                                    ):
   """Returns a EstimatorSpec that includes the metrics."""
   cross_entropy, \
   metric_fn, \
