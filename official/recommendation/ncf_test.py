@@ -28,7 +28,8 @@ from absl.testing import flagsaver
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import neumf_model
-from official.recommendation import ncf_main
+from official.recommendation import ncf_common
+from official.recommendation import ncf_estimator_main
 
 
 NUM_TRAIN_NEG = 4
@@ -39,7 +40,7 @@ class NcfTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(NcfTest, cls).setUpClass()
-    ncf_main.define_ncf_flags()
+    ncf_common.define_ncf_flags()
 
   def setUp(self):
     self.top_k_old = rconst.TOP_K
@@ -192,12 +193,12 @@ class NcfTest(tf.test.TestCase):
   @flagsaver.flagsaver(**_BASE_END_TO_END_FLAGS)
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end(self):
-    ncf_main.main(None)
+    ncf_estimator_main.main(None)
 
   @flagsaver.flagsaver(ml_perf=True, **_BASE_END_TO_END_FLAGS)
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_mlperf(self):
-    ncf_main.main(None)
+    ncf_estimator_main.main(None)
 
 
 if __name__ == "__main__":
