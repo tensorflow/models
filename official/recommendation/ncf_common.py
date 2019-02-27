@@ -51,7 +51,7 @@ def get_inputs(params):
   if FLAGS.use_synthetic_data:
     producer = data_pipeline.DummyConstructor()
     num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
-                FLAGS.dataset]
+        FLAGS.dataset]
     num_train_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
     num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
   else:
