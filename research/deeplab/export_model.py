@@ -132,8 +132,7 @@ def main(unused_argv):
 
     predictions = tf.cast(predictions[common.OUTPUT_TYPE], tf.float32)
     # Crop the valid regions from the predictions.
-    raw_predictions = tf.identity(
-        predictions[common.OUTPUT_TYPE], _RAW_OUTPUT_NAME)
+    raw_predictions = tf.identity(predictions, _RAW_OUTPUT_NAME)
     semantic_predictions = tf.slice(
         raw_predictions,
         [0, 0, 0],

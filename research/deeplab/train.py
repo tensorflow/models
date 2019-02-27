@@ -357,7 +357,7 @@ def _train_deeplab_model(iterator, num_of_classes, ignore_label):
 
   tower_grads = []
   tower_summaries = None
-  for i in xrange(FLAGS.num_clones):
+  for i in range(FLAGS.num_clones):
     with tf.device('/gpu:%d' % i):
       with tf.name_scope('clone_%d' % i) as scope:
         loss = _tower_loss(
