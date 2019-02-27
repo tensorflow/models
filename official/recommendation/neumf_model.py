@@ -88,7 +88,7 @@ def neumf_model_fn(features, labels, mode, params):
 
   if mode == tf.estimator.ModeKeys.EVAL:
     duplicate_mask = tf.cast(features[rconst.DUPLICATE_MASK], tf.float32)
-    return compute_eval_loss_and_metrics(
+    return _get_estimator_spec_with_metrics(
         logits,
         softmax_logits,
         duplicate_mask,
@@ -248,20 +248,25 @@ def construct_model(user_input, item_input, params, need_strip=False):
   return model
 
 
-def compute_eval_loss_and_metrics(logits,              # type: tf.Tensor
-                                  softmax_logits,      # type: tf.Tensor
-                                  duplicate_mask,      # type: tf.Tensor
-                                  num_training_neg,    # type: int
-                                  match_mlperf=False,  # type: bool
-                                  use_tpu_spec=False   # type: bool
-                                 ):
-
+def _get_estimator_spec_with_metrics(logits,              # type: tf.Tensor
+                                     softmax_logits,      # type: tf.Tensor
+                                     duplicate_mask,      # type: tf.Tensor
+                                     num_training_neg,    # type: int
+                                     match_mlperf=False,  # type: bool
+                                     use_tpu_spec=False   # type: bool
+                                     ):
+  """Returns a EstimatorSpec that includes the metrics."""
   cross_entropy, \
   metric_fn, \
   in_top_k, \
   ndcg, \
   metric_weights = compute_eval_loss_and_metrics_helper(
-      logits, softmax_logits, duplicate_mask, num_training_neg, match_mlperf, use_tpu_spec)
+      logits,
+      softmax_logits,
+      duplicate_mask,
+      num_training_neg,
+      match_mlperf,
+      use_tpu_spec)
 
   if use_tpu_spec:
     return tf.contrib.tpu.TPUEstimatorSpec(
@@ -283,8 +288,6 @@ def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
                                          match_mlperf=False,  # type: bool
                                          use_tpu_spec=False   # type: bool
                                         ):
-  # type: (...) -> tf.estimator.EstimatorSpec
-  # type: (...) -> cross_entropy, metric_fn, in_top_k, ndcg, metric_weights
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)

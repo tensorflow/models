@@ -57,6 +57,7 @@ FLAGS = flags.FLAGS
 
 
 def get_inputs(params):
+  """Returns some parameters used by the model."""
   if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
@@ -133,6 +134,7 @@ def get_optimizer(params):
 
 
 def get_distribution_strategy(params):
+  """Returns the distribution strategy to use."""
   if params["turn_off_distribution_strategy"]:
     return None
 
@@ -342,4 +344,3 @@ def convert_to_softmax_logits(logits):
   '''
   softmax_logits = tf.concat([logits * 0, logits], axis=1)
   return softmax_logits
-

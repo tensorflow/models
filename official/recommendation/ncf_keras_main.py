@@ -50,6 +50,7 @@ def _keras_loss(y_true, y_pred):
 
 
 def _get_metric_fn(params):
+  """Get the metrix fn used by model compile."""
   batch_size = params["batch_size"]
 
   def metric_fn(y_true, y_pred):
@@ -70,6 +71,7 @@ def _get_metric_fn(params):
 
 
 def _get_hit_rate_metric(
+  """Compute the hit rate metrix"""
     logits,
     softmax_logits,
     dup_mask,
@@ -95,6 +97,7 @@ def _get_hit_rate_metric(
 
 
 def _get_train_and_eval_data(producer, params):
+  """Returns the datasets for training and evalutating."""
 
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params)
@@ -126,6 +129,7 @@ class IncrementEpochCallback(tf.keras.callbacks.Callback):
 
 
 def _get_keras_model(params):
+  """Constructs and returns the model."""
   batch_size = params['batch_size']
 
   user_input = tf.keras.layers.Input(
@@ -212,4 +216,3 @@ if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
   ncf_common.define_ncf_flags()
   absl_app.run(main)
-
