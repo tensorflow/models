@@ -196,6 +196,7 @@ def run_ncf(_):
       verbose=2)
 
   tf.logging.info("Keras evaluation is done.")
+
   return eval_results
 
 
