@@ -32,13 +32,13 @@ sudo pip install matplotlib
 
 ## Add Libraries to PYTHONPATH
 
-When running locally, the tensorflow/models/research/ and slim directories
-should be appended to PYTHONPATH. This can be done by running the following from
+When running locally, the tensorflow/models/research/ directory should be
+appended to PYTHONPATH. This can be done by running the following from
 tensorflow/models/research/:
 
 ```bash
 # From tensorflow/models/research/
-export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
+export PYTHONPATH=$PYTHONPATH:`pwd`
 ```
 
 Note: This command needs to run from every new terminal you start. If you wish

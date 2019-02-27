@@ -17,18 +17,12 @@
 See model.py for more details and usage.
 """
 
-import math
-import six
 import tensorflow as tf
 from deeplab import common
 from deeplab import model
-from deeplab.datasets import segmentation_dataset
-from deeplab.utils import input_generator
-
-slim = tf.contrib.slim
+from deeplab.datasets import data_generator
 
 flags = tf.app.flags
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('master', '', 'BNS name of the tensorflow server')
@@ -84,31 +78,40 @@ flags.DEFINE_integer('max_number_of_evaluations', 0,
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
-  # Get dataset-dependent information.
-  dataset = segmentation_dataset.get_dataset(
-      FLAGS.dataset, FLAGS.eval_split, dataset_dir=FLAGS.dataset_dir)
+
+  dataset = data_generator.Dataset(
+      dataset_name=FLAGS.dataset,
+      split_name=FLAGS.eval_split,
+      dataset_dir=FLAGS.dataset_dir,
+      batch_size=FLAGS.eval_batch_size,
+      crop_size=FLAGS.eval_crop_size,
+      min_resize_value=FLAGS.min_resize_value,
+      max_resize_value=FLAGS.max_resize_value,
+      resize_factor=FLAGS.resize_factor,
+      model_variant=FLAGS.model_variant,
+      num_readers=2,
+      is_training=False,
+      should_shuffle=False,
+      should_repeat=False)
 
   tf.gfile.MakeDirs(FLAGS.eval_logdir)
   tf.logging.info('Evaluating on %s set', FLAGS.eval_split)
 
   with tf.Graph().as_default():
-    samples = input_generator.get(
-        dataset,
-        FLAGS.eval_crop_size,
-        FLAGS.eval_batch_size,
-        min_resize_value=FLAGS.min_resize_value,
-        max_resize_value=FLAGS.max_resize_value,
-        resize_factor=FLAGS.resize_factor,
-        dataset_split=FLAGS.eval_split,
-        is_training=False,
-        model_variant=FLAGS.model_variant)
+    samples = dataset.get_one_shot_iterator().get_next()
 
     model_options = common.ModelOptions(
-        outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_classes},
+        outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_of_classes},
         crop_size=FLAGS.eval_crop_size,
         atrous_rates=FLAGS.atrous_rates,
         output_stride=FLAGS.output_stride)
 
+    # Set shape in order for tf.contrib.tfprof.model_analyzer to work properly.
+    samples[common.IMAGE].set_shape(
+        [FLAGS.eval_batch_size,
+         FLAGS.eval_crop_size[0],
+         FLAGS.eval_crop_size[1],
+         3])
     if tuple(FLAGS.eval_scales) == (1.0,):
       tf.logging.info('Performing single-scale test.')
       predictions = model.predict_labels(samples[common.IMAGE], model_options,
@@ -138,34 +141,32 @@ def main(unused_argv):
       predictions_tag += '_flipped'
 
     # Define the evaluation metric.
-    metric_map = {}
-    metric_map[predictions_tag] = tf.metrics.mean_iou(
-        predictions, labels, dataset.num_classes, weights=weights)
+    miou, update_op = tf.metrics.mean_iou(
+        predictions, labels, dataset.num_of_classes, weights=weights)
+    tf.summary.scalar(predictions_tag, miou)
 
-    metrics_to_values, metrics_to_updates = (
-        tf.contrib.metrics.aggregate_metric_map(metric_map))
-
-    for metric_name, metric_value in six.iteritems(metrics_to_values):
-      slim.summaries.add_scalar_summary(
-          metric_value, metric_name, print_summary=True)
-
-    num_batches = int(
-        math.ceil(dataset.num_samples / float(FLAGS.eval_batch_size)))
-
-    tf.logging.info('Eval num images %d', dataset.num_samples)
-    tf.logging.info('Eval batch size %d and num batch %d',
-                    FLAGS.eval_batch_size, num_batches)
+    summary_op = tf.summary.merge_all()
+    summary_hook = tf.contrib.training.SummaryAtEndHook(
+        log_dir=FLAGS.eval_logdir, summary_op=summary_op)
+    hooks = [summary_hook]
 
     num_eval_iters = None
     if FLAGS.max_number_of_evaluations > 0:
       num_eval_iters = FLAGS.max_number_of_evaluations
-    slim.evaluation.evaluation_loop(
+
+    tf.contrib.tfprof.model_analyzer.print_model_analysis(
+        tf.get_default_graph(),
+        tfprof_options=tf.contrib.tfprof.model_analyzer.
+        TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+    tf.contrib.tfprof.model_analyzer.print_model_analysis(
+        tf.get_default_graph(),
+        tfprof_options=tf.contrib.tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
+    tf.contrib.training.evaluate_repeatedly(
         master=FLAGS.master,
         checkpoint_dir=FLAGS.checkpoint_dir,
-        logdir=FLAGS.eval_logdir,
-        num_evals=num_batches,
-        eval_op=list(metrics_to_updates.values()),
+        eval_ops=[update_op],
         max_number_of_evaluations=num_eval_iters,
+        hooks=hooks,
         eval_interval_secs=FLAGS.eval_interval_secs)
 
 

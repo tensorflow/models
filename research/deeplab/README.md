@@ -124,40 +124,62 @@ tensorflow/models GitHub [issue
 tracker](https://github.com/tensorflow/models/issues), prefixing the issue name
 with "deeplab".
 
+## License
+
+All the codes in deeplab folder is covered by the [LICENSE](https://github.com/tensorflow/models/blob/master/LICENSE)
+under tensorflow/models. Please refer to the LICENSE for details.
+
 ## Change Logs
+
+### February 6, 2019
+
+* Update decoder module to exploit multiple low-level features with different
+output_strides.
+
+### December 3, 2018
+
+* Released the MobileNet-v2 checkpoint on ADE20K.
+
+
+### November 19, 2018
+
+* Supported NAS architecture for feature extraction. **Contributor**: Chenxi Liu.
+
+* Supported hard pixel mining during training.
+
 
 ### October 1, 2018
 
-Released MobileNet-v2 depth-multiplier = 0.5 COCO-pretrained checkpoints on
+* Released MobileNet-v2 depth-multiplier = 0.5 COCO-pretrained checkpoints on
 PASCAL VOC 2012, and Xception-65 COCO pretrained checkpoint (i.e., no PASCAL
 pretrained).
 
 
 ### September 5, 2018
 
-Released Cityscapes pretrained checkpoints with found best dense prediction cell.
+* Released Cityscapes pretrained checkpoints with found best dense prediction cell.
 
 
 ### May 26, 2018
 
-Updated ADE20K pretrained checkpoint.
+* Updated ADE20K pretrained checkpoint.
 
 
 ### May 18, 2018
-1.  Added builders for ResNet-v1 and Xception model variants.
-1.  Added ADE20K support, including colormap and pretrained Xception_65 checkpoint.
-1.  Fixed a bug on using non-default depth_multiplier for MobileNet-v2.
+* Added builders for ResNet-v1 and Xception model variants.
+* Added ADE20K support, including colormap and pretrained Xception_65 checkpoint.
+* Fixed a bug on using non-default depth_multiplier for MobileNet-v2.
 
 
 ### March 22, 2018
 
-Released checkpoints using MobileNet-V2 as network backbone and pretrained on
+* Released checkpoints using MobileNet-V2 as network backbone and pretrained on
 PASCAL VOC 2012 and Cityscapes.
 
 
 ### March 5, 2018
 
-First release of DeepLab in TensorFlow including deeper Xception network
+* First release of DeepLab in TensorFlow including deeper Xception network
 backbone. Included chekcpoints that have been pretrained on PASCAL VOC 2012
 and Cityscapes.
 
