@@ -74,17 +74,6 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
-    self._run_and_report_benchmark()
-
-  def benchmark_8_gpu_tweaked(self):
-    """Test Keras model with eager, dist_strat, 8 GPUs and thread tuning."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
-    FLAGS.dtype = 'fp32'
-    FLAGS.batch_size = 128 * 8  # 8 GPUs
-    FLAGS.enable_eager = True
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
