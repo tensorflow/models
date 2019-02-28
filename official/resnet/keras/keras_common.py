@@ -133,6 +133,9 @@ def get_config_proto():
   """Return config proto according to flag settings, or None to use default."""
   config = None
   if FLAGS.enable_xla:
+    # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
+    _monkey_patch_org_assert_broadcastable()
+
     config = tf.ConfigProto()
     config.graph_options.optimizer_options.global_jit_level = (
         tf.OptimizerOptions.ON_2)
@@ -295,3 +298,26 @@ class DummyContextManager(object):
 
   def __exit__(self, *args):
     pass
+
+
+def _monkey_patch_org_assert_broadcastable():
+  """Monkey-patch `assert_broadcast` op to avoid OOM when enabling XLA."""
+  def no_op_assert_broadcastable(weights, values):
+    del weights, values
+    tf.compat.v1.logging.info(
+        'Using monkey-patched version of assert_broadcastable op, which always '
+        'returns an no_op. It should be removed after XLA OOM issue is fixed.')
+    return tf.constant([], dtype=tf.float32)
+
+  from tensorflow.python.ops import weights_broadcast_ops  # pylint: disable=g-import-not-at-top
+  if not hasattr(weights_broadcast_ops, 'org_assert_broadcastable'):
+    weights_broadcast_ops.org_assert_broadcastable = (
+        weights_broadcast_ops.assert_broadcastable)
+  weights_broadcast_ops.assert_broadcastable = no_op_assert_broadcastable
+
+
+def _undo_monkey_patch_org_assert_broadcastable():
+  from tensorflow.python.ops import weights_broadcast_ops  # pylint: disable=g-import-not-at-top
+  if hasattr(weights_broadcast_ops, 'org_assert_broadcastable'):
+    weights_broadcast_ops.assert_broadcastable = (
+        weights_broadcast_ops.org_assert_broadcastable)
