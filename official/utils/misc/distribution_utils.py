@@ -25,7 +25,7 @@ import string
 import tensorflow as tf
 
 _COLLECTIVE_COMMUNICATION_OPTIONS = {
-    None: tf.distribute.experimental.CollectiveCommunication.AUTO
+    None: tf.distribute.experimental.CollectiveCommunication.AUTO,
     "ring": tf.distribute.experimental.CollectiveCommunication.RING,
     "nccl": tf.distribute.experimental.CollectiveCommunication.NCCL
 }
@@ -71,7 +71,7 @@ def get_distribution_strategy(distribution_strategy="default",
     return None
 
   if distribution_strategy == "multi_worker_mirrored" or num_workers > 1:
-    if all_reduce_alg is not in _COLLECTIVE_COMMUNICATION_OPTIONS:
+    if all_reduce_alg not in _COLLECTIVE_COMMUNICATION_OPTIONS:
       raise ValueError(
           "When used with `multi_worker_mirrored`, valid values for "
           "all_reduce_alg are [`ring`, `nccl`].  Supplied value: {}".format(
