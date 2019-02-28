@@ -74,6 +74,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
+    # Add some thread tunings to improve performance.
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
