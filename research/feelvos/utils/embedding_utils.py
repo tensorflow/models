@@ -482,20 +482,17 @@ def get_embeddings(images, model_options, embedding_dimension):
       is_training=False)
 
   if model_options.decoder_output_stride is not None:
+    decoder_output_stride = min(model_options.decoder_output_stride)
     if model_options.crop_size is None:
       height = tf.shape(images)[1]
       width = tf.shape(images)[2]
     else:
       height, width = model_options.crop_size
-    decoder_height = model.scale_dimension(
-        height, 1.0 / model_options.decoder_output_stride)
-    decoder_width = model.scale_dimension(
-        width, 1.0 / model_options.decoder_output_stride)
     features = model.refine_by_decoder(
         features,
         end_points,
-        decoder_height=decoder_height,
-        decoder_width=decoder_width,
+        crop_size=[height, width],
+        decoder_output_stride=[decoder_output_stride],
         decoder_use_separable_conv=model_options.decoder_use_separable_conv,
         model_variant=model_options.model_variant,
         is_training=False)
@@ -596,21 +593,20 @@ def get_logits_with_matching(images,
       is_training=is_training,
       fine_tune_batch_norm=fine_tune_batch_norm)
 
-  if model_options.decoder_output_stride is not None:
+  if model_options.decoder_output_stride:
+    decoder_output_stride = min(model_options.decoder_output_stride)
     if model_options.crop_size is None:
       height = tf.shape(images)[1]
       width = tf.shape(images)[2]
     else:
       height, width = model_options.crop_size
-    decoder_height = model.scale_dimension(
-        height, 1.0 / model_options.decoder_output_stride)
-    decoder_width = model.scale_dimension(
-        width, 1.0 / model_options.decoder_output_stride)
+    decoder_height = model.scale_dimension(height, 1.0 / decoder_output_stride)
+    decoder_width = model.scale_dimension(width, 1.0 / decoder_output_stride)
     features = model.refine_by_decoder(
         features,
         end_points,
-        decoder_height=decoder_height,
-        decoder_width=decoder_width,
+        crop_size=[height, width],
+        decoder_output_stride=[decoder_output_stride],
         decoder_use_separable_conv=model_options.decoder_use_separable_conv,
         model_variant=model_options.model_variant,
         weight_decay=weight_decay,
