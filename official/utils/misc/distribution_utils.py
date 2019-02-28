@@ -63,8 +63,7 @@ def get_distribution_strategy(distribution_strategy="default",
     return None
 
   if distribution_strategy == "multi_worker_mirrored" or num_workers > 1:
-    return tf.contrib.distribute.CollectiveAllReduceStrategy(
-        num_gpus_per_worker=num_gpus)
+    return tf.distribute.experimental.MultiWorkerMirroredStrategy()
 
   if (distribution_strategy == "one_device" or
       (distribution_strategy == "default" and num_gpus <= 1)):
