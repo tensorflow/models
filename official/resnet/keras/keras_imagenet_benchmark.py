@@ -120,6 +120,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         log_steps=FLAGS.log_steps)
 
   def benchmark_1_gpu_no_dist_strat(self):
+    """Test Keras model with 1 GPU, no distribution strategy."""
     self._setup()
 
     FLAGS.num_gpus = 1
@@ -130,6 +131,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_1_gpu_no_dist_strat(self):
+    """Test Keras model in legacy graph mode with 1 GPU, no dist strat."""
     self._setup()
 
     FLAGS.num_gpus = 1
@@ -140,6 +142,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu(self):
+    """Test Keras model with 1 GPU."""
     self._setup()
 
     FLAGS.num_gpus = 1
@@ -149,7 +152,20 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_xla_1_gpu(self):
+    """Test Keras model with XLA and 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu')
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
   def benchmark_graph_1_gpu(self):
+    """Test Keras model in legacy graph mode with 1 GPU."""
     self._setup()
 
     FLAGS.num_gpus = 1
@@ -159,7 +175,20 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_graph_xla_1_gpu(self):
+    """Test Keras model in legacy graph mode with XLA and 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_1_gpu')
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu(self):
+    """Test Keras model with 8 GPUs."""
     self._setup()
 
     FLAGS.num_gpus = 8
@@ -170,6 +199,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_tweaked(self):
+    """Test Keras model with manual config tuning and 8 GPUs."""
     self._setup()
 
     FLAGS.num_gpus = 8
@@ -180,7 +210,21 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
+  def benchmark_xla_8_gpu(self):
+    """Test Keras model with XLA and 8 GPUs."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu')
+    # TODO(haoyuzhang): Set size to 128 per GPU when multi-GPU XLA OOM is fixed
+    FLAGS.batch_size = 64 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
   def benchmark_graph_8_gpu(self):
+    """Test Keras model in legacy graph mode with 8 GPUs."""
     self._setup()
 
     FLAGS.num_gpus = 8
@@ -188,6 +232,19 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_8_gpu(self):
+    """Test Keras model in legacy graph mode with XLA and 8 GPUs."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_8_gpu')
+    # TODO(haoyuzhang): Set size to 128 per GPU when multi-GPU XLA OOM is fixed
+    FLAGS.batch_size = 64 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):
