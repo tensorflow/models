@@ -55,6 +55,7 @@ def _get_metric_fn(params):
   batch_size = params["batch_size"]
 
   def metric_fn(y_true, y_pred):
+    """Returns the in_top_k metric."""
     softmax_logits = y_pred
     logits = tf.slice(softmax_logits, [0, 1], [batch_size, 1])
 
