@@ -40,7 +40,7 @@ python keras_imagenet_main.py --data_dir=/path/to/imagenet
 ```
 
 There are more flag options you can specify. See 
-[`keras_common_test.py`](keras_common_test.py) for full list of options.
+[`keras_common.py`](keras_common.py) for full list of options.
 
 ## Compute Devices
 Training is accomplished using the DistributionStrategies API. (https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/distribute/README.md)
