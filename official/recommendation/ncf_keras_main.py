@@ -33,6 +33,7 @@ import tensorflow as tf
 from official.datasets import movielens
 from official.recommendation import ncf_common
 from official.recommendation import neumf_model
+from official.recommendation import constants as rconst
 from official.utils.logs import logger
 from official.utils.logs import mlperf_helper
 from official.utils.misc import model_helpers
@@ -42,6 +43,7 @@ FLAGS = flags.FLAGS
 
 
 def _keras_loss(y_true, y_pred):
+  # Here we are using the exact same loss used by the estimator
   loss = tf.losses.sparse_softmax_cross_entropy(
       labels=tf.cast(y_true, tf.int32),
       logits=y_pred)
@@ -55,43 +57,29 @@ def _get_metric_fn(params):
   def metric_fn(y_true, y_pred):
     softmax_logits = y_pred
     logits = tf.slice(softmax_logits, [0, 1], [batch_size, 1])
+
+    # The dup mask should be obtained from input data, but we did not yet find
+    # a good way of getting it with keras, so we set it to zeros to neglect the
+    # repetition correction
     dup_mask = tf.zeros([batch_size, 1])
 
-    return _get_hit_rate_metric(
-        logits,
-        softmax_logits,
-        dup_mask,
-        params["num_neg"],
-        params["match_mlperf"],
-        params["use_xla_for_gpu"])
+    cross_entropy, metric_fn, in_top_k, ndcg, metric_weights = (
+        neumf_model.compute_eval_loss_and_metrics_helper(
+            logits,
+            softmax_logits,
+            dup_mask,
+            params["num_neg"],
+            params["match_mlperf"],
+            params["use_xla_for_gpu"]))
+
+    in_top_k = tf.cond(
+        tf.keras.backend.learning_phase(),
+        lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
+        lambda: in_top_k)
+
+    return in_top_k
 
   return metric_fn
-
-
-def _get_hit_rate_metric(
-    logits,
-    softmax_logits,
-    dup_mask,
-    num_neg,
-    match_mlperf,
-    use_xla_for_gpu):
-  """Compute the hit rate metrix"""
-
-  cross_entropy, metric_fn, in_top_k, ndcg, metric_weights = (
-      neumf_model.compute_eval_loss_and_metrics_helper(
-          logits,
-          softmax_logits,
-          dup_mask,
-          num_neg,
-          match_mlperf,
-          use_tpu_spec=use_xla_for_gpu))
-
-  in_top_k = tf.cond(
-      tf.keras.backend.learning_phase(),
-      lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
-      lambda: in_top_k)
-
-  return in_top_k
 
 
 def _get_train_and_eval_data(producer, params):
@@ -134,13 +122,13 @@ def _get_keras_model(params):
       shape=(),
       batch_size=batch_size,
       name=movielens.USER_COLUMN,
-      dtype=tf.int32)
+      dtype=rconst.USER_DTYPE)
 
   item_input = tf.keras.layers.Input(
       shape=(),
       batch_size=batch_size,
       name=movielens.ITEM_COLUMN,
-      dtype=tf.int32)
+      dtype=rconst.ITEM_DTYPE)
 
   base_model = neumf_model.construct_model(user_input, item_input, params)
   base_model_output = base_model.output

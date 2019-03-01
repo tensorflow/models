@@ -185,10 +185,7 @@ def run_ncf(_):
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
-
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_FINAL)
-
-
 
 
 if __name__ == "__main__":

@@ -111,8 +111,10 @@ def parse_flags(flags_obj):
 
 def get_optimizer(params):
   optimizer = tf.train.AdamOptimizer(
-      learning_rate=params["learning_rate"], beta1=params["beta1"],
-      beta2=params["beta2"], epsilon=params["epsilon"])
+      learning_rate=params["learning_rate"],
+      beta1=params["beta1"],
+      beta2=params["beta2"],
+      epsilon=params["epsilon"])
   if params["use_tpu"]:
     optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
