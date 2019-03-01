@@ -23,7 +23,7 @@ After you download the data, specify the location with the `--data_dir` flag,
 like:
 
 ```python
-python keras_cifar_main.py --data_dir=/path/to/imagenet
+python keras_cifar_main.py --data_dir=/path/to/cifar
 ```
 
 ## ImageNet
@@ -36,7 +36,7 @@ provide a few options.
 Once your dataset is ready, you can begin training the model as follows:
 
 ```bash
-python keras_imagenet_main.py --data_dir=/path/to/cifar
+python keras_imagenet_main.py --data_dir=/path/to/imagenet
 ```
 
 There are more flag options you can specify. See 
