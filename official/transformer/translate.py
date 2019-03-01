@@ -58,6 +58,40 @@ def _get_sorted_inputs(filename):
   for i, (index, _) in enumerate(sorted_input_lens):
     sorted_inputs[i] = inputs[index]
     sorted_keys[index] = i
+
+  return sorted_inputs, sorted_keys
+
+
+def _get_token_sorted_inputs(filename, subtokenizer):
+  """Read and sort lines based on token count from the file
+     sorted by decreasing length.
+
+  Args:
+    filename: String name of file to read inputs from.
+  Returns:
+    Sorted list of inputs, and dictionary mapping original index->sorted index
+    of each element.
+  """
+  with tf.gfile.Open(filename) as f:
+    records = f.read().split("\n")
+    inputs = [record.strip() for record in records]
+    if not inputs[-1]:
+      inputs.pop()
+
+  token_lens=[]
+  for i, line in enumerate(inputs):
+    enc = subtokenizer.encode(line, add_eos=True)
+    token_lens.append((i, len(enc)))
+
+  sorted_by_token_input_lens = sorted(token_lens, key=lambda x: x[1], reverse=True)
+
+  sorted_inputs = [None] * len(sorted_by_token_input_lens)
+  sorted_keys = [0] * len(sorted_by_token_input_lens)
+
+  for i, (index, _) in enumerate(sorted_by_token_input_lens):
+    sorted_inputs[i] = inputs[index]
+    sorted_keys[index] = i
+
   return sorted_inputs, sorted_keys
 
 
@@ -93,9 +127,13 @@ def translate_file(
   """
   batch_size = _DECODE_BATCH_SIZE
 
-  # Read and sort inputs by length. Keep dictionary (original index-->new index
-  # in sorted list) to write translations in the original order.
-  sorted_inputs, sorted_keys = _get_sorted_inputs(input_file)
+  # Read and sort inputs by word length or token length. Keep dictionary
+  # (original index-->new index in sorted list) to write translations in
+  # the original order.
+  if FLAGS.sort_by_tokens:
+    sorted_inputs, sorted_keys = _get_token_sorted_inputs(input_file, subtokenizer)
+  else:
+    sorted_inputs, sorted_keys = _get_sorted_inputs(input_file)
   num_decode_batches = (len(sorted_inputs) - 1) // batch_size + 1
 
   def input_generator():
@@ -168,9 +206,18 @@ def main(unused_argv):
   params["alpha"] = _ALPHA
   params["extra_decode_length"] = _EXTRA_DECODE_LENGTH
   params["batch_size"] = _DECODE_BATCH_SIZE
+
+  # Use inter and intra op parallelism threads
+  # to balance compute over the cores
+  session_config = tf.ConfigProto(
+        inter_op_parallelism_threads=int(FLAGS.inter_op),
+        intra_op_parallelism_threads=int(FLAGS.intra_op))
+ 
+  run_config = tf.estimator.RunConfig(session_config=session_config)
+
   estimator = tf.estimator.Estimator(
       model_fn=transformer_main.model_fn, model_dir=FLAGS.model_dir,
-      params=params)
+      params=params,config=run_config)
 
   if FLAGS.text is not None:
     tf.logging.info("Translating text: %s" % FLAGS.text)
@@ -228,7 +275,16 @@ def define_translate_flags():
       name="file_out", default=None,
       help=flags_core.help_wrap(
           "If --file flag is specified, save translation to this file."))
-
+  flags.DEFINE_bool(
+      name="sort_by_tokens", default=None,
+      help=flags_core.help_wrap(
+          "Flag to sort input sentences by token count."))
+  flags.DEFINE_integer(
+        name="inter_op", default=0,help=flags_core.help_wrap(
+            ""))
+  flags.DEFINE_integer(
+        name="intra_op", default=0,help=flags_core.help_wrap(
+            ""))
 
 if __name__ == "__main__":
   define_translate_flags()
