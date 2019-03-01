@@ -36,7 +36,7 @@ provide a few options.
 Once your dataset is ready, you can begin training the model as follows:
 
 ```bash
-python keras_imagenet_main.py --data_dir=/path/to/imagenet
+python keras_imagenet_main.py --data_dir=/path/to/cifar
 ```
 
 There are more flag options you can specify. See 
