@@ -235,6 +235,8 @@ class DatasetManager(object):
           self._result_reuse.append(result)
           yield result
 
+  def increment_request_epoch(self):
+    self._epochs_requested += 1
 
   def get_dataset(self, batch_size, epochs_between_evals):
     """Construct the dataset to be used for training and eval.
@@ -248,7 +250,7 @@ class DatasetManager(object):
       epochs_between_evals: How many epochs worth of data to yield.
         (Generator mode only.)
     """
-    self._epochs_requested += 1
+    self.increment_request_epoch()
     if self._stream_files:
       if epochs_between_evals > 1:
         raise ValueError("epochs_between_evals > 1 not supported for file "
@@ -625,6 +627,9 @@ class BaseDataConstructor(threading.Thread):
     return (
         self._train_dataset.make_input_fn(self.train_batch_size) if is_training
         else self._eval_dataset.make_input_fn(self.eval_batch_size))
+
+  def increment_request_epoch(self):
+    self._train_dataset.increment_request_epoch()
 
 
 class DummyConstructor(threading.Thread):
