@@ -321,16 +321,16 @@ class BaseTest(tf.test.TestCase):
 
   def test_imagenet_end_to_end_keras_synthetic_v1(self):
     integration.run_synthetic(
-      main=keras_imagenet_main.main, tmp_root=self.get_temp_dir(),
-      extra_flags=['-resnet_version', '1', '-batch_size', '4',
-                   '-train_steps', '1']
+        main=keras_imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '1', '-batch_size', '4',
+                     '-train_steps', '1']
     )
 
   def test_imagenet_end_to_end_keras_synthetic_v2(self):
     integration.run_synthetic(
-      main=keras_imagenet_main.main, tmp_root=self.get_temp_dir(),
-      extra_flags=['-resnet_version', '2', '-batch_size', '4',
-                   '-train_steps', '1']
+        main=keras_imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '2', '-batch_size', '4',
+                     '-train_steps', '1']
     )
 
 
