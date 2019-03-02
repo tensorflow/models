@@ -30,6 +30,8 @@ from official.recommendation import data_pipeline
 from official.recommendation import neumf_model
 from official.recommendation import ncf_common
 from official.recommendation import ncf_estimator_main
+from official.recommendation import ncf_keras_main
+from official.utils.testing import integration
 
 
 NUM_TRAIN_NEG = 4
@@ -183,22 +185,35 @@ class NcfTest(tf.test.TestCase):
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
+  _BASE_END_TO_END_FLAGS = ['-batch_size', '1024', '-train_epochs', '1']
 
-  _BASE_END_TO_END_FLAGS = {
-      "batch_size": 1024,
-      "train_epochs": 1,
-      "use_synthetic_data": True
-  }
-
-  @flagsaver.flagsaver(**_BASE_END_TO_END_FLAGS)
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end(self):
-    ncf_estimator_main.main(None)
+  def test_end_to_end_estimator(self):
+    integration.run_synthetic(
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS)
 
-  @flagsaver.flagsaver(ml_perf=True, **_BASE_END_TO_END_FLAGS)
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end_mlperf(self):
-    ncf_estimator_main.main(None)
+  def test_end_to_end_estimator_mlperf(self):
+    integration.run_synthetic(
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-ml_perf', 'True'])
+
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_keras(self):
+    self.skipTest("TODO: fix synthetic data with keras")
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS +
+        ['-distribution_strategy', 'off'])
+
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_keras_mlperf(self):
+    self.skipTest("TODO: fix synthetic data with keras")
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS +
+        ['-ml_perf', 'True', '-distribution_strategy', 'off'])
 
 
 if __name__ == "__main__":
