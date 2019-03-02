@@ -197,7 +197,7 @@ class NcfTest(tf.test.TestCase):
   def test_end_to_end_estimator_mlperf(self):
     integration.run_synthetic(
         ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS + ['mlperf' 'True'])
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-ml_perf', 'True'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras(self):
@@ -205,7 +205,7 @@ class NcfTest(tf.test.TestCase):
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
         extra_flags=self._BASE_END_TO_END_FLAGS +
-        ['-turn_off_distribution_strategy'])
+        ['-distribution_strategy', 'off'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras_mlperf(self):
@@ -213,7 +213,7 @@ class NcfTest(tf.test.TestCase):
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
         extra_flags=self._BASE_END_TO_END_FLAGS +
-        ['-mlperf' 'True', '-turn_off_distribution_strategy'])
+        ['-ml_perf', 'True', '-distribution_strategy', 'off'])
 
 
 if __name__ == "__main__":

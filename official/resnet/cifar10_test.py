@@ -184,13 +184,6 @@ class BaseTest(tf.test.TestCase):
                      '-train_steps', '1']
     )
 
-  def test_cifar10_end_to_end_keras_synthetic_v2(self):
-    integration.run_synthetic(
-        main=keras_cifar_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '2', '-batch_size', '4',
-                     '-train_steps', '1']
-    )
-
 
 if __name__ == '__main__':
   tf.test.main()
