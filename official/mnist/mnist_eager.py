@@ -33,6 +33,7 @@ import time
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
+from tensorflow.python.ops import summary_ops_v2
 # pylint: enable=g-bad-import-order
 
 from official.mnist import dataset as mnist_dataset
@@ -40,8 +41,6 @@ from official.mnist import mnist
 from official.utils.flags import core as flags_core
 from official.utils.misc import model_helpers
 
-
-tfe = tf.contrib.eager
 
 def loss(logits, labels):
   return tf.reduce_mean(
@@ -57,24 +56,22 @@ def compute_accuracy(logits, labels):
       tf.cast(tf.equal(predictions, labels), dtype=tf.float32)) / batch_size
 
 
-def train(model, optimizer, dataset, step_counter, log_interval=None):
+def train(model, optimizer, dataset, log_interval=None):
   """Trains model on `dataset` using `optimizer`."""
 
   start = time.time()
   for (batch, (images, labels)) in enumerate(dataset):
-    with tf.contrib.summary.record_summaries_every_n_global_steps(
-        10, global_step=step_counter):
+    with summary_ops_v2.record_summaries_every_n_global_steps(10):
       # Record the operations used to compute the loss given the input,
       # so that the gradient of the loss with respect to the variables
       # can be computed.
       with tf.GradientTape() as tape:
         logits = model(images, training=True)
         loss_value = loss(logits, labels)
-        tf.contrib.summary.scalar('loss', loss_value)
-        tf.contrib.summary.scalar('accuracy', compute_accuracy(logits, labels))
+        summary_ops_v2.scalar('loss', loss_value)
+        summary_ops_v2.scalar('accuracy', compute_accuracy(logits, labels))
       grads = tape.gradient(loss_value, model.variables)
-      optimizer.apply_gradients(
-          zip(grads, model.variables), global_step=step_counter)
+      optimizer.apply_gradients(zip(grads, model.variables))
       if log_interval and batch % log_interval == 0:
         rate = log_interval / (time.time() - start)
         print('Step #%d\tLoss: %.6f (%d steps/sec)' % (batch, loss_value, rate))
@@ -83,8 +80,8 @@ def train(model, optimizer, dataset, step_counter, log_interval=None):
 
 def test(model, dataset):
   """Perform an evaluation of `model` on the examples from `dataset`."""
-  avg_loss = tfe.metrics.Mean('loss', dtype=tf.float32)
-  accuracy = tfe.metrics.Accuracy('accuracy', dtype=tf.float32)
+  avg_loss = tf.metrics.Mean('loss', dtype=tf.float32)
+  accuracy = tf.metrics.Accuracy('accuracy', dtype=tf.float32)
 
   for (images, labels) in dataset:
     logits = model(images, training=False)
@@ -94,9 +91,9 @@ def test(model, dataset):
         tf.cast(labels, tf.int64))
   print('Test set: Average loss: %.4f, Accuracy: %4f%%\n' %
         (avg_loss.result(), 100 * accuracy.result()))
-  with tf.contrib.summary.always_record_summaries():
-    tf.contrib.summary.scalar('loss', avg_loss.result())
-    tf.contrib.summary.scalar('accuracy', accuracy.result())
+  with summary_ops_v2.always_record_summaries():
+    summary_ops_v2.scalar('loss', avg_loss.result())
+    summary_ops_v2.scalar('accuracy', accuracy.result())
 
 
 def run_mnist_eager(flags_obj):
@@ -105,7 +102,6 @@ def run_mnist_eager(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
-  tf.enable_eager_execution()
   model_helpers.apply_clean(flags.FLAGS)
 
   # Automatically determine device and data_format
@@ -125,7 +121,7 @@ def run_mnist_eager(flags_obj):
 
   # Create the model and optimizer
   model = mnist.create_model(data_format)
-  optimizer = tf.train.MomentumOptimizer(flags_obj.lr, flags_obj.momentum)
+  optimizer = tf.optimizers.SGD(flags_obj.lr, flags_obj.momentum)
 
   # Create file writers for writing TensorBoard summaries.
   if flags_obj.output_dir:
@@ -134,20 +130,20 @@ def run_mnist_eager(flags_obj):
     # can then be used to see the recorded summaries.
     train_dir = os.path.join(flags_obj.output_dir, 'train')
     test_dir = os.path.join(flags_obj.output_dir, 'eval')
-    tf.gfile.MakeDirs(flags_obj.output_dir)
+    tf.io.gfile.makedirs(flags_obj.output_dir)
   else:
     train_dir = None
     test_dir = None
-  summary_writer = tf.contrib.summary.create_file_writer(
+  summary_writer = tf.summary.create_file_writer(
       train_dir, flush_millis=10000)
-  test_summary_writer = tf.contrib.summary.create_file_writer(
+  test_summary_writer = tf.summary.create_file_writer(
       test_dir, flush_millis=10000, name='test')
 
   # Create and restore checkpoint (if one exists on the path)
   checkpoint_prefix = os.path.join(flags_obj.model_dir, 'ckpt')
-  step_counter = tf.train.get_or_create_global_step()
+  #step_counter = tf.train.get_or_create_global_step()
   checkpoint = tf.train.Checkpoint(
-      model=model, optimizer=optimizer, step_counter=step_counter)
+      model=model, optimizer=optimizer)
   # Restore variables on creation if a checkpoint exists.
   checkpoint.restore(tf.train.latest_checkpoint(flags_obj.model_dir))
 
@@ -156,12 +152,11 @@ def run_mnist_eager(flags_obj):
     for _ in range(flags_obj.train_epochs):
       start = time.time()
       with summary_writer.as_default():
-        train(model, optimizer, train_ds, step_counter,
-              flags_obj.log_interval)
+        train(model, optimizer, train_ds, flags_obj.log_interval)
       end = time.time()
       print('\nTrain time for epoch #%d (%d total steps): %f' %
             (checkpoint.save_counter.numpy() + 1,
-             step_counter.numpy(),
+             optimizer.iterations,
              end - start))
       with test_summary_writer.as_default():
         test(model, test_ds)

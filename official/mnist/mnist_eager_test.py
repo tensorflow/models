@@ -18,43 +18,41 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
-import tensorflow.contrib.eager as tfe  # pylint: disable=g-bad-import-order
 
 from official.mnist import mnist
 from official.mnist import mnist_eager
 
 
 def device():
-  return "/device:GPU:0" if tfe.num_gpus() else "/device:CPU:0"
+  return "/device:GPU:0" if tf.test.is_gpu_available() else "/device:CPU:0"
 
 
 def data_format():
-  return "channels_first" if tfe.num_gpus() else "channels_last"
+  return "channels_first" if tf.test.is_gpu_available() else "channels_last"
 
 
 def random_dataset():
   batch_size = 64
-  images = tf.random_normal([batch_size, 784])
-  labels = tf.random_uniform([batch_size], minval=0, maxval=10, dtype=tf.int32)
+  images = tf.random.normal([batch_size, 784])
+  labels = tf.random.uniform([batch_size], minval=0, maxval=10, dtype=tf.int32)
   return tf.data.Dataset.from_tensors((images, labels))
 
 
 def train(defun=False):
   model = mnist.create_model(data_format())
-  if defun:
-    model.call = tfe.defun(model.call)
-  optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.01)
+  #if defun:
+  #  model.call = tfe.defun(model.call)
+  optimizer = tf.optimizers.SGD(learning_rate=0.01)
   dataset = random_dataset()
   with tf.device(device()):
-    mnist_eager.train(model, optimizer, dataset,
-                      step_counter=tf.train.get_or_create_global_step())
+    mnist_eager.train(model, optimizer, dataset)
 
 
 def evaluate(defun=False):
   model = mnist.create_model(data_format())
   dataset = random_dataset()
-  if defun:
-    model.call = tfe.defun(model.call)
+  #if defun:
+  #  model.call = tfe.defun(model.call)
   with tf.device(device()):
     mnist_eager.test(model, dataset)
 
@@ -76,5 +74,4 @@ class MNISTTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
-  tfe.enable_eager_execution()
   tf.test.main()
