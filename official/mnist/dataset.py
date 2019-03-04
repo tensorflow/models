@@ -41,7 +41,7 @@ def check_image_file_header(filename):
     rows = read32(f)
     cols = read32(f)
     if magic != 2051:
-      raise ValueError('Invalid magic number %s in MNIST file %s' % (magic,
+      raise ValueError('Invalid magic number %d in MNIST file %s' % (magic,
                                                                      f.name))
     if rows != 28 or cols != 28:
       raise ValueError(
