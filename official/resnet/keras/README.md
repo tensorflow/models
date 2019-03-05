@@ -3,9 +3,9 @@ information about the models, please refer to this [README file](../README.md).
 
 Similar to the [estimator implementation](/official/resnet), the Keras 
 implementation has code for both CIFAR-10 data and ImageNet data. The CIFAR-10
-version uses a ResNet56 implemented in 
+version uses a ResNet56 model implemented in 
 [`resnet_cifar_model.py`](./resnet_cifar_model.py), and the ImageNet version 
-uses a ResNet50 implementation in [`resnet_model.py`](./resnet_model.py).
+uses a ResNet50 model implemented in [`resnet_model.py`](./resnet_model.py).
 
 To use 
 either dataset, make sure that you have the latest version of TensorFlow 
