@@ -30,11 +30,11 @@ from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
 
-_DEFAULT_IMAGE_SIZE = 224
-_NUM_CHANNELS = 3
-_NUM_CLASSES = 1001
+DEFAULT_IMAGE_SIZE = 224
+NUM_CHANNELS = 3
+NUM_CLASSES = 1001
 
-_NUM_IMAGES = {
+NUM_IMAGES = {
     'train': 1281167,
     'validation': 50000,
 }
@@ -95,14 +95,14 @@ def _parse_example_proto(example_serialized):
   """
   # Dense features in Example proto.
   feature_map = {
-      'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
-                                          default_value=''),
-      'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64,
-                                              default_value=-1),
-      'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
+      'image/encoded': tf.io.FixedLenFeature([], dtype=tf.string,
                                              default_value=''),
+      'image/class/label': tf.io.FixedLenFeature([], dtype=tf.int64,
+                                                 default_value=-1),
+      'image/class/text': tf.io.FixedLenFeature([], dtype=tf.string,
+                                                default_value=''),
   }
-  sparse_float32 = tf.VarLenFeature(dtype=tf.float32)
+  sparse_float32 = tf.io.VarLenFeature(dtype=tf.float32)
   # Sparse features in Example proto.
   feature_map.update(
       {k: sparse_float32 for k in ['image/object/bbox/xmin',
@@ -110,7 +110,8 @@ def _parse_example_proto(example_serialized):
                                    'image/object/bbox/xmax',
                                    'image/object/bbox/ymax']})
 
-  features = tf.parse_single_example(example_serialized, feature_map)
+  features = tf.io.parse_single_example(serialized=example_serialized,
+                                        features=feature_map)
   label = tf.cast(features['image/class/label'], dtype=tf.int32)
 
   xmin = tf.expand_dims(features['image/object/bbox/xmin'].values, 0)
@@ -124,12 +125,12 @@ def _parse_example_proto(example_serialized):
   # Force the variable number of bounding boxes into the shape
   # [1, num_boxes, coords].
   bbox = tf.expand_dims(bbox, 0)
-  bbox = tf.transpose(bbox, [0, 2, 1])
+  bbox = tf.transpose(a=bbox, perm=[0, 2, 1])
 
   return features['image/encoded'], label, bbox
 
 
-def parse_record(raw_record, is_training):
+def parse_record(raw_record, is_training, dtype):
   """Parses a record containing a training example of an image.
 
   The input record is parsed into a label and image, and the image is passed
@@ -139,6 +140,7 @@ def parse_record(raw_record, is_training):
     raw_record: scalar Tensor tf.string containing a serialized
       Example protocol buffer.
     is_training: A boolean denoting whether the input is for training.
+    dtype: data type to use for images/features.
 
   Returns:
     Tuple with processed image tensor and one-hot-encoded label tensor.
@@ -148,15 +150,18 @@ def parse_record(raw_record, is_training):
   image = imagenet_preprocessing.preprocess_image(
       image_buffer=image_buffer,
       bbox=bbox,
-      output_height=_DEFAULT_IMAGE_SIZE,
-      output_width=_DEFAULT_IMAGE_SIZE,
-      num_channels=_NUM_CHANNELS,
+      output_height=DEFAULT_IMAGE_SIZE,
+      output_width=DEFAULT_IMAGE_SIZE,
+      num_channels=NUM_CHANNELS,
       is_training=is_training)
+  image = tf.cast(image, dtype)
 
   return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1,
+             dtype=tf.float32, datasets_num_private_threads=None,
+             num_parallel_batches=1, parse_record_fn=parse_record):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -164,7 +169,10 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
-    num_gpus: The number of gpus used for training.
+    dtype: Data type to use for images/features
+    datasets_num_private_threads: Number of private threads for tf.data.
+    num_parallel_batches: Number of parallel batches for tf.data.
+    parse_record_fn: Function to use for parsing the records.
 
   Returns:
     A dataset that can be used for iteration.
@@ -181,7 +189,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
   # This number is low enough to not cause too much contention on small systems
   # but high enough to provide the benefits of parallelization. You may want
   # to increase this number if you have a large number of CPU cores.
-  dataset = dataset.apply(tf.contrib.data.parallel_interleave(
+  dataset = dataset.apply(tf.data.experimental.parallel_interleave(
       tf.data.TFRecordDataset, cycle_length=10))
 
   return resnet_run_loop.process_record_dataset(
@@ -189,16 +197,18 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
       is_training=is_training,
       batch_size=batch_size,
       shuffle_buffer=_SHUFFLE_BUFFER,
-      parse_record_fn=parse_record,
+      parse_record_fn=parse_record_fn,
       num_epochs=num_epochs,
-      num_gpus=num_gpus,
-      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None
+      dtype=dtype,
+      datasets_num_private_threads=datasets_num_private_threads,
+      num_parallel_batches=num_parallel_batches
   )
 
 
-def get_synth_input_fn():
+def get_synth_input_fn(dtype):
   return resnet_run_loop.get_synth_input_fn(
-      _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS, _NUM_CLASSES)
+      DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, NUM_CHANNELS, NUM_CLASSES,
+      dtype=dtype)
 
 
 ###############################################################################
@@ -207,7 +217,7 @@ def get_synth_input_fn():
 class ImagenetModel(resnet_model.Model):
   """Model class with appropriate defaults for Imagenet data."""
 
-  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
+  def __init__(self, resnet_size, data_format=None, num_classes=NUM_CLASSES,
                resnet_version=resnet_model.DEFAULT_VERSION,
                dtype=resnet_model.DEFAULT_DTYPE):
     """These are the parameters that work for Imagenet data.
@@ -226,10 +236,8 @@ class ImagenetModel(resnet_model.Model):
     # For bigger models, we want to use "bottleneck" layers
     if resnet_size < 50:
       bottleneck = False
-      final_size = 512
     else:
       bottleneck = True
-      final_size = 2048
 
     super(ImagenetModel, self).__init__(
         resnet_size=resnet_size,
@@ -242,7 +250,6 @@ class ImagenetModel(resnet_model.Model):
         first_pool_stride=2,
         block_sizes=_get_block_sizes(resnet_size),
         block_strides=[1, 2, 2, 2],
-        final_size=final_size,
         resnet_version=resnet_version,
         data_format=data_format,
         dtype=dtype
@@ -285,10 +292,20 @@ def _get_block_sizes(resnet_size):
 
 def imagenet_model_fn(features, labels, mode, params):
   """Our model_fn for ResNet to be used with our Estimator."""
+
+  # Warmup and higher lr may not be valid for fine tuning with small batches
+  # and smaller numbers of training images.
+  if params['fine_tune']:
+    warmup = False
+    base_lr = .1
+  else:
+    warmup = True
+    base_lr = .128
+
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=256,
-      num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-      decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
+      num_images=NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
+      decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=warmup, base_lr=base_lr)
 
   return resnet_run_loop.resnet_model_fn(
       features=features,
@@ -303,7 +320,8 @@ def imagenet_model_fn(features, labels, mode, params):
       resnet_version=params['resnet_version'],
       loss_scale=params['loss_scale'],
       loss_filter_fn=None,
-      dtype=params['dtype']
+      dtype=params['dtype'],
+      fine_tune=params['fine_tune']
   )
 
 
@@ -311,7 +329,7 @@ def define_imagenet_flags():
   resnet_run_loop.define_resnet_flags(
       resnet_size_choices=['18', '34', '50', '101', '152', '200'])
   flags.adopt_module_key_flags(resnet_run_loop)
-  flags_core.set_defaults(train_epochs=100)
+  flags_core.set_defaults(train_epochs=90)
 
 
 def run_imagenet(flags_obj):
@@ -320,12 +338,13 @@ def run_imagenet(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
-  input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
-                    or input_fn)
+  input_function = (flags_obj.use_synthetic_data and
+                    get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
+                    input_fn)
 
   resnet_run_loop.resnet_main(
       flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
-      shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
+      shape=[DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, NUM_CHANNELS])
 
 
 def main(_):
@@ -334,6 +353,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   define_imagenet_flags()
   absl_app.run(main)

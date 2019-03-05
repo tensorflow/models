@@ -17,6 +17,9 @@ message BatchNonMaxSuppression {
 
   // Maximum number of detections to retain across all classes.
   optional int32 max_total_detections = 5 [default = 100];
+
+  // Whether to use the implementation of NMS that guarantees static shapes.
+  optional bool use_static_shapes = 6 [default = false];
 }
 
 // Configuration proto for post-processing predicted boxes and

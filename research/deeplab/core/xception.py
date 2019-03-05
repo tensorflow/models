@@ -52,6 +52,8 @@ slim = tf.contrib.slim
 
 
 _DEFAULT_MULTI_GRID = [1, 1, 1]
+# The cap for tf.clip_by_value.
+_CLIP_CAP = 6
 
 
 class Block(collections.namedtuple('Block', ['scope', 'unit_fn', 'args'])):
@@ -200,7 +202,9 @@ def xception_module(inputs,
                     activation_fn_in_separable_conv=False,
                     regularize_depthwise=False,
                     outputs_collections=None,
-                    scope=None):
+                    scope=None,
+                    use_bounded_activation=False,
+                    use_explicit_padding=True):
   """An Xception module.
 
   The output of one Xception module is equal to the sum of `residual` and
@@ -230,6 +234,11 @@ def xception_module(inputs,
       depthwise convolution weights.
     outputs_collections: Collection to add the Xception unit output.
     scope: Optional variable_scope.
+    use_bounded_activation: Whether or not to use bounded activations. Bounded
+      activations better lend themselves to quantized inference.
+    use_explicit_padding: If True, use explicit padding to make the model fully
+      compatible with the open source version, otherwise use the native
+      Tensorflow 'SAME' padding.
 
   Returns:
     The Xception module's output.
@@ -250,11 +259,19 @@ def xception_module(inputs,
 
     def _separable_conv(features, depth, kernel_size, depth_multiplier,
                         regularize_depthwise, rate, stride, scope):
+      """Separable conv block."""
       if activation_fn_in_separable_conv:
-        activation_fn = tf.nn.relu
+        activation_fn = tf.nn.relu6 if use_bounded_activation else tf.nn.relu
       else:
-        activation_fn = None
-        features = tf.nn.relu(features)
+        if use_bounded_activation:
+          # When use_bounded_activation is True, we clip the feature values and
+          # apply relu6 for activation.
+          activation_fn = lambda x: tf.clip_by_value(x, -_CLIP_CAP, _CLIP_CAP)
+          features = tf.nn.relu6(features)
+        else:
+          # Original network design.
+          activation_fn = None
+          features = tf.nn.relu(features)
       return separable_conv2d_same(features,
                                    depth,
                                    kernel_size,
@@ -262,6 +279,7 @@ def xception_module(inputs,
                                    stride=stride,
                                    rate=rate,
                                    activation_fn=activation_fn,
+                                   use_explicit_padding=use_explicit_padding,
                                    regularize_depthwise=regularize_depthwise,
                                    scope=scope)
     for i in range(3):
@@ -280,9 +298,19 @@ def xception_module(inputs,
                              stride=stride,
                              activation_fn=None,
                              scope='shortcut')
+      if use_bounded_activation:
+        residual = tf.clip_by_value(residual, -_CLIP_CAP, _CLIP_CAP)
+        shortcut = tf.clip_by_value(shortcut, -_CLIP_CAP, _CLIP_CAP)
       outputs = residual + shortcut
+      if use_bounded_activation:
+        outputs = tf.nn.relu6(outputs)
     elif skip_connection_type == 'sum':
+      if use_bounded_activation:
+        residual = tf.clip_by_value(residual, -_CLIP_CAP, _CLIP_CAP)
+        inputs = tf.clip_by_value(inputs, -_CLIP_CAP, _CLIP_CAP)
       outputs = residual + inputs
+      if use_bounded_activation:
+        outputs = tf.nn.relu6(outputs)
     elif skip_connection_type == 'none':
       outputs = residual
     else:
@@ -713,9 +741,9 @@ def xception_arg_scope(weight_decay=0.00004,
                        batch_norm_epsilon=0.001,
                        batch_norm_scale=True,
                        weights_initializer_stddev=0.09,
-                       activation_fn=tf.nn.relu,
                        regularize_depthwise=False,
-                       use_batch_norm=True):
+                       use_batch_norm=True,
+                       use_bounded_activation=False):
   """Defines the default Xception arg scope.
 
   Args:
@@ -728,10 +756,11 @@ def xception_arg_scope(weight_decay=0.00004,
       activations in the batch normalization layer.
     weights_initializer_stddev: The standard deviation of the trunctated normal
       weight initializer.
-    activation_fn: The activation function in Xception.
     regularize_depthwise: Whether or not apply L2-norm regularization on the
       depthwise convolution weights.
     use_batch_norm: Whether or not to use batch normalization.
+    use_bounded_activation: Whether or not to use bounded activations. Bounded
+      activations better lend themselves to quantized inference.
 
   Returns:
     An `arg_scope` to use for the Xception models.
@@ -745,6 +774,7 @@ def xception_arg_scope(weight_decay=0.00004,
     depthwise_regularizer = slim.l2_regularizer(weight_decay)
   else:
     depthwise_regularizer = None
+  activation_fn = tf.nn.relu6 if use_bounded_activation else tf.nn.relu
   with slim.arg_scope(
       [slim.conv2d, slim.separable_conv2d],
       weights_initializer=tf.truncated_normal_initializer(
@@ -757,5 +787,9 @@ def xception_arg_scope(weight_decay=0.00004,
           weights_regularizer=slim.l2_regularizer(weight_decay)):
         with slim.arg_scope(
             [slim.separable_conv2d],
-            weights_regularizer=depthwise_regularizer) as arg_sc:
-          return arg_sc
+            weights_regularizer=depthwise_regularizer):
+          with slim.arg_scope(
+              [xception_module],
+              use_bounded_activation=use_bounded_activation,
+              use_explicit_padding=not use_bounded_activation) as arg_sc:
+            return arg_sc

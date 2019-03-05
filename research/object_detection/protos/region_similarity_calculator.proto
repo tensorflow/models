@@ -9,6 +9,7 @@ message RegionSimilarityCalculator {
     NegSqDistSimilarity neg_sq_dist_similarity = 1;
     IouSimilarity iou_similarity = 2;
     IoaSimilarity ioa_similarity = 3;
+    ThresholdedIouSimilarity thresholded_iou_similarity = 4;
   }
 }
 
@@ -22,4 +23,11 @@ message IouSimilarity {
 
 // Configuration for intersection-over-area (IOA) similarity calculator.
 message IoaSimilarity {
+}
+
+// Configuration for thresholded-intersection-over-union similarity calculator.
+message ThresholdedIouSimilarity {
+
+  // IOU threshold used for filtering scores.
+  optional float iou_threshold = 1 [default = 0.5];
 }

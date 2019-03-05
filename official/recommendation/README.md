@@ -43,7 +43,7 @@ In both datasets, the timestamp is represented in seconds since midnight Coordin
 ### Download and preprocess dataset
 To download the dataset, please install Pandas package first. Then issue the following command:
 ```
-python data_download.py
+python ../datasets/movielens.py
 ```
 Arguments:
   * `--data_dir`: Directory where to download and save the preprocessed data. By default, it is `/tmp/movielens-data/`.
@@ -51,7 +51,8 @@ Arguments:
 
 Use the `--help` or `-h` flag to get a full list of possible arguments.
 
-Note the ml-20m dataset is large (the rating file is ~500 MB), and it may take several minutes (~10 mins) for data preprocessing.
+Note the ml-20m dataset is large (the rating file is ~500 MB), and it may take several minutes (~2 mins) for data preprocessing.
+Both the ml-1m and ml-20m datasets will be coerced into a common format when downloaded.
 
 ### Train and evaluate model
 To train and evaluate the model, issue the following command:

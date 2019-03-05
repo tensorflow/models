@@ -39,15 +39,18 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 ## Table of contents
 
+Setup:
+
+  * <a href='g3doc/installation.md'>Installation</a><br>
+
 Quick Start:
 
   * <a href='object_detection_tutorial.ipynb'>
       Quick Start: Jupyter notebook for off-the-shelf inference</a><br>
   * <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
 
-Setup:
+Customizing a Pipeline:
 
-  * <a href='g3doc/installation.md'>Installation</a><br>
   * <a href='g3doc/configuring_jobs.md'>
       Configuring an object detection pipeline</a><br>
   * <a href='g3doc/preparing_inputs.md'>Preparing inputs</a><br>
@@ -72,6 +75,12 @@ Extras:
       Inference and evaluation on the Open Images dataset</a><br>
   * <a href='g3doc/instance_segmentation.md'>
       Run an instance segmentation model</a><br>
+  * <a href='g3doc/challenge_evaluation.md'>
+      Run the evaluation for the Open Images Challenge 2018</a><br>
+  * <a href='g3doc/tpu_compatibility.md'>
+      TPU compatible detection pipelines</a><br>
+  * <a href='g3doc/running_on_mobile_tensorflowlite.md'>
+      Running object detection on mobile devices with TensorFlow Lite</a><br>
 
 ## Getting Help
 
@@ -89,6 +98,52 @@ reporting an issue.
 
 
 ## Release information
+
+### Sep 17, 2018
+
+We have released Faster R-CNN detectors with ResNet-50 / ResNet-101 feature
+extractors trained on the [iNaturalist Species Detection Dataset](https://github.com/visipedia/inat_comp/blob/master/2017/README.md#bounding-boxes).
+The models are trained on the training split of the iNaturalist data for 4M
+iterations, they achieve 55% and 58% mean AP@.5 over 2854 classes respectively.
+For more details please refer to this [paper](https://arxiv.org/abs/1707.06642).
+
+<b>Thanks to contributors</b>: Chen Sun
+
+### July 13, 2018
+
+There are many new updates in this release, extending the functionality and
+capability of the API:
+
+* Moving from slim-based training to [Estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator)-based
+training.
+* Support for [RetinaNet](https://arxiv.org/abs/1708.02002), and a [MobileNet](https://ai.googleblog.com/2017/06/mobilenets-open-source-models-for.html)
+adaptation of RetinaNet.
+* A novel SSD-based architecture called the [Pooling Pyramid Network](https://arxiv.org/abs/1807.03284) (PPN).
+* Releasing several [TPU](https://cloud.google.com/tpu/)-compatible models.
+These can be found in the `samples/configs/` directory with a comment in the
+pipeline configuration files indicating TPU compatibility.
+* Support for quantized training.
+* Updated documentation for new binaries, Cloud training, and [Tensorflow Lite](https://www.tensorflow.org/mobile/tflite/).
+
+See also our [expanded announcement blogpost](https://ai.googleblog.com/2018/07/accelerated-training-and-inference-with.html) and accompanying tutorial at the [TensorFlow blog](https://medium.com/tensorflow/training-and-serving-a-realtime-mobile-object-detector-in-30-minutes-with-cloud-tpus-b78971cf1193).
+
+<b>Thanks to contributors</b>: Sara Robinson, Aakanksha Chowdhery, Derek Chow,
+Pengchong Jin, Jonathan Huang, Vivek Rathod, Zhichao Lu, Ronny Votel
+
+
+### June 25, 2018
+
+Additional evaluation tools for the [Open Images Challenge 2018](https://storage.googleapis.com/openimages/web/challenge.html) are out.
+Check out our short tutorial on data preparation and running evaluation [here](g3doc/challenge_evaluation.md)!
+
+<b>Thanks to contributors</b>: Alina Kuznetsova
+
+### June 5, 2018
+
+We have released the implementation of evaluation metrics for both tracks of the [Open Images Challenge 2018](https://storage.googleapis.com/openimages/web/challenge.html) as a part of the Object Detection API - see the [evaluation protocols](g3doc/evaluation_protocols.md) for more details.
+Additionally, we have released a tool for hierarchical labels expansion for the Open Images Challenge: check out [oid_hierarchical_labels_expansion.py](dataset_tools/oid_hierarchical_labels_expansion.py).
+
+<b>Thanks to contributors</b>: Alina Kuznetsova, Vittorio Ferrari, Jasper Uijlings
 
 ### April 30, 2018
 

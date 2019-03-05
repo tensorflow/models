@@ -25,9 +25,10 @@ from official.utils.flags._conventions import help_wrap
 from official.utils.logs import hooks_helper
 
 
-def define_base(data_dir=True, model_dir=True, train_epochs=True,
+def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                 epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                num_gpu=True, hooks=True, export_dir=True):
+                num_gpu=True, hooks=True, export_dir=True,
+                distribution_strategy=True):
   """Register base flags.
 
   Args:
@@ -41,7 +42,8 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
     num_gpu: Create a flag to specify the number of GPUs used.
     hooks: Create a flag to specify hooks for logging.
     export_dir: Create a flag to specify where a SavedModel should be exported.
-
+    distribution_strategy: Create a flag to specify which Distribution Strategy
+      to use.
   Returns:
     A list of flags for core.py to marks as key flags.
   """
@@ -58,6 +60,12 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
         name="model_dir", short_name="md", default="/tmp",
         help=help_wrap("The location of the model checkpoint files."))
     key_flags.append("model_dir")
+
+  if clean:
+    flags.DEFINE_boolean(
+        name="clean", default=False,
+        help=help_wrap("If set, model_dir will be removed if it exists."))
+    key_flags.append("clean")
 
   if train_epochs:
     flags.DEFINE_integer(
@@ -95,8 +103,9 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
         name="num_gpus", short_name="ng",
         default=1 if tf.test.is_gpu_available() else 0,
         help=help_wrap(
-            "How many GPUs to use with the DistributionStrategies API. The "
-            "default is 1 if TensorFlow can detect a GPU, and 0 otherwise."))
+            "How many GPUs to use at each worker with the "
+            "DistributionStrategies API. The default is 1 if TensorFlow can "
+            "detect a GPU, and 0 otherwise."))
 
   if hooks:
     # Construct a pretty summary of hooks.
@@ -121,6 +130,18 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
                        "See the README for more details and relevant links.")
     )
     key_flags.append("export_dir")
+
+  if distribution_strategy:
+    flags.DEFINE_string(
+        name="distribution_strategy", short_name="ds", default="default",
+        help=help_wrap("The Distribution Strategy to use for training. "
+                       "Accepted values are 'off', 'default', 'one_device', "
+                       "'mirrored', 'parameter_server', 'collective', "
+                       "case insensitive. 'off' means not to use "
+                       "Distribution Strategy; 'default' means to choose "
+                       "from `MirroredStrategy` or `OneDeviceStrategy` "
+                       "according to the number of GPUs.")
+    )
 
   return key_flags
 

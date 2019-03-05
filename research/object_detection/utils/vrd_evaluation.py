@@ -128,7 +128,7 @@ class VRDDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
           structures shape [M, 1], representing  the class labels of the
           corresponding bounding boxes and possibly additional classes (see
           datatype label_data_type above).
-        standard_fields.InputDataFields.verified_labels: numpy array
+        standard_fields.InputDataFields.groundtruth_image_classes: numpy array
           of shape [K] containing verified labels.
     Raises:
       ValueError: On adding groundtruth for an image more than once.
@@ -152,8 +152,8 @@ class VRDDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       all_classes.append(groundtruth_class_tuples[field])
     groudtruth_positive_classes = np.unique(np.concatenate(all_classes))
     verified_labels = groundtruth_dict.get(
-        standard_fields.InputDataFields.verified_labels, np.array(
-            [], dtype=int))
+        standard_fields.InputDataFields.groundtruth_image_classes,
+        np.array([], dtype=int))
     self._evaluatable_labels[image_id] = np.unique(
         np.concatenate((verified_labels, groudtruth_positive_classes)))
 
@@ -178,23 +178,31 @@ class VRDDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
           corresponding bounding boxes and possibly additional classes (see
           datatype label_data_type above).
     """
+    if image_id not in self._image_ids:
+      logging.warn('No groundtruth for the image with id %s.', image_id)
+      # Since for the correct work of evaluator it is assumed that groundtruth
+      # is inserted first we make sure to break the code if is it not the case.
+      self._image_ids.update([image_id])
+      self._negative_labels[image_id] = np.array([])
+      self._evaluatable_labels[image_id] = np.array([])
+
     num_detections = detections_dict[
         standard_fields.DetectionResultFields.detection_boxes].shape[0]
     detection_class_tuples = detections_dict[
         standard_fields.DetectionResultFields.detection_classes]
     detection_box_tuples = detections_dict[
         standard_fields.DetectionResultFields.detection_boxes]
+    negative_selector = np.zeros(num_detections, dtype=bool)
     selector = np.ones(num_detections, dtype=bool)
-
     # Only check boxable labels
     for field in detection_box_tuples.dtype.fields:
       # Verify if one of the labels is negative (this is sure FP)
-      selector |= np.isin(detection_class_tuples[field],
-                          self._negative_labels[image_id])
+      negative_selector |= np.isin(detection_class_tuples[field],
+                                   self._negative_labels[image_id])
       # Verify if all labels are verified
-      selector |= np.isin(detection_class_tuples[field],
+      selector &= np.isin(detection_class_tuples[field],
                           self._evaluatable_labels[image_id])
-
+    selector |= negative_selector
     self._evaluation.add_single_detected_image_info(
         image_key=image_id,
         detected_box_tuples=self._process_detection_boxes(
@@ -482,8 +490,9 @@ class _VRDDetectionEvaluation(object):
       groundtruth_box_tuples = self._groundtruth_box_tuples[image_key]
       groundtruth_class_tuples = self._groundtruth_class_tuples[image_key]
     else:
-      groundtruth_box_tuples = np.empty(shape=[0, 4], dtype=float)
-      groundtruth_class_tuples = np.array([], dtype=int)
+      groundtruth_box_tuples = np.empty(
+          shape=[0, 4], dtype=detected_box_tuples.dtype)
+      groundtruth_class_tuples = np.array([], dtype=detected_class_tuples.dtype)
 
     scores, tp_fp_labels, mapping = (
         self._per_image_eval.compute_detection_tp_fp(

@@ -1,4 +1,4 @@
-# Running on Google Cloud Platform
+# Running on Google Cloud ML Engine
 
 The Tensorflow Object Detection API supports distributed training on Google
 Cloud ML Engine. This section documents instructions on how to train and
@@ -23,26 +23,28 @@ evaluation jobs for a few iterations
 ## Packaging
 
 In order to run the Tensorflow Object Detection API on Cloud ML, it must be
-packaged (along with it's TF-Slim dependency). The required packages can be
-created with the following command
+packaged (along with it's TF-Slim dependency and the
+[pycocotools](https://github.com/cocodataset/cocoapi/tree/master/PythonAPI/pycocotools)
+library). The required packages can be created with the following command
 
 ``` bash
 # From tensorflow/models/research/
+bash object_detection/dataset_tools/create_pycocotools_package.sh /tmp/pycocotools
 python setup.py sdist
 (cd slim && python setup.py sdist)
 ```
 
-This will create python packages in dist/object_detection-0.1.tar.gz and
-slim/dist/slim-0.1.tar.gz.
+This will create python packages dist/object_detection-0.1.tar.gz,
+slim/dist/slim-0.1.tar.gz, and /tmp/pycocotools/pycocotools-2.0.tar.gz.
 
-## Running a Multiworker Training Job
+## Running a Multiworker (GPU) Training Job on CMLE
 
 Google Cloud ML requires a YAML configuration file for a multiworker training
 job using GPUs. A sample YAML file is given below:
 
 ```
 trainingInput:
-  runtimeVersion: "1.2"
+  runtimeVersion: "1.9"
   scaleTier: CUSTOM
   masterType: standard_gpu
   workerCount: 9
@@ -68,22 +70,22 @@ The YAML file should be saved on the local machine (not on GCP). Once it has
 been written, a user can start a training job on Cloud ML Engine using the
 following command:
 
-``` bash
+```bash
 # From tensorflow/models/research/
-gcloud ml-engine jobs submit training object_detection_`date +%s` \
-    --runtime-version 1.2 \
-    --job-dir=gs://${TRAIN_DIR} \
-    --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz \
-    --module-name object_detection.train \
+gcloud ml-engine jobs submit training object_detection_`date +%m_%d_%Y_%H_%M_%S` \
+    --runtime-version 1.9 \
+    --job-dir=gs://${MODEL_DIR} \
+    --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz,/tmp/pycocotools/pycocotools-2.0.tar.gz \
+    --module-name object_detection.model_main \
     --region us-central1 \
     --config ${PATH_TO_LOCAL_YAML_FILE} \
     -- \
-    --train_dir=gs://${TRAIN_DIR} \
+    --model_dir=gs://${MODEL_DIR} \
     --pipeline_config_path=gs://${PIPELINE_CONFIG_PATH}
 ```
 
 Where `${PATH_TO_LOCAL_YAML_FILE}` is the local path to the YAML configuration,
-`gs://${TRAIN_DIR}` specifies the directory on Google Cloud Storage where the
+`gs://${MODEL_DIR}` specifies the directory on Google Cloud Storage where the
 training checkpoints and events will be written to and
 `gs://${PIPELINE_CONFIG_PATH}` points to the pipeline configuration stored on
 Google Cloud Storage.
@@ -91,33 +93,68 @@ Google Cloud Storage.
 Users can monitor the progress of their training job on the [ML Engine
 Dashboard](https://console.cloud.google.com/mlengine/jobs).
 
-Note: This sample is supported for use with 1.2 runtime version.
+Note: This sample is supported for use with 1.9 runtime version.
 
-## Running an Evaluation Job on Cloud
+## Running a TPU Training Job on CMLE
+
+Launching a training job with a TPU compatible pipeline config requires using a
+similar command:
+
+```bash
+gcloud ml-engine jobs submit training `whoami`_object_detection_`date +%m_%d_%Y_%H_%M_%S` \
+--job-dir=gs://${MODEL_DIR} \
+--packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz,/tmp/pycocotools/pycocotools-2.0.tar.gz \
+--module-name object_detection.model_tpu_main \
+--runtime-version 1.9 \
+--scale-tier BASIC_TPU \
+--region us-central1 \
+-- \
+--tpu_zone us-central1 \
+--model_dir=gs://${MODEL_DIR} \
+--pipeline_config_path=gs://${PIPELINE_CONFIG_PATH}
+```
+
+In contrast with the GPU training command, there is no need to specify a YAML
+file and we point to the *object_detection.model_tpu_main* binary instead of
+*object_detection.model_main*. We must also now set `scale-tier` to be
+`BASIC_TPU` and provide a `tpu_zone`. Finally as before `pipeline_config_path`
+points to a points to the pipeline configuration stored on Google Cloud Storage
+(but is now must be a TPU compatible model).
+
+## Running an Evaluation Job on CMLE
+
+Note: You only need to do this when using TPU for training as it does not
+interleave evaluation during training as in the case of Multiworker GPU
+training.
 
 Evaluation jobs run on a single machine, so it is not necessary to write a YAML
 configuration for evaluation. Run the following command to start the evaluation
 job:
 
-``` bash
-gcloud ml-engine jobs submit training object_detection_eval_`date +%s` \
-    --runtime-version 1.2 \
-    --job-dir=gs://${TRAIN_DIR} \
-    --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz \
-    --module-name object_detection.eval \
+```bash
+gcloud ml-engine jobs submit training object_detection_eval_`date +%m_%d_%Y_%H_%M_%S` \
+    --runtime-version 1.9 \
+    --job-dir=gs://${MODEL_DIR} \
+    --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz,/tmp/pycocotools/pycocotools-2.0.tar.gz \
+    --module-name object_detection.model_main \
     --region us-central1 \
     --scale-tier BASIC_GPU \
     -- \
-    --checkpoint_dir=gs://${TRAIN_DIR} \
-    --eval_dir=gs://${EVAL_DIR} \
-    --pipeline_config_path=gs://${PIPELINE_CONFIG_PATH}
+    --model_dir=gs://${MODEL_DIR} \
+    --pipeline_config_path=gs://${PIPELINE_CONFIG_PATH} \
+    --checkpoint_dir=gs://${MODEL_DIR}
 ```
 
-Where `gs://${TRAIN_DIR}` points to the directory on Google Cloud Storage where
-training checkpoints are saved (same as the training job), `gs://${EVAL_DIR}`
-points to where evaluation events will be saved on Google Cloud Storage and
+Where `gs://${MODEL_DIR}` points to the directory on Google Cloud Storage where
+training checkpoints are saved (same as the training job), as well as
+to where evaluation events will be saved on Google Cloud Storage and
 `gs://${PIPELINE_CONFIG_PATH}` points to where the pipeline configuration is
 stored on Google Cloud Storage.
+
+Typically one starts an evaluation job concurrently with the training job.
+Note that we do not support running evaluation on TPU, so the above command
+line for launching evaluation jobs is the same whether you are training
+on GPU or TPU.
 
 ## Running Tensorboard
 
@@ -130,3 +167,4 @@ tensorboard --logdir=gs://${YOUR_CLOUD_BUCKET}
 ```
 
 Note it may Tensorboard a few minutes to populate with results.
+

@@ -249,7 +249,8 @@ def train_boosted_trees(flags_obj):
         _make_csv_serving_input_receiver_fn(
             column_names=feature_names,
             # columns are all floats.
-            column_defaults=[[0.0]] * len(feature_names)))
+            column_defaults=[[0.0]] * len(feature_names)),
+        strip_default_attrs=True)
 
 
 def main(_):
@@ -258,7 +259,8 @@ def main(_):
 
 def define_train_higgs_flags():
   """Add tree related flags as well as training/eval configuration."""
-  flags_core.define_base(stop_threshold=False, batch_size=False, num_gpu=False)
+  flags_core.define_base(clean=False, stop_threshold=False, batch_size=False,
+                         num_gpu=False)
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
 

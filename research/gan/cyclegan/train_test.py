@@ -128,11 +128,12 @@ class TrainTest(tf.test.TestCase):
     FLAGS.cycle_consistency_loss_weight = 2.0
     FLAGS.max_number_of_steps = 1
 
-    mock_data_provider.provide_custom_datasets.return_value = (tf.zeros(
-        [1, 2], dtype=tf.float32), tf.zeros([1, 2], dtype=tf.float32))
+    mock_data_provider.provide_custom_data.return_value = (
+        tf.zeros([3, 2, 2, 3], dtype=tf.float32),
+        tf.zeros([3, 2, 2, 3], dtype=tf.float32))
 
     train.main(None)
-    mock_data_provider.provide_custom_datasets.assert_called_once_with(
+    mock_data_provider.provide_custom_data.assert_called_once_with(
         ['/tmp/x/*.jpg', '/tmp/y/*.jpg'], batch_size=3, patch_size=8)
     mock_define_model.assert_called_once_with(mock.ANY, mock.ANY)
     mock_cyclegan_loss.assert_called_once_with(

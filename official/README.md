@@ -14,11 +14,21 @@ If you are on a version of TensorFlow earlier than 1.4, please [update your inst
 ## Requirements
 Please follow the below steps before running models in this repo:
 
-1. Add the top-level ***/models*** folder to the Python path with the command:
+
+1. TensorFlow [nightly binaries](https://github.com/tensorflow/tensorflow#installation)
+
+2. Add the top-level ***/models*** folder to the Python path with the command:
    ```
    export PYTHONPATH="$PYTHONPATH:/path/to/models"
    ```
-2. Install dependencies:
+   
+   Using Colab:
+   ```
+   import os
+   os.environ['PYTHONPATH'] += ":/path/to/models"
+   ```
+
+3. Install dependencies:
    ```
    pip3 install --user -r official/requirements.txt
    ```
@@ -54,7 +64,7 @@ our objectives of readable, usable, and maintainable code.
 * Runnable from a blank environment with relative ease.
 * Trainable on: single GPU/CPU (baseline), multiple GPUs, TPU
 * Compatible with Python 2 and 3 (using [six](https://pythonhosted.org/six/) when necessary)
-* Conform to [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
+* Conform to [Google Python Style Guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md)
 
 **Implementation guidelines**
 

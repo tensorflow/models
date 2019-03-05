@@ -224,7 +224,8 @@ def resnet_arg_scope(weight_decay=0.0001,
                      batch_norm_epsilon=1e-5,
                      batch_norm_scale=True,
                      activation_fn=tf.nn.relu,
-                     use_batch_norm=True):
+                     use_batch_norm=True,
+                     batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
   """Defines the default ResNet arg scope.
 
   TODO(gpapan): The batch-normalization related default values above are
@@ -242,6 +243,8 @@ def resnet_arg_scope(weight_decay=0.0001,
       activations in the batch normalization layer.
     activation_fn: The activation function which is used in ResNet.
     use_batch_norm: Whether or not to use batch normalization.
+    batch_norm_updates_collections: Collection for the update ops for
+      batch norm.
 
   Returns:
     An `arg_scope` to use for the resnet models.
@@ -250,7 +253,7 @@ def resnet_arg_scope(weight_decay=0.0001,
       'decay': batch_norm_decay,
       'epsilon': batch_norm_epsilon,
       'scale': batch_norm_scale,
-      'updates_collections': tf.GraphKeys.UPDATE_OPS,
+      'updates_collections': batch_norm_updates_collections,
       'fused': None,  # Use fused batch norm if possible.
   }
 

@@ -64,12 +64,28 @@ def _get_configs_for_model(model_name):
   data_path = _get_data_path()
   label_map_path = _get_labelmap_path()
   configs = config_util.get_configs_from_pipeline_file(filename)
+  override_dict = {
+      'train_input_path': data_path,
+      'eval_input_path': data_path,
+      'label_map_path': label_map_path
+  }
   configs = config_util.merge_external_params_with_configs(
-      configs,
-      train_input_path=data_path,
-      eval_input_path=data_path,
-      label_map_path=label_map_path)
+      configs, kwargs_dict=override_dict)
   return configs
+
+
+def _make_initializable_iterator(dataset):
+  """Creates an iterator, and initializes tables.
+
+  Args:
+    dataset: A `tf.data.Dataset` object.
+
+  Returns:
+    A `tf.data.Iterator`.
+  """
+  iterator = dataset.make_initializable_iterator()
+  tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
+  return iterator
 
 
 class ModelLibTest(tf.test.TestCase):
@@ -84,24 +100,24 @@ class ModelLibTest(tf.test.TestCase):
     train_config = configs['train_config']
     with tf.Graph().as_default():
       if mode == 'train':
-        features, labels = inputs.create_train_input_fn(
-            configs['train_config'],
-            configs['train_input_config'],
-            configs['model'])()
+        features, labels = _make_initializable_iterator(
+            inputs.create_train_input_fn(configs['train_config'],
+                                         configs['train_input_config'],
+                                         configs['model'])()).get_next()
         model_mode = tf.estimator.ModeKeys.TRAIN
         batch_size = train_config.batch_size
       elif mode == 'eval':
-        features, labels = inputs.create_eval_input_fn(
-            configs['eval_config'],
-            configs['eval_input_config'],
-            configs['model'])()
+        features, labels = _make_initializable_iterator(
+            inputs.create_eval_input_fn(configs['eval_config'],
+                                        configs['eval_input_config'],
+                                        configs['model'])()).get_next()
         model_mode = tf.estimator.ModeKeys.EVAL
         batch_size = 1
       elif mode == 'eval_on_train':
-        features, labels = inputs.create_eval_input_fn(
-            configs['eval_config'],
-            configs['train_input_config'],
-            configs['model'])()
+        features, labels = _make_initializable_iterator(
+            inputs.create_eval_input_fn(configs['eval_config'],
+                                        configs['train_input_config'],
+                                        configs['model'])()).get_next()
         model_mode = tf.estimator.ModeKeys.EVAL
         batch_size = 1
 
@@ -116,20 +132,24 @@ class ModelLibTest(tf.test.TestCase):
 
       self.assertIsNotNone(estimator_spec.loss)
       self.assertIsNotNone(estimator_spec.predictions)
-      if class_agnostic:
-        self.assertNotIn('detection_classes', estimator_spec.predictions)
-      else:
-        detection_classes = estimator_spec.predictions['detection_classes']
-        self.assertEqual(batch_size, detection_classes.shape.as_list()[0])
-        self.assertEqual(tf.float32, detection_classes.dtype)
-      detection_boxes = estimator_spec.predictions['detection_boxes']
-      detection_scores = estimator_spec.predictions['detection_scores']
-      num_detections = estimator_spec.predictions['num_detections']
-      self.assertEqual(batch_size, detection_boxes.shape.as_list()[0])
-      self.assertEqual(tf.float32, detection_boxes.dtype)
-      self.assertEqual(batch_size, detection_scores.shape.as_list()[0])
-      self.assertEqual(tf.float32, detection_scores.dtype)
-      self.assertEqual(tf.float32, num_detections.dtype)
+      if mode == 'eval' or mode == 'eval_on_train':
+        if class_agnostic:
+          self.assertNotIn('detection_classes', estimator_spec.predictions)
+        else:
+          detection_classes = estimator_spec.predictions['detection_classes']
+          self.assertEqual(batch_size, detection_classes.shape.as_list()[0])
+          self.assertEqual(tf.float32, detection_classes.dtype)
+        detection_boxes = estimator_spec.predictions['detection_boxes']
+        detection_scores = estimator_spec.predictions['detection_scores']
+        num_detections = estimator_spec.predictions['num_detections']
+        self.assertEqual(batch_size, detection_boxes.shape.as_list()[0])
+        self.assertEqual(tf.float32, detection_boxes.dtype)
+        self.assertEqual(batch_size, detection_scores.shape.as_list()[0])
+        self.assertEqual(tf.float32, detection_scores.dtype)
+        self.assertEqual(tf.float32, num_detections.dtype)
+        if mode == 'eval':
+          self.assertIn('Detections_Left_Groundtruth_Right/0',
+                        estimator_spec.eval_metric_ops)
       if model_mode == tf.estimator.ModeKeys.TRAIN:
         self.assertIsNotNone(estimator_spec.train_op)
       return estimator_spec
@@ -138,10 +158,10 @@ class ModelLibTest(tf.test.TestCase):
     model_config = configs['model']
 
     with tf.Graph().as_default():
-      features, _ = inputs.create_eval_input_fn(
-          configs['eval_config'],
-          configs['eval_input_config'],
-          configs['model'])()
+      features, _ = _make_initializable_iterator(
+          inputs.create_eval_input_fn(configs['eval_config'],
+                                      configs['eval_input_config'],
+                                      configs['model'])()).get_next()
       detection_model_fn = functools.partial(
           model_builder.build, model_config=model_config, is_training=False)
 
@@ -161,6 +181,31 @@ class ModelLibTest(tf.test.TestCase):
   def test_model_fn_in_train_mode(self):
     """Tests the model function in TRAIN mode."""
     configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
+    self._assert_model_fn_for_train_eval(configs, 'train')
+
+  def test_model_fn_in_train_mode_freeze_all_variables(self):
+    """Tests model_fn TRAIN mode with all variables frozen."""
+    configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
+    configs['train_config'].freeze_variables.append('.*')
+    with self.assertRaisesRegexp(ValueError, 'No variables to optimize'):
+      self._assert_model_fn_for_train_eval(configs, 'train')
+
+  def test_model_fn_in_train_mode_freeze_all_included_variables(self):
+    """Tests model_fn TRAIN mode with all included variables frozen."""
+    configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
+    train_config = configs['train_config']
+    train_config.update_trainable_variables.append('FeatureExtractor')
+    train_config.freeze_variables.append('.*')
+    with self.assertRaisesRegexp(ValueError, 'No variables to optimize'):
+      self._assert_model_fn_for_train_eval(configs, 'train')
+
+  def test_model_fn_in_train_mode_freeze_box_predictor(self):
+    """Tests model_fn TRAIN mode with FeatureExtractor variables frozen."""
+    configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
+    train_config = configs['train_config']
+    train_config.update_trainable_variables.append('FeatureExtractor')
+    train_config.update_trainable_variables.append('BoxPredictor')
+    train_config.freeze_variables.append('FeatureExtractor')
     self._assert_model_fn_for_train_eval(configs, 'train')
 
   def test_model_fn_in_eval_mode(self):
@@ -185,21 +230,17 @@ class ModelLibTest(tf.test.TestCase):
         hparams_overrides='load_pretrained=false')
     pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
     train_steps = 20
-    eval_steps = 10
     train_and_eval_dict = model_lib.create_estimator_and_inputs(
         run_config,
         hparams,
         pipeline_config_path,
-        train_steps=train_steps,
-        eval_steps=eval_steps)
+        train_steps=train_steps)
     estimator = train_and_eval_dict['estimator']
     train_steps = train_and_eval_dict['train_steps']
-    eval_steps = train_and_eval_dict['eval_steps']
     self.assertIsInstance(estimator, tf.estimator.Estimator)
     self.assertEqual(20, train_steps)
-    self.assertEqual(10, eval_steps)
     self.assertIn('train_input_fn', train_and_eval_dict)
-    self.assertIn('eval_input_fn', train_and_eval_dict)
+    self.assertIn('eval_input_fns', train_and_eval_dict)
     self.assertIn('eval_on_train_input_fn', train_and_eval_dict)
 
   def test_create_estimator_with_default_train_eval_steps(self):
@@ -210,16 +251,13 @@ class ModelLibTest(tf.test.TestCase):
     pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
     config_train_steps = configs['train_config'].num_steps
-    config_eval_steps = configs['eval_config'].num_examples
     train_and_eval_dict = model_lib.create_estimator_and_inputs(
         run_config, hparams, pipeline_config_path)
     estimator = train_and_eval_dict['estimator']
     train_steps = train_and_eval_dict['train_steps']
-    eval_steps = train_and_eval_dict['eval_steps']
 
     self.assertIsInstance(estimator, tf.estimator.Estimator)
     self.assertEqual(config_train_steps, train_steps)
-    self.assertEqual(config_eval_steps, eval_steps)
 
   def test_create_tpu_estimator_and_inputs(self):
     """Tests that number of train/eval defaults to config values."""
@@ -229,21 +267,17 @@ class ModelLibTest(tf.test.TestCase):
         hparams_overrides='load_pretrained=false')
     pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
     train_steps = 20
-    eval_steps = 10
     train_and_eval_dict = model_lib.create_estimator_and_inputs(
         run_config,
         hparams,
         pipeline_config_path,
         train_steps=train_steps,
-        eval_steps=eval_steps,
         use_tpu_estimator=True)
     estimator = train_and_eval_dict['estimator']
     train_steps = train_and_eval_dict['train_steps']
-    eval_steps = train_and_eval_dict['eval_steps']
 
     self.assertIsInstance(estimator, tpu_estimator.TPUEstimator)
     self.assertEqual(20, train_steps)
-    self.assertEqual(10, eval_steps)
 
   def test_create_train_and_eval_specs(self):
     """Tests that `TrainSpec` and `EvalSpec` is created correctly."""
@@ -252,38 +286,32 @@ class ModelLibTest(tf.test.TestCase):
         hparams_overrides='load_pretrained=false')
     pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
     train_steps = 20
-    eval_steps = 10
-    eval_on_train_steps = 15
     train_and_eval_dict = model_lib.create_estimator_and_inputs(
         run_config,
         hparams,
         pipeline_config_path,
-        train_steps=train_steps,
-        eval_steps=eval_steps)
+        train_steps=train_steps)
     train_input_fn = train_and_eval_dict['train_input_fn']
-    eval_input_fn = train_and_eval_dict['eval_input_fn']
+    eval_input_fns = train_and_eval_dict['eval_input_fns']
     eval_on_train_input_fn = train_and_eval_dict['eval_on_train_input_fn']
     predict_input_fn = train_and_eval_dict['predict_input_fn']
     train_steps = train_and_eval_dict['train_steps']
-    eval_steps = train_and_eval_dict['eval_steps']
 
     train_spec, eval_specs = model_lib.create_train_and_eval_specs(
         train_input_fn,
-        eval_input_fn,
+        eval_input_fns,
         eval_on_train_input_fn,
         predict_input_fn,
         train_steps,
-        eval_steps,
         eval_on_train_data=True,
-        eval_on_train_steps=eval_on_train_steps,
         final_exporter_name='exporter',
-        eval_spec_name='holdout')
+        eval_spec_names=['holdout'])
     self.assertEqual(train_steps, train_spec.max_steps)
     self.assertEqual(2, len(eval_specs))
-    self.assertEqual(eval_steps, eval_specs[0].steps)
+    self.assertEqual(None, eval_specs[0].steps)
     self.assertEqual('holdout', eval_specs[0].name)
     self.assertEqual('exporter', eval_specs[0].exporters[0].name)
-    self.assertEqual(eval_on_train_steps, eval_specs[1].steps)
+    self.assertEqual(None, eval_specs[1].steps)
     self.assertEqual('eval_on_train', eval_specs[1].name)
 
   def test_experiment(self):
@@ -299,7 +327,7 @@ class ModelLibTest(tf.test.TestCase):
         train_steps=10,
         eval_steps=20)
     self.assertEqual(10, experiment.train_steps)
-    self.assertEqual(20, experiment.eval_steps)
+    self.assertEqual(None, experiment.eval_steps)
 
 
 class UnbatchTensorsTest(tf.test.TestCase):

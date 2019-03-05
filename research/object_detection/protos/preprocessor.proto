@@ -33,6 +33,7 @@ message PreprocessingStep {
     RandomVerticalFlip random_vertical_flip = 25;
     RandomRotation90 random_rotation90 = 26;
     RGBtoGray rgb_to_gray = 27;
+    ConvertClassLogitsToSoftmax convert_class_logits_to_softmax = 28;
   }
 }
 
@@ -154,6 +155,9 @@ message RandomCropImage {
   // value, it is removed from the new image.
   optional float overlap_thresh = 6 [default=0.3];
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 8 [default=true];
+
   // Probability of keeping the original image.
   optional float random_coef = 7 [default=0.0];
 }
@@ -162,13 +166,13 @@ message RandomCropImage {
 message RandomPadImage {
   // Minimum dimensions for padded image. If unset, will use original image
   // dimension as a lower bound.
-  optional float min_image_height = 1;
-  optional float min_image_width = 2;
+  optional int32 min_image_height = 1;
+  optional int32 min_image_width = 2;
 
   // Maximum dimensions for padded image. If unset, will use double the original
   // image dimension as a lower bound.
-  optional float max_image_height = 3;
-  optional float max_image_width = 4;
+  optional int32 max_image_height = 3;
+  optional int32 max_image_width = 4;
 
   // Color of the padding. If unset, will pad using average color of the input
   // image.
@@ -193,6 +197,9 @@ message RandomCropPadImage {
   // value, it is removed from the new image.
   optional float overlap_thresh = 6 [default=0.3];
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 11 [default=true];
+
   // Probability of keeping the original image during the crop operation.
   optional float random_coef = 7 [default=0.0];
 
@@ -216,6 +223,9 @@ message RandomCropToAspectRatio {
   // ratio between a cropped bounding box and the original is less than this
   // value, it is removed from the new image.
   optional float overlap_thresh = 2 [default=0.3];
+
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 3 [default=true];
 }
 
 // Randomly adds black square patches to an image.
@@ -284,6 +294,9 @@ message SSDRandomCropOperation {
   // Cropped box area ratio must be above this threhold to be kept.
   optional float overlap_thresh = 6;
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 8 [default=true];
+
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
 }
@@ -313,6 +326,9 @@ message SSDRandomCropPadOperation {
 
   // Cropped box area ratio must be above this threhold to be kept.
   optional float overlap_thresh = 6;
+
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 13 [default=true];
 
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
@@ -352,6 +368,9 @@ message SSDRandomCropFixedAspectRatioOperation {
   // Cropped box area ratio must be above this threhold to be kept.
   optional float overlap_thresh = 6;
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 8 [default=true];
+
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
 }
@@ -386,6 +405,9 @@ message SSDRandomCropPadFixedAspectRatioOperation {
   // Cropped box area ratio must be above this threhold to be kept.
   optional float overlap_thresh = 6;
 
+  // Whether to clip the boxes to the cropped image.
+  optional bool clip_boxes = 8 [default=true];
+
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
 }
@@ -408,4 +430,12 @@ message SSDRandomCropPadFixedAspectRatio {
   // Max ratio of padded image height and width to the input image's height and
   // width. Two entries per operation.
   repeated float max_padded_size_ratio = 4;
+}
+
+// Converts class logits to softmax optionally scaling the values by temperature
+// first.
+message ConvertClassLogitsToSoftmax {
+
+  // Scale to use on logits before applying softmax.
+  optional float temperature = 1 [default=1.0];
 }

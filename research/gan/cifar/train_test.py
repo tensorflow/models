@@ -35,7 +35,7 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
       ('Unconditional', False, False),
       ('Conditional', True, False),
       ('SyncReplicas', False, True))
-  def test_build_graph_helper(self, conditional, use_sync_replicas):
+  def test_build_graph(self, conditional, use_sync_replicas):
     FLAGS.max_number_of_steps = 0
     FLAGS.conditional = conditional
     FLAGS.use_sync_replicas = use_sync_replicas

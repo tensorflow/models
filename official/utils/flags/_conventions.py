@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import codecs
 import functools
 
 from absl import app as absl_app
@@ -28,8 +29,17 @@ from absl import flags
 # necessary. Currently the only major effect is that help bodies start on the
 # line after flags are listed. All flag definitions should wrap the text bodies
 # with help wrap when calling DEFINE_*.
-help_wrap = functools.partial(flags.text_wrap, length=80, indent="",
-                              firstline_indent="\n")
+_help_wrap = functools.partial(flags.text_wrap, length=80, indent="",
+                               firstline_indent="\n")
+
+
+# Pretty formatting causes issues when utf-8 is not installed on a system.
+try:
+  codecs.lookup("utf-8")
+  help_wrap = _help_wrap
+except LookupError:
+  def help_wrap(text, *args, **kwargs):
+    return _help_wrap(text, *args, **kwargs).replace("\ufeff", "")
 
 
 # Replace None with h to also allow -h
