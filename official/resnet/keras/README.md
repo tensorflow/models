@@ -60,16 +60,35 @@ There are more flag options you can specify. Here are some examples:
 data, are used;
 - `--batch_size`: the batch size used for the model;
 - `--model_dir`: the directory to save the model checkpoint;
-- `--train_epochs`: number of epoches to run for trianing the model;
+- `--train_epochs`: number of epoches to run for training the model;
 - `--train_steps`: number of steps to run for training the model. We now only
-support a number that is smalle than the number of bathces in an epoch.
-- `--skip_eval`: when set to true, evaluation of the model will be skipped. 
+support a number that is smaller than the number of batches in an epoch.
+- `--skip_eval`: when set to true, evaluation as well as validation during 
+training is skipped
+
+For example, this is a typical command line to run with ImageNet data with 
+batch size 128 per GPU:
+
+```bash
+python -m keras_imagenet_main \
+--data_dir=/data/imagenet/ \
+--model_dir=/tmp/model_dir/something \
+--hooks ExamplesPerSecondHook \
+--num_gpus=2 \
+--batch_size=64 \
+--resnet_size=50 \
+--dtype=fp32 \
+--train_epochs=90 \
+--train_steps=10 \
+--use_synthetic_data=false
+```
 
 See [`keras_common.py`](keras_common.py) for full list of options.
 
 ## Using multiple GPUs
 You can train these models on multiple GPUs using `tf.distribute.Strategy` API. 
-You can read more about them in this guide.
+You can read more about them in this 
+[guide](https://www.tensorflow.org/guide/distribute_strategy).
 
 In this example, we have made it easier to use is with just a command line flag 
 `--num_gpus`. By default this flag is 1 if TensorFlow is compiled with CUDA, 
@@ -78,7 +97,7 @@ and 0 otherwise.
 - --num_gpus=0: Uses tf.distribute.OneDeviceStrategy with CPU as the device.
 - --num_gpus=1: Uses tf.distribute.OneDeviceStrategy with GPU as the device.
 - --num_gpus=2+: Uses tf.distribute.MirroredStrategy to run synchronous 
-distributed training across the those GPUs.
+distributed training across the GPUs.
 
 If you wish to run without `tf.distribute.Strategy`, you can do so by setting 
 `--distribution_strategy=off`.
