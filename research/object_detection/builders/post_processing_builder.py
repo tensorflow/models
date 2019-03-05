@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 import functools
 
 import tensorflow as tf
+from object_detection.builders import calibration_builder
 from object_detection.core import post_processing
 from object_detection.protos import post_processing_pb2
 
@@ -24,8 +25,8 @@ from object_detection.protos import post_processing_pb2
 def build(post_processing_config):
   """Builds callables for post-processing operations.
 
-  Builds callables for non-max suppression and score conversion based on the
-  configuration.
+  Builds callables for non-max suppression, score conversion, and (optionally)
+  calibration based on the configuration.
 
   Non-max suppression callable takes `boxes`, `scores`, and optionally
   `clip_window`, `parallel_iterations` `masks, and `scope` as inputs. It returns
@@ -35,8 +36,10 @@ def build(post_processing_config):
 
   Score converter callable should be called with `input` tensor. The callable
   returns the output from one of 3 tf operations based on the configuration -
-  tf.identity, tf.sigmoid or tf.nn.softmax. See tensorflow documentation for
-  argument and return value descriptions.
+  tf.identity, tf.sigmoid or tf.nn.softmax. If a calibration config is provided,
+  score_converter also applies calibration transformations, as defined in
+  calibration_builder.py. See tensorflow documentation for argument and return
+  value descriptions.
 
   Args:
     post_processing_config: post_processing.proto object containing the
@@ -57,6 +60,10 @@ def build(post_processing_config):
   score_converter_fn = _build_score_converter(
       post_processing_config.score_converter,
       post_processing_config.logit_scale)
+  if post_processing_config.HasField('calibration_config'):
+    score_converter_fn = _build_calibrated_score_converter(
+        score_converter_fn,
+        post_processing_config.calibration_config)
   return non_max_suppressor_fn, score_converter_fn
 
 
@@ -122,3 +129,32 @@ def _build_score_converter(score_converter_config, logit_scale):
   if score_converter_config == post_processing_pb2.PostProcessing.SOFTMAX:
     return _score_converter_fn_with_logit_scale(tf.nn.softmax, logit_scale)
   raise ValueError('Unknown score converter.')
+
+
+def _build_calibrated_score_converter(score_converter_fn, calibration_config):
+  """Wraps a score_converter_fn, adding a calibration step.
+
+  Builds a score converter function witha calibration transformation according
+  to calibration_builder.py. Calibration applies positive monotonic
+  transformations to inputs (i.e. score ordering is strictly preserved or
+  adjacent scores are mapped to the same score). When calibration is
+  class-agnostic, the highest-scoring class remains unchanged, unless two
+  adjacent scores are mapped to the same value and one class arbitrarily
+  selected to break the tie. In per-class calibration, it's possible (though
+  rare in practice) that the highest-scoring class will change, since positive
+  monotonicity is only required to hold within each class.
+
+  Args:
+    score_converter_fn: callable that takes logit scores as input.
+    calibration_config: post_processing_pb2.PostProcessing.calibration_config.
+
+  Returns:
+    Callable calibrated score coverter op.
+  """
+  calibration_fn = calibration_builder.build(calibration_config)
+  def calibrated_score_converter_fn(logits):
+    converted_logits = score_converter_fn(logits)
+    return calibration_fn(converted_logits)
+  calibrated_score_converter_fn.__name__ = (
+      'calibrate_with_%s' % calibration_config.WhichOneof('calibrator'))
+  return calibrated_score_converter_fn

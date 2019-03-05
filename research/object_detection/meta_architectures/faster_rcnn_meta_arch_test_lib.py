@@ -165,7 +165,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                    use_matmul_crop_and_resize=False,
                    clip_anchors_to_image=False,
                    use_matmul_gather_in_matcher=False,
-                   use_static_shapes=False):
+                   use_static_shapes=False,
+                   calibration_mapping_value=None):
 
     def image_resizer_fn(image, masks=None):
       """Fake image resizer function."""
@@ -244,7 +245,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     first_stage_localization_loss_weight = 1.0
     first_stage_objectness_loss_weight = 1.0
 
+    post_processing_config = post_processing_pb2.PostProcessing()
     post_processing_text_proto = """
+      score_converter: IDENTITY
       batch_non_max_suppression {
         score_threshold: -20.0
         iou_threshold: 1.0
@@ -253,18 +256,31 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         use_static_shapes: """ +'{}'.format(use_static_shapes) + """
       }
     """
-    post_processing_config = post_processing_pb2.PostProcessing()
+    if calibration_mapping_value:
+      calibration_text_proto = """
+      calibration_config {
+        function_approximation {
+          x_y_pairs {
+            x_y_pair {
+              x: 0.0
+              y: %f
+            }
+            x_y_pair {
+              x: 1.0
+              y: %f
+              }}}}""" % (calibration_mapping_value, calibration_mapping_value)
+      post_processing_text_proto = (post_processing_text_proto
+                                    + ' ' + calibration_text_proto)
     text_format.Merge(post_processing_text_proto, post_processing_config)
+    second_stage_non_max_suppression_fn, second_stage_score_conversion_fn = (
+        post_processing_builder.build(post_processing_config))
 
     second_stage_target_assigner = target_assigner.create_target_assigner(
         'FasterRCNN', 'detection',
         use_matmul_gather=use_matmul_gather_in_matcher)
-    second_stage_non_max_suppression_fn, _ = post_processing_builder.build(
-        post_processing_config)
     second_stage_sampler = sampler.BalancedPositiveNegativeSampler(
         positive_fraction=1.0, is_static=use_static_shapes)
 
-    second_stage_score_conversion_fn = tf.identity
     second_stage_localization_loss_weight = 1.0
     second_stage_classification_loss_weight = 1.0
     if softmax_second_stage_classification_loss:
@@ -336,6 +352,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
             predict_masks=predict_masks,
             masks_are_class_agnostic=masks_are_class_agnostic), **common_kwargs)
 
+  @parameterized.parameters(
+      {'use_static_shapes': False},
+      {'use_static_shapes': True}
+  )
   def test_predict_gives_correct_shapes_in_inference_mode_first_stage_only(
       self, use_static_shapes=False):
     batch_size = 2
@@ -457,6 +477,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
             prediction_out['rpn_objectness_predictions_with_background'].shape,
             (batch_size, num_anchors_out, 2))
 
+  @parameterized.parameters(
+      {'use_static_shapes': False},
+      {'use_static_shapes': True}
+  )
   def test_predict_correct_shapes_in_inference_mode_two_stages(
       self, use_static_shapes=False):
 
@@ -578,6 +602,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         for key in expected_shapes:
           self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
 
+  @parameterized.parameters(
+      {'use_static_shapes': False},
+      {'use_static_shapes': True}
+  )
   def test_predict_gives_correct_shapes_in_train_mode_both_stages(
       self,
       use_static_shapes=False):
@@ -670,6 +698,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     self.assertAllEqual(results[8].shape,
                         expected_shapes['rpn_box_predictor_features'])
 
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'pad_to_max_dimension': None},
+      {'use_static_shapes': True, 'pad_to_max_dimension': None},
+      {'use_static_shapes': False, 'pad_to_max_dimension': 56},
+      {'use_static_shapes': True, 'pad_to_max_dimension': 56}
+  )
   def test_postprocess_first_stage_only_inference_mode(
       self, use_static_shapes=False, pad_to_max_dimension=None):
     batch_size = 2
@@ -696,9 +730,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           rpn_objectness_predictions_with_background,
           'rpn_features_to_crop': rpn_features_to_crop,
           'anchors': anchors}, true_image_shapes)
-      return (proposals['num_detections'],
-              proposals['detection_boxes'],
-              proposals['detection_scores'])
+      return (proposals['num_detections'], proposals['detection_boxes'],
+              proposals['detection_scores'], proposals['raw_detection_boxes'],
+              proposals['raw_detection_scores'])
 
     anchors = np.array(
         [[0, 0, 16, 16],
@@ -741,6 +775,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     expected_proposal_scores = [[1, 1, 0, 0, 0, 0, 0, 0],
                                 [1, 1, 0, 0, 0, 0, 0, 0]]
     expected_num_proposals = [4, 4]
+    expected_raw_proposal_boxes = [[[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                                    [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]],
+                                   [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                                    [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]]]
+    expected_raw_scores = [[[-10., 13.], [10., -10.], [10., -11.], [-10., 12.]],
+                           [[10., -10.], [-10., 13.], [-10., 12.], [10., -11.]]]
 
     self.assertAllClose(results[0], expected_num_proposals)
     for indx, num_proposals in enumerate(expected_num_proposals):
@@ -748,6 +788,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                           expected_proposal_boxes[indx][0:num_proposals])
       self.assertAllClose(results[2][indx][0:num_proposals],
                           expected_proposal_scores[indx][0:num_proposals])
+    self.assertAllClose(results[3], expected_raw_proposal_boxes)
+    self.assertAllClose(results[4], expected_raw_scores)
 
   def _test_postprocess_first_stage_only_train_mode(self,
                                                     pad_to_max_dimension=None):
@@ -801,9 +843,17 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     expected_proposal_scores = [[1, 1],
                                 [1, 1]]
     expected_num_proposals = [2, 2]
+    expected_raw_proposal_boxes = [[[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                                    [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]],
+                                   [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                                    [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]]]
+    expected_raw_scores = [[[-10., 13.], [-10., 12.], [-10., 11.], [-10., 10.]],
+                           [[-10., 13.], [-10., 12.], [-10., 11.], [-10., 10.]]]
 
-    expected_output_keys = set(['detection_boxes', 'detection_scores',
-                                'num_detections'])
+    expected_output_keys = set([
+        'detection_boxes', 'detection_scores', 'num_detections',
+        'raw_detection_boxes', 'raw_detection_scores'
+    ])
     self.assertEqual(set(proposals.keys()), expected_output_keys)
 
     with self.test_session() as sess:
@@ -817,6 +867,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                           expected_proposal_scores)
       self.assertAllEqual(proposals_out['num_detections'],
                           expected_num_proposals)
+    self.assertAllClose(proposals_out['raw_detection_boxes'],
+                        expected_raw_proposal_boxes)
+    self.assertAllClose(proposals_out['raw_detection_scores'],
+                        expected_raw_scores)
 
   def test_postprocess_first_stage_only_train_mode(self):
     self._test_postprocess_first_stage_only_train_mode()
@@ -824,6 +878,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
   def test_postprocess_first_stage_only_train_mode_padded_image(self):
     self._test_postprocess_first_stage_only_train_mode(pad_to_max_dimension=56)
 
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'pad_to_max_dimension': None},
+      {'use_static_shapes': True, 'pad_to_max_dimension': None},
+      {'use_static_shapes': False, 'pad_to_max_dimension': 56},
+      {'use_static_shapes': True, 'pad_to_max_dimension': 56}
+  )
   def test_postprocess_second_stage_only_inference_mode(
       self, use_static_shapes=False, pad_to_max_dimension=None):
     batch_size = 2
@@ -854,10 +914,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           'num_proposals': num_proposals,
           'proposal_boxes': proposal_boxes,
       }, true_image_shapes)
-      return (detections['num_detections'],
-              detections['detection_boxes'],
-              detections['detection_scores'],
-              detections['detection_classes'])
+      return (detections['num_detections'], detections['detection_boxes'],
+              detections['detection_scores'], detections['detection_classes'],
+              detections['raw_detection_boxes'],
+              detections['raw_detection_scores'])
 
     proposal_boxes = np.array(
         [[[1, 1, 2, 3],
@@ -867,6 +927,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
          [[2, 3, 6, 8],
           [1, 2, 5, 3],
           4*[0], 4*[0], 4*[0], 4*[0], 4*[0], 4*[0]]], dtype=np.float32)
+
     num_proposals = np.array([3, 2], dtype=np.int32)
     refined_box_encodings = np.zeros(
         [total_num_padded_proposals, num_classes, 4], dtype=np.float32)
@@ -887,6 +948,15 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     expected_num_detections = [5, 4]
     expected_detection_classes = [[0, 0, 0, 1, 1], [0, 0, 1, 1, 0]]
     expected_detection_scores = [[1, 1, 1, 1, 1], [1, 1, 1, 1, 0]]
+    h = float(image_shape[1])
+    w = float(image_shape[2])
+    expected_raw_detection_boxes = np.array(
+        [[[1 / h, 1 / w, 2 / h, 3 / w], [0, 0, 1 / h, 1 / w],
+          [.5 / h, .5 / w, .6 / h, .6 / w], 4 * [0], 4 * [0], 4 * [0], 4 * [0],
+          4 * [0]],
+         [[2 / h, 3 / w, 6 / h, 8 / w], [1 / h, 2 / w, 5 / h, 3 / w], 4 * [0],
+          4 * [0], 4 * [0], 4 * [0], 4 * [0], 4 * [0]]],
+        dtype=np.float32)
 
     self.assertAllClose(results[0], expected_num_detections)
 
@@ -896,6 +966,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       self.assertAllClose(results[3][indx][0:num_proposals],
                           expected_detection_classes[indx][0:num_proposals])
 
+    self.assertAllClose(results[4], expected_raw_detection_boxes)
+    self.assertAllClose(results[5],
+                        class_predictions_with_background.reshape([-1, 8, 3]))
     if not use_static_shapes:
       self.assertAllEqual(results[1].shape, [2, 5, 4])
 
@@ -1268,6 +1341,13 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           'Loss/BoxClassifierLoss/classification_loss'], 0)
       self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'shared_boxes': False},
+      {'use_static_shapes': False, 'shared_boxes': True},
+
+      {'use_static_shapes': True, 'shared_boxes': False},
+      {'use_static_shapes': True, 'shared_boxes': True},
+  )
   def test_loss_full_zero_padded_proposals_nonzero_loss_with_two_images(
       self, use_static_shapes=False, shared_boxes=False):
     batch_size = 2

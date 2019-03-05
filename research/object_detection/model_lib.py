@@ -51,6 +51,7 @@ MODEL_BUILD_UTIL_MAP = {
         inputs.create_eval_input_fn,
     'create_predict_input_fn':
         inputs.create_predict_input_fn,
+    'detection_model_fn_base': model_builder.build,
 }
 
 
@@ -184,7 +185,8 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   return unbatched_tensor_dict
 
 
-def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
+def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
+                    postprocess_on_cpu=False):
   """Creates a model function for `Estimator`.
 
   Args:
@@ -193,6 +195,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
     hparams: `HParams` object.
     use_tpu: Boolean indicating whether model should be constructed for
         use on TPU.
+    postprocess_on_cpu: When use_tpu and postprocess_on_cpu is true, postprocess
+        is scheduled on the host cpu.
 
   Returns:
     `model_fn` for `Estimator`.
@@ -282,9 +286,20 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       prediction_dict = detection_model.predict(
           preprocessed_images,
           features[fields.InputDataFields.true_image_shape])
+
+    def postprocess_wrapper(args):
+      return detection_model.postprocess(args[0], args[1])
+
     if mode in (tf.estimator.ModeKeys.EVAL, tf.estimator.ModeKeys.PREDICT):
-      detections = detection_model.postprocess(
-          prediction_dict, features[fields.InputDataFields.true_image_shape])
+      if use_tpu and postprocess_on_cpu:
+        detections = tf.contrib.tpu.outside_compilation(
+            postprocess_wrapper,
+            (prediction_dict,
+             features[fields.InputDataFields.true_image_shape]))
+      else:
+        detections = postprocess_wrapper((
+            prediction_dict,
+            features[fields.InputDataFields.true_image_shape]))
 
     if mode == tf.estimator.ModeKeys.TRAIN:
       if train_config.fine_tune_checkpoint and hparams.load_pretrained:
@@ -501,6 +516,8 @@ def create_estimator_and_inputs(run_config,
                                 params=None,
                                 override_eval_num_epochs=True,
                                 save_final_config=False,
+                                postprocess_on_cpu=False,
+                                export_to_tpu=None,
                                 **kwargs):
   """Creates `Estimator`, input functions, and steps.
 
@@ -535,10 +552,15 @@ def create_estimator_and_inputs(run_config,
       is True.
     params: Parameter dictionary passed from the estimator. Only used if
       `use_tpu_estimator` is True.
-    override_eval_num_epochs: Whether to overwrite the number of epochs to
-      1 for eval_input.
+    override_eval_num_epochs: Whether to overwrite the number of epochs to 1 for
+      eval_input.
     save_final_config: Whether to save final config (obtained after applying
       overrides) to `estimator.model_dir`.
+    postprocess_on_cpu: When use_tpu and postprocess_on_cpu are true,
+      postprocess is scheduled on the host cpu.
+    export_to_tpu: When use_tpu and export_to_tpu are true,
+      `export_savedmodel()` exports a metagraph for serving on TPU besides the
+      one on CPU.
     **kwargs: Additional keyword arguments for configuration override.
 
   Returns:
@@ -561,12 +583,14 @@ def create_estimator_and_inputs(run_config,
   create_train_input_fn = MODEL_BUILD_UTIL_MAP['create_train_input_fn']
   create_eval_input_fn = MODEL_BUILD_UTIL_MAP['create_eval_input_fn']
   create_predict_input_fn = MODEL_BUILD_UTIL_MAP['create_predict_input_fn']
+  detection_model_fn_base = MODEL_BUILD_UTIL_MAP['detection_model_fn_base']
 
-  configs = get_configs_from_pipeline_file(pipeline_config_path,
-                                           config_override=config_override)
+  configs = get_configs_from_pipeline_file(
+      pipeline_config_path, config_override=config_override)
   kwargs.update({
       'train_steps': train_steps,
-      'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples
+      'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples,
+      'use_bfloat16': configs['train_config'].use_bfloat16 and use_tpu
   })
   if override_eval_num_epochs:
     kwargs.update({'eval_num_epochs': 1})
@@ -595,7 +619,7 @@ def create_estimator_and_inputs(run_config,
     train_steps = train_config.num_steps
 
   detection_model_fn = functools.partial(
-      model_builder.build, model_config=model_config)
+      detection_model_fn_base, model_config=model_config)
 
   # Create the input functions for TRAIN/EVAL/PREDICT.
   train_input_fn = create_train_input_fn(
@@ -618,10 +642,13 @@ def create_estimator_and_inputs(run_config,
   predict_input_fn = create_predict_input_fn(
       model_config=model_config, predict_input_config=eval_input_configs[0])
 
-  export_to_tpu = hparams.get('export_to_tpu', False)
+  # Read export_to_tpu from hparams if not passed.
+  if export_to_tpu is None:
+    export_to_tpu = hparams.get('export_to_tpu', False)
   tf.logging.info('create_estimator_and_inputs: use_tpu %s, export_to_tpu %s',
                   use_tpu, export_to_tpu)
-  model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu)
+  model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu,
+                              postprocess_on_cpu)
   if use_tpu_estimator:
     estimator = tf.contrib.tpu.TPUEstimator(
         model_fn=model_fn,
@@ -630,7 +657,8 @@ def create_estimator_and_inputs(run_config,
         eval_batch_size=num_shards * 1 if use_tpu else 1,
         use_tpu=use_tpu,
         config=run_config,
-        # TODO(lzc): Remove conditional after CMLE moves to TF 1.9
+        export_to_tpu=export_to_tpu,
+        eval_on_tpu=False,  # Eval runs on CPU, so disable eval on TPU
         params=params if params else {})
   else:
     estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)

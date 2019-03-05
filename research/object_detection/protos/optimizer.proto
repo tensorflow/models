@@ -38,6 +38,7 @@ message AdamOptimizer {
   optional LearningRate learning_rate = 1;
 }
 
+
 // Configuration message for optimizer learning rate.
 message LearningRate {
   oneof learning_rate {
