@@ -649,6 +649,15 @@ def create_estimator_and_inputs(run_config,
       predict_input_fn=predict_input_fn,
       train_steps=train_steps)
 
+def _compare_fn(best_eval_result, current_eval_result):
+  # export the model with the best mAP@0.5IOU
+  default_key = "DetectionBoxes_Precision/mAP@.50IOU"
+  if best_eval_result[default_key] < current_eval_result[default_key]:
+      tf.logging.info(default_key)
+      tf.logging.info("prev best eval result", best_eval_result[default_key])
+      tf.logging.info("current eval result", current_eval_result[default_key])
+
+  return best_eval_result[default_key] < current_eval_result[default_key]
 
 def create_train_and_eval_specs(train_input_fn,
                                 eval_input_fns,
@@ -657,7 +666,8 @@ def create_train_and_eval_specs(train_input_fn,
                                 train_steps,
                                 eval_on_train_data=False,
                                 final_exporter_name='Servo',
-                                eval_spec_names=None):
+                                eval_spec_names=None,
+                                export_best_model=True):
   """Creates a `TrainSpec` and `EvalSpec`s.
 
   Args:
@@ -695,6 +705,12 @@ def create_train_and_eval_specs(train_input_fn,
       exporter_name = '{}_{}'.format(final_exporter_name, eval_spec_name)
     exporter = tf.estimator.FinalExporter(
         name=exporter_name, serving_input_receiver_fn=predict_input_fn)
+    if export_best_model:
+      exporter = tf.estimator.BestExporter(name="best_exporter",
+                                           serving_input_receiver_fn=predict_input_fn,
+                                           event_file_pattern="eval_0/*.tfevents.*",
+                                           compare_fn=_compare_fn
+                                           )
     eval_specs.append(
         tf.estimator.EvalSpec(
             name=eval_spec_name,
