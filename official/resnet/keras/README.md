@@ -75,7 +75,7 @@ python -m keras_imagenet_main \
 --model_dir=/tmp/model_dir/something \
 --hooks ExamplesPerSecondHook \
 --num_gpus=2 \
---batch_size=64 \
+--batch_size=128 \
 --resnet_size=50 \
 --dtype=fp32 \
 --train_epochs=90 \
