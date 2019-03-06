@@ -143,6 +143,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         num_classes=num_classes,
         is_training=is_training)
 
+  def _get_box_classifier_features_shape(self, image_size, batch_size,
+                                         max_num_proposals, initial_crop_size,
+                                         maxpool_stride, num_features):
+      return (batch_size * max_num_proposals,
+              initial_crop_size/maxpool_stride,
+              initial_crop_size/maxpool_stride,
+              num_features)
+
   def _get_model(self, box_predictor, **common_kwargs):
     return faster_rcnn_meta_arch.FasterRCNNMetaArch(
         initial_crop_size=3,
@@ -1675,6 +1683,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       with self.test_session(graph=test_graph_detection2) as sess:
         saver.restore(sess, saved_model_path)
         uninitialized_vars_list = sess.run(tf.report_uninitialized_variables())
+        uninitialized_vars_list = [var.decode('utf-8') for var in uninitialized_vars_list]
         self.assertIn('another_variable', uninitialized_vars_list)
         for var in uninitialized_vars_list:
           self.assertNotIn(model2.first_stage_feature_extractor_scope, var)
