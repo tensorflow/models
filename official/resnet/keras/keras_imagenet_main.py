@@ -151,6 +151,8 @@ def run(flags_obj):
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
     if dtype == 'float16':
+      # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
+      # can be enabled with a single line of code.
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,

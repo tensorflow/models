@@ -236,6 +236,8 @@ def resnet50(num_classes, dtype='float32'):
       kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
       bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
       name='fc1000')(x)
+  # TODO(reedwm): Remove manual casts once mixed precision can be enabled with a
+  # single line of code.
   x = backend.cast(x, 'float32')
   x = layers.Activation('softmax')(x)
 
