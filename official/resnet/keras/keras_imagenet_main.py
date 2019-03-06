@@ -102,9 +102,9 @@ def run(flags_obj):
   # TODO(haoyuzhang): Set config properly in TF2.0 when the config API is ready.
 
   dtype = flags_core.get_tf_dtype(flags_obj)
-  if dtype == 'fp16':
-    raise ValueError('dtype fp16 is not supported in Keras. Use the default '
-                     'value(fp32).')
+  if dtype == 'float16':
+    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
+    tf.keras.mixed_precision.experimental.set_policy(policy)
 
   data_format = flags_obj.data_format
   if data_format is None:
@@ -120,7 +120,7 @@ def run(flags_obj):
         width=imagenet_main.DEFAULT_IMAGE_SIZE,
         num_channels=imagenet_main.NUM_CHANNELS,
         num_classes=imagenet_main.NUM_CLASSES,
-        dtype=flags_core.get_tf_dtype(flags_obj))
+        dtype=dtype)
   else:
     distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_main.input_fn
@@ -131,14 +131,16 @@ def run(flags_obj):
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
       parse_record_fn=parse_record_keras,
-      datasets_num_private_threads=flags_obj.datasets_num_private_threads)
+      datasets_num_private_threads=flags_obj.datasets_num_private_threads,
+      dtype=dtype)
 
   eval_input_dataset = input_fn(
       is_training=False,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras)
+      parse_record_fn=parse_record_keras,
+      dtype=dtype)
 
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
@@ -148,7 +150,13 @@ def run(flags_obj):
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
-    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES)
+    if dtype == 'float16':
+      # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
+      # can be enabled with a single line of code.
+      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
+    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
+                                  dtype=dtype)
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,
