@@ -332,4 +332,3 @@ def convert_to_softmax_logits(logits):
   '''
   softmax_logits = tf.concat([logits * 0, logits], axis=1)
   return softmax_logits
-
