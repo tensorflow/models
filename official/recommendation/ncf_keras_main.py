@@ -192,8 +192,29 @@ def run_ncf(_):
 
   tf.logging.info("Keras evaluation is done.")
 
-  stats = ncf_common.build_stats(history, eval_results, time_callback)
+  stats = build_stats(history, eval_results, time_callback)
   return stats
+
+
+def build_stats(history, eval_result, time_callback):
+    stats = {}
+    if history and history.history:
+      train_history = history.history
+      stats['loss'] = train_history['loss'][-1]
+
+    if eval_result:
+      stats['eval_loss'] = eval_result[0]
+      stats['eval_hit_rate'] = eval_result[1]
+
+    if time_callback:
+      timestamp_log = time_callback.timestamp_log
+      stats['step_timestamp_log'] = timestamp_log
+      stats['train_finish_time'] = time_callback.train_finish_time
+      if len(timestamp_log) > 1:
+        stats['avg_exp_per_second'] = (
+            time_callback.batch_size * time_callback.log_steps *
+            (len(time_callback.timestamp_log)-1) /
+            (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
 
 
 def main(_):
