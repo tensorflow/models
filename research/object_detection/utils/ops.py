@@ -328,6 +328,7 @@ def retain_groundtruth(tensor_dict, valid_indices):
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
       fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_confidences
       fields.InputDataFields.groundtruth_keypoints
       fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_is_crowd
@@ -357,7 +358,9 @@ def retain_groundtruth(tensor_dict, valid_indices):
     for key in tensor_dict:
       if key in [fields.InputDataFields.groundtruth_boxes,
                  fields.InputDataFields.groundtruth_classes,
+                 fields.InputDataFields.groundtruth_confidences,
                  fields.InputDataFields.groundtruth_keypoints,
+                 fields.InputDataFields.groundtruth_keypoint_visibilities,
                  fields.InputDataFields.groundtruth_instance_masks]:
         valid_dict[key] = tf.gather(tensor_dict[key], valid_indices)
       # Input decoder returns empty tensor when these fields are not provided.
@@ -385,6 +388,7 @@ def retain_groundtruth_with_positive_classes(tensor_dict):
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
       fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_confidences
       fields.InputDataFields.groundtruth_keypoints
       fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_is_crowd
@@ -426,6 +430,7 @@ def filter_groundtruth_with_crowd_boxes(tensor_dict):
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
       fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_confidences
       fields.InputDataFields.groundtruth_keypoints
       fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_is_crowd
@@ -451,6 +456,7 @@ def filter_groundtruth_with_nan_box_coordinates(tensor_dict):
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
       fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_confidences
       fields.InputDataFields.groundtruth_keypoints
       fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_is_crowd
@@ -468,6 +474,36 @@ def filter_groundtruth_with_nan_box_coordinates(tensor_dict):
   valid_indices = tf.where(valid_indicator_vector)
 
   return retain_groundtruth(tensor_dict, valid_indices)
+
+
+def filter_unrecognized_classes(tensor_dict):
+  """Filters out class labels that are not unrecognized by the labelmap.
+
+  Decoder would parse unrecognized classes (not included in the labelmap) to
+  a label of value -1. Such targets are unecessary for training, and causes
+  issue for evaluation, due to labeling mapping logic. This function filters
+  those labels out for both training and evaluation.
+
+  Args:
+    tensor_dict: dictionary containing input tensors keyed by
+      fields.InputDataFields.
+
+  Returns:
+    A dictionary keyed by fields.InputDataFields containing the tensors
+    obtained after applying the filtering.
+
+  Raises:
+    ValueError: If groundtruth_classes tensor is not in tensor_dict.
+  """
+  if fields.InputDataFields.groundtruth_classes not in tensor_dict:
+    raise ValueError('`groundtruth classes` not in tensor_dict.')
+  # Refer to tf_example_decoder for how unrecognized labels are handled.
+  unrecognized_label = -1
+  recognized_indices = tf.where(
+      tf.greater(tensor_dict[fields.InputDataFields.groundtruth_classes],
+                 unrecognized_label))
+
+  return retain_groundtruth(tensor_dict, recognized_indices)
 
 
 def normalize_to_target(inputs,

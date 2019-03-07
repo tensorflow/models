@@ -2,6 +2,8 @@ syntax = "proto2";
 
 package object_detection.protos;
 
+import "object_detection/protos/calibration.proto";
+
 // Configuration proto for non-max-suppression operation on a batch of
 // detections.
 message BatchNonMaxSuppression {
@@ -46,4 +48,7 @@ message PostProcessing {
   // Typically used for softmax distillation, though can be used to scale for
   // other reasons.
   optional float logit_scale = 3 [default = 1.0];
+  // Calibrate score outputs. Calibration is applied after score converter
+  // and before non max suppression.
+  optional CalibrationConfig calibration_config = 4;
 }

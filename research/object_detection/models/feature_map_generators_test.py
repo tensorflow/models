@@ -17,6 +17,7 @@
 
 from absl.testing import parameterized
 
+import numpy as np
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -124,7 +125,36 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
           (key, value.shape) for key, value in out_feature_maps.items())
       self.assertDictEqual(expected_feature_map_shapes, out_feature_map_shapes)
 
-  # TODO(kaftan): Remove conditional after CMLE moves to TF 1.10
+  def test_get_expected_feature_map_shapes_with_inception_v2_use_depthwise(
+      self, use_keras):
+    image_features = {
+        'Mixed_3c': tf.random_uniform([4, 28, 28, 256], dtype=tf.float32),
+        'Mixed_4c': tf.random_uniform([4, 14, 14, 576], dtype=tf.float32),
+        'Mixed_5c': tf.random_uniform([4, 7, 7, 1024], dtype=tf.float32)
+    }
+    layout_copy = INCEPTION_V2_LAYOUT.copy()
+    layout_copy['use_depthwise'] = True
+    feature_map_generator = self._build_feature_map_generator(
+        feature_map_layout=layout_copy,
+        use_keras=use_keras
+    )
+    feature_maps = feature_map_generator(image_features)
+
+    expected_feature_map_shapes = {
+        'Mixed_3c': (4, 28, 28, 256),
+        'Mixed_4c': (4, 14, 14, 576),
+        'Mixed_5c': (4, 7, 7, 1024),
+        'Mixed_5c_2_Conv2d_3_3x3_s2_512': (4, 4, 4, 512),
+        'Mixed_5c_2_Conv2d_4_3x3_s2_256': (4, 2, 2, 256),
+        'Mixed_5c_2_Conv2d_5_3x3_s2_256': (4, 1, 1, 256)}
+
+    init_op = tf.global_variables_initializer()
+    with self.test_session() as sess:
+      sess.run(init_op)
+      out_feature_maps = sess.run(feature_maps)
+      out_feature_map_shapes = dict(
+          (key, value.shape) for key, value in out_feature_maps.items())
+      self.assertDictEqual(expected_feature_map_shapes, out_feature_map_shapes)
 
   def test_get_expected_feature_map_shapes_use_explicit_padding(
       self, use_keras):
@@ -297,12 +327,87 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
       else:
         self.assertSetEqual(expected_slim_variables, actual_variable_set)
 
-  # TODO(kaftan): Remove conditional after CMLE moves to TF 1.10
+  def test_get_expected_variable_names_with_inception_v2_use_depthwise(
+      self,
+      use_keras):
+    image_features = {
+        'Mixed_3c': tf.random_uniform([4, 28, 28, 256], dtype=tf.float32),
+        'Mixed_4c': tf.random_uniform([4, 14, 14, 576], dtype=tf.float32),
+        'Mixed_5c': tf.random_uniform([4, 7, 7, 1024], dtype=tf.float32)
+    }
+    layout_copy = INCEPTION_V2_LAYOUT.copy()
+    layout_copy['use_depthwise'] = True
+    feature_map_generator = self._build_feature_map_generator(
+        feature_map_layout=layout_copy,
+        use_keras=use_keras
+    )
+    feature_maps = feature_map_generator(image_features)
+
+    expected_slim_variables = set([
+        'Mixed_5c_1_Conv2d_3_1x1_256/weights',
+        'Mixed_5c_1_Conv2d_3_1x1_256/biases',
+        'Mixed_5c_2_Conv2d_3_3x3_s2_512_depthwise/depthwise_weights',
+        'Mixed_5c_2_Conv2d_3_3x3_s2_512_depthwise/biases',
+        'Mixed_5c_2_Conv2d_3_3x3_s2_512/weights',
+        'Mixed_5c_2_Conv2d_3_3x3_s2_512/biases',
+        'Mixed_5c_1_Conv2d_4_1x1_128/weights',
+        'Mixed_5c_1_Conv2d_4_1x1_128/biases',
+        'Mixed_5c_2_Conv2d_4_3x3_s2_256_depthwise/depthwise_weights',
+        'Mixed_5c_2_Conv2d_4_3x3_s2_256_depthwise/biases',
+        'Mixed_5c_2_Conv2d_4_3x3_s2_256/weights',
+        'Mixed_5c_2_Conv2d_4_3x3_s2_256/biases',
+        'Mixed_5c_1_Conv2d_5_1x1_128/weights',
+        'Mixed_5c_1_Conv2d_5_1x1_128/biases',
+        'Mixed_5c_2_Conv2d_5_3x3_s2_256_depthwise/depthwise_weights',
+        'Mixed_5c_2_Conv2d_5_3x3_s2_256_depthwise/biases',
+        'Mixed_5c_2_Conv2d_5_3x3_s2_256/weights',
+        'Mixed_5c_2_Conv2d_5_3x3_s2_256/biases',
+    ])
+
+    expected_keras_variables = set([
+        'FeatureMaps/Mixed_5c_1_Conv2d_3_1x1_256_conv/kernel',
+        'FeatureMaps/Mixed_5c_1_Conv2d_3_1x1_256_conv/bias',
+        ('FeatureMaps/Mixed_5c_2_Conv2d_3_3x3_s2_512_depthwise_conv/'
+         'depthwise_kernel'),
+        ('FeatureMaps/Mixed_5c_2_Conv2d_3_3x3_s2_512_depthwise_conv/'
+         'bias'),
+        'FeatureMaps/Mixed_5c_2_Conv2d_3_3x3_s2_512_conv/kernel',
+        'FeatureMaps/Mixed_5c_2_Conv2d_3_3x3_s2_512_conv/bias',
+        'FeatureMaps/Mixed_5c_1_Conv2d_4_1x1_128_conv/kernel',
+        'FeatureMaps/Mixed_5c_1_Conv2d_4_1x1_128_conv/bias',
+        ('FeatureMaps/Mixed_5c_2_Conv2d_4_3x3_s2_256_depthwise_conv/'
+         'depthwise_kernel'),
+        ('FeatureMaps/Mixed_5c_2_Conv2d_4_3x3_s2_256_depthwise_conv/'
+         'bias'),
+        'FeatureMaps/Mixed_5c_2_Conv2d_4_3x3_s2_256_conv/kernel',
+        'FeatureMaps/Mixed_5c_2_Conv2d_4_3x3_s2_256_conv/bias',
+        'FeatureMaps/Mixed_5c_1_Conv2d_5_1x1_128_conv/kernel',
+        'FeatureMaps/Mixed_5c_1_Conv2d_5_1x1_128_conv/bias',
+        ('FeatureMaps/Mixed_5c_2_Conv2d_5_3x3_s2_256_depthwise_conv/'
+         'depthwise_kernel'),
+        ('FeatureMaps/Mixed_5c_2_Conv2d_5_3x3_s2_256_depthwise_conv/'
+         'bias'),
+        'FeatureMaps/Mixed_5c_2_Conv2d_5_3x3_s2_256_conv/kernel',
+        'FeatureMaps/Mixed_5c_2_Conv2d_5_3x3_s2_256_conv/bias',
+    ])
+
+    init_op = tf.global_variables_initializer()
+    with self.test_session() as sess:
+      sess.run(init_op)
+      sess.run(feature_maps)
+      actual_variable_set = set(
+          [var.op.name for var in tf.trainable_variables()])
+      if use_keras:
+        self.assertSetEqual(expected_keras_variables, actual_variable_set)
+      else:
+        self.assertSetEqual(expected_slim_variables, actual_variable_set)
 
 
-class FPNFeatureMapGeneratorTest(tf.test.TestCase):
+@parameterized.parameters({'use_native_resize_op': True},
+                          {'use_native_resize_op': False})
+class FPNFeatureMapGeneratorTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_get_expected_feature_map_shapes(self):
+  def test_get_expected_feature_map_shapes(self, use_native_resize_op):
     image_features = [
         ('block2', tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
         ('block3', tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
@@ -310,7 +415,9 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase):
         ('block5', tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))
     ]
     feature_maps = feature_map_generators.fpn_top_down_feature_maps(
-        image_features=image_features, depth=128)
+        image_features=image_features,
+        depth=128,
+        use_native_resize_op=use_native_resize_op)
 
     expected_feature_map_shapes = {
         'top_down_block2': (4, 8, 8, 128),
@@ -327,7 +434,95 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase):
                                 for key, value in out_feature_maps.items()}
       self.assertDictEqual(out_feature_map_shapes, expected_feature_map_shapes)
 
-  def test_get_expected_feature_map_shapes_with_depthwise(self):
+  def test_use_bounded_activations_add_operations(self, use_native_resize_op):
+    tf_graph = tf.Graph()
+    with tf_graph.as_default():
+      image_features = [('block2',
+                         tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
+                        ('block3',
+                         tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
+                        ('block4',
+                         tf.random_uniform([4, 2, 2, 256], dtype=tf.float32)),
+                        ('block5',
+                         tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))]
+      feature_map_generators.fpn_top_down_feature_maps(
+          image_features=image_features,
+          depth=128,
+          use_bounded_activations=True,
+          use_native_resize_op=use_native_resize_op)
+
+      expected_added_operations = dict.fromkeys([
+          'top_down/clip_by_value', 'top_down/clip_by_value_1',
+          'top_down/clip_by_value_2', 'top_down/clip_by_value_3',
+          'top_down/clip_by_value_4', 'top_down/clip_by_value_5',
+          'top_down/clip_by_value_6'
+      ])
+      op_names = {op.name: None for op in tf_graph.get_operations()}
+      self.assertDictContainsSubset(expected_added_operations, op_names)
+
+  def test_use_bounded_activations_clip_value(self, use_native_resize_op):
+    tf_graph = tf.Graph()
+    with tf_graph.as_default():
+      image_features = [
+          ('block2', 255 * tf.ones([4, 8, 8, 256], dtype=tf.float32)),
+          ('block3', 255 * tf.ones([4, 4, 4, 256], dtype=tf.float32)),
+          ('block4', 255 * tf.ones([4, 2, 2, 256], dtype=tf.float32)),
+          ('block5', 255 * tf.ones([4, 1, 1, 256], dtype=tf.float32))
+      ]
+      feature_map_generators.fpn_top_down_feature_maps(
+          image_features=image_features,
+          depth=128,
+          use_bounded_activations=True,
+          use_native_resize_op=use_native_resize_op)
+
+      expected_clip_by_value_ops = [
+          'top_down/clip_by_value', 'top_down/clip_by_value_1',
+          'top_down/clip_by_value_2', 'top_down/clip_by_value_3',
+          'top_down/clip_by_value_4', 'top_down/clip_by_value_5',
+          'top_down/clip_by_value_6'
+      ]
+
+      # Gathers activation tensors before and after clip_by_value operations.
+      activations = {}
+      for clip_by_value_op in expected_clip_by_value_ops:
+        clip_input_tensor = tf_graph.get_operation_by_name(
+            '{}/Minimum'.format(clip_by_value_op)).inputs[0]
+        clip_output_tensor = tf_graph.get_tensor_by_name(
+            '{}:0'.format(clip_by_value_op))
+        activations.update({
+            'before_{}'.format(clip_by_value_op): clip_input_tensor,
+            'after_{}'.format(clip_by_value_op): clip_output_tensor,
+        })
+
+      expected_lower_bound = -feature_map_generators.ACTIVATION_BOUND
+      expected_upper_bound = feature_map_generators.ACTIVATION_BOUND
+      init_op = tf.global_variables_initializer()
+      with self.test_session() as session:
+        session.run(init_op)
+        activations_output = session.run(activations)
+        for clip_by_value_op in expected_clip_by_value_ops:
+          # Before clipping, activations are beyound the expected bound because
+          # of large input image_features values.
+          activations_before_clipping = (
+              activations_output['before_{}'.format(clip_by_value_op)])
+          before_clipping_lower_bound = np.amin(activations_before_clipping)
+          before_clipping_upper_bound = np.amax(activations_before_clipping)
+          self.assertLessEqual(before_clipping_lower_bound,
+                               expected_lower_bound)
+          self.assertGreaterEqual(before_clipping_upper_bound,
+                                  expected_upper_bound)
+
+          # After clipping, activations are bounded as expectation.
+          activations_after_clipping = (
+              activations_output['after_{}'.format(clip_by_value_op)])
+          after_clipping_lower_bound = np.amin(activations_after_clipping)
+          after_clipping_upper_bound = np.amax(activations_after_clipping)
+          self.assertGreaterEqual(after_clipping_lower_bound,
+                                  expected_lower_bound)
+          self.assertLessEqual(after_clipping_upper_bound, expected_upper_bound)
+
+  def test_get_expected_feature_map_shapes_with_depthwise(
+      self, use_native_resize_op):
     image_features = [
         ('block2', tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
         ('block3', tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
@@ -335,7 +530,10 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase):
         ('block5', tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))
     ]
     feature_maps = feature_map_generators.fpn_top_down_feature_maps(
-        image_features=image_features, depth=128, use_depthwise=True)
+        image_features=image_features,
+        depth=128,
+        use_depthwise=True,
+        use_native_resize_op=use_native_resize_op)
 
     expected_feature_map_shapes = {
         'top_down_block2': (4, 8, 8, 128),

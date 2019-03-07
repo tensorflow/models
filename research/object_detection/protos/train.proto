@@ -74,13 +74,13 @@ message TrainConfig {
   optional int32 replicas_to_aggregate = 13 [default=1];
 
   // Maximum number of elements to store within a queue.
-  optional int32 batch_queue_capacity = 14 [default=150];
+  optional int32 batch_queue_capacity = 14 [default=150, deprecated=true];
 
   // Number of threads to use for batching.
-  optional int32 num_batch_queue_threads = 15 [default=8];
+  optional int32 num_batch_queue_threads = 15 [default=8, deprecated=true];
 
   // Maximum capacity of the queue used to prefetch assembled batches.
-  optional int32 prefetch_queue_capacity = 16 [default=5];
+  optional int32 prefetch_queue_capacity = 16 [default=5, deprecated=true];
 
   // If true, boxes with the same coordinates will be merged together.
   // This is useful when each box can have multiple labels.
@@ -113,7 +113,8 @@ message TrainConfig {
   // will lead to a larger memory footprint.
   optional bool retain_original_images = 23 [default=false];
 
-  // Whether to use bfloat16 for training.
+  // Whether to use bfloat16 for training. This is currently only supported for
+  // TPUs.
   optional bool use_bfloat16 = 26 [default=false];
 
   // Whether to summarize gradients.

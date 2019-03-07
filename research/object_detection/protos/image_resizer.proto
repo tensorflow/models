@@ -8,6 +8,7 @@ message ImageResizer {
   oneof image_resizer_oneof {
     KeepAspectRatioResizer keep_aspect_ratio_resizer = 1;
     FixedShapeResizer fixed_shape_resizer = 2;
+    IdentityResizer identity_resizer = 3;
   }
 }
 
@@ -17,6 +18,9 @@ enum ResizeType {
   NEAREST_NEIGHBOR = 1; // Corresponds to tf.image.ResizeMethod.NEAREST_NEIGHBOR
   BICUBIC = 2; // Corresponds to tf.image.ResizeMethod.BICUBIC
   AREA = 3; // Corresponds to tf.image.ResizeMethod.AREA
+}
+
+message IdentityResizer {
 }
 
 // Configuration proto for image resizer that keeps aspect ratio.

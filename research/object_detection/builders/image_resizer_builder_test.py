@@ -104,6 +104,17 @@ class ImageResizerBuilderTest(tf.test.TestCase):
         input_shape, image_resizer_text_proto)
     self.assertEqual(output_shape, expected_output_shape)
 
+  def test_identity_resizer_returns_expected_shape(self):
+    image_resizer_text_proto = """
+      identity_resizer {
+      }
+    """
+    input_shape = (10, 20, 3)
+    expected_output_shape = (10, 20, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
   def test_raises_error_on_invalid_input(self):
     invalid_input = 'invalid_input'
     with self.assertRaises(ValueError):

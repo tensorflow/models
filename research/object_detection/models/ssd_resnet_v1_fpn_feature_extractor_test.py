@@ -25,8 +25,7 @@ class SSDResnet50V1FeatureExtractorTest(
   """SSDResnet50v1Fpn feature extractor test."""
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                use_explicit_padding=False):
-    min_depth = 32
+                                use_explicit_padding=False, min_depth=32):
     is_training = True
     return ssd_resnet_v1_fpn_feature_extractor.SSDResnet50V1FpnFeatureExtractor(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
@@ -42,8 +41,7 @@ class SSDResnet101V1FeatureExtractorTest(
   """SSDResnet101v1Fpn feature extractor test."""
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                use_explicit_padding=False):
-    min_depth = 32
+                                use_explicit_padding=False, min_depth=32):
     is_training = True
     return (
         ssd_resnet_v1_fpn_feature_extractor.SSDResnet101V1FpnFeatureExtractor(
@@ -64,8 +62,7 @@ class SSDResnet152V1FeatureExtractorTest(
   """SSDResnet152v1Fpn feature extractor test."""
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                use_explicit_padding=False):
-    min_depth = 32
+                                use_explicit_padding=False, min_depth=32):
     is_training = True
     return (
         ssd_resnet_v1_fpn_feature_extractor.SSDResnet152V1FpnFeatureExtractor(

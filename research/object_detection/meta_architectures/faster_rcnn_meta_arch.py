@@ -92,8 +92,8 @@ configured in the meta architecture:
   non-max suppression and normalize them. In this case, the `postprocess` method
   skips both `_postprocess_rpn` and `_postprocess_box_classifier`.
 """
-from abc import abstractmethod
-from functools import partial
+import abc
+import functools
 import tensorflow as tf
 
 from object_detection.anchor_generators import grid_anchor_generator
@@ -138,7 +138,7 @@ class FasterRCNNFeatureExtractor(object):
     self._reuse_weights = reuse_weights
     self._weight_decay = weight_decay
 
-  @abstractmethod
+  @abc.abstractmethod
   def preprocess(self, resized_inputs):
     """Feature-extractor specific preprocessing (minus image resizing)."""
     pass
@@ -162,7 +162,7 @@ class FasterRCNNFeatureExtractor(object):
     with tf.variable_scope(scope, values=[preprocessed_inputs]):
       return self._extract_proposal_features(preprocessed_inputs, scope)
 
-  @abstractmethod
+  @abc.abstractmethod
   def _extract_proposal_features(self, preprocessed_inputs, scope):
     """Extracts first stage RPN features, to be overridden."""
     pass
@@ -185,7 +185,7 @@ class FasterRCNNFeatureExtractor(object):
         scope, values=[proposal_feature_maps], reuse=tf.AUTO_REUSE):
       return self._extract_box_classifier_features(proposal_feature_maps, scope)
 
-  @abstractmethod
+  @abc.abstractmethod
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features, to be overridden."""
     pass
@@ -770,7 +770,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
           representing the features for each proposal.
     """
     image_shape_2d = self._image_batch_shape_2d(image_shape)
-    proposal_boxes_normalized, _, num_proposals = self._postprocess_rpn(
+    proposal_boxes_normalized, _, num_proposals, _, _ = self._postprocess_rpn(
         rpn_box_encodings, rpn_objectness_predictions_with_background,
         anchors, image_shape_2d, true_image_shapes)
 
@@ -1080,7 +1080,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         anchors_boxlist, clip_window)
     def _batch_gather_kept_indices(predictions_tensor):
       return shape_utils.static_or_dynamic_map_fn(
-          partial(tf.gather, indices=keep_indices),
+          functools.partial(tf.gather, indices=keep_indices),
           elems=predictions_tensor,
           dtype=tf.float32,
           parallel_iterations=self._parallel_iterations,
@@ -1148,17 +1148,22 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     with tf.name_scope('FirstStagePostprocessor'):
       if self._number_of_stages == 1:
-        proposal_boxes, proposal_scores, num_proposals = self._postprocess_rpn(
-            prediction_dict['rpn_box_encodings'],
-            prediction_dict['rpn_objectness_predictions_with_background'],
-            prediction_dict['anchors'],
-            true_image_shapes,
-            true_image_shapes)
+        (proposal_boxes, proposal_scores, num_proposals, raw_proposal_boxes,
+         raw_proposal_scores) = self._postprocess_rpn(
+             prediction_dict['rpn_box_encodings'],
+             prediction_dict['rpn_objectness_predictions_with_background'],
+             prediction_dict['anchors'], true_image_shapes, true_image_shapes)
         return {
-            fields.DetectionResultFields.detection_boxes: proposal_boxes,
-            fields.DetectionResultFields.detection_scores: proposal_scores,
+            fields.DetectionResultFields.detection_boxes:
+                proposal_boxes,
+            fields.DetectionResultFields.detection_scores:
+                proposal_scores,
             fields.DetectionResultFields.num_detections:
                 tf.to_float(num_proposals),
+            fields.DetectionResultFields.raw_detection_boxes:
+                raw_proposal_boxes,
+            fields.DetectionResultFields.raw_detection_scores:
+                raw_proposal_scores
         }
 
     # TODO(jrru): Remove mask_predictions from _post_process_box_classifier.
@@ -1266,6 +1271,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
       num_proposals: A Tensor of type `int32`. A 1-D tensor of shape [batch]
         representing the number of proposals predicted for each image in
         the batch.
+      raw_detection_boxes: [batch, total_detections, 4] tensor with decoded
+        proposal boxes before Non-Max Suppression.
+      raw_detection_score: [batch, total_detections,
+        num_classes_with_background] tensor of class score logits for
+        raw proposal boxes.
     """
     rpn_box_encodings_batch = tf.expand_dims(rpn_box_encodings_batch, axis=2)
     rpn_encodings_shape = shape_utils.combined_static_and_dynamic_shape(
@@ -1274,13 +1284,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
         tf.expand_dims(anchors, 0), [rpn_encodings_shape[0], 1, 1])
     proposal_boxes = self._batch_decode_boxes(rpn_box_encodings_batch,
                                               tiled_anchor_boxes)
-    proposal_boxes = tf.squeeze(proposal_boxes, axis=2)
+    raw_proposal_boxes = tf.squeeze(proposal_boxes, axis=2)
     rpn_objectness_softmax_without_background = tf.nn.softmax(
         rpn_objectness_predictions_with_background_batch)[:, :, 1]
     clip_window = self._compute_clip_window(image_shapes)
     (proposal_boxes, proposal_scores, _, _, _,
      num_proposals) = self._first_stage_nms_fn(
-         tf.expand_dims(proposal_boxes, axis=2),
+         tf.expand_dims(raw_proposal_boxes, axis=2),
          tf.expand_dims(rpn_objectness_softmax_without_background, axis=2),
          clip_window=clip_window)
     if self._is_training:
@@ -1304,7 +1314,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
       return normalized_boxes_per_image
     normalized_proposal_boxes = shape_utils.static_or_dynamic_map_fn(
         normalize_boxes, elems=[proposal_boxes, image_shapes], dtype=tf.float32)
-    return normalized_proposal_boxes, proposal_scores, num_proposals
+    raw_normalized_proposal_boxes = shape_utils.static_or_dynamic_map_fn(
+        normalize_boxes,
+        elems=[raw_proposal_boxes, image_shapes],
+        dtype=tf.float32)
+    return (normalized_proposal_boxes, proposal_scores, num_proposals,
+            raw_normalized_proposal_boxes,
+            rpn_objectness_predictions_with_background_batch)
 
   def _sample_box_classifier_batch(
       self,
@@ -1576,6 +1592,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
           (optional) [batch, max_detections, mask_height, mask_width]. Note
           that a pixel-wise sigmoid score converter is applied to the detection
           masks.
+        `raw_detection_boxes`: [batch, total_detections, 4] tensor with decoded
+          detection boxes before Non-Max Suppression.
+        `raw_detection_score`: [batch, total_detections,
+          num_classes_with_background] tensor of multi-class score logits for
+          raw detection boxes.
     """
     refined_box_encodings_batch = tf.reshape(
         refined_box_encodings,
@@ -1589,11 +1610,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
     )
     refined_decoded_boxes_batch = self._batch_decode_boxes(
         refined_box_encodings_batch, proposal_boxes)
-    class_predictions_with_background_batch = (
+    class_predictions_with_background_batch_normalized = (
         self._second_stage_score_conversion_fn(
             class_predictions_with_background_batch))
     class_predictions_batch = tf.reshape(
-        tf.slice(class_predictions_with_background_batch,
+        tf.slice(class_predictions_with_background_batch_normalized,
                  [0, 0, 1], [-1, -1, -1]),
         [-1, self.max_num_proposals, self.num_classes])
     clip_window = self._compute_clip_window(image_shapes)
@@ -1614,11 +1635,51 @@ class FasterRCNNMetaArch(model.DetectionModel):
          change_coordinate_frame=True,
          num_valid_boxes=num_proposals,
          masks=mask_predictions_batch)
+    if refined_decoded_boxes_batch.shape[2] > 1:
+      class_ids = tf.expand_dims(
+          tf.argmax(class_predictions_with_background_batch[:, :, 1:], axis=2,
+                    output_type=tf.int32),
+          axis=-1)
+      raw_detection_boxes = tf.squeeze(
+          tf.batch_gather(refined_decoded_boxes_batch, class_ids), axis=2)
+    else:
+      raw_detection_boxes = tf.squeeze(refined_decoded_boxes_batch, axis=2)
+
+    def normalize_and_clip_boxes(args):
+      """Normalize and clip boxes."""
+      boxes_per_image = args[0]
+      image_shape = args[1]
+      normalized_boxes_per_image = box_list_ops.to_normalized_coordinates(
+          box_list.BoxList(boxes_per_image),
+          image_shape[0],
+          image_shape[1],
+          check_range=False).get()
+
+      normalized_boxes_per_image = box_list_ops.clip_to_window(
+          box_list.BoxList(normalized_boxes_per_image),
+          tf.constant([0.0, 0.0, 1.0, 1.0], tf.float32),
+          filter_nonoverlapping=False).get()
+
+      return normalized_boxes_per_image
+
+    raw_normalized_detection_boxes = shape_utils.static_or_dynamic_map_fn(
+        normalize_and_clip_boxes,
+        elems=[raw_detection_boxes, image_shapes],
+        dtype=tf.float32)
+
     detections = {
-        fields.DetectionResultFields.detection_boxes: nmsed_boxes,
-        fields.DetectionResultFields.detection_scores: nmsed_scores,
-        fields.DetectionResultFields.detection_classes: nmsed_classes,
-        fields.DetectionResultFields.num_detections: tf.to_float(num_detections)
+        fields.DetectionResultFields.detection_boxes:
+            nmsed_boxes,
+        fields.DetectionResultFields.detection_scores:
+            nmsed_scores,
+        fields.DetectionResultFields.detection_classes:
+            nmsed_classes,
+        fields.DetectionResultFields.num_detections:
+            tf.to_float(num_detections),
+        fields.DetectionResultFields.raw_detection_boxes:
+            raw_normalized_detection_boxes,
+        fields.DetectionResultFields.raw_detection_scores:
+            class_predictions_with_background_batch
     }
     if nmsed_masks is not None:
       detections[fields.DetectionResultFields.detection_masks] = nmsed_masks
@@ -1769,7 +1830,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
           back_prop=True))
 
       # Normalize by number of examples in sampled minibatch
-      normalizer = tf.reduce_sum(batch_sampled_indices, axis=1)
+      normalizer = tf.maximum(
+          tf.reduce_sum(batch_sampled_indices, axis=1), 1.0)
       batch_one_hot_targets = tf.one_hot(
           tf.to_int32(batch_cls_targets), depth=2)
       sampled_reg_indices = tf.multiply(batch_sampled_indices,

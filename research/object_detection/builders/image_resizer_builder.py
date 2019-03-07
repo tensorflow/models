@@ -102,6 +102,14 @@ def build(image_resizer_config):
         method=method)
     if not fixed_shape_resizer_config.convert_to_grayscale:
       return image_resizer_fn
+  elif image_resizer_oneof == 'identity_resizer':
+    def image_resizer_fn(image, masks=None, **kwargs):
+      del kwargs
+      if masks is None:
+        return [image, tf.shape(image)]
+      else:
+        return [image, masks, tf.shape(image)]
+    return image_resizer_fn
   else:
     raise ValueError(
         'Invalid image resizer option: \'%s\'.' % image_resizer_oneof)

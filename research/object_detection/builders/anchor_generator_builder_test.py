@@ -47,14 +47,9 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
                                grid_anchor_generator.GridAnchorGenerator))
     self.assertListEqual(anchor_generator_object._scales, [])
     self.assertListEqual(anchor_generator_object._aspect_ratios, [])
-    with self.test_session() as sess:
-      base_anchor_size, anchor_offset, anchor_stride = sess.run(
-          [anchor_generator_object._base_anchor_size,
-           anchor_generator_object._anchor_offset,
-           anchor_generator_object._anchor_stride])
-    self.assertAllEqual(anchor_offset, [0, 0])
-    self.assertAllEqual(anchor_stride, [16, 16])
-    self.assertAllEqual(base_anchor_size, [256, 256])
+    self.assertAllEqual(anchor_generator_object._anchor_offset, [0, 0])
+    self.assertAllEqual(anchor_generator_object._anchor_stride, [16, 16])
+    self.assertAllEqual(anchor_generator_object._base_anchor_size, [256, 256])
 
   def test_build_grid_anchor_generator_with_non_default_parameters(self):
     anchor_generator_text_proto = """
@@ -79,14 +74,9 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
                                   [0.4, 2.2])
     self.assert_almost_list_equal(anchor_generator_object._aspect_ratios,
                                   [0.3, 4.5])
-    with self.test_session() as sess:
-      base_anchor_size, anchor_offset, anchor_stride = sess.run(
-          [anchor_generator_object._base_anchor_size,
-           anchor_generator_object._anchor_offset,
-           anchor_generator_object._anchor_stride])
-    self.assertAllEqual(anchor_offset, [30, 40])
-    self.assertAllEqual(anchor_stride, [10, 20])
-    self.assertAllEqual(base_anchor_size, [128, 512])
+    self.assertAllEqual(anchor_generator_object._anchor_offset, [30, 40])
+    self.assertAllEqual(anchor_generator_object._anchor_stride, [10, 20])
+    self.assertAllEqual(anchor_generator_object._base_anchor_size, [128, 512])
 
   def test_build_ssd_anchor_generator_with_defaults(self):
     anchor_generator_text_proto = """
@@ -114,10 +104,7 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
         list(anchor_generator_object._aspect_ratios),
         [(1.0, 2.0, 0.5)] + 5 * [(1.0, 1.0)]):
       self.assert_almost_list_equal(expected_aspect_ratio, actual_aspect_ratio)
-
-    with self.test_session() as sess:
-      base_anchor_size = sess.run(anchor_generator_object._base_anchor_size)
-    self.assertAllClose(base_anchor_size, [1.0, 1.0])
+    self.assertAllClose(anchor_generator_object._base_anchor_size, [1.0, 1.0])
 
   def test_build_ssd_anchor_generator_with_custom_scales(self):
     anchor_generator_text_proto = """
@@ -194,9 +181,7 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
         6 * [(1.0, 1.0)]):
       self.assert_almost_list_equal(expected_aspect_ratio, actual_aspect_ratio)
 
-    with self.test_session() as sess:
-      base_anchor_size = sess.run(anchor_generator_object._base_anchor_size)
-    self.assertAllClose(base_anchor_size, [1.0, 1.0])
+    self.assertAllClose(anchor_generator_object._base_anchor_size, [1.0, 1.0])
 
   def test_build_ssd_anchor_generator_with_non_default_parameters(self):
     anchor_generator_text_proto = """
@@ -241,9 +226,7 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
         list(anchor_generator_object._anchor_offsets), [(8, 0), (16, 10)]):
       self.assert_almost_list_equal(expected_offsets, actual_offsets)
 
-    with self.test_session() as sess:
-      base_anchor_size = sess.run(anchor_generator_object._base_anchor_size)
-    self.assertAllClose(base_anchor_size, [1.0, 1.0])
+    self.assertAllClose(anchor_generator_object._base_anchor_size, [1.0, 1.0])
 
   def test_raise_value_error_on_empty_anchor_genertor(self):
     anchor_generator_text_proto = """

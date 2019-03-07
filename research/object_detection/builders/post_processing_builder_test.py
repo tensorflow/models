@@ -47,7 +47,8 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     """
     post_processing_config = post_processing_pb2.PostProcessing()
     text_format.Merge(post_processing_text_proto, post_processing_config)
-    _, score_converter = post_processing_builder.build(post_processing_config)
+    _, score_converter = post_processing_builder.build(
+        post_processing_config)
     self.assertEqual(score_converter.__name__, 'identity_with_logit_scale')
 
     inputs = tf.constant([1, 1], tf.float32)
@@ -101,6 +102,36 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     text_format.Merge(post_processing_text_proto, post_processing_config)
     _, score_converter = post_processing_builder.build(post_processing_config)
     self.assertEqual(score_converter.__name__, 'softmax_with_logit_scale')
+
+  def test_build_calibrator_with_nonempty_config(self):
+    """Test that identity function used when no calibration_config specified."""
+    # Calibration config maps all scores to 0.5.
+    post_processing_text_proto = """
+      score_converter: SOFTMAX
+      calibration_config {
+        function_approximation {
+          x_y_pairs {
+              x_y_pair {
+                x: 0.0
+                y: 0.5
+              }
+              x_y_pair {
+                x: 1.0
+                y: 0.5
+              }}}}"""
+    post_processing_config = post_processing_pb2.PostProcessing()
+    text_format.Merge(post_processing_text_proto, post_processing_config)
+    _, calibrated_score_conversion_fn = post_processing_builder.build(
+        post_processing_config)
+    self.assertEqual(calibrated_score_conversion_fn.__name__,
+                     'calibrate_with_function_approximation')
+
+    input_scores = tf.constant([1, 1], tf.float32)
+    outputs = calibrated_score_conversion_fn(input_scores)
+    with self.test_session() as sess:
+      calibrated_scores = sess.run(outputs)
+      expected_calibrated_scores = sess.run(tf.constant([0.5, 0.5], tf.float32))
+      self.assertAllClose(calibrated_scores, expected_calibrated_scores)
 
 
 if __name__ == '__main__':
