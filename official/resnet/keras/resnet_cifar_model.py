@@ -176,10 +176,50 @@ def conv_building_block(input_tensor,
   return x
 
 
-def resnet56(classes=100, training=None):
-  """Instantiates the ResNet56 architecture.
+def resnet_block(input_tensor,
+                 size,
+                 kernel_size,
+                 filters,
+                 stage,
+                 conv_strides=(2, 2),
+                 training=None,
+                 names=string.ascii_lowercase):
+  """A block which applies conv followed by multiple identity blocks.
 
   Arguments:
+    input_tensor: input tensor
+    size: integer, number of constituent conv/identity building blocks.
+    A conv block is applied once, followed by (size - 1) identity blocks.
+    kernel_size: default 3, the kernel size of
+        middle conv layer at main path
+    filters: list of integers, the filters of 3 conv layer at main path
+    stage: integer, current stage label, used for generating layer names
+    conv_strides: Strides for the first conv layer in the block.
+    training: Only used if training keras model with Estimator.  In other
+      scenarios it is handled automatically.
+    names: A sequence of names to be used for the constituent blocks. Must
+      be of length greater than size. By detault a, b, c, ... y, z
+
+  Returns:
+    Output tensor after applying conv and identity blocks.
+  """
+
+  x = conv_building_block(x, kernel_size, filters, stage=stage, block=names[0],
+                          training=training)
+  for i in range(size - 1):
+    x = identity_building_block(x, kernel_size, filters, stage=stage,
+                                block=names[i + 1], training=training)
+
+def resnet(num_blocks, classes=100, training=None):
+  """Instantiates the ResNet architecture.
+
+  Arguments:
+    num_blocks: integer, the number of conv/identity blocks in each block.
+      The ResNet contains 3 blocks with each block containing one conv block
+      followed by (layers_per_block - 1) number of idenity blocks. Each
+      conv/idenity block has 2 convolutional layers. With the input
+      convolutional layer and the pooling layer towards the end, this brings
+      the total size of the network to (6*num_blocks + 2)
     classes: optional number of classes to classify images into
     training: Only used if training keras model with Estimator.  In other
     scenarios it is handled automatically.
@@ -187,6 +227,7 @@ def resnet56(classes=100, training=None):
   Returns:
     A Keras model instance.
   """
+
   input_shape = (32, 32, 3)
   img_input = layers.Input(shape=input_shape)
 
@@ -214,62 +255,14 @@ def resnet56(classes=100, training=None):
                                              x, training=training)
   x = tf.keras.layers.Activation('relu')(x)
 
-  x = conv_building_block(x, 3, [16, 16], stage=2, block='a', strides=(1, 1),
-                          training=training)
-  x = identity_building_block(x, 3, [16, 16], stage=2, block='b',
-                              training=training)
-  x = identity_building_block(x, 3, [16, 16], stage=2, block='c',
-                              training=training)
-  x = identity_building_block(x, 3, [16, 16], stage=2, block='d',
-                              training=training)
-  x = identity_building_block(x, 3, [16, 16], stage=2, block='e',
-                              training=training)
-  x = identity_building_block(x, 3, [16, 16], stage=2, block='f',
-                              training=training)
-  x = identity_building_block(x, 3, [16, 16], stage=2, block='g',
-                              training=training)
-  x = identity_building_block(x, 3, [16, 16], stage=2, block='h',
-                              training=training)
-  x = identity_building_block(x, 3, [16, 16], stage=2, block='i',
-                              training=training)
+  x = resnet_block(x, size=num_blocks, kernel_size=3, filters=[16, 16],
+                   stage=2, conv_strides=(1, 1), training=training)
 
-  x = conv_building_block(x, 3, [32, 32], stage=3, block='a',
-                          training=training)
-  x = identity_building_block(x, 3, [32, 32], stage=3, block='b',
-                              training=training)
-  x = identity_building_block(x, 3, [32, 32], stage=3, block='c',
-                              training=training)
-  x = identity_building_block(x, 3, [32, 32], stage=3, block='d',
-                              training=training)
-  x = identity_building_block(x, 3, [32, 32], stage=3, block='e',
-                              training=training)
-  x = identity_building_block(x, 3, [32, 32], stage=3, block='f',
-                              training=training)
-  x = identity_building_block(x, 3, [32, 32], stage=3, block='g',
-                              training=training)
-  x = identity_building_block(x, 3, [32, 32], stage=3, block='h',
-                              training=training)
-  x = identity_building_block(x, 3, [32, 32], stage=3, block='i',
-                              training=training)
+  x = resnet_block(x, size=num_blocks, kernel_size=3, filters=[32, 32],
+                   stage=3, conv_strides=(2, 2), training=training)
 
-  x = conv_building_block(x, 3, [64, 64], stage=4, block='a',
-                          training=training)
-  x = identity_building_block(x, 3, [64, 64], stage=4, block='b',
-                              training=training)
-  x = identity_building_block(x, 3, [64, 64], stage=4, block='c',
-                              training=training)
-  x = identity_building_block(x, 3, [64, 64], stage=4, block='d',
-                              training=training)
-  x = identity_building_block(x, 3, [64, 64], stage=4, block='e',
-                              training=training)
-  x = identity_building_block(x, 3, [64, 64], stage=4, block='f',
-                              training=training)
-  x = identity_building_block(x, 3, [64, 64], stage=4, block='g',
-                              training=training)
-  x = identity_building_block(x, 3, [64, 64], stage=4, block='h',
-                              training=training)
-  x = identity_building_block(x, 3, [64, 64], stage=4, block='i',
-                              training=training)
+  x = resnet_block(x, size=num_blocks, kernel_size=3, filters=[64, 64],
+                   stage=4, conv_strides=(2, 2), training=training)
 
   x = tf.keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
   x = tf.keras.layers.Dense(classes, activation='softmax',
@@ -285,3 +278,63 @@ def resnet56(classes=100, training=None):
   model = tf.keras.models.Model(inputs, x, name='resnet56')
 
   return model
+
+
+def resnet20(classes=100, training=None):
+  """Instantiates the ResNet20 architecture.
+
+  Arguments:
+    classes: optional number of classes to classify images into
+    training: Only used if training keras model with Estimator.  In other
+    scenarios it is handled automatically.
+
+  Returns:
+    A Keras model instance.
+  """
+
+  return resnet(num_blocks=3, classes=classes, training=training)
+
+
+def resnet32(classes=100, training=None):
+  """Instantiates the ResNet32 architecture.
+
+  Arguments:
+    classes: optional number of classes to classify images into
+    training: Only used if training keras model with Estimator.  In other
+    scenarios it is handled automatically.
+
+  Returns:
+    A Keras model instance.
+  """
+
+  return resnet(num_blocks=5, classes=classes, training=training)
+
+
+def resnet56(classes=100, training=None):
+  """Instantiates the ResNet56 architecture.
+
+  Arguments:
+    classes: optional number of classes to classify images into
+    training: Only used if training keras model with Estimator.  In other
+    scenarios it is handled automatically.
+
+  Returns:
+    A Keras model instance.
+  """
+
+  return resnet(num_blocks=9, classes=classes, training=training)
+
+
+def resnet110(classes=100, training=None):
+  """Instantiates the ResNet110 architecture.
+
+  Arguments:
+    classes: optional number of classes to classify images into
+    training: Only used if training keras model with Estimator.  In other
+    scenarios it is handled automatically.
+
+  Returns:
+    A Keras model instance.
+  """
+
+  return resnet(num_blocks=18, classes=classes, training=training)
