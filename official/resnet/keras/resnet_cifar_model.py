@@ -47,7 +47,7 @@ def identity_building_block(input_tensor,
         middle conv layer at main path
     filters: list of integers, the filters of 3 conv layer at main path
     stage: integer, current stage label, used for generating layer names
-    block: 'a','b'..., current block label, used for generating layer names
+    block: current block label, used for generating layer names
     training: Only used if training keras model with Estimator.  In other
       scenarios it is handled automatically.
 
@@ -111,7 +111,7 @@ def conv_building_block(input_tensor,
         middle conv layer at main path
     filters: list of integers, the filters of 3 conv layer at main path
     stage: integer, current stage label, used for generating layer names
-    block: 'a','b'..., current block label, used for generating layer names
+    block: current block label, used for generating layer names
     strides: Strides for the first conv layer in the block.
     training: Only used if training keras model with Estimator.  In other
       scenarios it is handled automatically.
@@ -182,8 +182,7 @@ def resnet_block(input_tensor,
                  filters,
                  stage,
                  conv_strides=(2, 2),
-                 training=None,
-                 names=string.ascii_lowercase):
+                 training=None):
   """A block which applies conv followed by multiple identity blocks.
 
   Arguments:
@@ -197,18 +196,16 @@ def resnet_block(input_tensor,
     conv_strides: Strides for the first conv layer in the block.
     training: Only used if training keras model with Estimator.  In other
       scenarios it is handled automatically.
-    names: A sequence of names to be used for the constituent blocks. Must
-      be of length greater than size. By detault a, b, c, ... y, z
 
   Returns:
     Output tensor after applying conv and identity blocks.
   """
 
-  x = conv_building_block(x, kernel_size, filters, stage=stage, block=names[0],
+  x = conv_building_block(x, kernel_size, filters, stage=stage, block='block-0',
                           training=training)
   for i in range(size - 1):
     x = identity_building_block(x, kernel_size, filters, stage=stage,
-                                block=names[i + 1], training=training)
+                                block='block-%d' % (i + 1), training=training)
 
 def resnet(num_blocks, classes=100, training=None):
   """Instantiates the ResNet architecture.
