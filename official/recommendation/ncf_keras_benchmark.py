@@ -101,3 +101,33 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
   def benchmark_ncf(self):
     self._setup()
     self._run_and_report_benchmark()
+
+
+class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
+
+  def __init__(self, output_dir=None, default_flags=None):
+
+    default_flags = {}
+    default_flags['dataset'] = 'ml-20m'
+    default_flags['num_gpus'] = 1
+    default_flags['train_epochs'] = 14
+    default_flags['batch_size'] = 16000
+    default_flags['learning_rate'] = 0.00382059
+    default_flags['beta1'] = 0.783529
+    default_flags['beta2'] = 0.909003
+    default_flags['epsilon'] = 1.45439e-07
+    default_flags['layers'] = 256,256,128,64
+    default_flags['num_factors'] = 64
+    default_flags['hr_threshold'] = 0.635
+    default_flags['use_synthetic_data'] = True
+
+    super(KerasNCFBenchmarkBase, self).__init__(
+        output_dir=output_dir,
+        default_flags=default_flags)
+
+  def _extract_benchmark_report_extras(self, stats):
+    extras['examples_per_second'] = stats['avg_exp_per_second']
+
+  def benchmark_ncf(self):
+    self._setup()
+    self._run_and_report_benchmark()
