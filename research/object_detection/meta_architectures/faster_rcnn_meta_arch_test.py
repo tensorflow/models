@@ -85,6 +85,68 @@ class FasterRCNNMetaArchTest(
       self.assertTrue(np.amax(detections_out['detection_masks'] <= 1.0))
       self.assertTrue(np.amin(detections_out['detection_masks'] >= 0.0))
 
+  def test_postprocess_second_stage_only_inference_mode_with_calibration(self):
+    model = self._build_model(
+        is_training=False, number_of_stages=2, second_stage_batch_size=6,
+        calibration_mapping_value=0.5)
+
+    batch_size = 2
+    total_num_padded_proposals = batch_size * model.max_num_proposals
+    proposal_boxes = tf.constant(
+        [[[1, 1, 2, 3],
+          [0, 0, 1, 1],
+          [.5, .5, .6, .6],
+          4*[0], 4*[0], 4*[0], 4*[0], 4*[0]],
+         [[2, 3, 6, 8],
+          [1, 2, 5, 3],
+          4*[0], 4*[0], 4*[0], 4*[0], 4*[0], 4*[0]]], dtype=tf.float32)
+    num_proposals = tf.constant([3, 2], dtype=tf.int32)
+    refined_box_encodings = tf.zeros(
+        [total_num_padded_proposals, model.num_classes, 4], dtype=tf.float32)
+    class_predictions_with_background = tf.ones(
+        [total_num_padded_proposals, model.num_classes+1], dtype=tf.float32)
+    image_shape = tf.constant([batch_size, 36, 48, 3], dtype=tf.int32)
+
+    mask_height = 2
+    mask_width = 2
+    mask_predictions = 30. * tf.ones(
+        [total_num_padded_proposals, model.num_classes,
+         mask_height, mask_width], dtype=tf.float32)
+    exp_detection_masks = np.array([[[[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]]],
+                                    [[[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[0, 0], [0, 0]]]])
+
+    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+    detections = model.postprocess({
+        'refined_box_encodings': refined_box_encodings,
+        'class_predictions_with_background': class_predictions_with_background,
+        'num_proposals': num_proposals,
+        'proposal_boxes': proposal_boxes,
+        'image_shape': image_shape,
+        'mask_predictions': mask_predictions
+    }, true_image_shapes)
+    with self.test_session() as sess:
+      detections_out = sess.run(detections)
+      self.assertAllEqual(detections_out['detection_boxes'].shape, [2, 5, 4])
+      # All scores map to 0.5, except for the final one, which is pruned.
+      self.assertAllClose(detections_out['detection_scores'],
+                          [[0.5, 0.5, 0.5, 0.5, 0.5],
+                           [0.5, 0.5, 0.5, 0.5, 0.0]])
+      self.assertAllClose(detections_out['detection_classes'],
+                          [[0, 0, 0, 1, 1], [0, 0, 1, 1, 0]])
+      self.assertAllClose(detections_out['num_detections'], [5, 4])
+      self.assertAllClose(detections_out['detection_masks'],
+                          exp_detection_masks)
+      self.assertTrue(np.amax(detections_out['detection_masks'] <= 1.0))
+      self.assertTrue(np.amin(detections_out['detection_masks'] >= 0.0))
+
   def test_postprocess_second_stage_only_inference_mode_with_shared_boxes(self):
     model = self._build_model(
         is_training=False, number_of_stages=2, second_stage_batch_size=6)
@@ -190,6 +252,7 @@ class FasterRCNNMetaArchTest(
               set([
                   'detection_boxes', 'detection_scores', 'detection_classes',
                   'detection_masks', 'num_detections', 'mask_predictions',
+                  'raw_detection_boxes', 'raw_detection_scores'
               ])))
       for key in expected_shapes:
         self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
@@ -276,7 +339,7 @@ class FasterRCNNMetaArchTest(
           self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
 
         anchors_shape_out = tensor_dict_out['anchors'].shape
-        self.assertEqual(2, len(anchors_shape_out))
+        self.assertLen(anchors_shape_out, 2)
         self.assertEqual(4, anchors_shape_out[1])
         num_anchors_out = anchors_shape_out[0]
         self.assertAllEqual(tensor_dict_out['rpn_box_encodings'].shape,

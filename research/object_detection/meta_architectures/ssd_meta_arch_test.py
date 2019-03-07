@@ -48,7 +48,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
       use_keras=False,
       predict_mask=False,
       use_static_shapes=False,
-      nms_max_size_per_class=5):
+      nms_max_size_per_class=5,
+      calibration_mapping_value=None):
     return super(SsdMetaArchTest, self)._create_model(
         model_fn=ssd_meta_arch.SSDMetaArch,
         apply_hard_mining=apply_hard_mining,
@@ -61,7 +62,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         use_keras=use_keras,
         predict_mask=predict_mask,
         use_static_shapes=use_static_shapes,
-        nms_max_size_per_class=nms_max_size_per_class)
+        nms_max_size_per_class=nms_max_size_per_class,
+        calibration_mapping_value=calibration_mapping_value)
 
   def test_preprocess_preserves_shapes_with_dynamic_input_image(
       self, use_keras):
@@ -177,6 +179,13 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
     expected_classes = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
     expected_num_detections = np.array([3, 3])
 
+    raw_detection_boxes = [[[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                            [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]],
+                           [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                            [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]]]
+    raw_detection_scores = [[[0, 0], [0, 0], [0, 0], [0, 0]],
+                            [[0, 0], [0, 0], [0, 0], [0, 0]]]
+
     for input_shape in input_shapes:
       tf_graph = tf.Graph()
       with tf_graph.as_default():
@@ -191,6 +200,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         self.assertIn('detection_scores', detections)
         self.assertIn('detection_classes', detections)
         self.assertIn('num_detections', detections)
+        self.assertIn('raw_detection_boxes', detections)
+        self.assertIn('raw_detection_scores', detections)
         init_op = tf.global_variables_initializer()
       with self.test_session(graph=tf_graph) as sess:
         sess.run(init_op)
@@ -208,7 +219,139 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
       self.assertAllClose(detections_out['detection_classes'], expected_classes)
       self.assertAllClose(detections_out['num_detections'],
                           expected_num_detections)
+      self.assertAllEqual(detections_out['raw_detection_boxes'],
+                          raw_detection_boxes)
+      self.assertAllEqual(detections_out['raw_detection_scores'],
+                          raw_detection_scores)
 
+  def test_postprocess_results_are_correct_static(self, use_keras):
+    with tf.Graph().as_default():
+      _, _, _, _ = self._create_model(use_keras=use_keras)
+    def graph_fn(input_image):
+      model, _, _, _ = self._create_model(use_static_shapes=True,
+                                          nms_max_size_per_class=4)
+      preprocessed_inputs, true_image_shapes = model.preprocess(input_image)
+      prediction_dict = model.predict(preprocessed_inputs,
+                                      true_image_shapes)
+      detections = model.postprocess(prediction_dict, true_image_shapes)
+      return (detections['detection_boxes'], detections['detection_scores'],
+              detections['detection_classes'], detections['num_detections'])
+
+    batch_size = 2
+    image_size = 2
+    channels = 3
+    input_image = np.random.rand(batch_size, image_size, image_size,
+                                 channels).astype(np.float32)
+    expected_boxes = [
+        [
+            [0, 0, .5, .5],
+            [0, .5, .5, 1],
+            [.5, 0, 1, .5],
+            [0, 0, 0, 0]
+        ],  # padding
+        [
+            [0, 0, .5, .5],
+            [0, .5, .5, 1],
+            [.5, 0, 1, .5],
+            [0, 0, 0, 0]
+        ]
+    ]  # padding
+    expected_scores = [[0, 0, 0, 0], [0, 0, 0, 0]]
+    expected_classes = [[0, 0, 0, 0], [0, 0, 0, 0]]
+    expected_num_detections = np.array([3, 3])
+
+    (detection_boxes, detection_scores, detection_classes,
+     num_detections) = self.execute(graph_fn, [input_image])
+    for image_idx in range(batch_size):
+      self.assertTrue(test_utils.first_rows_close_as_set(
+          detection_boxes[image_idx][
+              0:expected_num_detections[image_idx]].tolist(),
+          expected_boxes[image_idx][0:expected_num_detections[image_idx]]))
+      self.assertAllClose(
+          detection_scores[image_idx][0:expected_num_detections[image_idx]],
+          expected_scores[image_idx][0:expected_num_detections[image_idx]])
+      self.assertAllClose(
+          detection_classes[image_idx][0:expected_num_detections[image_idx]],
+          expected_classes[image_idx][0:expected_num_detections[image_idx]])
+    self.assertAllClose(num_detections,
+                        expected_num_detections)
+
+  def test_postprocess_results_are_correct_with_calibration(self, use_keras):
+    batch_size = 2
+    image_size = 2
+    input_shapes = [(batch_size, image_size, image_size, 3),
+                    (None, image_size, image_size, 3),
+                    (batch_size, None, None, 3),
+                    (None, None, None, 3)]
+
+    expected_boxes = [
+        [
+            [0, 0, .5, .5],
+            [0, .5, .5, 1],
+            [.5, 0, 1, .5],
+            [0, 0, 0, 0],  # pruned prediction
+            [0, 0, 0, 0]
+        ],  # padding
+        [
+            [0, 0, .5, .5],
+            [0, .5, .5, 1],
+            [.5, 0, 1, .5],
+            [0, 0, 0, 0],  # pruned prediction
+            [0, 0, 0, 0]
+        ]
+    ]  # padding
+    # Calibration mapping value below is set to map all scores to 0.5, except
+    # for the last two detections in each batch (see expected number of
+    # detections below.
+    expected_scores = [[0.5, 0.5, 0.5, 0., 0.], [0.5, 0.5, 0.5, 0., 0.]]
+    expected_classes = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
+    expected_num_detections = np.array([3, 3])
+
+    raw_detection_boxes = [[[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                            [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]],
+                           [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                            [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]]]
+    raw_detection_scores = [[[0, 0], [0, 0], [0, 0], [0, 0]],
+                            [[0, 0], [0, 0], [0, 0], [0, 0]]]
+
+    for input_shape in input_shapes:
+      tf_graph = tf.Graph()
+      with tf_graph.as_default():
+        model, _, _, _ = self._create_model(use_keras=use_keras,
+                                            calibration_mapping_value=0.5)
+        input_placeholder = tf.placeholder(tf.float32, shape=input_shape)
+        preprocessed_inputs, true_image_shapes = model.preprocess(
+            input_placeholder)
+        prediction_dict = model.predict(preprocessed_inputs,
+                                        true_image_shapes)
+        detections = model.postprocess(prediction_dict, true_image_shapes)
+        self.assertIn('detection_boxes', detections)
+        self.assertIn('detection_scores', detections)
+        self.assertIn('detection_classes', detections)
+        self.assertIn('num_detections', detections)
+        self.assertIn('raw_detection_boxes', detections)
+        self.assertIn('raw_detection_scores', detections)
+        init_op = tf.global_variables_initializer()
+      with self.test_session(graph=tf_graph) as sess:
+        sess.run(init_op)
+        detections_out = sess.run(detections,
+                                  feed_dict={
+                                      input_placeholder:
+                                      np.random.uniform(
+                                          size=(batch_size, 2, 2, 3))})
+      for image_idx in range(batch_size):
+        self.assertTrue(
+            test_utils.first_rows_close_as_set(
+                detections_out['detection_boxes'][image_idx].tolist(),
+                expected_boxes[image_idx]))
+      self.assertAllClose(detections_out['detection_scores'], expected_scores)
+      self.assertAllClose(detections_out['detection_classes'], expected_classes)
+      self.assertAllClose(detections_out['num_detections'],
+                          expected_num_detections)
+      self.assertAllEqual(detections_out['raw_detection_boxes'],
+                          raw_detection_boxes)
+      self.assertAllEqual(detections_out['raw_detection_scores'],
+                          raw_detection_scores)
 
   def test_loss_results_are_correct(self, use_keras):
 
