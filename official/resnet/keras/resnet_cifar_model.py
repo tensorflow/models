@@ -202,7 +202,8 @@ def resnet_block(input_tensor,
   """
 
   x = conv_building_block(input_tensor, kernel_size, filters, stage=stage,
-                          block='block_0', training=training)
+                          strides=conv_strides, block='block_0',
+                          training=training)
   for i in range(size - 1):
     x = identity_building_block(x, kernel_size, filters, stage=stage,
                                 block='block_%d' % (i + 1), training=training)
