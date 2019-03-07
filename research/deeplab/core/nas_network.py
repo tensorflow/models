@@ -13,7 +13,21 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Network structure used by NAS."""
+"""Network structure used by NAS.
+
+Here we provide a few NAS backbones for semantic segmentation.
+Currently, we have
+
+1. pnasnet
+"Progressive Neural Architecture Search", Chenxi Liu, Barret Zoph,
+Maxim Neumann, Jonathon Shlens, Wei Hua, Li-Jia Li, Li Fei-Fei,
+Alan Yuille, Jonathan Huang, Kevin Murphy. In ECCV, 2018.
+
+2. hnasnet (also called Auto-DeepLab)
+"Auto-DeepLab: Hierarchical Neural Architecture Search for Semantic
+Image Segmentation", Chenxi Liu, Liang-Chieh Chen, Florian Schroff,
+Hartwig Adam, Wei Hua, Alan Yuille, Li Fei-Fei. In CVPR, 2019.
+"""
 
 from __future__ import absolute_import
 from __future__ import division
