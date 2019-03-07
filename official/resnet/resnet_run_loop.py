@@ -486,12 +486,10 @@ def resnet_main(
 
   # Creates a `RunConfig` that checkpoints every 24 hours which essentially
   # results in checkpoints determined only by `epochs_between_evals`.
-  save_checkpoints_secs = None if (distribution_strategy.__class__.__name__ ==
-                                   'CollectiveAllReduceStrategy') else 60*60*24
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy,
       session_config=session_config,
-      save_checkpoints_secs=save_checkpoints_secs,
+      save_checkpoints_secs=None,
       save_checkpoints_steps=None)
 
   # Initializes model with all but the dense layer from pretrained ResNet.
