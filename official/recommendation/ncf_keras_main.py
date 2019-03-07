@@ -36,6 +36,7 @@ from official.recommendation import neumf_model
 from official.recommendation import constants as rconst
 from official.utils.logs import logger
 from official.utils.logs import mlperf_helper
+from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 
 
@@ -152,6 +153,7 @@ def _get_keras_model(params):
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
   params = ncf_common.parse_flags(FLAGS)
+  batch_size = params["batch_size"]
 
   num_users, num_items, num_train_steps, num_eval_steps, producer = (
       ncf_common.get_inputs(params))
@@ -163,6 +165,8 @@ def run_ncf(_):
   keras_model = _get_keras_model(params)
   optimizer = ncf_common.get_optimizer(params)
 
+  time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
+
   keras_model.compile(
       loss=_keras_loss,
       metrics=[_get_metric_fn(params)],
@@ -171,10 +175,12 @@ def run_ncf(_):
   train_input_dataset, eval_input_dataset = _get_train_and_eval_data(
       producer, params)
 
-  keras_model.fit(
+  history = keras_model.fit(
       train_input_dataset,
       epochs=FLAGS.train_epochs,
-      callbacks=[IncrementEpochCallback(producer)],
+      callbacks=[
+        IncrementEpochCallback(producer),
+        time_callback],
       verbose=2)
 
   tf.logging.info("Training done. Start evaluating")
@@ -186,7 +192,8 @@ def run_ncf(_):
 
   tf.logging.info("Keras evaluation is done.")
 
-  return eval_results
+  stats = ncf_common.build_stats(history, eval_results, time_callback)
+  return stats
 
 
 def main(_):
@@ -204,4 +211,5 @@ def main(_):
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
   ncf_common.define_ncf_flags()
+  keras_utils.define_flags()
   absl_app.run(main)
