@@ -50,8 +50,8 @@ def get_distribution_strategy(distribution_strategy="default",
       all-reduce. See tf.contrib.distribute.AllReduceCrossDeviceOps for
       available algorithms when used with `mirrored`, and
       tf.distribute.experimental.CollectiveCommunication when used with
-      `multi_worker_mirrored`. If None, DistributionStrategy will choose based on
-      device topology.
+      `multi_worker_mirrored`. If None, DistributionStrategy will choose based
+      on device topology.
 
   Returns:
     tf.distribute.DistibutionStrategy object.
