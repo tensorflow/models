@@ -28,7 +28,10 @@ from absl.testing import flagsaver
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import neumf_model
-from official.recommendation import ncf_main
+from official.recommendation import ncf_common
+from official.recommendation import ncf_estimator_main
+from official.recommendation import ncf_keras_main
+from official.utils.testing import integration
 
 
 NUM_TRAIN_NEG = 4
@@ -39,7 +42,7 @@ class NcfTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(NcfTest, cls).setUpClass()
-    ncf_main.define_ncf_flags()
+    ncf_common.define_ncf_flags()
 
   def setUp(self):
     self.top_k_old = rconst.TOP_K
@@ -70,7 +73,7 @@ class NcfTest(tf.test.TestCase):
                                   logits], axis=1)
       duplicate_mask = tf.convert_to_tensor(duplicate_mask, tf.float32)
 
-      metric_ops = neumf_model.compute_eval_loss_and_metrics(
+      metric_ops = neumf_model._get_estimator_spec_with_metrics(
           logits=logits, softmax_logits=softmax_logits,
           duplicate_mask=duplicate_mask, num_training_neg=NUM_TRAIN_NEG,
           match_mlperf=match_mlperf).eval_metric_ops
@@ -182,22 +185,35 @@ class NcfTest(tf.test.TestCase):
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
+  _BASE_END_TO_END_FLAGS = ['-batch_size', '1024', '-train_epochs', '1']
 
-  _BASE_END_TO_END_FLAGS = {
-      "batch_size": 1024,
-      "train_epochs": 1,
-      "use_synthetic_data": True
-  }
-
-  @flagsaver.flagsaver(**_BASE_END_TO_END_FLAGS)
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end(self):
-    ncf_main.main(None)
+  def test_end_to_end_estimator(self):
+    integration.run_synthetic(
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS)
 
-  @flagsaver.flagsaver(ml_perf=True, **_BASE_END_TO_END_FLAGS)
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end_mlperf(self):
-    ncf_main.main(None)
+  def test_end_to_end_estimator_mlperf(self):
+    integration.run_synthetic(
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-ml_perf', 'True'])
+
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_keras(self):
+    self.skipTest("TODO: fix synthetic data with keras")
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS +
+        ['-distribution_strategy', 'off'])
+
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_keras_mlperf(self):
+    self.skipTest("TODO: fix synthetic data with keras")
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS +
+        ['-ml_perf', 'True', '-distribution_strategy', 'off'])
 
 
 if __name__ == "__main__":

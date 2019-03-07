@@ -8,6 +8,7 @@ fi
 
 SCRIPT_DIR=`dirname "$BASH_SOURCE"`
 export PYTHONPATH="${SCRIPT_DIR}/../../"
+MAIN_SCRIPT="ncf_estimator_main.py"
 
 DATASET="ml-20m"
 
@@ -38,6 +39,15 @@ fi
 DATA_DIR="${ROOT_DIR}/movielens_data"
 python "${SCRIPT_DIR}/../datasets/movielens.py" --data_dir ${DATA_DIR} --dataset ${DATASET}
 
+if [ "$1" == "keras" ]
+then
+	MAIN_SCRIPT="ncf_keras_main.py"
+	BATCH_SIZE=160000
+	DEVICE_FLAG="--num_gpus 1"
+else
+	BATCH_SIZE=98340
+fi
+
 {
 
 for i in `seq 0 4`;
@@ -58,14 +68,14 @@ do
   # To reduce variation set the seed flag:
   #   --seed ${i}
 
-  python -u "${SCRIPT_DIR}/ncf_main.py" \
+  python -u "${SCRIPT_DIR}/${MAIN_SCRIPT}" \
       --model_dir ${MODEL_DIR} \
       --data_dir ${DATA_DIR} \
       --dataset ${DATASET} --hooks "" \
       ${DEVICE_FLAG} \
       --clean \
       --train_epochs 14 \
-      --batch_size 98304 \
+      --batch_size ${BATCH_SIZE} \
       --eval_batch_size 160000 \
       --learning_rate 0.00382059 \
       --beta1 0.783529 \
