@@ -26,15 +26,24 @@ from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.recommendation import ncf_common
+
 FLAGS = flags.FLAGS
 
 class KerasNCFBenchmarkBase(tf.test.Benchmark):
 
-  def __init__(self, output_dir=None, default_flags=None):
+  def __init__(self,
+          output_dir=None,
+          root_data_dir=None,
+          default_flags=None,
+          **kwargs):
+
     self.output_dir = output_dir
     self.default_flags = default_flags or {}
     ncf_common.define_ncf_flags()
-    self.data_dir = os.path.join(root_data_dir, 'movielens_data')
+
+    if root_data_dir:
+      FLAGS.data_dir = os.path.join(root_data_dir, 'movielens_data')
 
   def _setup(self):
     """Sets up and resets flags before each test."""
