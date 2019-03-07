@@ -14,6 +14,7 @@
 # ==============================================================================
 """Tests for ssd resnet v1 FPN feature extractors."""
 import abc
+import itertools
 import numpy as np
 import tensorflow as tf
 
@@ -31,6 +32,14 @@ class SSDResnetFPNFeatureExtractorTestBase(
   @abc.abstractmethod
   def _fpn_scope_name(self):
     return 'fpn'
+
+  @abc.abstractmethod
+  def _create_feature_extractor(self,
+                                depth_multiplier,
+                                pad_to_multiple,
+                                use_explicit_padding=False,
+                                min_depth=32):
+    pass
 
   def test_extract_features_returns_correct_shapes_256(self):
     image_height = 256
@@ -55,6 +64,45 @@ class SSDResnetFPNFeatureExtractorTestBase(
     self.check_extract_features_returns_correct_shapes_with_dynamic_inputs(
         2, image_height, image_width, depth_multiplier, pad_to_multiple,
         expected_feature_map_shape)
+
+  def test_extract_features_returns_correct_shapes_with_depth_multiplier(self):
+    image_height = 256
+    image_width = 256
+    depth_multiplier = 0.5
+    expected_num_channels = int(256 * depth_multiplier)
+    pad_to_multiple = 1
+    expected_feature_map_shape = [(2, 32, 32, expected_num_channels),
+                                  (2, 16, 16, expected_num_channels),
+                                  (2, 8, 8, expected_num_channels),
+                                  (2, 4, 4, expected_num_channels),
+                                  (2, 2, 2, expected_num_channels)]
+    self.check_extract_features_returns_correct_shape(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape)
+
+  def test_extract_features_returns_correct_shapes_with_min_depth(self):
+    image_height = 256
+    image_width = 256
+    depth_multiplier = 1.0
+    pad_to_multiple = 1
+    min_depth = 320
+    expected_feature_map_shape = [(2, 32, 32, min_depth),
+                                  (2, 16, 16, min_depth),
+                                  (2, 8, 8, min_depth),
+                                  (2, 4, 4, min_depth),
+                                  (2, 2, 2, min_depth)]
+
+    def graph_fn(image_tensor):
+      feature_extractor = self._create_feature_extractor(
+          depth_multiplier, pad_to_multiple, min_depth=min_depth)
+      return feature_extractor.extract_features(image_tensor)
+
+    image_tensor = np.random.rand(2, image_height, image_width,
+                                  3).astype(np.float32)
+    feature_maps = self.execute(graph_fn, [image_tensor])
+    for feature_map, expected_shape in itertools.izip(
+        feature_maps, expected_feature_map_shape):
+      self.assertAllEqual(feature_map.shape, expected_shape)
 
   def test_extract_features_returns_correct_shapes_with_pad_to_multiple(self):
     image_height = 254

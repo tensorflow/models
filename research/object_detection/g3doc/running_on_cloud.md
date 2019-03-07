@@ -44,7 +44,7 @@ job using GPUs. A sample YAML file is given below:
 
 ```
 trainingInput:
-  runtimeVersion: "1.9"
+  runtimeVersion: "1.12"
   scaleTier: CUSTOM
   masterType: standard_gpu
   workerCount: 9
@@ -73,7 +73,7 @@ following command:
 ```bash
 # From tensorflow/models/research/
 gcloud ml-engine jobs submit training object_detection_`date +%m_%d_%Y_%H_%M_%S` \
-    --runtime-version 1.9 \
+    --runtime-version 1.12 \
     --job-dir=gs://${MODEL_DIR} \
     --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz,/tmp/pycocotools/pycocotools-2.0.tar.gz \
     --module-name object_detection.model_main \
@@ -93,7 +93,7 @@ Google Cloud Storage.
 Users can monitor the progress of their training job on the [ML Engine
 Dashboard](https://console.cloud.google.com/mlengine/jobs).
 
-Note: This sample is supported for use with 1.9 runtime version.
+Note: This sample is supported for use with 1.12 runtime version.
 
 ## Running a TPU Training Job on CMLE
 
@@ -105,7 +105,7 @@ gcloud ml-engine jobs submit training `whoami`_object_detection_`date +%m_%d_%Y_
 --job-dir=gs://${MODEL_DIR} \
 --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz,/tmp/pycocotools/pycocotools-2.0.tar.gz \
 --module-name object_detection.model_tpu_main \
---runtime-version 1.9 \
+--runtime-version 1.12 \
 --scale-tier BASIC_TPU \
 --region us-central1 \
 -- \
@@ -133,7 +133,7 @@ job:
 
 ```bash
 gcloud ml-engine jobs submit training object_detection_eval_`date +%m_%d_%Y_%H_%M_%S` \
-    --runtime-version 1.9 \
+    --runtime-version 1.12 \
     --job-dir=gs://${MODEL_DIR} \
     --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz,/tmp/pycocotools/pycocotools-2.0.tar.gz \
     --module-name object_detection.model_main \
