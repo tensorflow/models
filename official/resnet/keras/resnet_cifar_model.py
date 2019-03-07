@@ -201,11 +201,12 @@ def resnet_block(input_tensor,
     Output tensor after applying conv and identity blocks.
   """
 
-  x = conv_building_block(x, kernel_size, filters, stage=stage, block='block_0',
-                          training=training)
+  x = conv_building_block(input_tensor, kernel_size, filters, stage=stage,
+                          block='block_0', training=training)
   for i in range(size - 1):
     x = identity_building_block(x, kernel_size, filters, stage=stage,
                                 block='block_%d' % (i + 1), training=training)
+  return x
 
 def resnet(num_blocks, classes=100, training=None):
   """Instantiates the ResNet architecture.
