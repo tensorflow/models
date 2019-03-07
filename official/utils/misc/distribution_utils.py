@@ -24,6 +24,12 @@ import random
 import string
 import tensorflow as tf
 
+_COLLECTIVE_COMMUNICATION_OPTIONS = {
+    None: tf.distribute.experimental.CollectiveCommunication.AUTO,
+    "ring": tf.distribute.experimental.CollectiveCommunication.RING,
+    "nccl": tf.distribute.experimental.CollectiveCommunication.NCCL
+}
+
 
 def get_distribution_strategy(distribution_strategy="default",
                               num_gpus=0,
@@ -42,8 +48,10 @@ def get_distribution_strategy(distribution_strategy="default",
     num_workers: Number of workers to run this model.
     all_reduce_alg: Optional. Specify which algorithm to use when performing
       all-reduce. See tf.contrib.distribute.AllReduceCrossDeviceOps for
-      available algorithms. If None, DistributionStrategy will choose based on
-      device topology.
+      available algorithms when used with `mirrored`, and
+      tf.distribute.experimental.CollectiveCommunication when used with
+      `multi_worker_mirrored`. If None, DistributionStrategy will choose based
+      on device topology.
 
   Returns:
     tf.distribute.DistibutionStrategy object.
@@ -63,7 +71,13 @@ def get_distribution_strategy(distribution_strategy="default",
     return None
 
   if distribution_strategy == "multi_worker_mirrored" or num_workers > 1:
-    return tf.distribute.experimental.MultiWorkerMirroredStrategy()
+    if all_reduce_alg not in _COLLECTIVE_COMMUNICATION_OPTIONS:
+      raise ValueError(
+          "When used with `multi_worker_mirrored`, valid values for "
+          "all_reduce_alg are [`ring`, `nccl`].  Supplied value: {}".format(
+              all_reduce_alg))
+    return tf.distribute.experimental.MultiWorkerMirroredStrategy(
+        communication=_COLLECTIVE_COMMUNICATION_OPTIONS[all_reduce_alg])
 
   if (distribution_strategy == "one_device" or
       (distribution_strategy == "default" and num_gpus <= 1)):
