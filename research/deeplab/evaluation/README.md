@@ -90,7 +90,16 @@ adopted by several benchmarks [3, 4]. Therefore, we provide a convenient
 function, `eval_coco_format`, to evaluate the results saved in COCO format
 in terms of PC and re-implemented PQ.
 
-Let's take a look at the function, `eval_coco_format` in `eval_coco_format.py`:
+Before using the provided function, the users need to download the official COCO
+panotpic segmentation task API. Please see [installation](../g3doc/installation.md#add-libraries-to-pythonpath)
+for reference.
+
+Once the official COCO panoptic segmentation task API is downloaded, the
+users should be able to run the `eval_coco_format.py` to evaluate the parsing
+results in terms of both PC and reimplemented PQ.
+
+To be concrete, let's take a look at the function, `eval_coco_format` in
+`eval_coco_format.py`:
 
 ```python
 eval_coco_format(gt_json_file,
