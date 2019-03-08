@@ -44,19 +44,6 @@ _SHUFFLE_BUFFER = 10000
 
 DATASET_NAME = 'ImageNet'
 
-flags.DEFINE_bool('enable_lars',
-                  default=False,
-                  help=('Enable LARS optimizer for large batch training.'))
-
-flags.DEFINE_float(
-    'label_smoothing', default=0.0,
-    help=('Label smoothing parameter used in the softmax_cross_entropy'))
-
-flags.DEFINE_float(
-    'weight_decay', default=1e-4,
-    help=('Weight decay coefficiant for l2 regularization.'))
-
-
 ###############################################################################
 # Data processing
 ###############################################################################
