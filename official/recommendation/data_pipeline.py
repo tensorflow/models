@@ -262,7 +262,7 @@ class DatasetManager(object):
       file_pattern = os.path.join(
           epoch_data_dir, rconst.SHARD_TEMPLATE.format("*"))
       dataset = StreamingFilesDataset(
-          files=file_pattern, worker_job="worker",
+          files=file_pattern, worker_job=popen_helper.worker_job(),
           num_parallel_reads=rconst.NUM_FILE_SHARDS, num_epochs=1,
           sloppy=not self._deterministic)
       map_fn = functools.partial(self._deserialize, batch_size=batch_size)
@@ -297,7 +297,10 @@ class DatasetManager(object):
     """Create an input_fn which checks for batch size consistency."""
 
     def input_fn(params):
-      param_batch_size = (params["batch_size"] if self._is_training else
+      # Estimator passes batch_size during training and eval_batch_size during
+      # eval. TPUEstimator only passes batch_size.
+      param_batch_size = (params["batch_size"] if self._is_training or not
+                          "eval_batch_size" in params else
                           params["eval_batch_size"])
       if batch_size != param_batch_size:
         raise ValueError("producer batch size ({}) differs from params batch "
@@ -338,7 +341,8 @@ class BaseDataConstructor(threading.Thread):
                eval_batch_size,         # type: int
                batches_per_eval_step,   # type: int
                stream_files,            # type: bool
-               deterministic=False      # type: bool
+               deterministic=False,     # type: bool
+               epoch_dir=None           # type: string
               ):
     # General constants
     self._maximum_number_epochs = maximum_number_epochs
@@ -382,7 +386,8 @@ class BaseDataConstructor(threading.Thread):
 
     self._shuffle_with_forkpool = not stream_files
     if stream_files:
-      self._shard_root = tempfile.mkdtemp(prefix="ncf_")
+      self._shard_root = (
+          epoch_dir if epoch_dir else tempfile.mkdtemp(prefix="ncf_"))
       atexit.register(tf.gfile.DeleteRecursively, dirname=self._shard_root)
     else:
       self._shard_root = None
@@ -645,9 +650,10 @@ class DummyConstructor(threading.Thread):
     """Construct training input_fn that uses synthetic data."""
 
     def input_fn(params):
-      """Generated input_fn for the given epoch."""
-      batch_size = (params["batch_size"] if is_training else
-                    params["eval_batch_size"])
+      # Estimator passes batch_size during training and eval_batch_size during
+      # eval. TPUEstimator only passes batch_size.
+      batch_size = (params["batch_size"] if is_training or not "eval_batch_size"
+                    in params else params["eval_batch_size"])
       num_users = params["num_users"]
       num_items = params["num_items"]
 

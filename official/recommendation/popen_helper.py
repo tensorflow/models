@@ -58,3 +58,7 @@ class FauxPool(object):
 def get_fauxpool(num_workers, init_worker=None, closing=True):
   pool = FauxPool(processes=num_workers, initializer=init_worker)
   return contextlib.closing(pool) if closing else pool
+
+
+def worker_job():
+  return "worker"
