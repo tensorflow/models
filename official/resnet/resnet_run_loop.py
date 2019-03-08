@@ -298,11 +298,11 @@ def learning_rate_with_decay(
       w_epochs = 5
 
     w_steps = int(w_epochs * batches_per_epoch)
-    wrate = (
-      plr * tf.cast(global_step, tf.float32) / tf.cast(
-          w_steps, tf.float32))
+    wrate = (plr * tf.cast(global_step, tf.float32) / tf.cast(
+        w_steps, tf.float32))
 
-    num_epochs = flags_obj.train_epochs
+    # TODO(pkanwar): use a flag to help calc num_epochs.
+    num_epochs = 90
     train_steps = batches_per_epoch * num_epochs
 
     min_step = tf.constant(1, dtype=tf.int64)
@@ -755,15 +755,18 @@ def define_resnet_flags(resnet_size_choices=None):
       name='task_index', default=-1,
       help=flags_core.help_wrap('If multi-worker training, the task_index of '
                                 'this worker.'))
-  flags.DEFINE_bool('enable_lars',
-      default=False,
-      help=('Enable LARS optimizer for large batch training.'))
+  flags.DEFINE_bool(
+      name='enable_lars', default=False,
+      help=flags_core.help_wrap(
+          'Enable LARS optimizer for large batch training.'))
   flags.DEFINE_float(
-      'label_smoothing', default=0.0,
-      help=('Label smoothing parameter used in the softmax_cross_entropy'))
+      name='label_smoothing', default=0.0,
+      help=flags_core.help_wrap(
+          'Label smoothing parameter used in the softmax_cross_entropy'))
   flags.DEFINE_float(
-      'weight_decay', default=1e-4,
-      help=('Weight decay coefficiant for l2 regularization.'))
+      name='weight_decay', default=1e-4,
+      help=flags_core.help_wrap(
+          'Weight decay coefficiant for l2 regularization.'))
 
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
