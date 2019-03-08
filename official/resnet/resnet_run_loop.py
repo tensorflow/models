@@ -277,24 +277,22 @@ def learning_rate_with_decay(
     decay schedule with power 2.0.
 
     Args:
-    current_epoch: `Tensor` for current epoch.
-    poly_rate: Polynomial decay rate.
+    global_step: the current global_step
 
     Returns:
-
-    A scaled `Tensor` for current learning rate.
+    returns the current learning rate
     """
 
     # Learning rate schedule for LARS polynomial schedule
-    if flags.FLAGS.batch_size == 16384:
-      plr = 25.0
-      w_epochs = 5
-    elif flags.FLAGS.batch_size == 32768:
-      plr = 32.0
-      w_epochs = 14
-    elif flags.FLAGS.batch_size == 8192:
+    if flags.FLAGS.batch_size < 8192:
       plr = 10.0
       w_epochs = 5
+    elif flags.FLAGS.batch_size < 16384:
+      plr = 25.0
+      w_epochs = 5
+    elif flags.FLAGS.batch_size < 32768:
+      plr = 32.0
+      w_epochs = 14
     else:
       plr = 5.0
       w_epochs = 5
@@ -304,7 +302,7 @@ def learning_rate_with_decay(
       plr * tf.cast(global_step, tf.float32) / tf.cast(
           w_steps, tf.float32))
 
-    num_epochs = 90
+    num_epochs = flags_obj.train_epochs
     train_steps = batches_per_epoch * num_epochs
 
     min_step = tf.constant(1, dtype=tf.int64)
@@ -757,6 +755,16 @@ def define_resnet_flags(resnet_size_choices=None):
       name='task_index', default=-1,
       help=flags_core.help_wrap('If multi-worker training, the task_index of '
                                 'this worker.'))
+  flags.DEFINE_bool('enable_lars',
+      default=False,
+      help=('Enable LARS optimizer for large batch training.'))
+  flags.DEFINE_float(
+      'label_smoothing', default=0.0,
+      help=('Label smoothing parameter used in the softmax_cross_entropy'))
+  flags.DEFINE_float(
+      'weight_decay', default=1e-4,
+      help=('Weight decay coefficiant for l2 regularization.'))
+
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
       help=flags_core.help_wrap('The size of the ResNet model to use.'))
