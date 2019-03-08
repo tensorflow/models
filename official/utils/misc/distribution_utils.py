@@ -76,13 +76,13 @@ def get_distribution_strategy(distribution_strategy="default",
           "When used with `multi_worker_mirrored`, valid values for "
           "all_reduce_alg are [`ring`, `nccl`].  Supplied value: {}".format(
               all_reduce_alg))
-    return tf.distribute.experimental.MultiWorkerMirroredStrategy(
+    return tf.contrib.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=_COLLECTIVE_COMMUNICATION_OPTIONS[all_reduce_alg])
 
   if (distribution_strategy == "one_device" or
       (distribution_strategy == "default" and num_gpus <= 1)):
     if num_gpus == 0:
-      return tf.distribute.OneDeviceStrategy("device:CPU:0")
+      return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
     else:
       if num_gpus > 1:
         raise ValueError("`OneDeviceStrategy` can not be used for more than "
