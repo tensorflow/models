@@ -177,9 +177,9 @@ def model_fn(features, labels, mode, params):
     cells_bw = [cell(params.num_nodes) for _ in range(params.num_layers)]
     if params.dropout > 0.0:
       cells_fw = [tf.nn.rnn_cell.DropoutWrapper(
-        cell, output_keep_prob=params.dropout) for cell in cells_fw]
+        cell, output_keep_prob=1 - params.dropout) for cell in cells_fw]
       cells_bw = [tf.nn.rnn_cell.DropoutWrapper(
-        cell, output_keep_prob=params.dropout) for cell in cells_bw]
+        cell, output_keep_prob=1 - params.dropout) for cell in cells_bw]
     outputs, _, _ = tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
         cells_fw=cells_fw,
         cells_bw=cells_bw,
