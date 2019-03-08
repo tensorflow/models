@@ -44,6 +44,19 @@ _SHUFFLE_BUFFER = 10000
 
 DATASET_NAME = 'ImageNet'
 
+flags.DEFINE_bool('enable_lars',
+                  default=False,
+                  help=('Enable LARS optimizer for large batch training.'))
+
+flags.DEFINE_float(
+    'label_smoothing', default=0.0,
+    help=('Label smoothing parameter used in the softmax_cross_entropy'))
+
+flags.DEFINE_float(
+    'weight_decay', default=1e-4,
+    help=('Weight decay coefficiant for l2 regularization.'))
+
+
 ###############################################################################
 # Data processing
 ###############################################################################
@@ -313,7 +326,7 @@ def imagenet_model_fn(features, labels, mode, params):
       mode=mode,
       model_class=ImagenetModel,
       resnet_size=params['resnet_size'],
-      weight_decay=1e-4,
+      weight_decay=flags.FLAGS.weight_decay,
       learning_rate_fn=learning_rate_fn,
       momentum=0.9,
       data_format=params['data_format'],
@@ -321,7 +334,8 @@ def imagenet_model_fn(features, labels, mode, params):
       loss_scale=params['loss_scale'],
       loss_filter_fn=None,
       dtype=params['dtype'],
-      fine_tune=params['fine_tune']
+      fine_tune=params['fine_tune'],
+      label_smoothing=flags.FLAGS.label_smoothing
   )
 
 
