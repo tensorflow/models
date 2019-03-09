@@ -297,6 +297,8 @@ class DatasetManager(object):
     """Create an input_fn which checks for batch size consistency."""
 
     def input_fn(params):
+      """Returns batches for training."""
+
       # Estimator passes batch_size during training and eval_batch_size during
       # eval. TPUEstimator only passes batch_size.
       param_batch_size = (params["batch_size"] if self._is_training or not
@@ -650,6 +652,8 @@ class DummyConstructor(threading.Thread):
     """Construct training input_fn that uses synthetic data."""
 
     def input_fn(params):
+      """Returns dummy input batches for training."""
+
       # Estimator passes batch_size during training and eval_batch_size during
       # eval. TPUEstimator only passes batch_size.
       batch_size = (params["batch_size"] if is_training or not "eval_batch_size"
