@@ -57,7 +57,53 @@ class MulticlassNonMaxSuppressionTest(test_case.TestCase):
       self.assertAllClose(nms_scores_output, exp_nms_scores)
       self.assertAllClose(nms_classes_output, exp_nms_classes)
 
-  # TODO(bhattad): Remove conditional after CMLE moves to TF 1.9
+  def test_multiclass_nms_select_with_shared_boxes_pad_to_max_output_size(self):
+    boxes = np.array([[[0, 0, 1, 1]],
+                      [[0, 0.1, 1, 1.1]],
+                      [[0, -0.1, 1, 0.9]],
+                      [[0, 10, 1, 11]],
+                      [[0, 10.1, 1, 11.1]],
+                      [[0, 100, 1, 101]],
+                      [[0, 1000, 1, 1002]],
+                      [[0, 1000, 1, 1002.1]]], np.float32)
+    scores = np.array([[.9, 0.01], [.75, 0.05],
+                       [.6, 0.01], [.95, 0],
+                       [.5, 0.01], [.3, 0.01],
+                       [.01, .85], [.01, .5]], np.float32)
+    score_thresh = 0.1
+    iou_thresh = .5
+    max_size_per_class = 4
+    max_output_size = 5
+
+    exp_nms_corners = [[0, 10, 1, 11],
+                       [0, 0, 1, 1],
+                       [0, 1000, 1, 1002],
+                       [0, 100, 1, 101]]
+    exp_nms_scores = [.95, .9, .85, .3]
+    exp_nms_classes = [0, 0, 1, 0]
+
+    def graph_fn(boxes, scores):
+      nms, num_valid_nms_boxes = post_processing.multiclass_non_max_suppression(
+          boxes,
+          scores,
+          score_thresh,
+          iou_thresh,
+          max_size_per_class,
+          max_total_size=max_output_size,
+          pad_to_max_output_size=True)
+      return [nms.get(), nms.get_field(fields.BoxListFields.scores),
+              nms.get_field(fields.BoxListFields.classes), num_valid_nms_boxes]
+
+    [nms_corners_output, nms_scores_output, nms_classes_output,
+     num_valid_nms_boxes] = self.execute(graph_fn, [boxes, scores])
+
+    self.assertEqual(num_valid_nms_boxes, 4)
+    self.assertAllClose(nms_corners_output[0:num_valid_nms_boxes],
+                        exp_nms_corners)
+    self.assertAllClose(nms_scores_output[0:num_valid_nms_boxes],
+                        exp_nms_scores)
+    self.assertAllClose(nms_classes_output[0:num_valid_nms_boxes],
+                        exp_nms_classes)
 
   def test_multiclass_nms_select_with_shared_boxes_given_keypoints(self):
     boxes = tf.constant([[[0, 0, 1, 1]],

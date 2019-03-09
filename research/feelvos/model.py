@@ -359,9 +359,10 @@ def multi_scale_logits_with_nearest_neighbor_matching(
       if model_options.crop_size else tf.shape(images)[2])
 
   # Compute the height, width for the output logits.
-  logits_output_stride = (
-      model_options.decoder_output_stride or model_options.output_stride)
-
+  if model_options.decoder_output_stride:
+    logits_output_stride = min(model_options.decoder_output_stride)
+  else:
+    logits_output_stride = model_options.output_stride
   logits_height = scale_dimension(
       crop_height,
       max(1.0, max(image_pyramid)) / logits_output_stride)

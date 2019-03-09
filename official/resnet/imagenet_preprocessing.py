@@ -218,7 +218,7 @@ def _resize_image(image, height, width):
     resized_image: A 3-D tensor containing the resized image. The first two
       dimensions have the shape [height, width].
   """
-  return tf.image.resize(
+  return tf.compat.v1.image.resize(
       image, [height, width], method=tf.image.ResizeMethod.BILINEAR,
       align_corners=False)
 

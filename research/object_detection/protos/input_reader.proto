@@ -22,7 +22,7 @@ enum InstanceMaskType {
   PNG_MASKS = 2;        // Encoded PNG masks.
 }
 
-// Next id: 24
+// Next id: 25
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -93,6 +93,9 @@ message InputReader {
   // Set this to at least the maximum amount of boxes in the input data,
   // otherwise some groundtruth boxes may be clipped.
   optional int32 max_number_of_boxes = 21 [default=100];
+
+  // Whether to load multiclass scores from the dataset.
+  optional bool load_multiclass_scores = 24 [default = false];
 
   // Whether to load groundtruth instance masks.
   optional bool load_instance_masks = 7 [default = false];

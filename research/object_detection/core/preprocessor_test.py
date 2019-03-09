@@ -2071,6 +2071,96 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
           padded_boxes_[:, 3] - padded_boxes_[:, 1])))
 
+  def testRandomPadImageWithKeypoints(self):
+    preprocessing_options = [(preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    })]
+
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    keypoints = self.createTestKeypoints()
+    tensor_dict = {
+        fields.InputDataFields.image: images,
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_keypoints: keypoints,
+    }
+    tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+    images = tensor_dict[fields.InputDataFields.image]
+
+    preprocessing_options = [(preprocessor.random_pad_image, {})]
+    padded_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                 preprocessing_options)
+
+    padded_images = padded_tensor_dict[fields.InputDataFields.image]
+    padded_boxes = padded_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes]
+    padded_keypoints = padded_tensor_dict[
+        fields.InputDataFields.groundtruth_keypoints]
+    boxes_shape = tf.shape(boxes)
+    padded_boxes_shape = tf.shape(padded_boxes)
+    keypoints_shape = tf.shape(keypoints)
+    padded_keypoints_shape = tf.shape(padded_keypoints)
+    images_shape = tf.shape(images)
+    padded_images_shape = tf.shape(padded_images)
+
+    with self.test_session() as sess:
+      (boxes_shape_, padded_boxes_shape_, keypoints_shape_,
+       padded_keypoints_shape_, images_shape_, padded_images_shape_, boxes_,
+       padded_boxes_, keypoints_, padded_keypoints_) = sess.run(
+           [boxes_shape, padded_boxes_shape, keypoints_shape,
+            padded_keypoints_shape, images_shape, padded_images_shape, boxes,
+            padded_boxes, keypoints, padded_keypoints])
+      self.assertAllEqual(boxes_shape_, padded_boxes_shape_)
+      self.assertAllEqual(keypoints_shape_, padded_keypoints_shape_)
+      self.assertTrue((images_shape_[1] >= padded_images_shape_[1] * 0.5).all)
+      self.assertTrue((images_shape_[2] >= padded_images_shape_[2] * 0.5).all)
+      self.assertTrue((images_shape_[1] <= padded_images_shape_[1]).all)
+      self.assertTrue((images_shape_[2] <= padded_images_shape_[2]).all)
+      self.assertTrue(np.all((boxes_[:, 2] - boxes_[:, 0]) >= (
+          padded_boxes_[:, 2] - padded_boxes_[:, 0])))
+      self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
+          padded_boxes_[:, 3] - padded_boxes_[:, 1])))
+      self.assertTrue(np.all((keypoints_[1, :, 0] - keypoints_[0, :, 0]) >= (
+          padded_keypoints_[1, :, 0] - padded_keypoints_[0, :, 0])))
+      self.assertTrue(np.all((keypoints_[1, :, 1] - keypoints_[0, :, 1]) >= (
+          padded_keypoints_[1, :, 1] - padded_keypoints_[0, :, 1])))
+
+  def testRandomAbsolutePadImage(self):
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    tensor_dict = {
+        fields.InputDataFields.image: tf.to_float(images),
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+    }
+
+    height_padding = 10
+    width_padding = 20
+    preprocessing_options = [(preprocessor.random_absolute_pad_image, {
+        'max_height_padding': height_padding,
+        'max_width_padding': width_padding})]
+    padded_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                 preprocessing_options)
+
+    original_shape = tf.shape(images)
+    final_shape = tf.shape(padded_tensor_dict[fields.InputDataFields.image])
+
+    with self.test_session() as sess:
+      _, height, width, _ = sess.run(original_shape)
+      for _ in range(100):
+        output_shape = sess.run(final_shape)
+
+        self.assertTrue(output_shape[1] >= height)
+        self.assertTrue(output_shape[1] < height + height_padding)
+        self.assertTrue(output_shape[2] >= width)
+        self.assertTrue(output_shape[2] < width + width_padding)
+
   def testRandomCropPadImageWithCache(self):
     preprocess_options = [(preprocessor.normalize_image, {
         'original_minval': 0,
@@ -2692,6 +2782,95 @@ class PreprocessorTest(tf.test.TestCase):
       one_hot = one_hot.eval()
 
       self.assertAllEqual([0, 1, 1, 0, 1], one_hot)
+
+  def testRandomSelfConcatImage(self):
+    tf.set_random_seed(24601)
+
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    confidences = weights
+    scores = self.createTestMultiClassScores()
+
+    tensor_dict = {
+        fields.InputDataFields.image: tf.to_float(images),
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
+        fields.InputDataFields.groundtruth_confidences: confidences,
+        fields.InputDataFields.multiclass_scores: scores,
+    }
+
+    preprocessing_options = [(preprocessor.random_self_concat_image, {
+        'concat_vertical_probability': 0.5,
+        'concat_horizontal_probability': 0.5,
+        'seed': 24601,
+    })]
+    func_arg_map = preprocessor.get_default_func_arg_map(
+        True, True, True)
+    output_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options, func_arg_map=func_arg_map)
+
+    final_shape = tf.shape(output_tensor_dict[fields.InputDataFields.image])[
+        1:3]
+
+    with self.test_session() as sess:
+      outputs = []
+
+      augment_height_only = False
+      augment_width_only = False
+
+      for _ in range(50):
+        original_boxes = sess.run(boxes)
+        shape, new_boxes, new_labels, new_confidences, new_scores = sess.run(
+            [final_shape,
+             output_tensor_dict[fields.InputDataFields.groundtruth_boxes],
+             output_tensor_dict[fields.InputDataFields.groundtruth_classes],
+             output_tensor_dict[fields.InputDataFields.groundtruth_confidences],
+             output_tensor_dict[fields.InputDataFields.multiclass_scores],
+            ])
+        shape = np.array(shape)
+        outputs.append(shape)
+
+        if np.array_equal(shape, [8, 4]):
+          augment_height_only = True
+          self.assertEqual(
+              new_boxes.shape[0], 2 * boxes.shape[0])
+
+          self.assertAllClose(new_boxes[:2, :] * [2.0, 1.0, 2.0, 1.0],
+                              original_boxes)
+          self.assertAllClose(
+              (new_boxes[2:, :] - [0.5, 0.0, 0.5, 0.0]) * [
+                  2.0, 1.0, 2.0, 1.0],
+              original_boxes)
+        elif np.array_equal(shape, [4, 8]):
+          augment_width_only = True
+          self.assertEqual(
+              new_boxes.shape[0], 2 * boxes.shape[0])
+
+          self.assertAllClose(new_boxes[:2, :] * [1.0, 2.0, 1.0, 2.0],
+                              original_boxes)
+          self.assertAllClose(
+              (new_boxes[2:, :] - [0.0, 0.5, 0.0, 0.5]) * [
+                  1.0, 2.0, 1.0, 2.0],
+              original_boxes)
+
+        augmentation_factor = new_boxes.shape[0] / boxes.shape[0].value
+        self.assertEqual(new_labels.shape[0],
+                         labels.shape[0].value * augmentation_factor)
+        self.assertEqual(new_confidences.shape[0],
+                         confidences.shape[0].value * augmentation_factor)
+        self.assertEqual(new_scores.shape[0],
+                         scores.shape[0].value * augmentation_factor)
+
+      max_height = max(x[0] for x in outputs)
+      max_width = max(x[1] for x in outputs)
+
+      self.assertEqual(max_height, 8)
+      self.assertEqual(max_width, 8)
+      self.assertEqual(augment_height_only, True)
+      self.assertEqual(augment_width_only, True)
 
   def testSSDRandomCropWithCache(self):
     preprocess_options = [

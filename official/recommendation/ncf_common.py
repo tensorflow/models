@@ -12,131 +12,62 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""NCF framework to train and evaluate the NeuMF model.
-
-The NeuMF model assembles both MF and MLP models under the NCF framework. Check
-`neumf_model.py` for more details about the models.
+"""Common functionalities used by both Keras and Estimator implementations.
 """
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import contextlib
-import heapq
 import json
 import logging
-import math
-import multiprocessing
 import os
-import signal
-import typing
 
 # pylint: disable=g-bad-import-order
 import numpy as np
-from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from tensorflow.contrib.compiler import xla
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
-from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks_helper
-from official.utils.logs import logger
-from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
-from official.utils.misc import model_helpers
 
 
 FLAGS = flags.FLAGS
 
 
-def construct_estimator(model_dir, params):
-  """Construct either an Estimator or TPUEstimator for NCF.
+def get_inputs(params):
+  """Returns some parameters used by the model."""
+  if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
+    movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
-  Args:
-    model_dir: The model directory for the estimator
-    params: The params dict for the estimator
+  if FLAGS.seed is not None:
+    np.random.seed(FLAGS.seed)
 
-  Returns:
-    An Estimator or TPUEstimator.
-  """
-
-  if params["use_tpu"]:
-    # Some of the networking libraries are quite chatty.
-    for name in ["googleapiclient.discovery", "googleapiclient.discovery_cache",
-                 "oauth2client.transport"]:
-      logging.getLogger(name).setLevel(logging.ERROR)
-
-    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-        tpu=params["tpu"],
-        zone=params["tpu_zone"],
-        project=params["tpu_gcp_project"],
-        coordinator_name="coordinator"
-    )
-
-    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
-    tf.Session.reset(tpu_cluster_resolver.get_master())
-
-    # Estimator looks at the master it connects to for MonitoredTrainingSession
-    # by reading the `TF_CONFIG` environment variable, and the coordinator
-    # is used by StreamingFilesDataset.
-    tf_config_env = {
-        "session_master": tpu_cluster_resolver.get_master(),
-        "eval_session_master": tpu_cluster_resolver.get_master(),
-        "coordinator": tpu_cluster_resolver.cluster_spec()
-                       .as_dict()["coordinator"]
-    }
-    os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
-
-    distribution = tf.contrib.distribute.TPUStrategy(
-        tpu_cluster_resolver, steps_per_run=100)
-
+  if FLAGS.use_synthetic_data:
+    producer = data_pipeline.DummyConstructor()
+    num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
+        FLAGS.dataset]
+    num_train_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
+    num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
   else:
-    distribution = distribution_utils.get_distribution_strategy(
-        num_gpus=params["num_gpus"])
+    num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
+        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
+        constructor_type=FLAGS.constructor_type,
+        deterministic=FLAGS.seed is not None)
 
-  run_config = tf.estimator.RunConfig(train_distribute=distribution,
-                                      eval_distribute=distribution)
+    num_train_steps = (producer.train_batches_per_epoch //
+                       params["batches_per_step"])
+    num_eval_steps = (producer.eval_batches_per_epoch //
+                      params["batches_per_step"])
+    assert not producer.train_batches_per_epoch % params["batches_per_step"]
+    assert not producer.eval_batches_per_epoch % params["batches_per_step"]
 
-  model_fn = neumf_model.neumf_model_fn
-  if params["use_xla_for_gpu"]:
-    tf.logging.info("Using XLA for GPU for training and evaluation.")
-    model_fn = xla.estimator_model_fn(model_fn)
-  estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=model_dir,
-                                     config=run_config, params=params)
-  return estimator
-
-
-def log_and_get_hooks(eval_batch_size):
-  """Convenience function for hook and logger creation."""
-  # Create hooks that log information about the training and metric values
-  train_hooks = hooks_helper.get_train_hooks(
-      FLAGS.hooks,
-      model_dir=FLAGS.model_dir,
-      batch_size=FLAGS.batch_size,  # for ExamplesPerSecondHook
-      tensors_to_log={"cross_entropy": "cross_entropy"}
-  )
-  run_params = {
-      "batch_size": FLAGS.batch_size,
-      "eval_batch_size": eval_batch_size,
-      "number_factors": FLAGS.num_factors,
-      "hr_threshold": FLAGS.hr_threshold,
-      "train_epochs": FLAGS.train_epochs,
-  }
-  benchmark_logger = logger.get_benchmark_logger()
-  benchmark_logger.log_run_info(
-      model_name="recommendation",
-      dataset_name=FLAGS.dataset,
-      run_params=run_params,
-      test_id=FLAGS.benchmark_test_id)
-
-  return benchmark_logger, train_hooks
+  return num_users, num_items, num_train_steps, num_eval_steps, producer
 
 
 def parse_flags(flags_obj):
@@ -174,112 +105,62 @@ def parse_flags(flags_obj):
       "match_mlperf": flags_obj.ml_perf,
       "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
       "epochs_between_evals": FLAGS.epochs_between_evals,
+      "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
   }
 
 
-def main(_):
-  with logger.benchmark_context(FLAGS), \
-       mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
-    mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
-    run_ncf(FLAGS)
+def get_optimizer(params):
+  optimizer = tf.train.AdamOptimizer(
+      learning_rate=params["learning_rate"],
+      beta1=params["beta1"],
+      beta2=params["beta2"],
+      epsilon=params["epsilon"])
+  if params["use_tpu"]:
+    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+
+  return optimizer
 
 
-def run_ncf(_):
-  """Run NCF training and eval loop."""
-  if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
-    movielens.download(FLAGS.dataset, FLAGS.data_dir)
+def get_distribution_strategy(params):
+  """Returns the distribution strategy to use."""
+  if params["turn_off_distribution_strategy"]:
+    return None
 
-  if FLAGS.seed is not None:
-    np.random.seed(FLAGS.seed)
+  if params["use_tpu"]:
+    # Some of the networking libraries are quite chatty.
+    for name in ["googleapiclient.discovery", "googleapiclient.discovery_cache",
+                 "oauth2client.transport"]:
+      logging.getLogger(name).setLevel(logging.ERROR)
 
-  params = parse_flags(FLAGS)
-  total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
+    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+        tpu=params["tpu"],
+        zone=params["tpu_zone"],
+        project=params["tpu_gcp_project"],
+        coordinator_name="coordinator"
+    )
 
-  if FLAGS.use_synthetic_data:
-    producer = data_pipeline.DummyConstructor()
-    num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
-        FLAGS.dataset]
-    num_train_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
-    num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
+    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
+    tf.Session.reset(tpu_cluster_resolver.get_master())
+
+    # Estimator looks at the master it connects to for MonitoredTrainingSession
+    # by reading the `TF_CONFIG` environment variable, and the coordinator
+    # is used by StreamingFilesDataset.
+    tf_config_env = {
+        "session_master": tpu_cluster_resolver.get_master(),
+        "eval_session_master": tpu_cluster_resolver.get_master(),
+        "coordinator": tpu_cluster_resolver.cluster_spec()
+                       .as_dict()["coordinator"]
+    }
+    os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
+
+    distribution = tf.contrib.distribute.TPUStrategy(
+        tpu_cluster_resolver, steps_per_run=100)
+
   else:
-    num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
-        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
-        constructor_type=FLAGS.constructor_type,
-        deterministic=FLAGS.seed is not None)
+    distribution = distribution_utils.get_distribution_strategy(
+        num_gpus=params["num_gpus"])
 
-    num_train_steps = (producer.train_batches_per_epoch //
-                       params["batches_per_step"])
-    num_eval_steps = (producer.eval_batches_per_epoch //
-                      params["batches_per_step"])
-    assert not producer.train_batches_per_epoch % params["batches_per_step"]
-    assert not producer.eval_batches_per_epoch % params["batches_per_step"]
-  producer.start()
-
-  params["num_users"], params["num_items"] = num_users, num_items
-  model_helpers.apply_clean(flags.FLAGS)
-
-  estimator = construct_estimator(model_dir=FLAGS.model_dir, params=params)
-
-  benchmark_logger, train_hooks = log_and_get_hooks(params["eval_batch_size"])
-
-  target_reached = False
-  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.TRAIN_LOOP)
-  for cycle_index in range(total_training_cycle):
-    assert FLAGS.epochs_between_evals == 1 or not mlperf_helper.LOGGER.enabled
-    tf.logging.info("Starting a training cycle: {}/{}".format(
-        cycle_index + 1, total_training_cycle))
-
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.TRAIN_EPOCH,
-                            value=cycle_index)
-
-    train_input_fn = producer.make_input_fn(is_training=True)
-    estimator.train(input_fn=train_input_fn, hooks=train_hooks,
-                    steps=num_train_steps)
-
-    tf.logging.info("Beginning evaluation.")
-    eval_input_fn = producer.make_input_fn(is_training=False)
-
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
-                            value=cycle_index)
-    eval_results = estimator.evaluate(eval_input_fn, steps=num_eval_steps)
-    tf.logging.info("Evaluation complete.")
-
-    hr = float(eval_results[rconst.HR_KEY])
-    ndcg = float(eval_results[rconst.NDCG_KEY])
-    loss = float(eval_results["loss"])
-
-    mlperf_helper.ncf_print(
-        key=mlperf_helper.TAGS.EVAL_TARGET,
-        value={"epoch": cycle_index, "value": FLAGS.hr_threshold})
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_ACCURACY,
-                            value={"epoch": cycle_index, "value": hr})
-    mlperf_helper.ncf_print(
-        key=mlperf_helper.TAGS.EVAL_HP_NUM_NEG,
-        value={"epoch": cycle_index, "value": rconst.NUM_EVAL_NEGATIVES})
-
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_STOP, value=cycle_index)
-
-    # Benchmark the evaluation results
-    benchmark_logger.log_evaluation_result(eval_results)
-    # Log the HR and NDCG results.
-    tf.logging.info(
-        "Iteration {}: HR = {:.4f}, NDCG = {:.4f}, Loss = {:.4f}".format(
-            cycle_index + 1, hr, ndcg, loss))
-
-    # If some evaluation threshold is met
-    if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
-      target_reached = True
-      break
-
-  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_STOP,
-                          value={"success": target_reached})
-  producer.stop_loop()
-  producer.join()
-
-  # Clear the session explicitly to avoid session delete error
-  tf.keras.backend.clear_session()
-
-  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_FINAL)
+  return distribution
 
 
 def define_ncf_flags():
@@ -421,6 +302,12 @@ def define_ncf_flags():
       name="seed", default=None, help=flags_core.help_wrap(
           "This value will be used to seed both NumPy and TensorFlow."))
 
+  flags.DEFINE_boolean(
+      name="turn_off_distribution_strategy",
+      default=False,
+      help=flags_core.help_wrap(
+          "If set, do not use any distribution strategy."))
+
   @flags.validator("eval_batch_size", "eval_batch_size must be at least {}"
                    .format(rconst.NUM_EVAL_NEGATIVES + 1))
   def eval_size_check(eval_batch_size):
@@ -438,7 +325,10 @@ def define_ncf_flags():
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
 
 
-if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
-  define_ncf_flags()
-  absl_app.run(main)
+def convert_to_softmax_logits(logits):
+  '''Convert the logits returned by the base model to softmax logits.
+
+  Softmax with the first column of zeros is equivalent to sigmoid.
+  '''
+  softmax_logits = tf.concat([logits * 0, logits], axis=1)
+  return softmax_logits

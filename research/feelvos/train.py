@@ -266,7 +266,7 @@ def _build_deeplab(inputs_queue_or_samples, outputs_to_num_classes,
             preceding_frame_label[n, tf.newaxis],
             samples[common.LABEL][n * FLAGS.train_num_frames_per_video,
                                   tf.newaxis],
-            FLAGS.decoder_output_stride,
+            common.parse_decoder_output_stride(),
             reduce_labels=True)
         init_softmax_n = tf.squeeze(init_softmax_n, axis=0)
         init_softmax.append(init_softmax_n)
@@ -610,7 +610,7 @@ def _get_dataset_and_samples(config, train_crop_size, dataset_name,
       is_training=True,
       model_variant=FLAGS.model_variant,
       batch_capacity_factor=FLAGS.batch_capacity_factor,
-      decoder_output_stride=FLAGS.decoder_output_stride,
+      decoder_output_stride=common.parse_decoder_output_stride(),
       first_frame_finetuning=first_frame_finetuning,
       sample_only_first_frame_for_finetuning=
       FLAGS.sample_only_first_frame_for_finetuning,

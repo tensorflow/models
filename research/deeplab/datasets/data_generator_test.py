@@ -17,7 +17,7 @@
 from __future__ import print_function
 
 import collections
-import google3
+
 import tensorflow as tf
 
 from deeplab import common
@@ -37,7 +37,7 @@ class DatasetTest(tf.test.TestCase):
         dataset_name='pascal_voc_seg',
         split_name='val',
         dataset_dir=
-        'research/deeplab/testing/pascal_voc_seg',
+        'deeplab/testing/pascal_voc_seg',
         batch_size=1,
         crop_size=[3, 3],  # Use small size for testing.
         min_resize_value=3,

@@ -174,7 +174,7 @@ def conv_block(input_tensor,
   return x
 
 
-def resnet50(num_classes):
+def resnet50(num_classes, dtype='float32'):
   # TODO(tfboyd): add training argument, just lik resnet56.
   """Instantiates the ResNet50 architecture.
 
@@ -185,7 +185,7 @@ def resnet50(num_classes):
       A Keras model instance.
   """
   input_shape = (224, 224, 3)
-  img_input = layers.Input(shape=input_shape)
+  img_input = layers.Input(shape=input_shape, dtype=dtype)
 
   if backend.image_data_format() == 'channels_first':
     x = layers.Lambda(lambda x: backend.permute_dimensions(x, (0, 3, 1, 2)),
@@ -232,10 +232,14 @@ def resnet50(num_classes):
 
   x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
   x = layers.Dense(
-      num_classes, activation='softmax',
+      num_classes,
       kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
       bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
       name='fc1000')(x)
+  # TODO(reedwm): Remove manual casts once mixed precision can be enabled with a
+  # single line of code.
+  x = backend.cast(x, 'float32')
+  x = layers.Activation('softmax')(x)
 
   # Create model.
   return models.Model(img_input, x, name='resnet50')
