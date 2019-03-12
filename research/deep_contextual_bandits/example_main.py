@@ -46,6 +46,7 @@ from bandits.algorithms.linear_full_posterior_sampling import LinearFullPosterio
 from bandits.algorithms.neural_linear_sampling import NeuralLinearPosteriorSampling
 from bandits.algorithms.parameter_noise_sampling import ParameterNoiseSampling
 from bandits.algorithms.posterior_bnn_sampling import PosteriorBNNSampling
+from bandits.algorithms.thompson_sampling import ThompsonSampling
 from bandits.data.synthetic_data_sampler import sample_linear_data
 from bandits.data.synthetic_data_sampler import sample_sparse_linear_data
 from bandits.data.synthetic_data_sampler import sample_wheel_bandit_data
@@ -440,6 +441,7 @@ def main(_):
       ParameterNoiseSampling('ParamNoise', hparams_pnoise),
       PosteriorBNNSampling('BBAlphaDiv', hparams_alpha_div, 'AlphaDiv'),
       PosteriorBNNSampling('MultitaskGP', hparams_gp, 'GP'),
+      ThompsonSampling('Thompson', hparams_nlinear),
   ]
 
   # Run contextual bandit problem
