@@ -22,6 +22,7 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from tensorflow.python.eager import profiler
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_model
@@ -184,6 +185,9 @@ def run(flags_obj):
     num_eval_steps = None
     validation_data = None
 
+  if flags_obj.enable_e2e_xprof:
+    profiler.start()
+
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
                       steps_per_epoch=train_steps,
@@ -196,6 +200,10 @@ def run(flags_obj):
                       validation_data=validation_data,
                       validation_freq=flags_obj.epochs_between_evals,
                       verbose=2)
+
+  if flags_obj.enable_e2e_xprof:
+    results = profiler.stop()
+    profiler.save(flags_obj.model_dir, results)
 
   eval_output = None
   if not flags_obj.skip_eval:

@@ -226,6 +226,11 @@ def define_keras_flags():
       help='For every log_steps, we log the timing information such as '
       'examples per second. Besides, for every log_steps, we store the '
       'timestamp of a batch end.')
+  flags.DEFINE_boolean(
+      name='enable_e2e_xprof', default=False,
+      help='Save end-to-end profiling data to model dir using Xprof. Profiling '
+      'has an overhead on both computation and memory usage, and can generate '
+      'gigantic files when profiling a lot of steps.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
