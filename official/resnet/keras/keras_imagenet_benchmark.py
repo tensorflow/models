@@ -190,7 +190,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_fp16(self):
-    """Test Keras model with 1 GPU and fp16"""
+    """Test Keras model with 1 GPU and fp16."""
     self._setup()
 
     FLAGS.num_gpus = 1
@@ -269,12 +269,11 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu')
-    # TODO(haoyuzhang): Set size to 128 per GPU when multi-GPU XLA OOM is fixed
-    FLAGS.batch_size = 64 * 8  # 8 GPUs
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16(self):
-    """Test Keras model with 8 GPUs and fp16"""
+    """Test Keras model with 8 GPUs and fp16."""
     self._setup()
 
     FLAGS.num_gpus = 8
@@ -285,7 +284,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16(self):
-    """Test Keras model with XLA, 8 GPUs and fp16"""
+    """Test Keras model with XLA, 8 GPUs and fp16."""
     self._setup()
 
     FLAGS.num_gpus = 8
