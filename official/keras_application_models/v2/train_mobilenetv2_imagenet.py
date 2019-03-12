@@ -52,21 +52,20 @@ def train_mobilenetv2(_):
         classes=dataset_builder.num_classes)
 
     initial_lr = 0.045 * FLAGS.num_gpus
-    '''
-    optimizer = tf.keras.optimizers.RMSprop(
-        learning_rate=tf.keras.backend.variable(initial_lr),
-        rho=0.9,
-        momentum=0.9)
-    '''
     optimizer = tf.keras.optimizers.SGD(
         learning_rate=tf.keras.backend.variable(initial_lr), momentum=0.9)
 
     lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
-        lambda x, lr: lr * 0.98 if x > 0 else lr)
+        lambda x, lr: lr * 0.316 if x > 0 and x % 15 == 0 else lr,
+        verbose=1)
 
     # Add L1L2 regularization to avoid overfitting
     if FLAGS.no_pretrained_weights:
-      utils.add_global_regularization(model, l2=0.00004)
+      decay = 0.00004 * FLAGS.num_gpus
+      for layer in model.layers:
+        layer_type = layer.__class__.__name__
+        if layer_type == "Conv2D":
+          layer.kerner_regularizer = tf.keras.regularizers.l2(decay)
 
     checkpoint = utils.prepare_model_saving("mobilenetv2")
     callbacks = [lr_scheduler, checkpoint]

@@ -142,6 +142,7 @@ def get_distribution_strategy(num_gpus,
     return NotReallyADistributionStrategy()
   else:
     devices = _local_gpu_devices(num_gpus)
+    absl.logging.info("Using GPU devices: %s", devices)
     if all_reduce_alg:
       return tf_distribute.MirroredStrategy(
           devices,

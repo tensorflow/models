@@ -52,7 +52,7 @@ class ImageNetDataset():
       image = image / 127.5 - 1
       return (image, label)
 
-    return ds.map(_convert_example).shuffle(2000).repeat().batch(batch_size)
+    return ds.map(_convert_example).repeat().batch(batch_size)
 
 
 class Cifar10Dataset():
