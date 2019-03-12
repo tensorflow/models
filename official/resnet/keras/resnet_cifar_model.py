@@ -209,7 +209,7 @@ def resnet_block(input_tensor,
                                 block='block_%d' % (i + 1), training=training)
   return x
 
-def resnet(num_blocks, classes=100, training=None):
+def resnet(num_blocks, classes=10, training=None):
   """Instantiates the ResNet architecture.
 
   Arguments:
@@ -279,7 +279,7 @@ def resnet(num_blocks, classes=100, training=None):
   return model
 
 
-def resnet20(classes=100, training=None):
+def resnet20(classes=10, training=None):
   """Instantiates the ResNet20 architecture.
 
   Arguments:
@@ -294,7 +294,7 @@ def resnet20(classes=100, training=None):
   return resnet(num_blocks=3, classes=classes, training=training)
 
 
-def resnet32(classes=100, training=None):
+def resnet32(classes=10, training=None):
   """Instantiates the ResNet32 architecture.
 
   Arguments:
@@ -309,7 +309,7 @@ def resnet32(classes=100, training=None):
   return resnet(num_blocks=5, classes=classes, training=training)
 
 
-def resnet56(classes=100, training=None):
+def resnet56(classes=10, training=None):
   """Instantiates the ResNet56 architecture.
 
   Arguments:
@@ -324,7 +324,7 @@ def resnet56(classes=100, training=None):
   return resnet(num_blocks=9, classes=classes, training=training)
 
 
-def resnet110(classes=100, training=None):
+def resnet110(classes=10, training=None):
   """Instantiates the ResNet110 architecture.
 
   Arguments:
