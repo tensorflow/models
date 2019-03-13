@@ -185,34 +185,37 @@ class NcfTest(tf.test.TestCase):
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
-  _BASE_END_TO_END_FLAGS = ['-batch_size', '1024', '-train_epochs', '1']
+  _BASE_END_TO_END_FLAGS_ESTIMATOR = ['-batch_size', '1024', '-train_epochs', '1']
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator(self):
     integration.run_synthetic(
         ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS)
+        extra_flags=self._BASE_END_TO_END_FLAGS_ESTIMATOR)
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator_mlperf(self):
     integration.run_synthetic(
         ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS + ['-ml_perf', 'True'])
+        extra_flags=self._BASE_END_TO_END_FLAGS_ESTIMATOR + ['-ml_perf', 'True'])
+
+  _BASE_END_TO_END_FLAGS_KERAS = [
+          '-batch_size','150000',
+          '-eval_batch_size','150000',
+          '-train_epochs', '1']
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras(self):
-    self.skipTest("TODO: fix synthetic data with keras")
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS +
+        extra_flags=self._BASE_END_TO_END_FLAGS_KERAS +
         ['-distribution_strategy', 'off'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras_mlperf(self):
-    self.skipTest("TODO: fix synthetic data with keras")
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS +
+        extra_flags=self._BASE_END_TO_END_FLAGS_KERAS +
         ['-ml_perf', 'True', '-distribution_strategy', 'off'])
 
 
