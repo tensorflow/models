@@ -602,7 +602,7 @@ def resnet_main(
       model_dir=flags_obj.model_dir,
       batch_size=flags_obj.batch_size)
 
-  def input_fn_train(num_epochs):
+  def input_fn_train(num_epochs, input_context=None):
     return input_function(
         is_training=True,
         data_dir=flags_obj.data_dir,
@@ -611,7 +611,8 @@ def resnet_main(
         num_epochs=num_epochs,
         dtype=flags_core.get_tf_dtype(flags_obj),
         datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-        num_parallel_batches=flags_obj.datasets_num_parallel_batches)
+        num_parallel_batches=flags_obj.datasets_num_parallel_batches,
+        input_context=input_context)
 
   def input_fn_eval():
     return input_function(
