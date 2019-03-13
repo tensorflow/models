@@ -6,10 +6,12 @@
 /research/adv_imagenet_models/ @AlexeyKurakin
 /research/attention_ocr/ @alexgorban
 /research/audioset/ @plakal @dpwe
+/research/autoaugment/* @barretzoph
 /research/autoencoders/ @snurkabill
 /research/brain_coder/ @danabo
 /research/cognitive_mapping_and_planning/ @s-gupta
 /research/compression/ @nmjohn
+/research/cvt_text/ @clarkkev @lmthang
 /research/deep_contextual_bandits/ @rikel
 /research/deeplab/ @aquariusjay @yknzhu @gpapan
 /research/delf/ @andrefaraujo
@@ -28,6 +30,7 @@
 /research/lfads/ @jazcollins @susillo
 /research/lm_1b/ @oriolvinyals @panyx0718
 /research/lm_commonsense/ @thtrieu
+/research/lstm_object_detection/ @dreamdragon @masonliuw @yinxiaoli
 /research/marco/ @vincentvanhoucke
 /research/maskgan/ @a-dai
 /research/morph_net/ @gariel-google
@@ -46,6 +49,7 @@
 /research/slim/ @sguada @nathansilberman
 /research/steve/ @buckman-google
 /research/street/ @theraysmith
+/research/struct2depth/ @aneliaangelova
 /research/swivel/ @waterson
 /research/syntaxnet/ @calberti @andorardo @bogatyy @markomernick
 /research/tcn/ @coreylynch @sermanet

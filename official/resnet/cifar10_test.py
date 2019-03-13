@@ -23,9 +23,11 @@ import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main
+from official.resnet.keras import keras_cifar_main
+from official.resnet.keras import keras_common
 from official.utils.testing import integration
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 _BATCH_SIZE = 128
 _HEIGHT = 32
@@ -37,14 +39,23 @@ class BaseTest(tf.test.TestCase):
   """Tests for the Cifar10 version of Resnet.
   """
 
+  _num_validation_images = None
+
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
     cifar10_main.define_cifar_flags()
+    keras_common.define_keras_flags()
+
+  def setUp(self):
+    super(BaseTest, self).setUp()
+    self._num_validation_images = cifar10_main.NUM_IMAGES['validation']
+    cifar10_main.NUM_IMAGES['validation'] = 4
 
   def tearDown(self):
     super(BaseTest, self).tearDown()
-    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    tf.io.gfile.rmtree(self.get_temp_dir())
+    cifar10_main.NUM_IMAGES['validation'] = self._num_validation_images
 
   def test_dataset_input_fn(self):
     fake_data = bytearray()
@@ -62,7 +73,8 @@ class BaseTest(tf.test.TestCase):
         filename, cifar10_main._RECORD_BYTES)  # pylint: disable=protected-access
     fake_dataset = fake_dataset.map(
         lambda val: cifar10_main.parse_record(val, False, tf.float32))
-    image, label = fake_dataset.make_one_shot_iterator().get_next()
+    image, label = tf.compat.v1.data.make_one_shot_iterator(
+        fake_dataset).get_next()
 
     self.assertAllEqual(label.shape, ())
     self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))
@@ -79,7 +91,7 @@ class BaseTest(tf.test.TestCase):
   def cifar10_model_fn_helper(self, mode, resnet_version, dtype):
     input_fn = cifar10_main.get_synth_input_fn(dtype)
     dataset = input_fn(True, '', _BATCH_SIZE)
-    iterator = dataset.make_initializable_iterator()
+    iterator = tf.compat.v1.data.make_initializable_iterator(dataset)
     features, labels = iterator.get_next()
     spec = cifar10_main.cifar10_model_fn(
         features, labels, mode, {
@@ -142,7 +154,7 @@ class BaseTest(tf.test.TestCase):
     model = cifar10_main.Cifar10Model(32, data_format='channels_last',
                                       num_classes=num_classes,
                                       resnet_version=resnet_version)
-    fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+    fake_input = tf.random.uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
     output = model(fake_input, training=True)
 
     self.assertAllEqual(output.shape, (batch_size, num_classes))
@@ -156,13 +168,20 @@ class BaseTest(tf.test.TestCase):
   def test_cifar10_end_to_end_synthetic_v1(self):
     integration.run_synthetic(
         main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '1']
+        extra_flags=['-resnet_version', '1', '-batch_size', '4']
     )
 
   def test_cifar10_end_to_end_synthetic_v2(self):
     integration.run_synthetic(
         main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '2']
+        extra_flags=['-resnet_version', '2', '-batch_size', '4']
+    )
+
+  def test_cifar10_end_to_end_keras_synthetic_v1(self):
+    integration.run_synthetic(
+        main=keras_cifar_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '1', '-batch_size', '4',
+                     '-train_steps', '1']
     )
 
 

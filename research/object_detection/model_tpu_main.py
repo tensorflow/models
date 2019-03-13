@@ -62,15 +62,20 @@ flags.DEFINE_integer('train_batch_size', None, 'Batch size for training. If '
 flags.DEFINE_string(
     'hparams_overrides', None, 'Comma-separated list of '
     'hyperparameters to override defaults.')
+flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
 flags.DEFINE_boolean('eval_training_data', False,
                      'If training data should be evaluated for this job.')
+flags.DEFINE_integer('sample_1_of_n_eval_examples', 1, 'Will sample one of '
+                     'every n eval input examples, where n is provided.')
+flags.DEFINE_integer('sample_1_of_n_eval_on_train_examples', 5, 'Will sample '
+                     'one of every n train input examples for evaluation, '
+                     'where n is provided. This is only used if '
+                     '`eval_training_data` is True.')
 flags.DEFINE_string(
     'model_dir', None, 'Path to output model directory '
     'where event and checkpoint files will be written.')
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                     'file.')
-flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
-flags.DEFINE_integer('num_eval_steps', None, 'Number of train steps.')
 
 FLAGS = tf.flags.FLAGS
 
@@ -103,17 +108,19 @@ def main(unused_argv):
       hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
       pipeline_config_path=FLAGS.pipeline_config_path,
       train_steps=FLAGS.num_train_steps,
-      eval_steps=FLAGS.num_eval_steps,
+      sample_1_of_n_eval_examples=FLAGS.sample_1_of_n_eval_examples,
+      sample_1_of_n_eval_on_train_examples=(
+          FLAGS.sample_1_of_n_eval_on_train_examples),
       use_tpu_estimator=True,
       use_tpu=FLAGS.use_tpu,
       num_shards=FLAGS.num_shards,
+      save_final_config=FLAGS.mode == 'train',
       **kwargs)
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
-  eval_input_fn = train_and_eval_dict['eval_input_fn']
+  eval_input_fns = train_and_eval_dict['eval_input_fns']
   eval_on_train_input_fn = train_and_eval_dict['eval_on_train_input_fn']
   train_steps = train_and_eval_dict['train_steps']
-  eval_steps = train_and_eval_dict['eval_steps']
 
   if FLAGS.mode == 'train':
     estimator.train(input_fn=train_input_fn, max_steps=train_steps)
@@ -125,9 +132,10 @@ def main(unused_argv):
       input_fn = eval_on_train_input_fn
     else:
       name = 'validation_data'
-      input_fn = eval_input_fn
-    model_lib.continuous_eval(estimator, FLAGS.model_dir, input_fn, eval_steps,
-                              train_steps, name)
+      # Currently only a single eval input is allowed.
+      input_fn = eval_input_fns[0]
+    model_lib.continuous_eval(estimator, FLAGS.model_dir, input_fn, train_steps,
+                              name)
 
 
 if __name__ == '__main__':

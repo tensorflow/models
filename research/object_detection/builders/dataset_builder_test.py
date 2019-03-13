@@ -20,16 +20,15 @@ import tensorflow as tf
 
 from google.protobuf import text_format
 
-from tensorflow.core.example import example_pb2
-from tensorflow.core.example import feature_pb2
 from object_detection.builders import dataset_builder
 from object_detection.core import standard_fields as fields
 from object_detection.protos import input_reader_pb2
+from object_detection.utils import dataset_util
 
 
 class DatasetBuilderTest(tf.test.TestCase):
 
-  def create_tf_record(self, has_additional_channels=False):
+  def create_tf_record(self, has_additional_channels=False, num_examples=1):
     path = os.path.join(self.get_temp_dir(), 'tfrecord')
     writer = tf.python_io.TFRecordWriter(path)
 
@@ -41,40 +40,27 @@ class DatasetBuilderTest(tf.test.TestCase):
       encoded_jpeg = tf.image.encode_jpeg(tf.constant(image_tensor)).eval()
       encoded_additional_channels_jpeg = tf.image.encode_jpeg(
           tf.constant(additional_channels_tensor)).eval()
-    features = {
-        'image/encoded':
-            feature_pb2.Feature(
-                bytes_list=feature_pb2.BytesList(value=[encoded_jpeg])),
-        'image/format':
-            feature_pb2.Feature(
-                bytes_list=feature_pb2.BytesList(value=['jpeg'.encode('utf-8')])
-            ),
-        'image/height':
-            feature_pb2.Feature(int64_list=feature_pb2.Int64List(value=[4])),
-        'image/width':
-            feature_pb2.Feature(int64_list=feature_pb2.Int64List(value=[5])),
-        'image/object/bbox/xmin':
-            feature_pb2.Feature(float_list=feature_pb2.FloatList(value=[0.0])),
-        'image/object/bbox/xmax':
-            feature_pb2.Feature(float_list=feature_pb2.FloatList(value=[1.0])),
-        'image/object/bbox/ymin':
-            feature_pb2.Feature(float_list=feature_pb2.FloatList(value=[0.0])),
-        'image/object/bbox/ymax':
-            feature_pb2.Feature(float_list=feature_pb2.FloatList(value=[1.0])),
-        'image/object/class/label':
-            feature_pb2.Feature(int64_list=feature_pb2.Int64List(value=[2])),
-        'image/object/mask':
-            feature_pb2.Feature(
-                float_list=feature_pb2.FloatList(value=flat_mask)),
-    }
-    if has_additional_channels:
-      features['image/additional_channels/encoded'] = feature_pb2.Feature(
-          bytes_list=feature_pb2.BytesList(
-              value=[encoded_additional_channels_jpeg] * 2))
-    example = example_pb2.Example(
-        features=feature_pb2.Features(feature=features))
-    writer.write(example.SerializeToString())
-    writer.close()
+      for i in range(num_examples):
+        features = {
+            'image/source_id': dataset_util.bytes_feature(str(i)),
+            'image/encoded': dataset_util.bytes_feature(encoded_jpeg),
+            'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
+            'image/height': dataset_util.int64_feature(4),
+            'image/width': dataset_util.int64_feature(5),
+            'image/object/bbox/xmin': dataset_util.float_list_feature([0.0]),
+            'image/object/bbox/xmax': dataset_util.float_list_feature([1.0]),
+            'image/object/bbox/ymin': dataset_util.float_list_feature([0.0]),
+            'image/object/bbox/ymax': dataset_util.float_list_feature([1.0]),
+            'image/object/class/label': dataset_util.int64_list_feature([2]),
+            'image/object/mask': dataset_util.float_list_feature(flat_mask),
+        }
+        if has_additional_channels:
+          additional_channels_key = 'image/additional_channels/encoded'
+          features[additional_channels_key] = dataset_util.bytes_list_feature(
+              [encoded_additional_channels_jpeg] * 2)
+        example = tf.train.Example(features=tf.train.Features(feature=features))
+        writer.write(example.SerializeToString())
+      writer.close()
 
     return path
 
@@ -93,9 +79,7 @@ class DatasetBuilderTest(tf.test.TestCase):
     tensor_dict = dataset_builder.make_initializable_iterator(
         dataset_builder.build(input_reader_proto, batch_size=1)).get_next()
 
-    sv = tf.train.Supervisor(logdir=self.get_temp_dir())
-    with sv.prepare_or_wait_for_session() as sess:
-      sv.start_queue_runners(sess)
+    with tf.train.MonitoredSession() as sess:
       output_dict = sess.run(tensor_dict)
 
     self.assertTrue(
@@ -126,9 +110,7 @@ class DatasetBuilderTest(tf.test.TestCase):
     tensor_dict = dataset_builder.make_initializable_iterator(
         dataset_builder.build(input_reader_proto, batch_size=1)).get_next()
 
-    sv = tf.train.Supervisor(logdir=self.get_temp_dir())
-    with sv.prepare_or_wait_for_session() as sess:
-      sv.start_queue_runners(sess)
+    with tf.train.MonitoredSession() as sess:
       output_dict = sess.run(tensor_dict)
     self.assertAllEqual(
         (1, 1, 4, 5),
@@ -158,23 +140,18 @@ class DatasetBuilderTest(tf.test.TestCase):
             transform_input_data_fn=one_hot_class_encoding_fn,
             batch_size=2)).get_next()
 
-    sv = tf.train.Supervisor(logdir=self.get_temp_dir())
-    with sv.prepare_or_wait_for_session() as sess:
-      sv.start_queue_runners(sess)
+    with tf.train.MonitoredSession() as sess:
       output_dict = sess.run(tensor_dict)
 
     self.assertAllEqual([2, 4, 5, 3],
                         output_dict[fields.InputDataFields.image].shape)
-    self.assertAllEqual([2, 1, 3],
-                        output_dict[fields.InputDataFields.groundtruth_classes].
-                        shape)
-    self.assertAllEqual([2, 1, 4],
-                        output_dict[fields.InputDataFields.groundtruth_boxes].
-                        shape)
     self.assertAllEqual(
-        [[[0.0, 0.0, 1.0, 1.0]],
-         [[0.0, 0.0, 1.0, 1.0]]],
-        output_dict[fields.InputDataFields.groundtruth_boxes])
+        [2, 1, 3],
+        output_dict[fields.InputDataFields.groundtruth_classes].shape)
+    self.assertAllEqual(
+        [2, 1, 4], output_dict[fields.InputDataFields.groundtruth_boxes].shape)
+    self.assertAllEqual([[[0.0, 0.0, 1.0, 1.0]], [[0.0, 0.0, 1.0, 1.0]]],
+                        output_dict[fields.InputDataFields.groundtruth_boxes])
 
   def test_build_tf_record_input_reader_with_batch_size_two_and_masks(self):
     tf_record_path = self.create_tf_record()
@@ -201,9 +178,7 @@ class DatasetBuilderTest(tf.test.TestCase):
             transform_input_data_fn=one_hot_class_encoding_fn,
             batch_size=2)).get_next()
 
-    sv = tf.train.Supervisor(logdir=self.get_temp_dir())
-    with sv.prepare_or_wait_for_session() as sess:
-      sv.start_queue_runners(sess)
+    with tf.train.MonitoredSession() as sess:
       output_dict = sess.run(tensor_dict)
 
     self.assertAllEqual(
@@ -220,6 +195,50 @@ class DatasetBuilderTest(tf.test.TestCase):
     text_format.Merge(input_reader_text_proto, input_reader_proto)
     with self.assertRaises(ValueError):
       dataset_builder.build(input_reader_proto, batch_size=1)
+
+  def test_sample_all_data(self):
+    tf_record_path = self.create_tf_record(num_examples=2)
+
+    input_reader_text_proto = """
+      shuffle: false
+      num_readers: 1
+      sample_1_of_n_examples: 1
+      tf_record_input_reader {{
+        input_path: '{0}'
+      }}
+    """.format(tf_record_path)
+    input_reader_proto = input_reader_pb2.InputReader()
+    text_format.Merge(input_reader_text_proto, input_reader_proto)
+    tensor_dict = dataset_builder.make_initializable_iterator(
+        dataset_builder.build(input_reader_proto, batch_size=1)).get_next()
+
+    with tf.train.MonitoredSession() as sess:
+      output_dict = sess.run(tensor_dict)
+      self.assertAllEqual(['0'], output_dict[fields.InputDataFields.source_id])
+      output_dict = sess.run(tensor_dict)
+      self.assertEquals(['1'], output_dict[fields.InputDataFields.source_id])
+
+  def test_sample_one_of_n_shards(self):
+    tf_record_path = self.create_tf_record(num_examples=4)
+
+    input_reader_text_proto = """
+      shuffle: false
+      num_readers: 1
+      sample_1_of_n_examples: 2
+      tf_record_input_reader {{
+        input_path: '{0}'
+      }}
+    """.format(tf_record_path)
+    input_reader_proto = input_reader_pb2.InputReader()
+    text_format.Merge(input_reader_text_proto, input_reader_proto)
+    tensor_dict = dataset_builder.make_initializable_iterator(
+        dataset_builder.build(input_reader_proto, batch_size=1)).get_next()
+
+    with tf.train.MonitoredSession() as sess:
+      output_dict = sess.run(tensor_dict)
+      self.assertAllEqual(['0'], output_dict[fields.InputDataFields.source_id])
+      output_dict = sess.run(tensor_dict)
+      self.assertEquals(['2'], output_dict[fields.InputDataFields.source_id])
 
 
 class ReadDatasetTest(tf.test.TestCase):
@@ -240,11 +259,12 @@ class ReadDatasetTest(tf.test.TestCase):
         f.write('\n'.join([str(i)] * 5))
 
   def _get_dataset_next(self, files, config, batch_size):
+
     def decode_func(value):
       return [tf.string_to_number(value, out_type=tf.int32)]
 
-    dataset = dataset_builder.read_dataset(
-        tf.data.TextLineDataset, files, config)
+    dataset = dataset_builder.read_dataset(tf.data.TextLineDataset, files,
+                                           config)
     dataset = dataset.map(decode_func)
     dataset = dataset.batch(batch_size)
     return dataset.make_one_shot_iterator().get_next()
@@ -254,8 +274,7 @@ class ReadDatasetTest(tf.test.TestCase):
     dataset = tf.data.Dataset.from_tensor_slices([[1, 2, -1, 5]])
     table = tf.contrib.lookup.HashTable(
         initializer=tf.contrib.lookup.KeyValueTensorInitializer(
-            keys=keys,
-            values=list(reversed(keys))),
+            keys=keys, values=list(reversed(keys))),
         default_value=100)
     dataset = dataset.map(table.lookup)
     data = dataset_builder.make_initializable_iterator(dataset).get_next()
@@ -270,24 +289,28 @@ class ReadDatasetTest(tf.test.TestCase):
     config.num_readers = 1
     config.shuffle = False
 
-    data = self._get_dataset_next([self._path_template % '*'], config,
-                                  batch_size=20)
+    data = self._get_dataset_next(
+        [self._path_template % '*'], config, batch_size=20)
     with self.test_session() as sess:
-      self.assertAllEqual(sess.run(data),
-                          [[1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 1, 10, 2, 20, 3,
-                            30, 4, 40, 5, 50]])
+      self.assertAllEqual(
+          sess.run(data), [[
+              1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 1, 10, 2, 20, 3, 30, 4, 40, 5,
+              50
+          ]])
 
   def test_reduce_num_reader(self):
     config = input_reader_pb2.InputReader()
     config.num_readers = 10
     config.shuffle = False
 
-    data = self._get_dataset_next([self._path_template % '*'], config,
-                                  batch_size=20)
+    data = self._get_dataset_next(
+        [self._path_template % '*'], config, batch_size=20)
     with self.test_session() as sess:
-      self.assertAllEqual(sess.run(data),
-                          [[1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 1, 10, 2, 20, 3,
-                            30, 4, 40, 5, 50]])
+      self.assertAllEqual(
+          sess.run(data), [[
+              1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 1, 10, 2, 20, 3, 30, 4, 40, 5,
+              50
+          ]])
 
   def test_enable_shuffle(self):
     config = input_reader_pb2.InputReader()
@@ -321,8 +344,8 @@ class ReadDatasetTest(tf.test.TestCase):
     config.num_readers = 1
     config.shuffle = False
 
-    data = self._get_dataset_next([self._path_template % '0'], config,
-                                  batch_size=30)
+    data = self._get_dataset_next(
+        [self._path_template % '0'], config, batch_size=30)
     with self.test_session() as sess:
       # First batch will retrieve as much as it can, second batch will fail.
       self.assertAllEqual(sess.run(data), [[1, 10]])

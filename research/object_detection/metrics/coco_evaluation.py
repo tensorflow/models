@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from object_detection.core import standard_fields
 from object_detection.metrics import coco_tools
+from object_detection.utils import json_utils
 from object_detection.utils import object_detection_evaluation
 
 
@@ -148,6 +149,19 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
                                               detection_classes]))
     self._image_ids[image_id] = True
 
+  def dump_detections_to_json_file(self, json_output_path):
+    """Saves the detections into json_output_path in the format used by MS COCO.
+
+    Args:
+      json_output_path: String containing the output file's path. It can be also
+        None. In that case nothing will be written to the output file.
+    """
+    if json_output_path and json_output_path is not None:
+      with tf.gfile.GFile(json_output_path, 'w') as fid:
+        tf.logging.info('Dumping detections to output json file.')
+        json_utils.Dump(
+            obj=self._detection_boxes_list, fid=fid, float_digits=4, indent=2)
+
   def evaluate(self):
     """Evaluates the detection boxes and returns a dictionary of coco metrics.
 
@@ -234,26 +248,30 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         detection_boxes_batched,
         detection_scores_batched,
         detection_classes_batched,
-        num_det_boxes_per_image):
+        num_det_boxes_per_image,
+        is_annotated_batched):
       """Update operation for adding batch of images to Coco evaluator."""
 
       for (image_id, gt_box, gt_class, gt_is_crowd, num_gt_box, det_box,
-           det_score, det_class, num_det_box) in zip(
+           det_score, det_class, num_det_box, is_annotated) in zip(
                image_id_batched, groundtruth_boxes_batched,
                groundtruth_classes_batched, groundtruth_is_crowd_batched,
                num_gt_boxes_per_image,
                detection_boxes_batched, detection_scores_batched,
-               detection_classes_batched, num_det_boxes_per_image):
-        self.add_single_ground_truth_image_info(
-            image_id,
-            {'groundtruth_boxes': gt_box[:num_gt_box],
-             'groundtruth_classes': gt_class[:num_gt_box],
-             'groundtruth_is_crowd': gt_is_crowd[:num_gt_box]})
-        self.add_single_detected_image_info(
-            image_id,
-            {'detection_boxes': det_box[:num_det_box],
-             'detection_scores': det_score[:num_det_box],
-             'detection_classes': det_class[:num_det_box]})
+               detection_classes_batched, num_det_boxes_per_image,
+               is_annotated_batched):
+        if is_annotated:
+          self.add_single_ground_truth_image_info(
+              image_id, {
+                  'groundtruth_boxes': gt_box[:num_gt_box],
+                  'groundtruth_classes': gt_class[:num_gt_box],
+                  'groundtruth_is_crowd': gt_is_crowd[:num_gt_box]
+              })
+          self.add_single_detected_image_info(
+              image_id,
+              {'detection_boxes': det_box[:num_det_box],
+               'detection_scores': det_score[:num_det_box],
+               'detection_classes': det_class[:num_det_box]})
 
     # Unpack items from the evaluation dictionary.
     input_data_fields = standard_fields.InputDataFields
@@ -268,8 +286,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     detection_classes = eval_dict[detection_fields.detection_classes]
     num_gt_boxes_per_image = eval_dict.get(
         'num_groundtruth_boxes_per_image', None)
-    num_det_boxes_per_image = eval_dict.get(
-        'num_groundtruth_boxes_per_image', None)
+    num_det_boxes_per_image = eval_dict.get('num_det_boxes_per_image', None)
+    is_annotated = eval_dict.get('is_annotated', None)
 
     if groundtruth_is_crowd is None:
       groundtruth_is_crowd = tf.zeros_like(groundtruth_classes, dtype=tf.bool)
@@ -292,6 +310,11 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         num_det_boxes_per_image = tf.shape(detection_boxes)[1:2]
       else:
         num_det_boxes_per_image = tf.expand_dims(num_det_boxes_per_image, 0)
+
+      if is_annotated is None:
+        is_annotated = tf.constant([True])
+      else:
+        is_annotated = tf.expand_dims(is_annotated, 0)
     else:
       if num_gt_boxes_per_image is None:
         num_gt_boxes_per_image = tf.tile(
@@ -301,6 +324,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         num_det_boxes_per_image = tf.tile(
             tf.shape(detection_boxes)[1:2],
             multiples=tf.shape(detection_boxes)[0:1])
+      if is_annotated is None:
+        is_annotated = tf.ones_like(image_id, dtype=tf.bool)
 
     update_op = tf.py_func(update_op, [image_id,
                                        groundtruth_boxes,
@@ -310,7 +335,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
                                        detection_boxes,
                                        detection_scores,
                                        detection_classes,
-                                       num_det_boxes_per_image], [])
+                                       num_det_boxes_per_image,
+                                       is_annotated], [])
     metric_names = ['DetectionBoxes_Precision/mAP',
                     'DetectionBoxes_Precision/mAP@.50IOU',
                     'DetectionBoxes_Precision/mAP@.75IOU',
@@ -491,6 +517,19 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                                               detection_classes]))
     self._image_ids_with_detections.update([image_id])
 
+  def dump_detections_to_json_file(self, json_output_path):
+    """Saves the detections into json_output_path in the format used by MS COCO.
+
+    Args:
+      json_output_path: String containing the output file's path. It can be also
+        None. In that case nothing will be written to the output file.
+    """
+    if json_output_path and json_output_path is not None:
+      tf.logging.info('Dumping detections to output json file.')
+      with tf.gfile.GFile(json_output_path, 'w') as fid:
+        json_utils.Dump(
+            obj=self._detection_masks_list, fid=fid, float_digits=4, indent=2)
+
   def evaluate(self):
     """Evaluates the detection masks and returns a dictionary of coco metrics.
 
@@ -554,8 +593,11 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
 
     Args:
       eval_dict: A dictionary that holds tensors for evaluating object detection
-        performance. This dictionary may be produced from
-        eval_util.result_dict_for_single_example().
+        performance. For single-image evaluation, this dictionary may be
+        produced from eval_util.result_dict_for_single_example(). If multi-image
+        evaluation, `eval_dict` should contain the fields
+        'num_groundtruth_boxes_per_image' and 'num_det_boxes_per_image' to
+        properly unpad the tensors from the batch.
 
     Returns:
       a dictionary of metric names to tuple of value_op and update_op that can
@@ -563,27 +605,41 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
       update ops  must be run together and similarly all value ops must be run
       together to guarantee correct behaviour.
     """
-    def update_op(
-        image_id,
-        groundtruth_boxes,
-        groundtruth_classes,
-        groundtruth_instance_masks,
-        groundtruth_is_crowd,
-        detection_scores,
-        detection_classes,
-        detection_masks):
+
+    def update_op(image_id_batched, groundtruth_boxes_batched,
+                  groundtruth_classes_batched,
+                  groundtruth_instance_masks_batched,
+                  groundtruth_is_crowd_batched, num_gt_boxes_per_image,
+                  detection_scores_batched, detection_classes_batched,
+                  detection_masks_batched, num_det_boxes_per_image):
       """Update op for metrics."""
-      self.add_single_ground_truth_image_info(
-          image_id,
-          {'groundtruth_boxes': groundtruth_boxes,
-           'groundtruth_classes': groundtruth_classes,
-           'groundtruth_instance_masks': groundtruth_instance_masks,
-           'groundtruth_is_crowd': groundtruth_is_crowd})
-      self.add_single_detected_image_info(
-          image_id,
-          {'detection_scores': detection_scores,
-           'detection_classes': detection_classes,
-           'detection_masks': detection_masks})
+
+      for (image_id, groundtruth_boxes, groundtruth_classes,
+           groundtruth_instance_masks, groundtruth_is_crowd, num_gt_box,
+           detection_scores, detection_classes,
+           detection_masks, num_det_box) in zip(
+               image_id_batched, groundtruth_boxes_batched,
+               groundtruth_classes_batched, groundtruth_instance_masks_batched,
+               groundtruth_is_crowd_batched, num_gt_boxes_per_image,
+               detection_scores_batched, detection_classes_batched,
+               detection_masks_batched, num_det_boxes_per_image):
+        self.add_single_ground_truth_image_info(
+            image_id, {
+                'groundtruth_boxes':
+                    groundtruth_boxes[:num_gt_box],
+                'groundtruth_classes':
+                    groundtruth_classes[:num_gt_box],
+                'groundtruth_instance_masks':
+                    groundtruth_instance_masks[:num_gt_box],
+                'groundtruth_is_crowd':
+                    groundtruth_is_crowd[:num_gt_box]
+            })
+        self.add_single_detected_image_info(
+            image_id, {
+                'detection_scores': detection_scores[:num_det_box],
+                'detection_classes': detection_classes[:num_det_box],
+                'detection_masks': detection_masks[:num_det_box]
+            })
 
     # Unpack items from the evaluation dictionary.
     input_data_fields = standard_fields.InputDataFields
@@ -595,20 +651,54 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         input_data_fields.groundtruth_instance_masks]
     groundtruth_is_crowd = eval_dict.get(
         input_data_fields.groundtruth_is_crowd, None)
+    num_gt_boxes_per_image = eval_dict.get(
+        input_data_fields.num_groundtruth_boxes, None)
     detection_scores = eval_dict[detection_fields.detection_scores]
     detection_classes = eval_dict[detection_fields.detection_classes]
     detection_masks = eval_dict[detection_fields.detection_masks]
+    num_det_boxes_per_image = eval_dict.get(detection_fields.num_detections,
+                                            None)
 
     if groundtruth_is_crowd is None:
       groundtruth_is_crowd = tf.zeros_like(groundtruth_classes, dtype=tf.bool)
-    update_op = tf.py_func(update_op, [image_id,
-                                       groundtruth_boxes,
-                                       groundtruth_classes,
-                                       groundtruth_instance_masks,
-                                       groundtruth_is_crowd,
-                                       detection_scores,
-                                       detection_classes,
-                                       detection_masks], [])
+
+    if not image_id.shape.as_list():
+      # Apply a batch dimension to all tensors.
+      image_id = tf.expand_dims(image_id, 0)
+      groundtruth_boxes = tf.expand_dims(groundtruth_boxes, 0)
+      groundtruth_classes = tf.expand_dims(groundtruth_classes, 0)
+      groundtruth_instance_masks = tf.expand_dims(groundtruth_instance_masks, 0)
+      groundtruth_is_crowd = tf.expand_dims(groundtruth_is_crowd, 0)
+      detection_scores = tf.expand_dims(detection_scores, 0)
+      detection_classes = tf.expand_dims(detection_classes, 0)
+      detection_masks = tf.expand_dims(detection_masks, 0)
+
+      if num_gt_boxes_per_image is None:
+        num_gt_boxes_per_image = tf.shape(groundtruth_boxes)[1:2]
+      else:
+        num_gt_boxes_per_image = tf.expand_dims(num_gt_boxes_per_image, 0)
+
+      if num_det_boxes_per_image is None:
+        num_det_boxes_per_image = tf.shape(detection_scores)[1:2]
+      else:
+        num_det_boxes_per_image = tf.expand_dims(num_det_boxes_per_image, 0)
+    else:
+      if num_gt_boxes_per_image is None:
+        num_gt_boxes_per_image = tf.tile(
+            tf.shape(groundtruth_boxes)[1:2],
+            multiples=tf.shape(groundtruth_boxes)[0:1])
+      if num_det_boxes_per_image is None:
+        num_det_boxes_per_image = tf.tile(
+            tf.shape(detection_scores)[1:2],
+            multiples=tf.shape(detection_scores)[0:1])
+
+    update_op = tf.py_func(update_op, [
+        image_id, groundtruth_boxes, groundtruth_classes,
+        groundtruth_instance_masks, groundtruth_is_crowd,
+        num_gt_boxes_per_image, detection_scores, detection_classes,
+        detection_masks, num_det_boxes_per_image
+    ], [])
+
     metric_names = ['DetectionMasks_Precision/mAP',
                     'DetectionMasks_Precision/mAP@.50IOU',
                     'DetectionMasks_Precision/mAP@.75IOU',

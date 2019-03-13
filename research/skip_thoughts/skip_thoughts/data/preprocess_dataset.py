@@ -121,8 +121,8 @@ def _build_vocabulary(input_files):
 
   tf.logging.info("Processed %d sentences total", num)
 
-  words = wordcount.keys()
-  freqs = wordcount.values()
+  words = list(wordcount)
+  freqs = list(wordcount.values())
   sorted_indices = np.argsort(freqs)[::-1]
 
   vocab = collections.OrderedDict()

@@ -63,6 +63,11 @@ class KerasLayerHyperparams(object):
       self._batch_norm_params = _build_keras_batch_norm_params(
           hyperparams_config.batch_norm)
 
+    self._activation_fn = _build_activation_fn(hyperparams_config.activation)
+    # TODO(kaftan): Unclear if these kwargs apply to separable & depthwise conv
+    # (Those might use depthwise_* instead of kernel_*)
+    # We should probably switch to using build_conv2d_layer and
+    # build_depthwise_conv2d_layer methods instead.
     self._op_params = {
         'kernel_regularizer': _build_keras_regularizer(
             hyperparams_config.regularizer),
@@ -126,7 +131,21 @@ class KerasLayerHyperparams(object):
     else:
       return tf.keras.layers.Lambda(tf.identity)
 
-  def params(self, **overrides):
+  def build_activation_layer(self, name='activation'):
+    """Returns a Keras layer that applies the desired activation function.
+
+    Args:
+      name: The name to assign the Keras layer.
+    Returns: A Keras lambda layer that applies the activation function
+      specified in the hyperparam config, or applies the identity if the
+      activation function is None.
+    """
+    if self._activation_fn:
+      return tf.keras.layers.Lambda(self._activation_fn, name=name)
+    else:
+      return tf.keras.layers.Lambda(tf.identity, name=name)
+
+  def params(self, include_activation=False, **overrides):
     """Returns a dict containing the layer construction hyperparameters to use.
 
     Optionally overrides values in the returned dict. Overrides
@@ -134,12 +153,24 @@ class KerasLayerHyperparams(object):
     future calls.
 
     Args:
+      include_activation: If False, activation in the returned dictionary will
+        be set to `None`, and the activation must be applied via a separate
+        layer created by `build_activation_layer`. If True, `activation` in the
+        output param dictionary will be set to the activation function
+        specified in the hyperparams config.
       **overrides: keyword arguments to override in the hyperparams dictionary.
 
     Returns: dict containing the layer construction keyword arguments, with
       values overridden by the `overrides` keyword arguments.
     """
     new_params = self._op_params.copy()
+    new_params['activation'] = None
+    if include_activation:
+      new_params['activation'] = self._activation_fn
+    if self.use_batch_norm() and self.batch_norm_params()['center']:
+      new_params['use_bias'] = False
+    else:
+      new_params['use_bias'] = True
     new_params.update(**overrides)
     return new_params
 
@@ -151,8 +182,9 @@ def build(hyperparams_config, is_training):
   initializer, weights regularizer, activation function, batch norm function
   and batch norm parameters based on the configuration.
 
-  Note that if the batch_norm parameteres are not specified in the config
-  (i.e. left to default) then batch norm is excluded from the arg_scope.
+  Note that if no normalization parameters are specified in the config,
+  (i.e. left to default) then both batch norm and group norm are excluded
+  from the arg_scope.
 
   The batch norm parameters are set for updates based on `is_training` argument
   and conv_hyperparams_config.batch_norm.train parameter. During training, they
@@ -177,13 +209,14 @@ def build(hyperparams_config, is_training):
     raise ValueError('hyperparams_config not of type '
                      'hyperparams_pb.Hyperparams.')
 
-  batch_norm = None
+  normalizer_fn = None
   batch_norm_params = None
   if hyperparams_config.HasField('batch_norm'):
-    batch_norm = slim.batch_norm
+    normalizer_fn = slim.batch_norm
     batch_norm_params = _build_batch_norm_params(
         hyperparams_config.batch_norm, is_training)
-
+  if hyperparams_config.HasField('group_norm'):
+    normalizer_fn = tf.contrib.layers.group_norm
   affected_ops = [slim.conv2d, slim.separable_conv2d, slim.conv2d_transpose]
   if hyperparams_config.HasField('op') and (
       hyperparams_config.op == hyperparams_pb2.Hyperparams.FC):
@@ -199,7 +232,7 @@ def build(hyperparams_config, is_training):
           weights_initializer=_build_initializer(
               hyperparams_config.initializer),
           activation_fn=_build_activation_fn(hyperparams_config.activation),
-          normalizer_fn=batch_norm) as sc:
+          normalizer_fn=normalizer_fn) as sc:
         return sc
 
   return scope_fn
@@ -243,6 +276,8 @@ def _build_slim_regularizer(regularizer):
     return slim.l1_regularizer(scale=float(regularizer.l1_regularizer.weight))
   if regularizer_oneof == 'l2_regularizer':
     return slim.l2_regularizer(scale=float(regularizer.l2_regularizer.weight))
+  if regularizer_oneof is None:
+    return None
   raise ValueError('Unknown regularizer function: {}'.format(regularizer_oneof))
 
 

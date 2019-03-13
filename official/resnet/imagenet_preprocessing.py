@@ -108,7 +108,7 @@ def _central_crop(image, crop_height, crop_width):
   Returns:
     3-D tensor with cropped image.
   """
-  shape = tf.shape(image)
+  shape = tf.shape(input=image)
   height, width = shape[0], shape[1]
 
   amount_to_be_cropped_h = (height - crop_height)
@@ -195,7 +195,7 @@ def _aspect_preserving_resize(image, resize_min):
   Returns:
     resized_image: A 3-D tensor containing the resized image.
   """
-  shape = tf.shape(image)
+  shape = tf.shape(input=image)
   height, width = shape[0], shape[1]
 
   new_height, new_width = _smallest_size_at_least(height, width, resize_min)
@@ -218,7 +218,7 @@ def _resize_image(image, height, width):
     resized_image: A 3-D tensor containing the resized image. The first two
       dimensions have the shape [height, width].
   """
-  return tf.image.resize_images(
+  return tf.compat.v1.image.resize(
       image, [height, width], method=tf.image.ResizeMethod.BILINEAR,
       align_corners=False)
 

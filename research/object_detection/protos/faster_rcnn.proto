@@ -157,6 +157,17 @@ message FasterRcnn {
   // Whether to use the balanced positive negative sampler implementation with
   // static shape guarantees.
   optional bool use_static_balanced_label_sampler = 34 [default = false];
+
+  // If True, uses implementation of ops with static shape guarantees.
+  optional bool use_static_shapes = 35 [default = false];
+
+  // Whether the masks present in groundtruth should be resized in the model to
+  // match the image size.
+  optional bool resize_masks = 36 [default = true];
+
+  // If True, uses implementation of ops with static shape guarantees when
+  // running evaluation (specifically not is_training if False).
+  optional bool use_static_shapes_for_eval = 37 [default = false];
 }
 
 
