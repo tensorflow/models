@@ -185,7 +185,8 @@ class NcfTest(tf.test.TestCase):
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
-  _BASE_END_TO_END_FLAGS_ESTIMATOR = ['-batch_size', '1024', '-train_epochs', '1']
+  _BASE_END_TO_END_FLAGS_ESTIMATOR = [
+      '-batch_size', '1024', '-train_epochs', '1']
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator(self):
@@ -200,9 +201,9 @@ class NcfTest(tf.test.TestCase):
         extra_flags=self._BASE_END_TO_END_FLAGS_ESTIMATOR + ['-ml_perf', 'True'])
 
   _BASE_END_TO_END_FLAGS_KERAS = [
-          '-batch_size','150000',
-          '-eval_batch_size','150000',
-          '-train_epochs', '1']
+      '-batch_size', '150000',
+      '-eval_batch_size', '150000',
+      '-train_epochs', '1']
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras(self):
