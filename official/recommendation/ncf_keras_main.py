@@ -157,7 +157,7 @@ def run_ncf(_):
   # different from batch_size, because in the input layers, it explicitly
   # the batch_size to 'batch_size'
   if params['batch_size'] != params['eval_batch_size']:
-    param['eval_batch_size'] = param['batch_size']
+    params['eval_batch_size'] = params['batch_size']
 
   num_users, num_items, num_train_steps, num_eval_steps, producer = (
       ncf_common.get_inputs(params))
