@@ -151,18 +151,20 @@ def _get_keras_model(params):
 
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
-  # TODO(seemuch): This model does not support eval_batch_size to be
-  # different from batch_size, because in the input layers, it explicitly
-  # the batch_size to 'batch_size'
-  FLAGS.eval_batch_size = FLAGS.batch_size
+  # TODO(seemuch): Support different train and eval batch sizes
+  if FLAGS.eval_batch_size != FLAGS.batch_size:
+    tf.logging.warning(
+        "The Keras implementation of NCF currently does not support batch_size "
+        "!= eval_batch_size ({} vs. {}). Overriding eval_batch_size to match "
+        "batch_size".format(FLAGS.eval_batch_size, FLAGS.batch_size)
+        )
+    FLAGS.eval_batch_size = FLAGS.batch_size
 
   params = ncf_common.parse_flags(FLAGS)
 
-  # TODO(seemuch): now that the eval_batch_size might have been adjusted, asign
-  # it back to batch_size. This is not needed once the batch_size issue is
-  # fixed.
-  if params['batch_size'] != params['eval_batch_size']:
-    params['batch_size'] = params['eval_batch_size']
+  # ncf_common rounds eval_batch_size (this is needed due to a reshape during
+  # eval). This carries over that rounding to batch_size as well.
+  params['batch_size'] = params['eval_batch_size']
 
   num_users, num_items, num_train_steps, num_eval_steps, producer = (
       ncf_common.get_inputs(params))
