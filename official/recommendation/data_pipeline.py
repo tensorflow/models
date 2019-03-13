@@ -640,6 +640,9 @@ class DummyConstructor(threading.Thread):
   def stop_loop(self):
     pass
 
+  def increment_request_epoch(self):
+    pass
+
   @staticmethod
   def make_input_fn(is_training):
     """Construct training input_fn that uses synthetic data."""
