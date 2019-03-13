@@ -277,6 +277,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
@@ -288,6 +289,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'default'
@@ -315,8 +317,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_8_gpu')
-    # TODO(haoyuzhang): Set size to 128 per GPU when multi-GPU XLA OOM is fixed
-    FLAGS.batch_size = 64 * 8  # 8 GPUs
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):
