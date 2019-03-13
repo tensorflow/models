@@ -198,7 +198,8 @@ class NcfTest(tf.test.TestCase):
   def test_end_to_end_estimator_mlperf(self):
     integration.run_synthetic(
         ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS_ESTIMATOR + ['-ml_perf', 'True'])
+        extra_flags=self._BASE_END_TO_END_FLAGS_ESTIMATOR + [
+          '-ml_perf', 'True'])
 
   _BASE_END_TO_END_FLAGS_KERAS = [
       '-batch_size', '150000',
