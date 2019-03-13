@@ -201,7 +201,6 @@ class NcfTest(tf.test.TestCase):
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras(self):
-    self.skipTest("TODO: fix synthetic data with keras")
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
         extra_flags=self._BASE_END_TO_END_FLAGS +
@@ -209,7 +208,6 @@ class NcfTest(tf.test.TestCase):
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras_mlperf(self):
-    self.skipTest("TODO: fix synthetic data with keras")
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
         extra_flags=self._BASE_END_TO_END_FLAGS +
