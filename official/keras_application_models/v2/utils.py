@@ -71,6 +71,16 @@ def define_flags():
           "Number of GPUs used for distribution strategy can be set by the "
           "argument --num_gpus.")
 
+  flags.DEFINE_integer(
+      name="limit_train_num", default=0, help=
+          "To limit train dataset size, usually for code validation or "
+          "perf-only testing.")
+
+  flags.DEFINE_boolean(
+      name="enable_model_saving", default=False, help=
+          "To enable best model saving feature of Keras training."
+      )
+
   # pylint: disable=unused-variable
   def _check_eager_dist_strat(flag_dict):
     return flag_dict["disable_eager"] or not flag_dict["dist_strat"]

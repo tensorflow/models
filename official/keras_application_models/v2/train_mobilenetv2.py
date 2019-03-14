@@ -26,95 +26,109 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.keras_application_models.v2 import dataset
+from official.keras_application_models.v2 import datasets
 from official.keras_application_models.v2 import utils
 
 
-def get_model(input_shape, classes, no_pretrained_weights):
-  if no_pretrained_weights:
-    return tf.keras.applications.MobileNetV2(
-        weights=None,
-        alpha=0.35,
-        input_shape=input_shape,
-        include_top=True,
-        classes=classes)
-  else:
-    base_model = tf.keras.applications.MobileNetV2(
-        # Use imagenet pretrained weights require input_shape and pooling.
-        weights="imagenet",
-        alpha=0.35,
-        input_shape=input_shape,
-        include_top=False,
-        pooling="avg")
-    x = base_model.output
-    x = tf.keras.layers.Dense(10, activation='softmax', name='fc10')(x)
-    return tf.keras.Model(inputs=base_model.inputs, outputs=x)
+FLAGS = flags.FLAGS
 
 
-def train_mobilenetv2(_):
-  """Train MobileNetV2 on CIFAR from the scratch."""
+def prepare_dataset_builder():
+  # Split this function out of `run` for easy testing with different datasets.
+  return datasets.ImageNetDatasetBuilder()
 
-  # Enable/Disable eager based on flags. It's enabled by default.
-  utils.init_eager_execution(FLAGS.no_eager)
+
+def run(dataset_builder):
+  """Train MobileNetV2 on ImageNet from the scratch.
+
+  Args:
+    dataset_builder: Object which helps to build datasets and contains meta
+      info as well. Required members:
+        to_dataset(
+            batch_size: int,
+            image_shape: (int, int),
+            take_train_num: int) -> (tf.data.Dataset, tf.data.Dataset)
+        num_classes: int
+        num_train: int
+        num_test: int
+  """
 
   # Initialize distribution strategy.
-  # TODO(xunkai55): make it work when FLAGS.dist_strat == True.
-  # If FLAGS.dist_strat == False, a fake placeholder will be used.
-  if FLAGS.dist_strat:
-    raise NotImplemented("Distribution strategy is not supported yet.")
-  else:
-    strategy = utils.NotReallyADistributionStrategy()
+  strategy = utils.get_distribution_strategy(
+    FLAGS.num_gpus, no_distribution_strategy=not FLAGS.dist_strat)
 
-  if FLAGS.num_gpus > 1:
-    raise NotImplemented("Multiple GPU is not supported yet.")
+  global_batch_size = FLAGS.batch_size * FLAGS.num_gpus
 
   with strategy.scope():
-    ds = dataset.Cifar10Dataset(FLAGS.batch_size, dsize=(96, 96))
-    x_train, y_train, x_test, y_test = ds.get_normalized_data()
-    datagen = ds.get_data_augmentor()
+    image_shape = (224, 224)
+    train_ds, test_ds = dataset_builder.to_dataset(
+        global_batch_size, image_shape, take_train_num=FLAGS.limit_train_num)
 
-    model = get_model(
-        ds.input_shape, ds.num_classes, FLAGS.no_pretrained_weights)
-    optimizer = tf.keras.optimizers.SGD(
-        learning_rate=tf.keras.backend.variable(0.1))
+    model = tf.keras.applications.MobileNetV2(
+        weights=(None if FLAGS.no_pretrained_weights else "imagenet"),
+        input_shape=image_shape + (3,),
+        include_top=True,
+        classes=dataset_builder.num_classes)
 
     if FLAGS.no_pretrained_weights:
+      initial_lr = 0.045 * FLAGS.num_gpus
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
-          lambda x: 1e-2 if x < 50 else 1e-3 if x < 70 else 1e-4,
+          lambda x, lr: lr * 0.316 if x > 0 and x % 10 == 0 else lr,
           verbose=1)
     else:
+      initial_lr = 0.001 * FLAGS.num_gpus
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
-          lambda x: 0.1 - 0.001 * x, verbose=1)
+          lambda x, lr: lr * 0.316 if x > 0 and x % 10 == 0 else lr,
+          verbose=1)
 
-    # Add L1L2 regularization to avoid overfitting
-    utils.add_global_regularization(model, l2=0.00004)
+    optimizer = tf.keras.optimizers.SGD(
+        learning_rate=tf.keras.backend.variable(initial_lr), momentum=0.9)
 
-    checkpoint = utils.prepare_model_saving("mobilenetv2")
-    callbacks = [lr_scheduler, checkpoint]
+    # To train it from scratch, we need L2 regularization to avoid overfitting.
+    if FLAGS.no_pretrained_weights:
+      decay = 0.00004 * FLAGS.num_gpus
+      for layer in model.layers:
+        layer_type = layer.__class__.__name__
+        if layer_type == "Conv2D":
+          layer.kerner_regularizer = tf.keras.regularizers.l2(decay)
+
+    callbacks = [lr_scheduler]
+    if FLAGS.enable_model_saving:
+      checkpoint = utils.prepare_model_saving("mobilenetv2")
+      callbacks.append(checkpoint)
 
     model.compile(loss="categorical_crossentropy",
                   optimizer=optimizer,
-                  metrics=["accuracy"])
+                  metrics=["acc", "top_k_categorical_accuracy"])
 
     # Train and evaluate the model
     history = model.fit(
-        datagen.flow(x_train, y_train, batch_size=FLAGS.batch_size),
+        train_ds,
         epochs=FLAGS.train_epochs,
         callbacks=callbacks,
-        validation_data=(x_test, y_test),
-        steps_per_epoch=int(np.ceil(len(x_train) / FLAGS.batch_size)),
+        steps_per_epoch=int(
+            np.ceil(dataset_builder.num_train / global_batch_size)),
+        validation_data=test_ds,
+        validation_steps=int(
+            np.ceil(dataset_builder.num_test / global_batch_size)),
     )
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
+  return {
+      # Optmizer.iterations is a MirroredVariable for distributed training.
+      "iters": optimizer.iterations.read_value(),
+      "history": history.history,
+  }
 
 
 def main(_):
-  train_mobilenetv2(FLAGS)
+  dataset_builder = prepare_dataset_builder()
+  run(dataset_builder)
 
 
 if __name__ == "__main__":
   absl.logging.set_verbosity(absl.logging.INFO)
   utils.define_flags()
-  FLAGS = flags.FLAGS
   absl_app.run(main)
+
