@@ -73,7 +73,10 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
 
 class KerasNCFRealData(KerasNCFBenchmarkBase):
 
-  def __init__(self, output_dir=None, default_flags=None):
+  def __init__(self,
+      output_dir=None,
+      default_flags=None,
+      **kwargs):
 
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
@@ -105,7 +108,10 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
 
 class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
 
-  def __init__(self, output_dir=None, default_flags=None):
+  def __init__(self,
+      output_dir=None,
+      default_flags=None,
+      **kwargs):
 
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
