@@ -26,7 +26,6 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.keras_application_models.v2 import dataset
 from official.utils.misc import distribution_utils
 
 

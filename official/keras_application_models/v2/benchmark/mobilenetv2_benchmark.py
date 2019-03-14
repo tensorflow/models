@@ -37,11 +37,11 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
     self._data_dir = data_dir
     utils.define_flags()
 
-  def _prepare_dataset_builder(data_spec):
+  def _prepare_dataset_builder(self, data_spec):
     if data_spec is None:
       return datasets.ImageNetDatasetBuilder()
 
-  def _run_and_report(self, data_spec):
+  def _run_and_report(self, data_spec=None):
     start_time_sec = time.time()
     result = train_mobilenetv2.run(self._prepare_dataset_builder(data_spec))
     wall_time_sec = time.time() - start_time_sec
