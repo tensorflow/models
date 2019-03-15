@@ -48,16 +48,16 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
   def _setup(self):
     """Sets up and resets flags before each test."""
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
-    if KerasBenchmark.local_flags is None:
+    if KerasNCFBenchmarkBase.local_flags is None:
       # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
       # Overrides flag values with defaults for the class of tests.
       for k, v in self.default_flags.items():
         setattr(FLAGS, k, v)
       saved_flag_values = flagsaver.save_flag_values()
-      KerasBenchmark.local_flags = saved_flag_values
+      KerasNCFBenchmarkBase.local_flags = saved_flag_values
     else:
-      flagsaver.restore_flag_values(KerasBenchmark.local_flags)
+      flagsaver.restore_flag_values(KerasNCFBenchmarkBase.local_flags)
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
