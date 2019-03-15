@@ -102,9 +102,11 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
         **kwargs)
 
   def _extract_benchmark_report_extras(self, stats):
+    extras = {}
     extras['train_loss'] = stats['loss']
     extras['eval_hit_rate'] = stats['eval_hit_rate']
     extras['examples_per_second'] = stats['avg_exp_per_second']
+    return extras
 
   def benchmark_ncf(self):
     self._setup()
@@ -138,7 +140,9 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
         **kwargs)
 
   def _extract_benchmark_report_extras(self, stats):
+    extras = {}
     extras['examples_per_second'] = stats['avg_exp_per_second']
+    return extras
 
   def benchmark_ncf(self):
     self._setup()
