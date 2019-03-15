@@ -28,6 +28,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main
+from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
 
@@ -43,6 +44,7 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
     self.output_dir = output_dir
     self.default_flags = default_flags or {}
     ncf_common.define_ncf_flags()
+    keras_utils.define_flags()
 
     if root_data_dir:
       FLAGS.data_dir = os.path.join(root_data_dir, 'movielens_data')
