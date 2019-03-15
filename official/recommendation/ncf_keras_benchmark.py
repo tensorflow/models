@@ -129,7 +129,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     default_flags['use_synthetic_data'] = True
 
     import inspect
-    print(">>>> signature: ", super(KerasNCFBenchmarkBase, self).__init__)
+    print(">>>> signature: ", inspect.signature(super(KerasNCFBenchmarkBase, self).__init__))
 
     super(KerasNCFBenchmarkBase, self).__init__(
         output_dir=output_dir,
