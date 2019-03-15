@@ -31,6 +31,7 @@ from official.recommendation import ncf_common
 FLAGS = flags.FLAGS
 
 class KerasNCFBenchmarkBase(tf.test.Benchmark):
+  local_flags = None
 
   def __init__(self,
           output_dir=None,
