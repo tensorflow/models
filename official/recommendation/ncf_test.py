@@ -212,8 +212,8 @@ class NcfTest(tf.test.TestCase):
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
         extra_flags=self._BASE_END_TO_END_FLAGS +
         ['-ml_perf', 'True',
-          '-distribution_strategy', 'off',
-          '-log_steps', '100'])
+         '-distribution_strategy', 'off',
+         '-log_steps', '100'])
 
 
 if __name__ == "__main__":
