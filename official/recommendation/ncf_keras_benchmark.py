@@ -130,6 +130,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
 
     import inspect
     print(">>>> signature: ", inspect.signature(super(KerasNCFBenchmarkBase, self).__init__))
+    print(">>>> kwargs: ", kwargs)
 
     super(KerasNCFBenchmarkBase, self).__init__(
         output_dir=output_dir,
