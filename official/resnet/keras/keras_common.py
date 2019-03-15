@@ -169,11 +169,6 @@ def define_keras_flags():
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
-  flags.DEFINE_integer(
-      name='log_steps', default=100,
-      help='For every log_steps, we log the timing information such as '
-      'examples per second. Besides, for every log_steps, we store the '
-      'timestamp of a batch end.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
