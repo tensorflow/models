@@ -95,7 +95,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     super(KerasNCFBenchmarkBase, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
-        kwargs)
+        **kwargs)
 
   def _extract_benchmark_report_extras(self, stats):
     extras['train_loss'] = stats['loss']
@@ -131,7 +131,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     super(KerasNCFBenchmarkBase, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
-        kwargs)
+        **kwargs)
 
   def _extract_benchmark_report_extras(self, stats):
     extras['examples_per_second'] = stats['avg_exp_per_second']
