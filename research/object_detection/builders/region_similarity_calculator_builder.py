@@ -53,7 +53,7 @@ def build(region_similarity_calculator_config):
     return region_similarity_calculator.NegSqDistSimilarity()
   if similarity_calculator == 'thresholded_iou_similarity':
     return region_similarity_calculator.ThresholdedIouSimilarity(
-        region_similarity_calculator_config.thresholded_iou_similarity.threshold
-    )
+        region_similarity_calculator_config.thresholded_iou_similarity
+        .iou_threshold)
 
   raise ValueError('Unknown region similarity calculator.')

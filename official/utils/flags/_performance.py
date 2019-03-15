@@ -141,8 +141,13 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     flags.DEFINE_string(
         name="all_reduce_alg", short_name="ara", default=None,
         help=help_wrap("Defines the algorithm to use for performing all-reduce."
-                       "See tf.contrib.distribute.AllReduceCrossTowerOps for "
-                       "more details and available options."))
+                       "When specified with MirroredStrategy for single "
+                       "worker, this controls "
+                       "tf.contrib.distribute.AllReduceCrossTowerOps.  When "
+                       "specified with MultiWorkerMirroredStrategy, this "
+                       "controls "
+                       "tf.distribute.experimental.CollectiveCommunication; "
+                       "valid options are `ring` and `nccl`."))
 
   if tf_gpu_thread_mode:
     flags.DEFINE_string(

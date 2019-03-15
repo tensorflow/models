@@ -16,7 +16,9 @@
 
 import functools
 import tensorflow as tf
+from google.protobuf import text_format
 
+from object_detection.builders import post_processing_builder
 from object_detection.core import anchor_generator
 from object_detection.core import balanced_positive_negative_sampler as sampler
 from object_detection.core import box_list
@@ -25,6 +27,7 @@ from object_detection.core import post_processing
 from object_detection.core import region_similarity_calculator as sim_calc
 from object_detection.core import target_assigner
 from object_detection.meta_architectures import ssd_meta_arch
+from object_detection.protos import calibration_pb2
 from object_detection.protos import model_pb2
 from object_detection.utils import ops
 from object_detection.utils import test_case
@@ -125,7 +128,8 @@ class SSDMetaArchTestBase(test_case.TestCase):
       use_keras=False,
       predict_mask=False,
       use_static_shapes=False,
-      nms_max_size_per_class=5):
+      nms_max_size_per_class=5,
+      calibration_mapping_value=None):
     is_training = False
     num_classes = 1
     mock_anchor_generator = MockAnchorGenerator2x2()
@@ -156,6 +160,24 @@ class SSDMetaArchTestBase(test_case.TestCase):
         max_size_per_class=nms_max_size_per_class,
         max_total_size=nms_max_size_per_class,
         use_static_shapes=use_static_shapes)
+    score_conversion_fn = tf.identity
+    calibration_config = calibration_pb2.CalibrationConfig()
+    if calibration_mapping_value:
+      calibration_text_proto = """
+      function_approximation {
+        x_y_pairs {
+            x_y_pair {
+              x: 0.0
+              y: %f
+            }
+            x_y_pair {
+              x: 1.0
+              y: %f
+            }}}""" % (calibration_mapping_value, calibration_mapping_value)
+      text_format.Merge(calibration_text_proto, calibration_config)
+      score_conversion_fn = (
+          post_processing_builder._build_calibrated_score_converter(  # pylint: disable=protected-access
+              tf.identity, calibration_config))
     classification_loss_weight = 1.0
     localization_loss_weight = 1.0
     negative_class_weight = 1.0
@@ -201,7 +223,7 @@ class SSDMetaArchTestBase(test_case.TestCase):
         encode_background_as_zeros=encode_background_as_zeros,
         image_resizer_fn=image_resizer_fn,
         non_max_suppression_fn=non_max_suppression_fn,
-        score_conversion_fn=tf.identity,
+        score_conversion_fn=score_conversion_fn,
         classification_loss=classification_loss,
         localization_loss=localization_loss,
         classification_loss_weight=classification_loss_weight,

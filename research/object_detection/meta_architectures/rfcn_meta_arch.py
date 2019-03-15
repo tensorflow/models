@@ -288,7 +288,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     """
     image_shape_2d = tf.tile(tf.expand_dims(image_shape[1:], 0),
                              [image_shape[0], 1])
-    proposal_boxes_normalized, _, num_proposals = self._postprocess_rpn(
+    proposal_boxes_normalized, _, num_proposals, _, _ = self._postprocess_rpn(
         rpn_box_encodings, rpn_objectness_predictions_with_background,
         anchors, image_shape_2d, true_image_shapes)
 

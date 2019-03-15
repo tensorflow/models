@@ -17,8 +17,7 @@
 General tensorflow implementation of convolutional Multibox/SSD detection
 models.
 """
-from abc import abstractmethod
-
+import abc
 import tensorflow as tf
 
 from object_detection.core import box_list
@@ -80,7 +79,7 @@ class SSDFeatureExtractor(object):
   def is_keras_model(self):
     return False
 
-  @abstractmethod
+  @abc.abstractmethod
   def preprocess(self, resized_inputs):
     """Preprocesses images for feature extraction (minus image resizing).
 
@@ -98,7 +97,7 @@ class SSDFeatureExtractor(object):
     """
     pass
 
-  @abstractmethod
+  @abc.abstractmethod
   def extract_features(self, preprocessed_inputs):
     """Extracts features from preprocessed inputs.
 
@@ -196,7 +195,7 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
   def is_keras_model(self):
     return True
 
-  @abstractmethod
+  @abc.abstractmethod
   def preprocess(self, resized_inputs):
     """Preprocesses images for feature extraction (minus image resizing).
 
@@ -214,7 +213,7 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
     """
     raise NotImplementedError
 
-  @abstractmethod
+  @abc.abstractmethod
   def _extract_features(self, preprocessed_inputs):
     """Extracts features from preprocessed inputs.
 
@@ -552,8 +551,10 @@ class SSDMetaArch(model.DetectionModel):
         5) anchors: 2-D float tensor of shape [num_anchors, 4] containing
           the generated anchors in normalized coordinates.
     """
-    batchnorm_updates_collections = (None if self._inplace_batchnorm_update
-                                     else tf.GraphKeys.UPDATE_OPS)
+    if self._inplace_batchnorm_update:
+      batchnorm_updates_collections = None
+    else:
+      batchnorm_updates_collections = tf.GraphKeys.UPDATE_OPS
     if self._feature_extractor.is_keras_model:
       feature_maps = self._feature_extractor(preprocessed_inputs)
     else:
@@ -648,14 +649,22 @@ class SSDMetaArch(model.DetectionModel):
 
     Returns:
       detections: a dictionary containing the following fields
-        detection_boxes: [batch, max_detections, 4]
-        detection_scores: [batch, max_detections]
-        detection_classes: [batch, max_detections]
+        detection_boxes: [batch, max_detections, 4] tensor with post-processed
+          detection boxes.
+        detection_scores: [batch, max_detections] tensor with scalar scores for
+          post-processed detection boxes.
+        detection_classes: [batch, max_detections] tensor with classes for
+          post-processed detection classes.
         detection_keypoints: [batch, max_detections, num_keypoints, 2] (if
           encoded in the prediction_dict 'box_encodings')
         detection_masks: [batch_size, max_detections, mask_height, mask_width]
           (optional)
         num_detections: [batch]
+        raw_detection_boxes: [batch, total_detections, 4] tensor with decoded
+          detection boxes before Non-Max Suppression.
+        raw_detection_score: [batch, total_detections,
+          num_classes_with_background] tensor of multi-class score logits for
+          raw detection boxes.
     Raises:
       ValueError: if prediction_dict does not contain `box_encodings` or
         `class_predictions_with_background` fields.
@@ -700,11 +709,18 @@ class SSDMetaArch(model.DetectionModel):
            additional_fields=additional_fields,
            masks=prediction_dict.get('mask_predictions'))
       detection_dict = {
-          fields.DetectionResultFields.detection_boxes: nmsed_boxes,
-          fields.DetectionResultFields.detection_scores: nmsed_scores,
-          fields.DetectionResultFields.detection_classes: nmsed_classes,
+          fields.DetectionResultFields.detection_boxes:
+              nmsed_boxes,
+          fields.DetectionResultFields.detection_scores:
+              nmsed_scores,
+          fields.DetectionResultFields.detection_classes:
+              nmsed_classes,
           fields.DetectionResultFields.num_detections:
-              tf.to_float(num_detections)
+              tf.to_float(num_detections),
+          fields.DetectionResultFields.raw_detection_boxes:
+              tf.squeeze(detection_boxes, axis=2),
+          fields.DetectionResultFields.raw_detection_scores:
+              class_predictions
       }
       if (nmsed_additional_fields is not None and
           fields.BoxListFields.keypoints in nmsed_additional_fields):
@@ -1049,9 +1065,9 @@ class SSDMetaArch(model.DetectionModel):
       mined_cls_loss: a float scalar with sum of classification losses from
         selected hard examples.
     """
-    class_predictions = tf.slice(
-        prediction_dict['class_predictions_with_background'], [0, 0,
-                                                               1], [-1, -1, -1])
+    class_predictions = prediction_dict['class_predictions_with_background']
+    if self._add_background_class:
+      class_predictions = tf.slice(class_predictions, [0, 0, 1], [-1, -1, -1])
 
     decoded_boxes, _ = self._batch_decode(prediction_dict['box_encodings'])
     decoded_box_tensors_list = tf.unstack(decoded_boxes)
