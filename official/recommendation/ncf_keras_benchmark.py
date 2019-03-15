@@ -92,7 +92,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags['hr_threshold'] = 0.635
     default_flags['use_synthetic_data'] = False
 
-    super(KerasNCFBenchmarkBase, self).__init__(
+    super(KerasNCFRealData, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         **kwargs)
@@ -128,11 +128,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     default_flags['hr_threshold'] = 0.635
     default_flags['use_synthetic_data'] = True
 
-    import inspect
-    print(">>>> signature: ", inspect.signature(super(KerasNCFBenchmarkBase, self).__init__))
-    print(">>>> kwargs: ", kwargs)
-
-    super(KerasNCFBenchmarkBase, self).__init__(
+    super(KerasNCFSyntheticData, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         **kwargs)
