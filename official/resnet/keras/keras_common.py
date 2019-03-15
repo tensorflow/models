@@ -156,7 +156,6 @@ def build_stats(history, eval_output, time_callback):
 
 def define_keras_flags():
   """Define flags for Keras models."""
-  keras_utils.define_flags()
 
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')

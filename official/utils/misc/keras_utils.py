@@ -76,11 +76,3 @@ k
             "BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
             "'examples_per_second': %f}" %
             (batch, elapsed_time, examples_per_second))
-
-
-def define_flags():
-  flags.DEFINE_integer(
-      name='log_steps', default=100,
-      help='For every log_steps, we log the timing information such as '
-      'examples per second. Besides, for every log_steps, we store the '
-      'timestamp of a batch end.')

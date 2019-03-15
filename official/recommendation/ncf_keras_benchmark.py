@@ -28,11 +28,11 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main
-from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
 
 class KerasNCFBenchmarkBase(tf.test.Benchmark):
+  """Base class for NCF model benchmark."""
   local_flags = None
 
   def __init__(self,
@@ -44,7 +44,6 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
     self.output_dir = output_dir
     self.default_flags = default_flags or {}
     ncf_common.define_ncf_flags()
-    keras_utils.define_flags()
 
     if root_data_dir:
       FLAGS.data_dir = os.path.join(root_data_dir, 'movielens_data')
@@ -76,6 +75,7 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
 
 
 class KerasNCFRealData(KerasNCFBenchmarkBase):
+  """Benchmark NCF model using real data."""
 
   def __init__(self,
                output_dir=None,
@@ -114,6 +114,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
 
 
 class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
+  """Benchmark NCF model using synthetic data."""
 
   def __init__(self,
                output_dir=None,
