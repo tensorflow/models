@@ -192,8 +192,8 @@ def run_ncf(_):
       train_input_dataset,
       epochs=FLAGS.train_epochs,
       callbacks=[
-        IncrementEpochCallback(producer),
-        time_callback],
+          IncrementEpochCallback(producer),
+          time_callback],
       verbose=2)
 
   tf.logging.info("Training done. Start evaluating")
@@ -210,6 +210,17 @@ def run_ncf(_):
 
 
 def build_stats(history, eval_result, time_callback):
+  """Normalizes and returns dictionary of stats.
+
+    Args:
+      history: Results of the training step. Supports both categorical_accuracy
+        and sparse_categorical_accuracy.
+      eval_output: Output of the eval step. Assumes first value is eval_loss and
+        second value is accuracy_top_1.
+      time_callback: Time tracking callback likely used during keras.fit.
+    Returns:
+      Dictionary of normalized results.
+  """
   stats = {}
   if history and history.history:
     train_history = history.history

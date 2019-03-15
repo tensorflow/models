@@ -36,10 +36,10 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
   local_flags = None
 
   def __init__(self,
-          output_dir=None,
-          root_data_dir=None,
-          default_flags=None,
-          **kwargs):
+               output_dir=None,
+               root_data_dir=None,
+               default_flags=None,
+               **kwargs):
 
     self.output_dir = output_dir
     self.default_flags = default_flags or {}
@@ -78,9 +78,9 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
 class KerasNCFRealData(KerasNCFBenchmarkBase):
 
   def __init__(self,
-      output_dir=None,
-      default_flags=None,
-      **kwargs):
+               output_dir=None,
+               default_flags=None,
+               **kwargs):
 
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
@@ -91,7 +91,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003
     default_flags['epsilon'] = 1.45439e-07
-    default_flags['layers'] = 256,256,128,64
+    default_flags['layers'] = 256, 256, 128, 64
     default_flags['num_factors'] = 64
     default_flags['hr_threshold'] = 0.635
     default_flags['use_synthetic_data'] = False
@@ -116,9 +116,9 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
 class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
 
   def __init__(self,
-      output_dir=None,
-      default_flags=None,
-      **kwargs):
+               output_dir=None,
+               default_flags=None,
+               **kwargs):
 
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
@@ -129,7 +129,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003
     default_flags['epsilon'] = 1.45439e-07
-    default_flags['layers'] = 256,256,128,64
+    default_flags['layers'] = 256, 256, 128, 64
     default_flags['num_factors'] = 64
     default_flags['hr_threshold'] = 0.635
     default_flags['use_synthetic_data'] = True
