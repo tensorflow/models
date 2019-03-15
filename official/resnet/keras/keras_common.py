@@ -26,7 +26,7 @@ from absl import flags
 import tensorflow as tf
 
 from official.utils.misc import keras_utils
-from tensorflow.core.protobuf import rewriter_config_pb2  # pylint: disable=g-ungrouped-imports
+from tensorflow.core.protobuf import rewriter_config_pb2  # pylint: disable=ungrouped-imports
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
                                                   gradient_descent_v2)
 
