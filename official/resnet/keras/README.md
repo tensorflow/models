@@ -71,13 +71,9 @@ batch size 128 per GPU:
 
 ```bash
 python -m keras_imagenet_main \
---data_dir=/data/imagenet/ \
 --model_dir=/tmp/model_dir/something \
---hooks ExamplesPerSecondHook \
 --num_gpus=2 \
 --batch_size=128 \
---resnet_size=50 \
---dtype=fp32 \
 --train_epochs=90 \
 --train_steps=10 \
 --use_synthetic_data=false
