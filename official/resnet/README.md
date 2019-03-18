@@ -80,7 +80,22 @@ The appropriate distribution strategy is chosen based on the `--num_gpus` flag.
 By default this flag is one if TensorFlow is compiled with CUDA, and zero
 otherwise.
 
-num_gpus:
+It is also possible to run with multiple workers using the experimental
+[`MultiWorkerMirroredStrategy`](https://www.tensorflow.org/alpha/tutorials/distribute/multi_worker)
+with the help of `--worker_hosts` and `--task_index` flags.  Use
+`--worker_hosts` to specify the list of IP:port pairs for all workers in the
+cluster, e.g.  `--worker_hosts=ip0:port0,ip1:port1`.  For each worker, specify
+the index of the worker, e.g. `--task_index=0`.  The `worker_hosts` value will
+be identical at all workers; `task_index` will be (0, 1, ... , num_workers - 1)
+respectively at each worker.  Additionally, choose the collective op
+implementation for `MultiWorkerMirroredStrategy` via the `--all_reduce_alg`
+flag; possible choices include `ring` (based on gRPC) and `nccl` (based on
+NVIDIA NCCL).
+
+More than 1 worker: use MultiWorkerMirroredStrategy.  This strategy will use all
+available GPUs, and fall back to training on CPUs when no GPUs are available.
+
+Single worker and num_gpus=
 + 0:  Use OneDeviceStrategy and train on CPU.
 + 1:  Use OneDeviceStrategy and train on GPU.
 + 2+: Use MirroredStrategy (data parallelism) to distribute a batch between devices.
