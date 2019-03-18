@@ -134,10 +134,7 @@ Model name                                                                      
 [faster_rcnn_resnet101_ava_v2.1](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_ava_v2.1_2018_04_30.tar.gz) | 93  | 11              | Boxes
 
 
-[^1]: See [MSCOCO evaluation protocol](http://cocodataset.org/#detections-eval). The COCO mAP numbers here are evaluated on COCO 14 minival set (note that our split is different from COCO 17 Val). A full list of image ids used in our split could be fould [here](https://github.com/tensorflow/models/blob/master/research/object_detection/data/mscoco_minival_ids.txt).
-
-
-[^2]: This is PASCAL mAP with a slightly different way of true positives computation: see [Open Images evaluation protocols](evaluation_protocols.md), oid_V2_detection_metrics.
-[^3]: Non-face boxes are dropped during training and non-face groundtruth boxes are ignored when evaluating.
+[^1]: See [MSCOCO evaluation protocol](http://cocodataset.org/#detections-eval). The COCO mAP numbers here are evaluated on COCO 14 minival set (note that our split is different from COCO 17 Val). A full list of image ids used in our split could be fould [here](https://github.com/tensorflow/models/blob/master/research/object_detection/data/mscoco_minival_ids.txt).  
+[^2]: This is PASCAL mAP with a slightly different way of true positives computation: see [Open Images evaluation protocols](evaluation_protocols.md), oid_V2_detection_metrics.  
+[^3]: Non-face boxes are dropped during training and non-face groundtruth boxes are ignored when evaluating.  
 [^4]: This is Open Images Challenge metric: see [Open Images evaluation protocols](evaluation_protocols.md), oid_challenge_detection_metrics.
-
