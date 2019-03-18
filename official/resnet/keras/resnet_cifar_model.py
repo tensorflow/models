@@ -23,6 +23,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
 import tensorflow as tf
 from tensorflow.python.keras import backend
 from tensorflow.python.keras import layers
@@ -279,61 +280,7 @@ def resnet(num_blocks, classes=10, training=None):
   return model
 
 
-def resnet20(classes=10, training=None):
-  """Instantiates the ResNet20 architecture.
-
-  Arguments:
-    classes: optional number of classes to classify images into
-    training: Only used if training keras model with Estimator.  In other
-    scenarios it is handled automatically.
-
-  Returns:
-    A Keras model instance.
-  """
-
-  return resnet(num_blocks=3, classes=classes, training=training)
-
-
-def resnet32(classes=10, training=None):
-  """Instantiates the ResNet32 architecture.
-
-  Arguments:
-    classes: optional number of classes to classify images into
-    training: Only used if training keras model with Estimator.  In other
-    scenarios it is handled automatically.
-
-  Returns:
-    A Keras model instance.
-  """
-
-  return resnet(num_blocks=5, classes=classes, training=training)
-
-
-def resnet56(classes=10, training=None):
-  """Instantiates the ResNet56 architecture.
-
-  Arguments:
-    classes: optional number of classes to classify images into
-    training: Only used if training keras model with Estimator.  In other
-    scenarios it is handled automatically.
-
-  Returns:
-    A Keras model instance.
-  """
-
-  return resnet(num_blocks=9, classes=classes, training=training)
-
-
-def resnet110(classes=10, training=None):
-  """Instantiates the ResNet110 architecture.
-
-  Arguments:
-    classes: optional number of classes to classify images into
-    training: Only used if training keras model with Estimator.  In other
-    scenarios it is handled automatically.
-
-  Returns:
-    A Keras model instance.
-  """
-
-  return resnet(num_blocks=18, classes=classes, training=training)
+resnet20 = functools.partial(resnet, num_blocks=3)
+resnet32 = functools.partial(resnet, num_blocks=5)
+resnet56 = functools.partial(resnet, num_blocks=9)
+resnet10 = functools.partial(resnet, num_blocks=110)
