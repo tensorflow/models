@@ -229,6 +229,8 @@ def configure_cluster(worker_hosts=None, task_index=-1):
   tf_config = json.loads(os.environ.get('TF_CONFIG', '{}'))
   if tf_config:
     num_workers = len(tf_config['cluster']['worker'])
+    if tf_config['cluster'].get('chief', None):
+      num_workers += 1
   elif worker_hosts:
     workers = worker_hosts.split(',')
     num_workers = len(workers)
