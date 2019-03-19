@@ -28,6 +28,7 @@ from official.resnet.keras import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
+from official.utils.misc import model_helpers
 
 
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
@@ -101,6 +102,10 @@ def run(flags_obj):
       tf.keras.backend.set_session(sess)
   # TODO(haoyuzhang): Set config properly in TF2.0 when the config API is ready.
 
+  # Execute flag override logic for better model performance
+  if flags_obj.tf_gpu_thread_mode:
+    keras_common.set_gpu_thread_mode_and_count(flags_obj)
+
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'float16':
     policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
@@ -134,13 +139,15 @@ def run(flags_obj):
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype)
 
-  eval_input_dataset = input_fn(
-      is_training=False,
-      data_dir=flags_obj.data_dir,
-      batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras,
-      dtype=dtype)
+  eval_input_dataset = None
+  if not flags_obj.skip_eval:
+    eval_input_dataset = input_fn(
+        is_training=False,
+        data_dir=flags_obj.data_dir,
+        batch_size=flags_obj.batch_size,
+        num_epochs=flags_obj.train_epochs,
+        parse_record_fn=parse_record_keras,
+        dtype=dtype)
 
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
@@ -207,6 +214,7 @@ def run(flags_obj):
 
 
 def main(_):
+  model_helpers.apply_clean(flags.FLAGS)
   with logger.benchmark_context(flags.FLAGS):
     return run(flags.FLAGS)
 
