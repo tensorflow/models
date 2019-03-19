@@ -26,8 +26,6 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.utils.misc import distribution_utils
-
 
 class NotReallyADistributionStrategy():
 
@@ -71,14 +69,13 @@ def define_flags():
           "argument --num_gpus.")
 
   flags.DEFINE_integer(
-      name="limit_train_num", default=0, help=
+      name="limit_train_num", default=-1, help=
           "To limit train dataset size, usually for code validation or "
-          "perf-only testing.")
+          "perf-only testing. Set to -1 to use full dataset.")
 
   flags.DEFINE_boolean(
       name="enable_model_saving", default=False, help=
-          "To enable best model saving feature of Keras training."
-      )
+          "To enable best model saving feature of Keras training.")
 
   # pylint: disable=unused-variable
   def _check_eager_dist_strat(flag_dict):

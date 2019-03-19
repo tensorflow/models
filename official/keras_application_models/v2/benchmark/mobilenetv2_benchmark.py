@@ -21,7 +21,7 @@ import time
 from absl import flags
 import tensorflow as tf
 
-from official.keras_application_models.v2 import datasets
+from official.keras_application_models.v2.benchmark import benchmark_datasets
 from official.keras_application_models.v2 import train_mobilenetv2
 from official.keras_application_models.v2 import utils
 
@@ -39,7 +39,7 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
 
   def _prepare_dataset_builder(self, data_spec):
     if data_spec is None:
-      return datasets.ImageNetDatasetBuilder()
+      return benchmark_datasets.ImageNetDatasetBuilder(self._data_dir)
 
   def _run_and_report(self, data_spec=None):
     start_time_sec = time.time()
