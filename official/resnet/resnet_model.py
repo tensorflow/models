@@ -485,3 +485,101 @@ class Model(object):
     inputs = tf.keras.layers.Dense(units=self.num_classes)(inputs)
     # inputs = tf.identity(inputs, 'final_dense')
     return inputs
+
+class Model_1(object):
+  def __new__(cls, inputs, resnet_size, bottleneck, num_classes, num_filters,
+               kernel_size,
+               conv_stride, first_pool_size, first_pool_stride,
+               block_sizes, block_strides,
+               resnet_version=DEFAULT_VERSION, data_format=None,
+               dtype=DEFAULT_DTYPE):
+
+    block_fn = None
+    pre_activation = resnet_version == 2
+    inp = inputs
+
+    if not data_format:
+      data_format = (
+          'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
+
+    if resnet_version not in (1, 2):
+      raise ValueError(
+          'Resnet version should be 1 or 2. See README for citations.')
+
+    if bottleneck:
+      if resnet_version == 1:
+        block_fn = _bottleneck_block_v1
+      else:
+        block_fn = _bottleneck_block_v2
+    else:
+      if resnet_version == 1:
+        block_fn = _building_block_v1
+      else:
+        block_fn = _building_block_v2
+
+    if dtype not in ALLOWED_TYPES:
+      raise ValueError('dtype must be one of: {}'.format(ALLOWED_TYPES))
+
+    if data_format == 'channels_first':
+      # Convert the inputs from channels_last (NHWC) to channels_first (NCHW).
+      # This provides a large performance boost on GPU. See
+      # https://www.tensorflow.org/performance/performance_guide#data_formats
+      inputs = tf.transpose(a=inputs, perm=[0, 3, 1, 2])
+
+    inputs = conv2d_fixed_padding(
+              inputs=inputs, filters=num_filters, kernel_size=kernel_size,
+              strides=conv_stride, data_format=data_format)
+    # inputs = tf.identity(inputs, 'initial_conv')
+
+    # We do not include batch normalization or activation functions in V2
+    # for the initial conv1 because the first ResNet unit will perform these
+    # for both the shortcut and non-shortcut paths as part of the first      # block's projection. Cf. Appendix of [2].
+    if resnet_version == 1:
+      inputs = batch_norm(inputs, True, data_format)
+      inputs = tf.nn.relu(inputs)
+
+    if first_pool_size:
+      inputs = tf.keras.layers.MaxPool2D(
+          pool_size=first_pool_size,
+          strides=first_pool_stride, padding='SAME',
+          data_format=data_format)(inputs)
+      # inputs = tf.identity(inputs, 'initial_max_pool')
+
+    for i, num_blocks in enumerate(block_sizes):
+      num_filters = num_filters * (2**i)
+      inputs = block_layer(
+          inputs=inputs, filters=num_filters, bottleneck=bottleneck,
+          block_fn=block_fn, blocks=num_blocks,
+          strides=block_strides[i], training=True,
+          name='block_layer{}'.format(i + 1), data_format=data_format)
+      
+    # Only apply the BN and ReLU for model that does pre_activation in each
+    # building/bottleneck block, eg resnet V2.
+    if pre_activation:
+      inputs = batch_norm(inputs, True, data_format)
+      inputs = tf.nn.relu(inputs)
+
+    # The current top layer has shape
+    # `batch_size x pool_size x pool_size x final_size`.
+    # ResNet does an Average Pooling layer over pool_size,
+    # but that is the same as doing a reduce_mean. We do a reduce_mean
+    # here because it performs better than AveragePooling2D.
+    axes = [2, 3] if data_format == 'channels_first' else [1, 2]
+    inputs = tf.reduce_mean(input_tensor=inputs, axis=axes, keepdims=True)
+    # inputs = tf.identity(inputs, 'final_reduce_mean')
+
+    inputs = tf.squeeze(inputs, axes)
+    inputs = tf.keras.layers.Dense(units=num_classes)(inputs)
+    # inputs = tf.identity(inputs, 'final_dense')
+    return tf.keras.Model(inputs=inp,outputs=inputs)
+
+  def _custom_dtype_getter(self, getter, name, shape=None, dtype=DEFAULT_DTYPE,
+                           *args, **kwargs):
+    if dtype in CASTABLE_TYPES:
+      var = getter(name, shape, tf.float32, *args, **kwargs)
+      return tf.cast(var, dtype=dtype, name=name + '_cast')
+    else:
+      return getter(name, shape, dtype, *args, **kwargs)
+
+
+    
