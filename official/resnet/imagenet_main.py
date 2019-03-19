@@ -159,9 +159,15 @@ def parse_record(raw_record, is_training, dtype):
   return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1,
-             dtype=tf.float32, datasets_num_private_threads=None,
-             num_parallel_batches=1, parse_record_fn=parse_record):
+def input_fn(is_training,
+             data_dir,
+             batch_size,
+             num_epochs=1,
+             dtype=tf.float32,
+             datasets_num_private_threads=None,
+             num_parallel_batches=1,
+             parse_record_fn=parse_record,
+             input_context=None):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -173,12 +179,21 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
     parse_record_fn: Function to use for parsing the records.
+    input_context: A `tf.distribute.InputContext` object passed in by
+      `tf.distribute.Strategy`.
 
   Returns:
     A dataset that can be used for iteration.
   """
   filenames = get_filenames(is_training, data_dir)
   dataset = tf.data.Dataset.from_tensor_slices(filenames)
+
+  if input_context:
+    tf.compat.v1.logging.info('Sharding the dataset %d/%d' % (
+        (input_context.input_pipeline_id + 1),
+        input_context.num_input_pipelines))
+    dataset = dataset.shard(input_context.num_input_pipelines,
+                            input_context.input_pipeline_id)
 
   if is_training:
     # Shuffle the input files
