@@ -156,6 +156,13 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
             "Whether and how the GPU device uses its own threadpool.")
     )
 
+    flags.DEFINE_integer(
+        name="per_gpu_thread_count", short_name="pgtc", default=0,
+        help=help_wrap(
+            "The number of threads to use for GPU. Only valid when "
+            "tf_gpu_thread_mode is not global.")
+    )
+
   if datasets_num_private_threads:
     flags.DEFINE_integer(
         name="datasets_num_private_threads",
