@@ -191,7 +191,7 @@ def input_fn(is_training,
   if input_context:
     tf.compat.v1.logging.info(
         'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d' % (
-        input_context.input_pipeline_id, input_context.num_input_pipelines))
+            input_context.input_pipeline_id, input_context.num_input_pipelines))
     dataset = dataset.shard(input_context.num_input_pipelines,
                             input_context.input_pipeline_id)
 
