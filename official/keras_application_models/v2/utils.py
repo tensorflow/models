@@ -77,6 +77,10 @@ def define_flags():
       name="enable_model_saving", default=False, help=
           "To enable best model saving feature of Keras training.")
 
+  flags.DEFINE_integer(
+      name="num_dataset_private_threads", default=0, help=
+          "Num of private threads for dataset to accelerate data loading.")
+
   # pylint: disable=unused-variable
   def _check_eager_dist_strat(flag_dict):
     return flag_dict["disable_eager"] or not flag_dict["dist_strat"]

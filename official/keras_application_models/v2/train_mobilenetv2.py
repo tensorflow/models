@@ -57,6 +57,7 @@ def run(dataset_builder):
   strategy = utils.get_distribution_strategy(
     FLAGS.num_gpus, no_distribution_strategy=not FLAGS.dist_strat)
 
+  # MirroredStrategy will divide batches per GPU.
   global_batch_size = FLAGS.batch_size * FLAGS.num_gpus
 
   with strategy.scope():
@@ -73,7 +74,7 @@ def run(dataset_builder):
     if FLAGS.no_pretrained_weights:
       initial_lr = 0.045 * FLAGS.num_gpus
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
-          lambda x, lr: lr * 0.316 if x > 0 and x % 10 == 0 else lr,
+          lambda x, lr: lr * 0.94 if x > 0 else lr,
           verbose=1)
     else:
       initial_lr = 0.001 * FLAGS.num_gpus
