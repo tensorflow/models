@@ -189,9 +189,9 @@ def input_fn(is_training,
   dataset = tf.data.Dataset.from_tensor_slices(filenames)
 
   if input_context:
-    tf.compat.v1.logging.info('Sharding the dataset %d/%d' % (
-        (input_context.input_pipeline_id + 1),
-        input_context.num_input_pipelines))
+    tf.compat.v1.logging.info(
+        'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d' % (
+            input_context.input_pipeline_id, input_context.num_input_pipelines))
     dataset = dataset.shard(input_context.num_input_pipelines,
                             input_context.input_pipeline_id)
 
