@@ -131,14 +131,14 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
           'change learning rate to %s.', self.epochs, batch, lr)
 
 
-def get_config_proto():
+def get_config_proto_v1():
   """Return config proto according to flag settings, or None to use default."""
   config = None
   if FLAGS.enable_xla:
     # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
     _monkey_patch_org_assert_broadcastable()
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.graph_options.optimizer_options.global_jit_level = (
         tf.OptimizerOptions.ON_2)
     # Disable PinToHostOptimizer in grappler when enabling XLA because it causes
@@ -146,6 +146,20 @@ def get_config_proto():
     config.graph_options.rewrite_options.pin_to_host_optimization = (
         rewriter_config_pb2.RewriterConfig.OFF)
   return config
+
+
+def set_config_v2():
+  """Config eager context according to flag values using TF 2.0 API."""
+  if FLAGS.enable_xla:
+    # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
+    _monkey_patch_org_assert_broadcastable()
+
+    tf.config.optimizer.set_jit(True)
+    # Disable PinToHostOptimizer in grappler when enabling XLA because it
+    # causes OOM and performance regression.
+    tf.config.optimizer.set_experimental_options(
+        {"pin_to_host_optimization": False}
+    )
 
 
 def set_gpu_thread_mode_and_count(flags_obj):
