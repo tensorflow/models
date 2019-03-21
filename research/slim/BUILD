@@ -796,6 +796,12 @@ py_binary(
     srcs = ["export_inference_graph.py"],
     # WARNING: not supported in bazel; will be commented out by copybara.
     # paropts = ["--compress"],
+    deps = [":export_inference_graph_lib"],
+)
+
+py_library(
+    name = "export_inference_graph_lib",
+    srcs = ["export_inference_graph.py"],
     deps = [
         ":dataset_factory",
         ":nets_factory",
@@ -813,7 +819,7 @@ py_test(
         "manual",
     ],
     deps = [
-        ":export_inference_graph",
+        ":export_inference_graph_lib",
         # "//tensorflow",
         # "//tensorflow/python:platform",
     ],

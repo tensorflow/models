@@ -109,8 +109,8 @@ def depth_multiplier(output_params,
 _Op = collections.namedtuple('Op', ['op', 'params', 'multiplier_func'])
 
 
-def op(opfunc, **params):
-  multiplier = params.pop('multiplier_transorm', depth_multiplier)
+def op(opfunc, multiplier_func=depth_multiplier, **params):
+  multiplier = params.pop('multiplier_transorm', multiplier_func)
   return _Op(opfunc, params=params, multiplier_func=multiplier)
 
 
@@ -226,6 +226,7 @@ def mobilenet_base(  # pylint: disable=invalid-name
   # since it is also set by mobilenet_scope
   # c) set all defaults
   # d) set all extra overrides.
+  # pylint: disable=g-backslash-continuation
   with _scope_all(scope, default_scope='Mobilenet'), \
       safe_arg_scope([slim.batch_norm], is_training=is_training), \
       _set_arg_scope_defaults(conv_defs_defaults), \
@@ -262,9 +263,16 @@ def mobilenet_base(  # pylint: disable=invalid-name
         current_stride *= stride
       # Update params.
       params['stride'] = layer_stride
-      # Only insert rate to params if rate > 1.
+      # Only insert rate to params if rate > 1 and kernel size is not [1, 1].
       if layer_rate > 1:
-        params['rate'] = layer_rate
+        if tuple(params.get('kernel_size', [])) != (1, 1):
+          # We will apply atrous rate in the following cases:
+          # 1) When kernel_size is not in params, the operation then uses
+          #   default kernel size 3x3.
+          # 2) When kernel_size is in params, and if the kernel_size is not
+          #   equal to (1, 1) (there is no need to apply atrous convolution to
+          #   any 1x1 convolution).
+          params['rate'] = layer_rate
       # Set padding
       if use_explicit_padding:
         if 'kernel_size' in params:
