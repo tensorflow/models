@@ -152,6 +152,26 @@ class MobilenetV2Test(tf.test.TestCase):
         output_stride=16)
     self.assertEqual(out.get_shape().as_list()[1:3], [14, 14])
 
+  def testMultiplier(self):
+    op = mobilenet.op
+    new_def = copy.deepcopy(mobilenet_v2.V2_DEF)
+
+    def inverse_multiplier(output_params, multiplier):
+      output_params['num_outputs'] /= multiplier
+
+    new_def['spec'][0] = op(
+        slim.conv2d,
+        kernel_size=(3, 3),
+        multiplier_func=inverse_multiplier,
+        num_outputs=16)
+    _ = mobilenet_v2.mobilenet_base(
+        tf.placeholder(tf.float32, (10, 224, 224, 16)),
+        conv_defs=new_def, depth_multiplier=0.1)
+    s = [op.outputs[0].get_shape().as_list()[-1] for op in find_ops('Conv2D')]
+    # Expect first layer to be 160 (16 / 0.1), and other layers
+    # their max(original size * 0.1, 8)
+    self.assertEqual([160, 8, 48, 8, 48], s[:5])
+
   def testWithOutputStride8AndExplicitPadding(self):
     tf.reset_default_graph()
     out, _ = mobilenet.mobilenet_base(

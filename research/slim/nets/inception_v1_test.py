@@ -95,22 +95,24 @@ class InceptionV1Test(tf.test.TestCase):
     inputs = tf.random_uniform((batch_size, height, width, 3))
     _, end_points = inception.inception_v1_base(inputs,
                                                 final_endpoint='Mixed_5c')
-    endpoints_shapes = {'Conv2d_1a_7x7': [5, 112, 112, 64],
-                        'MaxPool_2a_3x3': [5, 56, 56, 64],
-                        'Conv2d_2b_1x1': [5, 56, 56, 64],
-                        'Conv2d_2c_3x3': [5, 56, 56, 192],
-                        'MaxPool_3a_3x3': [5, 28, 28, 192],
-                        'Mixed_3b': [5, 28, 28, 256],
-                        'Mixed_3c': [5, 28, 28, 480],
-                        'MaxPool_4a_3x3': [5, 14, 14, 480],
-                        'Mixed_4b': [5, 14, 14, 512],
-                        'Mixed_4c': [5, 14, 14, 512],
-                        'Mixed_4d': [5, 14, 14, 512],
-                        'Mixed_4e': [5, 14, 14, 528],
-                        'Mixed_4f': [5, 14, 14, 832],
-                        'MaxPool_5a_2x2': [5, 7, 7, 832],
-                        'Mixed_5b': [5, 7, 7, 832],
-                        'Mixed_5c': [5, 7, 7, 1024]}
+    endpoints_shapes = {
+        'Conv2d_1a_7x7': [5, 112, 112, 64],
+        'MaxPool_2a_3x3': [5, 56, 56, 64],
+        'Conv2d_2b_1x1': [5, 56, 56, 64],
+        'Conv2d_2c_3x3': [5, 56, 56, 192],
+        'MaxPool_3a_3x3': [5, 28, 28, 192],
+        'Mixed_3b': [5, 28, 28, 256],
+        'Mixed_3c': [5, 28, 28, 480],
+        'MaxPool_4a_3x3': [5, 14, 14, 480],
+        'Mixed_4b': [5, 14, 14, 512],
+        'Mixed_4c': [5, 14, 14, 512],
+        'Mixed_4d': [5, 14, 14, 512],
+        'Mixed_4e': [5, 14, 14, 528],
+        'Mixed_4f': [5, 14, 14, 832],
+        'MaxPool_5a_2x2': [5, 7, 7, 832],
+        'Mixed_5b': [5, 7, 7, 832],
+        'Mixed_5c': [5, 7, 7, 1024]
+    }
 
     self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
     for endpoint_name in endpoints_shapes:
@@ -138,6 +140,35 @@ class InceptionV1Test(tf.test.TestCase):
     self.assertTrue(mixed_5c.op.name.startswith('InceptionV1/Mixed_5c'))
     self.assertListEqual(mixed_5c.get_shape().as_list(),
                          [batch_size, 4, 4, 1024])
+
+  def testBuildBaseNetworkWithoutRootBlock(self):
+    batch_size = 5
+    height, width = 28, 28
+    channels = 192
+
+    inputs = tf.random_uniform((batch_size, height, width, channels))
+    _, end_points = inception.inception_v1_base(
+        inputs, include_root_block=False)
+    endpoints_shapes = {
+        'Mixed_3b': [5, 28, 28, 256],
+        'Mixed_3c': [5, 28, 28, 480],
+        'MaxPool_4a_3x3': [5, 14, 14, 480],
+        'Mixed_4b': [5, 14, 14, 512],
+        'Mixed_4c': [5, 14, 14, 512],
+        'Mixed_4d': [5, 14, 14, 512],
+        'Mixed_4e': [5, 14, 14, 528],
+        'Mixed_4f': [5, 14, 14, 832],
+        'MaxPool_5a_2x2': [5, 7, 7, 832],
+        'Mixed_5b': [5, 7, 7, 832],
+        'Mixed_5c': [5, 7, 7, 1024]
+    }
+
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    for endpoint_name in endpoints_shapes:
+      expected_shape = endpoints_shapes[endpoint_name]
+      self.assertTrue(endpoint_name in end_points)
+      self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
+                           expected_shape)
 
   def testUnknownImageShape(self):
     tf.reset_default_graph()
