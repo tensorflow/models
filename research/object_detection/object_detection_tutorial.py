@@ -31,13 +31,13 @@ if StrictVersion(tf.__version__) < StrictVersion('1.12.0'):
   raise ImportError('Please upgrade your TensorFlow installation to v1.12.*.')
 
 
+import cv2
+
+cap = cv2.VideoCapture(0)
+
 # ## Env setup
 
 # In[2]:
-
-
-# This is needed to display the images.
-get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # ## Object detection imports
@@ -174,6 +174,7 @@ def run_inference_for_single_image(image, graph):
       image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
 
       # Run inference
+      #print('image:', image)
       output_dict = sess.run(tensor_dict,
                              feed_dict={image_tensor: np.expand_dims(image, 0)})
 
@@ -190,12 +191,9 @@ def run_inference_for_single_image(image, graph):
 
 # In[ ]:
 
-
-for image_path in TEST_IMAGE_PATHS:
-  image = Image.open(image_path)
-  # the array based representation of the image will be used later in order to prepare the
-  # result image with boxes and labels on it.
-  image_np = load_image_into_numpy_array(image)
+#for image_path in TEST_IMAGE_PATHS:
+while True:
+  ret, image_np = cap.read()
   # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
   image_np_expanded = np.expand_dims(image_np, axis=0)
   # Actual detection.
@@ -210,8 +208,12 @@ for image_path in TEST_IMAGE_PATHS:
       instance_masks=output_dict.get('detection_masks'),
       use_normalized_coordinates=True,
       line_thickness=8)
-  plt.figure(figsize=IMAGE_SIZE)
-  plt.imshow(image_np)
+
+  cv2.imshow('object detection', cv2.resize(image_np, (800, 600)))
+  if cv2.waitKey(25) & 0xFF == ord('q'):
+    cap.release()
+    cv2.destroyAllWindows()
+    break
 
 
 # In[ ]:
