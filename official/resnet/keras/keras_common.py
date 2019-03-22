@@ -257,6 +257,9 @@ def define_keras_flags():
       name='enable_xla', default=False,
       help='Whether to enable XLA auto jit compilation. This is still an '
       'experimental feature, and is not yet effective with TF 2.0.')
+  flags.DEFINE_boolean(
+      name='enable_tensorboard', default=False,
+      help='Whether to enable Tensorboard callback.')
   flags.DEFINE_integer(
       name='train_steps', default=None,
       help='The number of steps to run for training. If it is larger than '

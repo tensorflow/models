@@ -180,14 +180,14 @@ def run(flags_obj):
     num_eval_steps = None
     validation_data = None
 
+  callbacks = [time_callback, lr_callback]
+  if flags_obj.enable_tensorboard:
+    callbacks.append(tensorboard_callback)
+
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
                       steps_per_epoch=train_steps,
-                      callbacks=[
-                          time_callback,
-                          lr_callback,
-                          tensorboard_callback
-                      ],
+                      callbacks=callbacks,
                       validation_steps=num_eval_steps,
                       validation_data=validation_data,
                       validation_freq=flags_obj.epochs_between_evals,
