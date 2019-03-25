@@ -208,8 +208,3 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 def get_synth_input_fn(dtype):
   return resnet_run_loop.get_synth_input_fn(
       HEIGHT, WIDTH, NUM_CHANNELS, NUM_CLASSES, dtype=dtype)
-
-
-###############################################################################
-# Running the model
-###############################################################################
