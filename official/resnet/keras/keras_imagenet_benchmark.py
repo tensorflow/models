@@ -101,6 +101,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
+    # Thread tuning to improve performance.
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
   def _run_and_report_benchmark(self):
@@ -309,6 +311,22 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_fp16_tensorboard_tweaked(self):
+    """Test to track Tensorboard performance overhead."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_tensorboard_tweaked')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.enable_tensorboard = True
     self._run_and_report_benchmark()
 
   def benchmark_graph_8_gpu(self):
