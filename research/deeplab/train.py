@@ -110,6 +110,9 @@ flags.DEFINE_float('weight_decay', 0.00004,
 flags.DEFINE_multi_integer('train_crop_size', [513, 513],
                            'Image crop size [height, width] during training.')
 
+flags.DEFINE_multi_float('loss_weights', [1.0],
+                         'Loss weight per class during training.')
+
 flags.DEFINE_float(
     'last_layer_gradient_multiplier', 1.0,
     'The gradient multiplier for last layers, which is used to '
@@ -236,7 +239,7 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
         samples[common.LABEL],
         num_classes,
         ignore_label,
-        loss_weight=1.0,
+        loss_weight=FLAGS.loss_weights,
         upsample_logits=FLAGS.upsample_logits,
         hard_example_mining_step=FLAGS.hard_example_mining_step,
         top_k_percent_pixels=FLAGS.top_k_percent_pixels,
