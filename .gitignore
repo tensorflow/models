@@ -99,3 +99,6 @@ tutorials/embedding/text8
 tutorials/embedding/questions-words.txt
 
 samples/outreach/blogs/segmentation_blogpost/carvana-image-masking-challenge/
+
+official/resnet/cifar_2.0/cifar-10-batches-bin/
+
