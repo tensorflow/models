@@ -157,7 +157,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   return input_fn
 
 
-def image_bytes_serving_input_fn(image_shape, dtype=tf.float32):
+def image_bytes_serving_input_fn(image_bytes_list, image_shape, dtype=tf.float32):
   """Serving input fn for raw jpeg images."""
 
   def _preprocess_image(image_bytes):
@@ -169,12 +169,16 @@ def image_bytes_serving_input_fn(image_shape, dtype=tf.float32):
         image_bytes, bbox, height, width, num_channels, is_training=False)
     return image
 
-  image_bytes_list = tf.compat.v1.placeholder(
-      shape=[None], dtype=tf.string, name='input_tensor')
+  # image_bytes_list = tf.compat.v1.placeholder(
+  #     shape=[None], dtype=tf.string, name='input_tensor')
+  # images = tf.map_fn(
+  #     _preprocess_image, image_bytes_list, back_prop=False, dtype=dtype)
+  # return tf.estimator.export.TensorServingInputReceiver(
+  #     images, {'image_bytes': image_bytes_list})
+
   images = tf.map_fn(
       _preprocess_image, image_bytes_list, back_prop=False, dtype=dtype)
-  return tf.estimator.export.TensorServingInputReceiver(
-      images, {'image_bytes': image_bytes_list})
+  return images
 
 
 def override_flags_and_set_envars_for_gpu_thread_pool(flags_obj):
@@ -252,16 +256,17 @@ def learning_rate_with_decay(
   # ImageNet: divide by 10 at epoch 30, 60, 80, and 90
   boundaries = [int(batches_per_epoch * epoch) for epoch in boundary_epochs]
   vals = [initial_learning_rate * decay for decay in decay_rates]
-
+  
   def learning_rate_fn(global_step):
     """Builds scaled learning rate function with 5 epoch warm up."""
-    lr = tf.compat.v1.train.piecewise_constant(global_step, boundaries, vals)
+    lr = tf.keras.optimizers.schedules.PiecewiseConstantDecay(boundaries,vals)
+    lr = lr(global_step)
     if warmup:
       warmup_steps = int(batches_per_epoch * 5)
       warmup_lr = (
           initial_learning_rate * tf.cast(global_step, tf.float32) / tf.cast(
               warmup_steps, tf.float32))
-      return tf.cond(pred=global_step < warmup_steps,
+      return tf.cond(predtf=global_step < warmup_steps,
                      true_fn=lambda: warmup_lr,
                      false_fn=lambda: lr)
     return lr

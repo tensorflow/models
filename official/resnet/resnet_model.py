@@ -1,13 +1,10 @@
 """Contains definitions for Residual Networks.
-
 Residual networks ('v1' ResNets) were originally proposed in:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
     Deep Residual Learning for Image Recognition. arXiv:1512.03385
-
 The full preactivation 'v2' ResNet variant was introduced by:
 [2] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
     Identity Mappings in Deep Residual Networks. arXiv: 1603.05027
-
 The key difference of the full preactivation 'v2' variant compared to the
 'v1' variant in [1] is the use of batch normalization before every weight layer
 rather than after.
@@ -579,7 +576,11 @@ class Model_1(object):
       var = getter(name, shape, tf.float32, *args, **kwargs)
       return tf.cast(var, dtype=dtype, name=name + '_cast')
     else:
+<<<<<<< HEAD
       return getter(name, shape, dtype, *args, **kwargs)
 
 
     
+=======
+      return getter(name, shape, dtype, *args, **kwargs)
+>>>>>>> cifar10
