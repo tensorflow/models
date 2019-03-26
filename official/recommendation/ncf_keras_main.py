@@ -94,11 +94,6 @@ def _get_train_and_eval_data(producer, params):
   def preprocess_train_inpu(features, labels):
     features.pop(rconst.VALID_POINT_MASK)
     labels = tf.expand_dims(labels, -1)
-
-    for k in features:
-      tensor = features[k]
-      features[k] = tf.expand_dims(tensor, -1)
-
     return features, labels
 
   train_input_fn = producer.make_input_fn(is_training=True)
@@ -109,11 +104,6 @@ def _get_train_and_eval_data(producer, params):
     features.pop(rconst.DUPLICATE_MASK)
     labels = tf.zeros_like(features[movielens.USER_COLUMN])
     labels = tf.expand_dims(labels, -1)
-
-    for k in features:
-      tensor = features[k]
-      features[k] = tf.expand_dims(tensor, -1)
-
     return features, labels
 
   eval_input_fn = producer.make_input_fn(is_training=False)
@@ -143,9 +133,9 @@ def _get_keras_model(params):
   batch_size = params['batch_size']
 
   user_input = tf.keras.layers.Input(
-      shape=(batch_size, 1), batch_size=1, name=movielens.USER_COLUMN, dtype=tf.int32)
+      shape=(batch_size,), batch_size=1, name=movielens.USER_COLUMN, dtype=tf.int32)
   item_input = tf.keras.layers.Input(
-      shape=(batch_size, 1), batch_size=1, name=movielens.ITEM_COLUMN, dtype=tf.int32)
+      shape=(batch_size,), batch_size=1, name=movielens.ITEM_COLUMN, dtype=tf.int32)
 
   base_model = neumf_model.construct_model(
       user_input, item_input, params, need_strip=True)
