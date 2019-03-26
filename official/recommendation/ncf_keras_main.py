@@ -74,12 +74,14 @@ def _get_metric_fn(params):
             params["match_mlperf"],
             params["use_xla_for_gpu"]))
 
-    '''
+    is_learning_phase = tf.keras.backend.learning_phase()
+    if isinstance(is_learning_phase, int):
+      is_learning_phase = tf.constant(bool(is_learning_phase), dtype=tf.bool)
+
     in_top_k = tf.cond(
-        tf.keras.backend.learning_phase(),
+        is_learning_phase,
         lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
         lambda: in_top_k)
-    '''
 
     return in_top_k
 
