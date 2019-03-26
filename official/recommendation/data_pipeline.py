@@ -343,7 +343,7 @@ class BaseDataConstructor(threading.Thread):
                batches_per_eval_step,   # type: int
                stream_files,            # type: bool
                deterministic=False,     # type: bool
-               epoch_dir=None           # type: string
+               epoch_dir=None           # type: str
               ):
     # General constants
     self._maximum_number_epochs = maximum_number_epochs
