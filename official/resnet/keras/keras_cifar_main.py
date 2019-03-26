@@ -121,6 +121,12 @@ def run(flags_obj):
                    if tf.test.is_built_with_cuda() else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
 
+  strategy = distribution_utils.get_distribution_strategy(
+      distribution_strategy=flags_obj.distribution_strategy,
+      num_gpus=flags_obj.num_gpus)
+
+  strategy_scope = keras_common.get_strategy_scope(strategy)
+
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(
@@ -146,12 +152,6 @@ def run(flags_obj):
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
       parse_record_fn=parse_record_keras)
-
-  strategy = distribution_utils.get_distribution_strategy(
-      distribution_strategy=flags_obj.distribution_strategy,
-      num_gpus=flags_obj.num_gpus)
-
-  strategy_scope = keras_common.get_strategy_scope(strategy)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
