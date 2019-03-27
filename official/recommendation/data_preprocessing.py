@@ -177,7 +177,7 @@ def _filter_index_sort(raw_rating_path, cache_path):
 
 def instantiate_pipeline(dataset, data_dir, params, constructor_type=None,
                          deterministic=False, epoch_dir=None):
-  # type: (str, str, dict, typing.Optional[str], bool, typing.Optional[str]) -> (NCFDataset, typing.Callable)
+  # type: (str, str, dict, typing.Optional[str], bool, typing.Optional[str]) -> (int, int, data_pipeline.BaseDataConstructor)
   """Load and digest data CSV into a usable form.
 
   Args:
