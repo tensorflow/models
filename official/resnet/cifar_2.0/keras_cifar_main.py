@@ -1,17 +1,3 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 """Runs a ResNet model on the Cifar-10 dataset."""
 
 # from __future__ import absolute_import
@@ -40,6 +26,7 @@ _DEFAULT_IMAGE_BYTES = HEIGHT * WIDTH * NUM_CHANNELS
 _RECORD_BYTES = _DEFAULT_IMAGE_BYTES + 1
 NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
+BASE_LEARNING_RATE = 0.1
 
 # TODO(tobyboyd): Change to best practice 45K(train)/5K(val)/10K(test) splits.
 NUM_IMAGES = {
@@ -165,7 +152,7 @@ def learning_rate_schedule(current_epoch,
     Adjusted learning rate.
   """
   del current_batch, batches_per_epoch  # not used
-  initial_learning_rate = keras_common.BASE_LEARNING_RATE * batch_size / 128
+  initial_learning_rate = BASE_LEARNING_RATE * batch_size / 128
   learning_rate = initial_learning_rate
   for mult, start_epoch in LR_SCHEDULE:
     if current_epoch >= start_epoch:
@@ -259,8 +246,6 @@ def run(resnet_size, train_epochs, epochs_between_evals, batch_size,
       num_epochs=train_epochs,
       parse_record_fn=parse_record_keras)
 
-  # print(train_input_dataset.make_one_shot_iterator().next())
-
   eval_input_dataset = input_fn(
       is_training=False,
       data_dir=data_dir,
@@ -301,7 +286,7 @@ def run(resnet_size, train_epochs, epochs_between_evals, batch_size,
   )
 
   model.compile(loss='categorical_crossentropy',
-                optimizer=tf.optimizers.SGD(learning_rate=0.1, momentum=0.9),
+                optimizer=tf.optimizers.SGD(learning_rate=BASE_LEARNING_RATE, momentum=0.9),
                 metrics=['categorical_accuracy'])
 
   time_callback, tensorboard_callback, lr_callback = get_callbacks(
