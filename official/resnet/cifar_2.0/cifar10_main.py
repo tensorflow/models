@@ -1,27 +1,13 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 """Runs a ResNet model on the CIFAR-10 dataset."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+# from __future__ import absolute_import
+# from __future__ import division
+# from __future__ import print_function
 
 import os
 
-from absl import app as absl_app
-from absl import flags
+# from absl import app as absl_app
+# from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 # from official.resnet import resnet_model
@@ -203,8 +189,3 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
       datasets_num_private_threads=datasets_num_private_threads,
       num_parallel_batches=num_parallel_batches
   )
-
-
-def get_synth_input_fn(dtype):
-  return resnet_run_loop.get_synth_input_fn(
-      HEIGHT, WIDTH, NUM_CHANNELS, NUM_CLASSES, dtype=dtype)
