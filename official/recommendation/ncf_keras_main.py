@@ -36,6 +36,7 @@ from official.recommendation import neumf_model
 from official.recommendation import constants as rconst
 from official.utils.logs import logger
 from official.utils.logs import mlperf_helper
+from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 
 
@@ -161,6 +162,7 @@ def run_ncf(_):
     FLAGS.eval_batch_size = FLAGS.batch_size
 
   params = ncf_common.parse_flags(FLAGS)
+  batch_size = params["batch_size"]
 
   # ncf_common rounds eval_batch_size (this is needed due to a reshape during
   # eval). This carries over that rounding to batch_size as well.
@@ -176,6 +178,8 @@ def run_ncf(_):
   keras_model = _get_keras_model(params)
   optimizer = ncf_common.get_optimizer(params)
 
+  time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
+
   keras_model.compile(
       loss=_keras_loss,
       metrics=[_get_metric_fn(params)],
@@ -184,10 +188,12 @@ def run_ncf(_):
   train_input_dataset, eval_input_dataset = _get_train_and_eval_data(
       producer, params)
 
-  keras_model.fit(
+  history = keras_model.fit(
       train_input_dataset,
       epochs=FLAGS.train_epochs,
-      callbacks=[IncrementEpochCallback(producer)],
+      callbacks=[
+          IncrementEpochCallback(producer),
+          time_callback],
       verbose=2)
 
   tf.logging.info("Training done. Start evaluating")
@@ -199,7 +205,42 @@ def run_ncf(_):
 
   tf.logging.info("Keras evaluation is done.")
 
-  return eval_results
+  stats = build_stats(history, eval_results, time_callback)
+  return stats
+
+
+def build_stats(history, eval_result, time_callback):
+  """Normalizes and returns dictionary of stats.
+
+    Args:
+      history: Results of the training step. Supports both categorical_accuracy
+        and sparse_categorical_accuracy.
+      eval_output: Output of the eval step. Assumes first value is eval_loss and
+        second value is accuracy_top_1.
+      time_callback: Time tracking callback likely used during keras.fit.
+    Returns:
+      Dictionary of normalized results.
+  """
+  stats = {}
+  if history and history.history:
+    train_history = history.history
+    stats['loss'] = train_history['loss'][-1]
+
+  if eval_result:
+    stats['eval_loss'] = eval_result[0]
+    stats['eval_hit_rate'] = eval_result[1]
+
+  if time_callback:
+    timestamp_log = time_callback.timestamp_log
+    stats['step_timestamp_log'] = timestamp_log
+    stats['train_finish_time'] = time_callback.train_finish_time
+    if len(timestamp_log) > 1:
+      stats['avg_exp_per_second'] = (
+          time_callback.batch_size * time_callback.log_steps *
+          (len(time_callback.timestamp_log)-1) /
+          (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
+
+  return stats
 
 
 def main(_):
