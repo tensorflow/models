@@ -56,6 +56,8 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
       # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
       core.set_defaults(**self.default_flags)
+      print(">>>>>>>>> zhenzheng default_flags: ", self.default_flags)
+      print(">>>>>>>>> zhenzheng flags.FLAGS: ", flags.FLAGS)
       '''
       # Overrides flag values with defaults for the class of tests.
       for k, v in self.default_flags.items():
