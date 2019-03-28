@@ -382,6 +382,69 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
+  def benchmark_xla_8_gpu_fp16_trivial(self):
+    """Test trivial Keras model (input pipeline) with XLA, 8 GPUs and fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_trivial')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_fp16_trivial_tweaked(self):
+    """Test trivial Keras model (input pipeline) with manual config tuning, XLA,
+       8 GPUs and fp16.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_trivial_tweaked')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_8_gpu_fp16_trivial(self):
+    """Test trivial Keras model (input pipeline) in legacy graph mode with XLA,
+       8 GPUs and fp16.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_xla_8_gpu_fp16_trivial')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_8_gpu_fp16_trivial_tweaked(self):
+    """Test trivial Keras model (input pipeline) in legacy graph mode with
+       manual config tuning, XLA, 8 GPUs and fp16.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_xla_8_gpu_fp16_trivial_tweaked')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
   def fill_report_object(self, stats):
     super(Resnet50KerasBenchmarkBase, self).fill_report_object(
         stats,
