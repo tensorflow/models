@@ -60,8 +60,8 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
       # Overrides flag values with defaults for the class of tests.
       for k, v in self.default_flags.items():
         setattr(FLAGS, k, v)
-      saved_flag_values = flagsaver.save_flag_values()
       '''
+      saved_flag_values = flagsaver.save_flag_values()
       KerasNCFBenchmarkBase.local_flags = saved_flag_values
     else:
       flagsaver.restore_flag_values(KerasNCFBenchmarkBase.local_flags)
