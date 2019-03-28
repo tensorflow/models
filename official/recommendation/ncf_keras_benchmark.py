@@ -95,7 +95,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003
     default_flags['epsilon'] = 1.45439e-07
-    default_flags['layers'] = 256, 256, 128, 64
+    default_flags['layers'] = [256, 256, 128, 64]
     default_flags['num_factors'] = 64
     default_flags['hr_threshold'] = 0.635
     default_flags['use_synthetic_data'] = False
