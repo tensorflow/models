@@ -107,7 +107,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     extras['examples_per_second'] = stats['avg_exp_per_second']
     return extras
 
-  def benchmark_ncf(self):
+  def benchmark_1_gpu(self):
     self._setup()
     self._run_and_report_benchmark()
 
@@ -144,6 +144,6 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     extras['examples_per_second'] = stats['avg_exp_per_second']
     return extras
 
-  def benchmark_ncf(self):
+  def benchmark_1_gpu(self):
     self._setup()
     self._run_and_report_benchmark()
