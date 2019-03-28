@@ -574,7 +574,7 @@ def resnet_main(
           'loss_scale': flags_core.get_loss_scale(flags_obj),
           'dtype': flags_core.get_tf_dtype(flags_obj),
           'fine_tune': flags_obj.fine_tune,
-          'num_workers', num_workers,
+          'num_workers': num_workers,
       })
 
   run_params = {
