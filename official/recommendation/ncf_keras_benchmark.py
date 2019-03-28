@@ -28,6 +28,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main
+from official.utils.flags import core
 
 FLAGS = flags.FLAGS
 
@@ -54,10 +55,13 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
     if KerasNCFBenchmarkBase.local_flags is None:
       # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
+      core.set_defaults(self.default_flags)
+      '''
       # Overrides flag values with defaults for the class of tests.
       for k, v in self.default_flags.items():
         setattr(FLAGS, k, v)
       saved_flag_values = flagsaver.save_flag_values()
+      '''
       KerasNCFBenchmarkBase.local_flags = saved_flag_values
     else:
       flagsaver.restore_flag_values(KerasNCFBenchmarkBase.local_flags)
@@ -85,7 +89,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1
-    default_flags['train_epochs'] = 14
+    default_flags['train_epochs'] = 1
     default_flags['batch_size'] = 16000
     default_flags['learning_rate'] = 0.00382059
     default_flags['beta1'] = 0.783529
