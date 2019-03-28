@@ -98,16 +98,17 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  config = keras_common.get_config_proto()
   # TODO(tobyboyd): Remove eager flag when tf 1.0 testing ends.
   # Eager is default in tf 2.0 and should not be toggled
-  if not keras_common.is_v2_0():
+  if keras_common.is_v2_0():
+    keras_common.set_config_v2()
+  else:
+    config = keras_common.get_config_proto_v1()
     if flags_obj.enable_eager:
       tf.compat.v1.enable_eager_execution(config=config)
     else:
       sess = tf.Session(config=config)
       tf.keras.backend.set_session(sess)
-  # TODO(haoyuzhang): Set config properly in TF2.0 when the config API is ready.
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
@@ -119,6 +120,12 @@ def run(flags_obj):
     data_format = ('channels_first'
                    if tf.test.is_built_with_cuda() else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
+
+  strategy = distribution_utils.get_distribution_strategy(
+      distribution_strategy=flags_obj.distribution_strategy,
+      num_gpus=flags_obj.num_gpus)
+
+  strategy_scope = keras_common.get_strategy_scope(strategy)
 
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
@@ -145,12 +152,6 @@ def run(flags_obj):
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
       parse_record_fn=parse_record_keras)
-
-  strategy = distribution_utils.get_distribution_strategy(
-      distribution_strategy=flags_obj.distribution_strategy,
-      num_gpus=flags_obj.num_gpus)
-
-  strategy_scope = keras_common.get_strategy_scope(strategy)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
@@ -179,14 +180,14 @@ def run(flags_obj):
     num_eval_steps = None
     validation_data = None
 
+  callbacks = [time_callback, lr_callback]
+  if flags_obj.enable_tensorboard:
+    callbacks.append(tensorboard_callback)
+
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
                       steps_per_epoch=train_steps,
-                      callbacks=[
-                          time_callback,
-                          lr_callback,
-                          tensorboard_callback
-                      ],
+                      callbacks=callbacks,
                       validation_steps=num_eval_steps,
                       validation_data=validation_data,
                       validation_freq=flags_obj.epochs_between_evals,

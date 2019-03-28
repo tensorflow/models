@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import multiprocessing
+import os
 
 import numpy as np
 
@@ -76,14 +78,14 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
           'change learning rate to %s.', self.epochs, batch, lr)
 
 
-def get_config_proto():
+def get_config_proto_v1():
   """Return config proto according to flag settings, or None to use default."""
   config = None
   if FLAGS.enable_xla:
     # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
     _monkey_patch_org_assert_broadcastable()
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.graph_options.optimizer_options.global_jit_level = (
         tf.OptimizerOptions.ON_2)
     # Disable PinToHostOptimizer in grappler when enabling XLA because it causes
@@ -91,6 +93,45 @@ def get_config_proto():
     config.graph_options.rewrite_options.pin_to_host_optimization = (
         rewriter_config_pb2.RewriterConfig.OFF)
   return config
+
+
+def set_config_v2():
+  """Config eager context according to flag values using TF 2.0 API."""
+  if FLAGS.enable_xla:
+    # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
+    _monkey_patch_org_assert_broadcastable()
+
+    tf.config.optimizer.set_jit(True)
+    # Disable PinToHostOptimizer in grappler when enabling XLA because it
+    # causes OOM and performance regression.
+    tf.config.optimizer.set_experimental_options(
+        {"pin_to_host_optimization": False}
+    )
+
+
+def set_gpu_thread_mode_and_count(flags_obj):
+  """Set GPU thread mode and count, and adjust dataset threads count."""
+  cpu_count = multiprocessing.cpu_count()
+  tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
+
+  # Allocate private thread pool for each GPU to schedule and launch kernels
+  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 2
+  os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
+  os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
+  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
+                            os.environ['TF_GPU_THREAD_COUNT'])
+  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
+                            os.environ['TF_GPU_THREAD_MODE'])
+
+  # Limit data preprocessing threadpool to CPU cores minus number of total GPU
+  # private threads and memory copy threads.
+  total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
+  num_mem_copy_threads = flags_obj.num_gpus
+  if not flags_obj.datasets_num_private_threads:
+    flags_obj.datasets_num_private_threads = (cpu_count - total_gpu_thread_count
+                                              - num_mem_copy_threads)
+    tf.compat.v1.logging.info('Set datasets_num_private_threads to %s',
+                              flags_obj.datasets_num_private_threads)
 
 
 def get_optimizer():
@@ -160,10 +201,15 @@ def define_keras_flags():
 
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
+  flags.DEFINE_boolean(name='use_trivial_model', default=False,
+                       help='Whether to use a trivial Keras model.')
   flags.DEFINE_boolean(
       name='enable_xla', default=False,
       help='Whether to enable XLA auto jit compilation. This is still an '
       'experimental feature, and is not yet effective with TF 2.0.')
+  flags.DEFINE_boolean(
+      name='enable_tensorboard', default=False,
+      help='Whether to enable Tensorboard callback.')
   flags.DEFINE_integer(
       name='train_steps', default=None,
       help='The number of steps to run for training. If it is larger than '
