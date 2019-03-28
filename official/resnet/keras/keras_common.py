@@ -253,6 +253,8 @@ def define_keras_flags():
   """Define flags for Keras models."""
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
+  flags.DEFINE_boolean(name='use_trivial_model', default=False,
+                       help='Whether to use a trivial Keras model.')
   flags.DEFINE_boolean(
       name='enable_xla', default=False,
       help='Whether to enable XLA auto jit compilation. This is still an '
