@@ -25,6 +25,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_model
+from official.resnet.keras import trivial_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -164,8 +165,12 @@ def run(flags_obj):
       # can be enabled with a single line of code.
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
-    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
-                                  dtype=dtype)
+
+    if flags_obj.use_trivial_model:
+      model = trivial_model.trivial_model(imagenet_main.NUM_CLASSES)
+    else:
+      model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
+                                    dtype=dtype)
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,
