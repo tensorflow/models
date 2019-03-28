@@ -584,6 +584,7 @@ def resnet_main(
       'resnet_version': flags_obj.resnet_version,
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
+      'num_workers': num_workers,
   }
   if flags_obj.use_synthetic_data:
     dataset_name = dataset_name + '-synthetic'
