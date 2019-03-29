@@ -37,7 +37,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
   def __init__(self, batch_size, log_steps):
     """Callback for logging performance (# examples/second).
-k
+
     Args:
       batch_size: Total batch size.
       log_steps: Interval of time history logs.
