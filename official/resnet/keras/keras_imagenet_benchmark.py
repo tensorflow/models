@@ -415,3 +415,110 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
 
     super(Resnet50KerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
+
+
+class TrivialKerasBenchmark(keras_benchmark.KerasBenchmark):
+  """Trivial model with real data benchmark tests."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    flag_methods = [
+        keras_common.define_keras_flags, imagenet_main.define_imagenet_flags
+    ]
+    def_flags = {}
+    def_flags['skip_eval'] = True
+    def_flags['dtype'] = 'fp16'
+    def_flags['enable_xla'] = True
+    def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
+    def_flags['train_steps'] = 600
+    def_flags['log_steps'] = 100
+    def_flags['distribution_strategy'] = 'default'
+
+    super(TrivialKerasBenchmark, self).__init__(
+        output_dir=output_dir,
+        flag_methods=flag_methods,
+        default_flags=def_flags)
+
+  def _run_and_report_benchmark(self):
+    start_time_sec = time.time()
+    stats = keras_imagenet_main.run(FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+
+    super(TrivialKerasBenchmark, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps)
+
+  def benchmark_1_gpu(self):
+    """Test trivial Keras model (input pipeline) with 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
+    FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_1_gpu(self):
+    """Test trivial Keras model (input pipeline) with 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = False
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
+    FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu(self):
+    """Test trivial Keras model (input pipeline) with 8 GPUs."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    FLAGS.batch_size = 256 * 8
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_tweaked(self):
+    """Test trivial Keras model (input pipeline) with manual config tuning and
+       8 GPUs.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
+    FLAGS.batch_size = 256 * 8
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_8_gpu(self):
+    """Test trivial Keras model (input pipeline) in legacy graph mode with 8
+       GPUs.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = False
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
+    FLAGS.batch_size = 256 * 8
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_8_gpu_tweaked(self):
+    """Test trivial Keras model (input pipeline) in legacy graph mode with
+       manual config tuning and 8 GPUs.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = False
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu_tweaked')
+    FLAGS.batch_size = 256 * 8
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
+  def fill_report_object(self, stats):
+    super(TrivialKerasBenchmark, self).fill_report_object(
+        stats,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps)
