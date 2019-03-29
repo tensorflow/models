@@ -463,7 +463,7 @@ class TrivialKerasBenchmark(keras_benchmark.KerasBenchmark):
     """Test trivial Keras model (input pipeline) with 1 GPU."""
     self._setup()
 
-    FLAGS.num_gpus = 8
+    FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     FLAGS.batch_size = 256
