@@ -594,7 +594,7 @@ def train_uvf(train_dir,
                              name='post_update_meta_targets')
 
   if debug_summaries:
-    train_.gen_debug_batch_summaries(batch)
+    train_op.gen_debug_batch_summaries(batch)
     slim.summaries.add_histogram_summaries(
         uvf_agent.get_trainable_critic_vars(), 'critic_vars')
     slim.summaries.add_histogram_summaries(
