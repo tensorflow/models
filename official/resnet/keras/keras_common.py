@@ -115,7 +115,7 @@ def set_gpu_thread_mode_and_count(flags_obj):
   tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
 
   # Allocate private thread pool for each GPU to schedule and launch kernels
-  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 2
+  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 1
   os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
   tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
