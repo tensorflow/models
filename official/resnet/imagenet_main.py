@@ -200,12 +200,13 @@ def input_fn(is_training,
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
   # Convert to individual records.
-  # cycle_length = 10 means 10 files will be read and deserialized in parallel.
-  # This number is low enough to not cause too much contention on small systems
-  # but high enough to provide the benefits of parallelization. You may want
-  # to increase this number if you have a large number of CPU cores.
-  dataset = dataset.apply(tf.data.experimental.parallel_interleave(
-      tf.data.TFRecordDataset, cycle_length=10))
+  # cycle_length = 10 means that up to 10 files will be read and deserialized in
+  # parallel. You may want to increase this number if you have a large number of
+  # CPU cores.
+  dataset = dataset.interleave(
+      tf.data.TFRecordDataset,
+      cycle_length=10,
+      num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
   return resnet_run_loop.process_record_dataset(
       dataset=dataset,
