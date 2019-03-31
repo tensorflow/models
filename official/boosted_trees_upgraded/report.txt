@@ -1,0 +1,89 @@
+TensorFlow 2.0 Upgrade Script
+-----------------------------
+Converted 4 files
+Detected 3 issues that require attention
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+File: boosted_trees/train_higgs_test.py
+--------------------------------------------------------------------------------
+boosted_trees/train_higgs_test.py:99:23: WARNING: Changing dataset.make_one_shot_iterator() to tf.compat.v1.data.make_one_shot_iterator(dataset). Please check this transformation.
+
+--------------------------------------------------------------------------------
+File: boosted_trees/train_higgs.py
+--------------------------------------------------------------------------------
+boosted_trees/train_higgs.py:232:15: ERROR: Using member tf.contrib.estimator.boosted_trees_classifier_train_in_memory in deprecated module tf.contrib. tf.contrib.estimator.boosted_trees_classifier_train_in_memory cannot be converted automatically. tf.contrib will not be distributed with TensorFlow 2.0, please consider an alternative in non-contrib TensorFlow, a community-maintained repository, or fork the required code.
+boosted_trees/train_higgs.py:247:4: ERROR: *.export_savedmodel requires manual check. (Manual edit required) Please rename the method export_savedmodel() to export_saved_model(). Two things to note:
+	(1) The argument strip_default_attributes has been removed. The function will always strip the default attributes from ops. If this breaks your code, please switch to tf.compat.v1.estimator.Estimator.
+	(2) This change only effects core estimator. If you are using tf.contrib.learn.Estimator, please switch to using core estimator.
+================================================================================
+Detailed log follows:
+
+================================================================================
+================================================================================
+Input tree: 'boosted_trees'
+================================================================================
+--------------------------------------------------------------------------------
+Processing file 'boosted_trees/data_download.py'
+ outputting to 'boosted_trees_upgraded/data_download.py'
+--------------------------------------------------------------------------------
+
+52:5: INFO: Renamed 'tf.gfile.Exists' to 'tf.io.gfile.exists'
+55:9: INFO: Renamed 'tf.gfile.Exists' to 'tf.io.gfile.exists'
+56:4: INFO: Renamed 'tf.gfile.MkDir' to 'tf.io.gfile.mkdir'
+59:4: INFO: Renamed 'tf.logging.info' to 'tf.compat.v1.logging.info'
+62:4: INFO: Renamed 'tf.logging.info' to 'tf.compat.v1.logging.info'
+70:4: INFO: Renamed 'tf.gfile.Remove' to 'tf.io.gfile.remove'
+75:2: INFO: Renamed 'tf.gfile.Copy' to 'tf.io.gfile.copy'
+76:2: INFO: Renamed 'tf.logging.info' to 'tf.compat.v1.logging.info'
+80:9: INFO: Renamed 'tf.gfile.Exists' to 'tf.io.gfile.exists'
+81:4: INFO: Renamed 'tf.gfile.MkDir' to 'tf.io.gfile.mkdir'
+94:2: INFO: Renamed 'tf.logging.set_verbosity' to 'tf.compat.v1.logging.set_verbosity'
+94:27: INFO: Renamed 'tf.logging.INFO' to 'tf.compat.v1.logging.INFO'
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Processing file 'boosted_trees/train_higgs_test.py'
+ outputting to 'boosted_trees_upgraded/train_higgs_test.py'
+--------------------------------------------------------------------------------
+
+33:0: INFO: Renamed 'tf.logging.set_verbosity' to 'tf.compat.v1.logging.set_verbosity'
+33:25: INFO: Renamed 'tf.logging.ERROR' to 'tf.compat.v1.logging.ERROR'
+54:4: INFO: Renamed 'tf.gfile.Copy' to 'tf.io.gfile.copy'
+99:23: WARNING: Changing dataset.make_one_shot_iterator() to tf.compat.v1.data.make_one_shot_iterator(dataset). Please check this transformation.
+
+100:9: INFO: Renamed 'tf.Session' to 'tf.compat.v1.Session'
+132:20: INFO: Renamed 'tf.gfile.Exists' to 'tf.io.gfile.exists'
+150:20: INFO: Renamed 'tf.gfile.Exists' to 'tf.io.gfile.exists'
+151:20: INFO: Renamed 'tf.gfile.Exists' to 'tf.io.gfile.exists'
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Processing file 'boosted_trees/train_higgs.py'
+ outputting to 'boosted_trees_upgraded/train_higgs.py'
+--------------------------------------------------------------------------------
+
+78:9: INFO: Renamed 'tf.gfile.Open' to 'tf.io.gfile.GFile'
+184:10: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+185:38: INFO: Added keywords to args of function 'tf.decode_csv'
+185:38: INFO: Renamed 'tf.decode_csv' to 'tf.io.decode_csv'
+199:5: INFO: Renamed 'tf.gfile.Exists' to 'tf.io.gfile.exists'
+200:4: INFO: Renamed 'tf.gfile.DeleteRecursively' to 'tf.io.gfile.rmtree'
+201:2: INFO: Renamed 'tf.logging.info' to 'tf.compat.v1.logging.info'
+205:2: INFO: Renamed 'tf.logging.info' to 'tf.compat.v1.logging.info'
+212:2: INFO: Renamed 'tf.logging.info' to 'tf.compat.v1.logging.info'
+232:15: ERROR: Using member tf.contrib.estimator.boosted_trees_classifier_train_in_memory in deprecated module tf.contrib. tf.contrib.estimator.boosted_trees_classifier_train_in_memory cannot be converted automatically. tf.contrib will not be distributed with TensorFlow 2.0, please consider an alternative in non-contrib TensorFlow, a community-maintained repository, or fork the required code.
+247:4: ERROR: *.export_savedmodel requires manual check. (Manual edit required) Please rename the method export_savedmodel() to export_saved_model(). Two things to note:
+	(1) The argument strip_default_attributes has been removed. The function will always strip the default attributes from ops. If this breaks your code, please switch to tf.compat.v1.estimator.Estimator.
+	(2) This change only effects core estimator. If you are using tf.contrib.learn.Estimator, please switch to using core estimator.
+294:2: INFO: Renamed 'tf.logging.set_verbosity' to 'tf.compat.v1.logging.set_verbosity'
+294:27: INFO: Renamed 'tf.logging.INFO' to 'tf.compat.v1.logging.INFO'
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Processing file 'boosted_trees/__init__.py'
+ outputting to 'boosted_trees_upgraded/__init__.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+
