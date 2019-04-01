@@ -65,6 +65,8 @@ def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
       session_config=tf.compat.v1.ConfigProto(device_count={'GPU': 0},
                                     inter_op_parallelism_threads=inter_op,
                                     intra_op_parallelism_threads=intra_op))
+  # Originally used MEAN mode for loss reduction but this has been
+  # removed. Will change to something else if needed
   return tf.estimator.DNNRegressor(
       model_dir=model_dir,
       feature_columns=deep_columns,
@@ -72,7 +74,7 @@ def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
       optimizer=tf.optimizers.Adam(),
       activation_fn=tf.nn.sigmoid,
       dropout=0.3,
-      loss_reduction=tf.keras.losses.Reduction.MEAN)
+      loss_reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE)
 
 
 def run_movie(flags_obj):

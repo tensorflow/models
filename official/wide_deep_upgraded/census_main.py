@@ -22,8 +22,8 @@ import tensorflow as tf
 
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
-from official.wide_deep import census_dataset
-from official.wide_deep import wide_deep_run_loop
+from official.wide_deep_upgraded import census_dataset
+from official.wide_deep_upgraded import wide_deep_run_loop
 
 
 def define_census_flags():
