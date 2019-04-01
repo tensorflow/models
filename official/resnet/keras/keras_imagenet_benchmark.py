@@ -88,6 +88,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
+    # Thread tuning to improve performance.
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16(self):
@@ -286,6 +288,19 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_fp16_tweaked(self):
+    """Test Keras model with 8 GPUs and fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
   def benchmark_xla_8_gpu_fp16(self):
     """Test Keras model with XLA, 8 GPUs and fp16."""
     self._setup()
@@ -417,7 +432,7 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
         output_dir=output_dir, default_flags=def_flags)
 
 
-class TrivialKerasBenchmark(keras_benchmark.KerasBenchmark):
+class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
   """Trivial model with real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
@@ -433,7 +448,7 @@ class TrivialKerasBenchmark(keras_benchmark.KerasBenchmark):
     def_flags['log_steps'] = 100
     def_flags['distribution_strategy'] = 'default'
 
-    super(TrivialKerasBenchmark, self).__init__(
+    super(TrivialKerasBenchmarkReal, self).__init__(
         output_dir=output_dir,
         flag_methods=flag_methods,
         default_flags=def_flags)
@@ -443,11 +458,22 @@ class TrivialKerasBenchmark(keras_benchmark.KerasBenchmark):
     stats = keras_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
-    super(TrivialKerasBenchmark, self)._report_benchmark(
+    super(TrivialKerasBenchmarkReal, self)._report_benchmark(
         stats,
         wall_time_sec,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps)
+
+  def benchmark_8_gpu_warmup(self):
+    """Dummy test that runs over an epoch to warmup the machine."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_warmup')
+    FLAGS.batch_size = 256
+    FLAGS.train_steps = 700
+    self._run_and_report_benchmark()
 
   def benchmark_1_gpu(self):
     """Test trivial Keras model (input pipeline) with 1 GPU."""
@@ -518,7 +544,7 @@ class TrivialKerasBenchmark(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):
-    super(TrivialKerasBenchmark, self).fill_report_object(
+    super(TrivialKerasBenchmarkReal, self).fill_report_object(
         stats,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps)
