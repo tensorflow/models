@@ -85,6 +85,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1
     default_flags['train_epochs'] = 14
+    default_flags['clean'] = True
     default_flags['batch_size'] = 16000
     default_flags['learning_rate'] = 0.00382059
     default_flags['beta1'] = 0.783529
@@ -93,6 +94,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags['layers'] = [256, 256, 128, 64]
     default_flags['num_factors'] = 64
     default_flags['hr_threshold'] = 0.635
+    default_flags['ml_perf'] = True
     default_flags['use_synthetic_data'] = False
 
     super(KerasNCFRealData, self).__init__(
