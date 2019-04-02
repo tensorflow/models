@@ -178,7 +178,7 @@ def run(flags_obj):
           per_replica_batch_size = (
               flags_obj.batch_size // strategy.num_replicas_in_sync)
       else:
-        per_replica_batch_size = flags_obj.batch_size      
+        per_replica_batch_size = flags_obj.batch_size
     else:
       per_replica_batch_size = None
 
