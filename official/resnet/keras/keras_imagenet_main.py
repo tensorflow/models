@@ -124,7 +124,7 @@ def run(flags_obj):
       num_gpus=flags_obj.num_gpus,
       num_workers=distribution_utils.configure_cluster())
 
-  strategy_scope = keras_common.get_strategy_scope(strategy)
+  strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:

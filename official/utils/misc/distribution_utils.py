@@ -250,19 +250,20 @@ def configure_cluster(worker_hosts=None, task_index=-1):
   return num_workers
 
 
-class MaybeDistributionScope(object):
-  """Provides a context allowing no distribution strategy."""
+def get_strategy_scope(strategy):
+  if strategy:
+    strategy_scope = strategy.scope()
+  else:
+    strategy_scope = DummyContextManager()
 
-  def __init__(self, distribution):
-    self._distribution = distribution
-    self._scope = None
+  return strategy_scope
+
+
+class DummyContextManager(object):
 
   def __enter__(self):
-    if self._distribution:
-      self._scope = self._distribution.scope()
-      self._scope.__enter__()
+    pass
 
-  def __exit__(self, exc_type, value, traceback):
-    if self._distribution:
-      self._scope.__exit__(exc_type, value, traceback)
-      self._scope = None
+  def __exit__(self, *args):
+    pass
+

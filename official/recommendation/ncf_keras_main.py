@@ -75,12 +75,12 @@ def _get_metric_fn(params):
             params["match_mlperf"],
             params["use_xla_for_gpu"]))
 
-    is_learning_phase = tf.keras.backend.learning_phase()
-    if isinstance(is_learning_phase, int):
-      is_learning_phase = tf.constant(bool(is_learning_phase), dtype=tf.bool)
+    is_training = tf.keras.backend.learning_phase()
+    if isinstance(is_training, int):
+      is_training = tf.constant(bool(is_training), dtype=tf.bool)
 
     in_top_k = tf.cond(
-        is_learning_phase,
+        is_training,
         lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
         lambda: in_top_k)
 
@@ -92,14 +92,14 @@ def _get_metric_fn(params):
 def _get_train_and_eval_data(producer, params):
   """Returns the datasets for training and evalutating."""
 
-  def preprocess_train_inpu(features, labels):
+  def preprocess_train_input(features, labels):
     features.pop(rconst.VALID_POINT_MASK)
     labels = tf.expand_dims(labels, -1)
     return features, labels
 
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params).map(
-      preprocess_train_inpu)
+      preprocess_train_input)
 
   def preprocess_eval_input(features):
     features.pop(rconst.DUPLICATE_MASK)
@@ -134,9 +134,16 @@ def _get_keras_model(params):
   batch_size = params['batch_size']
 
   user_input = tf.keras.layers.Input(
-      shape=(batch_size,), batch_size=1, name=movielens.USER_COLUMN, dtype=tf.int32)
+      shape=(batch_size,),
+      batch_size=1,
+      name=movielens.USER_COLUMN,
+      dtype=tf.int32)
+
   item_input = tf.keras.layers.Input(
-      shape=(batch_size,), batch_size=1, name=movielens.ITEM_COLUMN, dtype=tf.int32)
+      shape=(batch_size,),
+      batch_size=1,
+      name=movielens.ITEM_COLUMN,
+      dtype=tf.int32)
 
   base_model = neumf_model.construct_model(
       user_input, item_input, params, need_strip=True)
@@ -193,7 +200,7 @@ def run_ncf(_):
   eval_input_dataset = eval_input_dataset.batch(batches_per_step)
 
   strategy = ncf_common.get_distribution_strategy(params)
-  with distribution_utils.MaybeDistributionScope(strategy):
+  with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
     optimizer = ncf_common.get_optimizer(params)
     time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
@@ -204,11 +211,11 @@ def run_ncf(_):
         optimizer=optimizer)
 
     history = keras_model.fit(train_input_dataset,
-        epochs=FLAGS.train_epochs,
-        callbacks=[
-            IncrementEpochCallback(producer),
-            time_callback],
-        verbose=2)
+                              epochs=FLAGS.train_epochs,
+                              callbacks=[
+                                IncrementEpochCallback(producer),
+                                time_callback],
+                              verbose=2)
 
     tf.logging.info("Training done. Start evaluating")
 
