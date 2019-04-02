@@ -140,6 +140,10 @@ def run(flags_obj):
     distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_main.input_fn
 
+  # When `enable_xla` is True, we always drop the remainder of the batches
+  # in the dataset, as XLA-GPU doesn't support dynamic shapes.
+  drop_remainder = flags_obj.enable_xla
+
   train_input_dataset = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
@@ -148,7 +152,7 @@ def run(flags_obj):
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
-      drop_remainder=flags_obj.enable_xla)
+      drop_remainder=drop_remainder)
 
   eval_input_dataset = None
   if not flags_obj.skip_eval:
@@ -159,7 +163,7 @@ def run(flags_obj):
         num_epochs=flags_obj.train_epochs,
         parse_record_fn=parse_record_keras,
         dtype=dtype,
-        drop_remainder=flags_obj.enable_xla)
+        drop_remainder=drop_remainder)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
