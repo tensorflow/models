@@ -174,8 +174,11 @@ def run(flags_obj):
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
 
     if flags_obj.enable_xla:
-      per_replica_batch_size = (
-          flags_obj.batch_size // strategy.num_replicas_in_sync)
+      if strategy:
+          per_replica_batch_size = (
+              flags_obj.batch_size // strategy.num_replicas_in_sync)
+      else:
+        per_replica_batch_size = flags_obj.batch_size      
     else:
       per_replica_batch_size = None
 
