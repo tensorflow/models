@@ -200,12 +200,13 @@ def input_fn(is_training,
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
   # Convert to individual records.
-  # cycle_length = 10 means 10 files will be read and deserialized in parallel.
-  # This number is low enough to not cause too much contention on small systems
-  # but high enough to provide the benefits of parallelization. You may want
-  # to increase this number if you have a large number of CPU cores.
-  dataset = dataset.apply(tf.data.experimental.parallel_interleave(
-      tf.data.TFRecordDataset, cycle_length=10))
+  # cycle_length = 10 means that up to 10 files will be read and deserialized in
+  # parallel. You may want to increase this number if you have a large number of
+  # CPU cores.
+  dataset = dataset.interleave(
+      tf.data.TFRecordDataset,
+      cycle_length=10,
+      num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
   return resnet_run_loop.process_record_dataset(
       dataset=dataset,
@@ -318,9 +319,10 @@ def imagenet_model_fn(features, labels, mode, params):
     base_lr = .128
 
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-      batch_size=params['batch_size'], batch_denom=256,
-      num_images=NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-      decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=warmup, base_lr=base_lr)
+      batch_size=params['batch_size'] * params.get('num_workers', 1),
+      batch_denom=256, num_images=NUM_IMAGES['train'],
+      boundary_epochs=[30, 60, 80, 90], decay_rates=[1, 0.1, 0.01, 0.001, 1e-4],
+      warmup=warmup, base_lr=base_lr)
 
   return resnet_run_loop.resnet_model_fn(
       features=features,
