@@ -31,16 +31,27 @@ class ImageNetDatasetBuilder():
     self._num_dataset_private_threads = num_dataset_private_threads
 
   def to_dataset(self, batch_size, image_shape, take_train_num=-1):
+    # N.B: -1 // x == -1, if x is a positive integer
+    if take_train_num >= 0:
+      self.num_train = take_train_num // batch_size * batch_size
     return (
-        self._get_perfzero_dataset(True, batch_size).take(take_train_num),
+        self._get_perfzero_dataset(True, batch_size).take(
+            take_train_num // batch_size).repeat(),
         self._get_perfzero_dataset(False, batch_size))
 
   def _get_perfzero_dataset(self, is_training, batch_size):
-    return imagenet_main.input_fn(
+    def _to_categorical(record):
+      image, label = record
+      label = tf.one_hot(label, self.num_classes, dtype=tf.int64)
+      return (image, label)
+
+    raw_dataset = imagenet_main.input_fn(
         is_training=is_training,
         data_dir=self._data_dir,
         batch_size=batch_size,
         num_epochs=None,  # repeat infinitely
-        parse_record_fn=keras_imagenet_main.parse_record_keras,
         datasets_num_private_threads=self._num_dataset_private_threads)
+
+    return raw_dataset.map(
+        _to_categorical, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 

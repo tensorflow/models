@@ -71,9 +71,15 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
           },
         })
 
+  def benchmark_no_dist_strat_sanity(self):
+    FLAGS.no_pretrained_weights=True
+    FLAGS.batch_size=32
+    FLAGS.train_epochs=2
+    FLAGS.limit_train_num=960
+    self._run_and_report()
+
   def benchmark_1_gpu_sanity(self):
     FLAGS.no_pretrained_weights=True
-    FLAGS.no_eager=False
     FLAGS.batch_size=32
     FLAGS.train_epochs=2
     FLAGS.limit_train_num=960
@@ -83,7 +89,6 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
 
   def benchmark_2_gpus_sanity(self):
     FLAGS.no_pretrained_weights=True
-    FLAGS.no_eager=False
     FLAGS.batch_size=32
     FLAGS.train_epochs=2
     FLAGS.limit_train_num=960
