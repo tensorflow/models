@@ -93,6 +93,14 @@ def _get_train_and_eval_data(producer, params):
   """Returns the datasets for training and evalutating."""
 
   def preprocess_train_input(features, labels):
+    """Pre-process the training data.
+
+    This is needed because:
+    - Distributed training does not support extra inputs. The current
+      implementation does not use the VALID_POINT_MASK in the input, which makes
+      it extra, so it needs to be removed.
+    - The label needs to be extended to be used in the loss fn
+    """
     features.pop(rconst.VALID_POINT_MASK)
     labels = tf.expand_dims(labels, -1)
     return features, labels
@@ -102,6 +110,14 @@ def _get_train_and_eval_data(producer, params):
       preprocess_train_input)
 
   def preprocess_eval_input(features):
+    """Pre-process the eval data.
+
+    This is needed because:
+    - Distributed training does not support extra inputs. The current
+      implementation does not use the DUPLICATE_MASK in the input, which makes
+      it extra, so it needs to be removed.
+    - The label needs to be extended to be used in the loss fn
+    """
     features.pop(rconst.DUPLICATE_MASK)
     labels = tf.zeros_like(features[movielens.USER_COLUMN])
     labels = tf.expand_dims(labels, -1)
@@ -150,7 +166,7 @@ def _get_keras_model(params):
 
   base_model_output = base_model.output
 
-  logits= tf.keras.layers.Lambda(
+  logits = tf.keras.layers.Lambda(
       lambda x: tf.expand_dims(x, 0),
       name="logits")(base_model_output)
 
@@ -195,7 +211,11 @@ def run_ncf(_):
   model_helpers.apply_clean(flags.FLAGS)
 
   batches_per_step = params["batches_per_step"]
-  train_input_dataset, eval_input_dataset = _get_train_and_eval_data(producer, params)
+  train_input_dataset, eval_input_dataset = _get_train_and_eval_data(producer,
+                                                                     params)
+  # It is required that for distributed training, the dataset must call
+  # batch(). The parameter of batch() here is the number of replicas involed,
+  # such that each replica evenly gets a slice of data.
   train_input_dataset = train_input_dataset.batch(batches_per_step)
   eval_input_dataset = eval_input_dataset.batch(batches_per_step)
 
@@ -213,8 +233,8 @@ def run_ncf(_):
     history = keras_model.fit(train_input_dataset,
                               epochs=FLAGS.train_epochs,
                               callbacks=[
-                                IncrementEpochCallback(producer),
-                                time_callback],
+                                  IncrementEpochCallback(producer),
+                                  time_callback],
                               verbose=2)
 
     tf.logging.info("Training done. Start evaluating")
