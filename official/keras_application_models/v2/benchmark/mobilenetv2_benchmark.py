@@ -37,11 +37,14 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     if output_dir is None:
-      output_dir = FLAGS.benchmark_output_dir
+      self._output_dir = FLAGS.benchmark_output_dir
+    else:
+      self._output_dir = output_dir
+
     if root_data_dir is None:
-      root_data_dir = FLAGS.benchmark_data_dir
-    self._output_dir = output_dir
-    self._data_dir = root_data_dir
+      self._data_dir = FLAGS.benchmark_data_dir
+    else:
+      self._data_dir = os.path.join(root_data_dir, "imagenet")
 
   def _prepare_dataset_builder(self, data_spec):
     if data_spec is None:
