@@ -135,7 +135,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     if dynamic_loss_scale:
       loss_scale_help_text = loss_scale_help_text.format(
           "This can be an int/float or the string 'dynamic'",
-          "The string 'dynamic' can be used to dynamically determine the "
+          " The string 'dynamic' can be used to dynamically determine the "
           "optimal loss scale during training, but currently this "
           "significantly slows down performance")
       loss_scale_validation_msg = ("loss_scale should be a positive int/float "
@@ -150,6 +150,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
 
     @flags.validator(flag_name="loss_scale", message=loss_scale_validation_msg)
     def _check_loss_scale(loss_scale):  # pylint: disable=unused-variable
+      """Validator to check the loss scale flag is valid"""
       if loss_scale is None:
         return True  # null case is handled in get_loss_scale()
 
