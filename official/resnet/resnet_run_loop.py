@@ -707,13 +707,14 @@ def resnet_main(
   return stats
 
 
-def define_resnet_flags(resnet_size_choices=None):
+def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False):
   """Add flags and validators for ResNet."""
   flags_core.define_base()
   flags_core.define_performance(num_parallel_calls=False,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
-                                datasets_num_parallel_batches=True)
+                                datasets_num_parallel_batches=True,
+                                dynamic_loss_scale=dynamic_loss_scale)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)

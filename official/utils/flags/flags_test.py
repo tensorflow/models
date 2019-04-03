@@ -23,7 +23,7 @@ from official.utils.flags import core as flags_core  # pylint: disable=g-bad-imp
 
 def define_flags():
   flags_core.define_base(num_gpu=False)
-  flags_core.define_performance()
+  flags_core.define_performance(dynamic_loss_scale=True)
   flags_core.define_image()
   flags_core.define_benchmark()
 
@@ -89,11 +89,19 @@ class BaseTester(unittest.TestCase):
 
       flags_core.parse_flags(
           [__file__, "--dtype", dtype_str, "--loss_scale", "5"])
-
       self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), 5)
+
+      flags_core.parse_flags(
+          [__file__, "--dtype", dtype_str, "--loss_scale", "dynamic"])
+      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), "dynamic")
 
     with self.assertRaises(SystemExit):
       flags_core.parse_flags([__file__, "--dtype", "int8"])
+
+    with self.assertRaises(SystemExit):
+      flags_core.parse_flags([__file__, "--dtype", "fp16",
+                              "--loss_scale", "abc"])
+
 
 
 if __name__ == "__main__":

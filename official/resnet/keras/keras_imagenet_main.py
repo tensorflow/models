@@ -235,6 +235,6 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  imagenet_main.define_imagenet_flags()
+  imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
   keras_common.define_keras_flags()
   absl_app.run(main)
