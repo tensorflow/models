@@ -223,7 +223,7 @@ def define_keras_flags():
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
-                       dtype=tf.float32, drop_remainder=True):
+                       dtype=tf.float32):
   """Returns an input function that returns a dataset with random data.
 
   This input_fn returns a data set that iterates over a set of random data and
@@ -238,8 +238,6 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     num_classes: Number of classes that should be represented in the fake labels
       tensor
     dtype: Data type for features/images.
-    drop_remainder: A boolean indicates whether to drop the remainder of the
-      batches. If True, the batch dimension will be static.
 
   Returns:
     An input_fn that can be used in place of a real one to return a dataset
@@ -266,7 +264,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
 
     # `drop_remainder` will make dataset produce outputs with known shapes.
-    data = data.batch(batch_size, drop_remainder=drop_remainder)
+    data = data.batch(batch_size, drop_remainder=True)
     data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return data
 
