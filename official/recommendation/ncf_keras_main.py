@@ -297,4 +297,3 @@ if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
   ncf_common.define_ncf_flags()
   absl_app.run(main)
-
