@@ -69,11 +69,14 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
         iters=result["iters"],
         wall_time=wall_time_sec,
         extras={
-          "accuracy": result["history"]["val_acc"][-1],
-          "accuracy_top_5": {
-            "value": result["history"]["val_top_k_categorical_accuracy"][-1],
-          },
+          "accuracy_top_1": self._json_description(
+            result["history"]["val_acc"][-1]),
+          "accuracy_top_5": self._json_description(
+            result["history"]["val_top_k_categorical_accuracy"][-1]),
         })
+
+  def _json_description(self, value):
+    return json.dumps({"value": value})
 
   def benchmark_no_dist_strat_sanity(self):
     self._setup()
