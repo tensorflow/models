@@ -17,18 +17,14 @@ import tensorflow as tf
 
 
 from official.resnet import imagenet_main
-from official.resnet.keras import keras_imagenet_main
+from official.resnet import cifar10_main
 
 
-class ImageNetDatasetBuilder():
-  """Wrapper for accessing ImageNet with PerfZero."""
+class DatasetBuilderBase():
 
-  def __init__(self, data_dir, num_dataset_private_threads=None):
-    self.num_classes = 1000
-    self.num_train = 1281167
-    self.num_test = 50000
-    self._data_dir = data_dir
+  def __init__(self, input_fn, num_dataset_private_threads=None):
     self._num_dataset_private_threads = num_dataset_private_threads
+    self._input_fn = input_fn
 
   def to_dataset(self, batch_size, image_shape, take_train_num=-1):
     # N.B: -1 // x == -1, if x is a positive integer
@@ -44,7 +40,7 @@ class ImageNetDatasetBuilder():
       label = tf.one_hot(label, self.num_classes, dtype=tf.int64)
       return (image, label)
 
-    raw_dataset = imagenet_main.input_fn(
+    raw_dataset = self._input_fn(
         is_training=is_training,
         data_dir=self._data_dir,
         batch_size=batch_size,
@@ -53,4 +49,26 @@ class ImageNetDatasetBuilder():
 
     return raw_dataset.map(
         _to_categorical, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+
+class ImageNetDatasetBuilder(DatasetBuilderBase):
+  """Wrapper for accessing ImageNet with PerfZero."""
+
+  def __init__(self, data_dir, num_dataset_private_threads=None):
+    self.num_classes = 1000
+    self.num_train = 1281167
+    self.num_test = 50000
+    self._data_dir = data_dir
+    super().__init__(imagenet_main.input_fn, num_dataset_private_threads)
+
+
+class Cifar10DatasetBuilder(DatasetBuilderBase):
+  """Wrapper for accessing Cifar10 with PerfZero."""
+
+  def __init__(self, data_dir, num_dataset_private_threads=None):
+    self.num_classes = 10
+    self.num_train = 50000
+    self.num_test = 10000
+    self._data_dir = data_dir
+    super().__init__(cifar10_main.input_fn, num_dataset_private_threads)
 

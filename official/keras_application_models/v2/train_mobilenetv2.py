@@ -30,9 +30,53 @@ from official.keras_application_models.v2 import datasets
 from official.keras_application_models.v2 import utils
 
 
-def prepare_dataset_builder():
+def prepare_dataset_builder(num_dataset_private_threads,
+                            num_dataset_parallel_calls):
   # Split this function out of `run` for easy testing with different datasets.
-  return datasets.ImageNetDatasetBuilder()
+  return datasets.ImageNetDatasetBuilder(
+      num_dataset_private_threads, num_dataset_parallel_calls)
+
+
+def create_model_for_train(image_shape, num_classes):
+  model = tf.keras.applications.MobileNetV2(
+      weights=None,
+      input_shape=image_shape + (3,),
+      include_top=False,
+      pooling="avg",
+      classes=num_classes)
+  # Keras Application model v2 doesn't include dropout. Follow the SLIM settings
+  # with dropout and 1-D conv here.
+  x = model.output
+  # The last layer output tensor shape in MobileNetV2 is (None, ?)
+  x = tf.keras.layers.Reshape((1, 1, x.shape[1]), name='reshape_1')(x)
+  x = tf.keras.layers.Dropout(0.2)(x)
+  x = tf.keras.layers.Conv2D(num_classes, (1, 1),
+                             padding="same",
+                             name="conv_preds")(x)
+  x = tf.keras.layers.Activation("softmax", name="act_softmax")(x)
+  x = tf.keras.layers.Reshape((num_classes,), name='reshape_2')(x)
+  final_model = tf.keras.models.Model(
+      model.inputs, x, name="%s_train" % model.name)
+  final_model.summary()
+  return final_model
+
+
+def create_model_for_finetuning(image_shape, num_classes, freeze=True):
+  model = tf.keras.applications.MobileNetV2(
+      weights="imagenet",
+      input_shape=image_shape + (3,),
+      include_top=False,
+      pooling="avg",
+      classes=dataset_builder.num_classes)
+  if freeze:
+    for layer in model.layers:
+      layer.trainable = False
+  x = model.output
+  x = tf.keras.layers.Dense(num_classes, "softmax")
+  final_model = tf.keras.models.Model(
+      model.inputs, x, name="%s_finetune" % model.name)
+  final_model.summary()
+  return final_model
 
 
 def run(dataset_builder, flags_obj):
@@ -61,27 +105,36 @@ def run(dataset_builder, flags_obj):
     image_shape = (224, 224)
     train_ds, test_ds = dataset_builder.to_dataset(
         global_batch_size, image_shape,
+        label_smoothing=flags_obj.label_smoothing,
         take_train_num=flags_obj.limit_train_num)
+    num_classes = dataset_builder.num_classes
 
-    model = tf.keras.applications.MobileNetV2(
-        weights=(None if flags_obj.no_pretrained_weights else "imagenet"),
-        input_shape=image_shape + (3,),
-        include_top=True,
-        classes=dataset_builder.num_classes)
-
-    if flags_obj.no_pretrained_weights:
-      initial_lr = 0.045 * flags_obj.num_gpus
+    callbacks = []
+    if flags_obj.no_pretrained_weights:  # Train
+      model = create_model_for_train(image_shape, num_classes)
+      if flags_obj.initial_lr > 0:
+        initial_lr = flags_obj.initial_lr * flags_obj.num_gpus
+      else:
+        initial_lr = 0.045 * flags_obj.num_gpus
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
-          lambda x, lr: lr * 0.94 if x > 0 else lr,
+          lambda x, lr: lr * 0.98 if x > 0 else lr,
           verbose=1)
-    else:
-      initial_lr = 0.001 * flags_obj.num_gpus
+    else:  # Finetune
+      model = create_model_for_finetuing(image_shape, num_classes)
+      if flags_obj.initial_lr > 0:
+        initial_lr = flags_obj.initial_lr * flags_obj.num_gpus
+      else:
+        initial_lr = 0.001 * flags_obj.num_gpus
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
-          lambda x, lr: lr * 0.316 if x > 0 and x % 10 == 0 else lr,
+          lambda x, lr: lr * 0.98 if x > 0 else lr,
           verbose=1)
 
-    optimizer = tf.keras.optimizers.SGD(
-        learning_rate=tf.keras.backend.variable(initial_lr), momentum=0.9)
+    if flags_obj.checkpoint_path:
+      model.load_weights(flags_obj.checkpoint_path)
+
+    optimizer = tf.keras.optimizers.RMSprop(
+        learning_rate=tf.keras.backend.variable(initial_lr))
+    callbacks.append(lr_scheduler)
 
     # To train it from scratch, we need L2 regularization to avoid overfitting.
     if flags_obj.no_pretrained_weights:
@@ -91,9 +144,17 @@ def run(dataset_builder, flags_obj):
         if layer_type == "Conv2D":
           layer.kerner_regularizer = tf.keras.regularizers.l2(decay)
 
-    callbacks = [lr_scheduler]
+    run_name = "mobilenetv2_%s" % flags_obj.run_name
+    # Configure TensorBoard
+    monitor = tf.keras.callbacks.TensorBoard(
+        log_dir='./logs/%s' % run_name, histogram_freq=0,
+        batch_size=global_batch_size, write_graph=True, write_grads=False,
+        write_images=False, embeddings_freq=0, embeddings_layer_names=None,
+        embeddings_metadata=None, embeddings_data=None, update_freq='epoch')
+    callbacks.append(monitor)
+
     if flags_obj.enable_model_saving:
-      checkpoint = utils.prepare_model_saving("mobilenetv2")
+      checkpoint = utils.prepare_model_saving(run_name)
       callbacks.append(checkpoint)
 
     model.compile(loss="categorical_crossentropy",

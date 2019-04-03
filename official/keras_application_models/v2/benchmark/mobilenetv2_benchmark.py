@@ -51,9 +51,15 @@ class MobileNetV2BenchmarkBase(tf.test.Benchmark):
     else:
       self._data_dir = os.path.join(root_data_dir, dataset_name)
 
-  def _prepare_dataset_builder(self, data_spec):
-    if data_spec is None:
+    self._dataset_name = dataset_name
+
+  def _create_dataset_builder(self):
+    if self._dataset_name.startswith("imagenet"):
       return benchmark_datasets.ImageNetDatasetBuilder(self._data_dir)
+    elif self._dataset_name.startswith("cifar-10"):
+      return benchmark_datasets.Cifar10DatasetBuilder(self._data_dir)
+    else:
+      raise InvalidArgumentError("Unsupported dataset: %s", self._dataset_name)
 
   def _setup(self):
     if MobileNetV2BenchmarkBase.local_flags is None:
@@ -68,7 +74,7 @@ class MobileNetV2BenchmarkBase(tf.test.Benchmark):
   def _run_and_report(self, data_spec=None):
     start_time_sec = time.time()
     result = train_mobilenetv2.run(
-        self._prepare_dataset_builder(data_spec), flags.FLAGS)
+        self._create_dataset_builder(), flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
     self.report_benchmark(
         iters=result["iters"],
