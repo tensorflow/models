@@ -71,9 +71,9 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
         wall_time=wall_time_sec,
         extras={
           "accuracy_top_1": self._json_description(
-            result["history"]["val_acc"][-1]),
+            result["history"]["val_acc"][-1].item()),
           "accuracy_top_5": self._json_description(
-            result["history"]["val_top_k_categorical_accuracy"][-1]),
+            result["history"]["val_top_k_categorical_accuracy"][-1].item()),
         })
 
   def _json_description(self, value):
