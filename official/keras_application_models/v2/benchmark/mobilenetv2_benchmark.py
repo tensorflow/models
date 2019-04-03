@@ -19,6 +19,7 @@ import os
 import time
 
 from absl import flags
+from absl.testing import flagsaver
 import tensorflow as tf
 
 from official.keras_application_models.v2.benchmark import benchmark_datasets
@@ -32,6 +33,8 @@ FLAGS = flags.FLAGS
 class MobileNetV2Benchmark(tf.test.Benchmark):
   """Benchmarks tf.keras.application.MobileNetV2."""
 
+  local_flags = None
+
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     if output_dir is None:
       output_dir = FLAGS.benchmark_output_dir
@@ -39,11 +42,20 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
       root_data_dir = FLAGS.benchmark_data_dir
     self._output_dir = output_dir
     self._data_dir = root_data_dir
-    utils.define_flags()
 
   def _prepare_dataset_builder(self, data_spec):
     if data_spec is None:
       return benchmark_datasets.ImageNetDatasetBuilder(self._data_dir)
+
+  def _setup(self):
+    if MobileNetV2Benchmark.local_flags is None:
+      utils.define_flags()
+      # Loads flags to get defaults.
+      flags.FLAGS(["foo"])
+      saved_flag_values = flagsaver.save_flag_values()
+      MobileNetV2Benchmark.local_flags = saved_flag_values
+    else:
+      flagsaver.restore_flag_values(MobileNetV2Benchmark.local_flags)
 
   def _run_and_report(self, data_spec=None):
     start_time_sec = time.time()
@@ -61,6 +73,7 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
         })
 
   def benchmark_no_dist_strat_sanity(self):
+    self._setup()
     FLAGS.no_pretrained_weights=True
     FLAGS.batch_size=32
     FLAGS.train_epochs=2
@@ -68,6 +81,7 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
     self._run_and_report()
 
   def benchmark_1_gpu_sanity(self):
+    self._setup()
     FLAGS.no_pretrained_weights=True
     FLAGS.batch_size=32
     FLAGS.train_epochs=2
@@ -77,6 +91,7 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
     self._run_and_report()
 
   def benchmark_2_gpus_sanity(self):
+    self._setup()
     FLAGS.no_pretrained_weights=True
     FLAGS.batch_size=32
     FLAGS.train_epochs=2
