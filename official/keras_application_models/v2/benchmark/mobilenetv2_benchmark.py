@@ -15,6 +15,7 @@
 """Executes Keras MobileNetV2 benchmarks and accuracy tests."""
 from __future__ import print_function
 
+import json
 import os
 import time
 
