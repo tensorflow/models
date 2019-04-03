@@ -30,11 +30,13 @@ from official.keras_application_models.v2 import datasets
 from official.keras_application_models.v2 import utils
 
 
-def prepare_dataset_builder(num_dataset_private_threads,
-                            num_dataset_parallel_calls):
-  # Split this function out of `run` for easy testing with different datasets.
-  return datasets.ImageNetDatasetBuilder(
-      num_dataset_private_threads, num_dataset_parallel_calls)
+def prepare_dataset_builder(dataset, num_dataset_private_threads):
+  if dataset.startswith("imagenet"):
+    return datasets.ImageNetDatasetBuilder(num_dataset_private_threads)
+  elif dataset.startswith("cifar10") or dataset.startswith("cfiar-10"):
+    return datasets.Cifar10DatasetBuilder(num_dataset_private_threads)
+  else:
+    raise InvalidArgumentError("Only ImageNet and CIFAR-10 are supported yet.")
 
 
 def create_model_for_train(image_shape, num_classes):
@@ -67,12 +69,12 @@ def create_model_for_finetuning(image_shape, num_classes, freeze=True):
       input_shape=image_shape + (3,),
       include_top=False,
       pooling="avg",
-      classes=dataset_builder.num_classes)
+      classes=num_classes)
   if freeze:
     for layer in model.layers:
       layer.trainable = False
   x = model.output
-  x = tf.keras.layers.Dense(num_classes, "softmax")
+  x = tf.keras.layers.Dense(num_classes, "softmax")(x)
   final_model = tf.keras.models.Model(
       model.inputs, x, name="%s_finetune" % model.name)
   final_model.summary()
@@ -120,11 +122,11 @@ def run(dataset_builder, flags_obj):
           lambda x, lr: lr * 0.98 if x > 0 else lr,
           verbose=1)
     else:  # Finetune
-      model = create_model_for_finetuing(image_shape, num_classes)
+      model = create_model_for_finetuning(image_shape, num_classes)
       if flags_obj.initial_lr > 0:
         initial_lr = flags_obj.initial_lr * flags_obj.num_gpus
       else:
-        initial_lr = 0.001 * flags_obj.num_gpus
+        initial_lr = 0.01 * flags_obj.num_gpus
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
           lambda x, lr: lr * 0.98 if x > 0 else lr,
           verbose=1)
@@ -183,7 +185,8 @@ def run(dataset_builder, flags_obj):
 
 
 def main(_):
-  dataset_builder = prepare_dataset_builder()
+  dataset_builder = prepare_dataset_builder(
+      flags.FLAGS.dataset, flags.FLAGS.num_dataset_private_threads)
   run(dataset_builder, flags.FLAGS)
 
 

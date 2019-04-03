@@ -41,6 +41,11 @@ class NotReallyADistributionStrategy():
 
 
 def define_flags():
+  flags.DEFINE_string(
+      name="dataset", default="imagenet", help=
+          "The name of dataset to train on. Should be either imagenet or "
+          "cifar10. Default is imagenet.")
+
   flags.DEFINE_integer(
       name="num_gpus", default=1, help="The number of gpus used to training.")
 
