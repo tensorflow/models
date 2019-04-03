@@ -73,6 +73,10 @@ def define_flags():
           "To limit train dataset size, usually for code validation or "
           "perf-only testing. Set to -1 to use full dataset.")
 
+  flags.DEFINE_string(
+      name="run_name", default="default", help=
+          "A name suffix for log and checkpoints.")
+
   flags.DEFINE_boolean(
       name="enable_model_saving", default=False, help=
           "To enable best model saving feature of Keras training.")
@@ -80,6 +84,22 @@ def define_flags():
   flags.DEFINE_integer(
       name="num_dataset_private_threads", default=0, help=
           "Num of private threads for dataset to accelerate data loading.")
+
+  flags.DEFINE_integer(
+      name="num_dataset_parallel_calls", default=0, help=
+          "Num of parallel calls for dataset preprocessing.")
+
+  flags.DEFINE_float(
+      name="initial_lr", default=0, help=
+          "LR (for a mini batch on a single GPU) to start with.")
+
+  flags.DEFINE_float(
+      name="label_smoothing", default=0, help=
+          "label smoothing factor.")
+
+  flags.DEFINE_string(
+      name="checkpoint_path", default="", help=
+          "Path to the checkpoint of half-trained model.")
 
   # pylint: disable=unused-variable
   def _check_eager_dist_strat(flag_dict):
