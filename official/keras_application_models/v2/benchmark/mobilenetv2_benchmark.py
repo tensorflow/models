@@ -29,18 +29,6 @@ from official.keras_application_models.v2 import utils
 FLAGS = flags.FLAGS
 
 
-flags.DEFINE_string(
-    name="benchmark_output_dir", default="", help=
-        "Output dir for benchmarking. If the benchmark is triggered by "
-        "perfzero, don't set it.")
-
-
-flags.DEFINE_string(
-    name="benchmark_data_dir", default="", help=
-        "Data dir for benchmarking. If the benchmark is triggered by perfzero, "
-        "don't set it.")
-
-
 class MobileNetV2Benchmark(tf.test.Benchmark):
   """Benchmarks tf.keras.application.MobileNetV2."""
 
@@ -59,7 +47,8 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
 
   def _run_and_report(self, data_spec=None):
     start_time_sec = time.time()
-    result = train_mobilenetv2.run(self._prepare_dataset_builder(data_spec))
+    result = train_mobilenetv2.run(
+        self._prepare_dataset_builder(data_spec), flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
     self.report_benchmark(
         iters=result["iters"],
@@ -98,5 +87,13 @@ class MobileNetV2Benchmark(tf.test.Benchmark):
 
 
 if __name__ == "__main__":
+  flags.DEFINE_string(
+      name="benchmark_output_dir", default="", help=
+          "Output dir for benchmarking. If the benchmark is triggered by "
+          "perfzero, don't set it.")
+  flags.DEFINE_string(
+      name="benchmark_data_dir", default="", help=
+          "Data dir for benchmarking. If the benchmark is triggered by perfzero, "
+          "don't set it.")
   tf.test.main()
 

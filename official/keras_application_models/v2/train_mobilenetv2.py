@@ -30,15 +30,12 @@ from official.keras_application_models.v2 import datasets
 from official.keras_application_models.v2 import utils
 
 
-FLAGS = flags.FLAGS
-
-
 def prepare_dataset_builder():
   # Split this function out of `run` for easy testing with different datasets.
   return datasets.ImageNetDatasetBuilder()
 
 
-def run(dataset_builder):
+def run(dataset_builder, flags_obj):
   """Train MobileNetV2 on ImageNet from the scratch.
 
   Args:
@@ -55,29 +52,30 @@ def run(dataset_builder):
 
   # Initialize distribution strategy.
   strategy = utils.get_distribution_strategy(
-    FLAGS.num_gpus, no_distribution_strategy=not FLAGS.dist_strat)
+    flags_obj.num_gpus, no_distribution_strategy=not flags_obj.dist_strat)
 
   # MirroredStrategy will divide batches per GPU.
-  global_batch_size = FLAGS.batch_size * FLAGS.num_gpus
+  global_batch_size = flags_obj.batch_size * flags_obj.num_gpus
 
   with strategy.scope():
     image_shape = (224, 224)
     train_ds, test_ds = dataset_builder.to_dataset(
-        global_batch_size, image_shape, take_train_num=FLAGS.limit_train_num)
+        global_batch_size, image_shape,
+        take_train_num=flags_obj.limit_train_num)
 
     model = tf.keras.applications.MobileNetV2(
-        weights=(None if FLAGS.no_pretrained_weights else "imagenet"),
+        weights=(None if flags_obj.no_pretrained_weights else "imagenet"),
         input_shape=image_shape + (3,),
         include_top=True,
         classes=dataset_builder.num_classes)
 
-    if FLAGS.no_pretrained_weights:
-      initial_lr = 0.045 * FLAGS.num_gpus
+    if flags_obj.no_pretrained_weights:
+      initial_lr = 0.045 * flags_obj.num_gpus
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
           lambda x, lr: lr * 0.94 if x > 0 else lr,
           verbose=1)
     else:
-      initial_lr = 0.001 * FLAGS.num_gpus
+      initial_lr = 0.001 * flags_obj.num_gpus
       lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
           lambda x, lr: lr * 0.316 if x > 0 and x % 10 == 0 else lr,
           verbose=1)
@@ -86,15 +84,15 @@ def run(dataset_builder):
         learning_rate=tf.keras.backend.variable(initial_lr), momentum=0.9)
 
     # To train it from scratch, we need L2 regularization to avoid overfitting.
-    if FLAGS.no_pretrained_weights:
-      decay = 0.00004 * FLAGS.num_gpus
+    if flags_obj.no_pretrained_weights:
+      decay = 0.00004 * flags_obj.num_gpus
       for layer in model.layers:
         layer_type = layer.__class__.__name__
         if layer_type == "Conv2D":
           layer.kerner_regularizer = tf.keras.regularizers.l2(decay)
 
     callbacks = [lr_scheduler]
-    if FLAGS.enable_model_saving:
+    if flags_obj.enable_model_saving:
       checkpoint = utils.prepare_model_saving("mobilenetv2")
       callbacks.append(checkpoint)
 
@@ -105,7 +103,7 @@ def run(dataset_builder):
     # Train and evaluate the model
     history = model.fit(
         train_ds,
-        epochs=FLAGS.train_epochs,
+        epochs=flags_obj.train_epochs,
         callbacks=callbacks,
         steps_per_epoch=int(
             np.ceil(dataset_builder.num_train / global_batch_size)),
@@ -125,7 +123,7 @@ def run(dataset_builder):
 
 def main(_):
   dataset_builder = prepare_dataset_builder()
-  run(dataset_builder)
+  run(dataset_builder, flags.FLAGS)
 
 
 if __name__ == "__main__":
