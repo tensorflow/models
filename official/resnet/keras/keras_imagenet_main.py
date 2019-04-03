@@ -135,15 +135,10 @@ def run(flags_obj):
         width=imagenet_main.DEFAULT_IMAGE_SIZE,
         num_channels=imagenet_main.NUM_CHANNELS,
         num_classes=imagenet_main.NUM_CLASSES,
-        dtype=dtype,
-        drop_remainder=True)
+        dtype=dtype)
   else:
     distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_main.input_fn
-
-  # When `enable_xla` is True, we always drop the remainder of the batches
-  # in the dataset, as XLA-GPU doesn't support dynamic shapes.
-  drop_remainder = flags_obj.enable_xla
 
   train_input_dataset = input_fn(
       is_training=True,
@@ -152,8 +147,7 @@ def run(flags_obj):
       num_epochs=flags_obj.train_epochs,
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-      dtype=dtype,
-      drop_remainder=drop_remainder)
+      dtype=dtype)
 
   eval_input_dataset = None
   if not flags_obj.skip_eval:
@@ -163,8 +157,7 @@ def run(flags_obj):
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
         parse_record_fn=parse_record_keras,
-        dtype=dtype,
-        drop_remainder=drop_remainder)
+        dtype=dtype)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
@@ -174,23 +167,11 @@ def run(flags_obj):
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
 
-    if flags_obj.enable_xla:
-      if strategy and strategy.num_replicas_in_sync > 1:
-        # TODO(b/129791381): Specify `per_replica_batch_size` value in
-        # DistributionStrategy multi-replica case.
-        per_replica_batch_size = None
-      else:
-        per_replica_batch_size = flags_obj.batch_size
-    else:
-      per_replica_batch_size = None
-
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(imagenet_main.NUM_CLASSES)
     else:
-      model = resnet_model.resnet50(
-          num_classes=imagenet_main.NUM_CLASSES,
-          dtype=dtype,
-          batch_size=per_replica_batch_size)
+      model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
+                                    dtype=dtype)
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,

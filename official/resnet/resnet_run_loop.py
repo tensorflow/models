@@ -53,8 +53,7 @@ def process_record_dataset(dataset,
                            num_epochs=1,
                            dtype=tf.float32,
                            datasets_num_private_threads=None,
-                           num_parallel_batches=1,
-                           drop_remainder=False):
+                           num_parallel_batches=1):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -71,8 +70,6 @@ def process_record_dataset(dataset,
     datasets_num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
     num_parallel_batches: Number of parallel batches for tf.data.
-    drop_remainder: A boolean indicates whether to drop the remainder of the
-      batches. If True, the batch dimension will be static.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -105,7 +102,7 @@ def process_record_dataset(dataset,
   dataset = dataset.map(
       lambda value: parse_record_fn(value, is_training, dtype),
       num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  dataset = dataset.batch(batch_size, drop_remainder=drop_remainder)
+  dataset = dataset.batch(batch_size, drop_remainder=False)
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
