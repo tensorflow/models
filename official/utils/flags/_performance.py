@@ -38,8 +38,10 @@ def get_tf_dtype(flags_obj):
 
 
 def get_loss_scale(flags_obj):
-  if flags_obj.loss_scale is not None:
+  if flags_obj.loss_scale == "dynamic":
     return flags_obj.loss_scale
+  elif flags_obj.loss_scale is not None:
+    return float(flags_obj.loss_scale)
   return DTYPE_MAP[flags_obj.dtype][1]
 
 
@@ -47,7 +49,8 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        synthetic_data=True, max_train_steps=True, dtype=True,
                        all_reduce_alg=True, tf_gpu_thread_mode=False,
                        datasets_num_private_threads=False,
-                       datasets_num_parallel_batches=False):
+                       datasets_num_parallel_batches=False,
+                       dynamic_loss_scale=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -63,6 +66,8 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     datasets_num_private_threads: Number of private threads for datasets.
     datasets_num_parallel_batches: Determines how many batches to process in
     parallel when using map and batch from tf.data.
+    dynamic_loss_scale: Allow the "loss_scale" flag to take on the value
+      "dynamic". Only valid if `dtype` is True.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -117,23 +122,45 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        "Variables may be cast to a higher precision on a "
                        "case-by-case basis for numerical stability."))
 
-    flags.DEFINE_integer(
+    loss_scale_help_text = (
+        "The amount to scale the loss by when the model is run. {}. Before "
+        "gradients are computed, the loss is multiplied by the loss scale, "
+        "making all gradients loss_scale times larger. To adjust for this, "
+        "gradients are divided by the loss scale before being applied to "
+        "variables. This is mathematically equivalent to training without "
+        "a loss scale, but the loss scale helps avoid some intermediate "
+        "gradients from underflowing to zero. If not provided the default "
+        "for fp16 is 128 and 1 for all other dtypes.{}"
+    )
+    if dynamic_loss_scale:
+      loss_scale_help_text = loss_scale_help_text.format(
+          "This can be an int/float or the string 'dynamic'",
+          " The string 'dynamic' can be used to dynamically determine the "
+          "optimal loss scale during training, but currently this "
+          "significantly slows down performance")
+      loss_scale_validation_msg = ("loss_scale should be a positive int/float "
+                                   "or the string 'dynamic'.")
+    else:
+      loss_scale_help_text = loss_scale_help_text.format(
+          "This must be an int/float", "")
+      loss_scale_validation_msg = "loss_scale should be a positive int/float."
+    flags.DEFINE_string(
         name="loss_scale", short_name="ls", default=None,
-        help=help_wrap(
-            "The amount to scale the loss by when the model is run. Before "
-            "gradients are computed, the loss is multiplied by the loss scale, "
-            "making all gradients loss_scale times larger. To adjust for this, "
-            "gradients are divided by the loss scale before being applied to "
-            "variables. This is mathematically equivalent to training without "
-            "a loss scale, but the loss scale helps avoid some intermediate "
-            "gradients from underflowing to zero. If not provided the default "
-            "for fp16 is 128 and 1 for all other dtypes."))
+        help=help_wrap(loss_scale_help_text))
 
-    loss_scale_val_msg = "loss_scale should be a positive integer."
-    @flags.validator(flag_name="loss_scale", message=loss_scale_val_msg)
+    @flags.validator(flag_name="loss_scale", message=loss_scale_validation_msg)
     def _check_loss_scale(loss_scale):  # pylint: disable=unused-variable
+      """Validator to check the loss scale flag is valid"""
       if loss_scale is None:
         return True  # null case is handled in get_loss_scale()
+
+      if loss_scale == "dynamic" and dynamic_loss_scale:
+        return True
+
+      try:
+        loss_scale = float(loss_scale)
+      except ValueError:
+        return False
 
       return loss_scale > 0
 

@@ -343,9 +343,10 @@ def imagenet_model_fn(features, labels, mode, params):
   )
 
 
-def define_imagenet_flags():
+def define_imagenet_flags(dynamic_loss_scale=False):
   resnet_run_loop.define_resnet_flags(
-      resnet_size_choices=['18', '34', '50', '101', '152', '200'])
+      resnet_size_choices=['18', '34', '50', '101', '152', '200'],
+      dynamic_loss_scale=dynamic_loss_scale)
   flags.adopt_module_key_flags(resnet_run_loop)
   flags_core.set_defaults(train_epochs=90)
 
