@@ -26,7 +26,14 @@ class DatasetBuilderBase():
     self._num_dataset_private_threads = num_dataset_private_threads
     self._input_fn = input_fn
 
-  def to_dataset(self, batch_size, image_shape, take_train_num=-1):
+  def to_dataset(self,
+                 batch_size,
+                 image_shape,
+                 take_train_num=-1,
+                 label_smoothing=0.0):
+    if label_smoothing > 0:
+      raise UnimplementedError(
+          "Label smoothing is not supported in benchmark yet.")
     # N.B: -1 // x == -1, if x is a positive integer
     if take_train_num >= 0:
       self.num_train = take_train_num // batch_size * batch_size
