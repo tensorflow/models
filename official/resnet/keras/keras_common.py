@@ -215,6 +215,11 @@ def define_keras_flags():
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
+  flags.DEFINE_boolean(
+      name='enable_e2e_xprof', default=False,
+      help='Save end-to-end profiling data to model dir using Xprof. Profiling '
+      'has an overhead on both computation and memory usage, and can generate '
+      'gigantic files when profiling a lot of steps.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
