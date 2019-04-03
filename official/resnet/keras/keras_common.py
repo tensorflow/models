@@ -18,7 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import time
+import multiprocessing
+import os
 
 import numpy as np
 
@@ -26,6 +27,8 @@ import numpy as np
 from absl import flags
 import tensorflow as tf
 
+from official.utils.misc import keras_utils
+# pylint: disable=ungrouped-imports
 from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
                                                   gradient_descent_v2)
@@ -33,60 +36,6 @@ from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
 FLAGS = flags.FLAGS
 BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 TRAIN_TOP_1 = 'training_accuracy_top_1'
-
-
-class BatchTimestamp(object):
-  """A structure to store batch time stamp."""
-
-  def __init__(self, batch_index, timestamp):
-    self.batch_index = batch_index
-    self.timestamp = timestamp
-
-
-class TimeHistory(tf.keras.callbacks.Callback):
-  """Callback for Keras models."""
-
-  def __init__(self, batch_size, log_steps):
-    """Callback for logging performance (# image/second).
-
-    Args:
-      batch_size: Total batch size.
-      log_steps: Interval of time history logs.
-
-    """
-    self.batch_size = batch_size
-    super(TimeHistory, self).__init__()
-    self.log_steps = log_steps
-
-    # Logs start of step 0 then end of each step based on log_steps interval.
-    self.timestamp_log = []
-
-  def on_train_begin(self, logs=None):
-    self.record_batch = True
-
-  def on_train_end(self, logs=None):
-    self.train_finish_time = time.time()
-
-  def on_batch_begin(self, batch, logs=None):
-    if self.record_batch:
-      timestamp = time.time()
-      self.start_time = timestamp
-      self.record_batch = False
-      if batch == 0:
-        self.timestamp_log.append(BatchTimestamp(batch, timestamp))
-
-  def on_batch_end(self, batch, logs=None):
-    if batch % self.log_steps == 0:
-      timestamp = time.time()
-      elapsed_time = timestamp - self.start_time
-      examples_per_second = (self.batch_size * self.log_steps) / elapsed_time
-      if batch != 0:
-        self.record_batch = True
-        self.timestamp_log.append(BatchTimestamp(batch, timestamp))
-        tf.compat.v1.logging.info(
-            "BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
-            "'images_per_second': %f}" %
-            (batch, elapsed_time, examples_per_second))
 
 
 class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
@@ -129,14 +78,14 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
           'change learning rate to %s.', self.epochs, batch, lr)
 
 
-def get_config_proto():
+def get_config_proto_v1():
   """Return config proto according to flag settings, or None to use default."""
   config = None
   if FLAGS.enable_xla:
     # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
     _monkey_patch_org_assert_broadcastable()
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.graph_options.optimizer_options.global_jit_level = (
         tf.OptimizerOptions.ON_2)
     # Disable PinToHostOptimizer in grappler when enabling XLA because it causes
@@ -144,6 +93,45 @@ def get_config_proto():
     config.graph_options.rewrite_options.pin_to_host_optimization = (
         rewriter_config_pb2.RewriterConfig.OFF)
   return config
+
+
+def set_config_v2():
+  """Config eager context according to flag values using TF 2.0 API."""
+  if FLAGS.enable_xla:
+    # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
+    _monkey_patch_org_assert_broadcastable()
+
+    tf.config.optimizer.set_jit(True)
+    # Disable PinToHostOptimizer in grappler when enabling XLA because it
+    # causes OOM and performance regression.
+    tf.config.optimizer.set_experimental_options(
+        {"pin_to_host_optimization": False}
+    )
+
+
+def set_gpu_thread_mode_and_count(flags_obj):
+  """Set GPU thread mode and count, and adjust dataset threads count."""
+  cpu_count = multiprocessing.cpu_count()
+  tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
+
+  # Allocate private thread pool for each GPU to schedule and launch kernels
+  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 1
+  os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
+  os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
+  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
+                            os.environ['TF_GPU_THREAD_COUNT'])
+  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
+                            os.environ['TF_GPU_THREAD_MODE'])
+
+  # Limit data preprocessing threadpool to CPU cores minus number of total GPU
+  # private threads and memory copy threads.
+  total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
+  num_mem_copy_threads = flags_obj.num_gpus
+  if not flags_obj.datasets_num_private_threads:
+    flags_obj.datasets_num_private_threads = (cpu_count - total_gpu_thread_count
+                                              - num_mem_copy_threads)
+    tf.compat.v1.logging.info('Set datasets_num_private_threads to %s',
+                              flags_obj.datasets_num_private_threads)
 
 
 def get_optimizer():
@@ -154,7 +142,7 @@ def get_optimizer():
 
 def get_callbacks(learning_rate_schedule_fn, num_images):
   """Returns common callbacks."""
-  time_callback = TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
+  time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
 
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=FLAGS.model_dir)
@@ -210,22 +198,23 @@ def build_stats(history, eval_output, time_callback):
 
 def define_keras_flags():
   """Define flags for Keras models."""
+
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
+  flags.DEFINE_boolean(name='use_trivial_model', default=False,
+                       help='Whether to use a trivial Keras model.')
   flags.DEFINE_boolean(
       name='enable_xla', default=False,
       help='Whether to enable XLA auto jit compilation. This is still an '
       'experimental feature, and is not yet effective with TF 2.0.')
+  flags.DEFINE_boolean(
+      name='enable_tensorboard', default=False,
+      help='Whether to enable Tensorboard callback.')
   flags.DEFINE_integer(
       name='train_steps', default=None,
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
-  flags.DEFINE_integer(
-      name='log_steps', default=100,
-      help='For every log_steps, we log the timing information such as '
-      'examples per second. Besides, for every log_steps, we store the '
-      'timestamp of a batch end.')
   flags.DEFINE_boolean(
       name='enable_e2e_xprof', default=False,
       help='Save end-to-end profiling data to model dir using Xprof. Profiling '
@@ -234,7 +223,7 @@ def define_keras_flags():
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
-                       dtype=tf.float32):
+                       dtype=tf.float32, drop_remainder=True):
   """Returns an input function that returns a dataset with random data.
 
   This input_fn returns a data set that iterates over a set of random data and
@@ -249,6 +238,8 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     num_classes: Number of classes that should be represented in the fake labels
       tensor
     dtype: Data type for features/images.
+    drop_remainder: A boolean indicates whether to drop the remainder of the
+      batches. If True, the batch dimension will be static.
 
   Returns:
     An input_fn that can be used in place of a real one to return a dataset
@@ -275,7 +266,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
 
     # `drop_remainder` will make dataset produce outputs with known shapes.
-    data = data.batch(batch_size, drop_remainder=True)
+    data = data.batch(batch_size, drop_remainder=drop_remainder)
     data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return data
 

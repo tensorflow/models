@@ -550,6 +550,82 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
       output = sess.run(output, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 9, 9, 32))
 
+  def testDepthMultiplier(self):
+    resnets = [
+        resnet_v1.resnet_v1_50, resnet_v1.resnet_v1_101,
+        resnet_v1.resnet_v1_152, resnet_v1.resnet_v1_200
+    ]
+    resnet_names = [
+        'resnet_v1_50', 'resnet_v1_101', 'resnet_v1_152', 'resnet_v1_200'
+    ]
+    for resnet, resnet_name in zip(resnets, resnet_names):
+      depth_multiplier = 0.25
+      global_pool = True
+      num_classes = 10
+      inputs = create_test_input(2, 224, 224, 3)
+      with slim.arg_scope(resnet_utils.resnet_arg_scope()):
+        scope_base = resnet_name + '_base'
+        _, end_points_base = resnet(
+            inputs,
+            num_classes,
+            global_pool=global_pool,
+            min_base_depth=1,
+            scope=scope_base)
+        scope_test = resnet_name + '_test'
+        _, end_points_test = resnet(
+            inputs,
+            num_classes,
+            global_pool=global_pool,
+            min_base_depth=1,
+            depth_multiplier=depth_multiplier,
+            scope=scope_test)
+        for block in ['block1', 'block2', 'block3', 'block4']:
+          block_name_base = scope_base + '/' + block
+          block_name_test = scope_test + '/' + block
+          self.assertTrue(block_name_base in end_points_base)
+          self.assertTrue(block_name_test in end_points_test)
+          self.assertEqual(
+              len(end_points_base[block_name_base].get_shape().as_list()), 4)
+          self.assertEqual(
+              len(end_points_test[block_name_test].get_shape().as_list()), 4)
+          self.assertListEqual(
+              end_points_base[block_name_base].get_shape().as_list()[:3],
+              end_points_test[block_name_test].get_shape().as_list()[:3])
+          self.assertEqual(
+              int(depth_multiplier *
+                  end_points_base[block_name_base].get_shape().as_list()[3]),
+              end_points_test[block_name_test].get_shape().as_list()[3])
+
+  def testMinBaseDepth(self):
+    resnets = [
+        resnet_v1.resnet_v1_50, resnet_v1.resnet_v1_101,
+        resnet_v1.resnet_v1_152, resnet_v1.resnet_v1_200
+    ]
+    resnet_names = [
+        'resnet_v1_50', 'resnet_v1_101', 'resnet_v1_152', 'resnet_v1_200'
+    ]
+    for resnet, resnet_name in zip(resnets, resnet_names):
+      min_base_depth = 5
+      global_pool = True
+      num_classes = 10
+      inputs = create_test_input(2, 224, 224, 3)
+      with slim.arg_scope(resnet_utils.resnet_arg_scope()):
+        _, end_points = resnet(
+            inputs,
+            num_classes,
+            global_pool=global_pool,
+            min_base_depth=min_base_depth,
+            depth_multiplier=0,
+            scope=resnet_name)
+        for block in ['block1', 'block2', 'block3', 'block4']:
+          block_name = resnet_name + '/' + block
+          self.assertTrue(block_name in end_points)
+          self.assertEqual(
+              len(end_points[block_name].get_shape().as_list()), 4)
+          # The output depth is 4 times base_depth.
+          depth_expected = min_base_depth * 4
+          self.assertEqual(
+              end_points[block_name].get_shape().as_list()[3], depth_expected)
 
 if __name__ == '__main__':
   tf.test.main()

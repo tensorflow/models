@@ -53,7 +53,8 @@ def process_record_dataset(dataset,
                            num_epochs=1,
                            dtype=tf.float32,
                            datasets_num_private_threads=None,
-                           num_parallel_batches=1):
+                           num_parallel_batches=1,
+                           drop_remainder=False):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -70,6 +71,8 @@ def process_record_dataset(dataset,
     datasets_num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
     num_parallel_batches: Number of parallel batches for tf.data.
+    drop_remainder: A boolean indicates whether to drop the remainder of the
+      batches. If True, the batch dimension will be static.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -83,6 +86,11 @@ def process_record_dataset(dataset,
     tf.compat.v1.logging.info('datasets_num_private_threads: %s',
                               datasets_num_private_threads)
 
+  # Disable intra-op parallelism to optimize for throughput instead of latency.
+  options = tf.data.Options()
+  options.experimental_threading.max_intra_op_parallelism = 1
+  dataset = dataset.with_options(options)
+
   # Prefetches a batch at a time to smooth out the time taken to load input
   # files for shuffling and processing.
   dataset = dataset.prefetch(buffer_size=batch_size)
@@ -94,12 +102,10 @@ def process_record_dataset(dataset,
   dataset = dataset.repeat(num_epochs)
 
   # Parses the raw records into images and labels.
-  dataset = dataset.apply(
-      tf.data.experimental.map_and_batch(
-          lambda value: parse_record_fn(value, is_training, dtype),
-          batch_size=batch_size,
-          num_parallel_batches=num_parallel_batches,
-          drop_remainder=False))
+  dataset = dataset.map(
+      lambda value: parse_record_fn(value, is_training, dtype),
+      num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  dataset = dataset.batch(batch_size, drop_remainder=drop_remainder)
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
@@ -550,14 +556,10 @@ def resnet_main(
 
   # Creates a `RunConfig` that checkpoints every 24 hours which essentially
   # results in checkpoints determined only by `epochs_between_evals`.
-  # TODO(ayushd,yuefengz): re-enable checkpointing for multi-worker strategy.
-  save_checkpoints_secs = (None if distribution_strategy.__class__.__name__ in
-                           ['CollectiveAllReduceStrategy',
-                            'MultiWorkerMirroredStrategy'] else 60*60*24)
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy,
       session_config=session_config,
-      save_checkpoints_secs=save_checkpoints_secs,
+      save_checkpoints_secs=60*60*24,
       save_checkpoints_steps=None)
 
   # Initializes model with all but the dense layer from pretrained ResNet.
@@ -577,7 +579,8 @@ def resnet_main(
           'resnet_version': int(flags_obj.resnet_version),
           'loss_scale': flags_core.get_loss_scale(flags_obj),
           'dtype': flags_core.get_tf_dtype(flags_obj),
-          'fine_tune': flags_obj.fine_tune
+          'fine_tune': flags_obj.fine_tune,
+          'num_workers': num_workers,
       })
 
   run_params = {
@@ -587,6 +590,7 @@ def resnet_main(
       'resnet_version': flags_obj.resnet_version,
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
+      'num_workers': num_workers,
   }
   if flags_obj.use_synthetic_data:
     dataset_name = dataset_name + '-synthetic'
@@ -600,7 +604,7 @@ def resnet_main(
       model_dir=flags_obj.model_dir,
       batch_size=flags_obj.batch_size)
 
-  def input_fn_train(num_epochs):
+  def input_fn_train(num_epochs, input_context=None):
     return input_function(
         is_training=True,
         data_dir=flags_obj.data_dir,
@@ -609,7 +613,8 @@ def resnet_main(
         num_epochs=num_epochs,
         dtype=flags_core.get_tf_dtype(flags_obj),
         datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-        num_parallel_batches=flags_obj.datasets_num_parallel_batches)
+        num_parallel_batches=flags_obj.datasets_num_parallel_batches,
+        input_context=input_context)
 
   def input_fn_eval():
     return input_function(
@@ -624,10 +629,13 @@ def resnet_main(
                   flags_obj.train_epochs)
 
   use_train_and_evaluate = flags_obj.use_train_and_evaluate or (
-      distribution_strategy.__class__.__name__ == 'CollectiveAllReduceStrategy')
+      distribution_strategy.__class__.__name__ in [
+          'CollectiveAllReduceStrategy', 'MultiWorkerMirroredStrategy'])
   if use_train_and_evaluate:
     train_spec = tf.estimator.TrainSpec(
-        input_fn=lambda: input_fn_train(train_epochs), hooks=train_hooks,
+        input_fn=lambda input_context=None: input_fn_train(
+            train_epochs, input_context=input_context),
+        hooks=train_hooks,
         max_steps=flags_obj.max_train_steps)
     eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval,
                                       steps=flags_obj.max_train_steps)
@@ -661,8 +669,11 @@ def resnet_main(
         # value of num_train_epochs in the lambda function will not be changed
         # before it is used. So it is safe to ignore the pylint error here
         # pylint: disable=cell-var-from-loop
-        classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
-                         hooks=train_hooks, max_steps=flags_obj.max_train_steps)
+        classifier.train(
+            input_fn=lambda input_context=None: input_fn_train(
+                num_train_epochs, input_context=input_context),
+            hooks=train_hooks,
+            max_steps=flags_obj.max_train_steps)
 
       # flags_obj.max_train_steps is generally associated with testing and
       # profiling. As a result it is frequently called with synthetic data,
