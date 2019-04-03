@@ -40,8 +40,7 @@ class ImageNetDatasetBuilder():
         self._get_perfzero_dataset(False, batch_size))
 
   def _get_perfzero_dataset(self, is_training, batch_size):
-    def _to_categorical(record):
-      image, label = record
+    def _to_categorical(image, label):
       label = tf.one_hot(label, self.num_classes, dtype=tf.int64)
       return (image, label)
 

@@ -44,13 +44,13 @@ flags.DEFINE_string(
 class MobileNetV2Benchmark(tf.test.Benchmark):
   """Benchmarks tf.keras.application.MobileNetV2."""
 
-  def __init__(self, output_dir=None, data_dir=None, **kwargs):
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     if output_dir is None:
       output_dir = FLAGS.benchmark_output_dir
-    if data_dir is None:
-      data_dir = FLAGS.benchmark_data_dir
+    if root_data_dir is None:
+      root_data_dir = FLAGS.benchmark_data_dir
     self._output_dir = output_dir
-    self._data_dir = data_dir
+    self._data_dir = root_data_dir
     utils.define_flags()
 
   def _prepare_dataset_builder(self, data_spec):
