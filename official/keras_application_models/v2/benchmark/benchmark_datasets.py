@@ -37,7 +37,7 @@ class ImageNetDatasetBuilder():
 
   def _get_perfzero_dataset(self, is_training, batch_size):
     return imagenet_main.input_fn(
-        is_training=True,
+        is_training=is_training,
         data_dir=self._data_dir,
         batch_size=batch_size,
         num_epochs=None,  # repeat infinitely
