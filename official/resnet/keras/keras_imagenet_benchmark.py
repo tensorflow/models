@@ -107,6 +107,22 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
+  def benchmark_xla_8_gpu_fp16_dynamic(self):
+    """Test Keras model with XLA, eager, dist_strat, 8 GPUs, dynamic fp16."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 256 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_dynamic')
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.loss_scale = 'dynamic'
+    # Thread tuning to improve performance.
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
     stats = keras_imagenet_main.run(flags.FLAGS)
@@ -205,6 +221,19 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_fp16_dynamic(self):
+    """Test Keras model with 1 GPU, fp16, and dynamic loss scaling."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16_dynamic')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.loss_scale = 'dynamic'
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu_fp16(self):
     """Test Keras model with XLA, 1 GPU and fp16."""
     self._setup()
@@ -216,6 +245,20 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_fp16_dynamic(self):
+    """Test Keras model with XLA, 1 GPU, fp16, and dynamic loss scaling."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16_dynamic')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.loss_scale = 'dynamic'
     self._run_and_report_benchmark()
 
   def benchmark_graph_1_gpu(self):
@@ -301,6 +344,21 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_fp16_dynamic_tweaked(self):
+    """Test Keras model with 8 GPUs, fp16, and dynamic loss scaling."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_8_gpu_fp16_dynamic_tweaked')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.loss_scale = 'dynamic'
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
   def benchmark_xla_8_gpu_fp16(self):
     """Test Keras model with XLA, 8 GPUs and fp16."""
     self._setup()
@@ -325,6 +383,22 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_fp16_dynamic_tweaked(self):
+    """Test Keras model with config tuning, XLA, 8 GPUs and dynamic fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_dynamic_tweaked')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
@@ -394,6 +468,22 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_graph_xla_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_8_gpu_fp16_dynamic_tweaked(self):
+    """Test graph Keras with config tuning, XLA, 8 GPUs and dynamic fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_xla_8_gpu_fp16_dynamic_tweaked')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
