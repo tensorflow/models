@@ -352,7 +352,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16_dynamic_tweaked')
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_8_gpu_fp16_dynamic_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
