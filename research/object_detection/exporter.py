@@ -402,7 +402,7 @@ def _export_inference_graph(input_type,
       f.write(str(inference_graph_def))
 
   if additional_output_tensor_names is not None:
-    output_node_names = ','.join(outputs.keys()+additional_output_tensor_names)
+    output_node_names = ','.join(list(outputs.keys())+additional_output_tensor_names)
   else:
     output_node_names = ','.join(outputs.keys())
 
