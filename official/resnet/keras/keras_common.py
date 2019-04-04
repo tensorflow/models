@@ -204,7 +204,7 @@ def get_profiler_callback():
   return ProfilerCallback(FLAGS.model_dir, start_step, stop_step)
 
 
-def build_stats(history, eval_output, time_callback):
+def build_stats(history, eval_output, callbacks):
   """Normalizes and returns dictionary of stats.
 
   Args:
@@ -212,7 +212,8 @@ def build_stats(history, eval_output, time_callback):
       and sparse_categorical_accuracy.
     eval_output: Output of the eval step. Assumes first value is eval_loss and
       second value is accuracy_top_1.
-    time_callback: Time tracking callback likely used during keras.fit.
+    callbacks: a list of callbacks which might include a time history callback
+      used during keras.fit.
 
   Returns:
     Dictionary of normalized results.
@@ -232,16 +233,20 @@ def build_stats(history, eval_output, time_callback):
     elif 'sparse_categorical_accuracy' in train_hist:
       stats[TRAIN_TOP_1] = train_hist['sparse_categorical_accuracy'][-1].item()
 
-  if time_callback:
-    timestamp_log = time_callback.timestamp_log
-    stats['step_timestamp_log'] = timestamp_log
-    stats['train_finish_time'] = time_callback.train_finish_time
-    if len(timestamp_log) > 1:
-      stats['avg_exp_per_second'] = (
-          time_callback.batch_size * time_callback.log_steps *
-          (len(time_callback.timestamp_log)-1) /
-          (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
+  if not callbacks:
+    return stats
 
+  # Look for the time history callback which was used during keras.fit
+  for callback in callbacks:
+    if isinstance(callback, keras_utils.TimeHistory):
+      timestamp_log = callback.timestamp_log
+      stats['step_timestamp_log'] = timestamp_log
+      stats['train_finish_time'] = callback.train_finish_time
+      if len(timestamp_log) > 1:
+        stats['avg_exp_per_second'] = (
+            callback.batch_size * callback.log_steps *
+            (len(callback.timestamp_log)-1) /
+            (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
   return stats
 
 
