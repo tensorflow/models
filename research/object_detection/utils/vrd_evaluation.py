@@ -352,7 +352,7 @@ class VRDPhraseDetectionEvaluator(VRDDetectionEvaluator):
         where the named bounding box is computed as an enclosing bounding box
         of all bounding boxes of the i-th input structure.
     """
-    first_box_key = groundtruth_box_tuples.dtype.fields.keys()[0]
+    first_box_key = list(groundtruth_box_tuples.dtype.fields.keys())[0]
     miny = groundtruth_box_tuples[first_box_key][:, 0]
     minx = groundtruth_box_tuples[first_box_key][:, 1]
     maxy = groundtruth_box_tuples[first_box_key][:, 2]
@@ -388,7 +388,7 @@ class VRDPhraseDetectionEvaluator(VRDDetectionEvaluator):
         where the named bounding box is computed as an enclosing bounding box
         of all bounding boxes of the i-th input structure.
     """
-    first_box_key = detections_box_tuples.dtype.fields.keys()[0]
+    first_box_key = list(detections_box_tuples.dtype.fields.keys())[0]
     miny = detections_box_tuples[first_box_key][:, 0]
     minx = detections_box_tuples[first_box_key][:, 1]
     maxy = detections_box_tuples[first_box_key][:, 2]
