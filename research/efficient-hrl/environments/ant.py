@@ -75,13 +75,13 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     # No cfrc observation
     if self._expose_all_qpos:
       obs = np.concatenate([
-          self.physics.data.qpos.flat[:15],  # Ensures only ant obs.
-          self.physics.data.qvel.flat[:14],
+          self.data.qpos.flat[:15],  # Ensures only ant obs.
+          self.data.qvel.flat[:14],
       ])
     else:
       obs = np.concatenate([
-          self.physics.data.qpos.flat[2:15],
-          self.physics.data.qvel.flat[:14],
+          self.data.qpos.flat[2:15],
+          self.data.qvel.flat[:14],
       ])
 
     if self._expose_body_coms is not None:
@@ -117,18 +117,18 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
   def get_ori(self):
     ori = [0, 1, 0, 0]
-    rot = self.model.data.qpos[self.__class__.ORI_IND:self.__class__.ORI_IND + 4]  # take the quaternion
+    rot = self.data.qpos[self.__class__.ORI_IND:self.__class__.ORI_IND + 4]  # take the quaternion
     ori = q_mult(q_mult(rot, ori), q_inv(rot))[1:3]  # project onto x-y plane
     ori = math.atan2(ori[1], ori[0])
     return ori
 
   def set_xy(self, xy):
-    qpos = np.copy(self.physics.data.qpos)
+    qpos = np.copy(self.data.qpos)
     qpos[0] = xy[0]
     qpos[1] = xy[1]
 
-    qvel = self.physics.data.qvel
+    qvel = self.data.qvel
     self.set_state(qpos, qvel)
 
   def get_xy(self):
-    return self.physics.data.qpos[:2]
+    return self.data.qpos[:2]
