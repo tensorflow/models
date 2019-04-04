@@ -314,7 +314,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
             groundtruth_classes
     }
     metric_ops = eval_metric_ops.get_estimator_eval_metric_ops(eval_dict)
-    _, update_op = metric_ops[metric_ops.keys()[0]]
+    _, update_op = metric_ops.values()[0]
 
     with self.test_session() as sess:
       sess.run(tf.global_variables_initializer())
