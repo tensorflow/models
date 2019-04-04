@@ -200,6 +200,12 @@ def get_profiler_callback():
   start_step, stop_step = profile_steps
   if start_step < 0 or start_step > stop_step:
     raise ValueError(profile_steps_error_message)
+  if FLAGS.enable_tensorboard:
+    tf.compat.v1.logging.warn(
+        'Both TensorBoard and profiler callbacks are used. Note that the '
+        'TensorBoard callback profiles the 2nd step (unless otherwise '
+        'specified). Please make sure the steps profiled by the two callbacks '
+        'do not overlap.')
 
   return ProfilerCallback(FLAGS.model_dir, start_step, stop_step)
 
