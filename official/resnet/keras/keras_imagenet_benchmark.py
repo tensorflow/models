@@ -286,6 +286,29 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_graph_1_gpu_fp16(self):
+    """Test Keras model in legacy graph mode with 1 GPU and fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_fp16')
+    FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_1_gpu_fp16(self):
+    """Test Keras model in legacy graph mode with 1 GPU, fp16 and XLA."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_1_gpu_fp16')
+    FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu(self):
     """Test Keras model with 8 GPUs."""
     self._setup()
