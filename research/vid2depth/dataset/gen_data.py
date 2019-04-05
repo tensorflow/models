@@ -34,7 +34,6 @@ import multiprocessing
 import os
 from absl import app
 from absl import flags
-from absl import logging
 import dataset_loader
 import numpy as np
 import scipy.misc
@@ -109,7 +108,7 @@ def _generate_data():
   # all_examples = {}
   # for i in range(dataloader.num_train):
   #   _gen_example(i, all_examples)
-  #   logging.info('Generated: %d', len(all_examples))
+  #   tf.logging.info('Generated: %d', len(all_examples))
 
   all_frames = range(dataloader.num_train)
   frame_chunks = np.array_split(all_frames, NUM_CHUNKS)
@@ -128,12 +127,12 @@ def _generate_data():
 
   with gfile.Open(os.path.join(FLAGS.data_dir, 'train.txt'), 'w') as train_f:
     with gfile.Open(os.path.join(FLAGS.data_dir, 'val.txt'), 'w') as val_f:
-      logging.info('Generating data...')
+      tf.logging.info('Generating data...')
       for index, frame_chunk in enumerate(frame_chunks):
         all_examples.clear()
         pool.map(_gen_example_star,
                  itertools.izip(frame_chunk, itertools.repeat(all_examples)))
-        logging.info('Chunk %d/%d: saving %s entries...', index + 1, NUM_CHUNKS,
+        tf.logging.info('Chunk %d/%d: saving %s entries...', index + 1, NUM_CHUNKS,
                      len(all_examples))
         for _, example in all_examples.items():
           if example:

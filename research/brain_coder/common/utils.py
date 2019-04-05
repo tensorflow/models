@@ -10,7 +10,6 @@ import cPickle
 import heapq
 import random
 
-from absl import logging
 import numpy as np
 import six
 from six.moves import xrange
@@ -389,7 +388,7 @@ class RouletteWheel(object):
           else:
             self.add(obj, weight, key)
             count += 1
-      logging.info('Loaded %d samples from disk.', count)
+      tf.logging.info('Loaded %d samples from disk.', count)
       # Clear buffer since these items are already on disk.
       self.save_to_disk_buffer = []
 
@@ -549,7 +548,7 @@ class RouletteWheel(object):
     if self.save_file is None:
       raise RuntimeError('Cannot call incremental_save. `save_file` is None.')
     if log_info:
-      logging.info('Saving %d new samples to disk.',
+      tf.logging.info('Saving %d new samples to disk.',
                    len(self.save_to_disk_buffer))
     with tf.gfile.OpenFast(self.save_file, 'a') as f:
       for entry in self.save_to_disk_buffer:

@@ -23,7 +23,6 @@ from __future__ import print_function
 import locale
 import os
 import re
-from absl import logging
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -143,15 +142,15 @@ def count_parameters(also_print=True):
   """
   total = 0
   if also_print:
-    logging.info('Model Parameters:')
+    tf.logging.info('Model Parameters:')
   for (_, v) in get_vars_to_save_and_restore().items():
     shape = v.get_shape()
     if also_print:
-      logging.info('%s %s: %s', v.op.name, shape,
+      tf.logging.info('%s %s: %s', v.op.name, shape,
                    format_number(shape.num_elements()))
     total += shape.num_elements()
   if also_print:
-    logging.info('Total: %s', format_number(total))
+    tf.logging.info('Total: %s', format_number(total))
   return total
 
 
@@ -191,8 +190,8 @@ def get_vars_to_save_and_restore(ckpt=None):
             not_loaded.remove(v_additional_name)
             continue
           else:
-            logging.warn('Shape mismatch, will not restore %s.', v.op.name)
-        logging.warn('Did not find var %s in checkpoint: %s', v.op.name,
+            tf.logging.warn('Shape mismatch, will not restore %s.', v.op.name)
+        tf.logging.warn('Did not find var %s in checkpoint: %s', v.op.name,
                      os.path.basename(ckpt))
       else:
         # Check if shapes match.
@@ -201,11 +200,11 @@ def get_vars_to_save_and_restore(ckpt=None):
           mapping[v.op.name] = v
           not_loaded.remove(v.op.name)
         else:
-          logging.warn('Shape mismatch, will not restore %s.', v.op.name)
+          tf.logging.warn('Shape mismatch, will not restore %s.', v.op.name)
     if not_loaded:
-      logging.warn('The following variables in the checkpoint were not loaded:')
+      tf.logging.warn('The following variables in the checkpoint were not loaded:')
       for varname_not_loaded in not_loaded:
-        logging.info('%s', varname_not_loaded)
+        tf.logging.info('%s', varname_not_loaded)
   else:  # just get model vars.
     for v in model_vars:
       mapping[v.op.name] = v
@@ -226,7 +225,7 @@ def get_imagenet_vars_to_restore(imagenet_ckpt):
     if mvname_noprefix in ckpt_var_names:
       vars_to_restore_imagenet[mvname_noprefix] = v
     else:
-      logging.info('The following variable will not be restored from '
+      tf.logging.info('The following variable will not be restored from '
                    'pretrained ImageNet-checkpoint: %s', mvname_noprefix)
   return vars_to_restore_imagenet
 

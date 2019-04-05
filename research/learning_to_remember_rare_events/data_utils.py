@@ -20,7 +20,6 @@ Simply call
   python data_utils.py
 """
 
-import logging
 import os
 import subprocess
 from six.moves import cPickle as pickle
@@ -77,8 +76,8 @@ def get_data():
   ok_num_examples = [len(ll) == 20 for _, ll in test_data.items()]
   assert all(ok_num_examples), 'Bad number of examples in test data.'
 
-  logging.info('Number of labels in train data: %d.', len(train_data))
-  logging.info('Number of labels in test data: %d.', len(test_data))
+  tf.logging.info('Number of labels in train data: %d.', len(train_data))
+  tf.logging.info('Number of labels in test data: %d.', len(test_data))
 
   return train_data, test_data
 
@@ -93,7 +92,7 @@ def crawl_directory(directory, augment_with_rotations=False,
 
   # traverse root directory
   for root, _, files in os.walk(directory):
-    logging.info('Reading files from %s', root)
+    tf.logging.info('Reading files from %s', root)
     fileflag = 0
     for file_name in files:
       full_file_name = os.path.join(root, file_name)
@@ -150,7 +149,7 @@ def write_datafiles(directory, write_file,
   imgwidth = IMAGE_ORIGINAL_SIZE
   imgheight = IMAGE_ORIGINAL_SIZE
 
-  logging.info('Reading the data.')
+  tf.logging.info('Reading the data.')
   images, labels, info = crawl_directory(directory,
                                          augment_with_rotations=rotate,
                                          first_label=first_label)
@@ -162,17 +161,17 @@ def write_datafiles(directory, write_file,
     labels_np[i] = labels[i]
 
   if resize:
-    logging.info('Resizing images.')
+    tf.logging.info('Resizing images.')
     resized_images = resize_images(images_np, new_width, new_height)
 
-    logging.info('Writing resized data in float32 format.')
+    tf.logging.info('Writing resized data in float32 format.')
     data = {'images': resized_images,
             'labels': labels_np,
             'info': info}
     with tf.gfile.GFile(write_file, 'w') as f:
       pickle.dump(data, f)
   else:
-    logging.info('Writing original sized data in boolean format.')
+    tf.logging.info('Writing original sized data in boolean format.')
     data = {'images': images_np,
             'labels': labels_np,
             'info': info}
@@ -185,27 +184,27 @@ def write_datafiles(directory, write_file,
 def maybe_download_data():
   """Download Omniglot repo if it does not exist."""
   if os.path.exists(REPO_DIR):
-    logging.info('It appears that Git repo already exists.')
+    tf.logging.info('It appears that Git repo already exists.')
   else:
-    logging.info('It appears that Git repo does not exist.')
-    logging.info('Cloning now.')
+    tf.logging.info('It appears that Git repo does not exist.')
+    tf.logging.info('Cloning now.')
 
     subprocess.check_output('git clone %s' % REPO_LOCATION, shell=True)
 
   if os.path.exists(TRAIN_DIR):
-    logging.info('It appears that train data has already been unzipped.')
+    tf.logging.info('It appears that train data has already been unzipped.')
   else:
-    logging.info('It appears that train data has not been unzipped.')
-    logging.info('Unzipping now.')
+    tf.logging.info('It appears that train data has not been unzipped.')
+    tf.logging.info('Unzipping now.')
 
     subprocess.check_output('unzip %s.zip -d %s' % (TRAIN_DIR, DATA_DIR),
                             shell=True)
 
   if os.path.exists(TEST_DIR):
-    logging.info('It appears that test data has already been unzipped.')
+    tf.logging.info('It appears that test data has already been unzipped.')
   else:
-    logging.info('It appears that test data has not been unzipped.')
-    logging.info('Unzipping now.')
+    tf.logging.info('It appears that test data has not been unzipped.')
+    tf.logging.info('Unzipping now.')
 
     subprocess.check_output('unzip %s.zip -d %s' % (TEST_DIR, DATA_DIR),
                             shell=True)
@@ -235,7 +234,7 @@ def preprocess_omniglot():
 
 
 def main(unused_argv):
-  logging.basicConfig(level=logging.INFO)
+  tf.logging.set_verbosity(tf.logging.INFO)
   preprocess_omniglot()
 
 

@@ -12,7 +12,6 @@ import os
 import time
 
 from absl import flags
-from absl import logging
 import tensorflow as tf
 
 # internal session lib import
@@ -159,7 +158,7 @@ class AsyncTrainer(object):
       assert num_workers > 0, 'There must be at least 1 training worker.'
       worker_device = '/job:worker/replica:%d/task:0/cpu:0' % task_id
       # ps_device = '/job:ps/replica:0/task:0/cpu:0'
-    logging.info('worker_device: %s', worker_device)
+    tf.logging.info('worker_device: %s', worker_device)
 
     logging_file = os.path.join(
         logging_dir, 'solutions_%d.txt' % task_id)
@@ -281,18 +280,18 @@ class AsyncTrainer(object):
     self.cached_global_step = -1
     self.cached_global_npe = -1
 
-    logging.info('summary_interval: %d', self.summary_interval)
+    tf.logging.info('summary_interval: %d', self.summary_interval)
 
     # Load top-k buffer.
     if self.model.top_episodes is not None and tf.gfile.Exists(self.topk_file):
       try:
         with tf.gfile.FastGFile(self.topk_file, 'r') as f:
           self.model.top_episodes = cPickle.loads(f.read())
-        logging.info(
+        tf.logging.info(
             'Loaded top-k buffer from disk with %d items. Location: "%s"',
             len(self.model.top_episodes), self.topk_file)
       except (cPickle.UnpicklingError, EOFError) as e:
-        logging.warn(
+        tf.logging.warn(
             'Failed to load existing top-k buffer from disk. Removing bad file.'
             '\nLocation: "%s"\nException: %s', self.topk_file, str(e))
         tf.gfile.Remove(self.topk_file)
@@ -375,7 +374,7 @@ class AsyncTrainer(object):
   def maybe_save_best_model(self, session, saver, checkpoint_file):
     """Check if this model got the highest reward and save to disk if so."""
     if self.is_chief and session.run(self.is_best_model):
-      logging.info('Saving best model to "%s"', checkpoint_file)
+      tf.logging.info('Saving best model to "%s"', checkpoint_file)
       saver.save(session, checkpoint_file)
       session.run(self.reset_is_best_model)
 
@@ -385,7 +384,7 @@ class AsyncTrainer(object):
     Call this periodically so that training can recover if jobs go down.
     """
     if self.model.experience_replay is not None:
-      logging.info('Saving experience replay buffer to "%s".',
+      tf.logging.info('Saving experience replay buffer to "%s".',
                    self.model.experience_replay.save_file)
       self.model.experience_replay.incremental_save(True)
 
@@ -396,7 +395,7 @@ class AsyncTrainer(object):
     large.
     """
     if self.model.experience_replay is not None:
-      logging.info('Deleting experience replay buffer at "%s".',
+      tf.logging.info('Deleting experience replay buffer at "%s".',
                    self.model.experience_replay.save_file)
       tf.gfile.Remove(self.model.experience_replay.save_file)
 
@@ -406,7 +405,7 @@ class AsyncTrainer(object):
     Call this periodically so that training can recover if jobs go down.
     """
     if self.model.top_episodes is not None:
-      logging.info('Saving top-k buffer to "%s".', self.topk_file)
+      tf.logging.info('Saving top-k buffer to "%s".', self.topk_file)
       # Overwrite previous data each time.
       with tf.gfile.FastGFile(self.topk_file, 'w') as f:
         f.write(cPickle.dumps(self.model.top_episodes))
@@ -465,14 +464,14 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
   Returns:
     The trainer object used to run training updates.
   """
-  logging.info('Will run asynchronous training.')
+  tf.logging.info('Will run asynchronous training.')
 
   if run_dir is None:
     run_dir = FLAGS.logdir
   train_dir = os.path.join(run_dir, 'train')
   best_model_checkpoint = os.path.join(train_dir, 'best.ckpt')
   events_dir = '%s/events_%d' % (run_dir, FLAGS.task_id)
-  logging.info('Events directory: %s', events_dir)
+  tf.logging.info('Events directory: %s', events_dir)
 
   logging_dir = os.path.join(run_dir, 'logs')
   if not tf.gfile.Exists(logging_dir):
@@ -486,7 +485,7 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
 
   # Only profile task 0.
   if FLAGS.do_profiling:
-    logging.info('Profiling enabled')
+    tf.logging.info('Profiling enabled')
     profiler = cProfile.Profile()
     profiler.enable()
   else:
@@ -508,16 +507,16 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
 
   var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                tf.get_variable_scope().name)
-  logging.info('Trainable vars:')
+  tf.logging.info('Trainable vars:')
   for v in var_list:
-    logging.info('  %s, %s, %s', v.name, v.device, v.get_shape())
+    tf.logging.info('  %s, %s, %s', v.name, v.device, v.get_shape())
 
-  logging.info('All vars:')
+  tf.logging.info('All vars:')
   for v in tf.global_variables():
-    logging.info('  %s, %s, %s', v.name, v.device, v.get_shape())
+    tf.logging.info('  %s, %s, %s', v.name, v.device, v.get_shape())
 
   def init_fn(unused_sess):
-    logging.info('No checkpoint found. Initialized global params.')
+    tf.logging.info('No checkpoint found. Initialized global params.')
 
   sv = tf.train.Supervisor(is_chief=is_chief,
                            logdir=train_dir,
@@ -541,7 +540,7 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
   last_replay_save_time = time.time()
 
   global_step = -1
-  logging.info(
+  tf.logging.info(
       'Starting session. '
       'If this hangs, we\'re mostly likely waiting to connect '
       'to the parameter server. One common cause is that the parameter '
@@ -565,7 +564,7 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
                 'run_dir: "%s"'
                 % (run_number, session.run(trainer.run_number), run_dir))
           global_step = trainer.cached_global_step
-          logging.info('Starting training at step=%d', global_step)
+          tf.logging.info('Starting training at step=%d', global_step)
           while do_training:
             trainer.update_global_model(session)
 
@@ -582,25 +581,25 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
 
             # Stopping conditions.
             if tuner and tuner.should_trial_stop():
-              logging.info('Tuner requested early stopping. Finishing.')
+              tf.logging.info('Tuner requested early stopping. Finishing.')
               do_training = False
             if is_chief and FLAGS.stop_on_success:
               found_solution = session.run(trainer.found_solution_flag)
               if found_solution:
                 do_training = False
-                logging.info('Solution found. Finishing.')
+                tf.logging.info('Solution found. Finishing.')
             if FLAGS.max_npe and global_npe >= FLAGS.max_npe:
               # Max NPE (number of programs executed) reached.
-              logging.info('Max NPE reached. Finishing.')
+              tf.logging.info('Max NPE reached. Finishing.')
               do_training = False
             if sv.should_stop():
-              logging.info('Supervisor issued stop. Finishing.')
+              tf.logging.info('Supervisor issued stop. Finishing.')
               do_training = False
 
         except tf.errors.NotFoundError:
           # Catch "Error while reading resource variable".
           # The chief worker likely destroyed the container, so do not retry.
-          logging.info('Caught NotFoundError. Quitting.')
+          tf.logging.info('Caught NotFoundError. Quitting.')
           do_training = False
           should_retry = False
           break
@@ -609,7 +608,7 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
           if str(e).startswith('Invalid variable reference.'):
             # The chief worker likely destroyed the container, so do not
             # retry.
-            logging.info(
+            tf.logging.info(
                 'Caught "InternalError: Invalid variable reference.". '
                 'Quitting.')
             do_training = False
@@ -647,25 +646,25 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
               'found_solution': found_solution,
               'task': trainer.data_manager.task_name,
               'global_rep': run_number}
-          logging.info('results_dict: %s', results_dict)
+          tf.logging.info('results_dict: %s', results_dict)
           results_writer.append(results_dict)
 
     except tf.errors.AbortedError:
       # Catch "Graph handle is not found" error due to preempted jobs.
-      logging.info('Caught AbortedError. Retying.')
+      tf.logging.info('Caught AbortedError. Retying.')
       should_retry = True
     except tf.errors.DeadlineExceededError:
       supervisor_deadline_exceeded = True
       should_retry = False
 
   if is_chief:
-    logging.info('This is chief worker. Stopping all workers.')
+    tf.logging.info('This is chief worker. Stopping all workers.')
     sv.stop()
 
   if supervisor_deadline_exceeded:
-    logging.info('Supervisor timed out. Quitting.')
+    tf.logging.info('Supervisor timed out. Quitting.')
   else:
-    logging.info('Reached %s steps. Worker stopped.', global_step)
+    tf.logging.info('Reached %s steps. Worker stopped.', global_step)
 
   # Dump profiling.
   """
@@ -684,7 +683,7 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
   """  # pylint: disable=pointless-string-statement
   if profiler:
     prof_file = os.path.join(run_dir, 'task_%d.prof' % FLAGS.task_id)
-    logging.info('Done profiling.\nDumping to "%s".', prof_file)
+    tf.logging.info('Done profiling.\nDumping to "%s".', prof_file)
     profiler.create_stats()
     with tf.gfile.Open(prof_file, 'w') as f:
       f.write(marshal.dumps(profiler.stats))
@@ -728,7 +727,7 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,
   results = results_lib.Results(logdir)
   results_list, _ = results.read_all()
 
-  logging.info('Starting experiment. Directory: "%s"', logdir)
+  tf.logging.info('Starting experiment. Directory: "%s"', logdir)
 
   if results_list:
     if results_list[0]['max_npe'] != FLAGS.max_npe:
@@ -751,20 +750,20 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,
     else:
       rep_dir = logdir
 
-    logging.info(
+    tf.logging.info(
         'Starting repetition %d (%d out of %d)', run_number, run_number + 1,
         FLAGS.num_repetitions)
 
     # Train will write result to disk.
     with tf.container(rep_container_name):
       trainer = train(config, is_chief, tuner, rep_dir, run_number, results)
-    logging.info('Done training.')
+    tf.logging.info('Done training.')
 
     if is_chief:
       # Destroy current container immediately (clears current graph).
-      logging.info('Clearing shared variables.')
+      tf.logging.info('Clearing shared variables.')
       tf.Session.reset(FLAGS.master, containers=[rep_container_name])
-      logging.info('Shared variables cleared.')
+      tf.logging.info('Shared variables cleared.')
 
       # Delete replay buffer on disk.
       assert trainer
@@ -772,10 +771,10 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,
     else:
       # Give chief worker time to clean up.
       sleep_sec = 30.0
-      logging.info('Sleeping for %s sec.', sleep_sec)
+      tf.logging.info('Sleeping for %s sec.', sleep_sec)
       time.sleep(sleep_sec)
     tf.reset_default_graph()
-    logging.info('Default graph reset.')
+    tf.logging.info('Default graph reset.')
 
     # Expecting that train wrote new result to disk before returning.
     results_list, _ = results.read_all()

@@ -18,7 +18,6 @@ This file provides a generic evaluation method that can be used to evaluate a
 DetectionModel.
 """
 
-import logging
 import tensorflow as tf
 
 from object_detection import eval_util
@@ -153,12 +152,12 @@ def get_evaluators(eval_config, categories):
     if eval_metric_fn_key not in EVAL_METRICS_CLASS_DICT:
       raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
     if eval_metric_fn_key == 'oid_challenge_object_detection_metrics':
-      logging.warning(
+      tf.logging.warning(
           'oid_challenge_object_detection_metrics is deprecated; '
           'use oid_challenge_detection_metrics instead'
       )
     if eval_metric_fn_key == 'oid_V2_detection_metrics':
-      logging.warning(
+      tf.logging.warning(
           'open_images_V2_detection_metrics is deprecated; '
           'use oid_V2_detection_metrics instead'
       )
@@ -194,7 +193,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
   model = create_model_fn()
 
   if eval_config.ignore_groundtruth and not eval_config.export_path:
-    logging.fatal('If ignore_groundtruth=True then an export_path is '
+    tf.logging.fatal('If ignore_groundtruth=True then an export_path is '
                   'required. Aborting!!!')
 
   tensor_dict, losses_dict = _extract_predictions_and_losses(
@@ -231,7 +230,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       result_dict, result_losses_dict = sess.run([tensor_dict, losses_dict])
       counters['success'] += 1
     except tf.errors.InvalidArgumentError:
-      logging.info('Skipping image')
+      tf.logging.info('Skipping image')
       counters['skipped'] += 1
       return {}, {}
     global_step = tf.train.global_step(sess, tf.train.get_global_step())

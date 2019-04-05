@@ -18,7 +18,6 @@ import copy
 import os
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
-import logging
 import src.utils as utils
 import cfgs.config_common as cc
 
@@ -50,7 +49,7 @@ def get_default_args():
                           toy_problem=0)
 
   buildinger_args = utils.Foo(building_names=['area1_gates_wingA_floor1_westpart'],
-                              env_class=None, robot=robot, 
+                              env_class=None, robot=robot,
                               task_params=task_params, env=env,
                               camera_param=camera_param)
 
@@ -66,7 +65,7 @@ def get_default_args():
 
   control_args = utils.Foo(train=False, test=False,
                            force_batchnorm_is_training_at_test=False)
-  
+
   arch_args = utils.Foo(rgb_encoder='resnet_v2_50', d_encoder='resnet_v2_50')
 
   return utils.Foo(solver=solver_args,
@@ -79,36 +78,36 @@ def get_vars(config_name):
     vars.append('noall')
   if len(vars) == 2: # n_ori
     vars.append('4')
-  logging.error('vars: %s', vars)
+  tf.logging.error('vars: %s', vars)
   return vars
 
 def get_args_for_config(config_name):
   args = get_default_args()
   config_name, mode = config_name.split('+')
   vars = get_vars(config_name)
-  
-  logging.info('config_name: %s, mode: %s', config_name, mode)
-  
+
+  tf.logging.info('config_name: %s, mode: %s', config_name, mode)
+
   args.buildinger.task_params.n_ori = int(vars[2])
   args.solver.freeze_conv = True
   args.solver.pretrained_path = rgb_resnet_v2_50_path
   args.buildinger.task_params.img_channels = 5
   args.solver.data_loss_wt = 0.00001
- 
+
   if vars[0] == 'v0':
     None
   else:
-    logging.error('config_name: %s undefined', config_name)
+    tf.logging.error('config_name: %s undefined', config_name)
 
   args.buildinger.task_params.height = args.buildinger.camera_param.height
   args.buildinger.task_params.width = args.buildinger.camera_param.width
   args.buildinger.task_params.modalities = args.buildinger.camera_param.modalities
-  
+
   if vars[1] == 'all':
     args = cc.get_args_for_mode_building_all(args, mode)
   elif vars[1] == 'noall':
     args = cc.get_args_for_mode_building(args, mode)
-  
+
   # Log the arguments
-  logging.error('%s', args)
+  tf.logging.error('%s', args)
   return args

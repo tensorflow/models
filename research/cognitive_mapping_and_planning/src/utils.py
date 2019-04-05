@@ -19,7 +19,7 @@ r"""Generaly Utilities.
 import numpy as np, cPickle, os, time
 from six.moves import xrange
 import src.file_utils as fu
-import logging
+import tensorflow as tf
 
 class Timer():
   def __init__(self):
@@ -34,7 +34,7 @@ class Timer():
 
   def toc(self, average=True, log_at=-1, log_str='', type='calls'):
     if self.start_time == 0:
-      logging.error('Timer not started by calling tic().')
+      tf.logging.error('Timer not started by calling tic().')
     t = time.time()
     diff = time.time() - self.start_time
     self.total_time += diff
@@ -43,10 +43,10 @@ class Timer():
 
     if type == 'calls' and log_at > 0 and np.mod(self.calls, log_at) == 0:
       _ = []
-      logging.info('%s: %f seconds.', log_str, self.time_per_call)
+      tf.logging.info('%s: %f seconds.', log_str, self.time_per_call)
     elif type == 'time' and log_at > 0 and t - self.last_log_time >= log_at:
       _ = []
-      logging.info('%s: %f seconds.', log_str, self.time_per_call)
+      tf.logging.info('%s: %f seconds.', log_str, self.time_per_call)
       self.last_log_time = t
 
     if average:

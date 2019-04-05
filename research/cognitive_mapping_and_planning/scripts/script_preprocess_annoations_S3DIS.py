@@ -16,14 +16,14 @@
 import os
 import glob
 import numpy as np
-import logging
 import cPickle
+import tensorflow as tf
 from datasets import nav_env
 from datasets import factory
-from src import utils 
+from src import utils
 from src import map_utils as mu
 
-logging.basicConfig(level=logging.INFO)
+tf.logging.set_verbosity(tf.logging.INFO)
 DATA_DIR = 'data/stanford_building_parser_dataset_raw/'
 
 mkdir_if_missing = utils.mkdir_if_missing
@@ -34,7 +34,7 @@ def _get_semantic_maps(building_name, transform, map_, flip, cats):
   maps = []
   for cat in cats:
     maps.append(np.zeros((map_.size[1], map_.size[0])))
-  
+
   for r in rooms:
     room = load_room(building_name, r, category_list=cats)
     classes = room['class_id']
@@ -80,12 +80,12 @@ def _write_map_files(b_in, b_out, transform):
                   valid_min=-10, valid_max=200, n_samples_per_face=200)
   robot = utils.Foo(radius=15, base=10, height=140, sensor_height=120,
                     camera_elevation_degree=-15)
-  
+
   building_loader = factory.get_dataset('sbpd')
   for flip in [False, True]:
     b = nav_env.Building(b_out, robot, env, flip=flip,
                          building_loader=building_loader)
-    logging.info("building_in: %s, building_out: %s, transform: %d", b_in,
+    tf.logging.info("building_in: %s, building_out: %s, transform: %d", b_in,
                  b_out, transform)
     maps = _get_semantic_maps(b_in, transform, b.map, flip, cats)
     maps = np.transpose(np.array(maps), axes=[1,2,0])
@@ -96,7 +96,7 @@ def _write_map_files(b_in, b_out, transform):
                                  b.map.origin[0], b.map.origin[1],
                                  b.map.resolution, flip)
     out_file = os.path.join(DATA_DIR, 'processing', 'class-maps', file_name)
-    logging.info('Writing semantic maps to %s.', out_file)
+    tf.logging.info('Writing semantic maps to %s.', out_file)
     save_variables(out_file, [maps, cats], ['maps', 'cats'], overwrite=True)
 
 def _transform_area5b(room_dimension):
@@ -117,7 +117,7 @@ def collect_room(building_name, room_name):
   vertexs = []; colors = [];
   for f in files:
     file_name = os.path.join(room_dir, f)
-    logging.info('  %s', file_name)
+    tf.logging.info('  %s', file_name)
     a = np.loadtxt(file_name)
     vertex = a[:,:3]*1.
     color = a[:,3:]*1
@@ -162,7 +162,7 @@ def write_room_dimensions(b_in, b_out, transform):
     room_dimension[r] = np.concatenate((np.min(vertex, axis=0), np.max(vertex, axis=0)), axis=0)
   if transform == 1:
     room_dimension = _transform_area5b(room_dimension)
-  
+
   out_file = os.path.join(DATA_DIR, 'processing', 'room-dimension', b_out+'.pkl')
   save_variables(out_file, [room_dimension], ['room_dimension'], overwrite=True)
 
@@ -171,7 +171,7 @@ def write_room_dimensions_all(I):
   bs_in = ['Area_1', 'Area_2', 'Area_3', 'Area_4', 'Area_5', 'Area_5', 'Area_6']
   bs_out = ['area1', 'area2', 'area3', 'area4', 'area5a', 'area5b', 'area6']
   transforms = [0, 0, 0, 0, 0, 1, 0]
-  
+
   for i in I:
     b_in = bs_in[i]
     b_out = bs_out[i]
@@ -183,7 +183,7 @@ def write_class_maps_all(I):
   bs_in = ['Area_1', 'Area_2', 'Area_3', 'Area_4', 'Area_5', 'Area_5', 'Area_6']
   bs_out = ['area1', 'area2', 'area3', 'area4', 'area5a', 'area5b', 'area6']
   transforms = [0, 0, 0, 0, 0, 1, 0]
-  
+
   for i in I:
     b_in = bs_in[i]
     b_out = bs_out[i]
@@ -194,4 +194,3 @@ def write_class_maps_all(I):
 if __name__ == '__main__':
   write_room_dimensions_all([0, 2, 3, 4, 5, 6])
   write_class_maps_all([0, 2, 3, 4, 5, 6])
-

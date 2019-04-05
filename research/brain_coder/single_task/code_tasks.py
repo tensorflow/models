@@ -9,7 +9,6 @@ import copy
 import itertools
 import random
 
-from absl import logging
 import numpy as np
 from six.moves import xrange
 
@@ -18,6 +17,7 @@ from common import reward as r  # brain coder
 from single_task import misc  # brain coder
 from single_task import test_tasks  # brain coder
 
+import tensorflow as tf
 
 MAX_EXECUTION_STEPS = 5000
 
@@ -27,7 +27,7 @@ def make_task(task_name, override_kwargs=None, max_code_length=100,
               do_code_simplification=False,
               correct_bonus=2.0, code_length_bonus=1.0):
   """Make tasks with setting from paper."""
-  logging.info('Making paper-config task.')
+  tf.logging.info('Making paper-config task.')
   n = 16  # Number of test cases.
   task_mapping = {
       'print-hello': (
@@ -97,7 +97,7 @@ def make_task(task_name, override_kwargs=None, max_code_length=100,
   reward_fn = r.absolute_distance_reward
   # reward_fn = r.absolute_mod_distance_reward
   # reward_fn = r.absolute_log_distance_reward
-  logging.info('Using reward function: %s', reward_fn.__name__)
+  tf.logging.info('Using reward function: %s', reward_fn.__name__)
 
   # We want reward with and without code simplification to be scaled the same
   # way. Without code simplification, give the maximum code length bonus
@@ -173,7 +173,7 @@ class MultiIOTaskManager(object):
       reward += self.code_length_bonus  # Bonus for shortest code.
     self.best_reward = reward
     self.good_reward = 0.75 * reward
-    logging.info('Known best reward: %.4f', self.best_reward)
+    tf.logging.info('Known best reward: %.4f', self.best_reward)
 
   def _score_batch(self, code_strings):
     return [self._score_code(code) for code in code_strings]

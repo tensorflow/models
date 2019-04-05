@@ -29,8 +29,8 @@ Note2: This module operates on numpy boxes and box lists.
 
 from abc import abstractmethod
 import collections
-import logging
 import numpy as np
+import tensorflow as tf
 
 from object_detection.core import standard_fields
 from object_detection.utils import metrics
@@ -179,7 +179,7 @@ class VRDDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
           datatype label_data_type above).
     """
     if image_id not in self._image_ids:
-      logging.warn('No groundtruth for the image with id %s.', image_id)
+      tf.logging.warn('No groundtruth for the image with id %s.', image_id)
       # Since for the correct work of evaluator it is assumed that groundtruth
       # is inserted first we make sure to break the code if is it not the case.
       self._image_ids.update([image_id])
@@ -459,7 +459,7 @@ class _VRDDetectionEvaluation(object):
           possibly additional classes.
     """
     if image_key in self._groundtruth_box_tuples:
-      logging.warn(
+      tf.logging.warn(
           'image %s has already been added to the ground truth database.',
           image_key)
       return
@@ -536,7 +536,7 @@ class _VRDDetectionEvaluation(object):
         median_rank@100: median rank computed on 100 top-scoring samples.
     """
     if self._num_gt_instances == 0:
-      logging.warn('No ground truth instances')
+      tf.logging.warn('No ground truth instances')
 
     if not self._scores:
       scores = np.array([], dtype=float)

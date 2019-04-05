@@ -17,11 +17,11 @@
 """
 import copy
 import skimage.morphology
-import logging
 import numpy as np
 import scipy.ndimage
 import matplotlib.pyplot as plt
 import PIL
+import tensorflow as tf
 
 import src.utils as utils
 import cv2
@@ -141,7 +141,7 @@ def resize_maps(map, map_scales, resize_method):
     elif resize_method == 'linear_noantialiasing':
       map_ = cv2.resize(map*1, None, None, fx=sc, fy=sc, interpolation=cv2.INTER_LINEAR)
     else:
-      logging.error('Unknown resizing method')
+      tf.logging.error('Unknown resizing method')
     scaled_maps.append(map_)
   return scaled_maps
 
@@ -242,4 +242,3 @@ def get_map_to_predict(src_locs, src_x_axiss, src_y_axiss, map, map_size,
     valids.append(valid)
     fss.append(fs)
   return fss, valids
-

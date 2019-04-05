@@ -17,7 +17,6 @@
 
 import abc
 import tensorflow as tf
-from absl import logging
 import embedders
 from envs import task_env
 
@@ -27,16 +26,16 @@ def _print_debug_ios(history, goal, output):
   """Prints sizes of history, goal and outputs."""
   if history is not None:
     shape = history.get_shape().as_list()
-    # logging.info('history embedding shape ')
-    # logging.info(shape)
+    # tf.logging.info('history embedding shape ')
+    # tf.logging.info(shape)
   if len(shape) != 3:
       raise ValueError('history Tensor must have rank=3')
   if goal is not None:
-     logging.info('goal embedding shape ')
-     logging.info(goal.get_shape().as_list())
+     tf.logging.info('goal embedding shape ')
+     tf.logging.info(goal.get_shape().as_list())
   if output is not None:
-     logging.info('targets shape ')
-     logging.info(output.get_shape().as_list())
+     tf.logging.info('targets shape ')
+     tf.logging.info(output.get_shape().as_list())
 
 
 class Policy(object):
@@ -234,7 +233,7 @@ class LSTMPolicy(Policy):
         # to corresponding observations.
         def embed(name):
           with tf.variable_scope('embed_{}'.format(name)):
-            # logging.info('Policy uses embedding %s', name)
+            # tf.logging.info('Policy uses embedding %s', name)
             return self._embedders[name].build(observations[name])
 
         all_inputs = map(embed, [

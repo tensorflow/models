@@ -20,7 +20,6 @@ import os
 import re
 import tensorflow as tf
 from tensorflow.contrib import slim
-import logging
 
 DEFAULT_DATASET_DIR = os.path.join(os.path.dirname(__file__), 'data/fsns')
 
@@ -76,7 +75,7 @@ def read_charset(filename, null_character=u'\u2591'):
     for i, line in enumerate(f):
       m = pattern.match(line)
       if m is None:
-        logging.warning('incorrect charset file. line #%d: %s', i, line)
+        tf.logging.warning('incorrect charset file. line #%d: %s', i, line)
         continue
       code = int(m.group(1))
       char = m.group(2).decode('utf-8')
@@ -126,7 +125,7 @@ def get_split(split_name, dataset_dir=None, config=None):
   if split_name not in config['splits']:
     raise ValueError('split name %s was not recognized.' % split_name)
 
-  logging.info('Using %s dataset split_name=%s dataset_dir=%s', config['name'],
+  tf.logging.info('Using %s dataset split_name=%s dataset_dir=%s', config['name'],
                split_name, dataset_dir)
 
   # Ignores the 'image/height' feature.

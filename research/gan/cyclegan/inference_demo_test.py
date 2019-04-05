@@ -5,7 +5,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from absl import logging
 import numpy as np
 import PIL
 
@@ -66,7 +65,7 @@ class InferenceDemoTest(tf.test.TestCase):
     # Create inference graph
     tf.reset_default_graph()
     FLAGS.patch_dim = FLAGS.patch_size
-    logging.info('dir_path: %s', os.listdir(self._export_dir))
+    tf.logging.info('dir_path: %s', os.listdir(self._export_dir))
     FLAGS.checkpoint_path = self._ckpt_path
     FLAGS.image_set_x_glob = self._image_glob
     FLAGS.image_set_y_glob = self._image_glob
@@ -74,7 +73,7 @@ class InferenceDemoTest(tf.test.TestCase):
     FLAGS.generated_y_dir = self._geny_dir
 
     inference_demo.main(None)
-    logging.info('gen x: %s', os.listdir(self._genx_dir))
+    tf.logging.info('gen x: %s', os.listdir(self._genx_dir))
 
     # Check that the image names match
     self.assertSetEqual(
@@ -91,7 +90,7 @@ class InferenceDemoTest(tf.test.TestCase):
         self.assertRealisticImage(image_path)
 
   def assertRealisticImage(self, image_path):
-    logging.info('Testing %s for realism.', image_path)
+    tf.logging.info('Testing %s for realism.', image_path)
     # If the normalization is off or forgotten, then the generated image is
     # all one pixel value. This tests that different pixel values are achieved.
     input_np = np.asarray(PIL.Image.open(image_path))

@@ -50,7 +50,7 @@ def evaluate_checkpoint_repeatedly(checkpoint_dir,
         should_stop = evaluate_checkpoint_fn(checkpoint_path)
         break
       except tf.errors.DataLossError as e:
-        logging.warn(
+        tf.logging.warn(
             'Encountered a DataLossError while evaluating a checkpoint. This '
             'can happen when reading a checkpoint before it is fully written. '
             'Retrying...'
@@ -101,7 +101,7 @@ def compute_average_reward(sess, env_base, step_fn, gamma, num_steps,
         sess, step_fn, gamma, num_steps)
     s_reward = last_meta_reward  # Navigation
     success = (s_reward > -5.0)  # When using diff=False
-    logging.info('Episode = %d, reward = %s, meta_reward = %f, '
+    tf.logging.info('Episode = %d, reward = %s, meta_reward = %f, '
                  'last_reward = %s, last meta_reward = %f, success = %s',
                  i, reward, meta_reward, last_reward, last_meta_reward,
                  success)

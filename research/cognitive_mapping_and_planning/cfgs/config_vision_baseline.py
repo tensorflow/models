@@ -18,7 +18,6 @@ import os
 import numpy as np
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
-import logging
 import src.utils as utils
 import cfgs.config_common as cc
 import datasets.nav_env_config as nec
@@ -62,23 +61,23 @@ def get_default_baseline_args():
 def get_arch_vars(arch_str):
   if arch_str == '': vals = []
   else: vals = arch_str.split('_')
-  
+
   ks = ['ver', 'lstm_dim', 'dropout']
-  
+
   # Exp Ver
   if len(vals) == 0: vals.append('v0')
   # LSTM dimentsions
   if len(vals) == 1: vals.append('lstm2048')
   # Dropout
   if len(vals) == 2: vals.append('noDO')
-  
+
   assert(len(vals) == 3)
-  
+
   vars = utils.Foo()
   for k, v in zip(ks, vals):
     setattr(vars, k, v)
-  
-  logging.error('arch_vars: %s', vars)
+
+  tf.logging.error('arch_vars: %s', vars)
   return vars
 
 def process_arch_str(args, arch_str):
@@ -89,19 +88,19 @@ def process_arch_str(args, arch_str):
   args.navtask.task_params.outputs.rel_goal_loc = True
   args.navtask.task_params.input_type = 'vision'
   args.navtask.task_params.outputs.images = True
-  
+
   if args.navtask.camera_param.modalities[0] == 'rgb':
     args.solver.pretrained_path = rgb_resnet_v2_50_path
   elif args.navtask.camera_param.modalities[0] == 'depth':
     args.solver.pretrained_path = d_resnet_v2_50_path
   else:
-    logging.fatal('Neither of rgb or d')
+    tf.logging.fatal('Neither of rgb or d')
 
-  if arch_vars.dropout == 'DO': 
+  if arch_vars.dropout == 'DO':
     args.arch.fc_dropout = 0.5
 
   args.tfcode = 'B'
-  
+
   exp_ver = arch_vars.ver
   if exp_ver == 'v0':
     # Multiplicative interaction between goal loc and image features.
@@ -109,14 +108,14 @@ def process_arch_str(args, arch_str):
     args.arch.pred_neurons = [256, 256]
     args.arch.goal_embed_neurons = [64, 8]
     args.arch.img_embed_neurons = [1024, 512, 256*8]
-  
+
   elif exp_ver == 'v1':
     # Additive interaction between goal and image features.
     args.arch.combine_type = 'add'
     args.arch.pred_neurons = [256, 256]
     args.arch.goal_embed_neurons = [64, 256]
     args.arch.img_embed_neurons = [1024, 512, 256]
-  
+
   elif exp_ver == 'v2':
     # LSTM at the output on top of multiple interactions.
     args.arch.combine_type = 'multiply'
@@ -125,7 +124,7 @@ def process_arch_str(args, arch_str):
     args.arch.lstm_output = True
     args.arch.lstm_output_dim = int(arch_vars.lstm_dim[4:])
     args.arch.pred_neurons = [256] # The other is inside the LSTM.
-  
+
   elif exp_ver == 'v0blind':
     # LSTM only on the goal location.
     args.arch.combine_type = 'goalonly'
@@ -134,13 +133,13 @@ def process_arch_str(args, arch_str):
     args.arch.lstm_output = True
     args.arch.lstm_output_dim = 256
     args.arch.pred_neurons = [256] # The other is inside the LSTM.
-  
+
   else:
-    logging.fatal('exp_ver: %s undefined', exp_ver)
+    tf.logging.fatal('exp_ver: %s undefined', exp_ver)
     assert(False)
 
   # Log the arguments
-  logging.error('%s', args)
+  tf.logging.error('%s', args)
   return args
 
 def get_args_for_config(config_name):
@@ -150,11 +149,11 @@ def get_args_for_config(config_name):
 
   exp_name, mode_str = config_name.split('+')
   arch_str, solver_str, navtask_str = exp_name.split('.')
-  logging.error('config_name: %s', config_name)
-  logging.error('arch_str: %s', arch_str)
-  logging.error('navtask_str: %s', navtask_str)
-  logging.error('solver_str: %s', solver_str)
-  logging.error('mode_str: %s', mode_str)
+  tf.logging.error('config_name: %s', config_name)
+  tf.logging.error('arch_str: %s', arch_str)
+  tf.logging.error('navtask_str: %s', navtask_str)
+  tf.logging.error('solver_str: %s', solver_str)
+  tf.logging.error('mode_str: %s', mode_str)
 
   args.solver = cc.process_solver_str(solver_str)
   args.navtask = cc.process_navtask_str(navtask_str)
@@ -169,5 +168,5 @@ def get_args_for_config(config_name):
   args.control.test_name = '{:s}_on_{:s}'.format(mode, imset)
 
   # Log the arguments
-  logging.error('%s', args)
+  tf.logging.error('%s', args)
   return args

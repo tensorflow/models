@@ -19,7 +19,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import logging
 import nets
 from ops import icp_grad  # pylint: disable=unused-import
 from ops.icp_op import icp
@@ -65,17 +64,17 @@ class Model(object):
     self.seq_length = seq_length
     self.legacy_mode = legacy_mode
 
-    logging.info('data_dir: %s', data_dir)
-    logging.info('learning_rate: %s', learning_rate)
-    logging.info('beta1: %s', beta1)
-    logging.info('smooth_weight: %s', smooth_weight)
-    logging.info('ssim_weight: %s', ssim_weight)
-    logging.info('icp_weight: %s', icp_weight)
-    logging.info('batch_size: %s', batch_size)
-    logging.info('img_height: %s', img_height)
-    logging.info('img_width: %s', img_width)
-    logging.info('seq_length: %s', seq_length)
-    logging.info('legacy_mode: %s', legacy_mode)
+    tf.logging.info('data_dir: %s', data_dir)
+    tf.logging.info('learning_rate: %s', learning_rate)
+    tf.logging.info('beta1: %s', beta1)
+    tf.logging.info('smooth_weight: %s', smooth_weight)
+    tf.logging.info('ssim_weight: %s', ssim_weight)
+    tf.logging.info('icp_weight: %s', icp_weight)
+    tf.logging.info('batch_size: %s', batch_size)
+    tf.logging.info('img_height: %s', img_height)
+    tf.logging.info('img_width: %s', img_width)
+    tf.logging.info('seq_length: %s', seq_length)
+    tf.logging.info('legacy_mode: %s', legacy_mode)
 
     if self.is_training:
       self.reader = reader.DataReader(self.data_dir, self.batch_size,
@@ -125,7 +124,7 @@ class Model(object):
           self.cloud[i] = multiscale_clouds_i
         # Reuse the same depth graph for all images.
         tf.get_variable_scope().reuse_variables()
-    logging.info('disp: %s', util.info(self.disp))
+    tf.logging.info('disp: %s', util.info(self.disp))
 
   def build_loss(self):
     """Adds ops for computing loss."""

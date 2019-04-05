@@ -15,15 +15,15 @@
 
 import os
 import numpy as np
-import logging
 import src.utils as utils
 import datasets.nav_env_config as nec
 from datasets import factory
+import tensorflow as tf
 
 def adjust_args_for_mode(args, mode):
   if mode == 'train':
     args.control.train = True
-  
+
   elif mode == 'val1':
     # Same settings as for training, to make sure nothing wonky is happening
     # there.
@@ -58,12 +58,12 @@ def adjust_args_for_mode(args, mode):
     args.control.reset_rng_seed = True
     args.control.test_mode = 'test'
   else:
-    logging.fatal('Unknown mode: %s.', mode)
+    tf.logging.fatal('Unknown mode: %s.', mode)
     assert(False)
   return args
 
 def get_solver_vars(solver_str):
-  if solver_str == '': vals = []; 
+  if solver_str == '': vals = [];
   else: vals = solver_str.split('_')
   ks = ['clip', 'dlw', 'long', 'typ', 'isdk', 'adam_eps', 'init_lr'];
   ks = ks[:len(vals)]
@@ -86,11 +86,11 @@ def get_solver_vars(solver_str):
   if len(vals) == 7: ks.append('init_lr');  vals.append('lr1en3')
 
   assert(len(vals) == 8)
-  
+
   vars = utils.Foo()
   for k, v in zip(ks, vals):
     setattr(vars, k, v)
-  logging.error('solver_vars: %s', vars)
+  tf.logging.error('solver_vars: %s', vars)
   return vars
 
 def process_solver_str(solver_str):
@@ -122,7 +122,7 @@ def process_solver_str(solver_str):
     solver.steps_per_decay = 20000
     solver.max_steps = 60000
   else:
-    logging.fatal('solver_vars.long should be long, long2, nolong or nol.')
+    tf.logging.fatal('solver_vars.long should be long, long2, nolong or nol.')
     assert(False)
 
   clip = solver_vars.clip
@@ -131,7 +131,7 @@ def process_solver_str(solver_str):
   elif clip[:4] == 'clip':
     solver.clip_gradient_norm = float(clip[4:].replace('x', '.'))
   else:
-    logging.fatal('Unknown solver_vars.clip: %s', clip)
+    tf.logging.fatal('Unknown solver_vars.clip: %s', clip)
     assert(False)
 
   typ = solver_vars.typ
@@ -151,10 +151,10 @@ def process_solver_str(solver_str):
     solver.momentum2 = None
     solver.learning_rate_decay = 0.1
   else:
-    logging.fatal('Unknown solver_vars.typ: %s', typ)
+    tf.logging.fatal('Unknown solver_vars.typ: %s', typ)
     assert(False)
 
-  logging.error('solver: %s', solver)
+  tf.logging.error('solver: %s', solver)
   return solver
 
 def get_navtask_vars(navtask_str):
@@ -194,12 +194,12 @@ def get_navtask_vars(navtask_str):
   vars = utils.Foo()
   for k, v in zip(ks, vals):
     setattr(vars, k, v)
-  logging.error('navtask_vars: %s', vals)
+  tf.logging.error('navtask_vars: %s', vals)
   return vars
 
 def process_navtask_str(navtask_str):
   navtask = nec.nav_env_base_config()
-  
+
   # Clobber with overrides from strings.
   navtask_vars = get_navtask_vars(navtask_str)
 
@@ -213,21 +213,21 @@ def process_navtask_str(navtask_str):
                                      -1 -np.arange(n_aux_views_each)))
   aux_delta_thetas = aux_delta_thetas*np.deg2rad(navtask.camera_param.fov)
   navtask.task_params.aux_delta_thetas = aux_delta_thetas
-  
+
   if navtask_vars.data_aug == 'aug':
     navtask.task_params.data_augment.structured = False
   elif navtask_vars.data_aug == 'straug':
     navtask.task_params.data_augment.structured = True
   else:
-    logging.fatal('Unknown navtask_vars.data_aug %s.', navtask_vars.data_aug)
+    tf.logging.fatal('Unknown navtask_vars.data_aug %s.', navtask_vars.data_aug)
     assert(False)
 
   navtask.task_params.num_history_frames = int(navtask_vars.history[1:])
   navtask.task_params.n_views = 1+navtask.task_params.num_history_frames
-  
+
   navtask.task_params.goal_channels = int(navtask_vars.n_ori)
-  
-  if navtask_vars.task == 'hard': 
+
+  if navtask_vars.task == 'hard':
     navtask.task_params.type = 'rng_rejection_sampling_many'
     navtask.task_params.rejection_sampling_M = 2000
     navtask.task_params.min_dist = 10
@@ -241,21 +241,21 @@ def process_navtask_str(navtask_str):
         len(navtask.task_params.semantic_task.class_map_names)
     navtask.task_params.type = 'to_nearest_obj_acc'
   else:
-    logging.fatal('navtask_vars.task: should be hard or r2r, ST')
+    tf.logging.fatal('navtask_vars.task: should be hard or r2r, ST')
     assert(False)
-  
+
   if navtask_vars.modality == 'rgb':
     navtask.camera_param.modalities = ['rgb']
     navtask.camera_param.img_channels = 3
   elif navtask_vars.modality == 'd':
     navtask.camera_param.modalities = ['depth']
     navtask.camera_param.img_channels = 2
-  
+
   navtask.task_params.img_height   = navtask.camera_param.height
   navtask.task_params.img_width    = navtask.camera_param.width
   navtask.task_params.modalities   = navtask.camera_param.modalities
   navtask.task_params.img_channels = navtask.camera_param.img_channels
   navtask.task_params.img_fov      = navtask.camera_param.fov
-  
+
   navtask.dataset = factory.get_dataset(navtask_vars.dataset_name)
   return navtask

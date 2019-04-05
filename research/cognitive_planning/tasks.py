@@ -1343,7 +1343,7 @@ class NewTask(UnrolledTask):
           for t in target_vertices
       ])
     except:
-      logging.error('there is no path between vertex %d and at least one of '
+      tf.logging.error('there is no path between vertex %d and at least one of '
                     'the targets %r', vertex, target_vertices)
       raise
 

@@ -6,7 +6,6 @@ from __future__ import print_function
 
 from collections import Counter
 
-from absl import logging
 import numpy as np
 from six.moves import xrange
 import tensorflow as tf
@@ -301,7 +300,7 @@ class AgentTest(tf.test.TestCase):
       # angle = arccos(v1 . v2 / (|v1|*|v2|))
       angle_rad = np.arccos(
           np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
-      logging.info('angle / pi: %s', angle_rad / np.pi)
+      tf.logging.info('angle / pi: %s', angle_rad / np.pi)
       angle_frac = angle_rad / np.pi
       self.assertTrue(angle_frac < 0.02, msg='actual: %s' % angle_frac)
     # Check norms.
@@ -387,7 +386,7 @@ class AgentTest(tf.test.TestCase):
       analytic_grads = sess.run(model.dense_unclipped_grads, feed)
 
       for g1, g2 in zip(estimated_grads[1:], analytic_grads[1:]):
-        logging.info('norm (g1-g2): %s', np.abs(g1 - g2).mean())
+        tf.logging.info('norm (g1-g2): %s', np.abs(g1 - g2).mean())
         self.assertTrue(np.allclose(g1, g2))
 
 

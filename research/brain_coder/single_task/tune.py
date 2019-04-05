@@ -37,7 +37,6 @@ import os
 
 from absl import app
 from absl import flags
-from absl import logging
 import numpy as np
 from six.moves import xrange
 import tensorflow as tf
@@ -106,9 +105,9 @@ def run_tuner_loop(ns):
   starting_trial_id = (
       num_local_trials * FLAGS.tuner_id + min(remainder, FLAGS.tuner_id))
 
-  logging.info('tuning_space_size: %d', tuning_space_size)
-  logging.info('num_local_trials: %d', num_local_trials)
-  logging.info('starting_trial_id: %d', starting_trial_id)
+  tf.logging.info('tuning_space_size: %d', tuning_space_size)
+  tf.logging.info('num_local_trials: %d', num_local_trials)
+  tf.logging.info('starting_trial_id: %d', starting_trial_id)
 
   for local_trial_index in xrange(num_local_trials):
     trial_config = defaults.default_config_with_updates(FLAGS.config)
@@ -129,19 +128,19 @@ def run_tuner_loop(ns):
 
     objective, metrics = compute_tuning_objective(
         results_list, hparams, trial_name, num_trials=tuning_space_size)
-    logging.info('metrics:\n%s', metrics)
-    logging.info('objective: %s', objective)
-    logging.info('programs_seen_fraction: %s',
+    tf.logging.info('metrics:\n%s', metrics)
+    tf.logging.info('objective: %s', objective)
+    tf.logging.info('programs_seen_fraction: %s',
                  metrics['programs_seen_fraction'])
-    logging.info('success_rate: %s', metrics['success_rate'])
-    logging.info('success_rate_objective_weight: %s',
+    tf.logging.info('success_rate: %s', metrics['success_rate'])
+    tf.logging.info('success_rate_objective_weight: %s',
                  FLAGS.success_rate_objective_weight)
 
     tuning_results_file = os.path.join(trial_dir, 'tuning_results.txt')
     with tf.gfile.FastGFile(tuning_results_file, 'a') as writer:
       writer.write(str(metrics) + '\n')
 
-    logging.info('Trial %s complete.', trial_name)
+    tf.logging.info('Trial %s complete.', trial_name)
 
 
 def compute_tuning_objective(results_list, hparams, trial_name, num_trials):
@@ -235,7 +234,7 @@ def compute_tuning_objective(results_list, hparams, trial_name, num_trials):
 def main(argv):
   del argv
 
-  logging.set_verbosity(FLAGS.log_level)
+  tf.logging.set_verbosity(FLAGS.log_level)
 
   if not FLAGS.logdir:
     raise ValueError('logdir flag must be provided.')

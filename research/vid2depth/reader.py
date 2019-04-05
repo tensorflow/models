@@ -21,7 +21,6 @@ from __future__ import print_function
 
 import os
 import random
-from absl import logging
 import tensorflow as tf
 import util
 
@@ -93,7 +92,7 @@ class DataReader(object):
                 batch_size=self.batch_size,
                 capacity=QUEUE_SIZE + QUEUE_BUFFER * self.batch_size,
                 min_after_dequeue=QUEUE_SIZE))
-        logging.info('image_stack: %s', util.info(image_stack))
+        tf.logging.info('image_stack: %s', util.info(image_stack))
     return image_stack, intrinsic_mat, intrinsic_mat_inv
 
   def unpack_images(self, image_seq):
@@ -176,7 +175,7 @@ class DataReader(object):
 
   def compile_file_list(self, data_dir, split, load_pose=False):
     """Creates a list of input files."""
-    logging.info('data_dir: %s', data_dir)
+    tf.logging.info('data_dir: %s', data_dir)
     with gfile.Open(os.path.join(data_dir, '%s.txt' % split), 'r') as f:
       frames = f.readlines()
     subfolders = [x.split(' ')[0] for x in frames]

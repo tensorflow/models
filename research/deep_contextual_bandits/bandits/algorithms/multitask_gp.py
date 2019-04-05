@@ -20,7 +20,6 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import flags
-from absl import logging
 
 import numpy as np
 import tensorflow as tf
@@ -121,7 +120,7 @@ class MultitaskGP(BayesianNN):
     Selects the optimizer and, finally, it also initializes the graph.
     """
 
-    logging.info("Initializing model %s.", self.name)
+    tf.logging.info("Initializing model %s.", self.name)
     self.global_step = tf.train.get_or_create_global_step()
 
     # Define state for the model (inputs, etc.)
@@ -338,7 +337,7 @@ class MultitaskGP(BayesianNN):
       num_steps: Number of minibatches to train the network for.
     """
 
-    logging.info("Training %s for %d steps...", self.name, num_steps)
+    tf.logging.info("Training %s for %d steps...", self.name, num_steps)
     for step in range(num_steps):
       numpts = min(data.num_points(None), self.max_num_points)
       if numpts >= self.max_num_points and self.keep_fixed_after_max_obs:
@@ -367,7 +366,7 @@ class MultitaskGP(BayesianNN):
 
       if step % self._freq_summary == 0:
         if self._show_training:
-          logging.info("step: %d, loss: %g noise: %f amp: %f amp_lin: %f",
+          tf.logging.info("step: %d, loss: %g noise: %f amp: %f amp_lin: %f",
                        step, res[2], res[3], res[4], res[5])
       summary = res[1]
       global_step = res[0]

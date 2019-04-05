@@ -24,7 +24,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import logging
 import numpy as np
 import tensorflow as tf
 
@@ -322,5 +321,5 @@ def get_cloud(depth, intrinsics_inv, name=None):
     cam_coords = _pixel2cam(depth, grid, intrinsics_inv)
     cam_coords = tf.transpose(cam_coords, [0, 2, 1])
     cam_coords = tf.reshape(cam_coords, [batch_size, img_height, img_width, 3])
-    logging.info('depth -> cloud: %s', cam_coords)
+    tf.logging.info('depth -> cloud: %s', cam_coords)
     return cam_coords

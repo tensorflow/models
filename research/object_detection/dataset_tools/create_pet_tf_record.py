@@ -28,7 +28,6 @@ Example usage:
 
 import hashlib
 import io
-import logging
 import os
 import random
 import re
@@ -238,12 +237,12 @@ def create_tf_record(output_filename,
         tf_record_close_stack, output_filename, num_shards)
     for idx, example in enumerate(examples):
       if idx % 100 == 0:
-        logging.info('On image %d of %d', idx, len(examples))
+        tf.logging.info('On image %d of %d', idx, len(examples))
       xml_path = os.path.join(annotations_dir, 'xmls', example + '.xml')
       mask_path = os.path.join(annotations_dir, 'trimaps', example + '.png')
 
       if not os.path.exists(xml_path):
-        logging.warning('Could not find %s, ignoring example.', xml_path)
+        tf.logging.warning('Could not find %s, ignoring example.', xml_path)
         continue
       with tf.gfile.GFile(xml_path, 'r') as fid:
         xml_str = fid.read()
@@ -262,7 +261,7 @@ def create_tf_record(output_filename,
           shard_idx = idx % num_shards
           output_tfrecords[shard_idx].write(tf_example.SerializeToString())
       except ValueError:
-        logging.warning('Invalid example: %s, ignoring.', xml_path)
+        tf.logging.warning('Invalid example: %s, ignoring.', xml_path)
 
 
 # TODO(derekjchow): Add test for pet/PASCAL main files.
@@ -270,7 +269,7 @@ def main(_):
   data_dir = FLAGS.data_dir
   label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
 
-  logging.info('Reading from Pet dataset.')
+  tf.logging.info('Reading from Pet dataset.')
   image_dir = os.path.join(data_dir, 'images')
   annotations_dir = os.path.join(data_dir, 'annotations')
   examples_path = os.path.join(annotations_dir, 'trainval.txt')
@@ -284,7 +283,7 @@ def main(_):
   num_train = int(0.7 * num_examples)
   train_examples = examples_list[:num_train]
   val_examples = examples_list[num_train:]
-  logging.info('%d training and %d validation examples.',
+  tf.logging.info('%d training and %d validation examples.',
                len(train_examples), len(val_examples))
 
   train_output_path = os.path.join(FLAGS.output_dir, 'pet_faces_train.record')

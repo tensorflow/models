@@ -15,7 +15,6 @@
 
 """Label map utility functions."""
 
-import logging
 
 import tensorflow as tf
 from google.protobuf import text_format
@@ -107,7 +106,7 @@ def convert_label_map_to_categories(label_map,
     return categories
   for item in label_map.item:
     if not 0 < item.id <= max_num_classes:
-      logging.info('Ignore item %d since it falls outside of requested '
+      tf.logging.info('Ignore item %d since it falls outside of requested '
                    'label range.', item.id)
       continue
     if use_display_name and item.HasField('display_name'):

@@ -37,7 +37,6 @@ import random
 import time
 from absl import app
 from absl import flags
-from absl import logging
 import model
 import numpy as np
 import tensorflow as tf
@@ -121,15 +120,15 @@ def train(train_model, pretrained_ckpt, checkpoint_dir, train_steps,
   config.gpu_options.allow_growth = True
   with sv.managed_session(config=config) as sess:
     if pretrained_ckpt is not None:
-      logging.info('Restoring pretrained weights from %s', pretrained_ckpt)
+      tf.logging.info('Restoring pretrained weights from %s', pretrained_ckpt)
       pretrain_restorer.restore(sess, pretrained_ckpt)
-    logging.info('Attempting to resume training from %s...', checkpoint_dir)
+    tf.logging.info('Attempting to resume training from %s...', checkpoint_dir)
     checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
-    logging.info('Last checkpoint found: %s', checkpoint)
+    tf.logging.info('Last checkpoint found: %s', checkpoint)
     if checkpoint:
       saver.restore(sess, checkpoint)
 
-    logging.info('Training...')
+    tf.logging.info('Training...')
     start_time = time.time()
     last_summary_time = time.time()
     steps_per_epoch = train_model.reader.steps_per_epoch
@@ -154,13 +153,13 @@ def train(train_model, pretrained_ckpt, checkpoint_dir, train_steps,
         train_step = global_step - (train_epoch - 1) * steps_per_epoch
         this_cycle = time.time() - last_summary_time
         last_summary_time += this_cycle
-        logging.info(
+        tf.logging.info(
             'Epoch: [%2d] [%5d/%5d] time: %4.2fs (%ds total) loss: %.3f',
             train_epoch, train_step, steps_per_epoch, this_cycle,
             time.time() - start_time, results['loss'])
 
       if step % steps_per_epoch == 0:
-        logging.info('[*] Saving checkpoint to %s...', checkpoint_dir)
+        tf.logging.info('[*] Saving checkpoint to %s...', checkpoint_dir)
         saver.save(sess, os.path.join(checkpoint_dir, 'model'),
                    global_step=global_step)
 

@@ -364,10 +364,10 @@ class Trainer(object):
         load_dir = FLAGS.save_dir
         ckpt = tf.train.get_checkpoint_state(load_dir)
       if ckpt and ckpt.model_checkpoint_path:
-        logging.info('restoring from %s', ckpt.model_checkpoint_path)
+        tf.logging.info('restoring from %s', ckpt.model_checkpoint_path)
         saver.restore(sess, ckpt.model_checkpoint_path)
       elif FLAGS.load_path:
-        logging.info('restoring from %s', FLAGS.load_path)
+        tf.logging.info('restoring from %s', FLAGS.load_path)
         saver.restore(sess, FLAGS.load_path)
 
     if FLAGS.supervisor:
@@ -410,11 +410,11 @@ class Trainer(object):
     self.sv = sv
     self.sess = sess
 
-    logging.info('hparams:\n%s', self.hparams_string())
+    tf.logging.info('hparams:\n%s', self.hparams_string())
 
     model_step = sess.run(self.model.global_step)
     if model_step >= self.num_steps:
-      logging.info('training has reached final step')
+      tf.logging.info('training has reached final step')
       return
 
     losses = []
@@ -423,7 +423,7 @@ class Trainer(object):
     for step in xrange(1 + self.num_steps):
 
       if sv is not None and sv.ShouldStop():
-        logging.info('stopping supervisor')
+        tf.logging.info('stopping supervisor')
         break
 
       self.do_before_step(step)
@@ -442,7 +442,7 @@ class Trainer(object):
 
       model_step = sess.run(self.model.global_step)
       if is_chief and step % self.validation_frequency == 0:
-        logging.info('at training step %d, model step %d: '
+        tf.logging.info('at training step %d, model step %d: '
                      'avg loss %f, avg reward %f, '
                      'episode rewards: %f, greedy rewards: %f',
                      step, model_step,
@@ -455,16 +455,16 @@ class Trainer(object):
         all_ep_rewards = []
 
       if model_step >= self.num_steps:
-        logging.info('training has reached final step')
+        tf.logging.info('training has reached final step')
         break
 
     if is_chief and sv is not None:
-      logging.info('saving final model to %s', sv.save_path)
+      tf.logging.info('saving final model to %s', sv.save_path)
       sv.saver.save(sess, sv.save_path, global_step=sv.global_step)
 
 
 def main(unused_argv):
-  logging.set_verbosity(logging.INFO)
+  tf.logging.set_verbosity(logging.INFO)
   trainer = Trainer()
   trainer.run()
 

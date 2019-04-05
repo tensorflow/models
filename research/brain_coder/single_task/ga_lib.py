@@ -12,9 +12,9 @@ from collections import namedtuple
 import random
 
 from absl import flags
-from absl import logging
 import numpy as np
 from six.moves import xrange
+import tensorflow as tf
 
 from common import bf  # brain coder
 from common import utils  # brain coder
@@ -292,7 +292,7 @@ def ga_loop(population, cxpb, mutpb, ngen, task_eval_fn, halloffame=None,
       pass
     else:
       has_checkpoint = True
-      logging.info(
+      tf.logging.info(
           'Loaded population from checkpoint. Starting at generation %d', gen)
 
       # Evaluate the individuals with an invalid fitness
@@ -312,7 +312,7 @@ def ga_loop(population, cxpb, mutpb, ngen, task_eval_fn, halloffame=None,
       for ind in population:
         halloffame.push(ind.fitness.values, tuple(ind), ind)
 
-    logging.info('Initialized new population.')
+    tf.logging.info('Initialized new population.')
 
     gen = 1
 
@@ -355,7 +355,7 @@ def ga_loop(population, cxpb, mutpb, ngen, task_eval_fn, halloffame=None,
     if gen % 100 == 0:
       top_code = '\n'.join([debug_str(ind, task_eval_fn)
                             for ind in topk(population, k=4)])
-      logging.info('gen: %d\nNPE: %d\n%s\n\n', gen, gen * pop_size, top_code)
+      tf.logging.info('gen: %d\nNPE: %d\n%s\n\n', gen, gen * pop_size, top_code)
 
       best_code = ''.join(halloffame.get_max()[1])
       res = task_eval_fn(best_code)
@@ -365,7 +365,7 @@ def ga_loop(population, cxpb, mutpb, ngen, task_eval_fn, halloffame=None,
         checkpoint_writer.write(gen, population, halloffame)
 
       if res.correct:
-        logging.info('Solution found:\n%s\nreward = %s\n',
+        tf.logging.info('Solution found:\n%s\nreward = %s\n',
                      best_code, res.reward)
         break
 

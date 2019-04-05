@@ -39,7 +39,6 @@ from __future__ import print_function
 import os
 from absl import app
 from absl import flags
-from absl import logging
 import matplotlib.pyplot as plt
 import model
 import numpy as np
@@ -100,7 +99,7 @@ def _run_inference():
       im_files = sorted(im_files)
     for i in range(0, len(im_files), FLAGS.batch_size):
       if i % 100 == 0:
-        logging.info('Generating from %s: %d/%d', ckpt_basename, i,
+        tf.logging.info('Generating from %s: %d/%d', ckpt_basename, i,
                      len(im_files))
       inputs = np.zeros(
           (FLAGS.batch_size, FLAGS.img_height, FLAGS.img_width, 3),

@@ -7,7 +7,7 @@ from __future__ import print_function
 import ast
 from collections import namedtuple
 
-from absl import logging
+import tensorflow as tf
 
 from single_task import code_tasks  # brain coder
 
@@ -50,15 +50,15 @@ class DataManager(object):
         raise ValueError('Do not use task_cycle for single-run experiment.')
       index = run_number % len(env_config.task_cycle)
       self.task_name = env_config.task_cycle[index]
-      logging.info('run_number: %d,  task_cycle index: %d', run_number, index)
-      logging.info('task_cycle: %s', env_config.task_cycle)
+      tf.logging.info('run_number: %d,  task_cycle index: %d', run_number, index)
+      tf.logging.info('task_cycle: %s', env_config.task_cycle)
     elif env_config.task:
       self.task_name = env_config.task
     else:
       raise ValueError('Either `task` or `task_cycle` must be set.')
-    logging.info('Task for this run: "%s"', self.task_name)
+    tf.logging.info('Task for this run: "%s"', self.task_name)
 
-    logging.info('config_for_iclr=True; do_code_simplification=%s',
+    tf.logging.info('config_for_iclr=True; do_code_simplification=%s',
                  do_code_simplification)
     self.rl_task = code_tasks.make_task(
         task_name=self.task_name,

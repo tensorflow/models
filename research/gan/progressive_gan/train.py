@@ -27,7 +27,6 @@ from __future__ import print_function
 import os
 
 
-from absl import logging
 import numpy as np
 import tensorflow as tf
 
@@ -532,7 +531,7 @@ def make_scaffold(stage_id, optimizer_var_list, **kwargs):
   def _init_fn(unused_scaffold, sess):
     # First initialize every variables.
     sess.run(init_op)
-    logging.info('\n'.join([var.name for var in restore_var_list]))
+    tf.logging.info('\n'.join([var.name for var in restore_var_list]))
     # Then overwrite variables saved in previous stage.
     if prev_ckpt is not None:
       saver_for_restore.restore(sess, prev_ckpt)
@@ -568,7 +567,7 @@ def train(model, **kwargs):
   Returns:
     None.
   """
-  logging.info('stage_id=%d, num_blocks=%d, num_images=%d', model.stage_id,
+  tf.logging.info('stage_id=%d, num_blocks=%d, num_images=%d', model.stage_id,
                model.num_blocks, model.num_images)
 
   scaffold = make_scaffold(model.stage_id, model.optimizer_var_list, **kwargs)

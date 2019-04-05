@@ -32,7 +32,6 @@ import os
 import random
 from absl import app
 from absl import flags
-from absl import logging
 import numpy as np
 import tensorflow as tf
 
@@ -170,7 +169,7 @@ def main(_):
     raise ValueError('Exhaustive mode has no effect when compute_minimum_loss '
                      'is enabled.')
   if FLAGS.img_width % (2 ** 5) != 0 or FLAGS.img_height % (2 ** 5) != 0:
-    logging.warn('Image size is not divisible by 2^5. For the architecture '
+    tf.logging.warn('Image size is not divisible by 2^5. For the architecture '
                  'employed, this could cause artefacts caused by resizing in '
                  'lower dimensions.')
 
@@ -185,7 +184,7 @@ def main(_):
     files_to_process = f.readlines()
     files_to_process = [line.rstrip() for line in files_to_process]
     files_to_process = [line for line in files_to_process if len(line)]
-  logging.info('Creating unique file list %s with %s entries.', unique_file,
+  tf.logging.info('Creating unique file list %s with %s entries.', unique_file,
                len(files_to_process))
   with gfile.FastGFile(unique_file, 'w') as f_out:
     fetches_network = FLAGS.num_steps * FLAGS.batch_size
@@ -202,7 +201,7 @@ def main(_):
       remaining = f.readlines()
       remaining = [line.rstrip() for line in remaining]
       remaining = [line for line in remaining if len(line)]
-  logging.info('Running fine-tuning on %s files, %s files are remaining.',
+  tf.logging.info('Running fine-tuning on %s files, %s files are remaining.',
                len(files_to_process), len(remaining))
 
   # Run fine-tuning process and save predictions in id-folders.
@@ -244,12 +243,12 @@ def main(_):
 
   failed_heuristic_ids = finetune_inference(train_model, FLAGS.model_ckpt,
                                             FLAGS.output_dir + '_ft')
-  logging.info('Fine-tuning completed, %s files were filtered out by '
+  tf.logging.info('Fine-tuning completed, %s files were filtered out by '
                'heuristic.', len(failed_heuristic_ids))
   for failed_id in failed_heuristic_ids:
     failed_entry = files_to_process[failed_id]
     remaining.append(failed_entry)
-  logging.info('In total, %s images were fine-tuned, while %s were not.',
+  tf.logging.info('In total, %s images were fine-tuned, while %s were not.',
                len(files_to_process)-len(failed_heuristic_ids), len(remaining))
 
   # Copy all results to have the same structural output as running ordinary
@@ -273,7 +272,7 @@ def main(_):
             os.path.basename(elements[2]) + ('_flip' if FLAGS.flip else ''))
       if not gfile.Exists(target_dir):
         gfile.MakeDirs(target_dir)
-      logging.info('Copy refined result %s to %s.', source_file, target_file)
+      tf.logging.info('Copy refined result %s to %s.', source_file, target_file)
       gfile.Copy(source_file + '.npy', target_file + '.npy', overwrite=True)
       gfile.Copy(source_file + '.txt', target_file + '.txt', overwrite=True)
       gfile.Copy(source_file + '.%s' % FLAGS.file_extension,
@@ -293,11 +292,11 @@ def main(_):
     if not gfile.Exists(target_dir):
       gfile.MakeDirs(target_dir)
     source_file = target_file.replace('_ft', '')
-    logging.info('Copy unrefined result %s to %s.', source_file, target_file)
+    tf.logging.info('Copy unrefined result %s to %s.', source_file, target_file)
     gfile.Copy(source_file + '.npy', target_file + '.npy', overwrite=True)
     gfile.Copy(source_file + '.%s' % FLAGS.file_extension,
                target_file + '.%s' % FLAGS.file_extension, overwrite=True)
-  logging.info('Done, predictions saved in %s.', FLAGS.output_dir + '_ft')
+  tf.logging.info('Done, predictions saved in %s.', FLAGS.output_dir + '_ft')
 
 
 def finetune_inference(train_model, model_ckpt, output_dir):
@@ -317,9 +316,9 @@ def finetune_inference(train_model, model_ckpt, output_dir):
     # TODO(casser): Caching the weights would be better to avoid I/O bottleneck.
     while True:  # Loop terminates when all examples have been processed.
       if model_ckpt is not None:
-        logging.info('Restored weights from %s', ckpt_path)
+        tf.logging.info('Restored weights from %s', ckpt_path)
         pretrain_restorer.restore(sess, ckpt_path)
-      logging.info('Running fine-tuning, image %s...', img_nr)
+      tf.logging.info('Running fine-tuning, image %s...', img_nr)
       img_pred_folder = os.path.join(
           output_dir, FLAGS.ft_name + 'id_' + str(img_nr))
       if not gfile.Exists(img_pred_folder):
@@ -328,7 +327,7 @@ def finetune_inference(train_model, model_ckpt, output_dir):
 
       # Run fine-tuning.
       while step <= FLAGS.num_steps:
-        logging.info('Running step %s of %s.', step, FLAGS.num_steps)
+        tf.logging.info('Running step %s of %s.', step, FLAGS.num_steps)
         fetches = {
             'train': train_model.train_op,
             'global_step': train_model.global_step,

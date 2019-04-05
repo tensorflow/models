@@ -30,7 +30,6 @@ Note: This module operates on numpy boxes and box lists.
 from abc import ABCMeta
 from abc import abstractmethod
 import collections
-import logging
 import unicodedata
 import numpy as np
 import tensorflow as tf
@@ -264,7 +263,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     else:
       groundtruth_difficult = None
       if not len(self._image_ids) % 1000:
-        logging.warn(
+        tf.logging.warn(
             'image %s does not have groundtruth difficult flag specified',
             image_id)
     groundtruth_masks = None
@@ -614,7 +613,7 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
     else:
       groundtruth_group_of = None
       if not len(self._image_ids) % 1000:
-        logging.warn(
+        tf.logging.warn(
             'image %s does not have groundtruth group_of flag specified',
             image_id)
     self._evaluation.add_single_ground_truth_image_info(
@@ -871,7 +870,7 @@ class ObjectDetectionEvaluation(object):
         The mask values range from 0 to 1.
     """
     if image_key in self.groundtruth_boxes:
-      logging.warn(
+      tf.logging.warn(
           'image %s has already been added to the ground truth database.',
           image_key)
       return
@@ -925,7 +924,7 @@ class ObjectDetectionEvaluation(object):
                        len(detected_scores), len(detected_class_labels))
 
     if image_key in self.detection_keys:
-      logging.warn(
+      tf.logging.warn(
           'image %s has already been added to the detection result database',
           image_key)
       return
@@ -1014,7 +1013,7 @@ class ObjectDetectionEvaluation(object):
         mean_corloc: Mean CorLoc score for each class, float scalar
     """
     if (self.num_gt_instances_per_class == 0).any():
-      logging.warn(
+      tf.logging.warn(
           'The following classes have no ground truth examples: %s',
           np.squeeze(np.argwhere(self.num_gt_instances_per_class == 0)) +
           self.label_id_offset)
@@ -1041,7 +1040,7 @@ class ObjectDetectionEvaluation(object):
       self.recalls_per_class[class_index] = recall
       average_precision = metrics.compute_average_precision(precision, recall)
       self.average_precision_per_class[class_index] = average_precision
-      logging.info('average_precision: %f', average_precision)
+      tf.logging.info('average_precision: %f', average_precision)
 
     self.corloc_per_class = metrics.compute_cor_loc(
         self.num_gt_imgs_per_class,

@@ -38,8 +38,8 @@ import os
 
 from absl import app
 from absl import flags
-from absl import logging
 import numpy as np
+import tensorflow as tf
 from PIL import Image
 import utils as panopticapi_utils
 import six
@@ -101,7 +101,7 @@ def _build_metric(metric,
                   normalize_by_image_size=True):
   """Creates a metric aggregator objet of the given name."""
   if metric == 'pq':
-    logging.warning('One should check Panoptic Quality results against the '
+    tf.logging.warning('One should check Panoptic Quality results against the '
                     'official COCO API code. Small numerical differences '
                     '(< 0.1%) can be magnified by rounding.')
     return panoptic_quality.PanopticQuality(num_categories, ignored_label,
@@ -207,7 +207,7 @@ def _is_thing_array(categories_json, ignored_label):
     all_ids = set(six.moves.range(max_category_id + 1))
     unseen_ids = all_ids.difference(seen_ids)
     if unseen_ids != {ignored_label}:
-      logging.warning(
+      tf.logging.warning(
           'Nonconsecutive category ids or no category JSON specified for ids: '
           '%s', unseen_ids)
 
@@ -280,11 +280,11 @@ def eval_coco_format(gt_json_file,
       intersection_offset, normalize_by_image_size)
 
   if num_workers == -1:
-    logging.info('Attempting to get the CPU count to set # workers.')
+    tf.logging.info('Attempting to get the CPU count to set # workers.')
     num_workers = multiprocessing.cpu_count()
 
   if num_workers > 0:
-    logging.info('Computing metric in parallel with %d workers.', num_workers)
+    tf.logging.info('Computing metric in parallel with %d workers.', num_workers)
     work_queue = multiprocessing.Queue()
     result_queue = multiprocessing.Queue()
     workers = []
@@ -310,7 +310,7 @@ def eval_coco_format(gt_json_file,
     for worker in workers:
       worker.join()
   else:
-    logging.info('Computing metric in a single process.')
+    tf.logging.info('Computing metric in a single process.')
     annotation_pairs = _matched_annotations(gt_json, pred_json)
     _compute_metric(metric_aggregator, gt_folder, pred_folder, annotation_pairs)
 

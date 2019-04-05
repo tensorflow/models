@@ -112,16 +112,16 @@ def run_environment(env_name, episode_length, num_episodes):
       successes[-1] = success_fn(reward)
       if done:
         break
-    logging.info('Episode %d reward: %.2f, Success: %d', ep + 1, rewards[-1], successes[-1])
+    tf.logging.info('Episode %d reward: %.2f, Success: %d', ep + 1, rewards[-1], successes[-1])
 
-  logging.info('Average Reward over %d episodes: %.2f',
+  tf.logging.info('Average Reward over %d episodes: %.2f',
                num_episodes, np.mean(rewards))
-  logging.info('Average Success over %d episodes: %.2f',
+  tf.logging.info('Average Success over %d episodes: %.2f',
                num_episodes, np.mean(successes))
 
 
 def main(unused_argv):
-  logging.set_verbosity(logging.INFO)
+  tf.logging.set_verbosity(logging.INFO)
   run_environment(FLAGS.env, FLAGS.episode_length, FLAGS.num_episodes)
 
 

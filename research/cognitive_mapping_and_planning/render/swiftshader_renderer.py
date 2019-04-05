@@ -21,15 +21,15 @@ r"""Implements loading and rendering of meshes. Contains 2 classes:
 
   SwiftshaderRenderer: Class that renders Shapes. Currently this uses python
     bindings to OpenGL (EGL), bindings to an alternate renderer may be implemented
-    here. 
+    here.
 """
 
 import numpy as np, os
-import cv2, ctypes, logging, os, numpy as np
+import cv2, ctypes, os, numpy as np, tensorflow as tf
 import pyassimp as assimp
 from OpenGL.GLES2 import *
 from OpenGL.EGL import *
-import src.rotation_utils as ru 
+import src.rotation_utils as ru
 
 __version__ = 'swiftshader_renderer'
 
@@ -40,16 +40,16 @@ def get_shaders(modalities):
 
 def sample_points_on_faces(vs, fs, rng, n_samples_per_face):
   idx = np.repeat(np.arange(fs.shape[0]), n_samples_per_face)
-  
+
   r = rng.rand(idx.size, 2)
   r1 = r[:,:1]; r2 = r[:,1:]; sqrt_r1 = np.sqrt(r1);
-  
+
   v1 = vs[fs[idx, 0], :]; v2 = vs[fs[idx, 1], :]; v3 = vs[fs[idx, 2], :];
   pts = (1-sqrt_r1)*v1 + sqrt_r1*(1-r2)*v2 + sqrt_r1*r2*v3
-  
+
   v1 = vs[fs[:,0], :]; v2 = vs[fs[:, 1], :]; v3 = vs[fs[:, 2], :];
   ar = 0.5*np.sqrt(np.sum(np.cross(v1-v3, v2-v3)**2, 1))
-  
+
   return pts, ar, idx
 
 class Shape():
@@ -69,7 +69,7 @@ class Shape():
   def __init__(self, obj_file, material_file=None, load_materials=True,
                name_prefix='', name_suffix=''):
     if material_file is not None:
-      logging.error('Ignoring material file input, reading them off obj file.')
+      tf.logging.error('Ignoring material file input, reading them off obj file.')
     load_flags = self.get_pyassimp_load_options()
     scene = assimp.load(obj_file, processing=load_flags)
     filter_ind = self._filter_triangles(scene.meshes)
@@ -88,7 +88,7 @@ class Shape():
             'Texture file {:s} foes not exist.'.format(file_name)
         img_rgb = cv2.imread(file_name)[::-1,:,::-1]
         if img_rgb.shape[0] != img_rgb.shape[1]:
-          logging.warn('Texture image not square.')
+          tf.logging.warn('Texture image not square.')
           sz = np.maximum(img_rgb.shape[0], img_rgb.shape[1])
           sz = int(np.power(2., np.ceil(np.log2(sz))))
           img_rgb = cv2.resize(img_rgb, (sz,sz), interpolation=cv2.INTER_LINEAR)
@@ -96,7 +96,7 @@ class Shape():
           sz = img_rgb.shape[0]
           sz_ = int(np.power(2., np.ceil(np.log2(sz))))
           if sz != sz_:
-            logging.warn('Texture image not square of power of 2 size. ' +
+            tf.logging.warn('Texture image not square of power of 2 size. ' +
                          'Changing size from %d to %d.', sz, sz_)
             sz = sz_
             img_rgb = cv2.resize(img_rgb, (sz,sz), interpolation=cv2.INTER_LINEAR)
@@ -146,7 +146,7 @@ class Shape():
     p, face_areas, face_idx = sample_points_on_faces(
         v, f, np.random.RandomState(0), n_samples_per_face)
     return p, face_areas, face_idx
-  
+
   def __del__(self):
     scene = self.scene
     assimp.release(scene)
@@ -160,18 +160,18 @@ class SwiftshaderRenderer():
     self.init_renderer_egl(width, height)
     dir_path = os.path.dirname(os.path.realpath(__file__))
     if d_shader is not None and rgb_shader is not None:
-      logging.fatal('Does not support setting both rgb_shader and d_shader.')
-    
+      tf.logging.fatal('Does not support setting both rgb_shader and d_shader.')
+
     if d_shader is not None:
       assert rgb_shader is None
       shader = d_shader
       self.modality = 'depth'
-    
+
     if rgb_shader is not None:
       assert d_shader is None
       shader = rgb_shader
       self.modality = 'rgb'
-    
+
     self.create_shaders(os.path.join(dir_path, shader+'.vp'),
                         os.path.join(dir_path, shader + '.fp'))
     aspect = width*1./(height*1.)
@@ -179,13 +179,13 @@ class SwiftshaderRenderer():
 
   def init_renderer_egl(self, width, height):
     major,minor = ctypes.c_long(),ctypes.c_long()
-    logging.info('init_renderer_egl: EGL_DEFAULT_DISPLAY: %s', EGL_DEFAULT_DISPLAY)
+    tf.logging.info('init_renderer_egl: EGL_DEFAULT_DISPLAY: %s', EGL_DEFAULT_DISPLAY)
 
     egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY)
-    logging.info('init_renderer_egl: egl_display: %s', egl_display)
+    tf.logging.info('init_renderer_egl: egl_display: %s', egl_display)
 
     eglInitialize(egl_display, major, minor)
-    logging.info('init_renderer_egl: EGL_OPENGL_API, EGL_OPENGL_ES_API: %s, %s',
+    tf.logging.info('init_renderer_egl: EGL_OPENGL_API, EGL_OPENGL_ES_API: %s, %s',
                  EGL_OPENGL_API, EGL_OPENGL_ES_API)
     eglBindAPI(EGL_OPENGL_ES_API)
 
@@ -194,10 +194,10 @@ class SwiftshaderRenderer():
     local_attributes = [EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
                         EGL_DEPTH_SIZE, 16, EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
                         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_NONE,]
-    logging.error('init_renderer_egl: local attributes: %s', local_attributes)
+    tf.logging.error('init_renderer_egl: local attributes: %s', local_attributes)
     local_attributes = arrays.GLintArray.asArray(local_attributes)
     success = eglChooseConfig(egl_display, local_attributes, configs, 1, num_configs)
-    logging.error('init_renderer_egl: eglChooseConfig success, num_configs: %d, %d', success, num_configs.value)
+    tf.logging.error('init_renderer_egl: eglChooseConfig success, num_configs: %d, %d', success, num_configs.value)
     egl_config = configs[0]
 
 
@@ -211,7 +211,7 @@ class SwiftshaderRenderer():
 
 
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context)
-    logging.error("init_renderer_egl: egl_display: %s egl_surface: %s, egl_config: %s", egl_display, egl_surface, egl_context)
+    tf.logging.error("init_renderer_egl: egl_display: %s egl_surface: %s, egl_config: %s", egl_display, egl_surface, egl_context)
 
     glViewport(0, 0, width, height);
 
@@ -259,11 +259,11 @@ class SwiftshaderRenderer():
     self.egl_mapping['vertexs'] = 0
     self.egl_mapping['vertexs_color'] = 1
     self.egl_mapping['vertexs_tc'] = 2
-    
+
     glClearColor(0.0, 0.0, 0.0, 1.0);
     # glEnable(GL_CULL_FACE); glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
-    
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
   def set_camera(self, fov_vertical, z_near, z_far, aspect):
@@ -278,13 +278,13 @@ class SwiftshaderRenderer():
     c[0,0] = 2.0*z_near/width
     c[1,1] = 2.0*z_near/height
     c = c.T
-    
+
     projection_matrix_o = glGetUniformLocation(egl_program, 'uProjectionMatrix')
     projection_matrix = np.eye(4, dtype=np.float32)
     projection_matrix[...] = c
     projection_matrix = np.reshape(projection_matrix, (-1))
     glUniformMatrix4fv(projection_matrix_o, 1, GL_FALSE, projection_matrix)
-    
+
 
   def load_default_object(self):
     v = np.array([[0.0, 0.5, 0.0, 1.0, 1.0, 0.0, 1.0],
@@ -337,7 +337,7 @@ class SwiftshaderRenderer():
         glReadPixels(0, 0, self.width, self.height, GL_RGBA, GL_UNSIGNED_BYTE, screenshot_rgba)
         np_rgb_img = screenshot_rgba[::-1,:,:3];
 
-      if self.modality == 'depth': 
+      if self.modality == 'depth':
         screenshot_d = np.zeros((self.height, self.width, 4), dtype=np.uint8)
         glReadPixels(0, 0, self.width, self.height, GL_RGBA, GL_UNSIGNED_BYTE, screenshot_d)
         np_d_img = screenshot_d[::-1,:,:3];

@@ -290,7 +290,7 @@ def define_train_higgs_flags():
 
 
 if __name__ == "__main__":
-  # Training progress and eval results are shown as logging.INFO; so enables it.
+  # Training progress and eval results are shown as tf.logging.INFO; so enables it.
   tf.logging.set_verbosity(tf.logging.INFO)
   define_train_higgs_flags()
   absl_app.run(main)

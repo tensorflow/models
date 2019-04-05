@@ -50,16 +50,15 @@ from tensorflow.contrib import slim
 from tensorflow.python.framework import ops
 from tensorflow.contrib.framework.python.ops import variables
 
-import logging
 from tensorflow.python.platform import gfile
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
 from cfgs import config_cmp
 from cfgs import config_vision_baseline
 import datasets.nav_env as nav_env
-import src.file_utils as fu 
+import src.file_utils as fu
 import src.utils as utils
-import tfcode.cmp as cmp 
+import tfcode.cmp as cmp
 from tfcode import tf_utils
 from tfcode import vision_baseline_lstm
 
@@ -83,7 +82,7 @@ flags.DEFINE_integer('solver_seed', 0, '')
 
 flags.DEFINE_integer('delay_start_iters', 20, '')
 
-logging.basicConfig(level=logging.INFO)
+tf.logging.set_verbosity(tf.logging.INFO)
 
 def main(_):
   _launcher(FLAGS.config_name, FLAGS.logdir)
@@ -114,7 +113,7 @@ def get_args_for_config(config_name):
     args.setup_train_step_kwargs = vision_baseline_lstm.setup_train_step_kwargs
 
   else:
-    logging.fatal('Unknown type: {:s}'.format(type))
+    tf.logging.fatal('Unknown type: {:s}'.format(type))
   return args
 
 def _setup_args(config_name, logdir):
@@ -153,7 +152,7 @@ def _train(args):
             dagger_sample_bn_false=args.arch.dagger_sample_bn_false)
 
         delay_start = (args.solver.task*(args.solver.task+1))/2 * FLAGS.delay_start_iters
-        logging.error('delaying start for task %d by %d steps.',
+        tf.logging.error('delaying start for task %d by %d steps.',
                       args.solver.task, delay_start)
 
         additional_args = {}
@@ -177,7 +176,7 @@ def _test(args):
   args.solver.master = ''
   container_name = ""
   checkpoint_dir = os.path.join(format(args.logdir))
-  logging.error('Checkpoint_dir: %s', args.logdir)
+  tf.logging.error('Checkpoint_dir: %s', args.logdir)
 
   config = tf.ConfigProto();
   config.device_count['GPU'] = 1;
@@ -218,14 +217,14 @@ def _test(args):
         last_checkpoint = last_checkpoint_
         checkpoint_iter = int(os.path.basename(last_checkpoint).split('-')[1])
 
-        logging.info('Starting evaluation at %s using checkpoint %s.',
+        tf.logging.info('Starting evaluation at %s using checkpoint %s.',
                      time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime()),
                      last_checkpoint)
 
-        if (args.control.only_eval_when_done == False or 
+        if (args.control.only_eval_when_done == False or
             checkpoint_iter >= args.solver.max_steps):
           start = time.time()
-          logging.info('Starting evaluation at %s using checkpoint %s.', 
+          tf.logging.info('Starting evaluation at %s using checkpoint %s.',
                        time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime()),
                        last_checkpoint)
 
@@ -243,7 +242,7 @@ def _test(args):
                 mode=args.control.test_mode)
             should_stop = False
 
-            if checkpoint_iter >= args.solver.max_steps: 
+            if checkpoint_iter >= args.solver.max_steps:
               should_stop = True
 
             if should_stop:

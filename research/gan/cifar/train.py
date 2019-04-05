@@ -19,7 +19,6 @@ from __future__ import print_function
 
 
 from absl import flags
-from absl import logging
 import tensorflow as tf
 
 import data_provider
@@ -185,6 +184,5 @@ def _optimizer(gen_lr, dis_lr, use_sync_replicas):
 
 
 if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
+  tf.logging.set_verbosity(logging.INFO)
   tf.app.run()
-

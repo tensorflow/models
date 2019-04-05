@@ -23,9 +23,9 @@ import matplotlib
 matplotlib.use('TkAgg')
 from PIL import ImageTk, Image
 import Tkinter as tk
-import logging
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
+import tensorflow as tf
 
 import datasets.nav_env_config as nec
 import datasets.nav_env as nav_env
@@ -57,7 +57,7 @@ def get_args():
   # navtask.task_params.semantic_task.class_map_names = ['chair', 'door', 'table']
   # navtask.task_params.type = 'to_nearest_obj_acc'
 
-  logging.info('navtask: %s', navtask)
+  tf.logging.info('navtask: %s', navtask)
   return navtask
 
 def load_building(dataset_name, building_name):

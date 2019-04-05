@@ -16,7 +16,6 @@ import sys
 from time import sleep
 
 from absl import flags
-from absl import logging
 import numpy as np
 from six.moves import xrange
 import tensorflow as tf
@@ -103,7 +102,7 @@ class CheckpointWriter(object):
     assert halloffame is None or len(halloffame) == 2, (
         'Expecting hall-of-fame object to have length two, got length %d'
         % len(halloffame))
-    logging.info('Loaded pop from checkpoint file: "%s".',
+    tf.logging.info('Loaded pop from checkpoint file: "%s".',
                  self.checkpoint_file)
     return gen, population, halloffame
 
@@ -147,18 +146,18 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,  # pylin
   if FLAGS.num_repetitions % FLAGS.num_workers != 0:
     raise ValueError('Number of workers must divide number of repetitions')
   num_local_reps = FLAGS.num_repetitions // FLAGS.num_workers
-  logging.info('Running %d reps globally.', FLAGS.num_repetitions)
-  logging.info('This worker will run %d local reps.', num_local_reps)
+  tf.logging.info('Running %d reps globally.', FLAGS.num_repetitions)
+  tf.logging.info('This worker will run %d local reps.', num_local_reps)
   if FLAGS.max_npe:
     max_generations = FLAGS.max_npe // config.batch_size
-    logging.info('Max samples per rep: %d', FLAGS.max_npe)
-    logging.info('Max generations per rep: %d', max_generations)
+    tf.logging.info('Max samples per rep: %d', FLAGS.max_npe)
+    tf.logging.info('Max generations per rep: %d', max_generations)
   else:
     max_generations = sys.maxint
-    logging.info('Running unlimited generations.')
+    tf.logging.info('Running unlimited generations.')
 
   assert FLAGS.num_workers > 0
-  logging.info('Starting experiment. Directory: "%s"', logdir)
+  tf.logging.info('Starting experiment. Directory: "%s"', logdir)
   results = results_lib.Results(logdir, FLAGS.task_id)
   local_results_list = results.read_this_shard()
   if local_results_list:
@@ -176,7 +175,7 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,  # pylin
 
   for rep in xrange(start_rep, num_local_reps):
     global_rep = num_local_reps * FLAGS.task_id + rep
-    logging.info(
+    tf.logging.info(
         'Starting repetition: Rep = %d. (global rep = %d)',
         rep, global_rep)
 
@@ -192,13 +191,13 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,  # pylin
     task_eval_fn = ga_lib.make_task_eval_fn(data_manager.rl_task)
 
     if config.agent.algorithm == 'rand':
-      logging.info('Running random search.')
+      tf.logging.info('Running random search.')
       assert FLAGS.max_npe
       result = run_random_search(
           FLAGS.max_npe, run_dir, task_eval_fn, config.timestep_limit)
     else:
       assert config.agent.algorithm == 'ga'
-      logging.info('Running genetic algorithm.')
+      tf.logging.info('Running genetic algorithm.')
       pop = ga_lib.make_population(
           ga_lib.random_individual(config.timestep_limit),
           n=config.batch_size)
@@ -210,7 +209,7 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,  # pylin
           ngen=max_generations, halloffame=hof,
           checkpoint_writer=checkpoint_writer)
 
-    logging.info('Finished rep. Num gens: %d', result.generations)
+    tf.logging.info('Finished rep. Num gens: %d', result.generations)
 
     results_dict = {
         'max_npe': FLAGS.max_npe,
@@ -225,18 +224,18 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,  # pylin
         'found_solution': result.solution_found,
         'task': data_manager.task_name,
         'global_rep': global_rep}
-    logging.info('results_dict: %s', results_dict)
+    tf.logging.info('results_dict: %s', results_dict)
     results.append(results_dict)
 
   if is_chief:
-    logging.info(
+    tf.logging.info(
         'Worker is chief. Waiting for all workers to finish so that results '
         'can be reported to the tuner.')
 
     global_results_list, shard_stats = results.read_all(
         num_shards=FLAGS.num_workers)
     while not all(s.finished for s in shard_stats):
-      logging.info(
+      tf.logging.info(
           'Still waiting on these workers: %s',
           ', '.join(
               ['%d (%d reps left)'
@@ -247,7 +246,7 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,  # pylin
       global_results_list, shard_stats = results.read_all(
           num_shards=FLAGS.num_workers)
 
-    logging.info(
+    tf.logging.info(
         '%d results obtained. Chief worker is exiting the experiment.',
         len(global_results_list))
 
@@ -294,7 +293,7 @@ def run_random_search(max_num_programs, checkpoint_dir, task_eval_fn,
 
   while not found_solution and num_programs_seen < max_num_programs:
     if num_programs_seen % 1000 == 0:
-      logging.info('num_programs_seen = %d', num_programs_seen)
+      tf.logging.info('num_programs_seen = %d', num_programs_seen)
       with tf.gfile.FastGFile(checkpoint_file, 'w') as f:
         f.write(str(num_programs_seen) + '\n')
         f.write(str(int(found_solution)) + '\n')
@@ -308,8 +307,8 @@ def run_random_search(max_num_programs, checkpoint_dir, task_eval_fn,
       best_code = ''.join(code)
       best_reward = res.reward
 
-  logging.info('num_programs_seen = %d', num_programs_seen)
-  logging.info('found solution: %s', found_solution)
+  tf.logging.info('num_programs_seen = %d', num_programs_seen)
+  tf.logging.info('found solution: %s', found_solution)
   with tf.gfile.FastGFile(checkpoint_file, 'w') as f:
     f.write(str(num_programs_seen) + '\n')
     f.write(str(int(found_solution)) + '\n')

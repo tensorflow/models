@@ -23,7 +23,6 @@ import math
 import os
 
 from absl import flags
-from absl import logging
 from icp_op import icp
 import icp_util
 import numpy as np
@@ -54,10 +53,10 @@ class IcpOpTestBase(tf.test.TestCase):
 
   def _run_icp(self, cloud_source, ego_motion, cloud_target):
     transform, residual = icp(cloud_source, ego_motion, cloud_target)
-    logging.info('Running ICP:')
-    logging.info('ego_motion: %s\n%s', ego_motion, ego_motion.eval())
-    logging.info('transform: %s\n%s', transform, transform.eval())
-    logging.info('residual: %s\n%s', residual,
+    tf.logging.info('Running ICP:')
+    tf.logging.info('ego_motion: %s\n%s', ego_motion, ego_motion.eval())
+    tf.logging.info('transform: %s\n%s', transform, transform.eval())
+    tf.logging.info('residual: %s\n%s', residual,
                  residual[0, :PRINT_CAP, :].eval())
     return transform, residual
 
@@ -86,7 +85,7 @@ class IcpOpTestBase(tf.test.TestCase):
                                     icp_util.LIDAR_CLOUD_PATH)
     lidar_cloud = np.load(lidar_cloud_path)
     lidar_cloud = tf.expand_dims(lidar_cloud, axis=0)  # Add batch.
-    logging.info('lidar_cloud.shape: %s', lidar_cloud.shape)
+    tf.logging.info('lidar_cloud.shape: %s', lidar_cloud.shape)
     return lidar_cloud
 
 
@@ -223,8 +222,8 @@ class IcpOpTest(IcpOpTestBase):
       cloud_target = cloud_source + [tx, 0, 0]
       self.assertEqual(len(self.identity_transform.shape), 2)
       ego_motion = tf.tile(self.identity_transform, [batch_size, 1])
-      logging.info('cloud_source.shape: %s', cloud_source.shape)
-      logging.info('cloud_target.shape: %s', cloud_target.shape)
+      tf.logging.info('cloud_source.shape: %s', cloud_source.shape)
+      tf.logging.info('cloud_target.shape: %s', cloud_target.shape)
       transform, residual = self._run_icp(cloud_source, ego_motion,
                                           cloud_target)
       for b in range(batch_size):

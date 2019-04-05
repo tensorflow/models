@@ -4,10 +4,9 @@ from __future__ import print_function
 
 """Default configuration for agent and environment."""
 
-from absl import logging
-
 from common import config_lib  # brain coder
 
+import tensorflow as tf
 
 def default_config():
   return config_lib.Config(
@@ -74,9 +73,9 @@ def default_config():
 
 def default_config_with_updates(config_string, do_logging=True):
   if do_logging:
-    logging.info('Config string: "%s"', config_string)
+    tf.logging.info('Config string: "%s"', config_string)
   config = default_config()
   config.strict_update(config_lib.Config.parse(config_string))
   if do_logging:
-    logging.info('Config:\n%s', config.pretty_str())
+    tf.logging.info('Config:\n%s', config.pretty_str())
   return config

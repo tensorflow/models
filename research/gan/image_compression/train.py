@@ -21,7 +21,6 @@ from __future__ import print_function
 
 
 from absl import flags
-from absl import logging
 import tensorflow as tf
 
 import data_provider
@@ -212,6 +211,5 @@ def _get_gan_model(generator_inputs, generated_data, real_data,
 
 
 if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
+  tf.logging.set_verbosity(logging.INFO)
   tf.app.run()
-

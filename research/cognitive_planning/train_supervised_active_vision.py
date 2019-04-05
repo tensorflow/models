@@ -55,7 +55,6 @@ import os
 import time
 from absl import app
 from absl import flags
-from absl import logging
 import networkx as nx
 import numpy as np
 import tensorflow as tf
@@ -247,7 +246,7 @@ def create_train_and_init_ops(policy, task):
       variables_assign_dict[v.name[v.name.find('resnet'):-2]] = v
     else:
       vars_list.append(v)
-  
+
   global_step = tf.train.get_or_create_global_step()
   learning_rate = tf.train.exponential_decay(
       FLAGS.learning_rate,
@@ -274,7 +273,7 @@ def create_train_and_init_ops(policy, task):
 
   for name, summary in scalar_summaries.iteritems():
     tf.summary.scalar(name, summary)
- 
+
   return train_op, init_fn
 
 
@@ -363,7 +362,7 @@ def unroll_policy_for_eval(
     if done:
       break
 
-  # logging.info('distance = %d, id = %s, #steps = %d', distances_to_goal[-1],
+  # tf.logging.info('distance = %d, id = %s, #steps = %d', distances_to_goal[-1],
   output_path = os.path.join(output_folder, unique_id + '.npy')
   with tf.gfile.Open(output_path, 'w') as f:
     print 'saving path information to {}'.format(output_path)
@@ -374,7 +373,7 @@ def unroll_policy_for_eval(
 def init(sequence_length, eval_init_points_file_name, worlds):
   """Initializes the common operations between train and test."""
   modality_types = create_modality_types()
-  logging.info('modality types: %r', modality_types)
+  tf.logging.info('modality types: %r', modality_types)
   # negative reward_goal_range prevents the env from terminating early when the
   # agent is close to the goal. The policy should keep the agent until the end
   # of the 100 steps either through chosing stop action or oscilating around

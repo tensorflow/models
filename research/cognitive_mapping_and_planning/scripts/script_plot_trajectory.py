@@ -34,7 +34,6 @@ from matplotlib.gridspec import GridSpec
 import tensorflow as tf
 from tensorflow.contrib import slim
 import cv2
-import logging
 from tensorflow.python.platform import gfile
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
@@ -63,7 +62,7 @@ def _load_trajectory():
   config_name = FLAGS.config_name+_get_suffix_str()
 
   dir_name = os.path.join(base_dir, FLAGS.type, config_name)
-  logging.info('Waiting for snapshot in directory %s.', dir_name)
+  tf.logging.info('Waiting for snapshot in directory %s.', dir_name)
   last_checkpoint = slim.evaluation.wait_for_new_checkpoint(dir_name, None)
   checkpoint_iter = int(os.path.basename(last_checkpoint).split('-')[1])
 

@@ -17,7 +17,6 @@ import numpy as np
 import sys
 import tensorflow as tf
 import src.utils as utils
-import logging
 from tensorflow.contrib import slim
 from tensorflow.contrib.metrics.python.ops import confusion_matrix_ops
 from tensorflow.contrib.slim import arg_scope
@@ -37,26 +36,26 @@ def custom_residual_block(x, neurons, kernel_size, stride, name, is_training,
                           wt_decay=0.0001, use_residual=True,
                           residual_stride_conv=True, conv_fn=slim.conv2d,
                           batch_norm_param=None):
-  
+
   # batch norm x and relu
   init_var = np.sqrt(2.0/(kernel_size**2)/neurons)
-  with arg_scope([conv_fn], 
+  with arg_scope([conv_fn],
                  weights_regularizer=slim.l2_regularizer(wt_decay),
                  weights_initializer=tf.random_normal_initializer(stddev=init_var),
-                 biases_initializer=tf.zeros_initializer()): 
-    
+                 biases_initializer=tf.zeros_initializer()):
+
     if batch_norm_param is None:
-      batch_norm_param = {'center': True, 'scale': False, 
-                          'activation_fn':tf.nn.relu, 
+      batch_norm_param = {'center': True, 'scale': False,
+                          'activation_fn':tf.nn.relu,
                           'is_training': is_training}
-    
+
     y = slim.batch_norm(x, scope=name+'_bn', **batch_norm_param)
 
     y = conv_fn(y, num_outputs=neurons, kernel_size=kernel_size, stride=stride,
                 activation_fn=None, scope=name+'_1',
                 normalizer_fn=slim.batch_norm,
                 normalizer_params=batch_norm_param)
-    
+
     y = conv_fn(y, num_outputs=neurons, kernel_size=kernel_size,
                     stride=1, activation_fn=None, scope=name+'_2')
 
@@ -71,9 +70,9 @@ def custom_residual_block(x, neurons, kernel_size, stride, name, is_training,
                         normalizer_params=batch_norm_param_)
         if not residual_stride_conv:
           x = slim.avg_pool2d(x, 1, stride=stride, scope=name+'_0_avg')
-  
+
       y = tf.add(x, y, name=name+'_add')
-    
+
     return y
 
 def step_gt_prob(step, step_number_op):
@@ -81,7 +80,7 @@ def step_gt_prob(step, step_number_op):
   with tf.name_scope('step_gt_prob'):
     out = tf.cond(tf.less(step_number_op, step),
             lambda: tf.constant(1.), lambda: tf.constant(-1.))
-    return out 
+    return out
 
 def inverse_sigmoid_decay(k, global_step_op):
   with tf.name_scope('inverse_sigmoid_decay'):
@@ -99,7 +98,7 @@ def dense_resample(im, flow_im, output_valid_mask, name='dense_resample'):
   """
   with tf.name_scope(name):
     valid_mask = None
-    
+
     x, y = tf.unstack(flow_im, axis=-1)
     x = tf.cast(tf.reshape(x, [-1]), tf.float32)
     y = tf.cast(tf.reshape(y, [-1]), tf.float32)
@@ -115,13 +114,13 @@ def dense_resample(im, flow_im, output_valid_mask, name='dense_resample'):
     # Round up and down.
     x0 = tf.cast(tf.floor(x), 'int32'); x1 = x0 + 1;
     y0 = tf.cast(tf.floor(y), 'int32'); y1 = y0 + 1;
-    
+
     if output_valid_mask:
       valid_mask = tf.logical_and(
           tf.logical_and(tf.less_equal(x, tf.cast(width, tf.float32)-1.), tf.greater_equal(x, 0.)),
           tf.logical_and(tf.less_equal(y, tf.cast(height, tf.float32)-1.), tf.greater_equal(y, 0.)))
       valid_mask = tf.reshape(valid_mask, shape=shape[:-1] + [1])
-  
+
     x0 = tf.clip_by_value(x0, zero, width-1)
     x1 = tf.clip_by_value(x1, zero, width-1)
     y0 = tf.clip_by_value(y0, zero, height-1)
@@ -160,11 +159,11 @@ def dense_resample(im, flow_im, output_valid_mask, name='dense_resample'):
     output = tf.add_n([wa * pixel_a, wb * pixel_b, wc * pixel_c, wd * pixel_d])
     output = tf.reshape(output, shape=tf.shape(im))
     return output, valid_mask
- 
+
 def get_flow(t, theta, map_size, name_scope='gen_flow'):
   """
   Rotates the map by theta and translates the rotated map by t.
-  
+
   Assume that the robot rotates by an angle theta and then moves forward by
   translation t. This function returns the flow field field. For every pixel in
   the new image it tells us which pixel in the original image it came from:
@@ -177,7 +176,7 @@ def get_flow(t, theta, map_size, name_scope='gen_flow'):
 
     t:      ... x 2 (translation for B batches of N motions each).
     theta:  ... x 1 (rotation for B batches of N motions each).
-    
+
     Output: ... x map_size x map_size x 2
   """
 
@@ -187,7 +186,7 @@ def get_flow(t, theta, map_size, name_scope='gen_flow'):
     c = tf.constant((map_size-1.)/2., dtype=tf.float32)
 
     x, y = np.meshgrid(np.arange(map_size), np.arange(map_size))
-    x = tf.constant(x[np.newaxis, :, :, np.newaxis], dtype=tf.float32, name='x', 
+    x = tf.constant(x[np.newaxis, :, :, np.newaxis], dtype=tf.float32, name='x',
                     shape=[1, map_size, map_size, 1])
     y = tf.constant(y[np.newaxis, :, :, np.newaxis], dtype=tf.float32, name='y',
                     shape=[1,map_size, map_size, 1])
@@ -202,7 +201,7 @@ def get_flow(t, theta, map_size, name_scope='gen_flow'):
 
     xr = xr + c
     yr = yr + c
-    
+
     flow = tf.stack([xr, yr], axis=-1)
     sh = tf.unstack(tf.shape(t), axis=0)
     sh = tf.stack(sh[:-1]+[tf.constant(_, dtype=tf.int32) for _ in [map_size, map_size, 2]])
@@ -221,11 +220,11 @@ def distort_image(im, fast_mode=False):
   return im_
 
 def fc_network(x, neurons, wt_decay, name, num_pred=None, offset=0,
-               batch_norm_param=None, dropout_ratio=0.0, is_training=None): 
+               batch_norm_param=None, dropout_ratio=0.0, is_training=None):
   if dropout_ratio > 0:
     assert(is_training is not None), \
       'is_training needs to be defined when trainnig with dropout.'
-  
+
   repr = []
   for i, neuron in enumerate(neurons):
     init_var = np.sqrt(2.0/neuron)
@@ -247,7 +246,7 @@ def fc_network(x, neurons, wt_decay, name, num_pred=None, offset=0,
        x = slim.dropout(x, keep_prob=1-dropout_ratio, is_training=is_training,
                         scope='{:s}_{:d}'.format('dropout_'+name, offset+i))
     repr.append(x)
-  
+
   if num_pred is not None:
     init_var = np.sqrt(2.0/num_pred)
     x = slim.fully_connected(x, num_pred,
@@ -329,8 +328,8 @@ def train_step_custom_online_sampling(sess, train_op, global_step,
     v = [v[i] for i in ind]
     v_op_value = [v_op_value[i] for i in ind]
 
-    for i in range(len(v)): 
-      logging.info('XXXX: variable: %30s, is_any_nan: %5s, norm: %f.',
+    for i in range(len(v)):
+      tf.logging.info('XXXX: variable: %30s, is_any_nan: %5s, norm: %f.',
                    v[i].name, np.any(np.isnan(v_op_value[i])),
                    np.linalg.norm(v_op_value[i]))
 
@@ -403,7 +402,7 @@ def train_step_custom_online_sampling(sess, train_op, global_step,
         action_sample_wts.append(action_sample_wt)
         net_state = dict(zip(m.train_ops['state_names'], net_state))
         net_state_to_input.append(net_state)
-    
+
     # Concatenate things together for training.
     rewards = np.array(rewards).T
     action_sample_wts = np.array(action_sample_wts).T
@@ -422,7 +421,7 @@ def train_step_custom_online_sampling(sess, train_op, global_step,
     # dict_train.update(all_state_net)
     dict_train.update(net_state_to_input[0])
     dict_train.update(all_step_data_cache)
-    dict_train.update({'rewards': rewards, 
+    dict_train.update({'rewards': rewards,
                        'action_sample_wts': action_sample_wts,
                        'executed_actions': executed_actions})
     feed_dict = prepare_feed_dict(m.input_tensors['train'], dict_train)
@@ -435,7 +434,7 @@ def train_step_custom_online_sampling(sess, train_op, global_step,
         total_loss, np_global_step, summary, print_summary = sess.run(
             [train_op, global_step, s_ops.summary_ops, s_ops.print_summary_ops],
             feed_dict=feed_dict)
-        logging.error("")
+        tf.logging.error("")
       else:
         total_loss, np_global_step, summary = sess.run(
             [train_op, global_step, s_ops.summary_ops], feed_dict=feed_dict)
@@ -452,13 +451,13 @@ def train_step_custom_online_sampling(sess, train_op, global_step,
           arop[j] = s_ops.additional_return_ops[j]
       val = sess.run(arop, feed_dict=feed_dict)
       val_additional_ops.append(val)
-      tt.toc(log_at=60, log_str='val timer {:d} / {:d}: '.format(i, iters), 
+      tt.toc(log_at=60, log_str='val timer {:d} / {:d}: '.format(i, iters),
              type='time')
 
   if mode != 'train':
     # Write the default val summaries.
     summary, print_summary, np_global_step = sess.run(
-        [s_ops.summary_ops, s_ops.print_summary_ops, global_step]) 
+        [s_ops.summary_ops, s_ops.print_summary_ops, global_step])
     if writer is not None and summary is not None:
       writer.add_summary(summary, np_global_step)
 
@@ -481,7 +480,7 @@ def train_step_custom_online_sampling(sess, train_op, global_step,
     # Return the additional val_ops
     total_loss = (val_additional_ops, val_summarys)
     should_stop = None
-  
+
   return total_loss, should_stop
 
 def train_step_custom_v2(sess, train_op, global_step, train_step_kwargs,
@@ -495,7 +494,7 @@ def train_step_custom_v2(sess, train_op, global_step, train_step_kwargs,
   train_display_interval = train_step_kwargs['train_display_interval']
 
   s_ops = m.summary_ops[mode]
-  val_additional_ops = [] 
+  val_additional_ops = []
 
   # Print all variables here.
   if False:
@@ -509,8 +508,8 @@ def train_step_custom_v2(sess, train_op, global_step, train_step_kwargs,
     v = [v[i] for i in ind]
     v_op_value = [v_op_value[i] for i in ind]
 
-    for i in range(len(v)): 
-      logging.info('XXXX: variable: %30s, is_any_nan: %5s, norm: %f.',
+    for i in range(len(v)):
+      tf.logging.info('XXXX: variable: %30s, is_any_nan: %5s, norm: %f.',
                    v[i].name, np.any(np.isnan(v_op_value[i])),
                    np.linalg.norm(v_op_value[i]))
 
@@ -528,7 +527,7 @@ def train_step_custom_v2(sess, train_op, global_step, train_step_kwargs,
 
       if np.mod(n_step, train_display_interval) == 0:
         total_loss, np_global_step, summary, print_summary = sess.run(
-            [train_op, global_step, s_ops.summary_ops, s_ops.print_summary_ops], 
+            [train_op, global_step, s_ops.summary_ops, s_ops.print_summary_ops],
             feed_dict=feed_dict)
       else:
         total_loss, np_global_step, summary = sess.run(
@@ -547,13 +546,13 @@ def train_step_custom_v2(sess, train_op, global_step, train_step_kwargs,
           arop[j] = s_ops.additional_return_ops[j]
       val = sess.run(arop, feed_dict=feed_dict)
       val_additional_ops.append(val)
-      tt.toc(log_at=60, log_str='val timer {:d} / {:d}: '.format(i, iters), 
+      tt.toc(log_at=60, log_str='val timer {:d} / {:d}: '.format(i, iters),
              type='time')
 
   if mode != 'train':
     # Write the default val summaries.
     summary, print_summary, np_global_step = sess.run(
-        [s_ops.summary_ops, s_ops.print_summary_ops, global_step]) 
+        [s_ops.summary_ops, s_ops.print_summary_ops, global_step])
     if writer is not None and summary is not None:
       writer.add_summary(summary, np_global_step)
 
@@ -579,7 +578,7 @@ def train_step_custom_v2(sess, train_op, global_step, train_step_kwargs,
 
   return total_loss, should_stop
 
-def train_step_custom(sess, train_op, global_step, train_step_kwargs, 
+def train_step_custom(sess, train_op, global_step, train_step_kwargs,
                       mode='train'):
   m        = train_step_kwargs['m']
   params   = train_step_kwargs['params']
@@ -591,14 +590,14 @@ def train_step_custom(sess, train_op, global_step, train_step_kwargs,
   gen_data = train_step_kwargs['gen_data']
   pre_data = train_step_kwargs['pre_data']
   train_display_interval = train_step_kwargs['train_display_interval']
-  
-  val_additional_ops = [] 
+
+  val_additional_ops = []
   # Print all variables here.
   if False:
     v = tf.get_collection(tf.GraphKeys.VARIABLES)
-    for _ in v: 
+    for _ in v:
       val = sess.run(_.value())
-      logging.info('variable: %30s, is_any_nan: %5s, norm: %f.', _.name,
+      tf.logging.info('variable: %30s, is_any_nan: %5s, norm: %f.', _.name,
                    np.any(np.isnan(val)), np.linalg.norm(val))
 
   for i in range(iters):
@@ -606,13 +605,13 @@ def train_step_custom(sess, train_op, global_step, train_step_kwargs,
     input_data = gen_data(params, *rngs)
     input_data = pre_data(params, input_data)
     feed_dict  = prepare_feed_dict(m.input_tensors, input_data)
-    
+
     if mode == 'train':
       n_step = sess.run(global_step)
-      
+
       if np.mod(n_step, train_display_interval) == 0:
         total_loss, np_global_step, summary, print_summary = sess.run(
-            [train_op, global_step, m.summary_op[mode], m.print_summary_op[mode]], 
+            [train_op, global_step, m.summary_op[mode], m.print_summary_op[mode]],
             feed_dict=feed_dict)
       else:
         total_loss, np_global_step, summary = sess.run(
@@ -635,23 +634,23 @@ def train_step_custom(sess, train_op, global_step, train_step_kwargs,
     if writer is not None:
       writer.add_summary(summary, np_global_step)
     sess.run([m.agg_reset_op[mode]])
-    
+
     # write custom validation ops
     if m.eval_metrics_fn[mode] is not None:
       val_metric_summary = m.eval_metrics_fn[mode](val_additional_ops,
                                                    np_global_step, logdir)
       if writer is not None:
         writer.add_summary(val_metric_summary, np_global_step)
-    
+
     total_loss = val_additional_ops
     should_stop = None
-    
+
   return total_loss, should_stop
 
 def setup_training(loss_op, initial_learning_rate, steps_per_decay,
                    learning_rate_decay, momentum, max_steps,
                    sync=False, adjust_lr_sync=True,
-                   num_workers=1, replica_id=0, vars_to_optimize=None, 
+                   num_workers=1, replica_id=0, vars_to_optimize=None,
                    clip_gradient_norm=0, typ=None, momentum2=0.999,
                    adam_eps=1e-8):
   if sync and adjust_lr_sync:
@@ -667,12 +666,12 @@ def setup_training(loss_op, initial_learning_rate, steps_per_decay,
   elif typ == 'adam':
     optimizer      = tf.train.AdamOptimizer(learning_rate=lr_op, beta1=momentum,
                                             beta2=momentum2, epsilon=adam_eps)
-  
+
   if sync:
-    
-    sync_optimizer = tf.train.SyncReplicasOptimizer(optimizer, 
-                                               replicas_to_aggregate=num_workers, 
-                                               replica_id=replica_id, 
+
+    sync_optimizer = tf.train.SyncReplicasOptimizer(optimizer,
+                                               replicas_to_aggregate=num_workers,
+                                               replica_id=replica_id,
                                                total_num_replicas=num_workers)
     train_op       = slim.learning.create_train_op(loss_op, sync_optimizer,
                                                    variables_to_train=vars_to_optimize,
@@ -687,22 +686,22 @@ def setup_training(loss_op, initial_learning_rate, steps_per_decay,
 
 def add_value_to_summary(metric_summary, tag, val, log=True, tag_str=None):
   """Adds a scalar summary to the summary object. Optionally also logs to
-  logging."""
+  tf.logging."""
   new_value = metric_summary.value.add();
   new_value.tag = tag
   new_value.simple_value = val
   if log:
     if tag_str is None:
       tag_str = tag + '%f'
-    logging.info(tag_str, val)
+    tf.logging.info(tag_str, val)
 
-def add_scalar_summary_op(tensor, name=None, 
+def add_scalar_summary_op(tensor, name=None,
     summary_key='summaries', print_summary_key='print_summaries', prefix=''):
   collections = []
   op = tf.summary.scalar(name, tensor, collections=collections)
   if summary_key != print_summary_key:
     tf.add_to_collection(summary_key, op)
-  
+
   op = tf.Print(op, [tensor], '    {:-<25s}: '.format(name) + prefix)
   tf.add_to_collection(print_summary_key, op)
   return op
@@ -737,7 +736,7 @@ def add_summary_ops(m, summarize_ops, summarize_names, to_aggregate=None,
                     print_summary_key='print_summaries', prefix=''):
   if type(to_aggregate) != list:
     to_aggregate = [to_aggregate for _ in summarize_ops]
-  
+
   # set up aggregating metrics
   if np.any(to_aggregate):
     agg_ops = []
@@ -774,7 +773,7 @@ def add_summary_ops(m, summarize_ops, summarize_names, to_aggregate=None,
 
 def accum_val_ops(outputs, names, global_step, output_dir, metric_summary, N):
   """Processes the collected outputs to compute AP for action prediction.
-  
+
   Args:
     outputs        : List of scalar ops to summarize.
     names          : Name of the scalar ops.
@@ -795,7 +794,7 @@ def accum_val_ops(outputs, names, global_step, output_dir, metric_summary, N):
   return outs
 
 def get_default_summary_ops():
-  return utils.Foo(summary_ops=None, print_summary_ops=None, 
+  return utils.Foo(summary_ops=None, print_summary_ops=None,
                    additional_return_ops=[], arop_summary_iters=[],
                    arop_eval_fns=[])
 
@@ -805,11 +804,11 @@ def simple_summaries(summarize_ops, summarize_names, mode, to_aggregate=False,
 
   if type(to_aggregate) != list:
     to_aggregate = [to_aggregate for _ in summarize_ops]
-  
+
   summary_key = '{:s}_summaries'.format(mode)
   print_summary_key = '{:s}_print_summaries'.format(mode)
   prefix=' [{:s}]: '.format(mode)
-  
+
   # Default ops for things that dont need to be aggregated.
   if not np.all(to_aggregate):
     for op, name, to_agg in zip(summarize_ops, summarize_names, to_aggregate):
@@ -820,13 +819,13 @@ def simple_summaries(summarize_ops, summarize_names, mode, to_aggregate=False,
   else:
     summary_ops = tf.no_op()
     print_summary_ops = tf.no_op()
- 
+
   # Default ops for things that dont need to be aggregated.
   if np.any(to_aggregate):
-    additional_return_ops = [[summarize_ops[i] 
+    additional_return_ops = [[summarize_ops[i]
                               for i, x in enumerate(to_aggregate )if x]]
     arop_summary_iters = [-1]
-    s_names = ['{:s}/{:s}'.format(scope_name, summarize_names[i]) 
+    s_names = ['{:s}/{:s}'.format(scope_name, summarize_names[i])
                for i, x in enumerate(to_aggregate) if x]
     fn = lambda outputs, global_step, output_dir, metric_summary, N: \
       accum_val_ops(outputs, s_names, global_step, output_dir, metric_summary,

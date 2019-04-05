@@ -22,7 +22,6 @@ import functools
 
 
 from absl import flags
-from absl import logging
 import tensorflow as tf
 
 import data_provider
@@ -147,5 +146,5 @@ def main(_):
       get_hooks_fn=tfgan.get_joint_train_hooks())
 
 if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
+  tf.logging.set_verbosity(logging.INFO)
   tf.app.run()

@@ -17,17 +17,17 @@ r"""Navidation Environment. Includes the following classes along with some
 helper functions.
   Building: Loads buildings, computes traversibility, exposes functionality for
     rendering images.
-  
+
   GridWorld: Base class which implements functionality for moving an agent on a
     grid world.
-  
+
   NavigationEnv: Base class which generates navigation problems on a grid world.
-  
+
   VisualNavigationEnv: Builds upon NavigationEnv and Building to provide
-    interface that is used externally to train the agent. 
-  
+    interface that is used externally to train the agent.
+
   MeshMapper: Class used for distilling the model, testing the mapper.
-  
+
   BuildingMultiplexer: Wrapper class that instantiates a VisualNavigationEnv for
     each building and multiplexes between them as needed.
 """
@@ -41,7 +41,7 @@ import graph_tool as gt
 import graph_tool.topology
 
 from tensorflow.python.platform import gfile
-import logging
+import tensorflow as tf
 import src.file_utils as fu
 import src.utils as utils
 import src.graph_utils as gu
@@ -83,14 +83,14 @@ def _get_semantic_maps(folder_name, building_name, map, flip):
                                map.origin[0], map.origin[1], map.resolution,
                                flip)
   file_name = os.path.join(folder_name, file_name)
-  logging.info('Loading semantic maps from %s.', file_name)
+  tf.logging.info('Loading semantic maps from %s.', file_name)
 
   if fu.exists(file_name):
     a = utils.load_variables(file_name)
     maps = a['maps'] #HxWx#C
     cats = a['cats']
   else:
-    logging.error('file_name: %s not found.', file_name)
+    tf.logging.error('file_name: %s not found.', file_name)
     maps = None
     cats = None
   return maps, cats
@@ -202,7 +202,7 @@ def _gen_perturbs(rng, batch_size, num_steps, lr_flip, delta_angle, delta_xy,
 
 def get_multiplexer_class(args, task_number):
   assert(args.task_params.base_class == 'Building')
-  logging.info('Returning BuildingMultiplexer')
+  tf.logging.info('Returning BuildingMultiplexer')
   R = BuildingMultiplexer(args, task_number)
   return R
 
@@ -472,7 +472,7 @@ class MeshMapper(Building):
       self.task.nodes = nodes
       self.task.delta_theta = 2.0*np.pi/(self.task.n_ori*1.)
       self.task.nodes_to_id = nodes_to_id
-      logging.info('Building %s, #V=%d, #E=%d', self.building_name,
+      tf.logging.info('Building %s, #V=%d, #E=%d', self.building_name,
                    self.task.nodes.shape[0], self.task.gtG.num_edges())
 
       if self.logdir is not None:
@@ -775,7 +775,7 @@ def _nav_env_reset_helper(type, rng, nodes, batch_size, gtG, max_dist,
         p = p_each[dist_to_class[t]]*1.; p = p/np.sum(p)
         start_node_id = rng.choice(p.shape[0], size=1, p=p)[0]
       else:
-        logging.fatal('Sampling not one of uniform.')
+        tf.logging.fatal('Sampling not one of uniform.')
       start_node_ids.append(start_node_id)
       dists.append(dist_to_class[t])
       # Dummy goal node, same as the start node, so that vis is better.
@@ -800,7 +800,7 @@ class NavigationEnv(GridWorld, Building):
           self.task.sampling_distribution, self.task.target_distribution,
           self.task.nodes, self.task_params.n_ori, self.task_params.step_size,
           self.task.distribution_bins, self.task.rejection_sampling_M)
-    bins = self.task.distribution_bins 
+    bins = self.task.distribution_bins
     n_bins = self.task.n_bins
     with plt.style.context('ggplot'):
       fig, axes = utils.subplot(plt, (1,2), (10,10))
@@ -809,7 +809,7 @@ class NavigationEnv(GridWorld, Building):
       ax.plot(bins[:-1]+0.5/n_bins, self.task.target_distribution, 'g')
       ax.plot(bins[:-1]+0.5/n_bins, self.task.sampling_distribution, 'b')
       ax.grid('on')
-      
+
       ax = axes[1]
       _ = ax.hist(gt_dists, bins=np.arange(self.task_params.max_dist+1))
       ax.grid('on')
@@ -827,7 +827,7 @@ class NavigationEnv(GridWorld, Building):
     fig, ax = utils.subplot(plt, (1,1), (12,12))
     ax.plot(node_xyt[:,0], node_xyt[:,1], 'm.')
     ax.set_axis_off(); ax.axis('equal');
-    
+
     if self.room_dims is not None:
       for i, r in enumerate(self.room_dims['dims']*1):
         min_ = r[:3]*1
@@ -868,7 +868,7 @@ class NavigationEnv(GridWorld, Building):
       self.task.delta_theta = 2.0*np.pi/(self.task.n_ori*1.)
       self.task.nodes_to_id = nodes_to_id
 
-      logging.info('Building %s, #V=%d, #E=%d', self.building_name,
+      tf.logging.info('Building %s, #V=%d, #E=%d', self.building_name,
                    self.task.nodes.shape[0], self.task.gtG.num_edges())
       type = self.task_params.type
       if type == 'general':
@@ -900,7 +900,7 @@ class NavigationEnv(GridWorld, Building):
                                   'target_distribution': target_d,
                                   'sampling_distribution': sampling_d,
                                   'rejection_sampling_M': rejection_sampling_M,
-                                  'n_bins': n_bins, 
+                                  'n_bins': n_bins,
                                   'n_ori': self.task_params.n_ori,
                                   'step_size': self.task_params.step_size,
                                   'min_dist': self.task_params.min_dist}
@@ -937,10 +937,10 @@ class NavigationEnv(GridWorld, Building):
         self.task.dist_to_class = dists
         a_, b_ = np.where(self.task.node_class_label)
         self.task.class_nodes = np.concatenate((a_[:,np.newaxis], b_[:,np.newaxis]), axis=1)
-        
+
         if self.logdir is not None:
           self._debug_semantic_maps(seed)
-        
+
         self.task.reset_kwargs = {'sampling': self.task_params.semantic_task.sampling,
                                   'class_nodes': self.task.class_nodes,
                                   'dist_to_class': self.task.dist_to_class}
@@ -1046,7 +1046,7 @@ class VisualNavigationEnv(NavigationEnv):
           self.traversible.astype(np.float32)*1, self.task_params.map_scales,
           self.task_params.map_resize_method)
     else:
-      logging.fatal('VisualNavigationEnv does not support scale_f anymore.')
+      tf.logging.fatal('VisualNavigationEnv does not support scale_f anymore.')
     self.task.readout_maps_scaled = resize_maps(
       self.traversible.astype(np.float32)*1,
       self.task_params.readout_maps_scales,
@@ -1181,7 +1181,7 @@ class VisualNavigationEnv(NavigationEnv):
         elif non_linearity == 'sqrt':
           count = np.sqrt(count)
         else:
-          logging.fatal('Undefined non_linearity.')
+          tf.logging.fatal('Undefined non_linearity.')
         outs['analytical_counts_{:d}'.format(i)] = count
 
     # Compute the goal location in the cordinate frame of the robot.
@@ -1250,7 +1250,7 @@ class VisualNavigationEnv(NavigationEnv):
 
     # Images for the goal.
     if self.task_params.outputs.ego_goal_imgs:
-      if self.task_params.type[:14] != 'to_nearest_obj': 
+      if self.task_params.type[:14] != 'to_nearest_obj':
         loc, x_axis, y_axis, theta = self.get_loc_axis(current_nodes,
                                                        delta_theta=self.task.delta_theta,
                                                        perturb=perturbs[:,step_number,:])
@@ -1374,7 +1374,7 @@ class BuildingMultiplexer():
       setattr(self, k, params[k])
     self.task_number = task_number
     self._pick_data(task_number)
-    logging.info('Env Class: %s.', self.env_class)
+    tf.logging.info('Env Class: %s.', self.env_class)
     if self.task_params.task == 'planning':
       self._setup_planner()
     elif self.task_params.task == 'mapping':
@@ -1382,22 +1382,22 @@ class BuildingMultiplexer():
     elif self.task_params.task == 'map+plan':
       self._setup_mapper()
     else:
-      logging.error('Undefined task: %s'.format(self.task_params.task))
+      tf.logging.error('Undefined task: %s'.format(self.task_params.task))
 
   def _pick_data(self, task_number):
-    logging.error('Input Building Names: %s', self.building_names)
+    tf.logging.error('Input Building Names: %s', self.building_names)
     self.flip = [np.mod(task_number / len(self.building_names), 2) == 1]
     id = np.mod(task_number, len(self.building_names))
     self.building_names = [self.building_names[id]]
     self.task_params.building_seed = task_number
-    logging.error('BuildingMultiplexer: Picked Building Name: %s', self.building_names)
+    tf.logging.error('BuildingMultiplexer: Picked Building Name: %s', self.building_names)
     self.building_names = self.building_names[0].split('+')
     self.flip = [self.flip[0] for _ in self.building_names]
-    logging.error('BuildingMultiplexer: Picked Building Name: %s', self.building_names)
-    logging.error('BuildingMultiplexer: Flipping Buildings: %s', self.flip)
-    logging.error('BuildingMultiplexer: Set building_seed: %d', self.task_params.building_seed)
+    tf.logging.error('BuildingMultiplexer: Picked Building Name: %s', self.building_names)
+    tf.logging.error('BuildingMultiplexer: Flipping Buildings: %s', self.flip)
+    tf.logging.error('BuildingMultiplexer: Set building_seed: %d', self.task_params.building_seed)
     self.num_buildings = len(self.building_names)
-    logging.error('BuildingMultiplexer: Num buildings: %d', self.num_buildings)
+    tf.logging.error('BuildingMultiplexer: Num buildings: %d', self.num_buildings)
 
   def _setup_planner(self):
     # Load building env class.
@@ -1459,7 +1459,7 @@ class BuildingMultiplexer():
 
   def pre(self, inputs):
     return self.buildings[self._building_id].pre(inputs)
-  
+
   def __del__(self):
     self.r_obj.clear_scene()
-    logging.error('Clearing scene.')
+    tf.logging.error('Clearing scene.')

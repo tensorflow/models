@@ -20,7 +20,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import logging
 import numpy as np
 import tensorflow as tf
 
@@ -104,38 +103,38 @@ class Model(object):
     self.size_constraint_weight = size_constraint_weight
     self.train_global_scale_var = train_global_scale_var
 
-    logging.info('data_dir: %s', data_dir)
-    logging.info('file_extension: %s', file_extension)
-    logging.info('is_training: %s', is_training)
-    logging.info('learning_rate: %s', learning_rate)
-    logging.info('reconstr_weight: %s', reconstr_weight)
-    logging.info('smooth_weight: %s', smooth_weight)
-    logging.info('ssim_weight: %s', ssim_weight)
-    logging.info('icp_weight: %s', icp_weight)
-    logging.info('size_constraint_weight: %s', size_constraint_weight)
-    logging.info('beta1: %s', beta1)
-    logging.info('batch_size: %s', batch_size)
-    logging.info('img_height: %s', img_height)
-    logging.info('img_width: %s', img_width)
-    logging.info('seq_length: %s', seq_length)
-    logging.info('architecture: %s', architecture)
-    logging.info('imagenet_norm: %s', imagenet_norm)
-    logging.info('weight_reg: %s', weight_reg)
-    logging.info('exhaustive_mode: %s', exhaustive_mode)
-    logging.info('random_scale_crop: %s', random_scale_crop)
-    logging.info('flipping_mode: %s', flipping_mode)
-    logging.info('random_color: %s', random_color)
-    logging.info('depth_upsampling: %s', depth_upsampling)
-    logging.info('depth_normalization: %s', depth_normalization)
-    logging.info('compute_minimum_loss: %s', compute_minimum_loss)
-    logging.info('use_skip: %s', use_skip)
-    logging.info('joint_encoder: %s', joint_encoder)
-    logging.info('build_sum: %s', build_sum)
-    logging.info('shuffle: %s', shuffle)
-    logging.info('input_file: %s', input_file)
-    logging.info('handle_motion: %s', handle_motion)
-    logging.info('equal_weighting: %s', equal_weighting)
-    logging.info('train_global_scale_var: %s', train_global_scale_var)
+    tf.logging.info('data_dir: %s', data_dir)
+    tf.logging.info('file_extension: %s', file_extension)
+    tf.logging.info('is_training: %s', is_training)
+    tf.logging.info('learning_rate: %s', learning_rate)
+    tf.logging.info('reconstr_weight: %s', reconstr_weight)
+    tf.logging.info('smooth_weight: %s', smooth_weight)
+    tf.logging.info('ssim_weight: %s', ssim_weight)
+    tf.logging.info('icp_weight: %s', icp_weight)
+    tf.logging.info('size_constraint_weight: %s', size_constraint_weight)
+    tf.logging.info('beta1: %s', beta1)
+    tf.logging.info('batch_size: %s', batch_size)
+    tf.logging.info('img_height: %s', img_height)
+    tf.logging.info('img_width: %s', img_width)
+    tf.logging.info('seq_length: %s', seq_length)
+    tf.logging.info('architecture: %s', architecture)
+    tf.logging.info('imagenet_norm: %s', imagenet_norm)
+    tf.logging.info('weight_reg: %s', weight_reg)
+    tf.logging.info('exhaustive_mode: %s', exhaustive_mode)
+    tf.logging.info('random_scale_crop: %s', random_scale_crop)
+    tf.logging.info('flipping_mode: %s', flipping_mode)
+    tf.logging.info('random_color: %s', random_color)
+    tf.logging.info('depth_upsampling: %s', depth_upsampling)
+    tf.logging.info('depth_normalization: %s', depth_normalization)
+    tf.logging.info('compute_minimum_loss: %s', compute_minimum_loss)
+    tf.logging.info('use_skip: %s', use_skip)
+    tf.logging.info('joint_encoder: %s', joint_encoder)
+    tf.logging.info('build_sum: %s', build_sum)
+    tf.logging.info('shuffle: %s', shuffle)
+    tf.logging.info('input_file: %s', input_file)
+    tf.logging.info('handle_motion: %s', handle_motion)
+    tf.logging.info('equal_weighting: %s', equal_weighting)
+    tf.logging.info('train_global_scale_var: %s', train_global_scale_var)
 
     if self.size_constraint_weight > 0 or not is_training:
       self.global_scale_var = tf.Variable(
@@ -599,7 +598,7 @@ class Model(object):
             key1 = '%d-%d' % (frame_index, self.middle_frame_index)
             key2 = '%d-%d' % (self.seq_length - frame_index - 1,
                               self.middle_frame_index)
-            logging.info('computing min error between %s and %s', key1, key2)
+            tf.logging.info('computing min error between %s and %s', key1, key2)
             min_error = tf.minimum(self.warp_error[s][key1],
                                    self.warp_error[s][key2])
             self.reconstr_loss += tf.reduce_mean(min_error)

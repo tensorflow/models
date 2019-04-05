@@ -106,7 +106,7 @@ def Train(train_dir,
               if sv.coord.should_stop():
                 break
         except tf.errors.AbortedError as e:
-          logging.error('Received error:%s', e)
+          tf.logging.error('Received error:%s', e)
           continue
 
 
@@ -377,8 +377,8 @@ class VGSLImageModel(object):
       self.labels = tf.slice(self.labels, [0, 0], [-1, 1])
       self.labels = tf.reshape(self.labels, [-1])
 
-    logging.info('Final output=%s', outputs)
-    logging.info('Labels tensor=%s', self.labels)
+    tf.logging.info('Final output=%s', outputs)
+    tf.logging.info('Labels tensor=%s', self.labels)
     self.output = outputs
 
   def _AddOutputLayer(self, prev_layer, out_dims, out_func, num_classes):

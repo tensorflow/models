@@ -249,16 +249,16 @@ def read_cached_data(should_load_images, dataset_root, segmentation_file_name,
   annotated_target_path = os.path.join(dataset_root, 'Meta',
                                        targets_file_name + '.npy')
 
-  logging.info('loading targets: %s', annotated_target_path)
+  tf.logging.info('loading targets: %s', annotated_target_path)
   with tf.gfile.Open(annotated_target_path) as f:
     result_data['targets'] = np.load(f).item()
 
   depth_image_path = os.path.join(dataset_root, 'Meta/depth_imgs.npy')
-  logging.info('loading depth: %s', depth_image_path)
+  tf.logging.info('loading depth: %s', depth_image_path)
   with tf.gfile.Open(depth_image_path) as f:
     depth_data = np.load(f).item()
 
-  logging.info('processing depth')
+  tf.logging.info('processing depth')
   for home_id in depth_data:
     images = depth_data[home_id]
     for image_id in images:
@@ -273,11 +273,11 @@ def read_cached_data(should_load_images, dataset_root, segmentation_file_name,
 
   sseg_path = os.path.join(dataset_root, 'Meta',
                            segmentation_file_name + '.npy')
-  logging.info('loading sseg: %s', sseg_path)
+  tf.logging.info('loading sseg: %s', sseg_path)
   with tf.gfile.Open(sseg_path) as f:
     sseg_data = np.load(f).item()
 
-  logging.info('processing sseg')
+  tf.logging.info('processing sseg')
   for home_id in sseg_data:
     images = sseg_data[home_id]
     for image_id in images:
@@ -289,7 +289,7 @@ def read_cached_data(should_load_images, dataset_root, segmentation_file_name,
 
   if should_load_images:
     image_path = os.path.join(dataset_root, 'Meta/imgs.npy')
-    logging.info('loading imgs: %s', image_path)
+    tf.logging.info('loading imgs: %s', image_path)
     with tf.gfile.Open(image_path) as f:
       image_data = np.load(f).item()
 
@@ -298,7 +298,7 @@ def read_cached_data(should_load_images, dataset_root, segmentation_file_name,
   with tf.gfile.Open(os.path.join(dataset_root, 'Meta/world_id_dict.npy')) as f:
     result_data['world_id_dict'] = np.load(f).item()
 
-  logging.info('logging done in %f seconds', time.time() - load_start)
+  tf.logging.info('logging done in %f seconds', time.time() - load_start)
   return result_data
 
 
@@ -385,7 +385,7 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
       raise ValueError('"reward" for collision should be non positive')
 
     if reward_goal_range < 0:
-      logging.warning('environment does not terminate the episode if the agent '
+      tf.logging.warning('environment does not terminate the episode if the agent '
                       'is too close to the environment')
 
     if not modality_types:
@@ -466,7 +466,7 @@ class ActiveVisionDatasetEnv(task_env.TaskEnv):
           if world in self._annotated_targets[goal]:
             for image_id in data[world]:
               self._eval_init_points.append((world, image_id[0], goal))
-        logging.info('loaded %d eval init points', len(self._eval_init_points))
+        tf.logging.info('loaded %d eval init points', len(self._eval_init_points))
 
     self.action_space = gym.spaces.Discrete(len(self._actions))
 

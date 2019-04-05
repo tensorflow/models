@@ -47,7 +47,8 @@ bazel run -c opt single_task:run -- \
 
 from absl import app
 from absl import flags
-from absl import logging
+
+import tensorflow as tf
 
 from single_task import defaults  # brain coder
 from single_task import ga_train  # brain coder
@@ -123,7 +124,7 @@ def get_namespace(config_string):
 def main(argv):
   del argv  # Unused.
 
-  logging.set_verbosity(FLAGS.log_level)
+  tf.logging.set_verbosity(FLAGS.log_level)
 
   flags.mark_flag_as_required('logdir')
   if FLAGS.num_workers <= 0:

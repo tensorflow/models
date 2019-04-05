@@ -23,9 +23,9 @@ import glob
 import json
 import os
 import re
-from absl import logging
 import numpy as np
 import scipy.misc
+import tensorflow as tf
 
 CITYSCAPES_CROP_BOTTOM = True  # Crop bottom 25% to remove the car hood.
 CITYSCAPES_CROP_PCT = 0.75
@@ -50,12 +50,12 @@ class Bike(object):
     self.frames = self.collect_frames()
     self.num_frames = len(self.frames)
     self.num_train = self.num_frames
-    logging.info('Total frames collected: %d', self.num_frames)
+    tf.logging.info('Total frames collected: %d', self.num_frames)
 
   def collect_frames(self):
     """Create a list of unique ids for available frames."""
     video_list = os.listdir(self.dataset_dir)
-    logging.info('video_list: %s', video_list)
+    tf.logging.info('video_list: %s', video_list)
     frames = []
     for video in video_list:
       im_files = glob.glob(os.path.join(self.dataset_dir, video, '*.jpg'))
@@ -491,7 +491,7 @@ class Cityscapes(object):
       self.num_train = self.num_frames
     else:
       self.num_test = self.num_frames
-    logging.info('Total frames collected: %d', self.num_frames)
+    tf.logging.info('Total frames collected: %d', self.num_frames)
 
   def collect_frames(self, split):
     img_dir = os.path.join(self.dataset_dir, 'leftImg8bit_sequence', split)

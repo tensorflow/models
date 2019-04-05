@@ -21,7 +21,6 @@ DetectionModel.
 
 import functools
 import tensorflow as tf
-from google3.pyglib import logging
 
 from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
@@ -200,7 +199,7 @@ def get_restore_checkpoint_ops(restore_checkpoints, detection_model,
             var_map, restore_checkpoint))
     for var_name, var in available_var_map.iteritems():
       if var in vars_restored:
-        logging.info('Variable %s contained in multiple checkpoints',
+        tf.logging.info('Variable %s contained in multiple checkpoints',
                      var.op.name)
         del available_var_map[var_name]
       else:
@@ -221,7 +220,7 @@ def get_restore_checkpoint_ops(restore_checkpoints, detection_model,
     if available_var_map.keys():
       restorers.append(init_saver)
     else:
-      logging.info('WARNING: Checkpoint %s has no restorable variables',
+      tf.logging.info('WARNING: Checkpoint %s has no restorable variables',
                    restore_checkpoint)
 
     return restorers

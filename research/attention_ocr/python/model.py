@@ -25,7 +25,6 @@ Usage example:
 """
 import sys
 import collections
-import logging
 import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow.contrib.slim.nets import inception
@@ -145,7 +144,7 @@ class Model(object):
         utf8 strings. If specified the OutputEndpoints.predicted_text will
         utf8 encoded strings corresponding to the character ids returned by
         OutputEndpoints.predicted_chars (by default the predicted_text contains
-        an empty vector). 
+        an empty vector).
         NOTE: Make sure you call tf.tables_initializer().run() if the charset
         specified.
     """
@@ -197,7 +196,7 @@ class Model(object):
       network architecture).
     """
     mparams = self._mparams['conv_tower_fn']
-    logging.debug('Using final_endpoint=%s', mparams.final_endpoint)
+    tf.logging.debug('Using final_endpoint=%s', mparams.final_endpoint)
     with tf.variable_scope('conv_tower_fn/INCE'):
       if reuse:
         tf.get_variable_scope().reuse_variables()
@@ -227,7 +226,7 @@ class Model(object):
                            (num_features, self._params.seq_length,
                             net.get_shape()))
     elif num_features > self._params.seq_length:
-      logging.warning('Ignoring some features: use %d of %d (shape=%s)',
+      tf.logging.warning('Ignoring some features: use %d of %d (shape=%s)',
                       self._params.seq_length, num_features, net.get_shape())
       net = tf.slice(net, [0, 0, 0], [-1, self._params.seq_length, -1])
 
@@ -351,27 +350,27 @@ class Model(object):
     Returns:
       A named tuple OutputEndpoints.
     """
-    logging.debug('images: %s', images)
+    tf.logging.debug('images: %s', images)
     is_training = labels_one_hot is not None
     with tf.variable_scope(scope, reuse=reuse):
       views = tf.split(
         value=images, num_or_size_splits=self._params.num_views, axis=2)
-      logging.debug('Views=%d single view: %s', len(views), views[0])
+      tf.logging.debug('Views=%d single view: %s', len(views), views[0])
 
       nets = [
         self.conv_tower_fn(v, is_training, reuse=(i != 0))
         for i, v in enumerate(views)
       ]
-      logging.debug('Conv tower: %s', nets[0])
+      tf.logging.debug('Conv tower: %s', nets[0])
 
       nets = [self.encode_coordinates_fn(net) for net in nets]
-      logging.debug('Conv tower w/ encoded coordinates: %s', nets[0])
+      tf.logging.debug('Conv tower w/ encoded coordinates: %s', nets[0])
 
       net = self.pool_views_fn(nets)
-      logging.debug('Pooled views: %s', net)
+      tf.logging.debug('Pooled views: %s', net)
 
       chars_logit = self.sequence_logit_fn(net, labels_one_hot)
-      logging.debug('chars_logit: %s', chars_logit)
+      tf.logging.debug('chars_logit: %s', chars_logit)
 
       predicted_chars, chars_log_prob, predicted_scores = (
         self.char_predictions(chars_logit))
@@ -556,18 +555,18 @@ class Model(object):
     all_feed_dict = {}
 
     def assign_from_checkpoint(variables, checkpoint):
-      logging.info('Request to re-store %d weights from %s',
+      tf.logging.info('Request to re-store %d weights from %s',
                    len(variables), checkpoint)
       if not variables:
-        logging.error('Can\'t find any variables to restore.')
+        tf.logging.error('Can\'t find any variables to restore.')
         sys.exit(1)
       assign_op, feed_dict = slim.assign_from_checkpoint(checkpoint, variables)
       all_assign_ops.append(assign_op)
       all_feed_dict.update(feed_dict)
 
-    logging.info('variables_to_restore:\n%s' % utils.variables_to_restore().keys())
-    logging.info('moving_average_variables:\n%s' % [v.op.name for v in tf.moving_average_variables()])
-    logging.info('trainable_variables:\n%s' % [v.op.name for v in tf.trainable_variables()])
+    tf.logging.info('variables_to_restore:\n%s' % utils.variables_to_restore().keys())
+    tf.logging.info('moving_average_variables:\n%s' % [v.op.name for v in tf.moving_average_variables()])
+    tf.logging.info('trainable_variables:\n%s' % [v.op.name for v in tf.trainable_variables()])
     if master_checkpoint:
       assign_from_checkpoint(utils.variables_to_restore(), master_checkpoint)
 
@@ -577,7 +576,7 @@ class Model(object):
       assign_from_checkpoint(variables, inception_checkpoint)
 
     def init_assign_fn(sess):
-      logging.info('Restoring checkpoint(s)')
+      tf.logging.info('Restoring checkpoint(s)')
       sess.run(all_assign_ops, all_feed_dict)
 
     return init_assign_fn

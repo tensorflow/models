@@ -36,9 +36,8 @@ import cProfile
 import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow.python.framework import ops
-from tensorflow.contrib.framework.python.ops import variables 
+from tensorflow.contrib.framework.python.ops import variables
 
-import logging
 from tensorflow.python.platform import gfile
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
@@ -46,7 +45,7 @@ from cfgs import config_distill
 from tfcode import tf_utils
 import src.utils as utils
 import src.file_utils as fu
-import tfcode.distillation as distill 
+import tfcode.distillation as distill
 import datasets.nav_env as nav_env
 
 FLAGS = flags.FLAGS
@@ -72,12 +71,12 @@ def main(_):
   args.solver.task = FLAGS.task
   args.solver.ps_tasks = FLAGS.ps_tasks
   args.solver.master = FLAGS.master
-  
+
   args.buildinger.env_class = nav_env.MeshMapper
   fu.makedirs(args.logdir)
   args.buildinger.logdir = args.logdir
   R = nav_env.get_multiplexor_class(args.buildinger, args.solver.task)
-  
+
   if False:
     pr = cProfile.Profile()
     pr.enable()
@@ -98,15 +97,15 @@ def main(_):
   if args.control.train:
     if not gfile.Exists(args.logdir):
       gfile.MakeDirs(args.logdir)
-   
+
     m = utils.Foo()
     m.tf_graph = tf.Graph()
-    
+
     config = tf.ConfigProto()
     config.device_count['GPU'] = 1
     config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
-    
+
     with m.tf_graph.as_default():
       with tf.device(tf.train.replica_device_setter(args.solver.ps_tasks)):
         m = distill.setup_to_run(m, args, is_training=True,
@@ -131,7 +130,7 @@ def main(_):
             sync_optimizer=m.sync_optimizer,
             saver=m.saver_op,
             summary_op=None, session_config=config)
- 
+
   if args.control.test:
     m = utils.Foo()
     m.tf_graph = tf.Graph()
@@ -139,12 +138,12 @@ def main(_):
     with m.tf_graph.as_default():
       m = distill.setup_to_run(m, args, is_training=False,
                               batch_norm_is_training=args.control.force_batchnorm_is_training_at_test)
-      
+
       train_step_kwargs = distill.setup_train_step_kwargs_mesh(
           m, R, os.path.join(args.logdir, args.control.test_name),
           rng_seed=args.solver.task+1, is_chief=args.solver.task==0,
           iters=args.summary.test_iters, train_display_interval=None)
-      
+
       sv = slim.learning.supervisor.Supervisor(
           graph=ops.get_default_graph(), logdir=None, init_op=m.init_op,
           summary_op=None, summary_writer=None, global_step=None, saver=m.saver_op)
@@ -154,15 +153,15 @@ def main(_):
         last_checkpoint = slim.evaluation.wait_for_new_checkpoint(checkpoint_dir, last_checkpoint)
         checkpoint_iter = int(os.path.basename(last_checkpoint).split('-')[1])
         start = time.time()
-        logging.info('Starting evaluation at %s using checkpoint %s.', 
+        tf.logging.info('Starting evaluation at %s using checkpoint %s.',
                      time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime()),
                      last_checkpoint)
-        
+
         config = tf.ConfigProto()
         config.device_count['GPU'] = 1
         config.gpu_options.allow_growth = True
         config.gpu_options.per_process_gpu_memory_fraction = 0.8
-        
+
         with sv.managed_session(args.solver.master,config=config,
                                 start_standard_services=False) as sess:
           sess.run(m.init_op)
