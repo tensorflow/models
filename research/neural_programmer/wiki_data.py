@@ -37,7 +37,10 @@ def is_nan_or_inf(number):
   return math.isnan(number) or math.isinf(number)
 
 def strip_accents(s):
-  u = unicode(s, "utf-8")
+  try:               # Python 2
+    u = unicode(s, "utf-8")
+  except NameError:  # Python 3
+    u = s
   u_new = ''.join(c for c in ud.normalize('NFKD', u) if ud.category(c) != 'Mn')
   return u_new.encode("utf-8")
 

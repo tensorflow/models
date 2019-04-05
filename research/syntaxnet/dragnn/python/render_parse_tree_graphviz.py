@@ -53,7 +53,10 @@ def parse_tree_graph(sentence):
     warnings.simplefilter("ignore")
     svg = graph.draw(format="svg", prog="dot")
 
-  svg = unicode(svg, "utf-8")
+  try:               # Python 2
+    svg = unicode(svg, "utf-8")
+  except NameError:  # Python 3
+    pass
 
   # For both inline and "new window" displays, we show the tokens with the
   # graph. (The sentence order of nodes is sometimes difficult to read.)

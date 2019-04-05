@@ -73,6 +73,8 @@ def parse_trace_json(trace):
           unicode(step_trace.caption, 'utf-8')
         except UnicodeDecodeError:
           step_trace.caption = repr(step_trace.caption)  # Safe encoding.
+        except NameError:  # Python 3
+          pass
 
   as_json = json_format.MessageToJson(
       as_proto, preserving_proto_field_name=True)
@@ -137,7 +139,10 @@ def trace_html(trace,
       master_spec_json=_optional_master_spec_json(master_spec),
       elt_id=elt_id,
       div_html=div_html)
-  return unicode(as_str, 'utf-8') if convert_to_unicode else as_str
+  try:               # Python 2
+    return unicode(as_str, 'utf-8') if convert_to_unicode else as_str
+  except NameError:  # Python 3
+    return as_str
 
 
 def open_in_new_window(html, notebook_html_fcn=None, temp_file_basename=None):
@@ -216,7 +221,10 @@ class InteractiveVisualization(object):
     </script>
     """.format(
         script=script, div_html=div_html)
-    return unicode(html, 'utf-8')  # IPython expects unicode.
+    try:               # Python 2
+      return unicode(html, 'utf-8')  # IPython expects unicode.
+    except NameError:  # Python 3
+      return html
 
   def show_trace(self, trace, master_spec=None):
     """Returns a JS script HTML fragment, which will populate the container.
@@ -239,4 +247,7 @@ class InteractiveVisualization(object):
         json=parse_trace_json(trace),
         master_spec_json=_optional_master_spec_json(master_spec),
         elt_id=self.elt_id)
-    return unicode(html, 'utf-8')  # IPython expects unicode.
+    try:               # Python 2
+      return unicode(html, 'utf-8')  # IPython expects unicode.
+    except NameError:  # Python 3
+      return html
