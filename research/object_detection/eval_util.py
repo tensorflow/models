@@ -71,10 +71,10 @@ def write_metrics(metrics, global_step, summary_dir):
   summary_writer = tf.summary.FileWriterCache.get(summary_dir)
   for key in sorted(metrics):
     summary = tf.Summary(value=[
-        tf.Summary.Value(tag=key, simple_value=metrics[key]),
+        tf.Summary.Value(tag=key, tensor=tf.make_tensor_proto(metrics[key])),
     ])
     summary_writer.add_summary(summary, global_step)
-    tf.logging.info('%s: %f', key, metrics[key])
+    tf.logging.info('%s: %s', key, str(metrics[key]))
   tf.logging.info('Metrics written to tf summary.')
 
 
