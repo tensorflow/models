@@ -22,7 +22,6 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from tensorflow.python.eager import profiler
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_model
@@ -177,7 +176,7 @@ def run(flags_obj):
                   optimizer=optimizer,
                   metrics=['sparse_categorical_accuracy'])
 
-  time_callback, tensorboard_callback, lr_callback = keras_common.get_callbacks(
+  callbacks = keras_common.get_callbacks(
       learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])
 
   train_steps = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
@@ -199,12 +198,6 @@ def run(flags_obj):
     num_eval_steps = None
     validation_data = None
 
-  callbacks = [time_callback, lr_callback]
-  if flags_obj.enable_tensorboard:
-    callbacks.append(tensorboard_callback)
-  if flags_obj.enable_e2e_xprof:
-    profiler.start()
-
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
                       steps_per_epoch=train_steps,
@@ -214,16 +207,12 @@ def run(flags_obj):
                       validation_freq=flags_obj.epochs_between_evals,
                       verbose=2)
 
-  if flags_obj.enable_e2e_xprof:
-    results = profiler.stop()
-    profiler.save(flags_obj.model_dir, results)
-
   eval_output = None
   if not flags_obj.skip_eval:
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=2)
-  stats = keras_common.build_stats(history, eval_output, time_callback)
+  stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
 
 
