@@ -319,13 +319,6 @@ class BaseTest(tf.test.TestCase):
                      '-resnet_size', '200']
     )
 
-  def test_imagenet_end_to_end_keras_synthetic_v1(self):
-    integration.run_synthetic(
-        main=keras_imagenet_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '1', '-batch_size', '4',
-                     '-train_steps', '1']
-    )
-
 
 if __name__ == '__main__':
   tf.test.main()
