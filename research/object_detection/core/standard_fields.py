@@ -114,6 +114,9 @@ class DetectionResultFields(object):
     detection_boundaries: contains an object boundary for each detection box.
     detection_keypoints: contains detection keypoints for each detection box.
     num_detections: number of detections in the batch.
+    raw_detection_boxes: contains decoded detection boxes without Non-Max
+      suppression.
+    raw_detection_scores: contains class score logits for raw detection boxes.
   """
 
   source_id = 'source_id'
@@ -125,6 +128,8 @@ class DetectionResultFields(object):
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   num_detections = 'num_detections'
+  raw_detection_boxes = 'raw_detection_boxes'
+  raw_detection_scores = 'raw_detection_scores'
 
 
 class BoxListFields(object):

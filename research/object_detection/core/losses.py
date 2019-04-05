@@ -61,8 +61,8 @@ class Loss(object):
         shouldn't be factored into the loss.
       losses_mask: A [batch] boolean tensor that indicates whether losses should
         be applied to individual images in the batch. For elements that
-        are True, corresponding prediction, target, and weight tensors will be
-        removed prior to loss computation. If None, no filtering will take place
+        are False, corresponding prediction, target, and weight tensors will not
+        contribute to loss computation. If None, no filtering will take place
         prior to loss computation.
       scope: Op scope name. Defaults to 'Loss' if None.
       **params: Additional keyword arguments for specific implementations of

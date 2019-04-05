@@ -129,10 +129,10 @@ def main(unused_argv):
           model_options=model_options,
           eval_scales=FLAGS.inference_scales,
           add_flipped_images=FLAGS.add_flipped_images)
-
-    predictions = tf.cast(predictions[common.OUTPUT_TYPE], tf.float32)
+    raw_predictions = tf.identity(
+        tf.cast(predictions[common.OUTPUT_TYPE], tf.float32),
+        _RAW_OUTPUT_NAME)
     # Crop the valid regions from the predictions.
-    raw_predictions = tf.identity(predictions, _RAW_OUTPUT_NAME)
     semantic_predictions = tf.slice(
         raw_predictions,
         [0, 0, 0],

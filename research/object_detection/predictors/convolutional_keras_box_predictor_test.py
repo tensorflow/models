@@ -191,7 +191,69 @@ class ConvolutionalKerasBoxPredictorTest(test_case.TestCase):
     self.assertEqual(conv_box_predictor._sorted_head_names,
                      ['box_encodings', 'class_predictions_with_background'])
 
-  # TODO(kaftan): Remove conditional after CMLE moves to TF 1.10
+  def test_use_depthwise_convolution(self):
+    image_features = tf.placeholder(dtype=tf.float32, shape=[4, None, None, 64])
+    conv_box_predictor = (
+        box_predictor_builder.build_convolutional_keras_box_predictor(
+            is_training=False,
+            num_classes=0,
+            conv_hyperparams=self._build_conv_hyperparams(),
+            freeze_batchnorm=False,
+            inplace_batchnorm_update=False,
+            num_predictions_per_location_list=[5],
+            min_depth=0,
+            max_depth=32,
+            num_layers_before_predictor=1,
+            use_dropout=True,
+            dropout_keep_prob=0.8,
+            kernel_size=1,
+            box_code_size=4,
+            use_depthwise=True
+        ))
+    box_predictions = conv_box_predictor([image_features])
+    box_encodings = tf.concat(
+        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+    objectness_predictions = tf.concat(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1)
+    init_op = tf.global_variables_initializer()
+
+    resolution = 32
+    expected_num_anchors = resolution*resolution*5
+    with self.test_session() as sess:
+      sess.run(init_op)
+      (box_encodings_shape,
+       objectness_predictions_shape) = sess.run(
+           [tf.shape(box_encodings), tf.shape(objectness_predictions)],
+           feed_dict={image_features:
+                      np.random.rand(4, resolution, resolution, 64)})
+      actual_variable_set = set(
+          [var.op.name for var in tf.trainable_variables()])
+    self.assertAllEqual(box_encodings_shape, [4, expected_num_anchors, 1, 4])
+    self.assertAllEqual(objectness_predictions_shape,
+                        [4, expected_num_anchors, 1])
+    expected_variable_set = set([
+        'BoxPredictor/SharedConvolutions_0/Conv2d_0_1x1_32/bias',
+        'BoxPredictor/SharedConvolutions_0/Conv2d_0_1x1_32/kernel',
+
+        'BoxPredictor/ConvolutionalBoxHead_0/BoxEncodingPredictor_depthwise/'
+        'bias',
+
+        'BoxPredictor/ConvolutionalBoxHead_0/BoxEncodingPredictor_depthwise/'
+        'depthwise_kernel',
+
+        'BoxPredictor/ConvolutionalBoxHead_0/BoxEncodingPredictor/bias',
+        'BoxPredictor/ConvolutionalBoxHead_0/BoxEncodingPredictor/kernel',
+        'BoxPredictor/ConvolutionalClassHead_0/ClassPredictor_depthwise/bias',
+
+        'BoxPredictor/ConvolutionalClassHead_0/ClassPredictor_depthwise/'
+        'depthwise_kernel',
+
+        'BoxPredictor/ConvolutionalClassHead_0/ClassPredictor/bias',
+        'BoxPredictor/ConvolutionalClassHead_0/ClassPredictor/kernel'])
+    self.assertEqual(expected_variable_set, actual_variable_set)
+    self.assertEqual(conv_box_predictor._sorted_head_names,
+                     ['box_encodings', 'class_predictions_with_background'])
 
 if __name__ == '__main__':
   tf.test.main()

@@ -44,12 +44,6 @@ class GetDistributionStrategyTest(tf.test.TestCase):
     for device in ds.extended.worker_devices:
       self.assertIn('GPU', device)
 
-  def test_override_strategy(self):
-    ds = distribution_utils.get_distribution_strategy(
-        distribution_strategy='collective', num_gpus=2)
-    self.assertTrue(
-        isinstance(ds, tf.contrib.distribute.CollectiveAllReduceStrategy))
-
 
 class PerDeviceBatchSizeTest(tf.test.TestCase):
   """Tests for per_device_batch_size."""

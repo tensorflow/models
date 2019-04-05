@@ -18,7 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import time
+import multiprocessing
+import os
 
 import numpy as np
 
@@ -26,67 +27,16 @@ import numpy as np
 from absl import flags
 import tensorflow as tf
 
+from official.utils.misc import keras_utils
+# pylint: disable=ungrouped-imports
 from tensorflow.core.protobuf import rewriter_config_pb2
+from tensorflow.python.eager import profiler
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
                                                   gradient_descent_v2)
 
 FLAGS = flags.FLAGS
 BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 TRAIN_TOP_1 = 'training_accuracy_top_1'
-
-
-class BatchTimestamp(object):
-  """A structure to store batch time stamp."""
-
-  def __init__(self, batch_index, timestamp):
-    self.batch_index = batch_index
-    self.timestamp = timestamp
-
-
-class TimeHistory(tf.keras.callbacks.Callback):
-  """Callback for Keras models."""
-
-  def __init__(self, batch_size, log_steps):
-    """Callback for logging performance (# image/second).
-
-    Args:
-      batch_size: Total batch size.
-      log_steps: Interval of time history logs.
-
-    """
-    self.batch_size = batch_size
-    super(TimeHistory, self).__init__()
-    self.log_steps = log_steps
-
-    # Logs start of step 0 then end of each step based on log_steps interval.
-    self.timestamp_log = []
-
-  def on_train_begin(self, logs=None):
-    self.record_batch = True
-
-  def on_train_end(self, logs=None):
-    self.train_finish_time = time.time()
-
-  def on_batch_begin(self, batch, logs=None):
-    if self.record_batch:
-      timestamp = time.time()
-      self.start_time = timestamp
-      self.record_batch = False
-      if batch == 0:
-        self.timestamp_log.append(BatchTimestamp(batch, timestamp))
-
-  def on_batch_end(self, batch, logs=None):
-    if batch % self.log_steps == 0:
-      timestamp = time.time()
-      elapsed_time = timestamp - self.start_time
-      examples_per_second = (self.batch_size * self.log_steps) / elapsed_time
-      if batch != 0:
-        self.record_batch = True
-        self.timestamp_log.append(BatchTimestamp(batch, timestamp))
-        tf.compat.v1.logging.info(
-            "BenchmarkMetric: {'num_batches':%d, 'time_taken': %f,"
-            "'images_per_second': %f}" %
-            (batch, elapsed_time, examples_per_second))
 
 
 class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
@@ -129,11 +79,37 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
           'change learning rate to %s.', self.epochs, batch, lr)
 
 
-def get_config_proto():
+class ProfilerCallback(tf.keras.callbacks.Callback):
+  """Save profiles in specified step range to log directory."""
+
+  def __init__(self, log_dir, start_step, stop_step):
+    super(ProfilerCallback, self).__init__()
+    self.log_dir = log_dir
+    self.start_step = start_step
+    self.stop_step = stop_step
+
+  def on_batch_begin(self, batch, logs=None):
+    if batch == self.start_step:
+      profiler.start()
+      tf.compat.v1.logging.info('Profiler started at Step %s', self.start_step)
+
+  def on_batch_end(self, batch, logs=None):
+    if batch == self.stop_step:
+      results = profiler.stop()
+      profiler.save(self.log_dir, results)
+      tf.compat.v1.logging.info(
+          'Profiler saved profiles for steps between %s and %s to %s',
+          self.start_step, self.stop_step, self.log_dir)
+
+
+def get_config_proto_v1():
   """Return config proto according to flag settings, or None to use default."""
   config = None
   if FLAGS.enable_xla:
-    config = tf.ConfigProto()
+    # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
+    _monkey_patch_org_assert_broadcastable()
+
+    config = tf.compat.v1.ConfigProto()
     config.graph_options.optimizer_options.global_jit_level = (
         tf.OptimizerOptions.ON_2)
     # Disable PinToHostOptimizer in grappler when enabling XLA because it causes
@@ -141,6 +117,45 @@ def get_config_proto():
     config.graph_options.rewrite_options.pin_to_host_optimization = (
         rewriter_config_pb2.RewriterConfig.OFF)
   return config
+
+
+def set_config_v2():
+  """Config eager context according to flag values using TF 2.0 API."""
+  if FLAGS.enable_xla:
+    # TODO(haoyuzhang): Remove this monkey patch when XLA OOM issue is fixed.
+    _monkey_patch_org_assert_broadcastable()
+
+    tf.config.optimizer.set_jit(True)
+    # Disable PinToHostOptimizer in grappler when enabling XLA because it
+    # causes OOM and performance regression.
+    tf.config.optimizer.set_experimental_options(
+        {"pin_to_host_optimization": False}
+    )
+
+
+def set_gpu_thread_mode_and_count(flags_obj):
+  """Set GPU thread mode and count, and adjust dataset threads count."""
+  cpu_count = multiprocessing.cpu_count()
+  tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
+
+  # Allocate private thread pool for each GPU to schedule and launch kernels
+  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 2
+  os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
+  os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
+  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
+                            os.environ['TF_GPU_THREAD_COUNT'])
+  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
+                            os.environ['TF_GPU_THREAD_MODE'])
+
+  # Limit data preprocessing threadpool to CPU cores minus number of total GPU
+  # private threads and memory copy threads.
+  total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
+  num_mem_copy_threads = flags_obj.num_gpus
+  if not flags_obj.datasets_num_private_threads:
+    flags_obj.datasets_num_private_threads = (cpu_count - total_gpu_thread_count
+                                              - num_mem_copy_threads)
+    tf.compat.v1.logging.info('Set datasets_num_private_threads to %s',
+                              flags_obj.datasets_num_private_threads)
 
 
 def get_optimizer():
@@ -151,20 +166,51 @@ def get_optimizer():
 
 def get_callbacks(learning_rate_schedule_fn, num_images):
   """Returns common callbacks."""
-  time_callback = TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
-
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=FLAGS.model_dir)
-
+  time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
   lr_callback = LearningRateBatchScheduler(
       learning_rate_schedule_fn,
       batch_size=FLAGS.batch_size,
       num_images=num_images)
+  callbacks = [time_callback, lr_callback]
 
-  return time_callback, tensorboard_callback, lr_callback
+  if FLAGS.enable_tensorboard:
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(
+        log_dir=FLAGS.model_dir)
+    callbacks.append(tensorboard_callback)
+
+  if FLAGS.profile_steps:
+    profiler_callback = get_profiler_callback()
+    callbacks.append(profiler_callback)
+
+  return callbacks
 
 
-def build_stats(history, eval_output, time_callback):
+def get_profiler_callback():
+  """Validate profile_steps flag value and return profiler callback."""
+  profile_steps_error_message = (
+      'profile_steps must be a comma separated pair of positive integers, '
+      'specifying the first and last steps to be profiled.'
+  )
+  try:
+    profile_steps = [int(i) for i in FLAGS.profile_steps.split(',')]
+  except ValueError:
+    raise ValueError(profile_steps_error_message)
+  if len(profile_steps) != 2:
+    raise ValueError(profile_steps_error_message)
+  start_step, stop_step = profile_steps
+  if start_step < 0 or start_step > stop_step:
+    raise ValueError(profile_steps_error_message)
+  if FLAGS.enable_tensorboard:
+    tf.compat.v1.logging.warn(
+        'Both TensorBoard and profiler callbacks are used. Note that the '
+        'TensorBoard callback profiles the 2nd step (unless otherwise '
+        'specified). Please make sure the steps profiled by the two callbacks '
+        'do not overlap.')
+
+  return ProfilerCallback(FLAGS.model_dir, start_step, stop_step)
+
+
+def build_stats(history, eval_output, callbacks):
   """Normalizes and returns dictionary of stats.
 
   Args:
@@ -172,7 +218,8 @@ def build_stats(history, eval_output, time_callback):
       and sparse_categorical_accuracy.
     eval_output: Output of the eval step. Assumes first value is eval_loss and
       second value is accuracy_top_1.
-    time_callback: Time tracking callback likely used during keras.fit.
+    callbacks: a list of callbacks which might include a time history callback
+      used during keras.fit.
 
   Returns:
     Dictionary of normalized results.
@@ -192,37 +239,50 @@ def build_stats(history, eval_output, time_callback):
     elif 'sparse_categorical_accuracy' in train_hist:
       stats[TRAIN_TOP_1] = train_hist['sparse_categorical_accuracy'][-1].item()
 
-  if time_callback:
-    timestamp_log = time_callback.timestamp_log
-    stats['step_timestamp_log'] = timestamp_log
-    stats['train_finish_time'] = time_callback.train_finish_time
-    if len(timestamp_log) > 1:
-      stats['avg_exp_per_second'] = (
-          time_callback.batch_size * time_callback.log_steps *
-          (len(time_callback.timestamp_log)-1) /
-          (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
+  if not callbacks:
+    return stats
 
+  # Look for the time history callback which was used during keras.fit
+  for callback in callbacks:
+    if isinstance(callback, keras_utils.TimeHistory):
+      timestamp_log = callback.timestamp_log
+      stats['step_timestamp_log'] = timestamp_log
+      stats['train_finish_time'] = callback.train_finish_time
+      if len(timestamp_log) > 1:
+        stats['avg_exp_per_second'] = (
+            callback.batch_size * callback.log_steps *
+            (len(callback.timestamp_log)-1) /
+            (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
   return stats
 
 
 def define_keras_flags():
   """Define flags for Keras models."""
+
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
+  flags.DEFINE_boolean(name='use_trivial_model', default=False,
+                       help='Whether to use a trivial Keras model.')
   flags.DEFINE_boolean(
       name='enable_xla', default=False,
       help='Whether to enable XLA auto jit compilation. This is still an '
       'experimental feature, and is not yet effective with TF 2.0.')
+  flags.DEFINE_boolean(
+      name='enable_tensorboard', default=False,
+      help='Whether to enable Tensorboard callback.')
   flags.DEFINE_integer(
       name='train_steps', default=None,
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
-  flags.DEFINE_integer(
-      name='log_steps', default=100,
-      help='For every log_steps, we log the timing information such as '
-      'examples per second. Besides, for every log_steps, we store the '
-      'timestamp of a batch end.')
+  flags.DEFINE_string(
+      name='profile_steps', default=None,
+      help='Save profiling data to model dir at given range of steps. The '
+      'value must be a comma separated pair of positive integers, specifying '
+      'the first and last step to profile. For example, "--profile_steps=2,4" '
+      'triggers the profiler to process 3 steps, starting from the 2nd step. '
+      'Note that profiler has a non-trivial performance overhead, and the '
+      'output file can be gigantic if profiling many steps.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
@@ -295,3 +355,26 @@ class DummyContextManager(object):
 
   def __exit__(self, *args):
     pass
+
+
+def _monkey_patch_org_assert_broadcastable():
+  """Monkey-patch `assert_broadcast` op to avoid OOM when enabling XLA."""
+  def no_op_assert_broadcastable(weights, values):
+    del weights, values
+    tf.compat.v1.logging.info(
+        'Using monkey-patched version of assert_broadcastable op, which always '
+        'returns an no_op. It should be removed after XLA OOM issue is fixed.')
+    return tf.constant([], dtype=tf.float32)
+
+  from tensorflow.python.ops import weights_broadcast_ops  # pylint: disable=g-import-not-at-top
+  if not hasattr(weights_broadcast_ops, 'org_assert_broadcastable'):
+    weights_broadcast_ops.org_assert_broadcastable = (
+        weights_broadcast_ops.assert_broadcastable)
+  weights_broadcast_ops.assert_broadcastable = no_op_assert_broadcastable
+
+
+def _undo_monkey_patch_org_assert_broadcastable():
+  from tensorflow.python.ops import weights_broadcast_ops  # pylint: disable=g-import-not-at-top
+  if hasattr(weights_broadcast_ops, 'org_assert_broadcastable'):
+    weights_broadcast_ops.assert_broadcastable = (
+        weights_broadcast_ops.org_assert_broadcastable)

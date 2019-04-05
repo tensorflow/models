@@ -485,6 +485,7 @@ def main(unused_argv):
             config=session_config,
             scaffold=scaffold,
             checkpoint_dir=FLAGS.train_logdir,
+            summary_dir=FLAGS.train_logdir,
             log_step_count_steps=FLAGS.log_steps,
             save_summaries_steps=FLAGS.save_summaries_secs,
             save_checkpoint_secs=FLAGS.save_interval_secs,

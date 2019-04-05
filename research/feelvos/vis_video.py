@@ -222,7 +222,7 @@ def create_predictions(samples, reference_labels, first_frame_img,
 
   init_labels = tf.squeeze(reference_labels, axis=-1)
   init_softmax = embedding_utils.create_initial_softmax_from_labels(
-      reference_labels, reference_labels, FLAGS.decoder_output_stride,
+      reference_labels, reference_labels, common.parse_decoder_output_stride(),
       reduce_labels=False)
   if FLAGS.save_embeddings:
     decoder_height = tf.shape(init_softmax)[1]
@@ -298,7 +298,7 @@ def create_predictions_fast(samples, reference_labels, first_frame_img,
       first_frame_img[tf.newaxis], model_options, FLAGS.embedding_dimension)
   init_labels = tf.squeeze(reference_labels, axis=-1)
   init_softmax = embedding_utils.create_initial_softmax_from_labels(
-      reference_labels, reference_labels, FLAGS.decoder_output_stride,
+      reference_labels, reference_labels, common.parse_decoder_output_stride(),
       reduce_labels=False)
   init = (init_labels, init_softmax, first_frame_embeddings)
 

@@ -137,3 +137,27 @@ class VideoModelOptions(common.ModelOptions):
     self.classification_loss = FLAGS.classification_loss
 
     return self
+
+
+def parse_decoder_output_stride():
+  """Parses decoder output stride.
+
+  FEELVOS assumes decoder_output_stride = 4. Thus, this function is created for
+  this particular purpose.
+
+  Returns:
+    An integer specifying the decoder_output_stride.
+
+  Raises:
+    ValueError: If decoder_output_stride is None or contains more than one
+      element.
+  """
+  if FLAGS.decoder_output_stride:
+    decoder_output_stride = [
+        int(x) for x in FLAGS.decoder_output_stride]
+    if len(decoder_output_stride) != 1:
+      raise ValueError('Expect decoder output stride has only one element.')
+    decoder_output_stride = decoder_output_stride[0]
+  else:
+    raise ValueError('Expect flag decoder output stride not to be None.')
+  return decoder_output_stride
