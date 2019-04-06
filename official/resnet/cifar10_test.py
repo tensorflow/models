@@ -23,8 +23,6 @@ import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main
-from official.resnet.keras import keras_cifar_main
-from official.resnet.keras import keras_common
 from official.utils.testing import integration
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -45,7 +43,6 @@ class BaseTest(tf.test.TestCase):
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
     cifar10_main.define_cifar_flags()
-    keras_common.define_keras_flags()
 
   def setUp(self):
     super(BaseTest, self).setUp()
@@ -172,9 +169,18 @@ class BaseTest(tf.test.TestCase):
     )
 
   def test_cifar10_end_to_end_synthetic_v2(self):
+    _prefix = "cifar10_"
+    extra_flags = [
+        "-num_gpus", "1",
+        "-enable_eager", "true",
+        "-distribution_strategy", "off",
+        "-model_dir", _prefix + "1_gpu_no_dist_strat",
+        "-batch_size", "4",
+    ]
     integration.run_synthetic(
-        main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '2', '-batch_size', '4']
+        main=cifar10_main.run_cifar,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
 
