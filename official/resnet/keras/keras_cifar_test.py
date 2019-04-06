@@ -28,6 +28,7 @@ from official.utils.testing import integration
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
 
+
 class KerasCifarTest(googletest.TestCase):
   """Unit tests for Keras ResNet with Cifar."""
 
@@ -66,6 +67,7 @@ class KerasCifarTest(googletest.TestCase):
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
           format(1, context.num_gpus()))
+
     extra_flags = [
         "-num_gpus", "1",
         "-enable_eager", "true",
@@ -184,5 +186,7 @@ class KerasCifarTest(googletest.TestCase):
       tmp_root=self.get_temp_dir(),
       extra_flags=extra_flags
     )
+
+
 if __name__ == "__main__":
   googletest.main()

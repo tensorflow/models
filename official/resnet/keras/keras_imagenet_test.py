@@ -28,6 +28,7 @@ from official.utils.testing import integration
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
 
+
 class KerasImagenetTest(googletest.TestCase):
   """Unit tests for Keras ResNet with ImageNet."""
 
@@ -483,6 +484,7 @@ class KerasImagenetTest(googletest.TestCase):
       tmp_root=self.get_temp_dir(),
       extra_flags=extra_flags
     )
+
 
 if __name__ == '__main__':
   googletest.main()
