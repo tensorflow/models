@@ -1,0 +1,290 @@
+--------------------------------------------------------------------------------
+Processing file 'modeling.py'
+ outputting to 'modeling-upgraded.py'
+--------------------------------------------------------------------------------
+
+'modeling.py' Line 409
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable' to 'tf.compat.v1.get_variable'
+
+    Old:   embedding_table = tf.get_variable(
+                             ~~~~~~~~~~~~~~~  
+    New:   embedding_table = tf.compat.v1.get_variable(
+                             ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 666
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+
+    Old:   query_layer = tf.layers.dense(
+                         ~~~~~~~~~~~~~~~  
+    New:   query_layer = tf.compat.v1.layers.dense(
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 926
+--------------------------------------------------------------------------------
+
+Added keyword 'input' to reordered function 'tf.shape'
+
+    Old:   dyn_shape = tf.shape(tensor)
+                                        
+    New:   dyn_shape = tf.shape(input=tensor)
+                                ~~~~~~        
+
+'modeling.py' Line 674
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+
+    Old:   key_layer = tf.layers.dense(
+                       ~~~~~~~~~~~~~~~  
+    New:   key_layer = tf.compat.v1.layers.dense(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 476
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable' to 'tf.compat.v1.get_variable'
+
+    Old:     token_type_table = tf.get_variable(
+                                ~~~~~~~~~~~~~~~  
+    New:     token_type_table = tf.compat.v1.get_variable(
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 682
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+
+    Old:   value_layer = tf.layers.dense(
+                         ~~~~~~~~~~~~~~~  
+    New:   value_layer = tf.compat.v1.layers.dense(
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 171
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:     with tf.variable_scope(scope, default_name="bert"):
+                  ~~~~~~~~~~~~~~~~~                              
+    New:     with tf.compat.v1.variable_scope(scope, default_name="bert"):
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~                              
+
+'modeling.py' Line 172
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:       with tf.variable_scope("embeddings"):
+                    ~~~~~~~~~~~~~~~~~                
+    New:       with tf.compat.v1.variable_scope("embeddings"):
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~                
+
+'modeling.py' Line 827
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:     with tf.variable_scope("layer_%d" % layer_idx):
+                  ~~~~~~~~~~~~~~~~~                          
+    New:     with tf.compat.v1.variable_scope("layer_%d" % layer_idx):
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~                          
+
+'modeling.py' Line 830
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:       with tf.variable_scope("attention"):
+                    ~~~~~~~~~~~~~~~~~               
+    New:       with tf.compat.v1.variable_scope("attention"):
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~               
+
+'modeling.py' Line 832
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:         with tf.variable_scope("self"):
+                      ~~~~~~~~~~~~~~~~~          
+    New:         with tf.compat.v1.variable_scope("self"):
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~          
+
+'modeling.py' Line 196
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:       with tf.variable_scope("encoder"):
+                    ~~~~~~~~~~~~~~~~~             
+    New:       with tf.compat.v1.variable_scope("encoder"):
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~             
+
+'modeling.py' Line 866
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:       with tf.variable_scope("intermediate"):
+                    ~~~~~~~~~~~~~~~~~                  
+    New:       with tf.compat.v1.variable_scope("intermediate"):
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~                  
+
+'modeling.py' Line 982
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable_scope' to 'tf.compat.v1.get_variable_scope'
+
+    Old:     scope_name = tf.get_variable_scope().name
+                          ~~~~~~~~~~~~~~~~~~~~~        
+    New:     scope_name = tf.compat.v1.get_variable_scope().name
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+
+'modeling.py' Line 857
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:         with tf.variable_scope("output"):
+                      ~~~~~~~~~~~~~~~~~            
+    New:         with tf.compat.v1.variable_scope("output"):
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~            
+
+'modeling.py' Line 858
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+
+    Old:           attention_output = tf.layers.dense(
+                                      ~~~~~~~~~~~~~~~  
+    New:           attention_output = tf.compat.v1.layers.dense(
+                                      ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 732
+--------------------------------------------------------------------------------
+
+Added keyword 'a' to reordered function 'tf.transpose'
+Added keyword 'perm' to reordered function 'tf.transpose'
+
+    Old:   value_layer = tf.transpose(value_layer, [0, 2, 1, 3])
+                                                                 
+    New:   value_layer = tf.transpose(a=value_layer, perm=[0, 2, 1, 3])
+                                      ~~             ~~~~~              
+
+'modeling.py' Line 93
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.gfile.GFile' to 'tf.io.gfile.GFile'
+
+    Old:     with tf.gfile.GFile(json_file, "r") as reader:
+                  ~~~~~~~~~~~~~~                            
+    New:     with tf.io.gfile.GFile(json_file, "r") as reader:
+                  ~~~~~~~~~~~~~~~~~                            
+
+'modeling.py' Line 224
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:       with tf.variable_scope("pooler"):
+                    ~~~~~~~~~~~~~~~~~            
+    New:       with tf.compat.v1.variable_scope("pooler"):
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~            
+
+'modeling.py' Line 738
+--------------------------------------------------------------------------------
+
+Added keyword 'a' to reordered function 'tf.transpose'
+Added keyword 'perm' to reordered function 'tf.transpose'
+
+    Old:   context_layer = tf.transpose(context_layer, [0, 2, 1, 3])
+                                                                     
+    New:   context_layer = tf.transpose(a=context_layer, perm=[0, 2, 1, 3])
+                                        ~~               ~~~~~              
+
+'modeling.py' Line 867
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+
+    Old:         intermediate_output = tf.layers.dense(
+                                       ~~~~~~~~~~~~~~~  
+    New:         intermediate_output = tf.compat.v1.layers.dense(
+                                       ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 228
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+
+    Old:         self.pooled_output = tf.layers.dense(
+                                      ~~~~~~~~~~~~~~~  
+    New:         self.pooled_output = tf.compat.v1.layers.dense(
+                                      ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 358
+--------------------------------------------------------------------------------
+
+WARNING: tf.nn.dropout has changed the semantics of the second argument. Please check the transformation.
+
+
+    Old:   output = tf.nn.dropout(input_tensor, 1.0 - dropout_prob)
+                                                                    
+    New:   output = tf.nn.dropout(input_tensor, 1 - 1.0 - dropout_prob)
+                                                ~~~~                    
+
+'modeling.py' Line 490
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.assert_less_equal' to 'tf.compat.v1.assert_less_equal'
+
+    Old:     assert_op = tf.assert_less_equal(seq_length, max_position_embeddings)
+                         ~~~~~~~~~~~~~~~~~~~~                                      
+    New:     assert_op = tf.compat.v1.assert_less_equal(seq_length, max_position_embeddings)
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                      
+
+'modeling.py' Line 875
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+
+    Old:         layer_output = tf.layers.dense(
+                                ~~~~~~~~~~~~~~~  
+    New:         layer_output = tf.compat.v1.layers.dense(
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 492
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable' to 'tf.compat.v1.get_variable'
+
+    Old:       full_position_embeddings = tf.get_variable(
+                                          ~~~~~~~~~~~~~~~  
+    New:       full_position_embeddings = tf.compat.v1.get_variable(
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'modeling.py' Line 634
+--------------------------------------------------------------------------------
+
+Added keyword 'a' to reordered function 'tf.transpose'
+Added keyword 'perm' to reordered function 'tf.transpose'
+
+    Old:     output_tensor = tf.transpose(output_tensor, [0, 2, 1, 3])
+                                                                       
+    New:     output_tensor = tf.transpose(a=output_tensor, perm=[0, 2, 1, 3])
+                                          ~~               ~~~~~              
+
+'modeling.py' Line 874
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:       with tf.variable_scope("output"):
+                    ~~~~~~~~~~~~~~~~~            
+    New:       with tf.compat.v1.variable_scope("output"):
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~            
+
+

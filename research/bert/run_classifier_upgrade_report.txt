@@ -1,0 +1,609 @@
+--------------------------------------------------------------------------------
+Processing file 'run_classifier.py'
+ outputting to 'run_classifier-upgraded.py'
+--------------------------------------------------------------------------------
+
+'run_classifier.py' Line 514
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:       "input_ids": tf.FixedLenFeature([seq_length], tf.int64),
+                            ~~~~~~~~~~~~~~~~~~                          
+    New:       "input_ids": tf.io.FixedLenFeature([seq_length], tf.int64),
+                            ~~~~~~~~~~~~~~~~~~~~~                          
+
+'run_classifier.py' Line 515
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:       "input_mask": tf.FixedLenFeature([seq_length], tf.int64),
+                             ~~~~~~~~~~~~~~~~~~                          
+    New:       "input_mask": tf.io.FixedLenFeature([seq_length], tf.int64),
+                             ~~~~~~~~~~~~~~~~~~~~~                          
+
+'run_classifier.py' Line 516
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:       "segment_ids": tf.FixedLenFeature([seq_length], tf.int64),
+                              ~~~~~~~~~~~~~~~~~~                          
+    New:       "segment_ids": tf.io.FixedLenFeature([seq_length], tf.int64),
+                              ~~~~~~~~~~~~~~~~~~~~~                          
+
+'run_classifier.py' Line 517
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:       "label_ids": tf.FixedLenFeature([], tf.int64),
+                            ~~~~~~~~~~~~~~~~~~                
+    New:       "label_ids": tf.io.FixedLenFeature([], tf.int64),
+                            ~~~~~~~~~~~~~~~~~~~~~                
+
+'run_classifier.py' Line 518
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:       "is_real_example": tf.FixedLenFeature([], tf.int64),
+                                  ~~~~~~~~~~~~~~~~~~                
+    New:       "is_real_example": tf.io.FixedLenFeature([], tf.int64),
+                                  ~~~~~~~~~~~~~~~~~~~~~                
+
+'run_classifier.py' Line 647
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.trainable_variables' to 'tf.compat.v1.trainable_variables'
+
+    Old:     tvars = tf.trainable_variables()
+                     ~~~~~~~~~~~~~~~~~~~~~~   
+    New:     tvars = tf.compat.v1.trainable_variables()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+
+'run_classifier.py' Line 925
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:         tf.logging.info("  %s = %s", key, str(result[key]))
+                 ~~~~~~~~~~~~~~~                                     
+    New:         tf.compat.v1.logging.info("  %s = %s", key, str(result[key]))
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~                                     
+
+'run_classifier.py' Line 523
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.parse_single_example' to 'tf.io.parse_single_example'
+Added keyword 'serialized' to reordered function 'tf.parse_single_example'
+Added keyword 'features' to reordered function 'tf.parse_single_example'
+
+    Old:     example = tf.parse_single_example(record, name_to_features)
+                       ~~~~~~~~~~~~~~~~~~~~~~~                           
+    New:     example = tf.io.parse_single_example(serialized=record, features=name_to_features)
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~        ~~~~~~~~~                  
+
+'run_classifier.py' Line 614
+--------------------------------------------------------------------------------
+
+Added keyword 'input_tensor' to reordered function 'tf.reduce_mean'
+
+    Old:     loss = tf.reduce_mean(per_example_loss)
+                                                     
+    New:     loss = tf.reduce_mean(input_tensor=per_example_loss)
+                                   ~~~~~~~~~~~~~                  
+
+'run_classifier.py' Line 656
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.init_from_checkpoint' to 'tf.compat.v1.train.init_from_checkpoint'
+
+    Old:           tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+    New:           tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+
+'run_classifier.py' Line 657
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.Scaffold' to 'tf.compat.v1.train.Scaffold'
+
+    Old:           return tf.train.Scaffold()
+                          ~~~~~~~~~~~~~~~~~   
+    New:           return tf.compat.v1.train.Scaffold()
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+
+'run_classifier.py' Line 530
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.to_int32' to 'tf.compat.v1.to_int32'
+
+    Old:         t = tf.to_int32(t)
+                     ~~~~~~~~~~~    
+    New:         t = tf.compat.v1.to_int32(t)
+                     ~~~~~~~~~~~~~~~~~~~~~    
+
+'run_classifier.py' Line 899
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Num examples = %d (%d actual, %d padding)",
+             ~~~~~~~~~~~~~~~                                                
+    New:     tf.compat.v1.logging.info("  Num examples = %d (%d actual, %d padding)",
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                                
+
+'run_classifier.py' Line 661
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.init_from_checkpoint' to 'tf.compat.v1.train.init_from_checkpoint'
+
+    Old:         tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+    New:         tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+
+'run_classifier.py' Line 663
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("**** Trainable Variables ****")
+             ~~~~~~~~~~~~~~~                                  
+    New:     tf.compat.v1.logging.info("**** Trainable Variables ****")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+
+'run_classifier.py' Line 922
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.gfile.GFile' to 'tf.io.gfile.GFile'
+
+    Old:     with tf.gfile.GFile(output_eval_file, "w") as writer:
+                  ~~~~~~~~~~~~~~                                   
+    New:     with tf.io.gfile.GFile(output_eval_file, "w") as writer:
+                  ~~~~~~~~~~~~~~~~~                                   
+
+'run_classifier.py' Line 923
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("***** Eval results *****")
+               ~~~~~~~~~~~~~~~                             
+    New:       tf.compat.v1.logging.info("***** Eval results *****")
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                             
+
+'run_classifier.py' Line 668
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+               ~~~~~~~~~~~~~~~                                                   
+    New:       tf.compat.v1.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                                                   
+
+'run_classifier.py' Line 29
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: flags = tf.flags
+                 ~~~~~~~~ 
+    New: flags = tf.flags
+                 ~~~~~~~~ 
+
+'run_classifier.py' Line 944
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("***** Running prediction*****")
+             ~~~~~~~~~~~~~~~                                  
+    New:     tf.compat.v1.logging.info("***** Running prediction*****")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+
+'run_classifier.py' Line 547
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.contrib.data.map_and_batch' to 'tf.data.experimental.map_and_batch'
+
+    Old:         tf.contrib.data.map_and_batch(
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+    New:         tf.data.experimental.map_and_batch(
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_classifier.py' Line 774
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("Writing example %d of %d" % (ex_index, len(examples)))
+               ~~~~~~~~~~~~~~~                                                         
+    New:       tf.compat.v1.logging.info("Writing example %d of %d" % (ex_index, len(examples)))
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                                                         
+
+'run_classifier.py' Line 808
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.gfile.MakeDirs' to 'tf.io.gfile.makedirs'
+
+    Old:   tf.gfile.MakeDirs(FLAGS.output_dir)
+           ~~~~~~~~~~~~~~~~~                   
+    New:   tf.io.gfile.makedirs(FLAGS.output_dir)
+           ~~~~~~~~~~~~~~~~~~~~                   
+
+'run_classifier.py' Line 685
+--------------------------------------------------------------------------------
+
+Added keyword 'input' to reordered function 'tf.argmax'
+
+    Old:         predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
+                                                                                
+    New:         predictions = tf.argmax(input=logits, axis=-1, output_type=tf.int32)
+                                         ~~~~~~                                       
+
+'run_classifier.py' Line 686
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.metrics.accuracy' to 'tf.compat.v1.metrics.accuracy'
+
+    Old:         accuracy = tf.metrics.accuracy(
+                            ~~~~~~~~~~~~~~~~~~~  
+    New:         accuracy = tf.compat.v1.metrics.accuracy(
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_classifier.py' Line 902
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
+             ~~~~~~~~~~~~~~~                                             
+    New:     tf.compat.v1.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                             
+
+'run_classifier.py' Line 688
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.metrics.mean' to 'tf.compat.v1.metrics.mean'
+
+    Old:         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
+                        ~~~~~~~~~~~~~~~                                                   
+    New:         loss = tf.compat.v1.metrics.mean(values=per_example_loss, weights=is_real_example)
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~                                                   
+
+'run_classifier.py' Line 945
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Num examples = %d (%d actual, %d padding)",
+             ~~~~~~~~~~~~~~~                                                
+    New:     tf.compat.v1.logging.info("  Num examples = %d (%d actual, %d padding)",
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                                
+
+'run_classifier.py' Line 948
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Batch size = %d", FLAGS.predict_batch_size)
+             ~~~~~~~~~~~~~~~                                                
+    New:     tf.compat.v1.logging.info("  Batch size = %d", FLAGS.predict_batch_size)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                                
+
+'run_classifier.py' Line 960
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.gfile.GFile' to 'tf.io.gfile.GFile'
+
+    Old:     with tf.gfile.GFile(output_predict_file, "w") as writer:
+                  ~~~~~~~~~~~~~~                                      
+    New:     with tf.io.gfile.GFile(output_predict_file, "w") as writer:
+                  ~~~~~~~~~~~~~~~~~                                      
+
+'run_classifier.py' Line 962
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("***** Predict results *****")
+               ~~~~~~~~~~~~~~~                                
+    New:       tf.compat.v1.logging.info("***** Predict results *****")
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                                
+
+'run_classifier.py' Line 199
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.gfile.Open' to 'tf.io.gfile.GFile'
+
+    Old:     with tf.gfile.Open(input_file, "r") as f:
+                  ~~~~~~~~~~~~~                        
+    New:     with tf.io.gfile.GFile(input_file, "r") as f:
+                  ~~~~~~~~~~~~~~~~~                        
+
+'run_classifier.py' Line 461
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("*** Example ***")
+             ~~~~~~~~~~~~~~~                    
+    New:     tf.compat.v1.logging.info("*** Example ***")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                    
+
+'run_classifier.py' Line 462
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("guid: %s" % (example.guid))
+             ~~~~~~~~~~~~~~~                              
+    New:     tf.compat.v1.logging.info("guid: %s" % (example.guid))
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                              
+
+'run_classifier.py' Line 463
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("tokens: %s" % " ".join(
+             ~~~~~~~~~~~~~~~                          
+    New:     tf.compat.v1.logging.info("tokens: %s" % " ".join(
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                          
+
+'run_classifier.py' Line 465
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+             ~~~~~~~~~~~~~~~                                                          
+    New:     tf.compat.v1.logging.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                                          
+
+'run_classifier.py' Line 466
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+             ~~~~~~~~~~~~~~~                                                            
+    New:     tf.compat.v1.logging.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                                            
+
+'run_classifier.py' Line 467
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+             ~~~~~~~~~~~~~~~                                                              
+    New:     tf.compat.v1.logging.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                                              
+
+'run_classifier.py' Line 468
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("label: %s (id = %d)" % (example.label, label_id))
+             ~~~~~~~~~~~~~~~                                                    
+    New:     tf.compat.v1.logging.info("label: %s (id = %d)" % (example.label, label_id))
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                                    
+
+'run_classifier.py' Line 981
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.app.run' to 'tf.compat.v1.app.run'
+
+    Old:   tf.app.run()
+           ~~~~~~~~~~   
+    New:   tf.compat.v1.app.run()
+           ~~~~~~~~~~~~~~~~~~~~   
+
+'run_classifier.py' Line 598
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable' to 'tf.compat.v1.get_variable'
+
+    Old:   output_bias = tf.get_variable(
+                         ~~~~~~~~~~~~~~~  
+    New:   output_bias = tf.compat.v1.get_variable(
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_classifier.py' Line 601
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:   with tf.variable_scope("loss"):
+                ~~~~~~~~~~~~~~~~~          
+    New:   with tf.compat.v1.variable_scope("loss"):
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~          
+
+'run_classifier.py' Line 604
+--------------------------------------------------------------------------------
+
+ERROR: tf.nn.dropout did not take arguments, so automatic transformation was disabled. tf.nn.dropout has changed the semantics of the second argument.
+
+    Old:       output_layer = tf.nn.dropout(output_layer, keep_prob=0.9)
+                              ~~~~~~~~~~~~~                              
+    New:       output_layer = tf.nn.dropout(output_layer, keep_prob=0.9)
+                              ~~~~~~~~~~~~~                              
+
+'run_classifier.py' Line 898
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("***** Running evaluation *****")
+             ~~~~~~~~~~~~~~~                                   
+    New:     tf.compat.v1.logging.info("***** Running evaluation *****")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                   
+
+'run_classifier.py' Line 784
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.set_verbosity' to 'tf.compat.v1.logging.set_verbosity'
+Renamed function 'tf.logging.INFO' to 'tf.compat.v1.logging.INFO'
+
+    Old:   tf.logging.set_verbosity(tf.logging.INFO)
+           ~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~  
+    New:   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_classifier.py' Line 483
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.python_io.TFRecordWriter' to 'tf.io.TFRecordWriter'
+
+    Old:   writer = tf.python_io.TFRecordWriter(output_file)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~              
+    New:   writer = tf.io.TFRecordWriter(output_file)
+                    ~~~~~~~~~~~~~~~~~~~~              
+
+'run_classifier.py' Line 613
+--------------------------------------------------------------------------------
+
+Added keyword 'input_tensor' to reordered function 'tf.reduce_sum'
+
+    Old:     per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
+                                                                                    
+    New:     per_example_loss = -tf.reduce_sum(input_tensor=one_hot_labels * log_probs, axis=-1)
+                                               ~~~~~~~~~~~~~                                     
+
+'run_classifier.py' Line 102
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+    New: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+
+'run_classifier.py' Line 487
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("Writing example %d of %d" % (ex_index, len(examples)))
+               ~~~~~~~~~~~~~~~                                                         
+    New:       tf.compat.v1.logging.info("Writing example %d of %d" % (ex_index, len(examples)))
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                                                         
+
+'run_classifier.py' Line 872
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Num examples = %d", len(train_examples))
+             ~~~~~~~~~~~~~~~                                             
+    New:     tf.compat.v1.logging.info("  Num examples = %d", len(train_examples))
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                             
+
+'run_classifier.py' Line 873
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
+             ~~~~~~~~~~~~~~~                                              
+    New:     tf.compat.v1.logging.info("  Batch size = %d", FLAGS.train_batch_size)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                              
+
+'run_classifier.py' Line 874
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Num steps = %d", num_train_steps)
+             ~~~~~~~~~~~~~~~                                      
+    New:     tf.compat.v1.logging.info("  Num steps = %d", num_train_steps)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                      
+
+'run_classifier.py' Line 871
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("***** Running training *****")
+             ~~~~~~~~~~~~~~~                                 
+    New:     tf.compat.v1.logging.info("***** Running training *****")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                 
+
+'run_classifier.py' Line 108
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+    New: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+
+'run_classifier.py' Line 594
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable' to 'tf.compat.v1.get_variable'
+
+    Old:   output_weights = tf.get_variable(
+                            ~~~~~~~~~~~~~~~  
+    New:   output_weights = tf.compat.v1.get_variable(
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_classifier.py' Line 114
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+    New: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+
+'run_classifier.py' Line 627
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("*** Features ***")
+             ~~~~~~~~~~~~~~~                     
+    New:     tf.compat.v1.logging.info("*** Features ***")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                     
+
+'run_classifier.py' Line 629
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
+               ~~~~~~~~~~~~~~~                                                           
+    New:       tf.compat.v1.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                                                           
+
+'run_classifier.py' Line 120
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: tf.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
+         ~~~~~~~~                                                                    
+    New: tf.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
+         ~~~~~~~~                                                                    
+
+'run_classifier.py' Line 639
+--------------------------------------------------------------------------------
+
+Added keyword 'input' to reordered function 'tf.shape'
+
+    Old:       is_real_example = tf.ones(tf.shape(label_ids), dtype=tf.float32)
+                                                                                
+    New:       is_real_example = tf.ones(tf.shape(input=label_ids), dtype=tf.float32)
+                                                  ~~~~~~                              
+
+

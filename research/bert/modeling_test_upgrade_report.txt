@@ -1,0 +1,26 @@
+--------------------------------------------------------------------------------
+Processing file 'modeling_test.py'
+ outputting to 'modeling_test-upgraded.py'
+--------------------------------------------------------------------------------
+
+'modeling_test.py' Line 138
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.global_variables_initializer' to 'tf.compat.v1.global_variables_initializer'
+
+    Old:       init_op = tf.group(tf.global_variables_initializer(),
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    New:       init_op = tf.group(tf.compat.v1.global_variables_initializer(),
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+'modeling_test.py' Line 139
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.local_variables_initializer' to 'tf.compat.v1.local_variables_initializer'
+
+    Old:                          tf.local_variables_initializer())
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    New:                          tf.compat.v1.local_variables_initializer())
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+

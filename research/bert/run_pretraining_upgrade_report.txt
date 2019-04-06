@@ -1,0 +1,559 @@
+--------------------------------------------------------------------------------
+Processing file 'run_pretraining.py'
+ outputting to 'run_pretraining-upgraded.py'
+--------------------------------------------------------------------------------
+
+'run_pretraining.py' Line 259
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable' to 'tf.compat.v1.get_variable'
+
+    Old:     output_bias = tf.get_variable(
+                           ~~~~~~~~~~~~~~~  
+    New:     output_bias = tf.compat.v1.get_variable(
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 278
+--------------------------------------------------------------------------------
+
+Added keyword 'input_tensor' to reordered function 'tf.reduce_sum'
+
+    Old:     numerator = tf.reduce_sum(label_weights * per_example_loss)
+                                                                         
+    New:     numerator = tf.reduce_sum(input_tensor=label_weights * per_example_loss)
+                                       ~~~~~~~~~~~~~                                  
+
+'run_pretraining.py' Line 393
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.parse_single_example' to 'tf.io.parse_single_example'
+Added keyword 'serialized' to reordered function 'tf.parse_single_example'
+Added keyword 'features' to reordered function 'tf.parse_single_example'
+
+    Old:   example = tf.parse_single_example(record, name_to_features)
+                     ~~~~~~~~~~~~~~~~~~~~~~~                           
+    New:   example = tf.io.parse_single_example(serialized=record, features=name_to_features)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~        ~~~~~~~~~                  
+
+'run_pretraining.py' Line 343
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:             tf.FixedLenFeature([max_predictions_per_seq], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~                                       
+    New:             tf.io.FixedLenFeature([max_predictions_per_seq], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~~~~                                       
+
+'run_pretraining.py' Line 493
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.app.run' to 'tf.compat.v1.app.run'
+
+    Old:   tf.app.run()
+           ~~~~~~~~~~   
+    New:   tf.compat.v1.app.run()
+           ~~~~~~~~~~~~~~~~~~~~   
+
+'run_pretraining.py' Line 400
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.to_int32' to 'tf.compat.v1.to_int32'
+
+    Old:       t = tf.to_int32(t)
+                   ~~~~~~~~~~~    
+    New:       t = tf.compat.v1.to_int32(t)
+                   ~~~~~~~~~~~~~~~~~~~~~    
+
+'run_pretraining.py' Line 277
+--------------------------------------------------------------------------------
+
+Added keyword 'input_tensor' to reordered function 'tf.reduce_sum'
+
+    Old:     per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+                                                                                      
+    New:     per_example_loss = -tf.reduce_sum(input_tensor=log_probs * one_hot_labels, axis=[-1])
+                                               ~~~~~~~~~~~~~                                       
+
+'run_pretraining.py' Line 150
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.trainable_variables' to 'tf.compat.v1.trainable_variables'
+
+    Old:     tvars = tf.trainable_variables()
+                     ~~~~~~~~~~~~~~~~~~~~~~   
+    New:     tvars = tf.compat.v1.trainable_variables()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+
+'run_pretraining.py' Line 279
+--------------------------------------------------------------------------------
+
+Added keyword 'input_tensor' to reordered function 'tf.reduce_sum'
+
+    Old:     denominator = tf.reduce_sum(label_weights) + 1e-5
+                                                               
+    New:     denominator = tf.reduce_sum(input_tensor=label_weights) + 1e-5
+                                         ~~~~~~~~~~~~~                      
+
+'run_pretraining.py' Line 26
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: flags = tf.flags
+                 ~~~~~~~~ 
+    New: flags = tf.flags
+                 ~~~~~~~~ 
+
+'run_pretraining.py' Line 414
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.gfile.MakeDirs' to 'tf.io.gfile.makedirs'
+
+    Old:   tf.gfile.MakeDirs(FLAGS.output_dir)
+           ~~~~~~~~~~~~~~~~~                   
+    New:   tf.io.gfile.makedirs(FLAGS.output_dir)
+           ~~~~~~~~~~~~~~~~~~~~                   
+
+'run_pretraining.py' Line 160
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.init_from_checkpoint' to 'tf.compat.v1.train.init_from_checkpoint'
+
+    Old:           tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+    New:           tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+
+'run_pretraining.py' Line 161
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.Scaffold' to 'tf.compat.v1.train.Scaffold'
+
+    Old:           return tf.train.Scaffold()
+                          ~~~~~~~~~~~~~~~~~   
+    New:           return tf.compat.v1.train.Scaffold()
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+
+'run_pretraining.py' Line 290
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:   with tf.variable_scope("cls/seq_relationship"):
+                ~~~~~~~~~~~~~~~~~                          
+    New:   with tf.compat.v1.variable_scope("cls/seq_relationship"):
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~                          
+
+'run_pretraining.py' Line 291
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable' to 'tf.compat.v1.get_variable'
+
+    Old:     output_weights = tf.get_variable(
+                              ~~~~~~~~~~~~~~~  
+    New:     output_weights = tf.compat.v1.get_variable(
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 420
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:   tf.logging.info("*** Input Files ***")
+           ~~~~~~~~~~~~~~~                        
+    New:   tf.compat.v1.logging.info("*** Input Files ***")
+           ~~~~~~~~~~~~~~~~~~~~~~~~~                        
+
+'run_pretraining.py' Line 165
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.init_from_checkpoint' to 'tf.compat.v1.train.init_from_checkpoint'
+
+    Old:         tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+    New:         tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+
+'run_pretraining.py' Line 422
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  %s" % input_file)
+             ~~~~~~~~~~~~~~~                      
+    New:     tf.compat.v1.logging.info("  %s" % input_file)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                      
+
+'run_pretraining.py' Line 167
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("**** Trainable Variables ****")
+             ~~~~~~~~~~~~~~~                                  
+    New:     tf.compat.v1.logging.info("**** Trainable Variables ****")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                  
+
+'run_pretraining.py' Line 172
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+               ~~~~~~~~~~~~~~~                                                   
+    New:       tf.compat.v1.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                                                   
+
+'run_pretraining.py' Line 303
+--------------------------------------------------------------------------------
+
+Added keyword 'input_tensor' to reordered function 'tf.reduce_sum'
+
+    Old:     per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
+                                                                                    
+    New:     per_example_loss = -tf.reduce_sum(input_tensor=one_hot_labels * log_probs, axis=-1)
+                                               ~~~~~~~~~~~~~                                     
+
+'run_pretraining.py' Line 304
+--------------------------------------------------------------------------------
+
+Added keyword 'input_tensor' to reordered function 'tf.reduce_mean'
+
+    Old:     loss = tf.reduce_mean(per_example_loss)
+                                                     
+    New:     loss = tf.reduce_mean(input_tensor=per_example_loss)
+                                   ~~~~~~~~~~~~~                  
+
+'run_pretraining.py' Line 117
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("*** Features ***")
+             ~~~~~~~~~~~~~~~                     
+    New:     tf.compat.v1.logging.info("*** Features ***")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                     
+
+'run_pretraining.py' Line 194
+--------------------------------------------------------------------------------
+
+Added keyword 'input' to reordered function 'tf.argmax'
+
+    Old:             masked_lm_log_probs, axis=-1, output_type=tf.int32)
+                                                                         
+    New:             input=masked_lm_log_probs, axis=-1, output_type=tf.int32)
+                     ~~~~~~                                                    
+
+'run_pretraining.py' Line 407
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.set_verbosity' to 'tf.compat.v1.logging.set_verbosity'
+Renamed function 'tf.logging.INFO' to 'tf.compat.v1.logging.INFO'
+
+    Old:   tf.logging.set_verbosity(tf.logging.INFO)
+           ~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~  
+    New:   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 198
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.metrics.accuracy' to 'tf.compat.v1.metrics.accuracy'
+
+    Old:         masked_lm_accuracy = tf.metrics.accuracy(
+                                      ~~~~~~~~~~~~~~~~~~~  
+    New:         masked_lm_accuracy = tf.compat.v1.metrics.accuracy(
+                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 202
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.metrics.mean' to 'tf.compat.v1.metrics.mean'
+
+    Old:         masked_lm_mean_loss = tf.metrics.mean(
+                                       ~~~~~~~~~~~~~~~  
+    New:         masked_lm_mean_loss = tf.compat.v1.metrics.mean(
+                                       ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 459
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("***** Running training *****")
+             ~~~~~~~~~~~~~~~                                 
+    New:     tf.compat.v1.logging.info("***** Running training *****")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                 
+
+'run_pretraining.py' Line 460
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
+             ~~~~~~~~~~~~~~~                                              
+    New:     tf.compat.v1.logging.info("  Batch size = %d", FLAGS.train_batch_size)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                              
+
+'run_pretraining.py' Line 418
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.gfile.Glob' to 'tf.io.gfile.glob'
+
+    Old:     input_files.extend(tf.gfile.Glob(input_pattern))
+                                ~~~~~~~~~~~~~                 
+    New:     input_files.extend(tf.io.gfile.glob(input_pattern))
+                                ~~~~~~~~~~~~~~~~                 
+
+'run_pretraining.py' Line 208
+--------------------------------------------------------------------------------
+
+Added keyword 'input' to reordered function 'tf.argmax'
+
+    Old:             next_sentence_log_probs, axis=-1, output_type=tf.int32)
+                                                                             
+    New:             input=next_sentence_log_probs, axis=-1, output_type=tf.int32)
+                     ~~~~~~                                                        
+
+'run_pretraining.py' Line 337
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:             tf.FixedLenFeature([max_seq_length], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~                              
+    New:             tf.io.FixedLenFeature([max_seq_length], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~~~~                              
+
+'run_pretraining.py' Line 210
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.metrics.accuracy' to 'tf.compat.v1.metrics.accuracy'
+
+    Old:         next_sentence_accuracy = tf.metrics.accuracy(
+                                          ~~~~~~~~~~~~~~~~~~~  
+    New:         next_sentence_accuracy = tf.compat.v1.metrics.accuracy(
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 339
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:             tf.FixedLenFeature([max_seq_length], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~                              
+    New:             tf.io.FixedLenFeature([max_seq_length], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~~~~                              
+
+'run_pretraining.py' Line 84
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+    New: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+
+'run_pretraining.py' Line 341
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:             tf.FixedLenFeature([max_seq_length], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~                              
+    New:             tf.io.FixedLenFeature([max_seq_length], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~~~~                              
+
+'run_pretraining.py' Line 470
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
+             ~~~~~~~~~~~~~~~                                             
+    New:     tf.compat.v1.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                             
+
+'run_pretraining.py' Line 249
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+
+    Old:       input_tensor = tf.layers.dense(
+                              ~~~~~~~~~~~~~~~  
+    New:       input_tensor = tf.compat.v1.layers.dense(
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 345
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:             tf.FixedLenFeature([max_predictions_per_seq], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~                                       
+    New:             tf.io.FixedLenFeature([max_predictions_per_seq], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~~~~                                       
+
+'run_pretraining.py' Line 90
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+    New: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+
+'run_pretraining.py' Line 347
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:             tf.FixedLenFeature([max_predictions_per_seq], tf.float32),
+                     ~~~~~~~~~~~~~~~~~~                                         
+    New:             tf.io.FixedLenFeature([max_predictions_per_seq], tf.float32),
+                     ~~~~~~~~~~~~~~~~~~~~~                                         
+
+'run_pretraining.py' Line 349
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.FixedLenFeature' to 'tf.io.FixedLenFeature'
+
+    Old:             tf.FixedLenFeature([1], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~                 
+    New:             tf.io.FixedLenFeature([1], tf.int64),
+                     ~~~~~~~~~~~~~~~~~~~~~                 
+
+'run_pretraining.py' Line 96
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+    New: tf.flags.DEFINE_string(
+         ~~~~~~~~                
+
+'run_pretraining.py' Line 482
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.gfile.GFile' to 'tf.io.gfile.GFile'
+
+    Old:     with tf.gfile.GFile(output_eval_file, "w") as writer:
+                  ~~~~~~~~~~~~~~                                   
+    New:     with tf.io.gfile.GFile(output_eval_file, "w") as writer:
+                  ~~~~~~~~~~~~~~~~~                                   
+
+'run_pretraining.py' Line 483
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("***** Eval results *****")
+               ~~~~~~~~~~~~~~~                             
+    New:       tf.compat.v1.logging.info("***** Eval results *****")
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                             
+
+'run_pretraining.py' Line 485
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:         tf.logging.info("  %s = %s", key, str(result[key]))
+                 ~~~~~~~~~~~~~~~                                     
+    New:         tf.compat.v1.logging.info("  %s = %s", key, str(result[key]))
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~                                     
+
+'run_pretraining.py' Line 102
+--------------------------------------------------------------------------------
+
+tf.flags has been removed, please use the argparse or absl module if you need command line parsing.
+
+    Old: tf.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
+         ~~~~~~~~                                                                    
+    New: tf.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
+         ~~~~~~~~                                                                    
+
+'run_pretraining.py' Line 295
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.get_variable' to 'tf.compat.v1.get_variable'
+
+    Old:     output_bias = tf.get_variable(
+                           ~~~~~~~~~~~~~~~  
+    New:     output_bias = tf.compat.v1.get_variable(
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 365
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.contrib.data.parallel_interleave' to 'tf.data.experimental.parallel_interleave'
+
+    Old:           tf.contrib.data.parallel_interleave(
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+    New:           tf.data.experimental.parallel_interleave(
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 245
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:   with tf.variable_scope("cls/predictions"):
+                ~~~~~~~~~~~~~~~~~                     
+    New:   with tf.compat.v1.variable_scope("cls/predictions"):
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~                     
+
+'run_pretraining.py' Line 119
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:       tf.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
+               ~~~~~~~~~~~~~~~                                                           
+    New:       tf.compat.v1.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
+               ~~~~~~~~~~~~~~~~~~~~~~~~~                                                           
+
+'run_pretraining.py' Line 248
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.variable_scope' to 'tf.compat.v1.variable_scope'
+
+    Old:     with tf.variable_scope("transform"):
+                  ~~~~~~~~~~~~~~~~~               
+    New:     with tf.compat.v1.variable_scope("transform"):
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~               
+
+'run_pretraining.py' Line 212
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.metrics.mean' to 'tf.compat.v1.metrics.mean'
+
+    Old:         next_sentence_mean_loss = tf.metrics.mean(
+                                           ~~~~~~~~~~~~~~~  
+    New:         next_sentence_mean_loss = tf.compat.v1.metrics.mean(
+                                           ~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 381
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.contrib.data.map_and_batch' to 'tf.data.experimental.map_and_batch'
+
+    Old:         tf.contrib.data.map_and_batch(
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+    New:         tf.data.experimental.map_and_batch(
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+
+'run_pretraining.py' Line 469
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.logging.info' to 'tf.compat.v1.logging.info'
+
+    Old:     tf.logging.info("***** Running evaluation *****")
+             ~~~~~~~~~~~~~~~                                   
+    New:     tf.compat.v1.logging.info("***** Running evaluation *****")
+             ~~~~~~~~~~~~~~~~~~~~~~~~~                                   
+
+
