@@ -169,18 +169,9 @@ class BaseTest(tf.test.TestCase):
     )
 
   def test_cifar10_end_to_end_synthetic_v2(self):
-    _prefix = "cifar10_"
-    extra_flags = [
-        "-num_gpus", "1",
-        "-enable_eager", "true",
-        "-distribution_strategy", "off",
-        "-model_dir", _prefix + "1_gpu_no_dist_strat",
-        "-batch_size", "4",
-    ]
     integration.run_synthetic(
-        main=cifar10_main.run_cifar,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
+        main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '2', '-batch_size', '4']
     )
 
 
