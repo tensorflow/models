@@ -25,6 +25,7 @@ from official.resnet import cifar10_main
 from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
 from official.utils.testing import integration
+# pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
 
