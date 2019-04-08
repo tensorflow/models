@@ -46,7 +46,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     """
 
     flag_methods = [
-        keras_common.define_keras_flags, imagenet_main.define_imagenet_flags
+        keras_common.define_keras_flags,
+        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
     ]
 
     self.data_dir = os.path.join(root_data_dir, 'imagenet')
@@ -145,7 +146,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def __init__(self, output_dir=None, default_flags=None):
     flag_methods = [
-        keras_common.define_keras_flags, imagenet_main.define_imagenet_flags
+        keras_common.define_keras_flags,
+        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
     ]
 
     super(Resnet50KerasBenchmarkBase, self).__init__(
@@ -282,6 +284,31 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_1_gpu')
     FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_1_gpu_fp16(self):
+    """Test Keras model in legacy graph mode with 1 GPU and fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_fp16')
+    FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_1_gpu_fp16(self):
+    """Test Keras model in legacy graph mode with 1 GPU, fp16 and XLA."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_1_gpu_fp16')
+    FLAGS.batch_size = 256
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu(self):
@@ -527,7 +554,8 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     flag_methods = [
-        keras_common.define_keras_flags, imagenet_main.define_imagenet_flags
+        keras_common.define_keras_flags,
+        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
     ]
     def_flags = {}
     def_flags['skip_eval'] = True
