@@ -176,7 +176,7 @@ def run(flags_obj):
                   optimizer=optimizer,
                   metrics=['sparse_categorical_accuracy'])
 
-  time_callback, tensorboard_callback, lr_callback = keras_common.get_callbacks(
+  callbacks = keras_common.get_callbacks(
       learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])
 
   train_steps = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
@@ -198,10 +198,6 @@ def run(flags_obj):
     num_eval_steps = None
     validation_data = None
 
-  callbacks = [time_callback, lr_callback]
-  if flags_obj.enable_tensorboard:
-    callbacks.append(tensorboard_callback)
-
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
                       steps_per_epoch=train_steps,
@@ -216,7 +212,7 @@ def run(flags_obj):
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=2)
-  stats = keras_common.build_stats(history, eval_output, time_callback)
+  stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
 
 
@@ -228,6 +224,6 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  imagenet_main.define_imagenet_flags()
+  imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
   keras_common.define_keras_flags()
   absl_app.run(main)
