@@ -666,3 +666,8 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
         stats,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps)
+
+
+if __name__ == '__main__':
+  assert tf.__version__.startswith('2')
+  tf.test.main()
