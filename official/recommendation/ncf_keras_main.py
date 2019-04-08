@@ -149,6 +149,10 @@ def _get_keras_model(params):
   """Constructs and returns the model."""
   batch_size = params['batch_size']
 
+  # The input layers are of shape (1, batch_size), to match the size of the
+  # input data. The first dimension is needed because the input data are
+  # required to be batched to use distribution strategies, and in this case, it
+  # is designed to be of batch_size 1 for each replica.
   user_input = tf.keras.layers.Input(
       shape=(batch_size,),
       batch_size=1,
