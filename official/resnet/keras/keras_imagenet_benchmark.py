@@ -291,6 +291,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
+    FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_fp16')
@@ -302,6 +303,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
+    FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'default'
