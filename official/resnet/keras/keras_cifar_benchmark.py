@@ -236,5 +236,4 @@ class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
 
 
 if __name__ == '__main__':
-  assert tf.__version__.startswith('2')
   tf.test.main()
