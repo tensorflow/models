@@ -339,24 +339,6 @@ def is_v2_0():
   return tf.__version__.startswith('2')
 
 
-def get_strategy_scope(strategy):
-  if strategy:
-    strategy_scope = strategy.scope()
-  else:
-    strategy_scope = DummyContextManager()
-
-  return strategy_scope
-
-
-class DummyContextManager(object):
-
-  def __enter__(self):
-    pass
-
-  def __exit__(self, *args):
-    pass
-
-
 def _monkey_patch_org_assert_broadcastable():
   """Monkey-patch `assert_broadcast` op to avoid OOM when enabling XLA."""
   def no_op_assert_broadcastable(weights, values):

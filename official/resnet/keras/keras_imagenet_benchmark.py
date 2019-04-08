@@ -19,6 +19,7 @@ import os
 import time
 
 from absl import flags
+import tensorflow as tf # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_benchmark
