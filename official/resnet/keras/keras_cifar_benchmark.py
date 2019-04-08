@@ -233,3 +233,7 @@ class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
 
     super(Resnet56KerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=default_flags)
+
+
+if __name__ == '__main__':
+  tf.test.main()
