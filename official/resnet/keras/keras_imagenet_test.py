@@ -34,9 +34,9 @@ class KerasImagenetTest(googletest.TestCase):
 
   _num_validation_images = None
   _extra_flags = [
-          '-batch_size', '4',
-          '-train_steps', '1',
-          '-use_synthetic_data', 'true'
+      '-batch_size', '4',
+      '-train_steps', '1',
+      '-use_synthetic_data', 'true'
   ]
   _tempdir = None
 
@@ -77,9 +77,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_graph_1_gpu_no_dist_strat(self):
@@ -98,9 +98,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_1_gpu(self):
@@ -119,9 +119,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_xla_1_gpu(self):
@@ -141,9 +141,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_1_gpu_fp16(self):
@@ -163,9 +163,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_xla_1_gpu_fp16(self):
@@ -186,9 +186,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_graph_1_gpu(self):
@@ -207,9 +207,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_graph_xla_1_gpu(self):
@@ -229,9 +229,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_2_gpu(self):
@@ -250,9 +250,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_2_gpu_tweaked(self):
@@ -272,9 +272,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_xla_2_gpu(self):
@@ -294,9 +294,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_2_gpu_fp16(self):
@@ -316,9 +316,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_2_gpu_fp16_tweaked(self):
@@ -339,9 +339,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_xla_2_gpu_fp16(self):
@@ -362,9 +362,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_xla_2_gpu_fp16_tweaked(self):
@@ -386,9 +386,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_xla_2_gpu_fp16_tensorboard_tweaked(self):
@@ -411,9 +411,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_graph_2_gpu(self):
@@ -432,9 +432,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_graph_xla_2_gpu(self):
@@ -454,9 +454,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
   def test_end_to_end_graph_xla_2_gpu_fp16_tweaked(self):
@@ -480,9 +480,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-      main=keras_imagenet_main.run,
-      tmp_root=self.get_temp_dir(),
-      extra_flags=extra_flags
+        main=keras_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
     )
 
 
