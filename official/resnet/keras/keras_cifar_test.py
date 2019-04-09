@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from tempfile import mkdtemp
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.resnet import cifar10_main
 from official.resnet.keras import keras_cifar_main
@@ -33,7 +33,6 @@ from tensorflow.python.platform import googletest
 class KerasCifarTest(googletest.TestCase):
   """Unit tests for Keras ResNet with Cifar."""
 
-  _num_validation_images = None
   _extra_flags = [
       '-batch_size', '4',
       '-train_steps', '1',
@@ -54,26 +53,19 @@ class KerasCifarTest(googletest.TestCase):
 
   def setUp(self):
     super(KerasCifarTest, self).setUp()
-    self._num_validation_images = cifar10_main.NUM_IMAGES['validation']
     cifar10_main.NUM_IMAGES['validation'] = 4
 
   def tearDown(self):
     super(KerasCifarTest, self).tearDown()
     tf.io.gfile.rmtree(self.get_temp_dir())
-    cifar10_main.NUM_IMAGES['validation'] = self._num_validation_images
 
-  def test_end_to_end_1_gpu_no_dist_strat(self):
+  def test_end_to_end_cpu_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
-    if context.num_gpus() < 1:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
-
     extra_flags = [
-        "-num_gpus", "1",
+        "-num_gpus", "0",
         "-enable_eager", "true",
         "-distribution_strategy", "off",
-        "-model_dir", "keras_cifar_1_gpu_no_dist_strat",
+        "-model_dir", "keras_cifar_cpu_no_dist_strat",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -83,18 +75,13 @@ class KerasCifarTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_graph_1_gpu_no_dist_strat(self):
+  def test_end_to_end_graph_cpu_no_dist_strat(self):
     """Test Keras model in legacy graph mode with 1 GPU, no dist strat."""
-    if context.num_gpus() < 1:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
-
     extra_flags = [
-        "-num_gpus", "1",
+        "-num_gpus", "0",
         "-enable_eager", "false",
         "-distribution_strategy", "off",
-        "-model_dir", "keras_cifar_graph_1_gpu_no_dist_strat",
+        "-model_dir", "keras_cifar_graph_cpu_no_dist_strat",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -104,18 +91,13 @@ class KerasCifarTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_1_gpu(self):
+  def test_end_to_end_cpu(self):
     """Test Keras model with 1 GPU."""
-    if context.num_gpus() < 1:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
-
     extra_flags = [
-        "-num_gpus", "1",
+        "-num_gpus", "0",
         "-enable_eager", "true",
         "-distribution_strategy", "default",
-        "-model_dir", "keras_cifar_1_gpu",
+        "-model_dir", "keras_cifar_cpu",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -125,7 +107,7 @@ class KerasCifarTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_graph_1_gpu(self):
+  def test_end_to_end_graph_cpu(self):
     """Test Keras model in legacy graph mode with 1 GPU."""
     if context.num_gpus() < 1:
       self.skipTest(
@@ -133,10 +115,10 @@ class KerasCifarTest(googletest.TestCase):
           format(1, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "1",
+        "-num_gpus", "0",
         "-enable_eager", "false",
         "-distribution_strategy", "default",
-        "-model_dir", "keras_cifar_graph_1_gpu",
+        "-model_dir", "keras_cifar_graph_cpu",
     ]
     extra_flags = extra_flags + self._extra_flags
 
