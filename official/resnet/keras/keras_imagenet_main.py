@@ -140,9 +140,8 @@ def run(flags_obj):
     distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_main.input_fn
 
-  # When `enable_xla` is True, we always drop the remainder of the batches
-  # in the dataset, as XLA-GPU doesn't support dynamic shapes.
-  drop_remainder = flags_obj.enable_xla
+  # Set `drop_remainder` to True as XLA-GPU doesn't support dynamic shapes.
+  drop_remainder = True
 
   train_input_dataset = input_fn(
       is_training=True,
