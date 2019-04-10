@@ -174,6 +174,8 @@ def run(flags_obj):
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
 
     if flags_obj.enable_xla and not flags_obj.enable_eager:
+      # TODO(b/129861005): Fix OOM issue in eager mode when setting
+      # `batch_size` in keras.Input layer.
       if strategy and strategy.num_replicas_in_sync > 1:
         # TODO(b/129791381): Specify `per_replica_batch_size` value in
         # DistributionStrategy multi-replica case.
