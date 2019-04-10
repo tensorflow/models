@@ -1135,9 +1135,21 @@ def combined_non_max_suppression(boxes,
                                  scope=None):
   """Multi-class version of non maximum suppression that operates on a batch.
 
-  This op is similar to `multiclass_non_max_suppression` but operates on a batch
-  of boxes and scores. See documentation for `multiclass_non_max_suppression`
-  for details.
+  This function uses TensorFlow operator "CombinedNonMaxSuppression".
+  It greedily selects a subset of detection bounding boxes, pruning away
+  boxes that have high IOU (intersection over union) overlap (> thresh) with
+  already selected boxes. It operates independently for each batch.
+  Within each batch, it operates independently for each class for which
+  scores are provided (via the scores field of the input box_list),
+  pruning boxes with score less than a provided threshold prior to applying NMS.
+  
+  Please note that this operation is performed on *all* batches and *all* classes
+  in the batch, therefore any background classes should be removed prior to
+  calling this function. 
+  
+  This op is similar to `multiclass_non_max_suppression` but operates on
+  a batch of boxes and scores. See documentation for
+  `multiclass_non_max_suppression` for additional details.
 
   Args:
     boxes: A [batch_size, num_anchors, q, 4] float32 tensor containing
