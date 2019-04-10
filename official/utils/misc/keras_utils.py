@@ -30,6 +30,10 @@ class BatchTimestamp(object):
   def __init__(self, batch_index, timestamp):
     self.batch_index = batch_index
     self.timestamp = timestamp
+    
+  def __repr__(self):
+    return "BatchTimestamp(batch_index: {}, timestamp: {})".format(
+        self.batch_index, self.timestamp)
 
 
 class TimeHistory(tf.keras.callbacks.Callback):
