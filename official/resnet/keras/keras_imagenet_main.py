@@ -35,6 +35,7 @@ from official.utils.misc import model_helpers
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
+TRAIN_EPOCH_SIZE = 1281167
 
 
 def learning_rate_schedule(current_epoch,
@@ -170,8 +171,20 @@ def run(flags_obj):
         dtype=dtype,
         drop_remainder=drop_remainder)
 
+  lr_schedule = 0.1
+  if flags_obj.use_tensor_lr:  # HZDEBUG
+    lr_schedule = keras_common.PiecewiseConstantDecayWithWarmup(
+        batch_size=flags_obj.batch_size,
+        epoch_size=TRAIN_EPOCH_SIZE,
+        warmup_epochs=LR_SCHEDULE[0][1],
+        boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
+        multipliers=list(p[0] for p in LR_SCHEDULE))
+    # lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+    #     boundaries=list(p[1] * 1.0 for p in LR_SCHEDULE[1:]),
+    #     values=list(p[0] * 0.1 for p in LR_SCHEDULE))
+
   with strategy_scope:
-    optimizer = keras_common.get_optimizer()
+    optimizer = keras_common.get_optimizer(lr_schedule)
     if dtype == 'float16':
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.

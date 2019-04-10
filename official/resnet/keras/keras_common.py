@@ -79,6 +79,42 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
           'change learning rate to %s.', self.epochs, batch, lr)
 
 
+class PiecewiseConstantDecayWithWarmup(
+    tf.keras.optimizers.schedules.LearningRateSchedule):
+  """Piecewise constant decay with warmup schedule."""
+
+  def __init__(self, batch_size, epoch_size, warmup_epochs, boundaries,
+               multipliers, name=None):
+    super(PiecewiseConstantDecayWithWarmup, self).__init__()
+
+    if len(boundaries) != len(multipliers) - 1:
+      raise ValueError('The length of boundaries must be 1 less than the '
+                       'length of multipliers')
+    base_lr_batch_size = 256
+    self.rescaled_lr = BASE_LEARNING_RATE * batch_size / base_lr_batch_size
+    num_batches_per_epoch = epoch_size / batch_size
+
+    self.step_boundaries = [float(num_batches_per_epoch * x) for x in boundaries]
+    self.lr_values = [self.rescaled_lr * m for m in multipliers]
+    self.warmup_steps = int(warmup_epochs * num_batches_per_epoch)
+    self.name = name
+
+    self.warmup_lr = lambda step: self.rescaled_lr * (
+        tf.cast(step, tf.float32) / tf.cast(self.warmup_steps, tf.float32))
+    self.lr = lambda step: tf.train.piecewise_constant(
+        step, self.step_boundaries, self.lr_values)
+
+  def __call__(self, step):
+    with tf.name_scope(self.name, 'PiecewiseConstantDecayWithWarmup',
+                       [step, self.step_boundaries, self.lr_values, self.name]):
+      return tf.cond(step < self.warmup_steps,
+                     lambda: self.warmup_lr(step),
+                     lambda: self.lr(step))
+
+  def get_config(self):
+    return {}
+
+
 class ProfilerCallback(tf.keras.callbacks.Callback):
   """Save profiles in specified step range to log directory."""
 
@@ -159,20 +195,23 @@ def set_gpu_thread_mode_and_count(flags_obj):
                               flags_obj.datasets_num_private_threads)
 
 
-def get_optimizer():
+def get_optimizer(learning_rate=0.1):
   """Returns optimizer to use."""
   # The learning_rate is overwritten at the beginning of each step by callback.
-  return gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
+  return gradient_descent_v2.SGD(learning_rate=learning_rate, momentum=0.9)
 
 
 def get_callbacks(learning_rate_schedule_fn, num_images):
   """Returns common callbacks."""
   time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
-  lr_callback = LearningRateBatchScheduler(
-      learning_rate_schedule_fn,
-      batch_size=FLAGS.batch_size,
-      num_images=num_images)
-  callbacks = [time_callback, lr_callback]
+  callbacks = [time_callback]
+
+  if not FLAGS.use_tensor_lr:
+    lr_callback = LearningRateBatchScheduler(
+        learning_rate_schedule_fn,
+        batch_size=FLAGS.batch_size,
+        num_images=num_images)
+    callbacks.append(lr_callback)
 
   if FLAGS.enable_tensorboard:
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
@@ -264,6 +303,8 @@ def define_keras_flags():
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_boolean(name='use_trivial_model', default=False,
                        help='Whether to use a trivial Keras model.')
+  flags.DEFINE_boolean(name='use_tensor_lr', default=False,
+                       help='Use learning rate tensor instead of a callback.')
   flags.DEFINE_boolean(
       name='enable_xla', default=False,
       help='Whether to enable XLA auto jit compilation. This is still an '
