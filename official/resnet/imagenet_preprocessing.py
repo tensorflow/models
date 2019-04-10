@@ -148,7 +148,9 @@ def _mean_image_subtraction(image, means, num_channels):
     raise ValueError('len(means) must match the number of channels')
 
   # We have a 1-D tensor of means; convert to 3-D.
-  means = tf.expand_dims(tf.expand_dims(means, 0), 0)
+  # Note(b/130245863): we explicitly call `broadcast` instead of simply
+  # expanding dimensions for better performance.
+  means = tf.broadcast_to(means, tf.shape(image))
 
   return image - means
 
