@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 import time
 from absl import flags
+import tensorflow as tf # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
 from official.resnet.keras import keras_benchmark
@@ -233,3 +234,7 @@ class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
 
     super(Resnet56KerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=default_flags)
+
+
+if __name__ == '__main__':
+  tf.test.main()

@@ -31,11 +31,12 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.datasets import movielens
+from official.recommendation import constants as rconst
 from official.recommendation import ncf_common
 from official.recommendation import neumf_model
-from official.recommendation import constants as rconst
 from official.utils.logs import logger
 from official.utils.logs import mlperf_helper
+from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 
@@ -57,7 +58,7 @@ def _get_metric_fn(params):
 
   def metric_fn(y_true, y_pred):
     """Returns the in_top_k metric."""
-    softmax_logits = y_pred
+    softmax_logits = y_pred[0, :]
     logits = tf.slice(softmax_logits, [0, 1], [batch_size, 1])
 
     # The dup mask should be obtained from input data, but we did not yet find
@@ -74,8 +75,12 @@ def _get_metric_fn(params):
             params["match_mlperf"],
             params["use_xla_for_gpu"]))
 
+    is_training = tf.keras.backend.learning_phase()
+    if isinstance(is_training, int):
+      is_training = tf.constant(bool(is_training), dtype=tf.bool)
+
     in_top_k = tf.cond(
-        tf.keras.backend.learning_phase(),
+        is_training,
         lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
         lambda: in_top_k)
 
@@ -87,11 +92,35 @@ def _get_metric_fn(params):
 def _get_train_and_eval_data(producer, params):
   """Returns the datasets for training and evalutating."""
 
+  def preprocess_train_input(features, labels):
+    """Pre-process the training data.
+
+    This is needed because:
+    - Distributed training does not support extra inputs. The current
+      implementation does not use the VALID_POINT_MASK in the input, which makes
+      it extra, so it needs to be removed.
+    - The label needs to be extended to be used in the loss fn
+    """
+    features.pop(rconst.VALID_POINT_MASK)
+    labels = tf.expand_dims(labels, -1)
+    return features, labels
+
   train_input_fn = producer.make_input_fn(is_training=True)
-  train_input_dataset = train_input_fn(params)
+  train_input_dataset = train_input_fn(params).map(
+      preprocess_train_input)
 
   def preprocess_eval_input(features):
+    """Pre-process the eval data.
+
+    This is needed because:
+    - Distributed training does not support extra inputs. The current
+      implementation does not use the DUPLICATE_MASK in the input, which makes
+      it extra, so it needs to be removed.
+    - The label needs to be extended to be used in the loss fn
+    """
+    features.pop(rconst.DUPLICATE_MASK)
     labels = tf.zeros_like(features[movielens.USER_COLUMN])
+    labels = tf.expand_dims(labels, -1)
     return features, labels
 
   eval_input_fn = producer.make_input_fn(is_training=False)
@@ -120,26 +149,36 @@ def _get_keras_model(params):
   """Constructs and returns the model."""
   batch_size = params['batch_size']
 
+  # The input layers are of shape (1, batch_size), to match the size of the
+  # input data. The first dimension is needed because the input data are
+  # required to be batched to use distribution strategies, and in this case, it
+  # is designed to be of batch_size 1 for each replica.
   user_input = tf.keras.layers.Input(
-      shape=(),
-      batch_size=batch_size,
+      shape=(batch_size,),
+      batch_size=1,
       name=movielens.USER_COLUMN,
-      dtype=rconst.USER_DTYPE)
+      dtype=tf.int32)
 
   item_input = tf.keras.layers.Input(
-      shape=(),
-      batch_size=batch_size,
+      shape=(batch_size,),
+      batch_size=1,
       name=movielens.ITEM_COLUMN,
-      dtype=rconst.ITEM_DTYPE)
+      dtype=tf.int32)
 
-  base_model = neumf_model.construct_model(user_input, item_input, params)
+  base_model = neumf_model.construct_model(
+      user_input, item_input, params, need_strip=True)
+
   base_model_output = base_model.output
 
+  logits = tf.keras.layers.Lambda(
+      lambda x: tf.expand_dims(x, 0),
+      name="logits")(base_model_output)
+
   zeros = tf.keras.layers.Lambda(
-      lambda x: x * 0)(base_model_output)
+      lambda x: x * 0)(logits)
 
   softmax_logits = tf.keras.layers.concatenate(
-      [zeros, base_model_output],
+      [zeros, logits],
       axis=-1)
 
   keras_model = tf.keras.Model(
@@ -175,33 +214,39 @@ def run_ncf(_):
   producer.start()
   model_helpers.apply_clean(flags.FLAGS)
 
-  keras_model = _get_keras_model(params)
-  optimizer = ncf_common.get_optimizer(params)
+  batches_per_step = params["batches_per_step"]
+  train_input_dataset, eval_input_dataset = _get_train_and_eval_data(producer,
+                                                                     params)
+  # It is required that for distributed training, the dataset must call
+  # batch(). The parameter of batch() here is the number of replicas involed,
+  # such that each replica evenly gets a slice of data.
+  train_input_dataset = train_input_dataset.batch(batches_per_step)
+  eval_input_dataset = eval_input_dataset.batch(batches_per_step)
 
-  time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
+  strategy = ncf_common.get_distribution_strategy(params)
+  with distribution_utils.get_strategy_scope(strategy):
+    keras_model = _get_keras_model(params)
+    optimizer = ncf_common.get_optimizer(params)
+    time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
 
-  keras_model.compile(
-      loss=_keras_loss,
-      metrics=[_get_metric_fn(params)],
-      optimizer=optimizer)
+    keras_model.compile(
+        loss=_keras_loss,
+        metrics=[_get_metric_fn(params)],
+        optimizer=optimizer)
 
-  train_input_dataset, eval_input_dataset = _get_train_and_eval_data(
-      producer, params)
+    history = keras_model.fit(train_input_dataset,
+                              epochs=FLAGS.train_epochs,
+                              callbacks=[
+                                  IncrementEpochCallback(producer),
+                                  time_callback],
+                              verbose=2)
 
-  history = keras_model.fit(
-      train_input_dataset,
-      epochs=FLAGS.train_epochs,
-      callbacks=[
-          IncrementEpochCallback(producer),
-          time_callback],
-      verbose=2)
+    tf.logging.info("Training done. Start evaluating")
 
-  tf.logging.info("Training done. Start evaluating")
-
-  eval_results = keras_model.evaluate(
-      eval_input_dataset,
-      steps=num_eval_steps,
-      verbose=2)
+    eval_results = keras_model.evaluate(
+        eval_input_dataset,
+        steps=num_eval_steps,
+        verbose=2)
 
   tf.logging.info("Keras evaluation is done.")
 
@@ -249,9 +294,6 @@ def main(_):
     mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
     if FLAGS.tpu:
       raise ValueError("NCF in Keras does not support TPU for now")
-    if FLAGS.num_gpus > 1:
-      raise ValueError("NCF in Keras does not support distribution strategies. "
-                       "Please set num_gpus to 1")
     run_ncf(FLAGS)
 
 

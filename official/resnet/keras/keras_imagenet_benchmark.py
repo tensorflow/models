@@ -19,6 +19,7 @@ import os
 import time
 
 from absl import flags
+import tensorflow as tf # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_benchmark
@@ -666,3 +667,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
         stats,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps)
+
+
+if __name__ == '__main__':
+  tf.test.main()
