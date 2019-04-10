@@ -173,7 +173,7 @@ def run(flags_obj):
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
 
-    if flags_obj.enable_xla:
+    if flags_obj.enable_xla and not flags_obj.enable_eager:
       if strategy and strategy.num_replicas_in_sync > 1:
         # TODO(b/129791381): Specify `per_replica_batch_size` value in
         # DistributionStrategy multi-replica case.
