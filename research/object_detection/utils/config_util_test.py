@@ -83,7 +83,7 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config.train_config.batch_size = 32
     pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
     pipeline_config.eval_config.num_examples = 20
-    pipeline_config.eval_input_reader.queue_capacity = 100
+    pipeline_config.eval_input_reader.add().queue_capacity = 100
 
     _write_config(pipeline_config, pipeline_config_path)
 
@@ -96,7 +96,7 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertProtoEquals(pipeline_config.eval_config,
                            configs["eval_config"])
     self.assertProtoEquals(pipeline_config.eval_input_reader,
-                           configs["eval_input_config"])
+                           configs["eval_input_configs"])
 
   def test_create_configs_from_pipeline_proto(self):
     """Tests creating configs dictionary from pipeline proto."""
@@ -106,7 +106,7 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config.train_config.batch_size = 32
     pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
     pipeline_config.eval_config.num_examples = 20
-    pipeline_config.eval_input_reader.queue_capacity = 100
+    pipeline_config.eval_input_reader.add().queue_capacity = 100
 
     configs = config_util.create_configs_from_pipeline_proto(pipeline_config)
     self.assertProtoEquals(pipeline_config.model, configs["model"])
@@ -116,7 +116,7 @@ class ConfigUtilTest(tf.test.TestCase):
                            configs["train_input_config"])
     self.assertProtoEquals(pipeline_config.eval_config, configs["eval_config"])
     self.assertProtoEquals(pipeline_config.eval_input_reader,
-                           configs["eval_input_config"])
+                           configs["eval_input_configs"])
 
   def test_create_pipeline_proto_from_configs(self):
     """Tests that proto can be reconstructed from configs dictionary."""
@@ -127,7 +127,7 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config.train_config.batch_size = 32
     pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
     pipeline_config.eval_config.num_examples = 20
-    pipeline_config.eval_input_reader.queue_capacity = 100
+    pipeline_config.eval_input_reader.add().queue_capacity = 100
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
@@ -142,7 +142,7 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config.train_config.batch_size = 32
     pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
     pipeline_config.eval_config.num_examples = 20
-    pipeline_config.eval_input_reader.queue_capacity = 100
+    pipeline_config.eval_input_reader.add().queue_capacity = 100
 
     config_util.save_pipeline_config(pipeline_config, self.get_temp_dir())
     configs = config_util.get_configs_from_pipeline_file(
@@ -197,8 +197,7 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertProtoEquals(train_input_config,
                            configs["train_input_config"])
     self.assertProtoEquals(eval_config, configs["eval_config"])
-    self.assertProtoEquals(eval_input_config,
-                           configs["eval_input_config"])
+    self.assertProtoEquals(eval_input_config, configs["eval_input_configs"][0])
 
   def _assertOptimizerWithNewLearningRate(self, optimizer_name):
     """Asserts successful updating of all learning rate schemes."""
@@ -281,6 +280,41 @@ class ConfigUtilTest(tf.test.TestCase):
   def testAdamOptimizerWithNewLearningRate(self):
     """Tests new learning rates for Adam Optimizer."""
     self._assertOptimizerWithNewLearningRate("adam_optimizer")
+
+  def testGenericConfigOverride(self):
+    """Tests generic config overrides for all top-level configs."""
+    # Set one parameter for each of the top-level pipeline configs:
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.model.ssd.num_classes = 1
+    pipeline_config.train_config.batch_size = 1
+    pipeline_config.eval_config.num_visualizations = 1
+    pipeline_config.train_input_reader.label_map_path = "/some/path"
+    pipeline_config.eval_input_reader.add().label_map_path = "/some/path"
+    pipeline_config.graph_rewriter.quantization.weight_bits = 1
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    _write_config(pipeline_config, pipeline_config_path)
+
+    # Override each of the parameters:
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    hparams = tf.contrib.training.HParams(
+        **{
+            "model.ssd.num_classes": 2,
+            "train_config.batch_size": 2,
+            "train_input_config.label_map_path": "/some/other/path",
+            "eval_config.num_visualizations": 2,
+            "graph_rewriter_config.quantization.weight_bits": 2
+        })
+    configs = config_util.merge_external_params_with_configs(configs, hparams)
+
+    # Ensure that the parameters have the overridden values:
+    self.assertEqual(2, configs["model"].ssd.num_classes)
+    self.assertEqual(2, configs["train_config"].batch_size)
+    self.assertEqual("/some/other/path",
+                     configs["train_input_config"].label_map_path)
+    self.assertEqual(2, configs["eval_config"].num_visualizations)
+    self.assertEqual(2,
+                     configs["graph_rewriter_config"].quantization.weight_bits)
 
   def testNewBatchSize(self):
     """Tests that batch size is updated appropriately."""
@@ -406,25 +440,19 @@ class ConfigUtilTest(tf.test.TestCase):
   def testMergingKeywordArguments(self):
     """Tests that keyword arguments get merged as do hyperparameters."""
     original_num_train_steps = 100
-    original_num_eval_steps = 5
     desired_num_train_steps = 10
-    desired_num_eval_steps = 1
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
     pipeline_config.train_config.num_steps = original_num_train_steps
-    pipeline_config.eval_config.num_examples = original_num_eval_steps
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"train_steps": desired_num_train_steps}
     configs = config_util.merge_external_params_with_configs(
-        configs,
-        train_steps=desired_num_train_steps,
-        eval_steps=desired_num_eval_steps)
+        configs, kwargs_dict=override_dict)
     train_steps = configs["train_config"].num_steps
-    eval_steps = configs["eval_config"].num_examples
     self.assertEqual(desired_num_train_steps, train_steps)
-    self.assertEqual(desired_num_eval_steps, eval_steps)
 
   def testGetNumberOfClasses(self):
     """Tests that number of classes can be retrieved."""
@@ -449,8 +477,9 @@ class ConfigUtilTest(tf.test.TestCase):
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"train_input_path": new_train_path}
     configs = config_util.merge_external_params_with_configs(
-        configs, train_input_path=new_train_path)
+        configs, kwargs_dict=override_dict)
     reader_config = configs["train_input_config"].tf_record_input_reader
     final_path = reader_config.input_path
     self.assertEqual([new_train_path], final_path)
@@ -467,8 +496,9 @@ class ConfigUtilTest(tf.test.TestCase):
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"train_input_path": new_train_path}
     configs = config_util.merge_external_params_with_configs(
-        configs, train_input_path=new_train_path)
+        configs, kwargs_dict=override_dict)
     reader_config = configs["train_input_config"].tf_record_input_reader
     final_path = reader_config.input_path
     self.assertEqual(new_train_path, final_path)
@@ -482,17 +512,18 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
     train_input_reader = pipeline_config.train_input_reader
     train_input_reader.label_map_path = original_label_map_path
-    eval_input_reader = pipeline_config.eval_input_reader
+    eval_input_reader = pipeline_config.eval_input_reader.add()
     eval_input_reader.label_map_path = original_label_map_path
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"label_map_path": new_label_map_path}
     configs = config_util.merge_external_params_with_configs(
-        configs, label_map_path=new_label_map_path)
+        configs, kwargs_dict=override_dict)
     self.assertEqual(new_label_map_path,
                      configs["train_input_config"].label_map_path)
-    self.assertEqual(new_label_map_path,
-                     configs["eval_input_config"].label_map_path)
+    for eval_input_config in configs["eval_input_configs"]:
+      self.assertEqual(new_label_map_path, eval_input_config.label_map_path)
 
   def testDontOverwriteEmptyLabelMapPath(self):
     """Tests that label map path will not by overwritten with empty string."""
@@ -503,17 +534,18 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
     train_input_reader = pipeline_config.train_input_reader
     train_input_reader.label_map_path = original_label_map_path
-    eval_input_reader = pipeline_config.eval_input_reader
+    eval_input_reader = pipeline_config.eval_input_reader.add()
     eval_input_reader.label_map_path = original_label_map_path
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"label_map_path": new_label_map_path}
     configs = config_util.merge_external_params_with_configs(
-        configs, label_map_path=new_label_map_path)
+        configs, kwargs_dict=override_dict)
     self.assertEqual(original_label_map_path,
                      configs["train_input_config"].label_map_path)
     self.assertEqual(original_label_map_path,
-                     configs["eval_input_config"].label_map_path)
+                     configs["eval_input_configs"][0].label_map_path)
 
   def testNewMaskType(self):
     """Tests that mask type can be overwritten in input readers."""
@@ -524,15 +556,16 @@ class ConfigUtilTest(tf.test.TestCase):
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
     train_input_reader = pipeline_config.train_input_reader
     train_input_reader.mask_type = original_mask_type
-    eval_input_reader = pipeline_config.eval_input_reader
+    eval_input_reader = pipeline_config.eval_input_reader.add()
     eval_input_reader.mask_type = original_mask_type
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"mask_type": new_mask_type}
     configs = config_util.merge_external_params_with_configs(
-        configs, mask_type=new_mask_type)
+        configs, kwargs_dict=override_dict)
     self.assertEqual(new_mask_type, configs["train_input_config"].mask_type)
-    self.assertEqual(new_mask_type, configs["eval_input_config"].mask_type)
+    self.assertEqual(new_mask_type, configs["eval_input_configs"][0].mask_type)
 
   def testUseMovingAverageForEval(self):
     use_moving_averages_orig = False
@@ -543,8 +576,9 @@ class ConfigUtilTest(tf.test.TestCase):
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"eval_with_moving_averages": True}
     configs = config_util.merge_external_params_with_configs(
-        configs, eval_with_moving_averages=True)
+        configs, kwargs_dict=override_dict)
     self.assertEqual(True, configs["eval_config"].use_moving_averages)
 
   def  testGetImageResizerConfig(self):
@@ -585,14 +619,14 @@ class ConfigUtilTest(tf.test.TestCase):
 
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-    pipeline_config.eval_input_reader.shuffle = original_shuffle
+    pipeline_config.eval_input_reader.add().shuffle = original_shuffle
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"eval_shuffle": desired_shuffle}
     configs = config_util.merge_external_params_with_configs(
-        configs, eval_shuffle=desired_shuffle)
-    eval_shuffle = configs["eval_input_config"].shuffle
-    self.assertEqual(desired_shuffle, eval_shuffle)
+        configs, kwargs_dict=override_dict)
+    self.assertEqual(desired_shuffle, configs["eval_input_configs"][0].shuffle)
 
   def testTrainShuffle(self):
     """Tests that `train_shuffle` keyword arguments are applied correctly."""
@@ -605,8 +639,9 @@ class ConfigUtilTest(tf.test.TestCase):
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"train_shuffle": desired_shuffle}
     configs = config_util.merge_external_params_with_configs(
-        configs, train_shuffle=desired_shuffle)
+        configs, kwargs_dict=override_dict)
     train_shuffle = configs["train_input_config"].shuffle
     self.assertEqual(desired_shuffle, train_shuffle)
 
@@ -622,10 +657,209 @@ class ConfigUtilTest(tf.test.TestCase):
     _write_config(pipeline_config, pipeline_config_path)
 
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {
+        "retain_original_images_in_eval": desired_retain_original_images
+    }
     configs = config_util.merge_external_params_with_configs(
-        configs, retain_original_images_in_eval=desired_retain_original_images)
+        configs, kwargs_dict=override_dict)
     retain_original_images = configs["eval_config"].retain_original_images
     self.assertEqual(desired_retain_original_images, retain_original_images)
+
+  def testOverwriteAllEvalSampling(self):
+    original_num_eval_examples = 1
+    new_num_eval_examples = 10
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_input_reader.add().sample_1_of_n_examples = (
+        original_num_eval_examples)
+    pipeline_config.eval_input_reader.add().sample_1_of_n_examples = (
+        original_num_eval_examples)
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"sample_1_of_n_eval_examples": new_num_eval_examples}
+    configs = config_util.merge_external_params_with_configs(
+        configs, kwargs_dict=override_dict)
+    for eval_input_config in configs["eval_input_configs"]:
+      self.assertEqual(new_num_eval_examples,
+                       eval_input_config.sample_1_of_n_examples)
+
+  def testOverwriteAllEvalNumEpochs(self):
+    original_num_epochs = 10
+    new_num_epochs = 1
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_input_reader.add().num_epochs = original_num_epochs
+    pipeline_config.eval_input_reader.add().num_epochs = original_num_epochs
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"eval_num_epochs": new_num_epochs}
+    configs = config_util.merge_external_params_with_configs(
+        configs, kwargs_dict=override_dict)
+    for eval_input_config in configs["eval_input_configs"]:
+      self.assertEqual(new_num_epochs, eval_input_config.num_epochs)
+
+  def testUpdateMaskTypeForAllInputConfigs(self):
+    original_mask_type = input_reader_pb2.NUMERICAL_MASKS
+    new_mask_type = input_reader_pb2.PNG_MASKS
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    train_config = pipeline_config.train_input_reader
+    train_config.mask_type = original_mask_type
+    eval_1 = pipeline_config.eval_input_reader.add()
+    eval_1.mask_type = original_mask_type
+    eval_1.name = "eval_1"
+    eval_2 = pipeline_config.eval_input_reader.add()
+    eval_2.mask_type = original_mask_type
+    eval_2.name = "eval_2"
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"mask_type": new_mask_type}
+    configs = config_util.merge_external_params_with_configs(
+        configs, kwargs_dict=override_dict)
+
+    self.assertEqual(configs["train_input_config"].mask_type, new_mask_type)
+    for eval_input_config in configs["eval_input_configs"]:
+      self.assertEqual(eval_input_config.mask_type, new_mask_type)
+
+  def testErrorOverwritingMultipleInputConfig(self):
+    original_shuffle = False
+    new_shuffle = True
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    eval_1 = pipeline_config.eval_input_reader.add()
+    eval_1.shuffle = original_shuffle
+    eval_1.name = "eval_1"
+    eval_2 = pipeline_config.eval_input_reader.add()
+    eval_2.shuffle = original_shuffle
+    eval_2.name = "eval_2"
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {"eval_shuffle": new_shuffle}
+    with self.assertRaises(ValueError):
+      configs = config_util.merge_external_params_with_configs(
+          configs, kwargs_dict=override_dict)
+
+  def testCheckAndParseInputConfigKey(self):
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_input_reader.add().name = "eval_1"
+    pipeline_config.eval_input_reader.add().name = "eval_2"
+    _write_config(pipeline_config, pipeline_config_path)
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+
+    specific_shuffle_update_key = "eval_input_configs:eval_2:shuffle"
+    is_valid_input_config_key, key_name, input_name, field_name = (
+        config_util.check_and_parse_input_config_key(
+            configs, specific_shuffle_update_key))
+    self.assertTrue(is_valid_input_config_key)
+    self.assertEqual(key_name, "eval_input_configs")
+    self.assertEqual(input_name, "eval_2")
+    self.assertEqual(field_name, "shuffle")
+
+    legacy_shuffle_update_key = "eval_shuffle"
+    is_valid_input_config_key, key_name, input_name, field_name = (
+        config_util.check_and_parse_input_config_key(configs,
+                                                     legacy_shuffle_update_key))
+    self.assertTrue(is_valid_input_config_key)
+    self.assertEqual(key_name, "eval_input_configs")
+    self.assertEqual(input_name, None)
+    self.assertEqual(field_name, "shuffle")
+
+    non_input_config_update_key = "label_map_path"
+    is_valid_input_config_key, key_name, input_name, field_name = (
+        config_util.check_and_parse_input_config_key(
+            configs, non_input_config_update_key))
+    self.assertFalse(is_valid_input_config_key)
+    self.assertEqual(key_name, None)
+    self.assertEqual(input_name, None)
+    self.assertEqual(field_name, "label_map_path")
+
+    with self.assertRaisesRegexp(ValueError,
+                                 "Invalid key format when overriding configs."):
+      config_util.check_and_parse_input_config_key(
+          configs, "train_input_config:shuffle")
+
+    with self.assertRaisesRegexp(
+        ValueError, "Invalid key_name when overriding input config."):
+      config_util.check_and_parse_input_config_key(
+          configs, "invalid_key_name:train_name:shuffle")
+
+    with self.assertRaisesRegexp(
+        ValueError, "Invalid input_name when overriding input config."):
+      config_util.check_and_parse_input_config_key(
+          configs, "eval_input_configs:unknown_eval_name:shuffle")
+
+    with self.assertRaisesRegexp(
+        ValueError, "Invalid field_name when overriding input config."):
+      config_util.check_and_parse_input_config_key(
+          configs, "eval_input_configs:eval_2:unknown_field_name")
+
+  def testUpdateInputReaderConfigSuccess(self):
+    original_shuffle = False
+    new_shuffle = True
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.train_input_reader.shuffle = original_shuffle
+    _write_config(pipeline_config, pipeline_config_path)
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+
+    config_util.update_input_reader_config(
+        configs,
+        key_name="train_input_config",
+        input_name=None,
+        field_name="shuffle",
+        value=new_shuffle)
+    self.assertEqual(configs["train_input_config"].shuffle, new_shuffle)
+
+    config_util.update_input_reader_config(
+        configs,
+        key_name="train_input_config",
+        input_name=None,
+        field_name="shuffle",
+        value=new_shuffle)
+    self.assertEqual(configs["train_input_config"].shuffle, new_shuffle)
+
+  def testUpdateInputReaderConfigErrors(self):
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_input_reader.add().name = "same_eval_name"
+    pipeline_config.eval_input_reader.add().name = "same_eval_name"
+    _write_config(pipeline_config, pipeline_config_path)
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+
+    with self.assertRaisesRegexp(ValueError,
+                                 "Duplicate input name found when overriding."):
+      config_util.update_input_reader_config(
+          configs,
+          key_name="eval_input_configs",
+          input_name="same_eval_name",
+          field_name="shuffle",
+          value=False)
+
+    with self.assertRaisesRegexp(
+        ValueError, "Input name name_not_exist not found when overriding."):
+      config_util.update_input_reader_config(
+          configs,
+          key_name="eval_input_configs",
+          input_name="name_not_exist",
+          field_name="shuffle",
+          value=False)
+
+    with self.assertRaisesRegexp(ValueError,
+                                 "Unknown input config overriding."):
+      config_util.update_input_reader_config(
+          configs,
+          key_name="eval_input_configs",
+          input_name=None,
+          field_name="shuffle",
+          value=False)
 
 
 if __name__ == "__main__":

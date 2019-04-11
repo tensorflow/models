@@ -62,7 +62,6 @@ def run_keras_model_benchmark(_):
   # Load the model
   tf.logging.info("Benchmark on {} model...".format(FLAGS.model))
   keras_model = MODELS[FLAGS.model]
-  model = keras_model(weights=None)
 
   # Get dataset
   dataset_name = "ImageNet"
@@ -73,8 +72,15 @@ def run_keras_model_benchmark(_):
         FLAGS.model, FLAGS.batch_size)
     val_dataset = dataset.generate_synthetic_input_dataset(
         FLAGS.model, FLAGS.batch_size)
+    model = keras_model(weights=None)
   else:
-    raise ValueError("Only synthetic dataset is supported!")
+    tf.logging.info("Using CIFAR-10 dataset...")
+    dataset_name = "CIFAR-10"
+    ds = dataset.Cifar10Dataset(FLAGS.batch_size)
+    train_dataset = ds.train_dataset
+    val_dataset = ds.test_dataset
+    model = keras_model(
+        weights=None, input_shape=ds.input_shape, classes=ds.num_classes)
 
   num_gpus = flags_core.get_num_gpus(FLAGS)
 
@@ -82,6 +88,7 @@ def run_keras_model_benchmark(_):
   # Use distribution strategy
   if FLAGS.dist_strat:
     distribution = distribution_utils.get_distribution_strategy(
+        distribution_strategy=FLAGS.distribution_strategy,
         num_gpus=num_gpus)
   elif num_gpus > 1:
     # Run with multi_gpu_model

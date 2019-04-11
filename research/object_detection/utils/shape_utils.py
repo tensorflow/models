@@ -342,3 +342,26 @@ def assert_shape_equal_along_first_dimension(shape_a, shape_b):
     else: return tf.no_op()
   else:
     return tf.assert_equal(shape_a[0], shape_b[0])
+
+
+def assert_box_normalized(boxes, maximum_normalized_coordinate=1.1):
+  """Asserts the input box tensor is normalized.
+
+  Args:
+    boxes: a tensor of shape [N, 4] where N is the number of boxes.
+    maximum_normalized_coordinate: Maximum coordinate value to be considered
+      as normalized, default to 1.1.
+
+  Returns:
+    a tf.Assert op which fails when the input box tensor is not normalized.
+
+  Raises:
+    ValueError: When the input box tensor is not normalized.
+  """
+  box_minimum = tf.reduce_min(boxes)
+  box_maximum = tf.reduce_max(boxes)
+  return tf.Assert(
+      tf.logical_and(
+          tf.less_equal(box_maximum, maximum_normalized_coordinate),
+          tf.greater_equal(box_minimum, 0)),
+      [boxes])

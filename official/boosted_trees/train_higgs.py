@@ -249,7 +249,8 @@ def train_boosted_trees(flags_obj):
         _make_csv_serving_input_receiver_fn(
             column_names=feature_names,
             # columns are all floats.
-            column_defaults=[[0.0]] * len(feature_names)))
+            column_defaults=[[0.0]] * len(feature_names)),
+        strip_default_attrs=True)
 
 
 def main(_):

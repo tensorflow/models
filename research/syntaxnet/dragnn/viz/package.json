@@ -4,16 +4,18 @@
   "description": "Development container to build DRAGNN visualization javascript (for most cases, it's compled to a single file)",
   "main": "index.js",
   "devDependencies": {
-    "babel-core": "^6.23.1",
-    "babel-loader": "^6.3.2",
-    "babel-plugin-transform-object-rest-spread": "^6.23.0",
-    "babel-plugin-transform-react-jsx": "^6.23.0",
-    "babel-preset-es2015": "^6.22.0",
+    "@babel/core": "^7.2.2",
+    "@babel/plugin-proposal-object-rest-spread": "^7.2.0",
+    "@babel/plugin-transform-react-jsx": "^7.2.0",
+    "@babel/preset-env": "^7.2.3",
+    "@babel/preset-es2015": "^7.0.0-beta.53",
+    "babel-loader": "8.0.5",
     "cytoscape": "^2.7.15",
-    "exports-loader": "^0.6.3",
+    "exports-loader": "0.7.0",
     "preact": "^7.2.0",
-    "webpack": "^2.2.1",
     "uglify-js": "2.7.5",
-    "webpack-dev-server": "^2.3.0"
+    "webpack": "4.28.4",
+    "webpack-cli": "^3.2.1",
+    "webpack-dev-server": "3.1.14"
   }
 }

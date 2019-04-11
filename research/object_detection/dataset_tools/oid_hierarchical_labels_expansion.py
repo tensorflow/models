@@ -23,6 +23,8 @@ oid_hierarchical_labels_expansion.py \
 --annotation_type=<1 (for boxes) or 2 (for image-level labels)>
 """
 
+from __future__ import print_function
+
 import argparse
 import json
 
@@ -154,7 +156,7 @@ def main(parsed_args):
   if parsed_args.annotation_type == 2:
     labels_file = True
   elif parsed_args.annotation_type != 1:
-    print '--annotation_type expected value is 1 or 2.'
+    print('--annotation_type expected value is 1 or 2.')
     return -1
   with open(parsed_args.input_annotations, 'r') as source:
     with open(parsed_args.output_annotations, 'w') as target:

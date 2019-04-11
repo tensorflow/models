@@ -22,9 +22,11 @@ import unittest
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
+from official.resnet.keras import keras_common
+from official.resnet.keras import keras_imagenet_main
 from official.utils.testing import integration
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 _BATCH_SIZE = 32
 _LABEL_CLASSES = 1001
@@ -32,14 +34,23 @@ _LABEL_CLASSES = 1001
 
 class BaseTest(tf.test.TestCase):
 
+  _num_validation_images = None
+
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
     imagenet_main.define_imagenet_flags()
+    keras_common.define_keras_flags()
+
+  def setUp(self):
+    super(BaseTest, self).setUp()
+    self._num_validation_images = imagenet_main.NUM_IMAGES['validation']
+    imagenet_main.NUM_IMAGES['validation'] = 4
 
   def tearDown(self):
     super(BaseTest, self).tearDown()
-    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    tf.io.gfile.rmtree(self.get_temp_dir())
+    imagenet_main.NUM_IMAGES['validation'] = self._num_validation_images
 
   def _tensor_shapes_helper(self, resnet_size, resnet_version, dtype, with_gpu):
     """Checks the tensor shapes after each phase of the ResNet model."""
@@ -62,7 +73,7 @@ class BaseTest(tf.test.TestCase):
           resnet_version=resnet_version,
           dtype=dtype
       )
-      inputs = tf.random_uniform([1, 224, 224, 3])
+      inputs = tf.random.uniform([1, 224, 224, 3])
       output = model(inputs, training=True)
 
       initial_conv = graph.get_tensor_by_name('resnet_model/initial_conv:0')
@@ -189,11 +200,11 @@ class BaseTest(tf.test.TestCase):
 
   def resnet_model_fn_helper(self, mode, resnet_version, dtype):
     """Tests that the EstimatorSpec is given the appropriate arguments."""
-    tf.train.create_global_step()
+    tf.compat.v1.train.create_global_step()
 
     input_fn = imagenet_main.get_synth_input_fn(dtype)
     dataset = input_fn(True, '', _BATCH_SIZE)
-    iterator = dataset.make_initializable_iterator()
+    iterator = tf.compat.v1.data.make_initializable_iterator(dataset)
     features, labels = iterator.get_next()
     spec = imagenet_main.imagenet_model_fn(
         features, labels, mode, {
@@ -257,7 +268,7 @@ class BaseTest(tf.test.TestCase):
         50, data_format='channels_last', num_classes=num_classes,
         resnet_version=resnet_version)
 
-    fake_input = tf.random_uniform([batch_size, 224, 224, 3])
+    fake_input = tf.random.uniform([batch_size, 224, 224, 3])
     output = model(fake_input, training=True)
 
     self.assertAllEqual(output.shape, (batch_size, num_classes))
@@ -271,37 +282,48 @@ class BaseTest(tf.test.TestCase):
   def test_imagenet_end_to_end_synthetic_v1(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '1']
+        extra_flags=['-resnet_version', '1', '-batch_size', '4']
     )
 
   def test_imagenet_end_to_end_synthetic_v2(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '2']
+        extra_flags=['-resnet_version', '2', '-batch_size', '4']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_tiny(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '1', '-resnet_size', '18']
+        extra_flags=['-resnet_version', '1', '-batch_size', '4',
+                     '-resnet_size', '18']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_tiny(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '2', '-resnet_size', '18']
+        extra_flags=['-resnet_version', '2', '-batch_size', '4',
+                     '-resnet_size', '18']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_huge(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '1', '-resnet_size', '200']
+        extra_flags=['-resnet_version', '1', '-batch_size', '4',
+                     '-resnet_size', '200']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_huge(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '2', '-resnet_size', '200']
+        extra_flags=['-resnet_version', '2', '-batch_size', '4',
+                     '-resnet_size', '200']
+    )
+
+  def test_imagenet_end_to_end_keras_synthetic_v1(self):
+    integration.run_synthetic(
+        main=keras_imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '1', '-batch_size', '4',
+                     '-train_steps', '1']
     )
 
 

@@ -63,7 +63,8 @@ def cyclegan_arg_scope(instance_norm_center=True,
     return sc
 
 
-def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose'):
+def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose',
+                      pad_mode='REFLECT', align_corners=False):
   """Upsamples the given inputs.
 
   Args:
@@ -75,6 +76,10 @@ def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose'):
       times the input size.
     method: The upsampling method: 'nn_upsample_conv', 'bilinear_upsample_conv',
       or 'conv2d_transpose'.
+    pad_mode: mode for tf.pad, one of "CONSTANT", "REFLECT", or "SYMMETRIC".
+    align_corners: option for method, 'bilinear_upsample_conv'. If true, the
+      centers of the 4 corner pixels of the input and output tensors are
+      aligned, preserving the values at the corner pixels.
 
   Returns:
     A Tensor which was upsampled using the specified method.
@@ -95,12 +100,13 @@ def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose'):
     if method == 'nn_upsample_conv':
       net = tf.image.resize_nearest_neighbor(
           net, [stride[0] * height, stride[1] * width])
-      net = tf.pad(net, spatial_pad_1, 'REFLECT')
+      net = tf.pad(net, spatial_pad_1, pad_mode)
       net = layers.conv2d(net, num_outputs, kernel_size=[3, 3], padding='valid')
     elif method == 'bilinear_upsample_conv':
       net = tf.image.resize_bilinear(
-          net, [stride[0] * height, stride[1] * width])
-      net = tf.pad(net, spatial_pad_1, 'REFLECT')
+          net, [stride[0] * height, stride[1] * width],
+          align_corners=align_corners)
+      net = tf.pad(net, spatial_pad_1, pad_mode)
       net = layers.conv2d(net, num_outputs, kernel_size=[3, 3], padding='valid')
     elif method == 'conv2d_transpose':
       # This corrects 1 pixel offset for images with even width and height.
@@ -111,7 +117,7 @@ def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose'):
           net, num_outputs, kernel_size=[3, 3], stride=stride, padding='valid')
       net = net[:, 1:, 1:, :]
     else:
-      raise ValueError('Unknown method: [%s]', method)
+      raise ValueError('Unknown method: [%s]' % method)
 
     return net
 
@@ -128,7 +134,6 @@ def cyclegan_generator_resnet(images,
                               num_filters=64,
                               upsample_fn=cyclegan_upsample,
                               kernel_size=3,
-                              num_outputs=3,
                               tanh_linear_slope=0.0,
                               is_training=False):
   """Defines the cyclegan resnet network architecture.
@@ -150,7 +155,6 @@ def cyclegan_generator_resnet(images,
     upsample_fn: Upsampling function for the decoder part of the generator.
     kernel_size: Size w or list/tuple [h, w] of the filter kernels for all inner
       layers.
-    num_outputs: Number of output layers. Defaults to 3 for RGB.
     tanh_linear_slope: Slope of the linear function to add to the tanh over the
       logits.
     is_training: Whether the network is created in training mode or inference
@@ -176,6 +180,7 @@ def cyclegan_generator_resnet(images,
     raise ValueError('The input height must be a multiple of 4.')
   if width and width % 4 != 0:
     raise ValueError('The input width must be a multiple of 4.')
+  num_outputs = input_size[3]
 
   if not isinstance(kernel_size, (list, tuple)):
     kernel_size = [kernel_size, kernel_size]

@@ -47,11 +47,11 @@ class _GarbageCollector(object):
   def purge(self):
     try:
       for i in self.temp_buffers:
-        if tf.gfile.Exists(i):
-          tf.gfile.Remove(i)
-          tf.logging.info("Buffer file {} removed".format(i))
+        if tf.io.gfile.exists(i):
+          tf.io.gfile.remove(i)
+          tf.compat.v1.logging.info("Buffer file {} removed".format(i))
     except Exception as e:
-      tf.logging.error("Failed to cleanup buffer files: {}".format(e))
+      tf.compat.v1.logging.error("Failed to cleanup buffer files: {}".format(e))
 
 
 _GARBAGE_COLLECTOR = _GarbageCollector()
@@ -64,7 +64,7 @@ def write_to_temp_buffer(dataframe, buffer_folder, columns):
   if buffer_folder is None:
     _, buffer_path = tempfile.mkstemp()
   else:
-    tf.gfile.MakeDirs(buffer_folder)
+    tf.io.gfile.makedirs(buffer_folder)
     buffer_path = os.path.join(buffer_folder, str(uuid.uuid4()))
   _GARBAGE_COLLECTOR.register(buffer_path)
 
@@ -156,6 +156,7 @@ def _serialize_shards(df_shards, columns, pool, writer):
     for example in s:
       writer.write(example)
 
+
 def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
   """Write a dataframe to a binary file for a dataset to consume.
 
@@ -169,35 +170,37 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
   Returns:
     The path of the buffer.
   """
-  if tf.gfile.Exists(buffer_path) and tf.gfile.Stat(buffer_path).length > 0:
-    actual_size = tf.gfile.Stat(buffer_path).length
+  if (tf.io.gfile.exists(buffer_path) and
+      tf.io.gfile.stat(buffer_path).length > 0):
+    actual_size = tf.io.gfile.stat(buffer_path).length
     if expected_size == actual_size:
       return buffer_path
-    tf.logging.warning(
+    tf.compat.v1.logging.warning(
         "Existing buffer {} has size {}. Expected size {}. Deleting and "
         "rebuilding buffer.".format(buffer_path, actual_size, expected_size))
-    tf.gfile.Remove(buffer_path)
+    tf.io.gfile.remove(buffer_path)
 
   if dataframe is None:
     raise ValueError(
         "dataframe was None but a valid existing buffer was not found.")
 
-  tf.gfile.MakeDirs(os.path.split(buffer_path)[0])
+  tf.io.gfile.makedirs(os.path.split(buffer_path)[0])
 
-  tf.logging.info("Constructing TFRecordDataset buffer: {}".format(buffer_path))
+  tf.compat.v1.logging.info("Constructing TFRecordDataset buffer: {}"
+                            .format(buffer_path))
 
   count = 0
   pool = multiprocessing.Pool(multiprocessing.cpu_count())
   try:
-    with tf.python_io.TFRecordWriter(buffer_path) as writer:
+    with tf.io.TFRecordWriter(buffer_path) as writer:
       for df_shards in iter_shard_dataframe(df=dataframe,
                                             rows_per_core=_ROWS_PER_CORE):
         _serialize_shards(df_shards, columns, pool, writer)
         count += sum([len(s) for s in df_shards])
-        tf.logging.info("{}/{} examples written."
-                        .format(str(count).ljust(8), len(dataframe)))
+        tf.compat.v1.logging.info("{}/{} examples written."
+                                  .format(str(count).ljust(8), len(dataframe)))
   finally:
     pool.terminate()
 
-  tf.logging.info("Buffer write complete.")
+  tf.compat.v1.logging.info("Buffer write complete.")
   return buffer_path

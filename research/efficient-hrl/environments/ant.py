@@ -21,8 +21,21 @@ from gym import utils
 from gym.envs.mujoco import mujoco_env
 
 
+def q_inv(a):
+  return [a[0], -a[1], -a[2], -a[3]]
+
+
+def q_mult(a, b): # multiply two quaternion
+  w = a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3]
+  i = a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2]
+  j = a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1]
+  k = a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]
+  return [w, i, j, k]
+
+
 class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
   FILE = "ant.xml"
+  ORI_IND = 3
 
   def __init__(self, file_path=None, expose_all_qpos=True,
                expose_body_coms=None, expose_body_comvels=None):
@@ -101,3 +114,21 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
   def viewer_setup(self):
     self.viewer.cam.distance = self.model.stat.extent * 0.5
+
+  def get_ori(self):
+    ori = [0, 1, 0, 0]
+    rot = self.model.data.qpos[self.__class__.ORI_IND:self.__class__.ORI_IND + 4]  # take the quaternion
+    ori = q_mult(q_mult(rot, ori), q_inv(rot))[1:3]  # project onto x-y plane
+    ori = math.atan2(ori[1], ori[0])
+    return ori
+
+  def set_xy(self, xy):
+    qpos = np.copy(self.physics.data.qpos)
+    qpos[0] = xy[0]
+    qpos[1] = xy[1]
+
+    qvel = self.physics.data.qvel
+    self.set_state(qpos, qvel)
+
+  def get_xy(self):
+    return self.physics.data.qpos[:2]

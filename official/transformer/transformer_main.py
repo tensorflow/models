@@ -232,8 +232,8 @@ def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file):
   uncased_score, cased_score = translate_and_compute_bleu(
       estimator, subtokenizer, bleu_source, bleu_ref)
 
-  tf.logging.info("Bleu score (uncased):", uncased_score)
-  tf.logging.info("Bleu score (cased):", cased_score)
+  tf.logging.info("Bleu score (uncased): %d", uncased_score)
+  tf.logging.info("Bleu score (cased): %d", cased_score)
   return uncased_score, cased_score
 
 
@@ -495,7 +495,9 @@ def construct_estimator(flags_obj, params, schedule_manager):
   """
   if not params["use_tpu"]:
     distribution_strategy = distribution_utils.get_distribution_strategy(
-        flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
+        distribution_strategy=flags_obj.distribution_strategy,
+        num_gpus=flags_core.get_num_gpus(flags_obj),
+        all_reduce_alg=flags_obj.all_reduce_alg)
     return tf.estimator.Estimator(
         model_fn=model_fn, model_dir=flags_obj.model_dir, params=params,
         config=tf.estimator.RunConfig(train_distribute=distribution_strategy))
@@ -621,7 +623,8 @@ def run_transformer(flags_obj):
     # an extra asset rather than a core asset.
     estimator.export_savedmodel(
         flags_obj.export_dir, serving_input_fn,
-        assets_extra={"vocab.txt": flags_obj.vocab_file})
+        assets_extra={"vocab.txt": flags_obj.vocab_file},
+        strip_default_attrs=True)
 
 
 def main(_):

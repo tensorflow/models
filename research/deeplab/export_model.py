@@ -53,11 +53,15 @@ flags.DEFINE_multi_float('inference_scales', [1.0],
 flags.DEFINE_bool('add_flipped_images', False,
                   'Add flipped images during inference or not.')
 
+flags.DEFINE_bool('save_inference_graph', False,
+                  'Save inference graph in text proto.')
+
 # Input name of the exported model.
 _INPUT_NAME = 'ImageTensor'
 
 # Output name of the exported model.
 _OUTPUT_NAME = 'SemanticPredictions'
+_RAW_OUTPUT_NAME = 'RawSemanticPredictions'
 
 
 def _create_input_tensors():
@@ -125,10 +129,12 @@ def main(unused_argv):
           model_options=model_options,
           eval_scales=FLAGS.inference_scales,
           add_flipped_images=FLAGS.add_flipped_images)
-
+    raw_predictions = tf.identity(
+        tf.cast(predictions[common.OUTPUT_TYPE], tf.float32),
+        _RAW_OUTPUT_NAME)
     # Crop the valid regions from the predictions.
     semantic_predictions = tf.slice(
-        predictions[common.OUTPUT_TYPE],
+        raw_predictions,
         [0, 0, 0],
         [1, resized_image_size[0], resized_image_size[1]])
     # Resize back the prediction to the original image size.
@@ -140,15 +146,17 @@ def main(unused_argv):
           label_size,
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
           align_corners=True)
-      return tf.squeeze(resized_label, 3)
+      return tf.cast(tf.squeeze(resized_label, 3), tf.int32)
     semantic_predictions = _resize_label(semantic_predictions, image_size)
     semantic_predictions = tf.identity(semantic_predictions, name=_OUTPUT_NAME)
 
     saver = tf.train.Saver(tf.model_variables())
 
-    tf.gfile.MakeDirs(os.path.dirname(FLAGS.export_path))
+    dirname = os.path.dirname(FLAGS.export_path)
+    tf.gfile.MakeDirs(dirname)
+    graph_def = tf.get_default_graph().as_graph_def(add_shapes=True)
     freeze_graph.freeze_graph_with_def_protos(
-        tf.get_default_graph().as_graph_def(add_shapes=True),
+        graph_def,
         saver.as_saver_def(),
         FLAGS.checkpoint_path,
         _OUTPUT_NAME,
@@ -157,6 +165,9 @@ def main(unused_argv):
         output_graph=FLAGS.export_path,
         clear_devices=True,
         initializer_nodes=None)
+
+    if FLAGS.save_inference_graph:
+      tf.train.write_graph(graph_def, dirname, 'inference_graph.pbtxt')
 
 
 if __name__ == '__main__':

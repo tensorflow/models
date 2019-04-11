@@ -17,10 +17,11 @@
 
 import numpy as np
 import resampy
-from scipy.io import wavfile
 
 import mel_features
 import vggish_params
+
+import soundfile as sf
 
 
 def waveform_to_examples(data, sample_rate):
@@ -80,7 +81,7 @@ def wavfile_to_examples(wav_file):
   Returns:
     See waveform_to_examples.
   """
-  sr, wav_data = wavfile.read(wav_file)
+  wav_data, sr = sf.read(wav_file, dtype='int16')
   assert wav_data.dtype == np.int16, 'Bad sample type: %r' % wav_data.dtype
   samples = wav_data / 32768.0  # Convert to [-1.0, +1.0]
   return waveform_to_examples(samples, sr)

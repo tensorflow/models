@@ -24,6 +24,10 @@ for obtaining the desired batch_size, it returns fewer examples.
 The main function to call is Subsample(self, indicator, labels). For convenience
 one can also call SubsampleWeights(self, weights, labels) which is defined in
 the minibatch_sampler base class.
+
+When is_static is True, it implements a method that guarantees static shapes.
+It also ensures the length of output of the subsample is always batch_size, even
+when number of examples set to True in indicator is less than batch_size.
 """
 
 import tensorflow as tf
@@ -102,13 +106,14 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
     end_positions = tf.greater_equal(
         tf.range(input_length), input_length - num_end_samples)
     selected_positions = tf.logical_or(start_positions, end_positions)
-    selected_positions = tf.cast(selected_positions, tf.int32)
+    selected_positions = tf.cast(selected_positions, tf.float32)
     indexed_positions = tf.multiply(tf.cumsum(selected_positions),
                                     selected_positions)
-    one_hot_selector = tf.one_hot(indexed_positions - 1,
+    one_hot_selector = tf.one_hot(tf.cast(indexed_positions, tf.int32) - 1,
                                   total_num_samples,
-                                  dtype=tf.int32)
-    return tf.tensordot(input_tensor, one_hot_selector, axes=[0, 0])
+                                  dtype=tf.float32)
+    return tf.cast(tf.tensordot(tf.cast(input_tensor, tf.float32),
+                                one_hot_selector, axes=[0, 0]), tf.int32)
 
   def _static_subsample(self, indicator, batch_size, labels):
     """Returns subsampled minibatch.
@@ -122,7 +127,9 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
 
     Returns:
       sampled_idx_indicator: boolean tensor of shape [N], True for entries which
-        are sampled.
+        are sampled. It ensures the length of output of the subsample is always
+        batch_size, even when number of examples set to True in indicator is
+        less than batch_size.
 
     Raises:
       ValueError: if labels and indicator are not 1D boolean tensors.
@@ -140,6 +147,14 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
 
     input_length = tf.shape(indicator)[0]
 
+    # Set the number of examples set True in indicator to be at least
+    # batch_size.
+    num_true_sampled = tf.reduce_sum(tf.cast(indicator, tf.float32))
+    additional_false_sample = tf.less_equal(
+        tf.cumsum(tf.cast(tf.logical_not(indicator), tf.float32)),
+        batch_size - num_true_sampled)
+    indicator = tf.logical_or(indicator, additional_false_sample)
+
     # Shuffle indicator and label. Need to store the permutation to restore the
     # order post sampling.
     permutation = tf.random_shuffle(tf.range(input_length))
@@ -148,7 +163,7 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
     labels = ops.matmul_gather_on_zeroth_axis(
         tf.cast(labels, tf.float32), permutation)
 
-    # index (starting from 1) when cls_weight is True, 0 when False
+    # index (starting from 1) when indicator is True, 0 when False
     indicator_idx = tf.where(
         tf.cast(indicator, tf.bool), tf.range(1, input_length + 1),
         tf.zeros(input_length, tf.int32))
@@ -183,9 +198,10 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
         axis=0), tf.bool)
 
     # project back the order based on stored permutations
-    reprojections = tf.one_hot(permutation, depth=input_length, dtype=tf.int32)
+    reprojections = tf.one_hot(permutation, depth=input_length,
+                               dtype=tf.float32)
     return tf.cast(tf.tensordot(
-        tf.cast(sampled_idx_indicator, tf.int32),
+        tf.cast(sampled_idx_indicator, tf.float32),
         reprojections, axes=[0, 0]), tf.bool)
 
   def subsample(self, indicator, batch_size, labels, scope=None):

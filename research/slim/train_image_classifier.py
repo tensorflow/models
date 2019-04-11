@@ -124,6 +124,11 @@ tf.app.flags.DEFINE_float('rmsprop_momentum', 0.9, 'Momentum.')
 
 tf.app.flags.DEFINE_float('rmsprop_decay', 0.9, 'Decay term for RMSProp.')
 
+tf.app.flags.DEFINE_integer(
+    'quantize_delay', -1,
+    'Number of steps to start quantized training. Set to -1 would disable '
+    'quantized training.')
+
 #######################
 # Learning Rate Flags #
 #######################
@@ -510,6 +515,10 @@ def main(_):
           FLAGS.moving_average_decay, global_step)
     else:
       moving_average_variables, variable_averages = None, None
+
+    if FLAGS.quantize_delay >= 0:
+      tf.contrib.quantize.create_training_graph(
+          quant_delay=FLAGS.quantize_delay)
 
     #########################################
     # Configure the optimization procedure. #
