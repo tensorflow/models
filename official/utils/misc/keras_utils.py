@@ -31,6 +31,10 @@ class BatchTimestamp(object):
     self.batch_index = batch_index
     self.timestamp = timestamp
 
+  def __repr__(self):
+    return "'BatchTimestamp<batch_index: {}, timestamp: {}>'".format(
+        self.batch_index, self.timestamp)
+
 
 class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
