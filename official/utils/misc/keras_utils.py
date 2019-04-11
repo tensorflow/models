@@ -32,7 +32,7 @@ class BatchTimestamp(object):
     self.timestamp = timestamp
 
   def __repr__(self):
-    return "BatchTimestamp(batch_index: {}, timestamp: {})".format(
+    return "'BatchTimestamp<batch_index: {}, timestamp: {}>'".format(
         self.batch_index, self.timestamp)
 
 
