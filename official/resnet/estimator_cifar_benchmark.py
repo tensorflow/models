@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
 import os
 import time
 
@@ -127,48 +126,22 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
         break
 
     eval_results = stats['eval_results']
-    extras = {}
-    extras['accuracy_top_1'] = self._json_description(
-        eval_results['accuracy'].item(),
-        priority=0)
-    extras['accuracy_top_5'] = self._json_description(
-        eval_results['accuracy_top_5'].item())
+    metrics = []
+    metrics.append({'name': 'accuracy_top_1',
+                    'value': eval_results['accuracy'].item()})
+    metrics.append({'name': 'accuracy_top_5',
+                    'value': eval_results['accuracy_top_5'].item()})
     if examples_per_sec_hook:
       exp_per_second_list = examples_per_sec_hook.current_examples_per_sec_list
       # ExamplesPerSecondHook skips the first 10 steps.
       exp_per_sec = sum(exp_per_second_list) / (len(exp_per_second_list))
-      extras['exp_per_second'] = self._json_description(exp_per_sec)
+      metrics.append({'name': 'exp_per_second',
+                      'value': exp_per_sec})
 
     self.report_benchmark(
         iters=eval_results['global_step'],
         wall_time=wall_time_sec,
-        extras=extras)
-
-  def _json_description(self,
-                        value,
-                        priority=None,
-                        min_value=None,
-                        max_value=None):
-    """Get a json-formatted string describing the attributes for a metric."""
-
-    attributes = {}
-    attributes['value'] = value
-    if priority:
-      attributes['priority'] = priority
-    if min_value:
-      attributes['min_value'] = min_value
-    if max_value:
-      attributes['max_value'] = max_value
-
-    if min_value or max_value:
-      succeeded = True
-      if min_value and value < min_value:
-        succeeded = False
-      if max_value and value > max_value:
-        succeeded = False
-      attributes['succeeded'] = succeeded
-
-    return json.dumps(attributes)
+        metrics=metrics)
 
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)

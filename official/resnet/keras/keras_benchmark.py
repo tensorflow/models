@@ -19,8 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import time
-import json
 
 from absl import flags
 from absl.testing import flagsaver
@@ -77,15 +75,14 @@ class KerasBenchmark(tf.test.Benchmark):
       warmup: number of entries in stats['step_timestamp_log'] to ignore.
     """
 
-    extras = {}
+    metrics = []
     if 'accuracy_top_1' in stats:
-      extras['accuracy_top_1'] = self._json_description(
-          stats['accuracy_top_1'],
-          priority=0,
-          min_value=top_1_min,
-          max_value=top_1_max)
-      extras['top_1_train_accuracy'] = self._json_description(
-          stats['training_accuracy_top_1'], priority=1)
+      metrics.append({'name': 'accuracy_top_1',
+                      'value': stats['accuracy_top_1'],
+                      'min_value': top_1_min,
+                      'max_value': top_1_max})
+      metrics.append({'name': 'top_1_train_accuracy',
+                      'value': stats['training_accuracy_top_1']})
 
     if (warmup and 'step_timestamp_log' in stats and
         len(stats['step_timestamp_log']) > warmup):
@@ -96,37 +93,11 @@ class KerasBenchmark(tf.test.Benchmark):
       num_examples = (
           total_batch_size * log_steps * (len(time_log) - warmup - 1))
       examples_per_sec = num_examples / elapsed
-      extras['exp_per_second'] = self._json_description(
-          examples_per_sec, priority=2)
+      metrics.append({'name': 'exp_per_second',
+                      'value': examples_per_sec})
 
     if 'avg_exp_per_second' in stats:
-      extras['avg_exp_per_second'] = self._json_description(
-          stats['avg_exp_per_second'], priority=3)
+      metrics.append({'name': 'avg_exp_per_second',
+                      'value': stats['avg_exp_per_second']})
 
-    self.report_benchmark(iters=-1, wall_time=wall_time_sec, extras=extras)
-
-  def _json_description(self,
-                        value,
-                        priority=None,
-                        min_value=None,
-                        max_value=None):
-    """Get a json-formatted string describing the attributes for a metric"""
-
-    attributes = {}
-    attributes['value'] = value
-    if priority:
-      attributes['priority'] = priority
-    if min_value:
-      attributes['min_value'] = min_value
-    if max_value:
-      attributes['max_value'] = max_value
-
-    if min_value or max_value:
-      succeeded = True
-      if min_value and value < min_value:
-        succeeded = False
-      if max_value and value > max_value:
-        succeeded = False
-      attributes['succeeded'] = succeeded
-
-    return json.dumps(attributes)
+    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
