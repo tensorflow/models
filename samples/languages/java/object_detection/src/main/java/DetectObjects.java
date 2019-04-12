@@ -17,6 +17,7 @@ import static object_detection.protos.StringIntLabelMapOuterClass.StringIntLabel
 import static object_detection.protos.StringIntLabelMapOuterClass.StringIntLabelMapItem;
 
 import com.google.protobuf.TextFormat;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
@@ -149,7 +150,9 @@ public class DetectObjects {
     if (img.getType() != BufferedImage.TYPE_3BYTE_BGR) {
       BufferedImage newImage = new BufferedImage(
           img.getWidth(), img.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-      newImage.createGraphics().drawImage(img, 0, 0, img.getWidth(), img.getHeight(), null);
+      Graphics2D g = newImage.createGraphics();
+      g.drawImage(img, 0, 0, img.getWidth(), img.getHeight(), null);
+      g.dispose();
       img = newImage;
     }
       
