@@ -150,10 +150,11 @@ def set_gpu_thread_mode_and_count(flags_obj):
   # Limit data preprocessing threadpool to CPU cores minus number of total GPU
   # private threads and memory copy threads.
   total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
-  num_mem_copy_threads = flags_obj.num_gpus
+  num_runtime_threads = flags_obj.num_gpus
   if not flags_obj.datasets_num_private_threads:
-    flags_obj.datasets_num_private_threads = (cpu_count - total_gpu_thread_count
-                                              - num_mem_copy_threads)
+    flags_obj.datasets_num_private_threads = min(
+      cpu_count - total_gpu_thread_count - num_runtime_threads,
+      flags_obj.num_gpus * 8)
     tf.compat.v1.logging.info('Set datasets_num_private_threads to %s',
                               flags_obj.datasets_num_private_threads)
 
