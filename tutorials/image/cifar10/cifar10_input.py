@@ -36,11 +36,13 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
 
 def _get_images_labels(batch_size, split, distords=False):
   """Returns Dataset for given split."""
-  dataset = tfds.load(name='cifar10', split=split)
+  dataset, info = tfds.load(name='cifar10', split=split, with_info=True)
   scope = 'data_augmentation' if distords else 'input'
   with tf.name_scope(scope):
-    dataset = dataset.map(Transformer(distords), num_parallel_calls=10)
-  dataset = dataset.repeat().batch(batch_size).prefetch(10)
+    dataset = dataset.map(DataPreprocessor(distords), num_parallel_calls=10)
+  # Dataset is small enough to be fully loaded on memory:
+  dataset = dataset.prefetch(info.num_examples)
+  dataset = dataset.repeat().batch(batch_size)
   iterator = dataset.make_one_shot_iterator()
   images_labels = iterator.get_next()
   images, labels = images_labels['input'], images_labels['target']
@@ -48,7 +50,7 @@ def _get_images_labels(batch_size, split, distords=False):
   return images, labels
 
 
-class Transformer(object):
+class DataPreprocessor(object):
   """Applies transformations to dataset record."""
 
   def __init__(self, distords):
