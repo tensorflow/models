@@ -42,7 +42,7 @@ import time
 import google3
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.tutorials.image.cifar10 import cifar10
+import cifar10
 
 FLAGS = tf.app.flags.FLAGS
 
