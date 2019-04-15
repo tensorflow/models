@@ -283,6 +283,12 @@ def define_keras_flags():
       'triggers the profiler to process 3 steps, starting from the 2nd step. '
       'Note that profiler has a non-trivial performance overhead, and the '
       'output file can be gigantic if profiling many steps.')
+  flags.DEFINE_boolean(
+      name='enable_experimental_perf_tuning', default=False,
+      help='Use experimental performance tuning code to temporarily optimize '
+      'for performance. The codepath when enabling this feature is not stable '
+      'and will be removed once the corresponding performance features are '
+      'fully implemented in TensorFlow.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
@@ -341,6 +347,12 @@ def is_v2_0():
   return tf.__version__.startswith('2')
 
 
+def enable_experimental_perf_tuning():
+  """Use unstable code for perf tuning purposes."""
+  if not FLAGS.use_synthetic_data:
+    _monkey_patch_org_create_device_dataset()
+
+
 def _monkey_patch_org_assert_broadcastable():
   """Monkey-patch `assert_broadcast` op to avoid OOM when enabling XLA."""
   def no_op_assert_broadcastable(weights, values):
@@ -362,3 +374,29 @@ def _undo_monkey_patch_org_assert_broadcastable():
   if hasattr(weights_broadcast_ops, 'org_assert_broadcastable'):
     weights_broadcast_ops.assert_broadcastable = (
         weights_broadcast_ops.org_assert_broadcastable)
+
+
+# TODO(haoyuzhang): remove this monkey patch when the "prefetch with slack"
+# feature is available in tf.data.
+def _monkey_patch_org_create_device_dataset():
+  """Monkey-patch `_create_device_dataset` method with delayed prefetch."""
+
+  import ast  # pylint: disable=g-import-not-at-top
+  import inspect  # pylint: disable=g-import-not-at-top
+  from tensorflow.python.data.ops import multi_device_iterator_ops  # pylint: disable=g-import-not-at-top
+
+  tf.compat.v1.logging.info(
+      'Using monkey-patched version of MultiDeviceIterator. It should be '
+      'removed when the prefetch with slack feature is implemented in tf.data.')
+  cls_multi_device_iterator = ast.parse(
+      inspect.getsource(multi_device_iterator_ops.MultiDeviceIterator))
+  org_create_device_dataset_code = inspect.getsource(
+      multi_device_iterator_ops.MultiDeviceIterator._create_device_dataset)  # pylint: disable=protected-access
+  code_lines = org_create_device_dataset_code.split('\n')
+  # Insert in reverse order to avoid line number shift by previous insertions
+  code_lines.insert(5, '      ds = ds.apply(sleep_ops.sleep(10000))')  # 10ms
+  code_lines.insert(2, '    from tensorflow.python.data.experimental.ops import sleep as sleep_ops')  # pylint: disable=g-line-too-long
+  patched_code = '\n'.join(line[2:] for line in code_lines)
+  cls_multi_device_iterator.body[0].body[2] = ast.parse(patched_code).body[0]
+  exec(compile(cls_multi_device_iterator, '<string>', 'exec'),  # pylint: disable=exec-used
+       multi_device_iterator_ops.__dict__)
