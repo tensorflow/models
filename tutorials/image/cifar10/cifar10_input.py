@@ -19,7 +19,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import google3
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -36,12 +35,12 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
 
 def _get_images_labels(batch_size, split, distords=False):
   """Returns Dataset for given split."""
-  dataset, info = tfds.load(name='cifar10', split=split, with_info=True)
+  dataset = tfds.load(name='cifar10', split=split)
   scope = 'data_augmentation' if distords else 'input'
   with tf.name_scope(scope):
     dataset = dataset.map(DataPreprocessor(distords), num_parallel_calls=10)
   # Dataset is small enough to be fully loaded on memory:
-  dataset = dataset.prefetch(info.num_examples)
+  dataset = dataset.prefetch(-1)
   dataset = dataset.repeat().batch(batch_size)
   iterator = dataset.make_one_shot_iterator()
   images_labels = iterator.get_next()

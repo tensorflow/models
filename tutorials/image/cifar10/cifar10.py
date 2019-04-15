@@ -37,10 +37,9 @@ from __future__ import print_function
 
 import re
 
-import google3
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.tutorials.image.cifar10 import cifar10_input
+import cifar10_input
 
 FLAGS = tf.app.flags.FLAGS
 

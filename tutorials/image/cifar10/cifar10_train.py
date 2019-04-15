@@ -39,7 +39,6 @@ from __future__ import print_function
 from datetime import datetime
 import time
 
-import google3
 import tensorflow as tf
 
 import cifar10

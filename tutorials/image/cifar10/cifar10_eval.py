@@ -38,7 +38,6 @@ from datetime import datetime
 import math
 import time
 
-import google3
 import numpy as np
 import tensorflow as tf
 
