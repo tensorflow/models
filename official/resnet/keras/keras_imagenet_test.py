@@ -60,12 +60,15 @@ class KerasImagenetTest(googletest.TestCase):
     tf.io.gfile.rmtree(self.get_temp_dir())
 
   def test_end_to_end_cpu_no_dist_strat(self):
-    """Test Keras model with 1 GPU, no distribution strategy."""
+    """Test Keras model with CPU, no distribution strategy."""
+    config = keras_common.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
     extra_flags = [
         "-num_gpus", "0",
-        "-enable_eager", "true",
         "-distribution_strategy", "off",
         "-model_dir", "keras_imagenet_cpu_no_dist_strat",
+        "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -76,12 +79,13 @@ class KerasImagenetTest(googletest.TestCase):
     )
 
   def test_end_to_end_graph_cpu_no_dist_strat(self):
-    """Test Keras model in legacy graph mode with 1 GPU, no dist strat."""
+    """Test Keras model in legacy graph mode with CPU, no dist strat."""
     extra_flags = [
         "-num_gpus", "0",
         "-enable_eager", "false",
         "-distribution_strategy", "off",
         "-model_dir", "keras_imagenet_graph_cpu_no_dist_strat",
+        "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -92,12 +96,15 @@ class KerasImagenetTest(googletest.TestCase):
     )
 
   def test_end_to_end_cpu(self):
-    """Test Keras model with 1 GPU."""
+    """Test Keras model with CPU."""
+    config = keras_common.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
     extra_flags = [
         "-num_gpus", "0",
-        "-enable_eager", "true",
         "-distribution_strategy", "default",
         "-model_dir", "keras_imagenet_cpu",
+        "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -108,12 +115,13 @@ class KerasImagenetTest(googletest.TestCase):
     )
 
   def test_end_to_end_graph_cpu(self):
-    """Test Keras model in legacy graph mode with 1 GPU."""
+    """Test Keras model in legacy graph mode with CPU."""
     extra_flags = [
         "-num_gpus", "0",
         "-enable_eager", "false",
         "-distribution_strategy", "default",
         "-model_dir", "keras_imagenet_graph_cpu",
+        "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -125,6 +133,9 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
+    config = keras_common.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
     if context.num_gpus() < 2:
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
@@ -132,7 +143,6 @@ class KerasImagenetTest(googletest.TestCase):
 
     extra_flags = [
         "-num_gpus", "2",
-        "-enable_eager", "true",
         "-distribution_strategy", "default",
         "-model_dir", "keras_imagenet_2_gpu",
     ]
@@ -146,6 +156,9 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_xla_2_gpu(self):
     """Test Keras model with XLA and 2 GPUs."""
+    config = keras_common.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
     if context.num_gpus() < 2:
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
@@ -153,7 +166,6 @@ class KerasImagenetTest(googletest.TestCase):
 
     extra_flags = [
         "-num_gpus", "2",
-        "-enable_eager", "true",
         "-enable_xla", "true",
         "-distribution_strategy", "default",
         "-model_dir", "keras_imagenet_xla_2_gpu",
@@ -168,6 +180,9 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_2_gpu_fp16(self):
     """Test Keras model with 2 GPUs and fp16."""
+    config = keras_common.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
     if context.num_gpus() < 2:
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
@@ -176,7 +191,6 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = [
         "-num_gpus", "2",
         "-dtype", "fp16",
-        "-enable_eager", "true",
         "-distribution_strategy", "default",
         "-model_dir", "keras_imagenet_2_gpu_fp16",
     ]
@@ -190,6 +204,9 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_xla_2_gpu_fp16(self):
     """Test Keras model with XLA, 2 GPUs and fp16."""
+    config = keras_common.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
     if context.num_gpus() < 2:
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
@@ -198,7 +215,6 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = [
         "-num_gpus", "2",
         "-dtype", "fp16",
-        "-enable_eager", "true",
         "-enable_xla", "true",
         "-distribution_strategy", "default",
         "-model_dir", "keras_imagenet_xla_2_gpu_fp16",
