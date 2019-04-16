@@ -443,7 +443,8 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
   position_vector = tf.reduce_sum(sparse_positions, axis=1)
 
   in_top_k = tf.cast(tf.less(position_vector, rconst.TOP_K), tf.float32)
-  ndcg = tf.log(2.) / tf.log(tf.cast(position_vector, tf.float32) + 2)
+  ndcg = tf.keras.backend.log(2.) / tf.keras.backend.log(
+      tf.cast(position_vector, tf.float32) + 2)
   ndcg *= in_top_k
 
   # If a row is a padded row, all but the first element will be a duplicate.
