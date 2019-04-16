@@ -79,6 +79,10 @@ training parameters. Before the framework can be used, the Protobuf libraries
 must be compiled. This should be done by running the following command from
 the tensorflow/models/research/ directory:
 
+``` In Windows
+cd C:\Tensorflow1\models\research
+
+for /f %i in ('dir /b object_detection\protos\*.proto') do protoc object_detection\protos\%i --python_out=.
 
 ``` bash
 # From tensorflow/models/research/
