@@ -640,9 +640,12 @@ def resnet_main(
     eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval,
                                       steps=flags_obj.max_train_steps)
     tf.compat.v1.logging.info('Starting to train and evaluate.')
-    eval_results, _ = tf.estimator.train_and_evaluate(classifier, train_spec,
-                                                      eval_spec)
-    benchmark_logger.log_evaluation_result(eval_results)
+    if distribution_utils.configure_cluster() > 1:
+      return {}
+    else:
+      eval_results, _ = tf.estimator.train_and_evaluate(classifier, train_spec,
+                                                        eval_spec)
+      benchmark_logger.log_evaluation_result(eval_results)
   else:
     if train_epochs == 0:
       # If --eval_only is set, perform a single loop with zero train epochs.
