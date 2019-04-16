@@ -200,7 +200,7 @@ class DatasetManager(object):
 
   def start_construction(self):
     if self._stream_files:
-      tf.gfile.MakeDirs(self.current_data_root)
+      tf.io.gfile.makedirs(self.current_data_root)
       template = os.path.join(self.current_data_root, rconst.SHARD_TEMPLATE)
       self._writers = [tf.io.TFRecordWriter(template.format(i))
                        for i in range(rconst.NUM_FILE_SHARDS)]
@@ -389,7 +389,7 @@ class BaseDataConstructor(threading.Thread):
     self._shuffle_with_forkpool = not stream_files
     if stream_files:
       self._shard_root = epoch_dir or tempfile.mkdtemp(prefix="ncf_")
-      atexit.register(tf.gfile.DeleteRecursively, dirname=self._shard_root)
+      atexit.register(tf.io.gfile.rmtree, dirname=self._shard_root)
     else:
       self._shard_root = None
 
