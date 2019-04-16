@@ -40,6 +40,7 @@ from official.recommendation import popen_helper
 from official.recommendation import stat_utils
 import tensorflow.python.tpu.datasets
 
+
 SUMMARY_TEMPLATE = """General:
 {spacer}Num users: {num_users}
 {spacer}Num items: {num_items}
