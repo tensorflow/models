@@ -38,7 +38,7 @@ from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import popen_helper
 from official.recommendation import stat_utils
-import tensorflow.python.tpu.datasets
+import tensorflow.python.tpu.datasets # pylint: disable=undefined-variable
 
 
 SUMMARY_TEMPLATE = """General:

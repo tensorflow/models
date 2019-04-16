@@ -35,7 +35,7 @@ from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
-import tensorflow.python.tpu.tpu_optimizer
+import tensorflow.python.tpu.tpu_optimizer # pylint: disable=undefined-variable
 
 
 FLAGS = flags.FLAGS
