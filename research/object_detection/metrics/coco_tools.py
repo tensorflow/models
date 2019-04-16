@@ -236,7 +236,9 @@ class COCOEvalWrapper(cocoeval.COCOeval):
     self.evaluate()
     self.accumulate()
     self.summarize()
-
+    if include_metrics_per_category is True:
+        self.summarize_per_category()
+        
     summary_metrics = OrderedDict([
         ('Precision/mAP', self.stats[0]),
         ('Precision/mAP@.50IOU', self.stats[1]),
