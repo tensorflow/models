@@ -641,6 +641,8 @@ def resnet_main(
                                       steps=flags_obj.max_train_steps)
     tf.compat.v1.logging.info('Starting to train and evaluate.')
     if distribution_utils.configure_cluster() > 1:
+      # tf.estimator.train_and_evalute doesn't return anything in multi-worker
+      # case.
       return {}
     else:
       eval_results, _ = tf.estimator.train_and_evaluate(classifier, train_spec,
