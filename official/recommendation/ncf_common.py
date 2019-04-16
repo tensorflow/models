@@ -132,7 +132,7 @@ def get_distribution_strategy(params):
                  "oauth2client.transport"]:
       logging.getLogger(name).setLevel(logging.ERROR)
 
-    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+    tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
         tpu=params["tpu"],
         zone=params["tpu_zone"],
         project=params["tpu_gcp_project"],
@@ -153,7 +153,7 @@ def get_distribution_strategy(params):
     }
     os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
 
-    distribution = tf.contrib.distribute.TPUStrategy(
+    distribution = tf.distribute.experimental.TPUStrategy(
         tpu_cluster_resolver, steps_per_run=100)
 
   else:

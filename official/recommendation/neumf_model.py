@@ -428,7 +428,7 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
 
   # Determine the location of the first element in each row after the elements
   # are sorted.
-  sort_indices = tf.contrib.framework.argsort(
+  sort_indices = tf.argsort(
       logits_by_user, axis=1, direction="DESCENDING")
 
   # Use matrix multiplication to extract the position of the true item from the
