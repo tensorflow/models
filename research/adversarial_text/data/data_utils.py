@@ -325,8 +325,8 @@ def sort_vocab_by_frequency(vocab_freq_map):
 def write_vocab_and_frequency(ordered_vocab_freqs, output_dir):
   """Writes ordered_vocab_freqs into vocab.txt and vocab_freq.txt."""
   tf.gfile.MakeDirs(output_dir)
-  with open(os.path.join(output_dir, 'vocab.txt'), 'w') as vocab_f:
-    with open(os.path.join(output_dir, 'vocab_freq.txt'), 'w') as freq_f:
+  with open(os.path.join(output_dir, 'vocab.txt'), 'w', encoding='utf-8') as vocab_f:
+    with open(os.path.join(output_dir, 'vocab_freq.txt'), 'w', encoding='utf-8') as freq_f:
       for word, freq in ordered_vocab_freqs:
         vocab_f.write('{}\n'.format(word))
         freq_f.write('{}\n'.format(freq))
