@@ -635,8 +635,7 @@ def resnet_main(
             train_epochs, input_context=input_context),
         hooks=train_hooks,
         max_steps=flags_obj.max_train_steps)
-    eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval,
-                                      steps=flags_obj.max_train_steps)
+    eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval)
     tf.compat.v1.logging.info('Starting to train and evaluate.')
     if distribution_utils.configure_cluster() > 1:
       # tf.estimator.train_and_evalute doesn't return anything in multi-worker
