@@ -56,17 +56,17 @@ Eval:
 
 
 _TRAIN_FEATURE_MAP = {
-    movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-    movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-    rconst.MASK_START_INDEX: tf.FixedLenFeature([1], dtype=tf.string),
-    "labels": tf.FixedLenFeature([], dtype=tf.string),
+    movielens.USER_COLUMN: tf.io.FixedLenFeature([], dtype=tf.string),
+    movielens.ITEM_COLUMN: tf.io.FixedLenFeature([], dtype=tf.string),
+    rconst.MASK_START_INDEX: tf.io.FixedLenFeature([1], dtype=tf.string),
+    "labels": tf.io.FixedLenFeature([], dtype=tf.string),
 }
 
 
 _EVAL_FEATURE_MAP = {
-    movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-    movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-    rconst.DUPLICATE_MASK: tf.FixedLenFeature([], dtype=tf.string)
+    movielens.USER_COLUMN: tf.io.FixedLenFeature([], dtype=tf.string),
+    movielens.ITEM_COLUMN: tf.io.FixedLenFeature([], dtype=tf.string),
+    rconst.DUPLICATE_MASK: tf.io.FixedLenFeature([], dtype=tf.string)
 }
 
 
