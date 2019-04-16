@@ -33,13 +33,12 @@ import numpy as np
 import six
 from six.moves import queue
 import tensorflow as tf
-from tensorflow.contrib.tpu.python.tpu.datasets import StreamingFilesDataset
 
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import popen_helper
 from official.recommendation import stat_utils
-
+import tensorflow.python.tpu.datasets
 
 SUMMARY_TEMPLATE = """General:
 {spacer}Num users: {num_users}
@@ -261,7 +260,7 @@ class DatasetManager(object):
 
       file_pattern = os.path.join(
           epoch_data_dir, rconst.SHARD_TEMPLATE.format("*"))
-      dataset = StreamingFilesDataset(
+      dataset = datasets.StreamingFilesDataset(
           files=file_pattern, worker_job=popen_helper.worker_job(),
           num_parallel_reads=rconst.NUM_FILE_SHARDS, num_epochs=1,
           sloppy=not self._deterministic)

@@ -35,6 +35,7 @@ from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
+import tensorflow.python.tpu.tpu_optimizer
 
 
 FLAGS = flags.FLAGS
@@ -116,7 +117,7 @@ def get_optimizer(params):
       beta2=params["beta2"],
       epsilon=params["epsilon"])
   if params["use_tpu"]:
-    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+    optimizer = tpu_optimizer.CrossShardOptimizer(optimizer)
 
   return optimizer
 
@@ -132,7 +133,7 @@ def get_distribution_strategy(params):
                  "oauth2client.transport"]:
       logging.getLogger(name).setLevel(logging.ERROR)
 
-    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+    tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
         tpu=params["tpu"],
         zone=params["tpu_zone"],
         project=params["tpu_gcp_project"],
@@ -153,7 +154,7 @@ def get_distribution_strategy(params):
     }
     os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
 
-    distribution = tf.contrib.distribute.TPUStrategy(
+    distribution = tf.distribute.experimental.TPUStrategy(
         tpu_cluster_resolver, steps_per_run=100)
 
   else:
