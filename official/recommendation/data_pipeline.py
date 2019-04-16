@@ -33,6 +33,7 @@ import numpy as np
 import six
 from six.moves import queue
 import tensorflow as tf
+from absl import logging
 
 from official.datasets import movielens
 from official.recommendation import constants as rconst
@@ -517,7 +518,7 @@ class BaseDataConstructor(threading.Thread):
       time.sleep(0.01)
       count += 1
       if count >= 100 and np.log10(count) == np.round(np.log10(count)):
-        tf.logging.info(
+        logging.info(
             "Waited {} times for training data to be consumed".format(count))
 
   def _construct_training_epoch(self):
@@ -537,7 +538,7 @@ class BaseDataConstructor(threading.Thread):
       pool.map(self._get_training_batch, map_args)
     self._train_dataset.end_construction()
 
-    tf.logging.info("Epoch construction complete. Time: {:.1f} seconds".format(
+    logging.info("Epoch construction complete. Time: {:.1f} seconds".format(
         timeit.default_timer() - start_time))
 
   @staticmethod
@@ -619,7 +620,7 @@ class BaseDataConstructor(threading.Thread):
       pool.map(self._get_eval_batch, map_args)
     self._eval_dataset.end_construction()
 
-    tf.logging.info("Eval construction complete. Time: {:.1f} seconds".format(
+    logging.info("Eval construction complete. Time: {:.1f} seconds".format(
         timeit.default_timer() - start_time))
 
   def make_input_fn(self, is_training):
@@ -760,7 +761,7 @@ class MaterializedDataConstructor(BaseDataConstructor):
       self._per_user_neg_count[i] = self._num_items - positives.shape[0]
       self._negative_table[i, :self._per_user_neg_count[i]] = negatives
 
-    tf.logging.info("Negative sample table built. Time: {:.1f} seconds".format(
+    logging.info("Negative sample table built. Time: {:.1f} seconds".format(
         timeit.default_timer() - start_time))
 
   def lookup_negative_items(self, negative_users, **kwargs):
@@ -813,7 +814,7 @@ class BisectionDataConstructor(BaseDataConstructor):
     self._total_negatives = np.concatenate([
         self._index_segment(i) for i in range(self._num_users)])
 
-    tf.logging.info("Negative total vector built. Time: {:.1f} seconds".format(
+    logging.info("Negative total vector built. Time: {:.1f} seconds".format(
         timeit.default_timer() - start_time))
 
   def lookup_negative_items(self, negative_users, **kwargs):

@@ -20,12 +20,12 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import logging
 import os
 
 # pylint: disable=g-bad-import-order
 import numpy as np
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -139,7 +139,7 @@ def get_distribution_strategy(params):
         coordinator_name="coordinator"
     )
 
-    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
+    logging.info("Issuing reset command to TPU to ensure a clean state.")
     tf.Session.reset(tpu_cluster_resolver.get_master())
 
     # Estimator looks at the master it connects to for MonitoredTrainingSession

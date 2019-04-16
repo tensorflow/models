@@ -27,6 +27,7 @@ import os
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -193,7 +194,7 @@ def run_ncf(_):
   """Run NCF training and eval with Keras."""
   # TODO(seemuch): Support different train and eval batch sizes
   if FLAGS.eval_batch_size != FLAGS.batch_size:
-    tf.logging.warning(
+    logging.warning(
         "The Keras implementation of NCF currently does not support batch_size "
         "!= eval_batch_size ({} vs. {}). Overriding eval_batch_size to match "
         "batch_size".format(FLAGS.eval_batch_size, FLAGS.batch_size)
@@ -241,14 +242,14 @@ def run_ncf(_):
                                   time_callback],
                               verbose=2)
 
-    tf.logging.info("Training done. Start evaluating")
+    logging.info("Training done. Start evaluating")
 
     eval_results = keras_model.evaluate(
         eval_input_dataset,
         steps=num_eval_steps,
         verbose=2)
 
-  tf.logging.info("Keras evaluation is done.")
+  logging.info("Keras evaluation is done.")
 
   stats = build_stats(history, eval_results, time_callback)
   return stats
@@ -298,6 +299,5 @@ def main(_):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   ncf_common.define_ncf_flags()
   absl_app.run(main)
