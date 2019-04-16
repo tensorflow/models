@@ -121,7 +121,7 @@ def _rnn_layer(inputs, rnn_cell, rnn_hidden_size, layer_id, is_batch_norm,
         swap_memory=True)
     rnn_outputs = tf.concat(outputs, -1)
   else:
-    rnn_outputs = tf.nn.dynamic_rnn(
+    rnn_outputs, _ = tf.nn.dynamic_rnn(
         fw_cell, inputs, dtype=tf.float32, swap_memory=True)
 
   return rnn_outputs
