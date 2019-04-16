@@ -33,6 +33,7 @@ import six
 from six.moves import urllib  # pylint: disable=redefined-builtin
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -103,7 +104,7 @@ def _download_and_clean(dataset, data_dir):
   tf.io.gfile.makedirs(data_subdir)
   if set(expected_files).intersection(
       tf.io.gfile.listdir(data_subdir)) == set(expected_files):
-    tf.logging.info("Dataset {} has already been downloaded".format(dataset))
+    logging.info("Dataset {} has already been downloaded".format(dataset))
     return
 
   url = "{}{}.zip".format(_DATA_URL, dataset)
@@ -114,9 +115,9 @@ def _download_and_clean(dataset, data_dir):
     zip_path, _ = urllib.request.urlretrieve(url, zip_path)
     statinfo = os.stat(zip_path)
     # A new line to clear the carriage return from download progress
-    # tf.logging.info is not applicable here
+    # logging.info is not applicable here
     print()
-    tf.logging.info(
+    logging.info(
         "Successfully downloaded {} {} bytes".format(
             zip_path, statinfo.st_size))
 
@@ -132,7 +133,7 @@ def _download_and_clean(dataset, data_dir):
         tf.io.gfile.copy(os.path.join(temp_dir, fname),
                       os.path.join(data_subdir, fname))
       else:
-        tf.logging.info("Skipping copy of {}, as it already exists in the "
+        logging.info("Skipping copy of {}, as it already exists in the "
                         "destination folder.".format(fname))
 
   finally:
@@ -302,7 +303,6 @@ def main(_):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   define_data_download_flags()
   FLAGS = flags.FLAGS
   absl_app.run(main)
