@@ -228,7 +228,7 @@ def run_ncf(_):
   strategy = ncf_common.get_distribution_strategy(params)
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
-    optimizer = ncf_common.get_optimizer(params)
+    optimizer = ncf_common.get_keras_optimizer(params)
     time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
 
     keras_model.compile(

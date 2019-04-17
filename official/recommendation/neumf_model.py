@@ -109,7 +109,11 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
-    optimizer = ncf_common.get_optimizer(params)
+    optimizer = tf.train.AdamOptimizer(
+        learning_rate=params["learning_rate"],
+        beta1=params["beta1"],
+        beta2=params["beta2"],
+        epsilon=params["epsilon"])
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
@@ -381,7 +385,7 @@ def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
   # ignore padded examples
   example_weights *= tf.cast(expanded_metric_weights, tf.float32)
 
-  cce = tf.losses.SparseCategoricalCrossentropy(from_logits=True)
+  cce = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
   cross_entropy = cce(
       y_true=eval_labels, y_pred=softmax_logits, sample_weight=example_weights)
 
