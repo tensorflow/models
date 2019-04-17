@@ -95,7 +95,7 @@ def make_vocab_ids(vocab_filename):
     ret[data.EOS_TOKEN] = len(string.printable)
     return ret
   else:
-    with open(vocab_filename) as vocab_f:
+    with open(vocab_filename, encoding='utf-8') as vocab_f:
       return dict([(line.strip(), i) for i, line in enumerate(vocab_f)])
 
 
