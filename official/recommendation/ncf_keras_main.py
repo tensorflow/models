@@ -47,9 +47,10 @@ FLAGS = flags.FLAGS
 
 def _keras_loss(y_true, y_pred):
   # Here we are using the exact same loss used by the estimator
-  loss = tf.losses.sparse_softmax_cross_entropy(
-      labels=tf.cast(y_true, tf.int32),
-      logits=y_pred)
+  loss = tf.keras.losses.sparse_categorical_crossentropy(
+      y_pred=y_pred,
+      y_true=tf.cast(y_true, tf.int32),
+      from_logits=True)
   return loss
 
 
