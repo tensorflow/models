@@ -59,15 +59,14 @@ class KerasImagenetTest(googletest.TestCase):
     super(KerasImagenetTest, self).tearDown()
     tf.io.gfile.rmtree(self.get_temp_dir())
 
-  def test_end_to_end_1_gpu_no_dist_strat(self):
+  def test_end_to_end_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
     config = keras_common.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     extra_flags = [
-        "-num_gpus", "1",
         "-distribution_strategy", "off",
-        "-model_dir", "keras_imagenet_1_gpu_no_dist_strat",
+        "-model_dir", "keras_imagenet_no_dist_strat",
         "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
@@ -78,13 +77,12 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_graph_1_gpu_no_dist_strat(self):
+  def test_end_to_end_graph_no_dist_strat(self):
     """Test Keras model in legacy graph mode with 1 GPU, no dist strat."""
     extra_flags = [
-        "-num_gpus", "1",
         "-enable_eager", "false",
         "-distribution_strategy", "off",
-        "-model_dir", "keras_imagenet_graph_1_gpu_no_dist_strat",
+        "-model_dir", "keras_imagenet_graph_no_dist_strat",
         "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
