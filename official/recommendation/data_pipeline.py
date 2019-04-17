@@ -261,7 +261,10 @@ class DatasetManager(object):
 
       file_pattern = os.path.join(
           epoch_data_dir, rconst.SHARD_TEMPLATE.format("*"))
+      # TODO: remove this contrib import
+      # pylint: disable=line-too-long
       from tensorflow.contrib.tpu.python.tpu.datasets import StreamingFilesDataset
+      # pylint: enable=line-too-long
       dataset = StreamingFilesDataset(
           files=file_pattern, worker_job=popen_helper.worker_job(),
           num_parallel_reads=rconst.NUM_FILE_SHARDS, num_epochs=1,

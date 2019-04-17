@@ -131,10 +131,10 @@ def _download_and_clean(dataset, data_dir):
     for fname in tf.io.gfile.listdir(temp_dir):
       if not tf.io.gfile.exists(os.path.join(data_subdir, fname)):
         tf.io.gfile.copy(os.path.join(temp_dir, fname),
-                      os.path.join(data_subdir, fname))
+                         os.path.join(data_subdir, fname))
       else:
         logging.info("Skipping copy of {}, as it already exists in the "
-                        "destination folder.".format(fname))
+                     "destination folder.".format(fname))
 
   finally:
     tf.io.gfile.rmtree(temp_dir)

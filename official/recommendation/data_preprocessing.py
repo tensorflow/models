@@ -229,7 +229,7 @@ def instantiate_pipeline(dataset, data_dir, params, constructor_type=None,
 
   run_time = timeit.default_timer() - st
   logging.info("Data preprocessing complete. Time: {:.1f} sec."
-                  .format(run_time))
+               .format(run_time))
 
   print(producer)
   return num_users, num_items, producer

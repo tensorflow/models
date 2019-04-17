@@ -116,6 +116,7 @@ def get_optimizer(params):
       beta_2=params["beta2"],
       epsilon=params["epsilon"])
   if params["use_tpu"]:
+    # TODO: remove this contrib import
     optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
   return optimizer
