@@ -199,7 +199,7 @@ def imdb_documents(dataset='train',
       if is_validation and not include_validation:
         continue
 
-      with open(os.path.join(FLAGS.imdb_input_dir, d, filename)) as imdb_f:
+      with open(os.path.join(FLAGS.imdb_input_dir, d, filename), encoding='utf-8') as imdb_f:
         content = imdb_f.read()
       yield Document(
           content=content,
@@ -209,7 +209,7 @@ def imdb_documents(dataset='train',
           add_tokens=True)
 
   if FLAGS.amazon_unlabeled_input_file and include_unlabeled:
-    with open(FLAGS.amazon_unlabeled_input_file) as rt_f:
+    with open(FLAGS.amazon_unlabeled_input_file, encoding='utf-8') as rt_f:
       for content in rt_f:
         yield Document(
             content=content,
