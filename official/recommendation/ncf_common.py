@@ -110,6 +110,7 @@ def parse_flags(flags_obj):
 
 
 def get_optimizer(params):
+  """Returns the optimizer used by the model."""
   optimizer = tf.keras.optimizers.Adam(
       learning_rate=params["learning_rate"],
       beta_1=params["beta1"],
