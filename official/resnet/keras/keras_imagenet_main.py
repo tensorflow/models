@@ -176,14 +176,9 @@ def run(flags_obj):
     if flags_obj.enable_xla and not flags_obj.enable_eager:
       # TODO(b/129861005): Fix OOM issue in eager mode when setting
       # `batch_size` in keras.Input layer.
-      if strategy and strategy.num_replicas_in_sync > 1:
-        # TODO(b/129791381): Specify `per_replica_batch_size` value in
-        # DistributionStrategy multi-replica case.
-        per_replica_batch_size = None
-      else:
-        per_replica_batch_size = flags_obj.batch_size
+      input_layer_batch_size = flags_obj.batch_size
     else:
-      per_replica_batch_size = None
+      input_layer_batch_size = None
 
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(imagenet_main.NUM_CLASSES)
@@ -191,7 +186,7 @@ def run(flags_obj):
       model = resnet_model.resnet50(
           num_classes=imagenet_main.NUM_CLASSES,
           dtype=dtype,
-          batch_size=per_replica_batch_size)
+          batch_size=input_layer_batch_size)
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,
