@@ -1,0 +1,24 @@
+// Protocol buffer for serializing detected bounding boxes.
+
+syntax = "proto2";
+
+package delf.protos;
+
+message Box {
+  // Coordinates: [ymin, xmin, ymax, xmax] corresponds to
+  // [top, left, bottom, right].
+  optional float ymin = 1;
+  optional float xmin = 2;
+  optional float ymax = 3;
+  optional float xmax = 4;
+
+  // Detection score. Usually, the higher the more confident.
+  optional float score = 5;
+
+  // Indicates which class the box corresponds to.
+  optional int32 class_index = 6;
+}
+
+message Boxes {
+  repeated Box box = 1;
+}
