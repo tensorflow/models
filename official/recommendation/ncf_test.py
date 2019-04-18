@@ -32,6 +32,7 @@ from official.recommendation import ncf_common
 from official.recommendation import ncf_estimator_main
 from official.recommendation import ncf_keras_main
 from official.utils.testing import integration
+from tensorflow.python.eager import context
 
 
 NUM_TRAIN_NEG = 4
@@ -224,6 +225,11 @@ class NcfTest(tf.test.TestCase):
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras_2_gpu(self):
+    if context.num_gpus() < 2:
+      self.skipTest(
+          "{} GPUs are not available for this test. {} GPUs are available".
+          format(2, context.num_gpus()))
+
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
         extra_flags=self._BASE_END_TO_END_FLAGS +

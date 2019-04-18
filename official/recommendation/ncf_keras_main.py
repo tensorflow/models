@@ -157,13 +157,13 @@ def _get_keras_model(params):
   # is designed to be of batch_size 1 for each replica.
   user_input = tf.keras.layers.Input(
       shape=(batch_size,),
-      batch_size=1,
+      batch_size=params["batches_per_step"],
       name=movielens.USER_COLUMN,
       dtype=tf.int32)
 
   item_input = tf.keras.layers.Input(
       shape=(batch_size,),
-      batch_size=1,
+      batch_size=params["batches_per_step"],
       name=movielens.ITEM_COLUMN,
       dtype=tf.int32)
 
