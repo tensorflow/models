@@ -448,7 +448,7 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
   position_vector = tf.reduce_sum(sparse_positions, axis=1)
 
   in_top_k = tf.cast(tf.less(position_vector, rconst.TOP_K), tf.float32)
-  ndcg = tf.math.log(2.) / tf.keras.backend.log(
+  ndcg = tf.math.log(2.) / tf.math.log(
       tf.cast(position_vector, tf.float32) + 2)
   ndcg *= in_top_k
 

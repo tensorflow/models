@@ -191,6 +191,20 @@ def _get_keras_model(params):
   return keras_model
 
 
+def _get_keras_optimizer(params):
+  """Returns the optimizer used by the keras model."""
+  optimizer = tf.keras.optimizers.Adam(
+      learning_rate=params["learning_rate"],
+      beta_1=params["beta1"],
+      beta_2=params["beta2"],
+      epsilon=params["epsilon"])
+  if params["use_tpu"]:
+    # TODO: remove this contrib import
+    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+
+  return optimizer
+
+
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
   # TODO(seemuch): Support different train and eval batch sizes
@@ -228,7 +242,7 @@ def run_ncf(_):
   strategy = ncf_common.get_distribution_strategy(params)
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
-    optimizer = ncf_common.get_keras_optimizer(params)
+    optimizer = _get_keras_optimizer(params)
     time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
 
     keras_model.compile(

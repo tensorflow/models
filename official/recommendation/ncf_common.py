@@ -109,20 +109,6 @@ def parse_flags(flags_obj):
   }
 
 
-def get_keras_optimizer(params):
-  """Returns the optimizer used by the keras model."""
-  optimizer = tf.keras.optimizers.Adam(
-      learning_rate=params["learning_rate"],
-      beta_1=params["beta1"],
-      beta_2=params["beta2"],
-      epsilon=params["epsilon"])
-  if params["use_tpu"]:
-    # TODO: remove this contrib import
-    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
-
-  return optimizer
-
-
 def get_distribution_strategy(params):
   """Returns the distribution strategy to use."""
   if params["turn_off_distribution_strategy"]:
