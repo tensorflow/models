@@ -172,9 +172,11 @@ def draw_bounding_box_on_image(image,
   draw.line([(left, top), (left, bottom), (right, bottom),
              (right, top), (left, top)], width=thickness, fill=color)
   try:
-    font = ImageFont.truetype('arial.ttf', 24)
+    font = ImageFont.truetype('arial.ttf', 24, encoding='UTF-8')
   except IOError:
     font = ImageFont.load_default()
+    display_str_list = [ds.encode('latin-1', errors='ignore').decode() for ds in display_str_list]
+   
 
   # If the total height of the display strings added to the top of the bounding
   # box exceeds the top of the image, stack the strings below the bounding box
