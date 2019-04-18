@@ -32,7 +32,7 @@ from official.recommendation import ncf_common
 from official.recommendation import ncf_estimator_main
 from official.recommendation import ncf_keras_main
 from official.utils.testing import integration
-from tensorflow.python.eager import context
+from tensorflow.python.eager import context # pylint: disable=ungrouped-imports
 
 
 NUM_TRAIN_NEG = 4
