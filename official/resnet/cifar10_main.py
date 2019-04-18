@@ -92,8 +92,7 @@ def parse_record(raw_record, is_training, dtype):
 def preprocess_image(image, is_training):
   """Preprocess a single image of layout [height, width, depth]."""
   if is_training:
-    # 
-    the image to add four extra pixels on each side.
+    # the image to add four extra pixels on each side.
     image = tf.image.resize_with_crop_or_pad(
         image, HEIGHT + 8, WIDTH + 8)
 
