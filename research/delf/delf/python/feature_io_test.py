@@ -93,6 +93,19 @@ class DelfFeaturesIoTest(tf.test.TestCase):
     self.assertAllEqual(attention, data_read[3])
     self.assertAllEqual(orientations, data_read[4])
 
+  def testWriteAndReadToFileEmptyFile(self):
+    tmpdir = tf.test.get_temp_dir()
+    filename = os.path.join(tmpdir, 'test.delf')
+    feature_io.WriteToFile(filename, np.array([]), np.array([]), np.array([]),
+                           np.array([]), np.array([]))
+    data_read = feature_io.ReadFromFile(filename)
+
+    self.assertAllEqual(np.array([]), data_read[0])
+    self.assertAllEqual(np.array([]), data_read[1])
+    self.assertAllEqual(np.array([]), data_read[2])
+    self.assertAllEqual(np.array([]), data_read[3])
+    self.assertAllEqual(np.array([]), data_read[4])
+
 
 if __name__ == '__main__':
   tf.test.main()

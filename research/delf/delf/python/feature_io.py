@@ -22,7 +22,6 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from six.moves import xrange
 import tensorflow as tf
 
 from delf import feature_pb2
@@ -37,8 +36,8 @@ def ArraysToDelfFeatures(locations,
   """Converts DELF features to DelfFeatures proto.
 
   Args:
-    locations: [N, 2] float array which denotes the selected keypoint
-      locations. N is the number of features.
+    locations: [N, 2] float array which denotes the selected keypoint locations.
+      N is the number of features.
     scales: [N] float array with feature scales.
     descriptors: [N, depth] float array with DELF descriptors.
     attention: [N] float array with attention scores.
@@ -89,7 +88,7 @@ def DelfFeaturesToArrays(delf_features):
   """
   num_features = len(delf_features.feature)
   if num_features == 0:
-    return np.array([]), np.array([]), np.array([]), np.array([])
+    return np.array([]), np.array([]), np.array([]), np.array([]), np.array([])
 
   # Figure out descriptor dimensionality by parsing first one.
   descriptor_dim = len(
@@ -120,8 +119,8 @@ def SerializeToString(locations,
   """Converts numpy arrays to serialized DelfFeatures.
 
   Args:
-    locations: [N, 2] float array which denotes the selected keypoint
-      locations. N is the number of features.
+    locations: [N, 2] float array which denotes the selected keypoint locations.
+      N is the number of features.
     scales: [N] float array with feature scales.
     descriptors: [N, depth] float array with DELF descriptors.
     attention: [N] float array with attention scores.
@@ -183,8 +182,8 @@ def WriteToFile(file_path,
 
   Args:
     file_path: Path to file that will be written.
-    locations: [N, 2] float array which denotes the selected keypoint
-      locations. N is the number of features.
+    locations: [N, 2] float array which denotes the selected keypoint locations.
+      N is the number of features.
     scales: [N] float array with feature scales.
     descriptors: [N, depth] float array with DELF descriptors.
     attention: [N] float array with attention scores.

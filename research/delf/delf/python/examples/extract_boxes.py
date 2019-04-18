@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Extracts DELF features from a list of images, saving them to file.
+"""Extracts bounding boxes from a list of images, saving them to files.
 
-The images must be in JPG format. The program checks if descriptors already
+The images must be in JPG format. The program checks if boxes already
 exist, and skips computation for those.
 """
 
@@ -29,16 +29,13 @@ import time
 
 import tensorflow as tf
 
-from google.protobuf import text_format
 from tensorflow.python.platform import app
-from delf import delf_config_pb2
-from delf import feature_extractor
-from delf import feature_io
+from delf import box_io
 
 cmd_args = None
 
 # Extension of feature files.
-_DELF_EXT = '.delf'
+_BOX_EXT = '.boxes'
 
 # Pace to report extraction log.
 _STATUS_CHECK_ITERATIONS = 100
@@ -59,55 +56,49 @@ def _ReadImageList(list_path):
   return image_paths
 
 
-def MakeExtractor(sess, config):
-  """Creates a function to extract features from an image.
+def _MakeDetector(sess, model_dir):
+  """Creates a function to detect objects in an image.
 
   Args:
     sess: TensorFlow session to use.
-    config: DelfConfig proto containing the model configuration.
+    model_dir: Directory where SavedModel is located.
 
   Returns:
-    Function that receives an image and returns features.
+    Function that receives an image and returns detection results.
   """
   tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
-                             config.model_path)
-  input_image = sess.graph.get_tensor_by_name('input_image:0')
-  input_score_threshold = sess.graph.get_tensor_by_name('input_abs_thres:0')
-  input_image_scales = sess.graph.get_tensor_by_name('input_scales:0')
-  input_max_feature_num = sess.graph.get_tensor_by_name(
-      'input_max_feature_num:0')
-  boxes = sess.graph.get_tensor_by_name('boxes:0')
-  raw_descriptors = sess.graph.get_tensor_by_name('features:0')
-  feature_scales = sess.graph.get_tensor_by_name('scales:0')
-  attention_with_extra_dim = sess.graph.get_tensor_by_name('scores:0')
-  attention = tf.reshape(attention_with_extra_dim,
-                         [tf.shape(attention_with_extra_dim)[0]])
+                             model_dir)
+  input_images = sess.graph.get_tensor_by_name('input_images:0')
+  input_detection_thresh = sess.graph.get_tensor_by_name(
+      'input_detection_thresh:0')
+  boxes = sess.graph.get_tensor_by_name('detection_boxes:0')
+  scores = sess.graph.get_tensor_by_name('detection_scores:0')
+  class_indices = sess.graph.get_tensor_by_name('detection_classes:0')
 
-  locations, descriptors = feature_extractor.DelfFeaturePostProcessing(
-      boxes, raw_descriptors, config)
-
-  def ExtractorFn(image):
-    """Receives an image and returns DELF features.
+  def DetectorFn(images, threshold):
+    """Receives an image and returns detected boxes.
 
     Args:
-      image: Uint8 array with shape (height, width 3) containing the RGB image.
+      images: Uint8 array with shape (batch, height, width 3) containing a batch
+        of RGB images.
+      threshold: Detector threshold (float).
 
     Returns:
-      Tuple (locations, descriptors, feature_scales, attention)
+      Tuple (boxes, scores, class_indices).
     """
-    return sess.run(
-        [locations, descriptors, feature_scales, attention],
-        feed_dict={
-            input_image: image,
-            input_score_threshold: config.delf_local_config.score_threshold,
-            input_image_scales: list(config.image_scales),
-            input_max_feature_num: config.delf_local_config.max_feature_num
-        })
+    return sess.run([boxes, scores, class_indices],
+                    feed_dict={
+                        input_images: images,
+                        input_detection_thresh: threshold,
+                    })
 
-  return ExtractorFn
+  return DetectorFn
 
 
-def main(unused_argv):
+def main(argv):
+  if len(argv) > 1:
+    raise RuntimeError('Too many command-line arguments.')
+
   tf.logging.set_verbosity(tf.logging.INFO)
 
   # Read list of images.
@@ -115,11 +106,6 @@ def main(unused_argv):
   image_paths = _ReadImageList(cmd_args.list_images_path)
   num_images = len(image_paths)
   tf.logging.info('done! Found %d images', num_images)
-
-  # Parse DelfConfig proto.
-  config = delf_config_pb2.DelfConfig()
-  with tf.gfile.FastGFile(cmd_args.config_path, 'r') as f:
-    text_format.Merge(f.read(), config)
 
   # Create output directory if necessary.
   if not os.path.exists(cmd_args.output_dir):
@@ -132,21 +118,22 @@ def main(unused_argv):
     reader = tf.WholeFileReader()
     _, value = reader.read(filename_queue)
     image_tf = tf.image.decode_jpeg(value, channels=3)
+    image_tf = tf.expand_dims(image_tf, 0)
 
     with tf.Session() as sess:
       init_op = tf.global_variables_initializer()
       sess.run(init_op)
 
-      extractor_fn = MakeExtractor(sess, config)
+      detector_fn = _MakeDetector(sess, cmd_args.detector_path)
 
       # Start input enqueue threads.
       coord = tf.train.Coordinator()
       threads = tf.train.start_queue_runners(sess=sess, coord=coord)
       start = time.clock()
-      for i in range(num_images):
+      for i, image_path in enumerate(image_paths):
         # Write to log-info once in a while.
         if i == 0:
-          tf.logging.info('Starting to extract DELF features from images...')
+          tf.logging.info('Starting to detect objects in images...')
         elif i % _STATUS_CHECK_ITERATIONS == 0:
           elapsed = (time.clock() - start)
           tf.logging.info(
@@ -159,20 +146,20 @@ def main(unused_argv):
         im = sess.run(image_tf)
 
         # If descriptor already exists, skip its computation.
-        out_desc_filename = os.path.splitext(os.path.basename(
-            image_paths[i]))[0] + _DELF_EXT
-        out_desc_fullpath = os.path.join(cmd_args.output_dir, out_desc_filename)
-        if tf.gfile.Exists(out_desc_fullpath):
-          tf.logging.info('Skipping %s', image_paths[i])
+        base_boxes_filename, _ = os.path.splitext(os.path.basename(image_path))
+        out_boxes_filename = base_boxes_filename + _BOX_EXT
+        out_boxes_fullpath = os.path.join(cmd_args.output_dir,
+                                          out_boxes_filename)
+        if tf.gfile.Exists(out_boxes_fullpath):
+          tf.logging.info('Skipping %s', image_path)
           continue
 
         # Extract and save features.
-        (locations_out, descriptors_out, feature_scales_out,
-         attention_out) = extractor_fn(im)
+        (boxes_out, scores_out,
+         class_indices_out) = detector_fn(im, cmd_args.detector_thresh)
 
-        feature_io.WriteToFile(out_desc_fullpath, locations_out,
-                               feature_scales_out, descriptors_out,
-                               attention_out)
+        box_io.WriteToFile(out_boxes_fullpath, boxes_out[0], scores_out[0],
+                           class_indices_out[0])
 
       # Finalize enqueue threads.
       coord.request_stop()
@@ -183,27 +170,35 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.register('type', 'bool', lambda v: v.lower() == 'true')
   parser.add_argument(
-      '--config_path',
+      '--detector_path',
       type=str,
-      default='delf_config_example.pbtxt',
+      default='/tmp/d2r_frcnn_20190411/',
       help="""
-      Path to DelfConfig proto text file with configuration to be used for DELF
-      extraction.
+      Path to exported detector model.
+      """)
+  parser.add_argument(
+      '--detector_thresh',
+      type=float,
+      default=.0,
+      help="""
+      Detector threshold. Any box with confidence score lower than this is not
+      returned.
       """)
   parser.add_argument(
       '--list_images_path',
       type=str,
       default='list_images.txt',
       help="""
-      Path to list of images whose DELF features will be extracted.
+      Path to list of images to undergo object detection.
       """)
   parser.add_argument(
       '--output_dir',
       type=str,
-      default='test_features',
+      default='test_boxes',
       help="""
-      Directory where DELF features will be written to. Each image's features
-      will be written to a file with same name, and extension replaced by .delf.
+      Directory where bounding boxes will be written to. Each image's boxes
+      will be written to a file with same name, and extension replaced by
+      .boxes.
       """)
   cmd_args, unparsed = parser.parse_known_args()
   app.run(main=main, argv=[sys.argv[0]] + unparsed)
