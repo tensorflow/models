@@ -389,11 +389,8 @@ def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
   # ignore padded examples
   example_weights *= tf.cast(expanded_metric_weights, tf.float32)
 
-  cce = tf.keras.losses.SparseCategoricalCrossentropy(
-      reduction=tf.keras.losses.Reduction.SUM,
-      from_logits=True)
-  cross_entropy = cce(
-      y_true=eval_labels, y_pred=softmax_logits, sample_weight=example_weights)
+  cross_entropy = tf.compat.v1.losses.sparse_softmax_cross_entropy(
+      logits=softmax_logits, labels=eval_labels, weights=example_weights)
 
   def metric_fn(top_k_tensor, ndcg_tensor, weight_tensor):
     return {
