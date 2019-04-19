@@ -110,15 +110,15 @@ def neumf_model_fn(features, labels, mode, params):
                             value=params["epsilon"])
 
 
+    optimizer = tf.compat.v1.train.AdamOptimizer(
+        learning_rate=params["learning_rate"],
+        beta1=params["beta1"],
+        beta2=params["beta2"],
+        epsilon=params["epsilon"])
     if params["use_tpu"]:
       # TODO: remove this contrib import
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
-    else:
-      optimizer = tf.compat.v1.train.AdamOptimizer(
-          learning_rate=params["learning_rate"],
-          beta1=params["beta1"],
-          beta2=params["beta2"],
-          epsilon=params["epsilon"])
+
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
 
