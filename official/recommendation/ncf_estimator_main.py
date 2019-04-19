@@ -39,7 +39,6 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from tensorflow.contrib.compiler import xla
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
@@ -73,6 +72,8 @@ def construct_estimator(model_dir, params):
 
   model_fn = neumf_model.neumf_model_fn
   if params["use_xla_for_gpu"]:
+    # TODO: remove the contrib imput
+    from tensorflow.contrib.compiler import xla
     logging.info("Using XLA for GPU for training and evaluation.")
     model_fn = xla.estimator_model_fn(model_fn)
   estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=model_dir,

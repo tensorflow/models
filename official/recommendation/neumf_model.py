@@ -109,16 +109,20 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
-    optimizer = tf.train.AdamOptimizer(
-        learning_rate=params["learning_rate"],
-        beta1=params["beta1"],
-        beta2=params["beta2"],
-        epsilon=params["epsilon"])
 
+    if params["use_tpu"]:
+      # TODO: remove this contrib import
+      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+    else:
+      optimizer = tf.compat.v1.train.AdamOptimizer(
+          learning_rate=params["learning_rate"],
+          beta1=params["beta1"],
+          beta2=params["beta2"],
+          epsilon=params["epsilon"])
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
 
-    loss = tf.losses.sparse_softmax_cross_entropy(
+    loss = tf.compat.v1.losses.sparse_softmax_cross_entropy(
         labels=labels,
         logits=softmax_logits,
         weights=tf.cast(valid_pt_mask, tf.float32)
@@ -127,14 +131,14 @@ def neumf_model_fn(features, labels, mode, params):
     # This tensor is used by logging hooks.
     tf.identity(loss, name="cross_entropy")
 
-    global_step = tf.train.get_global_step()
-    tvars = tf.trainable_variables()
+    global_step = tf.compat.v1.train.get_global_step()
+    tvars = tf.compat.v1.trainable_variables()
     gradients = optimizer.compute_gradients(
         loss, tvars, colocate_gradients_with_ops=True)
     gradients = _sparse_to_dense_grads(gradients)
     minimize_op = optimizer.apply_gradients(
         gradients, global_step=global_step, name="train")
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
 
     return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
@@ -385,16 +389,20 @@ def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
   # ignore padded examples
   example_weights *= tf.cast(expanded_metric_weights, tf.float32)
 
-  cce = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+  cce = tf.keras.losses.SparseCategoricalCrossentropy(
+      reduction=tf.keras.losses.Reduction.SUM,
+      from_logits=True)
   cross_entropy = cce(
       y_true=eval_labels, y_pred=softmax_logits, sample_weight=example_weights)
 
   def metric_fn(top_k_tensor, ndcg_tensor, weight_tensor):
     return {
-        rconst.HR_KEY: tf.metrics.mean(top_k_tensor, weights=weight_tensor,
-                                       name=rconst.HR_METRIC_NAME),
-        rconst.NDCG_KEY: tf.metrics.mean(ndcg_tensor, weights=weight_tensor,
-                                         name=rconst.NDCG_METRIC_NAME),
+        rconst.HR_KEY: tf.compat.v1.metrics.mean(top_k_tensor,
+                                                 weights=weight_tensor,
+                                                 name=rconst.HR_METRIC_NAME),
+        rconst.NDCG_KEY: tf.compat.v1.metrics.mean(ndcg_tensor,
+                                                   weights=weight_tensor,
+                                                   name=rconst.NDCG_METRIC_NAME)
     }
 
   return cross_entropy, metric_fn, in_top_k, ndcg, metric_weights
