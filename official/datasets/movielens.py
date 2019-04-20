@@ -33,6 +33,7 @@ import six
 from six.moves import urllib  # pylint: disable=redefined-builtin
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -100,10 +101,10 @@ def _download_and_clean(dataset, data_dir):
 
   expected_files = ["{}.zip".format(dataset), RATINGS_FILE, MOVIES_FILE]
 
-  tf.gfile.MakeDirs(data_subdir)
+  tf.io.gfile.makedirs(data_subdir)
   if set(expected_files).intersection(
-      tf.gfile.ListDirectory(data_subdir)) == set(expected_files):
-    tf.logging.info("Dataset {} has already been downloaded".format(dataset))
+      tf.io.gfile.listdir(data_subdir)) == set(expected_files):
+    logging.info("Dataset {} has already been downloaded".format(dataset))
     return
 
   url = "{}{}.zip".format(_DATA_URL, dataset)
@@ -114,9 +115,9 @@ def _download_and_clean(dataset, data_dir):
     zip_path, _ = urllib.request.urlretrieve(url, zip_path)
     statinfo = os.stat(zip_path)
     # A new line to clear the carriage return from download progress
-    # tf.logging.info is not applicable here
+    # logging.info is not applicable here
     print()
-    tf.logging.info(
+    logging.info(
         "Successfully downloaded {} {} bytes".format(
             zip_path, statinfo.st_size))
 
@@ -127,16 +128,16 @@ def _download_and_clean(dataset, data_dir):
     else:
       _regularize_20m_dataset(temp_dir)
 
-    for fname in tf.gfile.ListDirectory(temp_dir):
-      if not tf.gfile.Exists(os.path.join(data_subdir, fname)):
-        tf.gfile.Copy(os.path.join(temp_dir, fname),
-                      os.path.join(data_subdir, fname))
+    for fname in tf.io.gfile.listdir(temp_dir):
+      if not tf.io.gfile.exists(os.path.join(data_subdir, fname)):
+        tf.io.gfile.copy(os.path.join(temp_dir, fname),
+                         os.path.join(data_subdir, fname))
       else:
-        tf.logging.info("Skipping copy of {}, as it already exists in the "
-                        "destination folder.".format(fname))
+        logging.info("Skipping copy of {}, as it already exists in the "
+                     "destination folder.".format(fname))
 
   finally:
-    tf.gfile.DeleteRecursively(temp_dir)
+    tf.io.gfile.rmtree(temp_dir)
 
 
 def _transform_csv(input_path, output_path, names, skip_first, separator=","):
@@ -152,8 +153,8 @@ def _transform_csv(input_path, output_path, names, skip_first, separator=","):
   if six.PY2:
     names = [n.decode("utf-8") for n in names]
 
-  with tf.gfile.Open(output_path, "wb") as f_out, \
-      tf.gfile.Open(input_path, "rb") as f_in:
+  with tf.io.gfile.GFile(output_path, "wb") as f_out, \
+      tf.io.gfile.GFile(input_path, "rb") as f_in:
 
     # Write column names to the csv.
     f_out.write(",".join(names).encode("utf-8"))
@@ -199,7 +200,7 @@ def _regularize_1m_dataset(temp_dir):
       output_path=os.path.join(temp_dir, MOVIES_FILE),
       names=MOVIE_COLUMNS, skip_first=False, separator="::")
 
-  tf.gfile.DeleteRecursively(working_dir)
+  tf.io.gfile.rmtree(working_dir)
 
 
 def _regularize_20m_dataset(temp_dir):
@@ -233,7 +234,7 @@ def _regularize_20m_dataset(temp_dir):
       output_path=os.path.join(temp_dir, MOVIES_FILE),
       names=MOVIE_COLUMNS, skip_first=True, separator=",")
 
-  tf.gfile.DeleteRecursively(working_dir)
+  tf.io.gfile.rmtree(working_dir)
 
 
 def download(dataset, data_dir):
@@ -244,14 +245,14 @@ def download(dataset, data_dir):
 
 
 def ratings_csv_to_dataframe(data_dir, dataset):
-  with tf.gfile.Open(os.path.join(data_dir, dataset, RATINGS_FILE)) as f:
+  with tf.io.gfile.GFile(os.path.join(data_dir, dataset, RATINGS_FILE)) as f:
     return pd.read_csv(f, encoding="utf-8")
 
 
 def csv_to_joint_dataframe(data_dir, dataset):
   ratings = ratings_csv_to_dataframe(data_dir, dataset)
 
-  with tf.gfile.Open(os.path.join(data_dir, dataset, MOVIES_FILE)) as f:
+  with tf.io.gfile.GFile(os.path.join(data_dir, dataset, MOVIES_FILE)) as f:
     movies = pd.read_csv(f, encoding="utf-8")
 
   df = ratings.merge(movies, on=ITEM_COLUMN)
@@ -302,7 +303,6 @@ def main(_):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   define_data_download_flags()
   FLAGS = flags.FLAGS
   absl_app.run(main)
