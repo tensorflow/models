@@ -58,7 +58,7 @@ class BaseTest(tf.test.TestCase):
   def setUp(self):
     self.temp_data_dir = self.get_temp_dir()
     ratings_folder = os.path.join(self.temp_data_dir, DATASET)
-    tf.gfile.MakeDirs(ratings_folder)
+    tf.io.gfile.makedirs(ratings_folder)
     np.random.seed(0)
     raw_user_ids = np.arange(NUM_USERS * 3)
     np.random.shuffle(raw_user_ids)
@@ -76,7 +76,7 @@ class BaseTest(tf.test.TestCase):
     self.rating_file = os.path.join(ratings_folder, movielens.RATINGS_FILE)
     self.seen_pairs = set()
     self.holdout = {}
-    with tf.gfile.Open(self.rating_file, "w") as f:
+    with tf.io.gfile.GFile(self.rating_file, "w") as f:
       f.write("user_id,item_id,rating,timestamp\n")
       for usr, itm, scr, ts in zip(users, items, scores, times):
         pair = (usr, itm)
@@ -341,5 +341,4 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   tf.test.main()

@@ -27,6 +27,7 @@ import os
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -46,9 +47,10 @@ FLAGS = flags.FLAGS
 
 def _keras_loss(y_true, y_pred):
   # Here we are using the exact same loss used by the estimator
-  loss = tf.losses.sparse_softmax_cross_entropy(
-      labels=tf.cast(y_true, tf.int32),
-      logits=y_pred)
+  loss = tf.keras.losses.sparse_categorical_crossentropy(
+      y_pred=y_pred,
+      y_true=tf.cast(y_true, tf.int32),
+      from_logits=True)
   return loss
 
 
@@ -66,7 +68,7 @@ def _get_metric_fn(params):
     # repetition correction
     dup_mask = tf.zeros([batch_size, 1])
 
-    cross_entropy, metric_fn, in_top_k, ndcg, metric_weights = (
+    _, _, in_top_k, _, _ = (
         neumf_model.compute_eval_loss_and_metrics_helper(
             logits,
             softmax_logits,
@@ -155,13 +157,13 @@ def _get_keras_model(params):
   # is designed to be of batch_size 1 for each replica.
   user_input = tf.keras.layers.Input(
       shape=(batch_size,),
-      batch_size=1,
+      batch_size=params["batches_per_step"],
       name=movielens.USER_COLUMN,
       dtype=tf.int32)
 
   item_input = tf.keras.layers.Input(
       shape=(batch_size,),
-      batch_size=1,
+      batch_size=params["batches_per_step"],
       name=movielens.ITEM_COLUMN,
       dtype=tf.int32)
 
@@ -193,7 +195,7 @@ def run_ncf(_):
   """Run NCF training and eval with Keras."""
   # TODO(seemuch): Support different train and eval batch sizes
   if FLAGS.eval_batch_size != FLAGS.batch_size:
-    tf.logging.warning(
+    logging.warning(
         "The Keras implementation of NCF currently does not support batch_size "
         "!= eval_batch_size ({} vs. {}). Overriding eval_batch_size to match "
         "batch_size".format(FLAGS.eval_batch_size, FLAGS.batch_size)
@@ -226,7 +228,11 @@ def run_ncf(_):
   strategy = ncf_common.get_distribution_strategy(params)
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
-    optimizer = ncf_common.get_optimizer(params)
+    optimizer = tf.keras.optimizers.Adam(
+        learning_rate=params["learning_rate"],
+        beta_1=params["beta1"],
+        beta_2=params["beta2"],
+        epsilon=params["epsilon"])
     time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
 
     keras_model.compile(
@@ -241,14 +247,14 @@ def run_ncf(_):
                                   time_callback],
                               verbose=2)
 
-    tf.logging.info("Training done. Start evaluating")
+    logging.info("Training done. Start evaluating")
 
     eval_results = keras_model.evaluate(
         eval_input_dataset,
         steps=num_eval_steps,
         verbose=2)
 
-  tf.logging.info("Keras evaluation is done.")
+  logging.info("Keras evaluation is done.")
 
   stats = build_stats(history, eval_results, time_callback)
   return stats
@@ -298,6 +304,5 @@ def main(_):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   ncf_common.define_ncf_flags()
   absl_app.run(main)
