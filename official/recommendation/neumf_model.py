@@ -116,8 +116,7 @@ def neumf_model_fn(features, labels, mode, params):
         beta2=params["beta2"],
         epsilon=params["epsilon"])
     if params["use_tpu"]:
-      # TODO: remove this contrib import
-      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+      optimizer = tf.compat.v1.tpu.CrossShardOptimizer(optimizer)
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
