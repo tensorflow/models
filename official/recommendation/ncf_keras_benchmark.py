@@ -113,6 +113,11 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     self._setup()
     self._run_and_report_benchmark()
 
+  def benchmark_2_gpus(self):
+    self._setup()
+    FLAGS.num_gpus = 2
+    self._run_and_report_benchmark()
+
 
 class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
   """Benchmark NCF model using synthetic data."""
@@ -148,4 +153,9 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
 
   def benchmark_1_gpu(self):
     self._setup()
+    self._run_and_report_benchmark()
+
+  def benchmark_2_gpus(self):
+    self._setup()
+    FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
