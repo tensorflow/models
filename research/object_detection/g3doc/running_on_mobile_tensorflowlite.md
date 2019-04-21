@@ -141,7 +141,7 @@ DetectorActivity.java should now look as follows for a quantized model:
 ```shell
   private static final boolean TF_OD_API_IS_QUANTIZED = true;
   private static final String TF_OD_API_MODEL_FILE = "detect.tflite";
-  private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labels_list.txt";
+  private static final String TF_OD_API_LABELS_FILE = "labels_list.txt";
 ```
 
 Once you’ve copied the TensorFlow Lite file and edited your BUILD and
