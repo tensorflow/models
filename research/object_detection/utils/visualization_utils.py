@@ -21,6 +21,7 @@ The functions do not return a value, instead they modify the image itself.
 """
 import abc
 import collections
+from string import printable
 import functools
 # Set headless-friendly backend.
 import matplotlib; matplotlib.use('Agg')  # pylint: disable=multiple-statements
@@ -175,6 +176,7 @@ def draw_bounding_box_on_image(image,
     font = ImageFont.truetype('arial.ttf', 24)
   except IOError:
     font = ImageFont.load_default()
+    display_str_list = [''.join(filter(lambda x: x in printable, ds)) for ds in display_str_list]
 
   # If the total height of the display strings added to the top of the bounding
   # box exceeds the top of the image, stack the strings below the bounding box
