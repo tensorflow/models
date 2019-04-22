@@ -72,7 +72,7 @@ def construct_estimator(model_dir, params):
 
   model_fn = neumf_model.neumf_model_fn
   if params["use_xla_for_gpu"]:
-    # TODO: remove the contrib imput
+    # TODO(seemuch): remove the contrib imput
     from tensorflow.contrib.compiler import xla
     logging.info("Using XLA for GPU for training and evaluation.")
     model_fn = xla.estimator_model_fn(model_fn)
