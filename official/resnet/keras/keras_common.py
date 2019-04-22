@@ -395,7 +395,7 @@ def _monkey_patch_org_create_device_dataset():
       multi_device_iterator_ops.MultiDeviceIterator._create_device_dataset)  # pylint: disable=protected-access
   code_lines = org_create_device_dataset_code.split('\n')
   # Insert in reverse order to avoid line number shift by previous insertions
-  code_lines.insert(5, '      ds = ds.apply(sleep_ops.sleep(10000))')  # 10ms
+  code_lines.insert(5, '      ds = ds.apply(sleep_ops.sleep(11000))')  # 11ms
   code_lines.insert(2, '    from tensorflow.python.data.experimental.ops import sleep as sleep_ops')  # pylint: disable=g-line-too-long
   patched_code = '\n'.join(line[2:] for line in code_lines)
   cls_multi_device_iterator.body[0].body[2] = ast.parse(patched_code).body[0]
