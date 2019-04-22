@@ -261,7 +261,7 @@ class DatasetManager(object):
 
       file_pattern = os.path.join(
           epoch_data_dir, rconst.SHARD_TEMPLATE.format("*"))
-      # TODO: remove this contrib import
+      # TODO(seemuch): remove this contrib import
       # pylint: disable=line-too-long
       from tensorflow.contrib.tpu.python.tpu.datasets import StreamingFilesDataset
       # pylint: enable=line-too-long
