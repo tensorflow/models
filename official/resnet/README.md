@@ -35,16 +35,16 @@ Please proceed according to which dataset you would like to train/evaluate on:
 
 ### Setup
 
-You simply need to have the latest version of TensorFlow installed.
-First make sure you've [added the models folder to your Python path](/official/#running-the-models); otherwise you may encounter an error like `ImportError: No module named official.resnet`.
+You need to have the latest version of TensorFlow installed.
+First, make sure [the models folder is in your Python path](/official/#running-the-models); otherwise you may encounter `ImportError: No module named official.resnet`.
 
-Then download and extract the CIFAR-10 data from Alex's website, specifying the location with the `--data_dir` flag. Run the following:
+Then, download and extract the CIFAR-10 data from Alex's website, specifying the location with the `--data_dir` flag. Run the following:
 
 ```bash
 python cifar10_download_and_extract.py --data_dir <DATA_DIR>
 ```
 
-Then to train the model:
+Then, to train the model:
 
 ```bash
 python cifar10_main.py --data_dir <DATA_DIR>/cifar-10-batches-bin --model_dir <MODEL_DIR>
