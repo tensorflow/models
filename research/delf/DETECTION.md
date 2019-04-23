@@ -25,8 +25,8 @@ tar -xvzf d2r_frcnn_20190411.tar.gz
 ```
 
 **Note**: this is the Faster-RCNN based model. We also release a MobileNet-SSD
-model, see the [README](README.md) for download link. The instructions should
-work seamlessly for both models.
+model, see the [README](README.md#pre-trained-models) for download link. The
+instructions should work seamlessly for both models.
 
 ### Detecting landmarks
 
@@ -39,7 +39,7 @@ threshold of 0.8, and produce visualizations.
 python extract_boxes.py \
   --detector_path parameters/d2r_frcnn_20190411 \
   --detector_thresh 0.8 \
-  --list_images_path list_images.txt \
+  --list_images_path list_images_detector.txt \
   --output_dir data/oxford5k_boxes \
   --output_viz_dir data/oxford5k_boxes_viz
 ```
