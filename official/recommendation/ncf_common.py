@@ -20,12 +20,12 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import logging
 import os
 
 # pylint: disable=g-bad-import-order
 import numpy as np
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -109,18 +109,6 @@ def parse_flags(flags_obj):
   }
 
 
-def get_optimizer(params):
-  optimizer = tf.train.AdamOptimizer(
-      learning_rate=params["learning_rate"],
-      beta1=params["beta1"],
-      beta2=params["beta2"],
-      epsilon=params["epsilon"])
-  if params["use_tpu"]:
-    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
-
-  return optimizer
-
-
 def get_distribution_strategy(params):
   """Returns the distribution strategy to use."""
   if params["turn_off_distribution_strategy"]:
@@ -132,14 +120,14 @@ def get_distribution_strategy(params):
                  "oauth2client.transport"]:
       logging.getLogger(name).setLevel(logging.ERROR)
 
-    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+    tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
         tpu=params["tpu"],
         zone=params["tpu_zone"],
         project=params["tpu_gcp_project"],
         coordinator_name="coordinator"
     )
 
-    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
+    logging.info("Issuing reset command to TPU to ensure a clean state.")
     tf.Session.reset(tpu_cluster_resolver.get_master())
 
     # Estimator looks at the master it connects to for MonitoredTrainingSession
@@ -153,7 +141,7 @@ def get_distribution_strategy(params):
     }
     os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
 
-    distribution = tf.contrib.distribute.TPUStrategy(
+    distribution = tf.distribute.experimental.TPUStrategy(
         tpu_cluster_resolver, steps_per_run=100)
 
   else:

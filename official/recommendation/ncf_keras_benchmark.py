@@ -86,7 +86,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags['num_gpus'] = 1
     default_flags['train_epochs'] = 14
     default_flags['clean'] = True
-    default_flags['batch_size'] = 16000
+    default_flags['batch_size'] = 160000
     default_flags['learning_rate'] = 0.00382059
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003
@@ -105,12 +105,17 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
   def _extract_benchmark_report_extras(self, stats):
     extras = {}
     extras['train_loss'] = stats['loss']
-    extras['eval_hit_rate'] = stats['eval_hit_rate']
-    extras['examples_per_second'] = stats['avg_exp_per_second']
+    extras['hr_at_10'] = stats['eval_hit_rate']
+    extras['exp_per_second'] = stats['avg_exp_per_second']
     return extras
 
   def benchmark_1_gpu(self):
     self._setup()
+    self._run_and_report_benchmark()
+
+  def benchmark_2_gpus(self):
+    self._setup()
+    FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
 
@@ -126,7 +131,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1
     default_flags['train_epochs'] = 14
-    default_flags['batch_size'] = 16000
+    default_flags['batch_size'] = 160000
     default_flags['learning_rate'] = 0.00382059
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003
@@ -143,9 +148,14 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
 
   def _extract_benchmark_report_extras(self, stats):
     extras = {}
-    extras['examples_per_second'] = stats['avg_exp_per_second']
+    extras['exp_per_second'] = stats['avg_exp_per_second']
     return extras
 
   def benchmark_1_gpu(self):
     self._setup()
+    self._run_and_report_benchmark()
+
+  def benchmark_2_gpus(self):
+    self._setup()
+    FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
