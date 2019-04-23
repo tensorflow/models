@@ -153,8 +153,8 @@ def set_gpu_thread_mode_and_count(flags_obj):
   num_runtime_threads = flags_obj.num_gpus
   if not flags_obj.datasets_num_private_threads:
     flags_obj.datasets_num_private_threads = min(
-      cpu_count - total_gpu_thread_count - num_runtime_threads,
-      flags_obj.num_gpus * 8)
+        cpu_count - total_gpu_thread_count - num_runtime_threads,
+        flags_obj.num_gpus * 8)
     tf.compat.v1.logging.info('Set datasets_num_private_threads to %s',
                               flags_obj.datasets_num_private_threads)
 
@@ -285,11 +285,12 @@ def define_keras_flags():
       'Note that profiler has a non-trivial performance overhead, and the '
       'output file can be gigantic if profiling many steps.')
   flags.DEFINE_boolean(
-      name='enable_experimental_perf_tuning', default=False,
-      help='Use experimental performance tuning code to temporarily optimize '
-      'for performance. The codepath when enabling this feature is not stable '
-      'and will be removed once the corresponding performance features are '
-      'fully implemented in TensorFlow.')
+      name='data_prefetch_with_slack', default=False,
+      help='Add a small delay in tf.data prefetch to prioritize memory copy of '
+      'other tensors over the data minibatch for the (T+1)th step. It should '
+      'help improve performance using EagerIterator and function. The codepath '
+      'when enabling this feature is experimental and will be removed once the '
+      'corresponding performance features are fully supported in TensorFlow.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
@@ -348,7 +349,7 @@ def is_v2_0():
   return tf.__version__.startswith('2')
 
 
-def enable_experimental_perf_tuning():
+def data_prefetch_with_slack():
   """Use unstable code for perf tuning purposes."""
   if not FLAGS.use_synthetic_data:
     _monkey_patch_org_create_device_dataset()
@@ -396,7 +397,7 @@ def _monkey_patch_org_create_device_dataset():
   code_lines = org_create_device_dataset_code.split('\n')
   # Insert in reverse order to avoid line number shift by previous insertions
   code_lines.insert(5, '      ds = ds.apply(sleep_ops.sleep(11000))')  # 11ms
-  code_lines.insert(2, '    from tensorflow.python.data.experimental.ops import sleep as sleep_ops')  # pylint: disable=g-line-too-long
+  code_lines.insert(2, '    from tensorflow.python.data.experimental.ops import sleep as sleep_ops')  # pylint: disable=line-too-long
   patched_code = '\n'.join(line[2:] for line in code_lines)
   cls_multi_device_iterator.body[0].body[2] = ast.parse(patched_code).body[0]
   exec(compile(cls_multi_device_iterator, '<string>', 'exec'),  # pylint: disable=exec-used
