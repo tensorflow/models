@@ -76,7 +76,7 @@ def get_model_fn(num_gpus, variable_strategy, num_workers):
 
     # channels first (NCHW) is normally optimal on GPU and channels last (NHWC)
     # on CPU. The exception is Intel MKL on CPU which is optimal with
-    # channels_last.
+    # channels_first.
     data_format = params.data_format
     if not data_format:
       if num_gpus == 0:
