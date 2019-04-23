@@ -25,7 +25,6 @@ from __future__ import print_function
 import contextlib
 import heapq
 import json
-import logging
 import math
 import multiprocessing
 import os
@@ -36,10 +35,10 @@ import typing
 import numpy as np
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from tensorflow.contrib.compiler import xla
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
@@ -73,7 +72,9 @@ def construct_estimator(model_dir, params):
 
   model_fn = neumf_model.neumf_model_fn
   if params["use_xla_for_gpu"]:
-    tf.logging.info("Using XLA for GPU for training and evaluation.")
+    # TODO(seemuch): remove the contrib imput
+    from tensorflow.contrib.compiler import xla
+    logging.info("Using XLA for GPU for training and evaluation.")
     model_fn = xla.estimator_model_fn(model_fn)
   estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=model_dir,
                                      config=run_config, params=params)
@@ -133,7 +134,7 @@ def run_ncf(_):
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.TRAIN_LOOP)
   for cycle_index in range(total_training_cycle):
     assert FLAGS.epochs_between_evals == 1 or not mlperf_helper.LOGGER.enabled
-    tf.logging.info("Starting a training cycle: {}/{}".format(
+    logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.TRAIN_EPOCH,
@@ -143,13 +144,13 @@ def run_ncf(_):
     estimator.train(input_fn=train_input_fn, hooks=train_hooks,
                     steps=num_train_steps)
 
-    tf.logging.info("Beginning evaluation.")
+    logging.info("Beginning evaluation.")
     eval_input_fn = producer.make_input_fn(is_training=False)
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.EVAL_START,
                             value=cycle_index)
     eval_results = estimator.evaluate(eval_input_fn, steps=num_eval_steps)
-    tf.logging.info("Evaluation complete.")
+    logging.info("Evaluation complete.")
 
     hr = float(eval_results[rconst.HR_KEY])
     ndcg = float(eval_results[rconst.NDCG_KEY])
@@ -169,7 +170,7 @@ def run_ncf(_):
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)
     # Log the HR and NDCG results.
-    tf.logging.info(
+    logging.info(
         "Iteration {}: HR = {:.4f}, NDCG = {:.4f}, Loss = {:.4f}".format(
             cycle_index + 1, hr, ndcg, loss))
 
@@ -189,6 +190,6 @@ def run_ncf(_):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   ncf_common.define_ncf_flags()
   absl_app.run(main)
