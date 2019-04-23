@@ -4,8 +4,8 @@
 
 To illustrate detector usage, please download the Oxford buildings dataset, by
 following the instructions
-[here](delf/EXTRACTION_MATCHING.md#download-oxford-buildings-dataset). Then,
-create the file `list_images_detector.txt` as follows:
+[here](EXTRACTION_MATCHING.md#download-oxford-buildings-dataset). Then, create
+the file `list_images_detector.txt` as follows:
 
 ```bash
 # From tensorflow/models/research/delf/delf/python/examples/
