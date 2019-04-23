@@ -49,7 +49,9 @@ Proc. CVPR'19
 We have two Google-Landmarks dataset versions:
 
 -   Initial version (v1) can be found
-    [here](https://www.kaggle.com/google/google-landmarks-dataset)
+    [here](https://www.kaggle.com/google/google-landmarks-dataset). In includes
+    the Google Landmark Boxes which were described in the Detect-to-Retrieve
+    paper.
 -   Second version (v2) has been released as part of two Kaggle challenges:
     [Landmark Recognition](https://www.kaggle.com/c/landmark-recognition-2019)
     and [Landmark Retrieval](https://www.kaggle.com/c/landmark-retrieval-2019).
