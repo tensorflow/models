@@ -41,13 +41,26 @@ First make sure you've [added the models folder to your Python path](/official/#
 Then download and extract the CIFAR-10 data from Alex's website, specifying the location with the `--data_dir` flag. Run the following:
 
 ```bash
-python cifar10_download_and_extract.py
-# Then to train the model, run the following:
-python cifar10_main.py
+python cifar10_download_and_extract.py --data_dir <DATA_DIR>
+```
 
+Then to train the model, run the following:
+
+```bash
+python cifar10_main.py --data_dir <DATA_DIR>/cifar-10-batches-bin --model_dir <MODEL_DIR>
 ```
 
 Use `--data_dir` to specify the location of the CIFAR-10 data used in the previous step. There are more flag options as described in `cifar10_main.py`.
+
+To export a `SavedModel` from the trained checkpoint, run the following:
+
+```bash
+python cifar10_main.py --data_dir <DATA_DIR>/cifar-10-batches-bin --model_dir <MODEL_DIR> --eval_only --export_dir <EXPORT_DIR>
+```
+
+Note the `<EXPORT_DIR>` must be present. You might want to run `mkdir <EXPORT_DIR>` beforehand.
+
+The `SavedModel` can then be [loaded](https://www.tensorflow.org/guide/saved_model#loading_a_savedmodel_in_python) in order to use the ResNet for prediction.
 
 
 ## ImageNet
