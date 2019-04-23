@@ -39,8 +39,8 @@ from google.protobuf import text_format
 from tensorflow.python.platform import app
 from delf import delf_config_pb2
 from delf import feature_io
-from google3.third_party.tensorflow_models.delf.python.detect_to_retrieve import dataset
-from google3.third_party.tensorflow_models.delf.python.examples import extract_features
+from delf.detect_to_retrieve import dataset
+from delf import extract_features
 
 cmd_args = None
 

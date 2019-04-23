@@ -38,7 +38,7 @@ import tensorflow as tf
 
 from tensorflow.python.platform import app
 from delf import feature_io
-from google3.third_party.tensorflow_models.delf.python.detect_to_retrieve import dataset
+from delf.detect_to_retrieve import dataset
 
 cmd_args = None
 
