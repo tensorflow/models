@@ -28,6 +28,9 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import cifar10_main as cifar_main
 from official.utils.logs import hooks
 
+MIN_TOP_1_ACCURACY = 0.926
+MAX_TOP_1_ACCURACY = 0.938
+
 
 class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
   """Benchmarks and accuracy tests for Estimator ResNet56."""
@@ -128,7 +131,9 @@ class EstimatorCifar10BenchmarkTests(tf.test.Benchmark):
     eval_results = stats['eval_results']
     metrics = []
     metrics.append({'name': 'accuracy_top_1',
-                    'value': eval_results['accuracy'].item()})
+                    'value': eval_results['accuracy'].item(),
+                    'min_value': MIN_TOP_1_ACCURACY,
+                    'max_value': MAX_TOP_1_ACCURACY})
     metrics.append({'name': 'accuracy_top_5',
                     'value': eval_results['accuracy_top_5'].item()})
     if examples_per_sec_hook:
