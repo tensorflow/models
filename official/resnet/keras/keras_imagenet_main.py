@@ -124,7 +124,8 @@ def run(flags_obj):
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
-      num_workers=distribution_utils.configure_cluster())
+      num_workers=distribution_utils.configure_cluster(),
+      all_reduce_alg='nccl')
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
