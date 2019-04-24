@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-r"""Binary for trianing a RNN-based classifier for the Quick, Draw! data.
+r"""Binary for training a RNN-based classifier for the Quick, Draw! data.
 
 python train_model.py \
   --training_data train_data \
