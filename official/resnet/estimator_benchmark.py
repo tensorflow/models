@@ -193,7 +193,7 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.intra_op_parallelism_threads = 1
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_1_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_1_gpu_tweaked')
     FLAGS.batch_size = 256
     FLAGS.dtype = 'fp16'
     FLAGS.hooks = ['ExamplesPerSecondHook']
@@ -229,13 +229,13 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
-  def benchmark_graph_fp16_8_gpu_tuned(self):
+  def benchmark_graph_fp16_8_gpu_tweaked(self):
     self._setup()
 
     FLAGS.num_gpus = 8
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.intra_op_parallelism_threads = 1
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu_tweaked')
     FLAGS.batch_size = 256*8
     FLAGS.dtype = 'fp16'
     FLAGS.hooks = ['ExamplesPerSecondHook']
