@@ -181,7 +181,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
 
   if num_packs:
     flags.DEFINE_integer(
-        name="num_packs", default=None,
+        name="num_packs", default=1,
         help=help_wrap("Sets `num_packs` in the cross device ops used in "
                        "MirroredStrategy.  For details, see "
                        "tf.distribute.NcclAllReduce."))

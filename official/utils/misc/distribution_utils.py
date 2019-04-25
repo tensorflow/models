@@ -56,8 +56,7 @@ def _mirrored_cross_device_ops(all_reduce_alg, num_packs):
 
   Args:
     all_reduce_alg: a string specifying which cross device op to pick, or None.
-    num_packs: an integer specifying number of packs for the cross device op, or
-      None.  If None, we set `num_packs` to 1.
+    num_packs: an integer specifying number of packs for the cross device op.
 
   Returns:
     tf.distribute.CrossDeviceOps object or None.
@@ -77,15 +76,14 @@ def _mirrored_cross_device_ops(all_reduce_alg, num_packs):
         "['nccl', 'hierarchical_copy'].  Supplied value: {}".format(
             all_reduce_alg))
   cross_device_ops_class = mirrored_all_reduce_options[all_reduce_alg]
-  real_num_packs = num_packs if num_packs is not None else 1
-  return cross_device_ops_class(num_packs=real_num_packs)
+  return cross_device_ops_class(num_packs=num_packs)
 
 
 def get_distribution_strategy(distribution_strategy="default",
                               num_gpus=0,
                               num_workers=1,
                               all_reduce_alg=None,
-                              num_packs=None):
+                              num_packs=1):
   """Return a DistributionStrategy for running the model.
 
   Args:
