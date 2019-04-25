@@ -1,4 +1,4 @@
-model_path: "parameters/delf_gld_20190411/model/"
+model_path: "parameters/delf_gld_20190411/model"
 image_scales: .25
 image_scales: .3536
 image_scales: .5
@@ -19,7 +19,7 @@ delf_local_config {
   pca_parameters {
     mean_path: "parameters/delf_gld_20190411/pca/mean.datum"
     projection_matrix_path: "parameters/delf_gld_20190411/pca/pca_proj_mat.datum"
-    pca_dim: 40
+    pca_dim: 128
     use_whitening: false
   }
 }

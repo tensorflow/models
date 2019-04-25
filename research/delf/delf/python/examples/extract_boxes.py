@@ -27,6 +27,9 @@ import os
 import sys
 import time
 
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.platform import app
@@ -34,8 +37,12 @@ from delf import box_io
 
 cmd_args = None
 
-# Extension of feature files.
+# Extension/suffix of produced files.
 _BOX_EXT = '.boxes'
+_VIZ_SUFFIX = '_viz.jpg'
+
+# Used for plotting boxes.
+_BOX_EDGE_COLORS = ['r', 'y', 'b', 'm', 'k', 'g', 'c', 'w']
 
 # Pace to report extraction log.
 _STATUS_CHECK_ITERATIONS = 100
@@ -56,43 +63,107 @@ def _ReadImageList(list_path):
   return image_paths
 
 
-def _MakeDetector(sess, model_dir):
+def MakeDetector(sess, model_dir, import_scope=None):
   """Creates a function to detect objects in an image.
 
   Args:
     sess: TensorFlow session to use.
     model_dir: Directory where SavedModel is located.
+    import_scope: Optional scope to use for model.
 
   Returns:
     Function that receives an image and returns detection results.
   """
-  tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
-                             model_dir)
-  input_images = sess.graph.get_tensor_by_name('input_images:0')
-  input_detection_thresh = sess.graph.get_tensor_by_name(
-      'input_detection_thresh:0')
-  boxes = sess.graph.get_tensor_by_name('detection_boxes:0')
-  scores = sess.graph.get_tensor_by_name('detection_scores:0')
-  class_indices = sess.graph.get_tensor_by_name('detection_classes:0')
+  tf.saved_model.loader.load(
+      sess, [tf.saved_model.tag_constants.SERVING],
+      model_dir,
+      import_scope=import_scope)
+  import_scope_prefix = import_scope + '/' if import_scope is not None else ''
+  input_images = sess.graph.get_tensor_by_name('%sinput_images:0' %
+                                               import_scope_prefix)
+  boxes = sess.graph.get_tensor_by_name('%sdetection_boxes:0' %
+                                        import_scope_prefix)
+  scores = sess.graph.get_tensor_by_name('%sdetection_scores:0' %
+                                         import_scope_prefix)
+  class_indices = sess.graph.get_tensor_by_name('%sdetection_classes:0' %
+                                                import_scope_prefix)
 
-  def DetectorFn(images, threshold):
+  def DetectorFn(images):
     """Receives an image and returns detected boxes.
 
     Args:
       images: Uint8 array with shape (batch, height, width 3) containing a batch
         of RGB images.
-      threshold: Detector threshold (float).
 
     Returns:
       Tuple (boxes, scores, class_indices).
     """
     return sess.run([boxes, scores, class_indices],
-                    feed_dict={
-                        input_images: images,
-                        input_detection_thresh: threshold,
-                    })
+                    feed_dict={input_images: images})
 
   return DetectorFn
+
+
+def _FilterBoxesByScore(boxes, scores, class_indices, score_threshold):
+  """Filter boxes based on detection scores.
+
+  Boxes with detection score >= score_threshold are returned.
+
+  Args:
+    boxes: [N, 4] float array denoting bounding box coordinates, in format [top,
+      left, bottom, right].
+    scores: [N] float array with detection scores.
+    class_indices: [N] int array with class indices.
+    score_threshold: Float detection score threshold to use.
+
+  Returns:
+    selected_boxes: selected `boxes`.
+    selected_scores: selected `scores`.
+    selected_class_indices: selected `class_indices`.
+  """
+  selected_boxes = []
+  selected_scores = []
+  selected_class_indices = []
+  for i, box in enumerate(boxes):
+    if scores[i] >= score_threshold:
+      selected_boxes.append(box)
+      selected_scores.append(scores[i])
+      selected_class_indices.append(class_indices[i])
+
+  return np.array(selected_boxes), np.array(selected_scores), np.array(
+      selected_class_indices)
+
+
+def _PlotBoxesAndSaveImage(image, boxes, output_path):
+  """Plot boxes on image and save to output path.
+
+  Args:
+    image: Numpy array containing image.
+    boxes: [N, 4] float array denoting bounding box coordinates, in format [top,
+      left, bottom, right].
+    output_path: String containing output path.
+  """
+  height = image.shape[0]
+  width = image.shape[1]
+
+  fig, ax = plt.subplots(1)
+  ax.imshow(image)
+  for i, box in enumerate(boxes):
+    scaled_box = [
+        box[0] * height, box[1] * width, box[2] * height, box[3] * width
+    ]
+    rect = patches.Rectangle([scaled_box[1], scaled_box[0]],
+                             scaled_box[3] - scaled_box[1],
+                             scaled_box[2] - scaled_box[0],
+                             linewidth=3,
+                             edgecolor=_BOX_EDGE_COLORS[i %
+                                                        len(_BOX_EDGE_COLORS)],
+                             facecolor='none')
+    ax.add_patch(rect)
+
+  ax.axis('off')
+  plt.savefig(output_path, bbox_inches='tight')
+  plt.close(fig)
 
 
 def main(argv):
@@ -107,9 +178,11 @@ def main(argv):
   num_images = len(image_paths)
   tf.logging.info('done! Found %d images', num_images)
 
-  # Create output directory if necessary.
+  # Create output directories if necessary.
   if not os.path.exists(cmd_args.output_dir):
     os.makedirs(cmd_args.output_dir)
+  if cmd_args.output_viz_dir and not os.path.exists(cmd_args.output_viz_dir):
+    os.makedirs(cmd_args.output_viz_dir)
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
@@ -124,7 +197,7 @@ def main(argv):
       init_op = tf.global_variables_initializer()
       sess.run(init_op)
 
-      detector_fn = _MakeDetector(sess, cmd_args.detector_path)
+      detector_fn = MakeDetector(sess, cmd_args.detector_path)
 
       # Start input enqueue threads.
       coord = tf.train.Coordinator()
@@ -154,12 +227,21 @@ def main(argv):
           tf.logging.info('Skipping %s', image_path)
           continue
 
-        # Extract and save features.
-        (boxes_out, scores_out,
-         class_indices_out) = detector_fn(im, cmd_args.detector_thresh)
+        # Extract and save boxes.
+        (boxes_out, scores_out, class_indices_out) = detector_fn(im)
+        (selected_boxes, selected_scores,
+         selected_class_indices) = _FilterBoxesByScore(boxes_out[0],
+                                                       scores_out[0],
+                                                       class_indices_out[0],
+                                                       cmd_args.detector_thresh)
 
-        box_io.WriteToFile(out_boxes_fullpath, boxes_out[0], scores_out[0],
-                           class_indices_out[0])
+        box_io.WriteToFile(out_boxes_fullpath, selected_boxes, selected_scores,
+                           selected_class_indices)
+        if cmd_args.output_viz_dir:
+          out_viz_filename = base_boxes_filename + _VIZ_SUFFIX
+          out_viz_fullpath = os.path.join(cmd_args.output_viz_dir,
+                                          out_viz_filename)
+          _PlotBoxesAndSaveImage(im[0], selected_boxes, out_viz_fullpath)
 
       # Finalize enqueue threads.
       coord.request_stop()
@@ -199,6 +281,15 @@ if __name__ == '__main__':
       Directory where bounding boxes will be written to. Each image's boxes
       will be written to a file with same name, and extension replaced by
       .boxes.
+      """)
+  parser.add_argument(
+      '--output_viz_dir',
+      type=str,
+      default='',
+      help="""
+      Optional. If set, a visualization of the detected boxes overlaid on the
+      image is produced, and saved to this directory. Each image is saved with
+      _viz.jpg suffix.
       """)
   cmd_args, unparsed = parser.parse_known_args()
   app.run(main=main, argv=[sys.argv[0]] + unparsed)
