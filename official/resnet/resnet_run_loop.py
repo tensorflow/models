@@ -526,7 +526,7 @@ def resnet_main(
       This is only used if flags_obj.export_dir is passed.
 
   Returns:
-    Dict of results of the run.
+    Dict of results of the run. eval_results and train_hooks.
   """
 
   model_helpers.apply_clean(flags.FLAGS)

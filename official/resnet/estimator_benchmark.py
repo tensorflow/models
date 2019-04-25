@@ -141,6 +141,7 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
     FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.dtype = 'fp32'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_8_gpu(self):
@@ -153,6 +154,7 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
     FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu')
     FLAGS.dtype = 'fp16'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
   def _run_and_report_benchmark(self):
