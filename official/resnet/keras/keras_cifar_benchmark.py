@@ -92,6 +92,19 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     self._run_and_report_benchmark()
 
+  def benchmark_2_gpu_no_cloning(self):
+    """Test keras based model with eager, distributed no-cloning."""
+    self._setup()
+    FLAGS.num_gpus = 2
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 128
+    FLAGS.train_epochs = 182
+    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_no_cloning')
+    FLAGS.dtype = 'fp32'
+    FLAGS.cloning = False
+    FLAGS.enable_eager = True
+    self._run_and_report_benchmark()
+
   def benchmark_graph_2_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
@@ -180,6 +193,16 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_cloning(self):
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_cloning')
+    FLAGS.batch_size = 128
+    FLAGS.cloning = False
+    self._run_and_report_benchmark()
+
   def benchmark_graph_1_gpu(self):
     self._setup()
     FLAGS.num_gpus = 1
@@ -196,6 +219,16 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu')
     FLAGS.batch_size = 128 * 2  # 2 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_2_gpu_no_cloning(self):
+    self._setup()
+    FLAGS.num_gpus = 2
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_no_cloning')
+    FLAGS.batch_size = 128 * 2  # 2 GPUs
+    FLAGS.cloning = False
     self._run_and_report_benchmark()
 
   def benchmark_graph_2_gpu(self):

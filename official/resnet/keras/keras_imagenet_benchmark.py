@@ -80,6 +80,21 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_no_cloning(self):
+    """Test Keras model with eager, dist_strat, 8 GPUs and no-cloning."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 128 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_no_cloning')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    FLAGS.cloning = False
+    # Add some thread tunings to improve performance.
+    FLAGS.datasets_num_private_threads = 14
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu_fp16(self):
     """Test Keras model with eager, dist_strat, 8 GPUs, and fp16."""
     self._setup()
@@ -199,6 +214,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_cloning(self):
+    """Test Keras model with 1 GPU and no-cloning."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_cloning')
+    FLAGS.batch_size = 128
+    FLAGS.cloning = False
     self._run_and_report_benchmark()
 
   def benchmark_xla_1_gpu(self):
@@ -353,6 +380,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_no_cloning(self):
+    """Test Keras model with 8 GPUs and no-cloning."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_no_cloning')
+    FLAGS.cloning = False
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
