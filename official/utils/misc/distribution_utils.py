@@ -49,11 +49,11 @@ def get_distribution_strategy(distribution_strategy="default",
 
   Args:
     distribution_strategy: a string specifying which distribution strategy to
-    use.  Accepted values are 'off', 'default', 'one_device', 'mirrored',
-    'parameter_server', 'multi_worker_mirrored', case insensitive. 'off' means
-    not to use Distribution Strategy; 'default' means to choose from
-    `MirroredStrategy`, `MultiWorkerMirroredStrategy`, or `OneDeviceStrategy`
-    according to the number of GPUs and number of workers.
+      use. Accepted values are 'off', 'default', 'one_device', 'mirrored',
+      'parameter_server', 'multi_worker_mirrored', case insensitive. 'off' means
+      not to use Distribution Strategy; 'default' means to choose from
+      `MirroredStrategy`, `MultiWorkerMirroredStrategy`, or `OneDeviceStrategy`
+      according to the number of GPUs and number of workers.
     num_gpus: Number of GPUs to run this model.
     num_workers: Number of workers to run this model.
     all_reduce_alg: Optional. Specifies which algorithm to use when performing
@@ -83,7 +83,7 @@ def get_distribution_strategy(distribution_strategy="default",
     if all_reduce_alg not in _COLLECTIVE_COMMUNICATION_OPTIONS:
       raise ValueError(
           "When used with `multi_worker_mirrored`, valid values for "
-          "all_reduce_alg are [\"ring\", \"nccl\"].  Supplied value: {}".format(
+          "all_reduce_alg are ['ring', 'nccl'].  Supplied value: {}".format(
               all_reduce_alg))
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=_COLLECTIVE_COMMUNICATION_OPTIONS[all_reduce_alg])
@@ -107,7 +107,7 @@ def get_distribution_strategy(distribution_strategy="default",
     if all_reduce_alg not in _MIRRORED_ALL_REDUCE_OPTIONS:
       raise ValueError(
           "When used with `mirrored`, valid values for all_reduce_alg are "
-          "[\"nccl\", \"hierarchical_copy\"].  Supplied value: {}".format(
+          "['nccl', 'hierarchical_copy'].  Supplied value: {}".format(
               all_reduce_alg))
     return tf.distribute.MirroredStrategy(
         devices=devices,
