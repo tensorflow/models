@@ -550,7 +550,8 @@ def resnet_main(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_core.get_num_gpus(flags_obj),
       num_workers=num_workers,
-      all_reduce_alg=flags_obj.all_reduce_alg)
+      all_reduce_alg=flags_obj.all_reduce_alg,
+      num_packs=flags_obj.num_packs)
 
   # Creates a `RunConfig` that checkpoints every 24 hours which essentially
   # results in checkpoints determined only by `epochs_between_evals`.

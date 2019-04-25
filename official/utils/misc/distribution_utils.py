@@ -30,21 +30,18 @@ _COLLECTIVE_COMMUNICATION_OPTIONS = {
     "nccl": tf.distribute.experimental.CollectiveCommunication.NCCL
 }
 
-_MIRRORED_ALL_REDUCE_NUM_PACKS = 2
-
 _MIRRORED_ALL_REDUCE_OPTIONS = {
     None: None,
-    "nccl": tf.distribute.NcclAllReduce(
-        num_packs=_MIRRORED_ALL_REDUCE_NUM_PACKS),
-    "hierarchical_copy": tf.distribute.HierarchicalCopyAllReduce(
-        num_packs=_MIRRORED_ALL_REDUCE_NUM_PACKS)
+    "nccl": tf.distribute.NcclAllReduce,
+    "hierarchical_copy": tf.distribute.HierarchicalCopyAllReduce
 }
 
 
 def get_distribution_strategy(distribution_strategy="default",
                               num_gpus=0,
                               num_workers=1,
-                              all_reduce_alg=None):
+                              all_reduce_alg=None,
+                              num_packs=None):
   """Return a DistributionStrategy for running the model.
 
   Args:
@@ -61,6 +58,8 @@ def get_distribution_strategy(distribution_strategy="default",
       "hierarchical_copy". For `MultiWorkerMirroredStrategy`, valid values are
       "ring" and "nccl".  If None, DistributionStrategy will choose based on
       device topology.
+    num_packs: Optional.  Sets the `num_packs` in `tf.distribute.NcclAllReduce`
+      or `tf.distribute.HierarchicalCopyAllReduce` for `MirroredStrategy`.
 
   Returns:
     tf.distribute.DistibutionStrategy object.
@@ -111,7 +110,8 @@ def get_distribution_strategy(distribution_strategy="default",
               all_reduce_alg))
     return tf.distribute.MirroredStrategy(
         devices=devices,
-        cross_device_ops=_MIRRORED_ALL_REDUCE_OPTIONS[all_reduce_alg])
+        cross_device_ops=_MIRRORED_ALL_REDUCE_OPTIONS[all_reduce_alg](
+            num_packs=num_packs if num_packs is not None else 1))
 
   if distribution_strategy == "parameter_server":
     return tf.distribute.experimental.ParameterServerStrategy()
