@@ -50,6 +50,7 @@ class EstimatorBenchmark(tf.test.Benchmark):
     self.flag_methods = flag_methods or {}
 
   def _get_model_dir(self, folder_name):
+    """Returns directory to store info, e.g. saved model and event log."""
     return os.path.join(self.output_dir, folder_name)
 
   def _setup(self):
@@ -112,10 +113,10 @@ class EstimatorBenchmark(tf.test.Benchmark):
 
 
 class Resnet50EstimatorAccuracy(EstimatorBenchmark):
-  """Benchmark accuracy tests for ResNet50 in Keras."""
+  """Benchmark accuracy tests for ResNet50 w/ Estimator."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    """A benchmark class.
+    """Benchmark accuracy tests for ResNet50 w/ Estimator.
 
     Args:
       output_dir: directory where to output e.g. log files
@@ -131,15 +132,27 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
         output_dir=output_dir, flag_methods=flag_methods)
 
   def benchmark_graph_8_gpu(self):
-    """Test Keras model with Keras fit/dist_strat and 8 GPUs."""
+    """Test 8 GPUs graph mode."""
     self._setup()
-    FLAGS.num_gpus = 1
+    FLAGS.num_gpus = 8
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 32
-    FLAGS.max_train_steps = 110
-    FLAGS.train_epochs = 1
+    FLAGS.batch_size = 128 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.dtype = 'fp32'
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_fp16_8_gpu(self):
+    """Test FP16 8 GPUs graph mode."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 128 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu')
+    FLAGS.dtype = 'fp16'
     self._run_and_report_benchmark()
 
   def _run_and_report_benchmark(self):
@@ -225,7 +238,7 @@ class Resnet50EstimatorBenchmarkReal(Resnet50EstimatorBenchmark):
 
 
 class Resnet56EstimatorAccuracy(EstimatorBenchmark):
-  """Benchmarks and accuracy tests for Estimator ResNet56."""
+  """Accuracy tests for Estimator ResNet56."""
 
   local_flags = None
 
@@ -251,7 +264,7 @@ class Resnet56EstimatorAccuracy(EstimatorBenchmark):
     flags.FLAGS.num_gpus = 1
     flags.FLAGS.data_dir = self.data_dir
     flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 1
+    flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
