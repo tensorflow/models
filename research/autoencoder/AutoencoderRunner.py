@@ -43,3 +43,21 @@ mse_loss = tf.keras.losses.MeanSquaredError()
 loss_metric = tf.keras.metrics.Mean()
 
 autoencoder = Autoencoder([200, 394, 784])
+
+# Iterate over epochs.
+for epoch in range(10):
+    print(f'Epoch {epoch+1}')
+
+  # Iterate over the batches of the dataset.
+    for step, x_batch in enumerate(train_data):
+        with tf.GradientTape() as tape:
+          recon = autoencoder(x_batch)
+          loss = mse_loss(x_batch, recon)
+
+        grads = tape.gradient(loss, autoencoder.trainable_variables)
+        optimizer.apply_gradients(zip(grads, autoencoder.trainable_variables))
+
+        loss_metric(loss)
+
+        if step % 100 == 0:
+          print(f'Step {step}: mean loss = {loss_metric.result()}')
