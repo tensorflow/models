@@ -24,7 +24,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.delf.protos import box_pb2
+from delf import box_pb2
 
 
 def ArraysToBoxes(boxes, scores, class_indices):
