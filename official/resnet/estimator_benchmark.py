@@ -177,12 +177,34 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
         default_flags=default_flags,
         flag_methods=flag_methods)
 
+  def benchmark_graph_fp16_1_gpu(self):
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_1_gpu')
+    FLAGS.batch_size = 128
+    FLAGS.dtype = 'fp16'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_fp16_1_gpu_tweaked(self):
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.intra_op_parallelism_threads = 1
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_1_gpu')
+    FLAGS.batch_size = 256
+    FLAGS.dtype = 'fp16'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
   def benchmark_graph_1_gpu(self):
     self._setup()
 
     FLAGS.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
-    FLAGS.batch_size = 32
+    FLAGS.batch_size = 128
     FLAGS.dtype = 'fp32'
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
@@ -191,10 +213,31 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.batch_size = 128*8
     FLAGS.dtype = 'fp32'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_fp16_8_gpu(self):
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu')
+    FLAGS.batch_size = 256*8
+    FLAGS.dtype = 'fp16'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_fp16_8_gpu_tuned(self):
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.intra_op_parallelism_threads = 1
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu')
+    FLAGS.batch_size = 256*8
+    FLAGS.dtype = 'fp16'
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
