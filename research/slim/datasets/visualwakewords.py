@@ -45,16 +45,15 @@ _SPLITS_TO_SIZES = {
 
 _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying height and width.',
-    'label': 'The label id of the image, integer between 0 and 999',
-    'label_text': 'The text of the label.',
+    'label': 'The label id of the image, an integer in {0, 1}',
     'object/bbox': 'A list of bounding boxes.',
-    'object/label': 'A list of labels, one per each object.',
+    'object/label': 'A list of labels, all objects belong to the same class.',
 }
 
 _NUM_CLASSES = 2
 
 # labels file
-LABELS_FILENAME = 'visualwakewords_labels.txt'
+LABELS_FILENAME = 'labels.txt'
 
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
@@ -92,8 +91,6 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
           tf.FixedLenFeature((), tf.string, default_value='jpeg'),
       'image/class/label':
           tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
-      'image/class/text':
-          tf.FixedLenFeature([], dtype=tf.string, default_value=''),
       'image/object/bbox/xmin':
           tf.VarLenFeature(dtype=tf.float32),
       'image/object/bbox/ymin':
@@ -111,8 +108,6 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
           slim.tfexample_decoder.Image('image/encoded', 'image/format'),
       'label':
           slim.tfexample_decoder.Tensor('image/class/label'),
-      'label_text':
-          slim.tfexample_decoder.Tensor('image/class/text'),
       'object/bbox':
           slim.tfexample_decoder.BoundingBox(['ymin', 'xmin', 'ymax', 'xmax'],
                                              'image/object/bbox/'),

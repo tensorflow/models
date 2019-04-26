@@ -52,6 +52,9 @@ For classification models, you need the image/encoded and image/class/label.
 Please note that this tool creates sharded output files.
 
 Example usage:
+Add folder tensorflow/models/research/slim to your PYTHONPATH,
+and from this folder, run the following commands:
+
     bash download_mscoco.sh path-to-mscoco-dataset
     TRAIN_IMAGE_DIR="path-to-mscoco-dataset/train2014"
     VAL_IMAGE_DIR="path-to-mscoco-dataset/val2014"
@@ -59,7 +62,7 @@ Example usage:
     TRAIN_ANNOTATIONS_FILE="path-to-mscoco-dataset/annotations/instances_train2014.json"
     VAL_ANNOTATIONS_FILE="path-to-mscoco-dataset/annotations/instances_val2014.json"
 
-    python build_visualwakewords_data.py --logtostderr \
+    python datasets/build_visualwakewords_data.py --logtostderr \
       --train_image_dir="${TRAIN_IMAGE_DIR}" \
       --val_image_dir="${VAL_IMAGE_DIR}" \
       --train_annotations_file="${TRAIN_ANNOTATIONS_FILE}" \
@@ -110,7 +113,7 @@ def main(unused_argv):
   visualwakewords_annotations_val = os.path.join(
       FLAGS.output_dir, 'instances_visualwakewords_val2014.json')
   visualwakewords_labels_filename = os.path.join(FLAGS.output_dir,
-                                                 'visualwakewords_labels.txt')
+                                                 'labels.txt')
   small_object_area_threshold = FLAGS.small_object_area_threshold
   foreground_class_of_interest = FLAGS.foreground_class_of_interest
   # Create the Visual WakeWords annotations from COCO annotations

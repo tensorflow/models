@@ -237,7 +237,7 @@ def create_tf_record_for_visualwakewords_dataset(annotations_file, image_dir,
         tf.logging.info('On image %d of %d', idx, len(images))
       annotations_list = annotations_index[image['id']]
       _, tf_example, num_annotations_skipped = _create_tf_example(
-          image, annotations_list[0], image_dir, category_index)
+          image, annotations_list[0], image_dir)
       total_num_annotations_skipped += num_annotations_skipped
       shard_idx = idx % num_shards
       output_tfrecords[shard_idx].write(tf_example.SerializeToString())
@@ -245,7 +245,7 @@ def create_tf_record_for_visualwakewords_dataset(annotations_file, image_dir,
                     total_num_annotations_skipped)
 
 
-def _create_tf_example(image, annotations_list, image_dir, category_index):
+def _create_tf_example(image, annotations_list, image_dir):
   """Converts image and annotations to a tf.Example proto.
 
   Args:
@@ -260,8 +260,6 @@ def _create_tf_example(image, annotations_list, image_dir, category_index):
         that can be used by the Tensorflow Object Detection API (which is [ymin,
         xmin, ymax, xmax] with coordinates normalized relative to image size).
     image_dir: directory containing the image files.
-    category_index: a dict containing COCO category information keyed by the
-      'id' field of the binary classifier category.
 
   Returns:
     example: The converted tf.Example
@@ -286,7 +284,6 @@ def _create_tf_example(image, annotations_list, image_dir, category_index):
   xmax = []
   ymin = []
   ymax = []
-  category_names = []
   category_ids = []
   area = []
   num_annotations_skipped = 0
@@ -305,7 +302,6 @@ def _create_tf_example(image, annotations_list, image_dir, category_index):
     ymax.append(float(y + height) / image_height)
     category_id = int(object_annotations['category_id'])
     category_ids.append(category_id)
-    category_names.append(category_index[category_id]['name'].encode('utf8'))
     area.append(object_annotations['area'])
 
   feature_dict = {
@@ -325,8 +321,6 @@ def _create_tf_example(image, annotations_list, image_dir, category_index):
           dataset_utils.bytes_feature('jpeg'.encode('utf8')),
       'image/class/label':
           dataset_utils.int64_feature(label),
-      'image/class/text':
-          dataset_utils.bytes_list_feature(category_names),
       'image/object/bbox/xmin':
           dataset_utils.float_list_feature(xmin),
       'image/object/bbox/xmax':
