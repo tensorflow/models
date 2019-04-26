@@ -314,9 +314,11 @@ def define_ncf_flags():
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
 
   flags.DEFINE_bool(
-      name="clone_model_in_keras_dist_strat", default=True, help=flags_core.help_wrap(
+      name="clone_model_in_keras_dist_strat",
+      default=True,
+      help=flags_core.help_wrap(
           'If False, then the experimental code path is used that doesn\'t '
-          'clone models for distribution.'))
+          "clone models for distribution."))
 
 
 def convert_to_softmax_logits(logits):
