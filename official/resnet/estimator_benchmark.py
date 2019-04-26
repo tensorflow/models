@@ -28,17 +28,17 @@ from official.resnet import cifar10_main as cifar_main
 from official.resnet import imagenet_main
 from official.utils.logs import hooks
 
-IMAGENET_RESNET50_MIN_TOP_1_ACCURACY = 0.762
-IMAGENET_RESNET50_MAX_TOP_1_ACCURACY = 0.766
-CIFAR10_RESNET56_MIN_TOP_1_ACCURACY = 0.926
-CIFAR10_RESNET56_MAX_TOP_1_ACCURACY = 0.938
 IMAGENET_DATA_DIR_NAME = 'imagenet'
 CIFAR_DATA_DIR_NAME = 'cifar-10-batches-bin'
 FLAGS = flags.FLAGS
 
 
 class EstimatorBenchmark(tf.test.Benchmark):
-  """Base benchmark class for estimator based benchmarks."""
+  """Base class to hold methods common to test classes in the module.
+
+     Code under test for Estimator models (ResNet50 and 56) report mostly the
+     same data and require the same FLAG setup.
+  """
 
   local_flags = None
 
@@ -149,7 +149,7 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128 * 8
+    FLAGS.batch_size = 256 * 8
     FLAGS.train_epochs = 90
     FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu')
@@ -163,8 +163,8 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
     wall_time_sec = time.time() - start_time_sec
     self._report_benchmark(stats,
                            wall_time_sec,
-                           top_1_min=IMAGENET_RESNET50_MIN_TOP_1_ACCURACY,
-                           top_1_max=IMAGENET_RESNET50_MAX_TOP_1_ACCURACY)
+                           top_1_min=0.762,
+                           top_1_max=0.766)
 
 
 class Resnet50EstimatorBenchmark(EstimatorBenchmark):
@@ -376,5 +376,5 @@ class Resnet56EstimatorAccuracy(EstimatorBenchmark):
 
     self._report_benchmark(stats,
                            wall_time_sec,
-                           top_1_min=CIFAR10_RESNET56_MIN_TOP_1_ACCURACY,
-                           top_1_max=CIFAR10_RESNET56_MAX_TOP_1_ACCURACY)
+                           top_1_min=0.926,
+                           top_1_max=0.938)
