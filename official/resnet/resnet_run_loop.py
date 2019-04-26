@@ -525,8 +525,9 @@ def resnet_main(
     shape: list of ints representing the shape of the images used for training.
       This is only used if flags_obj.export_dir is passed.
 
-  Returns:
-    Dict of results of the run.
+  Dict of results of the run.  Contains the keys `eval_results` and
+    `train_hooks`. `eval_results` contains accuracy (top_1) and accuracy_top_5.
+    `train_hooks` is a list the instances of hooks used during training.
   """
 
   model_helpers.apply_clean(flags.FLAGS)
