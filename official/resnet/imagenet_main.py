@@ -362,7 +362,10 @@ def run_imagenet(flags_obj):
     flags_obj: An object containing parsed flag values.
 
   Returns:
-    Dict of results of the run. eval_results and train_hooks.
+    Dict of results of the run.  Contains the keys `eval_results` and
+      `train_hooks`. `eval_results` contains accuracy (top_1) and
+      accuracy_top_5. `train_hooks` is a list the instances of hooks used during
+      training.
   """
   input_function = (flags_obj.use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
