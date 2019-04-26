@@ -96,6 +96,7 @@ Flowers|2500 | 2500 | 5 | Various sizes (source: Flickr)
 [Cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) | 60k| 10k | 10 |32x32 color
 [MNIST](http://yann.lecun.com/exdb/mnist/)| 60k | 10k | 10 | 28x28 gray
 [ImageNet](http://www.image-net.org/challenges/LSVRC/2012/)|1.2M| 50k | 1000 | Various sizes
+VisualWakeWords|82783 | 40504 | 2 | Various sizes (source: MS COCO)
 
 ## Downloading and converting to TFRecord format
 
@@ -135,6 +136,9 @@ However, for ImageNet, you have to follow the instructions
 [here](https://github.com/tensorflow/models/blob/master/research/inception/README.md#getting-started).
 Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and could use up to 500GB.
+For the visualwakewords dataset, you need to download the MSCOCO dataset [here](https://github.com/tensorflow/models/blob/master/research/slim/datasets/download_mscoco.sh)
+and build TFRecords with the following instructions
+[here](https://github.com/tensorflow/models/blob/master/research/slim/datasets/build_visualwakewords_data.py).
 
 
 ## Creating a TF-Slim Dataset Descriptor.
@@ -148,6 +152,7 @@ for
 [Cifar10](https://github.com/tensorflow/models/blob/master/research/slim/datasets/cifar10.py),
 [ImageNet](https://github.com/tensorflow/models/blob/master/research/slim/datasets/imagenet.py),
 [Flowers](https://github.com/tensorflow/models/blob/master/research/slim/datasets/flowers.py),
+[VisualWakeWords](https://github.com/tensorflow/models/blob/master/research/slim/datasets/visualwakewords.py),
 and
 [MNIST](https://github.com/tensorflow/models/blob/master/research/slim/datasets/mnist.py).
 An example of how to load data using a TF-Slim dataset descriptor using a
