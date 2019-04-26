@@ -240,7 +240,7 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
         samples[common.LABEL],
         num_classes,
         ignore_label,
-        loss_weight=model_options.label_weights,
+        loss_weight=1.0,
         upsample_logits=FLAGS.upsample_logits,
         hard_example_mining_step=FLAGS.hard_example_mining_step,
         top_k_percent_pixels=FLAGS.top_k_percent_pixels,
