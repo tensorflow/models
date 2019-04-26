@@ -101,11 +101,10 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
   if num_gpu:
     flags.DEFINE_integer(
         name="num_gpus", short_name="ng",
-        default=1 if tf.test.is_gpu_available() else 0,
+        default=1,
         help=help_wrap(
             "How many GPUs to use at each worker with the "
-            "DistributionStrategies API. The default is 1 if TensorFlow can "
-            "detect a GPU, and 0 otherwise."))
+            "DistributionStrategies API. The default is 1."))
 
   if hooks:
     # Construct a pretty summary of hooks.
