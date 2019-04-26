@@ -180,6 +180,7 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
         flag_methods=flag_methods)
 
   def benchmark_graph_fp16_1_gpu(self):
+    """Benchmarks graph fp16 1 gpu."""
     self._setup()
 
     FLAGS.num_gpus = 1
@@ -190,6 +191,7 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_1_gpu_tweaked(self):
+    """Benchmarks graph fp16 1 gpu tweaked."""
     self._setup()
 
     FLAGS.num_gpus = 1
@@ -202,6 +204,7 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_1_gpu(self):
+    """Benchmarks graph 1 gpu."""
     self._setup()
 
     FLAGS.num_gpus = 1
@@ -212,6 +215,7 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_8_gpu(self):
+    """Benchmarks graph 8 gpus."""
     self._setup()
 
     FLAGS.num_gpus = 8
@@ -222,6 +226,7 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_8_gpu(self):
+    """Benchmarks graph fp16 8 gpus."""
     self._setup()
 
     FLAGS.num_gpus = 8
@@ -232,6 +237,7 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_8_gpu_tweaked(self):
+    """Benchmarks graph fp16 8 gpus tweaked."""
     self._setup()
 
     FLAGS.num_gpus = 8
