@@ -24,27 +24,66 @@ import random
 import string
 import tensorflow as tf
 
-_COLLECTIVE_COMMUNICATION_OPTIONS = {
-    None: tf.distribute.experimental.CollectiveCommunication.AUTO,
-    "ring": tf.distribute.experimental.CollectiveCommunication.RING,
-    "nccl": tf.distribute.experimental.CollectiveCommunication.NCCL
-}
 
-_MIRRORED_ALL_REDUCE_NUM_PACKS = 2
+def _collective_communication(all_reduce_alg):
+  """Return a CollectiveCommunication based on all_reduce_alg.
 
-_MIRRORED_ALL_REDUCE_OPTIONS = {
-    None: None,
-    "nccl": tf.distribute.NcclAllReduce(
-        num_packs=_MIRRORED_ALL_REDUCE_NUM_PACKS),
-    "hierarchical_copy": tf.distribute.HierarchicalCopyAllReduce(
-        num_packs=_MIRRORED_ALL_REDUCE_NUM_PACKS)
-}
+  Args:
+    all_reduce_alg: a string specifying which collective communication to pick,
+      or None.
+
+  Returns:
+    tf.distribute.experimental.CollectiveCommunication object
+
+  Raises:
+    ValueError: if `all_reduce_alg` not in [None, 'ring', 'nccl']
+  """
+  collective_communication_options = {
+      None: tf.distribute.experimental.CollectiveCommunication.AUTO,
+      "ring": tf.distribute.experimental.CollectiveCommunication.RING,
+      "nccl": tf.distribute.experimental.CollectiveCommunication.NCCL
+  }
+  if all_reduce_alg not in collective_communication_options:
+    raise ValueError(
+        "When used with `multi_worker_mirrored`, valid values for "
+        "all_reduce_alg are ['ring', 'nccl'].  Supplied value: {}".format(
+            all_reduce_alg))
+  return collective_communication_options[all_reduce_alg]
+
+
+def _mirrored_cross_device_ops(all_reduce_alg, num_packs):
+  """Return a CrossDeviceOps based on all_reduce_alg and num_packs.
+
+  Args:
+    all_reduce_alg: a string specifying which cross device op to pick, or None.
+    num_packs: an integer specifying number of packs for the cross device op.
+
+  Returns:
+    tf.distribute.CrossDeviceOps object or None.
+
+  Raises:
+    ValueError: if `all_reduce_alg` not in [None, 'nccl', 'hierarchical_copy'].
+  """
+  if all_reduce_alg is None:
+    return None
+  mirrored_all_reduce_options = {
+      "nccl": tf.distribute.NcclAllReduce,
+      "hierarchical_copy": tf.distribute.HierarchicalCopyAllReduce
+  }
+  if all_reduce_alg not in mirrored_all_reduce_options:
+    raise ValueError(
+        "When used with `mirrored`, valid values for all_reduce_alg are "
+        "['nccl', 'hierarchical_copy'].  Supplied value: {}".format(
+            all_reduce_alg))
+  cross_device_ops_class = mirrored_all_reduce_options[all_reduce_alg]
+  return cross_device_ops_class(num_packs=num_packs)
 
 
 def get_distribution_strategy(distribution_strategy="default",
                               num_gpus=0,
                               num_workers=1,
-                              all_reduce_alg=None):
+                              all_reduce_alg=None,
+                              num_packs=1):
   """Return a DistributionStrategy for running the model.
 
   Args:
@@ -61,6 +100,8 @@ def get_distribution_strategy(distribution_strategy="default",
       "hierarchical_copy". For `MultiWorkerMirroredStrategy`, valid values are
       "ring" and "nccl".  If None, DistributionStrategy will choose based on
       device topology.
+    num_packs: Optional.  Sets the `num_packs` in `tf.distribute.NcclAllReduce`
+      or `tf.distribute.HierarchicalCopyAllReduce` for `MirroredStrategy`.
 
   Returns:
     tf.distribute.DistibutionStrategy object.
@@ -80,13 +121,8 @@ def get_distribution_strategy(distribution_strategy="default",
     return None
 
   if distribution_strategy == "multi_worker_mirrored" or num_workers > 1:
-    if all_reduce_alg not in _COLLECTIVE_COMMUNICATION_OPTIONS:
-      raise ValueError(
-          "When used with `multi_worker_mirrored`, valid values for "
-          "all_reduce_alg are ['ring', 'nccl'].  Supplied value: {}".format(
-              all_reduce_alg))
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(
-        communication=_COLLECTIVE_COMMUNICATION_OPTIONS[all_reduce_alg])
+        communication=_collective_communication(all_reduce_alg))
 
   if (distribution_strategy == "one_device" or
       (distribution_strategy == "default" and num_gpus <= 1)):
@@ -104,14 +140,9 @@ def get_distribution_strategy(distribution_strategy="default",
       devices = ["device:CPU:0"]
     else:
       devices = ["device:GPU:%d" % i for i in range(num_gpus)]
-    if all_reduce_alg not in _MIRRORED_ALL_REDUCE_OPTIONS:
-      raise ValueError(
-          "When used with `mirrored`, valid values for all_reduce_alg are "
-          "['nccl', 'hierarchical_copy'].  Supplied value: {}".format(
-              all_reduce_alg))
     return tf.distribute.MirroredStrategy(
         devices=devices,
-        cross_device_ops=_MIRRORED_ALL_REDUCE_OPTIONS[all_reduce_alg])
+        cross_device_ops=_mirrored_cross_device_ops(all_reduce_alg, num_packs))
 
   if distribution_strategy == "parameter_server":
     return tf.distribute.experimental.ParameterServerStrategy()
