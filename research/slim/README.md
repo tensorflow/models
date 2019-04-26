@@ -136,8 +136,7 @@ However, for ImageNet, you have to follow the instructions
 [here](https://github.com/tensorflow/models/blob/master/research/inception/README.md#getting-started).
 Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and could use up to 500GB.
-For the visualwakewords dataset, you need to download the MSCOCO dataset [here]
-(https://github.com/tensorflow/models/blob/master/research/slim/datasets/download_mscoco.sh)
+For the visualwakewords dataset, you need to download the MSCOCO dataset [here](https://github.com/tensorflow/models/blob/master/research/slim/datasets/download_mscoco.sh)
 and build TFRecords with the following instructions
 [here](https://github.com/tensorflow/models/blob/master/research/slim/datasets/build_visualwakewords_data.py).
 
