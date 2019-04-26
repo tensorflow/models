@@ -104,7 +104,8 @@ def parse_flags(flags_obj):
       "epsilon": flags_obj.epsilon,
       "match_mlperf": flags_obj.ml_perf,
       "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
-      "clone_model_in_keras_dist_strat": flags_obj.clone_model_in_keras_dist_strat,
+      "clone_model_in_keras_dist_strat":
+          flags_obj.clone_model_in_keras_dist_strat,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
   }
