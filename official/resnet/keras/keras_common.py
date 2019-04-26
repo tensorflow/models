@@ -291,7 +291,7 @@ def define_keras_flags():
       'help improve performance using EagerIterator and function. The codepath '
       'when enabling this feature is experimental and will be removed once the '
       'corresponding performance features are fully supported in TensorFlow.')
-  flags.DEFINE_boolean(name='cloning', default=True, help='If False, then the '
+  flags.DEFINE_boolean(name='clone_model_in_keras_dist_strat', default=True, help='If False, then the '
                        'experimental code path is used that doesn\'t clone '
                        'models for distribution.')
 

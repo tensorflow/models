@@ -115,7 +115,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
 
   def benchmark_1_gpu_no_cloning(self):
     self._setup()
-    FLAGS.cloning = False
+    FLAGS.clone_model_in_keras_dist_strat = False
     self._run_and_report_benchmark()
 
   def benchmark_2_gpus(self):
@@ -126,7 +126,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
   def benchmark_2_gpus_no_cloning(self):
     self._setup()
     FLAGS.num_gpus = 2
-    FLAGS.cloning = False
+    FLAGS.clone_model_in_keras_dist_strat = False
     self._run_and_report_benchmark()
 
 
@@ -168,7 +168,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
 
   def benchmark_1_gpu_no_cloning(self):
     self._setup()
-    FLAGS.cloning = False
+    FLAGS.clone_model_in_keras_dist_strat = False
     self._run_and_report_benchmark()
 
   def benchmark_2_gpus(self):
@@ -179,5 +179,5 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
   def benchmark_2_gpus_no_cloning(self):
     self._setup()
     FLAGS.num_gpus = 2
-    FLAGS.cloning = False
+    FLAGS.clone_model_in_keras_dist_strat = False
     self._run_and_report_benchmark()
