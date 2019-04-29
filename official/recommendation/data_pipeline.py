@@ -246,7 +246,7 @@ class DatasetManager(object):
     to the TPU through a StreamingFilesDataset.
 
     Args:
-      batch_size: The per-device batch size of the dataset.
+      batch_size: The per-replica batch size of the dataset.
       epochs_between_evals: How many epochs worth of data to yield.
         (Generator mode only.)
     """

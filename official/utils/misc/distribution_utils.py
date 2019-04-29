@@ -151,7 +151,7 @@ def get_distribution_strategy(distribution_strategy="default",
       "Unrecognized Distribution Strategy: %r" % distribution_strategy)
 
 
-def per_device_batch_size(batch_size, num_gpus):
+def per_replica_batch_size(batch_size, num_gpus):
   """For multi-gpu, batch-size must be a multiple of the number of GPUs.
 
 
