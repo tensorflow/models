@@ -564,7 +564,7 @@ def run_transformer(flags_obj):
       else params["default_batch_size"]))
 
   if not params["use_tpu"]:
-    params["batch_size"] = distribution_utils.per_device_batch_size(
+    params["batch_size"] = distribution_utils.per_replica_batch_size(
         params["batch_size"], num_gpus)
 
   schedule_manager = schedule.Manager(
