@@ -171,6 +171,7 @@ def expanded_conv(input_tensor,
                   project_activation_fn=tf.identity,
                   split_projection=1,
                   split_expansion=1,
+                  split_divisible_by=8,
                   expansion_transform=None,
                   depthwise_location='expansion',
                   depthwise_channel_multiplier=1,
@@ -202,6 +203,7 @@ def expanded_conv(input_tensor,
     split_expansion: how many ways to split expansion op
       (that is conv bottleneck->expansion) ops will keep depth divisible
       by this value.
+    split_divisible_by: make sure every split group is divisible by this number.
     expansion_transform: Optional function that takes expansion
       as a single input and returns output.
     depthwise_location: where to put depthwise covnvolutions supported
@@ -268,6 +270,7 @@ def expanded_conv(input_tensor,
           inner_size,
           num_ways=split_expansion,
           scope='expand',
+          divisible_by=split_divisible_by,
           stride=1,
           normalizer_fn=normalizer_fn)
       net = tf.identity(net, 'expansion_output')
@@ -292,6 +295,7 @@ def expanded_conv(input_tensor,
         num_ways=split_projection,
         stride=1,
         scope='project',
+        divisible_by=split_divisible_by,
         normalizer_fn=normalizer_fn,
         activation_fn=project_activation_fn)
     if endpoints is not None:

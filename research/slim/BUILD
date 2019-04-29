@@ -13,6 +13,7 @@ py_library(
     name = "dataset_utils",
     srcs = ["datasets/dataset_utils.py"],
     deps = [
+        "//third_party/py/six",
         # "//tensorflow",
     ],
 )
@@ -34,6 +35,7 @@ sh_binary(
 py_binary(
     name = "build_imagenet_data",
     srcs = ["datasets/build_imagenet_data.py"],
+    python_version = "PY2",
     deps = [
         # "//numpy",
         # "//tensorflow",
@@ -72,10 +74,36 @@ py_library(
 py_binary(
     name = "download_and_convert_data",
     srcs = ["download_and_convert_data.py"],
+    python_version = "PY2",
     deps = [
         ":download_and_convert_cifar10",
         ":download_and_convert_flowers",
         ":download_and_convert_mnist",
+        # "//tensorflow",
+    ],
+)
+
+sh_binary(
+    name = "download_mscoco",
+    srcs = ["datasets/download_mscoco.sh"],
+)
+
+py_binary(
+    name = "build_visualwakewords_data",
+    srcs = ["datasets/build_visualwakewords_data.py"],
+    deps = [
+        ":build_visualwakewords_data_lib",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "build_visualwakewords_data_lib",
+    srcs = ["datasets/build_visualwakewords_data_lib.py"],
+    deps = [
+        ":dataset_utils",
+        "//third_party/py/PIL:pil",
+        "//third_party/py/contextlib2",
         # "//tensorflow",
     ],
 )
@@ -117,6 +145,15 @@ py_library(
 )
 
 py_library(
+    name = "visualwakewords",
+    srcs = ["datasets/visualwakewords.py"],
+    deps = [
+        ":dataset_utils",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
     name = "dataset_factory",
     srcs = ["datasets/dataset_factory.py"],
     deps = [
@@ -124,6 +161,7 @@ py_library(
         ":flowers",
         ":imagenet",
         ":mnist",
+        ":visualwakewords",
     ],
 )
 
@@ -138,6 +176,7 @@ py_library(
 py_test(
     name = "model_deploy_test",
     srcs = ["deployment/model_deploy_test.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":model_deploy",
@@ -227,6 +266,7 @@ py_test(
     name = "alexnet_test",
     size = "medium",
     srcs = ["nets/alexnet_test.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":alexnet",
@@ -254,6 +294,7 @@ py_library(
 py_test(
     name = "cyclegan_test",
     srcs = ["nets/cyclegan_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -273,6 +314,7 @@ py_library(
 py_test(
     name = "dcgan_test",
     srcs = ["nets/dcgan_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -296,6 +338,7 @@ py_test(
     name = "i3d_test",
     size = "large",
     srcs = ["nets/i3d_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -388,6 +431,7 @@ py_test(
     name = "inception_v1_test",
     size = "large",
     srcs = ["nets/inception_v1_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -401,6 +445,7 @@ py_test(
     name = "inception_v2_test",
     size = "large",
     srcs = ["nets/inception_v2_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -414,6 +459,7 @@ py_test(
     name = "inception_v3_test",
     size = "large",
     srcs = ["nets/inception_v3_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -427,6 +473,7 @@ py_test(
     name = "inception_v4_test",
     size = "large",
     srcs = ["nets/inception_v4_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -439,6 +486,7 @@ py_test(
     name = "inception_resnet_v2_test",
     size = "large",
     srcs = ["nets/inception_resnet_v2_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -476,6 +524,7 @@ py_library(
 py_test(
     name = "mobilenet_v2_test",
     srcs = ["nets/mobilenet/mobilenet_v2_test.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":mobilenet",
@@ -495,6 +544,7 @@ py_test(
     name = "mobilenet_v1_test",
     size = "large",
     srcs = ["nets/mobilenet_v1_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -507,6 +557,7 @@ py_test(
 py_binary(
     name = "mobilenet_v1_train",
     srcs = ["nets/mobilenet_v1_train.py"],
+    python_version = "PY2",
     deps = [
         ":dataset_factory",
         ":mobilenet_v1",
@@ -518,6 +569,7 @@ py_binary(
 py_binary(
     name = "mobilenet_v1_eval",
     srcs = ["nets/mobilenet_v1_eval.py"],
+    python_version = "PY2",
     deps = [
         ":dataset_factory",
         ":mobilenet_v1",
@@ -549,6 +601,7 @@ py_test(
     name = "nasnet_utils_test",
     size = "medium",
     srcs = ["nets/nasnet/nasnet_utils_test.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":nasnet_utils",
@@ -560,6 +613,7 @@ py_test(
     name = "nasnet_test",
     size = "large",
     srcs = ["nets/nasnet/nasnet_test.py"],
+    python_version = "PY2",
     shard_count = 10,
     srcs_version = "PY2AND3",
     deps = [
@@ -583,6 +637,7 @@ py_test(
     name = "pnasnet_test",
     size = "large",
     srcs = ["nets/nasnet/pnasnet_test.py"],
+    python_version = "PY2",
     shard_count = 4,
     srcs_version = "PY2AND3",
     deps = [
@@ -604,6 +659,7 @@ py_test(
     name = "overfeat_test",
     size = "medium",
     srcs = ["nets/overfeat_test.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":overfeat",
@@ -623,6 +679,7 @@ py_library(
 py_test(
     name = "pix2pix_test",
     srcs = ["nets/pix2pix_test.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":pix2pix",
@@ -653,6 +710,7 @@ py_test(
     name = "resnet_v1_test",
     size = "medium",
     srcs = ["nets/resnet_v1_test.py"],
+    python_version = "PY2",
     shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
@@ -677,6 +735,7 @@ py_test(
     name = "resnet_v2_test",
     size = "medium",
     srcs = ["nets/resnet_v2_test.py"],
+    python_version = "PY2",
     shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
@@ -701,6 +760,7 @@ py_test(
     name = "s3dg_test",
     size = "large",
     srcs = ["nets/s3dg_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -722,6 +782,7 @@ py_test(
     name = "vgg_test",
     size = "medium",
     srcs = ["nets/vgg_test.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":vgg",
@@ -742,6 +803,7 @@ py_test(
     name = "nets_factory_test",
     size = "large",
     srcs = ["nets/nets_factory_test.py"],
+    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -767,6 +829,7 @@ py_binary(
     srcs = ["train_image_classifier.py"],
     # WARNING: not supported in bazel; will be commented out by copybara.
     # paropts = ["--compress"],
+    python_version = "PY2",
     deps = [
         ":train_image_classifier_lib",
     ],
@@ -786,6 +849,7 @@ py_library(
 py_binary(
     name = "eval_image_classifier",
     srcs = ["eval_image_classifier.py"],
+    python_version = "PY2",
     deps = [
         ":eval_image_classifier_lib",
     ],
@@ -796,6 +860,7 @@ py_binary(
     srcs = ["export_inference_graph.py"],
     # WARNING: not supported in bazel; will be commented out by copybara.
     # paropts = ["--compress"],
+    python_version = "PY2",
     deps = [":export_inference_graph_lib"],
 )
 
@@ -814,6 +879,7 @@ py_test(
     name = "export_inference_graph_test",
     size = "medium",
     srcs = ["export_inference_graph_test.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     tags = [
         "manual",
