@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import os
 import time
-import json
 
 from absl import flags
 from absl.testing import flagsaver
@@ -31,6 +30,7 @@ from official.recommendation import ncf_keras_main
 from official.utils.flags import core
 
 FLAGS = flags.FLAGS
+
 
 class KerasNCFBenchmarkBase(tf.test.Benchmark):
   """Base class for NCF model benchmark."""
@@ -66,11 +66,11 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
     stats = ncf_keras_main.run_ncf(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
-    extras = self._extract_benchmark_report_extras(stats)
-    self.report_benchmark(iters=-1, wall_time=wall_time_sec, extras=extras)
+    metrics = self._extract_benchmark_report_extras(stats)
+    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
 
   def _extract_benchmark_report_extras(self, stats):
-    raise NotImplementedError("Not implemented")
+    raise NotImplementedError('Not implemented')
 
 
 class KerasNCFRealData(KerasNCFBenchmarkBase):
@@ -103,11 +103,19 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
         **kwargs)
 
   def _extract_benchmark_report_extras(self, stats):
-    extras = {}
-    extras['train_loss'] = stats['loss']
-    extras['hr_at_10'] = stats['eval_hit_rate']
-    extras['exp_per_second'] = stats['avg_exp_per_second']
-    return extras
+    metrics = []
+    metrics.append({'name': 'exp_per_second',
+                    'value': stats['avg_exp_per_second']})
+
+    metrics.append({'name': 'hr_at_10',
+                    'value': stats['eval_hit_rate'],
+                    'min_value': 0.620,
+                    'max_value': 0.635})
+
+    metrics.append({'name': 'train_loss',
+                    'value': stats['loss']})
+
+    return metrics
 
   def benchmark_1_gpu(self):
     self._setup()
@@ -158,9 +166,10 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
         **kwargs)
 
   def _extract_benchmark_report_extras(self, stats):
-    extras = {}
-    extras['exp_per_second'] = stats['avg_exp_per_second']
-    return extras
+    metrics = []
+    metrics.append({'name': 'exp_per_second',
+                    'value': stats['avg_exp_per_second']})
+    return metrics
 
   def benchmark_1_gpu(self):
     self._setup()
