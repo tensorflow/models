@@ -238,7 +238,8 @@ def run_ncf(_):
     keras_model.compile(
         loss=_keras_loss,
         metrics=[_get_metric_fn(params)],
-        optimizer=optimizer)
+        optimizer=optimizer,
+        cloning=params["clone_model_in_keras_dist_strat"])
 
     history = keras_model.fit(train_input_dataset,
                               epochs=FLAGS.train_epochs,

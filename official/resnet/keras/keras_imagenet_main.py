@@ -197,7 +197,8 @@ def run(flags_obj):
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,
-                  metrics=['sparse_categorical_accuracy'])
+                  metrics=['sparse_categorical_accuracy'],
+                  cloning=flags_obj.clone_model_in_keras_dist_strat)
 
   callbacks = keras_common.get_callbacks(
       learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])

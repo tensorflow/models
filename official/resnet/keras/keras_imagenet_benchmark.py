@@ -201,6 +201,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_cloning(self):
+    """Test Keras model with 1 GPU and no-cloning."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_cloning')
+    FLAGS.batch_size = 128
+    FLAGS.clone_model_in_keras_dist_strat = False
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu(self):
     """Test Keras model with XLA and 1 GPU."""
     self._setup()
@@ -353,6 +365,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_no_cloning(self):
+    """Test Keras model with 8 GPUs and no-cloning."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_no_cloning')
+    FLAGS.clone_model_in_keras_dist_strat = False
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
