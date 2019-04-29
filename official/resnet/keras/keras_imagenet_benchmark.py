@@ -62,6 +62,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.dtype = 'fp32'
     self._run_and_report_benchmark()
@@ -73,6 +74,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
@@ -87,6 +89,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 256 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
@@ -101,6 +104,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 256 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
@@ -116,6 +120,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 256 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_dynamic')
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
