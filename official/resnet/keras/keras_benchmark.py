@@ -36,7 +36,7 @@ class KerasBenchmark(tf.test.Benchmark):
     self.default_flags = default_flags or {}
     self.flag_methods = flag_methods or {}
 
-    if not self.output_dir:
+    if not output_dir:
       self.output_dir = '/tmp/'
 
   def _get_model_dir(self, folder_name):
