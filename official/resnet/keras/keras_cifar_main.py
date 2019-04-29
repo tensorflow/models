@@ -125,7 +125,7 @@ def run(flags_obj):
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus)
 
-  strategy_scope = keras_common.get_strategy_scope(strategy)
+  strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
@@ -161,7 +161,7 @@ def run(flags_obj):
                   optimizer=optimizer,
                   metrics=['categorical_accuracy'])
 
-  time_callback, tensorboard_callback, lr_callback = keras_common.get_callbacks(
+  callbacks = keras_common.get_callbacks(
       learning_rate_schedule, cifar_main.NUM_IMAGES['train'])
 
   train_steps = cifar_main.NUM_IMAGES['train'] // flags_obj.batch_size
@@ -180,10 +180,6 @@ def run(flags_obj):
     num_eval_steps = None
     validation_data = None
 
-  callbacks = [time_callback, lr_callback]
-  if flags_obj.enable_tensorboard:
-    callbacks.append(tensorboard_callback)
-
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
                       steps_per_epoch=train_steps,
@@ -197,7 +193,7 @@ def run(flags_obj):
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=2)
-  stats = keras_common.build_stats(history, eval_output, time_callback)
+  stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
 
 

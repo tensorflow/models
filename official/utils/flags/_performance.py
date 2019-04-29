@@ -47,7 +47,8 @@ def get_loss_scale(flags_obj):
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        synthetic_data=True, max_train_steps=True, dtype=True,
-                       all_reduce_alg=True, tf_gpu_thread_mode=False,
+                       all_reduce_alg=True, num_packs=True,
+                       tf_gpu_thread_mode=False,
                        datasets_num_private_threads=False,
                        datasets_num_parallel_batches=False,
                        dynamic_loss_scale=False):
@@ -62,6 +63,8 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
       of training steps
     dtype: Create flags for specifying dtype.
     all_reduce_alg: If set forces a specific algorithm for multi-gpu.
+    num_packs: If set provides number of packs for MirroredStrategy's cross
+      device ops.
     tf_gpu_thread_mode: gpu_private triggers us of private thread pool.
     datasets_num_private_threads: Number of private threads for datasets.
     datasets_num_parallel_batches: Determines how many batches to process in
@@ -175,6 +178,13 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        "controls "
                        "tf.distribute.experimental.CollectiveCommunication; "
                        "valid options are `ring` and `nccl`."))
+
+  if num_packs:
+    flags.DEFINE_integer(
+        name="num_packs", default=1,
+        help=help_wrap("Sets `num_packs` in the cross device ops used in "
+                       "MirroredStrategy.  For details, see "
+                       "tf.distribute.NcclAllReduce."))
 
   if tf_gpu_thread_mode:
     flags.DEFINE_string(

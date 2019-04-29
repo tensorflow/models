@@ -167,7 +167,8 @@ def input_fn(is_training,
              datasets_num_private_threads=None,
              num_parallel_batches=1,
              parse_record_fn=parse_record,
-             input_context=None):
+             input_context=None,
+             drop_remainder=False):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -181,6 +182,8 @@ def input_fn(is_training,
     parse_record_fn: Function to use for parsing the records.
     input_context: A `tf.distribute.InputContext` object passed in by
       `tf.distribute.Strategy`.
+    drop_remainder: A boolean indicates whether to drop the remainder of the
+      batches. If True, the batch dimension will be static.
 
   Returns:
     A dataset that can be used for iteration.
@@ -217,7 +220,8 @@ def input_fn(is_training,
       num_epochs=num_epochs,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
-      num_parallel_batches=num_parallel_batches
+      num_parallel_batches=num_parallel_batches,
+      drop_remainder=drop_remainder
   )
 
 
@@ -356,14 +360,22 @@ def run_imagenet(flags_obj):
 
   Args:
     flags_obj: An object containing parsed flag values.
+
+  Returns:
+    Dict of results of the run.  Contains the keys `eval_results` and
+      `train_hooks`. `eval_results` contains accuracy (top_1) and
+      accuracy_top_5. `train_hooks` is a list the instances of hooks used during
+      training.
   """
   input_function = (flags_obj.use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
 
-  resnet_run_loop.resnet_main(
+  result = resnet_run_loop.resnet_main(
       flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
       shape=[DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, NUM_CHANNELS])
+
+  return result
 
 
 def main(_):

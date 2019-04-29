@@ -110,7 +110,7 @@ _Op = collections.namedtuple('Op', ['op', 'params', 'multiplier_func'])
 
 
 def op(opfunc, multiplier_func=depth_multiplier, **params):
-  multiplier = params.pop('multiplier_transorm', multiplier_func)
+  multiplier = params.pop('multiplier_transform', multiplier_func)
   return _Op(opfunc, params=params, multiplier_func=multiplier)
 
 

@@ -30,6 +30,7 @@ import tensorflow as tf
 from official.utils.misc import keras_utils
 # pylint: disable=ungrouped-imports
 from tensorflow.core.protobuf import rewriter_config_pb2
+from tensorflow.python.eager import profiler
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
                                                   gradient_descent_v2)
 
@@ -78,6 +79,29 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
           'change learning rate to %s.', self.epochs, batch, lr)
 
 
+class ProfilerCallback(tf.keras.callbacks.Callback):
+  """Save profiles in specified step range to log directory."""
+
+  def __init__(self, log_dir, start_step, stop_step):
+    super(ProfilerCallback, self).__init__()
+    self.log_dir = log_dir
+    self.start_step = start_step
+    self.stop_step = stop_step
+
+  def on_batch_begin(self, batch, logs=None):
+    if batch == self.start_step:
+      profiler.start()
+      tf.compat.v1.logging.info('Profiler started at Step %s', self.start_step)
+
+  def on_batch_end(self, batch, logs=None):
+    if batch == self.stop_step:
+      results = profiler.stop()
+      profiler.save(self.log_dir, results)
+      tf.compat.v1.logging.info(
+          'Profiler saved profiles for steps between %s and %s to %s',
+          self.start_step, self.stop_step, self.log_dir)
+
+
 def get_config_proto_v1():
   """Return config proto according to flag settings, or None to use default."""
   config = None
@@ -115,7 +139,7 @@ def set_gpu_thread_mode_and_count(flags_obj):
   tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
 
   # Allocate private thread pool for each GPU to schedule and launch kernels
-  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 1
+  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 2
   os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
   tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
@@ -126,10 +150,11 @@ def set_gpu_thread_mode_and_count(flags_obj):
   # Limit data preprocessing threadpool to CPU cores minus number of total GPU
   # private threads and memory copy threads.
   total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
-  num_mem_copy_threads = flags_obj.num_gpus
+  num_runtime_threads = flags_obj.num_gpus
   if not flags_obj.datasets_num_private_threads:
-    flags_obj.datasets_num_private_threads = (cpu_count - total_gpu_thread_count
-                                              - num_mem_copy_threads)
+    flags_obj.datasets_num_private_threads = min(
+        cpu_count - total_gpu_thread_count - num_runtime_threads,
+        flags_obj.num_gpus * 8)
     tf.compat.v1.logging.info('Set datasets_num_private_threads to %s',
                               flags_obj.datasets_num_private_threads)
 
@@ -143,19 +168,50 @@ def get_optimizer():
 def get_callbacks(learning_rate_schedule_fn, num_images):
   """Returns common callbacks."""
   time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
-
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=FLAGS.model_dir)
-
   lr_callback = LearningRateBatchScheduler(
       learning_rate_schedule_fn,
       batch_size=FLAGS.batch_size,
       num_images=num_images)
+  callbacks = [time_callback, lr_callback]
 
-  return time_callback, tensorboard_callback, lr_callback
+  if FLAGS.enable_tensorboard:
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(
+        log_dir=FLAGS.model_dir)
+    callbacks.append(tensorboard_callback)
+
+  if FLAGS.profile_steps:
+    profiler_callback = get_profiler_callback()
+    callbacks.append(profiler_callback)
+
+  return callbacks
 
 
-def build_stats(history, eval_output, time_callback):
+def get_profiler_callback():
+  """Validate profile_steps flag value and return profiler callback."""
+  profile_steps_error_message = (
+      'profile_steps must be a comma separated pair of positive integers, '
+      'specifying the first and last steps to be profiled.'
+  )
+  try:
+    profile_steps = [int(i) for i in FLAGS.profile_steps.split(',')]
+  except ValueError:
+    raise ValueError(profile_steps_error_message)
+  if len(profile_steps) != 2:
+    raise ValueError(profile_steps_error_message)
+  start_step, stop_step = profile_steps
+  if start_step < 0 or start_step > stop_step:
+    raise ValueError(profile_steps_error_message)
+  if FLAGS.enable_tensorboard:
+    tf.compat.v1.logging.warn(
+        'Both TensorBoard and profiler callbacks are used. Note that the '
+        'TensorBoard callback profiles the 2nd step (unless otherwise '
+        'specified). Please make sure the steps profiled by the two callbacks '
+        'do not overlap.')
+
+  return ProfilerCallback(FLAGS.model_dir, start_step, stop_step)
+
+
+def build_stats(history, eval_output, callbacks):
   """Normalizes and returns dictionary of stats.
 
   Args:
@@ -163,7 +219,8 @@ def build_stats(history, eval_output, time_callback):
       and sparse_categorical_accuracy.
     eval_output: Output of the eval step. Assumes first value is eval_loss and
       second value is accuracy_top_1.
-    time_callback: Time tracking callback likely used during keras.fit.
+    callbacks: a list of callbacks which might include a time history callback
+      used during keras.fit.
 
   Returns:
     Dictionary of normalized results.
@@ -183,16 +240,20 @@ def build_stats(history, eval_output, time_callback):
     elif 'sparse_categorical_accuracy' in train_hist:
       stats[TRAIN_TOP_1] = train_hist['sparse_categorical_accuracy'][-1].item()
 
-  if time_callback:
-    timestamp_log = time_callback.timestamp_log
-    stats['step_timestamp_log'] = timestamp_log
-    stats['train_finish_time'] = time_callback.train_finish_time
-    if len(timestamp_log) > 1:
-      stats['avg_exp_per_second'] = (
-          time_callback.batch_size * time_callback.log_steps *
-          (len(time_callback.timestamp_log)-1) /
-          (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
+  if not callbacks:
+    return stats
 
+  # Look for the time history callback which was used during keras.fit
+  for callback in callbacks:
+    if isinstance(callback, keras_utils.TimeHistory):
+      timestamp_log = callback.timestamp_log
+      stats['step_timestamp_log'] = timestamp_log
+      stats['train_finish_time'] = callback.train_finish_time
+      if len(timestamp_log) > 1:
+        stats['avg_exp_per_second'] = (
+            callback.batch_size * callback.log_steps *
+            (len(callback.timestamp_log)-1) /
+            (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
   return stats
 
 
@@ -215,15 +276,25 @@ def define_keras_flags():
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
+  flags.DEFINE_string(
+      name='profile_steps', default=None,
+      help='Save profiling data to model dir at given range of steps. The '
+      'value must be a comma separated pair of positive integers, specifying '
+      'the first and last step to profile. For example, "--profile_steps=2,4" '
+      'triggers the profiler to process 3 steps, starting from the 2nd step. '
+      'Note that profiler has a non-trivial performance overhead, and the '
+      'output file can be gigantic if profiling many steps.')
   flags.DEFINE_boolean(
-      name='enable_e2e_xprof', default=False,
-      help='Save end-to-end profiling data to model dir using Xprof. Profiling '
-      'has an overhead on both computation and memory usage, and can generate '
-      'gigantic files when profiling a lot of steps.')
+      name='data_prefetch_with_slack', default=False,
+      help='Add a small delay in tf.data prefetch to prioritize memory copy of '
+      'other tensors over the data minibatch for the (T+1)th step. It should '
+      'help improve performance using EagerIterator and function. The codepath '
+      'when enabling this feature is experimental and will be removed once the '
+      'corresponding performance features are fully supported in TensorFlow.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
-                       dtype=tf.float32):
+                       dtype=tf.float32, drop_remainder=True):
   """Returns an input function that returns a dataset with random data.
 
   This input_fn returns a data set that iterates over a set of random data and
@@ -238,6 +309,8 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     num_classes: Number of classes that should be represented in the fake labels
       tensor
     dtype: Data type for features/images.
+    drop_remainder: A boolean indicates whether to drop the remainder of the
+      batches. If True, the batch dimension will be static.
 
   Returns:
     An input_fn that can be used in place of a real one to return a dataset
@@ -264,7 +337,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
 
     # `drop_remainder` will make dataset produce outputs with known shapes.
-    data = data.batch(batch_size, drop_remainder=True)
+    data = data.batch(batch_size, drop_remainder=drop_remainder)
     data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return data
 
@@ -276,22 +349,10 @@ def is_v2_0():
   return tf.__version__.startswith('2')
 
 
-def get_strategy_scope(strategy):
-  if strategy:
-    strategy_scope = strategy.scope()
-  else:
-    strategy_scope = DummyContextManager()
-
-  return strategy_scope
-
-
-class DummyContextManager(object):
-
-  def __enter__(self):
-    pass
-
-  def __exit__(self, *args):
-    pass
+def data_prefetch_with_slack():
+  """Use unstable code for perf tuning purposes."""
+  if not FLAGS.use_synthetic_data:
+    _monkey_patch_org_create_device_dataset()
 
 
 def _monkey_patch_org_assert_broadcastable():
@@ -315,3 +376,29 @@ def _undo_monkey_patch_org_assert_broadcastable():
   if hasattr(weights_broadcast_ops, 'org_assert_broadcastable'):
     weights_broadcast_ops.assert_broadcastable = (
         weights_broadcast_ops.org_assert_broadcastable)
+
+
+# TODO(haoyuzhang): remove this monkey patch when the "prefetch with slack"
+# feature is available in tf.data.
+def _monkey_patch_org_create_device_dataset():
+  """Monkey-patch `_create_device_dataset` method with delayed prefetch."""
+
+  import ast  # pylint: disable=g-import-not-at-top
+  import inspect  # pylint: disable=g-import-not-at-top
+  from tensorflow.python.data.ops import multi_device_iterator_ops  # pylint: disable=g-import-not-at-top
+
+  tf.compat.v1.logging.info(
+      'Using monkey-patched version of MultiDeviceIterator. It should be '
+      'removed when the prefetch with slack feature is implemented in tf.data.')
+  cls_multi_device_iterator = ast.parse(
+      inspect.getsource(multi_device_iterator_ops.MultiDeviceIterator))
+  org_create_device_dataset_code = inspect.getsource(
+      multi_device_iterator_ops.MultiDeviceIterator._create_device_dataset)  # pylint: disable=protected-access
+  code_lines = org_create_device_dataset_code.split('\n')
+  # Insert in reverse order to avoid line number shift by previous insertions
+  code_lines.insert(5, '      ds = ds.apply(sleep_ops.sleep(11000))')  # 11ms
+  code_lines.insert(2, '    from tensorflow.python.data.experimental.ops import sleep as sleep_ops')  # pylint: disable=line-too-long
+  patched_code = '\n'.join(line[2:] for line in code_lines)
+  cls_multi_device_iterator.body[0].body[2] = ast.parse(patched_code).body[0]
+  exec(compile(cls_multi_device_iterator, '<string>', 'exec'),  # pylint: disable=exec-used
+       multi_device_iterator_ops.__dict__)
