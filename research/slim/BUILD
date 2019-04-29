@@ -91,6 +91,7 @@ sh_binary(
 py_binary(
     name = "build_visualwakewords_data",
     srcs = ["datasets/build_visualwakewords_data.py"],
+    python_version = "PY2",
     deps = [
         ":build_visualwakewords_data_lib",
         # "//tensorflow",
