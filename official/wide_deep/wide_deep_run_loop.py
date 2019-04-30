@@ -56,7 +56,6 @@ def define_wide_deep_flags():
 
 def export_model(model, model_type, export_dir, model_column_fn):
   """Export to SavedModel format.
-
   Args:
     model: Estimator object
     model_type: string indicating model type. "wide", "deep" or "wide_deep"
@@ -106,18 +105,19 @@ def run_loop(name, train_input_fn, eval_input_fn, model_column_fn,
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
-    model.train(input_fn=train_input_fn, hooks=train_hooks)
+    model.train(input_fn=train_input_fn)
+    '''hooks=train_hooks)'''
 
     results = model.evaluate(input_fn=eval_input_fn)
 
     # Display evaluation metrics
-    tf.logging.info('Results at epoch %d / %d',
+    tf.compat.v1.logging.info('Results at epoch %d / %d',
                     (n + 1) * flags_obj.epochs_between_evals,
                     flags_obj.train_epochs)
-    tf.logging.info('-' * 60)
+    tf.compat.v1.logging.info('-' * 60)
 
     for key in sorted(results):
-      tf.logging.info('%s: %s' % (key, results[key]))
+      tf.compat.v1.logging.info('%s: %s' % (key, results[key]))
 
     benchmark_logger.log_evaluation_result(results)
 
@@ -128,4 +128,4 @@ def run_loop(name, train_input_fn, eval_input_fn, model_column_fn,
   # Export the model
   if flags_obj.export_dir is not None:
     export_model(model, flags_obj.model_type, flags_obj.export_dir,
-                 model_column_fn)
+model_column_fn)
