@@ -44,8 +44,8 @@ def build_groundtruth_boxes_dictionary(data, class_label_map):
           M numpy boolean array denoting whether a groundtruth box contains a
           group of instances.
   """
-  data_boxes = data[data.ConfidenceImageLabel.isnull()]
-  data_labels = data[data.XMin.isnull()]
+  data_boxes = data[~data.ConfidenceImageLabel.isnull()]
+  data_labels = data[~data.XMin.isnull()]
 
   return {
       standard_fields.InputDataFields.groundtruth_boxes:
