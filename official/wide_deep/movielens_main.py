@@ -62,22 +62,23 @@ def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
   hidden_units = [256, 256, 256, 128]
 
   run_config = tf.estimator.RunConfig().replace(
-      session_config=tf.ConfigProto(device_count={'GPU': 0},
+      session_config=tf.compat.v1.ConfigProto(device_count={'GPU': 0},
                                     inter_op_parallelism_threads=inter_op,
                                     intra_op_parallelism_threads=intra_op))
+  # Originally used MEAN mode for loss reduction but this has been
+  # removed. Will change to something else if needed
   return tf.estimator.DNNRegressor(
       model_dir=model_dir,
       feature_columns=deep_columns,
       hidden_units=hidden_units,
-      optimizer=tf.train.AdamOptimizer(),
+      optimizer=tf.optimizers.Adam(),
       activation_fn=tf.nn.sigmoid,
       dropout=0.3,
-      loss_reduction=tf.losses.Reduction.MEAN)
+      loss_reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE)
 
 
 def run_movie(flags_obj):
   """Construct all necessary functions and call run_loop.
-
   Args:
     flags_obj: Object containing user specified flags.
   """
@@ -110,6 +111,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   define_movie_flags()
-  absl_app.run(main)
+absl_app.run(main)
