@@ -28,7 +28,7 @@ from official.wide_deep import movielens_dataset
 from official.wide_deep import movielens_main
 from official.wide_deep import wide_deep_run_loop
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 TEST_INPUT_VALUES = {
@@ -70,17 +70,17 @@ class BaseTest(tf.test.TestCase):
   def setUp(self):
     # Create temporary CSV file
     self.temp_dir = self.get_temp_dir()
-    tf.gfile.MakeDirs(os.path.join(self.temp_dir, movielens.ML_1M))
+    tf.io.gfile.makedirs(os.path.join(self.temp_dir, movielens.ML_1M))
 
     self.ratings_csv = os.path.join(
         self.temp_dir, movielens.ML_1M, movielens.RATINGS_FILE)
     self.item_csv = os.path.join(
         self.temp_dir, movielens.ML_1M, movielens.MOVIES_FILE)
 
-    with tf.gfile.Open(self.ratings_csv, "w") as f:
+    with tf.io.gfile.GFile(self.ratings_csv, "w") as f:
       f.write(TEST_RATING_DATA)
 
-    with tf.gfile.Open(self.item_csv, "w") as f:
+    with tf.io.gfile.GFile(self.item_csv, "w") as f:
       f.write(TEST_ITEM_DATA)
 
 
@@ -89,7 +89,7 @@ class BaseTest(tf.test.TestCase):
         dataset=movielens.ML_1M, data_dir=self.temp_dir, batch_size=8, repeat=1)
 
     dataset = train_input_fn()
-    features, labels = dataset.make_one_shot_iterator().get_next()
+    features, labels = tf.compat.v1.data.make_one_shot_iterator(dataset).get_next()
 
     with self.test_session() as sess:
       features, labels = sess.run((features, labels))
@@ -114,4 +114,4 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
-  tf.test.main()
+tf.test.main()
