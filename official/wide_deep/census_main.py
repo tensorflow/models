@@ -89,6 +89,7 @@ def run_census(flags_obj):
   def eval_input_fn():
     return census_dataset.input_fn(test_file, 1, False, flags_obj.batch_size)
 
+  # These tensors do not exist
   tensors_to_log = {
       'average_loss': '{loss_prefix}head/truediv',
       'loss': '{loss_prefix}head/weighted_loss/Sum'
