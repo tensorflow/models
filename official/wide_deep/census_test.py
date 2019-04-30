@@ -26,7 +26,7 @@ from official.wide_deep import census_dataset
 from official.wide_deep import census_main
 from official.wide_deep import wide_deep_run_loop
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 TEST_INPUT = ('18,Self-emp-not-inc,987,Bachelors,12,Married-civ-spouse,abc,'
               'Husband,zyx,wvu,34,56,78,tsr,<=50K')
@@ -59,20 +59,20 @@ class BaseTest(tf.test.TestCase):
     # Create temporary CSV file
     self.temp_dir = self.get_temp_dir()
     self.input_csv = os.path.join(self.temp_dir, 'test.csv')
-    with tf.gfile.Open(self.input_csv, 'w') as temp_csv:
+    with tf.io.gfile.GFile(self.input_csv, 'w') as temp_csv:
       temp_csv.write(TEST_INPUT)
 
-    with tf.gfile.Open(TEST_CSV, "r") as temp_csv:
+    with tf.io.gfile.GFile(TEST_CSV, "r") as temp_csv:
       test_csv_contents = temp_csv.read()
 
     # Used for end-to-end tests.
     for fname in [census_dataset.TRAINING_FILE, census_dataset.EVAL_FILE]:
-      with tf.gfile.Open(os.path.join(self.temp_dir, fname), 'w') as test_csv:
+      with tf.io.gfile.GFile(os.path.join(self.temp_dir, fname), 'w') as test_csv:
         test_csv.write(test_csv_contents)
 
   def test_input_fn(self):
     dataset = census_dataset.input_fn(self.input_csv, 1, False, 1)
-    features, labels = dataset.make_one_shot_iterator().get_next()
+    features, labels = tf.compat.v1.data.make_one_shot_iterator(dataset).get_next()
 
     with self.test_session() as sess:
       features, labels = sess.run((features, labels))
@@ -158,4 +158,4 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+tf.test.main()
