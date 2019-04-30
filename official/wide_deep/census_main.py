@@ -22,8 +22,8 @@ import tensorflow as tf
 
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
-from official.wide_deep import census_dataset
-from official.wide_deep import wide_deep_run_loop
+from official.wide_deep_upgraded import census_dataset
+from official.wide_deep_upgraded import wide_deep_run_loop
 
 
 def define_census_flags():
@@ -46,7 +46,7 @@ def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
   # Create a tf.estimator.RunConfig to ensure the model is run on CPU, which
   # trains faster than GPU for this model.
   run_config = tf.estimator.RunConfig().replace(
-      session_config=tf.ConfigProto(device_count={'GPU': 0},
+      session_config=tf.compat.v1.ConfigProto(device_count={'GPU': 0},
                                     inter_op_parallelism_threads=inter_op,
                                     intra_op_parallelism_threads=intra_op))
 
@@ -54,25 +54,24 @@ def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
     return tf.estimator.LinearClassifier(
         model_dir=model_dir,
         feature_columns=wide_columns,
-        config=run_config)
+        config=run_config, loss_reduction=tf.keras.losses.Reduction.SUM)
   elif model_type == 'deep':
     return tf.estimator.DNNClassifier(
         model_dir=model_dir,
         feature_columns=deep_columns,
         hidden_units=hidden_units,
-        config=run_config)
+        config=run_config, loss_reduction=tf.keras.losses.Reduction.SUM)
   else:
     return tf.estimator.DNNLinearCombinedClassifier(
         model_dir=model_dir,
         linear_feature_columns=wide_columns,
         dnn_feature_columns=deep_columns,
         dnn_hidden_units=hidden_units,
-        config=run_config)
+        config=run_config, loss_reduction=tf.keras.losses.Reduction.SUM)
 
 
 def run_census(flags_obj):
   """Construct all necessary functions and call run_loop.
-
   Args:
     flags_obj: Object containing user specified flags.
   """
@@ -111,6 +110,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   define_census_flags()
-  absl_app.run(main)
+absl_app.run(main)
