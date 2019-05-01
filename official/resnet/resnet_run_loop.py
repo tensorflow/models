@@ -451,6 +451,11 @@ def resnet_model_fn(features, labels, mode, model_class,
           momentum=momentum
       )
 
+    fp16_implementation = getattr(flags.FLAGS, 'fp16_implementation', None)
+    if fp16_implementation == 'graph_rewrite':
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+          optimizer, loss_scale=loss_scale)
+
     def _dense_grad_filter(gvs):
       """Only apply gradient updates to the final layer.
 
@@ -463,7 +468,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       """
       return [(g, v) for g, v in gvs if 'dense' in v.name]
 
-    if loss_scale != 1:
+    if loss_scale != 1 and fp16_implementation != 'graph_rewrite':
       # When computing fp16 gradients, often intermediate tensor values are
       # so small, they underflow to 0. To avoid this, we multiply the loss by
       # loss_scale to make these tensor values loss_scale times bigger.
@@ -708,14 +713,16 @@ def resnet_main(
   return stats
 
 
-def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False):
+def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
+                        fp16_implementation=False):
   """Add flags and validators for ResNet."""
   flags_core.define_base()
   flags_core.define_performance(num_parallel_calls=False,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
                                 datasets_num_parallel_batches=True,
-                                dynamic_loss_scale=dynamic_loss_scale)
+                                dynamic_loss_scale=dynamic_loss_scale,
+                                fp16_implementation=fp16_implementation)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)

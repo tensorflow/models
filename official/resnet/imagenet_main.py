@@ -347,10 +347,11 @@ def imagenet_model_fn(features, labels, mode, params):
   )
 
 
-def define_imagenet_flags(dynamic_loss_scale=False):
+def define_imagenet_flags(dynamic_loss_scale=False, fp16_implementation=False):
   resnet_run_loop.define_resnet_flags(
       resnet_size_choices=['18', '34', '50', '101', '152', '200'],
-      dynamic_loss_scale=dynamic_loss_scale)
+      dynamic_loss_scale=dynamic_loss_scale,
+      fp16_implementation=fp16_implementation)
   flags.adopt_module_key_flags(resnet_run_loop)
   flags_core.set_defaults(train_epochs=90)
 
@@ -385,5 +386,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  define_imagenet_flags()
+  define_imagenet_flags(dynamic_loss_scale=True, fp16_implementation=True)
   absl_app.run(main)
