@@ -108,6 +108,10 @@ a nice figure showing a detection, as:
 
 ![DetectionExample1](delf/python/examples/detection_example_1.jpg)
 
+### Detect-to-Retrieve
+
+Code release is in progress. Stay tuned!
+
 ## Code overview
 
 DELF/D2R code is located under the `delf` directory. There are two directories
