@@ -125,7 +125,10 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
                 constructor forward compatible in case PerfZero provides more
                 named arguments before updating the constructor.
     """
-    flag_methods = [imagenet_main.define_imagenet_flags]
+    flag_methods = [
+        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True,
+                                                    fp16_implementation=True)
+    ]
 
     self.data_dir = os.path.join(root_data_dir, IMAGENET_DATA_DIR_NAME)
     super(Resnet50EstimatorAccuracy, self).__init__(
@@ -172,7 +175,10 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
   local_flags = None
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [imagenet_main.define_imagenet_flags]
+    flag_methods = [
+        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True,
+                                                    fp16_implementation=True)
+    ]
 
     super(Resnet50EstimatorBenchmark, self).__init__(
         output_dir=output_dir,
@@ -200,6 +206,21 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_1_gpu_tweaked')
     FLAGS.batch_size = 256
     FLAGS.dtype = 'fp16'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_fp16_graph_rewrite_1_gpu_tweaked(self):
+    """Benchmarks graph fp16 graph rewrite 1 gpu tweaked."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.intra_op_parallelism_threads = 1
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_fp16_graph_rewrite_1_gpu_tweaked')
+    FLAGS.batch_size = 256
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
@@ -246,6 +267,21 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu_tweaked')
     FLAGS.batch_size = 256*8
     FLAGS.dtype = 'fp16'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_fp16_graph_rewrite_8_gpu_tweaked(self):
+    """Benchmarks graph fp16 graph rewrite 8 gpus tweaked."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.intra_op_parallelism_threads = 1
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_fp16_graph_rewrite_8_gpu_tweaked')
+    FLAGS.batch_size = 256*8
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
