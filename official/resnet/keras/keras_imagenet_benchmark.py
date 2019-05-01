@@ -62,6 +62,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.dtype = 'fp32'
     self._run_and_report_benchmark()
@@ -73,6 +74,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
@@ -87,6 +89,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 256 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
@@ -101,6 +104,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 256 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
@@ -116,6 +120,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 256 * 8
     FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_dynamic')
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
@@ -201,6 +206,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_cloning(self):
+    """Test Keras model with 1 GPU and no-cloning."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_cloning')
+    FLAGS.batch_size = 128
+    FLAGS.clone_model_in_keras_dist_strat = False
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu(self):
     """Test Keras model with XLA and 1 GPU."""
     self._setup()
@@ -249,6 +266,21 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_fp16_tweaked(self):
+    """Test Keras model with XLA, 1 GPU, fp16, and manual config tuning."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16_tweaked')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_prefetch_with_slack = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_1_gpu_fp16_dynamic(self):
@@ -313,6 +345,23 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256
     self._run_and_report_benchmark()
 
+  def benchmark_graph_xla_1_gpu_fp16_tweaked(self):
+    """Test Keras model in legacy graph mode with 1 GPU, fp16, XLA, and manual
+       config tuning.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_xla_1_gpu_fp16_tweaked')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu(self):
     """Test Keras model with 8 GPUs."""
     self._setup()
@@ -321,6 +370,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_no_cloning(self):
+    """Test Keras model with 8 GPUs and no-cloning."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_no_cloning')
+    FLAGS.clone_model_in_keras_dist_strat = False
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
@@ -334,6 +395,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     FLAGS.datasets_num_private_threads = 14
+    FLAGS.data_prefetch_with_slack = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu(self):
@@ -371,6 +433,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_prefetch_with_slack = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16_dynamic_tweaked(self):
@@ -386,6 +449,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_prefetch_with_slack = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16(self):
@@ -412,7 +476,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
-    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    # FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_prefetch_with_slack = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_dynamic_tweaked(self):
@@ -429,6 +494,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_prefetch_with_slack = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_tensorboard_tweaked(self):
@@ -444,6 +510,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         'benchmark_xla_8_gpu_fp16_tensorboard_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_prefetch_with_slack = True
     FLAGS.enable_tensorboard = True
     self._run_and_report_benchmark()
 
@@ -470,6 +537,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
+  def benchmark_graph_8_gpu_fp16(self):
+    """Test Keras model in legacy graph mode with 8 GPUs and fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu_fp16')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
   def benchmark_graph_xla_8_gpu_fp16(self):
     """Test Keras model in legacy graph mode with XLA, 8 GPUs and fp16."""
     self._setup()
@@ -481,6 +560,21 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_8_gpu_fp16')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_8_gpu_fp16_tweaked(self):
+    """Test Keras model in legacy graph mode with manual config tuning, 8 GPUs
+       and fp16.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu_fp16_tweaked')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
   def benchmark_graph_xla_8_gpu_fp16_tweaked(self):
@@ -497,6 +591,21 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_graph_xla_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_8_gpu_fp16_dynamic_tweaked(self):
+    """Test graph Keras with config tuning, 8 GPUs and dynamic fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_8_gpu_fp16_dynamic_tweaked')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
@@ -636,6 +745,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
     FLAGS.batch_size = 256 * 8
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_prefetch_with_slack = True
     self._run_and_report_benchmark()
 
   def benchmark_graph_8_gpu(self):

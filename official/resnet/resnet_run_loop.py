@@ -525,8 +525,9 @@ def resnet_main(
     shape: list of ints representing the shape of the images used for training.
       This is only used if flags_obj.export_dir is passed.
 
-  Returns:
-    Dict of results of the run.
+  Dict of results of the run.  Contains the keys `eval_results` and
+    `train_hooks`. `eval_results` contains accuracy (top_1) and accuracy_top_5.
+    `train_hooks` is a list the instances of hooks used during training.
   """
 
   model_helpers.apply_clean(flags.FLAGS)
@@ -550,7 +551,8 @@ def resnet_main(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_core.get_num_gpus(flags_obj),
       num_workers=num_workers,
-      all_reduce_alg=flags_obj.all_reduce_alg)
+      all_reduce_alg=flags_obj.all_reduce_alg,
+      num_packs=flags_obj.num_packs)
 
   # Creates a `RunConfig` that checkpoints every 24 hours which essentially
   # results in checkpoints determined only by `epochs_between_evals`.
@@ -606,7 +608,7 @@ def resnet_main(
     return input_function(
         is_training=True,
         data_dir=flags_obj.data_dir,
-        batch_size=distribution_utils.per_device_batch_size(
+        batch_size=distribution_utils.per_replica_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=num_epochs,
         dtype=flags_core.get_tf_dtype(flags_obj),
@@ -618,7 +620,7 @@ def resnet_main(
     return input_function(
         is_training=False,
         data_dir=flags_obj.data_dir,
-        batch_size=distribution_utils.per_device_batch_size(
+        batch_size=distribution_utils.per_replica_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1,
         dtype=flags_core.get_tf_dtype(flags_obj))
