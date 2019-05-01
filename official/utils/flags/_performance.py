@@ -184,6 +184,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
       @flags.multi_flags_validator(['fp16_implementation', 'dtype',
                                     'loss_scale'])
       def _check_fp16_implementation(flags_dict):
+        """Validator to check fp16_implementation flag is valid."""
         if (flags_dict['fp16_implementation'] == 'graph_rewrite' and
             flags_dict['dtype'] != 'fp16'):
           raise flags.ValidationError('--fp16_implementation should not be '
