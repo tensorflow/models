@@ -170,6 +170,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
       return loss_scale > 0
 
     if fp16_implementation:
+      # Currently, this flag is only defined for the estimator resnet model.
       flags.DEFINE_enum(name="fp16_implementation", default='casting',
                         enum_values=('casting', 'graph_rewrite'),
                         help=help_wrap(
