@@ -171,14 +171,15 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
 
     if fp16_implementation:
       # Currently, this flag is only defined for the estimator resnet model.
-      flags.DEFINE_enum(name="fp16_implementation", default='casting',
-                        enum_values=('casting', 'graph_rewrite'),
-                        help=help_wrap(
-            "When --dtype=fp16, how fp16 should be implemented. This has no "
-            "impact on correctness. 'casting' will cause manual tf.casts to be "
-            "inserted in the model. 'graph_rewrite' means "
-            "tf.train.experimental.enable_mixed_precision_graph_rewrite will "
-            "be used to automatically use fp16 without any manual casts."))
+      flags.DEFINE_enum(
+          name="fp16_implementation", default='casting',
+          enum_values=('casting', 'graph_rewrite'),
+          help=help_wrap(
+              "When --dtype=fp16, how fp16 should be implemented. This has no "
+              "impact on correctness. 'casting' will cause manual tf.casts to "
+              "be inserted in the model. 'graph_rewrite' means "
+              "tf.train.experimental.enable_mixed_precision_graph_rewrite will "
+              "be used to automatically use fp16 without any manual casts."))
 
       @flags.multi_flags_validator(['fp16_implementation', 'dtype',
                                     'loss_scale'])
