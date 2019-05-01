@@ -451,7 +451,8 @@ def resnet_model_fn(features, labels, mode, model_class,
           momentum=momentum
       )
 
-    if flags.FLAGS.fp16_implementation == 'graph_rewrite':
+    fp16_implementation = getattr(flags.FLAGS, 'fp16_implementation', None)
+    if fp16_implementation == 'graph_rewrite':
       optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
           optimizer, loss_scale=loss_scale)
 
@@ -467,8 +468,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       """
       return [(g, v) for g, v in gvs if 'dense' in v.name]
 
-    if (loss_scale != 1 and
-        not flags.FLAGS.fp16_implementation == 'graph_rewrite'):
+    if loss_scale != 1 and fp16_implementation != 'graph_rewrite':
       # When computing fp16 gradients, often intermediate tensor values are
       # so small, they underflow to 0. To avoid this, we multiply the loss by
       # loss_scale to make these tensor values loss_scale times bigger.
