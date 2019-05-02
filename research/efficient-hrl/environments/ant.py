@@ -130,7 +130,7 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     return ori
 
   def set_xy(self, xy):
-    qpos = np.copy(self.data.qpos)
+    qpos = np.copy(self.physics.data.qpos)
     qpos[0] = xy[0]
     qpos[1] = xy[1]
 
