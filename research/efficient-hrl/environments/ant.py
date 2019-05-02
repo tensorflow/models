@@ -17,6 +17,7 @@
 
 import math
 import numpy as np
+import mujoco_py
 from gym import utils
 from gym.envs.mujoco import mujoco_env
 
@@ -50,7 +51,10 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
   @property
   def physics(self):
-    return self.model
+    if mujoco_py.get_version() >= '2.0.2.0':
+      return self.sim
+    else:
+      return self.model
 
   def _step(self, a):
     return self.step(a)
@@ -75,13 +79,13 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     # No cfrc observation
     if self._expose_all_qpos:
       obs = np.concatenate([
-          self.data.qpos.flat[:15],  # Ensures only ant obs.
-          self.data.qvel.flat[:14],
+          self.physics.data.qpos.flat[:15],  # Ensures only ant obs.
+          self.physics.data.qvel.flat[:14],
       ])
     else:
       obs = np.concatenate([
-          self.data.qpos.flat[2:15],
-          self.data.qvel.flat[:14],
+          self.physics.data.qpos.flat[2:15],
+          self.physics.data.qvel.flat[:14],
       ])
 
     if self._expose_body_coms is not None:
@@ -117,7 +121,7 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
   def get_ori(self):
     ori = [0, 1, 0, 0]
-    rot = self.data.qpos[self.__class__.ORI_IND:self.__class__.ORI_IND + 4]  # take the quaternion
+    rot = self.physics.data.qpos[self.__class__.ORI_IND:self.__class__.ORI_IND + 4]  # take the quaternion
     ori = q_mult(q_mult(rot, ori), q_inv(rot))[1:3]  # project onto x-y plane
     ori = math.atan2(ori[1], ori[0])
     return ori
@@ -127,8 +131,8 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     qpos[0] = xy[0]
     qpos[1] = xy[1]
 
-    qvel = self.data.qvel
+    qvel = self.physics.data.qvel
     self.set_state(qpos, qvel)
 
   def get_xy(self):
-    return self.data.qpos[:2]
+    return self.physics.data.qpos[:2]

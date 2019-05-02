@@ -17,6 +17,7 @@
 
 import math
 import numpy as np
+import mujoco_py
 from gym import utils
 from gym.envs.mujoco import mujoco_env
 
@@ -33,14 +34,17 @@ class PointEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
   @property
   def physics(self):
-    return self.model
+    if mujoco_py.get_version() >= '2.0.2.0':
+      return self.sim
+    else:
+      return self.model
 
   def _step(self, a):
     return self.step(a)
 
   def step(self, action):
     action[0] = 0.2 * action[0]
-    qpos = np.copy(self.data.qpos)
+    qpos = np.copy(self.physics.data.qpos)
     qpos[2] += action[1]
     ori = qpos[2]
     # compute increment in each direction
@@ -49,7 +53,7 @@ class PointEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     # ensure that the robot is within reasonable range
     qpos[0] = np.clip(qpos[0] + dx, -100, 100)
     qpos[1] = np.clip(qpos[1] + dy, -100, 100)
-    qvel = self.data.qvel
+    qvel = self.physics.data.qvel
     self.set_state(qpos, qvel)
     for _ in range(0, self.frame_skip):
       self.physics.step()
@@ -62,11 +66,11 @@ class PointEnv(mujoco_env.MujocoEnv, utils.EzPickle):
   def _get_obs(self):
     if self._expose_all_qpos:
       return np.concatenate([
-          self.data.qpos.flat[:3],  # Only point-relevant coords.
-          self.data.qvel.flat[:3]])
+          self.physics.data.qpos.flat[:3],  # Only point-relevant coords.
+          self.physics.data.qvel.flat[:3]])
     return np.concatenate([
-        self.data.qpos.flat[2:3],
-        self.data.qvel.flat[:3]])
+        self.physics.data.qpos.flat[2:3],
+        self.physics.data.qvel.flat[:3]])
 
   def reset_model(self):
     qpos = self.init_qpos + self.np_random.uniform(
@@ -80,11 +84,11 @@ class PointEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     return self._get_obs()
 
   def get_ori(self):
-    return self.model.data.qpos[self.__class__.ORI_IND]
+    return self.physics.data.qpos[self.__class__.ORI_IND]
 
   def set_xy(self, xy):
-    qpos = np.copy(self.data.qpos)
+    qpos = np.copy(self.physics.data.qpos)
     qpos[0] = xy[0]
     qpos[1] = xy[1]
 
-    qvel = self.data.qvel
+    qvel = self.physics.data.qvel
