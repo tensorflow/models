@@ -291,9 +291,13 @@ def define_keras_flags():
       'help improve performance using EagerIterator and function. The codepath '
       'when enabling this feature is experimental and will be removed once the '
       'corresponding performance features are fully supported in TensorFlow.')
-  flags.DEFINE_boolean(name='clone_model_in_keras_dist_strat', default=True,
-                       help='If False, then the experimental code path is used'
-                       ' that doesn\'t clone models for distribution.')
+  flags.DEFINE_boolean(
+      name='batchnorm_spatial_persistent', default=True,
+      help='Enable the spacial persistent mode for CuDNN batch norm kernel.')
+  flags.DEFINE_boolean(
+      name='clone_model_in_keras_dist_strat', default=True,
+      help='If False, then the experimental code path is used that doesn\'t '
+           'clone models for distribution.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
@@ -356,6 +360,15 @@ def data_prefetch_with_slack():
   """Use unstable code for perf tuning purposes."""
   if not FLAGS.use_synthetic_data:
     _monkey_patch_org_create_device_dataset()
+
+
+def set_cudnn_batchnorm_mode():
+  """Set CuDNN batchnorm mode for better performance. Note that the spatial
+     persistent mode may lead to accuracy losses for certain models."""
+  if FLAGS.batchnorm_spatial_persistent:
+    os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'
+  else:
+    os.environ.pop('TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT', None)
 
 
 def _monkey_patch_org_assert_broadcastable():
