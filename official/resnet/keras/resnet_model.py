@@ -72,7 +72,6 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
                                 scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
-                                fused=True,
                                 name=bn_name_base + '2a')(x)
   x = layers.Activation('relu')(x)
 
@@ -85,7 +84,6 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
                                 scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
-                                fused=True,
                                 name=bn_name_base + '2b')(x)
   x = layers.Activation('relu')(x)
 
@@ -97,7 +95,6 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
                                 scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
-                                fused=True,
                                 name=bn_name_base + '2c')(x)
 
   x = layers.add([x, input_tensor])
@@ -145,7 +142,6 @@ def conv_block(input_tensor,
                                 scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
-                                fused=True,
                                 name=bn_name_base + '2a')(x)
   x = layers.Activation('relu')(x)
 
@@ -157,7 +153,6 @@ def conv_block(input_tensor,
                                 scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
-                                fused=True,
                                 name=bn_name_base + '2b')(x)
   x = layers.Activation('relu')(x)
 
@@ -169,7 +164,6 @@ def conv_block(input_tensor,
                                 scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
-                                fused=True,
                                 name=bn_name_base + '2c')(x)
 
   shortcut = layers.Conv2D(filters3, (1, 1), strides=strides, use_bias=False,
@@ -180,7 +174,6 @@ def conv_block(input_tensor,
                                        scale=False,
                                        momentum=BATCH_NORM_DECAY,
                                        epsilon=BATCH_NORM_EPSILON,
-                                       fused=True,
                                        name=bn_name_base + '1')(shortcut)
 
   x = layers.add([x, shortcut])
@@ -221,7 +214,6 @@ def resnet50(num_classes, dtype='float32', batch_size=None):
                                 scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
-                                fused=True,
                                 name='bn_conv1')(x)
   x = layers.Activation('relu')(x)
   x = layers.MaxPooling2D((3, 3), strides=(2, 2), padding='same')(x)

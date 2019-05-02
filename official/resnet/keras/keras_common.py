@@ -368,7 +368,7 @@ def set_cudnn_batchnorm_mode():
   if FLAGS.batchnorm_spatial_persistent:
     os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'
   else:
-    os.environ.pop('TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT', None)
+    del os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT']
 
 
 def _monkey_patch_org_assert_broadcastable():
