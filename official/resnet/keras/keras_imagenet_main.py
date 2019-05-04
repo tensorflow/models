@@ -109,6 +109,7 @@ def run(flags_obj):
     keras_common.set_gpu_thread_mode_and_count(flags_obj)
   if flags_obj.data_prefetch_with_slack:
     keras_common.data_prefetch_with_slack()
+  keras_common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'float16':

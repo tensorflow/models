@@ -69,6 +69,7 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2a')(input_tensor)
   x = layers.BatchNormalization(axis=bn_axis,
+                                scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
                                 name=bn_name_base + '2a')(x)
@@ -80,6 +81,7 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2b')(x)
   x = layers.BatchNormalization(axis=bn_axis,
+                                scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
                                 name=bn_name_base + '2b')(x)
@@ -90,6 +92,7 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2c')(x)
   x = layers.BatchNormalization(axis=bn_axis,
+                                scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
                                 name=bn_name_base + '2c')(x)
@@ -136,6 +139,7 @@ def conv_block(input_tensor,
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2a')(input_tensor)
   x = layers.BatchNormalization(axis=bn_axis,
+                                scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
                                 name=bn_name_base + '2a')(x)
@@ -146,6 +150,7 @@ def conv_block(input_tensor,
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2b')(x)
   x = layers.BatchNormalization(axis=bn_axis,
+                                scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
                                 name=bn_name_base + '2b')(x)
@@ -156,6 +161,7 @@ def conv_block(input_tensor,
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name=conv_name_base + '2c')(x)
   x = layers.BatchNormalization(axis=bn_axis,
+                                scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
                                 name=bn_name_base + '2c')(x)
@@ -165,6 +171,7 @@ def conv_block(input_tensor,
                            kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                            name=conv_name_base + '1')(input_tensor)
   shortcut = layers.BatchNormalization(axis=bn_axis,
+                                       scale=False,
                                        momentum=BATCH_NORM_DECAY,
                                        epsilon=BATCH_NORM_EPSILON,
                                        name=bn_name_base + '1')(shortcut)
@@ -204,6 +211,7 @@ def resnet50(num_classes, dtype='float32', batch_size=None):
                     kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                     name='conv1')(x)
   x = layers.BatchNormalization(axis=bn_axis,
+                                scale=False,
                                 momentum=BATCH_NORM_DECAY,
                                 epsilon=BATCH_NORM_EPSILON,
                                 name='bn_conv1')(x)
