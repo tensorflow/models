@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package lstm_object_detection.input_readers;
+package lstm_object_detection.protos;
 
 import "object_detection/protos/input_reader.proto";
 
@@ -20,9 +20,8 @@ message TFRecordVideoInputReader {
 
   enum DataType {
     UNSPECIFIED = 0;
-    ANNOTATED_IMAGE = 1;
-    TF_EXAMPLE = 2;
-    TF_SEQUENCE_EXAMPLE = 3;
+    TF_EXAMPLE = 1;
+    TF_SEQUENCE_EXAMPLE = 2;
   }
   optional DataType data_type = 2 [default=TF_SEQUENCE_EXAMPLE];
 
