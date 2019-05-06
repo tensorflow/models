@@ -53,6 +53,10 @@ flags.DEFINE_multi_float('inference_scales', [1.0],
 flags.DEFINE_bool('add_flipped_images', False,
                   'Add flipped images during inference or not.')
 
+flags.DEFINE_integer(
+    'quantize_delay_step', -1,
+    'Steps to start quantized training. If < 0, will not quantize model.')
+
 flags.DEFINE_bool('save_inference_graph', False,
                   'Save inference graph in text proto.')
 
@@ -124,6 +128,9 @@ def main(unused_argv):
           image_pyramid=FLAGS.image_pyramid)
     else:
       tf.logging.info('Exported model performs multi-scale inference.')
+      if FLAGS.quantize_delay_step >= 0:
+        raise ValueError(
+            'Quantize mode is not supported with multi-scale test.')
       predictions = model.predict_labels_multi_scale(
           image,
           model_options=model_options,
@@ -150,7 +157,10 @@ def main(unused_argv):
     semantic_predictions = _resize_label(semantic_predictions, image_size)
     semantic_predictions = tf.identity(semantic_predictions, name=_OUTPUT_NAME)
 
-    saver = tf.train.Saver(tf.model_variables())
+    if FLAGS.quantize_delay_step >= 0:
+      tf.contrib.quantize.create_eval_graph()
+
+    saver = tf.train.Saver(tf.all_variables())
 
     dirname = os.path.dirname(FLAGS.export_path)
     tf.gfile.MakeDirs(dirname)
