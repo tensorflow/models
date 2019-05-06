@@ -60,7 +60,7 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
-    stats = self.run_func.run_ncf(FLAGS)
+    stats = self.run_func(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     metrics = self._extract_benchmark_report_extras(stats)
