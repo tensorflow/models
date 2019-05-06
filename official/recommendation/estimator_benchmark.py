@@ -25,9 +25,7 @@ from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.recommendation import benchmark_base
-from official.recommendation import ncf_keras_main
-
-FLAGS = flags.FLAGS
+from official.recommendation import ncf_estimator_main
 
 
 class KerasNCFRealData(benchmark_base.KerasNCFBenchmarkBase):
@@ -59,7 +57,7 @@ class KerasNCFRealData(benchmark_base.KerasNCFBenchmarkBase):
         benchmark_base.NCF_DATA_DIR_NAME)
 
     super(KerasNCFRealData, self).__init__(
-        ncf_keras_main.run_ncf,
+        ncf_estimator_main.run_ncf,
         output_dir=output_dir,
         default_flags=default_flags,
         **kwargs)
@@ -125,7 +123,7 @@ class KerasNCFSyntheticData(benchmark_base.KerasNCFBenchmarkBase):
     default_flags['use_synthetic_data'] = True
 
     super(KerasNCFSyntheticData, self).__init__(
-        ncf_keras_main.run_ncf,
+        ncf_estimator_main.run_ncf,
         output_dir=output_dir,
         default_flags=default_flags,
         **kwargs)
