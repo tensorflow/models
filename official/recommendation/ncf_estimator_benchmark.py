@@ -52,7 +52,9 @@ class KerasNCFRealData(benchmark_base.KerasNCFBenchmarkBase):
     default_flags['hr_threshold'] = 0.635
     default_flags['ml_perf'] = True
     default_flags['use_synthetic_data'] = False
-    default_flags['data_dir'] = os.path.join(root_data_dir, NCF_DATA_DIR_NAME)
+    default_flags['data_dir'] = os.path.join(
+        root_data_dir,
+        benchmark_base.NCF_DATA_DIR_NAME)
 
     super(KerasNCFRealData, self).__init__(
         ncf_estimator_main.run_ncf,
