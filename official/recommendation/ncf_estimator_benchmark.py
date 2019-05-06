@@ -27,6 +27,8 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.recommendation import benchmark_base
 from official.recommendation import ncf_estimator_main
 
+FLAGS = flags.FLAGS
+
 
 class KerasNCFRealData(benchmark_base.KerasNCFBenchmarkBase):
   """Benchmark NCF model using real data."""
