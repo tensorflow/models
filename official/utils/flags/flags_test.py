@@ -83,17 +83,7 @@ class BaseTester(unittest.TestCase):
     for dtype_str, tf_dtype, loss_scale in [["fp16", tf.float16, 128],
                                             ["fp32", tf.float32, 1]]:
       flags_core.parse_flags([__file__, "--dtype", dtype_str])
-
       self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf_dtype)
-      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), loss_scale)
-
-      flags_core.parse_flags(
-          [__file__, "--dtype", dtype_str, "--loss_scale", "5"])
-      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), 5)
-
-      flags_core.parse_flags(
-          [__file__, "--dtype", dtype_str, "--loss_scale", "dynamic"])
-      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), "dynamic")
 
     with self.assertRaises(SystemExit):
       flags_core.parse_flags([__file__, "--dtype", "int8"])

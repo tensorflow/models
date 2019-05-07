@@ -23,6 +23,7 @@ from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
+from official.resnet import resnet_run_loop
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_model
 from official.resnet.keras import trivial_model
@@ -174,7 +175,7 @@ def run(flags_obj):
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
+          optimizer, loss_scale=resnet_run_loop.get_loss_scale(flags_obj))
 
     if flags_obj.enable_xla and not flags_obj.enable_eager:
       # TODO(b/129861005): Fix OOM issue in eager mode when setting

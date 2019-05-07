@@ -45,6 +45,19 @@ from official.recommendation import stat_utils
 from official.utils.logs import mlperf_helper
 
 
+def get_loss_scale(params):
+  """Returns the loss scale."""
+  if params["loss_scale"] == "dynamic":
+    return params["loss_scale"]
+  elif params["loss_scale"] is not None:
+    return float(params["loss_scale"])
+  elif params["dtype"] == "fp16":
+    return "dynamic"
+  else:
+    assert params["dtype"] == "fp32"
+    return 1
+
+
 def _sparse_to_dense_grads(grads_and_vars):
   """Convert sparse gradients to dense gradients.
 
@@ -115,6 +128,9 @@ def neumf_model_fn(features, labels, mode, params):
         beta1=params["beta1"],
         beta2=params["beta2"],
         epsilon=params["epsilon"])
+    if params["dtype"] == "fp16":
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+          optimizer, get_loss_scale(params))
     if params["use_tpu"]:
       # TODO(seemuch): remove this contrib import
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)

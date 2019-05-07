@@ -513,6 +513,18 @@ def resnet_model_fn(features, labels, mode, model_class,
       eval_metric_ops=metrics)
 
 
+def get_loss_scale(flags_obj):
+  if flags_obj.loss_scale == "dynamic":
+    return flags_obj.loss_scale
+  elif flags_obj.loss_scale is not None:
+    return float(flags_obj.loss_scale)
+  elif flags_obj.dtype == "fp16":
+    return 128
+  else:
+    assert flags_obj.dtype == "fp32"
+    return 1
+
+
 def resnet_main(
     flags_obj, model_function, input_function, dataset_name, shape=None):
   """Shared main loop for ResNet Models.
@@ -582,7 +594,7 @@ def resnet_main(
           'data_format': flags_obj.data_format,
           'batch_size': flags_obj.batch_size,
           'resnet_version': int(flags_obj.resnet_version),
-          'loss_scale': flags_core.get_loss_scale(flags_obj),
+          'loss_scale': get_loss_scale(flags_obj),
           'dtype': flags_core.get_tf_dtype(flags_obj),
           'fine_tune': flags_obj.fine_tune,
           'num_workers': num_workers,

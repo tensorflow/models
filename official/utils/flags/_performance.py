@@ -26,10 +26,10 @@ import tensorflow as tf   # pylint: disable=g-bad-import-order
 from official.utils.flags._conventions import help_wrap
 
 
-# Map string to (TensorFlow dtype, default loss scale)
+# Map string to TensorFlow dtype
 DTYPE_MAP = {
-    "fp16": (tf.float16, 128),
-    "fp32": (tf.float32, 1),
+    "fp16": tf.float16,
+    "fp32": tf.float32,
 }
 
 
@@ -38,15 +38,7 @@ def get_tf_dtype(flags_obj):
     # If the graph_rewrite is used, we build the graph with fp32, and let the
     # graph rewrite change ops to fp16.
     return tf.float32
-  return DTYPE_MAP[flags_obj.dtype][0]
-
-
-def get_loss_scale(flags_obj):
-  if flags_obj.loss_scale == "dynamic":
-    return flags_obj.loss_scale
-  elif flags_obj.loss_scale is not None:
-    return float(flags_obj.loss_scale)
-  return DTYPE_MAP[flags_obj.dtype][1]
+  return DTYPE_MAP[flags_obj.dtype]
 
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
@@ -144,8 +136,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
       loss_scale_help_text = loss_scale_help_text.format(
           "This can be an int/float or the string 'dynamic'",
           " The string 'dynamic' can be used to dynamically determine the "
-          "optimal loss scale during training, but currently this "
-          "significantly slows down performance")
+          "optimal loss scale during training")
       loss_scale_validation_msg = ("loss_scale should be a positive int/float "
                                    "or the string 'dynamic'.")
     else:

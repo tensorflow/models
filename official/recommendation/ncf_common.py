@@ -108,6 +108,8 @@ def parse_flags(flags_obj):
           flags_obj.clone_model_in_keras_dist_strat,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
+      "dtype": flags_obj.dtype,
+      "loss_scale": flags_obj.loss_scale,
   }
 
 
@@ -163,7 +165,7 @@ def define_ncf_flags():
       intra_op=False,
       synthetic_data=True,
       max_train_steps=False,
-      dtype=False,
+      dtype=True,
       all_reduce_alg=False
   )
   flags_core.define_device(tpu=True)
