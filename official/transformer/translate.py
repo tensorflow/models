@@ -44,7 +44,7 @@ def _get_sorted_inputs(filename):
     Sorted list of inputs, and dictionary mapping original index->sorted index
     of each element.
   """
-  with tf.gfile.Open(filename) as f:
+  with tf.io.gfile.GFile(filename) as f:
     records = f.read().split("\n")
     inputs = [record.strip() for record in records]
     if not inputs[-1]:
@@ -131,7 +131,7 @@ def translate_file(
       raise ValueError("File output is a directory, will not save outputs to "
                        "file.")
     tf.logging.info("Writing to file %s" % output_file)
-    with tf.gfile.Open(output_file, "w") as f:
+    with tf.io.gfile.GFile(output_file, "w") as f:
       for i in sorted_keys:
         f.write("%s\n" % translations[i])
 

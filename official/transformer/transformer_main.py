@@ -582,6 +582,7 @@ def run_transformer(flags_obj):
       params["default_batch_size_tpu"] if params["use_tpu"]
       else params["default_batch_size"]))
 
+  total_batch_size = params["batch_size"]
   if not params["use_tpu"]:
     params["batch_size"] = distribution_utils.per_replica_batch_size(
         params["batch_size"], num_gpus)
@@ -607,7 +608,7 @@ def run_transformer(flags_obj):
       flags_obj.hooks,
       model_dir=flags_obj.model_dir,
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
-      batch_size=schedule_manager.batch_size,  # for ExamplesPerSecondHook
+      batch_size=total_batch_size,  # for ExamplesPerSecondHook
       use_tpu=params["use_tpu"]  # Not all hooks can run with TPUs
   )
   benchmark_logger = logger.get_benchmark_logger()
