@@ -185,7 +185,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
         flag_methods=flag_methods)
 
   def benchmark_1_gpu(self):
-    """Benchmark 1 gpu"""
+    """Benchmark 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.param_set = 'base'

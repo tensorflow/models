@@ -105,7 +105,7 @@ def translate_file(
       if i % batch_size == 0:
         batch_num = (i // batch_size) + 1
 
-        tf.logging.info("T:Decoding batch %d out of %d." %
+        tf.logging.info("Decoding batch %d out of %d." %
                         (batch_num, num_decode_batches))
       yield _encode_and_add_eos(line, subtokenizer)
 
