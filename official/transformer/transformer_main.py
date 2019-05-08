@@ -644,7 +644,6 @@ def run_transformer(flags_obj):
         flags_obj.export_dir, serving_input_fn,
         assets_extra={"vocab.txt": flags_obj.vocab_file},
         strip_default_attrs=True)
-  print(stats)
   return stats
 
 
