@@ -180,8 +180,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.batch_size = 4048 * 2
     FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
-    FLAGS.model_dir = self._get_model_dir(
-        'benchmark_1_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
@@ -198,8 +197,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.batch_size = 4048 * 8
     FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
-    FLAGS.model_dir = self._get_model_dir(
-        'benchmark_8_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
