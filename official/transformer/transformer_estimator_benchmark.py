@@ -186,12 +186,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu(self):
-    """Benchmark 2 gpu.
-
-      The paper uses 8 GPUs and a much larger effective batch-size,
-      this is unlikely to hit the target bleu score regardless of
-      number of steps.
-    """
+    """benchmark 8 gpus."""
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.data_dir = self.train_data_dir
@@ -204,7 +199,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
     FLAGS.model_dir = self._get_model_dir(
-        'benchmark_1_gpu')
+        'benchmark_8_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
