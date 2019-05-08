@@ -58,7 +58,7 @@ def _get_sorted_inputs(filename):
   for i, (index, _) in enumerate(sorted_input_lens):
     sorted_inputs[i] = inputs[index]
     sorted_keys[index] = i
-  print(sorted_inputs)
+
   return sorted_inputs, sorted_keys
 
 

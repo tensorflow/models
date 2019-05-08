@@ -35,10 +35,9 @@ FLAGS = flags.FLAGS
 class EstimatorBenchmark(tf.test.Benchmark):
   """Base class to hold methods common to test classes in the module.
 
-     Code under test for Estimator models (ResNet50 and 56) report mostly the
+     Code under test for the Transformer Estimator models that report mostly the
      same data and require the same FLAG setup.
   """
-
   local_flags = None
 
   def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
@@ -71,17 +70,16 @@ class EstimatorBenchmark(tf.test.Benchmark):
   def _report_benchmark(self,
                         stats,
                         wall_time_sec,
-                        top_1_max=None,
-                        top_1_min=None):
+                        bleu_max=None,
+                        bleu_min=None):
     """Report benchmark results by writing to local protobuf file.
 
     Args:
       stats: dict returned from estimator models with known entries.
       wall_time_sec: the during of the benchmark execution in seconds
-      top_1_max: highest passing level for top_1 accuracy.
-      top_1_min: lowest passing level for top_1 accuracy.
+      bleu_max: highest passing level for bleu score.
+      bleu_min: lowest passing level for bleu score.
     """
-
     examples_per_sec_hook = None
     for hook in stats['train_hooks']:
       if isinstance(hook, hooks.ExamplesPerSecondHook):
@@ -90,14 +88,11 @@ class EstimatorBenchmark(tf.test.Benchmark):
 
     eval_results = stats['eval_results']
     metrics = []
-    if 'accuracy' in eval_results:
-      metrics.append({'name': 'accuracy_top_1',
-                      'value': eval_results['accuracy'].item(),
-                      'min_value': top_1_min,
-                      'max_value': top_1_max})
-    if 'accuracy_top_5' in eval_results:
-      metrics.append({'name': 'accuracy_top_5',
-                      'value': eval_results['accuracy_top_5'].item()})
+    if 'bleu_cased' in stats:
+      metrics.append({'name': 'bleu_score',
+                      'value': stats['bleu_cased'],
+                      'min_value': bleu_min,
+                      'max_value': bleu_max})
 
     if examples_per_sec_hook:
       exp_per_second_list = examples_per_sec_hook.current_examples_per_sec_list
@@ -145,7 +140,12 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
         output_dir=output_dir, flag_methods=flag_methods)
 
   def benchmark_1_gpu(self):
-    """Test FP16 graph rewrite 8 GPUs graph mode."""
+    """Benchmark 1 gpu.
+
+      The paper uses 8 GPUs and a much larger effective batch-size,
+      this is unlikely to hit the target bleu score regardless of
+      number of steps.
+    """
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.data_dir = self.train_data_dir
@@ -154,10 +154,9 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS['bleu_source'].value = self.bleu_source
     FLAGS['bleu_ref'].value = self.bleu_ref
     FLAGS.param_set = 'base'
-    FLAGS.batch_size = 2024
-    # TODO(tobyboyd): Change to epochs not steps for accuracy test.
-    FLAGS.train_steps = 600
-    FLAGS.steps_between_evals = 600
+    FLAGS.batch_size = 4048
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 5000
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
@@ -169,8 +168,8 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     wall_time_sec = time.time() - start_time_sec
     self._report_benchmark(stats,
                            wall_time_sec,
-                           top_1_min=0.762,
-                           top_1_max=0.766)
+                           bleu_min=25,
+                           bleu_max=28)
 
 
 class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
@@ -186,14 +185,11 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
         flag_methods=flag_methods)
 
   def benchmark_1_gpu(self):
-    """Benchmarks graph fp16 1 gpu."""
+    """Benchmark 1 gpu"""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.param_set = 'base'
-    FLAGS.batch_size = 2024
-    # TODO(tobyboyd): Change to epochs not steps for accuracy test.
-    FLAGS.train_steps = 600
-    FLAGS.steps_between_evals = 600
+    FLAGS.batch_size = 4048
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
@@ -213,8 +209,8 @@ class TransformerBaseEstimatorBenchmarkSynth(TransformerBaseEstimatorBenchmark):
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['use_synthetic_data'] = True
-    def_flags['max_train_steps'] = 110
-    def_flags['train_epochs'] = 1
+    def_flags['train_steps'] = 200
+    def_flags['steps_between_evals'] = 200
 
     super(TransformerBaseEstimatorBenchmarkSynth, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
@@ -233,6 +229,8 @@ class TransformerBaseEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
     def_flags = {}
     def_flags['vocab_file'] = vocab_file
     def_flags['data_dir'] = train_data_dir
+    def_flags['train_steps'] = 200
+    def_flags['steps_between_evals'] = 200
 
     super(TransformerBaseEstimatorBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
