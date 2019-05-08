@@ -58,6 +58,7 @@ def _get_sorted_inputs(filename):
   for i, (index, _) in enumerate(sorted_input_lens):
     sorted_inputs[i] = inputs[index]
     sorted_keys[index] = i
+  print(sorted_inputs)
   return sorted_inputs, sorted_keys
 
 
@@ -104,7 +105,7 @@ def translate_file(
       if i % batch_size == 0:
         batch_num = (i // batch_size) + 1
 
-        tf.logging.info("Decoding batch %d out of %d." %
+        tf.logging.info("T:Decoding batch %d out of %d." %
                         (batch_num, num_decode_batches))
       yield _encode_and_add_eos(line, subtokenizer)
 
@@ -126,7 +127,7 @@ def translate_file(
 
   # Write translations in the order they appeared in the original file.
   if output_file is not None:
-    if tf.gfile.IsDirectory(output_file):
+    if tf.io.gfile.isdir(output_file):
       raise ValueError("File output is a directory, will not save outputs to "
                        "file.")
     tf.logging.info("Writing to file %s" % output_file)

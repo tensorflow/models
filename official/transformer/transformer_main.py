@@ -209,6 +209,8 @@ def translate_and_compute_bleu(estimator, subtokenizer, bleu_source, bleu_ref):
   tmp = tempfile.NamedTemporaryFile(delete=False)
   tmp_filename = tmp.name
 
+  print('BLEU_SOURCE before translate: {}'.format(bleu_source))
+
   translate.translate_file(
       estimator, subtokenizer, bleu_source, output_file=tmp_filename,
       print_all_translations=False)
@@ -279,6 +281,11 @@ def run_loop(
     bleu_threshold: minimum BLEU score before training is stopped.
     vocab_file: Path to vocab file that will be used to subtokenize bleu_source.
 
+  Returns:
+    Dict of results of the run.  Contains the keys `eval_results`, `train_hooks`
+      ,`bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the instances
+      of hooks used during training.
+
   Raises:
     ValueError: if both or none of single_iteration_train_steps and
       single_iteration_train_epochs were defined.
@@ -321,6 +328,7 @@ def run_loop(
       schedule_manager.train_eval_iterations = INF
 
   # Loop training/evaluation/bleu cycles
+  stats = {}
   for i in xrange(schedule_manager.train_eval_iterations):
     tf.logging.info("Starting iteration %d" % (i + 1))
 
@@ -349,6 +357,9 @@ def run_loop(
       uncased_score, cased_score = evaluate_and_log_bleu(
           estimator, bleu_source, bleu_ref, vocab_file)
 
+      stats["bleu_uncased"] = uncased_score
+      stats["bleu_cased"] = cased_score
+
       # Write actual bleu scores using summary writer and benchmark logger
       global_step = get_global_step(estimator)
       summary = tf.Summary(value=[
@@ -366,6 +377,11 @@ def run_loop(
       if model_helpers.past_stop_threshold(bleu_threshold, uncased_score):
         bleu_writer.close()
         break
+
+  stats["eval_results"] = eval_results
+  stats["train_hooks"] = train_hooks
+
+  return stats
 
 
 def define_transformer_flags():
@@ -535,6 +551,11 @@ def run_transformer(flags_obj):
 
   Args:
     flags_obj: Object containing parsed flag values.
+
+  Returns:
+    Dict of results of the run.  Contains the keys `eval_results`, `train_hooks`
+      ,`bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the instances
+      of hooks used during training.
   """
   num_gpus = flags_core.get_num_gpus(flags_obj)
 
@@ -600,7 +621,7 @@ def run_transformer(flags_obj):
 
   # Train and evaluate transformer model
   estimator = construct_estimator(flags_obj, params, schedule_manager)
-  run_loop(
+  stats = run_loop(
       estimator=estimator,
       # Training arguments
       schedule_manager=schedule_manager,
@@ -625,6 +646,8 @@ def run_transformer(flags_obj):
         flags_obj.export_dir, serving_input_fn,
         assets_extra={"vocab.txt": flags_obj.vocab_file},
         strip_default_attrs=True)
+  print(stats)
+  return stats
 
 
 def main(_):
