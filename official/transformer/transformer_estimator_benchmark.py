@@ -209,7 +209,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     wall_time_sec = time.time() - start_time_sec
     self._report_benchmark(stats,
                            wall_time_sec,
-                           bleu_min=25,
+                           bleu_min=27.2,
                            bleu_max=28)
 
 
@@ -229,11 +229,32 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     """Benchmark 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.param_set = 'base'
     FLAGS.batch_size = 4048
-    FLAGS.model_dir = self._get_model_dir(
-        'benchmark_1_gpu')
-    FLAGS.hooks = ['ExamplesPerSecondHook']
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
+    self._run_and_report_benchmark()
+
+  def benchmark_2_gpu(self):
+    """Benchmark 2 gpus."""
+    self._setup()
+    FLAGS.num_gpus = 2
+    FLAGS.batch_size = 4048 * 2
+    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu')
+    self._run_and_report_benchmark()
+
+  def benchmark_4_gpu(self):
+    """Benchmark 8 gpus."""
+    self._setup()
+    FLAGS.num_gpus = 4
+    FLAGS.batch_size = 4048 * 4
+    FLAGS.model_dir = self._get_model_dir('benchmark_4_gpu')
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu(self):
+    """Benchmark 8 gpus."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.batch_size = 4048 * 8
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     self._run_and_report_benchmark()
 
   def _run_and_report_benchmark(self):
@@ -245,20 +266,22 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
 
 
 class TransformerBaseEstimatorBenchmarkSynth(TransformerBaseEstimatorBenchmark):
-  """Resnet50 synthetic benchmark tests."""
+  """Transformer based version synthetic benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
+    def_flags['param_set'] = 'base'
     def_flags['use_synthetic_data'] = True
     def_flags['train_steps'] = 200
     def_flags['steps_between_evals'] = 200
+    def_flags['hooks'] = ['ExamplesPerSecondHook']
 
     super(TransformerBaseEstimatorBenchmarkSynth, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
 
 class TransformerBaseEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
-  """Resnet50 real data benchmark tests."""
+  """Transformer based version real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     train_data_dir = os.path.join(root_data_dir,
@@ -268,10 +291,12 @@ class TransformerBaseEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
                               'vocab.ende.32768')
 
     def_flags = {}
+    def_flags['param_set'] = 'base'
     def_flags['vocab_file'] = vocab_file
     def_flags['data_dir'] = train_data_dir
     def_flags['train_steps'] = 200
     def_flags['steps_between_evals'] = 200
+    def_flags['hooks'] = ['ExamplesPerSecondHook']
 
     super(TransformerBaseEstimatorBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
