@@ -27,12 +27,20 @@ CONFIGS_PATH = 'configs'
 CONTEXT_CONFIGS_PATH = 'context/configs'
 
 def main():
+  """
+  'checkpoints': If 'None', periodically find new checkpoints and evaluate them.
+  If 'start_end' and start, end are integers, then evaluate all checkpoints
+  within the range [start, end]. If 'itr_1,itr_2,...,itr_n', evaluate those
+  specific iterations. If a path to a specific checkpoint file, evaluate only
+  that checkpoint.
+  :return:
+  """
   bb = './'
-  base_num_args = 6
+  base_num_args = 7
   if len(sys.argv) < base_num_args:
     print(
         "usage: python %s <exp_name> <context_setting_gin> <context_gin> "
-        "<agent_gin> <suite> [params...]"
+        "<agent_gin> <suite> <checkpoints> [params...]"
         % sys.argv[0])
     sys.exit(0)
   exp = sys.argv[1]
@@ -41,6 +49,7 @@ def main():
   agent = sys.argv[4]
   assert sys.argv[5] in ["suite"], "args[5] must be `suite'"
   suite = ""
+  checkpoints = sys.argv[6]
   binary = "python {bb}/run_eval{suite}.py ".format(bb=bb, suite=suite)
 
   h = os.environ["HOME"]
@@ -65,6 +74,11 @@ def main():
                      suite=suite,
                      exp=exp,
                      binary=binary)
+  if checkpoints != 'None':  # else, eval repeatedly
+    if '_' in checkpoints or ',' in checkpoints:
+      command_str += "--checkpoint_range=%s   " % checkpoints
+    else:
+      command_str += "--checkpoint_path=%s   " % checkpoints
   for extra_arg in sys.argv[base_num_args:]:
     command_str += "--params='%s' " % extra_arg
 

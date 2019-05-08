@@ -13,9 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 
-r"""Script for evaluating a UVF agent.
+r"""Script for training an RL agent using the UVF algorithm.
 
-To run locally: See scripts/local_eval.py
+To run locally: See scripts/local_train.py
 """
 
 from __future__ import absolute_import
@@ -25,31 +25,26 @@ from __future__ import print_function
 import tensorflow as tf
 
 import gin.tf
-# pylint: disable=unused-import
-import eval as eval_
 # pylint: enable=unused-import
+import train_v2  # TODO: tf.app.flags doesn't allow importing both train and train_v2
+# pylint: disable=unused-import
 
 flags = tf.app.flags
-flags.DEFINE_string('checkpoint_path', None,
-                    'Path to the specific checkpoint policy.')
-flags.DEFINE_string('checkpoint_range', None, 'See evaluate() for details')
+flags.DEFINE_string('exp_dir', None,
+                    'Directory that contains both train and eval dirs.')
 FLAGS = flags.FLAGS
 
 
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
-  assert FLAGS.checkpoint_dir, "Flag 'checkpoint_dir' must be set."
-  assert FLAGS.eval_dir, "Flag 'eval_dir' must be set."
   if FLAGS.config_file:
     for config_file in FLAGS.config_file:
       gin.parse_config_file(config_file)
   if FLAGS.params:
     gin.parse_config(FLAGS.params)
 
-  eval_.evaluate(FLAGS.checkpoint_dir, FLAGS.eval_dir,
-                 checkpoint_path=FLAGS.checkpoint_path,
-                 checkpoint_range=FLAGS.checkpoint_range)
+  assert FLAGS.exp_dir, "Flag 'exp_dir' must be set."
+  return train_v2.train_uvf(FLAGS.exp_dir)
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
   tf.app.run()

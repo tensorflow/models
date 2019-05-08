@@ -428,6 +428,8 @@ class DirectionSampler(RandomSampler):
     state, next_state = kwargs['state'], kwargs['next_state']
     if state is not None and next_state is not None:
       my_context_range = (np.array(context_range[1]) - np.array(context_range[0])) / 2 * np.ones(spec.shape.as_list())
+      # Grab random other states in the same batch as "goals"
+      # Then add Gaussian noise whose covariance depends on context ranges.
       contexts = tf.concat(
           [0.1 * my_context_range[:self._k] *
            tf.random_normal(tf.shape(state[:, :self._k]), dtype=state.dtype) +
@@ -439,6 +441,7 @@ class DirectionSampler(RandomSampler):
       next_contexts = tf.concat( #LALA
           [state[:, :self._k] + contexts[:, :self._k] - next_state[:, :self._k],
            other_contexts[:, self._k:]], 1)
+      # TODO: why isn't next_contexts defined from next_states
       next_contexts = contexts  #LALA cosine
     else:
       next_contexts = contexts

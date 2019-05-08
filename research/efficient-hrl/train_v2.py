@@ -15,7 +15,7 @@
 
 """Script for training an RL agent using the UVF algorithm.
 
-To run locally: See run_train.py
+Here both agent and meta_agent share a replay buffer.
 """
 
 from __future__ import absolute_import
@@ -25,6 +25,7 @@ from __future__ import print_function
 import os
 import time
 import tensorflow as tf
+import numpy as np
 slim = tf.contrib.slim
 
 import gin.tf
@@ -46,21 +47,126 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('goal_sample_strategy', 'sample',
                     'None, sample, FuN')
+flags.DEFINE_string('s3_save_policy_path', 'None', 's3://{bucket}/{path}')
 
 LOAD_PATH = None
 # LOAD_PATH = "/Users/haoran/tmp/hiro_xy/ant_maze/base_uvf/20190223_160941/train/model.ckpt-4500"
 
+def get_s3_client():
+  return boto3.client(
+    's3',
+    aws_access_key_id=os.environ['AWS_ACCESS_KEY'],
+    aws_secret_access_key=os.environ['AWS_ACCESS_SECRET'],
+  )
+
+def tf_nans_like(tensor):
+  return tf.zeros_like(tensor) + tf.constant(np.nan)
+
+def tf_rand_sample(data, size):
+  # TODO: perhaps use tf.random.shuffle?
+  # TODO: raise an error if data has length 0
+  indices = tf.random_uniform(
+    [size],
+    minval=0,
+    maxval=tf.cast(tf.shape(data)[0], tf.int64),
+    dtype=tf.int64)
+  return tf.gather(data, indices, name='rand_sample')
+
+
+def sample_low_level_experience(buffer, batch_size):
+  assert isinstance(buffer,  circular_buffer.CircularBuffer)
+  # TODO: double check if tf.size(start_indices) = 2
+  start_indices = tf_rand_sample(
+    buffer.get_valid_start_indices(num_steps=2, num_subsample=(batch_size * 10)),
+    batch_size)
+  two_states = buffer.gather_nstep(
+    num_steps=2, start_indices=start_indices,
+    keys=['state'], check_indices_validity=False)['state']  # [batch_size, 2, state_dim]
+  states = two_states[:, 0]  # [batch_size, state_dim]
+  next_states = two_states[:, 1]  # [batch_size, state_dim]
+
+  context_keys = sorted([k for k in buffer._tensors.keys() if k.startswith('context')])
+  next_context_keys = sorted([k for k in buffer._tensors.keys() if k.startswith('next_context')])
+  other_data = buffer.gather_nstep(
+    num_steps=1, start_indices=start_indices,
+    keys=['action', 'reward', 'discount'] + context_keys + next_context_keys,
+    check_indices_validity=False,
+  )
+  batch = OrderedDict({
+    'state': states,
+    'action': other_data['action'],
+    'reward': other_data['reward'],
+    'discount': other_data['discount'],
+    'next_state': next_states,
+  })
+  batch.update({k: other_data[k] for k in context_keys})
+  batch.update({k: other_data[k] for k in next_context_keys})
+  return batch
+
+
+def sample_high_level_experience(buffer, batch_size, horizon):
+  assert isinstance(buffer,  circular_buffer.CircularBuffer)
+  # TODO: double check if tf.size(start_indices) = 2
+  start_indices = tf_rand_sample(
+    # Because the high-level starts operating from t=1, we need an offset = 1
+    buffer.get_valid_start_indices(num_steps=(horizon+1), episode_start_offset=1,
+                                   num_subsample=(batch_size * 10)),
+    batch_size)
+
+  all_states = buffer.gather_nstep(
+    num_steps=(horizon+1), start_indices=start_indices, keys=['state'],
+    check_indices_validity=False,
+  )['state']  # [batch_size, (horizon+1), state_dim]
+  states = all_states[:, 0]  # [batch_size, state_dim]
+  past_states = all_states[:, :-1]  # [batch_size, horizon, state_dim]
+  next_states = all_states[:, -1]  # [batch_size, state_dim]
+  data = buffer.gather_nstep(
+    num_steps=horizon, start_indices=start_indices, keys=['action', 'reward'],
+    check_indices_validity=False,
+  )
+  past_actions = data['action']
+  total_reward = tf.reduce_sum(data['reward'], axis=1)
+
+  # HACKY debug for env_time_step for simple_env
+  # env_time_steps = buffer.gather_nstep(
+  #   num_steps=(horizon+1), start_indices=start_indices, keys=['env_time_step'])['env_time_step']
+  # with tf.control_dependencies([
+  #   tf.print(all_states[0,0,0], env_time_steps[0,0]),
+  #   tf.assert_equal(all_states[..., 0], tf.cast(env_time_steps, tf.float32)),
+  # ]):
+  #   total_reward = total_reward + 0
+
+  context_keys = sorted([k for k in buffer._tensors.keys() if k.startswith('meta_context')])
+  next_context_keys = sorted([k for k in buffer._tensors.keys() if k.startswith('next_meta_context')])
+  other_data = buffer.gather_nstep(
+    num_steps=1, start_indices=start_indices,
+    keys=['meta_action', 'discount'] + context_keys + next_context_keys,
+    check_indices_validity=False,
+  )
+  batch = OrderedDict({
+    'state': states,  # [B, s_dim]
+    'meta_action': other_data['meta_action'],  # [B, meta_a_dim]
+    # TODO: maybe discount the rewards?
+    'total_reward': total_reward,  # [B]
+    'discount': other_data['discount'],  # [B]
+    'next_state': next_states,  # [B, s_dim]
+    'past_states': past_states,  # [B, T, s_dim]
+    'past_actions': past_actions,  # [B, T, a_dim]
+  })
+  batch.update({k: other_data[k] for k in context_keys})
+  batch.update({k: other_data[k] for k in next_context_keys})
+  return batch
+
+
 
 def collect_experience(tf_env, agent, meta_agent, state_preprocess,
-                       replay_buffer, meta_replay_buffer,
+                       replay_buffer,
                        action_fn, meta_action_fn,
                        environment_steps, num_episodes, num_env_resets,
                        episode_rewards, episode_meta_rewards,
                        store_context,
                        disable_agent_reset,
-                       store_meta_transition_every_n,
-                       q_values,
-                       meta_q_values):
+                       env_time_step):
   """Collect experience in a tf_env into a replay_buffer using action_fn.
 
   Takes a step in the env.
@@ -70,14 +176,13 @@ def collect_experience(tf_env, agent, meta_agent, state_preprocess,
   Put (starting_state, starting_action=goal, meta_reward, end_state,
     in_between_states, in_between_actions, meta_context, meta_next_context) to
     high-level buffer at the end of a meta-transition.
-  Updates counters like episodes.
+  Updates counters like number of episodes.
 
   Args:
     tf_env: A TFEnvironment.
     agent: A UVF agent.
     meta_agent: A Meta Agent.
     replay_buffer: A Replay buffer to collect experience in.
-    meta_replay_buffer: A Replay buffer to collect meta agent experience in.
     action_fn: A function to produce actions given current state.
     meta_action_fn: A function to produce meta actions given current state.
     environment_steps: A variable to count the number of steps in the tf_env.
@@ -93,9 +198,9 @@ def collect_experience(tf_env, agent, meta_agent, state_preprocess,
   tf_env.start_collect()
   state = tf_env.current_obs()
   state_repr = state_preprocess(state)
-  action = action_fn(state, context=None)
+  action = action_fn(state, context=None)  # The first low-level action ignores goals
 
-  with tf.control_dependencies([state]):  # Make sure to not get next state
+  with tf.control_dependencies([state]):  # Witout this, `state` could be asigned the state after env_step
     time_step, reward, discount = tf_env.step(
         tf.expand_dims(action, 0))
 
@@ -107,20 +212,6 @@ def collect_experience(tf_env, agent, meta_agent, state_preprocess,
 
   def increment_env_reset():
     return num_env_resets.assign_add(1)
-
-
-  def update_q_values(agent, meta_agent, state):
-    # import ipdb; ipdb.set_trace()
-    new_q_value = agent.value_net(
-        agent._batch_state(
-            agent.merged_state(state, context=None)))
-    new_meta_q_value = meta_agent.value_net(
-        meta_agent._batch_state(
-            meta_agent.merged_state(state, context=None)))
-    return tf.group(
-      q_values.assign(tf.concat([new_q_value, q_values[:-1]], 0)),
-      meta_q_values.assign(tf.concat([new_meta_q_value, meta_q_values[:-1]], 0))
-    )
 
   def update_episode_rewards(context_reward, meta_reward, reset):
     # episode_rewards is an array to track total rewards from recent episodes.
@@ -166,14 +257,6 @@ def collect_experience(tf_env, agent, meta_agent, state_preprocess,
   with tf.control_dependencies([increment_op, reward, discount]):
     next_state = tf_env.current_obs()
     next_state_repr = state_preprocess(next_state)
-    # TODO: next_reset_episode_cond is probably wrong; remove it in the future
-    # next_reset_episode_cond = tf.logical_or(
-    #     agent.reset_episode_cond_fn(
-    #         state, action,
-    #         time_step, environment_steps, num_episodes),
-    #     tf.equal(discount, 0.0))
-    # next_state = tf.Print(next_state, [agent.tf_context.t, reset_env_cond, state, action, next_state], 'print2')
-    # next_reset_episode_cond = tf.Print(next_reset_episode_cond, [next_reset_episode_cond], 'reset_epi')
 
   # Get next context
   if store_context:
@@ -186,9 +269,10 @@ def collect_experience(tf_env, agent, meta_agent, state_preprocess,
   # Compute context rewards
   # Copy agent.tf_context.t, because it will be incremented and potentially
   # reset to 0 during agent.cond_begin_episode_op_v2, which is just a mess.
+  cur_env_time_step = tf.identity(env_time_step.read_value()) + 0
   cur_t = tf.identity(agent.tf_context.t + 0)  # for unknown reasons the "+ 0" is important
 
-  with tf.control_dependencies([next_state] + context + meta_context + [cur_t]):
+  with tf.control_dependencies([next_state] + context + meta_context + [cur_env_time_step, cur_t]):
     if disable_agent_reset:
       collect_experience_ops = [tf.no_op()]
     else:
@@ -205,125 +289,77 @@ def collect_experience(tf_env, agent, meta_agent, state_preprocess,
       collect_experience_ops.append(
           update_episode_rewards(tf.reduce_sum(context_reward), meta_reward,
                                  reset_episode_cond))
-      collect_experience_ops.append(
-          update_q_values(agent, meta_agent, state))
 
   # Compute transition and meta-transition, and put them in the buffers.
-  meta_action_every_n = agent.tf_context.meta_action_every_n
   with tf.control_dependencies(collect_experience_ops):
-    transition = [state, action, reward, discount, next_state]
-
-    meta_action = tf.to_float(
-        tf.concat(context, -1))  # Meta agent action is low-level context
-
-    # IMPORTANT: Since agent.cond_begin_episode_op executes
-    # agent.tf_context.step, which increments agent.tf_context.t, the timer
-    # has come ahead of the current time.
-    cur_period_ind = cur_t % meta_action_every_n
-    prev_period_ind = (cur_t - 1) % meta_action_every_n
-
-    if store_meta_transition_every_n is None:
-      store_meta_transition_every_n = meta_action_every_n
-    meta_end = tf.logical_and(
-      tf.equal((cur_t - meta_action_every_n) % store_meta_transition_every_n, 0),
-      tf.greater_equal(cur_t, meta_action_every_n))  # the history should only contain data from current traj
-    with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
-      # states_var stores all states within a meta_period. New states are pushed
-      # in a circular fashion.
-
-      def _create_history_var(name, template):
-        return tf.get_variable(
-          name=name,
-          shape=[meta_action_every_n] + template.shape.as_list(),
-          dtype=template.dtype,
-        )
-
-      states_var = _create_history_var('states_var', state)
-      actions_var = _create_history_var('actions_var', action)
-      rewards_var = _create_history_var('rewards_var', reward)
-      meta_actions_var = _create_history_var('meta_actions_var', meta_action)
-      meta_contexts_var = [
-        _create_history_var('meta_contexts_var%d' % idx, meta_context[idx])
-        for idx in range(len(meta_context))
-      ]
-
-    # The meta_agent does not know agent's action until one step later, so
-    # it makes up for the update now.
-    actions_var_upd = tf.scatter_update(actions_var, prev_period_ind, action)
-    with tf.control_dependencies([actions_var_upd]):
-      actions = tf.identity(actions_var) + tf.zeros_like(actions_var)
-      meta_reward = tf.identity(meta_reward) + tf.zeros_like(meta_reward)
-      meta_reward = tf.reshape(meta_reward, reward.shape)
-
-    reward = 0.1 * meta_reward  # why 0.1?
-
-    # Note: grab history from (cur_t - c + 1) to cur_t
-    past_states = tf.concat([states_var[cur_period_ind:], states_var[:cur_period_ind]], 0)
-    past_actions = tf.concat([actions[cur_period_ind:], actions[:cur_period_ind]], 0)
-    past_states.set_shape(states_var.shape)  # tell tf the shape since it can't do grade school math
-    past_actions.set_shape(actions_var.shape)
-
-    meta_transition = OrderedDict({  # Must be OrderedDict, since buffer.get_randomb_batch() doesn't return the keys
-      'state': states_var[cur_period_ind],  # cur_period_id corresponds to time (cur_t - c + 1)
-      'meta_action': meta_actions_var[cur_period_ind],
-      'reward': tf.reduce_sum(rewards_var, axis=0) - rewards_var[cur_period_ind] + reward,  # Include the very last reward (since meta_transition is stored before rewards_var_upd is run
-      'discount': discount * (1 - tf.to_float(reset_episode_cond)),
-      'next_state': next_state,  # at time (cur_t + 1)
-      'past_states': past_states,  # t ~ [cur_t - c + 1, cur_t]
-      'past_actions': past_actions,  # t ~ [cur_t - c + 1, cur_t]
-      'rewards': rewards_var,
-      'meta_actions': meta_actions_var,
+    meta_reward = tf.identity(meta_reward) + tf.zeros_like(meta_reward)  # why?
+    meta_reward = tf.reshape(meta_reward, reward.shape)
+    transition = OrderedDict({
+      'state': state,
+      'action': action,
+      # TODO: weird design to replace env reward with meta_reward.
+      # Should store raw data and grab the right stuff during training.
+      'reward': 0.1 * meta_reward,  # don't ask me why
+      'discount': discount,
+      'done': tf.constant(False),
+      # 'next_state': next_state,
+      'meta_action': tf.to_float(tf.concat(context, -1)),  # Meta agent action is low-level context
+      'meta_reward': meta_reward,
+      'env_time_step': cur_env_time_step,  # cur_t starts as 0, 0, 1, 2,...
     })
+
     if store_context:  # store current and next context into replay
-      transition += context + list(agent.context_vars)
-      meta_contexts = [
-        meta_contexts_var[idx][cur_period_ind]
-        for idx in range(len(meta_context))]
-      meta_transition.update(OrderedDict({
+      # First half of context vars are for the current. Second half are for the next.
+      transition.update(OrderedDict({
+        'context_%d' % i: v
+        for i, v in enumerate(context)
+      }))
+      transition.update(OrderedDict({
+        'next_context_%d' % i: v
+        for i, v in enumerate(list(agent.context_vars))
+      }))
+      transition.update(OrderedDict({
         'meta_context_%d' % i: v
-        for i, v in enumerate(meta_contexts + list(meta_agent.context_vars))
+        for i, v in enumerate(meta_context)
+      }))
+      transition.update(OrderedDict({
+        'next_meta_context_%d' % i: v
+        for i, v in enumerate(list(meta_agent.context_vars))
       }))
 
-    meta_step_cond = tf.squeeze(tf.logical_and(step_cond, tf.logical_or(reset_episode_cond, meta_end)))
-
-    collect_experience_op = tf.group(
-        replay_buffer.maybe_add(transition, step_cond),
-        meta_replay_buffer.maybe_add(meta_transition, meta_step_cond),
-    )
-
-    # TODO: separate storing history in vars and how meta_transition is formed
-    # meta_transition should always use data from [t-c, t]
+    # If next_state is a terminal state (i.e. reset_episode_cond == True), then
+    # we need to add it to the buffer. Only `state` and `done` are needed.
+    # We put nans in unused tensors, so that when they are accidentally used,
+    # Slim will throw an error that the loss tensor has nan.
+    next_transition = OrderedDict({
+      k: ({
+        'state': next_state,
+        'done': tf.constant(True),
+        'env_time_step': cur_env_time_step + 1,
+      }.get(k) if k in ['state', 'done', 'env_time_step']
+          else tf_nans_like(v))
+      for k, v in transition.items()
+    })
+    with tf.control_dependencies([replay_buffer.maybe_add(transition, step_cond)]):
+      collect_experience_op = replay_buffer.maybe_add(
+        next_transition, tf.logical_or(reset_episode_cond, reset_env_cond))
 
   # Store
   with tf.control_dependencies([collect_experience_op]):
     collect_experience_op = tf.cond(reset_env_cond, tf_env.reset, tf.no_op)
-
   with tf.control_dependencies([collect_experience_op]):
-    states_var_upd = tf.scatter_update(states_var, cur_period_ind, next_state)  # TODO: why next state instead of cur?
-    rewards_var_upd = tf.scatter_update(rewards_var, cur_period_ind, reward)
-    meta_action = tf.to_float(tf.concat(agent.context_vars, -1))
-    meta_actions_var_upd = tf.scatter_update(
-      meta_actions_var, cur_period_ind, meta_action)
-    meta_contexts_var_upd = [
-      tf.scatter_update(
-        meta_contexts_var[idx],
-        cur_period_ind,
-        meta_agent.context_vars[idx],
-      )
-      for idx in range(len(meta_context))
-    ]
-  grab_from_graph = {
-    'agent': agent,
-    'meta_agent': meta_agent,
-    'replay_buffer': replay_buffer,
-    'meta_replay_buffer': meta_replay_buffer,
-  }
-  return tf.group(
-      collect_experience_op,
-      states_var_upd,
-      rewards_var_upd,
-      meta_actions_var_upd,
-      *meta_contexts_var_upd), grab_from_graph
+    collect_experience_op = env_time_step.assign(
+      tf.cond(tf.logical_or(reset_episode_cond, reset_env_cond),
+              lambda: tf.zeros_like(env_time_step),
+              lambda: env_time_step + 1)
+    )
+
+    grab_from_graph = {
+      'agent': agent,
+      'meta_agent': meta_agent,
+      'replay_buffer': replay_buffer,
+    }
+  return collect_experience_op, grab_from_graph
 
 
 def sample_best_meta_actions(state_reprs, next_state_reprs, prev_meta_actions,
@@ -344,23 +380,21 @@ def sample_best_meta_actions(state_reprs, next_state_reprs, prev_meta_actions,
   actions = tf.gather_nd(
       sampled_actions,
       tf.stack([best_actions,
-                tf.range(prev_meta_actions.shape[0], dtype=tf.int64)], -1))
+                tf.range(prev_meta_actions.shape[0], dtype=tf.int64)], -1),
+    name='best_actions',
+  )
   return actions
 
 
 @gin.configurable
-def train_uvf(train_dir,
+def train_uvf(exp_dir,
               environment=None,
-              num_bin_actions=3,
               agent_class=None,
               meta_agent_class=None,
               state_preprocess_class=None,
               inverse_dynamics_class=None,
-              exp_action_wrapper=None,
               replay_buffer=None,
               meta_replay_buffer=None,
-              replay_num_steps=1,
-              meta_replay_num_steps=1,
               critic_optimizer=None,
               actor_optimizer=None,
               meta_critic_optimizer=None,
@@ -389,16 +423,14 @@ def train_uvf(train_dir,
               policy_save_dir='policy',
               save_policy_every_n_steps=1000,
               save_policy_interval_secs=0,
-              replay_context_ratio=0.0,
-              next_state_as_context_ratio=0.0,
-              state_index=0,
-              zero_timer_ratio=0.0,
-              timer_index=-1,
               debug=False,
               max_policies_to_save=None,
               max_steps_per_episode=None,
               load_path=LOAD_PATH,
-              store_meta_transition_every_n=None):
+              store_meta_transition_every_n=None,
+              meta_experience_length=None,
+              dry_no_train=False,  # no training ops (for debugging)
+              ):
   """Train an agent.
 
   Run init_collect_experience_op which fills the replay buffer with enough data.
@@ -415,6 +447,9 @@ def train_uvf(train_dir,
     checking, and training.
 
   """
+  # The following vars are only for backward-compatibility and thus are useless
+  del meta_replay_buffer, store_meta_transition_every_n
+
   tf_env = create_maze_env.TFPyEnvironment(environment)
   observation_spec = [tf_env.observation_spec()]
   action_spec = [tf_env.action_spec()]
@@ -439,10 +474,6 @@ def train_uvf(train_dir,
         tf_env,
         debug_summaries=debug_summaries)
 
-  # TODO: the following line has no effect, since ReplaySampler is the only
-  # one requiring it and it's never used.
-  meta_agent.set_replay(replay=meta_replay_buffer)
-
   with tf.variable_scope('uvf_agent'):
     uvf_agent = agent_class(
         observation_spec,
@@ -466,10 +497,9 @@ def train_uvf(train_dir,
   num_env_resets = tf.Variable(0, dtype=tf.int64, name='num_env_resets')
   num_updates = tf.Variable(0, dtype=tf.int64, name='num_updates')
   num_meta_updates = tf.Variable(0, dtype=tf.int64, name='num_meta_updates')
+  env_time_step = tf.Variable(0, dtype=tf.int64, name='env_time_step')
   episode_rewards = tf.Variable([0.] * 100, name='episode_rewards')  # TODO(why * 100?)
   episode_meta_rewards = tf.Variable([0.] * 100, name='episode_meta_rewards')
-  low_level_q_values = tf.Variable([0.] * 100, name='low_level_q_values')
-  high_level_q_values = tf.Variable([0.] * 100, name='high_level_q_values')
 
   # Create counter variables summaries
   train_utils.create_counter_summaries([
@@ -479,17 +509,12 @@ def train_uvf(train_dir,
       ('num_updates', num_updates),
       ('num_meta_updates', num_meta_updates),
       ('replay_buffer_adds', replay_buffer.get_num_adds()),
-      ('meta_replay_buffer_adds', meta_replay_buffer.get_num_adds()),
   ])
 
   tf.summary.scalar('avg_episode_rewards',
                     tf.reduce_mean(episode_rewards[1:]))  # TODO(why 1:?)
   tf.summary.scalar('avg_episode_meta_rewards',
                     tf.reduce_mean(episode_meta_rewards[1:]))
-  tf.summary.scalar('avg_q_values',
-                    tf.reduce_mean(low_level_q_values[1:]))
-  tf.summary.scalar('avg_meta_q_values',
-                    tf.reduce_mean(high_level_q_values[1:]))
   tf.summary.histogram('episode_rewards', episode_rewards[1:])
   tf.summary.histogram('episode_meta_rewards', episode_meta_rewards[1:])
 
@@ -507,7 +532,6 @@ def train_uvf(train_dir,
     meta_agent=meta_agent,
     state_preprocess=state_preprocess,
     replay_buffer=replay_buffer,
-    meta_replay_buffer=meta_replay_buffer,
     action_fn=action_fn,
     meta_action_fn=meta_action_fn,
     environment_steps=global_step,
@@ -517,9 +541,7 @@ def train_uvf(train_dir,
     episode_meta_rewards=episode_meta_rewards,
     store_context=True,
     disable_agent_reset=False,
-    store_meta_transition_every_n=store_meta_transition_every_n,
-    q_values = low_level_q_values,
-    meta_q_values = high_level_q_values)
+    env_time_step=env_time_step)
 
   init_collect_experience_op, _ = collect_experience(**collect_experience_kwargs)
 
@@ -527,53 +549,64 @@ def train_uvf(train_dir,
   collect_experience_op, grab_from_graph = collect_experience(**collect_experience_kwargs)
 
   train_op_list = []
+  losses = {}
   repr_train_op = tf.constant(0.0)
   for mode in ['meta', 'nometa']:  # literally alternate btw high and low levels
     if mode == 'meta':
       agent = meta_agent
-      buff = meta_replay_buffer
       critic_opt = meta_critic_optimizer
       actor_opt = meta_actor_optimizer
       relabel = meta_relabel_contexts
-      num_steps = meta_replay_num_steps
       my_gamma = meta_gamma,
       n_updates = num_meta_updates
     else:
       agent = uvf_agent
-      buff = replay_buffer
       critic_opt = critic_optimizer
       actor_opt = actor_optimizer
       relabel = relabel_contexts
-      num_steps = replay_num_steps
       my_gamma = gamma
       n_updates = num_updates
 
+    if meta_experience_length is None:
+      meta_experience_length = agent.tf_context.meta_action_every_n
+    grab_from_graph['meta_experience_length'] = meta_experience_length
     with tf.name_scope(mode):
-      batch = list(buff.get_random_batch(batch_size, num_steps=num_steps).values())
-      # TODO: use namedtuple instead of hard indexing
-      # Grab rewards from the batch. Scale and record them.
-      states, actions, rewards, discounts, next_states = batch[:5]
-      with tf.name_scope('Reward'):
-        tf.summary.scalar('average_step_reward', tf.reduce_mean(rewards))
-      rewards *= reward_scale_factor
-      # TODO: what does the prefetch_queue do?
-      batch_queue = slim.prefetch_queue.prefetch_queue(
-          [states, actions, rewards, discounts, next_states] + batch[5:],
-          capacity=prefetch_queue_capacity,
-          name='batch_queue')
+      if mode == 'meta':
+        batch = sample_high_level_experience(replay_buffer, batch_size=batch_size,
+                                             horizon=meta_experience_length)
+      else:
+        batch = sample_low_level_experience(replay_buffer, batch_size=batch_size)
+      reward_key = {'meta': 'total_reward', 'nometa': 'reward'}.get(mode)
+      batch[reward_key] = batch[reward_key] * reward_scale_factor
 
-      batch_dequeue = batch_queue.dequeue()
+      batch_queue = slim.prefetch_queue.prefetch_queue(
+        batch,
+        capacity=prefetch_queue_capacity,
+        name='batch_queue'
+      )
+
+      batch_dequeue = batch_queue.dequeue()  # loses ordering between keys
       # Duplicate the batch by repeat_size times
       if repeat_size > 0:
-        batch_dequeue = [
-            tf.tile(batch, (repeat_size+1,) + (1,) * (batch.shape.ndims - 1))
-            for batch in batch_dequeue
-        ]
+        batch_dequeue = {
+            k: tf.tile(v, (repeat_size + 1,) + (1,) * (v.shape.ndims - 1))
+            for k, v in batch_dequeue.items()
+        }
         batch_size *= (repeat_size + 1)
-      states, actions, rewards, discounts, next_states = batch_dequeue[:5]
+
       if mode == 'meta':
-        low_states = batch_dequeue[5]  # [B,T,...]?
-        low_actions = batch_dequeue[6]
+        states, actions, rewards, discounts, next_states = map(
+          lambda k: batch_dequeue[k],
+          ['state', 'meta_action', 'total_reward', 'discount', 'next_state']
+        )
+      else:
+        states, actions, rewards, discounts, next_states = map(
+          lambda k: batch_dequeue[k],
+          ['state', 'action', 'reward', 'discount', 'next_state']
+        )
+      if mode == 'meta':
+        low_states = batch_dequeue['past_states']  # [B,T,...]?
+        low_actions = batch_dequeue['past_actions']
         low_state_reprs = state_preprocess(low_states)
       state_reprs = state_preprocess(states)
       next_state_reprs = state_preprocess(next_states)
@@ -620,9 +653,10 @@ def train_uvf(train_dir,
       )
       # TODO:
       if not relabel:  # Re-label context (in the style of TDM or HER).
-        contexts, next_contexts = (
-            batch_dequeue[-2*len(contexts):-1*len(contexts)],
-            batch_dequeue[-1*len(contexts):])
+        n_context = len(contexts)
+        context_prefix = 'meta_context' if mode == 'meta' else 'context'
+        contexts = [batch_dequeue['%s_%d' % (context_prefix, i)] for i in range(n_context)]
+        next_contexts = [batch_dequeue['next_%s_%d' % (context_prefix, i)] for i in range(n_context)]
 
       merged_states = agent.merged_states(states, contexts)
       merged_next_states = agent.merged_states(next_states, next_contexts)
@@ -646,13 +680,18 @@ def train_uvf(train_dir,
                                       merged_next_states)
 
       critic_loss = tf.reduce_mean(critic_loss)
+      tf.summary.scalar(mode + '/critic_loss', critic_loss)
+      losses[mode + '/critic_loss'] = critic_loss
 
       # DDPG calls the critic to compute actor_loss
+      # TODO: rewrite this as a condition to avoid computing actor_loss?
       actor_loss = agent.actor_loss(merged_states, actions,
                                     context_rewards, context_discounts,
                                     merged_next_states)
       actor_loss *= tf.to_float(  # Only update actor every N steps.
           tf.equal(n_updates % target_update_period, 0))
+      tf.summary.scalar(mode + '/actor_loss', actor_loss)
+      losses[mode + '/actor_loss'] = critic_loss
 
       critic_train_op = slim.learning.create_train_op(
           critic_loss,
@@ -714,9 +753,14 @@ def train_uvf(train_dir,
         uvf_agent.get_trainable_actor_vars(), 'actor_vars')
 
   # Alternates between several experience collection steps and training steps
-  train_ops = train_utils.TrainOps(train_op, meta_train_op,
-                                   collect_experience_op)
+  if dry_no_train:
+    train_ops = train_utils.TrainOps(losses['nometa/critic_loss'], losses['meta/critic_loss'],
+                                     collect_experience_op)
+  else:
+    train_ops = train_utils.TrainOps(train_op, meta_train_op,
+                                     collect_experience_op)
 
+  train_dir = os.path.join(exp_dir, 'train')
   policy_save_path = os.path.join(train_dir, policy_save_dir, 'model.ckpt')
   policy_vars = uvf_agent.get_actor_vars() + meta_agent.get_actor_vars() + [
       global_step, num_episodes, num_env_resets
@@ -738,6 +782,27 @@ def train_uvf(train_dir,
       tf.logging.info(
           'Wait %d secs after save policy.' % save_policy_interval_secs)
       time.sleep(save_policy_interval_secs)
+
+    if FLAGS.s3_save_policy_path != 'None':
+      path = FLAGS.s3_save_policy_path  # e.g. s3://{bucket_name}/{remote_path}
+      assert path.startswith('s3://')
+      bucket_name = path.split('/')[2]
+      remote_path = os.path.join(*path.split('/')[3:])
+      s3 = get_s3_client()
+
+      # TODO: Replace this with `aws s3 sync` to reduce time
+      model_files = glob.glob(os.path.join(train_dir, policy_save_dir, 'model.ckpt-%d*' % (sess.run(global_step))))
+      for local_file in model_files:
+        remote_file = os.path.join(remote_path, 'train', policy_save_dir, os.path.basename(local_file))
+        s3.upload_file(local_file, bucket_name, remote_file)
+        print('Uploaded to s3://{}/{}'.format(bucket_name, remote_file))
+
+      for phase in ['train', 'eval']:
+        for local_file in glob.glob(os.path.join(exp_dir, phase, 'events*')):
+          remote_file = os.path.join(remote_path, phase, os.path.basename(local_file))
+          s3.upload_file(local_file, bucket_name, remote_file)
+          print('Uploaded to s3://{}/{}'.format(bucket_name, remote_file))
+
 
   train_step_fn = train_utils.TrainStep(
       max_number_of_steps=num_episodes_train * max_steps_per_episode + 100,

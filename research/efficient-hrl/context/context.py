@@ -65,10 +65,10 @@ class Context(object):
     # assign specs
     self._obs_spec = self._tf_env.observation_spec()
     self._context_shapes = tuple([
-        shape if shape is not None else self._obs_spec.shape
+        shape if shape is not None else self._obs_spec.shape  # why fill with obs_spec?
         for shape in context_shapes
     ])
-    self.context_specs = tuple([
+    self.context_specs = tuple([  # spec = (dtype, shape)
         specs.TensorSpec(dtype=self._obs_spec.dtype, shape=shape)
         for shape in self._context_shapes
     ])
@@ -77,6 +77,7 @@ class Context(object):
     else:
       self.context_ranges = [None] * len(self._context_shapes)
 
+    # Low-level context is high-level action. Action specs must be bounded.
     self.context_as_action_specs = tuple([
         specs.BoundedTensorSpec(
             shape=shape,
@@ -105,7 +106,7 @@ class Context(object):
     self._reward_fns = dict()
 
     # assign reward fns
-    self._add_custom_reward_fns()
+    self._add_custom_reward_fns()  # self._custom_reward_fns is a dict
     reward_weights = reward_weights or None
     self._reward_fn = self._make_reward_fn(reward_fn, reward_weights)
 
@@ -162,12 +163,11 @@ class Context(object):
     self._validate_contexts(next_contexts)
     return contexts, next_contexts
 
-  def compute_rewards(self, mode, states, actions, rewards, next_states,
+  def compute_rewards(self, states, actions, rewards, next_states,
                       contexts):
     """Compute context-based rewards.
 
     Args:
-      mode: A string representing the mode ['uvf', 'task'].
       states: A [batch_size, num_state_dims] tensor.
       actions: A [batch_size, num_action_dims] tensor.
       rewards: A [batch_size] tensor representing unmodified rewards.
@@ -184,11 +184,10 @@ class Context(object):
 
     Args:
       reward_fns_list: A fn or a list of reward fns.
-      mode: A string representing the operating mode.
       reward_weights: A list of reward weights.
     """
     if not isinstance(reward_fns_list, (list, tuple)):
-      reward_fns_list = [reward_fns_list]
+      reward_fns_list = [reward_fns_list]  # singleton
     if reward_weights is None:
       reward_weights = [1.0] * len(reward_fns_list)
     assert len(reward_fns_list) == len(reward_weights)
@@ -199,7 +198,10 @@ class Context(object):
     ]
 
     def reward_fn(*args, **kwargs):
-      """Returns rewards, discounts."""
+      """
+      Linearly combine rewards and take care of inconsistent shapes.
+      Returns rewards, discounts.
+      """
       reward_tuples = [
           reward_fn(*args, **kwargs) for reward_fn in reward_fns_list
       ]
@@ -304,27 +306,27 @@ class Context(object):
       for sampler in samplers:
         sampler.set_replay(replay)
 
-  def get_clip_fns(self):
-    """Returns a list of clip fns for contexts.
-
-    Returns:
-      A list of fns that clip context tensors.
-    """
-    clip_fns = []
-    for context_range in self.context_ranges:
-      def clip_fn(var_, range_=context_range):
-        """Clip a tensor."""
-        if range_ is None:
-          clipped_var = tf.identity(var_)
-        elif isinstance(range_[0], (int, long, float, list, np.ndarray)):
-          clipped_var = tf.clip_by_value(
-              var_,
-              range_[0],
-              range_[1],)
-        else: raise NotImplementedError(range_)
-        return clipped_var
-      clip_fns.append(clip_fn)
-    return clip_fns
+  # def get_clip_fns(self):
+  #   """Returns a list of clip fns for contexts.
+  #
+  #   Returns:
+  #     A list of fns that clip context tensors.
+  #   """
+  #   clip_fns = []
+  #   for context_range in self.context_ranges:
+  #     def clip_fn(var_, range_=context_range):
+  #       """Clip a tensor."""
+  #       if range_ is None:
+  #         clipped_var = tf.identity(var_)
+  #       elif isinstance(range_[0], (int, long, float, list, np.ndarray)):
+  #         clipped_var = tf.clip_by_value(
+  #             var_,
+  #             range_[0],
+  #             range_[1],)
+  #       else: raise NotImplementedError(range_)
+  #       return clipped_var
+  #     clip_fns.append(clip_fn)
+  #   return clip_fns
 
   def _validate_contexts(self, contexts):
     """Validate if contexts have right specs.
@@ -350,13 +352,21 @@ class Context(object):
   def step(self, mode, agent=None, action_fn=None, **kwargs):
     """Returns [next_contexts..., next_timer] list of ops.
 
+    If the higher level `agent` is provided, it steps first.
+    next_contexts is computed from its `action_fn` every C steps. Otherwise
+    it is computed from `self._context_transition_fn` (e.g. constant, or updated
+    accroding to the current state).
+    Otherwise, a totally random context is sampled.
+
     Args:
       mode: a string representing the mode=[train, explore, eval].
+      agent: the higher-level policy
+      action_fn: given a state, computes the context from the higher-level policy
       **kwargs: kwargs for context_transition_fn.
     Returns:
       a list of ops that set the context.
     """
-    if agent is None:
+    if agent is None:  # high-level
       ops = []
       if self._context_transition_fn is not None:
         def sampler_fn():
@@ -366,7 +376,7 @@ class Context(object):
         ops += [tf.assign(var, value) for var, value in zip(self.vars, values)]
       ops.append(tf.assign_add(self.t, 1))  # increment timer
       return ops
-    else:
+    else:  # low-level
       ops = agent.tf_context.step(mode, **kwargs)
       state = kwargs['state']
       next_state = kwargs['next_state']
@@ -378,15 +388,17 @@ class Context(object):
                                              state=state_repr,
                                              next_state=next_state_repr)
         # Select a new goal every C steps, otherwise use context transition.
+        # TODO: dynamic termination. e.g. compare prev_meta_action (from self.vars) w/ next_state
         low_level_context = [
             tf.cond(tf.equal(self.t % self.meta_action_every_n, 0),
                     lambda: tf.cast(action_fn(next_state, context=None), tf.float32),
                     lambda: values)]
+
+        # TODO: put meta_transition terminatl signals into self.vars, so that it enters the replay_buffer
         ops = [tf.assign(var, value)
                for var, value in zip(self.vars, low_level_context)]
         with tf.control_dependencies(ops):
           return [tf.assign_add(self.t, 1)]  # increment timer
-        return ops
 
   def reset(self, mode, agent=None, action_fn=None, state=None):
     """Returns ops that reset the context.
@@ -410,7 +422,7 @@ class Context(object):
       all_ops = []
       for _, context_vars in sorted(self.context_vars.items()):
         ops = [tf.assign(var, value) for var, value in zip(context_vars, values)]
-      all_ops += ops
+      all_ops += ops  # indent?
       all_ops.append(self.set_env_context_op(values))
       all_ops.append(tf.assign(self.t, 0))  # reset timer
       return all_ops

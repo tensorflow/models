@@ -18,6 +18,7 @@
 import tensorflow as tf
 import numpy as np
 import random
+import time
 
 from environments import create_maze_env
 
@@ -87,7 +88,7 @@ class EnvWithGoal(object):
 
 def run_environment(env_name, episode_length, num_episodes):
   env = EnvWithGoal(
-      create_maze_env.create_maze_env(env_name).gym,
+      create_maze_env.create_maze_env(env_name, wrapped=False),
       env_name)
 
   def action_fn(obs):
@@ -112,7 +113,9 @@ def run_environment(env_name, episode_length, num_episodes):
       successes[-1] = success_fn(reward)
       if done:
         break
-    logging.info('Episode %d reward: %.2f, Success: %d', ep + 1, rewards[-1], successes[-1])
+      env.base_env.render()
+    logging.info('Episode %d reward: %.2f, Success: %d, Length: %d',
+                 ep + 1, rewards[-1], successes[-1], episode_length)
 
   logging.info('Average Reward over %d episodes: %.2f',
                num_episodes, np.mean(rewards))

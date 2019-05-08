@@ -23,7 +23,7 @@ import gin.tf
 @gin.configurable
 def env_transition(agent, state, action, transition_type, environment_steps,
                    num_episodes):
-  """True if the transition_type is TRANSITION or FINAL_TRANSITION.
+  """True if the transition_type is FIRST or MID.
 
   Args:
     agent: RL agent.
@@ -37,7 +37,7 @@ def env_transition(agent, state, action, transition_type, environment_steps,
     not RESTARTING
   """
   del agent, state, action, num_episodes, environment_steps
-  cond = tf.logical_not(transition_type)
+  cond = tf.logical_not(transition_type.is_last())[0]
   return cond
 
 
@@ -58,7 +58,7 @@ def env_restart(agent, state, action, transition_type, environment_steps,
     RESTARTING.
   """
   del agent, state, action, num_episodes, environment_steps
-  cond = tf.identity(transition_type)
+  cond = transition_type.is_last()[0]
   return cond
 
 
@@ -87,6 +87,43 @@ def every_n_steps(agent,
   """
   del agent, state, action, transition_type, num_episodes
   cond = tf.equal(tf.mod(environment_steps, n), 0)
+  return cond
+
+
+@gin.configurable
+def simple_every_n_episodes(agent,
+                            state,
+                            action,
+                            transition_type,
+                            environment_steps,
+                            num_episodes,
+                            n=2,
+                            steps_per_episode=None):
+  """True once every n episodes.
+
+  Specifically, evaluates to True on the 0th step of every nth episode.
+  Unlike environment_steps, num_episodes starts at 0, so we do want to add
+  one to ensure it does not reset on the first call.
+
+  Args:
+    agent: RL agent.
+    state: A [num_state_dims] tensor representing a state.
+    action: Action performed.
+    transition_type: Type of transition after action
+    environment_steps: Number of steps performed by environment.
+    num_episodes: Number of episodes.
+    n: Return true once every n episodes.
+    steps_per_episode: How many steps per episode. Needed to determine when a
+    new episode starts.
+  Returns:
+    cond: Returns an op that evaluates to true on the last step of the episode
+      (i.e. if num_episodes equals 0 mod n).
+  """
+  assert steps_per_episode is not None
+  del agent, action, transition_type
+  cond = tf.logical_and(
+      tf.equal(tf.mod(num_episodes + 1, n), 0),
+      tf.equal(tf.mod(environment_steps, steps_per_episode), 0))
   return cond
 
 

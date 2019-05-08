@@ -1,0 +1,13 @@
+<mujoco model="simple">
+  <compiler inertiafromgeom="true" angle="degree" coordinate="local" />
+  <option timestep="0.02" integrator="RK4" />
+  <worldbody>
+    <body>
+      <geom name="ha" type="capsule" size="1" fromto="0 0 0 1 1 1"/>
+      <joint name="hi" type="hinge" />
+    </body>
+  </worldbody>
+  <actuator>
+    <motor joint="hi" ctrlrange="-30.0 30.0" ctrllimited="true" />
+  </actuator>
+</mujoco>

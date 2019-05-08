@@ -1,0 +1,31 @@
+<mujoco>
+  <compiler inertiafromgeom="true" angle="degree" coordinate="local" />
+  <option timestep="0.02" integrator="RK4" />
+  <default>
+    <joint limited="false" armature="0" damping="0" />
+    <geom condim="3" conaffinity="0" margin="0" friction="1 0.5 0.5" rgba="0.8 0.6 0.4 1" density="100" />
+  </default>
+  <asset>
+    <texture type="skybox" builtin="gradient" width="100" height="100" rgb1="1 1 1" rgb2="0 0 0" />
+    <texture name="texgeom" type="cube" builtin="flat" mark="cross" width="127" height="1278" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01" />
+    <texture name="texplane" type="2d" builtin="checker" rgb1="0 0 0" rgb2="0.8 0.8 0.8" width="100" height="100" />
+    <material name='MatPlane' texture="texplane" shininess="1" texrepeat="30 30" specular="1"  reflectance="0.5" />
+    <material name='geom' texture="texgeom" texuniform="true" />
+  </asset>
+  <worldbody>
+    <light directional="true" cutoff="100" exponent="1" diffuse="1 1 1" specular=".1 .1 .1" pos="0 0 1.3" dir="-0 0 -1.3" />
+    <geom name='floor' pos='0 0 0' size='40 40 40' type='plane' conaffinity='1' rgba='0.8 0.9 0.8 1' condim='3' />
+    <body name="torso" pos="0 0 0">
+      <geom name="pointbody" type="sphere" size="0.5" pos="0 0 0.5" />
+      <geom name="pointarrow" type="box" size="0.5 0.1 0.1" pos="0.6 0 0.5" />
+      <joint name='ballx' type='slide' axis='1 0 0' pos='0 0 0' />
+      <joint name='bally' type='slide' axis='0 1 0' pos='0 0 0' />
+      <joint name='rot' type='hinge' axis='0 0 1' pos='0 0 0' limited="false" />
+    </body>
+  </worldbody>
+  <actuator>
+    <!-- Those are just dummy actuators for providing ranges -->
+    <motor joint='ballx' ctrlrange="-1 1" ctrllimited="true" />
+    <motor joint='rot' ctrlrange="-0.25 0.25" ctrllimited="true" />
+  </actuator>
+</mujoco>

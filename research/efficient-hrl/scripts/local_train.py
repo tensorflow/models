@@ -28,20 +28,22 @@ CONFIGS_PATH = './configs'
 CONTEXT_CONFIGS_PATH = './context/configs'
 
 def main():
-  bb = '.'
-  base_num_args = 6
+  bb = './'
+  base_num_args = 8
   if len(sys.argv) < base_num_args:
     print(
         "usage: python %s <exp_name> <context_setting_gin> <env_context_gin> "
-        "<agent_gin> <suite> [params...]"
+        "<agent_gin> <suite> <debug> <s3_save_policy_path> [params...]"
         % sys.argv[0])
     sys.exit(0)
   exp = sys.argv[1]  # Name for experiment, e.g. 'test001'
   context_setting = sys.argv[2]  # Context setting, e.g. 'hiro_orig'
   context = sys.argv[3]  # Environment-specific context, e.g. 'ant_maze'
   agent = sys.argv[4]  # Agent settings, e.g. 'base_uvf'
-  assert sys.argv[5] in ["suite"], "args[5] must be `suite'"
+  assert sys.argv[5] in ["suite"], "args[5] must be `suite'"   # TODO:???
   suite = ""
+  debug = (sys.argv[6] == 'debug')
+  s3_save_policy_path = sys.argv[7]
   binary = "python {bb}/run_train{suite}.py ".format(bb=bb, suite=suite)
 
   h = os.environ["HOME"]
@@ -56,15 +58,19 @@ def main():
                  "--config_file={ccp}/{context_setting}.gin "
                  "--config_file={ccp}/{context}.gin "
                  "--summarize_gradients=False "
-                 "--save_interval_secs=60 "
-                 "--save_summaries_secs=1 "
+                 "--save_interval_secs={save_interval_secs} "
+                 "--save_summaries_secs={save_summaries_secs} "  # this annoys debugging
+                 "--s3_save_policy_path={s3_save_policy_path} "
                  "--master=local "
                  "--alsologtostderr ").format(h=h, ucp=ucp,
                                               context_setting=context_setting,
                                               context=context, ccp=ccp,
                                               suite=suite, agent=agent, extra=extra,
                                               exp=exp, binary=binary,
-                                              port=port)
+                                              port=port,
+                                              save_interval_secs=(60000 if debug else 60),
+                                              save_summaries_secs=(60000 if debug else 1),
+                                              s3_save_policy_path=s3_save_policy_path)
   for extra_arg in sys.argv[base_num_args:]:
     command_str += "--params='%s' " % extra_arg
 

@@ -11,4 +11,4 @@ evaluate.eval_interval_secs = 1
 evaluate.generate_videos = False
 evaluate.generate_summaries = True
 evaluate.eval_modes = %EVAL_MODES
-evaluate.max_steps_per_episode = %RESET_EPISODE_PERIOD
+evaluate.max_steps_per_episode = %STEPS_PER_EPISODE

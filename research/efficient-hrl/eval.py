@@ -72,7 +72,9 @@ def get_evaluate_checkpoint_fn(master, output_dir, eval_step_fns,
   Returns:
     A function that evaluates a checkpoint.
   """
-  sess = tf.Session(master, graph=tf.get_default_graph())
+  session_config = tf.ConfigProto()
+  session_config.gpu_options.allow_growth = True
+  sess = tf.Session(master, graph=tf.get_default_graph(), config=session_config)
   sess.run(tf.global_variables_initializer())
   sess.run(tf.local_variables_initializer())
   summary_writer = tf.summary.FileWriter(output_dir)
@@ -96,7 +98,6 @@ def get_evaluate_checkpoint_fn(master, output_dir, eval_step_fns,
     should_stop = False
     max_reward = -1e10
     max_meta_reward = -1e10
-
     for eval_tag, (eval_step, env_base,) in sorted(eval_step_fns.items()):
       if hasattr(env_base, 'set_sess'):
         env_base.set_sess(sess)  # set session
@@ -107,7 +108,7 @@ def get_evaluate_checkpoint_fn(master, output_dir, eval_step_fns,
             eval_tag, num_episodes_eval, global_step)
         (average_reward, last_reward,
          average_meta_reward, last_meta_reward, average_success,
-         states, actions) = eval_utils.compute_average_reward(
+         states, actions, average_q, average_meta_q, average_context_norm) = eval_utils.compute_average_reward(
              sess, env_base, eval_step, gamma, max_steps_per_episode,
              num_episodes_eval)
         tf.logging.info('[%s] Average reward = %f', eval_tag, average_reward)
@@ -115,6 +116,10 @@ def get_evaluate_checkpoint_fn(master, output_dir, eval_step_fns,
         tf.logging.info('[%s] Average meta reward = %f', eval_tag, average_meta_reward)
         tf.logging.info('[%s] Last meta reward = %f', eval_tag, last_meta_reward)
         tf.logging.info('[%s] Average success = %f', eval_tag, average_success)
+        tf.logging.info('[%s] Average q value = %f', eval_tag, average_q)
+        tf.logging.info('[%s] Average meta q value = %f', eval_tag, average_meta_q)
+        tf.logging.info('[%s] Average context norm = %f', eval_tag, average_context_norm)
+
         if model_rollout_fn is not None:
           preds, model_losses = eval_utils.compute_model_loss(
               sess, model_rollout_fn, states, actions)
@@ -137,7 +142,10 @@ def get_evaluate_checkpoint_fn(master, output_dir, eval_step_fns,
                              ('Reward/last_%s_reward', last_reward),
                              ('Reward/average_%s_meta_reward', average_meta_reward),
                              ('Reward/last_%s_meta_reward', last_meta_reward),
-                             ('Reward/average_%s_success', average_success)]:
+                             ('Reward/average_%s_success', average_success),
+                             ("q_values/average_%s_q_values", average_q),
+                             ('q_values/average_%s_meta_q_values', average_meta_q),
+                             ('average_%s_context_norm', average_context_norm)]:
           summary_str = tf.Summary(value=[
               tf.Summary.Value(
                   tag=tag % eval_tag,
@@ -145,7 +153,6 @@ def get_evaluate_checkpoint_fn(master, output_dir, eval_step_fns,
           ])
           summary_writer.add_summary(summary_str, global_step)
           summary_writer.flush()
-
       if generate_videos or should_stop:
         # Do a manual reset before generating the video to see the initial
         # pose of the robot, towards which the reset controller is moving.
@@ -222,7 +229,8 @@ def get_eval_step(uvf_agent,
   action_spec = tf_env.action_spec()
   action_ph = tf.placeholder(dtype=action_spec.dtype, shape=action_spec.shape)
   with tf.control_dependencies([state]):
-    transition_type, reward, discount = tf_env.step(action_ph)
+    time_step, reward, discount = tf_env.step(
+        tf.expand_dims(action_ph, 0))
 
   def increment_step():
     return environment_steps.assign_add(1)
@@ -233,48 +241,57 @@ def get_eval_step(uvf_agent,
   def no_op_int():
     return tf.constant(0, dtype=tf.int64)
 
-  step_cond = uvf_agent.step_cond_fn(state, action,
-                                     transition_type,
+  step_cond = uvf_agent.step_cond_fn(state, action,  # not the last step
+                                     time_step,
                                      environment_steps, num_episodes)
   reset_episode_cond = uvf_agent.reset_episode_cond_fn(
       state, action,
-      transition_type, environment_steps, num_episodes)
-  reset_env_cond = uvf_agent.reset_env_cond_fn(state, action,
-                                               transition_type,
+      time_step, environment_steps, num_episodes)
+  reset_env_cond = uvf_agent.reset_env_cond_fn(state, action,  # default false, but usually every_n_episodes
+                                               time_step,
                                                environment_steps, num_episodes)
 
+  # Increment step count except at the last step, where no more action is taken.
   increment_step_op = tf.cond(step_cond, increment_step, no_op_int)
-  with tf.control_dependencies([increment_step_op]):
+  with tf.control_dependencies([increment_step_op]):  # TODO: why?
     increment_episode_op = tf.cond(reset_episode_cond, increment_episode,
                                    no_op_int)
 
-  with tf.control_dependencies([reward, discount]):
+  with tf.control_dependencies([reward, discount]):  # really annoying
+    # TODO: get time_step from tf_env.step() directly so we avoid these control flows
     next_state = tf_env.current_obs()
     next_state_repr = state_preprocess(next_state)
 
-  with tf.control_dependencies([increment_episode_op]):
+  with tf.control_dependencies([increment_episode_op]):  # TODO: why?
+    # Basically do whatever left the agent wants to do, knowing whether the episode ends
     post_reward, post_meta_reward = uvf_agent.cond_begin_episode_op(
         tf.logical_not(reset_episode_cond),
         [state, action_ph, reward, next_state,
          state_repr, next_state_repr],
         mode=mode, meta_action_fn=meta_action_fn)
-
+  q_value = uvf_agent.value_net(
+      uvf_agent._batch_state(
+          uvf_agent.merged_state(state, context=None)))
+  meta_q_value = uvf_agent.meta_agent.value_net(
+      uvf_agent.meta_agent._batch_state(
+          uvf_agent.meta_agent.merged_state(state, context=None)))
   # Important: do manual reset after getting the final reward from the
   # unreset environment.
   with tf.control_dependencies([post_reward, post_meta_reward]):
-    cond_reset_op = tf.cond(reset_env_cond,
-                            tf_env.reset,
-                            tf_env.current_time_step)
+    cond_reset_op = tf.cond(reset_env_cond, tf_env.reset, tf.no_op)
 
   # Add a dummy control dependency to force the reset_op to run
-  with tf.control_dependencies(cond_reset_op):
+  with tf.control_dependencies([cond_reset_op]):
     post_reward, post_meta_reward = map(tf.identity, [post_reward, post_meta_reward])
 
-  eval_step = [next_state, action_ph, transition_type, post_reward, post_meta_reward, discount, uvf_agent.context_vars, state_repr]
+  eval_step = [next_state, action_ph, time_step, post_reward,
+               post_meta_reward, discount, uvf_agent.context_vars, state_repr, q_value, meta_q_value]
 
+  # TODO: is the reason not feeding action to tf_env.step() that we want to
+  # feed a callable action?
   if callable(action):
     def step_fn(sess):
-      action_value = action(sess)
+      action_value = action(sess)  # TODO: use case?
       return sess.run(eval_step, feed_dict={action_ph: action_value})
   else:
     action = uvf_utils.clip_to_spec(action, action_spec)
@@ -283,6 +300,11 @@ def get_eval_step(uvf_agent,
       return sess.run(eval_step, feed_dict={action_ph: action_value})
 
   return step_fn
+
+
+@gin.configurable
+def get_video_settings(fps=20):
+  return dict(fps=fps)
 
 
 @gin.configurable
@@ -303,7 +325,7 @@ def evaluate(checkpoint_dir,
              generate_videos=False,
              generate_summaries=True,
              num_episodes_videos=5,
-             video_settings=None,
+             video_settings=get_video_settings(),
              eval_modes=('eval',),
              eval_model_rollout=False,
              policy_save_dir='policy',
@@ -339,8 +361,9 @@ def evaluate(checkpoint_dir,
     eval_model_rollout: Evaluate model rollout.
     policy_save_dir: Optional sub-directory where the policies are
       saved.
-    checkpoint_range: Optional. If provided, evaluate all checkpoints in
-      the range.
+    checkpoint_range: Optional.  If 'start_end' and start, end are integers,
+      then evaluate all checkpoints within the range [start, end]. If
+      'itr_1,itr_2,...,itr_n', evaluate those specific iterations.
     checkpoint_path: Optional sub-directory specifying which checkpoint to
       evaluate. If None, will evaluate the most recent checkpoint.
   """
@@ -441,11 +464,19 @@ def evaluate(checkpoint_dir,
         os.path.splitext(f)[0]
         for f in model_files
     }
-    model_files = {
-        k: v
-        for k, v in model_files.items()
-        if k >= checkpoint_range[0] and k <= checkpoint_range[1]
-    }
+
+    assert isinstance(checkpoint_range, str)
+    if '_' in checkpoint_range:
+      start_itr, end_itr = map(int, checkpoint_range.split('_'))
+      model_files = {
+          k: v for k, v in model_files.items() if start_itr <= k <= end_itr
+      }
+    elif ',' in checkpoint_range:
+      itrs = [int(itr) for itr in checkpoint_range.split(',') if itr != '']
+      model_files = {k: v for k, v in model_files.items() if k in itrs}
+    else:
+      raise NotImplementedError()
+
     tf.logging.info('Evaluating %d policies at %s',
                     len(model_files), checkpoint_dir)
     for _, checkpoint_path in sorted(model_files.items()):

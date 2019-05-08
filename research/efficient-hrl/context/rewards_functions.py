@@ -347,6 +347,7 @@ def negative_distance(states,
     vectorize: Return a vectorized form.
     norm: L1 or L2.
     epsilon: small offset to ensure non-negative/zero distance.
+    relative_context: context + states is the real context!
 
   Returns:
     A new tf.float32 [batch_size] rewards Tensor, and

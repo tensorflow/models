@@ -5,16 +5,16 @@ IMAGES = True
 context_range = (%CONTEXT_RANGE_MIN, %CONTEXT_RANGE_MAX)
 meta_context_range = ((-16, -4), (16, 20))
 
-RESET_EPISODE_PERIOD = 500
+STEPS_PER_EPISODE = 500
 RESET_ENV_PERIOD = 1
 # End episode every N steps
 UvfAgent.reset_episode_cond_fn = @every_n_steps
-every_n_steps.n = %RESET_EPISODE_PERIOD
-train_uvf.max_steps_per_episode = %RESET_EPISODE_PERIOD
+every_n_steps.n = %STEPS_PER_EPISODE
+train_uvf.max_steps_per_episode = %STEPS_PER_EPISODE
 # Do a manual reset every N episodes
 UvfAgent.reset_env_cond_fn = @every_n_episodes
 every_n_episodes.n = %RESET_ENV_PERIOD
-every_n_episodes.steps_per_episode = %RESET_EPISODE_PERIOD
+every_n_episodes.steps_per_episode = %STEPS_PER_EPISODE
 
 ## Config defaults
 EVAL_MODES = ["eval2"]

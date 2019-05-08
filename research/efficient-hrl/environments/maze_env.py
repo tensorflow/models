@@ -228,7 +228,65 @@ class MazeEnv(gym.Env):
         raise Exception("Every geom of the torso must have a name "
                         "defined")
 
-    _, file_path = tempfile.mkstemp(text=True, suffix='.xml')
+    movable_body = ET.SubElement(
+      worldbody, "body",
+      name="meta",
+      pos="%f %f %f" % (0,
+                        0,
+                        3),
+    )
+    ET.SubElement(
+      movable_body, "geom",
+      name="meta_pos",
+      pos="0 0 3",
+      size="%f %f %f" % (0.5,
+                         0.5,
+                         2),
+      type="box",
+      # material="",
+      # mass="0.001",
+      # contype="1",
+      # conaffinity="1",
+      rgba="0.9 0.1 0.1 1"
+    )
+    # ET.SubElement(
+    #   movable_body, "joint",
+    #   armature="0",
+    #   axis="0 0 1",
+    #   limited="false",
+    #   name="movable_z",
+    #   pos="2 9 7",
+    #   type="slide"
+    # )
+    ET.SubElement(
+      movable_body, "joint",
+      armature="0",
+      axis="1 0 0",
+      limited="false",
+      name="movable_x",
+      pos="2 9 7",
+      type="slide"
+    )
+    ET.SubElement(
+      movable_body, "joint",
+      armature="0",
+      axis="0 1 0",
+      limited="false",
+      name="movable_y",
+      pos="2 9 7",
+      type="slide"
+    )
+
+    # ET.SubElement(
+    #   movable_body, "joint",
+    #   # axis="1 0 0",
+    #   limited="false",
+    #   name="movable_meta",
+    #   # range= "-0.01 0.01",
+    #   # pos="0 0 3",
+    #   type="free"
+    # )
+    _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
     tree.write(file_path)
 
     self.wrapped_env = model_cls(*args, file_path=file_path, **kwargs)
@@ -470,6 +528,7 @@ class MazeEnv(gym.Env):
     return coords
 
   def _is_in_collision(self, pos):
+    # Check if the agent collides with a wall
     x, y = pos
     structure = self.MAZE_STRUCTURE
     size_scaling = self.MAZE_SIZE_SCALING

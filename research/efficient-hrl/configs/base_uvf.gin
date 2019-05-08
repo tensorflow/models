@@ -24,11 +24,13 @@ MetaAgent.target_q_clipping = %TARGET_Q_CLIPPING
 # Create state preprocess
 STATE_PREPROCESS_CLASS = @StatePreprocess
 StatePreprocess.ndims = %SUBGOAL_DIM
+INVERSE_DYNAMICS_CLASS = @InverseDynamics
+
+# The following is for hiro_repr
 state_preprocess_net.states_hidden_layers = (100, 100)
 state_preprocess_net.num_output_dims = %SUBGOAL_DIM
 state_preprocess_net.images = %IMAGES
 action_embed_net.num_output_dims = %SUBGOAL_DIM
-INVERSE_DYNAMICS_CLASS = @InverseDynamics
 
 # actor_net
 ACTOR_HIDDEN_SIZE_1 = 300

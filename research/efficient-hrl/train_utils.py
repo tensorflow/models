@@ -24,7 +24,7 @@ import os
 import time
 
 import tensorflow as tf
-
+import numpy as np
 import gin.tf
 
 flags = tf.app.flags
@@ -64,7 +64,9 @@ class TrainStep(object):
                log_every_n_steps=1,
                policy_save_fn=None,
                save_policy_every_n_steps=0,
-               should_stop_early=None):
+               should_stop_early=None,
+               grab_from_graph=None,
+               debug=False):
     """Returns a function that is executed at each step of slim training.
 
     Args:
@@ -93,6 +95,9 @@ class TrainStep(object):
     self.last_global_step_val = 0
     self.train_op_fn = None
     self.collect_and_train_fn = None
+    self.grab_from_graph = grab_from_graph
+    self.debug = debug
+    self.prev_num_adds = 10  # the very first few meta_transitions are not quite correct
     tf.logging.info('Training for %d max_number_of_steps',
                     self.max_number_of_steps)
 
@@ -105,10 +110,14 @@ class TrainStep(object):
     3. train the actor
     4. train the critic
 
+    Collect experiences a few steps. Then train (including SGD on actor and
+    critic, and updating target networks) a few steps.
+    The meta actor and critic are trained every few calls to this function.
+
     Args:
       sess: A Tensorflow session.
       train_ops: A DdpgTrainOps tuple of train ops to run.
-      global_step: The global step.
+      global_step: The number of times this function is called.
 
     Returns:
       A scalar total loss.
@@ -116,19 +125,41 @@ class TrainStep(object):
     """
     start_time = time.time()
     if self.train_op_fn is None:
+      # Creates a python callable that runs the ops once and collects returns
       self.train_op_fn = sess.make_callable([train_ops.train_op, global_step])
       self.meta_train_op_fn = sess.make_callable([train_ops.meta_train_op, global_step])
       self.collect_fn = sess.make_callable([train_ops.collect_experience_op, global_step])
       self.collect_and_train_fn = sess.make_callable(
           [train_ops.train_op, global_step, train_ops.collect_experience_op])
-      self.collect_and_meta_train_fn = sess.make_callable(
-          [train_ops.meta_train_op, global_step, train_ops.collect_experience_op])
+    # -1 b/c collect_and_train_fn is called again below
     for _ in range(self.num_collect_per_update - 1):
       self.collect_fn()
+    # TODO: Is "per_observation" even correct? How about num_opt_per_update?
     for _ in range(self.num_updates_per_observation - 1):
       self.train_op_fn()
 
+    buffer = self.grab_from_graph['replay_buffer']
+    num_adds = sess.run(buffer._num_adds)
+    if num_adds > self.prev_num_adds and self.debug:
+      # Have to unfinalize the graph so we can slice the buffer tensors
+      sess.graph._unsafe_unfinalize()
+      D = sess.run({
+        key: buffer._tensors[key][:num_adds]
+        # Writing out the keys explicitly so we don't forget
+        for key in ['state', 'action', 'reward', 'discount', 'done', 'context_0', 'next_context_0',
+                    'meta_action', 'meta_reward', 'meta_context_0', 'next_meta_context_0',
+                    'env_time_step']
+      })
+      from train_v2 import sample_low_level_experience, sample_high_level_experience
+      get_low_batch = lambda: sess.run(sample_low_level_experience(buffer, batch_size=1))
+      get_high_batch = lambda: sess.run(
+        sample_high_level_experience(buffer, batch_size=1, horizon=self.grab_from_graph['meta_experience_length']))
+      import ipdb; ipdb.set_trace()
+      self.prev_num_adds = num_adds
+
+    # TODO: Why run the following ops together?
     total_loss, global_step_val, _ = self.collect_and_train_fn()
+    # self.collect_fn(); total_loss, global_step_val = self.train_op_fn()
     if (global_step_val // self.num_collect_per_meta_update !=
         self.last_global_step_val // self.num_collect_per_meta_update):
       self.meta_train_op_fn()
@@ -148,7 +179,6 @@ class TrainStep(object):
         tf.logging.info(
             'global step %d: loss = %.4f (%.3f sec/step) (%d steps/sec)',
             global_step_val, total_loss, time_elapsed, 1 / time_elapsed)
-
     self.last_global_step_val = global_step_val
     stop_early = bool(self.should_stop_early and self.should_stop_early())
     return total_loss, should_stop or stop_early

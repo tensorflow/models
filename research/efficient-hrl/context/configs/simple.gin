@@ -1,0 +1,59 @@
+#-*-Python-*-
+train_uvf.environment = @create_simple_env()
+context_range = (-1, 1)
+meta_context_range = (-1, 1)
+
+STEPS_PER_EPISODE = 21
+RESET_ENV_PERIOD = 1
+# End episode every N steps
+UvfAgent.reset_episode_cond_fn = @every_n_steps
+every_n_steps.n = %STEPS_PER_EPISODE
+train_uvf.max_steps_per_episode = %STEPS_PER_EPISODE
+# Do a manual reset every N episodes
+UvfAgent.reset_env_cond_fn = @simple_every_n_episodes
+simple_every_n_episodes.n = %RESET_ENV_PERIOD
+simple_every_n_episodes.steps_per_episode = %STEPS_PER_EPISODE
+
+## Config defaults
+EVAL_MODES = ["eval"]
+
+## Config agent
+CONTEXT = @agent/Context
+META_CONTEXT = @meta/Context
+
+## Config agent context
+agent/Context.context_ranges = [%context_range]
+agent/Context.context_shapes = [1]
+agent/Context.meta_action_every_n = 10
+agent/Context.samplers = {
+    "train": [@train/ZeroSampler],
+    "explore": [@train/ZeroSampler],
+}
+
+agent/Context.context_transition_fn = @identity_context_transition_fn
+agent/Context.context_multi_transition_fn = @identity_context_multi_transition_fn
+
+
+agent/Context.reward_fn = @uvf/plain_rewards
+
+## Config meta context
+meta/Context.context_ranges = [%meta_context_range]
+meta/Context.context_shapes = [1]
+meta/Context.samplers = {
+    "train": [@train/ZeroSampler],
+    "explore": [@train/ZeroSampler],
+    "eval": [@eval/ZeroSampler],
+}
+meta/Context.reward_fn = @task/plain_rewards
+
+## Config samplers
+train/RandomSampler.context_range = %meta_context_range
+MetaAgent.k = %SUBGOAL_DIM
+
+
+## Agent
+UvfAgent.actor_net = @agent/simple_actor_net
+MetaAgent.actor_net = @agent/simple_meta_actor_net
+uvf_add_noise_fn.stddev = 0
+meta_add_noise_fn.stddev = 0
+meta_add_noise_fn.clip = False

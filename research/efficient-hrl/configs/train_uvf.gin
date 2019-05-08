@@ -31,6 +31,7 @@ train_uvf.num_collect_per_meta_update = 10
 train_uvf.debug_summaries = False
 train_uvf.log_every_n_steps = 1000
 train_uvf.save_policy_every_n_steps =100000
+train_uvf.store_meta_transition_every_n = None
 
 # Config Optimizers
 critic/AdamOptimizer.learning_rate = 0.001

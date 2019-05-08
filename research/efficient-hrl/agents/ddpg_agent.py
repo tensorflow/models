@@ -115,11 +115,12 @@ class DdpgAgent(object):
       residual_phi: (float) [0.0, 1.0] Residual algorithm parameter that
         interpolates between Q-learning and residual gradient algorithm.
         http://www.leemon.com/papers/1995b.pdf
+        Residual gradient = using current Q as target.
       debug_summaries: If True, add summaries to help debug behavior.
     Raises:
       ValueError: If 'dqda_clipping' is < 0.
     """
-    self._observation_spec = observation_spec[0]
+    self._observation_spec = observation_spec[0]  # why [0]??
     self._action_spec = action_spec[0]
     self._state_shape = tf.TensorShape([None]).concatenate(
         self._observation_spec.shape)
@@ -318,7 +319,7 @@ class DdpgAgent(object):
       td_targets = tf.clip_by_value(td_targets, self._target_q_clipping[0],
                                     self._target_q_clipping[1])
     q_values = self.critic_net(states, actions, for_critic_loss=True)
-    td_errors = td_targets - q_values
+    td_errors = td_targets - q_values  # only for logging
     if self._debug_summaries:
       gen_debug_td_error_summaries(
           target_q_values, q_values, td_targets, td_errors)
@@ -377,6 +378,7 @@ class DdpgAgent(object):
           tf.summary.histogram('dqda_%d' % a, dqda[:, a])
 
     actions_norm *= self._actions_regularizer
+    # TODO: just use Q as the loss
     return slim.losses.mean_squared_error(tf.stop_gradient(dqda + actions),
                                           actions,
                                           scope='actor_loss') + actions_norm
@@ -411,7 +413,7 @@ class DdpgAgent(object):
 
     For each weight w_s in the actor/critic networks, and its corresponding
     weight w_t in the target actor/critic networks, a soft update is:
-    w_t = (1- tau) x w_t + tau x ws
+    w_t = (1- tau) x w_t + tau x w_s
 
     Args:
       tau: A float scalar in [0, 1]
@@ -505,7 +507,12 @@ class DdpgAgent(object):
 
 @gin.configurable
 class TD3Agent(DdpgAgent):
-  """An RL agent that learns using the TD3 algorithm."""
+  """
+  An RL agent that learns using the TD3 algorithm.
+  On top of DDPG, introduce extra critic and target critic nets. Target Q is
+  min(critic, critic_2). critic_2 is trained by TD loss the same way as critic.
+  target_critic_2 is updated from critic_2.
+  """
 
   ACTOR_NET_SCOPE = 'actor_net'
   CRITIC_NET_SCOPE = 'critic_net'

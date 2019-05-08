@@ -28,6 +28,35 @@ slim = tf.contrib.slim
 import gin.tf
 
 
+@gin.configurable('simple_actor_net')
+def simple_actor_net(states, action_spec,
+                     hidden_layers=(400, 300),
+                     normalizer_fn=None,
+                     activation_fn=tf.nn.relu,
+                     zero_obs=False,
+                     images=False):
+  """For debugging with SimpleEnv. Returns the current state + 0.1 as action."""
+  # The slack var prevents tf from complaning that no params are involved
+  slack = tf.get_variable('slack', shape=(1, 1), initializer=tf.zeros_initializer, dtype=tf.float32)
+  states_without_context = states[:, :1] + slack * tf.constant(0.)
+  return states_without_context + 0.1
+
+
+@gin.configurable('simple_meta_actor_net')
+def simple_meta_actor_net(states, action_spec,
+                          hidden_layers=(400, 300),
+                          normalizer_fn=None,
+                          activation_fn=tf.nn.relu,
+                          zero_obs=False,
+                          images=False):
+  """For debugging with SimpleEnv. Returns square of the current state as action."""
+  # The slack var prevents tf from complaning that no params are involved
+  slack = tf.get_variable('meta_slack', shape=(1, 1), initializer=tf.zeros_initializer, dtype=tf.float32)
+  states_without_context = states[:, :1] + slack * tf.constant(0.)
+  meta_action = tf.square(states_without_context)
+  return meta_action
+
+
 @gin.configurable('ddpg_critic_net')
 def critic_net(states, actions,
                for_critic_loss=False,
@@ -108,6 +137,8 @@ def actor_net(states, action_spec,
               zero_obs=False,
               images=False):
   """Creates an actor that returns actions for the given states.
+  Apply fully connected layers and get deterministic actions.
+  Network outputs are bounded to [-1, 1] and then scaled accordingly.
 
   Args:
     states: (castable to tf.float32) a [batch_size, num_state_dims] tensor
@@ -117,6 +148,8 @@ def actor_net(states, action_spec,
     hidden_layers: tuple of hidden layers units.
     normalizer_fn: Normalizer function, i.e. slim.layer_norm,
     activation_fn: Activation function, i.e. tf.nn.relu, slim.leaky_relu, ...
+    zero_obs: if True, replace the first 2 dims (usually x, y pos) with zeros
+    images:
   Returns:
     A tf.float32 [batch_size, num_action_dims] tensor of actions.
   """

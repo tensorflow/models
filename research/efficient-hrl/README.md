@@ -53,10 +53,5 @@ Therefore, in `context/configs/*` you will find both specifications for task set
 as well as goal configurations.  Most remaining hyperparameters used for
 training/evaluation may be found in `configs/*`.
 
-NOTE: Not all the code corresponding to the "Near-Optimal" paper is included.
-Namely, changes to low-level policy training proposed in the paper (discounting
-and auxiliary rewards) are not implemented here.  Performance should not change
-significantly.
-
 
 Maintained by Ofir Nachum (ofirnachum).

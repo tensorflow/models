@@ -84,7 +84,7 @@ class UvfAgentCore(object):
 
     self.BASE_AGENT_CLASS.__init__(
         self,
-        observation_spec=merged_observation_spec,
+        observation_spec=merged_observation_spec,  # the base agent takes (s_t, g_t)
         action_spec=action_spec,
         **base_agent_kwargs
     )
@@ -133,6 +133,15 @@ class UvfAgentCore(object):
     return self.BASE_AGENT_CLASS.actor_net(self, merged_states)
 
   def log_probs(self, states, actions, state_reprs, contexts=None):
+    """
+    Since DDPG outputs deterministic actions and the noise is added separately,
+    this log_probs only plays a part in off-policy corrections.
+    :param states: [B,T,Ds]
+    :param actions: [B,T,Da]
+    :param state_reprs: [B,T,D]
+    :param contexts: [B,D]
+    :return: [B,T] batch of ||a - \mu^{low}(s, g)||^2, normalized by action ranges
+    """
     assert contexts is not None
     batch_dims = [tf.shape(states)[0], tf.shape(states)[1]]
     contexts = self.tf_context.context_multi_transition_fn(
@@ -147,6 +156,9 @@ class UvfAgentCore(object):
     pred_actions = tf.reshape(flat_pred_actions,
                               batch_dims + [flat_pred_actions.shape[-1]])
 
+    # Assuming Gaussian and ignoring the pre-exp multiplier.
+    # The standard deviation is half the value range so covers all possible
+    # values.
     error = tf.square(actions - pred_actions)
     spec_range = (self._action_spec.maximum - self._action_spec.minimum) / 2
     normalized_error = error / tf.constant(spec_range) ** 2
@@ -250,7 +262,7 @@ class UvfAgentCore(object):
     return states, contexts
 
   def sample_random_actions(self, batch_size=1):
-    """Return random actions.
+    """Return random actions, uniformly chosen from the action ranges.
 
     Args:
       batch_size: Batch size.
@@ -270,6 +282,7 @@ class UvfAgentCore(object):
 
   def clip_actions(self, actions):
     """Clip actions to spec.
+    # TODO: seems inefficient. Should use tf.maximum(tensor, bounds)...
 
     Args:
       actions: A [batch_size, num_action_dims] tensor representing
@@ -327,7 +340,7 @@ class UvfAgentCore(object):
     all_ops = []
     for _, action_var in sorted(self._action_vars.items()):
       sample_action = self.sample_random_actions(1)[0]
-      all_ops.append(tf.assign(action_var, sample_action))
+      all_ops.append(tf.assign(action_var, sample_action))  # TODO: why?
     all_ops += self.tf_context.reset(mode=mode, agent=self._meta_agent,
                                      action_fn=action_fn, state=state)
     return all_ops
@@ -335,7 +348,8 @@ class UvfAgentCore(object):
   def cond_begin_episode_op(self, cond, input_vars, mode, meta_action_fn):
     """Returns op that resets agent at beginning of episodes.
 
-    A new episode is begun if the cond op evalues to `False`.
+    A new episode is begun if the cond is `False`. Otherwise, compute context
+    rewards, tell them to self.tf_context, and then return them.
 
     Args:
       cond: a Boolean tensor variable.
@@ -354,7 +368,7 @@ class UvfAgentCore(object):
       (states, actions, rewards, next_states,
        state_reprs, next_state_reprs) = batch_items[:6]
       context_reward = self.compute_rewards(
-          mode, state_reprs, actions, rewards, next_state_reprs,
+          state_reprs, actions, rewards, next_state_reprs,
           batch_items[6:])[0][0]
       context_reward = tf.cast(context_reward, dtype=reward.dtype)
       if self.meta_agent is not None:
@@ -365,7 +379,7 @@ class UvfAgentCore(object):
         (states, meta_actions, rewards, next_states,
          state_reprs, next_state_reprs) = batch_items[:6]
         meta_reward = self.meta_agent.compute_rewards(
-            mode, states, meta_actions, rewards,
+            states, meta_actions, rewards,
             next_states, batch_items[6:])[0][0]
         meta_reward = tf.cast(meta_reward, dtype=reward.dtype)
       else:
@@ -378,7 +392,7 @@ class UvfAgentCore(object):
                                         state_repr=state_repr,
                                         next_state_repr=next_state_repr,
                                         action_fn=meta_action_fn)
-      with tf.control_dependencies(step_ops):
+      with tf.control_dependencies(step_ops):  # forces step_ops to run
         context_reward, meta_reward = map(tf.identity, [context_reward, meta_reward])
       return context_reward, meta_reward
     def begin_episode_fn():
@@ -386,6 +400,72 @@ class UvfAgentCore(object):
       begin_ops = self.begin_episode_ops(mode=mode, action_fn=meta_action_fn, state=state)
       with tf.control_dependencies(begin_ops):
         return tf.zeros_like(reward), tf.zeros_like(reward)
+    with tf.control_dependencies(input_vars):
+      cond_begin_episode_op = tf.cond(cond, continue_fn, begin_episode_fn)
+    return cond_begin_episode_op
+
+  def cond_begin_episode_op_v2(self, cond, input_vars, mode, meta_action_fn):
+    """Returns op that resets agent at beginning of episodes.
+
+    A new episode is begun if the cond is `False`. Otherwise, compute context
+    rewards, tell them to self.tf_context, and then return them.
+
+    Args:
+      cond: a Boolean tensor variable.
+      input_vars: A list of tensor variables.
+      mode: a string representing the mode=[train, explore, eval].
+    Returns:
+      Conditional begin op.
+    """
+    (state, action, reward, next_state,
+     state_repr, next_state_repr) = input_vars
+
+    items = [state, action, reward, next_state,
+             state_repr, next_state_repr] + list(self.context_vars)
+    batch_items = [tf.expand_dims(item, 0) for item in items]
+    (states, actions, rewards, next_states,
+     state_reprs, next_state_reprs) = batch_items[:6]
+    context_reward = self.compute_rewards(
+      state_reprs, actions, rewards, next_state_reprs,
+      batch_items[6:])[0][0]
+    context_reward = tf.cast(context_reward, dtype=reward.dtype)
+    if self.meta_agent is not None:
+      meta_action = tf.concat(self.context_vars, -1)
+      items = [state, meta_action, reward, next_state,
+               state_repr, next_state_repr] + list(self.meta_agent.context_vars)
+      batch_items = [tf.expand_dims(item, 0) for item in items]
+      (states, meta_actions, rewards, next_states,
+       state_reprs, next_state_reprs) = batch_items[:6]
+      meta_reward = self.meta_agent.compute_rewards(
+        states, meta_actions, rewards,
+        next_states, batch_items[6:])[0][0]
+      meta_reward = tf.cast(meta_reward, dtype=reward.dtype)
+    else:
+      meta_reward = tf.constant(0, dtype=reward.dtype)
+
+    def continue_fn():
+      """Continue op fn."""
+      nonlocal context_reward, meta_reward
+      with tf.control_dependencies([context_reward, meta_reward]):
+        step_ops = self.tf_context.step(mode=mode, agent=self._meta_agent,
+                                        state=state,
+                                        next_state=next_state,
+                                        state_repr=state_repr,
+                                        next_state_repr=next_state_repr,
+                                        action_fn=meta_action_fn)
+      with tf.control_dependencies(step_ops):  # forces step_ops to run
+        context_reward, meta_reward = map(tf.identity, [context_reward, meta_reward])
+      return context_reward, meta_reward
+
+    def begin_episode_fn(context_reward=context_reward, meta_reward=meta_reward):
+      """Begin op fn."""
+      with tf.control_dependencies([context_reward, meta_reward]):
+        begin_ops = self.begin_episode_ops(mode=mode, action_fn=meta_action_fn, state=state)
+      with tf.control_dependencies(begin_ops):
+        # The very last step of an episode should still return non-zero rewards.
+        # return tf.zeros_like(reward), tf.zeros_like(reward)
+        return tf.identity(context_reward), tf.identity(meta_reward)
+
     with tf.control_dependencies(input_vars):
       cond_begin_episode_op = tf.cond(cond, continue_fn, begin_episode_fn)
     return cond_begin_episode_op
@@ -402,23 +482,23 @@ class UvfAgentCore(object):
     begin_ops = self.begin_episode_ops(**begin_kwargs)
     return uvf_utils.get_contextual_env_base(env_base, begin_ops)
 
-  def init_action_vars(self, name, i=None):
-    """Create and return a tensorflow Variable holding an action.
-
-    Args:
-      name: Name of the variables.
-      i: Integer id.
-    Returns:
-      A [num_action_dims] tensor.
-    """
-    if i is not None:
-      name += '_%d' % i
-    assert name not in self._action_vars, ('Conflict! %s is already '
-                                           'initialized.') % name
-    self._action_vars[name] = tf.Variable(
-        self.sample_random_actions(1)[0], name='%s_action' % (name))
-    self._validate_actions(tf.expand_dims(self._action_vars[name], 0))
-    return self._action_vars[name]
+  # def init_action_vars(self, name, i=None):
+  #   """Create and return a tensorflow Variable holding an action.
+  #
+  #   Args:
+  #     name: Name of the variables.
+  #     i: Integer id.
+  #   Returns:
+  #     A [num_action_dims] tensor.
+  #   """
+  #   if i is not None:
+  #     name += '_%d' % i
+  #   assert name not in self._action_vars, ('Conflict! %s is already '
+  #                                          'initialized.') % name
+  #   self._action_vars[name] = tf.Variable(
+  #       self.sample_random_actions(1)[0], name='%s_action' % (name))
+  #   self._validate_actions(tf.expand_dims(self._action_vars[name], 0))
+  #   return self._action_vars[name]
 
   @gin.configurable('uvf_critic_function')
   def critic_function(self, critic_vals, states, critic_fn=None):
@@ -487,6 +567,7 @@ class MetaAgentCore(UvfAgentCore):
       action_spec: A BoundedTensorSpec defining the actions.
       tf_env: A Tensorflow environment object.
       tf_context: A Context class.
+      sub_context: Context of the low-level policy
       step_cond_fn: A function indicating whether to increment the num of steps.
       reset_episode_cond_fn: A function indicating whether to restart the
       episode, resampling the context.
@@ -532,10 +613,11 @@ class MetaAgentCore(UvfAgentCore):
 
   @gin.configurable('meta_add_noise_fn')
   def add_noise_fn(self, action_fn, stddev=1.0, debug=False,
-                   global_step=None):
+                   clip=True, global_step=None):
+    # The only reason to write it explicitly is to make it gin-configurable
     noisy_action_fn = super(MetaAgentCore, self).add_noise_fn(
-        action_fn, stddev,
-        clip=True, global_step=global_step)
+        action_fn, stddev, debug,
+        clip=clip, global_step=global_step)
     return noisy_action_fn
 
   def actor_loss(self, states, actions, rewards, discounts,
@@ -549,8 +631,11 @@ class MetaAgentCore(UvfAgentCore):
       A [num_action_dims] tensor representing the action.
     """
     actions = self.actor_net(states, stop_gradients=False)
+    # TODO: why regularize the goals output? Can't we just output bounded goals?
     regularizer = self._actions_reg * tf.reduce_mean(
         tf.reduce_sum(tf.abs(actions[:, self._k:]), -1), 0)
+    # TODO: only in DDPG will actor_loss depend on states only. Should make
+    # this general.
     loss = self.BASE_AGENT_CLASS.actor_loss(self, states)
     return regularizer + loss
 
@@ -598,6 +683,7 @@ def state_preprocess_net(
     states_shape = tf.shape(states)
     states_dtype = states.dtype
     states = tf.to_float(states)
+    # TODO: should avoid hard-indexing by e.g. making states a dict or namedtuple
     if images:  # Zero-out x-y
       states *= tf.constant([0.] * 2 + [1.] * (states.shape[-1] - 2), dtype=states.dtype)
     if zero_time:
@@ -686,7 +772,7 @@ class StatePreprocess(object):
     self.trainable = trainable
     self._scope = tf.get_variable_scope().name
     self._ndims = ndims
-    self._state_preprocess_net = tf.make_template(
+    self._state_preprocess_net = tf.make_template(  # make_template creates an op that shares variables
         self.STATE_PREPROCESS_NET_SCOPE, state_preprocess_net,
         create_scope_now_=True)
     self._action_embed_net = tf.make_template(
@@ -699,14 +785,14 @@ class StatePreprocess(object):
       states = tf.expand_dims(states, 0)
     embedded = self._state_preprocess_net(states)
     if self._ndims is not None:
-      embedded = embedded[..., :self._ndims]
+      embedded = embedded[..., :self._ndims]  # TODO: why?
     if not batched:
       return embedded[0]
     return embedded
 
   def loss(self, states, next_states, low_actions, low_states):
     batch_size = tf.shape(states)[0]
-    d = int(low_states.shape[1])
+    d = int(low_states.shape[1])  # goal_horizon
     # Sample indices into meta-transition to train on.
     probs = 0.99 ** tf.range(d, dtype=tf.float32)
     probs *= tf.constant([1.0] * (d - 1) + [1.0 / (1 - 0.99)],
@@ -754,6 +840,11 @@ class StatePreprocess(object):
 
 @gin.configurable()
 class InverseDynamics(object):
+  """
+  Model the posterior of goals as Gaussian(next_states - states, scale), where
+  scale depends on `spec`. sample() returns the mean, original goal, and samples
+  from the Gaussian.
+  """
   INVERSE_DYNAMICS_NET_SCOPE = 'inverse_dynamics'
 
   def __init__(self, spec):

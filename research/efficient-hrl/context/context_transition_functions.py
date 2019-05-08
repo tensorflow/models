@@ -113,6 +113,9 @@ def relative_context_multi_transition_fn(
     k=2, states=None,
     **kwargs):
   """Given contexts at first state and sequence of states, derives sequence of all contexts.
+  g_{t+i} =  s_t + g_t - s_{t+i} (repr_states) (only in the first k dims; the
+  rest are g_{t+i} = g_t)
+  contexts[0] = goals has shape [B,D]. states.shape = [B,K,D]
   """
   contexts = list(contexts[:])  # create copy
   assert len(contexts) == 1
@@ -120,4 +123,29 @@ def relative_context_multi_transition_fn(
       tf.concat(
           [tf.expand_dims(contexts[0][:, :k] + states[:, 0, :k], 1) - states[:, :, :k],
            contexts[0][:, None, k:] * tf.ones_like(states[:, :, :1])], -1)]
+  return contexts
+
+@gin.configurable
+def identity_context_transition_fn(
+    contexts, timer, sampler_fn,
+    k=2, state=None, next_state=None,
+    **kwargs):
+  """Contexts updated to be relative to next state.
+  """
+  contexts = list(contexts[:])  # create copy
+  assert len(contexts) == 1
+  return contexts
+
+
+@gin.configurable
+def identity_context_multi_transition_fn(
+    contexts, timer, sampler_fn,
+    k=2, states=None,
+    **kwargs):
+  """Contexts updated to be relative to next state.
+  """
+  contexts = list(contexts[:])  # create copy
+  assert len(contexts) == 1
+  T = tf.shape(states)[1]
+  contexts = [tf.tile(tf.expand_dims(c, 1), (1, T, 1)) for c in contexts]
   return contexts
