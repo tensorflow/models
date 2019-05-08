@@ -39,7 +39,8 @@ class MaskRCNNClassHead(head.Head):
                num_class_slots,
                fc_hyperparams_fn,
                use_dropout,
-               dropout_keep_prob):
+               dropout_keep_prob,
+               scope='ClassPredictor'):
     """Constructor.
 
     Args:
@@ -53,6 +54,7 @@ class MaskRCNNClassHead(head.Head):
         in contrast to the ConvolutionalBoxPredictor below.
       dropout_keep_prob: Keep probability for dropout.
         This is only used if use_dropout is True.
+      scope: Scope name for the convolution operation.
     """
     super(MaskRCNNClassHead, self).__init__()
     self._is_training = is_training
@@ -60,6 +62,7 @@ class MaskRCNNClassHead(head.Head):
     self._fc_hyperparams_fn = fc_hyperparams_fn
     self._use_dropout = use_dropout
     self._dropout_keep_prob = dropout_keep_prob
+    self._scope = scope
 
   def predict(self, features, num_predictions_per_location=1):
     """Predicts boxes and class scores.
@@ -95,7 +98,7 @@ class MaskRCNNClassHead(head.Head):
           flattened_roi_pooled_features,
           self._num_class_slots,
           activation_fn=None,
-          scope='ClassPredictor')
+          scope=self._scope)
     class_predictions_with_background = tf.reshape(
         class_predictions_with_background,
         [-1, 1, self._num_class_slots])
@@ -113,7 +116,8 @@ class ConvolutionalClassHead(head.Head):
                kernel_size,
                apply_sigmoid_to_scores=False,
                class_prediction_bias_init=0.0,
-               use_depthwise=False):
+               use_depthwise=False,
+               scope='ClassPredictor'):
     """Constructor.
 
     Args:
@@ -135,6 +139,7 @@ class ConvolutionalClassHead(head.Head):
         conv2d layer before class prediction.
       use_depthwise: Whether to use depthwise convolutions for prediction
         steps. Default is False.
+      scope: Scope name for the convolution operation.
 
     Raises:
       ValueError: if min_depth > max_depth.
@@ -148,6 +153,7 @@ class ConvolutionalClassHead(head.Head):
     self._apply_sigmoid_to_scores = apply_sigmoid_to_scores
     self._class_prediction_bias_init = class_prediction_bias_init
     self._use_depthwise = use_depthwise
+    self._scope = scope
 
   def predict(self, features, num_predictions_per_location):
     """Predicts boxes.
@@ -167,17 +173,18 @@ class ConvolutionalClassHead(head.Head):
     if self._use_dropout:
       net = slim.dropout(net, keep_prob=self._dropout_keep_prob)
     if self._use_depthwise:
+      depthwise_scope = self._scope + '_depthwise'
       class_predictions_with_background = slim.separable_conv2d(
           net, None, [self._kernel_size, self._kernel_size],
           padding='SAME', depth_multiplier=1, stride=1,
-          rate=1, scope='ClassPredictor_depthwise')
+          rate=1, scope=depthwise_scope)
       class_predictions_with_background = slim.conv2d(
           class_predictions_with_background,
           num_predictions_per_location * self._num_class_slots, [1, 1],
           activation_fn=None,
           normalizer_fn=None,
           normalizer_params=None,
-          scope='ClassPredictor')
+          scope=self._scope)
     else:
       class_predictions_with_background = slim.conv2d(
           net,
@@ -186,7 +193,7 @@ class ConvolutionalClassHead(head.Head):
           activation_fn=None,
           normalizer_fn=None,
           normalizer_params=None,
-          scope='ClassPredictor',
+          scope=self._scope,
           biases_initializer=tf.constant_initializer(
               self._class_prediction_bias_init))
     if self._apply_sigmoid_to_scores:
@@ -217,7 +224,9 @@ class WeightSharedConvolutionalClassHead(head.Head):
                use_dropout=False,
                dropout_keep_prob=0.8,
                use_depthwise=False,
-               score_converter_fn=tf.identity):
+               score_converter_fn=tf.identity,
+               return_flat_predictions=True,
+               scope='ClassPredictor'):
     """Constructor.
 
     Args:
@@ -232,6 +241,12 @@ class WeightSharedConvolutionalClassHead(head.Head):
         steps. Default is False.
       score_converter_fn: Callable elementwise nonlinearity (that takes tensors
         as inputs and returns tensors).
+      return_flat_predictions: If true, returns flattened prediction tensor
+        of shape [batch, height * width * num_predictions_per_location,
+        box_coder]. Otherwise returns the prediction tensor before reshaping,
+        whose shape is [batch, height, width, num_predictions_per_location *
+        num_class_slots].
+      scope: Scope name for the convolution operation.
     """
     super(WeightSharedConvolutionalClassHead, self).__init__()
     self._num_class_slots = num_class_slots
@@ -241,6 +256,8 @@ class WeightSharedConvolutionalClassHead(head.Head):
     self._dropout_keep_prob = dropout_keep_prob
     self._use_depthwise = use_depthwise
     self._score_converter_fn = score_converter_fn
+    self._return_flat_predictions = return_flat_predictions
+    self._scope = scope
 
   def predict(self, features, num_predictions_per_location):
     """Predicts boxes.
@@ -254,7 +271,10 @@ class WeightSharedConvolutionalClassHead(head.Head):
     Returns:
       class_predictions_with_background: A tensor of shape
         [batch_size, num_anchors, num_class_slots] representing the class
-        predictions for the proposals.
+        predictions for the proposals, or a tensor of shape [batch, height,
+        width, num_predictions_per_location * num_class_slots] representing
+        class predictions before reshaping if self._return_flat_predictions is
+        False.
     """
     class_predictions_net = features
     if self._use_dropout:
@@ -272,13 +292,15 @@ class WeightSharedConvolutionalClassHead(head.Head):
         normalizer_fn=None,
         biases_initializer=tf.constant_initializer(
             self._class_prediction_bias_init),
-        scope='ClassPredictor')
+        scope=self._scope)
     batch_size = features.get_shape().as_list()[0]
     if batch_size is None:
       batch_size = tf.shape(features)[0]
     class_predictions_with_background = self._score_converter_fn(
         class_predictions_with_background)
-    class_predictions_with_background = tf.reshape(
-        class_predictions_with_background,
-        [batch_size, -1, self._num_class_slots])
+    if self._return_flat_predictions:
+      class_predictions_with_background = tf.reshape(
+          class_predictions_with_background,
+          [batch_size, -1, self._num_class_slots])
     return class_predictions_with_background
+

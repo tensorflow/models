@@ -147,6 +147,69 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     self.assertEqual(len(vals), 1)
     self.assertEqual(vals[0], 1)
 
+  def test_build_conditional_shape_resizer_greater_returns_expected_shape(self):
+    image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: GREATER
+        size_threshold: 30
+      }
+    """
+    input_shape = (60, 30, 3)
+    expected_output_shape = (30, 15, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_conditional_shape_resizer_same_shape_with_no_resize(self):
+    image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: GREATER
+        size_threshold: 30
+      }
+    """
+    input_shape = (15, 15, 3)
+    expected_output_shape = (15, 15, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_conditional_shape_resizer_smaller_returns_expected_shape(self):
+    image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: SMALLER
+        size_threshold: 30
+      }
+    """
+    input_shape = (30, 15, 3)
+    expected_output_shape = (60, 30, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_conditional_shape_resizer_grayscale(self):
+    image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: GREATER
+        size_threshold: 30
+        convert_to_grayscale: true
+      }
+    """
+    input_shape = (60, 30, 3)
+    expected_output_shape = (30, 15, 1)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_conditional_shape_resizer_error_on_invalid_condition(self):
+    invalid_image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: INVALID
+        size_threshold: 30
+      }
+    """
+    with self.assertRaises(ValueError):
+      image_resizer_builder.build(invalid_image_resizer_text_proto)
+
 
 if __name__ == '__main__':
   tf.test.main()

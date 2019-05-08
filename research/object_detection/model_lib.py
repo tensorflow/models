@@ -24,6 +24,7 @@ import os
 
 import tensorflow as tf
 
+from tensorflow.python.util import function_utils
 from object_detection import eval_util
 from object_detection import exporter as exporter_lib
 from object_detection import inputs
@@ -33,6 +34,7 @@ from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
+from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils as vis_utils
@@ -279,9 +281,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
         prediction_dict = detection_model.predict(
             preprocessed_images,
             features[fields.InputDataFields.true_image_shape])
-        for k, v in prediction_dict.items():
-          if v.dtype == tf.bfloat16:
-            prediction_dict[k] = tf.cast(v, tf.float32)
+        prediction_dict = ops.bfloat16_to_float32_nested(prediction_dict)
     else:
       prediction_dict = detection_model.predict(
           preprocessed_images,
@@ -338,6 +338,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
       losses = [loss_tensor for loss_tensor in losses_dict.values()]
       if train_config.add_regularization_loss:
         regularization_losses = detection_model.regularization_losses()
+        if use_tpu and train_config.use_bfloat16:
+          regularization_losses = ops.bfloat16_to_float32_nested(
+              regularization_losses)
         if regularization_losses:
           regularization_loss = tf.add_n(
               regularization_losses, name='regularization_loss')
@@ -650,6 +653,11 @@ def create_estimator_and_inputs(run_config,
   model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu,
                               postprocess_on_cpu)
   if use_tpu_estimator:
+    # Multicore inference disabled due to b/129367127
+    tpu_estimator_args = function_utils.fn_args(tf.contrib.tpu.TPUEstimator)
+    kwargs = {}
+    if 'experimental_export_device_assignment' in tpu_estimator_args:
+      kwargs['experimental_export_device_assignment'] = True
     estimator = tf.contrib.tpu.TPUEstimator(
         model_fn=model_fn,
         train_batch_size=train_config.batch_size,
@@ -659,7 +667,8 @@ def create_estimator_and_inputs(run_config,
         config=run_config,
         export_to_tpu=export_to_tpu,
         eval_on_tpu=False,  # Eval runs on CPU, so disable eval on TPU
-        params=params if params else {})
+        params=params if params else {},
+        **kwargs)
   else:
     estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
 

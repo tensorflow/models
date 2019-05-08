@@ -43,6 +43,7 @@ SERVING_FED_EXAMPLE_KEY = 'serialized_example'
 # A map of names to methods that help build the input pipeline.
 INPUT_BUILDER_UTIL_MAP = {
     'dataset_build': dataset_builder.build,
+    'model_build': model_builder.build,
 }
 
 
@@ -152,7 +153,7 @@ def transform_input_data(tensor_dict,
   if use_multiclass_scores:
     tensor_dict[fields.InputDataFields.groundtruth_classes] = tensor_dict[
         fields.InputDataFields.multiclass_scores]
-    tensor_dict.pop(fields.InputDataFields.multiclass_scores, None)
+  tensor_dict.pop(fields.InputDataFields.multiclass_scores, None)
 
   if fields.InputDataFields.groundtruth_confidences in tensor_dict:
     groundtruth_confidences = tensor_dict[
@@ -498,11 +499,13 @@ def create_train_input_fn(train_config, train_input_config,
       data_augmentation_fn = functools.partial(
           augment_input_data,
           data_augmentation_options=data_augmentation_options)
-      model = model_builder.build(model_config, is_training=True)
+
+      model_preprocess_fn = INPUT_BUILDER_UTIL_MAP['model_build'](
+          model_config, is_training=True).preprocess
       image_resizer_config = config_util.get_image_resizer_config(model_config)
       image_resizer_fn = image_resizer_builder.build(image_resizer_config)
       transform_data_fn = functools.partial(
-          transform_input_data, model_preprocess_fn=model.preprocess,
+          transform_input_data, model_preprocess_fn=model_preprocess_fn,
           image_resizer_fn=image_resizer_fn,
           num_classes=config_util.get_number_of_classes(model_config),
           data_augmentation_fn=data_augmentation_fn,
@@ -593,12 +596,14 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
     def transform_and_pad_input_data_fn(tensor_dict):
       """Combines transform and pad operation."""
       num_classes = config_util.get_number_of_classes(model_config)
-      model = model_builder.build(model_config, is_training=False)
+      model_preprocess_fn = INPUT_BUILDER_UTIL_MAP['model_build'](
+          model_config, is_training=False).preprocess
+
       image_resizer_config = config_util.get_image_resizer_config(model_config)
       image_resizer_fn = image_resizer_builder.build(image_resizer_config)
 
       transform_data_fn = functools.partial(
-          transform_input_data, model_preprocess_fn=model.preprocess,
+          transform_input_data, model_preprocess_fn=model_preprocess_fn,
           image_resizer_fn=image_resizer_fn,
           num_classes=num_classes,
           data_augmentation_fn=None,
@@ -643,12 +648,14 @@ def create_predict_input_fn(model_config, predict_input_config):
     example = tf.placeholder(dtype=tf.string, shape=[], name='tf_example')
 
     num_classes = config_util.get_number_of_classes(model_config)
-    model = model_builder.build(model_config, is_training=False)
+    model_preprocess_fn = INPUT_BUILDER_UTIL_MAP['model_build'](
+        model_config, is_training=False).preprocess
+
     image_resizer_config = config_util.get_image_resizer_config(model_config)
     image_resizer_fn = image_resizer_builder.build(image_resizer_config)
 
     transform_fn = functools.partial(
-        transform_input_data, model_preprocess_fn=model.preprocess,
+        transform_input_data, model_preprocess_fn=model_preprocess_fn,
         image_resizer_fn=image_resizer_fn,
         num_classes=num_classes,
         data_augmentation_fn=None)

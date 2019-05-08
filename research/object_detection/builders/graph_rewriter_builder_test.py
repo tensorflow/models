@@ -23,7 +23,8 @@ class QuantizationBuilderTest(tf.test.TestCase):
 
   def testQuantizationBuilderSetsUpCorrectTrainArguments(self):
     with mock.patch.object(
-        tf.contrib.quantize, 'create_training_graph') as mock_quant_fn:
+        tf.contrib.quantize,
+        'experimental_create_training_graph') as mock_quant_fn:
       with mock.patch.object(tf.contrib.layers,
                              'summarize_collection') as mock_summarize_col:
         graph_rewriter_proto = graph_rewriter_pb2.GraphRewriter()
@@ -40,7 +41,7 @@ class QuantizationBuilderTest(tf.test.TestCase):
 
   def testQuantizationBuilderSetsUpCorrectEvalArguments(self):
     with mock.patch.object(tf.contrib.quantize,
-                           'create_eval_graph') as mock_quant_fn:
+                           'experimental_create_eval_graph') as mock_quant_fn:
       with mock.patch.object(tf.contrib.layers,
                              'summarize_collection') as mock_summarize_col:
         graph_rewriter_proto = graph_rewriter_pb2.GraphRewriter()

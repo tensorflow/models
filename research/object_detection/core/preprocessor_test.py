@@ -2663,6 +2663,68 @@ class PreprocessorTest(tf.test.TestCase):
         out_image_shape = sess.run(out_image_shape)
         self.assertAllEqual(out_image_shape, expected_shape)
 
+  def testResizeToMaxDimensionTensorShapes(self):
+    """Tests both cases where image should and shouldn't be resized."""
+    in_image_shape_list = [[100, 50, 3], [15, 30, 3]]
+    in_masks_shape_list = [[15, 100, 50], [10, 15, 30]]
+    max_dim = 50
+    expected_image_shape_list = [[50, 25, 3], [15, 30, 3]]
+    expected_masks_shape_list = [[15, 50, 25], [10, 15, 30]]
+
+    for (in_image_shape, expected_image_shape, in_masks_shape,
+         expected_mask_shape) in zip(in_image_shape_list,
+                                     expected_image_shape_list,
+                                     in_masks_shape_list,
+                                     expected_masks_shape_list):
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      in_masks = tf.placeholder(tf.float32, shape=(None, None, None))
+      in_masks = tf.random_uniform(in_masks_shape)
+      out_image, out_masks, _ = preprocessor.resize_to_max_dimension(
+          in_image, in_masks, max_dimension=max_dim)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape],
+            feed_dict={
+                in_image: np.random.randn(*in_image_shape),
+                in_masks: np.random.randn(*in_masks_shape)
+            })
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
+
+  def testResizeToMaxDimensionWithInstanceMasksTensorOfSizeZero(self):
+    """Tests both cases where image should and shouldn't be resized."""
+    in_image_shape_list = [[100, 50, 3], [15, 30, 3]]
+    in_masks_shape_list = [[0, 100, 50], [0, 15, 30]]
+    max_dim = 50
+    expected_image_shape_list = [[50, 25, 3], [15, 30, 3]]
+    expected_masks_shape_list = [[0, 50, 25], [0, 15, 30]]
+
+    for (in_image_shape, expected_image_shape, in_masks_shape,
+         expected_mask_shape) in zip(in_image_shape_list,
+                                     expected_image_shape_list,
+                                     in_masks_shape_list,
+                                     expected_masks_shape_list):
+      in_image = tf.random_uniform(in_image_shape)
+      in_masks = tf.random_uniform(in_masks_shape)
+      out_image, out_masks, _ = preprocessor.resize_to_max_dimension(
+          in_image, in_masks, max_dimension=max_dim)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape])
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
+
+  def testResizeToMaxDimensionRaisesErrorOn4DImage(self):
+    image = tf.random_uniform([1, 200, 300, 3])
+    with self.assertRaises(ValueError):
+      preprocessor.resize_to_max_dimension(image, 500)
+
   def testResizeToMinDimensionTensorShapes(self):
     in_image_shape_list = [[60, 55, 3], [15, 30, 3]]
     in_masks_shape_list = [[15, 60, 55], [10, 15, 30]]

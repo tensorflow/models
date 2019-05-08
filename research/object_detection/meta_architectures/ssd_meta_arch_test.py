@@ -311,8 +311,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                             [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]],
                            [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
                             [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]]]
-    raw_detection_scores = [[[0, 0], [0, 0], [0, 0], [0, 0]],
-                            [[0, 0], [0, 0], [0, 0], [0, 0]]]
+    raw_detection_scores = [[[0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5]],
+                            [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]]
 
     for input_shape in input_shapes:
       tf_graph = tf.Graph()

@@ -197,6 +197,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       'PerformanceByCategory' is included in the output regardless of
       all_metrics_per_category.
     """
+    tf.logging.info('Performing evaluation on %d images.', len(self._image_ids))
     groundtruth_dict = {
         'annotations': self._groundtruth_list,
         'images': [{'id': image_id} for image_id in self._image_ids],

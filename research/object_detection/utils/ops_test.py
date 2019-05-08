@@ -1223,6 +1223,35 @@ class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
       self.assertAllEqual(np_merged_confidences.shape, [0, 5])
       self.assertAllEqual(np_merged_box_indices.shape, [0])
 
+  def testMergeBoxesWithMultipleLabelsUsesInt64(self):
+    boxes = tf.constant(
+        [[0.25, 0.25, 0.75, 0.75], [0.0, 0.0, 0.5, 0.75],
+         [0.25, 0.25, 0.75, 0.75]],
+        dtype=tf.float32)
+    class_indices = tf.constant([0, 4, 2], dtype=tf.int32)
+    class_confidences = tf.constant([0.8, 0.2, 0.1], dtype=tf.float32)
+    num_classes = 5
+    ops.merge_boxes_with_multiple_labels(
+        boxes, class_indices, class_confidences, num_classes)
+
+    graph = tf.get_default_graph()
+
+    def assert_dtype_is_int64(op_name):
+      op = graph.get_operation_by_name(op_name)
+      self.assertEqual(op.get_attr('dtype'), tf.int64)
+
+    def assert_t_is_int64(op_name):
+      op = graph.get_operation_by_name(op_name)
+      self.assertEqual(op.get_attr('T'), tf.int64)
+
+    assert_dtype_is_int64('map/TensorArray')
+    assert_dtype_is_int64('map/TensorArray_1')
+    assert_dtype_is_int64('map/while/TensorArrayReadV3')
+    assert_t_is_int64('map/while/TensorArrayWrite/TensorArrayWriteV3')
+    assert_t_is_int64(
+        'map/TensorArrayUnstack/TensorArrayScatter/TensorArrayScatterV3')
+    assert_dtype_is_int64('map/TensorArrayStack/TensorArrayGatherV3')
+
 
 class NearestNeighborUpsamplingTest(test_case.TestCase):
 
@@ -1468,6 +1497,56 @@ class OpsTestCropAndResize(test_case.TestCase):
                         [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
     crop_output = self.execute_cpu(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
+
+
+class TestBfloat16ToFloat32(test_case.TestCase):
+
+  def test_convert_list(self):
+    var_list = [
+        tf.constant([1.], dtype=tf.bfloat16),
+        tf.constant([2], dtype=tf.int32)
+    ]
+    casted_var_list = ops.bfloat16_to_float32_nested(var_list)
+    self.assertEqual(casted_var_list[0].dtype, tf.float32)
+    self.assertEqual(casted_var_list[1].dtype, tf.int32)
+
+  def test_convert_tensor_dict(self):
+    tensor_dict = {
+        'key1': tf.constant([1.], dtype=tf.bfloat16),
+        'key2': [
+            tf.constant([0.5], dtype=tf.bfloat16),
+            tf.constant([7], dtype=tf.int32),
+        ],
+        'key3': tf.constant([2], dtype=tf.uint8),
+    }
+    tensor_dict = ops.bfloat16_to_float32_nested(tensor_dict)
+
+    self.assertEqual(tensor_dict['key1'].dtype, tf.float32)
+    self.assertEqual(tensor_dict['key2'][0].dtype, tf.float32)
+    self.assertEqual(tensor_dict['key2'][1].dtype, tf.int32)
+    self.assertEqual(tensor_dict['key3'].dtype, tf.uint8)
+
+
+class TestGatherWithPaddingValues(test_case.TestCase):
+
+  def test_gather_with_padding_values(self):
+    indices = tf.constant([1, -1, 0, -1])
+    input_tensor = tf.constant([[0, 0, 0.1, 0.1], [0, 0, 0.2, 0.2]],
+                               dtype=tf.float32)
+    expected_gathered_tensor = [
+        [0, 0, 0.2, 0.2],
+        [0, 0, 0, 0],
+        [0, 0, 0.1, 0.1],
+        [0, 0, 0, 0],
+    ]
+    gathered_tensor = ops.gather_with_padding_values(
+        input_tensor,
+        indices=indices,
+        padding_value=tf.zeros_like(input_tensor[0]))
+    self.assertEqual(gathered_tensor.dtype, tf.float32)
+    with self.test_session():
+      gathered_tensor_np = gathered_tensor.eval()
+    self.assertAllClose(expected_gathered_tensor, gathered_tensor_np)
 
 
 

@@ -170,7 +170,13 @@ class Match(object):
       row_indices: int32 tensor of shape [K] with row indices.
     """
     return self._reshape_and_cast(
-        self._gather_op(self._match_results, self.matched_column_indices()))
+        self._gather_op(tf.to_float(self._match_results),
+                        self.matched_column_indices()))
+
+  def num_matched_rows(self):
+    """Returns number (int32 scalar tensor) of matched rows."""
+    unique_rows, _ = tf.unique(self.matched_row_indices())
+    return tf.size(unique_rows)
 
   def _reshape_and_cast(self, t):
     return tf.cast(tf.reshape(t, [-1]), tf.int32)
@@ -199,7 +205,7 @@ class Match(object):
     """
     input_tensor = tf.concat(
         [tf.stack([ignored_value, unmatched_value]),
-         tf.to_float(input_tensor)],
+         input_tensor],
         axis=0)
     gather_indices = tf.maximum(self.match_results + 2, 0)
     gathered_tensor = self._gather_op(input_tensor, gather_indices)

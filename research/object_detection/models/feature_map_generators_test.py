@@ -403,21 +403,70 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
         self.assertSetEqual(expected_slim_variables, actual_variable_set)
 
 
-@parameterized.parameters({'use_native_resize_op': True},
-                          {'use_native_resize_op': False})
+@parameterized.parameters({'use_native_resize_op': True, 'use_keras': False},
+                          {'use_native_resize_op': False, 'use_keras': False},
+                          {'use_native_resize_op': True, 'use_keras': True},
+                          {'use_native_resize_op': False, 'use_keras': True})
 class FPNFeatureMapGeneratorTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_get_expected_feature_map_shapes(self, use_native_resize_op):
+  def _build_conv_hyperparams(self):
+    conv_hyperparams = hyperparams_pb2.Hyperparams()
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l2_regularizer {
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+    """
+    text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams)
+    return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
+
+  def _build_feature_map_generator(
+      self, image_features, depth, use_keras, use_bounded_activations=False,
+      use_native_resize_op=False, use_explicit_padding=False,
+      use_depthwise=False):
+    if use_keras:
+      return feature_map_generators.KerasFpnTopDownFeatureMaps(
+          num_levels=len(image_features),
+          depth=depth,
+          is_training=True,
+          conv_hyperparams=self._build_conv_hyperparams(),
+          freeze_batchnorm=False,
+          use_depthwise=use_depthwise,
+          use_explicit_padding=use_explicit_padding,
+          use_bounded_activations=use_bounded_activations,
+          use_native_resize_op=use_native_resize_op,
+          scope=None,
+          name='FeatureMaps',
+      )
+    else:
+      def feature_map_generator(image_features):
+        return feature_map_generators.fpn_top_down_feature_maps(
+            image_features=image_features,
+            depth=depth,
+            use_depthwise=use_depthwise,
+            use_explicit_padding=use_explicit_padding,
+            use_bounded_activations=use_bounded_activations,
+            use_native_resize_op=use_native_resize_op)
+      return feature_map_generator
+
+  def test_get_expected_feature_map_shapes(
+      self, use_native_resize_op, use_keras):
     image_features = [
         ('block2', tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
         ('block3', tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
         ('block4', tf.random_uniform([4, 2, 2, 256], dtype=tf.float32)),
         ('block5', tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))
     ]
-    feature_maps = feature_map_generators.fpn_top_down_feature_maps(
+    feature_map_generator = self._build_feature_map_generator(
         image_features=image_features,
         depth=128,
+        use_keras=use_keras,
         use_native_resize_op=use_native_resize_op)
+    feature_maps = feature_map_generator(image_features)
 
     expected_feature_map_shapes = {
         'top_down_block2': (4, 8, 8, 128),
@@ -434,7 +483,39 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase, parameterized.TestCase):
                                 for key, value in out_feature_maps.items()}
       self.assertDictEqual(out_feature_map_shapes, expected_feature_map_shapes)
 
-  def test_use_bounded_activations_add_operations(self, use_native_resize_op):
+  def test_get_expected_feature_map_shapes_with_explicit_padding(
+      self, use_native_resize_op, use_keras):
+    image_features = [
+        ('block2', tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
+        ('block3', tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
+        ('block4', tf.random_uniform([4, 2, 2, 256], dtype=tf.float32)),
+        ('block5', tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))
+    ]
+    feature_map_generator = self._build_feature_map_generator(
+        image_features=image_features,
+        depth=128,
+        use_keras=use_keras,
+        use_explicit_padding=True,
+        use_native_resize_op=use_native_resize_op)
+    feature_maps = feature_map_generator(image_features)
+
+    expected_feature_map_shapes = {
+        'top_down_block2': (4, 8, 8, 128),
+        'top_down_block3': (4, 4, 4, 128),
+        'top_down_block4': (4, 2, 2, 128),
+        'top_down_block5': (4, 1, 1, 128)
+    }
+
+    init_op = tf.global_variables_initializer()
+    with self.test_session() as sess:
+      sess.run(init_op)
+      out_feature_maps = sess.run(feature_maps)
+      out_feature_map_shapes = {key: value.shape
+                                for key, value in out_feature_maps.items()}
+      self.assertDictEqual(out_feature_map_shapes, expected_feature_map_shapes)
+
+  def test_use_bounded_activations_add_operations(
+      self, use_native_resize_op, use_keras):
     tf_graph = tf.Graph()
     with tf_graph.as_default():
       image_features = [('block2',
@@ -445,22 +526,37 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase, parameterized.TestCase):
                          tf.random_uniform([4, 2, 2, 256], dtype=tf.float32)),
                         ('block5',
                          tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))]
-      feature_map_generators.fpn_top_down_feature_maps(
+      feature_map_generator = self._build_feature_map_generator(
           image_features=image_features,
           depth=128,
+          use_keras=use_keras,
           use_bounded_activations=True,
           use_native_resize_op=use_native_resize_op)
+      feature_map_generator(image_features)
 
-      expected_added_operations = dict.fromkeys([
-          'top_down/clip_by_value', 'top_down/clip_by_value_1',
-          'top_down/clip_by_value_2', 'top_down/clip_by_value_3',
-          'top_down/clip_by_value_4', 'top_down/clip_by_value_5',
-          'top_down/clip_by_value_6'
-      ])
+      if use_keras:
+        expected_added_operations = dict.fromkeys([
+            'FeatureMaps/top_down/clip_by_value/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_1/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_2/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_3/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_4/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_5/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_6/clip_by_value',
+        ])
+      else:
+        expected_added_operations = dict.fromkeys([
+            'top_down/clip_by_value', 'top_down/clip_by_value_1',
+            'top_down/clip_by_value_2', 'top_down/clip_by_value_3',
+            'top_down/clip_by_value_4', 'top_down/clip_by_value_5',
+            'top_down/clip_by_value_6'
+        ])
+
       op_names = {op.name: None for op in tf_graph.get_operations()}
       self.assertDictContainsSubset(expected_added_operations, op_names)
 
-  def test_use_bounded_activations_clip_value(self, use_native_resize_op):
+  def test_use_bounded_activations_clip_value(
+      self, use_native_resize_op, use_keras):
     tf_graph = tf.Graph()
     with tf_graph.as_default():
       image_features = [
@@ -469,18 +565,31 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase, parameterized.TestCase):
           ('block4', 255 * tf.ones([4, 2, 2, 256], dtype=tf.float32)),
           ('block5', 255 * tf.ones([4, 1, 1, 256], dtype=tf.float32))
       ]
-      feature_map_generators.fpn_top_down_feature_maps(
+      feature_map_generator = self._build_feature_map_generator(
           image_features=image_features,
           depth=128,
+          use_keras=use_keras,
           use_bounded_activations=True,
           use_native_resize_op=use_native_resize_op)
+      feature_map_generator(image_features)
 
-      expected_clip_by_value_ops = [
-          'top_down/clip_by_value', 'top_down/clip_by_value_1',
-          'top_down/clip_by_value_2', 'top_down/clip_by_value_3',
-          'top_down/clip_by_value_4', 'top_down/clip_by_value_5',
-          'top_down/clip_by_value_6'
-      ]
+      if use_keras:
+        expected_clip_by_value_ops = dict.fromkeys([
+            'FeatureMaps/top_down/clip_by_value/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_1/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_2/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_3/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_4/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_5/clip_by_value',
+            'FeatureMaps/top_down/clip_by_value_6/clip_by_value',
+        ])
+      else:
+        expected_clip_by_value_ops = [
+            'top_down/clip_by_value', 'top_down/clip_by_value_1',
+            'top_down/clip_by_value_2', 'top_down/clip_by_value_3',
+            'top_down/clip_by_value_4', 'top_down/clip_by_value_5',
+            'top_down/clip_by_value_6'
+        ]
 
       # Gathers activation tensors before and after clip_by_value operations.
       activations = {}
@@ -522,18 +631,20 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase, parameterized.TestCase):
           self.assertLessEqual(after_clipping_upper_bound, expected_upper_bound)
 
   def test_get_expected_feature_map_shapes_with_depthwise(
-      self, use_native_resize_op):
+      self, use_native_resize_op, use_keras):
     image_features = [
         ('block2', tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
         ('block3', tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
         ('block4', tf.random_uniform([4, 2, 2, 256], dtype=tf.float32)),
         ('block5', tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))
     ]
-    feature_maps = feature_map_generators.fpn_top_down_feature_maps(
+    feature_map_generator = self._build_feature_map_generator(
         image_features=image_features,
         depth=128,
+        use_keras=use_keras,
         use_depthwise=True,
         use_native_resize_op=use_native_resize_op)
+    feature_maps = feature_map_generator(image_features)
 
     expected_feature_map_shapes = {
         'top_down_block2': (4, 8, 8, 128),
@@ -549,6 +660,131 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase, parameterized.TestCase):
       out_feature_map_shapes = {key: value.shape
                                 for key, value in out_feature_maps.items()}
       self.assertDictEqual(out_feature_map_shapes, expected_feature_map_shapes)
+
+  def test_get_expected_variable_names(
+      self, use_native_resize_op, use_keras):
+    image_features = [
+        ('block2', tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
+        ('block3', tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
+        ('block4', tf.random_uniform([4, 2, 2, 256], dtype=tf.float32)),
+        ('block5', tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))
+    ]
+    feature_map_generator = self._build_feature_map_generator(
+        image_features=image_features,
+        depth=128,
+        use_keras=use_keras,
+        use_native_resize_op=use_native_resize_op)
+    feature_maps = feature_map_generator(image_features)
+
+    expected_slim_variables = set([
+        'projection_1/weights',
+        'projection_1/biases',
+        'projection_2/weights',
+        'projection_2/biases',
+        'projection_3/weights',
+        'projection_3/biases',
+        'projection_4/weights',
+        'projection_4/biases',
+        'smoothing_1/weights',
+        'smoothing_1/biases',
+        'smoothing_2/weights',
+        'smoothing_2/biases',
+        'smoothing_3/weights',
+        'smoothing_3/biases',
+    ])
+
+    expected_keras_variables = set([
+        'FeatureMaps/top_down/projection_1/kernel',
+        'FeatureMaps/top_down/projection_1/bias',
+        'FeatureMaps/top_down/projection_2/kernel',
+        'FeatureMaps/top_down/projection_2/bias',
+        'FeatureMaps/top_down/projection_3/kernel',
+        'FeatureMaps/top_down/projection_3/bias',
+        'FeatureMaps/top_down/projection_4/kernel',
+        'FeatureMaps/top_down/projection_4/bias',
+        'FeatureMaps/top_down/smoothing_1_conv/kernel',
+        'FeatureMaps/top_down/smoothing_1_conv/bias',
+        'FeatureMaps/top_down/smoothing_2_conv/kernel',
+        'FeatureMaps/top_down/smoothing_2_conv/bias',
+        'FeatureMaps/top_down/smoothing_3_conv/kernel',
+        'FeatureMaps/top_down/smoothing_3_conv/bias'
+    ])
+    init_op = tf.global_variables_initializer()
+    with self.test_session() as sess:
+      sess.run(init_op)
+      sess.run(feature_maps)
+      actual_variable_set = set(
+          [var.op.name for var in tf.trainable_variables()])
+      if use_keras:
+        self.assertSetEqual(expected_keras_variables, actual_variable_set)
+      else:
+        self.assertSetEqual(expected_slim_variables, actual_variable_set)
+
+  def test_get_expected_variable_names_with_depthwise(
+      self, use_native_resize_op, use_keras):
+    image_features = [
+        ('block2', tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
+        ('block3', tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
+        ('block4', tf.random_uniform([4, 2, 2, 256], dtype=tf.float32)),
+        ('block5', tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))
+    ]
+    feature_map_generator = self._build_feature_map_generator(
+        image_features=image_features,
+        depth=128,
+        use_keras=use_keras,
+        use_depthwise=True,
+        use_native_resize_op=use_native_resize_op)
+    feature_maps = feature_map_generator(image_features)
+
+    expected_slim_variables = set([
+        'projection_1/weights',
+        'projection_1/biases',
+        'projection_2/weights',
+        'projection_2/biases',
+        'projection_3/weights',
+        'projection_3/biases',
+        'projection_4/weights',
+        'projection_4/biases',
+        'smoothing_1/depthwise_weights',
+        'smoothing_1/pointwise_weights',
+        'smoothing_1/biases',
+        'smoothing_2/depthwise_weights',
+        'smoothing_2/pointwise_weights',
+        'smoothing_2/biases',
+        'smoothing_3/depthwise_weights',
+        'smoothing_3/pointwise_weights',
+        'smoothing_3/biases',
+    ])
+
+    expected_keras_variables = set([
+        'FeatureMaps/top_down/projection_1/kernel',
+        'FeatureMaps/top_down/projection_1/bias',
+        'FeatureMaps/top_down/projection_2/kernel',
+        'FeatureMaps/top_down/projection_2/bias',
+        'FeatureMaps/top_down/projection_3/kernel',
+        'FeatureMaps/top_down/projection_3/bias',
+        'FeatureMaps/top_down/projection_4/kernel',
+        'FeatureMaps/top_down/projection_4/bias',
+        'FeatureMaps/top_down/smoothing_1_depthwise_conv/depthwise_kernel',
+        'FeatureMaps/top_down/smoothing_1_depthwise_conv/pointwise_kernel',
+        'FeatureMaps/top_down/smoothing_1_depthwise_conv/bias',
+        'FeatureMaps/top_down/smoothing_2_depthwise_conv/depthwise_kernel',
+        'FeatureMaps/top_down/smoothing_2_depthwise_conv/pointwise_kernel',
+        'FeatureMaps/top_down/smoothing_2_depthwise_conv/bias',
+        'FeatureMaps/top_down/smoothing_3_depthwise_conv/depthwise_kernel',
+        'FeatureMaps/top_down/smoothing_3_depthwise_conv/pointwise_kernel',
+        'FeatureMaps/top_down/smoothing_3_depthwise_conv/bias'
+    ])
+    init_op = tf.global_variables_initializer()
+    with self.test_session() as sess:
+      sess.run(init_op)
+      sess.run(feature_maps)
+      actual_variable_set = set(
+          [var.op.name for var in tf.trainable_variables()])
+      if use_keras:
+        self.assertSetEqual(expected_keras_variables, actual_variable_set)
+      else:
+        self.assertSetEqual(expected_slim_variables, actual_variable_set)
 
 
 class GetDepthFunctionTest(tf.test.TestCase):
