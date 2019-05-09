@@ -55,7 +55,8 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        tf_gpu_thread_mode=False,
                        datasets_num_private_threads=False,
                        datasets_num_parallel_batches=False,
-                       dynamic_loss_scale=False, fp16_implementation=False):
+                       dynamic_loss_scale=False, fp16_implementation=False,
+                       tf_data_experimental_slack=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -76,6 +77,8 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     dynamic_loss_scale: Allow the "loss_scale" flag to take on the value
       "dynamic". Only valid if `dtype` is True.
     fp16_implementation: Create fp16_implementation flag.
+    tf_data_experimental_slack: Determines whether to enable tf.data's
+      `experimental_slack` option.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -248,6 +251,14 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         help=help_wrap(
             "Determines how many batches to process in parallel when using "
             "map and batch from tf.data.")
+    )
+
+  if tf_data_experimental_slack:
+    flags.DEFINE_boolean(
+        name="tf_data_experimental_slack",
+        default=False,
+        help=help_wrap(
+            "Whether to enable tf.data's `experimental_slack` option.")
     )
 
   return key_flags

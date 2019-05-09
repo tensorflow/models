@@ -157,7 +157,9 @@ def run(flags_obj):
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
-      drop_remainder=drop_remainder)
+      drop_remainder=drop_remainder,
+      tf_data_experimental_slack=flags_obj.tf_data_experimental_slack,
+  )
 
   eval_input_dataset = None
   if not flags_obj.skip_eval:
