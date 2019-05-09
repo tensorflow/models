@@ -88,9 +88,9 @@ class EstimatorBenchmark(tf.test.Benchmark):
 
     eval_results = stats['eval_results']
     metrics = []
-    if 'bleu_cased' in stats:
-      metrics.append({'name': 'bleu_score',
-                      'value': stats['bleu_cased'],
+    if 'bleu_uncased' in stats:
+      metrics.append({'name': 'bleu_uncased',
+                      'value': stats['bleu_uncased'],
                       'min_value': bleu_min,
                       'max_value': bleu_max})
 

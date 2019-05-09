@@ -280,9 +280,9 @@ def run_loop(
     vocab_file: Path to vocab file that will be used to subtokenize bleu_source.
 
   Returns:
-    Dict of results of the run.  Contains the keys `eval_results`, `train_hooks`
-      ,`bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the instances
-      of hooks used during training.
+    Dict of results of the run.  Contains the keys `eval_results`,
+    `train_hooks`, `bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the
+    instances of hooks used during training.
 
   Raises:
     ValueError: if both or none of single_iteration_train_steps and
@@ -551,9 +551,9 @@ def run_transformer(flags_obj):
     flags_obj: Object containing parsed flag values.
 
   Returns:
-    Dict of results of the run.  Contains the keys `eval_results`, `train_hooks`
-      ,`bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the instances
-      of hooks used during training.
+    Dict of results of the run.  Contains the keys `eval_results`,
+    `train_hooks`, `bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the
+    instances of hooks used during training.
   """
   num_gpus = flags_core.get_num_gpus(flags_obj)
 
