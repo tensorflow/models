@@ -79,6 +79,71 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
           'change learning rate to %s.', self.epochs, batch, lr)
 
 
+class PiecewiseConstantDecayWithWarmup(
+    tf.keras.optimizers.schedules.LearningRateSchedule):
+  """Piecewise constant decay with warmup schedule."""
+
+  def __init__(self, batch_size, epoch_size, warmup_epochs, boundaries,
+               multipliers, compute_lr_on_cpu=True, name=None):
+    super(PiecewiseConstantDecayWithWarmup, self).__init__()
+    if len(boundaries) != len(multipliers) - 1:
+      raise ValueError('The length of boundaries must be 1 less than the '
+                       'length of multipliers')
+
+    base_lr_batch_size = 256
+    num_batches_per_epoch = epoch_size // batch_size
+
+    self.rescaled_lr = BASE_LEARNING_RATE * batch_size / base_lr_batch_size
+    self.step_boundaries = [float(num_batches_per_epoch) * x
+                            for x in boundaries]
+    self.lr_values = [self.rescaled_lr * m for m in multipliers]
+    self.warmup_steps = warmup_epochs * num_batches_per_epoch
+    self.compute_lr_on_cpu = compute_lr_on_cpu
+    self.name = name
+
+    self.cached_learning_rate_op = None
+
+  def __call__(self, step):
+    if tf.executing_eagerly():
+      return self._get_learning_rate(step)
+
+    # In an eager function or graph, the current implementation of optimizer
+    # repeatedly call and thus create ops for the learning rate schedule. To
+    # avoid this, we cache the ops if not executing eagerly.
+    if self.cached_learning_rate_op is None:
+      if self.compute_lr_on_cpu:
+        with tf.device('/device:CPU:0'):
+          self.cached_learning_rate_op = self._get_learning_rate(step)
+      else:
+        self.cached_learning_rate_op = self._get_learning_rate(step)
+    return self.cached_learning_rate_op
+
+  def _get_learning_rate(self, step):
+    """Compute learning rate at given step."""
+    with tf.name_scope(self.name, 'PiecewiseConstantDecayWithWarmup', [
+        self.rescaled_lr, self.step_boundaries, self.lr_values,
+        self.warmup_steps, self.compute_lr_on_cpu]):
+      def warmup_lr(step):
+        return self.rescaled_lr * (
+            tf.cast(step, tf.float32) / tf.cast(self.warmup_steps, tf.float32))
+      def piecewise_lr(step):
+        return tf.compat.v1.train.piecewise_constant(
+            step, self.step_boundaries, self.lr_values)
+      return tf.cond(step < self.warmup_steps,
+                     lambda: warmup_lr(step),
+                     lambda: piecewise_lr(step))
+
+  def get_config(self):
+    return {
+        'rescaled_lr': self.rescaled_lr,
+        'step_boundaries': self.step_boundaries,
+        'lr_values': self.lr_values,
+        'warmup_steps': self.warmup_steps,
+        'compute_lr_on_cpu': self.compute_lr_on_cpu,
+        'name': self.name
+    }
+
+
 class ProfilerCallback(tf.keras.callbacks.Callback):
   """Save profiles in specified step range to log directory."""
 
@@ -159,20 +224,23 @@ def set_gpu_thread_mode_and_count(flags_obj):
                               flags_obj.datasets_num_private_threads)
 
 
-def get_optimizer():
+def get_optimizer(learning_rate=0.1):
   """Returns optimizer to use."""
   # The learning_rate is overwritten at the beginning of each step by callback.
-  return gradient_descent_v2.SGD(learning_rate=0.1, momentum=0.9)
+  return gradient_descent_v2.SGD(learning_rate=learning_rate, momentum=0.9)
 
 
 def get_callbacks(learning_rate_schedule_fn, num_images):
   """Returns common callbacks."""
   time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
-  lr_callback = LearningRateBatchScheduler(
-      learning_rate_schedule_fn,
-      batch_size=FLAGS.batch_size,
-      num_images=num_images)
-  callbacks = [time_callback, lr_callback]
+  callbacks = [time_callback]
+
+  if not FLAGS.use_tensor_lr:
+    lr_callback = LearningRateBatchScheduler(
+        learning_rate_schedule_fn,
+        batch_size=FLAGS.batch_size,
+        num_images=num_images)
+    callbacks.append(lr_callback)
 
   if FLAGS.enable_tensorboard:
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
@@ -264,6 +332,8 @@ def define_keras_flags():
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_boolean(name='use_trivial_model', default=False,
                        help='Whether to use a trivial Keras model.')
+  flags.DEFINE_boolean(name='use_tensor_lr', default=False,
+                       help='Use learning rate tensor instead of a callback.')
   flags.DEFINE_boolean(
       name='enable_xla', default=False,
       help='Whether to enable XLA auto jit compilation. This is still an '
