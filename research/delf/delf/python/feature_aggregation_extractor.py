@@ -22,9 +22,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from delf import aggregation_config_pb2
+
+_NORM_SQUARED_TOLERANCE = 1e-12
+
+# Aliases for aggregation types.
+_VLAD = aggregation_config_pb2.AggregationConfig.VLAD
+_ASMK = aggregation_config_pb2.AggregationConfig.ASMK
+_ASMK_STAR = aggregation_config_pb2.AggregationConfig.ASMK_STAR
 
 
 class ExtractAggregatedRepresentation(object):
@@ -43,6 +51,7 @@ class ExtractAggregatedRepresentation(object):
     self._sess = sess
     self._codebook_size = aggregation_config.codebook_size
     self._feature_dimensionality = aggregation_config.feature_dimensionality
+    self._aggregation_type = aggregation_config.aggregation_type
 
     # Inputs to extraction function.
     self._features = tf.compat.v1.placeholder(tf.float32, [None, None])
@@ -62,9 +71,7 @@ class ExtractAggregatedRepresentation(object):
         })
 
     # Construct extraction graph based on desired options.
-    # TODO(andrearaujo): Add support for other aggregation options.
-    if (aggregation_config.aggregation_type ==
-        aggregation_config_pb2.AggregationConfig.VLAD):
+    if self._aggregation_type == _VLAD:
       # Feature visual words are unused in the case of VLAD, so just return
       # dummy constant.
       self._feature_visual_words = tf.constant(-1, dtype=tf.int32)
@@ -81,9 +88,23 @@ class ExtractAggregatedRepresentation(object):
             codebook,
             use_l2_normalization=aggregation_config.use_l2_normalization,
             num_assignments=aggregation_config.num_assignments)
+    elif (self._aggregation_type == _ASMK or
+          self._aggregation_type == _ASMK_STAR):
+      if aggregation_config.use_regional_aggregation:
+        (self._aggregated_descriptors,
+         self._feature_visual_words) = self._ComputeRasmk(
+             self._features,
+             self._num_features_per_region,
+             codebook,
+             num_assignments=aggregation_config.num_assignments)
+      else:
+        (self._aggregated_descriptors,
+         self._feature_visual_words) = self._ComputeAsmk(
+             self._features,
+             codebook,
+             num_assignments=aggregation_config.num_assignments)
     else:
-      raise ValueError("Invalid aggregation type: %d" %
-                       aggregation_config.aggregation_type)
+      raise ValueError("Invalid aggregation type: %d" % self._aggregation_type)
 
     # Initialize variables in the TF graph.
     sess.run(tf.compat.v1.global_variables_initializer())
@@ -118,12 +139,22 @@ class ExtractAggregatedRepresentation(object):
             "features.shape[0] are different: %d vs %d" %
             (sum(num_features_per_region), features.shape[0]))
 
-    return self._sess.run(
+    aggregated_descriptors, feature_visual_words = self._sess.run(
         [self._aggregated_descriptors, self._feature_visual_words],
         feed_dict={
             self._features: features,
             self._num_features_per_region: num_features_per_region
         })
+
+    # If using ASMK*/RASMK*, binarize the aggregated descriptors.
+    if self._aggregation_type == _ASMK_STAR:
+      reshaped_aggregated_descriptors = np.reshape(
+          aggregated_descriptors, [-1, self._feature_dimensionality])
+      packed_descriptors = np.packbits(
+          reshaped_aggregated_descriptors > 0, axis=1)
+      aggregated_descriptors = np.reshape(packed_descriptors, [-1])
+
+    return aggregated_descriptors, feature_visual_words
 
   def _ComputeVlad(self,
                    features,
@@ -211,7 +242,7 @@ class ExtractAggregatedRepresentation(object):
       vlad = tf.reshape(vlad,
                         [self._codebook_size * self._feature_dimensionality])
       if use_l2_normalization:
-        vlad = tf.math.l2_normalize(vlad)
+        vlad = tf.math.l2_normalize(vlad, epsilon=_NORM_SQUARED_TOLERANCE)
 
       return vlad
 
@@ -291,7 +322,7 @@ class ExtractAggregatedRepresentation(object):
           back_prop=False)
 
       if use_l2_normalization:
-        rvlad = tf.math.l2_normalize(rvlad)
+        rvlad = tf.math.l2_normalize(rvlad, epsilon=_NORM_SQUARED_TOLERANCE)
       else:
         rvlad /= tf.cast(num_regions, dtype=tf.float32)
 
@@ -301,3 +332,98 @@ class ExtractAggregatedRepresentation(object):
         tf.greater(tf.size(num_features_per_region), 0),
         true_fn=_ComputeRvladNonEmptyRegions,
         false_fn=_ComputeRvladEmptyRegions)
+
+  def _PerCentroidNormalization(self, unnormalized_vector):
+    """Perform per-centroid normalization.
+
+    Args:
+      unnormalized_vector: [KxD] float tensor.
+
+    Returns:
+      per_centroid_normalized_vector: [KxD] float tensor, with normalized
+        aggregated residuals. Some residuals may be all-zero.
+      visual_words: Int tensor containing indices of visual words which are
+        present for the set of features.
+    """
+    unnormalized_vector = tf.reshape(
+        unnormalized_vector,
+        [self._codebook_size, self._feature_dimensionality])
+    per_centroid_norms = tf.norm(unnormalized_vector, axis=1)
+
+    visual_words = tf.reshape(
+        tf.where(
+            tf.greater(per_centroid_norms, tf.sqrt(_NORM_SQUARED_TOLERANCE))),
+        [-1])
+
+    per_centroid_normalized_vector = tf.math.l2_normalize(
+        unnormalized_vector, axis=1, epsilon=_NORM_SQUARED_TOLERANCE)
+
+    return per_centroid_normalized_vector, visual_words
+
+  def _ComputeAsmk(self, features, codebook, num_assignments=1):
+    """Compute ASMK representation.
+
+    Args:
+      features: [N, D] float tensor.
+      codebook: [K, D] float tensor.
+      num_assignments: Number of visual words to assign a feature to.
+
+    Returns:
+      normalized_residuals: 1-dimensional float tensor with concatenated
+        residuals which are non-zero. Note that the dimensionality is
+        input-dependent.
+      visual_words: 1-dimensional int tensor of sorted visual word ids.
+        Dimensionality is shape(normalized_residuals)[0] / D.
+    """
+    unnormalized_vlad = self._ComputeVlad(
+        features,
+        codebook,
+        use_l2_normalization=False,
+        num_assignments=num_assignments)
+
+    per_centroid_normalized_vlad, visual_words = self._PerCentroidNormalization(
+        unnormalized_vlad)
+
+    normalized_residuals = tf.reshape(
+        tf.gather(per_centroid_normalized_vlad, visual_words),
+        [tf.shape(visual_words)[0] * self._feature_dimensionality])
+
+    return normalized_residuals, visual_words
+
+  def _ComputeRasmk(self,
+                    features,
+                    num_features_per_region,
+                    codebook,
+                    num_assignments=1):
+    """Compute R-ASMK representation.
+
+    Args:
+      features: [N, D] float tensor.
+      num_features_per_region: [R] int tensor. Contains number of features per
+        region, such that sum(num_features_per_region) = N. It indicates which
+        features correspond to each region.
+      codebook: [K, D] float tensor.
+      num_assignments: Number of visual words to assign a feature to.
+
+    Returns:
+      normalized_residuals: 1-dimensional float tensor with concatenated
+        residuals which are non-zero. Note that the dimensionality is
+        input-dependent.
+      visual_words: 1-dimensional int tensor of sorted visual word ids.
+        Dimensionality is shape(normalized_residuals)[0] / D.
+    """
+    unnormalized_rvlad = self._ComputeRvlad(
+        features,
+        num_features_per_region,
+        codebook,
+        use_l2_normalization=False,
+        num_assignments=num_assignments)
+
+    (per_centroid_normalized_rvlad,
+     visual_words) = self._PerCentroidNormalization(unnormalized_rvlad)
+
+    normalized_residuals = tf.reshape(
+        tf.gather(per_centroid_normalized_rvlad, visual_words),
+        [tf.shape(visual_words)[0] * self._feature_dimensionality])
+
+    return normalized_residuals, visual_words

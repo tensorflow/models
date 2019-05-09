@@ -265,6 +265,138 @@ class FeatureAggregationTest(tf.test.TestCase):
           r'features.shape\[0\] are different'):
         extractor.Extract(features, num_features_per_region)
 
+  def testComputeAsmkWorks(self):
+    # Construct inputs.
+    # 3 2-D features.
+    features = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 2.0]], dtype=float)
+    config = aggregation_config_pb2.AggregationConfig()
+    config.codebook_size = 5
+    config.feature_dimensionality = 2
+    config.aggregation_type = aggregation_config_pb2.AggregationConfig.ASMK
+    config.codebook_path = self._codebook_path
+    config.num_assignments = 1
+
+    # Run tested function.
+    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
+      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          sess, config)
+      asmk, visual_words = extractor.Extract(features)
+
+    # Define expected results.
+    exp_asmk = [-0.707107, 0.707107, 0.707107, 0.707107]
+    exp_visual_words = [3, 4]
+
+    # Compare actual and expected results.
+    self.assertAllClose(asmk, exp_asmk)
+    self.assertAllEqual(visual_words, exp_visual_words)
+
+  def testComputeAsmkStarWorks(self):
+    # Construct inputs.
+    # 3 2-D features.
+    features = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 2.0]], dtype=float)
+    config = aggregation_config_pb2.AggregationConfig()
+    config.codebook_size = 5
+    config.feature_dimensionality = 2
+    config.aggregation_type = aggregation_config_pb2.AggregationConfig.ASMK_STAR
+    config.codebook_path = self._codebook_path
+    config.num_assignments = 1
+
+    # Run tested function.
+    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
+      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          sess, config)
+      asmk_star, visual_words = extractor.Extract(features)
+
+    # Define expected results.
+    exp_asmk_star = [64, 192]
+    exp_visual_words = [3, 4]
+
+    # Compare actual and expected results.
+    self.assertAllEqual(asmk_star, exp_asmk_star)
+    self.assertAllEqual(visual_words, exp_visual_words)
+
+  def testComputeAsmkMultipleAssignmentWorks(self):
+    # Construct inputs.
+    # 3 2-D features.
+    features = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 2.0]], dtype=float)
+    config = aggregation_config_pb2.AggregationConfig()
+    config.codebook_size = 5
+    config.feature_dimensionality = 2
+    config.aggregation_type = aggregation_config_pb2.AggregationConfig.ASMK
+    config.codebook_path = self._codebook_path
+    config.num_assignments = 3
+
+    # Run tested function.
+    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
+      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          sess, config)
+      asmk, visual_words = extractor.Extract(features)
+
+    # Define expected results.
+    exp_asmk = [0.707107, 0.707107, 0.0, 1.0, -0.707107, 0.707107]
+    exp_visual_words = [0, 2, 3]
+
+    # Compare actual and expected results.
+    self.assertAllClose(asmk, exp_asmk)
+    self.assertAllEqual(visual_words, exp_visual_words)
+
+  def testComputeRasmkWorks(self):
+    # Construct inputs.
+    # 4 2-D features: 3 in first region, 1 in second region.
+    features = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 2.0], [0.0, 2.0]],
+                        dtype=float)
+    num_features_per_region = np.array([3, 1])
+    config = aggregation_config_pb2.AggregationConfig()
+    config.codebook_size = 5
+    config.feature_dimensionality = 2
+    config.aggregation_type = aggregation_config_pb2.AggregationConfig.ASMK
+    config.codebook_path = self._codebook_path
+    config.num_assignments = 1
+    config.use_regional_aggregation = True
+
+    # Run tested function.
+    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
+      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          sess, config)
+      rasmk, visual_words = extractor.Extract(features, num_features_per_region)
+
+    # Define expected results.
+    exp_rasmk = [-0.707107, 0.707107, 0.361261, 0.932465]
+    exp_visual_words = [3, 4]
+
+    # Compare actual and expected results.
+    self.assertAllClose(rasmk, exp_rasmk)
+    self.assertAllEqual(visual_words, exp_visual_words)
+
+  def testComputeRasmkStarWorks(self):
+    # Construct inputs.
+    # 4 2-D features: 3 in first region, 1 in second region.
+    features = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 2.0], [0.0, 2.0]],
+                        dtype=float)
+    num_features_per_region = np.array([3, 1])
+    config = aggregation_config_pb2.AggregationConfig()
+    config.codebook_size = 5
+    config.feature_dimensionality = 2
+    config.aggregation_type = aggregation_config_pb2.AggregationConfig.ASMK_STAR
+    config.codebook_path = self._codebook_path
+    config.num_assignments = 1
+    config.use_regional_aggregation = True
+
+    # Run tested function.
+    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
+      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          sess, config)
+      rasmk_star, visual_words = extractor.Extract(features,
+                                                   num_features_per_region)
+
+    # Define expected results.
+    exp_rasmk_star = [64, 192]
+    exp_visual_words = [3, 4]
+
+    # Compare actual and expected results.
+    self.assertAllEqual(rasmk_star, exp_rasmk_star)
+    self.assertAllEqual(visual_words, exp_visual_words)
+
   def testComputeUnknownAggregation(self):
     # Construct inputs.
     config = aggregation_config_pb2.AggregationConfig()
