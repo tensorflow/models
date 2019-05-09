@@ -84,35 +84,63 @@ class PiecewiseConstantDecayWithWarmup(
   """Piecewise constant decay with warmup schedule."""
 
   def __init__(self, batch_size, epoch_size, warmup_epochs, boundaries,
-               multipliers, name=None):
+               multipliers, compute_lr_on_cpu=True, name=None):
     super(PiecewiseConstantDecayWithWarmup, self).__init__()
-
     if len(boundaries) != len(multipliers) - 1:
       raise ValueError('The length of boundaries must be 1 less than the '
                        'length of multipliers')
-    base_lr_batch_size = 256
-    self.rescaled_lr = BASE_LEARNING_RATE * batch_size / base_lr_batch_size
-    num_batches_per_epoch = epoch_size / batch_size
 
-    self.step_boundaries = [float(num_batches_per_epoch * x) for x in boundaries]
+    base_lr_batch_size = 256
+    num_batches_per_epoch = epoch_size // batch_size
+
+    self.rescaled_lr = BASE_LEARNING_RATE * batch_size / base_lr_batch_size
+    self.step_boundaries = [float(num_batches_per_epoch) * x
+                            for x in boundaries]
     self.lr_values = [self.rescaled_lr * m for m in multipliers]
-    self.warmup_steps = int(warmup_epochs * num_batches_per_epoch)
+    self.warmup_steps = warmup_epochs * num_batches_per_epoch
+    self.compute_lr_on_cpu = compute_lr_on_cpu
     self.name = name
 
-    self.warmup_lr = lambda step: self.rescaled_lr * (
-        tf.cast(step, tf.float32) / tf.cast(self.warmup_steps, tf.float32))
-    self.lr = lambda step: tf.train.piecewise_constant(
-        step, self.step_boundaries, self.lr_values)
+    self.cached_learning_rate_op = None
 
   def __call__(self, step):
-    with tf.name_scope(self.name, 'PiecewiseConstantDecayWithWarmup',
-                       [step, self.step_boundaries, self.lr_values, self.name]):
+    if tf.executing_eagerly():
+      return self._get_learning_rate(step)
+
+    # In an eager function or graph, the current implementation of optimizer
+    # repeatedly call and thus create ops for the learning rate schedule. To
+    # avoid this, we cache the ops if not executing eagerly.
+    if self.cached_learning_rate_op is None:
+      if self.compute_lr_on_cpu:
+        with tf.device('/device:CPU:0'):
+          self.cached_learning_rate_op = self._get_learning_rate(step)
+      else:
+        self.cached_learning_rate_op = self._get_learning_rate(step)
+    return self.cached_learning_rate_op
+
+  def _get_learning_rate(self, step):
+    with tf.name_scope(self.name, 'PiecewiseConstantDecayWithWarmup', [
+        self.rescaled_lr, self.step_boundaries, self.lr_values,
+        self.warmup_steps, self.compute_lr_on_cpu]):
+      def warmup_lr(step):
+        return self.rescaled_lr * (
+            tf.cast(step, tf.float32) / tf.cast(self.warmup_steps, tf.float32))
+      def piecewise_lr(step):
+        return tf.compat.v1.train.piecewise_constant(
+            step, self.step_boundaries, self.lr_values)
       return tf.cond(step < self.warmup_steps,
-                     lambda: self.warmup_lr(step),
-                     lambda: self.lr(step))
+                     lambda: warmup_lr(step),
+                     lambda: piecewise_lr(step))
 
   def get_config(self):
-    return {}
+    return {
+        'rescaled_lr': self.rescaled_lr,
+        'step_boundaries': self.step_boundaries,
+        'lr_values': self.lr_values,
+        'warmup_steps': self.warmup_steps,
+        'compute_lr_on_cpu': self.compute_lr_on_cpu,
+        'name': self.name
+    }
 
 
 class ProfilerCallback(tf.keras.callbacks.Callback):

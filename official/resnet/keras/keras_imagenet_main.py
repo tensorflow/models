@@ -172,16 +172,14 @@ def run(flags_obj):
         drop_remainder=drop_remainder)
 
   lr_schedule = 0.1
-  if flags_obj.use_tensor_lr:  # HZDEBUG
+  if flags_obj.use_tensor_lr:
     lr_schedule = keras_common.PiecewiseConstantDecayWithWarmup(
         batch_size=flags_obj.batch_size,
         epoch_size=TRAIN_EPOCH_SIZE,
         warmup_epochs=LR_SCHEDULE[0][1],
         boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
-        multipliers=list(p[0] for p in LR_SCHEDULE))
-    # lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    #     boundaries=list(p[1] * 1.0 for p in LR_SCHEDULE[1:]),
-    #     values=list(p[0] * 0.1 for p in LR_SCHEDULE))
+        multipliers=list(p[0] for p in LR_SCHEDULE),
+        compute_lr_on_cpu=True)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer(lr_schedule)
