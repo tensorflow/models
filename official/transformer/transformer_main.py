@@ -239,7 +239,7 @@ def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file):
 
 def _validate_file(filepath):
   """Make sure that file exists."""
-  if not tf.gfile.Exists(filepath):
+  if not tf.io.gfile.exists(filepath):
     raise tf.errors.NotFoundError(None, None, "File %s not found." % filepath)
 
 
@@ -278,6 +278,11 @@ def run_loop(
     bleu_ref: File containing reference translations for BLEU calculation.
     bleu_threshold: minimum BLEU score before training is stopped.
     vocab_file: Path to vocab file that will be used to subtokenize bleu_source.
+
+  Returns:
+    Dict of results of the run.  Contains the keys `eval_results`,
+    `train_hooks`, `bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the
+    instances of hooks used during training.
 
   Raises:
     ValueError: if both or none of single_iteration_train_steps and
@@ -321,6 +326,7 @@ def run_loop(
       schedule_manager.train_eval_iterations = INF
 
   # Loop training/evaluation/bleu cycles
+  stats = {}
   for i in xrange(schedule_manager.train_eval_iterations):
     tf.logging.info("Starting iteration %d" % (i + 1))
 
@@ -349,6 +355,9 @@ def run_loop(
       uncased_score, cased_score = evaluate_and_log_bleu(
           estimator, bleu_source, bleu_ref, vocab_file)
 
+      stats["bleu_uncased"] = uncased_score
+      stats["bleu_cased"] = cased_score
+
       # Write actual bleu scores using summary writer and benchmark logger
       global_step = get_global_step(estimator)
       summary = tf.Summary(value=[
@@ -366,6 +375,11 @@ def run_loop(
       if model_helpers.past_stop_threshold(bleu_threshold, uncased_score):
         bleu_writer.close()
         break
+
+  stats["eval_results"] = eval_results
+  stats["train_hooks"] = train_hooks
+
+  return stats
 
 
 def define_transformer_flags():
@@ -535,6 +549,11 @@ def run_transformer(flags_obj):
 
   Args:
     flags_obj: Object containing parsed flag values.
+
+  Returns:
+    Dict of results of the run.  Contains the keys `eval_results`,
+    `train_hooks`, `bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the
+    instances of hooks used during training.
   """
   num_gpus = flags_core.get_num_gpus(flags_obj)
 
@@ -563,6 +582,7 @@ def run_transformer(flags_obj):
       params["default_batch_size_tpu"] if params["use_tpu"]
       else params["default_batch_size"]))
 
+  total_batch_size = params["batch_size"]
   if not params["use_tpu"]:
     params["batch_size"] = distribution_utils.per_replica_batch_size(
         params["batch_size"], num_gpus)
@@ -588,7 +608,7 @@ def run_transformer(flags_obj):
       flags_obj.hooks,
       model_dir=flags_obj.model_dir,
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
-      batch_size=schedule_manager.batch_size,  # for ExamplesPerSecondHook
+      batch_size=total_batch_size,  # for ExamplesPerSecondHook
       use_tpu=params["use_tpu"]  # Not all hooks can run with TPUs
   )
   benchmark_logger = logger.get_benchmark_logger()
@@ -600,7 +620,7 @@ def run_transformer(flags_obj):
 
   # Train and evaluate transformer model
   estimator = construct_estimator(flags_obj, params, schedule_manager)
-  run_loop(
+  stats = run_loop(
       estimator=estimator,
       # Training arguments
       schedule_manager=schedule_manager,
@@ -625,6 +645,7 @@ def run_transformer(flags_obj):
         flags_obj.export_dir, serving_input_fn,
         assets_extra={"vocab.txt": flags_obj.vocab_file},
         strip_default_attrs=True)
+  return stats
 
 
 def main(_):
