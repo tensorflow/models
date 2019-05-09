@@ -178,7 +178,7 @@ def run(flags_obj):
         warmup_epochs=LR_SCHEDULE[0][1],
         boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
         multipliers=list(p[0] for p in LR_SCHEDULE),
-        compute_lr_on_cpu=True)
+        compute_lr_on_cpu=False)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer(lr_schedule)
