@@ -35,7 +35,6 @@ from official.utils.misc import model_helpers
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
-TRAIN_EPOCH_SIZE = 1281167
 
 
 def learning_rate_schedule(current_epoch,
@@ -175,7 +174,7 @@ def run(flags_obj):
   if flags_obj.use_tensor_lr:
     lr_schedule = keras_common.PiecewiseConstantDecayWithWarmup(
         batch_size=flags_obj.batch_size,
-        epoch_size=TRAIN_EPOCH_SIZE,
+        epoch_size=imagenet_main.NUM_IMAGES['train'],
         warmup_epochs=LR_SCHEDULE[0][1],
         boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
         multipliers=list(p[0] for p in LR_SCHEDULE),
