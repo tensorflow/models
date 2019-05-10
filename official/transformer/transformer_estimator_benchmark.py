@@ -206,6 +206,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.steps_between_evals = 5000
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_8_gpu(self):
     """benchmark 8 gpus with fp16 mixed precision.
