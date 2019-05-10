@@ -31,6 +31,7 @@ def trivial_model(num_classes):
 
   x = layers.Lambda(lambda x: backend.reshape(x, [-1, 224 * 224 * 3]),
                     name='reshape')(img_input)
+  x = layers.Dense(1, name='fc1')(x)
   x = layers.Dense(num_classes, activation='softmax', name='fc1000')(x)
 
   return models.Model(img_input, x, name='trivial')
