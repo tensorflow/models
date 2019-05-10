@@ -33,6 +33,8 @@ def trivial_model(num_classes, dtype='float32'):
                     name='reshape')(img_input)
   x = layers.Dense(1, name='fc1')(x)
   x = layers.Dense(num_classes, name='fc1000')(x)
+  # TODO(reedwm): Remove manual casts once mixed precision can be enabled with a
+  # single line of code.
   x = backend.cast(x, 'float32')
   x = layers.Activation('softmax')(x)
 
