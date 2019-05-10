@@ -220,7 +220,7 @@ def download_and_extract(path, url, input_filename, target_filename):
 
 def txt_line_iterator(path):
   """Iterate through lines of file."""
-  with tf.gfile.Open(path) as f:
+  with tf.io.gfile.GFile(path) as f:
     for line in f:
       yield line.strip()
 
@@ -244,8 +244,8 @@ def compile_files(raw_dir, raw_files, tag):
   input_compiled_file = os.path.join(raw_dir, filename + ".lang1")
   target_compiled_file = os.path.join(raw_dir, filename + ".lang2")
 
-  with tf.gfile.Open(input_compiled_file, mode="w") as input_writer:
-    with tf.gfile.Open(target_compiled_file, mode="w") as target_writer:
+  with tf.io.gfile.GFile(input_compiled_file, mode="w") as input_writer:
+    with tf.io.gfile.GFile(target_compiled_file, mode="w") as target_writer:
       for i in range(len(raw_files["inputs"])):
         input_file = raw_files["inputs"][i]
         target_file = raw_files["targets"][i]
