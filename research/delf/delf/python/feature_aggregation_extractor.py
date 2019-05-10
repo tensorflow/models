@@ -52,6 +52,7 @@ class ExtractAggregatedRepresentation(object):
     self._codebook_size = aggregation_config.codebook_size
     self._feature_dimensionality = aggregation_config.feature_dimensionality
     self._aggregation_type = aggregation_config.aggregation_type
+    self._feature_batch_size = aggregation_config.feature_batch_size
 
     # Inputs to extraction function.
     self._features = tf.compat.v1.placeholder(tf.float32, [None, None])
@@ -190,25 +191,71 @@ class ExtractAggregatedRepresentation(object):
       """
       num_features = tf.shape(features)[0]
 
-      # Find nearest visual words for each feature.
-      # K*N x D.
-      tiled_features = tf.reshape(
-          tf.tile(features, [1, self._codebook_size]),
-          [-1, self._feature_dimensionality])
-      # K*N x D.
-      tiled_codebook = tf.reshape(
-          tf.tile(tf.reshape(codebook, [1, -1]), [num_features, 1]),
-          [-1, self._feature_dimensionality])
-      # N x K.
-      squared_distances = tf.reshape(
-          tf.reduce_sum(
-              tf.math.squared_difference(tiled_features, tiled_codebook),
-              axis=1), [num_features, self._codebook_size])
-      # N x K.
-      nearest_visual_words = tf.argsort(squared_distances)
-      # N x num_assignments.
-      selected_visual_words = tf.slice(nearest_visual_words, [0, 0],
-                                       [num_features, num_assignments])
+      # Find nearest visual words for each feature. Possibly batch the local
+      # features to avoid OOM.
+      if self._feature_batch_size <= 0:
+        actual_batch_size = num_features
+      else:
+        actual_batch_size = self._feature_batch_size
+
+      def _BatchNearestVisualWords(ind, selected_visual_words):
+        """Compute nearest neighbor visual words for a batch of features.
+
+        Args:
+          ind: Integer index denoting feature.
+          selected_visual_words: Partial set of visual words.
+
+        Returns:
+          output_ind: Next index.
+          output_selected_visual_words: Updated set of visual words, including
+            the visual words for the new batch.
+        """
+        # Handle case of last batch, where there may be fewer than
+        # `actual_batch_size` features.
+        batch_size_to_use = tf.cond(
+            tf.greater(ind + actual_batch_size, num_features),
+            true_fn=lambda: num_features - ind,
+            false_fn=lambda: actual_batch_size)
+
+        # Denote B = batch_size_to_use.
+        # K*B x D.
+        tiled_features = tf.reshape(
+            tf.tile(
+                tf.slice(features, [ind, 0],
+                         [batch_size_to_use, self._feature_dimensionality]),
+                [1, self._codebook_size]), [-1, self._feature_dimensionality])
+        # K*B x D.
+        tiled_codebook = tf.reshape(
+            tf.tile(tf.reshape(codebook, [1, -1]), [batch_size_to_use, 1]),
+            [-1, self._feature_dimensionality])
+        # B x K.
+        squared_distances = tf.reshape(
+            tf.reduce_sum(
+                tf.math.squared_difference(tiled_features, tiled_codebook),
+                axis=1), [batch_size_to_use, self._codebook_size])
+        # B x K.
+        nearest_visual_words = tf.argsort(squared_distances)
+        # B x num_assignments.
+        batch_selected_visual_words = tf.slice(
+            nearest_visual_words, [0, 0], [batch_size_to_use, num_assignments])
+        selected_visual_words = tf.concat(
+            [selected_visual_words, batch_selected_visual_words], axis=0)
+
+        return ind + batch_size_to_use, selected_visual_words
+
+      ind_batch = tf.constant(0, dtype=tf.int32)
+      keep_going = lambda j, selected_visual_words: tf.less(j, num_features)
+      selected_visual_words = tf.zeros([0, num_assignments], dtype=tf.int32)
+      _, selected_visual_words = tf.while_loop(
+          cond=keep_going,
+          body=_BatchNearestVisualWords,
+          loop_vars=[ind_batch, selected_visual_words],
+          shape_invariants=[
+              ind_batch.get_shape(),
+              tf.TensorShape([None, num_assignments])
+          ],
+          parallel_iterations=1,
+          back_prop=False)
 
       # Helper function to collect residuals for relevant visual words.
       def _ConstructVladFromAssignments(ind, vlad):
@@ -229,14 +276,14 @@ class ExtractAggregatedRepresentation(object):
                 tf.expand_dims(features[ind], axis=0), [num_assignments, 1]) -
             tf.gather(codebook, selected_visual_words[ind]))
 
-      i = tf.constant(0, dtype=tf.int32)
+      ind_vlad = tf.constant(0, dtype=tf.int32)
       keep_going = lambda j, vlad: tf.less(j, num_features)
       vlad = tf.zeros([self._codebook_size, self._feature_dimensionality],
                       dtype=tf.float32)
       _, vlad = tf.while_loop(
           cond=keep_going,
           body=_ConstructVladFromAssignments,
-          loop_vars=[i, vlad],
+          loop_vars=[ind_vlad, vlad],
           back_prop=False)
 
       vlad = tf.reshape(vlad,

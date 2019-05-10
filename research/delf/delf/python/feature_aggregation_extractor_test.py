@@ -76,6 +76,35 @@ class FeatureAggregationTest(tf.test.TestCase):
     self.assertAllClose(vlad, exp_vlad)
     self.assertAllEqual(extra_output, exp_extra_output)
 
+  def testComputeNormalizedVladWithBatchingWorks(self):
+    # Construct inputs.
+    # 3 2-D features.
+    features = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 2.0]], dtype=float)
+    config = aggregation_config_pb2.AggregationConfig()
+    config.codebook_size = 5
+    config.feature_dimensionality = 2
+    config.aggregation_type = aggregation_config_pb2.AggregationConfig.VLAD
+    config.use_l2_normalization = True
+    config.codebook_path = self._codebook_path
+    config.num_assignments = 1
+    config.feature_batch_size = 2
+
+    # Run tested function.
+    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
+      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          sess, config)
+      vlad, extra_output = extractor.Extract(features)
+
+    # Define expected results.
+    exp_vlad = [
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.316228, 0.316228, 0.632456, 0.632456
+    ]
+    exp_extra_output = -1
+
+    # Compare actual and expected results.
+    self.assertAllClose(vlad, exp_vlad)
+    self.assertAllEqual(extra_output, exp_extra_output)
+
   def testComputeUnnormalizedVladWorks(self):
     # Construct inputs.
     # 3 2-D features.

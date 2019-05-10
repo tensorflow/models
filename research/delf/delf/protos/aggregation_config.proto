@@ -47,6 +47,11 @@ message AggregationConfig {
   optional int32 num_assignments = 6 [default = 1];
   // - Whether to use regional aggregation.
   optional bool use_regional_aggregation = 7 [default = false];
+  // - Batch size to use for local features when computing aggregated
+  //   representations. Particularly useful if `codebook_size` and
+  //   `feature_dimensionality` are large, to avoid OOM. A value of zero or
+  //   lower indicates that no batching is used.
+  optional int32 feature_batch_size = 10 [default = 100];
 
   // Additional options used only for comparison.
   // Only relevant if `aggregation_type` is ASMK or ASMK_STAR.
