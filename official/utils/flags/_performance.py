@@ -34,7 +34,7 @@ DTYPE_MAP = {
 
 
 def get_tf_dtype(flags_obj):
-  if getattr(flags_obj, 'fp16_implementation', None) == 'graph_rewrite':
+  if getattr(flags_obj, "fp16_implementation", None) == "graph_rewrite":
     # If the graph_rewrite is used, we build the graph with fp32, and let the
     # graph rewrite change ops to fp16.
     return tf.float32
@@ -160,21 +160,22 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
           name="loss_scale", short_name="ls", default=None,
           help=help_wrap(loss_scale_help_text))
 
-    @flags.validator(flag_name="loss_scale", message=loss_scale_validation_msg)
-    def _check_loss_scale(loss_scale):  # pylint: disable=unused-variable
-      """Validator to check the loss scale flag is valid."""
-      if loss_scale is None:
-        return True  # null case is handled in get_loss_scale()
+      @flags.validator(flag_name="loss_scale",
+                       message=loss_scale_validation_msg)
+      def _check_loss_scale(loss_scale):  # pylint: disable=unused-variable
+        """Validator to check the loss scale flag is valid."""
+        if loss_scale is None:
+          return True  # null case is handled in get_loss_scale()
 
-      if loss_scale == "dynamic" and dynamic_loss_scale:
-        return True
+        if loss_scale == "dynamic" and dynamic_loss_scale:
+          return True
 
-      try:
-        loss_scale = float(loss_scale)
-      except ValueError:
-        return False
+        try:
+          loss_scale = float(loss_scale)
+        except ValueError:
+          return False
 
-      return loss_scale > 0
+        return loss_scale > 0
 
     if fp16_implementation:
       # Currently, this flag is only defined for the estimator resnet model.
