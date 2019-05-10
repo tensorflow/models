@@ -17,8 +17,6 @@
 
 A decoder to decode string tensors containing serialized
 tensorflow.SequenceExample protos.
-TODO(yinxiao): When TensorFlow object detection API officially supports
-tensorflow.SequenceExample, merge this decoder.
 """
 import tensorflow as tf
 from object_detection.core import data_decoder

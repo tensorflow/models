@@ -13,17 +13,21 @@
 # limitations under the License.
 # ==============================================================================
 
-"""LSTM Meta-architecture definition.
+"""LSTM SSD Meta-architecture definition.
 
 General tensorflow implementation of convolutional Multibox/SSD detection
-models with LSTM states, for use on video data.
+models with LSTM states, for use on video data. This implementation supports
+both regular LSTM-SSD and interleaved LSTM-SSD framework.
 
-See https://arxiv.org/abs/1711.06368 for details.
+See https://arxiv.org/abs/1711.06368 and https://arxiv.org/abs/1903.10172
+for details.
 """
+import abc
 import re
 import tensorflow as tf
 
 from object_detection.core import box_list_ops
+from object_detection.core import matcher
 from object_detection.core import standard_fields as fields
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.utils import ops
@@ -32,7 +36,7 @@ from object_detection.utils import shape_utils
 slim = tf.contrib.slim
 
 
-class LSTMMetaArch(ssd_meta_arch.SSDMetaArch):
+class LSTMSSDMetaArch(ssd_meta_arch.SSDMetaArch):
   """LSTM Meta-architecture definition."""
 
   def __init__(self,
@@ -54,7 +58,7 @@ class LSTMMetaArch(ssd_meta_arch.SSDMetaArch):
                unroll_length,
                target_assigner_instance,
                add_summaries=True):
-    super(LSTMMetaArch, self).__init__(
+    super(LSTMSSDMetaArch, self).__init__(
         is_training=is_training,
         anchor_generator=anchor_generator,
         box_predictor=box_predictor,
@@ -94,26 +98,19 @@ class LSTMMetaArch(ssd_meta_arch.SSDMetaArch):
         preprocessed_inputs)
     self._batch_size = preprocessed_inputs.shape[0].value / self._unroll_length
     self._states = states
-    self._anchors = box_list_ops.concatenate(
-        self._anchor_generator.generate(
-            feature_map_spatial_dims,
-            im_height=image_shape[1],
-            im_width=image_shape[2]))
+    anchors = self._anchor_generator.generate(feature_map_spatial_dims,
+                                              im_height=image_shape[1],
+                                              im_width=image_shape[2])
+    with tf.variable_scope('MultipleGridAnchorGenerator', reuse=tf.AUTO_REUSE):
+      self._anchors = box_list_ops.concatenate(anchors)
     prediction_dict = self._box_predictor.predict(
         feature_maps, self._anchor_generator.num_anchors_per_location())
-
-    # Multiscale_anchor_generator currently has a different dim compared to
-    # ssd_anchor_generator. Current fix is to check the dim of the box_encodings
-    # tensor. If dim is not 3(multiscale_anchor_generator), squeeze the 3rd dim.
-    # TODO(yinxiao): Remove this check once the anchor generator has unified
-    # dimension.
-    if len(prediction_dict['box_encodings'][0].get_shape().as_list()) == 3:
+    with tf.variable_scope('Loss', reuse=tf.AUTO_REUSE):
       box_encodings = tf.concat(prediction_dict['box_encodings'], axis=1)
-    else:
-      box_encodings = tf.squeeze(
-          tf.concat(prediction_dict['box_encodings'], axis=1), axis=2)
-    class_predictions_with_background = tf.concat(
-        prediction_dict['class_predictions_with_background'], axis=1)
+      if box_encodings.shape.ndims == 4 and box_encodings.shape[2] == 1:
+        box_encodings = tf.squeeze(box_encodings, axis=2)
+      class_predictions_with_background = tf.concat(
+          prediction_dict['class_predictions_with_background'], axis=1)
     predictions_dict = {
         'preprocessed_inputs': preprocessed_inputs,
         'box_encodings': box_encodings,
@@ -161,10 +158,11 @@ class LSTMMetaArch(ssd_meta_arch.SSDMetaArch):
       if self.groundtruth_has_field(fields.BoxListFields.weights):
         weights = self.groundtruth_lists(fields.BoxListFields.weights)
       (batch_cls_targets, batch_cls_weights, batch_reg_targets,
-       batch_reg_weights, match_list) = self._assign_targets(
+       batch_reg_weights, batch_match) = self._assign_targets(
            self.groundtruth_lists(fields.BoxListFields.boxes),
            self.groundtruth_lists(fields.BoxListFields.classes),
            keypoints, weights)
+      match_list = [matcher.Match(match) for match in tf.unstack(batch_match)]
       if self._add_summaries:
         self._summarize_target_assignment(
             self.groundtruth_lists(fields.BoxListFields.boxes), match_list)
@@ -275,8 +273,18 @@ class LSTMMetaArch(ssd_meta_arch.SSDMetaArch):
     return self._feature_extractor.get_base_network_scope()
 
 
-class LSTMFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
-  """LSTM Meta-architecture  Feature Extractor definition."""
+class LSTMSSDFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
+  """LSTM SSD Meta-architecture Feature Extractor definition."""
+
+  __metaclass__ = abc.ABCMeta
+
+  @property
+  def clip_state(self):
+    return self._clip_state
+
+  @clip_state.setter
+  def clip_state(self, clip_state):
+    self._clip_state = clip_state
 
   @property
   def depth_multipliers(self):
@@ -293,6 +301,18 @@ class LSTMFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
   @lstm_state_depth.setter
   def lstm_state_depth(self, lstm_state_depth):
     self._lstm_state_depth = lstm_state_depth
+
+  @property
+  def is_quantized(self):
+    return self._is_quantized
+
+  @is_quantized.setter
+  def is_quantized(self, is_quantized):
+    self._is_quantized = is_quantized
+
+  @property
+  def interleaved(self):
+    return False
 
   @property
   def states_and_outputs(self):
@@ -332,3 +352,81 @@ class LSTMFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       The variable scope of the base network, e.g. MobilenetV1
     """
     return self._base_network_scope
+
+  @abc.abstractmethod
+  def create_lstm_cell(self, batch_size, output_size, state_saver, state_name):
+    """Create the LSTM cell, and initialize state if necessary.
+
+    Args:
+      batch_size: input batch size.
+      output_size: output size of the lstm cell, [width, height].
+      state_saver: a state saver object with methods `state` and `save_state`.
+      state_name: string, the name to use with the state_saver.
+    Returns:
+      lstm_cell: the lstm cell unit.
+      init_state: initial state representations.
+      step: the step
+    """
+    pass
+
+
+class LSTMSSDInterleavedFeatureExtractor(LSTMSSDFeatureExtractor):
+  """LSTM SSD Meta-architecture Interleaved Feature Extractor definition."""
+
+  __metaclass__ = abc.ABCMeta
+
+  @property
+  def pre_bottleneck(self):
+    return self._pre_bottleneck
+
+  @pre_bottleneck.setter
+  def pre_bottleneck(self, pre_bottleneck):
+    self._pre_bottleneck = pre_bottleneck
+
+  @property
+  def low_res(self):
+    return self._low_res
+
+  @low_res.setter
+  def low_res(self, low_res):
+    self._low_res = low_res
+
+  @property
+  def interleaved(self):
+    return True
+
+  @property
+  def interleave_method(self):
+    return self._interleave_method
+
+  @interleave_method.setter
+  def interleave_method(self, interleave_method):
+    self._interleave_method = interleave_method
+
+  @abc.abstractmethod
+  def extract_base_features_large(self, preprocessed_inputs):
+    """Extract the large base model features.
+
+    Args:
+      preprocessed_inputs: preprocessed input images of shape:
+        [batch, width, height, depth].
+
+    Returns:
+      net: the last feature map created from the base feature extractor.
+      end_points: a dictionary of feature maps created.
+    """
+    pass
+
+  @abc.abstractmethod
+  def extract_base_features_small(self, preprocessed_inputs):
+    """Extract the small base model features.
+
+    Args:
+      preprocessed_inputs: preprocessed input images of shape:
+        [batch, width, height, depth].
+
+    Returns:
+      net: the last feature map created from the base feature extractor.
+      end_points: a dictionary of feature maps created.
+    """
+    pass

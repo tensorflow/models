@@ -191,9 +191,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     """Benchmark graph mode 8 gpus.
 
       Best so far is 27.2  with 4048 * 8 at 75,000 steps.
-      Other test: 2024 * 8 peaked at 26.445 at 100,000 steps.
-
-      SOTA is 27.3 BLEU (uncased).
+      Other test: 2024 * 8 peaked at 26.66 at 100,000 steps.
     """
     self._setup()
     FLAGS.num_gpus = 8
@@ -259,7 +257,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
         flag_methods=flag_methods)
 
   def benchmark_graph_1_gpu(self):
-    """Benchmark 1 gpu."""
+    """Benchmark graph 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.batch_size = 4096
@@ -267,7 +265,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_1_gpu(self):
-    """Benchmark 1 gpu."""
+    """Benchmark graph fp16 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.dtype = 'fp16'
@@ -276,7 +274,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_2_gpu(self):
-    """Benchmark 2 gpus."""
+    """Benchmark graph 2 gpus."""
     self._setup()
     FLAGS.num_gpus = 2
     FLAGS.batch_size = 4096 * 2
@@ -284,7 +282,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_2_gpu(self):
-    """Benchmark 2 gpus."""
+    """Benchmark graph fp16 2 gpus."""
     self._setup()
     FLAGS.num_gpus = 2
     FLAGS.dtype = 'fp16'
@@ -293,7 +291,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_4_gpu(self):
-    """Benchmark 8 gpus."""
+    """Benchmark graph 4 gpus."""
     self._setup()
     FLAGS.num_gpus = 4
     FLAGS.batch_size = 4096 * 4
@@ -301,7 +299,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_4_gpu(self):
-    """Benchmark 8 gpus."""
+    """Benchmark 4 graph fp16 gpus."""
     self._setup()
     FLAGS.num_gpus = 4
     FLAGS.dtype = 'fp16'
@@ -310,7 +308,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_8_gpu(self):
-    """Benchmark 8 gpus."""
+    """Benchmark graph 8 gpus."""
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.batch_size = 4096 * 8
@@ -318,7 +316,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_8_gpu(self):
-    """Benchmark 8 gpus."""
+    """Benchmark graph fp16 8 gpus."""
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.dtype = 'fp16'
