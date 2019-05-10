@@ -650,6 +650,7 @@ class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
+    def_flags['report_accuracy_metrics'] = False
     def_flags['use_synthetic_data'] = True
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
@@ -664,6 +665,7 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
+    def_flags['report_accuracy_metrics'] = False
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
@@ -682,6 +684,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
     ]
     def_flags = {}
     def_flags['skip_eval'] = True
+    def_flags['report_accuracy_metrics'] = False
     def_flags['dtype'] = 'fp16'
     def_flags['enable_xla'] = True
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
