@@ -183,7 +183,7 @@ def get_train_op_and_metrics(loss, params):
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
     # Uses automatic mixed precision FP16 training if on GPU.
-    if params["dtype"] == "fp16" and not params["use_tpu"]:
+    if params["dtype"] == "fp16":
       optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
           optimizer)
 
