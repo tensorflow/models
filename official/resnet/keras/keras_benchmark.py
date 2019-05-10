@@ -37,7 +37,7 @@ class KerasBenchmark(tf.test.Benchmark):
     self.flag_methods = flag_methods or {}
 
     if not output_dir:
-      output_dir = '/tmp/'
+      self.output_dir = '/tmp/'
 
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)

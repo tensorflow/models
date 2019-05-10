@@ -179,7 +179,7 @@ class Subtokenizer(object):
 
 def _save_vocab_file(vocab_file, subtoken_list):
   """Save subtokens to file."""
-  with tf.gfile.Open(vocab_file, mode="w") as f:
+  with tf.io.gfile.GFile(vocab_file, mode="w") as f:
     for subtoken in subtoken_list:
       f.write("'%s'\n" % _unicode_to_native(subtoken))
 
@@ -190,7 +190,7 @@ def _load_vocab_file(vocab_file, reserved_tokens=None):
     reserved_tokens = RESERVED_TOKENS
 
   subtoken_list = []
-  with tf.gfile.Open(vocab_file, mode="r") as f:
+  with tf.io.gfile.GFile(vocab_file, mode="r") as f:
     for line in f:
       subtoken = _native_to_unicode(line.strip())
       subtoken = subtoken[1:-1]  # Remove surrounding single-quotes
@@ -339,7 +339,7 @@ def _count_tokens(files, file_byte_limit=1e6):
   token_counts = collections.defaultdict(int)
 
   for filepath in files:
-    with tf.gfile.Open(filepath, mode="r") as reader:
+    with tf.io.gfile.GFile(filepath, mode="r") as reader:
       file_byte_budget = file_byte_limit
       counter = 0
       lines_to_skip = int(reader.size() / (file_byte_budget * 2))

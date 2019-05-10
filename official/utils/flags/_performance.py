@@ -34,6 +34,10 @@ DTYPE_MAP = {
 
 
 def get_tf_dtype(flags_obj):
+  if getattr(flags_obj, 'fp16_implementation', None) == 'graph_rewrite':
+    # If the graph_rewrite is used, we build the graph with fp32, and let the
+    # graph rewrite change ops to fp16.
+    return tf.float32
   return DTYPE_MAP[flags_obj.dtype][0]
 
 
@@ -51,7 +55,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        tf_gpu_thread_mode=False,
                        datasets_num_private_threads=False,
                        datasets_num_parallel_batches=False,
-                       dynamic_loss_scale=False):
+                       dynamic_loss_scale=False, fp16_implementation=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -71,6 +75,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     parallel when using map and batch from tf.data.
     dynamic_loss_scale: Allow the "loss_scale" flag to take on the value
       "dynamic". Only valid if `dtype` is True.
+    fp16_implementation: Create fp16_implementation flag.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -166,6 +171,33 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         return False
 
       return loss_scale > 0
+
+    if fp16_implementation:
+      # Currently, this flag is only defined for the estimator resnet model.
+      flags.DEFINE_enum(
+          name="fp16_implementation", default='casting',
+          enum_values=('casting', 'graph_rewrite'),
+          help=help_wrap(
+              "When --dtype=fp16, how fp16 should be implemented. This has no "
+              "impact on correctness. 'casting' will cause manual tf.casts to "
+              "be inserted in the model. 'graph_rewrite' means "
+              "tf.train.experimental.enable_mixed_precision_graph_rewrite will "
+              "be used to automatically use fp16 without any manual casts."))
+
+      @flags.multi_flags_validator(['fp16_implementation', 'dtype',
+                                    'loss_scale'])
+      def _check_fp16_implementation(flags_dict):
+        """Validator to check fp16_implementation flag is valid."""
+        if (flags_dict['fp16_implementation'] == 'graph_rewrite' and
+            flags_dict['dtype'] != 'fp16'):
+          raise flags.ValidationError('--fp16_implementation should not be '
+                                      'specified unless --dtype=fp16')
+        if (flags_dict['fp16_implementation'] != 'graph_rewrite' and
+            flags_dict['loss_scale'] == 'dynamic'):
+          raise flags.ValidationError('--loss_scale=dynamic is only supported '
+                                      'when '
+                                      '--fp16_implementation=graph_rewrite')
+        return True
 
   if all_reduce_alg:
     flags.DEFINE_string(
