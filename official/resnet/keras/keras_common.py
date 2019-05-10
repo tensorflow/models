@@ -332,7 +332,7 @@ def define_keras_flags():
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_boolean(name='use_trivial_model', default=False,
                        help='Whether to use a trivial Keras model.')
-  flags.DEFINE_boolean(name='use_tensor_lr', default=True,
+  flags.DEFINE_boolean(name='use_tensor_lr', default=False,
                        help='Use learning rate tensor instead of a callback.')
   flags.DEFINE_boolean(
       name='enable_xla', default=False,
