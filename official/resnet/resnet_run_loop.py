@@ -722,7 +722,8 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
                                 datasets_num_private_threads=True,
                                 datasets_num_parallel_batches=True,
                                 dynamic_loss_scale=dynamic_loss_scale,
-                                fp16_implementation=fp16_implementation)
+                                fp16_implementation=fp16_implementation,
+                                loss_scale=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
