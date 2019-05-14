@@ -51,11 +51,11 @@ MOVIES_FILE = "movies.csv"
 _DATA_URL = "http://files.grouplens.org/datasets/movielens/"
 
 GENRE_COLUMN = "genres"
-ITEM_COLUMN = "item_id"  # movies
+ITEM_COLUMN = "movieId"
 RATING_COLUMN = "rating"
 TIMESTAMP_COLUMN = "timestamp"
 TITLE_COLUMN = "titles"
-USER_COLUMN = "user_id"
+USER_COLUMN = "userId"
 
 GENRES = [
     'Action', 'Adventure', 'Animation', "Children", 'Comedy', 'Crime',
