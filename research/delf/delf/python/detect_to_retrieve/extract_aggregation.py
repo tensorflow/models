@@ -37,7 +37,7 @@ from delf import aggregation_config_pb2
 from delf import datum_io
 from delf import feature_aggregation_extractor
 from delf import feature_io
-from delf.detect_to_retrieve import dataset
+from delf.python.detect_to_retrieve import dataset
 
 cmd_args = None
 
