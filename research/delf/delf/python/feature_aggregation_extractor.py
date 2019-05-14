@@ -133,8 +133,8 @@ class ExtractAggregatedRepresentation(object):
       # Use dummy value since it is unused.
       num_features_per_region = []
     else:
-      if num_features_per_region.size and sum(
-          num_features_per_region) != features.shape[0]:
+      if len(num_features_per_region
+            ) and sum(num_features_per_region) != features.shape[0]:
         raise ValueError(
             "Incorrect arguments: sum(num_features_per_region) and "
             "features.shape[0] are different: %d vs %d" %
@@ -366,7 +366,8 @@ class ExtractAggregatedRepresentation(object):
           cond=keep_going,
           body=_ConstructRvladFromVlad,
           loop_vars=[i, rvlad],
-          back_prop=False)
+          back_prop=False,
+          parallel_iterations=1)
 
       if use_l2_normalization:
         rvlad = tf.math.l2_normalize(rvlad, epsilon=_NORM_SQUARED_TOLERANCE)
