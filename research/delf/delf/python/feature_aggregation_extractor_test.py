@@ -269,6 +269,70 @@ class FeatureAggregationTest(tf.test.TestCase):
     self.assertAllEqual(rvlad, exp_rvlad)
     self.assertAllEqual(extra_output, exp_extra_output)
 
+  def testComputeUnnormalizedRvladSomeEmptyRegionsWorks(self):
+    # Construct inputs.
+    # 4 2-D features: 0 in first region, 3 in second region, 0 in third region,
+    # 1 in fourth region.
+    features = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 2.0], [0.0, 2.0]],
+                        dtype=float)
+    num_features_per_region = np.array([0, 3, 0, 1])
+    config = aggregation_config_pb2.AggregationConfig()
+    config.codebook_size = 5
+    config.feature_dimensionality = 2
+    config.aggregation_type = aggregation_config_pb2.AggregationConfig.VLAD
+    config.use_l2_normalization = False
+    config.codebook_path = self._codebook_path
+    config.num_assignments = 1
+    config.use_regional_aggregation = True
+
+    # Run tested function.
+    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
+      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          sess, config)
+      rvlad, extra_output = extractor.Extract(features, num_features_per_region)
+
+    # Define expected results.
+    exp_rvlad = [
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.079057, 0.079057, 0.158114, 0.408114
+    ]
+    exp_extra_output = -1
+
+    # Compare actual and expected results.
+    self.assertAllClose(rvlad, exp_rvlad)
+    self.assertAllEqual(extra_output, exp_extra_output)
+
+  def testComputeNormalizedRvladSomeEmptyRegionsWorks(self):
+    # Construct inputs.
+    # 4 2-D features: 0 in first region, 3 in second region, 0 in third region,
+    # 1 in fourth region.
+    features = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 2.0], [0.0, 2.0]],
+                        dtype=float)
+    num_features_per_region = np.array([0, 3, 0, 1])
+    config = aggregation_config_pb2.AggregationConfig()
+    config.codebook_size = 5
+    config.feature_dimensionality = 2
+    config.aggregation_type = aggregation_config_pb2.AggregationConfig.VLAD
+    config.use_l2_normalization = True
+    config.codebook_path = self._codebook_path
+    config.num_assignments = 1
+    config.use_regional_aggregation = True
+
+    # Run tested function.
+    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
+      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          sess, config)
+      rvlad, extra_output = extractor.Extract(features, num_features_per_region)
+
+    # Define expected results.
+    exp_rvlad = [
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.175011, 0.175011, 0.350021, 0.903453
+    ]
+    exp_extra_output = -1
+
+    # Compare actual and expected results.
+    self.assertAllClose(rvlad, exp_rvlad)
+    self.assertAllEqual(extra_output, exp_extra_output)
+
   def testComputeRvladMisconfiguredFeatures(self):
     # Construct inputs.
     # 4 2-D features: 3 in first region, 1 in second region.
