@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 # pylint: disable=unused-import
+from delf.protos import aggregation_config_pb2
 from delf.protos import box_pb2
 from delf.protos import datum_pb2
 from delf.protos import delf_config_pb2
@@ -26,6 +27,7 @@ from delf.python import box_io
 from delf.python import datum_io
 from delf.python import delf_v1
 from delf.python import detect_to_retrieve
+from delf.python import feature_aggregation_extractor
 from delf.python import feature_extractor
 from delf.python import feature_io
 from delf.python.examples import extract_boxes
