@@ -368,7 +368,7 @@ def define_keras_flags():
       name='batchnorm_spatial_persistent', default=True,
       help='Enable the spacial persistent mode for CuDNN batch norm kernel.')
   flags.DEFINE_boolean(
-      name='clone_model_in_keras_dist_strat', default=True,
+      name='clone_model_in_keras_dist_strat', default=None,
       help='If False, then the experimental code path is used that doesn\'t '
            'clone models for distribution.')
 
