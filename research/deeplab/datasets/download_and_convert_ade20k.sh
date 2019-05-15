@@ -51,7 +51,6 @@ download_and_uncompress() {
     echo "Downloading ${FILENAME} to ${WORK_DIR}"
     wget -nd -c "${BASE_URL}/${FILENAME}"
   fi
-  echo "Uncompressing ${FILENAME}"
   unzip "${FILENAME}"
 }
 
