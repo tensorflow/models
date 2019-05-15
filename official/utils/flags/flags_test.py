@@ -23,7 +23,7 @@ from official.utils.flags import core as flags_core  # pylint: disable=g-bad-imp
 
 def define_flags():
   flags_core.define_base(num_gpu=False)
-  flags_core.define_performance(dynamic_loss_scale=True)
+  flags_core.define_performance(dynamic_loss_scale=True, loss_scale=True)
   flags_core.define_image()
   flags_core.define_benchmark()
 
