@@ -32,10 +32,7 @@ PATH_TO_PROTOC=`pwd`
 Install python library dependencies:
 
 ```bash
-sudo pip install matplotlib
-sudo pip install numpy
-sudo pip install scikit-image
-sudo pip install scipy
+pip install matplotlib numpy scikit-image scipy
 ```
 
 ### `tensorflow/models`
