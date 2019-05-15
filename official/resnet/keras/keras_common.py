@@ -114,11 +114,9 @@ class PiecewiseConstantDecayWithWarmup(
     if graph not in self.learning_rate_ops_cache:
       if self.compute_lr_on_cpu:
         with tf.device('/device:CPU:0'):
-          self.learning_rate_ops_cache[graph] = self._get_learning_rate(
-              step)
+          self.learning_rate_ops_cache[graph] = self._get_learning_rate(step)
       else:
-        self.learning_rate_ops_cache[graph] = self._get_learning_rate(
-            step)
+        self.learning_rate_ops_cache[graph] = self._get_learning_rate(step)
     return self.learning_rate_ops_cache[graph]
 
   def _get_learning_rate(self, step):
