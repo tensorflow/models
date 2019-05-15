@@ -101,7 +101,7 @@ class PiecewiseConstantDecayWithWarmup(
     self.compute_lr_on_cpu = compute_lr_on_cpu
     self.name = name
 
-    self.cached_learning_rate_op = None
+    self.learning_rate_ops_cache = {}
 
   def __call__(self, step):
     if tf.executing_eagerly():
@@ -110,13 +110,14 @@ class PiecewiseConstantDecayWithWarmup(
     # In an eager function or graph, the current implementation of optimizer
     # repeatedly call and thus create ops for the learning rate schedule. To
     # avoid this, we cache the ops if not executing eagerly.
-    if self.cached_learning_rate_op is None:
+    graph = tf.compat.v1.get_default_graph()
+    if graph not in self.learning_rate_ops_cache:
       if self.compute_lr_on_cpu:
         with tf.device('/device:CPU:0'):
-          self.cached_learning_rate_op = self._get_learning_rate(step)
+          self.learning_rate_ops_cache[graph] = self._get_learning_rate(step)
       else:
-        self.cached_learning_rate_op = self._get_learning_rate(step)
-    return self.cached_learning_rate_op
+        self.learning_rate_ops_cache[graph] = self._get_learning_rate(step)
+    return self.learning_rate_ops_cache[graph]
 
   def _get_learning_rate(self, step):
     """Compute learning rate at given step."""
@@ -368,7 +369,7 @@ def define_keras_flags():
       name='batchnorm_spatial_persistent', default=True,
       help='Enable the spacial persistent mode for CuDNN batch norm kernel.')
   flags.DEFINE_boolean(
-      name='clone_model_in_keras_dist_strat', default=True,
+      name='clone_model_in_keras_dist_strat', default=None,
       help='If False, then the experimental code path is used that doesn\'t '
            'clone models for distribution.')
 
