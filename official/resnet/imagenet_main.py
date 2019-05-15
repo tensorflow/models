@@ -169,8 +169,7 @@ def input_fn(is_training,
              parse_record_fn=parse_record,
              input_context=None,
              drop_remainder=False,
-             tf_data_experimental_slack=False,
-             ):
+             tf_data_experimental_slack=False):
   """Input function which provides batches for train or eval.
 
   Args:

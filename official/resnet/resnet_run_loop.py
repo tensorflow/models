@@ -56,8 +56,7 @@ def process_record_dataset(dataset,
                            datasets_num_private_threads=None,
                            num_parallel_batches=1,
                            drop_remainder=False,
-                           tf_data_experimental_slack=False,
-                           ):
+                           tf_data_experimental_slack=False):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -734,8 +733,7 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 fp16_implementation=fp16_implementation,
                                 loss_scale=True,
-                                tf_data_experimental_slack=True,
-                                )
+                                tf_data_experimental_slack=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
