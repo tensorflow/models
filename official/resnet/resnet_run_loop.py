@@ -56,8 +56,7 @@ def process_record_dataset(dataset,
                            datasets_num_private_threads=None,
                            num_parallel_batches=1,
                            drop_remainder=False,
-                           tf_data_experimental_slack=False,
-                           ):
+                           tf_data_experimental_slack=False):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
