@@ -358,7 +358,7 @@ def define_keras_flags():
       'Note that profiler has a non-trivial performance overhead, and the '
       'output file can be gigantic if profiling many steps.')
   flags.DEFINE_boolean(
-      name='data_prefetch_with_slack', default=False,
+      name='data_delay_prefetch', default=False,
       help='Add a small delay in tf.data prefetch to prioritize memory copy of '
       'other tensors over the data minibatch for the (T+1)th step. It should '
       'help improve performance using EagerIterator and function. The codepath '
@@ -429,7 +429,7 @@ def is_v2_0():
   return tf.__version__.startswith('2')
 
 
-def data_prefetch_with_slack():
+def data_delay_prefetch():
   """Use unstable code for perf tuning purposes."""
   if not FLAGS.use_synthetic_data:
     _monkey_patch_org_create_device_dataset()

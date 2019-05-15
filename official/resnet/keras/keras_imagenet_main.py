@@ -107,8 +107,8 @@ def run(flags_obj):
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
     keras_common.set_gpu_thread_mode_and_count(flags_obj)
-  if flags_obj.data_prefetch_with_slack:
-    keras_common.data_prefetch_with_slack()
+  if flags_obj.data_delay_prefetch:
+    keras_common.data_delay_prefetch()
   keras_common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
@@ -157,7 +157,9 @@ def run(flags_obj):
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
-      drop_remainder=drop_remainder)
+      drop_remainder=drop_remainder,
+      tf_data_experimental_slack=flags_obj.tf_data_experimental_slack,
+  )
 
   eval_input_dataset = None
   if not flags_obj.skip_eval:
