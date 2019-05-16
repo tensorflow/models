@@ -196,7 +196,7 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
   def _run_and_report_benchmark(self, using_keras=False):
     start_time_sec = time.time()
     if using_keras:
-      keras_imagenet_main.run(flags.FLAGS)
+      stats = keras_imagenet_main.run(flags.FLAGS)
     else:
       stats = imagenet_main.run_imagenet(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
