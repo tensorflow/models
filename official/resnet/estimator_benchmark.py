@@ -355,7 +355,7 @@ class Resnet56EstimatorAccuracy(EstimatorBenchmark):
                 constructor forward compatible in case PerfZero provides more
                 named arguments before updating the constructor.
     """
-    flag_methods = [cifar_main.define_cifar_flags]
+    flag_methods = [keras_common.define_keras_flags, cifar_main.define_cifar_flags]
 
     self.data_dir = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)
     super(Resnet56EstimatorAccuracy, self).__init__(
