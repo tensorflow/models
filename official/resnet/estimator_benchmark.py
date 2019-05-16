@@ -115,6 +115,53 @@ class EstimatorBenchmark(tf.test.Benchmark):
         metrics=metrics)
 
 
+  def _report_benchmark_keras(self,
+                              stats,
+                              wall_time_sec,
+                              top_1_max=None,
+                              top_1_min=None,
+                              log_steps=None,
+                              total_batch_size=None,
+                              warmup=1):
+    """Report benchmark results by writing to local protobuf file.
+    Args:
+      stats: dict returned from keras models with known entries.
+      wall_time_sec: the during of the benchmark execution in seconds
+      top_1_max: highest passing level for top_1 accuracy.
+      top_1_min: lowest passing level for top_1 accuracy.
+      log_steps: How often the log was created for stats['step_timestamp_log'].
+      total_batch_size: Global batch-size.
+      warmup: number of entries in stats['step_timestamp_log'] to ignore.
+    """
+
+    metrics = []
+    if 'accuracy_top_1' in stats:
+      metrics.append({'name': 'accuracy_top_1',
+                      'value': stats['accuracy_top_1'],
+                      'min_value': top_1_min,
+                      'max_value': top_1_max})
+      metrics.append({'name': 'top_1_train_accuracy',
+                      'value': stats['training_accuracy_top_1']})
+
+    if (warmup and 'step_timestamp_log' in stats and
+        len(stats['step_timestamp_log']) > warmup):
+      # first entry in the time_log is start of step 1. The rest of the
+      # entries are the end of each step recorded
+      time_log = stats['step_timestamp_log']
+      elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
+      num_examples = (
+          total_batch_size * log_steps * (len(time_log) - warmup - 1))
+      examples_per_sec = num_examples / elapsed
+      metrics.append({'name': 'exp_per_second',
+                      'value': examples_per_sec})
+
+    if 'avg_exp_per_second' in stats:
+      metrics.append({'name': 'avg_exp_per_second',
+                      'value': stats['avg_exp_per_second']})
+
+    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
+
+
 class Resnet50EstimatorAccuracy(EstimatorBenchmark):
   """Benchmark accuracy tests for ResNet50 w/ Estimator."""
 
@@ -200,10 +247,18 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
     else:
       stats = imagenet_main.run_imagenet(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
-    self._report_benchmark(stats,
-                           wall_time_sec,
-                           top_1_min=0.762,
-                           top_1_max=0.766)
+    if using_keras:
+      self._report_benchmark_keras(stats,
+                                   wall_time_sec,
+                                   top_1_min=0.76,
+                                   top_1_max=0.77,
+                                   total_batch_size=FLAGS.batch_size,
+                                   log_steps=100)
+    else:
+      self._report_benchmark(stats,
+                             wall_time_sec,
+                             top_1_min=0.762,
+                             top_1_max=0.766)
 
 
 class Resnet50EstimatorBenchmark(EstimatorBenchmark):
@@ -468,8 +523,15 @@ class Resnet56EstimatorAccuracy(EstimatorBenchmark):
     else:
       stats = cifar_main.run_cifar(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
-
-    self._report_benchmark(stats,
-                           wall_time_sec,
-                           top_1_min=0.926,
-                           top_1_max=0.938)
+    if using_keras:
+      self._report_benchmark_keras(stats,
+                                   wall_time_sec,
+                                   top_1_min=0.92,
+                                   top_1_max=0.938,
+                                   total_batch_size=FLAGS.batch_size,
+                                   log_steps=100)
+    else:
+      self._report_benchmark(stats,
+                             wall_time_sec,
+                             top_1_min=0.926,
+                             top_1_max=0.938)
