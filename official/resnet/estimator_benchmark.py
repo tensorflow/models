@@ -28,6 +28,7 @@ from official.resnet import cifar10_main as cifar_main
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
+from official.resnet.keras import keras_imagenet_main
 from official.utils.logs import hooks
 
 IMAGENET_DATA_DIR_NAME = 'imagenet'
@@ -128,6 +129,7 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
                 named arguments before updating the constructor.
     """
     flag_methods = [
+        keras_common.define_keras_flags,
         lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True,
                                                     fp16_implementation=True)
     ]
@@ -148,6 +150,20 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
     FLAGS.dtype = 'fp32'
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
+
+  def benchmark_graph_8_gpu_keras(self):
+    """Test 8 GPUs graph mode."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 128 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
+    FLAGS.dtype = 'fp32'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark(using_keras=True)
 
   def benchmark_graph_fp16_8_gpu(self):
     """Test FP16 8 GPUs graph mode."""
@@ -177,9 +193,12 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
-  def _run_and_report_benchmark(self):
+  def _run_and_report_benchmark(self, using_keras=False):
     start_time_sec = time.time()
-    stats = imagenet_main.run_imagenet(flags.FLAGS)
+    if using_keras:
+      keras_imagenet_main.run(flags.FLAGS)
+    else:
+      stats = imagenet_main.run_imagenet(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
     self._report_benchmark(stats,
                            wall_time_sec,
@@ -387,7 +406,7 @@ class Resnet56EstimatorAccuracy(EstimatorBenchmark):
     flags.FLAGS.dtype = 'fp32'
     flags.FLAGS.hooks = ['ExamplesPerSecondHook']
     flags.FLAGS.enable_xla = True
-    self._run_and_report_benchmark_keras()
+    self._run_and_report_benchmark(using_keras=True)
 
   def benchmark_graph_fp16_1_gpu(self):
     """Test layers FP16 model with Estimator and distribution strategies."""
@@ -441,21 +460,13 @@ class Resnet56EstimatorAccuracy(EstimatorBenchmark):
     flags.FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
-  def _run_and_report_benchmark(self):
+  def _run_and_report_benchmark(self, using_keras=False):
     """Executes benchmark and reports result."""
     start_time_sec = time.time()
-    stats = cifar_main.run_cifar(flags.FLAGS)
-    wall_time_sec = time.time() - start_time_sec
-
-    self._report_benchmark(stats,
-                           wall_time_sec,
-                           top_1_min=0.926,
-                           top_1_max=0.938)
-
-  def _run_and_report_benchmark_keras(self):
-    """Executes benchmark and reports result."""
-    start_time_sec = time.time()
-    stats = keras_cifar_main.run(flags.FLAGS)
+    if using_keras:
+      stats = keras_cifar_main.run(flags.FLAGS)
+    else:
+      stats = cifar_main.run_cifar(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     self._report_benchmark(stats,
