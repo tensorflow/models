@@ -383,6 +383,7 @@ class Resnet56EstimatorAccuracy(EstimatorBenchmark):
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     flags.FLAGS.dtype = 'fp32'
+    flags.FLAGS.enable_xla = True
     self._run_and_report_benchmark_keras()
 
   def benchmark_graph_fp16_1_gpu(self):
