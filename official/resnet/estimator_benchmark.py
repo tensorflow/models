@@ -383,7 +383,9 @@ class Resnet56EstimatorAccuracy(EstimatorBenchmark):
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
     flags.FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
+    flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
+    flags.FLAGS.hooks = ['ExamplesPerSecondHook']
     flags.FLAGS.enable_xla = True
     self._run_and_report_benchmark_keras()
 
