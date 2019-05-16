@@ -276,10 +276,7 @@ def main(unused_argv):
     checkpoints_iterator = tf.contrib.training.checkpoints_iterator(
         FLAGS.checkpoint_dir, min_interval_secs=FLAGS.eval_interval_secs)
     for checkpoint_path in checkpoints_iterator:
-      if max_num_iteration > 0 and num_iteration > max_num_iteration:
-        break
       num_iteration += 1
-
       tf.logging.info(
           'Starting visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                        time.gmtime()))
@@ -313,6 +310,8 @@ def main(unused_argv):
       tf.logging.info(
           'Finished visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                        time.gmtime()))
+      if max_num_iteration > 0 and num_iteration >= max_num_iteration:
+        break
 
 if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')
