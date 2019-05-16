@@ -27,6 +27,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import cifar10_main as cifar_main
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_cifar_main
+from official.resnet.keras import keras_common
 from official.utils.logs import hooks
 
 IMAGENET_DATA_DIR_NAME = 'imagenet'
