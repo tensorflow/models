@@ -654,7 +654,7 @@ def resnet_main(
     tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
     # tf.estimator.train_and_evalute doesn't return anything in multi-worker
     # case.
-    return {}
+    eval_results = {}
   else:
     if train_epochs == 0:
       # If --eval_only is set, perform a single loop with zero train epochs.
