@@ -136,7 +136,8 @@ def main(argv):
   export_tflite_ssd_graph_lib.export_tflite_graph(
       pipeline_config, FLAGS.trained_checkpoint_prefix, FLAGS.output_directory,
       FLAGS.add_postprocessing_op, FLAGS.max_detections,
-      FLAGS.max_classes_per_detection, FLAGS.use_regular_nms)
+      FLAGS.max_classes_per_detection, FLAGS.detections_per_class,
+      FLAGS.use_regular_nms)
 
 
 if __name__ == '__main__':
