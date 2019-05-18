@@ -135,8 +135,8 @@ class BertModelTest(tf.test.TestCase):
   def run_tester(self, tester):
     with self.test_session() as sess:
       ops = tester.create_model()
-      init_op = tf.group(tf.global_variables_initializer(),
-                         tf.local_variables_initializer())
+      init_op = tf.group(tf.compat.v1.global_variables_initializer(),
+                         tf.compat.v1.local_variables_initializer())
       sess.run(init_op)
       output_result = sess.run(ops)
       tester.check_output(output_result)

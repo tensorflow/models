@@ -114,9 +114,9 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
   def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
     """The `model_fn` for TPUEstimator."""
 
-    tf.logging.info("*** Features ***")
+    tf.compat.v1.logging.info("*** Features ***")
     for name in sorted(features.keys()):
-      tf.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
+      tf.compat.v1.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
 
     input_ids = features["input_ids"]
     input_mask = features["input_mask"]
@@ -147,7 +147,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     total_loss = masked_lm_loss + next_sentence_loss
 
-    tvars = tf.trainable_variables()
+    tvars = tf.compat.v1.trainable_variables()
 
     initialized_variable_names = {}
     scaffold_fn = None
@@ -157,19 +157,19 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       if use_tpu:
 
         def tpu_scaffold():
-          tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
-          return tf.train.Scaffold()
+          tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
+          return tf.compat.v1.train.Scaffold()
 
         scaffold_fn = tpu_scaffold
       else:
-        tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+        tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
 
-    tf.logging.info("**** Trainable Variables ****")
+    tf.compat.v1.logging.info("**** Trainable Variables ****")
     for var in tvars:
       init_string = ""
       if var.name in initialized_variable_names:
         init_string = ", *INIT_FROM_CKPT*"
-      tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+      tf.compat.v1.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
                       init_string)
 
     output_spec = None
@@ -191,25 +191,25 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         masked_lm_log_probs = tf.reshape(masked_lm_log_probs,
                                          [-1, masked_lm_log_probs.shape[-1]])
         masked_lm_predictions = tf.argmax(
-            masked_lm_log_probs, axis=-1, output_type=tf.int32)
+            input=masked_lm_log_probs, axis=-1, output_type=tf.int32)
         masked_lm_example_loss = tf.reshape(masked_lm_example_loss, [-1])
         masked_lm_ids = tf.reshape(masked_lm_ids, [-1])
         masked_lm_weights = tf.reshape(masked_lm_weights, [-1])
-        masked_lm_accuracy = tf.metrics.accuracy(
+        masked_lm_accuracy = tf.compat.v1.metrics.accuracy(
             labels=masked_lm_ids,
             predictions=masked_lm_predictions,
             weights=masked_lm_weights)
-        masked_lm_mean_loss = tf.metrics.mean(
+        masked_lm_mean_loss = tf.compat.v1.metrics.mean(
             values=masked_lm_example_loss, weights=masked_lm_weights)
 
         next_sentence_log_probs = tf.reshape(
             next_sentence_log_probs, [-1, next_sentence_log_probs.shape[-1]])
         next_sentence_predictions = tf.argmax(
-            next_sentence_log_probs, axis=-1, output_type=tf.int32)
+            input=next_sentence_log_probs, axis=-1, output_type=tf.int32)
         next_sentence_labels = tf.reshape(next_sentence_labels, [-1])
-        next_sentence_accuracy = tf.metrics.accuracy(
+        next_sentence_accuracy = tf.compat.v1.metrics.accuracy(
             labels=next_sentence_labels, predictions=next_sentence_predictions)
-        next_sentence_mean_loss = tf.metrics.mean(
+        next_sentence_mean_loss = tf.compat.v1.metrics.mean(
             values=next_sentence_example_loss)
 
         return {
@@ -242,11 +242,11 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
   """Get loss and log probs for the masked LM."""
   input_tensor = gather_indexes(input_tensor, positions)
 
-  with tf.variable_scope("cls/predictions"):
+  with tf.compat.v1.variable_scope("cls/predictions"):
     # We apply one more non-linear transformation before the output layer.
     # This matrix is not used after pre-training.
-    with tf.variable_scope("transform"):
-      input_tensor = tf.layers.dense(
+    with tf.compat.v1.variable_scope("transform"):
+      input_tensor = tf.compat.v1.layers.dense(
           input_tensor,
           units=bert_config.hidden_size,
           activation=modeling.get_activation(bert_config.hidden_act),
@@ -256,7 +256,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
-    output_bias = tf.get_variable(
+    output_bias = tf.compat.v1.get_variable(
         "output_bias",
         shape=[bert_config.vocab_size],
         initializer=tf.zeros_initializer())
@@ -274,9 +274,9 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     # short to have the maximum number of predictions). The `label_weights`
     # tensor has a value of 1.0 for every real prediction and 0.0 for the
     # padding predictions.
-    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
-    numerator = tf.reduce_sum(label_weights * per_example_loss)
-    denominator = tf.reduce_sum(label_weights) + 1e-5
+    per_example_loss = -tf.reduce_sum(input_tensor=log_probs * one_hot_labels, axis=[-1])
+    numerator = tf.reduce_sum(input_tensor=label_weights * per_example_loss)
+    denominator = tf.reduce_sum(input_tensor=label_weights) + 1e-5
     loss = numerator / denominator
 
   return (loss, per_example_loss, log_probs)
@@ -287,12 +287,12 @@ def get_next_sentence_output(bert_config, input_tensor, labels):
 
   # Simple binary classification. Note that 0 is "next sentence" and 1 is
   # "random sentence". This weight matrix is not used after pre-training.
-  with tf.variable_scope("cls/seq_relationship"):
-    output_weights = tf.get_variable(
+  with tf.compat.v1.variable_scope("cls/seq_relationship"):
+    output_weights = tf.compat.v1.get_variable(
         "output_weights",
         shape=[2, bert_config.hidden_size],
         initializer=modeling.create_initializer(bert_config.initializer_range))
-    output_bias = tf.get_variable(
+    output_bias = tf.compat.v1.get_variable(
         "output_bias", shape=[2], initializer=tf.zeros_initializer())
 
     logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
@@ -300,8 +300,8 @@ def get_next_sentence_output(bert_config, input_tensor, labels):
     log_probs = tf.nn.log_softmax(logits, axis=-1)
     labels = tf.reshape(labels, [-1])
     one_hot_labels = tf.one_hot(labels, depth=2, dtype=tf.float32)
-    per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
-    loss = tf.reduce_mean(per_example_loss)
+    per_example_loss = -tf.reduce_sum(input_tensor=one_hot_labels * log_probs, axis=-1)
+    loss = tf.reduce_mean(input_tensor=per_example_loss)
     return (loss, per_example_loss, log_probs)
 
 
@@ -334,19 +334,19 @@ def input_fn_builder(input_files,
 
     name_to_features = {
         "input_ids":
-            tf.FixedLenFeature([max_seq_length], tf.int64),
+            tf.io.FixedLenFeature([max_seq_length], tf.int64),
         "input_mask":
-            tf.FixedLenFeature([max_seq_length], tf.int64),
+            tf.io.FixedLenFeature([max_seq_length], tf.int64),
         "segment_ids":
-            tf.FixedLenFeature([max_seq_length], tf.int64),
+            tf.io.FixedLenFeature([max_seq_length], tf.int64),
         "masked_lm_positions":
-            tf.FixedLenFeature([max_predictions_per_seq], tf.int64),
+            tf.io.FixedLenFeature([max_predictions_per_seq], tf.int64),
         "masked_lm_ids":
-            tf.FixedLenFeature([max_predictions_per_seq], tf.int64),
+            tf.io.FixedLenFeature([max_predictions_per_seq], tf.int64),
         "masked_lm_weights":
-            tf.FixedLenFeature([max_predictions_per_seq], tf.float32),
+            tf.io.FixedLenFeature([max_predictions_per_seq], tf.float32),
         "next_sentence_labels":
-            tf.FixedLenFeature([1], tf.int64),
+            tf.io.FixedLenFeature([1], tf.int64),
     }
 
     # For training, we want a lot of parallel reading and shuffling.
@@ -362,7 +362,7 @@ def input_fn_builder(input_files,
       # `sloppy` mode means that the interleaving is not exact. This adds
       # even more randomness to the training pipeline.
       d = d.apply(
-          tf.contrib.data.parallel_interleave(
+          tf.data.experimental.parallel_interleave(
               tf.data.TFRecordDataset,
               sloppy=is_training,
               cycle_length=cycle_length))
@@ -378,7 +378,7 @@ def input_fn_builder(input_files,
     # and we *don't* want to drop the remainder, otherwise we wont cover
     # every sample.
     d = d.apply(
-        tf.contrib.data.map_and_batch(
+        tf.data.experimental.map_and_batch(
             lambda record: _decode_record(record, name_to_features),
             batch_size=batch_size,
             num_parallel_batches=num_cpu_threads,
@@ -390,36 +390,36 @@ def input_fn_builder(input_files,
 
 def _decode_record(record, name_to_features):
   """Decodes a record to a TensorFlow example."""
-  example = tf.parse_single_example(record, name_to_features)
+  example = tf.io.parse_single_example(serialized=record, features=name_to_features)
 
   # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
   # So cast all int64 to int32.
   for name in list(example.keys()):
     t = example[name]
     if t.dtype == tf.int64:
-      t = tf.to_int32(t)
+      t = tf.compat.v1.to_int32(t)
     example[name] = t
 
   return example
 
 
 def main(_):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
   if not FLAGS.do_train and not FLAGS.do_eval:
     raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
 
-  tf.gfile.MakeDirs(FLAGS.output_dir)
+  tf.io.gfile.makedirs(FLAGS.output_dir)
 
   input_files = []
   for input_pattern in FLAGS.input_file.split(","):
-    input_files.extend(tf.gfile.Glob(input_pattern))
+    input_files.extend(tf.io.gfile.glob(input_pattern))
 
-  tf.logging.info("*** Input Files ***")
+  tf.compat.v1.logging.info("*** Input Files ***")
   for input_file in input_files:
-    tf.logging.info("  %s" % input_file)
+    tf.compat.v1.logging.info("  %s" % input_file)
 
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:
@@ -456,8 +456,8 @@ def main(_):
       eval_batch_size=FLAGS.eval_batch_size)
 
   if FLAGS.do_train:
-    tf.logging.info("***** Running training *****")
-    tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
+    tf.compat.v1.logging.info("***** Running training *****")
+    tf.compat.v1.logging.info("  Batch size = %d", FLAGS.train_batch_size)
     train_input_fn = input_fn_builder(
         input_files=input_files,
         max_seq_length=FLAGS.max_seq_length,
@@ -466,8 +466,8 @@ def main(_):
     estimator.train(input_fn=train_input_fn, max_steps=FLAGS.num_train_steps)
 
   if FLAGS.do_eval:
-    tf.logging.info("***** Running evaluation *****")
-    tf.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
+    tf.compat.v1.logging.info("***** Running evaluation *****")
+    tf.compat.v1.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
 
     eval_input_fn = input_fn_builder(
         input_files=input_files,
@@ -479,10 +479,10 @@ def main(_):
         input_fn=eval_input_fn, steps=FLAGS.max_eval_steps)
 
     output_eval_file = os.path.join(FLAGS.output_dir, "eval_results.txt")
-    with tf.gfile.GFile(output_eval_file, "w") as writer:
-      tf.logging.info("***** Eval results *****")
+    with tf.io.gfile.GFile(output_eval_file, "w") as writer:
+      tf.compat.v1.logging.info("***** Eval results *****")
       for key in sorted(result.keys()):
-        tf.logging.info("  %s = %s", key, str(result[key]))
+        tf.compat.v1.logging.info("  %s = %s", key, str(result[key]))
         writer.write("%s = %s\n" % (key, str(result[key])))
 
 
@@ -490,4 +490,4 @@ if __name__ == "__main__":
   flags.mark_flag_as_required("input_file")
   flags.mark_flag_as_required("bert_config_file")
   flags.mark_flag_as_required("output_dir")
-  tf.app.run()
+  tf.compat.v1.app.run()
