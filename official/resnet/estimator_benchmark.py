@@ -26,6 +26,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
 from official.resnet import imagenet_main
+from official.utils.flags import core as flags_core
 from official.utils.logs import hooks
 
 IMAGENET_DATA_DIR_NAME = 'imagenet'
@@ -106,10 +107,12 @@ class EstimatorBenchmark(tf.test.Benchmark):
       exp_per_sec = sum(exp_per_second_list) / (len(exp_per_second_list))
       metrics.append({'name': 'exp_per_second',
                       'value': exp_per_sec})
+    flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(
         iters=eval_results['global_step'],
         wall_time=wall_time_sec,
-        metrics=metrics)
+        metrics=metrics,
+        extras={'flags': flags_str})
 
 
 class Resnet50EstimatorAccuracy(EstimatorBenchmark):

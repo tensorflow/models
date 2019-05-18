@@ -102,6 +102,45 @@ class BaseTester(unittest.TestCase):
       flags_core.parse_flags([__file__, "--dtype", "fp16",
                               "--loss_scale", "abc"])
 
+  def test_get_nondefault_flags_as_str(self):
+    defaults = dict(
+        clean=True,
+        data_dir="abc",
+        hooks=["LoggingTensorHook"],
+        stop_threshold=1.5,
+        use_synthetic_data=False
+    )
+    flags_core.set_defaults(**defaults)
+    flags_core.parse_flags()
+
+    expected_flags = ""
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.clean = False
+    expected_flags += "--noclean"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.data_dir = "xyz"
+    expected_flags += " --data_dir=xyz"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.hooks = ["aaa", "bbb", "ccc"]
+    expected_flags += " --hooks=aaa,bbb,ccc"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.stop_threshold = 3.
+    expected_flags += " --stop_threshold=3.0"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.use_synthetic_data = True
+    expected_flags += " --use_synthetic_data"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    # Assert that explicit setting a flag to its default value does not cause it
+    # to appear in the string
+    flags.FLAGS.use_synthetic_data = False
+    expected_flags = expected_flags[:-len(" --use_synthetic_data")]
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
 
 
 if __name__ == "__main__":
