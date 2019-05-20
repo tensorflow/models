@@ -109,7 +109,7 @@ class EstimatorBenchmark(tf.test.Benchmark):
                       'value': exp_per_sec})
     flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(
-        iters=eval_results['global_step'],
+        iters=eval_results.get('global_step', None),
         wall_time=wall_time_sec,
         metrics=metrics,
         extras={'flags': flags_str})
