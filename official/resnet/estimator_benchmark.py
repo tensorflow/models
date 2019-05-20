@@ -309,8 +309,8 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     wall_time_sec = time.time() - start_time_sec
     print(stats)
     # Remove values to skip triggering accuracy check.
-    del stats['eval_results']['accuracy']
-    del stats['eval_results']['accuracy_top_5']
+    stats['eval_results'].pop('accuracy', None)
+    stats['eval_results'].pop('accuracy_top_5', None)
 
     self._report_benchmark(stats,
                            wall_time_sec)
