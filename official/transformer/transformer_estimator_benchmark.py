@@ -107,10 +107,10 @@ class EstimatorBenchmark(tf.test.Benchmark):
 
 
 class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
-  """Benchmark accuracy tests for ResNet50 w/ Estimator."""
+  """Benchmark accuracy tests for Transformer Base model w/ Estimator."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    """Benchmark accuracy tests for ResNet50 w/ Estimator.
+    """Benchmark accuracy tests for Transformer Base model w/ Estimator.
 
     Args:
       output_dir: directory where to output e.g. log files
@@ -212,8 +212,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
 
 
 class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
-  """Benchmarks for ResNet50 using Estimator."""
-  local_flags = None
+  """Benchmarks for Transformer Base model using Estimator."""
 
   def __init__(self, output_dir=None, default_flags=None):
     flag_methods = [transformer_main.define_transformer_flags]
@@ -289,6 +288,28 @@ class TransformerBaseEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
 
     def_flags = {}
     def_flags['param_set'] = 'base'
+    def_flags['vocab_file'] = vocab_file
+    def_flags['data_dir'] = train_data_dir
+    def_flags['train_steps'] = 200
+    def_flags['steps_between_evals'] = 200
+    def_flags['hooks'] = ['ExamplesPerSecondHook']
+
+    super(TransformerBaseEstimatorBenchmarkReal, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
+
+
+class TransformerBigEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
+  """Transformer based version real data benchmark tests."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    train_data_dir = os.path.join(root_data_dir,
+                                  TRANSFORMER_EN2DE_DATA_DIR_NAME)
+    vocab_file = os.path.join(root_data_dir,
+                              TRANSFORMER_EN2DE_DATA_DIR_NAME,
+                              'vocab.ende.32768')
+
+    def_flags = {}
+    def_flags['param_set'] = 'big'
     def_flags['vocab_file'] = vocab_file
     def_flags['data_dir'] = train_data_dir
     def_flags['train_steps'] = 200
