@@ -109,7 +109,7 @@ class EstimatorBenchmark(tf.test.Benchmark):
                       'value': exp_per_sec})
     flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(
-        iters=eval_results['global_step'],
+        iters=eval_results.get('global_step', None),
         wall_time=wall_time_sec,
         metrics=metrics,
         extras={'flags': flags_str})
@@ -309,8 +309,8 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     wall_time_sec = time.time() - start_time_sec
     print(stats)
     # Remove values to skip triggering accuracy check.
-    del stats['eval_results']['accuracy']
-    del stats['eval_results']['accuracy_top_5']
+    stats['eval_results'].pop('accuracy', None)
+    stats['eval_results'].pop('accuracy_top_5', None)
 
     self._report_benchmark(stats,
                            wall_time_sec)
