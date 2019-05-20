@@ -316,5 +316,5 @@ class TransformerBigEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
     def_flags['steps_between_evals'] = 200
     def_flags['hooks'] = ['ExamplesPerSecondHook']
 
-    super(TransformerBaseEstimatorBenchmarkReal, self).__init__(
+    super(TransformerBigEstimatorBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
