@@ -69,6 +69,15 @@ _EVAL_DATA_SOURCES = [
     }
 ]
 
+_TEST_DATA_SOURCES = [
+    {
+        "url": ("https://storage.googleapis.com/tf-perf-public/"
+                "official_transformer/test_data/newstest2014.tgz"),
+        "input": "newstest2014.en",
+        "target": "newstest2014.de",
+    }
+]
+
 # Vocabulary constants
 _TARGET_VOCAB_SIZE = 32768  # Number of subtokens in the vocabulary list.
 _TARGET_THRESHOLD = 327  # Accept vocabulary if size is within this threshold
@@ -198,7 +207,7 @@ def download_and_extract(path, url, input_filename, target_filename):
   with tarfile.open(compressed_file, "r:gz") as corpus_tar:
     corpus_tar.extractall(path)
 
-  # Return filepaths of the requested files.
+  # Return file paths of the requested files.
   input_file = find_file(path, input_filename)
   target_file = find_file(path, target_filename)
 
@@ -211,7 +220,7 @@ def download_and_extract(path, url, input_filename, target_filename):
 
 def txt_line_iterator(path):
   """Iterate through lines of file."""
-  with tf.gfile.Open(path) as f:
+  with tf.io.gfile.GFile(path) as f:
     for line in f:
       yield line.strip()
 
@@ -235,8 +244,8 @@ def compile_files(raw_dir, raw_files, tag):
   input_compiled_file = os.path.join(raw_dir, filename + ".lang1")
   target_compiled_file = os.path.join(raw_dir, filename + ".lang2")
 
-  with tf.gfile.Open(input_compiled_file, mode="w") as input_writer:
-    with tf.gfile.Open(target_compiled_file, mode="w") as target_writer:
+  with tf.io.gfile.GFile(input_compiled_file, mode="w") as input_writer:
+    with tf.io.gfile.GFile(target_compiled_file, mode="w") as target_writer:
       for i in range(len(raw_files["inputs"])):
         input_file = raw_files["inputs"][i]
         target_file = raw_files["targets"][i]
@@ -367,25 +376,29 @@ def main(unused_argv):
   make_dir(FLAGS.raw_dir)
   make_dir(FLAGS.data_dir)
 
+  # Download test_data
+  tf.logging.info("Step 1/5: Downloading test data")
+  train_files = get_raw_files(FLAGS.data_dir, _TEST_DATA_SOURCES)
+
   # Get paths of download/extracted training and evaluation files.
-  tf.logging.info("Step 1/4: Downloading data from source")
+  tf.logging.info("Step 2/5: Downloading data from source")
   train_files = get_raw_files(FLAGS.raw_dir, _TRAIN_DATA_SOURCES)
   eval_files = get_raw_files(FLAGS.raw_dir, _EVAL_DATA_SOURCES)
 
   # Create subtokenizer based on the training files.
-  tf.logging.info("Step 2/4: Creating subtokenizer and building vocabulary")
+  tf.logging.info("Step 3/5: Creating subtokenizer and building vocabulary")
   train_files_flat = train_files["inputs"] + train_files["targets"]
   vocab_file = os.path.join(FLAGS.data_dir, VOCAB_FILE)
   subtokenizer = tokenizer.Subtokenizer.init_from_files(
       vocab_file, train_files_flat, _TARGET_VOCAB_SIZE, _TARGET_THRESHOLD,
       min_count=None if FLAGS.search else _TRAIN_DATA_MIN_COUNT)
 
-  tf.logging.info("Step 3/4: Compiling training and evaluation data")
+  tf.logging.info("Step 4/5: Compiling training and evaluation data")
   compiled_train_files = compile_files(FLAGS.raw_dir, train_files, _TRAIN_TAG)
   compiled_eval_files = compile_files(FLAGS.raw_dir, eval_files, _EVAL_TAG)
 
   # Tokenize and save data as Examples in the TFRecord format.
-  tf.logging.info("Step 4/4: Preprocessing and saving data")
+  tf.logging.info("Step 5/5: Preprocessing and saving data")
   train_tfrecord_files = encode_and_save_files(
       subtokenizer, FLAGS.data_dir, compiled_train_files, _TRAIN_TAG,
       _TRAIN_SHARDS)

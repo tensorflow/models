@@ -190,13 +190,15 @@ class SequenceBeamSearch(object):
     best_alive_scores = alive_log_probs[:, 0] / max_length_norm
 
     # Compute worst score in finished sequences for each batch element
-    finished_scores *= tf.to_float(finished_flags)  # set filler scores to zero
+    finished_scores *= tf.cast(finished_flags,
+                               tf.float32)  # set filler scores to zero
     lowest_finished_scores = tf.reduce_min(finished_scores, axis=1)
 
     # If there are no finished sequences in a batch element, then set the lowest
     # finished score to -INF for that element.
     finished_batches = tf.reduce_any(finished_flags, 1)
-    lowest_finished_scores += (1. - tf.to_float(finished_batches)) * -INF
+    lowest_finished_scores += (1.0 -
+                               tf.cast(finished_batches, tf.float32)) * -INF
 
     worst_finished_score_better_than_best_alive_score = tf.reduce_all(
         tf.greater(lowest_finished_scores, best_alive_scores)
@@ -319,7 +321,7 @@ class SequenceBeamSearch(object):
     """
     # To prevent finished sequences from being considered, set log probs to -INF
     new_finished_flags = tf.equal(new_seq[:, :, -1], self.eos_id)
-    new_log_probs += tf.to_float(new_finished_flags) * -INF
+    new_log_probs += tf.cast(new_finished_flags, tf.float32) * -INF
 
     top_alive_seq, top_alive_log_probs, top_alive_cache = _gather_topk_beams(
         [new_seq, new_log_probs, new_cache], new_log_probs, self.batch_size,
@@ -364,7 +366,7 @@ class SequenceBeamSearch(object):
 
     # Set the scores of the still-alive seq in new_seq to large negative values.
     new_finished_flags = tf.equal(new_seq[:, :, -1], self.eos_id)
-    new_scores += (1. - tf.to_float(new_finished_flags)) * -INF
+    new_scores += (1. - tf.cast(new_finished_flags, tf.float32)) * -INF
 
     # Combine sequences, scores, and flags.
     finished_seq = tf.concat([finished_seq, new_seq], axis=1)
@@ -417,12 +419,12 @@ def sequence_beam_search(
 
 
 def _log_prob_from_logits(logits):
-  return logits - tf.reduce_logsumexp(logits, axis=2, keep_dims=True)
+  return logits - tf.reduce_logsumexp(logits, axis=2, keepdims=True)
 
 
 def _length_normalization(alpha, length):
   """Return length normalization factor."""
-  return tf.pow(((5. + tf.to_float(length)) / 6.), alpha)
+  return tf.pow(((5. + tf.cast(length, tf.float32)) / 6.), alpha)
 
 
 def _expand_to_beam_size(tensor, beam_size):
