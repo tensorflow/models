@@ -159,6 +159,21 @@ class TransformerBigEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
+  def _run_and_report_benchmark(self, bleu_min=28.3, bleu_max=29):
+    """Run benchmark and report results.
+
+    Args:
+      bleu_min: minimum expected uncased bleu. default is SOTA.
+      bleu_max: max expected uncased bleu. default is a high number.
+    """
+    start_time_sec = time.time()
+    stats = transformer_main.run_transformer(flags.FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+    self._report_benchmark(stats,
+                           wall_time_sec,
+                           bleu_min=bleu_min,
+                           bleu_max=bleu_max)
+
 
 class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
   """Benchmark accuracy tests for Transformer Base model w/ Estimator."""
