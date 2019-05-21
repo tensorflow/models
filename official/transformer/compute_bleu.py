@@ -86,12 +86,13 @@ def bleu_tokenize(string):
 
 def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
   """Compute BLEU for two files (reference and hypothesis translation)."""
-  ref_lines = tf.gfile.Open(ref_filename).read().strip().splitlines()
-  hyp_lines = tf.gfile.Open(hyp_filename).read().strip().splitlines()
+  ref_lines = tf.io.gfile.GFile(ref_filename).read().strip().splitlines()
+  hyp_lines = tf.io.gfile.GFile(hyp_filename).read().strip().splitlines()
 
   if len(ref_lines) != len(hyp_lines):
     raise ValueError("Reference and translation files have different number of "
-                     "lines.")
+                     "lines. If training only a few steps (100-200), the "
+                     "translation may be empty.")
   if not case_sensitive:
     ref_lines = [x.lower() for x in ref_lines]
     hyp_lines = [x.lower() for x in hyp_lines]

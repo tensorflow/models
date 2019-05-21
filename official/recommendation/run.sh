@@ -6,6 +6,10 @@ if [ `id -u` != 0 ]; then
   sudo echo "Success"
 fi
 
+SCRIPT_DIR=`dirname "$BASH_SOURCE"`
+export PYTHONPATH="${SCRIPT_DIR}/../../"
+MAIN_SCRIPT="ncf_estimator_main.py"
+
 DATASET="ml-20m"
 
 BUCKET=${BUCKET:-""}
@@ -27,13 +31,22 @@ mkdir -p ${LOCAL_TEST_DIR}
 
 TPU=${TPU:-""}
 if [[ -z ${TPU} ]]; then
-  DEVICE_FLAG="--num_gpus -1 --use_xla_for_gpu"
+  DEVICE_FLAG="--num_gpus -1" # --use_xla_for_gpu"
 else
   DEVICE_FLAG="--tpu ${TPU} --num_gpus 0"
 fi
 
 DATA_DIR="${ROOT_DIR}/movielens_data"
-python ../datasets/movielens.py --data_dir ${DATA_DIR} --dataset ${DATASET}
+python "${SCRIPT_DIR}/../datasets/movielens.py" --data_dir ${DATA_DIR} --dataset ${DATASET}
+
+if [ "$1" == "keras" ]
+then
+	MAIN_SCRIPT="ncf_keras_main.py"
+	BATCH_SIZE=160000
+	DEVICE_FLAG="--num_gpus 1"
+else
+	BATCH_SIZE=98340
+fi
 
 {
 
@@ -54,25 +67,25 @@ do
 
   # To reduce variation set the seed flag:
   #   --seed ${i}
-  #
-  # And to confirm that the pipeline is deterministic pass the flag:
-  #   --hash_pipeline
-  #
-  # (`--hash_pipeline` will slow down training, though not as much as one might imagine.)
-  python ncf_main.py --model_dir ${MODEL_DIR} \
-                     --data_dir ${DATA_DIR} \
-                     --dataset ${DATASET} --hooks "" \
-                     ${DEVICE_FLAG} \
-                     --clean \
-                     --train_epochs 20 \
-                     --batch_size 2048 \
-                     --eval_batch_size 100000 \
-                     --learning_rate 0.0005 \
-                     --layers 256,256,128,64 --num_factors 64 \
-                     --hr_threshold 0.635 \
-                     --ml_perf \
+
+  python -u "${SCRIPT_DIR}/${MAIN_SCRIPT}" \
+      --model_dir ${MODEL_DIR} \
+      --data_dir ${DATA_DIR} \
+      --dataset ${DATASET} --hooks "" \
+      ${DEVICE_FLAG} \
+      --clean \
+      --train_epochs 14 \
+      --batch_size ${BATCH_SIZE} \
+      --eval_batch_size 160000 \
+      --learning_rate 0.00382059 \
+      --beta1 0.783529 \
+      --beta2 0.909003 \
+      --epsilon 1.45439e-07 \
+      --layers 256,256,128,64 --num_factors 64 \
+      --hr_threshold 0.635 \
+      --ml_perf \
  |& tee ${RUN_LOG} \
- | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+)|(pipeline_hash)|(MLPerf time:)"
+ | grep --line-buffered  -E --regexp="(Iteration [0-9]+: HR = [0-9\.]+, NDCG = [0-9\.]+, Loss = [0-9\.]+)|(pipeline_hash)|(MLPerf time:)"
 
   END_TIME=$(date +%s)
   echo "Run ${i} complete: $(( $END_TIME - $START_TIME )) seconds."

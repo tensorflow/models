@@ -95,14 +95,14 @@ def _parse_example_proto(example_serialized):
   """
   # Dense features in Example proto.
   feature_map = {
-      'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
-                                          default_value=''),
-      'image/class/label': tf.FixedLenFeature([], dtype=tf.int64,
-                                              default_value=-1),
-      'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
+      'image/encoded': tf.io.FixedLenFeature([], dtype=tf.string,
                                              default_value=''),
+      'image/class/label': tf.io.FixedLenFeature([], dtype=tf.int64,
+                                                 default_value=-1),
+      'image/class/text': tf.io.FixedLenFeature([], dtype=tf.string,
+                                                default_value=''),
   }
-  sparse_float32 = tf.VarLenFeature(dtype=tf.float32)
+  sparse_float32 = tf.io.VarLenFeature(dtype=tf.float32)
   # Sparse features in Example proto.
   feature_map.update(
       {k: sparse_float32 for k in ['image/object/bbox/xmin',
@@ -110,7 +110,8 @@ def _parse_example_proto(example_serialized):
                                    'image/object/bbox/xmax',
                                    'image/object/bbox/ymax']})
 
-  features = tf.parse_single_example(example_serialized, feature_map)
+  features = tf.io.parse_single_example(serialized=example_serialized,
+                                        features=feature_map)
   label = tf.cast(features['image/class/label'], dtype=tf.int32)
 
   xmin = tf.expand_dims(features['image/object/bbox/xmin'].values, 0)
@@ -124,7 +125,7 @@ def _parse_example_proto(example_serialized):
   # Force the variable number of bounding boxes into the shape
   # [1, num_boxes, coords].
   bbox = tf.expand_dims(bbox, 0)
-  bbox = tf.transpose(bbox, [0, 2, 1])
+  bbox = tf.transpose(a=bbox, perm=[0, 2, 1])
 
   return features['image/encoded'], label, bbox
 
@@ -158,9 +159,17 @@ def parse_record(raw_record, is_training, dtype):
   return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1,
-             dtype=tf.float32, datasets_num_private_threads=None,
-             num_parallel_batches=1, parse_record_fn=parse_record):
+def input_fn(is_training,
+             data_dir,
+             batch_size,
+             num_epochs=1,
+             dtype=tf.float32,
+             datasets_num_private_threads=None,
+             num_parallel_batches=1,
+             parse_record_fn=parse_record,
+             input_context=None,
+             drop_remainder=False,
+             tf_data_experimental_slack=False):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -172,6 +181,12 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
     parse_record_fn: Function to use for parsing the records.
+    input_context: A `tf.distribute.InputContext` object passed in by
+      `tf.distribute.Strategy`.
+    drop_remainder: A boolean indicates whether to drop the remainder of the
+      batches. If True, the batch dimension will be static.
+    tf_data_experimental_slack: Whether to enable tf.data's
+      `experimental_slack` option.
 
   Returns:
     A dataset that can be used for iteration.
@@ -179,17 +194,25 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
   filenames = get_filenames(is_training, data_dir)
   dataset = tf.data.Dataset.from_tensor_slices(filenames)
 
+  if input_context:
+    tf.compat.v1.logging.info(
+        'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d' % (
+            input_context.input_pipeline_id, input_context.num_input_pipelines))
+    dataset = dataset.shard(input_context.num_input_pipelines,
+                            input_context.input_pipeline_id)
+
   if is_training:
     # Shuffle the input files
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
   # Convert to individual records.
-  # cycle_length = 10 means 10 files will be read and deserialized in parallel.
-  # This number is low enough to not cause too much contention on small systems
-  # but high enough to provide the benefits of parallelization. You may want
-  # to increase this number if you have a large number of CPU cores.
-  dataset = dataset.apply(tf.contrib.data.parallel_interleave(
-      tf.data.TFRecordDataset, cycle_length=10))
+  # cycle_length = 10 means that up to 10 files will be read and deserialized in
+  # parallel. You may want to increase this number if you have a large number of
+  # CPU cores.
+  dataset = dataset.interleave(
+      tf.data.TFRecordDataset,
+      cycle_length=10,
+      num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
   return resnet_run_loop.process_record_dataset(
       dataset=dataset,
@@ -200,7 +223,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
       num_epochs=num_epochs,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
-      num_parallel_batches=num_parallel_batches
+      num_parallel_batches=num_parallel_batches,
+      drop_remainder=drop_remainder,
+      tf_data_experimental_slack=tf_data_experimental_slack,
   )
 
 
@@ -302,9 +327,10 @@ def imagenet_model_fn(features, labels, mode, params):
     base_lr = .128
 
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-      batch_size=params['batch_size'], batch_denom=256,
-      num_images=NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-      decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=warmup, base_lr=base_lr)
+      batch_size=params['batch_size'] * params.get('num_workers', 1),
+      batch_denom=256, num_images=NUM_IMAGES['train'],
+      boundary_epochs=[30, 60, 80, 90], decay_rates=[1, 0.1, 0.01, 0.001, 1e-4],
+      warmup=warmup, base_lr=base_lr)
 
   return resnet_run_loop.resnet_model_fn(
       features=features,
@@ -312,7 +338,7 @@ def imagenet_model_fn(features, labels, mode, params):
       mode=mode,
       model_class=ImagenetModel,
       resnet_size=params['resnet_size'],
-      weight_decay=1e-4,
+      weight_decay=flags.FLAGS.weight_decay,
       learning_rate_fn=learning_rate_fn,
       momentum=0.9,
       data_format=params['data_format'],
@@ -320,13 +346,16 @@ def imagenet_model_fn(features, labels, mode, params):
       loss_scale=params['loss_scale'],
       loss_filter_fn=None,
       dtype=params['dtype'],
-      fine_tune=params['fine_tune']
+      fine_tune=params['fine_tune'],
+      label_smoothing=flags.FLAGS.label_smoothing
   )
 
 
-def define_imagenet_flags():
+def define_imagenet_flags(dynamic_loss_scale=False, fp16_implementation=False):
   resnet_run_loop.define_resnet_flags(
-      resnet_size_choices=['18', '34', '50', '101', '152', '200'])
+      resnet_size_choices=['18', '34', '50', '101', '152', '200'],
+      dynamic_loss_scale=dynamic_loss_scale,
+      fp16_implementation=fp16_implementation)
   flags.adopt_module_key_flags(resnet_run_loop)
   flags_core.set_defaults(train_epochs=90)
 
@@ -336,14 +365,22 @@ def run_imagenet(flags_obj):
 
   Args:
     flags_obj: An object containing parsed flag values.
+
+  Returns:
+    Dict of results of the run.  Contains the keys `eval_results` and
+      `train_hooks`. `eval_results` contains accuracy (top_1) and
+      accuracy_top_5. `train_hooks` is a list the instances of hooks used during
+      training.
   """
   input_function = (flags_obj.use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
 
-  resnet_run_loop.resnet_main(
+  result = resnet_run_loop.resnet_main(
       flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
       shape=[DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE, NUM_CHANNELS])
+
+  return result
 
 
 def main(_):
@@ -352,6 +389,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
-  define_imagenet_flags()
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  define_imagenet_flags(dynamic_loss_scale=True, fp16_implementation=True)
   absl_app.run(main)

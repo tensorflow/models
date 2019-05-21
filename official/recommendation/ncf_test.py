@@ -24,13 +24,15 @@ import mock
 import numpy as np
 import tensorflow as tf
 
-from absl import flags
 from absl.testing import flagsaver
 from official.recommendation import constants as rconst
-from official.recommendation import data_preprocessing
+from official.recommendation import data_pipeline
 from official.recommendation import neumf_model
-from official.recommendation import ncf_main
-from official.recommendation import stat_utils
+from official.recommendation import ncf_common
+from official.recommendation import ncf_estimator_main
+from official.recommendation import ncf_keras_main
+from official.utils.testing import integration
+from tensorflow.python.eager import context # pylint: disable=ungrouped-imports
 
 
 NUM_TRAIN_NEG = 4
@@ -41,7 +43,7 @@ class NcfTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(NcfTest, cls).setUpClass()
-    ncf_main.define_ncf_flags()
+    ncf_common.define_ncf_flags()
 
   def setUp(self):
     self.top_k_old = rconst.TOP_K
@@ -56,6 +58,13 @@ class NcfTest(tf.test.TestCase):
                             top_k=rconst.TOP_K, match_mlperf=False):
     rconst.TOP_K = top_k
     rconst.NUM_EVAL_NEGATIVES = predicted_scores_by_user.shape[1] - 1
+    batch_size = items_by_user.shape[0]
+
+    users = np.repeat(np.arange(batch_size)[:, np.newaxis],
+                      rconst.NUM_EVAL_NEGATIVES + 1, axis=1)
+    users, items, duplicate_mask = \
+      data_pipeline.BaseDataConstructor._assemble_eval_batch(
+          users, items_by_user[:, -1:], items_by_user[:, :-1], batch_size)
 
     g = tf.Graph()
     with g.as_default():
@@ -63,10 +72,9 @@ class NcfTest(tf.test.TestCase):
           predicted_scores_by_user.reshape((-1, 1)), tf.float32)
       softmax_logits = tf.concat([tf.zeros(logits.shape, dtype=logits.dtype),
                                   logits], axis=1)
-      duplicate_mask = tf.convert_to_tensor(
-          stat_utils.mask_duplicates(items_by_user, axis=1), tf.float32)
+      duplicate_mask = tf.convert_to_tensor(duplicate_mask, tf.float32)
 
-      metric_ops = neumf_model.compute_eval_loss_and_metrics(
+      metric_ops = neumf_model._get_estimator_spec_with_metrics(
           logits=logits, softmax_logits=softmax_logits,
           duplicate_mask=duplicate_mask, num_training_neg=NUM_TRAIN_NEG,
           match_mlperf=match_mlperf).eval_metric_ops
@@ -81,21 +89,19 @@ class NcfTest(tf.test.TestCase):
       sess.run(init)
       return sess.run([hr[1], ndcg[1]])
 
-
-
   def test_hit_rate_and_ndcg(self):
     # Test with no duplicate items
     predictions = np.array([
-        [1., 2., 0.],  # In top 2
-        [2., 1., 0.],  # In top 1
-        [0., 2., 1.],  # In top 3
-        [2., 3., 4.]   # In top 3
+        [2., 0., 1.],  # In top 2
+        [1., 0., 2.],  # In top 1
+        [2., 1., 0.],  # In top 3
+        [3., 4., 2.]   # In top 3
     ])
     items = np.array([
-        [1, 2, 3],
         [2, 3, 1],
-        [3, 2, 1],
+        [3, 1, 2],
         [2, 1, 3],
+        [1, 3, 2],
     ])
 
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 1)
@@ -130,16 +136,16 @@ class NcfTest(tf.test.TestCase):
     # Test with duplicate items. In the MLPerf case, we treat the duplicates as
     # a single item. Otherwise, we treat the duplicates as separate items.
     predictions = np.array([
-        [1., 2., 2., 3.],  # In top 4. MLPerf: In top 3
-        [3., 1., 0., 2.],  # In top 1. MLPerf: In top 1
-        [0., 2., 3., 2.],  # In top 4. MLPerf: In top 3
-        [3., 2., 4., 2.]   # In top 2. MLPerf: In top 2
+        [2., 2., 3., 1.],  # In top 4. MLPerf: In top 3
+        [1., 0., 2., 3.],  # In top 1. MLPerf: In top 1
+        [2., 3., 2., 0.],  # In top 4. MLPerf: In top 3
+        [2., 4., 2., 3.]   # In top 2. MLPerf: In top 2
     ])
     items = np.array([
-        [1, 2, 2, 3],
-        [1, 2, 3, 4],
-        [1, 2, 3, 2],
-        [4, 3, 2, 1],
+        [2, 2, 3, 1],
+        [2, 3, 4, 1],
+        [2, 3, 2, 1],
+        [3, 2, 1, 4],
     ])
     hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 1)
     self.assertAlmostEqual(hr, 1 / 4)
@@ -180,95 +186,56 @@ class NcfTest(tf.test.TestCase):
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
-    # Test with duplicate items, where the predictions for the same item can
-    # differ. In the MLPerf case, we should take the first prediction.
-    predictions = np.array([
-        [3., 2., 4., 4.],  # In top 3. MLPerf: In top 2
-        [3., 4., 2., 4.],  # In top 3. MLPerf: In top 3
-        [2., 3., 4., 1.],  # In top 3. MLPerf: In top 2
-        [4., 3., 5., 2.]   # In top 2. MLPerf: In top 1
-    ])
-    items = np.array([
-        [1, 2, 2, 3],
-        [4, 3, 3, 2],
-        [2, 1, 1, 1],
-        [4, 2, 2, 1],
-    ])
-    hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 1)
-    self.assertAlmostEqual(hr, 0 / 4)
-    self.assertAlmostEqual(ndcg, 0 / 4)
+  _BASE_END_TO_END_FLAGS = ['-batch_size', '1024', '-train_epochs', '1']
 
-    hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 2)
-    self.assertAlmostEqual(hr, 1 / 4)
-    self.assertAlmostEqual(ndcg, (math.log(2) / math.log(3)) / 4)
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_estimator(self):
+    integration.run_synthetic(
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS)
 
-    hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 3)
-    self.assertAlmostEqual(hr, 4 / 4)
-    self.assertAlmostEqual(ndcg, (math.log(2) / math.log(3) +
-                                  3 * math.log(2) / math.log(4)) / 4)
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_estimator_mlperf(self):
+    integration.run_synthetic(
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-ml_perf', 'True'])
 
-    hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 4)
-    self.assertAlmostEqual(hr, 4 / 4)
-    self.assertAlmostEqual(ndcg, (math.log(2) / math.log(3) +
-                                  3 * math.log(2) / math.log(4)) / 4)
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_keras(self):
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS +
+        ['-distribution_strategy', 'off'])
 
-    hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 1,
-                                          match_mlperf=True)
-    self.assertAlmostEqual(hr, 1 / 4)
-    self.assertAlmostEqual(ndcg, 1 / 4)
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_keras_mlperf(self):
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS +
+        ['-ml_perf', 'True',
+         '-distribution_strategy', 'off'])
 
-    hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 2,
-                                          match_mlperf=True)
-    self.assertAlmostEqual(hr, 3 / 4)
-    self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3)) / 4)
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_keras_1_gpu(self):
+    if context.num_gpus() < 1:
+      self.skipTest(
+          "{} GPUs are not available for this test. {} GPUs are available".
+          format(1, context.num_gpus()))
 
-    hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 3,
-                                          match_mlperf=True)
-    self.assertAlmostEqual(hr, 4 / 4)
-    self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3) +
-                                  math.log(2) / math.log(4)) / 4)
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '1'])
 
-    hr, ndcg = self.get_hit_rate_and_ndcg(predictions, items, 4,
-                                          match_mlperf=True)
-    self.assertAlmostEqual(hr, 4 / 4)
-    self.assertAlmostEqual(ndcg, (1 + 2 * math.log(2) / math.log(3) +
-                                  math.log(2) / math.log(4)) / 4)
+  @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  def test_end_to_end_keras_2_gpu(self):
+    if context.num_gpus() < 2:
+      self.skipTest(
+          "{} GPUs are not available for this test. {} GPUs are available".
+          format(2, context.num_gpus()))
 
-  _BASE_END_TO_END_FLAGS = {
-      "batch_size": 1024,
-      "train_epochs": 1,
-      "use_synthetic_data": True
-  }
-
-  @flagsaver.flagsaver(**_BASE_END_TO_END_FLAGS)
-  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end(self):
-    ncf_main.main(None)
-
-  @flagsaver.flagsaver(ml_perf=True, **_BASE_END_TO_END_FLAGS)
-  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end_mlperf(self):
-    ncf_main.main(None)
-
-  @flagsaver.flagsaver(use_estimator=False, **_BASE_END_TO_END_FLAGS)
-  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end_no_estimator(self):
-    ncf_main.main(None)
-    flags.FLAGS.ml_perf = True
-    ncf_main.main(None)
-
-  @flagsaver.flagsaver(use_estimator=False, **_BASE_END_TO_END_FLAGS)
-  @mock.patch.object(data_preprocessing, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end_while_loop(self):
-    # We cannot set use_while_loop = True in the flagsaver constructor, because
-    # if the flagsaver sets it to True before setting use_estimator to False,
-    # the flag validator will throw an error.
-    flags.FLAGS.use_while_loop = True
-    ncf_main.main(None)
-    flags.FLAGS.ml_perf = True
-    ncf_main.main(None)
-
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '2'])
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   tf.test.main()

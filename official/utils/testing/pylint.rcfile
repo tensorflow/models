@@ -146,6 +146,10 @@ no-space-check=
 # else.
 single-line-if-stmt=yes
 
+# Allow URLs and comment type annotations to exceed the max line length as neither can be easily
+# split across lines.
+ignore-long-lines=^\s*(?:(# )?<?https?://\S+>?$|# type:)
+
 
 [VARIABLES]
 

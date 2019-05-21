@@ -47,6 +47,8 @@
 
 
    def get_loss_scale(flags_obj):
+     if flags_obj.loss_scale == "dynamic":
+       return flags_obj.loss_scale
      if flags_obj.loss_scale is not None:
        return flags_obj.loss_scale
      return DTYPE_MAP[flags_obj.dtype][1]

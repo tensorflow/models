@@ -77,9 +77,9 @@ _TEST_CASES = [
 ]
 
 _FEATURE_MAP = {
-    _RAW_ROW: tf.FixedLenFeature([1], dtype=tf.int64),
-    _DUMMY_COL: tf.FixedLenFeature([1], dtype=tf.int64),
-    _DUMMY_VEC_COL: tf.FixedLenFeature([_DUMMY_VEC_LEN], dtype=tf.float32)
+    _RAW_ROW: tf.io.FixedLenFeature([1], dtype=tf.int64),
+    _DUMMY_COL: tf.io.FixedLenFeature([1], dtype=tf.int64),
+    _DUMMY_VEC_COL: tf.io.FixedLenFeature([_DUMMY_VEC_LEN], dtype=tf.float32)
 }
 
 
@@ -156,9 +156,9 @@ class BaseTest(tf.test.TestCase):
     with self.test_session(graph=tf.Graph()) as sess:
       dataset = tf.data.TFRecordDataset(buffer_path)
       dataset = dataset.batch(1).map(
-          lambda x: tf.parse_example(x, _FEATURE_MAP))
+          lambda x: tf.io.parse_example(serialized=x, features=_FEATURE_MAP))
 
-      data_iter = dataset.make_one_shot_iterator()
+      data_iter = tf.compat.v1.data.make_one_shot_iterator(dataset)
       seen_rows = set()
       for i in range(num_rows+5):
         row = data_iter.get_next()
@@ -177,7 +177,7 @@ class BaseTest(tf.test.TestCase):
           self.assertGreaterEqual(i, num_rows, msg="Too few rows.")
 
     file_io._GARBAGE_COLLECTOR.purge()
-    assert not tf.gfile.Exists(buffer_path)
+    assert not tf.io.gfile.exists(buffer_path)
 
   def test_serialize_deserialize_0(self):
     self._serialize_deserialize(num_cores=1)
