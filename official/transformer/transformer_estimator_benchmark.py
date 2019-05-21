@@ -105,11 +105,12 @@ class EstimatorBenchmark(tf.test.Benchmark):
         wall_time=wall_time_sec,
         metrics=metrics)
 
+
 class TransformerBigEstimatorAccuracy(EstimatorBenchmark):
-  """Benchmark accuracy tests for Transformer Base model w/ Estimator."""
+  """Benchmark accuracy tests for Transformer Big model w/ Estimator."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    """Benchmark accuracy tests for Transformer Base model w/ Estimator.
+    """Benchmark accuracy tests for Transformer Big model w/ Estimator.
 
     Args:
       output_dir: directory where to output e.g. log files
