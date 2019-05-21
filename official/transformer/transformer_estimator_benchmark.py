@@ -211,13 +211,13 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
                            bleu_max=28)
 
 
-class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
-  """Benchmarks for Transformer Base model using Estimator."""
+class TransformerEstimatorBenchmark(EstimatorBenchmark):
+  """Benchmarks for Transformer (Base and Big) using Estimator."""
 
   def __init__(self, output_dir=None, default_flags=None):
     flag_methods = [transformer_main.define_transformer_flags]
 
-    super(TransformerBaseEstimatorBenchmark, self).__init__(
+    super(TransformerEstimatorBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         flag_methods=flag_methods)
@@ -297,7 +297,7 @@ class TransformerBaseEstimatorBenchmark(EstimatorBenchmark):
     self._report_benchmark(stats, wall_time_sec)
 
 
-class TransformerBaseEstimatorBenchmarkSynth(TransformerBaseEstimatorBenchmark):
+class TransformerBaseEstimatorBenchmarkSynth(TransformerEstimatorBenchmark):
   """Transformer based version synthetic benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
@@ -312,7 +312,7 @@ class TransformerBaseEstimatorBenchmarkSynth(TransformerBaseEstimatorBenchmark):
         output_dir=output_dir, default_flags=def_flags)
 
 
-class TransformerBaseEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
+class TransformerBaseEstimatorBenchmarkReal(TransformerEstimatorBenchmark):
   """Transformer based version real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
@@ -334,7 +334,7 @@ class TransformerBaseEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
         output_dir=output_dir, default_flags=def_flags)
 
 
-class TransformerBigEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
+class TransformerBigEstimatorBenchmarkReal(TransformerEstimatorBenchmark):
   """Transformer based version real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
@@ -353,4 +353,19 @@ class TransformerBigEstimatorBenchmarkReal(TransformerBaseEstimatorBenchmark):
     def_flags['hooks'] = ['ExamplesPerSecondHook']
 
     super(TransformerBigEstimatorBenchmarkReal, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
+
+
+class TransformerBigEstimatorBenchmarkSynth(TransformerEstimatorBenchmark):
+  """Transformer based version synthetic benchmark tests."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    def_flags = {}
+    def_flags['param_set'] = 'big'
+    def_flags['use_synthetic_data'] = True
+    def_flags['train_steps'] = 200
+    def_flags['steps_between_evals'] = 200
+    def_flags['hooks'] = ['ExamplesPerSecondHook']
+
+    super(TransformerBigEstimatorBenchmarkSynth, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
