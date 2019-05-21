@@ -145,8 +145,8 @@ This directory contains files for several different purposes:
 -   `delf_v1.py` contains the code to create DELF models.
 -   `feature_aggregation_extractor.py` contains a module to perform local
     feature aggregation.
--   `feature_aggregation_similarity.py` contains a module to perform local
-    feature similarity computation.
+-   `feature_aggregation_similarity.py` contains a module to perform similarity
+    computation for aggregated local features.
 -   `feature_extractor.py` contains the code to extract features using DELF.
     This is particularly useful for extracting features over multiple scales,
     with keypoint selection based on attention scores, and PCA/whitening
