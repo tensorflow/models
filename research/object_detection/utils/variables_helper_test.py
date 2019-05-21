@@ -144,6 +144,24 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
           variables, checkpoint_path)
     self.assertItemsEqual(out_variables, variables)
 
+  def test_return_all_variables_from_checkpoint_with_partition(self):
+    with tf.Graph().as_default():
+      partitioner = tf.fixed_size_partitioner(2)
+      variables = [
+          tf.get_variable(
+              name='weights', shape=(2, 2), partitioner=partitioner),
+          tf.Variable([1.0, 2.0], name='biases')
+      ]
+      checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
+      init_op = tf.global_variables_initializer()
+      saver = tf.train.Saver(variables)
+      with self.test_session() as sess:
+        sess.run(init_op)
+        saver.save(sess, checkpoint_path)
+      out_variables = variables_helper.get_variables_available_in_checkpoint(
+          variables, checkpoint_path)
+    self.assertItemsEqual(out_variables, variables)
+
   def test_return_variables_available_in_checkpoint(self):
     checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
     with tf.Graph().as_default():

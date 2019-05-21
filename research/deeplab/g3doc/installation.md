@@ -26,19 +26,26 @@ The remaining libraries can be installed on Ubuntu 14.04 using via apt-get:
 
 ```bash
 sudo apt-get install python-pil python-numpy
-sudo pip install jupyter
-sudo pip install matplotlib
+pip install --user jupyter
+pip install --user matplotlib
+pip install --user PrettyTable
 ```
 
 ## Add Libraries to PYTHONPATH
 
-When running locally, the tensorflow/models/research/ and slim directories
-should be appended to PYTHONPATH. This can be done by running the following from
+When running locally, the tensorflow/models/research/ directory should be
+appended to PYTHONPATH. This can be done by running the following from
 tensorflow/models/research/:
 
 ```bash
 # From tensorflow/models/research/
 export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
+
+# [Optional] for panoptic evaluation, you might need panopticapi:
+# https://github.com/cocodataset/panopticapi
+# Please clone it to a local directory ${PANOPTICAPI_DIR}
+touch ${PANOPTICAPI_DIR}/panopticapi/__init__.py
+export PYTHONPATH=$PYTHONPATH:${PANOPTICAPI_DIR}/panopticapi
 ```
 
 Note: This command needs to run from every new terminal you start. If you wish

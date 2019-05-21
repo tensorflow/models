@@ -39,7 +39,7 @@ class LoggingMetricHookTest(tf.test.TestCase):
 
   def tearDown(self):
     super(LoggingMetricHookTest, self).tearDown()
-    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    tf.io.gfile.rmtree(self.get_temp_dir())
 
   def test_illegal_args(self):
     with self.assertRaisesRegexp(ValueError, "nvalid every_n_iter"):
@@ -55,15 +55,15 @@ class LoggingMetricHookTest(tf.test.TestCase):
       metric_hook.LoggingMetricHook(tensors=["t"], every_n_iter=5)
 
   def test_print_at_end_only(self):
-    with tf.Graph().as_default(), tf.Session() as sess:
-      tf.train.get_or_create_global_step()
+    with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
+      tf.compat.v1.train.get_or_create_global_step()
       t = tf.constant(42.0, name="foo")
       train_op = tf.constant(3)
       hook = metric_hook.LoggingMetricHook(
           tensors=[t.name], at_end=True, metric_logger=self._logger)
       hook.begin()
       mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
 
       for _ in range(3):
         mon_sess.run(train_op)
@@ -88,8 +88,8 @@ class LoggingMetricHookTest(tf.test.TestCase):
         hook.begin()
 
   def test_log_tensors(self):
-    with tf.Graph().as_default(), tf.Session() as sess:
-      tf.train.get_or_create_global_step()
+    with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
+      tf.compat.v1.train.get_or_create_global_step()
       t1 = tf.constant(42.0, name="foo")
       t2 = tf.constant(43.0, name="bar")
       train_op = tf.constant(3)
@@ -97,7 +97,7 @@ class LoggingMetricHookTest(tf.test.TestCase):
           tensors=[t1, t2], at_end=True, metric_logger=self._logger)
       hook.begin()
       mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
 
       for _ in range(3):
         mon_sess.run(train_op)
@@ -126,7 +126,7 @@ class LoggingMetricHookTest(tf.test.TestCase):
         metric_logger=self._logger)
     hook.begin()
     mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
-    sess.run(tf.global_variables_initializer())
+    sess.run(tf.compat.v1.global_variables_initializer())
     mon_sess.run(train_op)
     self.assertRegexpMatches(str(self._logger.logged_metric), t.name)
     for _ in range(3):
@@ -153,15 +153,15 @@ class LoggingMetricHookTest(tf.test.TestCase):
       self.assertEqual(str(self._logger.logged_metric).find(t.name), -1)
 
   def test_print_every_n_steps(self):
-    with tf.Graph().as_default(), tf.Session() as sess:
-      tf.train.get_or_create_global_step()
+    with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
+      tf.compat.v1.train.get_or_create_global_step()
       self._validate_print_every_n_steps(sess, at_end=False)
       # Verify proper reset.
       self._validate_print_every_n_steps(sess, at_end=False)
 
   def test_print_every_n_steps_and_end(self):
-    with tf.Graph().as_default(), tf.Session() as sess:
-      tf.train.get_or_create_global_step()
+    with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
+      tf.compat.v1.train.get_or_create_global_step()
       self._validate_print_every_n_steps(sess, at_end=True)
       # Verify proper reset.
       self._validate_print_every_n_steps(sess, at_end=True)
@@ -175,7 +175,7 @@ class LoggingMetricHookTest(tf.test.TestCase):
         metric_logger=self._logger)
     hook.begin()
     mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
-    sess.run(tf.global_variables_initializer())
+    sess.run(tf.compat.v1.global_variables_initializer())
 
     mon_sess.run(train_op)
     self.assertRegexpMatches(str(self._logger.logged_metric), t.name)
@@ -199,15 +199,15 @@ class LoggingMetricHookTest(tf.test.TestCase):
       self.assertEqual(str(self._logger.logged_metric).find(t.name), -1)
 
   def test_print_every_n_secs(self):
-    with tf.Graph().as_default(), tf.Session() as sess:
-      tf.train.get_or_create_global_step()
+    with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
+      tf.compat.v1.train.get_or_create_global_step()
       self._validate_print_every_n_secs(sess, at_end=False)
       # Verify proper reset.
       self._validate_print_every_n_secs(sess, at_end=False)
 
   def test_print_every_n_secs_and_end(self):
-    with tf.Graph().as_default(), tf.Session() as sess:
-      tf.train.get_or_create_global_step()
+    with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
+      tf.compat.v1.train.get_or_create_global_step()
       self._validate_print_every_n_secs(sess, at_end=True)
       # Verify proper reset.
       self._validate_print_every_n_secs(sess, at_end=True)

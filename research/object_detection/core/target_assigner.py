@@ -166,6 +166,10 @@ class TargetAssigner(object):
         num_gt_boxes = groundtruth_boxes.num_boxes()
       groundtruth_weights = tf.ones([num_gt_boxes], dtype=tf.float32)
 
+    # set scores on the gt boxes
+    scores = 1 - groundtruth_labels[:, 0]
+    groundtruth_boxes.add_field(fields.BoxListFields.scores, scores)
+
     with tf.control_dependencies(
         [unmatched_shape_assert, labels_and_box_shapes_assert]):
       match_quality_matrix = self._similarity_calc.compare(groundtruth_boxes,

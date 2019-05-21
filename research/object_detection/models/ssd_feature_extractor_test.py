@@ -29,7 +29,7 @@ from object_detection.utils import test_case
 
 class SsdFeatureExtractorTestBase(test_case.TestCase):
 
-  def _build_conv_hyperparams(self):
+  def _build_conv_hyperparams(self, add_batch_norm=True):
     conv_hyperparams = hyperparams_pb2.Hyperparams()
     conv_hyperparams_text_proto = """
       activation: RELU_6
@@ -41,10 +41,14 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
         truncated_normal_initializer {
         }
       }
-      batch_norm {
-        scale: false
-      }
     """
+    if add_batch_norm:
+      batch_norm_proto = """
+        batch_norm {
+          scale: false
+        }
+      """
+      conv_hyperparams_text_proto += batch_norm_proto
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams)
     return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
 

@@ -134,7 +134,6 @@ def cyclegan_generator_resnet(images,
                               num_filters=64,
                               upsample_fn=cyclegan_upsample,
                               kernel_size=3,
-                              num_outputs=3,
                               tanh_linear_slope=0.0,
                               is_training=False):
   """Defines the cyclegan resnet network architecture.
@@ -156,7 +155,6 @@ def cyclegan_generator_resnet(images,
     upsample_fn: Upsampling function for the decoder part of the generator.
     kernel_size: Size w or list/tuple [h, w] of the filter kernels for all inner
       layers.
-    num_outputs: Number of output layers. Defaults to 3 for RGB.
     tanh_linear_slope: Slope of the linear function to add to the tanh over the
       logits.
     is_training: Whether the network is created in training mode or inference
@@ -182,6 +180,7 @@ def cyclegan_generator_resnet(images,
     raise ValueError('The input height must be a multiple of 4.')
   if width and width % 4 != 0:
     raise ValueError('The input width must be a multiple of 4.')
+  num_outputs = input_size[3]
 
   if not isinstance(kernel_size, (list, tuple)):
     kernel_size = [kernel_size, kernel_size]

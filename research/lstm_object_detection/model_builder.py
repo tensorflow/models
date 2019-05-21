@@ -14,8 +14,9 @@
 # ==============================================================================
 
 """A function to build a DetectionModel from configuration."""
-from lstm_object_detection.lstm import lstm_meta_arch
-from lstm_object_detection.models.lstm_ssd_mobilenet_v1_feature_extractor import LSTMMobileNetV1FeatureExtractor
+from lstm_object_detection.meta_architectures import lstm_ssd_meta_arch
+from lstm_object_detection.models import lstm_ssd_interleaved_mobilenet_v2_feature_extractor
+from lstm_object_detection.models import lstm_ssd_mobilenet_v1_feature_extractor
 from object_detection.builders import anchor_generator_builder
 from object_detection.builders import box_coder_builder
 from object_detection.builders import box_predictor_builder
@@ -29,7 +30,12 @@ from object_detection.builders import region_similarity_calculator_builder as si
 from object_detection.core import target_assigner
 
 model_builder.SSD_FEATURE_EXTRACTOR_CLASS_MAP.update({
-    'lstm_mobilenet_v1': LSTMMobileNetV1FeatureExtractor,
+    'lstm_ssd_mobilenet_v1':
+        lstm_ssd_mobilenet_v1_feature_extractor
+        .LSTMSSDMobileNetV1FeatureExtractor,
+    'lstm_ssd_interleaved_mobilenet_v2':
+        lstm_ssd_interleaved_mobilenet_v2_feature_extractor
+        .LSTMSSDInterleavedMobilenetV2FeatureExtractor,
 })
 SSD_FEATURE_EXTRACTOR_CLASS_MAP = model_builder.SSD_FEATURE_EXTRACTOR_CLASS_MAP
 
@@ -54,14 +60,14 @@ def build(model_config, lstm_config, is_training):
 
 def _build_lstm_feature_extractor(feature_extractor_config,
                                   is_training,
-                                  lstm_state_depth,
+                                  lstm_config,
                                   reuse_weights=None):
   """Builds a ssd_meta_arch.SSDFeatureExtractor based on config.
 
   Args:
     feature_extractor_config: A SSDFeatureExtractor proto config from ssd.proto.
     is_training: True if this feature extractor is being built for training.
-    lstm_state_depth: An integer of the depth of the lstm state.
+    lstm_config: LSTM-SSD specific configs.
     reuse_weights: If the feature extractor should reuse weights.
 
   Returns:
@@ -86,10 +92,27 @@ def _build_lstm_feature_extractor(feature_extractor_config,
     raise ValueError('Unknown ssd feature_extractor: {}'.format(feature_type))
 
   feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
-  return feature_extractor_class(
+  feature_extractor = feature_extractor_class(
       is_training, depth_multiplier, min_depth, pad_to_multiple,
       conv_hyperparams, reuse_weights, use_explicit_padding, use_depthwise,
-      override_base_feature_extractor_hyperparams, lstm_state_depth)
+      override_base_feature_extractor_hyperparams)
+
+  # Extra configs for LSTM-SSD.
+  feature_extractor.lstm_state_depth = lstm_config.lstm_state_depth
+  feature_extractor.flatten_state = lstm_config.flatten_state
+  feature_extractor.clip_state = lstm_config.clip_state
+  feature_extractor.scale_state = lstm_config.scale_state
+  feature_extractor.is_quantized = lstm_config.is_quantized
+  feature_extractor.low_res = lstm_config.low_res
+  # Extra configs for interleaved LSTM-SSD.
+  if 'interleaved' in feature_extractor_config.type:
+    feature_extractor.pre_bottleneck = lstm_config.pre_bottleneck
+    feature_extractor.depth_multipliers = lstm_config.depth_multipliers
+    if is_training:
+      feature_extractor.interleave_method = lstm_config.train_interleave_method
+    else:
+      feature_extractor.interleave_method = lstm_config.eval_interleave_method
+  return feature_extractor
 
 
 def _build_lstm_model(ssd_config, lstm_config, is_training):
@@ -97,19 +120,19 @@ def _build_lstm_model(ssd_config, lstm_config, is_training):
 
   Args:
     ssd_config: A ssd.proto object containing the config for the desired
-      LSTMMetaArch.
+      LSTMSSDMetaArch.
     lstm_config: LstmModel config proto that specifies LSTM train/eval configs.
     is_training: True if this model is being built for training purposes.
 
   Returns:
-    LSTMMetaArch based on the config.
+    LSTMSSDMetaArch based on the config.
   Raises:
     ValueError: If ssd_config.type is not recognized (i.e. not registered in
       model_class_map), or if lstm_config.interleave_strategy is not recognized.
     ValueError: If unroll_length is not specified in the config file.
   """
   feature_extractor = _build_lstm_feature_extractor(
-      ssd_config.feature_extractor, is_training, lstm_config.lstm_state_depth)
+      ssd_config.feature_extractor, is_training, lstm_config)
 
   box_coder = box_coder_builder.build(ssd_config.box_coder)
   matcher = matcher_builder.build(ssd_config.matcher)
@@ -147,7 +170,7 @@ def _build_lstm_model(ssd_config, lstm_config, is_training):
       box_coder,
       negative_class_weight=negative_class_weight)
 
-  lstm_model = lstm_meta_arch.LSTMMetaArch(
+  lstm_model = lstm_ssd_meta_arch.LSTMSSDMetaArch(
       is_training=is_training,
       anchor_generator=anchor_generator,
       box_predictor=ssd_box_predictor,

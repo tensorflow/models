@@ -1,0 +1,68 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Message wrapper for various calibration configurations
+message CalibrationConfig {
+  oneof calibrator {
+    // Class-agnostic calibration via linear interpolation (usually output from
+    // isotonic regression)
+    FunctionApproximation function_approximation = 1;
+
+    // Per-class calibration via linear interpolation
+    LabelFunctionApproximations label_function_approximations = 2;
+
+    // Class-agnostic sigmoid calibration
+    SigmoidCalibration sigmoid_calibration = 3;
+
+    // Per-class sigmoid calibration
+    LabelSigmoidCalibrations label_sigmoid_calibrations = 4;
+  }
+}
+
+// Message for class-agnostic domain/range mapping for function
+// approximations
+message FunctionApproximation {
+  // Message mapping class labels to indices
+  optional XYPairs x_y_pairs = 1;
+}
+
+// Message for class-specific domain/range mapping for function
+// approximations
+message LabelFunctionApproximations {
+  // Message mapping class labels to indices
+  map<string, XYPairs> label_xy_pairs_map = 1;
+  // Label map to map label names from to class ids.
+  optional string label_map_path = 2;
+}
+
+// Message for class-agnostic Sigmoid Calibration
+message SigmoidCalibration {
+  // Message mapping class index to Sigmoid Parameters
+  optional SigmoidParameters sigmoid_parameters = 1;
+}
+
+// Message for class-specific Sigmoid Calibration
+message LabelSigmoidCalibrations {
+  // Message mapping class index to Sigmoid Parameters
+  map<string, SigmoidParameters> label_sigmoid_parameters_map = 1;
+  // Label map to map label names from to class ids.
+  optional string label_map_path = 2;
+}
+
+// Message to store a domain/range pair for function to be approximated
+message XYPairs {
+  message XYPair {
+    optional float x = 1;
+    optional float y = 2;
+  }
+
+  // Sequence of x/y pairs for function approximation
+  repeated XYPair x_y_pair = 1;
+}
+
+// Message defining parameters for sigmoid calibration.
+message SigmoidParameters {
+  optional float a = 1 [default = -1.0];
+  optional float b = 2 [default = 0.0];
+}

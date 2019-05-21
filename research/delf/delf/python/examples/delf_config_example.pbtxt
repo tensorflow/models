@@ -1,4 +1,4 @@
-model_path: "parameters/delf_v1_20171026/model/"
+model_path: "parameters/delf_gld_20190411/model/"
 image_scales: .25
 image_scales: .3536
 image_scales: .5
@@ -17,8 +17,8 @@ delf_local_config {
   max_feature_num: 1000
   score_threshold: 100.0
   pca_parameters {
-    mean_path: "parameters/delf_v1_20171026/pca/mean.datum"
-    projection_matrix_path: "parameters/delf_v1_20171026/pca/pca_proj_mat.datum"
+    mean_path: "parameters/delf_gld_20190411/pca/mean.datum"
+    projection_matrix_path: "parameters/delf_gld_20190411/pca/pca_proj_mat.datum"
     pca_dim: 40
     use_whitening: false
   }

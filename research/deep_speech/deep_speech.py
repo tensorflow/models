@@ -257,16 +257,16 @@ def run_deep_speech(_):
       model_dir=flags_obj.model_dir,
       batch_size=flags_obj.batch_size)
 
-  per_device_batch_size = distribution_utils.per_device_batch_size(
+  per_replica_batch_size = distribution_utils.per_replica_batch_size(
       flags_obj.batch_size, num_gpus)
 
   def input_fn_train():
     return dataset.input_fn(
-        per_device_batch_size, train_speech_dataset)
+        per_replica_batch_size, train_speech_dataset)
 
   def input_fn_eval():
     return dataset.input_fn(
-        per_device_batch_size, eval_speech_dataset)
+        per_replica_batch_size, eval_speech_dataset)
 
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)

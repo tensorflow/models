@@ -17,6 +17,7 @@
 import functools
 import tensorflow as tf
 
+from deeplab.core import nas_network
 from deeplab.core import resnet_v1_beta
 from deeplab.core import xception
 from tensorflow.contrib.slim.nets import resnet_utils
@@ -32,6 +33,7 @@ _MOBILENET_V2_FINAL_ENDPOINT = 'layer_18'
 def _mobilenet_v2(net,
                   depth_multiplier,
                   output_stride,
+                  divisible_by=None,
                   reuse=None,
                   scope=None,
                   final_endpoint=None):
@@ -48,6 +50,8 @@ def _mobilenet_v2(net,
       if necessary to prevent the network from reducing the spatial resolution
       of the activation maps. Allowed values are 8 (accurate fully convolutional
       mode), 16 (fast fully convolutional mode), 32 (classification mode).
+    divisible_by: None (use default setting) or an integer that ensures all
+      layers # channels will be divisible by this number. Used in MobileNet.
     reuse: Reuse model variables.
     scope: Optional variable scope.
     final_endpoint: The endpoint to construct the network up to.
@@ -55,6 +59,8 @@ def _mobilenet_v2(net,
   Returns:
     Features extracted by MobileNetv2.
   """
+  if divisible_by is None:
+    divisible_by = 8 if depth_multiplier == 1.0 else 1
   with tf.variable_scope(
       scope, 'MobilenetV2', [net], reuse=reuse) as scope:
     return mobilenet_v2.mobilenet_base(
@@ -62,7 +68,7 @@ def _mobilenet_v2(net,
         conv_defs=mobilenet_v2.V2_DEF,
         depth_multiplier=depth_multiplier,
         min_depth=8 if depth_multiplier == 1.0 else 1,
-        divisible_by=8 if depth_multiplier == 1.0 else 1,
+        divisible_by=divisible_by,
         final_endpoint=final_endpoint or _MOBILENET_V2_FINAL_ENDPOINT,
         output_stride=output_stride,
         scope=scope)
@@ -78,6 +84,8 @@ networks_map = {
     'xception_41': xception.xception_41,
     'xception_65': xception.xception_65,
     'xception_71': xception.xception_71,
+    'nas_pnasnet': nas_network.pnasnet,
+    'nas_hnasnet': nas_network.hnasnet,
 }
 
 # A map from network name to network arg scope.
@@ -90,6 +98,8 @@ arg_scopes_map = {
     'xception_41': xception.xception_arg_scope,
     'xception_65': xception.xception_arg_scope,
     'xception_71': xception.xception_arg_scope,
+    'nas_pnasnet': nas_network.nas_arg_scope,
+    'nas_hnasnet': nas_network.nas_arg_scope,
 }
 
 # Names for end point features.
@@ -98,37 +108,57 @@ DECODER_END_POINTS = 'decoder_end_points'
 # A dictionary from network name to a map of end point features.
 networks_to_feature_maps = {
     'mobilenet_v2': {
-        DECODER_END_POINTS: ['layer_4/depthwise_output'],
+        DECODER_END_POINTS: {
+            4: ['layer_4/depthwise_output'],
+        },
     },
     'resnet_v1_50': {
-        DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
+        DECODER_END_POINTS: {
+            4: ['block1/unit_2/bottleneck_v1/conv3'],
+        },
     },
     'resnet_v1_50_beta': {
-        DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
+        DECODER_END_POINTS: {
+            4: ['block1/unit_2/bottleneck_v1/conv3'],
+        },
     },
     'resnet_v1_101': {
-        DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
+        DECODER_END_POINTS: {
+            4: ['block1/unit_2/bottleneck_v1/conv3'],
+        },
     },
     'resnet_v1_101_beta': {
-        DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
+        DECODER_END_POINTS: {
+            4: ['block1/unit_2/bottleneck_v1/conv3'],
+        },
     },
     'xception_41': {
-        DECODER_END_POINTS: [
-            'entry_flow/block2/unit_1/xception_module/'
-            'separable_conv2_pointwise',
-        ],
+        DECODER_END_POINTS: {
+            4: ['entry_flow/block2/unit_1/xception_module/'
+                'separable_conv2_pointwise'],
+        },
     },
     'xception_65': {
-        DECODER_END_POINTS: [
-            'entry_flow/block2/unit_1/xception_module/'
-            'separable_conv2_pointwise',
-        ],
+        DECODER_END_POINTS: {
+            4: ['entry_flow/block2/unit_1/xception_module/'
+                'separable_conv2_pointwise'],
+        },
     },
     'xception_71': {
-        DECODER_END_POINTS: [
-            'entry_flow/block3/unit_1/xception_module/'
-            'separable_conv2_pointwise',
-        ],
+        DECODER_END_POINTS: {
+            4: ['entry_flow/block3/unit_1/xception_module/'
+                'separable_conv2_pointwise'],
+        },
+    },
+    'nas_pnasnet': {
+        DECODER_END_POINTS: {
+            4: ['Stem'],
+        },
+    },
+    'nas_hnasnet': {
+        DECODER_END_POINTS: {
+            4: ['Cell_2'],
+        },
     },
 }
 
@@ -143,21 +173,28 @@ name_scope = {
     'xception_41': 'xception_41',
     'xception_65': 'xception_65',
     'xception_71': 'xception_71',
+    'nas_pnasnet': 'pnasnet',
+    'nas_hnasnet': 'hnasnet',
 }
 
 # Mean pixel value.
 _MEAN_RGB = [123.15, 115.90, 103.06]
 
 
-def _preprocess_subtract_imagenet_mean(inputs):
+def _preprocess_subtract_imagenet_mean(inputs, dtype=tf.float32):
   """Subtract Imagenet mean RGB value."""
   mean_rgb = tf.reshape(_MEAN_RGB, [1, 1, 1, 3])
-  return inputs - mean_rgb
+  num_channels = tf.shape(inputs)[-1]
+  # We set mean pixel as 0 for the non-RGB channels.
+  mean_rgb_extended = tf.concat(
+      [mean_rgb, tf.zeros([1, 1, 1, num_channels - 3])], axis=3)
+  return tf.cast(inputs - mean_rgb_extended, dtype=dtype)
 
 
-def _preprocess_zero_mean_unit_range(inputs):
+def _preprocess_zero_mean_unit_range(inputs, dtype=tf.float32):
   """Map image values from [0, 255] to [-1, 1]."""
-  return (2.0 / 255.0) * tf.to_float(inputs) - 1.0
+  preprocessed_inputs = (2.0 / 255.0) * tf.to_float(inputs) - 1.0
+  return tf.cast(preprocessed_inputs, dtype=dtype)
 
 
 _PREPROCESS_FN = {
@@ -169,6 +206,8 @@ _PREPROCESS_FN = {
     'xception_41': _preprocess_zero_mean_unit_range,
     'xception_65': _preprocess_zero_mean_unit_range,
     'xception_71': _preprocess_zero_mean_unit_range,
+    'nas_pnasnet': _preprocess_zero_mean_unit_range,
+    'nas_hnasnet': _preprocess_zero_mean_unit_range,
 }
 
 
@@ -201,6 +240,7 @@ def extract_features(images,
                      output_stride=8,
                      multi_grid=None,
                      depth_multiplier=1.0,
+                     divisible_by=None,
                      final_endpoint=None,
                      model_variant=None,
                      weight_decay=0.0001,
@@ -209,8 +249,12 @@ def extract_features(images,
                      fine_tune_batch_norm=False,
                      regularize_depthwise=False,
                      preprocess_images=True,
+                     preprocessed_images_dtype=tf.float32,
                      num_classes=None,
-                     global_pool=False):
+                     global_pool=False,
+                     nas_stem_output_num_conv_filters=20,
+                     nas_training_hyper_parameters=None,
+                     use_bounded_activation=False):
   """Extracts features by the particular model_variant.
 
   Args:
@@ -219,6 +263,8 @@ def extract_features(images,
     multi_grid: Employ a hierarchy of different atrous rates within network.
     depth_multiplier: Float multiplier for the depth (number of channels)
       for all convolution ops used in MobileNet.
+    divisible_by: None (use default setting) or an integer that ensures all
+      layers # channels will be divisible by this number. Used in MobileNet.
     final_endpoint: The MobileNet endpoint to construct the network up to.
     model_variant: Model variant for feature extraction.
     weight_decay: The weight decay for model variables.
@@ -231,10 +277,22 @@ def extract_features(images,
       True. Set to False if preprocessing will be done by other functions. We
       supprot two types of preprocessing: (1) Mean pixel substraction and (2)
       Pixel values normalization to be [-1, 1].
+    preprocessed_images_dtype: The type after the preprocessing function.
     num_classes: Number of classes for image classification task. Defaults
       to None for dense prediction tasks.
     global_pool: Global pooling for image classification task. Defaults to
       False, since dense prediction tasks do not use this.
+    nas_stem_output_num_conv_filters: Number of filters of the NAS stem output
+      tensor.
+    nas_training_hyper_parameters: A dictionary storing hyper-parameters for
+      training nas models. It is either None or its keys are:
+      - `drop_path_keep_prob`: Probability to keep each path in the cell when
+        training.
+      - `total_training_steps`: Total training steps to help drop path
+        probability calculation.
+    use_bounded_activation: Whether or not to use bounded activations. Bounded
+      activations better lend themselves to quantized inference. Currently,
+      bounded activation is only used in xception model.
 
   Returns:
     features: A tensor of size [batch, feature_height, feature_width,
@@ -253,7 +311,7 @@ def extract_features(images,
         batch_norm_epsilon=1e-5,
         batch_norm_scale=True)
     features, end_points = get_network(
-        model_variant, preprocess_images, arg_scope)(
+        model_variant, preprocess_images, preprocessed_images_dtype, arg_scope)(
             inputs=images,
             num_classes=num_classes,
             is_training=(is_training and fine_tune_batch_norm),
@@ -268,9 +326,10 @@ def extract_features(images,
         batch_norm_decay=0.9997,
         batch_norm_epsilon=1e-3,
         batch_norm_scale=True,
-        regularize_depthwise=regularize_depthwise)
+        regularize_depthwise=regularize_depthwise,
+        use_bounded_activation=use_bounded_activation)
     features, end_points = get_network(
-        model_variant, preprocess_images, arg_scope)(
+        model_variant, preprocess_images, preprocessed_images_dtype, arg_scope)(
             inputs=images,
             num_classes=num_classes,
             is_training=(is_training and fine_tune_batch_norm),
@@ -285,25 +344,44 @@ def extract_features(images,
         is_training=(is_training and fine_tune_batch_norm),
         weight_decay=weight_decay)
     features, end_points = get_network(
-        model_variant, preprocess_images, arg_scope)(
+        model_variant, preprocess_images, preprocessed_images_dtype, arg_scope)(
             inputs=images,
             depth_multiplier=depth_multiplier,
+            divisible_by=divisible_by,
             output_stride=output_stride,
             reuse=reuse,
             scope=name_scope[model_variant],
             final_endpoint=final_endpoint)
+  elif model_variant.startswith('nas'):
+    arg_scope = arg_scopes_map[model_variant](
+        weight_decay=weight_decay,
+        batch_norm_decay=0.9997,
+        batch_norm_epsilon=1e-3)
+    features, end_points = get_network(
+        model_variant, preprocess_images, preprocessed_images_dtype, arg_scope)(
+            inputs=images,
+            num_classes=num_classes,
+            is_training=(is_training and fine_tune_batch_norm),
+            global_pool=global_pool,
+            output_stride=output_stride,
+            nas_stem_output_num_conv_filters=nas_stem_output_num_conv_filters,
+            nas_training_hyper_parameters=nas_training_hyper_parameters,
+            reuse=reuse,
+            scope=name_scope[model_variant])
   else:
     raise ValueError('Unknown model variant %s.' % model_variant)
 
   return features, end_points
 
 
-def get_network(network_name, preprocess_images, arg_scope=None):
+def get_network(network_name, preprocess_images,
+                preprocessed_images_dtype=tf.float32, arg_scope=None):
   """Gets the network.
 
   Args:
     network_name: Network name.
     preprocess_images: Preprocesses the images or not.
+    preprocessed_images_dtype: The type after the preprocessing function.
     arg_scope: Optional, arg_scope to build the network. If not provided the
       default arg_scope of the network would be used.
 
@@ -316,8 +394,8 @@ def get_network(network_name, preprocess_images, arg_scope=None):
   if network_name not in networks_map:
     raise ValueError('Unsupported network %s.' % network_name)
   arg_scope = arg_scope or arg_scopes_map[network_name]()
-  def _identity_function(inputs):
-    return inputs
+  def _identity_function(inputs, dtype=preprocessed_images_dtype):
+    return tf.cast(inputs, dtype=dtype)
   if preprocess_images:
     preprocess_function = _PREPROCESS_FN[network_name]
   else:
@@ -326,5 +404,6 @@ def get_network(network_name, preprocess_images, arg_scope=None):
   @functools.wraps(func)
   def network_fn(inputs, *args, **kwargs):
     with slim.arg_scope(arg_scope):
-      return func(preprocess_function(inputs), *args, **kwargs)
+      return func(preprocess_function(inputs, preprocessed_images_dtype),
+                  *args, **kwargs)
   return network_fn

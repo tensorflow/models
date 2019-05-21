@@ -64,6 +64,21 @@ works:
 
 ```
 
+*  Auto-DeepLab (also called hnasnet in core/nas_network.py):
+
+```
+@inproceedings{autodeeplab2019,
+  title={Auto-DeepLab: Hierarchical Neural Architecture Search for Semantic
+Image Segmentation},
+  author={Chenxi Liu and Liang-Chieh Chen and Florian Schroff and Hartwig Adam
+  and Wei Hua and Alan Yuille and Li Fei-Fei},
+  booktitle={CVPR},
+  year={2019}
+}
+
+```
+
+
 In the current implementation, we support adopting the following network
 backbones:
 
@@ -71,6 +86,15 @@ backbones:
 
 2.  Xception [9, 10]: A powerful network structure intended for server-side
     deployment.
+
+3.  ResNet-v1-{50,101} [14]: We provide both the original ResNet-v1 and its
+    'beta' variant where the 'stem' is modified for semantic segmentation.
+
+4.  PNASNet [15]: A Powerful network structure found by neural architecture
+    search.
+
+5.  Auto-DeepLab (called HNASNet in the code): A segmentation-specific network
+    backbone found by neural architecture search.
 
 This directory contains our TensorFlow [11] implementation. We provide codes
 allowing users to train the model, evaluate results in terms of mIOU (mean
@@ -91,6 +115,8 @@ Some segmentation results on Flickr images:
 *   YuKun Zhu, github: [yknzhu](https://github.com/YknZhu)
 *   George Papandreou, github: [gpapan](https://github.com/gpapan)
 *   Hui Hui, github: [huihui-personal](https://github.com/huihui-personal)
+*   Maxwell D. Collins, github: [mcollinswisc](https://github.com/mcollinswisc)
+*   Ting Liu: github: [tingliu](https://github.com/tingliu)
 
 ## Tables of Contents
 
@@ -124,40 +150,70 @@ tensorflow/models GitHub [issue
 tracker](https://github.com/tensorflow/models/issues), prefixing the issue name
 with "deeplab".
 
+## License
+
+All the codes in deeplab folder is covered by the [LICENSE](https://github.com/tensorflow/models/blob/master/LICENSE)
+under tensorflow/models. Please refer to the LICENSE for details.
+
 ## Change Logs
+
+### March 6, 2019
+
+* Released the evaluation code (under the `evaluation` folder) for image
+parsing, a.k.a. panoptic segmentation. In particular, the released code supports
+evaluating the parsing results in terms of both the parsing covering and
+panoptic quality metrics. **Contributors**: Maxwell Collins and Ting Liu.
+
+
+### February 6, 2019
+
+* Updated decoder module to exploit multiple low-level features with different
+output_strides.
+
+### December 3, 2018
+
+* Released the MobileNet-v2 checkpoint on ADE20K.
+
+
+### November 19, 2018
+
+* Supported NAS architecture for feature extraction. **Contributor**: Chenxi Liu.
+
+* Supported hard pixel mining during training.
+
 
 ### October 1, 2018
 
-Released MobileNet-v2 depth-multiplier = 0.5 COCO-pretrained checkpoints on
+* Released MobileNet-v2 depth-multiplier = 0.5 COCO-pretrained checkpoints on
 PASCAL VOC 2012, and Xception-65 COCO pretrained checkpoint (i.e., no PASCAL
 pretrained).
 
 
 ### September 5, 2018
 
-Released Cityscapes pretrained checkpoints with found best dense prediction cell.
+* Released Cityscapes pretrained checkpoints with found best dense prediction cell.
 
 
 ### May 26, 2018
 
-Updated ADE20K pretrained checkpoint.
+* Updated ADE20K pretrained checkpoint.
 
 
 ### May 18, 2018
-1.  Added builders for ResNet-v1 and Xception model variants.
-1.  Added ADE20K support, including colormap and pretrained Xception_65 checkpoint.
-1.  Fixed a bug on using non-default depth_multiplier for MobileNet-v2.
+* Added builders for ResNet-v1 and Xception model variants.
+* Added ADE20K support, including colormap and pretrained Xception_65 checkpoint.
+* Fixed a bug on using non-default depth_multiplier for MobileNet-v2.
 
 
 ### March 22, 2018
 
-Released checkpoints using MobileNet-V2 as network backbone and pretrained on
+* Released checkpoints using MobileNet-V2 as network backbone and pretrained on
 PASCAL VOC 2012 and Cityscapes.
 
 
 ### March 5, 2018
 
-First release of DeepLab in TensorFlow including deeper Xception network
+* First release of DeepLab in TensorFlow including deeper Xception network
 backbone. Included chekcpoints that have been pretrained on PASCAL VOC 2012
 and Cityscapes.
 
@@ -219,3 +275,11 @@ and Cityscapes.
 13. **The Cityscapes Dataset for Semantic Urban Scene Understanding**<br />
     Cordts, Marius, Mohamed Omran, Sebastian Ramos, Timo Rehfeld, Markus Enzweiler, Rodrigo Benenson, Uwe Franke, Stefan Roth, Bernt Schiele. <br />
     [[link]](https://www.cityscapes-dataset.com/). In CVPR, 2016.
+
+14. **Deep Residual Learning for Image Recognition**<br />
+    Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun. <br />
+    [[link]](https://arxiv.org/abs/1512.03385). In CVPR, 2016.
+
+15. **Progressive Neural Architecture Search**<br />
+    Chenxi Liu, Barret Zoph, Maxim Neumann, Jonathon Shlens, Wei Hua, Li-Jia Li, Li Fei-Fei, Alan Yuille, Jonathan Huang, Kevin Murphy. <br />
+    [[link]](https://arxiv.org/abs/1712.00559). In ECCV, 2018.

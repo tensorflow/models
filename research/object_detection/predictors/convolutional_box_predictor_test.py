@@ -14,6 +14,8 @@
 # ==============================================================================
 
 """Tests for object_detection.predictors.convolutional_box_predictor."""
+
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -21,6 +23,9 @@ from google.protobuf import text_format
 from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
 from object_detection.predictors import convolutional_box_predictor as box_predictor
+from object_detection.predictors.heads import box_head
+from object_detection.predictors.heads import class_head
+from object_detection.predictors.heads import mask_head
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import test_case
 
@@ -851,6 +856,67 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
       self.assertAllEqual(box_encodings_shape, [4, expected_num_anchors, 4])
       self.assertAllEqual(objectness_predictions_shape,
                           [4, expected_num_anchors, 1])
+
+  def test_other_heads_predictions(self):
+    box_code_size = 4
+    num_classes_without_background = 3
+    other_head_name = 'Mask'
+    mask_height = 5
+    mask_width = 5
+    num_predictions_per_location = 5
+
+    def graph_fn(image_features):
+      box_prediction_head = box_head.WeightSharedConvolutionalBoxHead(
+          box_code_size)
+      class_prediction_head = class_head.WeightSharedConvolutionalClassHead(
+          num_classes_without_background + 1)
+      other_heads = {
+          other_head_name:
+              mask_head.WeightSharedConvolutionalMaskHead(
+                  num_classes_without_background,
+                  mask_height=mask_height,
+                  mask_width=mask_width)
+      }
+      conv_box_predictor = box_predictor.WeightSharedConvolutionalBoxPredictor(
+          is_training=False,
+          num_classes=num_classes_without_background,
+          box_prediction_head=box_prediction_head,
+          class_prediction_head=class_prediction_head,
+          other_heads=other_heads,
+          conv_hyperparams_fn=self._build_arg_scope_with_conv_hyperparams(),
+          depth=32,
+          num_layers_before_predictor=2)
+      box_predictions = conv_box_predictor.predict(
+          [image_features],
+          num_predictions_per_location=[num_predictions_per_location],
+          scope='BoxPredictor')
+      for key, value in box_predictions.items():
+        box_predictions[key] = tf.concat(value, axis=1)
+      assert len(box_predictions) == 3
+      return (box_predictions[box_predictor.BOX_ENCODINGS],
+              box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+              box_predictions[other_head_name])
+
+    batch_size = 4
+    feature_ht = 8
+    feature_wt = 8
+    image_features = np.random.rand(batch_size, feature_ht, feature_wt,
+                                    64).astype(np.float32)
+    (box_encodings, class_predictions, other_head_predictions) = self.execute(
+        graph_fn, [image_features])
+    num_anchors = feature_ht * feature_wt * num_predictions_per_location
+    self.assertAllEqual(box_encodings.shape,
+                        [batch_size, num_anchors, box_code_size])
+    self.assertAllEqual(
+        class_predictions.shape,
+        [batch_size, num_anchors, num_classes_without_background + 1])
+    self.assertAllEqual(other_head_predictions.shape, [
+        batch_size, num_anchors, num_classes_without_background, mask_height,
+        mask_width
+    ])
+
+
+
 
 if __name__ == '__main__':
   tf.test.main()

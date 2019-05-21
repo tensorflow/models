@@ -75,7 +75,7 @@ are named 'TFLite_Detection_PostProcess', 'TFLite_Detection_PostProcess:1',
 'TFLite_Detection_PostProcess:2', and 'TFLite_Detection_PostProcess:3' and
 represent four arrays: detection_boxes, detection_classes, detection_scores, and
 num_detections. The documentation for other flags used in this command is
-[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/toco/g3doc/cmdline_reference.md).
+[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/g3doc/convert/cmdline_reference.md).
 If things ran successfully, you should now see a third file in the /tmp/tflite
 directory called detect.tflite. This file contains the graph and all model
 parameters and can be run via the TensorFlow Lite interpreter on the Android

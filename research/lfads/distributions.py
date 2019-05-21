@@ -391,7 +391,7 @@ class LearnableAutoRegressive1Prior(GaussianProcess):
 
     Returns:
       The likelihood of p_t under the model at time t. i.e.
-        p(z_t|z_tm1) = N(z_tm1 * phis, eps^2)
+        p(z_t|z_tm1_bxu) = N(z_tm1_bxu * phis, eps^2)
 
     """
     if z_tm1_bxu is None:
@@ -485,7 +485,7 @@ class KLCost_GaussianGaussianProcessSampled(object):
       z_t_bxu = z_t.sample
       logq_bxu += z_t.logp(z_t_bxu)
       logp_bxu += prior_z_process.logp_t(z_t_bxu, z_tm1_bxu)
-      z_tm1 = z_t_bxu
+      z_tm1_bxu = z_t_bxu
 
     kl_bxu = logq_bxu - logp_bxu
     kl_b = tf.reduce_sum(kl_bxu, [1])

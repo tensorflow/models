@@ -34,7 +34,7 @@ import typing
 
 import tensorflow as tf
 
-_MIN_VERSION = (0, 0, 6)
+_MIN_VERSION = (0, 0, 10)
 _STACK_OFFSET = 2
 
 SUDO = "sudo" if os.geteuid() else ""
@@ -94,7 +94,7 @@ def get_mlperf_log():
       version = pkg_resources.get_distribution("mlperf_compliance")
       version = tuple(int(i) for i in version.version.split("."))
       if version < _MIN_VERSION:
-        tf.logging.warning(
+        tf.compat.v1.logging.warning(
             "mlperf_compliance is version {}, must be >= {}".format(
                 ".".join([str(i) for i in version]),
                 ".".join([str(i) for i in _MIN_VERSION])))
@@ -186,61 +186,7 @@ def clear_system_caches():
     raise ValueError("Failed to clear caches")
 
 
-def stitch_ncf():
-  """Format NCF logs for MLPerf compliance."""
-  if not LOGGER.enabled:
-    return
-
-  if LOGGER.log_file is None or not tf.gfile.Exists(LOGGER.log_file):
-    tf.logging.warning("Could not find log file to stitch.")
-    return
-
-  log_lines = []
-  num_eval_users = None
-  start_time = None
-  stop_time = None
-  with tf.gfile.Open(LOGGER.log_file, "r") as f:
-    for line in f:
-      parsed_line = parse_line(line)
-      if not parsed_line:
-        tf.logging.warning("Failed to parse line: {}".format(line))
-        continue
-      log_lines.append(parsed_line)
-
-      if parsed_line.tag == TAGS.RUN_START:
-        assert start_time is None
-        start_time = float(parsed_line.timestamp)
-
-      if parsed_line.tag == TAGS.RUN_STOP:
-        assert stop_time is None
-        stop_time = float(parsed_line.timestamp)
-
-      if (parsed_line.tag == TAGS.EVAL_HP_NUM_USERS and parsed_line.value
-          is not None and "DEFERRED" not in parsed_line.value):
-        assert num_eval_users is None or num_eval_users == parsed_line.value
-        num_eval_users = parsed_line.value
-        log_lines.pop()
-
-  for i, parsed_line in enumerate(log_lines):
-    if parsed_line.tag == TAGS.EVAL_HP_NUM_USERS:
-      log_lines[i] = ParsedLine(*parsed_line[:-1], value=num_eval_users)
-
-  log_lines = sorted([unparse_line(i) for i in log_lines])
-
-  output_path = os.getenv("STITCHED_COMPLIANCE_FILE", None)
-  if output_path:
-    with tf.gfile.Open(output_path, "w") as f:
-      for line in log_lines:
-        f.write(line + "\n")
-  else:
-    for line in log_lines:
-      print(line)
-    sys.stdout.flush()
-
-  if start_time is not None and stop_time is not None:
-    tf.logging.info("MLPerf time: {:.1f} sec.".format(stop_time - start_time))
-
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   with LOGGER(True):
     ncf_print(key=TAGS.RUN_START)

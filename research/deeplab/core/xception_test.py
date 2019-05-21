@@ -462,6 +462,24 @@ class XceptionNetworkTest(tf.test.TestCase):
           reuse=True)
     self.assertItemsEqual(end_points0.keys(), end_points1.keys())
 
+  def testUseBoundedAcitvation(self):
+    global_pool = False
+    num_classes = 10
+    output_stride = 8
+    for use_bounded_activation in (True, False):
+      tf.reset_default_graph()
+      inputs = create_test_input(2, 321, 321, 3)
+      with slim.arg_scope(xception.xception_arg_scope(
+          use_bounded_activation=use_bounded_activation)):
+        _, _ = self._xception_small(
+            inputs,
+            num_classes,
+            global_pool=global_pool,
+            output_stride=output_stride,
+            scope='xception')
+        for node in tf.get_default_graph().as_graph_def().node:
+          if node.op.startswith('Relu'):
+            self.assertEqual(node.op == 'Relu6', use_bounded_activation)
 
 if __name__ == '__main__':
   tf.test.main()

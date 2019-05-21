@@ -73,6 +73,8 @@ def get_spatial_image_size(image_resizer_config):
       return [image_resizer_config.keep_aspect_ratio_resizer.max_dimension] * 2
     else:
       return [-1, -1]
+  if image_resizer_config.HasField("identity_resizer"):
+    return [-1, -1]
   raise ValueError("Unknown image resizer type.")
 
 
@@ -328,12 +330,6 @@ def _check_and_convert_legacy_input_config_key(key):
   elif field_name == "eval_shuffle":
     key_name = "eval_input_configs"
     field_name = "shuffle"
-  elif field_name == "train_input_path":
-    key_name = "train_input_config"
-    field_name = "input_path"
-  elif field_name == "eval_input_path":
-    key_name = "eval_input_configs"
-    field_name = "input_path"
   elif field_name == "train_input_path":
     key_name = "train_input_config"
     field_name = "input_path"

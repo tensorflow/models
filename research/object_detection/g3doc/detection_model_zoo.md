@@ -57,7 +57,7 @@ Some remarks on frozen inference graphs:
   a detector (and discarding the part past that point), which negatively impacts
   standard mAP metrics.
 * Our frozen inference graphs are generated using the
-  [v1.8.0](https://github.com/tensorflow/tensorflow/tree/v1.8.0)
+  [v1.12.0](https://github.com/tensorflow/tensorflow/tree/v1.12.0)
   release version of Tensorflow and we do not guarantee that these will work
   with other versions; this being said, each frozen inference graph can be
   regenerated using your current version of Tensorflow by re-running the
@@ -78,7 +78,7 @@ Some remarks on frozen inference graphs:
 | [ssd_mobilenet_v1_fpn_coco ☆](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03.tar.gz) | 56 | 32 | Boxes |
 | [ssd_resnet_50_fpn_coco ☆](http://download.tensorflow.org/models/object_detection/ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03.tar.gz) | 76 | 35 | Boxes |
 | [ssd_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz) | 31 | 22 | Boxes |
-| [ssd_mobilenet_v2_quantized_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_quantized_300x300_coco_2018_09_14.tar.gz) | 29 | 22 | Boxes |
+| [ssd_mobilenet_v2_quantized_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_quantized_300x300_coco_2019_01_03.tar.gz) | 29 | 22 | Boxes |
 | [ssdlite_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssdlite_mobilenet_v2_coco_2018_05_09.tar.gz) | 27 | 22 | Boxes |
 | [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2018_01_28.tar.gz) | 42 | 24 | Boxes |
 | [faster_rcnn_inception_v2_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_v2_coco_2018_01_28.tar.gz) | 58 | 28 | Boxes |
@@ -110,10 +110,15 @@ Model name                                                                      
 
 Model name                                                                                                                                                                                    | Speed (ms) | Open Images mAP@0.5[^2] | Outputs
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------: | :---------------------: | :-----:
-[faster_rcnn_inception_resnet_v2_atrous_oidv2](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28.tar.gz)                           | 727        | 37                      | Boxes
+[faster_rcnn_inception_resnet_v2_atrous_oidv2](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28.tar.gz)                           | 727        | 37                     | Boxes
 [faster_rcnn_inception_resnet_v2_atrous_lowproposals_oidv2](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28.tar.gz) | 347        |                         | Boxes
 [facessd_mobilenet_v2_quantized_open_image_v4](http://download.tensorflow.org/models/object_detection/facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz) [^3]                       | 20         | 73 (faces)              | Boxes
 
+Model name                                                                                                                                                                                    | Speed (ms) | Open Images mAP@0.5[^4] | Outputs
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------: | :---------------------: | :-----:
+[faster_rcnn_inception_resnet_v2_atrous_oidv4](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_v4_2018_12_12.tar.gz)                         | 425        | 54                  | Boxes
+[ssd_mobilenetv2_oidv4](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_oid_v4_2018_12_12.tar.gz)                                                                       | 89         | 36                | Boxes
+[ssd_resnet_101_fpn_oidv4](http://download.tensorflow.org/models/object_detection/ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20.tar.gz)                                                                       | 237         | 38                | Boxes
 ## iNaturalist Species-trained models
 
 Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 | Outputs
@@ -129,8 +134,10 @@ Model name                                                                      
 [faster_rcnn_resnet101_ava_v2.1](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_ava_v2.1_2018_04_30.tar.gz) | 93  | 11              | Boxes
 
 
-[^1]: See [MSCOCO evaluation protocol](http://cocodataset.org/#detections-eval).
+[^1]: See [MSCOCO evaluation protocol](http://cocodataset.org/#detections-eval). The COCO mAP numbers here are evaluated on COCO 14 minival set (note that our split is different from COCO 17 Val). A full list of image ids used in our split could be fould [here](https://github.com/tensorflow/models/blob/master/research/object_detection/data/mscoco_minival_ids.txt).
 
-[^2]: This is PASCAL mAP with a slightly different way of true positives computation: see [Open Images evaluation protocol](evaluation_protocols.md#open-images).
+
+[^2]: This is PASCAL mAP with a slightly different way of true positives computation: see [Open Images evaluation protocols](evaluation_protocols.md), oid_V2_detection_metrics.
 [^3]: Non-face boxes are dropped during training and non-face groundtruth boxes are ignored when evaluating.
+[^4]: This is Open Images Challenge metric: see [Open Images evaluation protocols](evaluation_protocols.md), oid_challenge_detection_metrics.
 

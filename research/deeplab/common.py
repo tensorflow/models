@@ -19,7 +19,6 @@ Common flags from train/eval/vis/export_model.py are collected in this script.
 import collections
 import copy
 import json
-
 import tensorflow as tf
 
 flags = tf.app.flags
@@ -53,11 +52,15 @@ flags.DEFINE_multi_float('image_pyramid', None,
 flags.DEFINE_boolean('add_image_level_feature', True,
                      'Add image level feature.')
 
-flags.DEFINE_multi_integer(
+flags.DEFINE_list(
     'image_pooling_crop_size', None,
     'Image pooling crop size [height, width] used in the ASPP module. When '
     'value is None, the model performs image pooling with "crop_size". This'
     'flag is useful when one likes to use different image pooling sizes.')
+
+flags.DEFINE_list(
+    'image_pooling_stride', '1,1',
+    'Image pooling stride [height, width] used in the ASPP image pooling. ')
 
 flags.DEFINE_boolean('aspp_with_batch_norm', True,
                      'Use batch norm parameters for ASPP or not.')
@@ -74,11 +77,18 @@ flags.DEFINE_float('depth_multiplier', 1.0,
                    'Multiplier for the depth (number of channels) for all '
                    'convolution ops used in MobileNet.')
 
+flags.DEFINE_integer('divisible_by', None,
+                     'An integer that ensures the layer # channels are '
+                     'divisible by this value. Used in MobileNet.')
+
 # For `xception_65`, use decoder_output_stride = 4. For `mobilenet_v2`, use
 # decoder_output_stride = None.
-flags.DEFINE_integer('decoder_output_stride', None,
-                     'The ratio of input to output spatial resolution when '
-                     'employing decoder to refine segmentation results.')
+flags.DEFINE_list('decoder_output_stride', None,
+                  'Comma-separated list of strings with the number specifying '
+                  'output stride of low-level features at each network level.'
+                  'Current semantic segmentation implementation assumes at '
+                  'most one output stride (i.e., either None or a list with '
+                  'only one element.')
 
 flags.DEFINE_boolean('decoder_use_separable_conv', True,
                      'Employ separable convolution for decoder or not.')
@@ -86,10 +96,27 @@ flags.DEFINE_boolean('decoder_use_separable_conv', True,
 flags.DEFINE_enum('merge_method', 'max', ['max', 'avg'],
                   'Scheme to merge multi scale features.')
 
+flags.DEFINE_boolean(
+    'prediction_with_upsampled_logits', True,
+    'When performing prediction, there are two options: (1) bilinear '
+    'upsampling the logits followed by argmax, or (2) armax followed by '
+    'nearest upsampling the predicted labels. The second option may introduce '
+    'some "blocking effect", but it is more computationally efficient. '
+    'Currently, prediction_with_upsampled_logits=False is only supported for '
+    'single-scale inference.')
+
 flags.DEFINE_string(
     'dense_prediction_cell_json',
     '',
     'A JSON file that specifies the dense prediction cell.')
+
+flags.DEFINE_integer(
+    'nas_stem_output_num_conv_filters', 20,
+    'Number of filters of the stem output tensor in NAS models.')
+
+flags.DEFINE_bool('use_bounded_activation', False,
+                  'Whether or not to use bounded activations. Bounded '
+                  'activations better lend themselves to quantized inference.')
 
 FLAGS = flags.FLAGS
 
@@ -117,9 +144,11 @@ class ModelOptions(
         'crop_size',
         'atrous_rates',
         'output_stride',
+        'preprocessed_images_dtype',
         'merge_method',
         'add_image_level_feature',
         'image_pooling_crop_size',
+        'image_pooling_stride',
         'aspp_with_batch_norm',
         'aspp_with_separable_conv',
         'multi_grid',
@@ -128,7 +157,11 @@ class ModelOptions(
         'logits_kernel_size',
         'model_variant',
         'depth_multiplier',
+        'divisible_by',
+        'prediction_with_upsampled_logits',
         'dense_prediction_cell_config',
+        'nas_stem_output_num_conv_filters',
+        'use_bounded_activation'
     ])):
   """Immutable class to hold model options."""
 
@@ -138,7 +171,8 @@ class ModelOptions(
               outputs_to_num_classes,
               crop_size=None,
               atrous_rates=None,
-              output_stride=8):
+              output_stride=8,
+              preprocessed_images_dtype=tf.float32):
     """Constructor to set default values.
 
     Args:
@@ -148,6 +182,7 @@ class ModelOptions(
       crop_size: A tuple [crop_height, crop_width].
       atrous_rates: A list of atrous convolution rates for ASPP.
       output_stride: The ratio of input to output spatial resolution.
+      preprocessed_images_dtype: The type after the preprocessing function.
 
     Returns:
       A new ModelOptions instance.
@@ -156,18 +191,35 @@ class ModelOptions(
     if FLAGS.dense_prediction_cell_json:
       with tf.gfile.Open(FLAGS.dense_prediction_cell_json, 'r') as f:
         dense_prediction_cell_config = json.load(f)
-
+    decoder_output_stride = None
+    if FLAGS.decoder_output_stride:
+      decoder_output_stride = [
+          int(x) for x in FLAGS.decoder_output_stride]
+      if sorted(decoder_output_stride, reverse=True) != decoder_output_stride:
+        raise ValueError('Decoder output stride need to be sorted in the '
+                         'descending order.')
+    image_pooling_crop_size = None
+    if FLAGS.image_pooling_crop_size:
+      image_pooling_crop_size = [int(x) for x in FLAGS.image_pooling_crop_size]
+    image_pooling_stride = [1, 1]
+    if FLAGS.image_pooling_stride:
+      image_pooling_stride = [int(x) for x in FLAGS.image_pooling_stride]
     return super(ModelOptions, cls).__new__(
         cls, outputs_to_num_classes, crop_size, atrous_rates, output_stride,
-        FLAGS.merge_method, FLAGS.add_image_level_feature,
-        FLAGS.image_pooling_crop_size, FLAGS.aspp_with_batch_norm,
-        FLAGS.aspp_with_separable_conv, FLAGS.multi_grid,
-        FLAGS.decoder_output_stride, FLAGS.decoder_use_separable_conv,
-        FLAGS.logits_kernel_size, FLAGS.model_variant, FLAGS.depth_multiplier,
-        dense_prediction_cell_config)
+        preprocessed_images_dtype, FLAGS.merge_method,
+        FLAGS.add_image_level_feature,
+        image_pooling_crop_size,
+        image_pooling_stride,
+        FLAGS.aspp_with_batch_norm,
+        FLAGS.aspp_with_separable_conv, FLAGS.multi_grid, decoder_output_stride,
+        FLAGS.decoder_use_separable_conv, FLAGS.logits_kernel_size,
+        FLAGS.model_variant, FLAGS.depth_multiplier, FLAGS.divisible_by,
+        FLAGS.prediction_with_upsampled_logits, dense_prediction_cell_config,
+        FLAGS.nas_stem_output_num_conv_filters, FLAGS.use_bounded_activation)
 
   def __deepcopy__(self, memo):
     return ModelOptions(copy.deepcopy(self.outputs_to_num_classes),
                         self.crop_size,
                         self.atrous_rates,
-                        self.output_stride)
+                        self.output_stride,
+                        self.preprocessed_images_dtype)

@@ -88,13 +88,18 @@ We provide some checkpoints that have been pretrained on ADE20K training set.
 Note that the model has only been pretrained on ImageNet, following the
 dataset rule.
 
-Checkpoint name                       | Network backbone | Pretrained dataset                      | ASPP                                             | Decoder
-------------------------------------- | :--------------: | :-------------------------------------: | :----------------------------------------------: | :-----:
-xception65_ade20k_train                 | Xception_65      | ImageNet <br> ADE20K training set       | [6, 12, 18] for OS=16 <br> [12, 24, 36] for OS=8 | OS = 4
+Checkpoint name                       | Network backbone | Pretrained dataset                      | ASPP                                             | Decoder | Input size
+------------------------------------- | :--------------: | :-------------------------------------: | :----------------------------------------------: | :-----: | :-----:
+mobilenetv2_ade20k_train              | MobileNet-v2     | ImageNet <br> ADE20K training set       | N/A                                              | OS = 4  | 257x257
+xception65_ade20k_train               | Xception_65      | ImageNet <br> ADE20K training set       | [6, 12, 18] for OS=16 <br> [12, 24, 36] for OS=8 | OS = 4  | 513x513
+
+The input dimensions of ADE20K have a huge amount of variation. We resize inputs so that the longest size is 257 for MobileNet-v2 (faster inference) and 513 for Xception_65 (better performation). Note that we also include the decoder module in the MobileNet-v2 checkpoint.
 
 Checkpoint name                       | Eval OS   | Eval scales                 | Left-right Flip |  mIOU                 | Pixel-wise Accuracy | File Size
 ------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :-------------------: | :-------:
-[xception65_ade20k_train](http://download.tensorflow.org/models/deeplabv3_xception_ade20k_train_2018_05_29.tar.gz)              | 8 | [0.5:0.25:1.75] | Yes     | 45.65% (val) | 82.52% (val) | 439MB
+[mobilenetv2_ade20k_train](http://download.tensorflow.org/models/deeplabv3_mnv2_ade20k_train_2018_12_03.tar.gz)           | 16 | [1.0] | No     | 32.04% (val) | 75.41% (val) | 24.8MB
+[xception65_ade20k_train](http://download.tensorflow.org/models/deeplabv3_xception_ade20k_train_2018_05_29.tar.gz)        | 8 | [0.5:0.25:1.75] | Yes     | 45.65% (val) | 82.52% (val) | 439MB
+
 
 ## Checkpoints pretrained on ImageNet
 

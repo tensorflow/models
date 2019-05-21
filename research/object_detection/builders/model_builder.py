@@ -44,6 +44,7 @@ from object_detection.models.ssd_inception_v2_feature_extractor import SSDIncept
 from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMobileNetV1FpnFeatureExtractor
+from object_detection.models.ssd_mobilenet_v1_keras_feature_extractor import SSDMobileNetV1KerasFeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
@@ -76,6 +77,7 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
 }
 
 SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
+    'ssd_mobilenet_v1_keras': SSDMobileNetV1KerasFeatureExtractor,
     'ssd_mobilenet_v2_keras': SSDMobileNetV2KerasFeatureExtractor
 }
 
@@ -186,6 +188,12 @@ def _build_ssd_feature_extractor(feature_extractor_config,
       'override_base_feature_extractor_hyperparams':
           override_base_feature_extractor_hyperparams
   }
+
+  if feature_extractor_config.HasField('replace_preprocessor_with_placeholder'):
+    kwargs.update({
+        'replace_preprocessor_with_placeholder':
+            feature_extractor_config.replace_preprocessor_with_placeholder
+    })
 
   if is_keras_extractor:
     kwargs.update({

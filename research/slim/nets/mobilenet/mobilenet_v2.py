@@ -105,8 +105,7 @@ def mobilenet(input_tensor,
     input_tensor: The input tensor
     num_classes: number of classes
     depth_multiplier: The multiplier applied to scale number of
-    channels in each layer. Note: this is called depth multiplier in the
-    paper but the name is kept for consistency with slim's model builder.
+    channels in each layer.
     scope: Scope of the operator
     conv_defs: Allows to override default conv def.
     finegrain_classification_mode: When set to True, the model

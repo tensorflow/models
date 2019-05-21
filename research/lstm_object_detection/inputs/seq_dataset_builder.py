@@ -23,7 +23,6 @@ Detection configuration framework, they should define their own builder function
 that wraps the build function.
 """
 import tensorflow as tf
-import tensorflow.google as google_tf
 from tensorflow.contrib.training.python.training import sequence_queueing_state_saver as sqss
 from lstm_object_detection.inputs import tf_sequence_example_decoder
 from lstm_object_detection.protos import input_reader_google_pb2
@@ -116,12 +115,12 @@ def build(input_reader_config,
                      'input_reader_pb2.InputReader.')
 
   external_reader_config = input_reader_config.external_input_reader
-  google_input_reader_config = external_reader_config.Extensions[
+  external_input_reader_config = external_reader_config.Extensions[
       input_reader_google_pb2.GoogleInputReader.google_input_reader]
-  input_reader_type = google_input_reader_config.WhichOneof('input_reader')
+  input_reader_type = external_input_reader_config.WhichOneof('input_reader')
 
   if input_reader_type == 'tf_record_video_input_reader':
-    config = google_input_reader_config.tf_record_video_input_reader
+    config = external_input_reader_config.tf_record_video_input_reader
     reader_type_class = tf.TFRecordReader
   else:
     raise ValueError(

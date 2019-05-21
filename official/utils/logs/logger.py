@@ -119,12 +119,13 @@ class BaseBenchmarkLogger(object):
       eval_results: dict, the result of evaluate.
     """
     if not isinstance(eval_results, dict):
-      tf.logging.warning("eval_results should be dictionary for logging. "
-                         "Got %s", type(eval_results))
+      tf.compat.v1.logging.warning(
+          "eval_results should be dictionary for logging. Got %s",
+          type(eval_results))
       return
-    global_step = eval_results[tf.GraphKeys.GLOBAL_STEP]
+    global_step = eval_results[tf.compat.v1.GraphKeys.GLOBAL_STEP]
     for key in sorted(eval_results):
-      if key != tf.GraphKeys.GLOBAL_STEP:
+      if key != tf.compat.v1.GraphKeys.GLOBAL_STEP:
         self.log_metric(key, eval_results[key], global_step=global_step)
 
   def log_metric(self, name, value, unit=None, global_step=None, extras=None):
@@ -143,12 +144,12 @@ class BaseBenchmarkLogger(object):
     """
     metric = _process_metric_to_json(name, value, unit, global_step, extras)
     if metric:
-      tf.logging.info("Benchmark metric: %s", metric)
+      tf.compat.v1.logging.info("Benchmark metric: %s", metric)
 
   def log_run_info(self, model_name, dataset_name, run_params, test_id=None):
-    tf.logging.info("Benchmark run: %s",
-                    _gather_run_info(model_name, dataset_name, run_params,
-                                     test_id))
+    tf.compat.v1.logging.info(
+        "Benchmark run: %s", _gather_run_info(model_name, dataset_name,
+                                              run_params, test_id))
 
   def on_finish(self, status):
     pass
@@ -160,9 +161,9 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
   def __init__(self, logging_dir):
     super(BenchmarkFileLogger, self).__init__()
     self._logging_dir = logging_dir
-    if not tf.gfile.IsDirectory(self._logging_dir):
-      tf.gfile.MakeDirs(self._logging_dir)
-    self._metric_file_handler = tf.gfile.GFile(
+    if not tf.io.gfile.isdir(self._logging_dir):
+      tf.io.gfile.makedirs(self._logging_dir)
+    self._metric_file_handler = tf.io.gfile.GFile(
         os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a")
 
   def log_metric(self, name, value, unit=None, global_step=None, extras=None):
@@ -186,8 +187,9 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
         self._metric_file_handler.write("\n")
         self._metric_file_handler.flush()
       except (TypeError, ValueError) as e:
-        tf.logging.warning("Failed to dump metric to log file: "
-                           "name %s, value %s, error %s", name, value, e)
+        tf.compat.v1.logging.warning(
+            "Failed to dump metric to log file: name %s, value %s, error %s",
+            name, value, e)
 
   def log_run_info(self, model_name, dataset_name, run_params, test_id=None):
     """Collect most of the TF runtime information for the local env.
@@ -204,14 +206,14 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
     """
     run_info = _gather_run_info(model_name, dataset_name, run_params, test_id)
 
-    with tf.gfile.GFile(os.path.join(
+    with tf.io.gfile.GFile(os.path.join(
         self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
       try:
         json.dump(run_info, f)
         f.write("\n")
       except (TypeError, ValueError) as e:
-        tf.logging.warning("Failed to dump benchmark run info to log file: %s",
-                           e)
+        tf.compat.v1.logging.warning(
+            "Failed to dump benchmark run info to log file: %s", e)
 
   def on_finish(self, status):
     self._metric_file_handler.flush()
@@ -324,7 +326,7 @@ def _process_metric_to_json(
     name, value, unit=None, global_step=None, extras=None):
   """Validate the metric data and generate JSON for insert."""
   if not isinstance(value, numbers.Number):
-    tf.logging.warning(
+    tf.compat.v1.logging.warning(
         "Metric value to log should be a number. Got %s", type(value))
     return None
 
@@ -341,7 +343,7 @@ def _process_metric_to_json(
 
 def _collect_tensorflow_info(run_info):
   run_info["tensorflow_version"] = {
-      "version": tf.VERSION, "git_hash": tf.GIT_VERSION}
+      "version": tf.version.VERSION, "git_hash": tf.version.GIT_VERSION}
 
 
 def _collect_run_params(run_info, run_params):
@@ -385,7 +387,8 @@ def _collect_cpu_info(run_info):
 
     run_info["machine_config"]["cpu_info"] = cpu_info
   except ImportError:
-    tf.logging.warn("'cpuinfo' not imported. CPU info will not be logged.")
+    tf.compat.v1.logging.warn(
+        "'cpuinfo' not imported. CPU info will not be logged.")
 
 
 def _collect_gpu_info(run_info, session_config=None):
@@ -415,7 +418,8 @@ def _collect_memory_info(run_info):
     run_info["machine_config"]["memory_total"] = vmem.total
     run_info["machine_config"]["memory_available"] = vmem.available
   except ImportError:
-    tf.logging.warn("'psutil' not imported. Memory info will not be logged.")
+    tf.compat.v1.logging.warn(
+        "'psutil' not imported. Memory info will not be logged.")
 
 
 def _collect_test_environment(run_info):

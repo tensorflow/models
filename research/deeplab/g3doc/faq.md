@@ -66,6 +66,11 @@ A: Our model uses whole-image inference, meaning that we need to set `eval_crop_
 image dimension in the dataset. For example, we have `eval_crop_size` = 513x513 for PASCAL dataset whose largest image dimension is 512. Similarly, we set `eval_crop_size` = 1025x2049 for Cityscapes images whose
 image dimension is all equal to 1024x2048.
 ___
+Q9: Why multi-gpu training is slow?
+
+A: Please try to use more threads to pre-process the inputs. For, example change [num_readers = 4](https://github.com/tensorflow/models/blob/master/research/deeplab/utils/input_generator.py#L71) and [num_threads = 4](https://github.com/tensorflow/models/blob/master/research/deeplab/utils/input_generator.py#L72).
+___
+
 
 ## References
 

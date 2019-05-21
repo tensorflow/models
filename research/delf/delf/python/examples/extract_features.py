@@ -59,6 +59,64 @@ def _ReadImageList(list_path):
   return image_paths
 
 
+def MakeExtractor(sess, config, import_scope=None):
+  """Creates a function to extract features from an image.
+
+  Args:
+    sess: TensorFlow session to use.
+    config: DelfConfig proto containing the model configuration.
+    import_scope: Optional scope to use for model.
+
+  Returns:
+    Function that receives an image and returns features.
+  """
+  tf.saved_model.loader.load(
+      sess, [tf.saved_model.tag_constants.SERVING],
+      config.model_path,
+      import_scope=import_scope)
+  import_scope_prefix = import_scope + '/' if import_scope is not None else ''
+  input_image = sess.graph.get_tensor_by_name('%sinput_image:0' %
+                                              import_scope_prefix)
+  input_score_threshold = sess.graph.get_tensor_by_name('%sinput_abs_thres:0' %
+                                                        import_scope_prefix)
+  input_image_scales = sess.graph.get_tensor_by_name('%sinput_scales:0' %
+                                                     import_scope_prefix)
+  input_max_feature_num = sess.graph.get_tensor_by_name(
+      '%sinput_max_feature_num:0' % import_scope_prefix)
+  boxes = sess.graph.get_tensor_by_name('%sboxes:0' % import_scope_prefix)
+  raw_descriptors = sess.graph.get_tensor_by_name('%sfeatures:0' %
+                                                  import_scope_prefix)
+  feature_scales = sess.graph.get_tensor_by_name('%sscales:0' %
+                                                 import_scope_prefix)
+  attention_with_extra_dim = sess.graph.get_tensor_by_name('%sscores:0' %
+                                                           import_scope_prefix)
+  attention = tf.reshape(attention_with_extra_dim,
+                         [tf.shape(attention_with_extra_dim)[0]])
+
+  locations, descriptors = feature_extractor.DelfFeaturePostProcessing(
+      boxes, raw_descriptors, config)
+
+  def ExtractorFn(image):
+    """Receives an image and returns DELF features.
+
+    Args:
+      image: Uint8 array with shape (height, width 3) containing the RGB image.
+
+    Returns:
+      Tuple (locations, descriptors, feature_scales, attention)
+    """
+    return sess.run(
+        [locations, descriptors, feature_scales, attention],
+        feed_dict={
+            input_image: image,
+            input_score_threshold: config.delf_local_config.score_threshold,
+            input_image_scales: list(config.image_scales),
+            input_max_feature_num: config.delf_local_config.max_feature_num
+        })
+
+  return ExtractorFn
+
+
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -86,28 +144,10 @@ def main(unused_argv):
     image_tf = tf.image.decode_jpeg(value, channels=3)
 
     with tf.Session() as sess:
-      # Initialize variables.
       init_op = tf.global_variables_initializer()
       sess.run(init_op)
 
-      # Loading model that will be used.
-      tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
-                                 config.model_path)
-      graph = tf.get_default_graph()
-      input_image = graph.get_tensor_by_name('input_image:0')
-      input_score_threshold = graph.get_tensor_by_name('input_abs_thres:0')
-      input_image_scales = graph.get_tensor_by_name('input_scales:0')
-      input_max_feature_num = graph.get_tensor_by_name(
-          'input_max_feature_num:0')
-      boxes = graph.get_tensor_by_name('boxes:0')
-      raw_descriptors = graph.get_tensor_by_name('features:0')
-      feature_scales = graph.get_tensor_by_name('scales:0')
-      attention_with_extra_dim = graph.get_tensor_by_name('scores:0')
-      attention = tf.reshape(attention_with_extra_dim,
-                             [tf.shape(attention_with_extra_dim)[0]])
-
-      locations, descriptors = feature_extractor.DelfFeaturePostProcessing(
-          boxes, raw_descriptors, config)
+      extractor_fn = MakeExtractor(sess, config)
 
       # Start input enqueue threads.
       coord = tf.train.Coordinator()
@@ -119,9 +159,10 @@ def main(unused_argv):
           tf.logging.info('Starting to extract DELF features from images...')
         elif i % _STATUS_CHECK_ITERATIONS == 0:
           elapsed = (time.clock() - start)
-          tf.logging.info('Processing image %d out of %d, last %d '
-                          'images took %f seconds', i, num_images,
-                          _STATUS_CHECK_ITERATIONS, elapsed)
+          tf.logging.info(
+              'Processing image %d out of %d, last %d '
+              'images took %f seconds', i, num_images, _STATUS_CHECK_ITERATIONS,
+              elapsed)
           start = time.clock()
 
         # # Get next image.
@@ -137,18 +178,7 @@ def main(unused_argv):
 
         # Extract and save features.
         (locations_out, descriptors_out, feature_scales_out,
-         attention_out) = sess.run(
-             [locations, descriptors, feature_scales, attention],
-             feed_dict={
-                 input_image:
-                     im,
-                 input_score_threshold:
-                     config.delf_local_config.score_threshold,
-                 input_image_scales:
-                     list(config.image_scales),
-                 input_max_feature_num:
-                     config.delf_local_config.max_feature_num
-             })
+         attention_out) = extractor_fn(im)
 
         feature_io.WriteToFile(out_desc_fullpath, locations_out,
                                feature_scales_out, descriptors_out,

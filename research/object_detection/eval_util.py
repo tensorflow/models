@@ -15,6 +15,7 @@
 """Common utility functions for evaluation."""
 import collections
 import os
+import re
 import time
 
 import numpy as np
@@ -233,7 +234,8 @@ def _run_checkpoint_once(tensor_dict,
                          save_graph=False,
                          save_graph_dir='',
                          losses_dict=None,
-                         eval_export_path=None):
+                         eval_export_path=None,
+                         process_metrics_fn=None):
   """Evaluates metrics defined in evaluators and returns summaries.
 
   This function loads the latest checkpoint in checkpoint_dirs and evaluates
@@ -275,6 +277,12 @@ def _run_checkpoint_once(tensor_dict,
     losses_dict: optional dictionary of scalar detection losses.
     eval_export_path: Path for saving a json file that contains the detection
       results in json format.
+    process_metrics_fn: a callback called with evaluation results after each
+      evaluation is done.  It could be used e.g. to back up checkpoints with
+      best evaluation scores, or to call an external system to update evaluation
+      results in order to drive best hyper-parameter search.  Parameters are:
+      int checkpoint_number, Dict[str, ObjectDetectionEvalMetrics] metrics,
+      str checkpoint_file path.
 
   Returns:
     global_step: the count of global steps.
@@ -291,6 +299,7 @@ def _run_checkpoint_once(tensor_dict,
   sess.run(tf.global_variables_initializer())
   sess.run(tf.local_variables_initializer())
   sess.run(tf.tables_initializer())
+  checkpoint_file = None
   if restore_fn:
     restore_fn(sess)
   else:
@@ -370,6 +379,15 @@ def _run_checkpoint_once(tensor_dict,
 
       for key, value in iter(aggregate_result_losses_dict.items()):
         all_evaluator_metrics['Losses/' + key] = np.mean(value)
+      if process_metrics_fn and checkpoint_file:
+        m = re.search(r'model.ckpt-(\d+)$', checkpoint_file)
+        if not m:
+          tf.logging.error('Failed to parse checkpoint number from: %s',
+                           checkpoint_file)
+        else:
+          checkpoint_number = int(m.group(1))
+          process_metrics_fn(checkpoint_number, all_evaluator_metrics,
+                             checkpoint_file)
   sess.close()
   return (global_step, all_evaluator_metrics)
 
@@ -385,11 +403,13 @@ def repeated_checkpoint_run(tensor_dict,
                             num_batches=1,
                             eval_interval_secs=120,
                             max_number_of_evaluations=None,
+                            max_evaluation_global_step=None,
                             master='',
                             save_graph=False,
                             save_graph_dir='',
                             losses_dict=None,
-                            eval_export_path=None):
+                            eval_export_path=None,
+                            process_metrics_fn=None):
   """Periodically evaluates desired tensors using checkpoint_dirs or restore_fn.
 
   This function repeatedly loads a checkpoint and evaluates a desired
@@ -425,6 +445,7 @@ def repeated_checkpoint_run(tensor_dict,
     eval_interval_secs: the number of seconds between each evaluation run.
     max_number_of_evaluations: the max number of iterations of the evaluation.
       If the value is left as None the evaluation continues indefinitely.
+    max_evaluation_global_step: global step when evaluation stops.
     master: the location of the Tensorflow session.
     save_graph: whether or not the Tensorflow graph is saved as a pbtxt file.
     save_graph_dir: where to save on disk the Tensorflow graph. If store_graph
@@ -432,6 +453,12 @@ def repeated_checkpoint_run(tensor_dict,
     losses_dict: optional dictionary of scalar detection losses.
     eval_export_path: Path for saving a json file that contains the detection
       results in json format.
+    process_metrics_fn: a callback called with evaluation results after each
+      evaluation is done.  It could be used e.g. to back up checkpoints with
+      best evaluation scores, or to call an external system to update evaluation
+      results in order to drive best hyper-parameter search.  Parameters are:
+      int checkpoint_number, Dict[str, ObjectDetectionEvalMetrics] metrics,
+      str checkpoint_file path.
 
   Returns:
     metrics: A dictionary containing metric names and values in the latest
@@ -443,7 +470,10 @@ def repeated_checkpoint_run(tensor_dict,
   """
   if max_number_of_evaluations and max_number_of_evaluations <= 0:
     raise ValueError(
-        '`number_of_steps` must be either None or a positive number.')
+        '`max_number_of_evaluations` must be either None or a positive number.')
+  if max_evaluation_global_step and max_evaluation_global_step <= 0:
+    raise ValueError(
+        '`max_evaluation_global_step` must be either None or positive.')
 
   if not checkpoint_dirs:
     raise ValueError('`checkpoint_dirs` must have at least one entry.')
@@ -475,8 +505,13 @@ def repeated_checkpoint_run(tensor_dict,
           save_graph,
           save_graph_dir,
           losses_dict=losses_dict,
-          eval_export_path=eval_export_path)
+          eval_export_path=eval_export_path,
+          process_metrics_fn=process_metrics_fn)
       write_metrics(metrics, global_step, summary_dir)
+      if (max_evaluation_global_step and
+          global_step >= max_evaluation_global_step):
+        tf.logging.info('Finished evaluation!')
+        break
     number_of_evaluations += 1
 
     if (max_number_of_evaluations and

@@ -82,7 +82,7 @@ def get_padding(x, padding_value=0):
     padding_value: int value that
 
   Returns:
-    flaot tensor with same shape as x containing values 0 or 1.
+    float tensor with same shape as x containing values 0 or 1.
       0 -> non-padding, 1 -> padding
   """
   with tf.name_scope("padding"):

@@ -184,6 +184,11 @@ message SsdFeatureExtractor {
 
   // Feature Pyramid Networks config.
   optional FeaturePyramidNetworks fpn = 10;
+
+  // If true, replace preprocess function of feature extractor with a
+  // placeholder. This should only be used if all the image preprocessing steps
+  // happen outside the graph.
+  optional bool replace_preprocessor_with_placeholder = 11 [default = false];
 }
 
 // Configuration for Feature Pyramid Networks.
@@ -210,4 +215,5 @@ message FeaturePyramidNetworks {
 
   // channel depth for additional coarse feature layers.
   optional int32 additional_layer_depth = 3 [default = 256];
+
 }

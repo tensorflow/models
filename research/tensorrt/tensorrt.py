@@ -182,10 +182,9 @@ def convert_savedmodel_to_frozen_graph(savedmodel_dir, output_dir):
   Returns:
     Frozen Graph definition for use.
   """
-  meta_graph = get_serving_meta_graph_def(savedmodel_dir)
-  signature_def = tf.contrib.saved_model.get_signature_def_by_key(
-      meta_graph,
-      tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY)
+  meta_graph_def = get_serving_meta_graph_def(savedmodel_dir)
+  signature_def = meta_graph_def.signature_def[
+      tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY]
 
   outputs = [v.name for v in signature_def.outputs.itervalues()]
   output_names = [node.split(":")[0] for node in outputs]
@@ -193,7 +192,7 @@ def convert_savedmodel_to_frozen_graph(savedmodel_dir, output_dir):
   graph = tf.Graph()
   with tf.Session(graph=graph) as sess:
     tf.saved_model.loader.load(
-        sess, meta_graph.meta_info_def.tags, savedmodel_dir)
+        sess, meta_graph_def.meta_info_def.tags, savedmodel_dir)
     frozen_graph_def = tf.graph_util.convert_variables_to_constants(
         sess, graph.as_graph_def(), output_names)
 
