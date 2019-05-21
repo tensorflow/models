@@ -207,7 +207,7 @@ if __name__ == '__main__':
       """)
   parser.add_argument(
       '--use_query_images',
-      type=bool,
+      type=lambda x: (str(x).lower() == 'true'),
       default=False,
       help="""
       If True, processes the query images of the dataset. If False, processes
