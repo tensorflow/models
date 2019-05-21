@@ -168,7 +168,8 @@ def input_fn(is_training,
              num_parallel_batches=1,
              parse_record_fn=parse_record,
              input_context=None,
-             drop_remainder=False):
+             drop_remainder=False,
+             tf_data_experimental_slack=False):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -184,6 +185,8 @@ def input_fn(is_training,
       `tf.distribute.Strategy`.
     drop_remainder: A boolean indicates whether to drop the remainder of the
       batches. If True, the batch dimension will be static.
+    tf_data_experimental_slack: Whether to enable tf.data's
+      `experimental_slack` option.
 
   Returns:
     A dataset that can be used for iteration.
@@ -221,7 +224,8 @@ def input_fn(is_training,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
       num_parallel_batches=num_parallel_batches,
-      drop_remainder=drop_remainder
+      drop_remainder=drop_remainder,
+      tf_data_experimental_slack=tf_data_experimental_slack,
   )
 
 
@@ -347,10 +351,11 @@ def imagenet_model_fn(features, labels, mode, params):
   )
 
 
-def define_imagenet_flags(dynamic_loss_scale=False):
+def define_imagenet_flags(dynamic_loss_scale=False, fp16_implementation=False):
   resnet_run_loop.define_resnet_flags(
       resnet_size_choices=['18', '34', '50', '101', '152', '200'],
-      dynamic_loss_scale=dynamic_loss_scale)
+      dynamic_loss_scale=dynamic_loss_scale,
+      fp16_implementation=fp16_implementation)
   flags.adopt_module_key_flags(resnet_run_loop)
   flags_core.set_defaults(train_epochs=90)
 
@@ -385,5 +390,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  define_imagenet_flags()
+  define_imagenet_flags(dynamic_loss_scale=True, fp16_implementation=True)
   absl_app.run(main)

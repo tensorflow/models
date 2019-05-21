@@ -107,8 +107,9 @@ def run(flags_obj):
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
     keras_common.set_gpu_thread_mode_and_count(flags_obj)
-  if flags_obj.data_prefetch_with_slack:
-    keras_common.data_prefetch_with_slack()
+  if flags_obj.data_delay_prefetch:
+    keras_common.data_delay_prefetch()
+  keras_common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'float16':
@@ -124,7 +125,9 @@ def run(flags_obj):
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
-      num_workers=distribution_utils.configure_cluster())
+      num_workers=distribution_utils.configure_cluster(),
+      all_reduce_alg=flags_obj.all_reduce_alg,
+      num_packs=flags_obj.num_packs)
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
@@ -154,7 +157,9 @@ def run(flags_obj):
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
-      drop_remainder=drop_remainder)
+      drop_remainder=drop_remainder,
+      tf_data_experimental_slack=flags_obj.tf_data_experimental_slack,
+  )
 
   eval_input_dataset = None
   if not flags_obj.skip_eval:
@@ -167,8 +172,18 @@ def run(flags_obj):
         dtype=dtype,
         drop_remainder=drop_remainder)
 
+  lr_schedule = 0.1
+  if flags_obj.use_tensor_lr:
+    lr_schedule = keras_common.PiecewiseConstantDecayWithWarmup(
+        batch_size=flags_obj.batch_size,
+        epoch_size=imagenet_main.NUM_IMAGES['train'],
+        warmup_epochs=LR_SCHEDULE[0][1],
+        boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
+        multipliers=list(p[0] for p in LR_SCHEDULE),
+        compute_lr_on_cpu=True)
+
   with strategy_scope:
-    optimizer = keras_common.get_optimizer()
+    optimizer = keras_common.get_optimizer(lr_schedule)
     if dtype == 'float16':
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
@@ -188,7 +203,7 @@ def run(flags_obj):
       input_layer_batch_size = None
 
     if flags_obj.use_trivial_model:
-      model = trivial_model.trivial_model(imagenet_main.NUM_CLASSES)
+      model = trivial_model.trivial_model(imagenet_main.NUM_CLASSES, dtype)
     else:
       model = resnet_model.resnet50(
           num_classes=imagenet_main.NUM_CLASSES,
@@ -197,7 +212,8 @@ def run(flags_obj):
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,
-                  metrics=['sparse_categorical_accuracy'],
+                  metrics=(['sparse_categorical_accuracy']
+                           if flags_obj.report_accuracy_metrics else None),
                   cloning=flags_obj.clone_model_in_keras_dist_strat)
 
   callbacks = keras_common.get_callbacks(

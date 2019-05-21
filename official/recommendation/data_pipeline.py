@@ -643,6 +643,7 @@ class BaseDataConstructor(threading.Thread):
 
 class DummyConstructor(threading.Thread):
   """Class for running with synthetic data."""
+
   def run(self):
     pass
 
@@ -666,15 +667,15 @@ class DummyConstructor(threading.Thread):
       num_users = params["num_users"]
       num_items = params["num_items"]
 
-      users = tf.random_uniform([batch_size], dtype=tf.int32, minval=0,
+      users = tf.random.uniform([batch_size], dtype=tf.int32, minval=0,
                                 maxval=num_users)
-      items = tf.random_uniform([batch_size], dtype=tf.int32, minval=0,
+      items = tf.random.uniform([batch_size], dtype=tf.int32, minval=0,
                                 maxval=num_items)
 
       if is_training:
-        valid_point_mask = tf.cast(tf.random_uniform(
+        valid_point_mask = tf.cast(tf.random.uniform(
             [batch_size], dtype=tf.int32, minval=0, maxval=2), tf.bool)
-        labels = tf.cast(tf.random_uniform(
+        labels = tf.cast(tf.random.uniform(
             [batch_size], dtype=tf.int32, minval=0, maxval=2), tf.bool)
         data = {
             movielens.USER_COLUMN: users,
@@ -682,7 +683,7 @@ class DummyConstructor(threading.Thread):
             rconst.VALID_POINT_MASK: valid_point_mask,
         }, labels
       else:
-        dupe_mask = tf.cast(tf.random_uniform([batch_size], dtype=tf.int32,
+        dupe_mask = tf.cast(tf.random.uniform([batch_size], dtype=tf.int32,
                                               minval=0, maxval=2), tf.bool)
         data = {
             movielens.USER_COLUMN: users,

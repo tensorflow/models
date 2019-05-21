@@ -110,13 +110,6 @@ class GoldenBaseTest(reference_data.BaseTest):
     with self.assertRaises(AssertionError):
       self._uniform_random_ops(test=True, wrong_shape=True)
 
-  @unittest.skipIf(sys.version_info[0] == 2,
-                   "catch_warning doesn't catch tf.logging.warn in py 2.")
-  def test_bad_seed(self):
-    with warnings.catch_warnings(record=True) as warn_catch:
-      self._uniform_random_ops(test=True, bad_seed=True)
-      assert len(warn_catch) == 1, "Test did not warn of minor graph change."
-
   def test_incorrectness_function(self):
     with self.assertRaises(AssertionError):
       self._uniform_random_ops(test=True, bad_function=True)

@@ -28,6 +28,7 @@ import math
 import multiprocessing
 import os
 
+
 # pylint: disable=g-bad-import-order
 from absl import flags
 import tensorflow as tf
@@ -54,7 +55,8 @@ def process_record_dataset(dataset,
                            dtype=tf.float32,
                            datasets_num_private_threads=None,
                            num_parallel_batches=1,
-                           drop_remainder=False):
+                           drop_remainder=False,
+                           tf_data_experimental_slack=False):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -73,6 +75,8 @@ def process_record_dataset(dataset,
     num_parallel_batches: Number of parallel batches for tf.data.
     drop_remainder: A boolean indicates whether to drop the remainder of the
       batches. If True, the batch dimension will be static.
+    tf_data_experimental_slack: Whether to enable tf.data's
+      `experimental_slack` option.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -114,6 +118,11 @@ def process_record_dataset(dataset,
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
   dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+  if tf_data_experimental_slack:
+    options = tf.data.Options()
+    options.experimental_slack = True
+    dataset = dataset.with_options(options)
 
   return dataset
 
@@ -451,6 +460,11 @@ def resnet_model_fn(features, labels, mode, model_class,
           momentum=momentum
       )
 
+    fp16_implementation = getattr(flags.FLAGS, 'fp16_implementation', None)
+    if fp16_implementation == 'graph_rewrite':
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+          optimizer, loss_scale=loss_scale)
+
     def _dense_grad_filter(gvs):
       """Only apply gradient updates to the final layer.
 
@@ -463,7 +477,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       """
       return [(g, v) for g, v in gvs if 'dense' in v.name]
 
-    if loss_scale != 1:
+    if loss_scale != 1 and fp16_implementation != 'graph_rewrite':
       # When computing fp16 gradients, often intermediate tensor values are
       # so small, they underflow to 0. To avoid this, we multiply the loss by
       # loss_scale to make these tensor values loss_scale times bigger.
@@ -640,7 +654,7 @@ def resnet_main(
     tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
     # tf.estimator.train_and_evalute doesn't return anything in multi-worker
     # case.
-    return {}
+    eval_results = {}
   else:
     if train_epochs == 0:
       # If --eval_only is set, perform a single loop with zero train epochs.
@@ -708,14 +722,18 @@ def resnet_main(
   return stats
 
 
-def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False):
+def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
+                        fp16_implementation=False):
   """Add flags and validators for ResNet."""
   flags_core.define_base()
   flags_core.define_performance(num_parallel_calls=False,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
                                 datasets_num_parallel_batches=True,
-                                dynamic_loss_scale=dynamic_loss_scale)
+                                dynamic_loss_scale=dynamic_loss_scale,
+                                fp16_implementation=fp16_implementation,
+                                loss_scale=True,
+                                tf_data_experimental_slack=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
