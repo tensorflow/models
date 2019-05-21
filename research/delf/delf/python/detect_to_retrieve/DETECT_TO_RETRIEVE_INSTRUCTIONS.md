@@ -7,8 +7,8 @@ Oxford/Paris datasets.
 ### Install DELF library
 
 To be able to use this code, please follow
-[these instructions](INSTALL_INSTRUCTIONS.md) to properly install the DELF
-library.
+[these instructions](../../../INSTALL_INSTRUCTIONS.md) to properly install the
+DELF library.
 
 ### Download datasets
 
