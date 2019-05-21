@@ -24,10 +24,10 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet import resnet_model
-from official.resnet import resnet_run_loop
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
+from official.resnet import resnet_model
+from official.resnet import resnet_run_loop
 
 HEIGHT = 32
 WIDTH = 32
@@ -52,7 +52,9 @@ DATASET_NAME = 'CIFAR-10'
 ###############################################################################
 def get_filenames(is_training, data_dir):
   """Returns a list of filenames."""
-  assert tf.io.gfile.exists(data_dir), (
+  data_dir = os.path.join(data_dir, 'cifar-10-batches-bin')
+
+  assert os.path.exists(data_dir), (
       'Run cifar10_download_and_extract.py first to download and extract the '
       'CIFAR-10 data.')
 
@@ -68,7 +70,7 @@ def get_filenames(is_training, data_dir):
 def parse_record(raw_record, is_training, dtype):
   """Parse CIFAR-10 image and label from a raw record."""
   # Convert bytes to a vector of uint8 that is record_bytes long.
-  record_vector = tf.io.decode_raw(raw_record, tf.uint8)
+  record_vector = tf.decode_raw(raw_record, tf.uint8)
 
   # The first byte represents the label, which we convert from uint8 to int32
   # and then to one-hot.
@@ -81,7 +83,7 @@ def parse_record(raw_record, is_training, dtype):
 
   # Convert from [depth, height, width] to [height, width, depth], and cast as
   # float32.
-  image = tf.cast(tf.transpose(a=depth_major, perm=[1, 2, 0]), tf.float32)
+  image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
 
   image = preprocess_image(image, is_training)
   image = tf.cast(image, dtype)
@@ -93,11 +95,11 @@ def preprocess_image(image, is_training):
   """Preprocess a single image of layout [height, width, depth]."""
   if is_training:
     # Resize the image to add four extra pixels on each side.
-    image = tf.image.resize_with_crop_or_pad(
+    image = tf.image.resize_image_with_crop_or_pad(
         image, HEIGHT + 8, WIDTH + 8)
 
     # Randomly crop a [HEIGHT, WIDTH] section of the image.
-    image = tf.image.random_crop(image, [HEIGHT, WIDTH, NUM_CHANNELS])
+    image = tf.random_crop(image, [HEIGHT, WIDTH, NUM_CHANNELS])
 
     # Randomly flip the image horizontally.
     image = tf.image.random_flip_left_right(image)
@@ -107,15 +109,9 @@ def preprocess_image(image, is_training):
   return image
 
 
-def input_fn(is_training,
-             data_dir,
-             batch_size,
-             num_epochs=1,
-             dtype=tf.float32,
-             datasets_num_private_threads=None,
-             num_parallel_batches=1,
-             parse_record_fn=parse_record,
-             input_context=None):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1,
+             dtype=tf.float32, datasets_num_private_threads=None,
+             num_parallel_batches=1, parse_record_fn=parse_record):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -127,21 +123,12 @@ def input_fn(is_training,
     datasets_num_private_threads: Number of private threads for tf.data.
     num_parallel_batches: Number of parallel batches for tf.data.
     parse_record_fn: Function to use for parsing the records.
-    input_context: A `tf.distribute.InputContext` object passed in by
-      `tf.distribute.Strategy`.
 
   Returns:
     A dataset that can be used for iteration.
   """
   filenames = get_filenames(is_training, data_dir)
   dataset = tf.data.FixedLengthRecordDataset(filenames, _RECORD_BYTES)
-
-  if input_context:
-    tf.compat.v1.logging.info(
-        'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d' % (
-            input_context.input_pipeline_id, input_context.num_input_pipelines))
-    dataset = dataset.shard(input_context.num_input_pipelines,
-                            input_context.input_pipeline_id)
 
   return resnet_run_loop.process_record_dataset(
       dataset=dataset,
@@ -212,9 +199,9 @@ def cifar10_model_fn(features, labels, mode, params):
   features = tf.reshape(features, [-1, HEIGHT, WIDTH, NUM_CHANNELS])
   # Learning rate schedule follows arXiv:1512.03385 for ResNet-56 and under.
   learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-      batch_size=params['batch_size'] * params.get('num_workers', 1),
-      batch_denom=128, num_images=NUM_IMAGES['train'],
-      boundary_epochs=[91, 136, 182], decay_rates=[1, 0.1, 0.01, 0.001])
+      batch_size=params['batch_size'], batch_denom=128,
+      num_images=NUM_IMAGES['train'], boundary_epochs=[91, 136, 182],
+      decay_rates=[1, 0.1, 0.01, 0.001])
 
   # Weight decay of 2e-4 diverges from 1e-4 decay used in the ResNet paper
   # and seems more stable in testing. The difference was nominal for ResNet-56.
@@ -249,7 +236,7 @@ def cifar10_model_fn(features, labels, mode, params):
 def define_cifar_flags():
   resnet_run_loop.define_resnet_flags()
   flags.adopt_module_key_flags(resnet_run_loop)
-  flags_core.set_defaults(data_dir='/tmp/cifar10_data/cifar-10-batches-bin',
+  flags_core.set_defaults(data_dir='/tmp/cifar10_data',
                           model_dir='/tmp/cifar10_model',
                           resnet_size='56',
                           train_epochs=182,
@@ -263,24 +250,18 @@ def run_cifar(flags_obj):
 
   Args:
     flags_obj: An object containing parsed flag values.
-
-  Returns:
-    Dictionary of results. Including final accuracy.
   """
   if flags_obj.image_bytes_as_serving_input:
-    tf.compat.v1.logging.fatal(
-        '--image_bytes_as_serving_input cannot be set to True for CIFAR. '
-        'This flag is only applicable to ImageNet.')
+    tf.logging.fatal('--image_bytes_as_serving_input cannot be set to True '
+                     'for CIFAR. This flag is only applicable to ImageNet.')
     return
 
   input_function = (flags_obj.use_synthetic_data and
                     get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                     input_fn)
-  result = resnet_run_loop.resnet_main(
+  resnet_run_loop.resnet_main(
       flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
       shape=[HEIGHT, WIDTH, NUM_CHANNELS])
-
-  return result
 
 
 def main(_):
@@ -289,6 +270,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  tf.logging.set_verbosity(tf.logging.INFO)
   define_cifar_flags()
   absl_app.run(main)

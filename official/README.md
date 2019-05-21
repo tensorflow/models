@@ -14,21 +14,11 @@ If you are on a version of TensorFlow earlier than 1.4, please [update your inst
 ## Requirements
 Please follow the below steps before running models in this repo:
 
-
-1. TensorFlow [nightly binaries](https://github.com/tensorflow/tensorflow#installation)
-
-2. Add the top-level ***/models*** folder to the Python path with the command:
+1. Add the top-level ***/models*** folder to the Python path with the command:
    ```
    export PYTHONPATH="$PYTHONPATH:/path/to/models"
    ```
-   
-   Using Colab:
-   ```
-   import os
-   os.environ['PYTHONPATH'] += ":/path/to/models"
-   ```
-
-3. Install dependencies:
+2. Install dependencies:
    ```
    pip3 install --user -r official/requirements.txt
    ```

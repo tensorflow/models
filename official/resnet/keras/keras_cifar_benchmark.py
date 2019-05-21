@@ -13,228 +13,92 @@
 # limitations under the License.
 # ==============================================================================
 """Executes Keras benchmarks and accuracy tests."""
-
-from __future__ import absolute_import
-from __future__ import division
 from __future__ import print_function
 
 import os
-import time
+
 from absl import flags
-import tensorflow as tf # pylint: disable=g-bad-import-order
+from absl.testing import flagsaver
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
-from official.resnet.keras import keras_benchmark
 from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
 
-MIN_TOP_1_ACCURACY = 0.925
-MAX_TOP_1_ACCURACY = 0.938
 
-FLAGS = flags.FLAGS
-CIFAR_DATA_DIR_NAME = 'cifar-10-batches-bin'
+DATA_DIR = '/data/cifar10_data/'
 
 
-class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
-  """Accuracy tests for ResNet56 Keras CIFAR-10."""
+class KerasCifar10BenchmarkTests(object):
+  """Benchmarks and accuracy tests for KerasCifar10."""
 
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    """A benchmark class.
+  local_flags = None
 
-    Args:
-      output_dir: directory where to output e.g. log files
-      root_data_dir: directory under which to look for dataset
-      **kwargs: arbitrary named arguments. This is needed to make the
-                constructor forward compatible in case PerfZero provides more
-                named arguments before updating the constructor.
-    """
+  def __init__(self, output_dir=None):
+    self.oss_report_object = None
+    self.output_dir = output_dir
 
-    self.data_dir = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)
-    flag_methods = [
-        keras_common.define_keras_flags, cifar_main.define_cifar_flags
-    ]
-
-    super(Resnet56KerasAccuracy, self).__init__(
-        output_dir=output_dir, flag_methods=flag_methods)
-
-  def benchmark_graph_1_gpu(self):
+  def keras_resnet56_1_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
-    FLAGS.num_gpus = 1
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
-    FLAGS.train_epochs = 182
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
-    FLAGS.dtype = 'fp32'
-    self._run_and_report_benchmark()
+    flags.FLAGS.num_gpus = 1
+    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.batch_size = 128
+    flags.FLAGS.train_epochs = 182
+    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_1_gpu')
+    flags.FLAGS.resnet_size = 56
+    flags.FLAGS.dtype = 'fp32'
+    stats = keras_cifar_main.run(flags.FLAGS)
+    self._fill_report_object(stats)
 
-  def benchmark_1_gpu(self):
-    """Test keras based model with eager and distribution strategies."""
-    self._setup()
-    FLAGS.num_gpus = 1
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
-    FLAGS.train_epochs = 182
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
-    FLAGS.dtype = 'fp32'
-    FLAGS.enable_eager = True
-    self._run_and_report_benchmark()
-
-  def benchmark_2_gpu(self):
-    """Test keras based model with eager and distribution strategies."""
-    self._setup()
-    FLAGS.num_gpus = 2
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
-    FLAGS.train_epochs = 182
-    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu')
-    FLAGS.dtype = 'fp32'
-    FLAGS.enable_eager = True
-    self._run_and_report_benchmark()
-
-  def benchmark_graph_2_gpu(self):
+  def keras_resnet56_4_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
-    FLAGS.num_gpus = 2
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
-    FLAGS.train_epochs = 182
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_2_gpu')
-    FLAGS.dtype = 'fp32'
-    self._run_and_report_benchmark()
+    flags.FLAGS.num_gpus = 4
+    flags.FLAGS.data_dir = self._get_model_dir('keras_resnet56_4_gpu')
+    flags.FLAGS.batch_size = 128
+    flags.FLAGS.train_epochs = 182
+    flags.FLAGS.model_dir = ''
+    flags.FLAGS.resnet_size = 56
+    flags.FLAGS.dtype = 'fp32'
+    stats = keras_cifar_main.run(flags.FLAGS)
+    self._fill_report_object(stats)
 
-  def benchmark_graph_1_gpu_no_dist_strat(self):
+  def keras_resnet56_no_dist_strat_1_gpu(self):
     """Test keras based model with Keras fit but not distribution strategies."""
     self._setup()
-    FLAGS.distribution_strategy = 'off'
-    FLAGS.num_gpus = 1
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
-    FLAGS.train_epochs = 182
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
-    FLAGS.dtype = 'fp32'
-    self._run_and_report_benchmark()
+    flags.FLAGS.turn_off_distribution_strategy = True
+    flags.FLAGS.num_gpus = 1
+    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.batch_size = 128
+    flags.FLAGS.train_epochs = 182
+    flags.FLAGS.model_dir = self._get_model_dir(
+        'keras_resnet56_no_dist_strat_1_gpu')
+    flags.FLAGS.resnet_size = 56
+    flags.FLAGS.dtype = 'fp32'
+    stats = keras_cifar_main.run(flags.FLAGS)
+    self._fill_report_object(stats)
 
-  def _run_and_report_benchmark(self):
-    start_time_sec = time.time()
-    stats = keras_cifar_main.run(FLAGS)
-    wall_time_sec = time.time() - start_time_sec
+  def _fill_report_object(self, stats):
+    if self.oss_report_object:
+      self.oss_report_object.top_1 = stats['accuracy_top_1']
+      self.oss_report_object.add_other_quality(stats['training_accuracy_top_1'],
+                                               'top_1_train_accuracy')
+    else:
+      raise ValueError('oss_report_object has not been set.')
 
-    super(Resnet56KerasAccuracy, self)._report_benchmark(
-        stats,
-        wall_time_sec,
-        top_1_min=MIN_TOP_1_ACCURACY,
-        top_1_max=MAX_TOP_1_ACCURACY,
-        total_batch_size=FLAGS.batch_size,
-        log_steps=100)
+  def _get_model_dir(self, folder_name):
+    return os.path.join(self.output_dir, folder_name)
 
-
-class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
-  """Short performance tests for ResNet56 via Keras and CIFAR-10."""
-
-  def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [
-        keras_common.define_keras_flags, cifar_main.define_cifar_flags
-    ]
-
-    super(Resnet56KerasBenchmarkBase, self).__init__(
-        output_dir=output_dir,
-        flag_methods=flag_methods,
-        default_flags=default_flags)
-
-  def _run_and_report_benchmark(self):
-    start_time_sec = time.time()
-    stats = keras_cifar_main.run(FLAGS)
-    wall_time_sec = time.time() - start_time_sec
-
-    super(Resnet56KerasBenchmarkBase, self)._report_benchmark(
-        stats,
-        wall_time_sec,
-        total_batch_size=FLAGS.batch_size,
-        log_steps=FLAGS.log_steps)
-
-  def benchmark_1_gpu_no_dist_strat(self):
-    self._setup()
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'off'
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
-    FLAGS.batch_size = 128
-    self._run_and_report_benchmark()
-
-  def benchmark_graph_1_gpu_no_dist_strat(self):
-    self._setup()
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'off'
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
-    FLAGS.batch_size = 128
-    self._run_and_report_benchmark()
-
-  def benchmark_1_gpu(self):
-    self._setup()
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
-    FLAGS.batch_size = 128
-    self._run_and_report_benchmark()
-
-  def benchmark_graph_1_gpu(self):
-    self._setup()
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'default'
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
-    FLAGS.batch_size = 128
-    self._run_and_report_benchmark()
-
-  def benchmark_2_gpu(self):
-    self._setup()
-    FLAGS.num_gpus = 2
-    FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
-    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu')
-    FLAGS.batch_size = 128 * 2  # 2 GPUs
-    self._run_and_report_benchmark()
-
-  def benchmark_graph_2_gpu(self):
-    self._setup()
-    FLAGS.num_gpus = 2
-    FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'default'
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_2_gpu')
-    FLAGS.batch_size = 128 * 2  # 2 GPUs
-    self._run_and_report_benchmark()
-
-
-class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
-  """Synthetic benchmarks for ResNet56 and Keras."""
-
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    default_flags = {}
-    default_flags['skip_eval'] = True
-    default_flags['use_synthetic_data'] = True
-    default_flags['train_steps'] = 110
-    default_flags['log_steps'] = 10
-
-    super(Resnet56KerasBenchmarkSynth, self).__init__(
-        output_dir=output_dir, default_flags=default_flags)
-
-
-class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
-  """Real data benchmarks for ResNet56 and Keras."""
-
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    default_flags = {}
-    default_flags['skip_eval'] = True
-    default_flags['data_dir'] = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)
-    default_flags['train_steps'] = 110
-    default_flags['log_steps'] = 10
-
-    super(Resnet56KerasBenchmarkReal, self).__init__(
-        output_dir=output_dir, default_flags=default_flags)
-
-
-if __name__ == '__main__':
-  tf.test.main()
+  def _setup(self):
+    """Setups up and resets flags before each test."""
+    tf.logging.set_verbosity(tf.logging.DEBUG)
+    if KerasCifar10BenchmarkTests.local_flags is None:
+      keras_common.define_keras_flags()
+      cifar_main.define_cifar_flags()
+      # Loads flags to get defaults to then override.
+      flags.FLAGS(['foo'])
+      saved_flag_values = flagsaver.save_flag_values()
+      KerasCifar10BenchmarkTests.local_flags = saved_flag_values
+      return
+    flagsaver.restore_flag_values(KerasCifar10BenchmarkTests.local_flags)
