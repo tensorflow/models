@@ -88,7 +88,7 @@ def main(unused_argv):
       split_name=FLAGS.eval_split,
       dataset_dir=FLAGS.dataset_dir,
       batch_size=FLAGS.eval_batch_size,
-      crop_size=map(int, FLAGS.eval_crop_size),
+      crop_size=[int(sz) for sz in FLAGS.eval_crop_size],
       min_resize_value=FLAGS.min_resize_value,
       max_resize_value=FLAGS.max_resize_value,
       resize_factor=FLAGS.resize_factor,
@@ -106,7 +106,7 @@ def main(unused_argv):
 
     model_options = common.ModelOptions(
         outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_of_classes},
-        crop_size=map(int, FLAGS.eval_crop_size),
+        crop_size=[int(sz) for sz in FLAGS.eval_crop_size],
         atrous_rates=FLAGS.atrous_rates,
         output_stride=FLAGS.output_stride)
 

@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import functools
 import sys
+from six.moves import shlex_quote
 
 from absl import app as absl_app
 from absl import flags
@@ -86,3 +87,45 @@ get_tf_dtype = _performance.get_tf_dtype
 get_loss_scale = _performance.get_loss_scale
 DTYPE_MAP = _performance.DTYPE_MAP
 require_cloud_storage = _device.require_cloud_storage
+
+def _get_nondefault_flags_as_dict():
+  """Returns the nondefault flags as a dict from flag name to value."""
+  nondefault_flags = {}
+  for flag_name in flags.FLAGS:
+    flag_value = getattr(flags.FLAGS, flag_name)
+    if (flag_name != flags.FLAGS[flag_name].short_name and
+        flag_value != flags.FLAGS[flag_name].default):
+      nondefault_flags[flag_name] = flag_value
+  return nondefault_flags
+
+
+def get_nondefault_flags_as_str():
+  """Returns flags as a string that can be passed as command line arguments.
+
+  E.g., returns: "--batch_size=256 --use_synthetic_data" for the following code
+  block:
+
+  ```
+  flags.FLAGS.batch_size = 256
+  flags.FLAGS.use_synthetic_data = True
+  print(get_nondefault_flags_as_str())
+  ```
+
+  Only flags with nondefault values are returned, as passing default flags as
+  command line arguments has no effect.
+
+  Returns:
+    A string with the flags, that can be passed as command line arguments to a
+    program to use the flags.
+  """
+  nondefault_flags = _get_nondefault_flags_as_dict()
+  flag_strings = []
+  for name, value in sorted(nondefault_flags.items()):
+    if isinstance(value, bool):
+      flag_str = '--{}'.format(name) if value else '--no{}'.format(name)
+    elif isinstance(value, list):
+      flag_str = '--{}={}'.format(name, ','.join(value))
+    else:
+      flag_str = '--{}={}'.format(name, value)
+    flag_strings.append(flag_str)
+  return ' '.join(shlex_quote(flag_str) for flag_str in flag_strings)

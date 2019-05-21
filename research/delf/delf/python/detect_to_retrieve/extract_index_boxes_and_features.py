@@ -44,7 +44,7 @@ from tensorflow.python.platform import app
 from delf import delf_config_pb2
 from delf import box_io
 from delf import feature_io
-from delf.detect_to_retrieve import dataset
+from delf.python.detect_to_retrieve import dataset
 from delf import extract_boxes
 from delf import extract_features
 

@@ -182,6 +182,11 @@ def get_train_op_and_metrics(loss, params):
     if params["use_tpu"] and params["tpu"] != tpu_util.LOCAL:
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
+    # Uses automatic mixed precision FP16 training if on GPU.
+    if params["dtype"] == "fp16":
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+          optimizer)
+
     # Calculate and apply gradients using LazyAdamOptimizer.
     global_step = tf.train.get_global_step()
     tvars = tf.trainable_variables()
@@ -232,8 +237,8 @@ def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file):
   uncased_score, cased_score = translate_and_compute_bleu(
       estimator, subtokenizer, bleu_source, bleu_ref)
 
-  tf.logging.info("Bleu score (uncased): %d", uncased_score)
-  tf.logging.info("Bleu score (cased): %d", cased_score)
+  tf.logging.info("Bleu score (uncased): %f", uncased_score)
+  tf.logging.info("Bleu score (cased): %f", cased_score)
   return uncased_score, cased_score
 
 
@@ -392,7 +397,7 @@ def define_transformer_flags():
       intra_op=False,
       synthetic_data=True,
       max_train_steps=False,
-      dtype=False,
+      dtype=True,
       all_reduce_alg=True
   )
   flags_core.define_benchmark()

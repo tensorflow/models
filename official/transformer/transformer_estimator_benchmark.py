@@ -158,12 +158,17 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.steps_between_evals = 5000
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_2_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
-    self._run_and_report_benchmark()
+    # These bleu scores are based on test runs after at this limited
+    # number of steps and batch size after verifying SOTA at 8xV100s.
+    self._run_and_report_benchmark(bleu_min=25.3, bleu_max=26)
 
   def benchmark_graph_8_gpu(self):
     """Benchmark graph mode 8 gpus.
 
       SOTA is 27.3 BLEU (uncased).
+      Best so far is 27.2  with 4048*8 at 75,000 steps.
+      27.009 with 4096*8 at 100,000 steps and earlier.
+      Other test: 2024 * 8 peaked at 26.66 at 100,000 steps.
     """
     self._setup()
     FLAGS.num_gpus = 8
@@ -176,9 +181,11 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.batch_size = 4096 * 8
     FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_2_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
-    self._run_and_report_benchmark()
+    # These bleu scores are based on test runs after at this limited
+    # number of steps and batch size after verifying SOTA at 8xV100s.
+    self._run_and_report_benchmark(bleu_min=25.3, bleu_max=26)
 
   def benchmark_graph_fp16_8_gpu(self):
     """benchmark 8 gpus with fp16 mixed precision.
@@ -201,14 +208,20 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
-  def _run_and_report_benchmark(self):
+  def _run_and_report_benchmark(self, bleu_min=27.3, bleu_max=28):
+    """Run benchmark and report results.
+
+    Args:
+      bleu_min: minimum expected uncased bleu. default is SOTA.
+      bleu_max: max expected uncased bleu. default is a high number.
+    """
     start_time_sec = time.time()
     stats = transformer_main.run_transformer(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
     self._report_benchmark(stats,
                            wall_time_sec,
-                           bleu_min=27.2,
-                           bleu_max=28)
+                           bleu_min=bleu_min,
+                           bleu_max=bleu_max)
 
 
 class TransformerEstimatorBenchmark(EstimatorBenchmark):

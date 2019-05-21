@@ -193,7 +193,7 @@ def main(unused_argv):
       split_name=FLAGS.vis_split,
       dataset_dir=FLAGS.dataset_dir,
       batch_size=FLAGS.vis_batch_size,
-      crop_size=map(int, FLAGS.vis_crop_size),
+      crop_size=[int(sz) for sz in FLAGS.vis_crop_size],
       min_resize_value=FLAGS.min_resize_value,
       max_resize_value=FLAGS.max_resize_value,
       resize_factor=FLAGS.resize_factor,
@@ -222,7 +222,7 @@ def main(unused_argv):
 
     model_options = common.ModelOptions(
         outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_of_classes},
-        crop_size=map(int, FLAGS.vis_crop_size),
+        crop_size=[int(sz) for sz in FLAGS.vis_crop_size],
         atrous_rates=FLAGS.atrous_rates,
         output_stride=FLAGS.output_stride)
 
@@ -276,10 +276,7 @@ def main(unused_argv):
     checkpoints_iterator = tf.contrib.training.checkpoints_iterator(
         FLAGS.checkpoint_dir, min_interval_secs=FLAGS.eval_interval_secs)
     for checkpoint_path in checkpoints_iterator:
-      if max_num_iteration > 0 and num_iteration > max_num_iteration:
-        break
       num_iteration += 1
-
       tf.logging.info(
           'Starting visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                        time.gmtime()))
@@ -313,6 +310,8 @@ def main(unused_argv):
       tf.logging.info(
           'Finished visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                        time.gmtime()))
+      if max_num_iteration > 0 and num_iteration >= max_num_iteration:
+        break
 
 if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')

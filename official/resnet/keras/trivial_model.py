@@ -23,14 +23,19 @@ from tensorflow.python.keras import layers
 from tensorflow.python.keras import models
 
 
-def trivial_model(num_classes):
+def trivial_model(num_classes, dtype='float32'):
   """Trivial model for ImageNet dataset."""
 
   input_shape = (224, 224, 3)
-  img_input = layers.Input(shape=input_shape)
+  img_input = layers.Input(shape=input_shape, dtype=dtype)
 
   x = layers.Lambda(lambda x: backend.reshape(x, [-1, 224 * 224 * 3]),
                     name='reshape')(img_input)
-  x = layers.Dense(num_classes, activation='softmax', name='fc1000')(x)
+  x = layers.Dense(1, name='fc1')(x)
+  x = layers.Dense(num_classes, name='fc1000')(x)
+  # TODO(reedwm): Remove manual casts once mixed precision can be enabled with a
+  # single line of code.
+  x = backend.cast(x, 'float32')
+  x = layers.Activation('softmax')(x)
 
   return models.Model(img_input, x, name='trivial')
