@@ -105,6 +105,59 @@ class EstimatorBenchmark(tf.test.Benchmark):
         wall_time=wall_time_sec,
         metrics=metrics)
 
+class TransformerBigEstimatorAccuracy(EstimatorBenchmark):
+  """Benchmark accuracy tests for Transformer Base model w/ Estimator."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    """Benchmark accuracy tests for Transformer Base model w/ Estimator.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+      **kwargs: arbitrary named arguments. This is needed to make the
+                constructor forward compatible in case PerfZero provides more
+                named arguments before updating the constructor.
+    """
+    flag_methods = [transformer_main.define_transformer_flags]
+
+    self.train_data_dir = os.path.join(root_data_dir,
+                                       TRANSFORMER_EN2DE_DATA_DIR_NAME)
+
+    self.vocab_file = os.path.join(root_data_dir,
+                                   TRANSFORMER_EN2DE_DATA_DIR_NAME,
+                                   'vocab.ende.32768')
+
+    self.bleu_source = os.path.join(root_data_dir,
+                                    EN2DE_2014_BLEU_DATA_DIR_NAME,
+                                    'newstest2014.en')
+
+    self.bleu_ref = os.path.join(root_data_dir,
+                                 EN2DE_2014_BLEU_DATA_DIR_NAME,
+                                 'newstest2014.de')
+
+    super(TransformerBigEstimatorAccuracy, self).__init__(
+        output_dir=output_dir, flag_methods=flag_methods)
+
+  def benchmark_graph_8_gpu(self):
+    """Benchmark graph mode 8 gpus.
+
+      SOTA is 28.4 BLEU (uncased).
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'big'
+    FLAGS.batch_size = 3072 * 8
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 5000
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
 
 class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
   """Benchmark accuracy tests for Transformer Base model w/ Estimator."""
@@ -181,11 +234,9 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.batch_size = 4096 * 8
     FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_2_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.hooks = ['ExamplesPerSecondHook']
-    # These bleu scores are based on test runs after at this limited
-    # number of steps and batch size after verifying SOTA at 8xV100s.
-    self._run_and_report_benchmark(bleu_min=25.3, bleu_max=26)
+    self._run_and_report_benchmark()
 
   def benchmark_graph_fp16_8_gpu(self):
     """benchmark 8 gpus with fp16 mixed precision.
@@ -227,8 +278,17 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
 class TransformerEstimatorBenchmark(EstimatorBenchmark):
   """Benchmarks for Transformer (Base and Big) using Estimator."""
 
-  def __init__(self, output_dir=None, default_flags=None):
+  def __init__(self, output_dir=None, default_flags=None, batch_per_gpu=4096):
+    """Initialize.
+
+    Args:
+      output_dir: Based directory for saving artifacts, e.g. checkpoints.
+      default_flags: default flags to use for all tests.
+      batch_per_gpu: batch size to use per gpu.
+    """
+
     flag_methods = [transformer_main.define_transformer_flags]
+    self.batch_per_gpu = batch_per_gpu
 
     super(TransformerEstimatorBenchmark, self).__init__(
         output_dir=output_dir,
@@ -239,7 +299,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     """Benchmark graph 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.batch_size = 4096
+    FLAGS.batch_size = self.batch_per_gpu
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     self._run_and_report_benchmark()
 
@@ -248,7 +308,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.dtype = 'fp16'
-    FLAGS.batch_size = 4096
+    FLAGS.batch_size = self.batch_per_gpu
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_1_gpu')
     self._run_and_report_benchmark()
 
@@ -256,7 +316,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     """Benchmark graph 2 gpus."""
     self._setup()
     FLAGS.num_gpus = 2
-    FLAGS.batch_size = 4096 * 2
+    FLAGS.batch_size = self.batch_per_gpu * 2
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_2_gpu')
     self._run_and_report_benchmark()
 
@@ -265,7 +325,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     self._setup()
     FLAGS.num_gpus = 2
     FLAGS.dtype = 'fp16'
-    FLAGS.batch_size = 4096 * 2
+    FLAGS.batch_size = self.batch_per_gpu * 2
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_2_gpu')
     self._run_and_report_benchmark()
 
@@ -273,7 +333,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     """Benchmark graph 4 gpus."""
     self._setup()
     FLAGS.num_gpus = 4
-    FLAGS.batch_size = 4096 * 4
+    FLAGS.batch_size = self.batch_per_gpu * 4
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_4_gpu')
     self._run_and_report_benchmark()
 
@@ -282,7 +342,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     self._setup()
     FLAGS.num_gpus = 4
     FLAGS.dtype = 'fp16'
-    FLAGS.batch_size = 4096 * 4
+    FLAGS.batch_size = self.batch_per_gpu * 4
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_4_gpu')
     self._run_and_report_benchmark()
 
@@ -290,7 +350,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     """Benchmark graph 8 gpus."""
     self._setup()
     FLAGS.num_gpus = 8
-    FLAGS.batch_size = 4096 * 8
+    FLAGS.batch_size = self.batch_per_gpu * 8
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     self._run_and_report_benchmark()
 
@@ -299,7 +359,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.dtype = 'fp16'
-    FLAGS.batch_size = 4096 * 8
+    FLAGS.batch_size = self.batch_per_gpu * 8
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_fp16_8_gpu')
     self._run_and_report_benchmark()
 
@@ -366,7 +426,7 @@ class TransformerBigEstimatorBenchmarkReal(TransformerEstimatorBenchmark):
     def_flags['hooks'] = ['ExamplesPerSecondHook']
 
     super(TransformerBigEstimatorBenchmarkReal, self).__init__(
-        output_dir=output_dir, default_flags=def_flags)
+        output_dir=output_dir, default_flags=def_flags, batch_per_gpu=3072)
 
 
 class TransformerBigEstimatorBenchmarkSynth(TransformerEstimatorBenchmark):
@@ -381,4 +441,4 @@ class TransformerBigEstimatorBenchmarkSynth(TransformerEstimatorBenchmark):
     def_flags['hooks'] = ['ExamplesPerSecondHook']
 
     super(TransformerBigEstimatorBenchmarkSynth, self).__init__(
-        output_dir=output_dir, default_flags=def_flags)
+        output_dir=output_dir, default_flags=def_flags, batch_per_gpu=3072)
