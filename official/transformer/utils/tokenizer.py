@@ -117,7 +117,7 @@ class Subtokenizer(object):
           token_counts, alphabet, target_vocab_size, threshold, min_count,
           reserved_tokens)
       tf.compat.v1.logging.info("Generated vocabulary with %d subtokens." %
-          len(subtoken_list))
+                                len(subtoken_list))
       _save_vocab_file(vocab_file, subtoken_list)
     return Subtokenizer(vocab_file)
 

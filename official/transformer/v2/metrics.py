@@ -22,7 +22,6 @@ Metrics:
  - ROUGE score. Source:
      https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/rouge.py
 """
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -150,7 +149,7 @@ class MetricLayer(tf.keras.layers.Layer):
         (tf.keras.metrics.Mean("accuracy"), padded_accuracy),
         (tf.keras.metrics.Mean("accuracy_top5"), padded_accuracy_top5),
         (tf.keras.metrics.Mean("accuracy_per_sequence"),
-            padded_sequence_accuracy),
+         padded_sequence_accuracy),
         (tf.keras.metrics.Mean("neg_log_perplexity"), neg_log_perplexity),
     ]
     super(MetricLayer, self).build(input_shape)
