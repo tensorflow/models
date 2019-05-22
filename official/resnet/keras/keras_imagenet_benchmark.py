@@ -799,7 +799,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     super(Resnet50KerasBenchmarkBase, self).fill_report_object(
         stats,
         total_batch_size=FLAGS.batch_size,
-        log_steps=FLAGS.log_steps)
+        log_steps=FLAGS.log_steps,
+        warmup=20)
 
 
 class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
@@ -810,7 +811,7 @@ class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
     def_flags['use_synthetic_data'] = True
-    def_flags['train_steps'] = 110
+    def_flags['train_steps'] = 300
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkSynth, self).__init__(
@@ -825,7 +826,7 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
-    def_flags['train_steps'] = 110
+    def_flags['train_steps'] = 300
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkReal, self).__init__(
