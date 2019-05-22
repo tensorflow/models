@@ -96,6 +96,12 @@ class KerasBenchmark(tf.test.Benchmark):
       num_examples = (
           total_batch_size * log_steps * (len(time_log) - warmup - 1))
       examples_per_sec = num_examples / elapsed
+      print('HZDEBUG: stats ---------------------------------------------------')
+      print('num_examples =', num_examples)
+      print('len(time_log) =', len(time_log))
+      print('time_log[-1].timestamp =', time_log[-1].timestamp)
+      print('time_log[warmup].timestamp =', time_log[warmup].timestamp)
+      print('stats =', stats)
       metrics.append({'name': 'exp_per_second',
                       'value': examples_per_sec})
 
