@@ -151,6 +151,7 @@ class BertModel(tf.keras.layers.Layer):
     self.float_type = float_type
 
   def build(self, unused_input_shapes):
+    """Implements build() for the layer."""
     self.embedding_lookup = EmbeddingLookup(
         vocab_size=self.config.vocab_size,
         embedding_size=self.config.hidden_size,
@@ -192,6 +193,7 @@ class BertModel(tf.keras.layers.Layer):
     return super(BertModel, self).__call__(inputs, **kwargs)
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     unpacked_inputs = unpack_inputs(inputs)
     input_word_ids = unpacked_inputs[0]
     input_mask = unpacked_inputs[1]
@@ -232,6 +234,7 @@ class EmbeddingLookup(tf.keras.layers.Layer):
     self.initializer_range = initializer_range
 
   def build(self, unused_input_shapes):
+    """Implements build() for the layer."""
     self.embeddings = self.add_weight(
         "embeddings",
         shape=[self.vocab_size, self.embedding_size],
@@ -240,6 +243,7 @@ class EmbeddingLookup(tf.keras.layers.Layer):
     super(EmbeddingLookup, self).build(unused_input_shapes)
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     input_shape = get_shape_list(inputs)
     flat_input = tf.reshape(inputs, [-1])
     output = tf.gather(self.embeddings, flat_input)
@@ -271,6 +275,7 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
                        "`token_type_vocab_size` must be specified.")
 
   def build(self, input_shapes):
+    """Implements build() for the layer."""
     (word_embeddings_shape, _) = input_shapes
     width = word_embeddings_shape.as_list()[-1]
     self.type_embeddings = None
@@ -299,6 +304,7 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
     return super(EmbeddingPostprocessor, self).__call__(inputs, **kwargs)
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     unpacked_inputs = unpack_inputs(inputs)
     word_embeddings = unpacked_inputs[0]
     token_type_ids = unpacked_inputs[1]
@@ -378,6 +384,7 @@ class Attention(tf.keras.layers.Layer):
     self.backward_compatible = backward_compatible
 
   def build(self, unused_input_shapes):
+    """Implements build() for the layer."""
     self.query_dense = self._projection_dense_layer("query")
     self.key_dense = self._projection_dense_layer("key")
     self.value_dense = self._projection_dense_layer("value")
@@ -403,6 +410,7 @@ class Attention(tf.keras.layers.Layer):
     return super(Attention, self).__call__(inputs, **kwargs)
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     (from_tensor, to_tensor, attention_mask) = unpack_inputs(inputs)
 
     # Scalar dimensions referenced here:
@@ -453,6 +461,7 @@ class Attention(tf.keras.layers.Layer):
     return context_tensor
 
   def _projection_dense_layer(self, name):
+    """A helper to define a projection layer."""
     return Dense3D(
         num_attention_heads=self.num_attention_heads,
         size_per_head=self.size_per_head,
@@ -507,6 +516,7 @@ class Dense3D(tf.keras.layers.Layer):
     return [self.num_attention_heads, self.size_per_head]
 
   def build(self, input_shape):
+    """Implements build() for the layer."""
     dtype = tf.as_dtype(self.dtype or tf.keras.backend.floatx())
     if not (dtype.is_floating or dtype.is_complex):
       raise TypeError("Unable to build `Dense` layer with non-floating point "
@@ -586,6 +596,7 @@ class Dense2DProjection(tf.keras.layers.Layer):
     self.activation = activation
 
   def build(self, input_shape):
+    """Implements build() for the layer."""
     dtype = tf.as_dtype(self.dtype or tf.keras.backend.floatx())
     if not (dtype.is_floating or dtype.is_complex):
       raise TypeError("Unable to build `Dense` layer with non-floating point "
@@ -661,6 +672,7 @@ class TransformerBlock(tf.keras.layers.Layer):
     self.attention_head_size = int(self.hidden_size / self.num_attention_heads)
 
   def build(self, unused_input_shapes):
+    """Implements build() for the layer."""
     self.attention_layer = Attention(
         num_attention_heads=self.num_attention_heads,
         size_per_head=self.attention_head_size,
@@ -699,6 +711,7 @@ class TransformerBlock(tf.keras.layers.Layer):
     return super(TransformerBlock, self).__call__(inputs)
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     (input_tensor, attention_mask) = unpack_inputs(inputs)
     attention_output = self.attention_layer(
         from_tensor=input_tensor,
@@ -751,6 +764,7 @@ class Transformer(tf.keras.layers.Layer):
     self.backward_compatible = backward_compatible
 
   def build(self, unused_input_shapes):
+    """Implements build() for the layer."""
     self.layers = []
     for i in range(self.num_hidden_layers):
       self.layers.append(
@@ -775,6 +789,7 @@ class Transformer(tf.keras.layers.Layer):
     return super(Transformer, self).__call__(inputs=inputs)
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     unpacked_inputs = unpack_inputs(inputs)
     input_tensor = unpacked_inputs[0]
     attention_mask = unpacked_inputs[1]
@@ -832,6 +847,7 @@ def unpack_inputs(inputs):
 
 
 def is_special_none_tensor(tensor):
+  """Checks if a tensor is a special None Tensor."""
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
