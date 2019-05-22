@@ -44,6 +44,7 @@ class LazyAdam(tf.keras.optimizers.Adam):
   """
 
   def _resource_apply_sparse(self, grad, var, indices):
+    """Applies grad for one step."""
     var_dtype = var.dtype.base_dtype
     lr_t = self._decayed_lr(var_dtype)
     beta_1_t = self._get_hyper('beta_1', var_dtype)
@@ -156,4 +157,3 @@ class LearningRateScheduler(tf.keras.callbacks.Callback):
     logs = logs or {}
     logs['lr'] = K.get_value(self.model.optimizer.lr)
     logs['steps'] = self.steps
-

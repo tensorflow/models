@@ -149,7 +149,8 @@ class MetricLayer(tf.keras.layers.Layer):
     self.metric_mean_fns = [
         (tf.keras.metrics.Mean("accuracy"), padded_accuracy),
         (tf.keras.metrics.Mean("accuracy_top5"), padded_accuracy_top5),
-        (tf.keras.metrics.Mean("accuracy_per_sequence"), padded_sequence_accuracy),
+        (tf.keras.metrics.Mean("accuracy_per_sequence"),
+            padded_sequence_accuracy),
         (tf.keras.metrics.Mean("neg_log_perplexity"), neg_log_perplexity),
     ]
     super(MetricLayer, self).build(input_shape)

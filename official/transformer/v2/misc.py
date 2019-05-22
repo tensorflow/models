@@ -170,5 +170,3 @@ def define_transformer_flags():
   # pylint: enable=unused-variable
 
   flags_core.require_cloud_storage(["data_dir", "model_dir", "export_dir"])
-
-

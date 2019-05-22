@@ -142,5 +142,3 @@ def translate_from_text(model, subtokenizer, txt):
 def translate_from_input(outputs, subtokenizer):
   translation = _trim_and_decode(outputs, subtokenizer)
   tf.compat.v1.logging.info("Translation: \"%s\"" % translation)
-
-

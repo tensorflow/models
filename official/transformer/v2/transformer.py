@@ -294,6 +294,7 @@ class LayerNormalization(tf.keras.layers.Layer):
     self.hidden_size = hidden_size
 
   def build(self, input_shape):
+    """Builds the layer."""
     self.scale = self.add_weight(
         "layer_norm_scale",
         shape=[self.hidden_size],
@@ -338,6 +339,7 @@ class PrePostProcessingWrapper(tf.keras.layers.Layer):
     }
 
   def call(self, x, *args, **kwargs):
+    """Calls wrapped layer with same parameters."""
     # Preprocessing: apply layer normalization
     training = kwargs["training"]
 
@@ -367,6 +369,7 @@ class EncoderStack(tf.keras.layers.Layer):
     self.layers = []
 
   def build(self, input_shape):
+    """Builds the encoder stack."""
     params = self.params
     for _ in range(params["num_hidden_layers"]):
       # Create sublayers for each layer.
@@ -438,6 +441,7 @@ class DecoderStack(tf.keras.layers.Layer):
     self.layers = []
 
   def build(self, input_shape):
+    """Builds the decoder stack."""
     params = self.params
     for _ in range(params["num_hidden_layers"]):
       self_attention_layer = attention_layer.SelfAttention(

@@ -43,6 +43,7 @@ class Attention(tf.keras.layers.Layer):
     self.attention_dropout = attention_dropout
 
   def build(self, input_shape):
+    """Builds the layer."""
     # Layers for linearly projecting the queries, keys, and values.
     self.q_dense_layer = tf.keras.layers.Dense(
         self.hidden_size, use_bias=False, name="q")
