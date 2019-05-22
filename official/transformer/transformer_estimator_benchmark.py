@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Executes Estimator benchmarks and accuracy tests."""
+"""Executes Transformer w/Estimator benchmark and accuracy tests."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -33,10 +33,10 @@ FLAGS = flags.FLAGS
 
 
 class EstimatorBenchmark(tf.test.Benchmark):
-  """Base class to hold methods common to test classes in the module.
+  """Methods common to executing transformer w/Estimator tests.
 
-     Code under test for the Transformer Estimator models that report mostly the
-     same data and require the same FLAG setup.
+     Code under test for the Transformer Estimator models report the same data
+     and require the same FLAG setup.
   """
   local_flags = None
 
@@ -76,7 +76,7 @@ class EstimatorBenchmark(tf.test.Benchmark):
 
     Args:
       stats: dict returned from estimator models with known entries.
-      wall_time_sec: the during of the benchmark execution in seconds
+      wall_time_sec: the during of the benchmark execution in seconds.
       bleu_max: highest passing level for bleu score.
       bleu_min: lowest passing level for bleu score.
     """
@@ -107,14 +107,14 @@ class EstimatorBenchmark(tf.test.Benchmark):
 
 
 class TransformerBigEstimatorAccuracy(EstimatorBenchmark):
-  """Benchmark accuracy tests for Transformer Big model w/ Estimator."""
+  """Benchmark accuracy tests for Transformer Big model w/Estimator."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    """Benchmark accuracy tests for Transformer Big model w/ Estimator.
+    """Benchmark accuracy tests for Transformer Big model w/Estimator.
 
     Args:
-      output_dir: directory where to output e.g. log files
-      root_data_dir: directory under which to look for dataset
+      output_dir: directory where to output, e.g. log files.
+      root_data_dir: directory under which to look for dataset.
       **kwargs: arbitrary named arguments. This is needed to make the
                 constructor forward compatible in case PerfZero provides more
                 named arguments before updating the constructor.
