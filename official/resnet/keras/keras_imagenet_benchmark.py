@@ -65,6 +65,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.dtype = 'fp32'
+    FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu(self):
@@ -80,6 +81,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     # Add some thread tunings to improve performance.
     FLAGS.datasets_num_private_threads = 14
+    FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16(self):
@@ -95,6 +97,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     # Thread tuning to improve performance.
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16(self):
@@ -111,6 +114,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     # Thread tuning to improve performance.
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_dynamic(self):
@@ -128,6 +132,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.loss_scale = 'dynamic'
     # Thread tuning to improve performance.
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
 
   def _run_and_report_benchmark(self):
@@ -443,6 +448,22 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_tweaked(self):
+    """Test Keras model with manual config tuning, 8 GPUs, and XLA."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_tweaked')
+    FLAGS.batch_size = 128 * 8
+    FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.datasets_num_private_threads = 24
+    FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16(self):
