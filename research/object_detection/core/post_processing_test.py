@@ -839,6 +839,9 @@ class MulticlassNonMaxSuppressionTest(test_case.TestCase):
               [[0, 0], [0, 0]]]],
             tf.float32)
     }
+    additional_fields['size'] = tf.constant(
+        [[[[6], [8]], [[0], [2]], [[0], [0]], [[0], [0]]],
+         [[[13], [15]], [[8], [10]], [[10], [12]], [[0], [0]]]], tf.float32)
     score_thresh = 0.1
     iou_thresh = .5
     max_output_size = 4
@@ -865,6 +868,10 @@ class MulticlassNonMaxSuppressionTest(test_case.TestCase):
                                 [[8, 9], [10, 11]],
                                 [[0, 0], [0, 0]]]])
     }
+    exp_nms_additional_fields['size'] = np.array([[[[0], [0]], [[6], [8]],
+                                                   [[0], [0]], [[0], [0]]],
+                                                  [[[10], [12]], [[13], [15]],
+                                                   [[8], [10]], [[0], [0]]]])
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
      nmsed_additional_fields, num_detections
@@ -1071,6 +1078,11 @@ class MulticlassNonMaxSuppressionTest(test_case.TestCase):
               [[0, 0], [0, 0]]]],
             tf.float32)
     }
+
+    additional_fields['size'] = tf.constant(
+        [[[[7], [9]], [[1], [3]], [[0], [0]], [[0], [0]]],
+         [[[14], [16]], [[9], [11]], [[11], [13]], [[0], [0]]]], tf.float32)
+
     num_valid_boxes = tf.constant([1, 1], tf.int32)
     score_thresh = 0.1
     iou_thresh = .5
@@ -1098,6 +1110,11 @@ class MulticlassNonMaxSuppressionTest(test_case.TestCase):
                                 [[0, 0], [0, 0]],
                                 [[0, 0], [0, 0]]]])
     }
+
+    exp_nms_additional_fields['size'] = np.array([[[[7], [9]], [[0], [0]],
+                                                   [[0], [0]], [[0], [0]]],
+                                                  [[[14], [16]], [[0], [0]],
+                                                   [[0], [0]], [[0], [0]]]])
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
      nmsed_additional_fields, num_detections

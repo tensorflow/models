@@ -65,6 +65,8 @@ Extras:
   * <a href='g3doc/detection_model_zoo.md'>Tensorflow detection model zoo</a><br>
   * <a href='g3doc/exporting_models.md'>
       Exporting a trained model for inference</a><br>
+  * <a href='g3doc/tpu_exporters.md'>
+      Exporting a trained model for TPU inference</a><br>
   * <a href='g3doc/defining_your_own_model.md'>
       Defining your own model architecture</a><br>
   * <a href='g3doc/using_your_own_dataset.md'>

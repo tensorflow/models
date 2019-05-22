@@ -29,7 +29,7 @@ from nets import resnet_v1
 slim = tf.contrib.slim
 
 
-class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
+class SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
   """SSD FPN feature extractor based on Resnet v1 architecture."""
 
   def __init__(self,
@@ -84,7 +84,7 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     Raises:
       ValueError: On supplying invalid arguments for unused arguments.
     """
-    super(_SSDResnetV1FpnFeatureExtractor, self).__init__(
+    super(SSDResnetV1FpnFeatureExtractor, self).__init__(
         is_training=is_training,
         depth_multiplier=depth_multiplier,
         min_depth=min_depth,
@@ -198,7 +198,7 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     return feature_maps
 
 
-class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
+class SSDResnet50V1FpnFeatureExtractor(SSDResnetV1FpnFeatureExtractor):
   """SSD Resnet50 V1 FPN feature extractor."""
 
   def __init__(self,
@@ -255,7 +255,7 @@ class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
         override_base_feature_extractor_hyperparams)
 
 
-class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
+class SSDResnet101V1FpnFeatureExtractor(SSDResnetV1FpnFeatureExtractor):
   """SSD Resnet101 V1 FPN feature extractor."""
 
   def __init__(self,
@@ -312,7 +312,7 @@ class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
         override_base_feature_extractor_hyperparams)
 
 
-class SSDResnet152V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
+class SSDResnet152V1FpnFeatureExtractor(SSDResnetV1FpnFeatureExtractor):
   """SSD Resnet152 V1 FPN feature extractor."""
 
   def __init__(self,
