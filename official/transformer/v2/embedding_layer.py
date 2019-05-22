@@ -36,6 +36,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
     self.hidden_size = hidden_size
 
   def build(self, input_shape):
+    """Build embedding layer."""
     with tf.name_scope("embedding_and_softmax"):
       # Create and initialize weights. The random normal initializer was chosen
       # arbitrarily, and works well.
