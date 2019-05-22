@@ -1,5 +1,11 @@
 ## Quick start: landmark detection
 
+### Install DELF library
+
+To be able to use this code, please follow
+[these instructions](INSTALL_INSTRUCTIONS.md) to properly install the DELF
+library.
+
 ### Download Oxford buildings dataset
 
 To illustrate detector usage, please download the Oxford buildings dataset, by
