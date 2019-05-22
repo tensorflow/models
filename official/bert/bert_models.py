@@ -85,6 +85,7 @@ class BertPretrainLayer(tf.keras.layers.Layer):
           stddev=self.config.initializer_range)
 
   def build(self, unused_input_shapes):
+    """Implements build() for the layer."""
     self.lm_dense = tf.keras.layers.Dense(
         self.config.hidden_size,
         activation=modeling.get_activation(self.config.hidden_act),
@@ -108,6 +109,7 @@ class BertPretrainLayer(tf.keras.layers.Layer):
     return super(BertPretrainLayer, self).__call__(inputs)
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     unpacked_inputs = modeling.unpack_inputs(inputs)
     pooled_output = unpacked_inputs[0]
     sequence_output = unpacked_inputs[1]
@@ -151,6 +153,7 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
   def _add_metrics(self, lm_output, lm_labels, lm_label_weights,
                    lm_per_example_loss, sentence_output, sentence_labels,
                    sentence_per_example_loss):
+    """Adds metrics."""
     masked_lm_accuracy = tf.keras.metrics.sparse_categorical_accuracy(
         lm_labels, lm_output)
     masked_lm_accuracy = tf.reduce_mean(masked_lm_accuracy * lm_label_weights)
@@ -173,6 +176,7 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
         next_sentence_mean_loss, name='next_sentence_loss', aggregation='mean')
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     unpacked_inputs = modeling.unpack_inputs(inputs)
     lm_output = unpacked_inputs[0]
     sentence_output = unpacked_inputs[1]
@@ -284,11 +288,13 @@ class BertSquadLogitsLayer(tf.keras.layers.Layer):
     self.float_type = float_type
 
   def build(self, unused_input_shapes):
+    """Implements build() for the layer."""
     self.final_dense = tf.keras.layers.Dense(
         units=2, kernel_initializer=self.initializer, name='final_dense')
     super(BertSquadLogitsLayer, self).build(unused_input_shapes)
 
   def call(self, inputs):
+    """Implements call() for the layer."""
     sequence_output = inputs
 
     input_shape = sequence_output.shape.as_list()

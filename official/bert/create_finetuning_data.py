@@ -64,12 +64,14 @@ flags.DEFINE_string("vocab_file", None,
 
 flags.DEFINE_string(
     "train_data_output_path", None,
-    "The path in which generated training input data will be written as tf records."
+    "The path in which generated training input data will be written as tf"
+    " records."
 )
 
 flags.DEFINE_string(
     "eval_data_output_path", None,
-    "The path in which generated training input data will be written as tf records."
+    "The path in which generated training input data will be written as tf"
+    " records."
 )
 
 flags.DEFINE_string("meta_data_file_path", None,
