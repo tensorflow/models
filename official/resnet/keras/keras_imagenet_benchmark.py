@@ -567,7 +567,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     # FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
-    
+
   def benchmark_xla_8_gpu_fp16_tweaked_get_next_as_optional(self):
     """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16 and 
        enabling get_next_as_optional.
