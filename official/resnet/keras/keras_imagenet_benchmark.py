@@ -585,7 +585,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.use_tensor_lr = True
     # FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.data_delay_prefetch = True
-    FLAGS.use_tensor_lr = True
     FLAGS.enable_get_next_as_optional = True
     self._run_and_report_benchmark()
 
