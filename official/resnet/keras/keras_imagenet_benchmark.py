@@ -568,6 +568,26 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
+  def benchmark_xla_8_gpu_fp16_tweaked_optional_next(self):
+    """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16 and
+       enabling get_next_as_optional.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_tweaked_optional_next')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.use_tensor_lr = True
+    # FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_delay_prefetch = True
+    FLAGS.enable_get_next_as_optional = True
+    self._run_and_report_benchmark()
+
   def benchmark_xla_8_gpu_fp16_slack(self):
     """Test Keras model with tf.data's experimental_slack functionality, XLA,
        8 GPUs and fp16.
