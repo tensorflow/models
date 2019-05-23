@@ -112,8 +112,8 @@ class EstimatorBenchmark(tf.test.Benchmark):
     self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
 
 
-class TransformerEstimatorBenchmark(EstimatorBenchmark):
-  """Benchmarks for Transformer (Base and Big) using Estimator."""
+class TransformerKerasBenchmark(EstimatorBenchmark):
+  """Benchmarks for Transformer (Base and Big) using Keras."""
 
   def __init__(self, output_dir=None, default_flags=None, batch_per_gpu=4096):
     """Initialize.
@@ -127,7 +127,7 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     flag_methods = [misc.define_transformer_flags]
     self.batch_per_gpu = batch_per_gpu
 
-    super(TransformerEstimatorBenchmark, self).__init__(
+    super(TransformerKerasBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         flag_methods=flag_methods)
@@ -144,10 +144,13 @@ class TransformerEstimatorBenchmark(EstimatorBenchmark):
     start_time_sec = time.time()
     stats = transformer_main.main(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
-    self._report_benchmark(stats, wall_time_sec)
+    self._report_benchmark(stats,
+                           wall_time_sec,
+                           total_batch_size=FLAGS.batch_size,
+                           log_steps=FLAGS.log_steps)
 
 
-class TransformerBaseEstimatorBenchmarkReal(TransformerEstimatorBenchmark):
+class TransformerBaseKerasBenchmarkReal(TransformerKerasBenchmark):
   """Transformer based version real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
@@ -166,6 +169,28 @@ class TransformerBaseEstimatorBenchmarkReal(TransformerEstimatorBenchmark):
     def_flags['epochs_between_evals'] = 10
     def_flags['log_steps'] = 10
 
-    super(TransformerBaseEstimatorBenchmarkReal, self).__init__(
+    super(TransformerBaseKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
+
+class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
+  """Transformer based version real data benchmark tests."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    train_data_dir = os.path.join(root_data_dir,
+                                  TRANSFORMER_EN2DE_DATA_DIR_NAME)
+    vocab_file = os.path.join(root_data_dir,
+                              TRANSFORMER_EN2DE_DATA_DIR_NAME,
+                              'vocab.ende.32768')
+
+    def_flags = {}
+    def_flags['param_set'] = 'big'
+    def_flags['vocab_file'] = vocab_file
+    def_flags['data_dir'] = train_data_dir
+    def_flags['train_steps'] = 200
+    def_flags['train_epochs'] = 1
+    def_flags['epochs_between_evals'] = 10
+    def_flags['log_steps'] = 10
+
+    super(TransformerBigKerasBenchmarkReal, self).__init__(
+        output_dir=output_dir, default_flags=def_flags, batch_per_gpu=3072)
