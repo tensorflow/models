@@ -110,6 +110,8 @@ def _get_train_and_eval_data(producer, params):
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params).map(
       preprocess_train_input)
+  train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
+
 
   def preprocess_eval_input(features):
     """Pre-process the eval data.
@@ -242,10 +244,13 @@ def run_ncf(_):
         cloning=params["clone_model_in_keras_dist_strat"])
 
     history = keras_model.fit(train_input_dataset,
+                              steps_per_epoch=num_train_steps,
                               epochs=FLAGS.train_epochs,
                               callbacks=[
                                   IncrementEpochCallback(producer),
                                   time_callback],
+                              validation_data=eval_input_dataset,
+                              validation_steps=num_eval_steps,
                               verbose=2)
 
     logging.info("Training done. Start evaluating")
