@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Executes Transformer w/Estimator benchmark and accuracy tests."""
+"""Executes Transformer w/Keras benchmark and accuracy tests."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -33,10 +33,10 @@ FLAGS = flags.FLAGS
 
 
 class EstimatorBenchmark(tf.test.Benchmark):
-  """Methods common to executing transformer w/Estimator tests.
+  """Methods common to executing transformer w/keras tests.
 
-     Code under test for the Transformer Estimator models report the same data
-     and require the same FLAG setup.
+     Code under test for the Transformer Keras models report the same data and
+     require the same FLAG setup.
   """
   local_flags = None
 
