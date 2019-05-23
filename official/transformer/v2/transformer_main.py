@@ -22,13 +22,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import datetime
 import os
 import tempfile
 
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
+from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -41,7 +41,6 @@ from official.transformer.v2 import transformer
 from official.transformer.v2 import translate
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
-from official.utils.misc import keras_utils
 
 
 INF = int(1e9)
@@ -124,36 +123,38 @@ class TransformerTask(object):
     valid_ds = valid_ds.map(
         map_data_fn, num_parallel_calls=params["num_parallel_calls"])
 
-    init_epoch = flags_obj.init_epoch or 0
-    init_steps = init_epoch * flags_obj.train_steps
-    callbacks = self._create_callbacks(flags_obj.model_dir, init_steps, params)
+    callbacks = self._create_callbacks(flags_obj.model_dir, 0, params)
 
-    history = model.fit(
-        train_ds,
-        epochs=flags_obj.train_epochs,
-        steps_per_epoch=flags_obj.train_steps,
-        validation_data=valid_ds,
-        validation_steps=flags_obj.validation_steps,
-        validation_freq=flags_obj.epochs_between_evals,
-        callbacks=callbacks,
-        verbose=2)
-    tf.compat.v1.logging.info("\nTrain history: {}".format(history.history))
+    epochs = 0
+    predict_model = None
+    for i in xrange(1, flags_obj.train_epochs + 1):
+      print("Train Epoch:{}/{}".format(i, flags_obj.train_epochs))
+      history = model.fit(
+          train_ds,
+          initial_epoch=epochs,
+          epochs=i,
+          steps_per_epoch=flags_obj.train_steps,
+          callbacks=callbacks,
+          verbose=2)
+      epochs += 1
+      tf.compat.v1.logging.info("Train history: {}".format(history.history))
 
-    stats = misc.build_stats(history, callbacks)
+      stats = misc.build_stats(history, callbacks)
 
-    if flags_obj.bleu_source and flags_obj.bleu_ref:
-      uncased_score, cased_score = evaluate_and_log_bleu(model,
-                                                         flags_obj.bleu_source,
-                                                         flags_obj.bleu_ref,
-                                                         flags_obj.vocab_file)
-      stats["bleu_uncased"] = uncased_score
-      stats["blue_cased"] = cased_score
-
-    save_weight_path = os.path.join(flags_obj.model_dir,
-                                    "saves-model-weights.hdf5")
-    save_model_path = os.path.join(flags_obj.model_dir, "saves-model.hdf5")
-    model.save_weights(save_weight_path)
-    model.save(save_model_path)
+      if (flags_obj.bleu_source and
+          flags_obj.bleu_ref and
+          epochs%flags_obj.epochs_between_evals == 0):
+        if not predict_model:
+          predict_model = transformer.create_model(params, False)
+        ckpt = tf.train.latest_checkpoint(flags_obj.model_dir)
+        self._load_weights_if_possible(predict_model, ckpt)
+        uncased_score, cased_score = evaluate_and_log_bleu(
+            predict_model,
+            flags_obj.bleu_source,
+            flags_obj.bleu_ref,
+            flags_obj.vocab_file)
+        stats["bleu_uncased"] = uncased_score
+        stats["blue_cased"] = cased_score
 
     return stats
 
@@ -162,7 +163,9 @@ class TransformerTask(object):
     params, flags_obj, is_train = self.params, self.flags_obj, False
     with tf.name_scope("model"):
       model = transformer.create_model(params, is_train)
-      self._load_weights_if_possible(model, flags_obj.init_weight_path)
+      self._load_weights_if_possible(
+          model,
+          tf.train.latest_checkpoint(flags_obj.init_weight_path))
       model.summary()
     evaluate_and_log_bleu(model, flags_obj.bleu_source, flags_obj.bleu_ref,
                           flags_obj.vocab_file)
@@ -193,9 +196,8 @@ class TransformerTask(object):
     scheduler_callback = optimizer.LearningRateScheduler(sfunc, init_steps)
     callbacks = misc.get_callbacks()
     callbacks.append(scheduler_callback)
-    save_path = os.path.join(cur_log_dir,
-                             "weights-epoch-{epoch:02d}-loss-{loss:.4f}.hdf5")
-    callbacks.append(tf.keras.callbacks.ModelCheckpoint(save_path,
+    ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
+    callbacks.append(tf.keras.callbacks.ModelCheckpoint(ckpt_full_path,
                                                         save_weights_only=True))
     return callbacks
 
@@ -203,7 +205,9 @@ class TransformerTask(object):
     """Loads model weights when it is provided."""
     if init_weight_path:
       tf.compat.v1.logging.info("Load weights: {}".format(init_weight_path))
-      model.load_weights(init_weight_path, by_name=True)
+      model.load_weights(init_weight_path)
+    else:
+      print("Weights not loaded from path:{}".format(init_weight_path))
 
   def _create_optimizer(self):
     """Creates optimizer."""
@@ -227,7 +231,7 @@ def main(_):
   with logger.benchmark_context(flags_obj):
     task = TransformerTask(flags_obj)
     if flags_obj.mode == "train":
-      return task.train()
+      task.train()
     elif flags_obj.mode == "predict":
       task.predict()
     elif flags_obj.mode == "eval":
