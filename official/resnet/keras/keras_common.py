@@ -372,6 +372,9 @@ def define_keras_flags():
       name='clone_model_in_keras_dist_strat', default=None,
       help='If False, then the experimental code path is used that doesn\'t '
            'clone models for distribution.')
+  flags.DEFINE_boolean(
+      name='enable_get_next_as_optional', default=False,
+      help='Enable get_next_as_optional behavior in DistributedIterator.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
