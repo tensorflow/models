@@ -129,12 +129,13 @@ def run(flags_obj):
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
 
-  # flags_obj.enable_get_next_as_optional controls whether enabling
-  # get_next_as_optional behavior in DistributedIterator. If true, last partial
-  # batch can be supported.
-  strategy.extended.experimental_enable_get_next_as_optional = (
-      flags_obj.enable_get_next_as_optional
-  )
+  if strategy:
+    # flags_obj.enable_get_next_as_optional controls whether enabling
+    # get_next_as_optional behavior in DistributedIterator. If true, last
+    # partial batch can be supported.
+    strategy.extended.experimental_enable_get_next_as_optional = (
+        flags_obj.enable_get_next_as_optional
+    )
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
