@@ -27,6 +27,7 @@ import os
 import tempfile
 
 # pylint: disable=g-bad-import-order
+from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
@@ -40,6 +41,7 @@ from official.transformer.v2 import transformer
 from official.transformer.v2 import translate
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
+from official.utils.misc import keras_utils
 
 
 INF = int(1e9)
@@ -105,16 +107,14 @@ class TransformerTask(object):
 
   def train(self):
     """Trains the model."""
+
     params, flags_obj, is_train = self.params, self.flags_obj, True
+    _ensure_dir(flags_obj.model_dir)
     model = transformer.create_model(params, is_train)
     opt = self._create_optimizer()
 
     model.compile(opt, target_tensors=[])
     model.summary()
-    self._load_weights_if_possible(model, flags_obj.init_weight_path)
-
-    cur_log_dir = _get_log_dir_or_default(flags_obj)
-    _ensure_dir(cur_log_dir)
 
     map_data_fn = data_pipeline.map_data_for_transformer_fn
     train_ds = data_pipeline.train_input_fn(params)
@@ -125,23 +125,37 @@ class TransformerTask(object):
         map_data_fn, num_parallel_calls=params["num_parallel_calls"])
 
     init_epoch = flags_obj.init_epoch or 0
-    init_steps = init_epoch * flags_obj.steps_per_epoch
-    callbacks = self._create_callbacks(cur_log_dir, init_steps, params)
+    init_steps = init_epoch * flags_obj.train_steps
+    callbacks = self._create_callbacks(flags_obj.model_dir, init_steps, params)
 
     history = model.fit(
         train_ds,
-        initial_epoch=init_epoch,
         epochs=flags_obj.train_epochs,
-        steps_per_epoch=flags_obj.steps_per_epoch,
+        steps_per_epoch=flags_obj.train_steps,
         validation_data=valid_ds,
         validation_steps=flags_obj.validation_steps,
-        callbacks=callbacks)
+        validation_freq=flags_obj.epochs_between_evals,
+        callbacks=callbacks,
+        verbose=2)
     tf.compat.v1.logging.info("\nTrain history: {}".format(history.history))
 
-    save_weight_path = os.path.join(cur_log_dir, "saves-model-weights.hdf5")
-    save_model_path = os.path.join(cur_log_dir, "saves-model.hdf5")
+    stats = misc.build_stats(history, callbacks)
+
+    if flags_obj.bleu_source and flags_obj.bleu_ref:
+      uncased_score, cased_score = evaluate_and_log_bleu(model,
+                                                         flags_obj.bleu_source,
+                                                         flags_obj.bleu_ref,
+                                                         flags_obj.vocab_file)
+      stats["bleu_uncased"] = uncased_score
+      stats["blue_cased"] = cased_score
+
+    save_weight_path = os.path.join(flags_obj.model_dir,
+                                    "saves-model-weights.hdf5")
+    save_model_path = os.path.join(flags_obj.model_dir, "saves-model.hdf5")
     model.save_weights(save_weight_path)
     model.save(save_model_path)
+
+    return stats
 
   def eval(self):
     """Evaluates the model."""
@@ -177,17 +191,13 @@ class TransformerTask(object):
                                      params["hidden_size"],
                                      params["learning_rate_warmup_steps"])
     scheduler_callback = optimizer.LearningRateScheduler(sfunc, init_steps)
-
-    tb_logdir = os.path.join(cur_log_dir, "logs")
+    callbacks = misc.get_callbacks()
+    callbacks.append(scheduler_callback)
     save_path = os.path.join(cur_log_dir,
                              "weights-epoch-{epoch:02d}-loss-{loss:.4f}.hdf5")
-    csv_path = os.path.join(cur_log_dir, "result.csv")
-    return [
-        scheduler_callback,
-        tf.keras.callbacks.TensorBoard(tb_logdir),
-        tf.keras.callbacks.ModelCheckpoint(save_path, save_weights_only=True),
-        tf.keras.callbacks.CSVLogger(csv_path, append=True),
-    ]
+    callbacks.append(tf.keras.callbacks.ModelCheckpoint(save_path,
+                                                        save_weights_only=True))
+    return callbacks
 
   def _load_weights_if_possible(self, model, init_weight_path=None):
     """Loads model weights when it is provided."""
@@ -206,15 +216,6 @@ class TransformerTask(object):
     return opt
 
 
-def _get_log_dir_or_default(flags_obj):
-  """Gets init_logdir_timestamp if it is given, otherwise use current time."""
-  if flags_obj.init_logdir_timestamp is not None:
-    timestamp = flags_obj.init_logdir_timestamp
-  else:
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
-  return os.path.join(flags_obj.model_dir, timestamp)
-
-
 def _ensure_dir(log_dir):
   """Makes log dir if not existed."""
   if not os.path.exists(log_dir):
@@ -226,7 +227,7 @@ def main(_):
   with logger.benchmark_context(flags_obj):
     task = TransformerTask(flags_obj)
     if flags_obj.mode == "train":
-      task.train()
+      return task.train()
     elif flags_obj.mode == "predict":
       task.predict()
     elif flags_obj.mode == "eval":
@@ -238,4 +239,4 @@ def main(_):
 if __name__ == "__main__":
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   misc.define_transformer_flags()
-  tf.compat.v1.app.run(main)
+  absl_app.run(main)
