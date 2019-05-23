@@ -128,7 +128,7 @@ def run(flags_obj):
       num_workers=distribution_utils.configure_cluster(),
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
- 
+
   # flags_obj.enable_get_next_as_optional controls whether enabling
   # get_next_as_optional behavior in DistributedIterator. If true, last partial
   # batch can be supported.
