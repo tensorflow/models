@@ -569,7 +569,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_optional_get_next(self):
-    """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16 and 
+    """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16 and
        enabling get_next_as_optional.
     """
     self._setup()
@@ -580,7 +580,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir(
-      'benchmark_xla_8_gpu_fp16_optional_get_next')
+        'benchmark_xla_8_gpu_fp16_optional_get_next')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
     # FLAGS.tf_gpu_thread_mode = 'gpu_private'
