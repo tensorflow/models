@@ -112,7 +112,6 @@ def _get_train_and_eval_data(producer, params):
       preprocess_train_input)
   train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
 
-
   def preprocess_eval_input(features):
     """Pre-process the eval data.
 
