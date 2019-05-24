@@ -134,9 +134,10 @@ class TransformerTask(object):
           steps_per_epoch=flags_obj.steps_between_evals,
           callbacks=callbacks,
           verbose=2)
-      print("End train iteration:{}/{} global step:{}".format(i,
-                                                              iterations,
-                                                              i*iterations))
+      print("End train iteration:{}/{} global step:{}".format(
+          i,
+          iterations,
+          i*flags_obj.steps_between_evals))
       tf.compat.v1.logging.info("Train history: {}".format(history.history))
       stats = misc.build_stats(history, callbacks)
 
