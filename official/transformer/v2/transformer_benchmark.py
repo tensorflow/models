@@ -126,7 +126,7 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
         flag_methods=flag_methods)
 
   def benchmark_1_gpu(self):
-    """Benchmark graph mode 2 gpus.
+    """Benchmark 1 gpu.
 
       The paper uses 8 GPUs and a much larger effective batch size, this is will
       not converge to the 27.3 BLEU (uncased) SOTA.
@@ -174,7 +174,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
         flag_methods=flag_methods)
 
   def benchmark_1_gpu(self):
-    """Benchmark graph 1 gpu."""
+    """Benchmark 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.batch_size = self.batch_per_gpu
