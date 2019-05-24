@@ -148,6 +148,35 @@ class IncrementEpochCallback(tf.keras.callbacks.Callback):
     self._producer.increment_request_epoch()
 
 
+class CustomEarlyStopping(tf.keras.callbacks.Callback):
+  """Stop training has reached a desired hit rate."""
+
+  def __init__(self, monitor, desired_value):
+    super(CustomEarlyStopping, self).__init__()
+
+    self.monitor = monitor
+    self.desired = desired_value
+
+  def on_epoch_end(self, epoch, logs=None):
+    current = self.get_monitor_value(logs)
+    if current and current >= self.desired:
+      self.stopped_epoch = epoch
+      self.model.stop_training = True
+
+  def on_train_end(self, logs=None):
+    if self.stopped_epoch > 0:
+      print('Epoch %05d: early stopping' % (self.stopped_epoch + 1))
+
+  def get_monitor_value(self, logs):
+    logs = logs or {}
+    monitor_value = logs.get(self.monitor)
+    if monitor_value is None:
+      logging.warning('Early stopping conditioned on metric `%s` '
+                      'which is not available. Available metrics are: %s',
+                      self.monitor, ','.join(list(logs.keys())))
+    return monitor_value
+
+
 def _get_keras_model(params):
   """Constructs and returns the model."""
   batch_size = params['batch_size']
@@ -226,6 +255,15 @@ def run_ncf(_):
   train_input_dataset = train_input_dataset.batch(batches_per_step)
   eval_input_dataset = eval_input_dataset.batch(batches_per_step)
 
+  time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
+  callbacks = [
+      IncrementEpochCallback(producer), time_callback]
+
+  if FLAGS.early_stopping:
+    early_stopping_callback = CustomEarlyStopping(
+        "val_metric_fn", desired_value=FLAGS.hr_threshold)
+    callbacks.append(early_stopping_callback)
+
   strategy = ncf_common.get_distribution_strategy(params)
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
@@ -245,9 +283,7 @@ def run_ncf(_):
     history = keras_model.fit(train_input_dataset,
                               steps_per_epoch=num_train_steps,
                               epochs=FLAGS.train_epochs,
-                              callbacks=[
-                                  IncrementEpochCallback(producer),
-                                  time_callback],
+                              callbacks=callbacks,
                               validation_data=eval_input_dataset,
                               validation_steps=num_eval_steps,
                               verbose=2)
