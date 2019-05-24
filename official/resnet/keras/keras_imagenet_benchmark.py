@@ -173,7 +173,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     wall_time_sec = time.time() - start_time_sec
     # Number of logged step time entries that are excluded in performance
     # report. We keep results from last 100 batches in this case.
-    warmup = (FLAGS.train_steps - 100) / FLAGS.log_steps
+    warmup = (FLAGS.train_steps - 100) // FLAGS.log_steps
 
     super(Resnet50KerasBenchmarkBase, self)._report_benchmark(
         stats,
