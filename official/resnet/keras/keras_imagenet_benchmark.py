@@ -727,7 +727,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   def benchmark_graph_xla_8_gpu_fp16_tweaked_optional_next(self):
     """Test Keras model in legacy graph mode with manual config tuning, XLA,
        8 GPUs and fp16.
-       
+
     This test also enables get_next_as_optional.
     """
     self._setup()
