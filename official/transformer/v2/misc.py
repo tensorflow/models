@@ -22,6 +22,10 @@ from __future__ import print_function
 from absl import flags
 import tensorflow as tf
 
+# TODO(tianlin) Import internal library. Remove this when some functions for
+# different TF versions are fixed.
+from tensorflow.python import tf2 as tf2_internal
+
 from official.transformer.model import model_params
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
@@ -33,6 +37,11 @@ PARAMS_MAP = {
     'base': model_params.BASE_PARAMS,
     'big': model_params.BIG_PARAMS,
 }
+
+
+def is_v2():
+  """Returns whether it is v2."""
+  return tf2_internal.enabled()
 
 
 def get_model_params(param_set, num_gpus):
