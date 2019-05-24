@@ -23,7 +23,6 @@ import re
 
 from absl import flags
 import tensorflow as tf
-from tensorflow.python.framework import test_util
 
 from official.transformer.v2 import misc
 from official.transformer.v2 import transformer_main as tm
@@ -108,13 +107,11 @@ class TransformerTaskTest(tf.test.TestCase):
       update_flags.extend(extra_flags)
     FLAGS(update_flags)
 
-  @test_util.run_v1_only("V1 should work. Issue: V2 w/ graph transformed.")
   def test_predict(self):
     self._prepare_files_and_flags()
     t = tm.TransformerTask(FLAGS)
     t.predict()
 
-  @test_util.run_v1_only("V1 should work. Issue: V2 w/ graph transformed.")
   def test_eval(self):
     self._prepare_files_and_flags()
     t = tm.TransformerTask(FLAGS)

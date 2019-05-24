@@ -569,8 +569,9 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_tweaked_optional_next(self):
-    """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16 and
-       enabling get_next_as_optional.
+    """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16.
+
+    This test also enables get_next_as_optional.
     """
     self._setup()
 
@@ -589,8 +590,9 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_slack(self):
-    """Test Keras model with tf.data's experimental_slack functionality, XLA,
-       8 GPUs and fp16.
+    """Test Keras model with XLA, 8 GPUs and fp16.
+
+    This test also enable tf.data's experimental_slack functionality.
     """
     self._setup()
 

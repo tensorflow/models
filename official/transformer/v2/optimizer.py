@@ -132,6 +132,7 @@ class LearningRateScheduler(tf.keras.callbacks.Callback):
       raise ValueError('Optimizer must have a "iterations" attribute.')
 
   def on_train_batch_begin(self, batch, logs=None):
+    """Adjusts learning rate for each train batch."""
     if self.verbose > 0:
       iterations = K.get_value(self.model.optimizer.iterations)
       print('Original iteration %d' % iterations)
