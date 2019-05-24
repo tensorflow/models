@@ -25,13 +25,11 @@ from __future__ import print_function
 import os
 import tempfile
 
-# pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
-from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-# pylint: enable=g-bad-import-order
 
+# pylint: disable=g-bad-import-order
 from official.transformer import compute_bleu
 from official.transformer.utils import tokenizer
 from official.transformer.v2 import data_pipeline
@@ -127,7 +125,7 @@ class TransformerTask(object):
     iterations = flags_obj.train_steps // flags_obj.steps_between_evals
 
     cased_score, uncased_score = None, None
-    for i in xrange(1, iterations + 1):
+    for i in range(1, iterations + 1):
       print("Start train iteration:{}/{}".format(i, iterations))
       history = model.fit(
           train_ds,
