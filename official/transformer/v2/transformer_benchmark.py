@@ -38,7 +38,23 @@ class TransformerBenchmark(PerfZeroBenchmark):
      require the same FLAG setup.
   """
 
-  def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
+  def __init__(self, output_dir=None, default_flags=None, root_data_dir=None,
+               flag_methods=None):
+    self.train_data_dir = os.path.join(root_data_dir,
+                                       TRANSFORMER_EN2DE_DATA_DIR_NAME)
+
+    self.vocab_file = os.path.join(root_data_dir,
+                                   TRANSFORMER_EN2DE_DATA_DIR_NAME,
+                                   'vocab.ende.32768')
+
+    self.bleu_source = os.path.join(root_data_dir,
+                                    EN2DE_2014_BLEU_DATA_DIR_NAME,
+                                    'newstest2014.en')
+
+    self.bleu_ref = os.path.join(root_data_dir,
+                                 EN2DE_2014_BLEU_DATA_DIR_NAME,
+                                 'newstest2014.de')
+
     super(TransformerBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
@@ -60,7 +76,8 @@ class TransformerBenchmark(PerfZeroBenchmark):
       warmup: number of entries in stats['step_timestamp_log'] to ignore.
     """
     start_time_sec = time.time()
-    stats = transformer_main.main(flags.FLAGS)
+    task = transformer_main.TransformerTask(FLAGS)
+    stats = task.train()
     wall_time_sec = time.time() - start_time_sec
 
     metrics = []
@@ -89,15 +106,62 @@ class TransformerBenchmark(PerfZeroBenchmark):
     self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
 
 
+class TransformerBaseKerasAccuracy(TransformerBenchmark):
+  """Benchmark accuracy tests for Transformer Base model w/ Keras."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    """Benchmark accuracy tests for Transformer Base model w/ Keras.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+      **kwargs: arbitrary named arguments. This is needed to make the
+                constructor forward compatible in case PerfZero provides more
+                named arguments before updating the constructor.
+    """
+    flag_methods = [misc.define_transformer_flags]
+
+    super(TransformerBaseKerasAccuracy, self).__init__(
+        output_dir=output_dir, root_data_dir=root_data_dir,
+        flag_methods=flag_methods)
+
+  def benchmark_1_gpu(self):
+    """Benchmark graph mode 2 gpus.
+
+      The paper uses 8 GPUs and a much larger effective batch size, this is will
+      not converge to the 27.3 BLEU (uncased) SOTA.
+    """
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'base'
+    FLAGS.batch_size = 4096
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 500
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
+    # These bleu scores are based on test runs after at this limited
+    # number of steps and batch size after verifying SOTA at 8xV100s.
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=25.3,
+                                   bleu_max=26)
+
+
 class TransformerKerasBenchmark(TransformerBenchmark):
   """Benchmarks for Transformer (Base and Big) using Keras."""
 
-  def __init__(self, output_dir=None, default_flags=None, batch_per_gpu=4096):
+  def __init__(self, output_dir=None, default_flags=None,
+               root_data_dir=None, batch_per_gpu=4096):
     """Initialize.
 
     Args:
       output_dir: Based directory for saving artifacts, e.g. checkpoints.
       default_flags: default flags to use for all tests.
+      root_data_dir: root directory for data, e.g. training.
       batch_per_gpu: batch size to use per gpu.
     """
     flag_methods = [misc.define_transformer_flags]
@@ -106,14 +170,15 @@ class TransformerKerasBenchmark(TransformerBenchmark):
     super(TransformerKerasBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
+        root_data_dir=root_data_dir,
         flag_methods=flag_methods)
 
-  def benchmark_graph_1_gpu(self):
+  def benchmark_1_gpu(self):
     """Benchmark graph 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.batch_size = self.batch_per_gpu
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps)
 
@@ -133,13 +198,11 @@ class TransformerBaseKerasBenchmarkReal(TransformerKerasBenchmark):
     def_flags['vocab_file'] = vocab_file
     def_flags['data_dir'] = train_data_dir
     def_flags['train_steps'] = 200
-    def_flags['train_epochs'] = 1
     def_flags['log_steps'] = 10
 
     super(TransformerBaseKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags,
-        root_data_dir=root_data_dir,
-        batch_per_gpu=4096)
+        root_data_dir=root_data_dir, batch_per_gpu=4096)
 
 
 class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
@@ -157,8 +220,8 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
     def_flags['vocab_file'] = vocab_file
     def_flags['data_dir'] = train_data_dir
     def_flags['train_steps'] = 200
-    def_flags['train_epochs'] = 1
     def_flags['log_steps'] = 10
 
     super(TransformerBigKerasBenchmarkReal, self).__init__(
-        output_dir=output_dir, default_flags=def_flags, batch_per_gpu=3072)
+        output_dir=output_dir, default_flags=def_flags,
+        root_data_dir=root_data_dir, batch_per_gpu=3072)

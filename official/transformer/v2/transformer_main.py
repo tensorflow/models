@@ -90,6 +90,7 @@ class TransformerTask(object):
       flags_obj: Object containing parsed flag values, i.e., FLAGS.
     """
     self.flags_obj = flags_obj
+    self.predict_model = None
 
     # Add flag-defined parameters to params object
     num_gpus = flags_core.get_num_gpus(flags_obj)
@@ -106,7 +107,6 @@ class TransformerTask(object):
 
   def train(self):
     """Trains the model."""
-
     params, flags_obj, is_train = self.params, self.flags_obj, True
     _ensure_dir(flags_obj.model_dir)
     model = transformer.create_model(params, is_train)
@@ -119,56 +119,52 @@ class TransformerTask(object):
     train_ds = data_pipeline.train_input_fn(params)
     train_ds = train_ds.map(
         map_data_fn, num_parallel_calls=params["num_parallel_calls"])
-    valid_ds = data_pipeline.eval_input_fn(params)
-    valid_ds = valid_ds.map(
-        map_data_fn, num_parallel_calls=params["num_parallel_calls"])
 
     callbacks = self._create_callbacks(flags_obj.model_dir, 0, params)
 
+    if flags_obj.train_steps < flags_obj.steps_between_evals:
+      flags_obj.steps_between_evals = flags_obj.train_steps
+    iterations = flags_obj.train_steps // flags_obj.steps_between_evals
+
+    history, cased_score, uncased_score = None, None, None
     epochs = 0
-    predict_model = None
-    for i in xrange(1, flags_obj.train_epochs + 1):
-      print("Train Epoch:{}/{}".format(i, flags_obj.train_epochs))
+    for i in xrange(1, iterations + 1):
+      print("Start train iteration:{}/{}".format(i, iterations))
       history = model.fit(
           train_ds,
           initial_epoch=epochs,
           epochs=i,
-          steps_per_epoch=flags_obj.train_steps,
+          steps_per_epoch=flags_obj.steps_between_evals,
           callbacks=callbacks,
           verbose=2)
+      print("End train iteration:{}/{} global step:{}".format(i,
+                                                              iterations,
+                                                              i*iterations))
       epochs += 1
       tf.compat.v1.logging.info("Train history: {}".format(history.history))
-
       stats = misc.build_stats(history, callbacks)
 
-      if (flags_obj.bleu_source and
-          flags_obj.bleu_ref and
-          epochs%flags_obj.epochs_between_evals == 0):
-        if not predict_model:
-          predict_model = transformer.create_model(params, False)
-        ckpt = tf.train.latest_checkpoint(flags_obj.model_dir)
-        self._load_weights_if_possible(predict_model, ckpt)
-        uncased_score, cased_score = evaluate_and_log_bleu(
-            predict_model,
-            flags_obj.bleu_source,
-            flags_obj.bleu_ref,
-            flags_obj.vocab_file)
-        stats["bleu_uncased"] = uncased_score
-        stats["blue_cased"] = cased_score
+      if (flags_obj.bleu_source and flags_obj.bleu_ref):
+        uncased_score, cased_score = self.eval()
 
+    stats = misc.build_stats(history, callbacks)
+    if uncased_score and cased_score:
+      stats["bleu_uncased"] = uncased_score
+      stats["bleu_cased"] = cased_score
     return stats
 
   def eval(self):
     """Evaluates the model."""
-    params, flags_obj, is_train = self.params, self.flags_obj, False
-    with tf.name_scope("model"):
-      model = transformer.create_model(params, is_train)
-      self._load_weights_if_possible(
-          model,
-          tf.train.latest_checkpoint(flags_obj.init_weight_path))
-      model.summary()
-    evaluate_and_log_bleu(model, flags_obj.bleu_source, flags_obj.bleu_ref,
-                          flags_obj.vocab_file)
+    if not self.predict_model:
+      self.predict_model = transformer.create_model(self.params, False)
+    self._load_weights_if_possible(
+        self.predict_model,
+        tf.train.latest_checkpoint(self.flags_obj.model_dir))
+    self.predict_model.summary()
+    return evaluate_and_log_bleu(self.predict_model,
+                                 self.flags_obj.bleu_source,
+                                 self.flags_obj.bleu_ref,
+                                 self.flags_obj.vocab_file)
 
   def predict(self):
     """Predicts result from the model."""

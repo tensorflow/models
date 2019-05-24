@@ -66,11 +66,13 @@ def define_transformer_flags():
   flags_core.define_device(tpu=True)
 
   flags.DEFINE_integer(
-      name='train_steps', default=None,
-      help='The number of steps to run for training. If it is larger than '
-      '# batches per epoch, then use # batches per epoch. When this flag is '
-      'set, only one epoch is going to run for training.')
-
+      name='train_steps', short_name='ts', default=None,
+      help=flags_core.help_wrap('The number of steps used to train.'))
+  flags.DEFINE_integer(
+      name='steps_between_evals', short_name='sbe', default=1000,
+      help=flags_core.help_wrap(
+          'The Number of training steps to run between evaluations. This is '
+          'used if --train_steps is defined.'))
   flags.DEFINE_boolean(
       name='enable_tensorboard', default=False,
       help='Whether to enable Tensorboard callback.')
@@ -110,15 +112,6 @@ def define_transformer_flags():
           'and static batching will always be used.'))
 
   # Flags for training with steps (may be used for debugging)
-  flags.DEFINE_integer(
-      name='init_epoch', short_name='is', default=0,
-      help=flags_core.help_wrap('The number of initial epoch for training.'))
-  flags.DEFINE_string(
-      name='init_weight_path', short_name='iwp', default=None,
-      help=flags_core.help_wrap('The initial model weights to load.'))
-  flags.DEFINE_string(
-      name='init_logdir_timestamp', short_name='ilt', default=None,
-      help=flags_core.help_wrap('The initial timestamp for logdir.'))
   flags.DEFINE_integer(
       name='validation_steps', short_name='vs', default=64,
       help=flags_core.help_wrap('The number of steps used in validation.'))
