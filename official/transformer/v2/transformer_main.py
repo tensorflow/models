@@ -126,7 +126,7 @@ class TransformerTask(object):
       flags_obj.steps_between_evals = flags_obj.train_steps
     iterations = flags_obj.train_steps // flags_obj.steps_between_evals
 
-    history, cased_score, uncased_score = None, None, None
+    cased_score, uncased_score = None, None
     epochs = 0
     for i in xrange(1, iterations + 1):
       print("Start train iteration:{}/{}".format(i, iterations))
