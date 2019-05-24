@@ -42,7 +42,7 @@ python "${SCRIPT_DIR}/../datasets/movielens.py" --data_dir ${DATA_DIR} --dataset
 if [ "$1" == "keras" ]
 then
 	MAIN_SCRIPT="ncf_keras_main.py"
-	BATCH_SIZE=160000
+	BATCH_SIZE=99000
 	DEVICE_FLAG="--num_gpus 1"
 else
 	BATCH_SIZE=98340
