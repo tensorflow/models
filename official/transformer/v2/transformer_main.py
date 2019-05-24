@@ -127,12 +127,11 @@ class TransformerTask(object):
     iterations = flags_obj.train_steps // flags_obj.steps_between_evals
 
     cased_score, uncased_score = None, None
-    epochs = 0
     for i in xrange(1, iterations + 1):
       print("Start train iteration:{}/{}".format(i, iterations))
       history = model.fit(
           train_ds,
-          initial_epoch=epochs,
+          initial_epoch=i-1,
           epochs=i,
           steps_per_epoch=flags_obj.steps_between_evals,
           callbacks=callbacks,
@@ -140,7 +139,6 @@ class TransformerTask(object):
       print("End train iteration:{}/{} global step:{}".format(i,
                                                               iterations,
                                                               i*iterations))
-      epochs += 1
       tf.compat.v1.logging.info("Train history: {}".format(history.history))
       stats = misc.build_stats(history, callbacks)
 
