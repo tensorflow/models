@@ -15,6 +15,7 @@
 """Executes Keras benchmarks and accuracy tests."""
 from __future__ import print_function
 
+import multiprocessing
 import os
 import time
 
@@ -170,13 +171,16 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     start_time_sec = time.time()
     stats = keras_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
+    # Number of logged step time entries that are excluded in performance
+    # report. We keep results from last 100 batches in this case.
+    warmup = (FLAGS.train_steps - 100) / FLAGS.log_steps
 
     super(Resnet50KerasBenchmarkBase, self)._report_benchmark(
         stats,
         wall_time_sec,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps,
-        warmup=20)
+        warmup=warmup)
 
   def benchmark_1_gpu_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
@@ -811,7 +815,8 @@ class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
     def_flags['use_synthetic_data'] = True
-    def_flags['train_steps'] = 310
+    # TODO(b/132970486): Giving more time to 96 core platform to stabilize.
+    def_flags['train_steps'] = 310 if multiprocessing.cpu_count() == 96 else 110
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkSynth, self).__init__(
@@ -826,7 +831,8 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
-    def_flags['train_steps'] = 310
+    # TODO(b/132970486): Giving more time to 96 core platform to stabilize.
+    def_flags['train_steps'] = 310 if multiprocessing.cpu_count() == 96 else 110
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkReal, self).__init__(
