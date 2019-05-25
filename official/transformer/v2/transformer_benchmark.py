@@ -142,6 +142,7 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     FLAGS.batch_size = 4096
     FLAGS.train_steps = 200000
     FLAGS.steps_between_evals = 5000
+    FLAGS.static_batch = True
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     # These bleu scores are based on test runs after at this limited
     # number of steps and batch size after verifying SOTA at 8xV100s.
@@ -227,6 +228,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.batch_size = self.batch_per_gpu
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
+    FLAGS.static_batch = True
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps)
 
