@@ -162,7 +162,6 @@ class MetricLayer(tf.keras.layers.Layer):
     if not tf.distribute.in_cross_replica_context():
       for mean, fn in self.metric_mean_fns:
         m = mean(*fn(logits, targets))
-        print ('adding metric = {}'.format(m))
         self.add_metric(m)
     return logits
 
@@ -199,7 +198,6 @@ class LossLayer(tf.keras.layers.Layer):
     }
 
   def call(self, inputs):
-    print ('loss layer inputs = {}'.format(inputs))
     logits, targets = inputs[0], inputs[1]
     loss = transformer_loss(logits, targets, self.label_smoothing,
                             self.vocab_size)

@@ -111,8 +111,6 @@ class Transformer(tf.keras.Model):
     else:
       inputs, targets = x[0], None
 
-    print ('x = {} inputs = {} targets = {}'.format(x, inputs, targets))
-
     # Variance scaling is used here because it seems to work in many problems.
     # Other reasonable initializers may also work just as well.
     with tf.name_scope("Transformer"):
@@ -152,10 +150,6 @@ class Transformer(tf.keras.Model):
         length = tf.shape(embedded_inputs)[1]
         pos_encoding = model_utils.get_position_encoding(
             length, self.params["hidden_size"])
-        print ('inputs = {} embedded_inputs = {} inputs_padding = {} length = {} '
-               'pos_encoding = {}'.format(
-                   inputs.shape if hasattr(inputs, 'shape') else inputs, embedded_inputs.shape, inputs_padding.shape, length,
-                   pos_encoding.shape))
         encoder_inputs = embedded_inputs + pos_encoding
 
       if training:

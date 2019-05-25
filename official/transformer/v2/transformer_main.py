@@ -114,10 +114,9 @@ class TransformerTask(object):
     params, flags_obj, is_train = self.params, self.flags_obj, True
     if self.distribution_strategy:
       with self.distribution_strategy.scope():
-        print ('Using {}'.format(self.distribution_strategy))
         model = transformer.create_model(params, is_train)
         opt = self._create_optimizer()
-        model.compile("sgd")
+        model.compile(opt)
     else:
       model = transformer.create_model(params, is_train)
       opt = self._create_optimizer()
@@ -200,9 +199,9 @@ class TransformerTask(object):
     csv_path = os.path.join(cur_log_dir, "result.csv")
     return [
         scheduler_callback,
-        # tf.keras.callbacks.TensorBoard(tb_logdir),
-        # tf.keras.callbacks.ModelCheckpoint(save_path, save_weights_only=True),
-        # tf.keras.callbacks.CSVLogger(csv_path, append=True),
+        tf.keras.callbacks.TensorBoard(tb_logdir),
+        tf.keras.callbacks.ModelCheckpoint(save_path, save_weights_only=True),
+        tf.keras.callbacks.CSVLogger(csv_path, append=True),
     ]
 
   def _load_weights_if_possible(self, model, init_weight_path=None):
