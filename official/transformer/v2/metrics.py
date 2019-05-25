@@ -143,6 +143,7 @@ class MetricLayer(tf.keras.layers.Layer):
     self.metric_mean_fns = []
 
   def build(self, input_shape):
+    """"Builds metric layer."""
     neg_log_perplexity = functools.partial(
         padded_neg_log_perplexity, vocab_size=self.vocab_size)
     self.metric_mean_fns = [

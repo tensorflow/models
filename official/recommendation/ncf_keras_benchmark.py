@@ -121,8 +121,19 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     self._setup()
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_early_stop(self):
+    self._setup()
+    FLAGS.early_stopping = True
+    self._run_and_report_benchmark()
+
   def benchmark_2_gpus(self):
     self._setup()
+    FLAGS.num_gpus = 2
+    self._run_and_report_benchmark()
+
+  def benchmark_2_gpus_early_stop(self):
+    self._setup()
+    FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 

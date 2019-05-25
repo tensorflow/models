@@ -27,7 +27,7 @@ import os
 import sys
 
 # pylint: disable=g-bad-import-order
-from absl import app as absl_app
+from absl import app as absl_app  # pylint: disable=unused-import
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 

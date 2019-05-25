@@ -321,6 +321,12 @@ def define_ncf_flags():
           'If False, then the experimental code path is used that doesn\'t '
           "clone models for distribution."))
 
+  flags.DEFINE_bool(
+      name="early_stopping",
+      default=False,
+      help=flags_core.help_wrap(
+          'If True, we stop the training when it reaches hr_threshold'))
+
 
 def convert_to_softmax_logits(logits):
   '''Convert the logits returned by the base model to softmax logits.
