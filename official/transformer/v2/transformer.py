@@ -103,10 +103,15 @@ class Transformer(tf.keras.Model):
           outputs: [batch_size, decoded length]
           scores: [batch_size, float]}
     """
+    if not tf.distribute.in_cross_replica_context() and len(x) == 1:
+      x = x[0]
+
     if len(x) == 2:
       inputs, targets = x[0], x[1]
     else:
       inputs, targets = x[0], None
+
+    print ('x = {} inputs = {} targets = {}'.format(x, inputs, targets))
 
     # Variance scaling is used here because it seems to work in many problems.
     # Other reasonable initializers may also work just as well.
@@ -147,6 +152,10 @@ class Transformer(tf.keras.Model):
         length = tf.shape(embedded_inputs)[1]
         pos_encoding = model_utils.get_position_encoding(
             length, self.params["hidden_size"])
+        print ('inputs = {} embedded_inputs = {} inputs_padding = {} length = {} '
+               'pos_encoding = {}'.format(
+                   inputs.shape if hasattr(inputs, 'shape') else inputs, embedded_inputs.shape, inputs_padding.shape, length,
+                   pos_encoding.shape))
         encoder_inputs = embedded_inputs + pos_encoding
 
       if training:

@@ -40,6 +40,7 @@ from official.transformer.v2 import transformer
 from official.transformer.v2 import translate
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
 
 
 INF = int(1e9)
@@ -92,10 +93,15 @@ class TransformerTask(object):
 
     # Add flag-defined parameters to params object
     num_gpus = flags_core.get_num_gpus(flags_obj)
+    self.distribution_strategy = distribution_utils.get_distribution_strategy(
+        distribution_strategy=flags_obj.distribution_strategy,
+        num_gpus=flags_core.get_num_gpus(flags_obj))
+
     self.params = params = misc.get_model_params(flags_obj.param_set, num_gpus)
 
     params["data_dir"] = flags_obj.data_dir
     params["model_dir"] = flags_obj.model_dir
+    params["static_batch"] = flags_obj.static_batch
     params["num_parallel_calls"] = (
         flags_obj.num_parallel_calls or tf.data.experimental.AUTOTUNE)
 
@@ -106,17 +112,27 @@ class TransformerTask(object):
   def train(self):
     """Trains the model."""
     params, flags_obj, is_train = self.params, self.flags_obj, True
-    model = transformer.create_model(params, is_train)
-    opt = self._create_optimizer()
+    if self.distribution_strategy:
+      with self.distribution_strategy.scope():
+        print ('Using {}'.format(self.distribution_strategy))
+        model = transformer.create_model(params, is_train)
+        opt = self._create_optimizer()
+        model.compile("sgd")
+    else:
+      model = transformer.create_model(params, is_train)
+      opt = self._create_optimizer()
+      model.compile(opt)
 
-    model.compile(opt, target_tensors=[])
     model.summary()
     self._load_weights_if_possible(model, flags_obj.init_weight_path)
 
     cur_log_dir = _get_log_dir_or_default(flags_obj)
     _ensure_dir(cur_log_dir)
 
-    map_data_fn = data_pipeline.map_data_for_transformer_fn
+    if self.distribution_strategy:
+      map_data_fn = lambda x,y: (x,y)
+    else:
+      map_data_fn = data_pipeline.map_data_for_transformer_fn
     train_ds = data_pipeline.train_input_fn(params)
     train_ds = train_ds.map(
         map_data_fn, num_parallel_calls=params["num_parallel_calls"])
@@ -184,9 +200,9 @@ class TransformerTask(object):
     csv_path = os.path.join(cur_log_dir, "result.csv")
     return [
         scheduler_callback,
-        tf.keras.callbacks.TensorBoard(tb_logdir),
-        tf.keras.callbacks.ModelCheckpoint(save_path, save_weights_only=True),
-        tf.keras.callbacks.CSVLogger(csv_path, append=True),
+        # tf.keras.callbacks.TensorBoard(tb_logdir),
+        # tf.keras.callbacks.ModelCheckpoint(save_path, save_weights_only=True),
+        # tf.keras.callbacks.CSVLogger(csv_path, append=True),
     ]
 
   def _load_weights_if_possible(self, model, init_weight_path=None):
