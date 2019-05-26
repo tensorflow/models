@@ -15,7 +15,6 @@
 """Executes Keras benchmarks and accuracy tests."""
 from __future__ import print_function
 
-import multiprocessing
 import os
 import time
 
@@ -573,6 +572,26 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
+  def benchmark_xla_8_gpu_fp16_tweaked_delay_measure(self):
+    """Test Keras model with manual config tuning, XLA, 8 GPUs and fp16. Delay
+       performance measurement for stable performance on 96 vCPU platforms.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_tweaked_delay_measure')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_delay_prefetch = True
+    FLAGS.train_steps = 310
+    self._run_and_report_benchmark()
+
   def benchmark_xla_8_gpu_fp16_tweaked_optional_next(self):
     """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16.
 
@@ -729,6 +748,26 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
+  def benchmark_graph_xla_8_gpu_fp16_tweaked_delay_measure(self):
+    """Test Keras model in legacy graph mode with manual config tuning, XLA,
+       8 GPUs and fp16. Delay performance measurement for stable performance
+       on 96 vCPU platforms.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_xla_8_gpu_fp16_tweaked_delay_measure')
+    FLAGS.batch_size = 256 * 8
+    FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.train_steps = 310
+    self._run_and_report_benchmark()
+
   def benchmark_graph_xla_8_gpu_fp16_tweaked_optional_next(self):
     """Test Keras model in legacy graph mode with manual config tuning, XLA,
        8 GPUs and fp16.
@@ -815,8 +854,7 @@ class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
     def_flags['use_synthetic_data'] = True
-    # TODO(b/132970486): Giving more time to 96 core platform to stabilize.
-    def_flags['train_steps'] = 310 if multiprocessing.cpu_count() == 96 else 110
+    def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkSynth, self).__init__(
@@ -831,8 +869,7 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
-    # TODO(b/132970486): Giving more time to 96 core platform to stabilize.
-    def_flags['train_steps'] = 310 if multiprocessing.cpu_count() == 96 else 110
+    def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkReal, self).__init__(
