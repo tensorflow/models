@@ -103,7 +103,7 @@ class Transformer(tf.keras.Model):
           outputs: [batch_size, decoded length]
           scores: [batch_size, float]}
     """
-    if not tf.distribute.in_cross_replica_context() and len(x) == 1:
+    if training and not tf.distribute.in_cross_replica_context() and len(x) == 1:
       x = x[0]
 
     if len(x) == 2:
