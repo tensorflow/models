@@ -21,7 +21,6 @@ from __future__ import print_function
 import functools
 import json
 import math
-import os
 
 from absl import app
 from absl import flags
@@ -80,21 +79,6 @@ flags.DEFINE_integer('steps_per_run', 200,
 flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
 
 FLAGS = flags.FLAGS
-
-
-def write_eval_results(output_dir, results):
-  """Writes and prints evaluation results.
-
-  Args:
-    output_dir: string, the path to the output directory.
-    results: a dictionary of evaluation metrics.
-  """
-  output_eval_file = os.path.join(output_dir, 'eval_results.txt')
-  with tf.io.gfile.GFile(output_eval_file, 'w') as writer:
-    logging.info('***** Eval results *****')
-    for key, val in results.items():
-      logging.info('  %s = %s', key, str(val))
-      writer.write('%s = %s\n' % (key, str(val)))
 
 
 def get_loss_fn(num_classes, loss_scale=1.0):
