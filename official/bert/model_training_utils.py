@@ -18,10 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 import os
 
 from absl import logging
 import tensorflow as tf
+
+SUMMARY_TXT = 'training_summary.txt'
 
 
 def get_primary_cpu_task(use_remote_tpu=False):
@@ -182,11 +185,13 @@ def run_customized_training_loop(
 
       def _run_evaluation(current_training_step, test_iterator):
         """Runs validation steps and aggregate metrics."""
-
         for _ in range(eval_steps):
           test_step(test_iterator)
+
+        metric_result = metric.result().numpy().astype(float)
         logging.info('Step: [%d] Validation metric = %f', current_training_step,
-                     metric.result())
+                     metric_result)
+        return metric_result
 
       # Training loop starts here.
       checkpoint = tf.train.Checkpoint(model=model)
@@ -202,18 +207,21 @@ def run_customized_training_loop(
       current_step = optimizer.iterations.numpy()
       checkpoint_name = 'ctl_step_{step}.ckpt'
 
+      train_metric_result = None
+      eval_metric_result = None
+      train_loss = None
       while current_step < total_training_steps:
-        loss = train_step(train_iterator)
+        train_loss = train_step(train_iterator).numpy().astype(float)
         current_step += 1
-
         if train_metric:
-          logging.info(
-              'Train Step: %d/%d  / loss = %s / training metric = %s',
-              current_step, total_training_steps, loss.numpy(),
-              train_metric.result())
+          train_metric_result = train_metric.result().numpy().astype(float)
+
+          logging.info('Train Step: %d/%d  / loss = %s / training metric = %s',
+                       current_step, total_training_steps, train_loss,
+                       train_metric_result)
         else:
           logging.info('Train Step: %d/%d  / loss = %s', current_step,
-                       total_training_steps, loss.numpy())
+                       total_training_steps, train_loss)
 
         # Saves model checkpoints and run validation steps at every epoch end.
         if current_step % steps_per_epoch == 0:
@@ -238,7 +246,20 @@ def run_customized_training_loop(
 
       if eval_input_fn:
         logging.info('Running final evaluation after training is complete.')
-        _run_evaluation(current_step,
-                        strategy.make_dataset_iterator(eval_input_fn()))
+        eval_metric_result = _run_evaluation(
+            current_step, strategy.make_dataset_iterator(eval_input_fn()))
+
+      training_summary = {
+          'total_training_steps': total_training_steps,
+          'train_loss': train_loss
+      }
+      if train_metric_result:
+        training_summary['train_metrics'] = train_metric_result
+      if eval_metric_result:
+        training_summary['eval_metrics'] = eval_metric_result
+
+        summary_path = os.path.join(model_dir, SUMMARY_TXT)
+        with tf.io.gfile.GFile(summary_path, 'wb') as f:
+          f.write(json.dumps(training_summary, indent=4))
 
       return model
