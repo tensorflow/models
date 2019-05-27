@@ -390,6 +390,10 @@ def run_loop(
 def define_transformer_flags():
   """Add flags and flag validators for running transformer_main."""
   # Add common flags (data_dir, model_dir, train_epochs, etc.).
+  flags.DEFINE_integer(
+      name="max_length", short_name="ml", default=None,
+      help=flags_core.help_wrap("Max length."))
+
   flags_core.define_base()
   flags_core.define_performance(
       num_parallel_calls=True,
@@ -578,6 +582,8 @@ def run_transformer(flags_obj):
   params["use_tpu"] = bool(flags_obj.tpu)  # was a tpu specified.
   params["static_batch"] = flags_obj.static_batch or params["use_tpu"]
   params["allow_ffn_pad"] = not params["use_tpu"]
+
+  params["max_length"] = flags_obj.max_length or params['max_length']
 
   params["use_synthetic_data"] = flags_obj.use_synthetic_data
 
