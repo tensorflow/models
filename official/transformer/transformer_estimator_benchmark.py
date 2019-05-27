@@ -174,6 +174,7 @@ class TransformerBigEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.param_set = 'big'
     FLAGS.batch_size = 3072 * 8
     FLAGS.static_batch = True
+    FLAGS.max_length = 40
     FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
@@ -293,6 +294,7 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.param_set = 'base'
     FLAGS.batch_size = 4096 * 8
     FLAGS.static_batch = True
+    FLAGS.max_length = 40
     FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
