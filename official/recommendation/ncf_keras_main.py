@@ -156,6 +156,7 @@ class CustomEarlyStopping(tf.keras.callbacks.Callback):
 
     self.monitor = monitor
     self.desired = desired_value
+    self.stopped_epoch = 0
 
   def on_epoch_end(self, epoch, logs=None):
     current = self.get_monitor_value(logs)
