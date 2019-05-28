@@ -20,7 +20,9 @@ from __future__ import print_function
 
 from absl import app as absl_app
 from absl import flags
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+from absl import logging
+
+import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
