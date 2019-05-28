@@ -115,7 +115,7 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-
+  dtype = flags_obj.dtype
   data_format = flags_obj.data_format
   if data_format is None:
     data_format = ('channels_first'
