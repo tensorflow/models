@@ -244,16 +244,15 @@ def run(flags_obj):
         test_loss.update_state(loss)
         test_accuracy.update_state(labels, logits)
 
-      # for x in test_ds:
-      iterator = iter(test_ds)
-      strategy.experimental_run_v2(step_fn, args=(next(iterator),))
+      for x in test_ds:
+        strategy.experimental_run_v2(step_fn, args=(x,))
 
     train_iterator = iter(train_ds)
     for epoch in range(flags_obj.train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
       train_iterator._initializer
       step = 0
-      for step in range(1):
+      for step in range(steps_per_epoch):
         learning_rate = compute_learning_rate(
             epoch + 1 + (float(step) / steps_per_epoch))
         optimizer.lr = learning_rate
@@ -281,7 +280,6 @@ def run(flags_obj):
       test_loss.reset_states()
       test_accuracy.reset_states()
 
-    
   # stats = keras_common.build_stats(history, eval_output, callbacks)
   # return stats
   stats = {}
