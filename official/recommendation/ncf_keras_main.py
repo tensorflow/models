@@ -112,7 +112,8 @@ def _get_train_and_eval_data(producer, params):
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params).map(
       preprocess_train_input)
-  train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
+  if not params["tensorflow_v2"]:
+    train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
 
   def preprocess_eval_input(features):
     """Pre-process the eval data.
