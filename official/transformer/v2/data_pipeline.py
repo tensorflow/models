@@ -235,7 +235,10 @@ def _read_and_batch_from_files(
 
   # Remove examples where the input or target length exceeds the maximum length,
   dataset = dataset.filter(lambda x, y: _filter_max_length((x, y), max_length))
-
+  
+  if shuffle:
+    dataset = dataset.shuffle(20000)
+   
   if static_batch:
     dataset = dataset.padded_batch(
         batch_size // max_length, ([max_length], [max_length]),
