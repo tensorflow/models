@@ -273,7 +273,6 @@ def run_ncf(_):
         beta_1=params["beta1"],
         beta_2=params["beta2"],
         epsilon=params["epsilon"])
-    time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
 
     keras_model.compile(
         loss=_keras_loss,
