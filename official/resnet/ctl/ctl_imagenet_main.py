@@ -115,7 +115,7 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  dtype = flags_obj.dtype
+  dtype = flags_core.get_tf_dtype(flags_obj)
   data_format = flags_obj.data_format
   if data_format is None:
     data_format = ('channels_first'
