@@ -27,8 +27,8 @@ from absl import flags
 from absl import logging
 
 # TODO(anj-s): Identify why this import does not work
-# import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
-import tensorflow as tf
+import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
+# import tensorflow as tf
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
@@ -208,6 +208,7 @@ def run(flags_obj):
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     train_log_dir = flags_obj.model_dir + current_time + '/train'
     test_log_dir = flags_obj.model_dir + current_time + '/test'
+    
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
