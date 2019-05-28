@@ -170,29 +170,13 @@ def run(flags_obj):
         dtype=dtype,
         drop_remainder=drop_remainder)
 
-  # lr_schedule = 0.1
-
-  # with strategy_scope:
-  #   optimizer = keras_common.get_optimizer(lr_schedule)
-
-  #   if flags_obj.use_trivial_model:
-  #     model = trivial_model.trivial_model(imagenet_main.NUM_CLASSES, dtype)
-  #   else:
-      model = resnet_model.resnet50(
-          num_classes=imagenet_main.NUM_CLASSES,
-          dtype=dtype,
-          batch_size=input_layer_batch_size)
-
-
   train_ds = strategy.experimental_distribute_dataset(train_input_dataset)
   test_ds = strategy.experimental_distribute_dataset(eval_input_dataset)
 
   with strategy.scope():
     logging.info('Building Keras ResNet-50 model')
-    model = resnet_model.resnet50(
-      num_classes=imagenet_main.NUM_CLASSES,
-      dtype=dtype,
-      batch_size=flags_obj.batch_size)
+    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
+      dtype=dtype, batch_size=flags_obj.batch_size)
 
     optimizer = tf.keras.optimizers.SGD(
         learning_rate=_BASE_LEARNING_RATE, momentum=0.9, nesterov=True)
@@ -204,18 +188,9 @@ def run(flags_obj):
         'test_accuracy', dtype=tf.float32)
     logging.info('Finished building Keras ResNet-50 model')
 
-    if not tf.io.gfile.isdir(FLAGS.model_dir):
-      tf.io.gfile.makedirs(FLAGS.model_dir)
-
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     train_log_dir = FLAGS.model_dir + current_time + '/train'
     test_log_dir = FLAGS.model_dir + current_time + '/test'
-    if not tf.io.gfile.isdir(train_log_dir):
-      tf.io.gfile.makedirs(train_log_dir)
-    if not tf.io.gfile.isdir(test_log_dir):
-      tf.io.gfile.makedirs(test_log_dir)
-    logging.info("Training log dir at:%s ", train_log_dir)
-    logging.info("Testing log dir at:%s ", test_log_dir)
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
@@ -292,6 +267,8 @@ def run(flags_obj):
     
   # stats = keras_common.build_stats(history, eval_output, callbacks)
   # return stats
+  stats = {}
+  return stats
 
 
 def main(_):
