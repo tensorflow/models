@@ -146,12 +146,11 @@ class MetricLayer(tf.keras.layers.Layer):
     """"Builds metric layer."""
     neg_log_perplexity = functools.partial(
         padded_neg_log_perplexity, vocab_size=self.vocab_size)
-    self.metric_mean_fns = [
-        (tf.keras.metrics.Mean("accuracy"), padded_accuracy),
-        (tf.keras.metrics.Mean("accuracy_top5"), padded_accuracy_top5),
-        (tf.keras.metrics.Mean("accuracy_per_sequence"),
-         padded_sequence_accuracy),
-        (tf.keras.metrics.Mean("neg_log_perplexity"), neg_log_perplexity),
+    self.metric_fns = [
+        ("accuracy", padded_accuracy),
+        ("accuracy_top5", padded_accuracy_top5),
+        ("accuracy_per_sequence", padded_sequence_accuracy),
+        ("neg_log_perplexity", neg_log_perplexity),
     ]
     super(MetricLayer, self).build(input_shape)
 
@@ -160,10 +159,10 @@ class MetricLayer(tf.keras.layers.Layer):
 
   def call(self, inputs):
     logits, targets = inputs[0], inputs[1]
-    if not tf.distribute.in_cross_replica_context():
-      for mean, fn in self.metric_mean_fns:
-        m = mean(*fn(logits, targets))
-        self.add_metric(m)
+    for name, fn in self.metric_fns:
+      per_example_metric, weights = fn(logits, targets)
+      m = tf.reduce_mean(example_m * weights)
+      self.add_metric(m, aggregation='mean', name='name')
     return logits
 
 
