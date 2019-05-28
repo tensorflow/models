@@ -252,12 +252,6 @@ def set_up_synthetic_data():
 def undo_set_up_synthetic_data():
   _undo_monkey_patch_dataset_method(tf.distribute.OneDeviceStrategy)
   _undo_monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
-  # TODO(tobyboyd): Remove when contrib.distribute is all in core.
-  if hasattr(tf, 'contrib'):
-    _undo_monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
-    _undo_monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
-  else:
-    print('Contrib missing: Skip remove monkey patch tf.contrib.distribute.*')
 
 
 def configure_cluster(worker_hosts=None, task_index=-1):
