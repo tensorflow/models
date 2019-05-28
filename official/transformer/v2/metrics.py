@@ -161,7 +161,7 @@ class MetricLayer(tf.keras.layers.Layer):
     logits, targets = inputs[0], inputs[1]
     for name, fn in self.metric_fns:
       per_example_metric, weights = fn(logits, targets)
-      m = tf.reduce_mean(example_m * weights)
+      m = tf.reduce_mean(per_example_metric * weights)
       self.add_metric(m, aggregation='mean', name='name')
     return logits
 
