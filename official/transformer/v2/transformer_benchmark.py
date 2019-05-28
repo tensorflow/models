@@ -133,7 +133,7 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     """
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = off
+    FLAGS.distribution_strategy = 'off'
     FLAGS.data_dir = self.train_data_dir
     FLAGS.vocab_file = self.vocab_file
     # Sets values directly to avoid validation check.
@@ -159,7 +159,7 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     """
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = off
+    FLAGS.distribution_strategy = 'off'
     FLAGS.data_dir = self.train_data_dir
     FLAGS.vocab_file = self.vocab_file
     # Sets values directly to avoid validation check.
@@ -317,7 +317,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
     """Benchmark 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = off
+    FLAGS.distribution_strategy = 'off'
     FLAGS.batch_size = self.batch_per_gpu
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
@@ -327,7 +327,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
     """Benchmark 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = off
+    FLAGS.distribution_strategy = 'off'
     FLAGS.batch_size = self.batch_per_gpu
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_static_batch')
     # TODO(guptapriya): Add max_length
