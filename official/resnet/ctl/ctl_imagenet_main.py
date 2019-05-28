@@ -195,8 +195,8 @@ def run(flags_obj):
     logging.info('Finished building Keras ResNet-50 model')
 
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    train_log_dir = FLAGS.model_dir + current_time + '/train'
-    test_log_dir = FLAGS.model_dir + current_time + '/test'
+    train_log_dir = flags_obj.model_dir + current_time + '/train'
+    test_log_dir = flags_obj.model_dir + current_time + '/test'
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
@@ -211,7 +211,7 @@ def run(flags_obj):
 
           prediction_loss = tf.keras.losses.sparse_categorical_crossentropy(
               labels, logits)
-          loss1 = tf.reduce_sum(prediction_loss) * (1.0/ FLAGS.batch_size)
+          loss1 = tf.reduce_sum(prediction_loss) * (1.0/ flags_obj.batch_size)
           loss2 = tf.reduce_sum(model.losses) / strategy.num_replicas_in_sync
           loss = loss1 + loss2
 
@@ -230,7 +230,7 @@ def run(flags_obj):
         logits = model(images, training=False)
         loss = tf.keras.losses.sparse_categorical_crossentropy(labels,
                                                                logits)
-        loss = tf.reduce_sum(loss) * (1.0/ FLAGS.batch_size)
+        loss = tf.reduce_sum(loss) * (1.0/ flags_obj.batch_size)
         test_loss.update_state(loss)
         test_accuracy.update_state(labels, logits)
 
