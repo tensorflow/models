@@ -355,7 +355,8 @@ def run_ncf(_):
         step_hr_sum, step_hr_count = eval_step()
         hr_sum += step_hr_sum
         hr_count += step_hr_count
-      logging.info("Done eval epoch {}, hr={}.".format(epoch+1, hr_sum/hr_count))
+      logging.info("Done eval epoch {}, hr={}.".format(epoch+1,
+                                                       hr_sum/hr_count))
 
       if (FLAGS.early_stopping and
           float(hr_sum/hr_count) > params["hr_threshold"]):
