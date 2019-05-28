@@ -104,7 +104,7 @@ def _get_train_and_eval_data(producer, params):
       fit.
     - The label needs to be extended to be used in the loss fn
     """
-    if not params["tensorflow_v2"]:
+    if not params["keras_use_ctl"]:
       features.pop(rconst.VALID_POINT_MASK)
     labels = tf.expand_dims(labels, -1)
     return features, labels
@@ -112,7 +112,7 @@ def _get_train_and_eval_data(producer, params):
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params).map(
       preprocess_train_input)
-  if not params["tensorflow_v2"]:
+  if not params["keras_use_ctl"]:
     train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
 
   def preprocess_eval_input(features):
@@ -125,7 +125,7 @@ def _get_train_and_eval_data(producer, params):
       fit.
     - The label needs to be extended to be used in the loss fn
     """
-    if not params["tensorflow_v2"]:
+    if not params["keras_use_ctl"]:
       features.pop(rconst.DUPLICATE_MASK)
     labels = tf.zeros_like(features[movielens.USER_COLUMN])
     labels = tf.expand_dims(labels, -1)
@@ -280,7 +280,7 @@ def run_ncf(_):
         beta_2=params["beta2"],
         epsilon=params["epsilon"])
 
-  if params['tensorflow_v2']:
+  if params['keras_use_ctl']:
     loss_object = tf.losses.SparseCategoricalCrossentropy(
         reduction=tf.keras.losses.Reduction.SUM,
         from_logits=True)
