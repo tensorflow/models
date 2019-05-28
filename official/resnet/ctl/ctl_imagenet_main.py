@@ -26,7 +26,9 @@ from absl import app as absl_app
 from absl import flags
 from absl import logging
 
-import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
+# TODO(anj-s): Identify why this import does not work
+# import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
