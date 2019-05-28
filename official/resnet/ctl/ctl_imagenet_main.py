@@ -38,6 +38,10 @@ from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
 
+# Imagenet training and test data sets.
+APPROX_IMAGENET_TRAINING_IMAGES = 1280000  # Approximate number of images.
+IMAGENET_VALIDATION_IMAGES = 50000  # Number of images.
+
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
@@ -179,6 +183,11 @@ def run(flags_obj):
   train_ds = strategy.experimental_distribute_dataset(train_input_dataset)
   test_ds = strategy.experimental_distribute_dataset(eval_input_dataset)
 
+  # steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
+  # steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
+  steps_per_epoch = 1
+  steps_per_eval = 1
+
   with strategy.scope():
     logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
@@ -238,7 +247,7 @@ def run(flags_obj):
         strategy.experimental_run_v2(step_fn, args=(x,))
 
     train_iterator = iter(train_ds)
-    for epoch in range(_EPOCHS):
+    for epoch in range(flags_obj.train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
       train_iterator._initializer
       step = 0
