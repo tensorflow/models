@@ -185,10 +185,8 @@ def run(flags_obj):
   train_ds = strategy.experimental_distribute_dataset(train_input_dataset)
   test_ds = strategy.experimental_distribute_dataset(eval_input_dataset)
 
-  # steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
-  # steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
-  steps_per_epoch = 1
-  steps_per_eval = 1
+  steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
+  steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
 
   with strategy.scope():
     logging.info('Building Keras ResNet-50 model')
@@ -208,7 +206,7 @@ def run(flags_obj):
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     train_log_dir = flags_obj.model_dir + current_time + '/train'
     test_log_dir = flags_obj.model_dir + current_time + '/test'
-    
+
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
