@@ -108,6 +108,8 @@ def parse_flags(flags_obj):
           flags_obj.clone_model_in_keras_dist_strat,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
+      "tensorflow_v2": int(tf.__version__.split('.')[0]) > 1,
+      "hr_threshold": flags_obj.hr_threshold,
   }
 
 
@@ -245,7 +247,7 @@ def define_ncf_flags():
                                 "optimizer."))
 
   flags.DEFINE_float(
-      name="hr_threshold", default=None,
+      name="hr_threshold", default=1.0,
       help=flags_core.help_wrap(
           "If passed, training will stop when the evaluation metric HR is "
           "greater than or equal to hr_threshold. For dataset ml-1m, the "
