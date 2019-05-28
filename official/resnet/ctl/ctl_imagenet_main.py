@@ -246,13 +246,14 @@ def run(flags_obj):
 
       for x in test_ds:
         strategy.experimental_run_v2(step_fn, args=(x,))
+        break
 
     train_iterator = iter(train_ds)
     for epoch in range(flags_obj.train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
       train_iterator._initializer
       step = 0
-      for step in range(steps_per_epoch):
+      for step in range(1):
         learning_rate = compute_learning_rate(
             epoch + 1 + (float(step) / steps_per_epoch))
         optimizer.lr = learning_rate
