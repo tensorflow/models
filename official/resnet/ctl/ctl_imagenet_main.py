@@ -245,7 +245,8 @@ def run(flags_obj):
         test_accuracy.update_state(labels, logits)
 
       # for x in test_ds:
-      strategy.experimental_run_v2(step_fn, args=(x,))
+      iterator = iter(test_ds)
+      strategy.experimental_run_v2(step_fn, args=(next(iterator),))
 
     train_iterator = iter(train_ds)
     for epoch in range(flags_obj.train_epochs):
