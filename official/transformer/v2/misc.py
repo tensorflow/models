@@ -148,20 +148,19 @@ def define_transformer_flags():
           'the vocab file.'))
   flags.DEFINE_string(
       name='mode', default='train',
-      help=flags_core.help_wrap('mode: train, eval, or predict'))
+      help=flags_core.help_wrap('mode: train, eval, predict, or custom_train'))
 
   flags_core.set_defaults(data_dir='/tmp/translate_ende',
                           model_dir='/tmp/transformer_model',
-                          batch_size=None,
-                          train_epochs=10)
+                          batch_size=None)
 
   # pylint: disable=unused-variable
   @flags.multi_flags_validator(
-      ['mode', 'train_epochs'],
-      message='--train_epochs must be defined in train mode')
+      ['mode', 'train_steps'],
+      message='--train_steps must be defined in train/custom_train mode')
   def _check_train_limits(flag_dict):
-    if flag_dict['mode'] == 'train':
-      return flag_dict['train_epochs'] is not None
+    if flag_dict['mode'] in {'train', 'custom_train'}:
+      return flag_dict['train_steps'] is not None
     return True
 
   @flags.multi_flags_validator(

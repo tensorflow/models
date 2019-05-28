@@ -181,6 +181,70 @@ class TransformerTask(object):
     for i in range(length):
       translate.translate_from_input(val_outputs[i], subtokenizer)
 
+  def custom_train(self):
+    """Custom training loop."""
+    params, flags_obj, is_train = self.params, self.flags_obj, True
+    _ensure_dir(flags_obj.model_dir)
+    model = transformer.create_model(params, is_train)
+    opt = self._create_optimizer()
+
+    map_data_fn = data_pipeline.map_data_for_transformer_fn
+    train_ds = data_pipeline.train_input_fn(params)
+    if flags_obj.train_steps < flags_obj.steps_between_evals:
+      flags_obj.steps_between_evals = flags_obj.train_steps
+    iterations = flags_obj.train_steps // flags_obj.steps_between_evals
+
+    global_steps = 0.0
+    lr_fn = optimizer.LearningRateFn(params["learning_rate"],
+                                     params["hidden_size"],
+                                     params["learning_rate_warmup_steps"])
+    ckpt_full_path = os.path.join(
+        flags_obj.model_dir, "cp-{epoch:04d}.ckpt")
+    ckpt_callback = tf.keras.callbacks.ModelCheckpoint(ckpt_full_path,
+                                                       save_weights_only=True)
+    ckpt_callback.set_model(model)
+
+    tf.compat.v1.logging.info("-- Train with Custom training loop. --")
+    cased_score, uncased_score = None, None
+    for i in range(1, iterations + 1):
+      tf.compat.v1.logging.info("Epoch: %s/%s", i, iterations)
+
+      # Custom train.
+      ckpt_callback.on_epoch_begin(i)
+      for j, (features, labels) in enumerate(train_ds):
+        if j >= flags_obj.steps_between_evals:
+          break
+        with tf.GradientTape() as tape:
+          # Call model to get logits.
+          unused_logits = model([features, labels])
+          # As model contains a custom layer for loss, we use it as final one.
+          loss = tf.reduce_sum(model.losses)
+
+          # Print training log.
+          loss_str = "loss: %s" % loss.numpy()
+          metrics_str = ", ".join(
+              ["%s: %s" % (m.name, m.result().numpy()) for m in model.metrics])
+          tf.compat.v1.logging.info("[%s/%s] %s, %s", j,
+                                    flags_obj.steps_between_evals, loss_str,
+                                    metrics_str)
+        grad = tape.gradient(loss, model.trainable_weights)
+
+        # Custom schedule to adjust learning rate.
+        opt.lr = lr_fn(global_steps)
+        opt.apply_gradients(zip(grad, model.trainable_weights))
+        global_steps += 1
+      ckpt_callback.on_epoch_end(i)
+
+      # Custom eval.
+      if (flags_obj.bleu_source and flags_obj.bleu_ref):
+        uncased_score, cased_score = self.eval()
+
+    stats = {}
+    if uncased_score and cased_score:
+      stats["bleu_uncased"] = uncased_score
+      stats["bleu_cased"] = cased_score
+    return stats
+
   def _create_callbacks(self, cur_log_dir, init_steps, params):
     """Creates a list of callbacks."""
     sfunc = optimizer.LearningRateFn(params["learning_rate"],
@@ -229,6 +293,10 @@ def main(_):
       task.predict()
     elif flags_obj.mode == "eval":
       task.eval()
+    elif flags_obj.mode == "custom_train":
+      if not misc.is_v2():
+        tf.enable_eager_execution()  # Enable eager for TF v1.
+      task.custom_train()
     else:
       raise ValueError("Invalid mode {}".format(flags_obj.mode))
 

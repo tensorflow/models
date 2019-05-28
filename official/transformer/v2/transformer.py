@@ -85,13 +85,13 @@ class Transformer(tf.keras.Model):
         "params": self.params,
     }
 
-  def call(self, x, training):
+  def call(self, inputs, training):
     """Calculate target logits or inferred target sequences.
 
     Args:
-      x: input tensor list of size 1 or 2.
-        First item, inputs: int tensor with shape [batch_size, input_length].
-        Second item (optional), targets: None or int tensor with shape
+      inputs: input tensor list of size 1 or 2.
+        First item, input_seq: int tensor with shape [batch_size, input_length].
+        Second item (optional), target_seq: None or int tensor with shape
           [batch_size, target_length].
       training: boolean, whether in training mode or not.
 
@@ -103,27 +103,27 @@ class Transformer(tf.keras.Model):
           outputs: [batch_size, decoded length]
           scores: [batch_size, float]}
     """
-    if len(x) == 2:
-      inputs, targets = x[0], x[1]
+    if len(inputs) == 2:
+      input_seq, target_seq = inputs[0], inputs[1]
     else:
-      inputs, targets = x[0], None
+      input_seq, target_seq = inputs[0], None
 
     # Variance scaling is used here because it seems to work in many problems.
     # Other reasonable initializers may also work just as well.
     with tf.name_scope("Transformer"):
       # Calculate attention bias for encoder self-attention and decoder
       # multi-headed attention layers.
-      attention_bias = model_utils.get_padding_bias(inputs)
+      attention_bias = model_utils.get_padding_bias(input_seq)
 
       # Run the inputs through the encoder layer to map the symbol
       # representations to continuous representations.
-      encoder_outputs = self.encode(inputs, attention_bias, training)
+      encoder_outputs = self.encode(input_seq, attention_bias, training)
       # Generate output sequence if targets is None, or return logits if target
       # sequence is known.
-      if targets is None:
+      if target_seq is None:
         return self.predict(encoder_outputs, attention_bias, training)
       else:
-        logits = self.decode(targets, encoder_outputs, attention_bias, training)
+        logits = self.decode(target_seq, encoder_outputs, attention_bias, training)
         return logits
 
   def encode(self, inputs, attention_bias, training):
