@@ -125,14 +125,6 @@ class TransformerTask(object):
 
     model.summary()
 
-    # TODO(guptapriya): Figure out a way to structure input that works in both 
-    # distributed and non distributed cases.
-    train_ds = data_pipeline.train_input_fn(params)
-    if not self.distribution_strategy:
-      map_data_fn = data_pipeline.map_data_for_transformer_fn
-      train_ds = train_ds.map(
-          map_data_fn, num_parallel_calls=params["num_parallel_calls"])
-
     callbacks = self._create_callbacks(flags_obj.model_dir, 0, params)
 
     if flags_obj.train_steps < flags_obj.steps_between_evals:
@@ -142,6 +134,17 @@ class TransformerTask(object):
     cased_score, uncased_score = None, None
     for i in range(1, iterations + 1):
       print("Start train iteration:{}/{}".format(i, iterations))
+      
+      # NOTE: Creating dataset every epoch because otherwise it doesn't shuffle
+      # every iteration.
+      # TODO(guptapriya): Figure out a way to structure input that works in both 
+      # distributed and non distributed cases.
+      train_ds = data_pipeline.train_input_fn(params)
+      if not self.distribution_strategy:
+        map_data_fn = data_pipeline.map_data_for_transformer_fn
+        train_ds = train_ds.map(
+            map_data_fn, num_parallel_calls=params["num_parallel_calls"])
+
       history = model.fit(
           train_ds,
           initial_epoch=i-1,
