@@ -123,7 +123,8 @@ class Transformer(tf.keras.Model):
       if target_seq is None:
         return self.predict(encoder_outputs, attention_bias, training)
       else:
-        logits = self.decode(target_seq, encoder_outputs, attention_bias, training)
+        logits = self.decode(target_seq, encoder_outputs, attention_bias,
+                             training)
         return logits
 
   def encode(self, inputs, attention_bias, training):
