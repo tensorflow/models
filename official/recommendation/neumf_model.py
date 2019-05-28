@@ -427,8 +427,9 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
     (num_users_in_batch, (rconst.NUM_EVAL_NEGATIVES + 1)).
   """
   logits_by_user = tf.reshape(logits, (-1, rconst.NUM_EVAL_NEGATIVES + 1))
-  duplicate_mask_by_user = tf.reshape(duplicate_mask,
-                                      (-1, rconst.NUM_EVAL_NEGATIVES + 1))
+  duplicate_mask_by_user = tf.cast(
+      tf.reshape(duplicate_mask, (-1, rconst.NUM_EVAL_NEGATIVES + 1)),
+      tf.float32)
 
   if match_mlperf:
     # Set duplicate logits to the min value for that dtype. The MLPerf
