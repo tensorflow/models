@@ -240,6 +240,11 @@ def run_ncf(_):
 
   params = ncf_common.parse_flags(FLAGS)
 
+  if params['keras_use_ctl'] and int(tf.__version__.split('.')[0]) == 1:
+    logging.error(
+        "Custom training loop only works with tensorflow 2.0 and above.")
+    return
+
   # ncf_common rounds eval_batch_size (this is needed due to a reshape during
   # eval). This carries over that rounding to batch_size as well. This is the
   # per device batch size
