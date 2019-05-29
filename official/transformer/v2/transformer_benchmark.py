@@ -347,7 +347,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
   def benchmark_8_gpu_static_batch(self):
     """Benchmark 8 gpu."""
     self._setup()
-    FLAGS.num_gpus = 1
+    FLAGS.num_gpus = 8
     FLAGS.batch_size = self.batch_per_gpu * 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch')
     # TODO(guptapriya): Add max_length
