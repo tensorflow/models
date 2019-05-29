@@ -193,12 +193,12 @@ def _batch_examples(dataset, batch_size, max_length):
 
 def _read_and_batch_from_files(
     file_pattern, batch_size, max_length, num_parallel_calls, shuffle, repeat,
-    static_batch=False):
+    static_batch=False, num_replicas=1):
   """Create dataset where each item is a dict of "inputs" and "targets".
 
   Args:
     file_pattern: String used to match the input TFRecord files.
-    batch_size: Maximum number of tokens per batch of examples
+    batch_size: Maximum number of tokens per global batch of examples.
     max_length: Maximum number of tokens per example
     num_parallel_calls: Number of cpu cores for parallel input processing.
     shuffle: If true, randomizes order of elements.
@@ -215,6 +215,10 @@ def _read_and_batch_from_files(
       to be grouped so that the number of padding tokens is minimized, and helps
       model training. In cases where the input shape must be static
       (e.g. running on TPU), this setting should be set to True.
+    num_replicas: Number of GPUs or other workers. We will generate global
+      batches, and each global batch is equally divisible by number of replicas.
+      Currently it is only effective when static_batch==True. TODO: make it
+      effective when static_batch=False.
 
   Returns:
     tf.data.Dataset object containing examples loaded from the files.
@@ -223,10 +227,12 @@ def _read_and_batch_from_files(
 
   # Read files and interleave results. When training, the order of the examples
   # will be non-deterministic.
+  options = tf.data.Options()
+  options.experimental_deterministic = False
   dataset = dataset.interleave(
       _load_records,
       cycle_length=num_parallel_calls,
-      num_parallel_calls=num_parallel_calls)
+      num_parallel_calls=tf.data.experimental.AUTOTUNE).with_options(options)
 
   # Parse each tf.Example into a dictionary
   # TODO: Look into prefetch_input_elements for performance optimization.
@@ -238,10 +244,14 @@ def _read_and_batch_from_files(
 
   if static_batch:
     dataset = dataset.padded_batch(
-        batch_size // max_length, ([max_length], [max_length]),
-        drop_remainder=True)
+        # First calculate batch size (token number) per worker, then divide it
+        # into sentences, and finally expand to a global batch. It could prove
+        # the global batch divisble for distribution strategy.
+        ((batch_size // num_replicas) // max_length) * num_replicas,
+        ([max_length], [max_length]), drop_remainder=True)
   else:
     # Group and batch such that each batch has examples of similar length.
+    # TODO: _batch_examples might need to do something special for num_replicas.
     dataset = _batch_examples(dataset, batch_size, max_length)
 
   dataset = dataset.repeat(repeat)
@@ -272,7 +282,8 @@ def train_input_fn(params):
   return _read_and_batch_from_files(
       file_pattern, params["batch_size"], params["max_length"],
       params["num_parallel_calls"], shuffle=True,
-      repeat=params["repeat_dataset"], static_batch=params["static_batch"])
+      repeat=params["repeat_dataset"], static_batch=params["static_batch"],
+      num_replicas=params["num_gpus"])
 
 
 def eval_input_fn(params):
@@ -283,7 +294,7 @@ def eval_input_fn(params):
   return _read_and_batch_from_files(
       file_pattern, params["batch_size"], params["max_length"],
       params["num_parallel_calls"], shuffle=False, repeat=1,
-      static_batch=params["static_batch"])
+      static_batch=params["static_batch"], num_replicas=params["num_gpus"])
 
 
 def map_data_for_transformer_fn(x, y):

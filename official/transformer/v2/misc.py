@@ -83,6 +83,9 @@ def define_transformer_flags():
           'The Number of training steps to run between evaluations. This is '
           'used if --train_steps is defined.'))
   flags.DEFINE_boolean(
+      name='enable_time_history', default=True,
+      help='Whether to enable TimeHistory callback.')
+  flags.DEFINE_boolean(
       name='enable_tensorboard', default=False,
       help='Whether to enable Tensorboard callback.')
   flags.DEFINE_string(
@@ -111,7 +114,7 @@ def define_transformer_flags():
           'complete list of parameters, please see model/model_params.py.'))
 
   flags.DEFINE_bool(
-      name='static_batch', default=False,
+      name='static_batch', short_name='sb', default=False,
       help=flags_core.help_wrap(
           'Whether the batches in the dataset should have static shapes. In '
           'general, this setting should be False. Dynamic shapes allow the '
@@ -119,6 +122,12 @@ def define_transformer_flags():
           'minimized, and helps model training. In cases where the input shape '
           'must be static (e.g. running on TPU), this setting will be ignored '
           'and static batching will always be used.'))
+  flags.DEFINE_integer(
+      name='max_length', short_name='ml', default=256,
+      help=flags_core.help_wrap(
+          'Max sentence length for Transformer. Default is 256. Note: Usually '
+          'it is more effective to use a smaller max length if static_batch is '
+          'enabled, e.g. 64.'))
 
   # Flags for training with steps (may be used for debugging)
   flags.DEFINE_integer(
@@ -195,8 +204,9 @@ def define_transformer_flags():
 def get_callbacks():
   """Returns common callbacks."""
   callbacks = []
-  time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
-  callbacks.append(time_callback)
+  if FLAGS.enable_time_history:
+    time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
+    callbacks.append(time_callback)
 
   if FLAGS.enable_tensorboard:
     tensorboard_callback = tf.keras.callbacks.TensorBoard(

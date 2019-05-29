@@ -99,9 +99,11 @@ class TransformerTask(object):
 
     self.params = params = misc.get_model_params(flags_obj.param_set, num_gpus)
 
+    params["num_gpus"] = num_gpus
     params["data_dir"] = flags_obj.data_dir
     params["model_dir"] = flags_obj.model_dir
     params["static_batch"] = flags_obj.static_batch
+    params["max_length"] = flags_obj.max_length
     params["num_parallel_calls"] = (
         flags_obj.num_parallel_calls or tf.data.experimental.AUTOTUNE)
 
@@ -148,7 +150,9 @@ class TransformerTask(object):
           epochs=i,
           steps_per_epoch=flags_obj.steps_between_evals,
           callbacks=callbacks,
-          verbose=2)
+          # If TimeHistory is enabled, progress bar would be messy. Increase the
+          # verbose level to get rid of it.
+          verbose=(2 if flags_obj.enable_time_history else 1))
       print("End train iteration:{}/{} global step:{}".format(
           i,
           iterations,
@@ -158,6 +162,8 @@ class TransformerTask(object):
 
       if (flags_obj.bleu_source and flags_obj.bleu_ref):
         uncased_score, cased_score = self.eval()
+
+      print("BLEU: uncased={}, cased={}".format(uncased_score, cased_score))
 
     stats = misc.build_stats(history, callbacks)
     if uncased_score and cased_score:
