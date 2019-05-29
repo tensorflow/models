@@ -509,9 +509,9 @@ class SSDMetaArch(model.DetectionModel):
     resized_inputs_shape = shape_utils.combined_static_and_dynamic_shape(
         preprocessed_images)
     true_heights, true_widths, _ = tf.unstack(
-        tf.to_float(true_image_shapes), axis=1)
-    padded_height = tf.to_float(resized_inputs_shape[1])
-    padded_width = tf.to_float(resized_inputs_shape[2])
+        tf.cast(true_image_shapes, dtype=tf.float32), axis=1)
+    padded_height = tf.cast(resized_inputs_shape[1], dtype=tf.float32)
+    padded_width = tf.cast(resized_inputs_shape[2], dtype=tf.float32)
     return tf.stack(
         [
             tf.zeros_like(true_heights),
@@ -654,6 +654,9 @@ class SSDMetaArch(model.DetectionModel):
           detection boxes.
         detection_scores: [batch, max_detections] tensor with scalar scores for
           post-processed detection boxes.
+        detection_multiclass_scores: [batch, max_detections,
+          num_classes_with_background] tensor with class score distribution for
+          post-processed detection boxes including background class if any.
         detection_classes: [batch, max_detections] tensor with classes for
           post-processed detection classes.
         detection_keypoints: [batch, max_detections, num_keypoints, 2] (if
@@ -703,10 +706,13 @@ class SSDMetaArch(model.DetectionModel):
           feature_map_list.append(tf.reshape(feature_map, [batch_size, -1]))
         box_features = tf.concat(feature_map_list, 1)
         box_features = tf.identity(box_features, 'raw_box_features')
-
+      additional_fields = {
+          'multiclass_scores': detection_scores_with_background
+      }
       if detection_keypoints is not None:
-        additional_fields = {
-            fields.BoxListFields.keypoints: detection_keypoints}
+        detection_keypoints = tf.identity(
+            detection_keypoints, 'raw_keypoint_locations')
+        additional_fields[fields.BoxListFields.keypoints] = detection_keypoints
       (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
        nmsed_additional_fields, num_detections) = self._non_max_suppression_fn(
            detection_boxes,
@@ -722,8 +728,10 @@ class SSDMetaArch(model.DetectionModel):
               nmsed_scores,
           fields.DetectionResultFields.detection_classes:
               nmsed_classes,
+          fields.DetectionResultFields.detection_multiclass_scores:
+              nmsed_additional_fields['multiclass_scores'],
           fields.DetectionResultFields.num_detections:
-              tf.to_float(num_detections),
+              tf.cast(num_detections, dtype=tf.float32),
           fields.DetectionResultFields.raw_detection_boxes:
               tf.squeeze(detection_boxes, axis=2),
           fields.DetectionResultFields.raw_detection_scores:
@@ -786,13 +794,13 @@ class SSDMetaArch(model.DetectionModel):
       if self._random_example_sampler:
         batch_cls_per_anchor_weights = tf.reduce_mean(
             batch_cls_weights, axis=-1)
-        batch_sampled_indicator = tf.to_float(
+        batch_sampled_indicator = tf.cast(
             shape_utils.static_or_dynamic_map_fn(
                 self._minibatch_subsample_fn,
                 [batch_cls_targets, batch_cls_per_anchor_weights],
                 dtype=tf.bool,
                 parallel_iterations=self._parallel_iterations,
-                back_prop=True))
+                back_prop=True), dtype=tf.float32)
         batch_reg_weights = tf.multiply(batch_sampled_indicator,
                                         batch_reg_weights)
         batch_cls_weights = tf.multiply(
@@ -868,7 +876,8 @@ class SSDMetaArch(model.DetectionModel):
       # Optionally normalize by number of positive matches
       normalizer = tf.constant(1.0, dtype=tf.float32)
       if self._normalize_loss_by_num_matches:
-        normalizer = tf.maximum(tf.to_float(tf.reduce_sum(batch_reg_weights)),
+        normalizer = tf.maximum(tf.cast(tf.reduce_sum(batch_reg_weights),
+                                        dtype=tf.float32),
                                 1.0)
 
       localization_loss_normalizer = normalizer
@@ -883,8 +892,8 @@ class SSDMetaArch(model.DetectionModel):
                                         name='classification_loss')
 
       loss_dict = {
-          str(localization_loss.op.name): localization_loss,
-          str(classification_loss.op.name): classification_loss
+          'Loss/localization_loss': localization_loss,
+          'Loss/classification_loss': classification_loss
       }
 
 
@@ -1025,17 +1034,35 @@ class SSDMetaArch(model.DetectionModel):
         with rows of the Match objects corresponding to groundtruth boxes
         and columns corresponding to anchors.
     """
-    avg_num_gt_boxes = tf.reduce_mean(tf.to_float(tf.stack(
-        [tf.shape(x)[0] for x in groundtruth_boxes_list])))
-    avg_num_matched_gt_boxes = tf.reduce_mean(tf.to_float(tf.stack(
-        [match.num_matched_rows() for match in match_list])))
-    avg_pos_anchors = tf.reduce_mean(tf.to_float(tf.stack(
-        [match.num_matched_columns() for match in match_list])))
-    avg_neg_anchors = tf.reduce_mean(tf.to_float(tf.stack(
-        [match.num_unmatched_columns() for match in match_list])))
-    avg_ignored_anchors = tf.reduce_mean(tf.to_float(tf.stack(
-        [match.num_ignored_columns() for match in match_list])))
+    avg_num_gt_boxes = tf.reduce_mean(
+        tf.cast(
+            tf.stack([tf.shape(x)[0] for x in groundtruth_boxes_list]),
+            dtype=tf.float32))
+    avg_num_matched_gt_boxes = tf.reduce_mean(
+        tf.cast(
+            tf.stack([match.num_matched_rows() for match in match_list]),
+            dtype=tf.float32))
+    avg_pos_anchors = tf.reduce_mean(
+        tf.cast(
+            tf.stack([match.num_matched_columns() for match in match_list]),
+            dtype=tf.float32))
+    avg_neg_anchors = tf.reduce_mean(
+        tf.cast(
+            tf.stack([match.num_unmatched_columns() for match in match_list]),
+            dtype=tf.float32))
+    avg_ignored_anchors = tf.reduce_mean(
+        tf.cast(
+            tf.stack([match.num_ignored_columns() for match in match_list]),
+            dtype=tf.float32))
     # TODO(rathodv): Add a test for these summaries.
+    try:
+      # TODO(kaftan): Integrate these summaries into the v2 style loops
+      with tf.compat.v2.init_scope():
+        if tf.compat.v2.executing_eagerly():
+          return
+    except AttributeError:
+      pass
+
     tf.summary.scalar('AvgNumGroundtruthBoxesPerImage',
                       avg_num_gt_boxes,
                       family='TargetAssignment')

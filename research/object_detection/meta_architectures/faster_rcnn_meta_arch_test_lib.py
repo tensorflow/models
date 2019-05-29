@@ -967,7 +967,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         [[0, 0, .5, .5], [.5, .5, 1, 1]], [[0, .5, .5, 1], [.5, 0, 1, .5]]]
     expected_proposal_scores = [[1, 1],
                                 [1, 1]]
-    expected_num_proposals = [2, 2]
+    expected_proposal_multiclass_scores = [[[0., 1.], [0., 1.]],
+                                           [[0., 1.], [0., 1.]]]
     expected_raw_proposal_boxes = [[[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
                                     [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]],
                                    [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
@@ -975,31 +976,45 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     expected_raw_scores = [[[0., 1.], [0., 1.], [0., 1.], [0., 1.]],
                            [[0., 1.], [0., 1.], [0., 1.], [0., 1.]]]
     expected_output_keys = set([
-        'detection_boxes', 'detection_scores', 'num_detections',
-        'raw_detection_boxes', 'raw_detection_scores'
+        'detection_boxes', 'detection_scores', 'detection_multiclass_scores',
+        'num_detections', 'raw_detection_boxes', 'raw_detection_scores'
     ])
     self.assertEqual(set(proposals.keys()), expected_output_keys)
 
     with self.test_session() as sess:
       proposals_out = sess.run(proposals)
       for image_idx in range(batch_size):
+        num_detections = int(proposals_out['num_detections'][image_idx])
+        boxes = proposals_out['detection_boxes'][
+            image_idx][:num_detections, :].tolist()
+        scores = proposals_out['detection_scores'][
+            image_idx][:num_detections].tolist()
+        multiclass_scores = proposals_out['detection_multiclass_scores'][
+            image_idx][:num_detections, :].tolist()
+        expected_boxes = expected_proposal_boxes[image_idx]
+        expected_scores = expected_proposal_scores[image_idx]
+        expected_multiclass_scores = expected_proposal_multiclass_scores[
+            image_idx]
         self.assertTrue(
-            test_utils.first_rows_close_as_set(
-                proposals_out['detection_boxes'][image_idx].tolist(),
-                expected_proposal_boxes[image_idx]))
-      self.assertAllClose(proposals_out['detection_scores'],
-                          expected_proposal_scores)
-      self.assertAllEqual(proposals_out['num_detections'],
-                          expected_num_proposals)
+            test_utils.first_rows_close_as_set(boxes, expected_boxes))
+        self.assertTrue(
+            test_utils.first_rows_close_as_set(scores, expected_scores))
+        self.assertTrue(
+            test_utils.first_rows_close_as_set(multiclass_scores,
+                                               expected_multiclass_scores))
+
     self.assertAllClose(proposals_out['raw_detection_boxes'],
                         expected_raw_proposal_boxes)
     self.assertAllClose(proposals_out['raw_detection_scores'],
                         expected_raw_scores)
 
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
+  @parameterized.named_parameters({
+      'testcase_name': 'keras',
+      'use_keras': True
+  }, {
+      'testcase_name': 'slim',
+      'use_keras': False
+  })
   def test_postprocess_first_stage_only_train_mode(self, use_keras=False):
     self._test_postprocess_first_stage_only_train_mode(use_keras=use_keras)
 
@@ -1066,7 +1081,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       return (detections['num_detections'], detections['detection_boxes'],
               detections['detection_scores'], detections['detection_classes'],
               detections['raw_detection_boxes'],
-              detections['raw_detection_scores'])
+              detections['raw_detection_scores'],
+              detections['detection_multiclass_scores'])
 
     proposal_boxes = np.array(
         [[[1, 1, 2, 3],
@@ -1097,6 +1113,17 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     expected_num_detections = [5, 4]
     expected_detection_classes = [[0, 0, 0, 1, 1], [0, 0, 1, 1, 0]]
     expected_detection_scores = [[1, 1, 1, 1, 1], [1, 1, 1, 1, 0]]
+    expected_multiclass_scores = [[[1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1]],
+                                  [[1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1],
+                                   [0, 0, 0]]]
+
     h = float(image_shape[1])
     w = float(image_shape[2])
     expected_raw_detection_boxes = np.array(
@@ -1114,6 +1141,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                           expected_detection_scores[indx][0:num_proposals])
       self.assertAllClose(results[3][indx][0:num_proposals],
                           expected_detection_classes[indx][0:num_proposals])
+      self.assertAllClose(results[6][indx][0:num_proposals],
+                          expected_multiclass_scores[indx][0:num_proposals])
 
     self.assertAllClose(results[4], expected_raw_detection_boxes)
     self.assertAllClose(results[5],
@@ -1895,8 +1924,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           number_of_stages=2, second_stage_batch_size=6)
 
       inputs_shape = (2, 20, 20, 3)
-      inputs = tf.to_float(tf.random_uniform(
-          inputs_shape, minval=0, maxval=255, dtype=tf.int32))
+      inputs = tf.cast(tf.random_uniform(
+          inputs_shape, minval=0, maxval=255, dtype=tf.int32), dtype=tf.float32)
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
@@ -1921,8 +1950,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           is_training=False, use_keras=use_keras,
           number_of_stages=2, second_stage_batch_size=6)
       inputs_shape = (2, 20, 20, 3)
-      inputs = tf.to_float(tf.random_uniform(
-          inputs_shape, minval=0, maxval=255, dtype=tf.int32))
+      inputs = tf.cast(tf.random_uniform(
+          inputs_shape, minval=0, maxval=255, dtype=tf.int32), dtype=tf.float32)
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
@@ -1942,8 +1971,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                                  second_stage_batch_size=6, num_classes=42)
 
       inputs_shape2 = (2, 20, 20, 3)
-      inputs2 = tf.to_float(tf.random_uniform(
-          inputs_shape2, minval=0, maxval=255, dtype=tf.int32))
+      inputs2 = tf.cast(tf.random_uniform(
+          inputs_shape2, minval=0, maxval=255, dtype=tf.int32),
+                        dtype=tf.float32)
       preprocessed_inputs2, true_image_shapes = model2.preprocess(inputs2)
       prediction_dict2 = model2.predict(preprocessed_inputs2, true_image_shapes)
       model2.postprocess(prediction_dict2, true_image_shapes)
@@ -1974,8 +2004,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           num_classes=42)
 
       inputs_shape = (2, 20, 20, 3)
-      inputs = tf.to_float(
-          tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32))
+      inputs = tf.cast(
+          tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32),
+          dtype=tf.float32)
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)

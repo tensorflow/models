@@ -53,6 +53,9 @@ EVAL_METRICS_CLASS_DICT = {
     # DEPRECATED: please use oid_challenge_detection_metrics instead
     'oid_challenge_object_detection_metrics':
         object_detection_evaluation.OpenImagesDetectionChallengeEvaluator,
+    'oid_challenge_segmentation_metrics':
+        object_detection_evaluation
+        .OpenImagesInstanceSegmentationChallengeEvaluator,
 }
 
 EVAL_DEFAULT_METRIC = 'pascal_voc_detection_metrics'
@@ -80,7 +83,7 @@ def _extract_predictions_and_losses(model,
   input_dict = prefetch_queue.dequeue()
   original_image = tf.expand_dims(input_dict[fields.InputDataFields.image], 0)
   preprocessed_image, true_image_shapes = model.preprocess(
-      tf.to_float(original_image))
+      tf.cast(original_image, dtype=tf.float32))
   prediction_dict = model.predict(preprocessed_image, true_image_shapes)
   detections = model.postprocess(prediction_dict, true_image_shapes)
 

@@ -24,6 +24,94 @@ from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
 
 
+def _validate_boxes_scores_iou_thresh(boxes, scores, iou_thresh,
+                                      change_coordinate_frame, clip_window):
+  """Validates boxes, scores and iou_thresh.
+
+  This function validates the boxes, scores, iou_thresh
+     and if change_coordinate_frame is True, clip_window must be specified.
+
+  Args:
+    boxes: A [k, q, 4] float32 tensor containing k detections. `q` can be either
+      number of classes or 1 depending on whether a separate box is predicted
+      per class.
+    scores: A [k, num_classes] float32 tensor containing the scores for each of
+      the k detections. The scores have to be non-negative when
+      pad_to_max_output_size is True.
+    iou_thresh: scalar threshold for IOU (new boxes that have high IOU overlap
+      with previously selected boxes are removed).
+    change_coordinate_frame: Whether to normalize coordinates after clipping
+      relative to clip_window (this can only be set to True if a clip_window is
+      provided)
+    clip_window: A float32 tensor of the form [y_min, x_min, y_max, x_max]
+      representing the window to clip and normalize boxes to before performing
+      non-max suppression.
+
+  Raises:
+    ValueError: if iou_thresh is not in [0, 1] or if input boxlist does not
+    have a valid scores field.
+  """
+  if not 0 <= iou_thresh <= 1.0:
+    raise ValueError('iou_thresh must be between 0 and 1')
+  if scores.shape.ndims != 2:
+    raise ValueError('scores field must be of rank 2')
+  if scores.shape[1].value is None:
+    raise ValueError('scores must have statically defined second ' 'dimension')
+  if boxes.shape.ndims != 3:
+    raise ValueError('boxes must be of rank 3.')
+  if not (shape_utils.get_dim_as_int(
+      boxes.shape[1]) == shape_utils.get_dim_as_int(scores.shape[1]) or
+          shape_utils.get_dim_as_int(boxes.shape[1]) == 1):
+    raise ValueError('second dimension of boxes must be either 1 or equal '
+                     'to the second dimension of scores')
+  if boxes.shape[2].value != 4:
+    raise ValueError('last dimension of boxes must be of size 4.')
+  if change_coordinate_frame and clip_window is None:
+    raise ValueError('if change_coordinate_frame is True, then a clip_window'
+                     'must be specified.')
+
+
+def _clip_window_prune_boxes(sorted_boxes, clip_window, pad_to_max_output_size,
+                             change_coordinate_frame):
+  """Prune boxes with zero area.
+
+  Args:
+    sorted_boxes: A BoxList containing k detections.
+    clip_window: A float32 tensor of the form [y_min, x_min, y_max, x_max]
+      representing the window to clip and normalize boxes to before performing
+      non-max suppression.
+    pad_to_max_output_size: flag indicating whether to pad to max output size or
+      not.
+    change_coordinate_frame: Whether to normalize coordinates after clipping
+      relative to clip_window (this can only be set to True if a clip_window is
+      provided).
+
+  Returns:
+    sorted_boxes: A BoxList containing k detections after pruning.
+    num_valid_nms_boxes_cumulative: Number of valid NMS boxes
+  """
+  sorted_boxes = box_list_ops.clip_to_window(
+      sorted_boxes,
+      clip_window,
+      filter_nonoverlapping=not pad_to_max_output_size)
+  # Set the scores of boxes with zero area to -1 to keep the default
+  # behaviour of pruning out zero area boxes.
+  sorted_boxes_size = tf.shape(sorted_boxes.get())[0]
+  non_zero_box_area = tf.cast(box_list_ops.area(sorted_boxes), tf.bool)
+  sorted_boxes_scores = tf.where(
+      non_zero_box_area, sorted_boxes.get_field(fields.BoxListFields.scores),
+      -1 * tf.ones(sorted_boxes_size))
+  sorted_boxes.add_field(fields.BoxListFields.scores, sorted_boxes_scores)
+  num_valid_nms_boxes_cumulative = tf.reduce_sum(
+      tf.cast(tf.greater_equal(sorted_boxes_scores, 0), tf.int32))
+  sorted_boxes = box_list_ops.sort_by_field(sorted_boxes,
+                                            fields.BoxListFields.scores)
+  if change_coordinate_frame:
+    sorted_boxes = box_list_ops.change_coordinate_frame(sorted_boxes,
+                                                        clip_window)
+  return sorted_boxes, num_valid_nms_boxes_cumulative
+
+
 def multiclass_non_max_suppression(boxes,
                                    scores,
                                    score_thresh,
@@ -97,28 +185,12 @@ def multiclass_non_max_suppression(boxes,
     ValueError: if iou_thresh is not in [0, 1] or if input boxlist does not have
       a valid scores field.
   """
-  if not 0 <= iou_thresh <= 1.0:
-    raise ValueError('iou_thresh must be between 0 and 1')
-  if scores.shape.ndims != 2:
-    raise ValueError('scores field must be of rank 2')
-  if scores.shape[1].value is None:
-    raise ValueError('scores must have statically defined second '
-                     'dimension')
-  if boxes.shape.ndims != 3:
-    raise ValueError('boxes must be of rank 3.')
-  if not (boxes.shape[1].value == scores.shape[1].value or
-          boxes.shape[1].value == 1):
-    raise ValueError('second dimension of boxes must be either 1 or equal '
-                     'to the second dimension of scores')
-  if boxes.shape[2].value != 4:
-    raise ValueError('last dimension of boxes must be of size 4.')
-  if change_coordinate_frame and clip_window is None:
-    raise ValueError('if change_coordinate_frame is True, then a clip_window'
-                     'must be specified.')
+  _validate_boxes_scores_iou_thresh(boxes, scores, iou_thresh,
+                                    change_coordinate_frame, clip_window)
 
   with tf.name_scope(scope, 'MultiClassNonMaxSuppression'):
     num_scores = tf.shape(scores)[0]
-    num_classes = scores.get_shape()[1]
+    num_classes = shape_utils.get_dim_as_int(scores.get_shape()[1])
 
     selected_boxes_list = []
     num_valid_nms_boxes_cumulative = tf.constant(0)
@@ -128,7 +200,7 @@ def multiclass_non_max_suppression(boxes,
     if boundaries is not None:
       per_class_boundaries_list = tf.unstack(boundaries, axis=1)
     boxes_ids = (range(num_classes) if len(per_class_boxes_list) > 1
-                 else [0] * num_classes.value)
+                 else [0] * num_classes)
     for class_idx, boxes_idx in zip(range(num_classes), boxes_ids):
       per_class_boxes = per_class_boxes_list[boxes_idx]
       boxlist_and_class_scores = box_list.BoxList(per_class_boxes)
@@ -193,32 +265,13 @@ def multiclass_non_max_suppression(boxes,
     if clip_window is not None:
       # When pad_to_max_output_size is False, it prunes the boxes with zero
       # area.
-      sorted_boxes = box_list_ops.clip_to_window(
-          sorted_boxes,
-          clip_window,
-          filter_nonoverlapping=not pad_to_max_output_size)
-      # Set the scores of boxes with zero area to -1 to keep the default
-      # behaviour of pruning out zero area boxes.
-      sorted_boxes_size = tf.shape(sorted_boxes.get())[0]
-      non_zero_box_area = tf.cast(box_list_ops.area(sorted_boxes), tf.bool)
-      sorted_boxes_scores = tf.where(
-          non_zero_box_area,
-          sorted_boxes.get_field(fields.BoxListFields.scores),
-          -1*tf.ones(sorted_boxes_size))
-      sorted_boxes.add_field(fields.BoxListFields.scores, sorted_boxes_scores)
-      num_valid_nms_boxes_cumulative = tf.reduce_sum(
-          tf.cast(tf.greater_equal(sorted_boxes_scores, 0), tf.int32))
-      sorted_boxes = box_list_ops.sort_by_field(sorted_boxes,
-                                                fields.BoxListFields.scores)
-      if change_coordinate_frame:
-        sorted_boxes = box_list_ops.change_coordinate_frame(
-            sorted_boxes, clip_window)
+      sorted_boxes, num_valid_nms_boxes_cumulative = _clip_window_prune_boxes(
+          sorted_boxes, clip_window, pad_to_max_output_size,
+          change_coordinate_frame)
 
     if max_total_size:
-      max_total_size = tf.minimum(max_total_size,
-                                  sorted_boxes.num_boxes())
-      sorted_boxes = box_list_ops.gather(sorted_boxes,
-                                         tf.range(max_total_size))
+      max_total_size = tf.minimum(max_total_size, sorted_boxes.num_boxes())
+      sorted_boxes = box_list_ops.gather(sorted_boxes, tf.range(max_total_size))
       num_valid_nms_boxes_cumulative = tf.where(
           max_total_size > num_valid_nms_boxes_cumulative,
           num_valid_nms_boxes_cumulative, max_total_size)
@@ -228,6 +281,175 @@ def multiclass_non_max_suppression(boxes,
           sorted_boxes, tf.range(num_valid_nms_boxes_cumulative))
 
     return sorted_boxes, num_valid_nms_boxes_cumulative
+
+
+def class_agnostic_non_max_suppression(boxes,
+                                       scores,
+                                       score_thresh,
+                                       iou_thresh,
+                                       max_classes_per_detection=1,
+                                       max_total_size=0,
+                                       clip_window=None,
+                                       change_coordinate_frame=False,
+                                       masks=None,
+                                       boundaries=None,
+                                       pad_to_max_output_size=False,
+                                       additional_fields=None,
+                                       scope=None):
+  """Class-agnostic version of non maximum suppression.
+
+  This op greedily selects a subset of detection bounding boxes, pruning
+  away boxes that have high IOU (intersection over union) overlap (> thresh)
+  with already selected boxes.  It operates on all the boxes using
+  max scores across all classes for which scores are provided (via the scores
+  field of the input box_list), pruning boxes with score less than a provided
+  threshold prior to applying NMS.
+
+  Please note that this operation is performed in a class-agnostic way,
+  therefore any background classes should be removed prior to calling this
+  function.
+
+  Selected boxes are guaranteed to be sorted in decreasing order by score (but
+  the sort is not guaranteed to be stable).
+
+  Args:
+    boxes: A [k, q, 4] float32 tensor containing k detections. `q` can be either
+      number of classes or 1 depending on whether a separate box is predicted
+      per class.
+    scores: A [k, num_classes] float32 tensor containing the scores for each of
+      the k detections. The scores have to be non-negative when
+      pad_to_max_output_size is True.
+    score_thresh: scalar threshold for score (low scoring boxes are removed).
+    iou_thresh: scalar threshold for IOU (new boxes that have high IOU overlap
+      with previously selected boxes are removed).
+    max_classes_per_detection: maximum number of retained classes per detection
+      box in class-agnostic NMS.
+    max_total_size: maximum number of boxes retained over all classes. By
+      default returns all boxes retained after capping boxes per class.
+    clip_window: A float32 tensor of the form [y_min, x_min, y_max, x_max]
+      representing the window to clip and normalize boxes to before performing
+      non-max suppression.
+    change_coordinate_frame: Whether to normalize coordinates after clipping
+      relative to clip_window (this can only be set to True if a clip_window is
+      provided)
+    masks: (optional) a [k, q, mask_height, mask_width] float32 tensor
+      containing box masks. `q` can be either number of classes or 1 depending
+      on whether a separate mask is predicted per class.
+    boundaries: (optional) a [k, q, boundary_height, boundary_width] float32
+      tensor containing box boundaries. `q` can be either number of classes or 1
+      depending on whether a separate boundary is predicted per class.
+    pad_to_max_output_size: If true, the output nmsed boxes are padded to be of
+      length `max_size_per_class`. Defaults to false.
+    additional_fields: (optional) If not None, a dictionary that maps keys to
+      tensors whose first dimensions are all of size `k`. After non-maximum
+      suppression, all tensors corresponding to the selected boxes will be added
+      to resulting BoxList.
+    scope: name scope.
+
+  Returns:
+    A tuple of sorted_boxes and num_valid_nms_boxes. The sorted_boxes is a
+      BoxList holds M boxes with a rank-1 scores field representing
+      corresponding scores for each box with scores sorted in decreasing order
+      and a rank-1 classes field representing a class label for each box. The
+      num_valid_nms_boxes is a 0-D integer tensor representing the number of
+      valid elements in `BoxList`, with the valid elements appearing first.
+
+  Raises:
+    ValueError: if iou_thresh is not in [0, 1] or if input boxlist does not have
+      a valid scores field.
+  """
+  _validate_boxes_scores_iou_thresh(boxes, scores, iou_thresh,
+                                    change_coordinate_frame, clip_window)
+
+  if max_classes_per_detection > 1:
+    raise ValueError('Max classes per detection box >1 not supported.')
+  q = boxes.shape[1].value
+  if q > 1:
+    class_ids = tf.expand_dims(
+        tf.argmax(scores, axis=1, output_type=tf.int32), axis=1)
+    boxes = tf.batch_gather(boxes, class_ids)
+    if masks is not None:
+      masks = tf.batch_gather(masks, class_ids)
+    if boundaries is not None:
+      boundaries = tf.batch_gather(boundaries, class_ids)
+  boxes = tf.squeeze(boxes, axis=[1])
+  if masks is not None:
+    masks = tf.squeeze(masks, axis=[1])
+  if boundaries is not None:
+    boundaries = tf.squeeze(boundaries, axis=[1])
+
+  with tf.name_scope(scope, 'ClassAgnosticNonMaxSuppression'):
+    boxlist_and_class_scores = box_list.BoxList(boxes)
+    max_scores = tf.reduce_max(scores, axis=-1)
+    classes_with_max_scores = tf.argmax(scores, axis=-1)
+    boxlist_and_class_scores.add_field(fields.BoxListFields.scores, max_scores)
+    if masks is not None:
+      boxlist_and_class_scores.add_field(fields.BoxListFields.masks, masks)
+    if boundaries is not None:
+      boxlist_and_class_scores.add_field(fields.BoxListFields.boundaries,
+                                         boundaries)
+
+    if additional_fields is not None:
+      for key, tensor in additional_fields.items():
+        boxlist_and_class_scores.add_field(key, tensor)
+
+    if pad_to_max_output_size:
+      max_selection_size = max_total_size
+      selected_indices, num_valid_nms_boxes = (
+          tf.image.non_max_suppression_padded(
+              boxlist_and_class_scores.get(),
+              boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+              max_selection_size,
+              iou_threshold=iou_thresh,
+              score_threshold=score_thresh,
+              pad_to_max_output_size=True))
+    else:
+      max_selection_size = tf.minimum(max_total_size,
+                                      boxlist_and_class_scores.num_boxes())
+      selected_indices = tf.image.non_max_suppression(
+          boxlist_and_class_scores.get(),
+          boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+          max_selection_size,
+          iou_threshold=iou_thresh,
+          score_threshold=score_thresh)
+      num_valid_nms_boxes = tf.shape(selected_indices)[0]
+      selected_indices = tf.concat([
+          selected_indices,
+          tf.zeros(max_selection_size - num_valid_nms_boxes, tf.int32)
+      ], 0)
+
+    nms_result = box_list_ops.gather(boxlist_and_class_scores, selected_indices)
+
+    valid_nms_boxes_indx = tf.less(
+        tf.range(max_selection_size), num_valid_nms_boxes)
+    nms_scores = nms_result.get_field(fields.BoxListFields.scores)
+    nms_result.add_field(
+        fields.BoxListFields.scores,
+        tf.where(valid_nms_boxes_indx, nms_scores,
+                 -1 * tf.ones(max_selection_size)))
+    selected_classes = tf.gather(classes_with_max_scores, selected_indices)
+    nms_result.add_field(fields.BoxListFields.classes, selected_classes)
+    selected_boxes = nms_result
+    sorted_boxes = box_list_ops.sort_by_field(selected_boxes,
+                                              fields.BoxListFields.scores)
+    if clip_window is not None:
+      # When pad_to_max_output_size is False, it prunes the boxes with zero
+      # area.
+      sorted_boxes, num_valid_nms_boxes = _clip_window_prune_boxes(
+          sorted_boxes, clip_window, pad_to_max_output_size,
+          change_coordinate_frame)
+
+    if max_total_size:
+      max_total_size = tf.minimum(max_total_size, sorted_boxes.num_boxes())
+      sorted_boxes = box_list_ops.gather(sorted_boxes, tf.range(max_total_size))
+      num_valid_nms_boxes = tf.where(max_total_size > num_valid_nms_boxes,
+                                     num_valid_nms_boxes, max_total_size)
+    # Select only the valid boxes if pad_to_max_output_size is False.
+    if not pad_to_max_output_size:
+      sorted_boxes = box_list_ops.gather(sorted_boxes,
+                                         tf.range(num_valid_nms_boxes))
+
+    return sorted_boxes, num_valid_nms_boxes
 
 
 def batch_multiclass_non_max_suppression(boxes,
@@ -243,7 +465,9 @@ def batch_multiclass_non_max_suppression(boxes,
                                          additional_fields=None,
                                          scope=None,
                                          use_static_shapes=False,
-                                         parallel_iterations=32):
+                                         parallel_iterations=32,
+                                         use_class_agnostic_nms=False,
+                                         max_classes_per_detection=1):
   """Multi-class version of non maximum suppression that operates on a batch.
 
   This op is similar to `multiclass_non_max_suppression` but operates on a batch
@@ -253,8 +477,8 @@ def batch_multiclass_non_max_suppression(boxes,
   Args:
     boxes: A [batch_size, num_anchors, q, 4] float32 tensor containing
       detections. If `q` is 1 then same boxes are used for all classes
-        otherwise, if `q` is equal to number of classes, class-specific boxes
-        are used.
+      otherwise, if `q` is equal to number of classes, class-specific boxes are
+      used.
     scores: A [batch_size, num_anchors, num_classes] float32 tensor containing
       the scores for each of the `num_anchors` detections. The scores have to be
       non-negative when use_static_shapes is set True.
@@ -274,8 +498,8 @@ def batch_multiclass_non_max_suppression(boxes,
       relative to clip_window (this can only be set to True if a clip_window is
       provided)
     num_valid_boxes: (optional) a Tensor of type `int32`. A 1-D tensor of shape
-      [batch_size] representing the number of valid boxes to be considered
-      for each image in the batch.  This parameter allows for ignoring zero
+      [batch_size] representing the number of valid boxes to be considered for
+      each image in the batch.  This parameter allows for ignoring zero
       paddings.
     masks: (optional) a [batch_size, num_anchors, q, mask_height, mask_width]
       float32 tensor containing box masks. `q` can be either number of classes
@@ -288,6 +512,10 @@ def batch_multiclass_non_max_suppression(boxes,
       Defaults to false.
     parallel_iterations: (optional) number of batch items to process in
       parallel.
+    use_class_agnostic_nms: If true, this uses class-agnostic non max
+      suppression
+    max_classes_per_detection: Maximum number of retained classes per detection
+      box in class-agnostic NMS.
 
   Returns:
     'nmsed_boxes': A [batch_size, max_detections, 4] float32 tensor
@@ -313,8 +541,8 @@ def batch_multiclass_non_max_suppression(boxes,
     ValueError: if `q` in boxes.shape is not 1 or not equal to number of
       classes as inferred from scores.shape.
   """
-  q = boxes.shape[2].value
-  num_classes = scores.shape[2].value
+  q = shape_utils.get_dim_as_int(boxes.shape[2])
+  num_classes = shape_utils.get_dim_as_int(scores.shape[2])
   if q != 1 and q != num_classes:
     raise ValueError('third dimension of boxes must be either 1 or equal '
                      'to the third dimension of scores')
@@ -335,8 +563,8 @@ def batch_multiclass_non_max_suppression(boxes,
   del additional_fields
   with tf.name_scope(scope, 'BatchMultiClassNonMaxSuppression'):
     boxes_shape = boxes.shape
-    batch_size = boxes_shape[0].value
-    num_anchors = boxes_shape[1].value
+    batch_size = shape_utils.get_dim_as_int(boxes_shape[0])
+    num_anchors = shape_utils.get_dim_as_int(boxes_shape[1])
 
     if batch_size is None:
       batch_size = tf.shape(boxes)[0]
@@ -434,31 +662,47 @@ def batch_multiclass_non_max_suppression(boxes,
         per_image_masks = tf.reshape(
             tf.slice(per_image_masks, 4 * [0],
                      tf.stack([per_image_num_valid_boxes, -1, -1, -1])),
-            [-1, q, per_image_masks.shape[2].value,
-             per_image_masks.shape[3].value])
+            [-1, q, shape_utils.get_dim_as_int(per_image_masks.shape[2]),
+             shape_utils.get_dim_as_int(per_image_masks.shape[3])])
         if per_image_additional_fields is not None:
           for key, tensor in per_image_additional_fields.items():
             additional_field_shape = tensor.get_shape()
             additional_field_dim = len(additional_field_shape)
             per_image_additional_fields[key] = tf.reshape(
-                tf.slice(per_image_additional_fields[key],
-                         additional_field_dim * [0],
-                         tf.stack([per_image_num_valid_boxes] +
-                                  (additional_field_dim - 1) * [-1])),
-                [-1] + [dim.value for dim in additional_field_shape[1:]])
-
-      nmsed_boxlist, num_valid_nms_boxes = multiclass_non_max_suppression(
-          per_image_boxes,
-          per_image_scores,
-          score_thresh,
-          iou_thresh,
-          max_size_per_class,
-          max_total_size,
-          clip_window=per_image_clip_window,
-          change_coordinate_frame=change_coordinate_frame,
-          masks=per_image_masks,
-          pad_to_max_output_size=use_static_shapes,
-          additional_fields=per_image_additional_fields)
+                tf.slice(
+                    per_image_additional_fields[key],
+                    additional_field_dim * [0],
+                    tf.stack([per_image_num_valid_boxes] +
+                             (additional_field_dim - 1) * [-1])), [-1] + [
+                                 shape_utils.get_dim_as_int(dim)
+                                 for dim in additional_field_shape[1:]
+                             ])
+      if use_class_agnostic_nms:
+        nmsed_boxlist, num_valid_nms_boxes = class_agnostic_non_max_suppression(
+            per_image_boxes,
+            per_image_scores,
+            score_thresh,
+            iou_thresh,
+            max_classes_per_detection,
+            max_total_size,
+            clip_window=per_image_clip_window,
+            change_coordinate_frame=change_coordinate_frame,
+            masks=per_image_masks,
+            pad_to_max_output_size=use_static_shapes,
+            additional_fields=per_image_additional_fields)
+      else:
+        nmsed_boxlist, num_valid_nms_boxes = multiclass_non_max_suppression(
+            per_image_boxes,
+            per_image_scores,
+            score_thresh,
+            iou_thresh,
+            max_size_per_class,
+            max_total_size,
+            clip_window=per_image_clip_window,
+            change_coordinate_frame=change_coordinate_frame,
+            masks=per_image_masks,
+            pad_to_max_output_size=use_static_shapes,
+            additional_fields=per_image_additional_fields)
 
       if not use_static_shapes:
         nmsed_boxlist = box_list_ops.pad_or_clip_box_list(
@@ -499,7 +743,7 @@ def batch_multiclass_non_max_suppression(boxes,
     if num_additional_fields > 0:
       # Sort the keys to ensure arranging elements in same order as
       # in _single_image_nms_fn.
-      batch_nmsed_keys = ordered_additional_fields.keys()
+      batch_nmsed_keys = list(ordered_additional_fields.keys())
       for i in range(len(batch_nmsed_keys)):
         batch_nmsed_additional_fields[
             batch_nmsed_keys[i]] = batch_nmsed_values[i]

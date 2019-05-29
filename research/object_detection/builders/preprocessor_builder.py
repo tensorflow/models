@@ -39,7 +39,7 @@ def _get_step_config_from_proto(preprocessor_step_config, step_name):
     if field.name == step_name:
       return value
 
-  raise ValueError('Could not get field %s from proto!', step_name)
+  raise ValueError('Could not get field %s from proto!' % step_name)
 
 
 def _get_dict_from_proto(config):
@@ -194,7 +194,7 @@ def build(preprocessor_step_config):
       if len(pad_color) != 3:
         tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
 
-      pad_color = tf.to_float([x for x in config.pad_color])
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
     return (preprocessor.random_pad_image,
             {
                 'min_image_size': min_image_size,
@@ -213,7 +213,7 @@ def build(preprocessor_step_config):
       if len(pad_color) != 3:
         tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
 
-      pad_color = tf.to_float([x for x in config.pad_color])
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
 
     return (preprocessor.random_absolute_pad_image,
             {
@@ -234,7 +234,7 @@ def build(preprocessor_step_config):
       if len(pad_color) != 3:
         tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
 
-      pad_color = tf.to_float([x for x in config.pad_color])
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
 
     kwargs = {
         'min_object_covered': config.min_object_covered,
