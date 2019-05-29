@@ -244,7 +244,10 @@ def _read_and_batch_from_files(
 
   if static_batch:
     dataset = dataset.padded_batch(
-        batch_size // num_replicas // max_length * num_replicas,
+        # First calculate batch size (token number) per worker, then divide it
+        # into sentences, and finally expand to a global batch. It could prove
+        # the global batch divisble for distribution strategy.
+        ((batch_size // num_replicas) // max_length) * num_replicas,
         ([max_length], [max_length]), drop_remainder=True)
   else:
     # Group and batch such that each batch has examples of similar length.

@@ -127,7 +127,7 @@ def define_transformer_flags():
       help=flags_core.help_wrap(
           'Max sentence length for Transformer. Default is 256. Note: Usually '
           'it is more effective to use a smaller max length if static_batch is '
-          'enabled, e.g. 80 or 64.'))
+          'enabled, e.g. 64.'))
 
   # Flags for training with steps (may be used for debugging)
   flags.DEFINE_integer(
