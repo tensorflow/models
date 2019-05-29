@@ -170,12 +170,16 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     start_time_sec = time.time()
     stats = keras_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
+    # Number of logged step time entries that are excluded in performance
+    # report. We keep results from last 100 batches in this case.
+    warmup = (FLAGS.train_steps - 100) // FLAGS.log_steps
 
     super(Resnet50KerasBenchmarkBase, self)._report_benchmark(
         stats,
         wall_time_sec,
         total_batch_size=FLAGS.batch_size,
-        log_steps=FLAGS.log_steps)
+        log_steps=FLAGS.log_steps,
+        warmup=warmup)
 
   def benchmark_1_gpu_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
@@ -568,6 +572,26 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
+  def benchmark_xla_8_gpu_fp16_tweaked_delay_measure(self):
+    """Test Keras model with manual config tuning, XLA, 8 GPUs and fp16. Delay
+       performance measurement for stable performance on 96 vCPU platforms.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_tweaked_delay_measure')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_delay_prefetch = True
+    FLAGS.train_steps = 310
+    self._run_and_report_benchmark()
+
   def benchmark_xla_8_gpu_fp16_tweaked_optional_next(self):
     """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16.
 
@@ -722,6 +746,26 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_8_gpu_fp16_tweaked_delay_measure(self):
+    """Test Keras model in legacy graph mode with manual config tuning, XLA,
+       8 GPUs and fp16. Delay performance measurement for stable performance
+       on 96 vCPU platforms.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_xla_8_gpu_fp16_tweaked_delay_measure')
+    FLAGS.batch_size = 256 * 8
+    FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.train_steps = 310
     self._run_and_report_benchmark()
 
   def benchmark_graph_xla_8_gpu_fp16_tweaked_optional_next(self):

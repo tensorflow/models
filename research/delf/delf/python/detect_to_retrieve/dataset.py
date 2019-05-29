@@ -40,7 +40,7 @@ def ReadDatasetFile(dataset_file_path):
       array of integers; additionally, it has a key 'bbx' mapping to a NumPy
       array of floats with bounding box coordinates.
   """
-  with tf.gfile.GFile(dataset_file_path, 'r') as f:
+  with tf.gfile.GFile(dataset_file_path, 'rb') as f:
     cfg = matlab.loadmat(f)
 
   # Parse outputs according to the specificities of the dataset file.

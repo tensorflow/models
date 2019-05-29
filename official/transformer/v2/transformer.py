@@ -85,11 +85,11 @@ class Transformer(tf.keras.Model):
         "params": self.params,
     }
 
-  def call(self, x, training):
+  def call(self, inputs, training):
     """Calculate target logits or inferred target sequences.
 
     Args:
-      x: input tensor list of size 1 or 2.
+      inputs: input tensor list of size 1 or 2.
         First item, inputs: int tensor with shape [batch_size, input_length].
         Second item (optional), targets: None or int tensor with shape
           [batch_size, target_length].
@@ -103,10 +103,10 @@ class Transformer(tf.keras.Model):
           outputs: [batch_size, decoded length]
           scores: [batch_size, float]}
     """
-    if len(x) == 2:
-      inputs, targets = x[0], x[1]
+    if len(inputs) == 2:
+      inputs, targets = inputs[0], inputs[1]
     else:
-      inputs, targets = x[0], None
+      inputs, targets = inputs[0], None
 
     # Variance scaling is used here because it seems to work in many problems.
     # Other reasonable initializers may also work just as well.

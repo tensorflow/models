@@ -39,6 +39,7 @@ from official.transformer.v2 import transformer
 from official.transformer.v2 import translate
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
 
 
 INF = int(1e9)
@@ -92,6 +93,9 @@ class TransformerTask(object):
 
     # Add flag-defined parameters to params object
     num_gpus = flags_core.get_num_gpus(flags_obj)
+    self.distribution_strategy = distribution_utils.get_distribution_strategy(
+        distribution_strategy=flags_obj.distribution_strategy,
+        num_gpus=flags_core.get_num_gpus(flags_obj))
 
     self.params = params = misc.get_model_params(flags_obj.param_set, num_gpus)
 
@@ -111,16 +115,25 @@ class TransformerTask(object):
     """Trains the model."""
     params, flags_obj, is_train = self.params, self.flags_obj, True
     _ensure_dir(flags_obj.model_dir)
-    model = transformer.create_model(params, is_train)
-    opt = self._create_optimizer()
-    model.compile(opt, target_tensors=[])
+    if self.distribution_strategy:
+      with self.distribution_strategy.scope():
+        model = transformer.create_model(params, is_train)
+        opt = self._create_optimizer()
+        model.compile(opt)
+    else:
+      model = transformer.create_model(params, is_train)
+      opt = self._create_optimizer()
+      model.compile(opt)
 
     model.summary()
 
-    map_data_fn = data_pipeline.map_data_for_transformer_fn
+    # TODO(guptapriya): Figure out a way to structure input that works in both 
+    # distributed and non distributed cases.
     train_ds = data_pipeline.train_input_fn(params)
-    train_ds = train_ds.map(
-        map_data_fn, num_parallel_calls=params["num_parallel_calls"])
+    if not self.distribution_strategy:
+      map_data_fn = data_pipeline.map_data_for_transformer_fn
+      train_ds = train_ds.map(
+          map_data_fn, num_parallel_calls=params["num_parallel_calls"])
 
     callbacks = self._create_callbacks(flags_obj.model_dir, 0, params)
 
