@@ -159,6 +159,28 @@ class TransformerBigEstimatorAccuracy(EstimatorBenchmark):
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
+  def benchmark_graph_8_gpu_static_batch(self):
+    """Benchmark graph mode 8 gpus.
+
+      SOTA is 28.4 BLEU (uncased).
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'big'
+    FLAGS.batch_size = 3072 * 8
+    FLAGS.static_batch = True
+    FLAGS.max_length = 40
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 5000
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
   def _run_and_report_benchmark(self, bleu_min=28.3, bleu_max=29):
     """Run benchmark and report results.
 
@@ -248,6 +270,31 @@ class TransformerBaseEstimatorAccuracy(EstimatorBenchmark):
     FLAGS['bleu_ref'].value = self.bleu_ref
     FLAGS.param_set = 'base'
     FLAGS.batch_size = 4096 * 8
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 5000
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_8_gpu_static_batch(self):
+    """Benchmark graph mode 8 gpus.
+
+      SOTA is 27.3 BLEU (uncased).
+      Best so far is 27.2  with 4048*8 at 75,000 steps.
+      27.009 with 4096*8 at 100,000 steps and earlier.
+      Other test: 2024 * 8 peaked at 26.66 at 100,000 steps.
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'base'
+    FLAGS.batch_size = 4096 * 8
+    FLAGS.static_batch = True
+    FLAGS.max_length = 40
     FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')

@@ -108,6 +108,8 @@ def parse_flags(flags_obj):
           flags_obj.clone_model_in_keras_dist_strat,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
+      "keras_use_ctl": flags_obj.keras_use_ctl,
+      "hr_threshold": flags_obj.hr_threshold,
   }
 
 
@@ -245,7 +247,7 @@ def define_ncf_flags():
                                 "optimizer."))
 
   flags.DEFINE_float(
-      name="hr_threshold", default=None,
+      name="hr_threshold", default=1.0,
       help=flags_core.help_wrap(
           "If passed, training will stop when the evaluation metric HR is "
           "greater than or equal to hr_threshold. For dataset ml-1m, the "
@@ -327,6 +329,11 @@ def define_ncf_flags():
       help=flags_core.help_wrap(
           'If True, we stop the training when it reaches hr_threshold'))
 
+  flags.DEFINE_bool(
+      name="keras_use_ctl",
+      default=False,
+      help=flags_core.help_wrap(
+          'If True, we use a custom training loop for keras.'))
 
 def convert_to_softmax_logits(logits):
   '''Convert the logits returned by the base model to softmax logits.

@@ -166,8 +166,8 @@ def main(_):
     cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
         tpu=FLAGS.tpu)
     tf.config.experimental_connect_to_host(cluster_resolver.master())  # pylint: disable=line-too-long
-    tf.contrib.distribute.initialize_tpu_system(cluster_resolver)
-    strategy = tf.contrib.distribute.TPUStrategy(
+    tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+    strategy = tf.distribute.experimental.TPUStrategy(
         cluster_resolver, steps_per_run=FLAGS.steps_per_run)
   elif FLAGS.strategy_type == 'mirror':
     strategy = tf.distribute.MirroredStrategy()

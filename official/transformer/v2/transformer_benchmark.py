@@ -133,6 +133,7 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     """
     self._setup()
     FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'off'
     FLAGS.data_dir = self.train_data_dir
     FLAGS.vocab_file = self.vocab_file
     # Sets values directly to avoid validation check.
@@ -140,7 +141,7 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     FLAGS['bleu_ref'].value = self.bleu_ref
     FLAGS.param_set = 'base'
     FLAGS.batch_size = 4096
-    FLAGS.train_steps = 200000
+    FLAGS.train_steps = 100000
     FLAGS.steps_between_evals = 5000
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     # These bleu scores are based on test runs after at this limited
@@ -149,6 +150,145 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
                                    log_steps=FLAGS.log_steps,
                                    bleu_min=25.3,
                                    bleu_max=26)
+
+  def benchmark_1_gpu_static_batch(self):
+    """Benchmark 1 gpu with static_batch.
+
+      The paper uses 8 GPUs and a much larger effective batch size, this is will
+      not converge to the 27.3 BLEU (uncased) SOTA.
+    """
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'base'
+    FLAGS.batch_size = 4096
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 5000
+    # TODO(guptapriya): Add max_length
+    FLAGS.static_batch = True
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_static_batch')
+    # These bleu scores are based on test runs after at this limited
+    # number of steps and batch size after verifying SOTA at 8xV100s.
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=25.3,
+                                   bleu_max=26)
+
+  def benchmark_8_gpu(self):
+    """Benchmark 8 gpu.
+
+      Should converge to 27.3 BLEU (uncased). This has not been confirmed yet.
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'base'
+    FLAGS.batch_size = 4096*8
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 5000
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=27,
+                                   bleu_max=28)
+
+  def benchmark_8_gpu_static_batch(self):
+    """Benchmark 8 gpu.
+
+      Should converge to 27.3 BLEU (uncased). This has not been confirmed yet.
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'base'
+    FLAGS.batch_size = 4096*8
+    FLAGS.train_steps = 100000
+    # TODO(guptapriya): Add max_length
+    FLAGS.static_batch = True
+    FLAGS.steps_between_evals = 5000
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=27,
+                                   bleu_max=28)
+
+class TransformerBigKerasAccuracy(TransformerBenchmark):
+  """Benchmark accuracy tests for Transformer Big model w/ Keras."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    """Benchmark accuracy tests for Transformer Big model w/ Keras.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+      **kwargs: arbitrary named arguments. This is needed to make the
+                constructor forward compatible in case PerfZero provides more
+                named arguments before updating the constructor.
+    """
+    flag_methods = [misc.define_transformer_flags]
+
+    super(TransformerBigKerasAccuracy, self).__init__(
+        output_dir=output_dir, root_data_dir=root_data_dir,
+        flag_methods=flag_methods)
+
+  def benchmark_8_gpu(self):
+    """Benchmark 8 gpu.
+
+      Should converge to 28.4 BLEU (uncased). This has not be verified yet."
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'big'
+    FLAGS.batch_size = 3072*8
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 5000
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=28,
+                                   bleu_max=29)
+
+  def benchmark_8_gpu_static_batch(self):
+    """Benchmark 8 gpu.
+
+      Should converge to 28.4 BLEU (uncased). This has not be verified yet."
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'big'
+    FLAGS.batch_size = 3072*8
+    # TODO(guptapriya): Add max_length
+    FLAGS.static_batch = True
+    FLAGS.train_steps = 100000
+    FLAGS.steps_between_evals = 5000
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=28,
+                                   bleu_max=29)
 
 
 class TransformerKerasBenchmark(TransformerBenchmark):
@@ -177,8 +317,41 @@ class TransformerKerasBenchmark(TransformerBenchmark):
     """Benchmark 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'off'
     FLAGS.batch_size = self.batch_per_gpu
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps)
+
+  def benchmark_1_gpu_static_batch(self):
+    """Benchmark 1 gpu."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.batch_size = self.batch_per_gpu
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_static_batch')
+    # TODO(guptapriya): Add max_length
+    FLAGS.static_batch = True
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps)
+
+  def benchmark_8_gpu(self):
+    """Benchmark 8 gpu."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.batch_size = self.batch_per_gpu * 8
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps)
+
+  def benchmark_8_gpu_static_batch(self):
+    """Benchmark 8 gpu."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.batch_size = self.batch_per_gpu * 8
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch')
+    # TODO(guptapriya): Add max_length
+    FLAGS.static_batch = True
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps)
 
