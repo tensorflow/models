@@ -289,10 +289,9 @@ def eval_input_fn(params):
   if params["use_synthetic_data"]:
     return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
-      file_pattern, params["batch_size"] // params["num_gpus"],
-      params["num_gpus"], params["max_length"], params["num_parallel_calls"],
-      shuffle=False, repeat=1, static_batch=params["static_batch"],
-      num_replicas=params["num_gpus"])
+      file_pattern, params["batch_size"], params["max_length"],
+      params["num_parallel_calls"], shuffle=False, repeat=1,
+      static_batch=params["static_batch"], num_replicas=params["num_gpus"])
 
 
 def map_data_for_transformer_fn(x, y):
