@@ -195,6 +195,7 @@ def run(flags_obj):
 
     optimizer = tf.keras.optimizers.SGD(
         learning_rate=_BASE_LEARNING_RATE, momentum=0.9, nesterov=True)
+    
     training_loss = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
     training_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'training_accuracy', dtype=tf.float32)
@@ -244,8 +245,10 @@ def run(flags_obj):
         test_loss.update_state(loss)
         test_accuracy.update_state(labels, logits)
 
-      for x in test_ds:
-        strategy.experimental_run_v2(step_fn, args=(x,))
+      iterator = iter(test_ds)
+      for step in range(steps_per_eval):
+      # for x in test_ds:
+        strategy.experimental_run_v2(step_fn, args=(next(iterator),))
 
     train_iterator = iter(train_ds)
     for epoch in range(flags_obj.train_epochs):
