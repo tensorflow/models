@@ -58,7 +58,8 @@ def run_customized_training_loop(
     eval_steps=None,
     metric_fn=None,
     init_checkpoint=None,
-    use_remote_tpu=False):
+    use_remote_tpu=False,
+    custom_callbacks=None):
   """Run BERT pretrain model training using low-level API.
 
   Arguments:
@@ -87,6 +88,9 @@ def run_customized_training_loop(
         `model_fn`.
       use_remote_tpu: If true, input pipeline ops are placed in TPU worker host
         as an optimization.
+      custom_callbacks: A list of Keras Callbacks objects to run during
+        training. More specifically, `on_batch_start()`, `on_batch_end()`,
+        methods are invoked during training.
 
   Returns:
       Trained model.
@@ -134,7 +138,12 @@ def run_customized_training_loop(
       optimizer = model.optimizer
 
       if init_checkpoint:
-        sub_model.load_weights(init_checkpoint)
+        logging.info(
+            'Checkpoint file %s found and restoring from '
+            'initial checkpoint for core model.', init_checkpoint)
+        checkpoint = tf.train.Checkpoint(model=sub_model)
+        checkpoint.restore(init_checkpoint).assert_consumed()
+        logging.info('Loading from checkpoint file completed')
 
       metric = metric_fn() if metric_fn else None
       # If evaluation is required, make a copy of metric as it will be used by
@@ -193,15 +202,28 @@ def run_customized_training_loop(
                      metric_result)
         return metric_result
 
+      def _run_callbacks_on_batch_start(batch):
+        """Runs custom callbacks at the start of every step."""
+        if not custom_callbacks:
+          return
+        for callback in custom_callbacks:
+          callback.on_batch_start(batch)
+
+      def _run_callbacks_on_batch_end(batch):
+        """Runs custom callbacks at the end of every step."""
+        if not custom_callbacks:
+          return
+        for callback in custom_callbacks:
+          callback.on_batch_end(batch)
+
       # Training loop starts here.
-      checkpoint = tf.train.Checkpoint(model=model)
+      checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
       latest_checkpoint_file = tf.train.latest_checkpoint(model_dir)
       if latest_checkpoint_file:
         logging.info(
             'Checkpoint file %s found and restoring from '
             'checkpoint', latest_checkpoint_file)
-        checkpoint.restore(
-            latest_checkpoint_file).assert_existing_objects_matched()
+        checkpoint.restore(latest_checkpoint_file)
         logging.info('Loading from checkpoint file completed')
 
       current_step = optimizer.iterations.numpy()
@@ -211,8 +233,10 @@ def run_customized_training_loop(
       eval_metric_result = None
       train_loss = None
       while current_step < total_training_steps:
-        train_loss = train_step(train_iterator).numpy().astype(float)
         current_step += 1
+        _run_callbacks_on_batch_start(current_step)
+        train_loss = train_step(train_iterator).numpy().astype(float)
+
         if train_metric:
           train_metric_result = train_metric.result().numpy().astype(float)
 
@@ -222,6 +246,8 @@ def run_customized_training_loop(
         else:
           logging.info('Train Step: %d/%d  / loss = %s', current_step,
                        total_training_steps, train_loss)
+
+        _run_callbacks_on_batch_end(current_step)
 
         # Saves model checkpoints and run validation steps at every epoch end.
         if current_step % steps_per_epoch == 0:
