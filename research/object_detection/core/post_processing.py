@@ -500,9 +500,8 @@ def batch_multiclass_non_max_suppression(boxes,
       # Sort the keys to ensure arranging elements in same order as
       # in _single_image_nms_fn.
       batch_nmsed_keys = ordered_additional_fields.keys()
-      for i in range(len(batch_nmsed_keys)):
-        batch_nmsed_additional_fields[
-            batch_nmsed_keys[i]] = batch_nmsed_values[i]
+      for i, k in enumerate(batch_nmsed_keys):
+        batch_nmsed_additional_fields[k] = batch_nmsed_values[i]
 
     batch_num_detections = batch_outputs[-1]
 
