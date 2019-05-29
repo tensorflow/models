@@ -102,6 +102,7 @@ class TransformerTask(object):
     params["data_dir"] = flags_obj.data_dir
     params["model_dir"] = flags_obj.model_dir
     params["static_batch"] = flags_obj.static_batch
+    params["max_length"] = flags_obj.max_length or params['max_length']
     params["num_parallel_calls"] = (
         flags_obj.num_parallel_calls or tf.data.experimental.AUTOTUNE)
 
