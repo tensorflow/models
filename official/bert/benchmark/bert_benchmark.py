@@ -76,6 +76,9 @@ class BertBenchmarkBase(tf.test.Benchmark):
 
   def __init__(self, output_dir=None):
     self.num_gpus = 8
+    self.num_epochs = None
+    self.num_steps_per_epoch = None
+
     if not output_dir:
       output_dir = '/tmp'
     self.output_dir = output_dir
@@ -114,7 +117,7 @@ class BertBenchmarkBase(tf.test.Benchmark):
         'value': stats['train_loss'],
     }, {
         'name':
-            'examples_per_second',
+            'exp_per_second',
         'value':
             self.timer_callback.get_examples_per_sec(FLAGS.train_batch_size)
     }]
@@ -139,10 +142,13 @@ class BertBenchmarkBase(tf.test.Benchmark):
       input_meta_data = json.loads(reader.read().decode('utf-8'))
 
     bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
-    epochs = FLAGS.num_train_epochs
-    train_data_size = input_meta_data['train_data_size']
-    steps_per_epoch = int(train_data_size / FLAGS.train_batch_size)
-    warmup_steps = int(epochs * train_data_size * 0.1 / FLAGS.train_batch_size)
+    epochs = self.num_epochs if self.num_epochs else FLAGS.num_train_epochs
+    if self.num_steps_per_epoch:
+      steps_per_epoch = self.num_steps_per_epoch
+    else:
+      train_data_size = input_meta_data['train_data_size']
+      steps_per_epoch = int(train_data_size / FLAGS.train_batch_size)
+    warmup_steps = int(epochs * steps_per_epoch * 0.1)
     eval_steps = int(
         math.ceil(input_meta_data['eval_data_size'] / FLAGS.eval_batch_size))
     strategy = distribution_utils.get_distribution_strategy(
@@ -175,6 +181,11 @@ class BertClassifyBenchmark(BertBenchmarkBase):
     self.eval_data_path = CLASSIFIER_EVAL_DATA_PATH
     self.bert_config_file = MODEL_CONFIG_FILE_PATH
     self.input_meta_data_path = CLASSIFIER_INPUT_META_DATA_PATH
+    # Since we only care about performance metrics, we limit
+    # the number of training steps and epochs to prevent unnecessarily
+    # long tests.
+    self.num_steps_per_epoch = 110
+    self.num_epochs = 1
 
     super(BertClassifyBenchmark, self).__init__(output_dir=output_dir)
 
