@@ -109,7 +109,8 @@ def run_customized_training(strategy,
                             warmup_steps,
                             initial_lr,
                             init_checkpoint,
-                            use_remote_tpu=False):
+                            use_remote_tpu=False,
+                            custom_callbacks=None):
   """Run BERT classifier training using low-level API."""
   max_seq_length = input_meta_data['max_seq_length']
   num_classes = input_meta_data['num_labels']
@@ -155,7 +156,8 @@ def run_customized_training(strategy,
       eval_steps=eval_steps,
       init_checkpoint=init_checkpoint,
       metric_fn=metric_fn,
-      use_remote_tpu=use_remote_tpu)
+      use_remote_tpu=use_remote_tpu,
+      custom_callbacks=custom_callbacks)
 
 
 def export_classifier(model_export_path, input_meta_data):

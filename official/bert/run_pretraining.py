@@ -116,7 +116,7 @@ def run_customized_training(strategy,
         initial_lr, steps_per_epoch * epochs, warmup_steps)
     return pretrain_model, core_model
 
-  model_training_utils.run_customized_training_loop(
+  return model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_pretrain_model,
       loss_fn=get_loss_fn(),
@@ -175,7 +175,7 @@ def main(_):
   if strategy:
     print('***** Number of cores used : ', strategy.num_replicas_in_sync)
 
-  run_bert_pretrain(strategy)
+  return run_bert_pretrain(strategy)
 
 
 if __name__ == '__main__':
