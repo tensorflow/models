@@ -252,7 +252,7 @@ def _read_and_batch_from_files(
   else:
     # Group and batch such that each batch has examples of similar length.
     # TODO: _batch_examples might need to do something special for num_replicas.
-    dataset = _batch_examples(dataset, batch_size, max_length)
+    dataset = _batch_examples(dataset, batch_size // num_replicas, max_length)
 
   dataset = dataset.repeat(repeat)
 
