@@ -23,28 +23,6 @@ import os
 from absl import logging
 import tensorflow as tf
 
-try:
-  import h5py as _  # pylint: disable=g-import-not-at-top
-  HAS_H5PY = True
-except ImportError:
-  logging.warning('`h5py` is not installed. Please consider installing it '
-                  'to save weights for long-running training.')
-  HAS_H5PY = False
-
-
-def save_model(model, model_dir, weights_file):
-  """Saves the model weights."""
-  weights_file_path = os.path.join(model_dir, weights_file)
-  del model_dir, weights_file  # avoid accident usages.
-
-  if not HAS_H5PY:
-    logging.warning('`h5py` is not installed. Skip saving model weights.')
-    return
-
-  logging.info('Saving weights and optimizer states into %s', weights_file_path)
-  logging.info('This might take a while...')
-  model.save(weights_file_path, overwrite=True, include_optimizer=True)
-
 
 def export_bert_model(model_export_path,
                       model=None,
