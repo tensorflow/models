@@ -19,16 +19,19 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+
 from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
 
+# Import BERT model libraries.
 from official.bert import bert_models
 from official.bert import input_pipeline
 from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
+from official.bert import tpu_lib
 
 flags.DEFINE_string('input_files', None,
                     'File path to retrieve training data for pre-training.')
@@ -40,9 +43,7 @@ flags.DEFINE_string(
      'are stored. If not specified, save to /tmp/bert20/.'))
 flags.DEFINE_string('tpu', '', 'TPU address to connect to.')
 flags.DEFINE_enum(
-    'strategy_type',
-    'mirror',
-    ['tpu', 'mirror'],
+    'strategy_type', 'mirror', ['tpu', 'mirror'],
     'Distribution Strategy type to use for training. `tpu` uses '
     'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
     'single host.')
@@ -157,21 +158,20 @@ def run_bert_pretrain(strategy):
 def main(_):
   # Users should always run this script under TF 2.x
   assert tf.version.VERSION.startswith('2.')
+
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'
   strategy = None
-  if FLAGS.strategy_type == 'tpu':
-    logging.info('Use TPU at %s',
-                 FLAGS.tpu if FLAGS.tpu is not None else '')
-    cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-        tpu=FLAGS.tpu)
-    tf.config.experimental_connect_to_host(cluster_resolver.master())  # pylint: disable=line-too-long
-    tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+  if FLAGS.strategy_type == 'mirror':
+    strategy = tf.distribute.MirroredStrategy()
+  elif FLAGS.strategy_type == 'tpu':
+    # Initialize TPU System.
+    cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(
         cluster_resolver, steps_per_run=FLAGS.steps_per_run)
-  elif FLAGS.strategy_type == 'mirror':
-    strategy = tf.distribute.MirroredStrategy()
-
+  else:
+    raise ValueError('The distribution strategy type is not supported: %s' %
+                     FLAGS.strategy_type)
   if strategy:
     print('***** Number of cores used : ', strategy.num_replicas_in_sync)
 
