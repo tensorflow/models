@@ -196,7 +196,8 @@ def run(flags_obj):
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
+          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
+                                                          default_for_fp16=128))
 
     if flags_obj.enable_xla and not flags_obj.enable_eager:
       # TODO(b/129861005): Fix OOM issue in eager mode when setting
