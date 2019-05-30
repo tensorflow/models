@@ -27,6 +27,7 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
+# Import BERT model libraries.
 from official.bert import bert_models
 from official.bert import input_pipeline
 from official.bert import model_training_utils
@@ -34,6 +35,7 @@ from official.bert import modeling
 from official.bert import optimization
 from official.bert import squad_lib
 from official.bert import tokenization
+from official.bert import tpu_lib
 
 flags.DEFINE_bool('do_train', False, 'Whether to run training.')
 flags.DEFINE_bool('do_predict', False, 'Whether to run eval on the dev set.')
@@ -54,9 +56,7 @@ flags.DEFINE_string(
     'init_checkpoint', None,
     'Initial checkpoint (usually from a pre-trained BERT model).')
 flags.DEFINE_enum(
-    'strategy_type',
-    'mirror',
-    ['tpu', 'mirror'],
+    'strategy_type', 'mirror', ['tpu', 'mirror'],
     'Distribution Strategy type to use for training. `tpu` uses '
     'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
     'single host.')
@@ -306,23 +306,18 @@ def predict_squad(strategy, input_meta_data):
 def main(_):
   # Users should always run this script under TF 2.x
   assert tf.version.VERSION.startswith('2.')
+
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
 
   strategy = None
-  if FLAGS.strategy_type == 'tpu':
-    logging.info('Use TPU at %s',
-                 FLAGS.tpu if FLAGS.tpu is not None else '')
-    cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-        tpu=FLAGS.tpu)
-    tf.config.experimental_connect_to_host(cluster_resolver.master())  # pylint: disable=line-too-long
-    tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+  if FLAGS.strategy_type == 'mirror':
+    strategy = tf.distribute.MirroredStrategy()
+  elif FLAGS.strategy_type == 'tpu':
+    # Initialize TPU System.
+    cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(
         cluster_resolver, steps_per_run=FLAGS.steps_per_run)
-  elif FLAGS.strategy_type == 'mirror':
-    strategy = tf.distribute.MirroredStrategy()
-  elif FLAGS.strategy_type == 'multi_worker_mirror':
-    strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
   else:
     raise ValueError('The distribution strategy type is not supported: %s' %
                      FLAGS.strategy_type)
