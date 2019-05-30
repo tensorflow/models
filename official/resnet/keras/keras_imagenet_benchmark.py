@@ -202,7 +202,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu_no_dist_strat_run_eagerly')
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 64
     self._run_and_report_benchmark()
 
   def benchmark_graph_1_gpu_no_dist_strat(self):
