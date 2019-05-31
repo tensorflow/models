@@ -143,7 +143,7 @@ def get_distribution_strategy(params):
         "coordinator": tpu_cluster_resolver.cluster_spec()
                        .as_dict()["coordinator"]
     }
-    os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
+    os.environ["TF_CONFIG"] = json.dumps(tf_config_env)
 
     distribution = tf.distribute.experimental.TPUStrategy(
         tpu_cluster_resolver, steps_per_run=100)
@@ -320,20 +320,21 @@ def define_ncf_flags():
       name="clone_model_in_keras_dist_strat",
       default=True,
       help=flags_core.help_wrap(
-          'If False, then the experimental code path is used that doesn\'t '
+          "If False, then the experimental code path is used that does not "
           "clone models for distribution."))
 
   flags.DEFINE_bool(
       name="early_stopping",
       default=False,
       help=flags_core.help_wrap(
-          'If True, we stop the training when it reaches hr_threshold'))
+          "If True, we stop the training when it reaches hr_threshold"))
 
   flags.DEFINE_bool(
       name="keras_use_ctl",
       default=False,
       help=flags_core.help_wrap(
-          'If True, we use a custom training loop for keras.'))
+          "If True, we use a custom training loop for keras."))
+
 
 def convert_to_softmax_logits(logits):
   '''Convert the logits returned by the base model to softmax logits.

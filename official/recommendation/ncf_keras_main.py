@@ -171,21 +171,21 @@ class CustomEarlyStopping(tf.keras.callbacks.Callback):
 
   def on_train_end(self, logs=None):
     if self.stopped_epoch > 0:
-      print('Epoch %05d: early stopping' % (self.stopped_epoch + 1))
+      print("Epoch %05d: early stopping" % (self.stopped_epoch + 1))
 
   def get_monitor_value(self, logs):
     logs = logs or {}
     monitor_value = logs.get(self.monitor)
     if monitor_value is None:
-      logging.warning('Early stopping conditioned on metric `%s` '
-                      'which is not available. Available metrics are: %s',
-                      self.monitor, ','.join(list(logs.keys())))
+      logging.warning("Early stopping conditioned on metric `%s` "
+                      "which is not available. Available metrics are: %s",
+                      self.monitor, ",".join(list(logs.keys())))
     return monitor_value
 
 
 def _get_keras_model(params):
   """Constructs and returns the model."""
-  batch_size = params['batch_size']
+  batch_size = params["batch_size"]
 
   # The input layers are of shape (1, batch_size), to match the size of the
   # input data. The first dimension is needed because the input data are
@@ -240,7 +240,7 @@ def run_ncf(_):
 
   params = ncf_common.parse_flags(FLAGS)
 
-  if params['keras_use_ctl'] and int(tf.__version__.split('.')[0]) == 1:
+  if params["keras_use_ctl"] and int(tf.__version__.split(".")[0]) == 1:
     logging.error(
         "Custom training loop only works with tensorflow 2.0 and above.")
     return
@@ -248,7 +248,7 @@ def run_ncf(_):
   # ncf_common rounds eval_batch_size (this is needed due to a reshape during
   # eval). This carries over that rounding to batch_size as well. This is the
   # per device batch size
-  params['batch_size'] = params['eval_batch_size']
+  params["batch_size"] = params["eval_batch_size"]
   batch_size = params["batch_size"]
 
   num_users, num_items, num_train_steps, num_eval_steps, producer = (
@@ -285,7 +285,7 @@ def run_ncf(_):
         beta_2=params["beta2"],
         epsilon=params["epsilon"])
 
-  if params['keras_use_ctl']:
+  if params["keras_use_ctl"]:
     loss_object = tf.losses.SparseCategoricalCrossentropy(
         reduction=tf.keras.losses.Reduction.SUM,
         from_logits=True)
@@ -352,8 +352,8 @@ def run_ncf(_):
         time_callback.on_batch_begin(step+epoch*num_train_steps)
         train_loss += train_step()
         time_callback.on_batch_end(step+epoch*num_train_steps)
-      logging.info("Done training epoch {}, epoch loss={}.".format(
-          epoch+1, train_loss/num_train_steps))
+      logging.info("Done training epoch %s, epoch loss=%s.",
+                   epoch+1, train_loss/num_train_steps)
       eval_input_iterator.initialize()
       hr_sum = 0
       hr_count = 0
@@ -361,8 +361,7 @@ def run_ncf(_):
         step_hr_sum, step_hr_count = eval_step()
         hr_sum += step_hr_sum
         hr_count += step_hr_count
-      logging.info("Done eval epoch {}, hr={}.".format(epoch+1,
-                                                       hr_sum/hr_count))
+      logging.info("Done eval epoch %s, hr=%s.", epoch+1, hr_sum/hr_count)
 
       if (FLAGS.early_stopping and
           float(hr_sum/hr_count) > params["hr_threshold"]):
@@ -399,7 +398,7 @@ def run_ncf(_):
 
     if history and history.history:
       train_history = history.history
-      train_loss = train_history['loss'][-1]
+      train_loss = train_history["loss"][-1]
 
   stats = build_stats(train_loss, eval_results, time_callback)
   return stats
@@ -408,28 +407,29 @@ def run_ncf(_):
 def build_stats(loss, eval_result, time_callback):
   """Normalizes and returns dictionary of stats.
 
-    Args:
-      loss: The final loss at training time.
-      eval_output: Output of the eval step. Assumes first value is eval_loss and
-        second value is accuracy_top_1.
-      time_callback: Time tracking callback likely used during keras.fit.
-    Returns:
-      Dictionary of normalized results.
+  Args:
+    loss: The final loss at training time.
+    eval_result: Output of the eval step. Assumes first value is eval_loss and
+      second value is accuracy_top_1.
+    time_callback: Time tracking callback likely used during keras.fit.
+
+  Returns:
+    Dictionary of normalized results.
   """
   stats = {}
   if loss:
-    stats['loss'] = loss
+    stats["loss"] = loss
 
   if eval_result:
-    stats['eval_loss'] = eval_result[0]
-    stats['eval_hit_rate'] = eval_result[1]
+    stats["eval_loss"] = eval_result[0]
+    stats["eval_hit_rate"] = eval_result[1]
 
   if time_callback:
     timestamp_log = time_callback.timestamp_log
-    stats['step_timestamp_log'] = timestamp_log
-    stats['train_finish_time'] = time_callback.train_finish_time
+    stats["step_timestamp_log"] = timestamp_log
+    stats["train_finish_time"] = time_callback.train_finish_time
     if len(timestamp_log) > 1:
-      stats['avg_exp_per_second'] = (
+      stats["avg_exp_per_second"] = (
           time_callback.batch_size * time_callback.log_steps *
           (len(time_callback.timestamp_log)-1) /
           (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))

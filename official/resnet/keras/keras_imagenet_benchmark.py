@@ -603,9 +603,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_cloning_tweaked(self):
-    """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16, and
-       cloning.
-    """
+    """Test with manual config tuning, XLA, 8 GPUs, fp16, and cloning."""
     self._setup()
 
     FLAGS.num_gpus = 8
@@ -623,8 +621,9 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_tweaked_delay_measure(self):
-    """Test Keras model with manual config tuning, XLA, 8 GPUs and fp16. Delay
-       performance measurement for stable performance on 96 vCPU platforms.
+    """Test with manual config tuning, XLA, 8 GPUs and fp16.
+
+    Delay performance measurement for stable performance on 96 vCPU platforms.
     """
     self._setup()
 
@@ -643,9 +642,9 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_cloning_tweaked_delay_measure(self):
-    """Test Keras model with manual config tuning, XLA, 8 GPUs, fp16, and
-       cloning. Delay performance measurement for stable performance on 96 vCPU
-       platforms.
+    """Test with manual config tuning, XLA, 8 GPUs, fp16, and cloning.
+
+    Delay performance measurement for stable performance on 96 vCPU platforms.
     """
     self._setup()
 
@@ -821,9 +820,9 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_xla_8_gpu_fp16_tweaked_delay_measure(self):
-    """Test Keras model in legacy graph mode with manual config tuning, XLA,
-       8 GPUs and fp16. Delay performance measurement for stable performance
-       on 96 vCPU platforms.
+    """Test in legacy graph mode with manual config tuning, XLA, 8 GPUs, fp16.
+
+    Delay performance measurement for stable performance on 96 vCPU platforms.
     """
     self._setup()
 
@@ -841,8 +840,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_graph_xla_8_gpu_fp16_tweaked_optional_next(self):
-    """Test Keras model in legacy graph mode with manual config tuning, XLA,
-       8 GPUs and fp16.
+    """Test in legacy graph mode with manual config tuning, XLA, 8 GPUs, fp16.
 
     This test also enables get_next_as_optional.
     """
