@@ -352,8 +352,8 @@ def run_ncf(_):
         time_callback.on_batch_begin(step+epoch*num_train_steps)
         train_loss += train_step()
         time_callback.on_batch_end(step+epoch*num_train_steps)
-      logging.info("Done training epoch %s, epoch loss=%s." % (
-          epoch+1, train_loss/num_train_steps))
+      logging.info("Done training epoch %s, epoch loss=%s.",
+          epoch+1, train_loss/num_train_steps)
       eval_input_iterator.initialize()
       hr_sum = 0
       hr_count = 0
@@ -361,8 +361,7 @@ def run_ncf(_):
         step_hr_sum, step_hr_count = eval_step()
         hr_sum += step_hr_sum
         hr_count += step_hr_count
-      logging.info("Done eval epoch %s, hr=%s." % (
-          epoch+1, hr_sum/hr_count))
+      logging.info("Done eval epoch %s, hr=%s.", epoch+1, hr_sum/hr_count)
 
       if (FLAGS.early_stopping and
           float(hr_sum/hr_count) > params["hr_threshold"]):
