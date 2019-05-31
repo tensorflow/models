@@ -335,6 +335,7 @@ def define_ncf_flags():
       help=flags_core.help_wrap(
           "If True, we use a custom training loop for keras."))
 
+
 def convert_to_softmax_logits(logits):
   '''Convert the logits returned by the base model to softmax logits.
 
