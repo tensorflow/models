@@ -164,7 +164,7 @@ def _batch_examples(dataset, batch_size, max_length):
     """Return int64 bucket id for this example, calculated based on length."""
     seq_length = _get_example_length((example_input, example_target))
 
-    # TODO: investigate whether removing code branching improves performance.
+    # TODO(xunkai): investigate if removing code branching improves performance.
     conditions_c = tf.logical_and(
         tf.less_equal(buckets_min, seq_length),
         tf.less(seq_length, buckets_max))

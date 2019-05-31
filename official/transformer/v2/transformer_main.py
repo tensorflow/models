@@ -127,7 +127,7 @@ class TransformerTask(object):
 
     model.summary()
 
-    # TODO(guptapriya): Figure out a way to structure input that works in both 
+    # TODO(guptapriya): Figure out a way to structure input that works in both
     # distributed and non distributed cases.
     train_ds = data_pipeline.train_input_fn(params)
     if not self.distribution_strategy:

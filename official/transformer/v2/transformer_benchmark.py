@@ -225,6 +225,7 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
                                    bleu_min=27,
                                    bleu_max=28)
 
+
 class TransformerBigKerasAccuracy(TransformerBenchmark):
   """Benchmark accuracy tests for Transformer Big model w/ Keras."""
 
@@ -351,7 +352,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
     FLAGS.batch_size = self.batch_per_gpu * 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch')
     FLAGS.static_batch = True
-    FLAGS.max_length = 64    
+    FLAGS.max_length = 64
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps)
 
