@@ -198,7 +198,7 @@ class Resnet50EstimatorBenchmarkBase(EstimatorBenchmark):
                                                     fp16_implementation=True)
     ]
 
-    super(Resnet50EstimatorBenchmark, self).__init__(
+    super(Resnet50EstimatorBenchmarkBase, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         flag_methods=flag_methods)
@@ -401,7 +401,7 @@ class Resnet50MultiWorkerEstimatorBenchmarkSynth(
     def_flags['max_train_steps'] = 110
     def_flags['train_epochs'] = 1
 
-    super(Resnet50EstimatorBenchmarkSynth, self).__init__(
+    super(Resnet50MultiWorkerEstimatorBenchmarkSynth, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
 
