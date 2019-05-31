@@ -583,7 +583,7 @@ def run_transformer(flags_obj):
   params["static_batch"] = flags_obj.static_batch or params["use_tpu"]
   params["allow_ffn_pad"] = not params["use_tpu"]
 
-  params["max_length"] = flags_obj.max_length or params['max_length']
+  params["max_length"] = flags_obj.max_length or params["max_length"]
 
   params["use_synthetic_data"] = flags_obj.use_synthetic_data
 
