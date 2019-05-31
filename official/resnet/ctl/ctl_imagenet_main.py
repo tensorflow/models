@@ -212,7 +212,7 @@ def run(flags_obj):
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
     @tf.function
-    def train_step(iterator):
+    def train_step(train_ds_inputs):
       """Training StepFn."""
       def step_fn(inputs):
         """Per-Replica StepFn."""
@@ -231,10 +231,10 @@ def run(flags_obj):
         training_loss.update_state(loss)
         training_accuracy.update_state(labels, logits)
 
-      strategy.experimental_run_v2(step_fn, args=(next(iterator),))
+      strategy.experimental_run_v2(step_fn, args=(train_ds_inputs,))
 
     @tf.function
-    def test_step(test_ds):
+    def test_step(test_ds_inputs):
       """Evaluation StepFn."""
       def step_fn(inputs):
         images, labels = inputs
@@ -245,15 +245,13 @@ def run(flags_obj):
         test_loss.update_state(loss)
         test_accuracy.update_state(labels, logits)
 
-      iterator = iter(test_ds)
-      for step in range(steps_per_eval):
-      # for x in test_ds:
-        strategy.experimental_run_v2(step_fn, args=(next(iterator),))
+      strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
 
-    train_iterator = iter(train_ds)
     for epoch in range(flags_obj.train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
-      train_iterator._initializer
+      train_iterator = iter(train_ds)
+      test_iterator = iter(test_ds)
+    
       step = 0
       for step in range(steps_per_epoch):
         learning_rate = compute_learning_rate(
@@ -262,7 +260,7 @@ def run(flags_obj):
         if step % 20 == 0:
           logging.info('Learning rate at step %s in epoch %s is %s',
                        step, epoch, optimizer.lr.numpy())
-        train_step(train_iterator)
+        train_step(next(train_iterator))
         step += 1
       logging.info('Training loss: %s, accuracy: %s%%',
                    round(training_loss.result(), 4),
@@ -273,7 +271,8 @@ def run(flags_obj):
       training_loss.reset_states()
       training_accuracy.reset_states()
 
-      test_step(test_ds)
+      for step in range(steps_per_eval):
+        test_step(next(test_iterator))
       logging.info('Test loss: %s, accuracy: %s%%',
                    round(test_loss.result(), 4),
                    round(test_accuracy.result() * 100, 2))
