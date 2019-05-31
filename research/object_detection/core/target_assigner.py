@@ -660,16 +660,16 @@ def batch_assign_confidences(target_assigner,
     explicit_example_mask = tf.logical_or(positive_mask, negative_mask)
     positive_anchors = tf.reduce_any(positive_mask, axis=-1)
 
-    regression_weights = tf.to_float(positive_anchors)
+    regression_weights = tf.cast(positive_anchors, dtype=tf.float32)
     regression_targets = (
         reg_targets * tf.expand_dims(regression_weights, axis=-1))
     regression_weights_expanded = tf.expand_dims(regression_weights, axis=-1)
 
     cls_targets_without_background = (
-        cls_targets_without_background * (1 - tf.to_float(negative_mask)))
-    cls_weights_without_background = (
-        (1 - implicit_class_weight) * tf.to_float(explicit_example_mask)
-        + implicit_class_weight)
+        cls_targets_without_background *
+        (1 - tf.cast(negative_mask, dtype=tf.float32)))
+    cls_weights_without_background = ((1 - implicit_class_weight) * tf.cast(
+        explicit_example_mask, dtype=tf.float32) + implicit_class_weight)
 
     if include_background_class:
       cls_weights_background = (

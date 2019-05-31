@@ -111,11 +111,11 @@ class FlexibleGridAnchorGenerator(anchor_generator.AnchorGenerator):
       anchor_grid = grid_anchor_generator.tile_anchors(
           feat_shape[0],
           feat_shape[1],
-          tf.to_float(tf.convert_to_tensor(base_sizes)),
-          tf.to_float(tf.convert_to_tensor(aspect_ratios)),
+          tf.cast(tf.convert_to_tensor(base_sizes), dtype=tf.float32),
+          tf.cast(tf.convert_to_tensor(aspect_ratios), dtype=tf.float32),
           tf.constant([1.0, 1.0]),
-          tf.to_float(tf.convert_to_tensor(anchor_stride)),
-          tf.to_float(tf.convert_to_tensor(anchor_offset)))
+          tf.cast(tf.convert_to_tensor(anchor_stride), dtype=tf.float32),
+          tf.cast(tf.convert_to_tensor(anchor_offset), dtype=tf.float32))
       num_anchors = anchor_grid.num_boxes_static()
       if num_anchors is None:
         num_anchors = anchor_grid.num_boxes()

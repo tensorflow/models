@@ -66,9 +66,11 @@ class KeypointBoxCoder(box_coder.BoxCoder):
     self._scale_factors = scale_factors
     self._keypoint_scale_factors = None
     if scale_factors is not None:
-      self._keypoint_scale_factors = tf.expand_dims(tf.tile(
-          [tf.to_float(scale_factors[0]), tf.to_float(scale_factors[1])],
-          [num_keypoints]), 1)
+      self._keypoint_scale_factors = tf.expand_dims(
+          tf.tile([
+              tf.cast(scale_factors[0], dtype=tf.float32),
+              tf.cast(scale_factors[1], dtype=tf.float32)
+          ], [num_keypoints]), 1)
 
   @property
   def code_size(self):

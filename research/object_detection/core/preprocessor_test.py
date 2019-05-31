@@ -795,8 +795,8 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     tensor_dict = {fields.InputDataFields.image: images}
     tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
-    images_min = tf.to_float(images) * 0.9 / 255.0
-    images_max = tf.to_float(images) * 1.1 / 255.0
+    images_min = tf.cast(images, dtype=tf.float32) * 0.9 / 255.0
+    images_max = tf.cast(images, dtype=tf.float32) * 1.1 / 255.0
     images = tensor_dict[fields.InputDataFields.image]
     values_greater = tf.greater_equal(images, images_min)
     values_less = tf.less_equal(images, images_max)
@@ -858,20 +858,26 @@ class PreprocessorTest(tf.test.TestCase):
         value=images_gray, num_or_size_splits=3, axis=3)
     images_r, images_g, images_b = tf.split(
         value=images_original, num_or_size_splits=3, axis=3)
-    images_r_diff1 = tf.squared_difference(tf.to_float(images_r),
-                                           tf.to_float(images_gray_r))
-    images_r_diff2 = tf.squared_difference(tf.to_float(images_gray_r),
-                                           tf.to_float(images_gray_g))
+    images_r_diff1 = tf.squared_difference(
+        tf.cast(images_r, dtype=tf.float32),
+        tf.cast(images_gray_r, dtype=tf.float32))
+    images_r_diff2 = tf.squared_difference(
+        tf.cast(images_gray_r, dtype=tf.float32),
+        tf.cast(images_gray_g, dtype=tf.float32))
     images_r_diff = tf.multiply(images_r_diff1, images_r_diff2)
-    images_g_diff1 = tf.squared_difference(tf.to_float(images_g),
-                                           tf.to_float(images_gray_g))
-    images_g_diff2 = tf.squared_difference(tf.to_float(images_gray_g),
-                                           tf.to_float(images_gray_b))
+    images_g_diff1 = tf.squared_difference(
+        tf.cast(images_g, dtype=tf.float32),
+        tf.cast(images_gray_g, dtype=tf.float32))
+    images_g_diff2 = tf.squared_difference(
+        tf.cast(images_gray_g, dtype=tf.float32),
+        tf.cast(images_gray_b, dtype=tf.float32))
     images_g_diff = tf.multiply(images_g_diff1, images_g_diff2)
-    images_b_diff1 = tf.squared_difference(tf.to_float(images_b),
-                                           tf.to_float(images_gray_b))
-    images_b_diff2 = tf.squared_difference(tf.to_float(images_gray_b),
-                                           tf.to_float(images_gray_r))
+    images_b_diff1 = tf.squared_difference(
+        tf.cast(images_b, dtype=tf.float32),
+        tf.cast(images_gray_b, dtype=tf.float32))
+    images_b_diff2 = tf.squared_difference(
+        tf.cast(images_gray_b, dtype=tf.float32),
+        tf.cast(images_gray_r, dtype=tf.float32))
     images_b_diff = tf.multiply(images_b_diff1, images_b_diff2)
     image_zero1 = tf.constant(0, dtype=tf.float32, shape=[1, 4, 4, 1])
     with self.test_session() as sess:
@@ -2135,7 +2141,7 @@ class PreprocessorTest(tf.test.TestCase):
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
     tensor_dict = {
-        fields.InputDataFields.image: tf.to_float(images),
+        fields.InputDataFields.image: tf.cast(images, dtype=tf.float32),
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
     }
@@ -2856,7 +2862,7 @@ class PreprocessorTest(tf.test.TestCase):
     scores = self.createTestMultiClassScores()
 
     tensor_dict = {
-        fields.InputDataFields.image: tf.to_float(images),
+        fields.InputDataFields.image: tf.cast(images, dtype=tf.float32),
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
         fields.InputDataFields.groundtruth_weights: weights,

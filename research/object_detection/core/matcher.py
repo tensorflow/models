@@ -31,9 +31,7 @@ consider this box a positive example (match) nor a negative example (no match).
 The Match class is used to store the match results and it provides simple apis
 to query the results.
 """
-from abc import ABCMeta
-from abc import abstractmethod
-
+import abc
 import tensorflow as tf
 
 from object_detection.utils import ops
@@ -170,7 +168,7 @@ class Match(object):
       row_indices: int32 tensor of shape [K] with row indices.
     """
     return self._reshape_and_cast(
-        self._gather_op(tf.to_float(self._match_results),
+        self._gather_op(tf.cast(self._match_results, dtype=tf.float32),
                         self.matched_column_indices()))
 
   def num_matched_rows(self):
@@ -215,7 +213,7 @@ class Match(object):
 class Matcher(object):
   """Abstract base class for matcher.
   """
-  __metaclass__ = ABCMeta
+  __metaclass__ = abc.ABCMeta
 
   def __init__(self, use_matmul_gather=False):
     """Constructs a Matcher.
@@ -249,7 +247,7 @@ class Matcher(object):
       return Match(self._match(similarity_matrix, valid_rows),
                    self._use_matmul_gather)
 
-  @abstractmethod
+  @abc.abstractmethod
   def _match(self, similarity_matrix, valid_rows):
     """Method to be overridden by implementations.
 

@@ -261,7 +261,7 @@ def normalize_image(image, original_minval, original_maxval, target_minval,
     original_maxval = float(original_maxval)
     target_minval = float(target_minval)
     target_maxval = float(target_maxval)
-    image = tf.to_float(image)
+    image = tf.cast(image, dtype=tf.float32)
     image = tf.subtract(image, original_minval)
     image = tf.multiply(image, (target_maxval - target_minval) /
                         (original_maxval - original_minval))
@@ -810,10 +810,12 @@ def random_image_scale(image,
         generator_func, preprocessor_cache.PreprocessorCache.IMAGE_SCALE,
         preprocess_vars_cache)
 
-    image_newysize = tf.to_int32(
-        tf.multiply(tf.to_float(image_height), size_coef))
-    image_newxsize = tf.to_int32(
-        tf.multiply(tf.to_float(image_width), size_coef))
+    image_newysize = tf.cast(
+        tf.multiply(tf.cast(image_height, dtype=tf.float32), size_coef),
+        dtype=tf.int32)
+    image_newxsize = tf.cast(
+        tf.multiply(tf.cast(image_width, dtype=tf.float32), size_coef),
+        dtype=tf.int32)
     image = tf.image.resize_images(
         image, [image_newysize, image_newxsize], align_corners=True)
     result.append(image)
@@ -1237,7 +1239,7 @@ def _strict_random_crop_image(image,
     new_image.set_shape([None, None, image.get_shape()[2]])
 
     # [1, 4]
-    im_box_rank2 = tf.squeeze(im_box, squeeze_dims=[0])
+    im_box_rank2 = tf.squeeze(im_box, axis=[0])
     # [4]
     im_box_rank1 = tf.squeeze(im_box)
 
@@ -1555,13 +1557,15 @@ def random_pad_image(image,
   new_image += image_color_padded
 
   # setting boxes
-  new_window = tf.to_float(
+  new_window = tf.cast(
       tf.stack([
           -offset_height, -offset_width, target_height - offset_height,
           target_width - offset_width
-      ]))
-  new_window /= tf.to_float(
-      tf.stack([image_height, image_width, image_height, image_width]))
+      ]),
+      dtype=tf.float32)
+  new_window /= tf.cast(
+      tf.stack([image_height, image_width, image_height, image_width]),
+      dtype=tf.float32)
   boxlist = box_list.BoxList(boxes)
   new_boxlist = box_list_ops.change_coordinate_frame(boxlist, new_window)
   new_boxes = new_boxlist.get()
@@ -1616,8 +1620,8 @@ def random_absolute_pad_image(image,
            form.
   """
   min_image_size = tf.shape(image)[:2]
-  max_image_size = min_image_size + tf.to_int32(
-      [max_height_padding, max_width_padding])
+  max_image_size = min_image_size + tf.cast(
+      [max_height_padding, max_width_padding], dtype=tf.int32)
   return random_pad_image(image, boxes, min_image_size=min_image_size,
                           max_image_size=max_image_size, pad_color=pad_color,
                           seed=seed,
@@ -1723,12 +1727,14 @@ def random_crop_pad_image(image,
 
   cropped_image, cropped_boxes, cropped_labels = result[:3]
 
-  min_image_size = tf.to_int32(
-      tf.to_float(tf.stack([image_height, image_width])) *
-      min_padded_size_ratio)
-  max_image_size = tf.to_int32(
-      tf.to_float(tf.stack([image_height, image_width])) *
-      max_padded_size_ratio)
+  min_image_size = tf.cast(
+      tf.cast(tf.stack([image_height, image_width]), dtype=tf.float32) *
+      min_padded_size_ratio,
+      dtype=tf.int32)
+  max_image_size = tf.cast(
+      tf.cast(tf.stack([image_height, image_width]), dtype=tf.float32) *
+      max_padded_size_ratio,
+      dtype=tf.int32)
 
   padded_image, padded_boxes = random_pad_image(
       cropped_image,
@@ -1840,16 +1846,23 @@ def random_crop_to_aspect_ratio(image,
     image_shape = tf.shape(image)
     orig_height = image_shape[0]
     orig_width = image_shape[1]
-    orig_aspect_ratio = tf.to_float(orig_width) / tf.to_float(orig_height)
+    orig_aspect_ratio = tf.cast(
+        orig_width, dtype=tf.float32) / tf.cast(
+            orig_height, dtype=tf.float32)
     new_aspect_ratio = tf.constant(aspect_ratio, dtype=tf.float32)
+
     def target_height_fn():
-      return tf.to_int32(tf.round(tf.to_float(orig_width) / new_aspect_ratio))
+      return tf.cast(
+          tf.round(tf.cast(orig_width, dtype=tf.float32) / new_aspect_ratio),
+          dtype=tf.int32)
 
     target_height = tf.cond(orig_aspect_ratio >= new_aspect_ratio,
                             lambda: orig_height, target_height_fn)
 
     def target_width_fn():
-      return tf.to_int32(tf.round(tf.to_float(orig_height) * new_aspect_ratio))
+      return tf.cast(
+          tf.round(tf.cast(orig_height, dtype=tf.float32) * new_aspect_ratio),
+          dtype=tf.int32)
 
     target_width = tf.cond(orig_aspect_ratio <= new_aspect_ratio,
                            lambda: orig_width, target_width_fn)
@@ -1870,10 +1883,14 @@ def random_crop_to_aspect_ratio(image,
         image, offset_height, offset_width, target_height, target_width)
 
     im_box = tf.stack([
-        tf.to_float(offset_height) / tf.to_float(orig_height),
-        tf.to_float(offset_width) / tf.to_float(orig_width),
-        tf.to_float(offset_height + target_height) / tf.to_float(orig_height),
-        tf.to_float(offset_width + target_width) / tf.to_float(orig_width)
+        tf.cast(offset_height, dtype=tf.float32) /
+        tf.cast(orig_height, dtype=tf.float32),
+        tf.cast(offset_width, dtype=tf.float32) /
+        tf.cast(orig_width, dtype=tf.float32),
+        tf.cast(offset_height + target_height, dtype=tf.float32) /
+        tf.cast(orig_height, dtype=tf.float32),
+        tf.cast(offset_width + target_width, dtype=tf.float32) /
+        tf.cast(orig_width, dtype=tf.float32)
     ])
 
     boxlist = box_list.BoxList(boxes)
@@ -1996,8 +2013,8 @@ def random_pad_to_aspect_ratio(image,
 
   with tf.name_scope('RandomPadToAspectRatio', values=[image]):
     image_shape = tf.shape(image)
-    image_height = tf.to_float(image_shape[0])
-    image_width = tf.to_float(image_shape[1])
+    image_height = tf.cast(image_shape[0], dtype=tf.float32)
+    image_width = tf.cast(image_shape[1], dtype=tf.float32)
     image_aspect_ratio = image_width / image_height
     new_aspect_ratio = tf.constant(aspect_ratio, dtype=tf.float32)
     target_height = tf.cond(
@@ -2034,7 +2051,8 @@ def random_pad_to_aspect_ratio(image,
     target_width = tf.round(scale * target_width)
 
     new_image = tf.image.pad_to_bounding_box(
-        image, 0, 0, tf.to_int32(target_height), tf.to_int32(target_width))
+        image, 0, 0, tf.cast(target_height, dtype=tf.int32),
+        tf.cast(target_width, dtype=tf.int32))
 
     im_box = tf.stack([
         0.0,
@@ -2050,9 +2068,9 @@ def random_pad_to_aspect_ratio(image,
 
     if masks is not None:
       new_masks = tf.expand_dims(masks, -1)
-      new_masks = tf.image.pad_to_bounding_box(new_masks, 0, 0,
-                                               tf.to_int32(target_height),
-                                               tf.to_int32(target_width))
+      new_masks = tf.image.pad_to_bounding_box(
+          new_masks, 0, 0, tf.cast(target_height, dtype=tf.int32),
+          tf.cast(target_width, dtype=tf.int32))
       new_masks = tf.squeeze(new_masks, [-1])
       result.append(new_masks)
 
@@ -2106,10 +2124,12 @@ def random_black_patches(image,
     image_shape = tf.shape(image)
     image_height = image_shape[0]
     image_width = image_shape[1]
-    box_size = tf.to_int32(
+    box_size = tf.cast(
         tf.multiply(
-            tf.minimum(tf.to_float(image_height), tf.to_float(image_width)),
-            size_to_image_ratio))
+            tf.minimum(
+                tf.cast(image_height, dtype=tf.float32),
+                tf.cast(image_width, dtype=tf.float32)), size_to_image_ratio),
+        dtype=tf.int32)
 
     generator_func = functools.partial(tf.random_uniform, [], minval=0.0,
                                        maxval=(1.0 - size_to_image_ratio),
@@ -2123,8 +2143,12 @@ def random_black_patches(image,
         preprocessor_cache.PreprocessorCache.ADD_BLACK_PATCH,
         preprocess_vars_cache, key=str(idx) + 'x')
 
-    y_min = tf.to_int32(normalized_y_min * tf.to_float(image_height))
-    x_min = tf.to_int32(normalized_x_min * tf.to_float(image_width))
+    y_min = tf.cast(
+        normalized_y_min * tf.cast(image_height, dtype=tf.float32),
+        dtype=tf.int32)
+    x_min = tf.cast(
+        normalized_x_min * tf.cast(image_width, dtype=tf.float32),
+        dtype=tf.int32)
     black_box = tf.ones([box_size, box_size, 3], dtype=tf.float32)
     mask = 1.0 - tf.image.pad_to_bounding_box(black_box, y_min, x_min,
                                               image_height, image_width)
@@ -2156,7 +2180,7 @@ def image_to_float(image):
     image: image in tf.float32 format.
   """
   with tf.name_scope('ImageToFloat', values=[image]):
-    image = tf.to_float(image)
+    image = tf.cast(image, dtype=tf.float32)
     return image
 
 
@@ -2342,10 +2366,12 @@ def resize_to_min_dimension(image, masks=None, min_dimension=600,
     (image_height, image_width, num_channels) = _get_image_info(image)
     min_image_dimension = tf.minimum(image_height, image_width)
     min_target_dimension = tf.maximum(min_image_dimension, min_dimension)
-    target_ratio = tf.to_float(min_target_dimension) / tf.to_float(
-        min_image_dimension)
-    target_height = tf.to_int32(tf.to_float(image_height) * target_ratio)
-    target_width = tf.to_int32(tf.to_float(image_width) * target_ratio)
+    target_ratio = tf.cast(min_target_dimension, dtype=tf.float32) / tf.cast(
+        min_image_dimension, dtype=tf.float32)
+    target_height = tf.cast(
+        tf.cast(image_height, dtype=tf.float32) * target_ratio, dtype=tf.int32)
+    target_width = tf.cast(
+        tf.cast(image_width, dtype=tf.float32) * target_ratio, dtype=tf.int32)
     image = tf.image.resize_images(
         tf.expand_dims(image, axis=0), size=[target_height, target_width],
         method=method,
@@ -2398,10 +2424,12 @@ def resize_to_max_dimension(image, masks=None, max_dimension=600,
     (image_height, image_width, num_channels) = _get_image_info(image)
     max_image_dimension = tf.maximum(image_height, image_width)
     max_target_dimension = tf.minimum(max_image_dimension, max_dimension)
-    target_ratio = tf.to_float(max_target_dimension) / tf.to_float(
-        max_image_dimension)
-    target_height = tf.to_int32(tf.to_float(image_height) * target_ratio)
-    target_width = tf.to_int32(tf.to_float(image_width) * target_ratio)
+    target_ratio = tf.cast(max_target_dimension, dtype=tf.float32) / tf.cast(
+        max_image_dimension, dtype=tf.float32)
+    target_height = tf.cast(
+        tf.cast(image_height, dtype=tf.float32) * target_ratio, dtype=tf.int32)
+    target_width = tf.cast(
+        tf.cast(image_width, dtype=tf.float32) * target_ratio, dtype=tf.int32)
     image = tf.image.resize_images(
         tf.expand_dims(image, axis=0), size=[target_height, target_width],
         method=method,
@@ -2639,11 +2667,11 @@ def random_self_concat_image(
 
     if axis == 0:
       # Concat vertically, so need to reduce the y coordinates.
-      old_scaling = tf.to_float([0.5, 1.0, 0.5, 1.0])
-      new_translation = tf.to_float([0.5, 0.0, 0.5, 0.0])
+      old_scaling = tf.constant([0.5, 1.0, 0.5, 1.0])
+      new_translation = tf.constant([0.5, 0.0, 0.5, 0.0])
     elif axis == 1:
-      old_scaling = tf.to_float([1.0, 0.5, 1.0, 0.5])
-      new_translation = tf.to_float([0.0, 0.5, 0.0, 0.5])
+      old_scaling = tf.constant([1.0, 0.5, 1.0, 0.5])
+      new_translation = tf.constant([0.0, 0.5, 0.0, 0.5])
 
     old_boxes = old_scaling * boxes
     new_boxes = old_boxes + new_translation

@@ -176,6 +176,9 @@ def add_output_tensor_nodes(postprocessed_tensors,
       containing detected boxes.
     * detection_scores: float32 tensor of shape [batch_size, num_boxes]
       containing scores for the detected boxes.
+    * detection_multiclass_scores: (Optional) float32 tensor of shape
+      [batch_size, num_boxes, num_classes_with_background] for containing class
+      score distribution for detected boxes including background if any.
     * detection_classes: float32 tensor of shape [batch_size, num_boxes]
       containing class predictions for the detected boxes.
     * detection_keypoints: (Optional) float32 tensor of shape
@@ -189,6 +192,8 @@ def add_output_tensor_nodes(postprocessed_tensors,
     postprocessed_tensors: a dictionary containing the following fields
       'detection_boxes': [batch, max_detections, 4]
       'detection_scores': [batch, max_detections]
+      'detection_multiclass_scores': [batch, max_detections,
+        num_classes_with_background]
       'detection_classes': [batch, max_detections]
       'detection_masks': [batch, max_detections, mask_height, mask_width]
         (optional).
@@ -204,6 +209,8 @@ def add_output_tensor_nodes(postprocessed_tensors,
   label_id_offset = 1
   boxes = postprocessed_tensors.get(detection_fields.detection_boxes)
   scores = postprocessed_tensors.get(detection_fields.detection_scores)
+  multiclass_scores = postprocessed_tensors.get(
+      detection_fields.detection_multiclass_scores)
   raw_boxes = postprocessed_tensors.get(detection_fields.raw_detection_boxes)
   raw_scores = postprocessed_tensors.get(detection_fields.raw_detection_scores)
   classes = postprocessed_tensors.get(
@@ -216,6 +223,9 @@ def add_output_tensor_nodes(postprocessed_tensors,
       boxes, name=detection_fields.detection_boxes)
   outputs[detection_fields.detection_scores] = tf.identity(
       scores, name=detection_fields.detection_scores)
+  if multiclass_scores is not None:
+    outputs[detection_fields.detection_multiclass_scores] = tf.identity(
+        multiclass_scores, name=detection_fields.detection_multiclass_scores)
   outputs[detection_fields.detection_classes] = tf.identity(
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(
@@ -306,7 +316,7 @@ def write_graph_and_checkpoint(inference_graph_def,
 
 def _get_outputs_from_inputs(input_tensors, detection_model,
                              output_collection_name):
-  inputs = tf.to_float(input_tensors)
+  inputs = tf.cast(input_tensors, dtype=tf.float32)
   preprocessed_inputs, true_image_shapes = detection_model.preprocess(inputs)
   output_tensors = detection_model.predict(
       preprocessed_inputs, true_image_shapes)

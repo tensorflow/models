@@ -187,6 +187,46 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   return unbatched_tensor_dict
 
 
+def _provide_groundtruth(model, labels):
+  """Provides the labels to a model as groundtruth.
+
+  This helper function extracts the corresponding boxes, classes,
+  keypoints, weights, masks, etc. from the labels, and provides it
+  as groundtruth to the models.
+
+  Args:
+    model: The detection model to provide groundtruth to.
+    labels: The labels for the training or evaluation inputs.
+  """
+  gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
+  gt_classes_list = labels[fields.InputDataFields.groundtruth_classes]
+  gt_masks_list = None
+  if fields.InputDataFields.groundtruth_instance_masks in labels:
+    gt_masks_list = labels[
+        fields.InputDataFields.groundtruth_instance_masks]
+  gt_keypoints_list = None
+  if fields.InputDataFields.groundtruth_keypoints in labels:
+    gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
+  gt_weights_list = None
+  if fields.InputDataFields.groundtruth_weights in labels:
+    gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
+  gt_confidences_list = None
+  if fields.InputDataFields.groundtruth_confidences in labels:
+    gt_confidences_list = labels[
+        fields.InputDataFields.groundtruth_confidences]
+  gt_is_crowd_list = None
+  if fields.InputDataFields.groundtruth_is_crowd in labels:
+    gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
+  model.provide_groundtruth(
+      groundtruth_boxes_list=gt_boxes_list,
+      groundtruth_classes_list=gt_classes_list,
+      groundtruth_confidences_list=gt_confidences_list,
+      groundtruth_masks_list=gt_masks_list,
+      groundtruth_keypoints_list=gt_keypoints_list,
+      groundtruth_weights_list=gt_weights_list,
+      groundtruth_is_crowd_list=gt_is_crowd_list)
+
+
 def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
                     postprocess_on_cpu=False):
   """Creates a model function for `Estimator`.
@@ -247,33 +287,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
           labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
-      gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
-      gt_classes_list = labels[fields.InputDataFields.groundtruth_classes]
-      gt_masks_list = None
-      if fields.InputDataFields.groundtruth_instance_masks in labels:
-        gt_masks_list = labels[
-            fields.InputDataFields.groundtruth_instance_masks]
-      gt_keypoints_list = None
-      if fields.InputDataFields.groundtruth_keypoints in labels:
-        gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
-      gt_weights_list = None
-      if fields.InputDataFields.groundtruth_weights in labels:
-        gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
-      gt_confidences_list = None
-      if fields.InputDataFields.groundtruth_confidences in labels:
-        gt_confidences_list = labels[
-            fields.InputDataFields.groundtruth_confidences]
-      gt_is_crowd_list = None
-      if fields.InputDataFields.groundtruth_is_crowd in labels:
-        gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
-      detection_model.provide_groundtruth(
-          groundtruth_boxes_list=gt_boxes_list,
-          groundtruth_classes_list=gt_classes_list,
-          groundtruth_confidences_list=gt_confidences_list,
-          groundtruth_masks_list=gt_masks_list,
-          groundtruth_keypoints_list=gt_keypoints_list,
-          groundtruth_weights_list=gt_weights_list,
-          groundtruth_is_crowd_list=gt_is_crowd_list)
+      _provide_groundtruth(detection_model, labels)
 
     preprocessed_images = features[fields.InputDataFields.image]
     if use_tpu and train_config.use_bfloat16:

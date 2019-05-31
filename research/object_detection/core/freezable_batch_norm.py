@@ -36,12 +36,9 @@ class FreezableBatchNorm(tf.keras.layers.BatchNormalization):
   close to 0 and the activation standard deviation close to 1.
 
   Arguments:
-    training: Boolean or None. If True, the batch normalization layer will
-      normalize the input batch using the batch mean and standard deviation,
-      and update the total moving mean and standard deviations. If False, the
-      layer will normalize using the moving average and std. dev, without
-      updating the learned avg and std. dev.
-      If None, the layer will follow the keras BatchNormalization layer
+    training: If False, the layer will normalize using the moving average and
+      std. dev, without updating the learned avg and std. dev.
+      If None or True, the layer will follow the keras BatchNormalization layer
       strategy of checking the Keras learning phase at `call` time to decide
       what to do.
     **kwargs: The keyword arguments to forward to the keras BatchNormalization
@@ -65,6 +62,7 @@ class FreezableBatchNorm(tf.keras.layers.BatchNormalization):
     self._training = training
 
   def call(self, inputs, training=None):
-    if training is None:
+    # Override the call arg only if the batchnorm is frozen. (Ignore None)
+    if self._training is False:  # pylint: disable=g-bool-id-comparison
       training = self._training
     return super(FreezableBatchNorm, self).call(inputs, training=training)

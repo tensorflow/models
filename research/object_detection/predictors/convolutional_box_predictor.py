@@ -17,6 +17,7 @@
 import functools
 import tensorflow as tf
 from object_detection.core import box_predictor
+from object_detection.utils import shape_utils
 from object_detection.utils import static_shape
 
 slim = tf.contrib.slim
@@ -350,7 +351,8 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
                        'feature maps, found: {}'.format(
                            num_predictions_per_location_list))
     feature_channels = [
-        image_feature.shape[3].value for image_feature in image_features
+        shape_utils.get_dim_as_int(image_feature.shape[3])
+        for image_feature in image_features
     ]
     has_different_feature_channels = len(set(feature_channels)) > 1
     if has_different_feature_channels:

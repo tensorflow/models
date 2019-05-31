@@ -19,6 +19,7 @@ import collections
 import tensorflow as tf
 
 from object_detection.core import box_predictor
+from object_detection.utils import shape_utils
 from object_detection.utils import static_shape
 
 keras = tf.keras.layers
@@ -371,7 +372,8 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
   def build(self, input_shapes):
     """Creates the variables of the layer."""
     feature_channels = [
-        input_shape[3].value for input_shape in input_shapes
+        shape_utils.get_dim_as_int(input_shape[3])
+        for input_shape in input_shapes
     ]
     has_different_feature_channels = len(set(feature_channels)) > 1
     if has_different_feature_channels:

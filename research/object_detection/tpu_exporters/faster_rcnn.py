@@ -87,7 +87,7 @@ def get_prediction_tensor_shapes(pipeline_config):
 
   _, input_tensors = exporter.input_placeholder_fn_map['image_tensor']()
 
-  inputs = tf.to_float(input_tensors)
+  inputs = tf.cast(input_tensors, dtype=tf.float32)
   preprocessed_inputs, true_image_shapes = detection_model.preprocess(inputs)
 
   prediction_dict = detection_model.predict(preprocessed_inputs,
@@ -125,7 +125,7 @@ def build_graph(pipeline_config,
       exporter.input_placeholder_fn_map[input_type]()
 
   # CPU pre-processing
-  inputs = tf.to_float(input_tensors)
+  inputs = tf.cast(input_tensors, dtype=tf.float32)
   preprocessed_inputs, true_image_shapes = detection_model.preprocess(inputs)
 
   # Dimshuffle: [b, h, w, c] -> [b, c, h, w]
