@@ -381,7 +381,10 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
 
 def is_v2_0():
   """Returns true if using tf 2.0."""
-  return tf.__version__.startswith('2')
+  if hasattr(tf, 'contrib'):
+    return False
+  else:
+    return True
 
 
 def data_delay_prefetch():
