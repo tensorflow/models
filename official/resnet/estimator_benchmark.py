@@ -367,6 +367,7 @@ class Resnet50MultiWorkerEstimatorBenchmark(Resnet50EstimatorBenchmarkBase):
     FLAGS.all_reduce_alg = 'ring'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.intra_op_parallelism_threads = 1
+    FLAGS.datasets_num_private_threads = 32
     FLAGS.model_dir = self._get_model_dir(
         folder_name='benchmark_graph_fp16_8_gpu_ring_tweaked')
     FLAGS.batch_size = 256*8
@@ -383,6 +384,7 @@ class Resnet50MultiWorkerEstimatorBenchmark(Resnet50EstimatorBenchmarkBase):
     FLAGS.all_reduce_alg = 'nccl'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.intra_op_parallelism_threads = 1
+    FLAGS.datasets_num_private_threads = 32
     FLAGS.model_dir = self._get_model_dir(
         folder_name='benchmark_graph_fp16_8_gpu_nccl_tweaked')
     FLAGS.batch_size = 256*8
