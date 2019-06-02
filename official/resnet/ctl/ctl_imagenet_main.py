@@ -281,6 +281,8 @@ def run(flags_obj):
       train_loss = total_loss / step
       # calculate average examples per second for a given epoch
       epoch_exp_per_sec.append(np.mean(batch_exp_per_sec))
+      logging.info('Learning rate at epoch %s is %s',
+                       epoch, optimizer.lr.numpy())
       logging.info('Training loss: %s, accuracy: %s%%',
                    round(train_loss, 4),
                    round(training_accuracy.result() * 100, 2))
