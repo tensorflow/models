@@ -270,7 +270,7 @@ def run(flags_obj):
         start_time = time.time()
         total_loss += train_step(next(train_iterator))
         end_time = time.time()
-        elapsed_time = start_time - end_time
+        elapsed_time =  end_time - start_time
         samples_per_sec = flags_obj.batch_size / elapsed_time
         batch_exp_per_sec.append(samples_per_sec)
 
@@ -307,7 +307,7 @@ def run(flags_obj):
         tf.summary.scalar('accuracy', test_accuracy.result(), step=epoch)
       stats['top_1_accuracy'] = test_accuracy.result()
       stats['eval_loss'] = test_loss.result()
-      tf.compat.v1.logging.info(
+      logging.info(
           "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
           (epoch, test_accuracy.result()))
       test_loss.reset_states()
