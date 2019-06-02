@@ -252,8 +252,8 @@ def run(flags_obj):
 
       strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
 
-    batch_exp_per_sec = []
-    epoch_exp_per_sec = []
+    batch_exp_per_sec = [steps_per_epoch]
+    epoch_exp_per_sec = [flags_obj.train_epochs]
     stats = {}
     for epoch in range(flags_obj.train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
@@ -284,7 +284,7 @@ def run(flags_obj):
       logging.info('Training loss: %s, accuracy: %s%%',
                    round(train_loss, 4),
                    round(training_accuracy.result() * 100, 2))
-      tf.compat.v1.logging.info(
+      logging.info(
         "Training Metric: {'epoch':%d, 'examples_per_second': %f}" %
           (epoch, epoch_exp_per_sec[epoch]))
 
