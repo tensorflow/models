@@ -252,8 +252,7 @@ def run(flags_obj):
 
       strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
 
-    batch_exp_per_sec = [steps_per_epoch]
-    epoch_exp_per_sec = [flags_obj.train_epochs]
+    epoch_exp_per_sec = []
     stats = {}
     for epoch in range(flags_obj.train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
@@ -262,6 +261,7 @@ def run(flags_obj):
 
       step = 0
       total_loss = 0.0
+      batch_exp_per_sec = []
       for step in range(steps_per_epoch):
         start_time = time.time()
         learning_rate = compute_learning_rate(
@@ -272,7 +272,7 @@ def run(flags_obj):
         end_time = time.time()
         elapsed_time = start_time - end_time
         samples_per_sec = flags_obj.batch_size / elapsed_time
-        batch_exp_per_sec[step] = samples_per_sec
+        batch_exp_per_sec.append(samples_per_sec)
 
         if step % 20 == 0:
           logging.info('Learning rate at step %s in epoch %s is %s',
@@ -280,7 +280,7 @@ def run(flags_obj):
         step += 1
       train_loss = total_loss / step
       # calculate average examples per second for a given epoch
-      epoch_exp_per_sec[epoch] = np.mean(batch_exp_per_sec)
+      epoch_exp_per_sec.append(np.mean(batch_exp_per_sec))
       logging.info('Training loss: %s, accuracy: %s%%',
                    round(train_loss, 4),
                    round(training_accuracy.result() * 100, 2))
