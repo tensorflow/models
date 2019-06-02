@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 import tempfile
 import datetime
+import time
 
 from absl import app as absl_app
 from absl import flags
@@ -29,6 +30,7 @@ from absl import logging
 # TODO(anj-s): Identify why this import does not work
 import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
 # import tensorflow as tf
+import numpy as np
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
@@ -191,12 +193,11 @@ def run(flags_obj):
   with strategy.scope():
     logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
-      dtype=dtype, batch_size=flags_obj.batch_size)
+                                  dtype=dtype, batch_size=flags_obj.batch_size)
 
     optimizer = tf.keras.optimizers.SGD(
         learning_rate=_BASE_LEARNING_RATE, momentum=0.9, nesterov=True)
-    
-    training_loss = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
+
     training_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'training_accuracy', dtype=tf.float32)
     test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
@@ -228,10 +229,14 @@ def run(flags_obj):
 
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
-        training_loss.update_state(loss)
-        training_accuracy.update_state(labels, logits)
 
-      strategy.experimental_run_v2(step_fn, args=(train_ds_inputs,))
+        training_accuracy.update_state(labels, logits)
+        return loss
+
+      per_replica_losses = strategy.experimental_run_v2(
+          step_fn, args=(train_ds_inputs,))
+      return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
+                             axis=None)
 
     @tf.function
     def test_step(test_ds_inputs):
@@ -247,28 +252,49 @@ def run(flags_obj):
 
       strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
 
+    batch_exp_per_sec = []
+    epoch_exp_per_sec = []
+    stats = {}
     for epoch in range(flags_obj.train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
       train_iterator = iter(train_ds)
       test_iterator = iter(test_ds)
-    
+
       step = 0
+      total_loss = 0.0
       for step in range(steps_per_epoch):
+        start_time = time.time()
         learning_rate = compute_learning_rate(
             epoch + 1 + (float(step) / steps_per_epoch))
         optimizer.lr = learning_rate
+        start_time = time.time()
+        total_loss += train_step(next(train_iterator))
+        end_time = time.time()
+        elapsed_time = start_time - end_time
+        samples_per_sec = flags_obj.batch_size / elapsed_time
+        batch_exp_per_sec[step] = samples_per_sec
+
         if step % 20 == 0:
           logging.info('Learning rate at step %s in epoch %s is %s',
                        step, epoch, optimizer.lr.numpy())
-        train_step(next(train_iterator))
         step += 1
+      train_loss = total_loss / step
+      # calculate average examples per second for a given epoch
+      epoch_exp_per_sec[epoch] = np.mean(batch_exp_per_sec)
       logging.info('Training loss: %s, accuracy: %s%%',
-                   round(training_loss.result(), 4),
+                   round(train_loss, 4),
                    round(training_accuracy.result() * 100, 2))
+      tf.compat.v1.logging.info(
+        "Training Metric: {'epoch':%d, 'examples_per_second': %f}" %
+          (epoch, epoch_exp_per_sec[epoch]))
+
       with train_summary_writer.as_default():
-        tf.summary.scalar('loss', training_loss.result(), step=epoch)
+        tf.summary.scalar('loss', train_loss, step=epoch)
         tf.summary.scalar('accuracy', training_accuracy.result(), step=epoch)
-      training_loss.reset_states()
+
+      # Store the last train loss and accuracy calculated
+      stats['train_loss'] = train_loss
+      stats['train_acc'] = training_accuracy.result()
       training_accuracy.reset_states()
 
       for step in range(steps_per_eval):
@@ -279,12 +305,15 @@ def run(flags_obj):
       with test_summary_writer.as_default():
         tf.summary.scalar('loss', test_loss.result(), step=epoch)
         tf.summary.scalar('accuracy', test_accuracy.result(), step=epoch)
+      stats['top_1_accuracy'] = test_accuracy.result()
+      stats['eval_loss'] = test_loss.result()
+      tf.compat.v1.logging.info(
+          "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
+          (epoch, test_accuracy.result()))
       test_loss.reset_states()
       test_accuracy.reset_states()
 
-  # stats = keras_common.build_stats(history, eval_output, callbacks)
-  # return stats
-  stats = {}
+  stats['avg_examples_per_sec'] = np.mean(epoch_exp_per_sec)
   return stats
 
 
