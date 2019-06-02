@@ -118,7 +118,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_mlperf_like(self):
-    """Tests similar to the rules for MLPerf 0.5.
+    """Test similar to the rules for MLPerf 0.5.
 
     Listed below are reasons this comparison is not to the MLSpec, but this is
     still a decent directional measurement:
@@ -126,7 +126,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
       - Learning rate is not tuned to hit 75%, but we know the model is correct.
       - We measure total time and MLPerf 0.5 excluded some startup time.
       - Eval is not on the total set, need to set eval batch_size where
-        8*batch_size/50K is even.  250 is a good number.
+        8*batch_size/50K is even. 250 is a good number.
       - Not sure if we are doing any extra or too few steps due to epoch bleed.
     """
     self._setup()
