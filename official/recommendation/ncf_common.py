@@ -104,8 +104,6 @@ def parse_flags(flags_obj):
       "epsilon": flags_obj.epsilon,
       "match_mlperf": flags_obj.ml_perf,
       "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
-      "clone_model_in_keras_dist_strat":
-          flags_obj.clone_model_in_keras_dist_strat,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
       "keras_use_ctl": flags_obj.keras_use_ctl,
@@ -315,13 +313,6 @@ def define_ncf_flags():
   @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
   def xla_validator(flag_dict):
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
-
-  flags.DEFINE_bool(
-      name="clone_model_in_keras_dist_strat",
-      default=True,
-      help=flags_core.help_wrap(
-          "If False, then the experimental code path is used that does not "
-          "clone models for distribution."))
 
   flags.DEFINE_bool(
       name="early_stopping",
