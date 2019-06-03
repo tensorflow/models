@@ -51,7 +51,7 @@ def metric_fn(logits, dup_mask, params):
   in_top_k, _, metric_weights, _ = neumf_model.compute_top_k_and_ndcg(
       logits,
       dup_mask,
-      self.params["match_mlperf"])
+      params["match_mlperf"])
   metric_weights = tf.cast(metric_weights, tf.float32)
   return in_top_k, metric_weights
 
@@ -288,7 +288,7 @@ def run_ncf(_):
 
   time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
   per_epoch_callback = IncrementEpochCallback(producer)
-  callbacks = [per_epoch_callback] #, time_callback]
+  callbacks = [per_epoch_callback, time_callback]
 
   if FLAGS.early_stopping:
     early_stopping_callback = CustomEarlyStopping(
@@ -342,7 +342,7 @@ def run_ncf(_):
         features, _ = inputs
         softmax_logits = keras_model(features)
         in_top_k, metric_weights = metric_fn(
-          logits, features[rconst.DUPLICATE_MASK], params)
+          softmax_logits, features[rconst.DUPLICATE_MASK], params)
         hr_sum = tf.reduce_sum(in_top_k*metric_weights)
         hr_count = tf.reduce_sum(metric_weights)
         return hr_sum, hr_count
@@ -393,7 +393,7 @@ def run_ncf(_):
                                 callbacks=callbacks,
                                 validation_data=eval_input_dataset,
                                 validation_steps=num_eval_steps,
-                                verbose=1)
+                                verbose=2)
 
       logging.info("Training done. Start evaluating")
 
@@ -408,7 +408,7 @@ def run_ncf(_):
       train_history = history.history
       train_loss = train_history["loss"][-1]
 
-  stats = build_stats(train_loss, eval_results, None) #, time_callback)
+  stats = build_stats(train_loss, eval_results, time_callback)
   return stats
 
 
