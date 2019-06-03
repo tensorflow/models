@@ -1007,7 +1007,6 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
     def_flags['dtype'] = 'fp16'
-    def_flags['enable_xla'] = True
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 600
     def_flags['log_steps'] = 100
@@ -1046,6 +1045,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.batch_size = 256
     self._run_and_report_benchmark()
@@ -1056,6 +1056,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     FLAGS.batch_size = 256
     self._run_and_report_benchmark()
@@ -1066,6 +1067,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 256 * 8
     self._run_and_report_benchmark()
@@ -1078,6 +1080,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
     FLAGS.batch_size = 256 * 8
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
@@ -1092,6 +1095,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_slack')
     FLAGS.batch_size = 256 * 8
     FLAGS.tf_data_experimental_slack = True
@@ -1105,6 +1109,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.batch_size = 256 * 8
     self._run_and_report_benchmark()
@@ -1117,6 +1122,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu_tweaked')
     FLAGS.batch_size = 256 * 8
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
