@@ -193,7 +193,7 @@ def run(flags_obj):
   steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
 
   with strategy.scope():
-    logging.info('Building Keras ResNet-50 model')
+    tf.compat.v1.logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
 
@@ -205,14 +205,7 @@ def run(flags_obj):
     test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
     test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'test_accuracy', dtype=tf.float32)
-    logging.info('Finished building Keras ResNet-50 model')
-
-    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    train_log_dir = flags_obj.model_dir + current_time + '/train'
-    test_log_dir = flags_obj.model_dir + current_time + '/test'
-
-    train_summary_writer = tf.summary.create_file_writer(train_log_dir)
-    test_summary_writer = tf.summary.create_file_writer(test_log_dir)
+    tf.compat.v1.logging.info('Finished building Keras ResNet-50 model')
 
     @tf.function
     def train_step(train_ds_inputs):
@@ -257,7 +250,7 @@ def run(flags_obj):
     epoch_exp_per_sec = []
     stats = {}
     for epoch in range(flags_obj.train_epochs):
-      logging.info('Starting to run epoch: %s', epoch)
+      tf.compat.v1.logging.info('Starting to run epoch: %s', epoch)
       train_iterator = iter(train_ds)
       test_iterator = iter(test_ds)
 
@@ -280,18 +273,14 @@ def run(flags_obj):
       train_loss = total_loss / step
       # calculate average examples per second for a given epoch
       epoch_exp_per_sec.append(np.mean(batch_exp_per_sec))
-      logging.info('Learning rate at epoch %s is %s',
+      tf.compat.v1.logging.info('Learning rate at epoch %s is %s',
                        epoch, optimizer.lr.numpy())
-      logging.info('Training loss: %s, accuracy: %s%%',
+      tf.compat.v1.logging.info('Training loss: %s, accuracy: %s%%',
                    round(train_loss, 4),
                    round(training_accuracy.result() * 100, 2))
-      logging.info(
+      tf.compat.v1.logging.info(
         "Training Metric: {'epoch':%d, 'examples_per_second': %f}" %
           (epoch, epoch_exp_per_sec[epoch]))
-
-      with train_summary_writer.as_default():
-        tf.summary.scalar('loss', train_loss, step=epoch)
-        tf.summary.scalar('accuracy', training_accuracy.result(), step=epoch)
 
       # Store the last train loss and accuracy calculated
       stats['train_loss'] = train_loss
@@ -300,15 +289,12 @@ def run(flags_obj):
 
       for step in range(steps_per_eval):
         test_step(next(test_iterator))
-      logging.info('Test loss: %s, accuracy: %s%%',
+      tf.compat.v1.logging.info('Test loss: %s, accuracy: %s%%',
                    round(test_loss.result(), 4),
                    round(test_accuracy.result() * 100, 2))
-      with test_summary_writer.as_default():
-        tf.summary.scalar('loss', test_loss.result(), step=epoch)
-        tf.summary.scalar('accuracy', test_accuracy.result(), step=epoch)
       stats['top_1_accuracy'] = test_accuracy.result()
       stats['eval_loss'] = test_loss.result()
-      logging.info(
+      tf.compat.v1.logging.info(
           "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
           (epoch, test_accuracy.result()))
       test_loss.reset_states()
