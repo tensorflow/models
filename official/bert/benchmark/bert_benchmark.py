@@ -152,7 +152,7 @@ class BertBenchmarkBase(tf.test.Benchmark):
     eval_steps = int(
         math.ceil(input_meta_data['eval_data_size'] / FLAGS.eval_batch_size))
     strategy = distribution_utils.get_distribution_strategy(
-        distribution_strategy='mirrored', num_gpus=self.num_gpus)
+        distribution_strategy='multi_worker_mirrored', num_gpus=self.num_gpus)
 
     run_classifier.run_customized_training(
         strategy,
