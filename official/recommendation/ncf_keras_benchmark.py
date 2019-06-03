@@ -81,7 +81,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1
-    default_flags['train_epochs'] = 8
+    default_flags['train_epochs'] = 10
     default_flags['clean'] = True
     default_flags['batch_size'] = 99000
     default_flags['learning_rate'] = 0.00382059
