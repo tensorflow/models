@@ -45,6 +45,17 @@ from official.utils.misc import model_helpers
 FLAGS = flags.FLAGS
 
 
+def metric_fn(logits, dup_mask, params):
+  dup_mask = tf.cast(dup_mask, tf.float32)
+  logits = tf.slice(logits, [0, 0, 1], [-1, -1, -1])
+  in_top_k, _, metric_weights, _ = neumf_model.compute_top_k_and_ndcg(
+      logits,
+      dup_mask,
+      self.params["match_mlperf"])
+  metric_weights = tf.cast(metric_weights, tf.float32)
+  return in_top_k, metric_weights
+
+
 class MetricLayer(tf.keras.layers.Layer):
   """Custom layer of metrics for NCF model."""
 
@@ -57,15 +68,9 @@ class MetricLayer(tf.keras.layers.Layer):
 
   def call(self, inputs):
     logits, dup_mask = inputs
-    dup_mask = tf.cast(dup_mask, tf.float32)
-    logits = tf.slice(logits, [0, 0, 1], [-1, -1, -1])
-    in_top_k, _, metric_weights, _ = neumf_model.compute_top_k_and_ndcg(
-        logits,
-        dup_mask,
-        self.params["match_mlperf"])
-    metric_weights = tf.cast(metric_weights, tf.float32)
+    in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
     self.add_metric(self.metric(in_top_k, metric_weights))
-    return inputs[0]
+    return logits
 
 
 def _get_train_and_eval_data(producer, params):
@@ -336,13 +341,8 @@ def run_ncf(_):
         """Computes eval metrics per replica."""
         features, _ = inputs
         softmax_logits = keras_model(features)
-        logits = tf.slice(softmax_logits, [0, 0, 1], [-1, -1, -1])
-        dup_mask = features[rconst.DUPLICATE_MASK]
-        in_top_k, _, metric_weights, _ = neumf_model.compute_top_k_and_ndcg(
-            logits,
-            dup_mask,
-            params["match_mlperf"])
-        metric_weights = tf.cast(metric_weights, tf.float32)
+        in_top_k, metric_weights = metric_fn(
+          logits, features[rconst.DUPLICATE_MASK], params)
         hr_sum = tf.reduce_sum(in_top_k*metric_weights)
         hr_count = tf.reduce_sum(metric_weights)
         return hr_sum, hr_count
