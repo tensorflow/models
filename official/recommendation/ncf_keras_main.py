@@ -225,12 +225,12 @@ def _get_keras_model(params):
   softmax_logits = MetricLayer(params)([softmax_logits, dup_mask_input])
 
   keras_model = tf.keras.Model(
-      inputs=[
-          user_input,
-          item_input,
-          valid_pt_mask_input,
-          dup_mask_input,
-          label_input],
+      inputs={
+          movielens.USER_COLUMN: user_input,
+          movielens.ITEM_COLUMN: item_input,
+          rconst.VALID_POINT_MASK: valid_pt_mask_input,
+          rconst.DUPLICATE_MASK: dup_mask_input,
+          rconst.TRAIN_LABEL_KEY: label_input},
       outputs=softmax_logits)
 
   loss_obj = tf.keras.losses.SparseCategoricalCrossentropy(
