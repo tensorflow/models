@@ -94,7 +94,7 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
         lambda: imagenet_main.define_imagenet_flags()
     ]
 
-    super(Resnet50KerasBenchmarkBase, self).__init__(
+    super(Resnet50CtlBenchmarkBase, self).__init__(
         output_dir=output_dir,
         flag_methods=flag_methods,
         default_flags=default_flags)
@@ -156,7 +156,7 @@ class Resnet50CtlBenchmarkSynth(Resnet50CtlBenchmarkBase):
     def_flags['use_synthetic_data'] = True
     def_flags['train_steps'] = 110
 
-    super(Resnet50KerasBenchmarkSynth, self).__init__(
+    super(Resnet50CtlBenchmarkSynth, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
 
@@ -170,7 +170,7 @@ class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 110
 
-    super(Resnet50KerasBenchmarkReal, self).__init__(
+    super(Resnet50CtlBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
 if __name__ == '__main__':
