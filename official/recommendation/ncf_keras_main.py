@@ -362,8 +362,9 @@ def run_ncf(_):
         time_callback.on_batch_begin(step+epoch*num_train_steps)
         train_loss += train_step()
         time_callback.on_batch_end(step+epoch*num_train_steps)
+      train_loss /= num_train_steps
       logging.info("Done training epoch %s, epoch loss=%s.",
-                   epoch+1, train_loss/num_train_steps)
+                   epoch+1, train_loss)
       eval_input_iterator.initialize()
       hr_sum = 0
       hr_count = 0

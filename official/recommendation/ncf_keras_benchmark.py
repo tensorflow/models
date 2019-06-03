@@ -81,7 +81,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1
-    default_flags['train_epochs'] = 8
+    default_flags['train_epochs'] = 10
     default_flags['clean'] = True
     default_flags['batch_size'] = 99000
     default_flags['learning_rate'] = 0.00382059
@@ -126,6 +126,19 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
+  # NCF with custom training loop. Works only in TF 2.0
+  def benchmark_1_gpu_ctl(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    self._run_and_report_benchmark()
+
+  # NCF with custom training loop. Works only in TF 2.0
+  def benchmark_1_gpu_ctl_early_stop(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.early_stopping = True
+    self._run_and_report_benchmark()
+
   def benchmark_2_gpus(self):
     self._setup()
     FLAGS.num_gpus = 2
@@ -133,6 +146,21 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
 
   def benchmark_2_gpus_early_stop(self):
     self._setup()
+    FLAGS.early_stopping = True
+    FLAGS.num_gpus = 2
+    self._run_and_report_benchmark()
+
+  # NCF with custom training loop. Works only in TF 2.0
+  def benchmark_2_gpus_ctl(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.num_gpus = 2
+    self._run_and_report_benchmark()
+
+  # NCF with custom training loop. Works only in TF 2.0
+  def benchmark_2_gpus_ctl_early_stop(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
     FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
