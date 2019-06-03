@@ -385,9 +385,7 @@ def run_ncf(_):
   else:
     with distribution_utils.get_strategy_scope(strategy):
 
-      keras_model.compile(
-          optimizer=optimizer,
-          cloning=params["clone_model_in_keras_dist_strat"])
+      keras_model.compile(optimizer=optimizer)
 
       history = keras_model.fit(train_input_dataset,
                                 steps_per_epoch=num_train_steps,
