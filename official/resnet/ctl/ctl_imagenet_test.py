@@ -49,7 +49,7 @@ class CtlImagenetTest(googletest.TestCase):
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(CtlImagenetTest, cls).setUpClass()
     imagenet_main.define_imagenet_flags()
-    # keras_common.define_keras_flags()
+    keras_common.define_keras_flags()
 
   def setUp(self):
     super(CtlImagenetTest, self).setUp()
