@@ -63,7 +63,7 @@ class MetricLayer(tf.keras.layers.Layer):
     super(MetricLayer, self).__init__()
     self.params = params
     self.metric = tf.keras.metrics.Mean(name=rconst.HR_METRIC_NAME)
-  
+
   def call(self, inputs):
     logits, dup_mask = inputs
     in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
@@ -185,7 +185,7 @@ def _get_keras_model(params):
       batch_size=params["batches_per_step"],
       name=movielens.ITEM_COLUMN,
       dtype=tf.int32)
-  
+
   valid_pt_mask_input = tf.keras.layers.Input(
       shape=(batch_size,),
       batch_size=params["batches_per_step"],
@@ -340,7 +340,7 @@ def run_ncf(_):
         features, _ = inputs
         softmax_logits = keras_model(features)
         in_top_k, metric_weights = metric_fn(
-          softmax_logits, features[rconst.DUPLICATE_MASK], params)
+            softmax_logits, features[rconst.DUPLICATE_MASK], params)
         hr_sum = tf.reduce_sum(in_top_k*metric_weights)
         hr_count = tf.reduce_sum(metric_weights)
         return hr_sum, hr_count
