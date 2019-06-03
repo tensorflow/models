@@ -186,12 +186,11 @@ def run(flags_obj):
         parse_record_fn=parse_record_keras,
         dtype=dtype,
         drop_remainder=drop_remainder)
+    test_ds = strategy.experimental_distribute_dataset(eval_input_dataset)
+    steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
 
   train_ds = strategy.experimental_distribute_dataset(train_input_dataset)
-  test_ds = strategy.experimental_distribute_dataset(eval_input_dataset)
-
   steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
-  steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
 
   if flags_obj.train_steps:
@@ -258,7 +257,6 @@ def run(flags_obj):
     for epoch in range(flags_obj.train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
       train_iterator = iter(train_ds)
-      test_iterator = iter(test_ds)
 
       step = 0
       total_loss = 0.0
@@ -296,9 +294,9 @@ def run(flags_obj):
       stats['train_acc'] = training_accuracy.result()
       training_accuracy.reset_states()
 
-      # TODO(anj-s): Add a flag to evaluate every 10 epochs.
-      if (epoch % flags_obj.epochs_between_eval == 0 and
-        not flag_obj.skip_eval):
+      if (not flags_obj.skip_eval and
+        epoch % flags_obj.epochs_between_eval == 0):
+        test_iterator = iter(test_ds)
         for step in range(steps_per_eval):
           test_step(next(test_iterator))
         logging.info('Test loss: %s, accuracy: %s%%',
