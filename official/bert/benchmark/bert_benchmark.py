@@ -168,7 +168,7 @@ class BertBenchmarkBase(tf.test.Benchmark):
         custom_callbacks=callbacks)
 
 
-class BertClassifyBenchmark(BertBenchmarkBase):
+class BertClassifyBenchmarkReal(BertBenchmarkBase):
   """Short benchmark performance tests for BERT model.
 
   Tests BERT classification performance in different GPU configurations.
@@ -187,7 +187,7 @@ class BertClassifyBenchmark(BertBenchmarkBase):
     self.num_steps_per_epoch = 110
     self.num_epochs = 1
 
-    super(BertClassifyBenchmark, self).__init__(output_dir=output_dir)
+    super(BertClassifyBenchmarkReal, self).__init__(output_dir=output_dir)
 
   def _run_and_report_benchmark(self,
                                 training_summary_path,
@@ -205,7 +205,7 @@ class BertClassifyBenchmark(BertBenchmarkBase):
     # Since we do not load from any pretrained checkpoints, we ignore all
     # accuracy metrics.
     summary.pop('eval_metrics', None)
-    super(BertClassifyBenchmark, self)._report_benchmark(
+    super(BertClassifyBenchmarkReal, self)._report_benchmark(
         stats=summary,
         wall_time_sec=wall_time_sec,
         min_accuracy=min_accuracy,
@@ -227,7 +227,7 @@ class BertClassifyBenchmark(BertBenchmarkBase):
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
-  def benchmark_2_gpu_mprc(self):
+  def benchmark_2_gpu_mrpc(self):
     """Test BERT model performance with 2 GPUs."""
 
     self._setup()
