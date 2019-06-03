@@ -25,11 +25,12 @@ import time
 
 from absl import app as absl_app
 from absl import flags
-from absl import logging
+# from absl import logging
 
 # TODO(anj-s): Identify why this import does not work
-# import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
-import tensorflow as tf
+import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
+import tensorflow.compat.v1.logging as logging
+# import tensorflow as tf
 import numpy as np
 
 from official.resnet import imagenet_main
@@ -193,7 +194,7 @@ def run(flags_obj):
   steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
 
   with strategy.scope():
-    tf.compat.v1.logging.info('Building Keras ResNet-50 model')
+    logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
 
@@ -205,7 +206,7 @@ def run(flags_obj):
     test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
     test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'test_accuracy', dtype=tf.float32)
-    tf.compat.v1.logging.info('Finished building Keras ResNet-50 model')
+    logging.info('Finished building Keras ResNet-50 model')
 
     @tf.function
     def train_step(train_ds_inputs):
@@ -250,7 +251,7 @@ def run(flags_obj):
     epoch_exp_per_sec = []
     stats = {}
     for epoch in range(flags_obj.train_epochs):
-      tf.compat.v1.logging.info('Starting to run epoch: %s', epoch)
+      logging.info('Starting to run epoch: %s', epoch)
       train_iterator = iter(train_ds)
       test_iterator = iter(test_ds)
 
@@ -273,12 +274,12 @@ def run(flags_obj):
       train_loss = total_loss / step
       # calculate average examples per second for a given epoch
       epoch_exp_per_sec.append(np.mean(batch_exp_per_sec))
-      tf.compat.v1.logging.info('Learning rate at epoch %s is %s',
+      logging.info('Learning rate at epoch %s is %s',
                        epoch, optimizer.lr.numpy())
-      tf.compat.v1.logging.info('Training loss: %s, accuracy: %s%%',
+      logging.info('Training loss: %s, accuracy: %s%%',
                    round(train_loss, 4),
                    round(training_accuracy.result() * 100, 2))
-      tf.compat.v1.logging.info(
+      logging.info(
         "Training Metric: {'epoch':%d, 'examples_per_second': %f}" %
           (epoch, epoch_exp_per_sec[epoch]))
 
@@ -289,12 +290,12 @@ def run(flags_obj):
 
       for step in range(steps_per_eval):
         test_step(next(test_iterator))
-      tf.compat.v1.logging.info('Test loss: %s, accuracy: %s%%',
+      logging.info('Test loss: %s, accuracy: %s%%',
                    round(test_loss.result(), 4),
                    round(test_accuracy.result() * 100, 2))
       stats['top_1_accuracy'] = test_accuracy.result()
       stats['eval_loss'] = test_loss.result()
-      tf.compat.v1.logging.info(
+      logging.info(
           "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
           (epoch, test_accuracy.result()))
       test_loss.reset_states()
@@ -311,7 +312,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  # tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(tf.compat.v1.logging.INFO)
   tf.enable_v2_behavior()
   imagenet_main.define_imagenet_flags()
   keras_common.define_keras_flags()
