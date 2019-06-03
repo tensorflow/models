@@ -28,8 +28,8 @@ from absl import flags
 from absl import logging
 
 # TODO(anj-s): Identify why this import does not work
-import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
-# import tensorflow as tf
+# import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 import numpy as np
 
 from official.resnet import imagenet_main
@@ -130,6 +130,8 @@ def run(flags_obj):
     Dictionary of training and eval stats.
   """
   dtype = flags_core.get_tf_dtype(flags_obj)
+
+  # TODO(anj-s): Set data_format without using Keras.
   data_format = flags_obj.data_format
   if data_format is None:
     data_format = ('channels_first'
@@ -274,9 +276,6 @@ def run(flags_obj):
         samples_per_sec = flags_obj.batch_size / elapsed_time
         batch_exp_per_sec.append(samples_per_sec)
 
-        if step % 20 == 0:
-          logging.info('Learning rate at step %s in epoch %s is %s',
-                       step, epoch, optimizer.lr.numpy())
         step += 1
       train_loss = total_loss / step
       # calculate average examples per second for a given epoch
