@@ -312,7 +312,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   tf.enable_v2_behavior()
   imagenet_main.define_imagenet_flags()
   keras_common.define_keras_flags()
