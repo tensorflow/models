@@ -117,6 +117,57 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_mlperf_like_tweaked(self):
+    """Test similar to the rules for MLPerf 0.5.
+
+    Listed below are reasons this comparison is not to the MLSpec, but this is
+    still a decent directional measurement:
+      - Eval is every 4 epochs and again at the end. ~2 extra times.
+      - Learning rate is not tuned to hit 75%, but we know the model is correct.
+      - We measure total time and MLPerf 0.5 excluded some startup time.
+      - Eval is not on the total set, need to set eval batch_size where
+        8*batch_size/50K is even. 250 is a good number.
+      - Not sure if we are doing any extra or too few steps due to epoch bleed.
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 256 * 8
+    FLAGS.train_epochs = 61
+    FLAGS.epochs_between_evals = 4
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mlperf_like_tweaked')
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    # Tweaks to improve performance.
+    FLAGS.data_delay_prefetch = True
+    FLAGS.use_tensor_lr = True
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_mlperf_like(self):
+    """Test similar to the rules for MLPerf 0.5.
+
+    Listed below are reasons this comparison is not to the MLSpec, but this is
+    still a decent directional measurement:
+      - Eval is every 4 epochs and again at the end. ~2 extra times.
+      - Learning rate is not tuned to hit 75%, but we know the model is correct.
+      - We measure total time and MLPerf 0.5 excluded some startup time.
+      - Eval is not on the total set, need to set eval batch_size where
+        8*batch_size/50K is even. 250 is a good number.
+      - Not sure if we are doing any extra or too few steps due to epoch bleed.
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 256 * 8
+    FLAGS.train_epochs = 61
+    FLAGS.epochs_between_evals = 4
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mlperf_like')
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
   def benchmark_xla_8_gpu_fp16_dynamic(self):
     """Test Keras model with XLA, eager, dist_strat, 8 GPUs, dynamic fp16."""
     self._setup()
@@ -541,9 +592,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16_dynamic_tweaked(self):
-    """Test Keras model with 8 GPUs, fp16, dynamic loss scaling, and manual
-       config tuning.
-    """
+    """Test Keras model with 8 GPUs, fp16, dynamic loss scaling, and tuned."""
     self._setup()
 
     FLAGS.num_gpus = 8
