@@ -192,6 +192,11 @@ def run(flags_obj):
 
   steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
   steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
+  train_epochs = flags_obj.train_epochs
+
+  if flags_obj.train_steps:
+    train_steps = min(flags_obj.train_steps, steps_per_epoch)
+    train_epochs = 1
 
   with strategy.scope():
     logging.info('Building Keras ResNet-50 model')
@@ -268,10 +273,13 @@ def run(flags_obj):
         end_time = time.time()
         elapsed_time =  end_time - start_time
         samples_per_sec = flags_obj.batch_size / elapsed_time
-        batch_exp_per_sec.append(samples_per_sec)
+        # We skip the first step for warmup puropses. We can 
+        # add a flag for tuning this.
+        if step > 0:
+          batch_exp_per_sec.append(samples_per_sec)
 
         step += 1
-      train_loss = total_loss / step
+      train_loss = total_loss / (step + 1)
       # calculate average examples per second for a given epoch
       epoch_exp_per_sec.append(np.mean(batch_exp_per_sec))
       logging.info('Learning rate at epoch %s is %s',
@@ -288,20 +296,24 @@ def run(flags_obj):
       stats['train_acc'] = training_accuracy.result()
       training_accuracy.reset_states()
 
-      for step in range(steps_per_eval):
-        test_step(next(test_iterator))
-      logging.info('Test loss: %s, accuracy: %s%%',
-                   round(test_loss.result(), 4),
-                   round(test_accuracy.result() * 100, 2))
-      stats['top_1_accuracy'] = test_accuracy.result()
-      stats['eval_loss'] = test_loss.result()
-      logging.info(
-          "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
-          (epoch, test_accuracy.result()))
-      test_loss.reset_states()
-      test_accuracy.reset_states()
+      # TODO(anj-s): Add a flag to evaluate every 10 epochs.
+      if (epoch % flags_obj.epochs_between_eval == 0 and
+        not flag_obj.skip_eval):
+        for step in range(steps_per_eval):
+          test_step(next(test_iterator))
+        logging.info('Test loss: %s, accuracy: %s%%',
+                     round(test_loss.result(), 4),
+                     round(test_accuracy.result() * 100, 2))
+        stats['accuracy_top_1'] = test_accuracy.result()
+        stats['eval_loss'] = test_loss.result()
+        logging.info(
+            "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
+            (epoch, test_accuracy.result()))
+        test_loss.reset_states()
+        test_accuracy.reset_states()
 
-  stats['avg_examples_per_sec'] = np.mean(epoch_exp_per_sec)
+  # TODO(anj-s): What is avg_exp_per_sec? Do we need that as well?
+  stats['exp_per_sec'] = np.mean(epoch_exp_per_sec)
   return stats
 
 
@@ -315,5 +327,6 @@ if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
   tf.enable_v2_behavior()
   imagenet_main.define_imagenet_flags()
+  # TODO(anj-s): Do we need this?
   keras_common.define_keras_flags()
   absl_app.run(main)
