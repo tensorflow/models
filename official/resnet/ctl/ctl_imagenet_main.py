@@ -269,7 +269,7 @@ def run(flags_obj):
         start_time = time.time()
         total_loss += train_step(next(train_iterator))
         end_time = time.time()
-        elapsed_time =  end_time - start_time
+        elapsed_time = end_time - start_time
         samples_per_sec = flags_obj.batch_size / elapsed_time
         # We skip the first step for warmup puropses. We can 
         # add a flag for tuning this.
@@ -277,20 +277,20 @@ def run(flags_obj):
           batch_exp_per_sec.append(samples_per_sec)
 
         step += 1
-      train_loss = total_loss / (step + 1)
+      train_loss = total_loss / (step)
       # calculate average examples per second for a given epoch
       epoch_exp_per_sec.append(np.mean(batch_exp_per_sec))
       logging.info('Learning rate at epoch %s is %s',
-                       epoch, optimizer.lr.numpy())
+                   epoch, optimizer.lr.numpy())
       logging.info('Training loss: %s, accuracy: %s%%',
-                   round(train_loss, 4),
+                   round(train_loss.numpy(), 4),
                    round(training_accuracy.result() * 100, 2))
       logging.info(
-        "Training Metric: {'epoch':%d, 'examples_per_second': %f}" %
+          "Training Metric: {'epoch':%d, 'examples_per_second': %f}" %
           (epoch, epoch_exp_per_sec[epoch]))
 
       # Store the last train loss and accuracy calculated
-      stats['train_loss'] = train_loss
+      stats['train_loss'] = train_loss.numpy()
       stats['train_acc'] = training_accuracy.result()
       training_accuracy.reset_states()
 
