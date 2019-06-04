@@ -188,8 +188,8 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
                            top_1_max=0.766)
 
 
-class Resnet50EstimatorBenchmark(EstimatorBenchmark):
-  """Benchmarks for ResNet50 using Estimator."""
+class Resnet50EstimatorBenchmarkBase(EstimatorBenchmark):
+  """Base class for benchmarks for ResNet50 using Estimator."""
   local_flags = None
 
   def __init__(self, output_dir=None, default_flags=None):
@@ -198,10 +198,30 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
                                                     fp16_implementation=True)
     ]
 
-    super(Resnet50EstimatorBenchmark, self).__init__(
+    super(Resnet50EstimatorBenchmarkBase, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         flag_methods=flag_methods)
+
+  def _run_and_report_benchmark(self):
+    start_time_sec = time.time()
+    stats = imagenet_main.run_imagenet(FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+    print(stats)
+    # Remove values to skip triggering accuracy check.
+    stats['eval_results'].pop('accuracy', None)
+    stats['eval_results'].pop('accuracy_top_5', None)
+
+    self._report_benchmark(stats, wall_time_sec)
+
+
+class Resnet50EstimatorBenchmark(Resnet50EstimatorBenchmarkBase):
+  """Benchmarks for ResNet50 using Estimator with 1 worker."""
+
+  def __init__(self, output_dir=None, default_flags=None):
+    super(Resnet50EstimatorBenchmark, self).__init__(
+        output_dir=output_dir,
+        default_flags=default_flags)
 
   def benchmark_graph_fp16_1_gpu(self):
     """Benchmarks graph fp16 1 gpu."""
@@ -303,18 +323,6 @@ class Resnet50EstimatorBenchmark(EstimatorBenchmark):
     FLAGS.hooks = ['ExamplesPerSecondHook']
     self._run_and_report_benchmark()
 
-  def _run_and_report_benchmark(self):
-    start_time_sec = time.time()
-    stats = imagenet_main.run_imagenet(FLAGS)
-    wall_time_sec = time.time() - start_time_sec
-    print(stats)
-    # Remove values to skip triggering accuracy check.
-    stats['eval_results'].pop('accuracy', None)
-    stats['eval_results'].pop('accuracy_top_5', None)
-
-    self._report_benchmark(stats,
-                           wall_time_sec)
-
 
 class Resnet50EstimatorBenchmarkSynth(Resnet50EstimatorBenchmark):
   """Resnet50 synthetic benchmark tests."""
@@ -339,6 +347,63 @@ class Resnet50EstimatorBenchmarkReal(Resnet50EstimatorBenchmark):
     def_flags['train_epochs'] = 1
 
     super(Resnet50EstimatorBenchmarkReal, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
+
+
+class Resnet50MultiWorkerEstimatorBenchmark(Resnet50EstimatorBenchmarkBase):
+  """Benchmarks for ResNet50 using Estimator with multiple workers."""
+
+  def __init__(self, output_dir=None, default_flags=None):
+    super(Resnet50MultiWorkerEstimatorBenchmark, self).__init__(
+        output_dir=output_dir,
+        default_flags=default_flags)
+
+  def benchmark_graph_fp16_8_gpu_ring_tweaked(self):
+    """Benchmarks graph fp16 8 gpus with ring collective tweaked."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.distribution_strategy = 'multi_worker_mirrored'
+    FLAGS.all_reduce_alg = 'ring'
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.intra_op_parallelism_threads = 1
+    FLAGS.datasets_num_private_threads = 32
+    FLAGS.model_dir = self._get_model_dir(
+        folder_name='benchmark_graph_fp16_8_gpu_ring_tweaked')
+    FLAGS.batch_size = 256*8
+    FLAGS.dtype = 'fp16'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_fp16_8_gpu_nccl_tweaked(self):
+    """Benchmarks graph fp16 8 gpus with nccl collective tweaked."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.distribution_strategy = 'multi_worker_mirrored'
+    FLAGS.all_reduce_alg = 'nccl'
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.intra_op_parallelism_threads = 1
+    FLAGS.datasets_num_private_threads = 32
+    FLAGS.model_dir = self._get_model_dir(
+        folder_name='benchmark_graph_fp16_8_gpu_nccl_tweaked')
+    FLAGS.batch_size = 256*8
+    FLAGS.dtype = 'fp16'
+    FLAGS.hooks = ['ExamplesPerSecondHook']
+    self._run_and_report_benchmark()
+
+
+class Resnet50MultiWorkerEstimatorBenchmarkSynth(
+    Resnet50MultiWorkerEstimatorBenchmark):
+  """ResNet50, multi-worker, Estimator, synthetic data."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    def_flags = {}
+    def_flags['use_synthetic_data'] = True
+    def_flags['max_train_steps'] = 110
+    def_flags['train_epochs'] = 1
+
+    super(Resnet50MultiWorkerEstimatorBenchmarkSynth, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
 
