@@ -283,15 +283,15 @@ def run(flags_obj):
       logging.info('Learning rate at epoch %s is %s',
                    epoch, optimizer.lr.numpy())
       logging.info('Training loss: %s, accuracy: %s%%',
-                   round(train_loss.numpy(), 4),
-                   round(training_accuracy.result() * 100, 2))
+                   train_loss.numpy(),
+                   training_accuracy.result().numpy())
       logging.info(
           "Training Metric: {'epoch':%d, 'examples_per_second': %f}" %
           (epoch, epoch_exp_per_sec[epoch]))
 
       # Store the last train loss and accuracy calculated
       stats['train_loss'] = train_loss.numpy()
-      stats['train_acc'] = training_accuracy.result()
+      stats['train_acc'] = training_accuracy.result().numpy()
       training_accuracy.reset_states()
 
       if (not flags_obj.skip_eval and
@@ -300,13 +300,13 @@ def run(flags_obj):
         for step in range(steps_per_eval):
           test_step(next(test_iterator))
         logging.info('Test loss: %s, accuracy: %s%%',
-                     round(test_loss.result(), 4),
-                     round(test_accuracy.result() * 100, 2))
-        stats['accuracy_top_1'] = test_accuracy.result()
-        stats['eval_loss'] = test_loss.result()
+                     test_loss.result().numpy(),
+                     test_accuracy.result().numpy())
+        stats['accuracy_top_1'] = test_accuracy.result().numpy()
+        stats['eval_loss'] = test_loss.result().numpy()
         logging.info(
             "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
-            (epoch, test_accuracy.result()))
+            (epoch, test_accuracy.result().numpy()))
         test_loss.reset_states()
         test_accuracy.reset_states()
 
