@@ -24,6 +24,7 @@ from absl import flags
 
 from official.transformer.v2 import misc
 from official.transformer.v2 import transformer_main as transformer_main
+from official.utils.flags import core as flags_core
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 TRANSFORMER_EN2DE_DATA_DIR_NAME = 'wmt32k-en2de-official'
@@ -103,7 +104,9 @@ class TransformerBenchmark(PerfZeroBenchmark):
       metrics.append({'name': 'avg_exp_per_second',
                       'value': stats['avg_exp_per_second']})
 
-    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
+    flags_str = flags_core.get_nondefault_flags_as_str()
+    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics,
+                          extras={'flags': flags_str})
 
 
 class TransformerBaseKerasAccuracy(TransformerBenchmark):
