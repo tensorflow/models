@@ -97,6 +97,12 @@ class TransformerTask(object):
         distribution_strategy=flags_obj.distribution_strategy,
         num_gpus=flags_core.get_num_gpus(flags_obj))
 
+    print("Running transformer with num_gpus =", num_gpus)
+    if self.distribution_strategy:
+      print("For training, using distribution strategy: ", self.distribution_strategy)
+    else:
+      print("Not using any distribution strategy.")
+    
     self.params = params = misc.get_model_params(flags_obj.param_set, num_gpus)
 
     params["num_gpus"] = num_gpus
