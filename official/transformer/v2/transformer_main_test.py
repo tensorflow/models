@@ -43,7 +43,7 @@ class TransformerTaskTest(tf.test.TestCase):
   def setUp(self):
     temp_dir = self.get_temp_dir()
     FLAGS.model_dir = os.path.join(temp_dir, FIXED_TIMESTAMP)
-    FLAGS.param_set = param_set = "tiny"
+    FLAGS.param_set = "tiny"
     FLAGS.use_synthetic_data = True
     FLAGS.steps_between_evals = 1
     FLAGS.train_steps = 2
@@ -54,7 +54,7 @@ class TransformerTaskTest(tf.test.TestCase):
     self.model_dir = FLAGS.model_dir
     self.temp_dir = temp_dir
     self.vocab_file = os.path.join(temp_dir, "vocab")
-    self.vocab_size = misc.get_model_params(param_set, 0)["vocab_size"]
+    self.vocab_size = misc.get_model_params(FLAGS.param_set, 0)["vocab_size"]
     self.bleu_source = os.path.join(temp_dir, "bleu_source")
     self.bleu_ref = os.path.join(temp_dir, "bleu_ref")
 
@@ -78,6 +78,7 @@ class TransformerTaskTest(tf.test.TestCase):
   def test_train_2_gpu(self):
     FLAGS.distribution_strategy = "mirrored"
     FLAGS.num_gpus = 2
+    FLAGS.param_set = "base"
     t = tm.TransformerTask(FLAGS)
     t.train()
 
