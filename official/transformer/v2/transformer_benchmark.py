@@ -133,7 +133,6 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     """
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'off'
     FLAGS.data_dir = self.train_data_dir
     FLAGS.vocab_file = self.vocab_file
     # Sets values directly to avoid validation check.
@@ -159,7 +158,6 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     """
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'off'
     FLAGS.data_dir = self.train_data_dir
     FLAGS.vocab_file = self.vocab_file
     # Sets values directly to avoid validation check.
@@ -314,21 +312,42 @@ class TransformerKerasBenchmark(TransformerBenchmark):
         root_data_dir=root_data_dir,
         flag_methods=flag_methods)
 
+  def benchmark_1_gpu_no_dist_strat(self):
+    """Benchmark 1 gpu without distribution strategy."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.batch_size = self.batch_per_gpu
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps)
+
+  def benchmark_1_gpu_no_dist_strat_static_batch(self):
+    """Benchmark 1 gpu without distribution strategy with static batch."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.batch_size = self.batch_per_gpu
+    FLAGS.model_dir = self._get_model_dir(
+      'benchmark_1_gpu_no_dist_strat_static_batch')
+    FLAGS.static_batch = True
+    FLAGS.max_length = 64
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps)
+
   def benchmark_1_gpu(self):
     """Benchmark 1 gpu."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'off'
     FLAGS.batch_size = self.batch_per_gpu
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps)
 
   def benchmark_1_gpu_static_batch(self):
-    """Benchmark 1 gpu."""
+    """Benchmark 1 gpu with static batch."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'off'
     FLAGS.batch_size = self.batch_per_gpu
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_static_batch')
     FLAGS.static_batch = True
@@ -346,7 +365,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
                                    log_steps=FLAGS.log_steps)
 
   def benchmark_8_gpu_static_batch(self):
-    """Benchmark 8 gpu."""
+    """Benchmark 8 gpu with static batch."""
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.batch_size = self.batch_per_gpu * 8
