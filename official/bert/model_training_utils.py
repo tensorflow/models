@@ -125,7 +125,8 @@ def run_customized_training_loop(
   # To reduce unnecessary send/receive input pipeline operation, we place input
   # pipeline ops in worker task.
   with tf.device(get_primary_cpu_task(use_remote_tpu)):
-    train_iterator = strategy.make_dataset_iterator(train_input_fn())
+    train_iterator = iter(
+        strategy.experimental_distribute_dataset(train_input_fn()))
     with strategy.scope():
       total_training_steps = steps_per_epoch * epochs
 
@@ -171,9 +172,8 @@ def run_customized_training_loop(
           optimizer.apply_gradients(zip(grads, tvars))
           return loss
 
-        per_replica_losses = strategy.experimental_run(_replicated_step,
-                                                       iterator)
-
+        per_replica_losses = strategy.experimental_run_v2(
+            _replicated_step, args=(next(iterator),))
         # For reporting, we returns the mean of losses.
         loss = strategy.reduce(
             tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None)
@@ -190,10 +190,11 @@ def run_customized_training_loop(
           model_outputs = model(inputs, training=False)
           metric.update_state(labels, model_outputs)
 
-        strategy.experimental_run(_test_step_fn, iterator)
+        strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
-      def _run_evaluation(current_training_step, test_iterator):
+      def _run_evaluation(current_training_step, test_dataset):
         """Runs validation steps and aggregate metrics."""
+        test_iterator = iter(test_dataset)
         for _ in range(eval_steps):
           test_step(test_iterator)
 
@@ -259,8 +260,9 @@ def run_customized_training_loop(
 
           if eval_input_fn:
             logging.info('Running evaluation after step: %s.', current_step)
-            _run_evaluation(current_step,
-                            strategy.make_dataset_iterator(eval_input_fn()))
+            _run_evaluation(
+                current_step,
+                strategy.experimental_distribute_dataset(eval_input_fn()))
 
           # Re-initialize evaluation metric, except the last step.
           if metric and current_step < total_training_steps:
@@ -273,7 +275,8 @@ def run_customized_training_loop(
       if eval_input_fn:
         logging.info('Running final evaluation after training is complete.')
         eval_metric_result = _run_evaluation(
-            current_step, strategy.make_dataset_iterator(eval_input_fn()))
+            current_step,
+            strategy.experimental_distribute_dataset(eval_input_fn()))
 
       training_summary = {
           'total_training_steps': total_training_steps,

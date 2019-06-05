@@ -56,9 +56,6 @@ flags.DEFINE_integer(
 flags.DEFINE_integer('max_predictions_per_seq', 20,
                      'Maximum predictions per sequence_output.')
 flags.DEFINE_integer('train_batch_size', 32, 'Total batch size for training.')
-flags.DEFINE_integer(
-    'steps_per_run', 1000,
-    'Number of steps to run in TPU worker before returning to host.')
 flags.DEFINE_integer('num_train_epochs', 3,
                      'Total number of training epochs to perform.')
 flags.DEFINE_integer('num_steps_per_epoch', 1000,
@@ -167,8 +164,7 @@ def main(_):
   elif FLAGS.strategy_type == 'tpu':
     # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(
-        cluster_resolver, steps_per_run=FLAGS.steps_per_run)
+    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
   else:
     raise ValueError('The distribution strategy type is not supported: %s' %
                      FLAGS.strategy_type)

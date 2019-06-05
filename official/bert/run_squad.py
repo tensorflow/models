@@ -64,8 +64,6 @@ flags.DEFINE_enum(
 flags.DEFINE_integer('train_batch_size', 32, 'Total batch size for training.')
 flags.DEFINE_integer('num_train_epochs', 3,
                      'Total number of training epochs to perform.')
-flags.DEFINE_integer('steps_per_run', 200,
-                     'Number of steps running on TPU devices.')
 flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
 
 # Predict processing related.
@@ -152,7 +150,8 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
         input_meta_data['max_seq_length'],
         FLAGS.predict_batch_size,
         is_training=False)
-    predict_iterator = strategy.make_dataset_iterator(predict_dataset)
+    predict_iterator = iter(
+        strategy.experimental_distribute_dataset(predict_dataset))
 
     with strategy.scope():
       squad_model, _ = bert_models.squad_model(
@@ -167,7 +166,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     def predict_step(iterator):
       """Predicts on distributed devices."""
 
-      def replicated_step(inputs):
+      def _replicated_step(inputs):
         """Replicated prediction calculation."""
         x, _ = inputs
         unique_ids, start_logits, end_logits = squad_model(x, training=False)
@@ -176,7 +175,8 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
             start_logits=start_logits,
             end_logits=end_logits)
 
-      outputs = strategy.experimental_run(replicated_step, iterator)
+      outputs = strategy.experimental_run_v2(
+          _replicated_step, args=(next(iterator),))
       return tf.nest.map_structure(strategy.unwrap, outputs)
 
     all_results = []
@@ -316,8 +316,7 @@ def main(_):
   elif FLAGS.strategy_type == 'tpu':
     # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(
-        cluster_resolver, steps_per_run=FLAGS.steps_per_run)
+    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
   else:
     raise ValueError('The distribution strategy type is not supported: %s' %
                      FLAGS.strategy_type)
