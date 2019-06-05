@@ -49,6 +49,8 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.train_steps = 2
     FLAGS.validation_steps = 1
     FLAGS.batch_size = 8
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = "off"
     self.model_dir = FLAGS.model_dir
     self.temp_dir = temp_dir
     self.vocab_file = os.path.join(temp_dir, "vocab")
@@ -62,7 +64,23 @@ class TransformerTaskTest(tf.test.TestCase):
   def test_train(self):
     t = tm.TransformerTask(FLAGS)
     t.train()
-    
+
+  def test_train_static_batch(self):
+    FLAGS.static_batch = True
+    t = tm.TransformerTask(FLAGS)
+    t.train()
+
+  def test_train_1_gpu_with_dist_strat(self):
+    FLAGS.distribution_strategy = "one_device"
+    t = tm.TransformerTask(FLAGS)
+    t.train()
+
+  def test_train_2_gpu(self):
+    FLAGS.distribution_strategy = "mirrored"
+    FLAGS.num_gpus = 2
+    t = tm.TransformerTask(FLAGS)
+    t.train()
+
   def _prepare_files_and_flags(self, *extra_flags):
     # Make log dir.
     if not os.path.exists(self.temp_dir):
