@@ -99,10 +99,11 @@ class TransformerTask(object):
 
     print("Running transformer with num_gpus =", num_gpus)
     if self.distribution_strategy:
-      print("For training, using distribution strategy: ", self.distribution_strategy)
+      print("For training, using distribution strategy: ",
+            self.distribution_strategy)
     else:
       print("Not using any distribution strategy.")
-    
+
     self.params = params = misc.get_model_params(flags_obj.param_set, num_gpus)
 
     params["num_gpus"] = num_gpus
@@ -197,7 +198,7 @@ class TransformerTask(object):
     with tf.name_scope("model"):
       model = transformer.create_model(params, is_train)
       self._load_weights_if_possible(
-        model, tf.train.latest_checkpoint(self.flags_obj.model_dir))
+          model, tf.train.latest_checkpoint(self.flags_obj.model_dir))
       model.summary()
     subtokenizer = tokenizer.Subtokenizer(flags_obj.vocab_file)
 
