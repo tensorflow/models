@@ -190,7 +190,8 @@ class TransformerTask(object):
 
     with tf.name_scope("model"):
       model = transformer.create_model(params, is_train)
-      self._load_weights_if_possible(model, flags_obj.init_weight_path)
+      self._load_weights_if_possible(
+        model, tf.train.latest_checkpoint(self.flags_obj.model_dir))
       model.summary()
     subtokenizer = tokenizer.Subtokenizer(flags_obj.vocab_file)
 
