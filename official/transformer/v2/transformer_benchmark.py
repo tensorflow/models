@@ -328,8 +328,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = 'off'
     FLAGS.batch_size = self.batch_per_gpu
-    FLAGS.model_dir = self._get_model_dir(
-      'benchmark_1_gpu_no_dist_strat_static_batch')
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_ds_sb')
     FLAGS.static_batch = True
     FLAGS.max_length = 64
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
