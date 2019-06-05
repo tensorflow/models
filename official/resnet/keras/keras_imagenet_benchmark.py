@@ -139,9 +139,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    # Tweaks to improve performance.
-    FLAGS.data_delay_prefetch = True
     FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_mlperf_like(self):
@@ -342,7 +341,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_1_gpu_fp16_slack(self):
@@ -491,7 +489,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
     FLAGS.datasets_num_private_threads = 14
-    FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_slack(self):
@@ -531,7 +528,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.datasets_num_private_threads = 24
-    FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16(self):
@@ -571,7 +567,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16_cloning_tweaked(self):
@@ -605,7 +600,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.loss_scale = 'dynamic'
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_optional_next(self):
@@ -665,8 +659,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
-    # FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.datasets_num_private_threads = 48
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_cloning_tweaked(self):
@@ -723,10 +717,9 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_xla_8_gpu_fp16_tweaked_delay_measure')
-    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.batch_size = 256 * 8
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
     FLAGS.train_steps = 310
     self._run_and_report_benchmark()
 
@@ -768,8 +761,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         'benchmark_xla_8_gpu_fp16_tweaked_optional_next')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
-    # FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.datasets_num_private_threads = 48
     FLAGS.enable_get_next_as_optional = True
     self._run_and_report_benchmark()
 
@@ -805,7 +798,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.loss_scale = 'dynamic'
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
+    FLAGS.datasets_num_private_threads = 48
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_tensorboard_tweaked(self):
@@ -822,7 +815,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
+    FLAGS.datasets_num_private_threads = 48
     FLAGS.enable_tensorboard = True
     self._run_and_report_benchmark()
 
@@ -1124,7 +1117,6 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
     FLAGS.batch_size = 256 * 8
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_slack(self):
