@@ -284,7 +284,8 @@ def run_ncf(_):
   eval_input_dataset = eval_input_dataset.batch(batches_per_step)
 
   time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
-  callbacks = [time_callback]
+  per_epoch_callback = IncrementEpochCallback(producer)
+  callbacks = [per_epoch_callback, time_callback]
 
   if FLAGS.early_stopping:
     early_stopping_callback = CustomEarlyStopping(
