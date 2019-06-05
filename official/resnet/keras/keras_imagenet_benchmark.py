@@ -608,6 +608,24 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
+  def benchmark_xla_8_gpu_fp16_optional_next(self):
+    """Test Keras model with XLA, 8 GPUs and fp16.
+
+    This test also enables get_next_as_optional.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_optional_next')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.enable_get_next_as_optional = True
+    self._run_and_report_benchmark()
+
   def benchmark_xla_8_gpu_fp16(self):
     """Test Keras model with XLA, 8 GPUs and fp16."""
     self._setup()
@@ -667,6 +685,28 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.use_tensor_lr = True
     # FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.data_delay_prefetch = True
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_fp16_cloning_tweaked_optional_next(self):
+    """Test with manual config tuning, XLA, 8 GPUs, fp16, and cloning.
+
+    This test also enables get_next_as_optional.
+    """
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.clone_model_in_keras_dist_strat = True
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_cloning_tweaked_optional_next')
+    FLAGS.batch_size = 256 * 8
+    FLAGS.use_tensor_lr = True
+    # FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_delay_prefetch = True
+    FLAGS.enable_get_next_as_optional = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_tweaked_delay_measure(self):
