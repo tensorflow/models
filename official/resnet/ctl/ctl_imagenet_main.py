@@ -183,19 +183,19 @@ def run(flags_obj):
 
   if flags_obj.use_synthetic_data:
     train_ds = synthetic_input_fn(flags_obj.batch_size,
-                                  _DEFAULT_IMAGE_SIZE,
-                                  _DEFAULT_IMAGE_SIZE,
-                                  _NUM_CHANNELS,
-                                  _NUM_CLASSES,
+                                  DEFAULT_IMAGE_SIZE,
+                                  DEFAULT_IMAGE_SIZE,
+                                  NUM_CHANNELS,
+                                  NUM_CLASSES,
                                   dtype=flags_core.get_tf_dtype(
                                      flags_obj))
     test_ds = None
     if not flags_obj.skip_eval:
       test_ds = synthetic_input_fn(flags_obj.batch_size,
-                                   _DEFAULT_IMAGE_SIZE,
-                                   _DEFAULT_IMAGE_SIZE,
-                                   _NUM_CHANNELS,
-                                   _NUM_CLASSES,
+                                   DEFAULT_IMAGE_SIZE,
+                                   DEFAULT_IMAGE_SIZE,
+                                   NUM_CHANNELS,
+                                   NUM_CLASSES,
                                    dtype=flags_core.get_tf_dtype(
                                        flags_obj))
   else:
