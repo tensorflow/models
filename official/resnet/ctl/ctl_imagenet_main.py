@@ -119,6 +119,30 @@ def compute_learning_rate(lr_epoch):
   return learning_rate
 
 
+def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
+                       dtype=tf.float32):
+  """Returns dataset filled with random data."""
+  # Synthetic input should be within [0, 255].
+  inputs = tf.truncated_normal(
+      [batch_size] + [height, width, num_channels],
+      dtype=dtype,
+      mean=127,
+      stddev=60,
+      name='synthetic_inputs')
+
+  labels = tf.random_uniform(
+      [batch_size],
+      minval=0,
+      maxval=num_classes - 1,
+      dtype=tf.int32,
+      name='synthetic_labels')
+
+  dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
+  dataset = dataset.batch(batch_size)
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  return dataset
+
+
 def run(flags_obj):
   """Run ResNet ImageNet training and eval loop using custom training loops.
 
@@ -149,45 +173,50 @@ def run(flags_obj):
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
-  # pylint: disable=protected-access
-  if flags_obj.use_synthetic_data:
-    distribution_utils.set_up_synthetic_data()
-    input_fn = keras_common.get_synth_input_fn(
-        height=imagenet_main.DEFAULT_IMAGE_SIZE,
-        width=imagenet_main.DEFAULT_IMAGE_SIZE,
-        num_channels=imagenet_main.NUM_CHANNELS,
-        num_classes=imagenet_main.NUM_CLASSES,
-        dtype=dtype,
-        drop_remainder=True)
-  else:
-    distribution_utils.undo_set_up_synthetic_data()
-    input_fn = imagenet_main.input_fn
-
   # When `enable_xla` is True, we always drop the remainder of the batches
   # in the dataset, as XLA-GPU doesn't support dynamic shapes.
   drop_remainder = flags_obj.enable_xla
 
-  train_ds = input_fn(
-      is_training=True,
-      data_dir=flags_obj.data_dir,
-      batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras,
-      datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-      dtype=dtype,
-      drop_remainder=drop_remainder)
-
-  test_ds = None
-  if not flags_obj.skip_eval:
-    test_ds = input_fn(
-        is_training=False,
+  if flags_obj.use_synthetic_data:
+    train_ds = synthetic_input_fn(flags_obj.batch_size,
+                                  imagenet_main._DEFAULT_IMAGE_SIZE,
+                                  imagenet_main._DEFAULT_IMAGE_SIZE,
+                                  imagenet_main._NUM_CHANNELS,
+                                  imagenet_main._NUM_CLASSES,
+                                  dtype=flags_core.get_tf_dtype(
+                                     flags_obj))
+    test_ds = None
+    if not flags_obj.skip_eval:
+      test_ds = synthetic_input_fn(flags_obj.batch_size,
+                                   imagenet_main._DEFAULT_IMAGE_SIZE,
+                                   imagenet_main._DEFAULT_IMAGE_SIZE,
+                                   imagenet_main._NUM_CHANNELS,
+                                   imagenet_main._NUM_CLASSES,
+                                   dtype=flags_core.get_tf_dtype(
+                                       flags_obj))
+  else:
+    train_ds = imagenet_main.input_fn(
+        is_training=True,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
         parse_record_fn=parse_record_keras,
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads,
         dtype=dtype,
         drop_remainder=drop_remainder)
-    
+
+    test_ds = None
+    if not flags_obj.skip_eval:
+      test_ds = imagenet_main.input_fn(
+          is_training=False,
+          data_dir=flags_obj.data_dir,
+          batch_size=flags_obj.batch_size,
+          num_epochs=flags_obj.train_epochs,
+          parse_record_fn=parse_record_keras,
+          dtype=dtype,
+          drop_remainder=drop_remainder)
+
+  if not flags_obj.skip_eval:
     test_ds = strategy.experimental_distribute_dataset(test_ds)
     steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
 
@@ -329,6 +358,5 @@ if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
   tf.enable_v2_behavior()
   imagenet_main.define_imagenet_flags()
-  # TODO(anj-s): Do we need this?
   ctl_common.define_ctl_flags()
   absl_app.run(main)
