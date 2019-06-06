@@ -93,8 +93,6 @@ def _get_train_and_eval_data(producer, params):
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params).map(
       preprocess_train_input)
-  if not params["keras_use_ctl"]:
-    train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
 
   def preprocess_eval_input(features):
     """Pre-process the eval data.
@@ -235,10 +233,12 @@ def _get_keras_model(params):
       from_logits=True,
       reduction="sum")
 
+  loss_scale_factor = (batch_size *
+                       tf.distribute.get_strategy().num_replicas_in_sync)
   keras_model.add_loss(loss_obj(
       y_true=label_input,
       y_pred=softmax_logits,
-      sample_weight=valid_pt_mask_input) * 1.0 / batch_size)
+      sample_weight=valid_pt_mask_input) * 1.0 / loss_scale_factor)
 
   keras_model.summary()
   return keras_model
@@ -387,7 +387,6 @@ def run_ncf(_):
       keras_model.compile(optimizer=optimizer)
 
       history = keras_model.fit(train_input_dataset,
-                                steps_per_epoch=num_train_steps,
                                 epochs=FLAGS.train_epochs,
                                 callbacks=callbacks,
                                 validation_data=eval_input_dataset,

@@ -42,21 +42,21 @@ class TransformerTaskTest(tf.test.TestCase):
 
   def setUp(self):
     temp_dir = self.get_temp_dir()
-    FLAGS.model_dir = temp_dir
-    FLAGS.init_logdir_timestamp = FIXED_TIMESTAMP
-    FLAGS.param_set = param_set = "tiny"
+    FLAGS.model_dir = os.path.join(temp_dir, FIXED_TIMESTAMP)
+    FLAGS.param_set = "tiny"
     FLAGS.use_synthetic_data = True
-    FLAGS.steps_per_epoch = 1
+    FLAGS.steps_between_evals = 1
+    FLAGS.train_steps = 2
     FLAGS.validation_steps = 1
-    FLAGS.train_epochs = 1
     FLAGS.batch_size = 8
-    FLAGS.init_weight_path = None
-    self.cur_log_dir = os.path.join(temp_dir, FIXED_TIMESTAMP)
-    self.vocab_file = os.path.join(self.cur_log_dir, "vocab")
-    self.vocab_size = misc.get_model_params(param_set, 0)["vocab_size"]
-    self.bleu_source = os.path.join(self.cur_log_dir, "bleu_source")
-    self.bleu_ref = os.path.join(self.cur_log_dir, "bleu_ref")
-    self.flags_file = os.path.join(self.cur_log_dir, "flags")
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = "off"
+    self.model_dir = FLAGS.model_dir
+    self.temp_dir = temp_dir
+    self.vocab_file = os.path.join(temp_dir, "vocab")
+    self.vocab_size = misc.get_model_params(FLAGS.param_set, 0)["vocab_size"]
+    self.bleu_source = os.path.join(temp_dir, "bleu_source")
+    self.bleu_ref = os.path.join(temp_dir, "bleu_ref")
 
   def _assert_exists(self, filepath):
     self.assertTrue(os.path.exists(filepath))
@@ -64,27 +64,28 @@ class TransformerTaskTest(tf.test.TestCase):
   def test_train(self):
     t = tm.TransformerTask(FLAGS)
     t.train()
-    # Test model dir.
-    self._assert_exists(self.cur_log_dir)
-    # Test saving models.
-    self._assert_exists(
-        os.path.join(self.cur_log_dir, "saves-model-weights.hdf5"))
-    self._assert_exists(os.path.join(self.cur_log_dir, "saves-model.hdf5"))
 
-    # Test callbacks:
-    # TensorBoard file.
-    self._assert_exists(os.path.join(self.cur_log_dir, "logs"))
-    # CSVLogger file.
-    self._assert_exists(os.path.join(self.cur_log_dir, "result.csv"))
-    # Checkpoint file.
-    filenames = os.listdir(self.cur_log_dir)
-    matched_weight_file = any([WEIGHT_PATTERN.match(f) for f in filenames])
-    self.assertTrue(matched_weight_file)
+  def test_train_static_batch(self):
+    FLAGS.static_batch = True
+    t = tm.TransformerTask(FLAGS)
+    t.train()
+
+  def test_train_1_gpu_with_dist_strat(self):
+    FLAGS.distribution_strategy = "one_device"
+    t = tm.TransformerTask(FLAGS)
+    t.train()
+
+  def test_train_2_gpu(self):
+    FLAGS.distribution_strategy = "mirrored"
+    FLAGS.num_gpus = 2
+    FLAGS.param_set = "base"
+    t = tm.TransformerTask(FLAGS)
+    t.train()
 
   def _prepare_files_and_flags(self, *extra_flags):
     # Make log dir.
-    if not os.path.exists(self.cur_log_dir):
-      os.makedirs(self.cur_log_dir)
+    if not os.path.exists(self.temp_dir):
+      os.makedirs(self.temp_dir)
 
     # Fake vocab, bleu_source and bleu_ref.
     tokens = [
