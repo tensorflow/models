@@ -143,7 +143,7 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
 
   dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
   dataset = dataset.batch(batch_size)
-  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
   return dataset
 
 
