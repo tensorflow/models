@@ -48,6 +48,10 @@ from official.resnet.ctl import ctl_common
 APPROX_IMAGENET_TRAINING_IMAGES = 1280000  # Approximate number of images.
 IMAGENET_VALIDATION_IMAGES = 50000  # Number of images.
 
+DEFAULT_IMAGE_SIZE = 224
+NUM_CHANNELS = 3
+NUM_CLASSES = 1001
+
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
@@ -179,19 +183,19 @@ def run(flags_obj):
 
   if flags_obj.use_synthetic_data:
     train_ds = synthetic_input_fn(flags_obj.batch_size,
-                                  imagenet_main._DEFAULT_IMAGE_SIZE,
-                                  imagenet_main._DEFAULT_IMAGE_SIZE,
-                                  imagenet_main._NUM_CHANNELS,
-                                  imagenet_main._NUM_CLASSES,
+                                  _DEFAULT_IMAGE_SIZE,
+                                  _DEFAULT_IMAGE_SIZE,
+                                  _NUM_CHANNELS,
+                                  _NUM_CLASSES,
                                   dtype=flags_core.get_tf_dtype(
                                      flags_obj))
     test_ds = None
     if not flags_obj.skip_eval:
       test_ds = synthetic_input_fn(flags_obj.batch_size,
-                                   imagenet_main._DEFAULT_IMAGE_SIZE,
-                                   imagenet_main._DEFAULT_IMAGE_SIZE,
-                                   imagenet_main._NUM_CHANNELS,
-                                   imagenet_main._NUM_CLASSES,
+                                   _DEFAULT_IMAGE_SIZE,
+                                   _DEFAULT_IMAGE_SIZE,
+                                   _NUM_CHANNELS,
+                                   _NUM_CLASSES,
                                    dtype=flags_core.get_tf_dtype(
                                        flags_obj))
   else:
