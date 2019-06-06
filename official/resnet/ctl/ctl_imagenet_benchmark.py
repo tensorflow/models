@@ -23,8 +23,9 @@ import tensorflow as tf # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
 from official.resnet.ctl import ctl_benchmark
-from official.resnet.keras import keras_common
 from official.resnet.ctl import ctl_imagenet_main
+from official.resnet.ctl import ctl_common
+
 
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77
@@ -47,7 +48,7 @@ class Resnet50CtlAccuracy(ctl_benchmark.CtlBenchmark):
     """
 
     flag_methods = [
-        keras_common.define_keras_flags,
+        ctl_common.define_ctl_flags,
         lambda: imagenet_main.define_imagenet_flags()
     ]
 
@@ -90,7 +91,7 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
 
   def __init__(self, output_dir=None, default_flags=None):
     flag_methods = [
-        keras_common.define_keras_flags,
+        ctl_common.define_ctl_flags,
         lambda: imagenet_main.define_imagenet_flags()
     ]
 
@@ -139,6 +140,42 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_no_func(self):
+    """Test Keras model with 1 GPU, no distribution strategy."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
+    FLAGS.batch_size = 128
+    FLAGS.enable_function = False
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_func(self):
+    """Test Keras model with 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
+    FLAGS.batch_size = 128
+    FLAGS.enable_function = False
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_no_func(self):
+    """Test Keras model with 8 GPUs."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    FLAGS.enable_function = False
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):

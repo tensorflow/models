@@ -22,7 +22,6 @@ from tempfile import mkdtemp
 import tensorflow as tf
 
 from official.resnet import imagenet_main
-from official.resnet.keras import keras_common
 from official.resnet.ctl import ctl_imagenet_main
 from official.utils.testing import integration
 # pylint: disable=ungrouped-imports
@@ -49,7 +48,7 @@ class CtlImagenetTest(googletest.TestCase):
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(CtlImagenetTest, cls).setUpClass()
     imagenet_main.define_imagenet_flags()
-    keras_common.define_keras_flags()
+    ctl_common.define_ctl_flags()
 
   def setUp(self):
     super(CtlImagenetTest, self).setUp()

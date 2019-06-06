@@ -41,6 +41,7 @@ from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
+from official.resnet.ctl import ctl_common
 
 
 # Imagenet training and test data sets.
@@ -252,9 +253,14 @@ def run(flags_obj):
 
       strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
 
+     
+    if flags_obj.enable_function:
+      train_step = tf.function(train_step)
+      test_step = tf.function(test_step)
+
     epoch_exp_per_sec = []
     stats = {}
-    for epoch in range(flags_obj.train_epochs):
+    for epoch in range(train_epochs):
       logging.info('Starting to run epoch: %s', epoch)
       train_iterator = iter(train_ds)
 
@@ -310,8 +316,7 @@ def run(flags_obj):
         test_loss.reset_states()
         test_accuracy.reset_states()
 
-  # TODO(anj-s): What is avg_exp_per_sec? Do we need that as well?
-  stats['exp_per_sec'] = np.mean(epoch_exp_per_sec)
+  stats['exp_per_second'] = np.mean(epoch_exp_per_sec)
   return stats
 
 
@@ -326,5 +331,5 @@ if __name__ == '__main__':
   tf.enable_v2_behavior()
   imagenet_main.define_imagenet_flags()
   # TODO(anj-s): Do we need this?
-  keras_common.define_keras_flags()
+  ctl_common.define_ctl_flags()
   absl_app.run(main)
