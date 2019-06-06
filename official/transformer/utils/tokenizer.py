@@ -124,7 +124,7 @@ class Subtokenizer(object):
   def encode(self, raw_string, add_eos=False):
     """Encodes a string into a list of int subtoken ids."""
     ret = []
-    tokens = _split_string_to_tokens(_native_to_unicode(raw_string))
+    tokens = _split_string_to_tokens(native_to_unicode(raw_string))
     for token in tokens:
       ret.extend(self._token_to_subtoken_ids(token))
     if add_eos:
@@ -193,15 +193,15 @@ def _load_vocab_file(vocab_file, reserved_tokens=None):
   subtoken_list = []
   with tf.io.gfile.GFile(vocab_file, mode="r") as f:
     for line in f:
-      subtoken = _native_to_unicode(line.strip())
+      subtoken = native_to_unicode(line.strip())
       subtoken = subtoken[1:-1]  # Remove surrounding single-quotes
       if subtoken in reserved_tokens:
         continue
-      subtoken_list.append(_native_to_unicode(subtoken))
+      subtoken_list.append(native_to_unicode(subtoken))
   return reserved_tokens + subtoken_list
 
 
-def _native_to_unicode(s):
+def native_to_unicode(s):
   """Convert string to unicode (required in Python 2)."""
   try:               # Python 2
     return s if isinstance(s, unicode) else s.decode("utf-8")
@@ -355,7 +355,7 @@ def _count_tokens(files, file_byte_limit=1e6):
           counter = 0
 
           # Add words to token counts
-          for token in _split_string_to_tokens(_native_to_unicode(line)):
+          for token in _split_string_to_tokens(native_to_unicode(line)):
             token_counts[token] += 1
   return token_counts
 
