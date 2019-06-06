@@ -213,7 +213,6 @@ def run(flags_obj):
         'test_accuracy', dtype=tf.float32)
     logging.info('Finished building Keras ResNet-50 model')
 
-    @tf.function
     def train_step(train_ds_inputs):
       """Training StepFn."""
       def step_fn(inputs):
@@ -239,7 +238,6 @@ def run(flags_obj):
       return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
                              axis=None)
 
-    @tf.function
     def test_step(test_ds_inputs):
       """Evaluation StepFn."""
       def step_fn(inputs):
@@ -253,7 +251,6 @@ def run(flags_obj):
 
       strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
 
-     
     if flags_obj.enable_function:
       train_step = tf.function(train_step)
       test_step = tf.function(test_step)
@@ -267,7 +264,7 @@ def run(flags_obj):
       step = 0
       total_loss = 0.0
       batch_exp_per_sec = []
-      for step in range(steps_per_epoch):
+      for step in range(train_steps):
         start_time = time.time()
         learning_rate = compute_learning_rate(
             epoch + 1 + (float(step) / steps_per_epoch))
@@ -277,13 +274,13 @@ def run(flags_obj):
         end_time = time.time()
         elapsed_time = end_time - start_time
         samples_per_sec = flags_obj.batch_size / elapsed_time
-        # We skip the first step for warmup puropses. We can 
+        # We skip the first step for warmup purposes. We can
         # add a flag for tuning this.
         if step > 0:
           batch_exp_per_sec.append(samples_per_sec)
 
         step += 1
-      train_loss = total_loss / (step)
+      train_loss = total_loss / step
       # calculate average examples per second for a given epoch
       epoch_exp_per_sec.append(np.mean(batch_exp_per_sec))
       logging.info('Learning rate at epoch %s is %s',
@@ -301,7 +298,7 @@ def run(flags_obj):
       training_accuracy.reset_states()
 
       if (not flags_obj.skip_eval and
-        epoch % flags_obj.epochs_between_eval == 0):
+          epoch % flags_obj.epochs_between_eval == 0):
         test_iterator = iter(test_ds)
         for step in range(steps_per_eval):
           test_step(next(test_iterator))
