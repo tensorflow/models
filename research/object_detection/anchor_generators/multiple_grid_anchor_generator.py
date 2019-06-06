@@ -180,22 +180,23 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
                 for list_item in feature_map_shape_list]):
       raise ValueError('feature_map_shape_list must be a list of pairs.')
 
-    im_height = tf.to_float(im_height)
-    im_width = tf.to_float(im_width)
+    im_height = tf.cast(im_height, dtype=tf.float32)
+    im_width = tf.cast(im_width, dtype=tf.float32)
 
     if not self._anchor_strides:
-      anchor_strides = [(1.0 / tf.to_float(pair[0]), 1.0 / tf.to_float(pair[1]))
+      anchor_strides = [(1.0 / tf.cast(pair[0], dtype=tf.float32),
+                         1.0 / tf.cast(pair[1], dtype=tf.float32))
                         for pair in feature_map_shape_list]
     else:
-      anchor_strides = [(tf.to_float(stride[0]) / im_height,
-                         tf.to_float(stride[1]) / im_width)
+      anchor_strides = [(tf.cast(stride[0], dtype=tf.float32) / im_height,
+                         tf.cast(stride[1], dtype=tf.float32) / im_width)
                         for stride in self._anchor_strides]
     if not self._anchor_offsets:
       anchor_offsets = [(0.5 * stride[0], 0.5 * stride[1])
                         for stride in anchor_strides]
     else:
-      anchor_offsets = [(tf.to_float(offset[0]) / im_height,
-                         tf.to_float(offset[1]) / im_width)
+      anchor_offsets = [(tf.cast(offset[0], dtype=tf.float32) / im_height,
+                         tf.cast(offset[1], dtype=tf.float32) / im_width)
                         for offset in self._anchor_offsets]
 
     for arg, arg_name in zip([anchor_strides, anchor_offsets],

@@ -25,7 +25,7 @@ from __future__ import print_function
 import os
 import tempfile
 
-from absl import app as absl_app
+from absl import app as absl_app  # pylint: disable=unused-import
 from absl import flags
 import tensorflow as tf
 
@@ -97,6 +97,13 @@ class TransformerTask(object):
         distribution_strategy=flags_obj.distribution_strategy,
         num_gpus=flags_core.get_num_gpus(flags_obj))
 
+    print("Running transformer with num_gpus =", num_gpus)
+    if self.distribution_strategy:
+      print("For training, using distribution strategy: ",
+            self.distribution_strategy)
+    else:
+      print("Not using any distribution strategy.")
+
     self.params = params = misc.get_model_params(flags_obj.param_set, num_gpus)
 
     params["num_gpus"] = num_gpus
@@ -127,7 +134,7 @@ class TransformerTask(object):
 
     model.summary()
 
-    # TODO(guptapriya): Figure out a way to structure input that works in both 
+    # TODO(guptapriya): Figure out a way to structure input that works in both
     # distributed and non distributed cases.
     train_ds = data_pipeline.train_input_fn(params)
     if not self.distribution_strategy:
@@ -190,7 +197,8 @@ class TransformerTask(object):
 
     with tf.name_scope("model"):
       model = transformer.create_model(params, is_train)
-      self._load_weights_if_possible(model, flags_obj.init_weight_path)
+      self._load_weights_if_possible(
+          model, tf.train.latest_checkpoint(self.flags_obj.model_dir))
       model.summary()
     subtokenizer = tokenizer.Subtokenizer(flags_obj.vocab_file)
 

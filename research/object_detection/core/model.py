@@ -55,12 +55,24 @@ a handful of auxiliary annotations associated with each bounding box, namely,
 instance masks and keypoints.
 """
 import abc
+import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
 
 
-class DetectionModel(object):
-  """Abstract base class for detection models."""
+# If using a new enough version of TensorFlow, detection models should be a
+# tf module or keras model for tracking.
+try:
+  _BaseClass = tf.Module
+except AttributeError:
+  _BaseClass = object
+
+
+class DetectionModel(_BaseClass):
+  """Abstract base class for detection models.
+
+  Extends tf.Module to guarantee variable tracking.
+  """
   __metaclass__ = abc.ABCMeta
 
   def __init__(self, num_classes):

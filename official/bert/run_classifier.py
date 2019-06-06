@@ -27,12 +27,14 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
+# Import BERT model libraries.
 from official.bert import bert_models
 from official.bert import input_pipeline
 from official.bert import model_saving_utils
 from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
+from official.bert import tpu_lib
 
 flags.DEFINE_enum(
     'mode', 'train_and_eval', ['train_and_eval', 'export_only'],
@@ -59,9 +61,7 @@ flags.DEFINE_string(
     'Path to the directory, where trainined model will be '
     'exported.')
 flags.DEFINE_enum(
-    'strategy_type',
-    'mirror',
-    ['tpu', 'mirror'],
+    'strategy_type', 'mirror', ['tpu', 'mirror'],
     'Distribution Strategy type to use for training. `tpu` uses '
     'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
     'single host.')
@@ -74,8 +74,6 @@ flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
 flags.DEFINE_integer('eval_batch_size', 8, 'Batch size for evaluation.')
 flags.DEFINE_integer('num_train_epochs', 3,
                      'Total number of training epochs to perform.')
-flags.DEFINE_integer('steps_per_run', 200,
-                     'Number of steps running on TPU devices.')
 flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
 
 FLAGS = flags.FLAGS
@@ -227,6 +225,7 @@ def run_bert(strategy, input_meta_data):
 def main(_):
   # Users should always run this script under TF 2.x
   assert tf.version.VERSION.startswith('2.')
+
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
 
@@ -237,14 +236,12 @@ def main(_):
   if FLAGS.strategy_type == 'mirror':
     strategy = tf.distribute.MirroredStrategy()
   elif FLAGS.strategy_type == 'tpu':
-    logging.info('Use TPU at %s', FLAGS.tpu if FLAGS.tpu is not None else '')
-    cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-        tpu=FLAGS.tpu)
-    tf.config.experimental_connect_to_host(cluster_resolver.master())  # pylint: disable=line-too-long
-    tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
-    strategy = tf.distribute.experimental.TPUStrategy(
-        cluster_resolver, steps_per_run=FLAGS.steps_per_run)
-
+    # Initialize TPU System.
+    cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
+    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
+  else:
+    raise ValueError('The distribution strategy type is not supported: %s' %
+                     FLAGS.strategy_type)
   run_bert(strategy, input_meta_data)
 
 

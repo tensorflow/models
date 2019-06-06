@@ -164,7 +164,7 @@ def _batch_examples(dataset, batch_size, max_length):
     """Return int64 bucket id for this example, calculated based on length."""
     seq_length = _get_example_length((example_input, example_target))
 
-    # TODO: investigate whether removing code branching improves performance.
+    # TODO(xunkai): investigate if removing code branching improves performance.
     conditions_c = tf.logical_and(
         tf.less_equal(buckets_min, seq_length),
         tf.less(seq_length, buckets_max))
@@ -251,7 +251,8 @@ def _read_and_batch_from_files(
         ([max_length], [max_length]), drop_remainder=True)
   else:
     # Group and batch such that each batch has examples of similar length.
-    # TODO: _batch_examples might need to do something special for num_replicas.
+    # TODO(xunkai): _batch_examples might need to do something special for
+    # num_replicas.
     dataset = _batch_examples(dataset, batch_size, max_length)
 
   dataset = dataset.repeat(repeat)
@@ -264,14 +265,15 @@ def _read_and_batch_from_files(
 def _generate_synthetic_data(params):
   """Create synthetic data based on the parameter batch size."""
   batch = length = int(math.sqrt(params["batch_size"]))
-  return model_helpers.generate_synthetic_data(
-      input_shape=tf.TensorShape([batch, length]),
+  dataset = model_helpers.generate_synthetic_data(
+      input_shape=tf.TensorShape([length]),
       input_value=1,
       input_dtype=tf.int32,
-      label_shape=tf.TensorShape([batch, length]),
+      label_shape=tf.TensorShape([length]),
       label_value=1,
       label_dtype=tf.int32,
   )
+  return dataset.batch(batch)
 
 
 def train_input_fn(params):

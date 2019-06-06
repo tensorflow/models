@@ -279,6 +279,9 @@ def define_keras_flags():
   """Define flags for Keras models."""
 
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
+  flags.DEFINE_boolean(
+      name='run_eagerly', default=False,
+      help='Run the model op by op without building a model function.')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_boolean(name='use_trivial_model', default=False,
                        help='Whether to use a trivial Keras model.')
@@ -378,7 +381,10 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
 
 def is_v2_0():
   """Returns true if using tf 2.0."""
-  return tf.__version__.startswith('2')
+  if hasattr(tf, 'contrib'):
+    return False
+  else:
+    return True
 
 
 def data_delay_prefetch():

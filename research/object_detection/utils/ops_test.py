@@ -851,7 +851,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     # work as the usual crop and resize for just one channel.
     crop = tf.image.crop_and_resize(tf.expand_dims(image, axis=0), boxes,
                                     box_ind, crop_size)
-    crop_and_pool = tf.reduce_mean(crop, [1, 2], keep_dims=True)
+    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
 
     ps_crop_and_pool = ops.position_sensitive_crop_regions(
         tiled_image,
@@ -937,8 +937,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
           image, boxes, crop_size, num_spatial_bins, global_pool=False)
       with self.test_session() as sess:
         output = sess.run(ps_crop)
-
-      self.assertAllEqual(output, expected_output[crop_size_mult - 1])
+      self.assertAllClose(output, expected_output[crop_size_mult - 1])
 
   def test_position_sensitive_with_global_pool_false_and_do_global_pool(self):
     num_spatial_bins = [3, 2]
@@ -981,7 +980,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
       ps_crop = ops.position_sensitive_crop_regions(
           image, boxes, crop_size, num_spatial_bins, global_pool=False)
       ps_crop_and_pool = tf.reduce_mean(
-          ps_crop, reduction_indices=(1, 2), keep_dims=True)
+          ps_crop, reduction_indices=(1, 2), keepdims=True)
 
       with self.test_session() as sess:
         output = sess.run(ps_crop_and_pool)
@@ -1349,154 +1348,31 @@ class MatmulGatherOnZerothAxis(test_case.TestCase):
       self.assertAllClose(gather_output, expected_output)
 
 
-class OpsTestMatMulCropAndResize(test_case.TestCase):
+class FpnFeatureLevelsTest(test_case.TestCase):
 
-  def testMatMulCropAndResize2x2To1x1(self):
+  def test_correct_fpn_levels(self):
+    image_size = 640
+    pretraininig_image_size = 224
+    image_ratio = image_size * 1.0 / pretraininig_image_size
+    boxes = np.array(
+        [
+            [
+                [0, 0, 111, 111],  # Level 0.
+                [0, 0, 113, 113],  # Level 1.
+                [0, 0, 223, 223],  # Level 1.
+                [0, 0, 225, 225],  # Level 2.
+                [0, 0, 449, 449]   # Level 3.
+            ],
+        ],
+        dtype=np.float32) / image_size
 
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
+    def graph_fn(boxes):
+      return ops.fpn_feature_levels(
+          num_levels=5, unit_scale_index=2, image_ratio=image_ratio,
+          boxes=boxes)
 
-    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1]]], dtype=np.float32)
-    expected_output = [[[[[2.5]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize2x2To1x1Flipped(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
-
-    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[[1, 1, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[2.5]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize2x2To3x3(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
-
-    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1]]], dtype=np.float32)
-    expected_output = [[[[[1.0], [1.5], [2.0]],
-                         [[2.0], [2.5], [3.0]],
-                         [[3.0], [3.5], [4.0]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize2x2To3x3Flipped(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
-
-    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[[1, 1, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[4.0], [3.5], [3.0]],
-                         [[3.0], [2.5], [2.0]],
-                         [[2.0], [1.5], [1.0]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize3x3To2x2(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1], [2], [3]],
-                       [[4], [5], [6]],
-                       [[7], [8], [9]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1],
-                       [0, 0, .5, .5]]], dtype=np.float32)
-    expected_output = [[[[[1], [3]], [[7], [9]]],
-                        [[[1], [2]], [[4], [5]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize3x3To2x2_2Channels(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1],
-                       [0, 0, .5, .5]]], dtype=np.float32)
-    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testBatchMatMulCropAndResize3x3To2x2_2Channels(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]],
-                      [[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1],
-                       [0, 0, .5, .5]],
-                      [[1, 1, 0, 0],
-                       [.5, .5, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
-                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
-                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize3x3To2x2Flipped(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1], [2], [3]],
-                       [[4], [5], [6]],
-                       [[7], [8], [9]]]], dtype=np.float32)
-    boxes = np.array([[[1, 1, 0, 0],
-                       [.5, .5, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[9], [7]], [[3], [1]]],
-                        [[[5], [4]], [[2], [1]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testInvalidInputShape(self):
-    image = tf.constant([[[1], [2]], [[3], [4]]], dtype=tf.float32)
-    boxes = tf.constant([[-1, -1, 1, 1]], dtype=tf.float32)
-    crop_size = [4, 4]
-    with self.assertRaises(ValueError):
-      _ = ops.matmul_crop_and_resize(image, boxes, crop_size)
-
-
-class OpsTestCropAndResize(test_case.TestCase):
-
-  def testBatchCropAndResize3x3To2x2_2Channels(self):
-
-    def graph_fn(image, boxes):
-      return ops.native_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]],
-                      [[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1],
-                       [0, 0, .5, .5]],
-                      [[1, 1, 0, 0],
-                       [.5, .5, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
-                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
-                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
-    crop_output = self.execute_cpu(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
+    levels = self.execute(graph_fn, [boxes])
+    self.assertAllEqual([[0, 1, 1, 2, 3]], levels)
 
 
 class TestBfloat16ToFloat32(test_case.TestCase):

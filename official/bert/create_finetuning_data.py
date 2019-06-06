@@ -29,19 +29,20 @@ from official.bert import squad_lib
 
 FLAGS = flags.FLAGS
 
-# BERT classification specific flags.
 flags.DEFINE_enum(
     "fine_tuning_task_type", "classification", ["classification", "squad"],
     "The name of the BERT fine tuning task for which data "
     "will be generated..")
 
+# BERT classification specific flags.
 flags.DEFINE_string(
     "input_data_dir", None,
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
-flags.DEFINE_string("classification_task_name", None,
-                    "The name of the task to train BERT classifier.")
+flags.DEFINE_enum("classification_task_name", "mnli",
+                  ["cola", "mnli", "mrpc", "xnli"],
+                  "The name of the task to train BERT classifier.")
 
 # BERT Squad task specific flags.
 flags.DEFINE_string(
@@ -57,6 +58,10 @@ flags.DEFINE_integer(
     "max_query_length", 64,
     "The maximum number of tokens for the question. Questions longer than "
     "this will be truncated to this length.")
+
+flags.DEFINE_bool(
+    "version_2_with_negative", False,
+    "If true, the SQuAD examples contain some that do not have an answer.")
 
 # Shared flags across BERT fine-tuning tasks.
 flags.DEFINE_string("vocab_file", None,
@@ -87,10 +92,6 @@ flags.DEFINE_integer(
     "The maximum total input sequence length after WordPiece tokenization. "
     "Sequences longer than this will be truncated, and sequences shorter "
     "than this will be padded.")
-
-flags.DEFINE_bool(
-    "version_2_with_negative", False,
-    "If true, the SQuAD examples contain some that do not have an answer.")
 
 
 def generate_classifier_dataset():

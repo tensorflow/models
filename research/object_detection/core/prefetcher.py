@@ -55,7 +55,7 @@ def prefetch(tensor_dict, capacity):
   enqueue_op = prefetch_queue.enqueue(tensor_dict)
   tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(
       prefetch_queue, [enqueue_op]))
-  tf.summary.scalar('queue/%s/fraction_of_%d_full' % (prefetch_queue.name,
-                                                      capacity),
-                    tf.to_float(prefetch_queue.size()) * (1. / capacity))
+  tf.summary.scalar(
+      'queue/%s/fraction_of_%d_full' % (prefetch_queue.name, capacity),
+      tf.cast(prefetch_queue.size(), dtype=tf.float32) * (1. / capacity))
   return prefetch_queue

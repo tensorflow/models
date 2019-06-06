@@ -59,6 +59,9 @@ class FakeModel(model.DetectionModel):
                                            [0.0, 0.0, 0.0, 0.0]]], tf.float32),
           'detection_scores': tf.constant([[0.7, 0.6],
                                            [0.9, 0.0]], tf.float32),
+          'detection_multiclass_scores': tf.constant([[[0.3, 0.7], [0.4, 0.6]],
+                                                      [[0.1, 0.9], [0.0, 0.0]]],
+                                                     tf.float32),
           'detection_classes': tf.constant([[0, 1],
                                             [1, 0]], tf.float32),
           'num_detections': tf.constant([2, 1], tf.float32),
@@ -371,6 +374,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       inference_graph.get_tensor_by_name('image_tensor:0')
       inference_graph.get_tensor_by_name('detection_boxes:0')
       inference_graph.get_tensor_by_name('detection_scores:0')
+      inference_graph.get_tensor_by_name('detection_multiclass_scores:0')
       inference_graph.get_tensor_by_name('detection_classes:0')
       inference_graph.get_tensor_by_name('detection_keypoints:0')
       inference_graph.get_tensor_by_name('detection_masks:0')
@@ -398,6 +402,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       inference_graph.get_tensor_by_name('image_tensor:0')
       inference_graph.get_tensor_by_name('detection_boxes:0')
       inference_graph.get_tensor_by_name('detection_scores:0')
+      inference_graph.get_tensor_by_name('detection_multiclass_scores:0')
       inference_graph.get_tensor_by_name('detection_classes:0')
       inference_graph.get_tensor_by_name('num_detections:0')
       with self.assertRaises(KeyError):
@@ -491,15 +496,20 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           'encoded_image_string_tensor:0')
       boxes = inference_graph.get_tensor_by_name('detection_boxes:0')
       scores = inference_graph.get_tensor_by_name('detection_scores:0')
+      multiclass_scores = inference_graph.get_tensor_by_name(
+          'detection_multiclass_scores:0')
       classes = inference_graph.get_tensor_by_name('detection_classes:0')
       keypoints = inference_graph.get_tensor_by_name('detection_keypoints:0')
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
       for image_str in [jpg_image_str, png_image_str]:
         image_str_batch_np = np.hstack([image_str]* 2)
-        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
-         num_detections_np) = sess.run(
-             [boxes, scores, classes, keypoints, masks, num_detections],
+        (boxes_np, scores_np, multiclass_scores_np, classes_np, keypoints_np,
+         masks_np, num_detections_np) = sess.run(
+             [
+                 boxes, scores, multiclass_scores, classes, keypoints, masks,
+                 num_detections
+             ],
              feed_dict={image_str_tensor: image_str_batch_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -507,6 +517,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.0, 0.0, 0.0, 0.0]]])
         self.assertAllClose(scores_np, [[0.7, 0.6],
                                         [0.9, 0.0]])
+        self.assertAllClose(multiclass_scores_np, [[[0.3, 0.7], [0.4, 0.6]],
+                                                   [[0.1, 0.9], [0.0, 0.0]]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
         self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))

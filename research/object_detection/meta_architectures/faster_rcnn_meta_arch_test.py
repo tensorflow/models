@@ -271,7 +271,8 @@ class FasterRCNNMetaArchTest(
           set(tensor_dict_out.keys()),
           set(expected_shapes.keys()).union(
               set([
-                  'detection_boxes', 'detection_scores', 'detection_classes',
+                  'detection_boxes', 'detection_scores',
+                  'detection_multiclass_scores', 'detection_classes',
                   'detection_masks', 'num_detections', 'mask_predictions',
                   'raw_detection_boxes', 'raw_detection_scores'
               ])))

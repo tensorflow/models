@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from object_detection.predictors.heads import head
 from object_detection.utils import ops
+from object_detection.utils import shape_utils
 
 
 class ConvolutionalMaskHead(head.KerasHead):
@@ -254,8 +255,10 @@ class MaskRCNNMaskHead(head.KerasHead):
     if self._convolve_then_upsample:
       # Replace Transposed Convolution with a Nearest Neighbor upsampling step
       # followed by 3x3 convolution.
-      height_scale = self._mask_height / input_shapes[1].value
-      width_scale = self._mask_width / input_shapes[2].value
+      height_scale = self._mask_height / shape_utils.get_dim_as_int(
+          input_shapes[1])
+      width_scale = self._mask_width / shape_utils.get_dim_as_int(
+          input_shapes[2])
       # pylint: disable=g-long-lambda
       self._mask_predictor_layers.append(tf.keras.layers.Lambda(
           lambda features: ops.nearest_neighbor_upsampling(
