@@ -42,6 +42,11 @@ def define_ctl_flags():
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
+  # This is used when we create a synth dataset. 
+  flags.DEFINE_boolean(
+      name='enable_xla', default=False,
+      help='Whether to enable XLA auto jit compilation. This is still an '
+      'experimental feature, and is not yet effective with TF 2.0.')
 
 def is_v2_0():
   """Returns true if using tf 2.0."""
