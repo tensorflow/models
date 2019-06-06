@@ -66,7 +66,6 @@ class Resnet50CtlAccuracy(ctl_benchmark.CtlBenchmark):
     FLAGS.epochs_between_eval = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.dtype = 'fp32'
-    FLAGS.enable_eager = True
     # Add some thread tunings to improve performance.
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
@@ -114,7 +113,6 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
     FLAGS.batch_size = 128
@@ -125,7 +123,6 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.batch_size = 128
@@ -136,7 +133,6 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 8
-    FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
@@ -147,7 +143,6 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
     FLAGS.batch_size = 128
@@ -159,7 +154,6 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.batch_size = 128
@@ -171,7 +165,6 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 8
-    FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs

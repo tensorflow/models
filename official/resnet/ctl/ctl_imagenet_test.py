@@ -60,22 +60,6 @@ class CtlImagenetTest(googletest.TestCase):
     super(CtlImagenetTest, self).tearDown()
     tf.io.gfile.rmtree(self.get_temp_dir())
 
-  def test_end_to_end_no_dist_strat(self):
-    """Test Keras model with 1 GPU, no distribution strategy."""
-    tf.enable_v2_behavior()
-    extra_flags = [
-        "-distribution_strategy", "off",
-        "-model_dir", "ctl_imagenet_no_dist_strat",
-        "-data_format", "channels_last",
-    ]
-    extra_flags = extra_flags + self._extra_flags
-
-    integration.run_synthetic(
-        main=ctl_imagenet_main.run,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
-
   def test_end_to_end_1_gpu(self):
     """Test Keras model with 1 GPU."""
     if context.num_gpus() < 1:
