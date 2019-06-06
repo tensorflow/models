@@ -179,44 +179,40 @@ def run(flags_obj):
   # in the dataset, as XLA-GPU doesn't support dynamic shapes.
   drop_remainder = flags_obj.enable_xla
 
+  # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
-    train_ds = synthetic_input_fn(flags_obj.batch_size,
-                                  DEFAULT_IMAGE_SIZE,
-                                  DEFAULT_IMAGE_SIZE,
-                                  NUM_CHANNELS,
-                                  NUM_CLASSES,
-                                  dtype=flags_core.get_tf_dtype(
-                                     flags_obj))
-    test_ds = None
-    if not flags_obj.skip_eval:
-      test_ds = synthetic_input_fn(flags_obj.batch_size,
-                                   DEFAULT_IMAGE_SIZE,
-                                   DEFAULT_IMAGE_SIZE,
-                                   NUM_CHANNELS,
-                                   NUM_CLASSES,
-                                   dtype=flags_core.get_tf_dtype(
-                                       flags_obj))
+    # distribution_utils.set_up_synthetic_data()
+    input_fn = keras_common.get_synth_input_fn(
+        height=imagenet_main.DEFAULT_IMAGE_SIZE,
+        width=imagenet_main.DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_main.NUM_CHANNELS,
+        num_classes=imagenet_main.NUM_CLASSES,
+        dtype=dtype,
+        drop_remainder=True)
   else:
-    train_ds = imagenet_main.input_fn(
-        is_training=True,
+    # distribution_utils.undo_set_up_synthetic_data()
+    input_fn = imagenet_main.input_fn
+
+  train_ds = input_fn(
+      is_training=True,
+      data_dir=flags_obj.data_dir,
+      batch_size=flags_obj.batch_size,
+      num_epochs=flags_obj.train_epochs,
+      parse_record_fn=parse_record_keras,
+      datasets_num_private_threads=flags_obj.datasets_num_private_threads,
+      dtype=dtype,
+      drop_remainder=drop_remainder)
+
+  test_ds = None
+  if not flags_obj.skip_eval:
+    test_ds = input_fn(
+        is_training=False,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
         parse_record_fn=parse_record_keras,
-        datasets_num_private_threads=flags_obj.datasets_num_private_threads,
         dtype=dtype,
         drop_remainder=drop_remainder)
-
-    test_ds = None
-    if not flags_obj.skip_eval:
-      test_ds = imagenet_main.input_fn(
-          is_training=False,
-          data_dir=flags_obj.data_dir,
-          batch_size=flags_obj.batch_size,
-          num_epochs=flags_obj.train_epochs,
-          parse_record_fn=parse_record_keras,
-          dtype=dtype,
-          drop_remainder=drop_remainder)
 
   if not flags_obj.skip_eval:
     test_ds = strategy.experimental_distribute_dataset(test_ds)
