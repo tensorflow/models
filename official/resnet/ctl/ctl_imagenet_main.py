@@ -167,7 +167,7 @@ def run(flags_obj):
   # in the dataset, as XLA-GPU doesn't support dynamic shapes.
   drop_remainder = flags_obj.enable_xla
 
-  train_input_dataset = input_fn(
+  train_ds = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
@@ -177,9 +177,9 @@ def run(flags_obj):
       dtype=dtype,
       drop_remainder=drop_remainder)
 
-  eval_input_dataset = None
+  test_ds = None
   if not flags_obj.skip_eval:
-    eval_input_dataset = input_fn(
+    test_ds = input_fn(
         is_training=False,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
@@ -187,10 +187,11 @@ def run(flags_obj):
         parse_record_fn=parse_record_keras,
         dtype=dtype,
         drop_remainder=drop_remainder)
-    test_ds = strategy.experimental_distribute_dataset(eval_input_dataset)
+    
+    test_ds = strategy.experimental_distribute_dataset(test_ds)
     steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
 
-  train_ds = strategy.experimental_distribute_dataset(train_input_dataset)
+  train_ds = strategy.experimental_distribute_dataset(train_ds)
   steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
 
@@ -198,7 +199,8 @@ def run(flags_obj):
     train_steps = min(flags_obj.train_steps, steps_per_epoch)
     train_epochs = 1
 
-  with strategy.scope():
+  strategy_scope = distribution_utils.get_strategy_scope(strategy)
+  with strategy_scope():
     logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
