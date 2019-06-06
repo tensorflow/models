@@ -24,7 +24,6 @@ import os
 import time
 
 # pylint: disable=g-bad-import-order
-import numpy as np
 from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf
@@ -32,6 +31,7 @@ import tensorflow as tf
 
 from official.bert import modeling
 from official.bert import run_classifier
+from official.bert.benchmark import benchmark_utils
 from official.utils.misc import distribution_utils
 
 # pylint: disable=line-too-long
@@ -45,95 +45,14 @@ MODEL_CONFIG_FILE_PATH = 'gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1
 FLAGS = flags.FLAGS
 
 
-class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
-  """Callback that records time it takes to run each batch."""
-
-  def __init__(self, num_batches_to_skip=10):
-    super(BenchmarkTimerCallback, self).__init__()
-    self.num_batches_to_skip = num_batches_to_skip
-    self.timer_records = []
-    self.start_time = None
-
-  def on_batch_start(self, batch, logs=None):
-    if batch < self.num_batches_to_skip:
-      return
-    self.start_time = time.time()
-
-  def on_batch_end(self, batch, logs=None):
-    if batch < self.num_batches_to_skip:
-      return
-
-    assert self.start_time
-    self.timer_records.append(time.time() - self.start_time)
-
-  def get_examples_per_sec(self, batch_size):
-    return batch_size / np.mean(self.timer_records)
-
-
-class BertBenchmarkBase(tf.test.Benchmark):
+class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
-  local_flags = None
 
   def __init__(self, output_dir=None):
-    self.num_gpus = 8
     self.num_epochs = None
     self.num_steps_per_epoch = None
 
-    if not output_dir:
-      output_dir = '/tmp'
-    self.output_dir = output_dir
-    self.timer_callback = None
-
-  def _get_model_dir(self, folder_name):
-    """Returns directory to store info, e.g. saved model and event log."""
-    return os.path.join(self.output_dir, folder_name)
-
-  def _setup(self):
-    """Sets up and resets flags before each test."""
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
-    self.timer_callback = BenchmarkTimerCallback()
-
-    if BertBenchmarkBase.local_flags is None:
-      # Loads flags to get defaults to then override. List cannot be empty.
-      flags.FLAGS(['foo'])
-      saved_flag_values = flagsaver.save_flag_values()
-      BertBenchmarkBase.local_flags = saved_flag_values
-    else:
-      flagsaver.restore_flag_values(BertBenchmarkBase.local_flags)
-
-  def _report_benchmark(self, stats, wall_time_sec, min_accuracy, max_accuracy):
-    """Report benchmark results by writing to local protobuf file.
-
-    Args:
-      stats: dict returned from BERT models with known entries.
-      wall_time_sec: the during of the benchmark execution in seconds
-      min_accuracy: Minimum classification accuracy constraint to verify
-        correctness of the model.
-      max_accuracy: Maximum classification accuracy constraint to verify
-        correctness of the model.
-    """
-    metrics = [{
-        'name': 'training_loss',
-        'value': stats['train_loss'],
-    }, {
-        'name':
-            'exp_per_second',
-        'value':
-            self.timer_callback.get_examples_per_sec(FLAGS.train_batch_size)
-    }]
-
-    if 'eval_metrics' in stats:
-      metrics.append({
-          'name': 'eval_accuracy',
-          'value': stats['eval_metrics'],
-          'min_value': min_accuracy,
-          'max_value': max_accuracy,
-      })
-
-    self.report_benchmark(
-        iters=stats['total_training_steps'],
-        wall_time=wall_time_sec,
-        metrics=metrics)
+    super(BertClassifyBenchmarkBase, self).__init__(output_dir)
 
   @flagsaver.flagsaver
   def _run_bert_classifier(self, callbacks=None):
@@ -168,7 +87,7 @@ class BertBenchmarkBase(tf.test.Benchmark):
         custom_callbacks=callbacks)
 
 
-class BertClassifyBenchmarkReal(BertBenchmarkBase):
+class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
   """Short benchmark performance tests for BERT model.
 
   Tests BERT classification performance in different GPU configurations.
@@ -272,7 +191,7 @@ class BertClassifyBenchmarkReal(BertBenchmarkBase):
     self._run_and_report_benchmark(summary_path)
 
 
-class BertClassifyAccuracy(BertBenchmarkBase):
+class BertClassifyAccuracy(BertClassifyBenchmarkBase):
   """Short accuracy test for BERT model.
 
   Tests BERT classification task model accuracy. The naming

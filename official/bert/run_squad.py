@@ -189,7 +189,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     return all_results
 
 
-def train_squad(strategy, input_meta_data):
+def train_squad(strategy, input_meta_data, custom_callbacks=None):
   """Run bert squad training."""
   if not strategy:
     raise ValueError('Distribution strategy cannot be None.')
@@ -233,7 +233,8 @@ def train_squad(strategy, input_meta_data):
       epochs=epochs,
       train_input_fn=train_input_fn,
       init_checkpoint=FLAGS.init_checkpoint,
-      use_remote_tpu=use_remote_tpu)
+      use_remote_tpu=use_remote_tpu,
+      custom_callbacks=custom_callbacks)
 
 
 def predict_squad(strategy, input_meta_data):
