@@ -175,8 +175,6 @@ def run(flags_obj):
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
 
-  strategy_scope = distribution_utils.get_strategy_scope(strategy)
-
   # When `enable_xla` is True, we always drop the remainder of the batches
   # in the dataset, as XLA-GPU doesn't support dynamic shapes.
   drop_remainder = flags_obj.enable_xla
@@ -232,8 +230,7 @@ def run(flags_obj):
     train_steps = min(flags_obj.train_steps, steps_per_epoch)
     train_epochs = 1
 
-  strategy_scope = distribution_utils.get_strategy_scope(strategy)
-  with strategy_scope():
+  with strategy.scope():
     logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
