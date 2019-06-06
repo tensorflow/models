@@ -30,10 +30,12 @@ import tensorflow as tf
 
 FLAGS = flags.FLAGS
 
+
 def define_ctl_flags():
   """Define flags for CTL."""
 
-  flags.DEFINE_boolean(name='enable_function', default=True, help='Enable tf.function')
+  flags.DEFINE_boolean(name='enable_function', default=True,
+      help='Enable tf.function')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_boolean(name='report_accuracy_metrics', default=True,
                        help='Report metrics during training and evaluation.')
@@ -42,7 +44,7 @@ def define_ctl_flags():
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
-  # This is used when we create a synth dataset. 
+  # This is used when we create a synth dataset.
   flags.DEFINE_boolean(
       name='enable_xla', default=False,
       help='Whether to enable XLA auto jit compilation. This is still an '

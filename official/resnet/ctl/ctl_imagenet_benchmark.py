@@ -91,7 +91,7 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
   def __init__(self, output_dir=None, default_flags=None):
     flag_methods = [
         ctl_common.define_ctl_flags,
-        lambda: imagenet_main.define_imagenet_flags()
+        imagenet_main.define_imagenet_flags()
     ]
 
     super(Resnet50CtlBenchmarkBase, self).__init__(

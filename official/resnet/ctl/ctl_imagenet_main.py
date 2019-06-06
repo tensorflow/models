@@ -28,9 +28,9 @@ from absl import flags
 # from absl import logging
 
 # TODO(anj-s): Identify why this import does not work
-import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
+# import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
 import tensorflow.compat.v1.logging as logging
-# import tensorflow as tf
+import tensorflow as tf
 import numpy as np
 
 from official.resnet import imagenet_main
@@ -181,7 +181,6 @@ def run(flags_obj):
 
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
-    # distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(
         height=imagenet_main.DEFAULT_IMAGE_SIZE,
         width=imagenet_main.DEFAULT_IMAGE_SIZE,
@@ -190,7 +189,6 @@ def run(flags_obj):
         dtype=dtype,
         drop_remainder=True)
   else:
-    # distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_main.input_fn
 
   train_ds = input_fn(
@@ -213,12 +211,13 @@ def run(flags_obj):
         parse_record_fn=parse_record_keras,
         dtype=dtype,
         drop_remainder=drop_remainder)
+    
+    if strategy:
+      test_ds = strategy.experimental_distribute_dataset(test_ds)
+      steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
 
-  if not flags_obj.skip_eval:
-    test_ds = strategy.experimental_distribute_dataset(test_ds)
-    steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
-
-  train_ds = strategy.experimental_distribute_dataset(train_ds)
+  if strategy:
+    train_ds = strategy.experimental_distribute_dataset(train_ds)
   steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
 
@@ -226,7 +225,8 @@ def run(flags_obj):
     train_steps = min(flags_obj.train_steps, steps_per_epoch)
     train_epochs = 1
 
-  with strategy.scope():
+  strategy_scope = distribution_utils.get_strategy_scope(strategy)
+  with strategy_scope:
     logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
@@ -261,10 +261,13 @@ def run(flags_obj):
         training_accuracy.update_state(labels, logits)
         return loss
 
-      per_replica_losses = strategy.experimental_run_v2(
-          step_fn, args=(train_ds_inputs,))
-      return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
-                             axis=None)
+      if strategy:
+        per_replica_losses = strategy.experimental_run_v2(
+            step_fn, args=(train_ds_inputs,))
+        return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
+                               axis=None)
+      else:
+        return step_fn(train_ds_inputs)
 
     def test_step(test_ds_inputs):
       """Evaluation StepFn."""
@@ -277,7 +280,10 @@ def run(flags_obj):
         test_loss.update_state(loss)
         test_accuracy.update_state(labels, logits)
 
-      strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
+      if strategy:
+        strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
+      else:
+        step_fn(test_ds_inputs)
 
     if flags_obj.enable_function:
       train_step = tf.function(train_step)
