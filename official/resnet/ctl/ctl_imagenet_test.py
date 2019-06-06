@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from official.resnet import imagenet_main
 from official.resnet.ctl import ctl_imagenet_main
+from official.resnet.ctl import ctl_common
 from official.utils.testing import integration
 # pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
