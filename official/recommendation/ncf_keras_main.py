@@ -245,6 +245,10 @@ def _get_keras_model(params):
 
 
 def run_ncf(_):
+  if FLAGS.seed is not None:
+    print("Setting tf seed")
+    tf.random.set_seed(FLAGS.seed)
+  
   """Run NCF training and eval with Keras."""
   # TODO(seemuch): Support different train and eval batch sizes
   if FLAGS.eval_batch_size != FLAGS.batch_size:
