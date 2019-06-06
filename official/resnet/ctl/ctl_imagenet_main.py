@@ -178,55 +178,55 @@ def run(flags_obj):
   # When `enable_xla` is True, we always drop the remainder of the batches
   # in the dataset, as XLA-GPU doesn't support dynamic shapes.
   drop_remainder = flags_obj.enable_xla
-  with strategy.scope():
-  # pylint: disable=protected-access
-    if flags_obj.use_synthetic_data:
-      # distribution_utils.set_up_synthetic_data()
-      input_fn = keras_common.get_synth_input_fn(
-          height=imagenet_main.DEFAULT_IMAGE_SIZE,
-          width=imagenet_main.DEFAULT_IMAGE_SIZE,
-          num_channels=imagenet_main.NUM_CHANNELS,
-          num_classes=imagenet_main.NUM_CLASSES,
-          dtype=dtype,
-          drop_remainder=True)
-    else:
-      # distribution_utils.undo_set_up_synthetic_data()
-      input_fn = imagenet_main.input_fn
 
-    train_ds = input_fn(
-        is_training=True,
+  # pylint: disable=protected-access
+  if flags_obj.use_synthetic_data:
+    # distribution_utils.set_up_synthetic_data()
+    input_fn = keras_common.get_synth_input_fn(
+        height=imagenet_main.DEFAULT_IMAGE_SIZE,
+        width=imagenet_main.DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_main.NUM_CHANNELS,
+        num_classes=imagenet_main.NUM_CLASSES,
+        dtype=dtype,
+        drop_remainder=True)
+  else:
+    # distribution_utils.undo_set_up_synthetic_data()
+    input_fn = imagenet_main.input_fn
+
+  train_ds = input_fn(
+      is_training=True,
+      data_dir=flags_obj.data_dir,
+      batch_size=flags_obj.batch_size,
+      num_epochs=flags_obj.train_epochs,
+      parse_record_fn=parse_record_keras,
+      datasets_num_private_threads=flags_obj.datasets_num_private_threads,
+      dtype=dtype,
+      drop_remainder=drop_remainder)
+
+  test_ds = None
+  if not flags_obj.skip_eval:
+    test_ds = input_fn(
+        is_training=False,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
         parse_record_fn=parse_record_keras,
-        datasets_num_private_threads=flags_obj.datasets_num_private_threads,
         dtype=dtype,
         drop_remainder=drop_remainder)
 
-    test_ds = None
-    if not flags_obj.skip_eval:
-      test_ds = input_fn(
-          is_training=False,
-          data_dir=flags_obj.data_dir,
-          batch_size=flags_obj.batch_size,
-          num_epochs=flags_obj.train_epochs,
-          parse_record_fn=parse_record_keras,
-          dtype=dtype,
-          drop_remainder=drop_remainder)
+  if not flags_obj.skip_eval:
+    test_ds = strategy.experimental_distribute_dataset(test_ds)
+    steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
 
-    if not flags_obj.skip_eval:
-      test_ds = strategy.experimental_distribute_dataset(test_ds)
-      steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
+  train_ds = strategy.experimental_distribute_dataset(train_ds)
+  steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
+  train_epochs = flags_obj.train_epochs
 
-    train_ds = strategy.experimental_distribute_dataset(train_ds)
-    steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
-    train_epochs = flags_obj.train_epochs
+  if flags_obj.train_steps:
+    train_steps = min(flags_obj.train_steps, steps_per_epoch)
+    train_epochs = 1
 
-    if flags_obj.train_steps:
-      train_steps = min(flags_obj.train_steps, steps_per_epoch)
-      train_epochs = 1
-
-  
+  with strategy.scope():
     logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
