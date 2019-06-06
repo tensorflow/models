@@ -216,7 +216,7 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     FLAGS.train_steps = 100000
     FLAGS.static_batch = True
     FLAGS.max_length = 64
-    FLAGS.steps_between_evals = 5000
+    FLAGS.steps_between_evals = 10000
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch')
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps,
@@ -282,7 +282,7 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
     FLAGS.static_batch = True
     FLAGS.max_length = 64
     FLAGS.train_steps = 100000
-    FLAGS.steps_between_evals = 5000
+    FLAGS.steps_between_evals = 10000
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch')
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps,
