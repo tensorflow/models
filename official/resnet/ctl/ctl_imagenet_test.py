@@ -36,7 +36,8 @@ class CtlImagenetTest(googletest.TestCase):
   _extra_flags = [
       '-batch_size', '4',
       '-train_steps', '1',
-      '-use_synthetic_data', 'true'
+      '-use_synthetic_data', 'true',
+      'enable_eager', 'true'
   ]
   _tempdir = None
 
@@ -61,6 +62,7 @@ class CtlImagenetTest(googletest.TestCase):
 
   def test_end_to_end_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
+    tf.enable_v2_behavior()
     extra_flags = [
         "-distribution_strategy", "off",
         "-model_dir", "ctl_imagenet_no_dist_strat",
@@ -80,7 +82,7 @@ class CtlImagenetTest(googletest.TestCase):
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
           format(1, context.num_gpus()))
-
+    tf.enable_v2_behavior()
     extra_flags = [
         "-num_gpus", "1",
         "-distribution_strategy", "default",
@@ -101,7 +103,7 @@ class CtlImagenetTest(googletest.TestCase):
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
           format(2, context.num_gpus()))
-
+    tf.enable_v2_behavior()
     extra_flags = [
         "-num_gpus", "2",
         "-distribution_strategy", "default",
