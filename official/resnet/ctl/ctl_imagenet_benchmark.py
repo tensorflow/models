@@ -138,39 +138,6 @@ class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_no_dist_strat_no_func(self):
-    """Test Keras model with 1 GPU, no distribution strategy."""
-    self._setup()
-
-    FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'off'
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
-    FLAGS.batch_size = 128
-    FLAGS.enable_function = False
-    self._run_and_report_benchmark()
-
-  def benchmark_1_gpu_no_func(self):
-    """Test Keras model with 1 GPU."""
-    self._setup()
-
-    FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'default'
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
-    FLAGS.batch_size = 128
-    FLAGS.enable_function = False
-    self._run_and_report_benchmark()
-
-  def benchmark_8_gpu_no_func(self):
-    """Test Keras model with 8 GPUs."""
-    self._setup()
-
-    FLAGS.num_gpus = 8
-    FLAGS.distribution_strategy = 'default'
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
-    FLAGS.batch_size = 128 * 8  # 8 GPUs
-    FLAGS.enable_function = False
-    self._run_and_report_benchmark()
-
   def fill_report_object(self, stats):
     super(Resnet50CtlBenchmarkBase, self).fill_report_object(
         stats)
