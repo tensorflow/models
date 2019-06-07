@@ -287,8 +287,8 @@ def run_customized_training_loop(
       if eval_metric_result:
         training_summary['eval_metrics'] = eval_metric_result
 
-        summary_path = os.path.join(model_dir, SUMMARY_TXT)
-        with tf.io.gfile.GFile(summary_path, 'wb') as f:
-          f.write(json.dumps(training_summary, indent=4))
+      summary_path = os.path.join(model_dir, SUMMARY_TXT)
+      with tf.io.gfile.GFile(summary_path, 'wb') as f:
+        f.write(json.dumps(training_summary, indent=4))
 
       return model
