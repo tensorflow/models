@@ -88,6 +88,7 @@ def _get_train_and_eval_data(producer, params):
     fake_dup_mask = tf.zeros_like(features[movielens.USER_COLUMN])
     features[rconst.DUPLICATE_MASK] = fake_dup_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
+    #return (features,)
     return features, labels
 
   train_input_fn = producer.make_input_fn(is_training=True)
@@ -110,6 +111,7 @@ def _get_train_and_eval_data(producer, params):
         tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
     features[rconst.VALID_POINT_MASK] = fake_valit_pt_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
+    #return (features,)
     return features, labels
 
   eval_input_fn = producer.make_input_fn(is_training=False)
@@ -233,8 +235,8 @@ def _get_keras_model(params):
       from_logits=True,
       reduction="sum")
 
-  loss_scale_factor = (batch_size *
-                       tf.distribute.get_strategy().num_replicas_in_sync)
+  loss_scale_factor = (batch_size) #*
+                       #tf.distribute.get_strategy().num_replicas_in_sync)
   keras_model.add_loss(loss_obj(
       y_true=label_input,
       y_pred=softmax_logits,
@@ -297,7 +299,9 @@ def run_ncf(_):
         "val_metric_fn", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
-  strategy = ncf_common.get_distribution_strategy(params)
+  strategy = distribution_utils.get_distribution_strategy(
+      distribution_strategy=FLAGS.distribution_strategy,
+      num_gpus=FLAGS.num_gpus)
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
     optimizer = tf.keras.optimizers.Adam(
