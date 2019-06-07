@@ -130,8 +130,7 @@ def run(flags_obj):
       num_epochs=flags_obj.train_epochs,
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-      dtype=dtype,
-      drop_remainder=drop_remainder)
+      dtype=dtype)
 
   test_ds = None
   if not flags_obj.skip_eval:
@@ -141,8 +140,7 @@ def run(flags_obj):
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
         parse_record_fn=parse_record_keras,
-        dtype=dtype,
-        drop_remainder=drop_remainder)
+        dtype=dtype)
 
     if strategy:
       test_ds = strategy.experimental_distribute_dataset(test_ds)
