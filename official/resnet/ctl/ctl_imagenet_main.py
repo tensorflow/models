@@ -27,8 +27,6 @@ from absl import app as absl_app
 from absl import flags
 # from absl import logging
 
-# TODO(anj-s): Identify why this import does not work
-# import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
 import tensorflow.compat.v1.logging as logging
 import tensorflow as tf
 import numpy as np
@@ -36,7 +34,6 @@ import numpy as np
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_model
-from official.resnet.keras import trivial_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -51,42 +48,6 @@ IMAGENET_VALIDATION_IMAGES = 50000  # Number of images.
 DEFAULT_IMAGE_SIZE = 224
 NUM_CHANNELS = 3
 NUM_CLASSES = 1001
-
-LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
-]
-
-
-def learning_rate_schedule(current_epoch,
-                           current_batch,
-                           batches_per_epoch,
-                           batch_size):
-  """Handles linear scaling rule, gradual warmup, and LR decay.
-
-  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
-  provided scaling factor.
-
-  Args:
-    current_epoch: integer, current epoch indexed from 0.
-    current_batch: integer, current batch in the current epoch, indexed from 0.
-    batches_per_epoch: integer, number of steps in an epoch.
-    batch_size: integer, total batch sized.
-
-  Returns:
-    Adjusted learning rate.
-  """
-  initial_lr = keras_common.BASE_LEARNING_RATE * batch_size / 256
-  epoch = current_epoch + float(current_batch) / batches_per_epoch
-  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
-  if epoch < warmup_end_epoch:
-    # Learning rate increases linearly per step.
-    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
-  for mult, start_epoch in LR_SCHEDULE:
-    if epoch >= start_epoch:
-      learning_rate = initial_lr * mult
-    else:
-      break
-  return learning_rate
 
 
 def parse_record_keras(raw_record, is_training, dtype):
@@ -106,8 +67,6 @@ _LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
 _BASE_LEARNING_RATE = 0.4
 
 
-# TODO(anj-s): This is different than the learning rate schedule
-# used in Keras+DS.
 def compute_learning_rate(lr_epoch):
   """Learning rate for each step."""
   warmup_lr_multiplier, warmup_end_epoch = _LR_SCHEDULE[0]
@@ -121,30 +80,6 @@ def compute_learning_rate(lr_epoch):
     else:
       break
   return learning_rate
-
-
-def synthetic_input_fn(batch_size, height, width, num_channels, num_classes,
-                       dtype=tf.float32):
-  """Returns dataset filled with random data."""
-  # Synthetic input should be within [0, 255].
-  inputs = tf.random.truncated_normal(
-      [batch_size] + [height, width, num_channels],
-      dtype=dtype,
-      mean=127,
-      stddev=60,
-      name='synthetic_inputs')
-
-  labels = tf.random.uniform(
-      [batch_size],
-      minval=0,
-      maxval=num_classes - 1,
-      dtype=tf.int32,
-      name='synthetic_labels')
-
-  dataset = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
-  dataset = dataset.batch(batch_size)
-  dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-  return dataset
 
 
 def run(flags_obj):
@@ -175,9 +110,6 @@ def run(flags_obj):
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
 
-  # When `enable_xla` is True, we always drop the remainder of the batches
-  # in the dataset, as XLA-GPU doesn't support dynamic shapes.
-  drop_remainder = flags_obj.enable_xla
 
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
@@ -211,7 +143,7 @@ def run(flags_obj):
         parse_record_fn=parse_record_keras,
         dtype=dtype,
         drop_remainder=drop_remainder)
-    
+
     if strategy:
       test_ds = strategy.experimental_distribute_dataset(test_ds)
       steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
