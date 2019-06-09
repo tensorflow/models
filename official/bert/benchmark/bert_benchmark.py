@@ -103,10 +103,11 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     # Since we only care about performance metrics, we limit
     # the number of training steps and epochs to prevent unnecessarily
     # long tests.
-    self.num_steps_per_epoch = 110
-    self.num_epochs = 1
 
     super(BertClassifyBenchmarkReal, self).__init__(output_dir=output_dir)
+
+    self.num_steps_per_epoch = 110
+    self.num_epochs = 1
 
   def _run_and_report_benchmark(self,
                                 training_summary_path,
