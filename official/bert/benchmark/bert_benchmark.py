@@ -100,12 +100,12 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     self.eval_data_path = CLASSIFIER_EVAL_DATA_PATH
     self.bert_config_file = MODEL_CONFIG_FILE_PATH
     self.input_meta_data_path = CLASSIFIER_INPUT_META_DATA_PATH
-    # Since we only care about performance metrics, we limit
-    # the number of training steps and epochs to prevent unnecessarily
-    # long tests.
 
     super(BertClassifyBenchmarkReal, self).__init__(output_dir=output_dir)
 
+    # Since we only care about performance metrics, we limit
+    # the number of training steps and epochs to prevent unnecessarily
+    # long tests.
     self.num_steps_per_epoch = 110
     self.num_epochs = 1
 
