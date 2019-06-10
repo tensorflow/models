@@ -428,7 +428,7 @@ def class_agnostic_non_max_suppression(boxes,
         tf.where(valid_nms_boxes_indx, nms_scores,
                  -1 * tf.ones(max_selection_size)))
     selected_classes = tf.gather(classes_with_max_scores, selected_indices)
-    nms_result.add_field(fields.BoxListFields.classes, selected_classes)
+    nms_result.add_field(fields.BoxListFields.classes, tf.cast(selected_classes, tf.float32))
     selected_boxes = nms_result
     sorted_boxes = box_list_ops.sort_by_field(selected_boxes,
                                               fields.BoxListFields.scores)
