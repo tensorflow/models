@@ -39,6 +39,7 @@ from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 from official.resnet.ctl import ctl_common
+from official.utils.misc import keras_utils
 
 
 def parse_record_keras(raw_record, is_training, dtype):
@@ -127,7 +128,7 @@ def run(flags_obj):
   train_ds = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
-      batch_size=flags_obj.batch_size
+      batch_size=flags_obj.batch_size,
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype)
@@ -159,11 +160,11 @@ def run(flags_obj):
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
   with strategy_scope:
     logging.info('Building Keras ResNet-50 model')
-    model = resnet_model.resnet50(num_classes=keras_common.NUM_CLASSES,
+    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
 
     optimizer = tf.keras.optimizers.SGD(
-        learning_rate=_BASE_LEARNING_RATE, momentum=0.9, nesterov=True)
+        learning_rate=keras_common.BASE_LEARNING_RATE, momentum=0.9, nesterov=True)
 
     training_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'training_accuracy', dtype=tf.float32)

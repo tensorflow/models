@@ -39,6 +39,42 @@ BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 TRAIN_TOP_1 = 'training_accuracy_top_1'
 
 
+LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
+    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
+]
+
+
+def learning_rate_schedule(current_epoch,
+                           current_batch,
+                           batches_per_epoch,
+                           batch_size):
+  """Handles linear scaling rule, gradual warmup, and LR decay.
+
+  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
+  provided scaling factor.
+
+  Args:
+    current_epoch: integer, current epoch indexed from 0.
+    current_batch: integer, current batch in the current epoch, indexed from 0.
+    batches_per_epoch: integer, number of steps in an epoch.
+    batch_size: integer, total batch sized.
+
+  Returns:
+    Adjusted learning rate.
+  """
+  initial_lr = keras_common.BASE_LEARNING_RATE * batch_size / 256
+  epoch = current_epoch + float(current_batch) / batches_per_epoch
+  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
+  if epoch < warmup_end_epoch:
+    # Learning rate increases linearly per step.
+    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
+  for mult, start_epoch in LR_SCHEDULE:
+    if epoch >= start_epoch:
+      learning_rate = initial_lr * mult
+    else:
+      break
+  return learning_rate
+
 class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
   """Callback to update learning rate on every batch (not epoch boundaries).
 

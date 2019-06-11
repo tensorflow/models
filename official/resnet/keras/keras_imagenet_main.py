@@ -32,43 +32,6 @@ from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
 
-LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
-]
-
-
-def learning_rate_schedule(current_epoch,
-                           current_batch,
-                           batches_per_epoch,
-                           batch_size):
-  """Handles linear scaling rule, gradual warmup, and LR decay.
-
-  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
-  provided scaling factor.
-
-  Args:
-    current_epoch: integer, current epoch indexed from 0.
-    current_batch: integer, current batch in the current epoch, indexed from 0.
-    batches_per_epoch: integer, number of steps in an epoch.
-    batch_size: integer, total batch sized.
-
-  Returns:
-    Adjusted learning rate.
-  """
-  initial_lr = keras_common.BASE_LEARNING_RATE * batch_size / 256
-  epoch = current_epoch + float(current_batch) / batches_per_epoch
-  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
-  if epoch < warmup_end_epoch:
-    # Learning rate increases linearly per step.
-    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
-  for mult, start_epoch in LR_SCHEDULE:
-    if epoch >= start_epoch:
-      learning_rate = initial_lr * mult
-    else:
-      break
-  return learning_rate
-
-
 def parse_record_keras(raw_record, is_training, dtype):
   """Adjust the shape of label."""
   image, label = imagenet_main.parse_record(raw_record, is_training, dtype)
@@ -175,13 +138,13 @@ def run(flags_obj):
     lr_schedule = keras_common.PiecewiseConstantDecayWithWarmup(
         batch_size=flags_obj.batch_size,
         epoch_size=imagenet_main.NUM_IMAGES['train'],
-        warmup_epochs=LR_SCHEDULE[0][1],
-        boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
-        multipliers=list(p[0] for p in LR_SCHEDULE),
+        warmup_epochs=keras_common.LR_SCHEDULE[0][1],
+        boundaries=list(p[1] for p in keras_common.LR_SCHEDULE[1:]),
+        multipliers=list(p[0] for p in keras_common.LR_SCHEDULE),
         compute_lr_on_cpu=True)
 
   with strategy_scope:
-    optimizer = keras_common.get_optimizer(lr_schedule)
+    optimizer = keras_common.get_optimizer(keras_common.lr_schedule)
     if dtype == 'float16':
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
@@ -215,7 +178,7 @@ def run(flags_obj):
                   cloning=flags_obj.clone_model_in_keras_dist_strat)
 
   callbacks = keras_common.get_callbacks(
-      learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])
+      keras_common.learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])
 
   train_steps = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
