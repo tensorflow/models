@@ -34,7 +34,7 @@ FLAGS = flags.FLAGS
 def define_ctl_flags():
   """Define flags for CTL."""
 
-  flags.DEFINE_boolean(name='enable_function', default=True,
+  flags.DEFINE_boolean(name='use_tf_function', default=True,
       help='Enable tf.function')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_integer(
@@ -42,7 +42,3 @@ def define_ctl_flags():
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
-
-def is_v2_0():
-  """Returns true if using tf 2.0."""
-  return tf.__version__.startswith('2')
