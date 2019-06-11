@@ -89,7 +89,7 @@ def run_customized_training_loop(
       use_remote_tpu: If true, input pipeline ops are placed in TPU worker host
         as an optimization.
       custom_callbacks: A list of Keras Callbacks objects to run during
-        training. More specifically, `on_batch_start()`, `on_batch_end()`,
+        training. More specifically, `on_batch_begin()`, `on_batch_end()`,
         methods are invoked during training.
 
   Returns:
@@ -203,12 +203,12 @@ def run_customized_training_loop(
                      metric_result)
         return metric_result
 
-      def _run_callbacks_on_batch_start(batch):
+      def _run_callbacks_on_batch_begin(batch):
         """Runs custom callbacks at the start of every step."""
         if not custom_callbacks:
           return
         for callback in custom_callbacks:
-          callback.on_batch_start(batch)
+          callback.on_batch_begin(batch)
 
       def _run_callbacks_on_batch_end(batch):
         """Runs custom callbacks at the end of every step."""
@@ -235,7 +235,7 @@ def run_customized_training_loop(
       train_loss = None
       while current_step < total_training_steps:
         current_step += 1
-        _run_callbacks_on_batch_start(current_step)
+        _run_callbacks_on_batch_begin(current_step)
         train_loss = train_step(train_iterator).numpy().astype(float)
 
         if train_metric:

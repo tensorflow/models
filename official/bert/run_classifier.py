@@ -204,7 +204,7 @@ def run_bert(strategy, input_meta_data):
   logging.info('Training using customized training loop TF 2.0 with distrubuted'
                'strategy.')
   use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
-  trained_model = run_customized_training(
+  run_customized_training(
       strategy,
       bert_config,
       input_meta_data,
@@ -216,10 +216,6 @@ def run_bert(strategy, input_meta_data):
       FLAGS.learning_rate,
       FLAGS.init_checkpoint,
       use_remote_tpu=use_remote_tpu)
-
-  if FLAGS.model_export_path:
-    model_saving_utils.export_bert_model(
-        FLAGS.model_export_path, model=trained_model)
 
 
 def main(_):
