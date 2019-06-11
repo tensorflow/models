@@ -68,16 +68,37 @@ FLAGS = flags.FLAGS
 
 
 def get_pretrain_input_data(input_file_pattern, seq_length,
-                            max_predictions_per_seq, batch_size):
+                            max_predictions_per_seq, batch_size, strategy):
   """Returns input dataset from input file string."""
 
-  input_files = []
-  for input_pattern in input_file_pattern.split(','):
-    input_files.extend(tf.io.gfile.glob(input_pattern))
+  # When using TPU pods, we need to clone dataset across
+  # workers and need to pass in function that returns the dataset rather
+  # than passing dataset instance itself.
+  use_dataset_fn = isinstance(strategy, tf.distribute.experimental.TPUStrategy)
+  if use_dataset_fn:
+    if batch_size % strategy.num_replicas_in_sync != 0:
+      raise ValueError(
+          'Batch size must be divisible by number of replicas : {}'.format(
+              strategy.num_replicas_in_sync))
 
-  train_dataset = input_pipeline.create_pretrain_dataset(
-      input_files, seq_length, max_predictions_per_seq, batch_size)
-  return train_dataset
+    # As auto rebatching is not supported in
+    # `experimental_distribute_datasets_from_function()` API, which is
+    # required when cloning dataset to multiple workers in eager mode,
+    # we use per-replica batch size.
+    batch_size = int(batch_size / strategy.num_replicas_in_sync)
+
+  def _dataset_fn(ctx=None):
+    del ctx
+
+    input_files = []
+    for input_pattern in input_file_pattern.split(','):
+      input_files.extend(tf.io.gfile.glob(input_pattern))
+
+    train_dataset = input_pipeline.create_pretrain_dataset(
+        input_files, seq_length, max_predictions_per_seq, batch_size)
+    return train_dataset
+
+  return _dataset_fn if use_dataset_fn else _dataset_fn()
 
 
 def get_loss_fn(loss_scale=1.0):
@@ -105,7 +126,7 @@ def run_customized_training(strategy,
 
   train_input_fn = functools.partial(get_pretrain_input_data, input_files,
                                      max_seq_length, max_predictions_per_seq,
-                                     train_batch_size)
+                                     train_batch_size, strategy)
 
   def _get_pretrain_model():
     pretrain_model, core_model = bert_models.pretrain_model(
