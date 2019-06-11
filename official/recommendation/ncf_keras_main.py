@@ -309,7 +309,7 @@ def run_ncf(_):
         epsilon=params["epsilon"])
 
   if params["keras_use_ctl"]:
-    loss_object = tf.losses.SparseCategoricalCrossentropy(
+    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
         reduction=tf.keras.losses.Reduction.SUM,
         from_logits=True)
     train_input_iterator = strategy.make_dataset_iterator(train_input_dataset)
