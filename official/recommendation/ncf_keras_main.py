@@ -235,12 +235,10 @@ def _get_keras_model(params):
       from_logits=True,
       reduction="sum")
 
-  loss_scale_factor = (batch_size) #*
-                       #tf.distribute.get_strategy().num_replicas_in_sync)
   keras_model.add_loss(loss_obj(
       y_true=label_input,
       y_pred=softmax_logits,
-      sample_weight=valid_pt_mask_input) * 1.0 / loss_scale_factor)
+      sample_weight=valid_pt_mask_input) * 1.0 / batch_size)
 
   keras_model.summary()
   return keras_model
