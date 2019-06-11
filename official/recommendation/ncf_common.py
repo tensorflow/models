@@ -324,3 +324,8 @@ def convert_to_softmax_logits(logits):
   '''
   softmax_logits = tf.concat([logits * 0, logits], axis=1)
   return softmax_logits
+
+def is_tf_v2():
+  """Returns whether it is v2."""
+  from tensorflow.python import tf2 as tf2_internal
+  return tf2_internal.enabled()
