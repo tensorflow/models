@@ -40,7 +40,7 @@ class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
     self.timer_records = []
     self.start_time = None
 
-  def on_batch_start(self, batch, logs=None):
+  def on_batch_begin(self, batch, logs=None):
     if batch < self.num_batches_to_skip:
       return
     self.start_time = time.time()
