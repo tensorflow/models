@@ -22,7 +22,6 @@ from absl import flags
 import tensorflow as tf # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
-from official.resnet.ctl import ctl_benchmark
 from official.resnet.ctl import ctl_imagenet_main
 from official.resnet.ctl import ctl_common
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark

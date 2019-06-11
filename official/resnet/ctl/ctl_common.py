@@ -35,7 +35,8 @@ def define_ctl_flags():
   """Define flags for CTL."""
 
   flags.DEFINE_boolean(name='use_tf_function', default=True,
-      help='Enable tf.function')
+                       help='Wrap the train and test step inside a '
+                       'tf.function.')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_integer(
       name='train_steps', default=None,
