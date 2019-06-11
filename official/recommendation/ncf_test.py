@@ -220,7 +220,7 @@ class NcfTest(tf.test.TestCase):
              ['-keras_use_ctl', 'True'])
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '0'])
+        extra_flags=flags)
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras_1_gpu_dist_strat(self):
