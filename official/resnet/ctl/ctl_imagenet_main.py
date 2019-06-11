@@ -25,9 +25,9 @@ import time
 
 from absl import app as absl_app
 from absl import flags
-# from absl import logging
+from absl import logging
 
-import tensorflow.compat.v1.logging as logging
+# import tensorflow.compat.v1.logging as logging
 import tensorflow as tf
 import numpy as np
 
@@ -41,15 +41,6 @@ from official.utils.misc import model_helpers
 from official.resnet.ctl import ctl_common
 
 
-# Imagenet training and test data sets.
-APPROX_IMAGENET_TRAINING_IMAGES = 1280000  # Approximate number of images.
-IMAGENET_VALIDATION_IMAGES = 50000  # Number of images.
-
-DEFAULT_IMAGE_SIZE = 224
-NUM_CHANNELS = 3
-NUM_CLASSES = 1001
-
-
 def parse_record_keras(raw_record, is_training, dtype):
   """Adjust the shape of label."""
   image, label = imagenet_main.parse_record(raw_record, is_training, dtype)
@@ -59,27 +50,6 @@ def parse_record_keras(raw_record, is_training, dtype):
   label = tf.cast(tf.cast(tf.reshape(label, shape=[1]), dtype=tf.int32) - 1,
                   dtype=tf.float32)
   return image, label
-
-# Learning rate schedule
-_LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
-]
-_BASE_LEARNING_RATE = 0.4
-
-
-def compute_learning_rate(lr_epoch):
-  """Learning rate for each step."""
-  warmup_lr_multiplier, warmup_end_epoch = _LR_SCHEDULE[0]
-  if lr_epoch < warmup_end_epoch:
-    # Learning rate increases linearly per step.
-    return (_BASE_LEARNING_RATE * warmup_lr_multiplier *
-            lr_epoch / warmup_end_epoch)
-  for mult, start_epoch in _LR_SCHEDULE:
-    if lr_epoch >= start_epoch:
-      learning_rate = _BASE_LEARNING_RATE * mult
-    else:
-      break
-  return learning_rate
 
 
 def run(flags_obj):
@@ -126,8 +96,7 @@ def run(flags_obj):
   train_ds = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
-      batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
+      batch_size=flags_obj.batch_size
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype)
@@ -138,17 +107,16 @@ def run(flags_obj):
         is_training=False,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
-        num_epochs=flags_obj.train_epochs,
         parse_record_fn=parse_record_keras,
         dtype=dtype)
 
     if strategy:
       test_ds = strategy.experimental_distribute_dataset(test_ds)
-      steps_per_eval = IMAGENET_VALIDATION_IMAGES // flags_obj.batch_size
+      steps_per_eval = imagenet_main.NUM_IMAGES['validation'] // flags_obj.batch_size
 
   if strategy:
     train_ds = strategy.experimental_distribute_dataset(train_ds)
-  steps_per_epoch = APPROX_IMAGENET_TRAINING_IMAGES // flags_obj.batch_size
+  steps_per_epoch = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
 
   if flags_obj.train_steps:
@@ -158,7 +126,7 @@ def run(flags_obj):
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
   with strategy_scope:
     logging.info('Building Keras ResNet-50 model')
-    model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
+    model = resnet_model.resnet50(num_classes=keras_common.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
 
     optimizer = tf.keras.optimizers.SGD(
@@ -230,8 +198,11 @@ def run(flags_obj):
       batch_exp_per_sec = []
       for step in range(train_steps):
         start_time = time.time()
-        learning_rate = compute_learning_rate(
-            epoch + 1 + (float(step) / steps_per_epoch))
+        learning_rate = keras_common.learning_rate_schedule(
+                           epoch,
+                           step,
+                           train_steps,
+                           flags_obj.batch_size)
         optimizer.lr = learning_rate
         start_time = time.time()
         total_loss += train_step(next(train_iterator))

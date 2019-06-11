@@ -25,12 +25,58 @@ from official.resnet import imagenet_main
 from official.resnet.ctl import ctl_benchmark
 from official.resnet.ctl import ctl_imagenet_main
 from official.resnet.ctl import ctl_common
+from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77
 
 FLAGS = flags.FLAGS
+
+
+class CtlBenchmark(PerfZeroBenchmark):
+  """Base benchmark class with methods to simplify testing."""
+
+  def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
+    self.output_dir = output_dir
+    self.default_flags = default_flags or {}
+    self.flag_methods = flag_methods or {}
+    super(CtlBenchmark, self).__init__(
+        output_dir=self.output_dir,
+        default_flags=self.default_flags,
+        flag_methods=self.flag_methods)
+
+    
+
+  def _report_benchmark(self,
+                        stats,
+                        wall_time_sec,
+                        top_1_max=None,
+                        top_1_min=None):
+    """Report benchmark results by writing to local protobuf file.
+
+    Args:
+      stats: dict returned from keras models with known entries.
+      wall_time_sec: the during of the benchmark execution in seconds
+      top_1_max: highest passing level for top_1 accuracy.
+      top_1_min: lowest passing level for top_1 accuracy.
+    """
+
+    metrics = []
+    if 'accuracy_top_1' in stats:
+      metrics.append({'name': 'accuracy_top_1',
+                      'value': stats['accuracy_top_1'],
+                      'min_value': top_1_min,
+                      'max_value': top_1_max})
+      metrics.append({'name': 'top_1_train_accuracy',
+                      'value': stats['train_acc']})
+
+    if 'exp_per_second' in stats:
+      metrics.append({'name': 'exp_per_second',
+                      'value': stats['exp_per_second']})
+
+    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
+
 
 
 class Resnet50CtlAccuracy(ctl_benchmark.CtlBenchmark):
@@ -149,7 +195,6 @@ class Resnet50CtlBenchmarkSynth(Resnet50CtlBenchmarkBase):
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
-    def_flags['report_accuracy_metrics'] = False
     def_flags['use_synthetic_data'] = True
     def_flags['train_steps'] = 110
 
@@ -163,7 +208,6 @@ class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
-    def_flags['report_accuracy_metrics'] = False
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 110
 
