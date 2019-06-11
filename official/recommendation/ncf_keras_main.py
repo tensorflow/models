@@ -294,7 +294,7 @@ def run_ncf(_):
 
   if FLAGS.early_stopping:
     early_stopping_callback = CustomEarlyStopping(
-        "val_metric_fn", desired_value=FLAGS.hr_threshold)
+        "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
   strategy = distribution_utils.get_distribution_strategy(
