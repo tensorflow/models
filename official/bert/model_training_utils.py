@@ -43,6 +43,21 @@ def _save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
   return
 
 
+def _get_input_iterator(input_fn, strategy):
+  """Returns distributed dataset iterator."""
+
+  # When training with TPU pods, datasets needs to be cloned across
+  # workers. Since Dataset instance cannot be cloned in eager mode, we instead
+  # pass callable that returns a dataset.
+  input_data = input_fn()
+  if callable(input_data):
+    iterator = iter(
+        strategy.experimental_distribute_datasets_from_function(input_data))
+  else:
+    iterator = iter(strategy.experimental_distribute_dataset(input_data))
+  return iterator
+
+
 def run_customized_training_loop(
     # pylint: disable=invalid-name
     _sentinel=None,
@@ -125,8 +140,8 @@ def run_customized_training_loop(
   # To reduce unnecessary send/receive input pipeline operation, we place input
   # pipeline ops in worker task.
   with tf.device(get_primary_cpu_task(use_remote_tpu)):
-    train_iterator = iter(
-        strategy.experimental_distribute_dataset(train_input_fn()))
+    train_iterator = _get_input_iterator(train_input_fn, strategy)
+
     with strategy.scope():
       total_training_steps = steps_per_epoch * epochs
 
@@ -192,9 +207,8 @@ def run_customized_training_loop(
 
         strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
-      def _run_evaluation(current_training_step, test_dataset):
+      def _run_evaluation(current_training_step, test_iterator):
         """Runs validation steps and aggregate metrics."""
-        test_iterator = iter(test_dataset)
         for _ in range(eval_steps):
           test_step(test_iterator)
 
@@ -260,9 +274,8 @@ def run_customized_training_loop(
 
           if eval_input_fn:
             logging.info('Running evaluation after step: %s.', current_step)
-            _run_evaluation(
-                current_step,
-                strategy.experimental_distribute_dataset(eval_input_fn()))
+            _run_evaluation(current_step,
+                            _get_input_iterator(eval_input_fn, strategy))
 
           # Re-initialize evaluation metric, except the last step.
           if metric and current_step < total_training_steps:
@@ -275,8 +288,7 @@ def run_customized_training_loop(
       if eval_input_fn:
         logging.info('Running final evaluation after training is complete.')
         eval_metric_result = _run_evaluation(
-            current_step,
-            strategy.experimental_distribute_dataset(eval_input_fn()))
+            current_step, _get_input_iterator(eval_input_fn, strategy))
 
       training_summary = {
           'total_training_steps': total_training_steps,

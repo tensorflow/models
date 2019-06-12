@@ -204,7 +204,7 @@ def run_bert(strategy, input_meta_data):
   logging.info('Training using customized training loop TF 2.0 with distrubuted'
                'strategy.')
   use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
-  run_customized_training(
+  return run_customized_training(
       strategy,
       bert_config,
       input_meta_data,
