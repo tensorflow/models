@@ -18,7 +18,6 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.framework import test_util
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.protos import input_reader_pb2
@@ -257,7 +256,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(expected_boxes,
                         tensor_dict[fields.InputDataFields.groundtruth_boxes])
 
-  @test_util.enable_c_shapes
   def testDecodeKeypoint(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
@@ -346,7 +344,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllClose(tensor_dict[fields.InputDataFields.groundtruth_weights],
                         np.ones(2, dtype=np.float32))
 
-  @test_util.enable_c_shapes
   def testDecodeObjectLabel(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
@@ -669,7 +666,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual([3, 1],
                         tensor_dict[fields.InputDataFields.groundtruth_classes])
 
-  @test_util.enable_c_shapes
   def testDecodeObjectArea(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
@@ -696,7 +692,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(object_area,
                         tensor_dict[fields.InputDataFields.groundtruth_area])
 
-  @test_util.enable_c_shapes
   def testDecodeObjectIsCrowd(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
@@ -725,7 +720,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
         [bool(item) for item in object_is_crowd],
         tensor_dict[fields.InputDataFields.groundtruth_is_crowd])
 
-  @test_util.enable_c_shapes
   def testDecodeObjectDifficult(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
@@ -754,7 +748,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
         [bool(item) for item in object_difficult],
         tensor_dict[fields.InputDataFields.groundtruth_difficult])
 
-  @test_util.enable_c_shapes
   def testDecodeObjectGroupOf(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
@@ -809,7 +802,6 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(object_weights,
                         tensor_dict[fields.InputDataFields.groundtruth_weights])
 
-  @test_util.enable_c_shapes
   def testDecodeInstanceSegmentation(self):
     num_instances = 4
     image_height = 5

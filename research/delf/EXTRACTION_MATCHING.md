@@ -1,5 +1,11 @@
 ## Quick start: DELF extraction and matching
 
+### Install DELF library
+
+To be able to use this code, please follow
+[these instructions](INSTALL_INSTRUCTIONS.md) to properly install the DELF
+library.
+
 ### Download Oxford buildings dataset
 
 To illustrate DELF usage, please download the Oxford buildings dataset. To

@@ -36,6 +36,8 @@ Some other notes:
 
 import tensorflow as tf
 
+from object_detection.utils import shape_utils
+
 
 class BoxList(object):
   """Box collection."""
@@ -73,7 +75,7 @@ class BoxList(object):
       Number of boxes held in collection (integer) or None if this is not
         inferrable at graph construction time.
     """
-    return self.data['boxes'].get_shape()[0].value
+    return shape_utils.get_dim_as_int(self.data['boxes'].get_shape()[0])
 
   def get_all_fields(self):
     """Returns all fields."""

@@ -94,6 +94,11 @@ Presented in the
 Presented in the
 [CVPR'19 Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584).
 
+Besides these, we also release pre-trained codebooks for local feature
+aggregation. See the
+[Detect-to-Retrieve instructions](delf/python/detect_to_retrieve/DETECT_TO_RETRIEVE_INSTRUCTIONS.md)
+for details.
+
 ### DELF extraction and matching
 
 Please follow [these instructions](EXTRACTION_MATCHING.md). At the end, you
@@ -110,7 +115,10 @@ a nice figure showing a detection, as:
 
 ### Detect-to-Retrieve
 
-Code release is in progress. Stay tuned!
+Please follow
+[these instructions](delf/python/detect_to_retrieve/DETECT_TO_RETRIEVE_INSTRUCTIONS.md).
+At the end, you should obtain image retrieval results on the Revisited
+Oxford/Paris datasets.
 
 ## Code overview
 
@@ -121,6 +129,8 @@ therein, `protos` and `python`.
 
 This directory contains protobufs:
 
+-   `aggregation_config.proto`: protobuf for configuring local feature
+    aggregation.
 -   `box.proto`: protobuf for serializing detected boxes.
 -   `datum.proto`: general-purpose protobuf for serializing float tensors.
 -   `delf_config.proto`: protobuf for configuring DELF extraction.
@@ -133,13 +143,14 @@ This directory contains files for several different purposes:
 -   `box_io.py`, `datum_io.py`, `feature_io.py` are helper files for reading and
     writing tensors and features.
 -   `delf_v1.py` contains the code to create DELF models.
+-   `feature_aggregation_extractor.py` contains a module to perform local
+    feature aggregation.
+-   `feature_aggregation_similarity.py` contains a module to perform similarity
+    computation for aggregated local features.
 -   `feature_extractor.py` contains the code to extract features using DELF.
     This is particularly useful for extracting features over multiple scales,
     with keypoint selection based on attention scores, and PCA/whitening
     post-processing.
-
-Besides these, other files in this directory contain tests for different
-modules.
 
 The subdirectory `delf/python/examples` contains sample scripts to run DELF
 feature extraction/matching, and object detection:
@@ -151,8 +162,26 @@ feature extraction/matching, and object detection:
 -   `match_images.py` supports image matching using DELF features extracted
     using `extract_features.py`.
 
-The subdirectory `delf/python/detect_to_retrieve` contains sample scripts
-related to the Detect-to-Retrieve paper (work in progress).
+The subdirectory `delf/python/detect_to_retrieve` contains sample
+scripts/configs related to the Detect-to-Retrieve paper:
+
+-   `cluster_delf_features.py` for local feature clustering.
+-   `dataset.py` for parsing/evaluating results on Revisited Oxford/Paris
+    datasets.
+-   `extract_aggregation.py` for aggregated local feature extraction.
+-   `extract_index_boxes_and_features.py` for index image local feature
+    extraction / bounding box detection on Revisited datasets.
+-   `extract_query_features.py` for query image local feature extraction on
+    Revisited datasets.
+-   `perform_retrieval.py` for performing retrieval/evaluating methods using
+    aggregated local features on Revisited datasets.
+-   `delf_gld_config.pbtxt` gives the DelfConfig used in Detect-to-Retrieve
+    paper.
+-   `index_aggregation_config.pbtxt`, `query_aggregation_config.pbtxt` give
+    AggregationConfig's for Detect-to-Retrieve experiments.
+
+Besides these, other files in the different subdirectories contain tests for the
+various modules.
 
 ## Maintainers
 
@@ -162,7 +191,7 @@ Andr&eacute; Araujo (@andrefaraujo)
 
 ### April, 2019
 
-Detect-to-Retrieve code released (work in progress).
+Detect-to-Retrieve code released.
 
 Includes pre-trained models to detect landmark boxes, and DELF model pre-trained
 on Google Landmarks v1 dataset.

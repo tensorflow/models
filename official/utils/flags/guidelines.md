@@ -36,31 +36,30 @@
 3. **Flag values should not be mutated.**
 
    Instead of mutating flag values, use getter functions to return the desired values. An example
-   getter function is `get_loss_scale` function below:
+   getter function is `get_tf_dtype` function below:
 
    ```
-   # Map string to (TensorFlow dtype, default loss scale)
+   # Map string to TensorFlow dtype
    DTYPE_MAP = {
-       "fp16": (tf.float16, 128),
-       "fp32": (tf.float32, 1),
+       "fp16": tf.float16,
+       "fp32": tf.float32,
    }
 
-
-   def get_loss_scale(flags_obj):
-     if flags_obj.loss_scale == "dynamic":
-       return flags_obj.loss_scale
-     if flags_obj.loss_scale is not None:
-       return flags_obj.loss_scale
-     return DTYPE_MAP[flags_obj.dtype][1]
+   def get_tf_dtype(flags_obj):
+     if getattr(flags_obj, "fp16_implementation", None) == "graph_rewrite":
+       # If the graph_rewrite is used, we build the graph with fp32, and let the
+       # graph rewrite change ops to fp16.
+       return tf.float32
+     return DTYPE_MAP[flags_obj.dtype]
 
 
    def main(_):
      flags_obj = flags.FLAGS()
 
      # Do not mutate flags_obj
-     # if flags_obj.loss_scale is None:
-     #   flags_obj.loss_scale = DTYPE_MAP[flags_obj.dtype][1] # Don't do this
+     # if flags_obj.fp16_implementation == "graph_rewrite":
+     #   flags_obj.dtype = "float32" # Don't do this
 
-     print(get_loss_scale(flags_obj))
+     print(get_tf_dtype(flags_obj))
      ...
    ```

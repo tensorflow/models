@@ -612,6 +612,12 @@ class ConfigUtilTest(tf.test.TestCase):
     image_shape = config_util.get_spatial_image_size(image_resizer_config)
     self.assertAllEqual(image_shape, [-1, -1])
 
+  def testGetSpatialImageSizeFromConditionalShapeResizer(self):
+    image_resizer_config = image_resizer_pb2.ImageResizer()
+    image_resizer_config.conditional_shape_resizer.size_threshold = 100
+    image_shape = config_util.get_spatial_image_size(image_resizer_config)
+    self.assertAllEqual(image_shape, [-1, -1])
+
   def testEvalShuffle(self):
     """Tests that `eval_shuffle` keyword arguments are applied correctly."""
     original_shuffle = True

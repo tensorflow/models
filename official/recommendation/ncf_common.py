@@ -104,10 +104,10 @@ def parse_flags(flags_obj):
       "epsilon": flags_obj.epsilon,
       "match_mlperf": flags_obj.ml_perf,
       "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
-      "clone_model_in_keras_dist_strat":
-          flags_obj.clone_model_in_keras_dist_strat,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
+      "keras_use_ctl": flags_obj.keras_use_ctl,
+      "hr_threshold": flags_obj.hr_threshold,
   }
 
 
@@ -141,7 +141,7 @@ def get_distribution_strategy(params):
         "coordinator": tpu_cluster_resolver.cluster_spec()
                        .as_dict()["coordinator"]
     }
-    os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
+    os.environ["TF_CONFIG"] = json.dumps(tf_config_env)
 
     distribution = tf.distribute.experimental.TPUStrategy(
         tpu_cluster_resolver, steps_per_run=100)
@@ -245,7 +245,7 @@ def define_ncf_flags():
                                 "optimizer."))
 
   flags.DEFINE_float(
-      name="hr_threshold", default=None,
+      name="hr_threshold", default=1.0,
       help=flags_core.help_wrap(
           "If passed, training will stop when the evaluation metric HR is "
           "greater than or equal to hr_threshold. For dataset ml-1m, the "
@@ -315,11 +315,16 @@ def define_ncf_flags():
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
 
   flags.DEFINE_bool(
-      name="clone_model_in_keras_dist_strat",
-      default=True,
+      name="early_stopping",
+      default=False,
       help=flags_core.help_wrap(
-          'If False, then the experimental code path is used that doesn\'t '
-          "clone models for distribution."))
+          "If True, we stop the training when it reaches hr_threshold"))
+
+  flags.DEFINE_bool(
+      name="keras_use_ctl",
+      default=False,
+      help=flags_core.help_wrap(
+          "If True, we use a custom training loop for keras."))
 
 
 def convert_to_softmax_logits(logits):

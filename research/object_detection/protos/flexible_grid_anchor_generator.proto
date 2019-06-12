@@ -1,0 +1,30 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+message FlexibleGridAnchorGenerator {
+  repeated AnchorGrid anchor_grid = 1;
+
+  // Whether to produce anchors in normalized coordinates.
+  optional bool normalize_coordinates = 2 [default = true];
+}
+
+message AnchorGrid {
+  // The base sizes in pixels for each anchor in this anchor layer.
+  repeated float base_sizes = 1;
+
+  // The aspect ratios for each anchor in this anchor layer.
+  repeated float aspect_ratios = 2;
+
+  // The anchor height stride in pixels.
+  optional uint32 height_stride = 3;
+
+  // The anchor width stride in pixels.
+  optional uint32 width_stride = 4;
+
+  // The anchor height offset in pixels.
+  optional uint32 height_offset = 5 [default = 0];
+
+  // The anchor width offset in pixels.
+  optional uint32 width_offset = 6 [default = 0];
+}

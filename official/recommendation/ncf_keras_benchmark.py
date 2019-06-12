@@ -81,9 +81,9 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1
-    default_flags['train_epochs'] = 14
+    default_flags['train_epochs'] = 10
     default_flags['clean'] = True
-    default_flags['batch_size'] = 160000
+    default_flags['batch_size'] = 99000
     default_flags['learning_rate'] = 0.00382059
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003
@@ -105,12 +105,12 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     metrics.append({'name': 'exp_per_second',
                     'value': stats['avg_exp_per_second']})
 
-    # Target is 0.625, but some runs are below that level. Until we have
+    # Target is 0.635, but some runs are below that level. Until we have
     # multi-run tests, we have to accept a lower target.
     metrics.append({'name': 'hr_at_10',
                     'value': stats['eval_hit_rate'],
-                    'min_value': 0.618,
-                    'max_value': 0.635})
+                    'min_value': 0.630,
+                    'max_value': 0.640})
 
     metrics.append({'name': 'train_loss',
                     'value': stats['loss']})
@@ -121,9 +121,22 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     self._setup()
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_no_cloning(self):
+  def benchmark_1_gpu_early_stop(self):
     self._setup()
-    FLAGS.clone_model_in_keras_dist_strat = False
+    FLAGS.early_stopping = True
+    self._run_and_report_benchmark()
+
+  # NCF with custom training loop. Works only in TF 2.0
+  def benchmark_1_gpu_ctl(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    self._run_and_report_benchmark()
+
+  # NCF with custom training loop. Works only in TF 2.0
+  def benchmark_1_gpu_ctl_early_stop(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
   def benchmark_2_gpus(self):
@@ -131,10 +144,25 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
-  def benchmark_2_gpus_no_cloning(self):
+  def benchmark_2_gpus_early_stop(self):
     self._setup()
+    FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
-    FLAGS.clone_model_in_keras_dist_strat = False
+    self._run_and_report_benchmark()
+
+  # NCF with custom training loop. Works only in TF 2.0
+  def benchmark_2_gpus_ctl(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.num_gpus = 2
+    self._run_and_report_benchmark()
+
+  # NCF with custom training loop. Works only in TF 2.0
+  def benchmark_2_gpus_ctl_early_stop(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.early_stopping = True
+    FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
 
@@ -149,8 +177,8 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1
-    default_flags['train_epochs'] = 14
-    default_flags['batch_size'] = 160000
+    default_flags['train_epochs'] = 8
+    default_flags['batch_size'] = 99000
     default_flags['learning_rate'] = 0.00382059
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003
@@ -175,18 +203,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     self._setup()
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_no_cloning(self):
-    self._setup()
-    FLAGS.clone_model_in_keras_dist_strat = False
-    self._run_and_report_benchmark()
-
   def benchmark_2_gpus(self):
     self._setup()
     FLAGS.num_gpus = 2
-    self._run_and_report_benchmark()
-
-  def benchmark_2_gpus_no_cloning(self):
-    self._setup()
-    FLAGS.num_gpus = 2
-    FLAGS.clone_model_in_keras_dist_strat = False
     self._run_and_report_benchmark()

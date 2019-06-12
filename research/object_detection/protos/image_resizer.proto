@@ -9,6 +9,7 @@ message ImageResizer {
     KeepAspectRatioResizer keep_aspect_ratio_resizer = 1;
     FixedShapeResizer fixed_shape_resizer = 2;
     IdentityResizer identity_resizer = 3;
+    ConditionalShapeResizer conditional_shape_resizer = 4;
   }
 }
 
@@ -60,4 +61,32 @@ message FixedShapeResizer {
 
   // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
   optional bool convert_to_grayscale = 4 [default = false];
+}
+
+// Configuration proto for image resizer that resizes only if input image height
+// or width is greater or smaller than a certain size.
+// Aspect ratio is maintained.
+message ConditionalShapeResizer {
+
+  // Enumeration for the condition on which to resize an image.
+  enum ResizeCondition {
+    INVALID = 0; // Default value.
+    GREATER = 1; // Resizes image if a dimension is greater than specified size.
+    SMALLER = 2; // Resizes image if a dimension is smaller than specified size.
+  }
+
+  // Condition which must be true to resize the image.
+  optional ResizeCondition condition = 1 [default = GREATER];
+
+  // Threshold for the image size. If any image dimension is above or below this
+  // (as specified by condition) the image will be resized so that it meets the
+  // threshold.
+  optional int32 size_threshold = 2 [default = 300];
+
+  // Desired method when resizing image.
+  optional ResizeType resize_method = 3 [default = BILINEAR];
+
+  // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
+  optional bool convert_to_grayscale = 4 [default = false];
+
 }

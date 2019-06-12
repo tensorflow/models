@@ -168,7 +168,8 @@ def input_fn(is_training,
              num_parallel_batches=1,
              parse_record_fn=parse_record,
              input_context=None,
-             drop_remainder=False):
+             drop_remainder=False,
+             tf_data_experimental_slack=False):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -184,6 +185,8 @@ def input_fn(is_training,
       `tf.distribute.Strategy`.
     drop_remainder: A boolean indicates whether to drop the remainder of the
       batches. If True, the batch dimension will be static.
+    tf_data_experimental_slack: Whether to enable tf.data's
+      `experimental_slack` option.
 
   Returns:
     A dataset that can be used for iteration.
@@ -221,7 +224,8 @@ def input_fn(is_training,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
       num_parallel_batches=num_parallel_batches,
-      drop_remainder=drop_remainder
+      drop_remainder=drop_remainder,
+      tf_data_experimental_slack=tf_data_experimental_slack,
   )
 
 
