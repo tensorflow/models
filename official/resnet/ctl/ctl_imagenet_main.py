@@ -69,7 +69,7 @@ def build_stats(loss, eval_result, time_callback, warmup=1):
 
   if eval_result:
     stats["eval_loss"] = eval_result[0]
-    stats["eval_hit_rate"] = eval_result[1]
+    stats["eval_acc"] = eval_result[1]
 
   if time_callback:
     timestamp_log = time_callback.timestamp_log
@@ -155,7 +155,7 @@ def run(flags_obj):
     train_steps = min(flags_obj.train_steps, steps_per_epoch)
     train_epochs = 1
 
-  time_callback = keras_utils.TimeHistory(flags_obj.batch_size, train_steps)
+  time_callback = keras_utils.TimeHistory(flags_obj.batch_size, 1)
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
   with strategy_scope:
@@ -184,7 +184,7 @@ def run(flags_obj):
           prediction_loss = tf.keras.losses.sparse_categorical_crossentropy(
               labels, logits)
           loss1 = tf.reduce_sum(prediction_loss) * (1.0/ flags_obj.batch_size)
-          loss2 = tf.reduce_sum(model.losses) / strategy.num_replicas_in_sync
+          loss2 = tf.reduce_sum(model.losses) / tf.distribute.get_strategy().num_replicas_in_sync
           loss = loss1 + loss2
 
         grads = tape.gradient(loss, model.trainable_variables)

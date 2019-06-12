@@ -25,6 +25,7 @@ from official.resnet import imagenet_main
 from official.resnet.ctl import ctl_imagenet_main
 from official.resnet.ctl import ctl_common
 from official.utils.testing import integration
+from official.resnet.keras import keras_common
 # pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
@@ -35,9 +36,8 @@ class CtlImagenetTest(googletest.TestCase):
 
   _extra_flags = [
       '-batch_size', '4',
-      '-train_steps', '1',
-      '-use_synthetic_data', 'true',
-      'enable_eager', 'true'
+      '-train_steps', '4',
+      '-use_synthetic_data', 'true'
   ]
   _tempdir = None
 
@@ -116,4 +116,6 @@ class CtlImagenetTest(googletest.TestCase):
     )
 
 if __name__ == '__main__':
+  if not keras_common.is_v2_0():
+    tf.enable_v2_behavior()
   googletest.main()

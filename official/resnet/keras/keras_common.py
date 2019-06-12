@@ -62,7 +62,7 @@ def learning_rate_schedule(current_epoch,
   Returns:
     Adjusted learning rate.
   """
-  initial_lr = keras_common.BASE_LEARNING_RATE * batch_size / 256
+  initial_lr = BASE_LEARNING_RATE * batch_size / 256
   epoch = current_epoch + float(current_batch) / batches_per_epoch
   warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
   if epoch < warmup_end_epoch:
