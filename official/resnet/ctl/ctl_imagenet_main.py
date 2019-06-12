@@ -263,9 +263,10 @@ def run(flags_obj):
 
     time_callback.on_train_end()
 
-  stats = build_stats(train_loss.numpy(), [test_loss.result().numpy(),
-    test_accuracy.result().numpy()], time_callback)
-  return stats
+    stats = build_stats(train_loss.numpy(),
+      [test_loss.result().numpy(),
+      test_accuracy.result().numpy()], time_callback)
+    return stats
 
 
 def main(_):
