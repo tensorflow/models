@@ -85,7 +85,7 @@ def build_stats(loss, eval_result, time_callback, warmup=1):
   return stats
 
 
-def get_input_dataset(flags_obj):
+def get_input_dataset(flags_obj, strategy):
   dtype = flags_core.get_tf_dtype(flags_obj)
   if flags_obj.use_synthetic_data:
     input_fn = keras_common.get_synth_input_fn(
@@ -164,7 +164,7 @@ def run(flags_obj):
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
 
-  train_ds, test_ds = get_input_dataset(flags_obj)
+  train_ds, test_ds = get_input_dataset(flags_obj, strategy)
   train_steps, train_epochs, steps_per_eval = get_num_train_iterations(flags_obj)
 
   time_callback = keras_utils.TimeHistory(flags_obj.batch_size, 1)
