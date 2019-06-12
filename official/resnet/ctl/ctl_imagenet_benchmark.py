@@ -78,7 +78,7 @@ class CtlBenchmark(PerfZeroBenchmark):
 
 
 
-class Resnet50CtlAccuracy(ctl_benchmark.CtlBenchmark):
+class Resnet50CtlAccuracy(CtlBenchmark):
   """Benchmark accuracy tests for ResNet50 in CTL."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
@@ -130,7 +130,7 @@ class Resnet50CtlAccuracy(ctl_benchmark.CtlBenchmark):
     return os.path.join(self.output_dir, folder_name)
 
 
-class Resnet50CtlBenchmarkBase(ctl_benchmark.CtlBenchmark):
+class Resnet50CtlBenchmarkBase(CtlBenchmark):
   """Resnet50 benchmarks."""
 
   def __init__(self, output_dir=None, default_flags=None):
