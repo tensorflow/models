@@ -45,8 +45,6 @@ class CtlBenchmark(PerfZeroBenchmark):
         default_flags=self.default_flags,
         flag_methods=self.flag_methods)
 
-    
-
   def _report_benchmark(self,
                         stats,
                         wall_time_sec,

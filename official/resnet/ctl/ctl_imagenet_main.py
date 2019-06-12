@@ -260,12 +260,13 @@ def run(flags_obj):
             "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
             (epoch, test_accuracy.result().numpy()))
         
-
+    
     time_callback.on_train_end()
+    eval_result = None
+    if not flags_obj.skip_eval:
+      eval_result = [test_loss.result().numpy(), test_accuracy.result().numpy()]
 
-    stats = build_stats(train_loss.numpy(),
-      [test_loss.result().numpy(),
-      test_accuracy.result().numpy()], time_callback)
+    stats = build_stats(train_loss.numpy(), eval_result, time_callback)
     return stats
 
 
