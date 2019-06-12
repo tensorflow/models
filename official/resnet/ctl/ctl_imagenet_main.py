@@ -183,11 +183,10 @@ def run(flags_obj):
     test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'test_accuracy', dtype=tf.float32)
     
-    def train_step(train_ds_inputs):
+    def train_step(images, labels):
       """Training StepFn."""
-      def step_fn(inputs):
+      def step_fn(images, labels):
         """Per-Replica StepFn."""
-        images, labels = inputs
         with tf.GradientTape() as tape:
           logits = model(images, training=True)
 
@@ -206,16 +205,15 @@ def run(flags_obj):
 
       if strategy:
         per_replica_losses = strategy.experimental_run_v2(
-            step_fn, args=(train_ds_inputs,))
+            step_fn, args=(images, labels))
         return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
                                axis=None)
       else:
-        return step_fn(train_ds_inputs)
+        return step_fn(images, labels)
 
-    def test_step(test_ds_inputs):
+    def test_step(images, labels):
       """Evaluation StepFn."""
-      def step_fn(inputs):
-        images, labels = inputs
+      def step_fn(images, labels):
         logits = model(images, training=False)
         loss = tf.keras.losses.sparse_categorical_crossentropy(labels,
                                                                logits)
@@ -224,9 +222,9 @@ def run(flags_obj):
         test_accuracy.update_state(labels, logits)
 
       if strategy:
-        strategy.experimental_run_v2(step_fn, args=(test_ds_inputs,))
+        strategy.experimental_run_v2(step_fn, args=(images,labels))
       else:
-        step_fn(test_ds_inputs)
+        step_fn(images, labels)
 
     if flags_obj.use_tf_function:
       train_step = tf.function(train_step)
