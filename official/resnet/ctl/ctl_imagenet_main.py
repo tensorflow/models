@@ -60,6 +60,7 @@ def build_stats(loss, eval_result, time_callback, warmup=1):
     eval_result: Output of the eval step. Assumes first value is eval_loss and
       second value is accuracy_top_1.
     time_callback: Time tracking callback likely used during keras.fit.
+    warmup: Number of initial steps to skip when calculating steps/s.
   Returns:
     Dictionary of normalized results.
   """
@@ -83,6 +84,57 @@ def build_stats(loss, eval_result, time_callback, warmup=1):
 
   return stats
 
+
+def get_input_dataset(flags_obj):
+  dtype = flags_core.get_tf_dtype(flags_obj)
+  if flags_obj.use_synthetic_data:
+    input_fn = keras_common.get_synth_input_fn(
+        height=imagenet_main.DEFAULT_IMAGE_SIZE,
+        width=imagenet_main.DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_main.NUM_CHANNELS,
+        num_classes=imagenet_main.NUM_CLASSES,
+        dtype=dtype,
+        drop_remainder=True)
+  else:
+    input_fn = imagenet_main.input_fn
+
+  train_ds = input_fn(
+      is_training=True,
+      data_dir=flags_obj.data_dir,
+      batch_size=flags_obj.batch_size,
+      parse_record_fn=parse_record_keras,
+      datasets_num_private_threads=flags_obj.datasets_num_private_threads,
+      dtype=dtype)
+
+  if strategy:
+    train_ds = strategy.experimental_distribute_dataset(train_ds)
+  
+  test_ds = None
+  if not flags_obj.skip_eval:
+    test_ds = input_fn(
+        is_training=False,
+        data_dir=flags_obj.data_dir,
+        batch_size=flags_obj.batch_size,
+        parse_record_fn=parse_record_keras,
+        dtype=dtype)
+
+    if strategy:
+      test_ds = strategy.experimental_distribute_dataset(test_ds)
+
+  return train_ds, test_ds
+
+
+def get_num_train_iterations(flags_obj):
+  steps_per_epoch = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_epochs = flags_obj.train_epochs
+
+  if flags_obj.train_steps:
+    train_steps = min(flags_obj.train_steps, steps_per_epoch)
+    train_epochs = 1
+
+  steps_per_eval = imagenet_main.NUM_IMAGES['validation'] // flags_obj.batch_size
+  
+  return train_steps, train_epochs, steps_per_eval
 
 def run(flags_obj):
   """Run ResNet ImageNet training and eval loop using custom training loops.
@@ -112,54 +164,13 @@ def run(flags_obj):
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
 
-
-  # pylint: disable=protected-access
-  if flags_obj.use_synthetic_data:
-    input_fn = keras_common.get_synth_input_fn(
-        height=imagenet_main.DEFAULT_IMAGE_SIZE,
-        width=imagenet_main.DEFAULT_IMAGE_SIZE,
-        num_channels=imagenet_main.NUM_CHANNELS,
-        num_classes=imagenet_main.NUM_CLASSES,
-        dtype=dtype,
-        drop_remainder=True)
-  else:
-    input_fn = imagenet_main.input_fn
-
-  train_ds = input_fn(
-      is_training=True,
-      data_dir=flags_obj.data_dir,
-      batch_size=flags_obj.batch_size,
-      parse_record_fn=parse_record_keras,
-      datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-      dtype=dtype)
-
-  test_ds = None
-  if not flags_obj.skip_eval:
-    test_ds = input_fn(
-        is_training=False,
-        data_dir=flags_obj.data_dir,
-        batch_size=flags_obj.batch_size,
-        parse_record_fn=parse_record_keras,
-        dtype=dtype)
-
-    steps_per_eval = imagenet_main.NUM_IMAGES['validation'] // flags_obj.batch_size
-    if strategy:
-      test_ds = strategy.experimental_distribute_dataset(test_ds)
-    
-  if strategy:
-    train_ds = strategy.experimental_distribute_dataset(train_ds)
-  steps_per_epoch = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
-  train_epochs = flags_obj.train_epochs
-
-  if flags_obj.train_steps:
-    train_steps = min(flags_obj.train_steps, steps_per_epoch)
-    train_epochs = 1
+  train_ds, test_ds = get_input_dataset(flags_obj)
+  train_steps, train_epochs, steps_per_eval = get_num_train_iterations(flags_obj)
 
   time_callback = keras_utils.TimeHistory(flags_obj.batch_size, 1)
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
   with strategy_scope:
-    logging.info('Building Keras ResNet-50 model')
     model = resnet_model.resnet50(num_classes=imagenet_main.NUM_CLASSES,
                                   dtype=dtype, batch_size=flags_obj.batch_size)
 
@@ -171,8 +182,7 @@ def run(flags_obj):
     test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
     test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'test_accuracy', dtype=tf.float32)
-    logging.info('Finished building Keras ResNet-50 model')
-
+    
     def train_step(train_ds_inputs):
       """Training StepFn."""
       def step_fn(inputs):
@@ -184,7 +194,8 @@ def run(flags_obj):
           prediction_loss = tf.keras.losses.sparse_categorical_crossentropy(
               labels, logits)
           loss1 = tf.reduce_sum(prediction_loss) * (1.0/ flags_obj.batch_size)
-          loss2 = tf.reduce_sum(model.losses) / tf.distribute.get_strategy().num_replicas_in_sync
+          loss2 = (tf.reduce_sum(model.losses) /
+                   tf.distribute.get_strategy().num_replicas_in_sync)
           loss = loss1 + loss2
 
         grads = tape.gradient(loss, model.trainable_variables)
@@ -223,28 +234,21 @@ def run(flags_obj):
 
     time_callback.on_train_begin()
     for epoch in range(train_epochs):
-      logging.info('Starting to run epoch: %s', epoch)
       train_iterator = iter(train_ds)
 
       step = 0
       total_loss = 0.0
-      batch_exp_per_sec = []
       for step in range(train_steps):
         training_accuracy.reset_states()
-        learning_rate = keras_common.learning_rate_schedule(
-          epoch, step, train_steps, flags_obj.batch_size)
-        optimizer.lr = learning_rate
+        optimizer.lr = keras_common.learning_rate_schedule(
+            epoch, step, train_steps, flags_obj.batch_size)
+
         time_callback.on_batch_begin(step+epoch*train_steps)
         total_loss += train_step(next(train_iterator))
         time_callback.on_batch_end(step+epoch*train_steps)
         step += 1
       train_loss = total_loss / step
-      logging.info('Learning rate at epoch %s is %s',
-                   epoch, optimizer.lr.numpy())
-      logging.info('Training loss: %s, accuracy: %s%%',
-                   train_loss.numpy(),
-                   training_accuracy.result().numpy())
-      
+
       if (not flags_obj.skip_eval and epoch != 0 and
           epoch % flags_obj.epochs_between_eval == 0):
         test_loss.reset_states()
@@ -253,18 +257,12 @@ def run(flags_obj):
         test_iterator = iter(test_ds)
         for step in range(steps_per_eval):
           test_step(next(test_iterator))
-        logging.info('Test loss: %s, accuracy: %s%%',
-                     test_loss.result().numpy(),
-                     test_accuracy.result().numpy())
-        logging.info(
-            "Testing Metric: {'epoch':%d, 'test accuracy': %f}" %
-            (epoch, test_accuracy.result().numpy()))
-        
     
     time_callback.on_train_end()
     eval_result = None
     if not flags_obj.skip_eval:
-      eval_result = [test_loss.result().numpy(), test_accuracy.result().numpy()]
+      eval_result = [test_loss.result().numpy(), 
+                     test_accuracy.result().numpy()]
 
     stats = build_stats(train_loss.numpy(), eval_result, time_callback)
     return stats
