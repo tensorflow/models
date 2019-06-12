@@ -1,5 +1,6 @@
 * @tensorflow/tf-garden-team
-/official/ @tfboyd @guptapriya
+/official/ @tfboyd @guptapriya @rachellj218
+/official/bert @saberkun @hongjunChoi
 /research/adversarial_crypto/ @dave-andersen
 /research/adversarial_logit_pairing/ @AlexeyKurakin
 /research/adversarial_text/ @rsepassi @a-dai
