@@ -55,6 +55,13 @@ def create_model(params, is_train):
       return tf.keras.Model(inputs, [outputs, scores])
 
 
+def _do_not_convert(f):
+  f = tf.autograph.experimental.do_not_convert(f)
+  def wrapped_f(self, inputs, training):
+    return f(self, inputs, training)
+  return wrapped_f
+
+
 class Transformer(tf.keras.Model):
   """Transformer model with Keras.
 
@@ -85,6 +92,7 @@ class Transformer(tf.keras.Model):
         "params": self.params,
     }
 
+  # @_do_not_convert
   def call(self, inputs, training):
     """Calculate target logits or inferred target sequences.
 
@@ -97,11 +105,13 @@ class Transformer(tf.keras.Model):
 
     Returns:
       If targets is defined, then return logits for each word in the target
-      sequence. float tensor with shape [batch_size, target_length, vocab_size]
+      sequence. float tensor with shape [batch_size, target_length,
+      vocab_size].
       If target is none, then generate output sequence one token at a time.
         returns a dictionary {
           outputs: [batch_size, decoded length]
           scores: [batch_size, float]}
+      Even when float16 is used, the output tensor(s) are always float32.
     """
     if len(inputs) == 2:
       inputs, targets = inputs[0], inputs[1]
@@ -114,16 +124,18 @@ class Transformer(tf.keras.Model):
       # Calculate attention bias for encoder self-attention and decoder
       # multi-headed attention layers.
       attention_bias = model_utils.get_padding_bias(inputs)
+      cast_attention_bias = tf.cast(attention_bias, self.params['dtype'])
 
       # Run the inputs through the encoder layer to map the symbol
       # representations to continuous representations.
-      encoder_outputs = self.encode(inputs, attention_bias, training)
+      encoder_outputs = self.encode(inputs, cast_attention_bias, training)
       # Generate output sequence if targets is None, or return logits if target
       # sequence is known.
       if targets is None:
         return self.predict(encoder_outputs, attention_bias, training)
       else:
-        logits = self.decode(targets, encoder_outputs, attention_bias, training)
+        logits = self.decode(targets, encoder_outputs, cast_attention_bias,
+                             training)
         return logits
 
   def encode(self, inputs, attention_bias, training):
@@ -131,7 +143,7 @@ class Transformer(tf.keras.Model):
 
     Args:
       inputs: int tensor with shape [batch_size, input_length].
-      attention_bias: float tensor with shape [batch_size, 1, 1, input_length].
+      attention_bias: float tensor with shape [batch_size, 1, 1, input_length]
       training: boolean, whether in training mode or not.
 
     Returns:
@@ -141,12 +153,14 @@ class Transformer(tf.keras.Model):
       # Prepare inputs to the layer stack by adding positional encodings and
       # applying dropout.
       embedded_inputs = self.embedding_softmax_layer(inputs)
+      embedded_inputs = tf.cast(embedded_inputs, self.params["dtype"])
       inputs_padding = model_utils.get_padding(inputs)
 
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
         pos_encoding = model_utils.get_position_encoding(
             length, self.params["hidden_size"])
+        pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
 
       if training:
@@ -174,21 +188,22 @@ class Transformer(tf.keras.Model):
       # Prepare inputs to decoder layers by shifting targets, adding positional
       # encoding and applying dropout.
       decoder_inputs = self.embedding_softmax_layer(targets)
+      decoder_inputs = tf.cast(decoder_inputs, self.params['dtype'])
       with tf.name_scope("shift_targets"):
         # Shift targets to the right, and remove the last element
         decoder_inputs = tf.pad(decoder_inputs,
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
-        decoder_inputs += model_utils.get_position_encoding(
-            length, self.params["hidden_size"])
+        decoder_inputs += tf.cast(model_utils.get_position_encoding(
+            length, self.params["hidden_size"]), self.params['dtype'])
       if training:
         decoder_inputs = tf.nn.dropout(
             decoder_inputs, rate=self.params["layer_postprocess_dropout"])
 
       # Run values
       decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
-          length)
+          length, dtype=self.params['dtype'])
       outputs = self.decoder_stack(
           decoder_inputs,
           encoder_outputs,
@@ -196,6 +211,7 @@ class Transformer(tf.keras.Model):
           attention_bias,
           training=training)
       logits = self.embedding_softmax_layer(outputs, mode="linear")
+      logits = tf.cast(logits, tf.float32)
       return logits
 
   def _get_symbols_to_logits_fn(self, max_decode_length, training):
@@ -244,6 +260,11 @@ class Transformer(tf.keras.Model):
 
   def predict(self, encoder_outputs, encoder_decoder_attention_bias, training):
     """Return predicted sequence."""
+    # Currently, we always do prediction in float32.
+    # TODO(reedwm): Add float16 support.
+    encoder_outputs = tf.cast(encoder_outputs, tf.float32)
+    encoder_decoder_attention_bias = tf.cast(encoder_decoder_attention_bias,
+                                             tf.float32)
     batch_size = tf.shape(encoder_outputs)[0]
     input_length = tf.shape(encoder_outputs)[1]
     max_decode_length = input_length + self.params["extra_decode_length"]
@@ -299,12 +320,14 @@ class LayerNormalization(tf.keras.layers.Layer):
         "layer_norm_scale",
         shape=[self.hidden_size],
         dtype="float32",
-        initializer=tf.ones_initializer())
+        initializer=tf.ones_initializer(),
+        experimental_autocast=False)
     self.bias = self.add_weight(
         "layer_norm_bias",
         shape=[self.hidden_size],
         dtype="float32",
-        initializer=tf.zeros_initializer())
+        initializer=tf.zeros_initializer(),
+        experimental_autocast=False)
     super(LayerNormalization, self).build(input_shape)
 
   def get_config(self):
@@ -313,10 +336,13 @@ class LayerNormalization(tf.keras.layers.Layer):
     }
 
   def call(self, x, epsilon=1e-6):
+    orig_dtype = x.dtype
+    if orig_dtype == tf.float16:
+      x = tf.cast(x, tf.float32)
     mean = tf.reduce_mean(x, axis=[-1], keepdims=True)
     variance = tf.reduce_mean(tf.square(x - mean), axis=[-1], keepdims=True)
     norm_x = (x - mean) * tf.math.rsqrt(variance + epsilon)
-    return norm_x * self.scale + self.bias
+    return tf.cast(norm_x * self.scale + self.bias, orig_dtype)
 
 
 class PrePostProcessingWrapper(tf.keras.layers.Layer):

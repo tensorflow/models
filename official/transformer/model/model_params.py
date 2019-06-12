@@ -94,3 +94,14 @@ TINY_PARAMS.update(
     num_heads=4,
     filter_size=256,
 )
+
+# Parameters for testing the model
+MICRO_PARAMS = BASE_PARAMS.copy()
+MICRO_PARAMS.update(
+    default_batch_size=32,
+    default_batch_size_tpu=32,
+    hidden_size=8,
+    num_heads=2,
+    filter_size=4,
+    num_hidden_layers=2,
+)

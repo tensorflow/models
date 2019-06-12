@@ -33,6 +33,7 @@ from official.utils.misc import keras_utils
 FLAGS = flags.FLAGS
 
 PARAMS_MAP = {
+    'micro': model_params.MICRO_PARAMS,
     'tiny': model_params.TINY_PARAMS,
     'base': model_params.BASE_PARAMS,
     'big': model_params.BIG_PARAMS,
@@ -46,14 +47,14 @@ def is_v2():
 
 def get_model_params(param_set, num_gpus):
   """Gets predefined model params."""
-  if num_gpus > 1:
-    if param_set == 'big':
-      return model_params.BIG_MULTI_GPU_PARAMS.copy()
-    elif param_set == 'base':
-      return model_params.BASE_MULTI_GPU_PARAMS.copy()
-    else:
-      raise ValueError('Not valid params: param_set={} num_gpus={}'.format(
-          param_set, num_gpus))
+  # if num_gpus > 1:
+  #   if param_set == 'big':
+  #     return model_params.BIG_MULTI_GPU_PARAMS.copy()
+  #   elif param_set == 'base':
+  #     return model_params.BASE_MULTI_GPU_PARAMS.copy()
+  #   else:
+  #     raise ValueError('Not valid params: param_set={} num_gpus={}'.format(
+  #         param_set, num_gpus))
 
   return PARAMS_MAP[param_set].copy()
 
@@ -68,7 +69,8 @@ def define_transformer_flags():
       intra_op=False,
       synthetic_data=True,
       max_train_steps=False,
-      dtype=False,
+      dtype=True,
+      loss_scale=True,
       all_reduce_alg=True
   )
   flags_core.define_benchmark()

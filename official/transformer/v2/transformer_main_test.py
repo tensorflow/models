@@ -51,6 +51,7 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.batch_size = 8
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = "off"
+    FLAGS.dtype = "fp32"
     self.model_dir = FLAGS.model_dir
     self.temp_dir = temp_dir
     self.vocab_file = os.path.join(temp_dir, "vocab")
@@ -62,6 +63,11 @@ class TransformerTaskTest(tf.test.TestCase):
     self.assertTrue(os.path.exists(filepath))
 
   def test_train(self):
+    t = tm.TransformerTask(FLAGS)
+    t.train()
+
+  def test_train_fp16(self):
+    FLAGS.dtype = "fp16"
     t = tm.TransformerTask(FLAGS)
     t.train()
 
@@ -79,6 +85,14 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.distribution_strategy = "mirrored"
     FLAGS.num_gpus = 2
     FLAGS.param_set = "base"
+    t = tm.TransformerTask(FLAGS)
+    t.train()
+
+  def test_train_2_gpu_fp16(self):
+    FLAGS.distribution_strategy = "mirrored"
+    FLAGS.num_gpus = 2
+    FLAGS.param_set = "base"
+    FLAGS.dtype = "fp16"
     t = tm.TransformerTask(FLAGS)
     t.train()
 
@@ -113,8 +127,18 @@ class TransformerTaskTest(tf.test.TestCase):
     t = tm.TransformerTask(FLAGS)
     t.predict()
 
+  def test_predict_fp16(self):
+    self._prepare_files_and_flags("--dtype=fp16")
+    t = tm.TransformerTask(FLAGS)
+    t.predict()
+
   def test_eval(self):
     self._prepare_files_and_flags()
+    t = tm.TransformerTask(FLAGS)
+    t.eval()
+
+  def test_eval_fp16(self):
+    self._prepare_files_and_flags("--dtype=fp16")
     t = tm.TransformerTask(FLAGS)
     t.eval()
 
