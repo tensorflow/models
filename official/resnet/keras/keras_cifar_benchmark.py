@@ -204,6 +204,19 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_dist_strat_run_eagerly(self):
+    """Test keras based model with forced eager."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.batch_size = 128
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_run_eagerly')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.distribution_strategy = 'off'
+    self._run_and_report_benchmark()
+
   def benchmark_2_gpu(self):
     self._setup()
     FLAGS.num_gpus = 2
