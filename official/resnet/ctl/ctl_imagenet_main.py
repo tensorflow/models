@@ -246,6 +246,10 @@ def run(flags_obj):
         time_callback.on_batch_end(step+epoch*train_steps)
         step += 1
       train_loss = total_loss / step
+      logging.info('Training loss: %s, accuracy: %s%% at epoch: %d',
+                   train_loss.numpy(),
+                   training_accuracy.result().numpy(),
+                   epoch)
 
       if (not flags_obj.skip_eval and
           (epoch + 1) % flags_obj.epochs_between_eval == 0):
@@ -254,6 +258,11 @@ def run(flags_obj):
 
         for test_inputs in test_ds:
           test_step(test_inputs)
+
+        logging.info('Test loss: %s, accuracy: %s%% at epoch: %d',
+                     test_loss.result().numpy(),
+                     test_accuracy.result().numpy(),
+                     epoch)
     
     time_callback.on_train_end()
     eval_result = None
