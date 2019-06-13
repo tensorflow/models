@@ -228,6 +228,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_layout_off(self):
+    """Test Keras model with 1 GPU and no layout optimizer."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_layout_off')
+    FLAGS.batch_size = 128
+    FLAGS.enable_grappler_layout_optimizer = False
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu(self):
     """Test Keras model with XLA and 1 GPU."""
     self._setup()
@@ -240,6 +252,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_xla_1_gpu_layout_off(self):
+    """Test Keras model with 1 GPU and xla w/no layout optimizer."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_layout_off')
+    FLAGS.batch_size = 128
+    FLAGS.enable_grappler_layout_optimizer = False
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_fp16(self):
     """Test Keras model with 1 GPU and fp16."""
     self._setup()
@@ -250,6 +274,19 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_fp16_layout_off(self):
+    """Test Keras model with 1 GPU and FP16 w/no layout optimizer."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16_layout_off')
+    FLAGS.batch_size = 128
+    FLAGS.enable_grappler_layout_optimizer = False
+    FLAGS.data_format = 'channels_last'
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_fp16_dynamic(self):
@@ -276,6 +313,21 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_fp16_layout_off(self):
+    """Test Keras model with FP16+XLA w/no layout optimizer."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16_layout_off')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.enable_grappler_layout_optimizer = False
+    FLAGS.data_format = 'channels_last'
     self._run_and_report_benchmark()
 
   def benchmark_xla_1_gpu_fp16_tweaked(self):
