@@ -20,8 +20,8 @@ from __future__ import print_function
 
 import math
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 # Very low numbers to represent -infinity. We do not actually use -Inf, since we
 # want to be able to multiply these values by zero to get zero. (-Inf * 0 = NaN)
