@@ -23,10 +23,10 @@ import tensorflow as tf
 
 def _float32_softmax(logits, name=None):
   """Computes a softmax activation in float32."""
-  orig_dtype = logits.dtype
+  input_dtype = logits.dtype
   logits = tf.cast(logits, tf.float32)
   output = tf.nn.softmax(logits, name=name)
-  return tf.cast(output, orig_dtype)
+  return tf.cast(output, input_dtype)
 
 
 class Attention(tf.keras.layers.Layer):
