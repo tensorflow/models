@@ -58,16 +58,15 @@ class TransformerTaskTest(tf.test.TestCase):
     self.vocab_size = misc.get_model_params(FLAGS.param_set, 0)["vocab_size"]
     self.bleu_source = os.path.join(temp_dir, "bleu_source")
     self.bleu_ref = os.path.join(temp_dir, "bleu_ref")
+    self.orig_policy = tf.keras.mixed_precision.experimental.global_policy()
+
+  def tearDown(self):
+    tf.keras.mixed_precision.experimental.set_policy(self.orig_policy)
 
   def _assert_exists(self, filepath):
     self.assertTrue(os.path.exists(filepath))
 
   def test_train(self):
-    t = tm.TransformerTask(FLAGS)
-    t.train()
-
-  def test_train_fp16(self):
-    FLAGS.dtype = "fp16"
     t = tm.TransformerTask(FLAGS)
     t.train()
 
@@ -93,6 +92,9 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.num_gpus = 2
     FLAGS.param_set = "base"
     FLAGS.dtype = "fp16"
+    policy = tf.keras.mixed_precision.experimental.Policy(
+        'infer_float32_vars')
+    tf.keras.mixed_precision.experimental.set_policy(policy)
     t = tm.TransformerTask(FLAGS)
     t.train()
 
@@ -129,16 +131,14 @@ class TransformerTaskTest(tf.test.TestCase):
 
   def test_predict_fp16(self):
     self._prepare_files_and_flags("--dtype=fp16")
+    policy = tf.keras.mixed_precision.experimental.Policy(
+        'infer_float32_vars')
+    tf.keras.mixed_precision.experimental.set_policy(policy)
     t = tm.TransformerTask(FLAGS)
     t.predict()
 
   def test_eval(self):
     self._prepare_files_and_flags()
-    t = tm.TransformerTask(FLAGS)
-    t.eval()
-
-  def test_eval_fp16(self):
-    self._prepare_files_and_flags("--dtype=fp16")
     t = tm.TransformerTask(FLAGS)
     t.eval()
 

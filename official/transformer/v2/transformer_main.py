@@ -127,11 +127,11 @@ class TransformerTask(object):
       with self.distribution_strategy.scope():
         model = transformer.create_model(params, is_train)
         opt = self._create_optimizer()
-        model.compile(opt, run_eagerly=False)
+        model.compile(opt)
     else:
       model = transformer.create_model(params, is_train)
       opt = self._create_optimizer()
-      model.compile(opt, run_eagerly=False)
+      model.compile(opt)
 
     model.summary()
 

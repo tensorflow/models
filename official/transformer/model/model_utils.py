@@ -23,6 +23,8 @@ import math
 import tensorflow as tf
 import numpy as np
 
+# Very low numbers to represent -infinity. We do not actually use -Inf, since we
+# want to be able to multiply these values by zero to get zero. (-Inf * 0 = NaN)
 _NEG_INF_FP32 = -1e9
 _NEG_INF_FP16 = np.finfo(np.float16).min
 
@@ -68,16 +70,15 @@ def get_decoder_self_attention_bias(length, dtype=tf.float32):
 
   Args:
     length: int length of sequences in batch.
+    dtype: The dtype of the return value.
 
   Returns:
     float tensor of shape [1, 1, length, length]
   """
   neg_inf = _NEG_INF_FP16 if dtype == tf.float16 else _NEG_INF_FP32
   with tf.name_scope("decoder_self_attention_bias"):
-    valid_locs = tf.linalg.band_part(tf.ones([length, length], dtype=tf.float32),
+    valid_locs = tf.linalg.band_part(tf.ones([length, length], dtype=dtype),
                                      -1, 0)
-    # TODO(DO NOT SUBMIT): Change above to create in fp16
-    valid_locs = tf.cast(valid_locs, dtype)
     valid_locs = tf.reshape(valid_locs, [1, 1, length, length])
     decoder_bias = neg_inf * (1.0 - valid_locs)
   return decoder_bias
@@ -89,6 +90,7 @@ def get_padding(x, padding_value=0, dtype=tf.float32):
   Args:
     x: int tensor with any shape
     padding_value: int value that
+    dtype: The dtype of the return value.
 
   Returns:
     float tensor with same shape as x containing values 0 or 1.
