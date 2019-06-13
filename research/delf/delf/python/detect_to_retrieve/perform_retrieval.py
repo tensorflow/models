@@ -368,8 +368,8 @@ def main(argv):
     print('done! Retrieval for query %d took %f seconds' % (i, elapsed))
 
   # Create output directory if necessary.
-  if not os.path.exists(cmd_args.output_dir):
-    os.makedirs(cmd_args.output_dir)
+  if not tf.gfile.Exists(cmd_args.output_dir):
+    tf.gfile.MakeDirs(cmd_args.output_dir)
 
   # Compute metrics.
   medium_metrics = dataset.ComputeMetrics(ranks_before_gv, medium_ground_truth,
