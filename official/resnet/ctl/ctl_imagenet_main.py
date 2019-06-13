@@ -58,7 +58,7 @@ def build_stats(loss, eval_result, time_callback, warmup=1):
     loss: The final loss at training time.
     eval_result: Output of the eval step. Assumes first value is eval_loss and
       second value is accuracy_top_1.
-    time_callback: Time tracking callback likely used during keras.fit.
+    time_callback: Time tracking callback instance.
     warmup: Number of initial steps to skip when calculating steps/s.
   Returns:
     Dictionary of normalized results.
@@ -233,29 +233,27 @@ def run(flags_obj):
 
     time_callback.on_train_begin()
     for epoch in range(train_epochs):
-      train_iterator = iter(train_ds)
 
       step = 0
       total_loss = 0.0
-      for step in range(train_steps):
+      for train_inputs in train_ds:
         training_accuracy.reset_states()
         optimizer.lr = keras_common.learning_rate_schedule(
             epoch, step, train_steps, flags_obj.batch_size)
 
         time_callback.on_batch_begin(step+epoch*train_steps)
-        total_loss += train_step(next(train_iterator))
+        total_loss += train_step(train_inputs)
         time_callback.on_batch_end(step+epoch*train_steps)
         step += 1
       train_loss = total_loss / step
 
-      if (not flags_obj.skip_eval and epoch != 0 and
-          epoch % flags_obj.epochs_between_eval == 0):
+      if (not flags_obj.skip_eval and
+          (epoch + 1) % flags_obj.epochs_between_eval == 0):
         test_loss.reset_states()
         test_accuracy.reset_states()
 
-        test_iterator = iter(test_ds)
-        for step in range(steps_per_eval):
-          test_step(next(test_iterator))
+        for test_inputs in test_ds:
+          test_step(test_inputs)
     
     time_callback.on_train_end()
     eval_result = None

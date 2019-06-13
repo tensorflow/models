@@ -79,11 +79,10 @@ class CtlImagenetTest(googletest.TestCase):
   def test_end_to_end_1_gpu(self):
     """Test Keras model with 1 GPU."""
     if context.num_gpus() < 1:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
+      num_gpus = 0
+
     extra_flags = [
-        "-num_gpus", "1",
+        "-num_gpus", num_gpus,
         "-distribution_strategy", "default",
         "-model_dir", "ctl_imagenet_1_gpu",
         "-data_format", "channels_last",
@@ -99,11 +98,10 @@ class CtlImagenetTest(googletest.TestCase):
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
     if context.num_gpus() < 2:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
+      num_gpus = 0
+
     extra_flags = [
-        "-num_gpus", "2",
+        "-num_gpus", num_gpus,
         "-distribution_strategy", "default",
         "-model_dir", "ctl_imagenet_2_gpu",
     ]
