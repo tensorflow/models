@@ -237,6 +237,8 @@ def run(flags_obj):
       step = 0
       total_loss = 0.0
       for train_inputs in train_ds:
+        if step == train_steps:
+          break
         training_accuracy.reset_states()
         optimizer.lr = keras_common.learning_rate_schedule(
             epoch, step, train_steps, flags_obj.batch_size)

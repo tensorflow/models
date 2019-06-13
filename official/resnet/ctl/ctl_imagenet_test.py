@@ -78,9 +78,9 @@ class CtlImagenetTest(googletest.TestCase):
 
   def test_end_to_end_1_gpu(self):
     """Test Keras model with 1 GPU."""
-    num_gpus = 1
+    num_gpus = "1"
     if context.num_gpus() < 1:
-      num_gpus = 0
+      num_gpus = "0"
 
     extra_flags = [
         "-num_gpus", num_gpus,
@@ -98,9 +98,9 @@ class CtlImagenetTest(googletest.TestCase):
 
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
-    num_gpus = 2
+    num_gpus = "2"
     if context.num_gpus() < 2:
-      num_gpus = 0
+      num_gpus = "0"
 
     extra_flags = [
         "-num_gpus", num_gpus,
