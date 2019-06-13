@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import time
 from absl import flags
-import tensorflow as tf # pylint: disable=g-bad-import-order
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
 from official.resnet.keras import keras_benchmark
@@ -78,6 +78,21 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly(self):
+    """Test keras based model with forced eager."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 128
+    FLAGS.train_epochs = 182
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_run_eagerly')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.distribution_strategy = 'off'
     self._run_and_report_benchmark()
 
   def benchmark_2_gpu(self):
