@@ -31,6 +31,7 @@ from delf.python import feature_aggregation_extractor
 from delf.python import feature_aggregation_similarity
 from delf.python import feature_extractor
 from delf.python import feature_io
-from delf.python.examples import extract_boxes
-from delf.python.examples import extract_features
+from delf.python import google_landmarks_dataset
+from delf.python.examples import detector
+from delf.python.examples import extractor
 # pylint: enable=unused-import
