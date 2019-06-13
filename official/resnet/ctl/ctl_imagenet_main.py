@@ -27,7 +27,6 @@ from absl import app as absl_app
 from absl import flags
 from absl import logging
 
-# import tensorflow.compat.v1.logging as logging
 import tensorflow as tf
 import numpy as np
 
