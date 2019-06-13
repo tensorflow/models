@@ -284,7 +284,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16_layout_off')
-    FLAGS.batch_size = 128
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
     FLAGS.enable_grappler_layout_optimizer = False
     FLAGS.data_format = 'channels_last'
     self._run_and_report_benchmark()
@@ -589,6 +590,23 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.data_delay_prefetch = True
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_fp16_tweaked_layout_off(self):
+    """Test Keras model with 8 GPUs, fp16, and manual config tuning."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16_tweaked_layout_off')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_delay_prefetch = True
+    FLAGS.enable_grappler_layout_optimizer = False
+    FLAGS.data_format = 'channels_last'
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu_fp16_cloning_tweaked(self):
     """Test Keras model with 8 GPUs, fp16, cloning, and manual config tuning."""
     self._setup()
@@ -699,6 +717,26 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.use_tensor_lr = True
     # FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.data_delay_prefetch = True
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_fp16_cloning_tweaked_layout_off(self):
+    """Test with manual config tuning, XLA, 8 GPUs, fp16, and cloning."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.clone_model_in_keras_dist_strat = True
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_fp16_cloning_tweaked_layout_off')
+    FLAGS.batch_size = 256 * 8
+    FLAGS.use_tensor_lr = True
+    # FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.data_delay_prefetch = True
+    FLAGS.enable_grappler_layout_optimizer = False
+    FLAGS.data_format = 'channels_last'
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_tweaked_delay_measure(self):
