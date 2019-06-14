@@ -54,22 +54,25 @@ def parse_record_keras(raw_record, is_training, dtype):
 
 def build_stats(loss, eval_result, time_callback, warmup=1):
   """Normalizes and returns dictionary of stats.
+
   Args:
     loss: The final loss at training time.
     eval_result: Output of the eval step. Assumes first value is eval_loss and
       second value is accuracy_top_1.
     time_callback: Time tracking callback instance.
     warmup: Number of initial steps to skip when calculating steps/s.
+
   Returns:
     Dictionary of normalized results.
   """
   stats = {}
-  if loss:
-    stats["loss"] = loss
 
   if eval_result:
     stats["eval_loss"] = eval_result[0]
     stats["eval_acc"] = eval_result[1]
+
+    stats['train_loss'] = train_result[0]
+    stats['train_acc'] = train_result[1]
 
   if time_callback:
     timestamp_log = time_callback.timestamp_log
@@ -250,7 +253,8 @@ def run(flags_obj):
                    training_accuracy.result().numpy(),
                    epoch)
 
-      if (not flags_obj.skip_eval and ((epoch + 1) % flags_obj.epochs_between_evals == 0)):
+      if (not flags_obj.skip_eval and 
+         (epoch + 1) % flags_obj.epochs_between_evals == 0):
         test_loss.reset_states()
         test_accuracy.reset_states()
 
@@ -262,14 +266,18 @@ def run(flags_obj):
                      test_loss.result().numpy(),
                      test_accuracy.result().numpy(),
                      epoch)
-    
+
     time_callback.on_train_end()
+
     eval_result = None
     if not flags_obj.skip_eval:
       eval_result = [test_loss.result().numpy(), 
                      test_accuracy.result().numpy()]
+      train_result = [train_loss.numpy(),
+                    training_accuracy.result().numpy()]
 
-    stats = build_stats(train_loss.numpy(), eval_result, time_callback)
+    stats = build_stats(train_result, eval_result, time_callback,
+                        flags_obj.warmup_steps)
     return stats
 
 

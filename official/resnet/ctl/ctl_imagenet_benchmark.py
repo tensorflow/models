@@ -65,8 +65,13 @@ class CtlBenchmark(PerfZeroBenchmark):
                       'value': stats['eval_acc'],
                       'min_value': top_1_min,
                       'max_value': top_1_max})
+      metrics.append({'name': 'eval_loss',
+                      'value': stats['eval_loss']})
+
       metrics.append({'name': 'top_1_train_accuracy',
-                      'value': stats['loss']})
+                      'value': stats['train_acc']})
+      metrics.append({'name': 'train_loss',
+                      'value': stats['train_loss']})
 
     if 'avg_exp_per_second' in stats:
       metrics.append({'name': 'exp_per_second',
