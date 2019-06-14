@@ -462,7 +462,7 @@ def resnet_model_fn(features, labels, mode, model_class,
 
     fp16_implementation = getattr(flags.FLAGS, 'fp16_implementation', None)
     if fp16_implementation == 'graph_rewrite':
-      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+      optimizer = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
           optimizer, loss_scale=loss_scale)
 
     def _dense_grad_filter(gvs):
@@ -539,7 +539,8 @@ def resnet_main(
     shape: list of ints representing the shape of the images used for training.
       This is only used if flags_obj.export_dir is passed.
 
-  Dict of results of the run.  Contains the keys `eval_results` and
+  Returns:
+     Dict of results of the run.  Contains the keys `eval_results` and
     `train_hooks`. `eval_results` contains accuracy (top_1) and accuracy_top_5.
     `train_hooks` is a list the instances of hooks used during training.
   """
