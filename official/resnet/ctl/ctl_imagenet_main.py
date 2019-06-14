@@ -168,7 +168,7 @@ def run(flags_obj):
   train_ds, test_ds = get_input_dataset(flags_obj, strategy)
   train_steps, train_epochs, eval_steps = get_num_train_iterations(flags_obj)
 
-  time_callback = keras_utils.TimeHistory(flags_obj.batch_size, 1)
+  time_callback = keras_utils.TimeHistory(flags_obj.batch_size, flags_obj.log_steps)
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
   with strategy_scope:
