@@ -233,33 +233,30 @@ def run(flags_obj):
 
     time_callback.on_train_begin()
     for epoch in range(train_epochs):
-
-      step = 0
+       train_iter = iter(train_ds)
       total_loss = 0.0
-      for train_inputs in train_ds:
-        if step == train_steps:
-          break
+      for step in range(train_steps):
         training_accuracy.reset_states()
         optimizer.lr = keras_common.learning_rate_schedule(
             epoch, step, train_steps, flags_obj.batch_size)
 
         time_callback.on_batch_begin(step+epoch*train_steps)
-        total_loss += train_step(train_inputs)
+        total_loss += train_step(next(train_iter))
         time_callback.on_batch_end(step+epoch*train_steps)
-        step += 1
+
       train_loss = total_loss / step
       logging.info('Training loss: %s, accuracy: %s%% at epoch: %d',
                    train_loss.numpy(),
                    training_accuracy.result().numpy(),
                    epoch)
 
-      if (not flags_obj.skip_eval and
-          (epoch + 1) % flags_obj.epochs_between_eval == 0):
+      if (not flags_obj.skip_eval and ((epoch + 1) % flags_obj.epochs_between_evals == 0)):
         test_loss.reset_states()
         test_accuracy.reset_states()
 
-        for test_inputs in test_ds:
-          test_step(test_inputs)
+        test_iter = iter(test_ds)
+        for _ in range(steps_per_eval):
+          test_step(next(test_iter))
 
         logging.info('Test loss: %s, accuracy: %s%% at epoch: %d',
                      test_loss.result().numpy(),
