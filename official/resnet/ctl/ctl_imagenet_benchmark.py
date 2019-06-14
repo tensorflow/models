@@ -49,7 +49,10 @@ class CtlBenchmark(PerfZeroBenchmark):
                         stats,
                         wall_time_sec,
                         top_1_max=None,
-                        top_1_min=None):
+                        top_1_min=None,
+                        total_batch_size=None,
+                        log_steps=None,
+                        warmup=1):
     """Report benchmark results by writing to local protobuf file.
 
     Args:
@@ -57,6 +60,9 @@ class CtlBenchmark(PerfZeroBenchmark):
       wall_time_sec: the during of the benchmark execution in seconds
       top_1_max: highest passing level for top_1 accuracy.
       top_1_min: lowest passing level for top_1 accuracy.
+      log_steps: How often the log was created for stats['step_timestamp_log'].
+      total_batch_size: Global batch-size.
+      warmup: number of entries in stats['step_timestamp_log'] to ignore.
     """
 
     metrics = []
@@ -73,9 +79,21 @@ class CtlBenchmark(PerfZeroBenchmark):
       metrics.append({'name': 'train_loss',
                       'value': stats['train_loss']})
 
-    if 'exp_per_second' in stats:
+    if (warmup and 'step_timestamp_log' in stats and
+        len(stats['step_timestamp_log']) > warmup):
+      # first entry in the time_log is start of step 1. The rest of the
+      # entries are the end of each step recorded
+      time_log = stats['step_timestamp_log']
+      elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
+      num_examples = (
+          total_batch_size * log_steps * (len(time_log) - warmup - 1))
+      examples_per_sec = num_examples / elapsed
       metrics.append({'name': 'exp_per_second',
-                      'value': stats['exp_per_second']})
+                      'value': examples_per_sec})
+
+    if 'avg_exp_per_second' in stats:
+      metrics.append({'name': 'avg_exp_per_second',
+                      'value': stats['avg_exp_per_second']})
 
     self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
 
@@ -152,9 +170,16 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     stats = ctl_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
+    # Number of logged step time entries that are excluded in performance
+    # report. We keep results from last 100 batches in this case.
+    warmup = (FLAGS.train_steps - 100) // FLAGS.log_steps
+
     super(Resnet50CtlBenchmarkBase, self)._report_benchmark(
         stats,
-        wall_time_sec)
+        wall_time_sec,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps,
+        warmup=warmup)
 
   def benchmark_1_gpu_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
@@ -199,6 +224,7 @@ class Resnet50CtlBenchmarkSynth(Resnet50CtlBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['use_synthetic_data'] = True
     def_flags['train_steps'] = 110
+    def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkSynth, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
@@ -212,6 +238,7 @@ class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 110
+    def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
