@@ -278,8 +278,7 @@ def run(flags_obj):
       train_result = [train_loss.numpy(),
                       training_accuracy.result().numpy()]
 
-    stats = build_stats(train_result, eval_result, time_callback,
-                        flags_obj.warmup_steps)
+    stats = build_stats(train_result, eval_result, time_callback)
     return stats
 
 
