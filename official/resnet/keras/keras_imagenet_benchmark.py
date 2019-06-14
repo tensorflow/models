@@ -1172,4 +1172,6 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test_class = Resnet50KerasAccuracy(root_data_dir='/data')
+  test_class.benchmark_8_gpu()
+  #tf.test.main()
