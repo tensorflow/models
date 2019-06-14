@@ -1176,7 +1176,7 @@ if __name__ == '__main__':
   #test_class.benchmark_8_gpu()
 
   eager = True
-  num_gpus = 8
+  num_gpus = 4
   dtype = 'fp32'
 
   if eager:
@@ -1184,7 +1184,7 @@ if __name__ == '__main__':
     test_class._setup()
     FLAGS.num_gpus = num_gpus
     FLAGS.data_dir = test_class.data_dir
-    FLAGS.batch_size = 128 * num_gpus
+    FLAGS.batch_size = 128 * num_gpus if dtype=='fp32' else 256 * num_gpus
     FLAGS.train_epochs = 90
     FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = test_class._get_model_dir('benchmark_%d_gpu' % num_gpus)
@@ -1200,7 +1200,7 @@ if __name__ == '__main__':
     test_class._setup()
     FLAGS.num_gpus = num_gpus
     FLAGS.data_dir = test_class.data_dir
-    FLAGS.batch_size = 128 * num_gpus
+    FLAGS.batch_size = 128 * num_gpus if dtype=='fp32' else 256 * num_gpus
     FLAGS.train_epochs = 90
     FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = test_class._get_model_dir('benchmark_graph_%d_gpu' % num_gpus)
