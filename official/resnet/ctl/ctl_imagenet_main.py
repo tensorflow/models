@@ -79,7 +79,7 @@ def build_stats(loss, eval_result, time_callback, warmup=1):
     stats["step_timestamp_log"] = timestamp_log
     stats["train_finish_time"] = time_callback.train_finish_time
     if len(timestamp_log) > warmup + 1:
-      stats["avg_exp_per_second"] = (
+      stats["exp_per_second"] = (
           time_callback.batch_size * time_callback.log_steps *
           (len(time_callback.timestamp_log)- warmup - 1) /
           (timestamp_log[-1].timestamp - timestamp_log[warmup].timestamp))

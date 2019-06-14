@@ -73,9 +73,9 @@ class CtlBenchmark(PerfZeroBenchmark):
       metrics.append({'name': 'train_loss',
                       'value': stats['train_loss']})
 
-    if 'avg_exp_per_second' in stats:
+    if 'exp_per_second' in stats:
       metrics.append({'name': 'exp_per_second',
-                      'value': stats['avg_exp_per_second']})
+                      'value': stats['exp_per_second']})
 
     self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
 
