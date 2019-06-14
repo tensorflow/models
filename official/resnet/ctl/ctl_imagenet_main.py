@@ -273,8 +273,9 @@ def run(flags_obj):
     time_callback.on_train_end()
 
     eval_result = None
+    train_result = None
     if not flags_obj.skip_eval:
-      eval_result = [test_loss.result().numpy(), 
+      eval_result = [test_loss.result().numpy(),
                      test_accuracy.result().numpy()]
       train_result = [train_loss.numpy(),
                       training_accuracy.result().numpy()]
