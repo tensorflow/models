@@ -70,14 +70,14 @@ def main(argv):
     raise RuntimeError('Too many command-line arguments.')
 
   # Process output directory.
-  if os.path.exists(cmd_args.output_cluster_dir):
+  if tf.gfile.Exists(cmd_args.output_cluster_dir):
     raise RuntimeError(
         'output_cluster_dir = %s already exists. This may indicate that a '
         'previous run already wrote checkpoints in this directory, which would '
         'lead to incorrect training. Please re-run this script by specifying an'
         ' inexisting directory.' % cmd_args.output_cluster_dir)
   else:
-    os.makedirs(cmd_args.output_cluster_dir)
+    tf.gfile.MakeDirs(cmd_args.output_cluster_dir)
 
   # Read list of index images from dataset file.
   print('Reading list of index images from dataset file...')

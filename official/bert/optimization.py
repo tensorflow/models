@@ -136,14 +136,14 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
 
   def _resource_apply_dense(self, grad, var):
     var_dtype = var.dtype.base_dtype
-    lr_t = self._decayed_lr(var_dtype)
+    lr_t = self._decayed_lr_t[var_dtype]
     with tf.control_dependencies([self._decay_weights_op(var, lr_t)]):
       return super(AdamWeightDecay, self)._resource_apply_dense(
           grad, var)
 
   def _resource_apply_sparse(self, grad, var, indices):
     var_dtype = var.dtype.base_dtype
-    lr_t = self._decayed_lr(var_dtype)
+    lr_t = self._decayed_lr_t[var_dtype]
     with tf.control_dependencies([self._decay_weights_op(var, lr_t)]):
       return super(AdamWeightDecay, self)._resource_apply_sparse(
           grad, var, indices)

@@ -45,50 +45,30 @@ from official.utils.misc import model_helpers
 FLAGS = flags.FLAGS
 
 
-def _keras_loss(y_true, y_pred):
-  # Here we are using the exact same loss used by the estimator
-  loss = tf.keras.losses.sparse_categorical_crossentropy(
-      y_pred=y_pred,
-      y_true=tf.cast(y_true, tf.int32),
-      from_logits=True)
-  return loss
+def metric_fn(logits, dup_mask, params):
+  dup_mask = tf.cast(dup_mask, tf.float32)
+  logits = tf.slice(logits, [0, 0, 1], [-1, -1, -1])
+  in_top_k, _, metric_weights, _ = neumf_model.compute_top_k_and_ndcg(
+      logits,
+      dup_mask,
+      params["match_mlperf"])
+  metric_weights = tf.cast(metric_weights, tf.float32)
+  return in_top_k, metric_weights
 
 
-def _get_metric_fn(params):
-  """Get the metrix fn used by model compile."""
-  batch_size = params["batch_size"]
+class MetricLayer(tf.keras.layers.Layer):
+  """Custom layer of metrics for NCF model."""
 
-  def metric_fn(y_true, y_pred):
-    """Returns the in_top_k metric."""
-    softmax_logits = y_pred[0, :]
-    logits = tf.slice(softmax_logits, [0, 1], [batch_size, 1])
+  def __init__(self, params):
+    super(MetricLayer, self).__init__()
+    self.params = params
+    self.metric = tf.keras.metrics.Mean(name=rconst.HR_METRIC_NAME)
 
-    # The dup mask should be obtained from input data, but we did not yet find
-    # a good way of getting it with keras, so we set it to zeros to neglect the
-    # repetition correction
-    dup_mask = tf.zeros([batch_size, 1])
-
-    _, _, in_top_k, _, _ = (
-        neumf_model.compute_eval_loss_and_metrics_helper(
-            logits,
-            softmax_logits,
-            dup_mask,
-            params["num_neg"],
-            params["match_mlperf"],
-            params["use_xla_for_gpu"]))
-
-    is_training = tf.keras.backend.learning_phase()
-    if isinstance(is_training, int):
-      is_training = tf.constant(bool(is_training), dtype=tf.bool)
-
-    in_top_k = tf.cond(
-        is_training,
-        lambda: tf.zeros(shape=in_top_k.shape, dtype=in_top_k.dtype),
-        lambda: in_top_k)
-
-    return in_top_k
-
-  return metric_fn
+  def call(self, inputs):
+    logits, dup_mask = inputs
+    in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
+    self.add_metric(self.metric(in_top_k, sample_weight=metric_weights))
+    return logits
 
 
 def _get_train_and_eval_data(producer, params):
@@ -97,39 +77,46 @@ def _get_train_and_eval_data(producer, params):
   def preprocess_train_input(features, labels):
     """Pre-process the training data.
 
-    This is needed because:
-    - Distributed training with keras fit does not support extra inputs. The
-      current implementation for fit does not use the VALID_POINT_MASK in the
-      input, which makes it extra, so it needs to be removed when using keras
-      fit.
+    This is needed because
     - The label needs to be extended to be used in the loss fn
+    - We need the same inputs for training and eval so adding fake inputs
+      for DUPLICATE_MASK in training data.
     """
-    if not params["keras_use_ctl"]:
-      features.pop(rconst.VALID_POINT_MASK)
     labels = tf.expand_dims(labels, -1)
-    return features, labels
+    fake_dup_mask = tf.zeros_like(features[movielens.USER_COLUMN])
+    features[rconst.DUPLICATE_MASK] = fake_dup_mask
+    features[rconst.TRAIN_LABEL_KEY] = labels
+
+    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
+      return features
+    else:
+      # b/134708104
+      return (features,)
 
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params).map(
       preprocess_train_input)
-  if not params["keras_use_ctl"]:
-    train_input_dataset = train_input_dataset.repeat(FLAGS.train_epochs)
 
   def preprocess_eval_input(features):
     """Pre-process the eval data.
 
-    This is needed because:
-    - Distributed training with keras fit does not support extra inputs. The
-      current implementation for fit does not use the DUPLICATE_MASK in the
-      input, which makes it extra, so it needs to be removed when using keras
-      fit.
+    This is needed becasue:
     - The label needs to be extended to be used in the loss fn
+    - We need the same inputs for training and eval so adding fake inputs
+      for VALID_PT_MASK in eval data.
     """
-    if not params["keras_use_ctl"]:
-      features.pop(rconst.DUPLICATE_MASK)
-    labels = tf.zeros_like(features[movielens.USER_COLUMN])
+    labels = tf.cast(tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
     labels = tf.expand_dims(labels, -1)
-    return features, labels
+    fake_valid_pt_mask = tf.cast(
+        tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
+    features[rconst.VALID_POINT_MASK] = fake_valid_pt_mask
+    features[rconst.TRAIN_LABEL_KEY] = labels
+
+    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
+      return features
+    else:
+      # b/134708104
+      return (features,)
 
   eval_input_fn = producer.make_input_fn(is_training=False)
   eval_input_dataset = eval_input_fn(params).map(
@@ -203,6 +190,24 @@ def _get_keras_model(params):
       name=movielens.ITEM_COLUMN,
       dtype=tf.int32)
 
+  valid_pt_mask_input = tf.keras.layers.Input(
+      shape=(batch_size,),
+      batch_size=params["batches_per_step"],
+      name=rconst.VALID_POINT_MASK,
+      dtype=tf.bool)
+
+  dup_mask_input = tf.keras.layers.Input(
+      shape=(batch_size,),
+      batch_size=params["batches_per_step"],
+      name=rconst.DUPLICATE_MASK,
+      dtype=tf.int32)
+
+  label_input = tf.keras.layers.Input(
+      shape=(batch_size, 1),
+      batch_size=params["batches_per_step"],
+      name=rconst.TRAIN_LABEL_KEY,
+      dtype=tf.bool)
+
   base_model = neumf_model.construct_model(
       user_input, item_input, params, need_strip=True)
 
@@ -219,9 +224,25 @@ def _get_keras_model(params):
       [zeros, logits],
       axis=-1)
 
+  softmax_logits = MetricLayer(params)([softmax_logits, dup_mask_input])
+
   keras_model = tf.keras.Model(
-      inputs=[user_input, item_input],
+      inputs={
+          movielens.USER_COLUMN: user_input,
+          movielens.ITEM_COLUMN: item_input,
+          rconst.VALID_POINT_MASK: valid_pt_mask_input,
+          rconst.DUPLICATE_MASK: dup_mask_input,
+          rconst.TRAIN_LABEL_KEY: label_input},
       outputs=softmax_logits)
+
+  loss_obj = tf.keras.losses.SparseCategoricalCrossentropy(
+      from_logits=True,
+      reduction="sum")
+
+  keras_model.add_loss(loss_obj(
+      y_true=label_input,
+      y_pred=softmax_logits,
+      sample_weight=valid_pt_mask_input) * 1.0 / batch_size)
 
   keras_model.summary()
   return keras_model
@@ -229,6 +250,11 @@ def _get_keras_model(params):
 
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
+
+  if FLAGS.seed is not None:
+    print("Setting tf seed")
+    tf.random.set_seed(FLAGS.seed)
+
   # TODO(seemuch): Support different train and eval batch sizes
   if FLAGS.eval_batch_size != FLAGS.batch_size:
     logging.warning(
@@ -240,9 +266,15 @@ def run_ncf(_):
 
   params = ncf_common.parse_flags(FLAGS)
 
-  if params["keras_use_ctl"] and int(tf.__version__.split(".")[0]) == 1:
+  strategy = distribution_utils.get_distribution_strategy(
+      distribution_strategy=FLAGS.distribution_strategy,
+      num_gpus=FLAGS.num_gpus)
+  params["distribute_strategy"] = strategy
+
+  if (params["keras_use_ctl"] and (
+      not ncf_common.is_tf_v2() or strategy is None)):
     logging.error(
-        "Custom training loop only works with tensorflow 2.0 and above.")
+        "Custom training loop only works with tensorflow 2.0 and dist strat.")
     return
 
   # ncf_common rounds eval_batch_size (this is needed due to a reshape during
@@ -273,10 +305,10 @@ def run_ncf(_):
 
   if FLAGS.early_stopping:
     early_stopping_callback = CustomEarlyStopping(
-        "val_metric_fn", desired_value=FLAGS.hr_threshold)
+        "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
-  strategy = ncf_common.get_distribution_strategy(params)
+
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
     optimizer = tf.keras.optimizers.Adam(
@@ -286,7 +318,7 @@ def run_ncf(_):
         epsilon=params["epsilon"])
 
   if params["keras_use_ctl"]:
-    loss_object = tf.losses.SparseCategoricalCrossentropy(
+    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
         reduction=tf.keras.losses.Reduction.SUM,
         from_logits=True)
     train_input_iterator = strategy.make_dataset_iterator(train_input_dataset)
@@ -295,12 +327,11 @@ def run_ncf(_):
     @tf.function
     def train_step():
       """Called once per step to train the model."""
-      def step_fn(inputs):
+      def step_fn(features):
         """Computes loss and applied gradient per replica."""
-        features, labels = inputs
         with tf.GradientTape() as tape:
-          softmax_logits = keras_model([features[movielens.USER_COLUMN],
-                                        features[movielens.ITEM_COLUMN]])
+          softmax_logits = keras_model(features)
+          labels = features[rconst.TRAIN_LABEL_KEY]
           loss = loss_object(labels, softmax_logits,
                              sample_weight=features[rconst.VALID_POINT_MASK])
           loss *= (1.0 / (batch_size*strategy.num_replicas_in_sync))
@@ -319,18 +350,11 @@ def run_ncf(_):
     @tf.function
     def eval_step():
       """Called once per eval step to compute eval metrics."""
-      def step_fn(inputs):
+      def step_fn(features):
         """Computes eval metrics per replica."""
-        features, _ = inputs
-        softmax_logits = keras_model([features[movielens.USER_COLUMN],
-                                      features[movielens.ITEM_COLUMN]])
-        logits = tf.slice(softmax_logits, [0, 0, 1], [-1, -1, -1])
-        dup_mask = features[rconst.DUPLICATE_MASK]
-        in_top_k, _, metric_weights, _ = neumf_model.compute_top_k_and_ndcg(
-            logits,
-            dup_mask,
-            params["match_mlperf"])
-        metric_weights = tf.cast(metric_weights, tf.float32)
+        softmax_logits = keras_model(features)
+        in_top_k, metric_weights = metric_fn(
+            softmax_logits, features[rconst.DUPLICATE_MASK], params)
         hr_sum = tf.reduce_sum(in_top_k*metric_weights)
         hr_count = tf.reduce_sum(metric_weights)
         return hr_sum, hr_count
@@ -352,8 +376,9 @@ def run_ncf(_):
         time_callback.on_batch_begin(step+epoch*num_train_steps)
         train_loss += train_step()
         time_callback.on_batch_end(step+epoch*num_train_steps)
+      train_loss /= num_train_steps
       logging.info("Done training epoch %s, epoch loss=%s.",
-                   epoch+1, train_loss/num_train_steps)
+                   epoch+1, train_loss)
       eval_input_iterator.initialize()
       hr_sum = 0
       hr_count = 0
@@ -373,14 +398,9 @@ def run_ncf(_):
   else:
     with distribution_utils.get_strategy_scope(strategy):
 
-      keras_model.compile(
-          loss=_keras_loss,
-          metrics=[_get_metric_fn(params)],
-          optimizer=optimizer,
-          cloning=params["clone_model_in_keras_dist_strat"])
+      keras_model.compile(optimizer=optimizer)
 
       history = keras_model.fit(train_input_dataset,
-                                steps_per_epoch=num_train_steps,
                                 epochs=FLAGS.train_epochs,
                                 callbacks=callbacks,
                                 validation_data=eval_input_dataset,

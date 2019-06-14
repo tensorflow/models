@@ -34,6 +34,7 @@ import tensorflow as tf
 
 from tensorflow.python.platform import app
 from delf import box_io
+from delf import detector
 
 cmd_args = None
 
@@ -61,47 +62,6 @@ def _ReadImageList(list_path):
     image_paths = f.readlines()
   image_paths = [entry.rstrip() for entry in image_paths]
   return image_paths
-
-
-def MakeDetector(sess, model_dir, import_scope=None):
-  """Creates a function to detect objects in an image.
-
-  Args:
-    sess: TensorFlow session to use.
-    model_dir: Directory where SavedModel is located.
-    import_scope: Optional scope to use for model.
-
-  Returns:
-    Function that receives an image and returns detection results.
-  """
-  tf.saved_model.loader.load(
-      sess, [tf.saved_model.tag_constants.SERVING],
-      model_dir,
-      import_scope=import_scope)
-  import_scope_prefix = import_scope + '/' if import_scope is not None else ''
-  input_images = sess.graph.get_tensor_by_name('%sinput_images:0' %
-                                               import_scope_prefix)
-  boxes = sess.graph.get_tensor_by_name('%sdetection_boxes:0' %
-                                        import_scope_prefix)
-  scores = sess.graph.get_tensor_by_name('%sdetection_scores:0' %
-                                         import_scope_prefix)
-  class_indices = sess.graph.get_tensor_by_name('%sdetection_classes:0' %
-                                                import_scope_prefix)
-
-  def DetectorFn(images):
-    """Receives an image and returns detected boxes.
-
-    Args:
-      images: Uint8 array with shape (batch, height, width 3) containing a batch
-        of RGB images.
-
-    Returns:
-      Tuple (boxes, scores, class_indices).
-    """
-    return sess.run([boxes, scores, class_indices],
-                    feed_dict={input_images: images})
-
-  return DetectorFn
 
 
 def _FilterBoxesByScore(boxes, scores, class_indices, score_threshold):
@@ -179,10 +139,10 @@ def main(argv):
   tf.logging.info('done! Found %d images', num_images)
 
   # Create output directories if necessary.
-  if not os.path.exists(cmd_args.output_dir):
-    os.makedirs(cmd_args.output_dir)
-  if cmd_args.output_viz_dir and not os.path.exists(cmd_args.output_viz_dir):
-    os.makedirs(cmd_args.output_viz_dir)
+  if not tf.gfile.Exists(cmd_args.output_dir):
+    tf.gfile.MakeDirs(cmd_args.output_dir)
+  if cmd_args.output_viz_dir and not tf.gfile.Exists(cmd_args.output_viz_dir):
+    tf.gfile.MakeDirs(cmd_args.output_viz_dir)
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
@@ -197,7 +157,7 @@ def main(argv):
       init_op = tf.global_variables_initializer()
       sess.run(init_op)
 
-      detector_fn = MakeDetector(sess, cmd_args.detector_path)
+      detector_fn = detector.MakeDetector(sess, cmd_args.detector_path)
 
       # Start input enqueue threads.
       coord = tf.train.Coordinator()

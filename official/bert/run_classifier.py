@@ -74,8 +74,6 @@ flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
 flags.DEFINE_integer('eval_batch_size', 8, 'Batch size for evaluation.')
 flags.DEFINE_integer('num_train_epochs', 3,
                      'Total number of training epochs to perform.')
-flags.DEFINE_integer('steps_per_run', 200,
-                     'Number of steps running on TPU devices.')
 flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
 
 FLAGS = flags.FLAGS
@@ -206,7 +204,7 @@ def run_bert(strategy, input_meta_data):
   logging.info('Training using customized training loop TF 2.0 with distrubuted'
                'strategy.')
   use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
-  trained_model = run_customized_training(
+  return run_customized_training(
       strategy,
       bert_config,
       input_meta_data,
@@ -218,10 +216,6 @@ def run_bert(strategy, input_meta_data):
       FLAGS.learning_rate,
       FLAGS.init_checkpoint,
       use_remote_tpu=use_remote_tpu)
-
-  if FLAGS.model_export_path:
-    model_saving_utils.export_bert_model(
-        FLAGS.model_export_path, model=trained_model)
 
 
 def main(_):
@@ -240,8 +234,7 @@ def main(_):
   elif FLAGS.strategy_type == 'tpu':
     # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(
-        cluster_resolver, steps_per_run=FLAGS.steps_per_run)
+    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
   else:
     raise ValueError('The distribution strategy type is not supported: %s' %
                      FLAGS.strategy_type)

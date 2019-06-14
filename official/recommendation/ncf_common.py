@@ -104,10 +104,7 @@ def parse_flags(flags_obj):
       "epsilon": flags_obj.epsilon,
       "match_mlperf": flags_obj.ml_perf,
       "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
-      "clone_model_in_keras_dist_strat":
-          flags_obj.clone_model_in_keras_dist_strat,
       "epochs_between_evals": FLAGS.epochs_between_evals,
-      "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
   }
@@ -115,9 +112,6 @@ def parse_flags(flags_obj):
 
 def get_distribution_strategy(params):
   """Returns the distribution strategy to use."""
-  if params["turn_off_distribution_strategy"]:
-    return None
-
   if params["use_tpu"]:
     # Some of the networking libraries are quite chatty.
     for name in ["googleapiclient.discovery", "googleapiclient.discovery_cache",
@@ -294,12 +288,6 @@ def define_ncf_flags():
       name="seed", default=None, help=flags_core.help_wrap(
           "This value will be used to seed both NumPy and TensorFlow."))
 
-  flags.DEFINE_boolean(
-      name="turn_off_distribution_strategy",
-      default=False,
-      help=flags_core.help_wrap(
-          "If set, do not use any distribution strategy."))
-
   @flags.validator("eval_batch_size", "eval_batch_size must be at least {}"
                    .format(rconst.NUM_EVAL_NEGATIVES + 1))
   def eval_size_check(eval_batch_size):
@@ -315,13 +303,6 @@ def define_ncf_flags():
   @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
   def xla_validator(flag_dict):
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
-
-  flags.DEFINE_bool(
-      name="clone_model_in_keras_dist_strat",
-      default=True,
-      help=flags_core.help_wrap(
-          "If False, then the experimental code path is used that does not "
-          "clone models for distribution."))
 
   flags.DEFINE_bool(
       name="early_stopping",
@@ -343,3 +324,8 @@ def convert_to_softmax_logits(logits):
   '''
   softmax_logits = tf.concat([logits * 0, logits], axis=1)
   return softmax_logits
+
+def is_tf_v2():
+  """Returns whether it is v2."""
+  from tensorflow.python import tf2 as tf2_internal
+  return tf2_internal.enabled()

@@ -80,20 +80,30 @@ class BaseTester(unittest.TestCase):
     assert flags.FLAGS.use_synthetic_data
 
   def test_parse_dtype_info(self):
-    for dtype_str, tf_dtype, loss_scale in [["fp16", tf.float16, 128],
-                                            ["fp32", tf.float32, 1]]:
-      flags_core.parse_flags([__file__, "--dtype", dtype_str])
+    flags_core.parse_flags([__file__, "--dtype", "fp16"])
+    self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf.float16)
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), 2)
 
-      self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf_dtype)
-      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), loss_scale)
+    flags_core.parse_flags(
+        [__file__, "--dtype", "fp16", "--loss_scale", "5"])
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), 5)
 
-      flags_core.parse_flags(
-          [__file__, "--dtype", dtype_str, "--loss_scale", "5"])
-      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), 5)
+    flags_core.parse_flags(
+        [__file__, "--dtype", "fp16", "--loss_scale", "dynamic"])
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), "dynamic")
 
-      flags_core.parse_flags(
-          [__file__, "--dtype", dtype_str, "--loss_scale", "dynamic"])
-      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), "dynamic")
+    flags_core.parse_flags([__file__, "--dtype", "fp32"])
+    self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf.float32)
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), 1)
+
+    flags_core.parse_flags([__file__, "--dtype", "fp32", "--loss_scale", "5"])
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), 5)
+
 
     with self.assertRaises(SystemExit):
       flags_core.parse_flags([__file__, "--dtype", "int8"])

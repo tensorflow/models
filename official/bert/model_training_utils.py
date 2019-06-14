@@ -43,6 +43,21 @@ def _save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
   return
 
 
+def _get_input_iterator(input_fn, strategy):
+  """Returns distributed dataset iterator."""
+
+  # When training with TPU pods, datasets needs to be cloned across
+  # workers. Since Dataset instance cannot be cloned in eager mode, we instead
+  # pass callable that returns a dataset.
+  input_data = input_fn()
+  if callable(input_data):
+    iterator = iter(
+        strategy.experimental_distribute_datasets_from_function(input_data))
+  else:
+    iterator = iter(strategy.experimental_distribute_dataset(input_data))
+  return iterator
+
+
 def run_customized_training_loop(
     # pylint: disable=invalid-name
     _sentinel=None,
@@ -89,7 +104,7 @@ def run_customized_training_loop(
       use_remote_tpu: If true, input pipeline ops are placed in TPU worker host
         as an optimization.
       custom_callbacks: A list of Keras Callbacks objects to run during
-        training. More specifically, `on_batch_start()`, `on_batch_end()`,
+        training. More specifically, `on_batch_begin()`, `on_batch_end()`,
         methods are invoked during training.
 
   Returns:
@@ -125,7 +140,8 @@ def run_customized_training_loop(
   # To reduce unnecessary send/receive input pipeline operation, we place input
   # pipeline ops in worker task.
   with tf.device(get_primary_cpu_task(use_remote_tpu)):
-    train_iterator = strategy.make_dataset_iterator(train_input_fn())
+    train_iterator = _get_input_iterator(train_input_fn, strategy)
+
     with strategy.scope():
       total_training_steps = steps_per_epoch * epochs
 
@@ -171,9 +187,8 @@ def run_customized_training_loop(
           optimizer.apply_gradients(zip(grads, tvars))
           return loss
 
-        per_replica_losses = strategy.experimental_run(_replicated_step,
-                                                       iterator)
-
+        per_replica_losses = strategy.experimental_run_v2(
+            _replicated_step, args=(next(iterator),))
         # For reporting, we returns the mean of losses.
         loss = strategy.reduce(
             tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None)
@@ -190,7 +205,7 @@ def run_customized_training_loop(
           model_outputs = model(inputs, training=False)
           metric.update_state(labels, model_outputs)
 
-        strategy.experimental_run(_test_step_fn, iterator)
+        strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
       def _run_evaluation(current_training_step, test_iterator):
         """Runs validation steps and aggregate metrics."""
@@ -202,12 +217,12 @@ def run_customized_training_loop(
                      metric_result)
         return metric_result
 
-      def _run_callbacks_on_batch_start(batch):
+      def _run_callbacks_on_batch_begin(batch):
         """Runs custom callbacks at the start of every step."""
         if not custom_callbacks:
           return
         for callback in custom_callbacks:
-          callback.on_batch_start(batch)
+          callback.on_batch_begin(batch)
 
       def _run_callbacks_on_batch_end(batch):
         """Runs custom callbacks at the end of every step."""
@@ -234,7 +249,7 @@ def run_customized_training_loop(
       train_loss = None
       while current_step < total_training_steps:
         current_step += 1
-        _run_callbacks_on_batch_start(current_step)
+        _run_callbacks_on_batch_begin(current_step)
         train_loss = train_step(train_iterator).numpy().astype(float)
 
         if train_metric:
@@ -260,7 +275,7 @@ def run_customized_training_loop(
           if eval_input_fn:
             logging.info('Running evaluation after step: %s.', current_step)
             _run_evaluation(current_step,
-                            strategy.make_dataset_iterator(eval_input_fn()))
+                            _get_input_iterator(eval_input_fn, strategy))
 
           # Re-initialize evaluation metric, except the last step.
           if metric and current_step < total_training_steps:
@@ -273,7 +288,7 @@ def run_customized_training_loop(
       if eval_input_fn:
         logging.info('Running final evaluation after training is complete.')
         eval_metric_result = _run_evaluation(
-            current_step, strategy.make_dataset_iterator(eval_input_fn()))
+            current_step, _get_input_iterator(eval_input_fn, strategy))
 
       training_summary = {
           'total_training_steps': total_training_steps,
@@ -284,8 +299,8 @@ def run_customized_training_loop(
       if eval_metric_result:
         training_summary['eval_metrics'] = eval_metric_result
 
-        summary_path = os.path.join(model_dir, SUMMARY_TXT)
-        with tf.io.gfile.GFile(summary_path, 'wb') as f:
-          f.write(json.dumps(training_summary, indent=4))
+      summary_path = os.path.join(model_dir, SUMMARY_TXT)
+      with tf.io.gfile.GFile(summary_path, 'wb') as f:
+        f.write(json.dumps(training_summary, indent=4))
 
       return model

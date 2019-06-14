@@ -56,9 +56,6 @@ flags.DEFINE_integer(
 flags.DEFINE_integer('max_predictions_per_seq', 20,
                      'Maximum predictions per sequence_output.')
 flags.DEFINE_integer('train_batch_size', 32, 'Total batch size for training.')
-flags.DEFINE_integer(
-    'steps_per_run', 1000,
-    'Number of steps to run in TPU worker before returning to host.')
 flags.DEFINE_integer('num_train_epochs', 3,
                      'Total number of training epochs to perform.')
 flags.DEFINE_integer('num_steps_per_epoch', 1000,
@@ -71,16 +68,37 @@ FLAGS = flags.FLAGS
 
 
 def get_pretrain_input_data(input_file_pattern, seq_length,
-                            max_predictions_per_seq, batch_size):
+                            max_predictions_per_seq, batch_size, strategy):
   """Returns input dataset from input file string."""
 
-  input_files = []
-  for input_pattern in input_file_pattern.split(','):
-    input_files.extend(tf.io.gfile.glob(input_pattern))
+  # When using TPU pods, we need to clone dataset across
+  # workers and need to pass in function that returns the dataset rather
+  # than passing dataset instance itself.
+  use_dataset_fn = isinstance(strategy, tf.distribute.experimental.TPUStrategy)
+  if use_dataset_fn:
+    if batch_size % strategy.num_replicas_in_sync != 0:
+      raise ValueError(
+          'Batch size must be divisible by number of replicas : {}'.format(
+              strategy.num_replicas_in_sync))
 
-  train_dataset = input_pipeline.create_pretrain_dataset(
-      input_files, seq_length, max_predictions_per_seq, batch_size)
-  return train_dataset
+    # As auto rebatching is not supported in
+    # `experimental_distribute_datasets_from_function()` API, which is
+    # required when cloning dataset to multiple workers in eager mode,
+    # we use per-replica batch size.
+    batch_size = int(batch_size / strategy.num_replicas_in_sync)
+
+  def _dataset_fn(ctx=None):
+    del ctx
+
+    input_files = []
+    for input_pattern in input_file_pattern.split(','):
+      input_files.extend(tf.io.gfile.glob(input_pattern))
+
+    train_dataset = input_pipeline.create_pretrain_dataset(
+        input_files, seq_length, max_predictions_per_seq, batch_size)
+    return train_dataset
+
+  return _dataset_fn if use_dataset_fn else _dataset_fn()
 
 
 def get_loss_fn(loss_scale=1.0):
@@ -108,7 +126,7 @@ def run_customized_training(strategy,
 
   train_input_fn = functools.partial(get_pretrain_input_data, input_files,
                                      max_seq_length, max_predictions_per_seq,
-                                     train_batch_size)
+                                     train_batch_size, strategy)
 
   def _get_pretrain_model():
     pretrain_model, core_model = bert_models.pretrain_model(
@@ -167,8 +185,7 @@ def main(_):
   elif FLAGS.strategy_type == 'tpu':
     # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(
-        cluster_resolver, steps_per_run=FLAGS.steps_per_run)
+    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
   else:
     raise ValueError('The distribution strategy type is not supported: %s' %
                      FLAGS.strategy_type)
