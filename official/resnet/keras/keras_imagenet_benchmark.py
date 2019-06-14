@@ -1173,5 +1173,39 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
 if __name__ == '__main__':
   test_class = Resnet50KerasAccuracy(root_data_dir='/data')
-  test_class.benchmark_8_gpu()
+  #test_class.benchmark_8_gpu()
+
+  eager = True
+  num_gpus = 8
+  dtype = 'fp32'
+
+  if eager:
+    """Test Keras model with eager, dist_strat and 8 GPUs."""
+    test_class._setup()
+    FLAGS.num_gpus = num_gpus
+    FLAGS.data_dir = test_class.data_dir
+    FLAGS.batch_size = 128 * num_gpus
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = test_class._get_model_dir('benchmark_%d_gpu' % num_gpus)
+    FLAGS.dtype = dtype
+    FLAGS.enable_eager = True
+    # Add some thread tunings to improve performance.
+    FLAGS.datasets_num_private_threads = 14
+    FLAGS.use_tensor_lr = True
+    test_class._run_and_report_benchmark()
+
+  else:
+    """Test Keras model with Keras fit/dist_strat and 8 GPUs."""
+    test_class._setup()
+    FLAGS.num_gpus = num_gpus
+    FLAGS.data_dir = test_class.data_dir
+    FLAGS.batch_size = 128 * num_gpus
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = test_class._get_model_dir('benchmark_graph_%d_gpu' % num_gpus)
+    FLAGS.dtype = dtype
+    FLAGS.use_tensor_lr = True
+    test_class._run_and_report_benchmark()
+
   #tf.test.main()
