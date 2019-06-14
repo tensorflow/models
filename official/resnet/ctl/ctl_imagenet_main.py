@@ -233,7 +233,7 @@ def run(flags_obj):
 
     time_callback.on_train_begin()
     for epoch in range(train_epochs):
-       train_iter = iter(train_ds)
+      train_iter = iter(train_ds)
       total_loss = 0.0
       for step in range(train_steps):
         training_accuracy.reset_states()
