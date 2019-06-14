@@ -32,6 +32,7 @@ import numpy as np
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
+from official.resnet.keras import keras_imagenet_main
 from official.resnet.keras import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
@@ -242,7 +243,7 @@ def run(flags_obj):
       training_accuracy.reset_states()
 
       for step in range(train_steps):
-        optimizer.lr = keras_common.learning_rate_schedule(
+        optimizer.lr = keras_imagenet_main.learning_rate_schedule(
             epoch, step, train_steps, flags_obj.batch_size)
 
         time_callback.on_batch_begin(step+epoch*train_steps)
