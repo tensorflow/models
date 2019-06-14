@@ -191,7 +191,7 @@ def run(flags_obj):
         compute_lr_on_cpu=True)
 
   with strategy_scope:
-    optimizer = keras_common.get_optimizer(keras_common.lr_schedule)
+    optimizer = keras_common.get_optimizer(lr_schedule)
     if dtype == 'float16':
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
