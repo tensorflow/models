@@ -54,7 +54,6 @@ def process_record_dataset(dataset,
                            num_epochs=1,
                            dtype=tf.float32,
                            datasets_num_private_threads=None,
-                           num_parallel_batches=1,
                            drop_remainder=False,
                            tf_data_experimental_slack=False):
   """Given a Dataset with raw records, return an iterator over the records.
@@ -72,7 +71,6 @@ def process_record_dataset(dataset,
     dtype: Data type to use for images/features.
     datasets_num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
-    num_parallel_batches: Number of parallel batches for tf.data.
     drop_remainder: A boolean indicates whether to drop the remainder of the
       batches. If True, the batch dimension will be static.
     tf_data_experimental_slack: Whether to enable tf.data's
@@ -629,7 +627,6 @@ def resnet_main(
         num_epochs=num_epochs,
         dtype=flags_core.get_tf_dtype(flags_obj),
         datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-        num_parallel_batches=flags_obj.datasets_num_parallel_batches,
         input_context=input_context)
 
   def input_fn_eval():
@@ -731,7 +728,6 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
   flags_core.define_performance(num_parallel_calls=False,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
-                                datasets_num_parallel_batches=True,
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 fp16_implementation=fp16_implementation,
                                 loss_scale=True,
