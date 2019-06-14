@@ -292,7 +292,6 @@ def main(_):
 
 if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
-  tf.enable_v2_behavior()
   imagenet_main.define_imagenet_flags()
   ctl_common.define_ctl_flags()
   absl_app.run(main)
