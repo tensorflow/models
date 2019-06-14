@@ -30,15 +30,12 @@ _MIN_HEIGHT = 10
 _MIN_WIDTH = 10
 
 
-def ResizeImage(image, config, resize_factor=1.0):
+def ResizeImage(image, config):
   """Resizes image according to config.
 
   Args:
     image: Uint8 array with shape (height, width, 3).
     config: DelfConfig proto containing the model configuration.
-    resize_factor: Optional float resize factor for the input image. If given,
-      the maximum and minimum allowed image sizes in `config` are scaled by this
-      factor. Must be non-negative.
 
   Returns:
     resized_image: Uint8 array with resized image.
@@ -48,27 +45,20 @@ def ResizeImage(image, config, resize_factor=1.0):
   Raises:
     ValueError: If `image` has incorrect number of dimensions/channels.
   """
-  if resize_factor < 0.0:
-    raise ValueError('negative resize_factor is not allowed: %f' %
-                     resize_factor)
   if image.ndim != 3:
     raise ValueError('image has incorrect number of dimensions: %d' %
                      image.ndims)
   height, width, channels = image.shape
 
-  # Take into account resize factor.
-  max_image_size = resize_factor * config.max_image_size
-  min_image_size = resize_factor * config.min_image_size
-
   if channels != 3:
     raise ValueError('image has incorrect number of channels: %d' % channels)
 
-  if max_image_size >= 0 and (width > max_image_size or
-                              height > max_image_size):
-    scale_factor = max_image_size / max(width, height)
-  elif min_image_size >= 0 and (width < min_image_size and
-                                height < min_image_size):
-    scale_factor = min_image_size / max(width, height)
+  if config.max_image_size != -1 and (width > config.max_image_size or
+                                      height > config.max_image_size):
+    scale_factor = config.max_image_size / max(width, height)
+  elif config.min_image_size != -1 and (width < config.min_image_size and
+                                        height < config.min_image_size):
+    scale_factor = config.min_image_size / max(width, height)
   else:
     # No resizing needed, early return.
     return image, 1.0

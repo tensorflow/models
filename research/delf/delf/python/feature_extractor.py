@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""DELF feature extractor."""
+"""DELF feature extractor.
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -52,7 +53,6 @@ def CalculateReceptiveBoxes(height, width, rf, stride, padding):
     rf: The receptive field size.
     stride: The effective stride between two adjacent feature points.
     padding: The effective padding size.
-
   Returns:
     rf_boxes: [N, 4] receptive boxes tensor. Here N equals to height x width.
     Each box is represented by [ymin, xmin, ymax, xmax].
@@ -94,10 +94,12 @@ def ExtractKeypointDescriptor(image, layer_name, image_scales, iou,
     abs_thres: A float tensor denoting the score threshold for feature
       selection.
     model_fn: Model function. Follows the signature:
+
       * Args:
         * `images`: Image tensor which is re-scaled.
         * `normalized_image`: Whether or not the images are normalized.
         * `reuse`: Whether or not the layer and its variables should be reused.
+
       * Returns:
         * `attention`: Attention score after the non-linearity.
         * `feature_map`: Feature map obtained from the ResNet model.
@@ -252,7 +254,7 @@ def BuildModel(layer_name, attention_nonlinear, attention_type,
       Currently, only 'softplus' is supported.
     attention_type: Type of the attention used. Options are:
       'use_l2_normalized_feature' and 'use_default_input_feature'. Note that
-      this is irrelevant during inference time.
+       this is irrelevant during inference time.
     attention_kernel_size: Size of attention kernel (kernel is square).
 
   Returns:
@@ -266,7 +268,6 @@ def BuildModel(layer_name, attention_nonlinear, attention_type,
       images: Image tensor.
       normalized_image: Whether or not the images are normalized.
       reuse: Whether or not the layer and its variables should be reused.
-
     Returns:
       attention: Attention score after the non-linearity.
       feature_map: Feature map after ResNet convolution.
@@ -327,51 +328,6 @@ def ApplyPcaAndWhitening(data,
   return output
 
 
-def PostProcessDescriptors(descriptors, use_pca, pca_parameters):
-  """Post-process descriptors.
-
-  Args:
-    descriptors: [N, input_dim] float tensor.
-    use_pca: Whether to use PCA.
-    pca_parameters: DelfPcaParameters proto.
-
-  Returns:
-    final_descriptors: [N, output_dim] float tensor with descriptors after
-      normalization and (possibly) PCA/whitening.
-  """
-  # L2-normalize, and if desired apply PCA (followed by L2-normalization).
-  with tf.variable_scope('postprocess'):
-    final_descriptors = tf.nn.l2_normalize(
-        descriptors, axis=1, name='l2_normalization')
-
-    if use_pca:
-      # Load PCA parameters.
-      pca_mean = tf.constant(
-          datum_io.ReadFromFile(pca_parameters.mean_path), dtype=tf.float32)
-      pca_matrix = tf.constant(
-          datum_io.ReadFromFile(pca_parameters.projection_matrix_path),
-          dtype=tf.float32)
-      pca_dim = pca_parameters.pca_dim
-      pca_variances = None
-      if pca_parameters.use_whitening:
-        pca_variances = tf.squeeze(
-            tf.constant(
-                datum_io.ReadFromFile(pca_parameters.pca_variances_path),
-                dtype=tf.float32))
-
-      # Apply PCA, and whitening if desired.
-      final_descriptors = ApplyPcaAndWhitening(final_descriptors, pca_matrix,
-                                               pca_mean, pca_dim,
-                                               pca_parameters.use_whitening,
-                                               pca_variances)
-
-      # Re-normalize.
-      final_descriptors = tf.nn.l2_normalize(
-          final_descriptors, axis=1, name='pca_l2_normalization')
-
-  return final_descriptors
-
-
 def DelfFeaturePostProcessing(boxes, descriptors, config):
   """Extract DELF features from input image.
 
@@ -391,8 +347,38 @@ def DelfFeaturePostProcessing(boxes, descriptors, config):
 
   # Get center of descriptor boxes, corresponding to feature locations.
   locations = CalculateKeypointCenters(boxes)
-  final_descriptors = PostProcessDescriptors(
-      descriptors, config.delf_local_config.use_pca,
-      config.delf_local_config.pca_parameters)
+
+  # Post-process descriptors: L2-normalize, and if desired apply PCA (followed
+  # by L2-normalization).
+  with tf.variable_scope('postprocess'):
+    final_descriptors = tf.nn.l2_normalize(
+        descriptors, dim=1, name='l2_normalization')
+
+    if config.delf_local_config.use_pca:
+      # Load PCA parameters.
+      pca_mean = tf.constant(
+          datum_io.ReadFromFile(
+              config.delf_local_config.pca_parameters.mean_path),
+          dtype=tf.float32)
+      pca_matrix = tf.constant(
+          datum_io.ReadFromFile(
+              config.delf_local_config.pca_parameters.projection_matrix_path),
+          dtype=tf.float32)
+      pca_dim = config.delf_local_config.pca_parameters.pca_dim
+      pca_variances = None
+      if config.delf_local_config.pca_parameters.use_whitening:
+        pca_variances = tf.constant(
+            datum_io.ReadFromFile(
+                config.delf_local_config.pca_parameters.pca_variances_path),
+            dtype=tf.float32)
+
+      # Apply PCA, and whitening if desired.
+      final_descriptors = ApplyPcaAndWhitening(
+          final_descriptors, pca_matrix, pca_mean, pca_dim,
+          config.delf_local_config.pca_parameters.use_whitening, pca_variances)
+
+      # Re-normalize.
+      final_descriptors = tf.nn.l2_normalize(
+          final_descriptors, dim=1, name='pca_l2_normalization')
 
   return locations, final_descriptors
