@@ -127,11 +127,11 @@ def get_input_dataset(flags_obj, strategy):
 
 
 def get_num_train_iterations(flags_obj):
-  steps_per_epoch = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_steps = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
 
   if flags_obj.train_steps:
-    train_steps = min(flags_obj.train_steps, steps_per_epoch)
+    train_steps = min(flags_obj.train_steps, train_steps)
     train_epochs = 1
 
   eval_steps = imagenet_main.NUM_IMAGES['validation'] // flags_obj.batch_size
