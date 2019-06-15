@@ -129,7 +129,7 @@ class Resnet50CtlAccuracy(CtlBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128 * 8
     FLAGS.train_epochs = 90
-    FLAGS.epochs_between_eval = 10
+    FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.dtype = 'fp32'
     # Add some thread tunings to improve performance.
