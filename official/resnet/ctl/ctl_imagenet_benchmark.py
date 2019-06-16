@@ -145,7 +145,9 @@ class Resnet50CtlAccuracy(CtlBenchmark):
         stats,
         wall_time_sec,
         top_1_min=MIN_TOP_1_ACCURACY,
-        top_1_max=MAX_TOP_1_ACCURACY)
+        top_1_max=MAX_TOP_1_ACCURACY,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=100)
 
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)
