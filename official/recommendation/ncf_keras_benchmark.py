@@ -33,7 +33,7 @@ FLAGS = flags.FLAGS
 NCF_DATA_DIR_NAME = 'movielens_data'
 
 
-class KerasNCFBenchmarkBase(tf.test.Benchmark):
+class NCFKerasBenchmarkBase(tf.test.Benchmark):
   """Base class for NCF model benchmark."""
   local_flags = None
 
@@ -47,15 +47,15 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
   def _setup(self):
     """Sets up and resets flags before each test."""
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
-    if KerasNCFBenchmarkBase.local_flags is None:
+    if NCFKerasBenchmarkBase.local_flags is None:
       ncf_common.define_ncf_flags()
       # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
       core.set_defaults(**self.default_flags)
       saved_flag_values = flagsaver.save_flag_values()
-      KerasNCFBenchmarkBase.local_flags = saved_flag_values
+      NCFKerasBenchmarkBase.local_flags = saved_flag_values
     else:
-      flagsaver.restore_flag_values(KerasNCFBenchmarkBase.local_flags)
+      flagsaver.restore_flag_values(NCFKerasBenchmarkBase.local_flags)
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
@@ -69,7 +69,7 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
     raise NotImplementedError('Not implemented')
 
 
-class KerasNCFRealData(KerasNCFBenchmarkBase):
+class NCFKerasAccuracy(NCFKerasBenchmarkBase):
   """Benchmark NCF model using real data."""
 
   def __init__(self,
@@ -95,7 +95,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags['use_synthetic_data'] = False
     default_flags['data_dir'] = os.path.join(root_data_dir, NCF_DATA_DIR_NAME)
 
-    super(KerasNCFRealData, self).__init__(
+    super(NCFKerasAccuracy, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         **kwargs)
@@ -172,7 +172,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     self._run_and_report_benchmark()
 
 
-class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
+class NCFKerasSynth(NCFKerasBenchmarkBase):
   """Benchmark NCF model using synthetic data."""
 
   def __init__(self,
@@ -194,7 +194,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     default_flags['hr_threshold'] = 0.635
     default_flags['use_synthetic_data'] = True
 
-    super(KerasNCFSyntheticData, self).__init__(
+    super(NCFKerasSynth, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         **kwargs)
@@ -213,3 +213,50 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
+
+class NCFKerasPerf(NCFKerasBenchmarkBase):
+  """Benchmark NCF model performance  using real data."""
+
+  def __init__(self,
+               output_dir=None,
+               root_data_dir=None,
+               default_flags=None,
+               **kwargs):
+
+    default_flags = {}
+    default_flags['dataset'] = 'ml-20m'
+    default_flags['num_gpus'] = 1
+    default_flags['train_epochs'] = 17
+    default_flags['clean'] = True
+    default_flags['batch_size'] = 1048576
+    default_flags['learning_rate'] = 0.0045
+    default_flags['beta1'] = 0.25
+    default_flags['beta2'] = 0.5
+    default_flags['epsilon'] = 1e-8
+    default_flags['layers'] = [256, 256, 128, 64]
+    default_flags['num_factors'] = 64
+    default_flags['hr_threshold'] = 0.635
+    default_flags['ml_perf'] = True
+    default_flags['use_synthetic_data'] = False
+    default_flags['data_dir'] = os.path.join(root_data_dir, NCF_DATA_DIR_NAME)
+
+    super(NCFKerasPerf, self).__init__(
+        output_dir=output_dir,
+        default_flags=default_flags,
+        **kwargs)
+
+  def _extract_benchmark_report_extras(self, stats):
+    metrics = []
+    metrics.append({'name': 'exp_per_second',
+                    'value': stats['avg_exp_per_second']})
+    return metrics
+
+  def benchmark_1_gpu_ctl_perf(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_perf(self):
+    self._setup()
+    self._run_and_report_benchmark()
+
