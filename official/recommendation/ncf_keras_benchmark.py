@@ -33,7 +33,7 @@ FLAGS = flags.FLAGS
 NCF_DATA_DIR_NAME = 'movielens_data'
 
 
-class KerasNCFBenchmarkBase(tf.test.Benchmark):
+class NCFKerasBenchmarkBase(tf.test.Benchmark):
   """Base class for NCF model benchmark."""
   local_flags = None
 
@@ -47,15 +47,15 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
   def _setup(self):
     """Sets up and resets flags before each test."""
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
-    if KerasNCFBenchmarkBase.local_flags is None:
+    if NCFKerasBenchmarkBase.local_flags is None:
       ncf_common.define_ncf_flags()
       # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
       core.set_defaults(**self.default_flags)
       saved_flag_values = flagsaver.save_flag_values()
-      KerasNCFBenchmarkBase.local_flags = saved_flag_values
+      NCFKerasBenchmarkBase.local_flags = saved_flag_values
     else:
-      flagsaver.restore_flag_values(KerasNCFBenchmarkBase.local_flags)
+      flagsaver.restore_flag_values(NCFKerasBenchmarkBase.local_flags)
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
@@ -69,7 +69,7 @@ class KerasNCFBenchmarkBase(tf.test.Benchmark):
     raise NotImplementedError('Not implemented')
 
 
-class KerasNCFRealData(KerasNCFBenchmarkBase):
+class NCFKerasAccuracy(NCFKerasBenchmarkBase):
   """Benchmark NCF model using real data."""
 
   def __init__(self,
@@ -95,7 +95,7 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     default_flags['use_synthetic_data'] = False
     default_flags['data_dir'] = os.path.join(root_data_dir, NCF_DATA_DIR_NAME)
 
-    super(KerasNCFRealData, self).__init__(
+    super(NCFKerasAccuracy, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         **kwargs)
@@ -171,8 +171,43 @@ class KerasNCFRealData(KerasNCFBenchmarkBase):
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_ctl_mlperf_like(self):
+    """1-GPU test to compare Google implementation with MLperf0.5.
+       Using similar rules as MLPerf0.5
+       Using Google's convergence hparams as base for 1-GPU test.
+       Fixed the number of epochs to 7, to remove the perf variance.
+       MLPerf submission consistently converges in 7 epochs.
+    """
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
 
-class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
+  def benchmark_1_gpu_mlperf_like(self):
+    """1-GPU MLPerf like test with compile/fit version"""
+    self._setup()
+    FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_ctl_mlperf_like(self):
+    """8 GPU test meant to compare Google implementation
+       with MLperf top line submission using the
+       hyper-parameters from the winning MLPerf0.5 submission.
+       Using similar rules as MLPerf0.5
+       Fixed epochs to MLPerf sumbmission's convergnce on 17 epochs
+    """
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    self._run_and_report_benchmark()
+
+class NCFKerasSynth(NCFKerasBenchmarkBase):
   """Benchmark NCF model using synthetic data."""
 
   def __init__(self,
@@ -194,7 +229,7 @@ class KerasNCFSyntheticData(KerasNCFBenchmarkBase):
     default_flags['hr_threshold'] = 0.635
     default_flags['use_synthetic_data'] = True
 
-    super(KerasNCFSyntheticData, self).__init__(
+    super(NCFKerasSynth, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         **kwargs)
