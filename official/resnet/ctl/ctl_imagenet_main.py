@@ -22,13 +22,13 @@ import os
 import tempfile
 import datetime
 import time
+import numpy as np
 
 from absl import app as absl_app
 from absl import flags
 from absl import logging
 
 import tensorflow as tf
-import numpy as np
 
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
