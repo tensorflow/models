@@ -43,6 +43,4 @@ def define_ctl_flags():
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. When this flag is '
       'set, only one epoch is going to run for training.')
-  flags.DEFINE_integer(
-      name='warmup_steps', default=1,
-      help='The number of steps to skip when calculating examples per second.')
+  

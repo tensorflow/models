@@ -76,26 +76,6 @@ class CtlImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_1_gpu(self):
-    """Test Keras model with 1 GPU."""
-    num_gpus = "1"
-    if context.num_gpus() < 1:
-      num_gpus = "0"
-
-    extra_flags = [
-        "-num_gpus", num_gpus,
-        "-distribution_strategy", "default",
-        "-model_dir", "ctl_imagenet_1_gpu",
-        "-data_format", "channels_last",
-    ]
-    extra_flags = extra_flags + self._extra_flags
-
-    integration.run_synthetic(
-        main=ctl_imagenet_main.run,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
-
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
     num_gpus = "2"
@@ -106,6 +86,7 @@ class CtlImagenetTest(googletest.TestCase):
         "-num_gpus", num_gpus,
         "-distribution_strategy", "default",
         "-model_dir", "ctl_imagenet_2_gpu",
+        "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
