@@ -171,6 +171,41 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_ctl_mlperf_like(self):
+    """1-GPU test to compare Google implementation with MLperf0.5.
+       Using similar rules as MLPerf0.5
+       Using Google's convergence hparams as base for 1-GPU test.
+       Fixed the number of epochs to 7, to remove the perf variance.
+       MLPerf submission consistently converges in 7 epochs.
+    """
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_mlperf_like(self):
+    """1-GPU MLPerf like test with compile/fit version"""
+    self._setup()
+    FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_ctl_mlperf_like(self):
+    """8 GPU test meant to compare Google implementation
+       with MLperf top line submission using the
+       hyper-parameters from the winning MLPerf0.5 submission.
+       Using similar rules as MLPerf0.5
+       Fixed epochs to MLPerf sumbmission's convergnce on 17 epochs
+    """
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    self._run_and_report_benchmark()
 
 class NCFKerasSynth(NCFKerasBenchmarkBase):
   """Benchmark NCF model using synthetic data."""
@@ -213,50 +248,3 @@ class NCFKerasSynth(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
-
-class NCFKerasPerf(NCFKerasBenchmarkBase):
-  """Benchmark NCF model performance  using real data."""
-
-  def __init__(self,
-               output_dir=None,
-               root_data_dir=None,
-               default_flags=None,
-               **kwargs):
-
-    default_flags = {}
-    default_flags['dataset'] = 'ml-20m'
-    default_flags['num_gpus'] = 1
-    default_flags['train_epochs'] = 17
-    default_flags['clean'] = True
-    default_flags['batch_size'] = 1048576
-    default_flags['learning_rate'] = 0.0045
-    default_flags['beta1'] = 0.25
-    default_flags['beta2'] = 0.5
-    default_flags['epsilon'] = 1e-8
-    default_flags['layers'] = [256, 256, 128, 64]
-    default_flags['num_factors'] = 64
-    default_flags['hr_threshold'] = 0.635
-    default_flags['ml_perf'] = True
-    default_flags['use_synthetic_data'] = False
-    default_flags['data_dir'] = os.path.join(root_data_dir, NCF_DATA_DIR_NAME)
-
-    super(NCFKerasPerf, self).__init__(
-        output_dir=output_dir,
-        default_flags=default_flags,
-        **kwargs)
-
-  def _extract_benchmark_report_extras(self, stats):
-    metrics = []
-    metrics.append({'name': 'exp_per_second',
-                    'value': stats['avg_exp_per_second']})
-    return metrics
-
-  def benchmark_1_gpu_ctl_perf(self):
-    self._setup()
-    FLAGS.keras_use_ctl = True
-    self._run_and_report_benchmark()
-
-  def benchmark_1_gpu_perf(self):
-    self._setup()
-    self._run_and_report_benchmark()
-
