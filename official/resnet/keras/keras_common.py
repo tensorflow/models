@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Common util functions and classes used by both keras cifar and imagenet."""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -29,7 +28,6 @@ import tensorflow as tf
 
 from official.utils.misc import keras_utils
 # pylint: disable=ungrouped-imports
-from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
                                                   gradient_descent_v2)
 
@@ -143,48 +141,6 @@ class PiecewiseConstantDecayWithWarmup(
         'compute_lr_on_cpu': self.compute_lr_on_cpu,
         'name': self.name
     }
-
-
-def get_config_proto_v1():
-  """Return config proto according to flag settings, or None to use default."""
-  config = None
-  if FLAGS.enable_xla:
-    config = tf.compat.v1.ConfigProto()
-    config.graph_options.optimizer_options.global_jit_level = (
-        tf.OptimizerOptions.ON_2)
-    # Disable PinToHostOptimizer in grappler when enabling XLA because it causes
-    # OOM and performance regression.
-    config.graph_options.rewrite_options.pin_to_host_optimization = (
-        rewriter_config_pb2.RewriterConfig.OFF)
-  # TODO(b/76028325): Remove when generic layout optimizer will be ready.
-  if not FLAGS.enable_grappler_layout_optimizer:
-    if config is None:
-      config = tf.compat.v1.ConfigProto()
-    # Disable LayoutOptimizer in grappler, because it might de-optimize fp16
-    # graphs, and force NCHW data format in all convolutions and batch
-    # normalizations.
-    config.graph_options.rewrite_options.layout_optimizer = (
-        rewriter_config_pb2.RewriterConfig.OFF)
-  return config
-
-
-def set_config_v2():
-  """Config eager context according to flag values using TF 2.0 API."""
-  if FLAGS.enable_xla:
-    tf.config.optimizer.set_jit(True)
-    # Disable PinToHostOptimizer in grappler when enabling XLA because it
-    # causes OOM and performance regression.
-    tf.config.optimizer.set_experimental_options(
-        {'pin_to_host_optimization': False}
-    )
-  # TODO(b/76028325): Remove when generic layout optimizer will be ready.
-  if not FLAGS.enable_grappler_layout_optimizer:
-    # Disable LayoutOptimizer in grappler, because it might de-optimize fp16
-    # graphs, and force NCHW data format in all convolutions and batch
-    # normalizations.
-    tf.config.optimizer.set_experimental_options(
-        {'layout_optimizer': False}
-    )
 
 
 def set_gpu_thread_mode_and_count(flags_obj):
@@ -419,8 +375,10 @@ def data_delay_prefetch():
 
 
 def set_cudnn_batchnorm_mode():
-  """Set CuDNN batchnorm mode for better performance. Note that the spatial
-     persistent mode may lead to accuracy losses for certain models."""
+  """Set CuDNN batchnorm mode for better performance. Note that the spatial.
+
+     Persistent mode may lead to accuracy losses for certain models.
+  """
   if FLAGS.batchnorm_spatial_persistent:
     os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'
   else:

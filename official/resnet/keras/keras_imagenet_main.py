@@ -29,6 +29,7 @@ from official.resnet.keras import trivial_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 
 
@@ -95,9 +96,15 @@ def run(flags_obj):
   # TODO(tobyboyd): Remove eager flag when tf 1.0 testing ends.
   # Eager is default in tf 2.0 and should not be toggled
   if keras_common.is_v2_0():
-    keras_common.set_config_v2()
+    keras_utils.set_config_v2(
+        enable_xla=flags_obj.enable_xla,
+        enable_grappler_layout_optimizer=
+        flags_obj.enable_grappler_layout_optimizer)
   else:
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1(
+        enable_xla=flags_obj.enable_xla,
+        enable_grappler_layout_optimizer=
+        flags_obj.enable_grappler_layout_optimizer)
     if flags_obj.enable_eager:
       tf.compat.v1.enable_eager_execution(config=config)
     else:
