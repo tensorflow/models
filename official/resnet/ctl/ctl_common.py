@@ -18,14 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import multiprocessing
-import os
-
-import numpy as np
-
-# pylint: disable=g-bad-import-order
 from absl import flags
-import tensorflow as tf
 
 
 FLAGS = flags.FLAGS

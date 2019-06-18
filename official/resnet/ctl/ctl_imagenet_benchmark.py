@@ -18,8 +18,9 @@ from __future__ import print_function
 import os
 import time
 
+# pylint: disable=g-bad-import-order
 from absl import flags
-import tensorflow as tf # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.resnet import imagenet_main
 from official.resnet.ctl import ctl_imagenet_main
@@ -60,8 +61,8 @@ class CtlBenchmark(PerfZeroBenchmark):
       wall_time_sec: the during of the benchmark execution in seconds
       top_1_max: highest passing level for top_1 accuracy.
       top_1_min: lowest passing level for top_1 accuracy.
-      log_steps: How often the log was created for stats['step_timestamp_log'].
       total_batch_size: Global batch-size.
+      log_steps: How often the log was created for stats['step_timestamp_log'].
       warmup: number of entries in stats['step_timestamp_log'] to ignore.
     """
 
@@ -96,7 +97,6 @@ class CtlBenchmark(PerfZeroBenchmark):
                       'value': stats['avg_exp_per_second']})
 
     self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
-
 
 
 class Resnet50CtlAccuracy(CtlBenchmark):
@@ -215,7 +215,9 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
 
   def fill_report_object(self, stats):
     super(Resnet50CtlBenchmarkBase, self).fill_report_object(
-        stats)
+        stats,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps)
 
 
 class Resnet50CtlBenchmarkSynth(Resnet50CtlBenchmarkBase):

@@ -88,6 +88,7 @@ def build_stats(train_result, eval_result, time_callback):
 
 
 def get_input_dataset(flags_obj, strategy):
+  """Returns the test and train input datasets."""
   dtype = flags_core.get_tf_dtype(flags_obj)
   if flags_obj.use_synthetic_data:
     input_fn = keras_common.get_synth_input_fn(
@@ -127,6 +128,7 @@ def get_input_dataset(flags_obj, strategy):
 
 
 def get_num_train_iterations(flags_obj):
+  """Returns the number of training stesps, train and test epochs."""
   train_steps = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
 
@@ -137,6 +139,7 @@ def get_num_train_iterations(flags_obj):
   eval_steps = imagenet_main.NUM_IMAGES['validation'] // flags_obj.batch_size
 
   return train_steps, train_epochs, eval_steps
+
 
 def run(flags_obj):
   """Run ResNet ImageNet training and eval loop using custom training loops.
@@ -169,7 +172,8 @@ def run(flags_obj):
   train_ds, test_ds = get_input_dataset(flags_obj, strategy)
   train_steps, train_epochs, eval_steps = get_num_train_iterations(flags_obj)
 
-  time_callback = keras_utils.TimeHistory(flags_obj.batch_size, flags_obj.log_steps)
+  time_callback = keras_utils.TimeHistory(flags_obj.batch_size,
+                                          flags_obj.log_steps)
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
   with strategy_scope:
