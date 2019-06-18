@@ -28,7 +28,7 @@ def export_bert_model(model_export_path,
                       model=None,
                       model_fn=None,
                       checkpoint_dir=None):
-  """Export BERT model for serving.
+  """Export BERT model for serving which does not include the optimizer.
 
   Arguments:
       model_export_path: Path to which exported model will be saved.
@@ -39,7 +39,7 @@ def export_bert_model(model_export_path,
       checkpoint_dir: Path from which model weights will be loaded.
   """
   if model:
-    tf.keras.experimental.export_saved_model(model, model_export_path)
+    model.save(model_export_path, include_optimizer=False, save_format='tf')
     return
 
   assert model_fn and checkpoint_dir
@@ -50,7 +50,8 @@ def export_bert_model(model_export_path,
   logging.info('Checkpoint file %s found and restoring from '
                'checkpoint', latest_checkpoint_file)
   checkpoint.restore(latest_checkpoint_file).assert_existing_objects_matched()
-  tf.keras.experimental.export_saved_model(model_to_export, model_export_path)
+  model_to_export.save(
+      model_export_path, include_optimizer=False, save_format='tf')
 
 
 class BertModelCheckpoint(tf.keras.callbacks.Callback):
