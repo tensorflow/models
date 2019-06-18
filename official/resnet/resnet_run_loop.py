@@ -460,8 +460,9 @@ def resnet_model_fn(features, labels, mode, model_class,
 
     fp16_implementation = getattr(flags.FLAGS, 'fp16_implementation', None)
     if fp16_implementation == 'graph_rewrite':
-      optimizer = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
-          optimizer, loss_scale=loss_scale)
+      optimizer = (
+          tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
+              optimizer, loss_scale=loss_scale))
 
     def _dense_grad_filter(gvs):
       """Only apply gradient updates to the final layer.
