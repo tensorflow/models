@@ -62,7 +62,7 @@ class CtlImagenetTest(googletest.TestCase):
 
   def test_end_to_end_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
-    
+
     extra_flags = [
         "-distribution_strategy", "off",
         "-model_dir", "ctl_imagenet_no_dist_strat",
