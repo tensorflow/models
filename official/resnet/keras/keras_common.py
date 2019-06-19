@@ -263,10 +263,6 @@ def define_keras_flags():
   flags.DEFINE_boolean(name='use_tensor_lr', default=False,
                        help='Use learning rate tensor instead of a callback.')
   flags.DEFINE_boolean(
-      name='enable_xla', default=False,
-      help='Whether to enable XLA auto jit compilation. This is still an '
-      'experimental feature, and is not yet effective with TF 2.0.')
-  flags.DEFINE_boolean(
       name='enable_tensorboard', default=False,
       help='Whether to enable Tensorboard callback.')
   flags.DEFINE_integer(
@@ -360,14 +356,6 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   return input_fn
 
 
-def is_v2_0():
-  """Returns true if using tf 2.0."""
-  if hasattr(tf, 'contrib'):
-    return False
-  else:
-    return True
-
-
 def data_delay_prefetch():
   """Use unstable code for perf tuning purposes."""
   if not FLAGS.use_synthetic_data:
@@ -375,9 +363,10 @@ def data_delay_prefetch():
 
 
 def set_cudnn_batchnorm_mode():
-  """Set CuDNN batchnorm mode for better performance. Note that the spatial.
+  """Set CuDNN batchnorm mode for better performance.
 
-     Persistent mode may lead to accuracy losses for certain models.
+     Note: Spatial Persistent mode may lead to accuracy losses for certain
+     models.
   """
   if FLAGS.batchnorm_spatial_persistent:
     os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'

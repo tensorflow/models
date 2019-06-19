@@ -131,8 +131,27 @@ class ProfilerCallback(tf.keras.callbacks.Callback):
           self.start_step, self.stop_step, self.log_dir)
 
 
+def set_session_config(enable_eager=False,
+                       enable_xla=False,
+                       enable_grappler_layout_optimizer=True):
+  """Sets the session config."""
+  if is_v2_0():
+    set_config_v2(
+        enable_xla=enable_xla,
+        enable_grappler_layout_optimizer=enable_grappler_layout_optimizer)
+  else:
+    config = get_config_proto_v1(
+        enable_xla=enable_xla,
+        enable_grappler_layout_optimizer=enable_grappler_layout_optimizer)
+    if enable_eager:
+      tf.compat.v1.enable_eager_execution(config=config)
+    else:
+      sess = tf.Session(config=config)
+      tf.keras.backend.set_session(sess)
+
+
 def get_config_proto_v1(enable_xla=False,
-                        enable_grappler_layout_optimizer=False):
+                        enable_grappler_layout_optimizer=True):
   """Return config proto according to flag settings, or None to use default."""
   config = None
   if enable_xla:
@@ -173,3 +192,10 @@ def set_config_v2(enable_xla=False,
     tf.config.optimizer.set_experimental_options(
         {'layout_optimizer': False}
     )
+
+def is_v2_0():
+  """Returns true if using tf 2.0."""
+  if hasattr(tf, 'contrib'):
+    return False
+  else:
+    return True

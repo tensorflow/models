@@ -123,7 +123,7 @@ class TransformerTask(object):
     """Trains the model."""
     params, flags_obj, is_train = self.params, self.flags_obj, True
     # Sets config options.
-    keras_utils.set_config_v2(
+    keras_utils.set_session_config(
         enable_xla=flags_obj.enable_xla,
         enable_grappler_layout_optimizer=
         flags_obj.enable_grappler_layout_optimizer)
