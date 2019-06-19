@@ -39,6 +39,7 @@ from official.transformer.v2 import transformer
 from official.transformer.v2 import translate
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
+from official.utils.misc import keras_utils
 from official.utils.misc import distribution_utils
 
 
@@ -121,6 +122,12 @@ class TransformerTask(object):
   def train(self):
     """Trains the model."""
     params, flags_obj, is_train = self.params, self.flags_obj, True
+    # Sets config options.
+    keras_utils.set_session_config(
+        enable_xla=flags_obj.enable_xla,
+        enable_grappler_layout_optimizer=
+        flags_obj.enable_grappler_layout_optimizer)
+
     _ensure_dir(flags_obj.model_dir)
     if self.distribution_strategy:
       with self.distribution_strategy.scope():

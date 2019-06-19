@@ -61,7 +61,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        datasets_num_parallel_batches=False,
                        dynamic_loss_scale=False, fp16_implementation=False,
                        loss_scale=False,
-                       tf_data_experimental_slack=False):
+                       tf_data_experimental_slack=False, enable_xla=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -86,6 +86,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
       training. Can only be turned on if dtype is also True.
     tf_data_experimental_slack: Determines whether to enable tf.data's
       `experimental_slack` option.
+    enable_xla: Determines if XLA (auto clustering) is turned on.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -269,5 +270,10 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         help=help_wrap(
             "Whether to enable tf.data's `experimental_slack` option.")
     )
+
+  if enable_xla:
+    flags.DEFINE_boolean(
+        name="enable_xla", default=False,
+        help="Whether to enable XLA auto jit compilation")
 
   return key_flags

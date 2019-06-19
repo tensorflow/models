@@ -21,6 +21,7 @@ from __future__ import print_function
 import time
 
 import tensorflow as tf
+from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.eager import profiler
 
 
@@ -128,3 +129,73 @@ class ProfilerCallback(tf.keras.callbacks.Callback):
       tf.compat.v1.logging.info(
           'Profiler saved profiles for steps between %s and %s to %s',
           self.start_step, self.stop_step, self.log_dir)
+
+
+def set_session_config(enable_eager=False,
+                       enable_xla=False,
+                       enable_grappler_layout_optimizer=True):
+  """Sets the session config."""
+  if is_v2_0():
+    set_config_v2(
+        enable_xla=enable_xla,
+        enable_grappler_layout_optimizer=enable_grappler_layout_optimizer)
+  else:
+    config = get_config_proto_v1(
+        enable_xla=enable_xla,
+        enable_grappler_layout_optimizer=enable_grappler_layout_optimizer)
+    if enable_eager:
+      tf.compat.v1.enable_eager_execution(config=config)
+    else:
+      sess = tf.Session(config=config)
+      tf.keras.backend.set_session(sess)
+
+
+def get_config_proto_v1(enable_xla=False,
+                        enable_grappler_layout_optimizer=True):
+  """Return config proto according to flag settings, or None to use default."""
+  config = None
+  if enable_xla:
+    config = tf.compat.v1.ConfigProto()
+    config.graph_options.optimizer_options.global_jit_level = (
+        tf.OptimizerOptions.ON_2)
+    # Disable PinToHostOptimizer in grappler when enabling XLA because it causes
+    # OOM and performance regression.
+    config.graph_options.rewrite_options.pin_to_host_optimization = (
+        rewriter_config_pb2.RewriterConfig.OFF)
+  # TODO(b/76028325): Remove when generic layout optimizer will be ready.
+  if not enable_grappler_layout_optimizer:
+    if config is None:
+      config = tf.compat.v1.ConfigProto()
+    # Disable LayoutOptimizer in grappler, because it might de-optimize fp16
+    # graphs, and force NCHW data format in all convolutions and batch
+    # normalizations.
+    config.graph_options.rewrite_options.layout_optimizer = (
+        rewriter_config_pb2.RewriterConfig.OFF)
+  return config
+
+
+def set_config_v2(enable_xla=False,
+                  enable_grappler_layout_optimizer=False):
+  """Config eager context according to flag values using TF 2.0 API."""
+  if enable_xla:
+    tf.config.optimizer.set_jit(True)
+    # Disable PinToHostOptimizer in grappler when enabling XLA because it
+    # causes OOM and performance regression.
+    tf.config.optimizer.set_experimental_options(
+        {'pin_to_host_optimization': False}
+    )
+  # TODO(b/76028325): Remove when generic layout optimizer will be ready.
+  if not enable_grappler_layout_optimizer:
+    # Disable LayoutOptimizer in grappler, because it might de-optimize fp16
+    # graphs, and force NCHW data format in all convolutions and batch
+    # normalizations.
+    tf.config.optimizer.set_experimental_options(
+        {'layout_optimizer': False}
+    )
+
+def is_v2_0():
+  """Returns true if using tf 2.0."""
+  if hasattr(tf, 'contrib'):
+    return False
+  else:
+    return True
