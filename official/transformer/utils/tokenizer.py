@@ -84,7 +84,7 @@ class Subtokenizer(object):
   @staticmethod
   def init_from_files(
       vocab_file, files, target_vocab_size, threshold, min_count=None,
-      file_byte_limit=1e6, reserved_tokens=None):
+      file_byte_limit=1e6, reserved_tokens=None, correct_strip=True):
     """Create subtoken vocabulary based on files, and save vocab to file.
 
     Args:
@@ -100,6 +100,7 @@ class Subtokenizer(object):
         will be drawn from the files.
       reserved_tokens: List of string tokens that are guaranteed to be at the
         beginning of the subtoken vocabulary list.
+      correct_strip: Whether to convert text to unicode before strip.
 
     Returns:
       Subtokenizer object
@@ -111,7 +112,7 @@ class Subtokenizer(object):
       tf.compat.v1.logging.info("Vocab file already exists (%s)" % vocab_file)
     else:
       tf.compat.v1.logging.info("Begin steps to create subtoken vocabulary...")
-      token_counts = _count_tokens(files, file_byte_limit)
+      token_counts = _count_tokens(files, file_byte_limit, correct_strip)
       alphabet = _generate_alphabet_dict(token_counts)
       subtoken_list = _generate_subtokens_with_target_vocab_size(
           token_counts, alphabet, target_vocab_size, threshold, min_count,
@@ -323,7 +324,7 @@ def _unescape_token(token):
   return _UNESCAPE_REGEX.sub(match, token)
 
 
-def _count_tokens(files, file_byte_limit=1e6):
+def _count_tokens(files, file_byte_limit=1e6, correct_strip=True):
   """Return token counts of words in the files.
 
   Samples file_byte_limit bytes from each file, and counts the words that appear
@@ -332,6 +333,10 @@ def _count_tokens(files, file_byte_limit=1e6):
   Args:
     files: List of filepaths
     file_byte_limit: Max number of bytes that will be read from each file.
+    correct_strip: Whether to convert text to unicode before strip. This affects
+      vocabulary generation for PY2. Sets correct_strip to False in PY2 to
+      reproduce previous common public result. Sets correct_strip to True will
+      let PY2 and PY3 get a consistent vocabulary.
 
   Returns:
     Dictionary mapping tokens to the number of times they appear in the sampled
@@ -350,6 +355,8 @@ def _count_tokens(files, file_byte_limit=1e6):
         else:
           if file_byte_budget < 0:
             break
+          if correct_strip:
+            line = native_to_unicode(line)
           line = line.strip()
           file_byte_budget -= len(line)
           counter = 0

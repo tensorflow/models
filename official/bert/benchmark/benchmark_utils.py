@@ -28,6 +28,8 @@ from absl.testing import flagsaver
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
+from official.utils.flags import core as flags_core
+
 FLAGS = flags.FLAGS
 
 
@@ -40,7 +42,7 @@ class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
     self.timer_records = []
     self.start_time = None
 
-  def on_batch_start(self, batch, logs=None):
+  def on_batch_begin(self, batch, logs=None):
     if batch < self.num_batches_to_skip:
       return
     self.start_time = time.time()
@@ -113,8 +115,9 @@ class BertBenchmarkBase(tf.test.Benchmark):
           'min_value': min_accuracy,
           'max_value': max_accuracy,
       })
-
+    flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(
         iters=stats['total_training_steps'],
         wall_time=wall_time_sec,
-        metrics=metrics)
+        metrics=metrics,
+        extras={'flags': flags_str})

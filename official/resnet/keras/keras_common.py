@@ -156,6 +156,15 @@ def get_config_proto_v1():
     # OOM and performance regression.
     config.graph_options.rewrite_options.pin_to_host_optimization = (
         rewriter_config_pb2.RewriterConfig.OFF)
+  # TODO(b/76028325): Remove when generic layout optimizer will be ready.
+  if not FLAGS.enable_grappler_layout_optimizer:
+    if config is None:
+      config = tf.compat.v1.ConfigProto()
+    # Disable LayoutOptimizer in grappler, because it might de-optimize fp16
+    # graphs, and force NCHW data format in all convolutions and batch
+    # normalizations.
+    config.graph_options.rewrite_options.layout_optimizer = (
+        rewriter_config_pb2.RewriterConfig.OFF)
   return config
 
 
@@ -166,7 +175,15 @@ def set_config_v2():
     # Disable PinToHostOptimizer in grappler when enabling XLA because it
     # causes OOM and performance regression.
     tf.config.optimizer.set_experimental_options(
-        {"pin_to_host_optimization": False}
+        {'pin_to_host_optimization': False}
+    )
+  # TODO(b/76028325): Remove when generic layout optimizer will be ready.
+  if not FLAGS.enable_grappler_layout_optimizer:
+    # Disable LayoutOptimizer in grappler, because it might de-optimize fp16
+    # graphs, and force NCHW data format in all convolutions and batch
+    # normalizations.
+    tf.config.optimizer.set_experimental_options(
+        {'layout_optimizer': False}
     )
 
 
@@ -326,7 +343,15 @@ def define_keras_flags():
   flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
-
+  # TODO(b/76028325): Remove when generic layout optimizer is ready.
+  flags.DEFINE_boolean(
+      name='enable_grappler_layout_optimizer',
+      default=True,
+      help='Enable Grappler layout optimizer. Currently Grappler can '
+           'de-optimize fp16 graphs byt forcing NCHW layout for all '
+           'convolutions and batch normalizations, and this flag allows to '
+           'disable it.'
+  )
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32, drop_remainder=True):

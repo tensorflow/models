@@ -74,6 +74,11 @@ flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
 flags.DEFINE_integer('eval_batch_size', 8, 'Batch size for evaluation.')
 flags.DEFINE_integer('num_train_epochs', 3,
                      'Total number of training epochs to perform.')
+flags.DEFINE_integer(
+    'steps_per_loop', 200,
+    'Number of steps per graph-mode loop. Only training step '
+    'happens inside the loop. Callbacks will not be called '
+    'inside.')
 flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
 
 FLAGS = flags.FLAGS
@@ -103,6 +108,7 @@ def run_customized_training(strategy,
                             model_dir,
                             epochs,
                             steps_per_epoch,
+                            steps_per_loop,
                             eval_steps,
                             warmup_steps,
                             initial_lr,
@@ -148,6 +154,7 @@ def run_customized_training(strategy,
       loss_fn=loss_fn,
       model_dir=model_dir,
       steps_per_epoch=steps_per_epoch,
+      steps_per_loop=steps_per_loop,
       epochs=epochs,
       train_input_fn=train_input_fn,
       eval_input_fn=eval_input_fn,
@@ -211,6 +218,7 @@ def run_bert(strategy, input_meta_data):
       FLAGS.model_dir,
       epochs,
       steps_per_epoch,
+      FLAGS.steps_per_loop,
       eval_steps,
       warmup_steps,
       FLAGS.learning_rate,
@@ -220,6 +228,7 @@ def run_bert(strategy, input_meta_data):
   if FLAGS.model_export_path:
     model_saving_utils.export_bert_model(
         FLAGS.model_export_path, model=trained_model)
+  return trained_model
 
 
 def main(_):

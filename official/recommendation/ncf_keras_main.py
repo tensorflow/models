@@ -77,18 +77,21 @@ def _get_train_and_eval_data(producer, params):
   def preprocess_train_input(features, labels):
     """Pre-process the training data.
 
-    This is needed because:
-    - Distributed training with keras fit does not support extra inputs. The
-      current implementation for fit does not use the VALID_POINT_MASK in the
-      input, which makes it extra, so it needs to be removed when using keras
-      fit.
+    This is needed because
     - The label needs to be extended to be used in the loss fn
+    - We need the same inputs for training and eval so adding fake inputs
+      for DUPLICATE_MASK in training data.
     """
     labels = tf.expand_dims(labels, -1)
     fake_dup_mask = tf.zeros_like(features[movielens.USER_COLUMN])
     features[rconst.DUPLICATE_MASK] = fake_dup_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
-    return features, labels
+
+    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
+      return features
+    else:
+      # b/134708104
+      return (features,)
 
   train_input_fn = producer.make_input_fn(is_training=True)
   train_input_dataset = train_input_fn(params).map(
@@ -97,20 +100,23 @@ def _get_train_and_eval_data(producer, params):
   def preprocess_eval_input(features):
     """Pre-process the eval data.
 
-    This is needed because:
-    - Distributed training with keras fit does not support extra inputs. The
-      current implementation for fit does not use the DUPLICATE_MASK in the
-      input, which makes it extra, so it needs to be removed when using keras
-      fit.
+    This is needed becasue:
     - The label needs to be extended to be used in the loss fn
+    - We need the same inputs for training and eval so adding fake inputs
+      for VALID_PT_MASK in eval data.
     """
     labels = tf.cast(tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
     labels = tf.expand_dims(labels, -1)
-    fake_valit_pt_mask = tf.cast(
+    fake_valid_pt_mask = tf.cast(
         tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
-    features[rconst.VALID_POINT_MASK] = fake_valit_pt_mask
+    features[rconst.VALID_POINT_MASK] = fake_valid_pt_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
-    return features, labels
+
+    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
+      return features
+    else:
+      # b/134708104
+      return (features,)
 
   eval_input_fn = producer.make_input_fn(is_training=False)
   eval_input_dataset = eval_input_fn(params).map(
@@ -233,12 +239,10 @@ def _get_keras_model(params):
       from_logits=True,
       reduction="sum")
 
-  loss_scale_factor = (batch_size *
-                       tf.distribute.get_strategy().num_replicas_in_sync)
   keras_model.add_loss(loss_obj(
       y_true=label_input,
       y_pred=softmax_logits,
-      sample_weight=valid_pt_mask_input) * 1.0 / loss_scale_factor)
+      sample_weight=valid_pt_mask_input) * 1.0 / batch_size)
 
   keras_model.summary()
   return keras_model
@@ -246,6 +250,11 @@ def _get_keras_model(params):
 
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
+
+  if FLAGS.seed is not None:
+    print("Setting tf seed")
+    tf.random.set_seed(FLAGS.seed)
+
   # TODO(seemuch): Support different train and eval batch sizes
   if FLAGS.eval_batch_size != FLAGS.batch_size:
     logging.warning(
@@ -257,9 +266,15 @@ def run_ncf(_):
 
   params = ncf_common.parse_flags(FLAGS)
 
-  if params["keras_use_ctl"] and int(tf.__version__.split(".")[0]) == 1:
+  strategy = distribution_utils.get_distribution_strategy(
+      distribution_strategy=FLAGS.distribution_strategy,
+      num_gpus=FLAGS.num_gpus)
+  params["distribute_strategy"] = strategy
+
+  if (params["keras_use_ctl"] and (
+      not ncf_common.is_tf_v2() or strategy is None)):
     logging.error(
-        "Custom training loop only works with tensorflow 2.0 and above.")
+        "Custom training loop only works with tensorflow 2.0 and dist strat.")
     return
 
   # ncf_common rounds eval_batch_size (this is needed due to a reshape during
@@ -290,10 +305,10 @@ def run_ncf(_):
 
   if FLAGS.early_stopping:
     early_stopping_callback = CustomEarlyStopping(
-        "val_metric_fn", desired_value=FLAGS.hr_threshold)
+        "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
-  strategy = ncf_common.get_distribution_strategy(params)
+
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
     optimizer = tf.keras.optimizers.Adam(
@@ -303,7 +318,7 @@ def run_ncf(_):
         epsilon=params["epsilon"])
 
   if params["keras_use_ctl"]:
-    loss_object = tf.losses.SparseCategoricalCrossentropy(
+    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
         reduction=tf.keras.losses.Reduction.SUM,
         from_logits=True)
     train_input_iterator = strategy.make_dataset_iterator(train_input_dataset)
@@ -312,11 +327,11 @@ def run_ncf(_):
     @tf.function
     def train_step():
       """Called once per step to train the model."""
-      def step_fn(inputs):
+      def step_fn(features):
         """Computes loss and applied gradient per replica."""
-        features, labels = inputs
         with tf.GradientTape() as tape:
           softmax_logits = keras_model(features)
+          labels = features[rconst.TRAIN_LABEL_KEY]
           loss = loss_object(labels, softmax_logits,
                              sample_weight=features[rconst.VALID_POINT_MASK])
           loss *= (1.0 / (batch_size*strategy.num_replicas_in_sync))
@@ -335,9 +350,8 @@ def run_ncf(_):
     @tf.function
     def eval_step():
       """Called once per eval step to compute eval metrics."""
-      def step_fn(inputs):
+      def step_fn(features):
         """Computes eval metrics per replica."""
-        features, _ = inputs
         softmax_logits = keras_model(features)
         in_top_k, metric_weights = metric_fn(
             softmax_logits, features[rconst.DUPLICATE_MASK], params)

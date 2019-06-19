@@ -86,9 +86,10 @@ def _filter_index_sort(raw_rating_path, cache_path):
     with tf.io.gfile.GFile(cache_path, "rb") as f:
       cached_data = pickle.load(f)
 
-    cache_age = time.time() - cached_data.get("create_time", 0)
-    if cache_age > rconst.CACHE_INVALIDATION_SEC:
-      valid_cache = False
+    # (nnigania)disabled this check as the dataset is not expected to change
+    # cache_age = time.time() - cached_data.get("create_time", 0)
+    # if cache_age > rconst.CACHE_INVALIDATION_SEC:
+    #   valid_cache = False
 
     for key in _EXPECTED_CACHE_KEYS:
       if key not in cached_data:

@@ -61,4 +61,19 @@ message DelfConfig {
   // Configuration used for DELF local features.
   optional DelfLocalFeatureConfig delf_local_config = 3;
 
+  // The maximum/minimum image size (in terms of height or width) to be used
+  // when extracting DELF features. If the height *OR* width is larger than
+  // max_image_size, it will be resized to max_image_size, and the other
+  // dimension will be resized by preserving the aspect ratio. Similar logic
+  // applies to min_image_size, if both height *AND* width are smaller than
+  // min_image_size, the larger side is set to min_image_size. If set to -1
+  // (default), no image resizing is performed on the corresponding criteria.
+  // When using local features, note that the feature locations and scales will
+  // be consistent with the original image input size.
+  // Note that when both options are specified (which is a valid and legit use
+  // case), as long as max_image_size >= min_image_size, there's no conflicting
+  // scenario (i.e. never triggers both enlarging / shrinking).
+  // Bilinear interpolation is used.
+  optional int32 max_image_size = 4 [default = -1];
+  optional int32 min_image_size = 5 [default = -1];
 }
