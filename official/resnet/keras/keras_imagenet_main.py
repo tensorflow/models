@@ -29,6 +29,7 @@ from official.resnet.keras import trivial_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 
 
@@ -92,17 +93,11 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  # TODO(tobyboyd): Remove eager flag when tf 1.0 testing ends.
-  # Eager is default in tf 2.0 and should not be toggled
-  if keras_common.is_v2_0():
-    keras_common.set_config_v2()
-  else:
-    config = keras_common.get_config_proto_v1()
-    if flags_obj.enable_eager:
-      tf.compat.v1.enable_eager_execution(config=config)
-    else:
-      sess = tf.Session(config=config)
-      tf.keras.backend.set_session(sess)
+  keras_utils.set_session_config(
+      enable_eager=flags_obj.enable_eager,
+      enable_xla=flags_obj.enable_xla,
+      enable_grappler_layout_optimizer=
+      flags_obj.enable_grappler_layout_optimizer)
 
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
@@ -253,6 +248,11 @@ def run(flags_obj):
   return stats
 
 
+def define_imagenet_keras_flags():
+  imagenet_main.define_imagenet_flags(dynamic_loss_scale=True, enable_xla=True)
+  keras_common.define_keras_flags()
+
+
 def main(_):
   model_helpers.apply_clean(flags.FLAGS)
   with logger.benchmark_context(flags.FLAGS):
@@ -261,6 +261,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
-  keras_common.define_keras_flags()
+  define_imagenet_keras_flags()
   absl_app.run(main)
