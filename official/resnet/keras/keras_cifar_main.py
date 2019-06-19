@@ -168,6 +168,10 @@ def run(flags_obj):
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
+    if strategy:
+      # TODO(haoyuzhang): Understand slowdown of setting learning phase when
+      # not using distribution strategy.
+      tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
 
