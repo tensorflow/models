@@ -49,10 +49,9 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
 
   def __init__(self, output_dir=None):
+    super(BertClassifyBenchmarkBase, self).__init__(output_dir)
     self.num_epochs = None
     self.num_steps_per_epoch = None
-
-    super(BertClassifyBenchmarkBase, self).__init__(output_dir)
 
   @flagsaver.flagsaver
   def _run_bert_classifier(self, callbacks=None):
@@ -72,6 +71,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
         math.ceil(input_meta_data['eval_data_size'] / FLAGS.eval_batch_size))
     strategy = distribution_utils.get_distribution_strategy(
         distribution_strategy='mirrored', num_gpus=self.num_gpus)
+    steps_per_loop = 1
 
     run_classifier.run_customized_training(
         strategy,
@@ -80,6 +80,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
         FLAGS.model_dir,
         epochs,
         steps_per_epoch,
+        steps_per_loop,
         eval_steps,
         warmup_steps,
         FLAGS.learning_rate,
@@ -96,17 +97,18 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
   """
 
   def __init__(self, output_dir=None, **kwargs):
+    super(BertClassifyBenchmarkReal, self).__init__(output_dir=output_dir)
+
     self.train_data_path = CLASSIFIER_TRAIN_DATA_PATH
     self.eval_data_path = CLASSIFIER_EVAL_DATA_PATH
     self.bert_config_file = MODEL_CONFIG_FILE_PATH
     self.input_meta_data_path = CLASSIFIER_INPUT_META_DATA_PATH
+
     # Since we only care about performance metrics, we limit
     # the number of training steps and epochs to prevent unnecessarily
     # long tests.
     self.num_steps_per_epoch = 110
     self.num_epochs = 1
-
-    super(BertClassifyBenchmarkReal, self).__init__(output_dir=output_dir)
 
   def _run_and_report_benchmark(self,
                                 training_summary_path,

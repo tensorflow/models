@@ -75,7 +75,7 @@ def define_transformer_flags():
   flags_core.define_device(tpu=True)
 
   flags.DEFINE_integer(
-      name='train_steps', short_name='ts', default=None,
+      name='train_steps', short_name='ts', default=300000,
       help=flags_core.help_wrap('The number of steps used to train.'))
   flags.DEFINE_integer(
       name='steps_between_evals', short_name='sbe', default=1000,

@@ -159,6 +159,7 @@ def run(flags_obj):
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=optimizer,
+                  run_eagerly=flags_obj.run_eagerly,
                   metrics=['categorical_accuracy'])
 
   callbacks = keras_common.get_callbacks(
