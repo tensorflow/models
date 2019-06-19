@@ -178,7 +178,8 @@ def run(flags_obj):
   if not strategy and flags_obj.num_gpus == 1:
     # TODO(b/135607227): Add device scope automatically in Keras training loop
     # when not using distribition strategy.
-    tf.device('/device:GPU:0').__enter__()
+    no_dist_strat_device = tf.device('/device:GPU:0')
+    no_dist_strat_device.__enter__()
 
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
@@ -195,7 +196,7 @@ def run(flags_obj):
                                  verbose=2)
 
   if not strategy and flags_obj.num_gpus == 1:
-    tf.device('/device:GPU:0').__exit__()
+    no_dist_strat_device.__exit__()
 
   stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
