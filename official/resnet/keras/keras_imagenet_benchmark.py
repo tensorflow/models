@@ -281,7 +281,6 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
     FLAGS.distribution_strategy = 'off'
-    FLAGS.set_learning_phase_to_train = False
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
     FLAGS.batch_size = 96  # BatchNorm is less efficient in legacy graph mode
                            # due to its reliance on v1 cond.
