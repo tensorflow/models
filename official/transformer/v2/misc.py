@@ -79,7 +79,7 @@ def define_transformer_flags():
       name='enable_grappler_layout_optimizer',
       default=True,
       help='Enable Grappler layout optimizer. Currently Grappler can '
-           'de-optimize fp16 graphs byt forcing NCHW layout for all '
+           'de-optimize fp16 graphs by forcing NCHW layout for all '
            'convolutions and batch normalizations, and this flag allows to '
            'disable it.'
   )
