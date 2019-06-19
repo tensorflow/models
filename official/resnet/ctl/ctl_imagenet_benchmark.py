@@ -26,6 +26,7 @@ from official.resnet import imagenet_main
 from official.resnet.ctl import ctl_imagenet_main
 from official.resnet.ctl import ctl_common
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
+from official.utils.flags import core as flags_core
 
 
 MIN_TOP_1_ACCURACY = 0.76
@@ -96,7 +97,9 @@ class CtlBenchmark(PerfZeroBenchmark):
       metrics.append({'name': 'avg_exp_per_second',
                       'value': stats['avg_exp_per_second']})
 
-    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
+    flags_str = flags_core.get_nondefault_flags_as_str()
+    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics,
+                          extras={'flags': flags_str})
 
 
 class Resnet50CtlAccuracy(CtlBenchmark):
