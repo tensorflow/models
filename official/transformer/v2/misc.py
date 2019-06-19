@@ -69,8 +69,21 @@ def define_transformer_flags():
       synthetic_data=True,
       max_train_steps=False,
       dtype=False,
-      all_reduce_alg=True
+      all_reduce_alg=True,
+      enable_xla=True
   )
+
+  # Additional performance flags
+  # TODO(b/76028325): Remove when generic layout optimizer is ready.
+  flags.DEFINE_boolean(
+      name='enable_grappler_layout_optimizer',
+      default=True,
+      help='Enable Grappler layout optimizer. Currently Grappler can '
+           'de-optimize fp16 graphs by forcing NCHW layout for all '
+           'convolutions and batch normalizations, and this flag allows to '
+           'disable it.'
+  )
+
   flags_core.define_benchmark()
   flags_core.define_device(tpu=True)
 
