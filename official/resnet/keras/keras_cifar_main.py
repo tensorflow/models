@@ -168,12 +168,17 @@ def run(flags_obj):
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
-    if strategy:
+    if flags_obj.set_learning_phase_to_train:
       # TODO(haoyuzhang): Understand slowdown of setting learning phase when
       # not using distribution strategy.
       tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
+
+  if not strategy and flags_obj.num_gpus == 1:
+    # TODO(b/135607227): Add device scope automatically in Keras training loop
+    # when not using distribition strategy.
+    tf.device('/device:GPU:0').__enter__()
 
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
@@ -188,6 +193,10 @@ def run(flags_obj):
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=2)
+
+  if not strategy and flags_obj.num_gpus == 1:
+    tf.device('/device:GPU:0').__exit__()
+
   stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
 

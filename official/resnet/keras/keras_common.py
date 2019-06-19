@@ -256,6 +256,10 @@ def define_keras_flags():
       name='run_eagerly', default=False,
       help='Run the model op by op without building a model function.')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
+  # TODO(b/135607288): Remove this flag once we understand the root cause of
+  # slowdown when setting the learning phase in Keras backend.
+  flags.DEFINE_boolean(name='set_learning_phase_to_train', default=True,
+      help='If skip eval, also set Keras learning phase to 1 (training).')
   flags.DEFINE_boolean(name='use_trivial_model', default=False,
                        help='Whether to use a trivial Keras model.')
   flags.DEFINE_boolean(name='report_accuracy_metrics', default=True,
