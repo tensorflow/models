@@ -21,6 +21,24 @@ from __future__ import print_function
 import tensorflow as tf
 
 
+def _float32_softmax(logits, name=None):
+  """Computes a softmax activation in float32.
+
+  When training a model using float16, softmax is still done in float32 for
+  numeric stability.
+
+  Args:
+    logits: A tensor, with any shape accepted by `tf.nn.softmax`.
+
+  Returns:
+    A tensor with the same dtype as `logits`.
+  """
+  input_dtype = logits.dtype
+  logits = tf.cast(logits, tf.float32)
+  output = tf.nn.softmax(logits, name=name)
+  return tf.cast(output, input_dtype)
+
+
 class Attention(tf.keras.layers.Layer):
   """Multi-headed attention layer."""
 
@@ -129,8 +147,8 @@ class Attention(tf.keras.layers.Layer):
 
     if cache is not None:
       # Combine cached keys and values with new keys and values.
-      k = tf.concat([cache["k"], k], axis=1)
-      v = tf.concat([cache["v"], v], axis=1)
+      k = tf.concat([tf.cast(cache["k"], k.dtype), k], axis=1)
+      v = tf.concat([tf.cast(cache["v"], k.dtype), v], axis=1)
 
       # Update cache
       cache["k"] = k
@@ -148,7 +166,7 @@ class Attention(tf.keras.layers.Layer):
     # Calculate dot product attention
     logits = tf.matmul(q, k, transpose_b=True)
     logits += bias
-    weights = tf.nn.softmax(logits, name="attention_weights")
+    weights = _float32_softmax(logits, name="attention_weights")
     if training:
       weights = tf.nn.dropout(weights, rate=self.attention_dropout)
     attention_output = tf.matmul(weights, v)

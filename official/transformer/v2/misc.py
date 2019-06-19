@@ -68,7 +68,8 @@ def define_transformer_flags():
       intra_op=False,
       synthetic_data=True,
       max_train_steps=False,
-      dtype=False,
+      dtype=True,
+      loss_scale=True,
       all_reduce_alg=True,
       enable_xla=True
   )
