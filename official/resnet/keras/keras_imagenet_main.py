@@ -248,6 +248,11 @@ def run(flags_obj):
   return stats
 
 
+def define_imagenet_keras_flags():
+  imagenet_main.define_imagenet_flags(dynamic_loss_scale=True, enable_xla=True)
+  keras_common.define_keras_flags()
+
+
 def main(_):
   model_helpers.apply_clean(flags.FLAGS)
   with logger.benchmark_context(flags.FLAGS):
@@ -256,6 +261,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  imagenet_main.define_imagenet_flags(dynamic_loss_scale=True, enable_xla=True)
-  keras_common.define_keras_flags()
+  define_imagenet_keras_flags()
   absl_app.run(main)
