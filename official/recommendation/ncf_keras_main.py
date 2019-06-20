@@ -251,6 +251,8 @@ def _get_keras_model(params):
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
 
+  keras_utils.set_session_config(enable_xla=FLAGS.enable_xla)
+
   if FLAGS.seed is not None:
     print("Setting tf seed")
     tf.random.set_seed(FLAGS.seed)
@@ -272,7 +274,7 @@ def run_ncf(_):
   params["distribute_strategy"] = strategy
 
   if (params["keras_use_ctl"] and (
-      not ncf_common.is_tf_v2() or strategy is None)):
+      not keras_utils.is_v2_0() or strategy is None)):
     logging.error(
         "Custom training loop only works with tensorflow 2.0 and dist strat.")
     return

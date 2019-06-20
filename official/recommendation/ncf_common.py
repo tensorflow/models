@@ -160,7 +160,8 @@ def define_ncf_flags():
       synthetic_data=True,
       max_train_steps=False,
       dtype=False,
-      all_reduce_alg=False
+      all_reduce_alg=False,
+      enable_xla=True
   )
   flags_core.define_device(tpu=True)
   flags_core.define_benchmark()
@@ -327,5 +328,4 @@ def convert_to_softmax_logits(logits):
 
 def is_tf_v2():
   """Returns whether it is v2."""
-  from tensorflow.python import tf2 as tf2_internal
-  return tf2_internal.enabled()
+  return keras_utils.is_v2_0()

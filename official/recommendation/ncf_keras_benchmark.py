@@ -132,6 +132,12 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
+  def benchmark_xla_1_gpu_early_stop(self):
+    self._setup()
+    FLAGS.early_stopping = True
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
   # NCF with custom training loop. Works only in TF 2.0
   def benchmark_1_gpu_ctl(self):
     self._setup()
