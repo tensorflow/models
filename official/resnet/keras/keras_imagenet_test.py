@@ -49,8 +49,7 @@ class KerasImagenetTest(googletest.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(KerasImagenetTest, cls).setUpClass()
-    imagenet_main.define_imagenet_flags()
-    keras_common.define_keras_flags()
+    keras_imagenet_main.define_imagenet_keras_flags()
 
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
