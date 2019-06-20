@@ -249,14 +249,13 @@ def build_stats(history, eval_output, callbacks):
   return stats
 
 
-def define_keras_flags(fp16_implementation=True, dynamic_loss_scale=True):
+def define_keras_flags(dynamic_loss_scale=True):
   """Define flags for Keras models."""
   flags_core.define_base(run_eagerly=True)
   flags_core.define_performance(num_parallel_calls=False,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
                                 dynamic_loss_scale=dynamic_loss_scale,
-                                fp16_implementation=fp16_implementation,
                                 loss_scale=True,
                                 tf_data_experimental_slack=True,
                                 enable_xla=True)
