@@ -191,6 +191,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_tweaked(self):
+    """Test no distribution strategy with manual config."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
