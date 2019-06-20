@@ -42,7 +42,7 @@ def create_model(params, is_train):
       logits = internal_model([inputs, targets], training=is_train)
       vocab_size = params["vocab_size"]
       label_smoothing = params["label_smoothing"]
-      logits = metrics.MetricLayer(vocab_size)([logits, targets])
+      #logits = metrics.MetricLayer(vocab_size)([logits, targets])
       logits = metrics.LossLayer(vocab_size, label_smoothing)([logits, targets])
       logits = tf.keras.layers.Lambda(lambda x: x, name="logits")(logits)
       return tf.keras.Model([inputs, targets], logits)
