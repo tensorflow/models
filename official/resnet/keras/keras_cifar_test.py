@@ -24,6 +24,7 @@ import tensorflow as tf
 from official.resnet import cifar10_main
 from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
 # pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
@@ -61,7 +62,7 @@ class KerasCifarTest(googletest.TestCase):
 
   def test_end_to_end_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     extra_flags = [
@@ -95,7 +96,7 @@ class KerasCifarTest(googletest.TestCase):
 
   def test_end_to_end_1_gpu(self):
     """Test Keras model with 1 GPU."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 1:
@@ -141,7 +142,7 @@ class KerasCifarTest(googletest.TestCase):
 
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:
