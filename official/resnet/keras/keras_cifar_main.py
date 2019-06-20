@@ -202,6 +202,7 @@ def define_cifar_flags():
                           batch_size=128,
                           image_bytes_as_serving_input=False)
 
+
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
     return run(flags.FLAGS)
