@@ -261,6 +261,10 @@ def define_keras_flags():
   flags.DEFINE_boolean(
       name='set_learning_phase_to_train', default=True,
       help='If skip eval, also set Keras learning phase to 1 (training).')
+  flags.DEFINE_boolean(
+      name='explicit_gpu_placement', default=False,
+      help='If not using distribution strategy, explicitly set device scope '
+      'for the Keras training loop.')
   flags.DEFINE_boolean(name='use_trivial_model', default=False,
                        help='Whether to use a trivial Keras model.')
   flags.DEFINE_boolean(name='report_accuracy_metrics', default=True,

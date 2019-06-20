@@ -239,6 +239,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
+    FLAGS.explicit_gpu_placement = True
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
     FLAGS.set_learning_phase_to_train = False
