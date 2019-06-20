@@ -400,7 +400,8 @@ def run_ncf(_):
   else:
     with distribution_utils.get_strategy_scope(strategy):
 
-      keras_model.compile(optimizer=optimizer)
+      keras_model.compile(optimizer=optimizer,
+                          run_eagerly=FLAGS.run_eagerly)
 
       history = keras_model.fit(train_input_dataset,
                                 epochs=FLAGS.train_epochs,

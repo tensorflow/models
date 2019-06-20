@@ -26,6 +26,7 @@ import numpy as np
 from absl import flags
 import tensorflow as tf
 
+from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
 # pylint: disable=ungrouped-imports
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
@@ -248,8 +249,21 @@ def build_stats(history, eval_output, callbacks):
   return stats
 
 
-def define_keras_flags():
+def define_keras_flags(fp16_implementation=True,
+                       dynamic_loss_scale=True):
   """Define flags for Keras models."""
+  flags_core.define_base(run_eagerly=True)
+  flags_core.define_performance(num_parallel_calls=False,
+                                tf_gpu_thread_mode=True,
+                                datasets_num_private_threads=True,
+                                dynamic_loss_scale=dynamic_loss_scale,
+                                fp16_implementation=fp16_implementation,
+                                loss_scale=True,
+                                tf_data_experimental_slack=True,
+                                enable_xla=True)
+  flags_core.define_image()
+  flags_core.define_benchmark()
+  flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
   flags.DEFINE_boolean(

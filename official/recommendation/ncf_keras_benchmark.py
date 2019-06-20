@@ -132,6 +132,13 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_early_stop(self):
+    self._setup()
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.early_stopping = True
+    FLAGS.run_eagerly = True
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu_early_stop(self):
     self._setup()
     FLAGS.early_stopping = True
@@ -149,6 +156,13 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.keras_use_ctl = True
     FLAGS.early_stopping = True
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_ctl_early_stop(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.early_stopping = True
+    FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
   def benchmark_2_gpus(self):
@@ -201,6 +215,14 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.train_epochs = 7
     FLAGS.distribution_strategy = 'off'
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_mlperf_like(self):
+    self._setup()
+    FLAGS.train_epochs = 7
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.early_stopping = True
+    FLAGS.run_eagerly = True
     self._run_and_report_benchmark()
 
   def benchmark_xla_1_gpu_mlperf_like(self):
