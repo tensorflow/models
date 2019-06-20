@@ -723,7 +723,7 @@ def resnet_main(
 
 
 def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
-                        fp16_implementation=False, enable_xla=False):
+                        fp16_implementation=False):
   """Add flags and validators for ResNet."""
   flags_core.define_base()
   flags_core.define_performance(num_parallel_calls=False,
@@ -732,8 +732,7 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 fp16_implementation=fp16_implementation,
                                 loss_scale=True,
-                                tf_data_experimental_slack=True,
-                                enable_xla=enable_xla)
+                                tf_data_experimental_slack=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
