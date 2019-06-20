@@ -265,9 +265,6 @@ def define_keras_flags(fp16_implementation=True, dynamic_loss_scale=True):
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
-  flags.DEFINE_boolean(
-      name='run_eagerly', default=False,
-      help='Run the model op by op without building a model function.')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
   flags.DEFINE_boolean(name='use_trivial_model', default=False,
                        help='Whether to use a trivial Keras model.')
