@@ -111,7 +111,7 @@ def get_input_dataset(flags_obj, strategy):
 
   if strategy:
     train_ds = strategy.experimental_distribute_dataset(train_ds)
-  
+
   test_ds = None
   if not flags_obj.skip_eval:
     test_ds = input_fn(
