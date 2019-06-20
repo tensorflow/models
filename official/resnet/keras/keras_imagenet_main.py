@@ -226,9 +226,18 @@ def run(flags_obj):
     # Only build the training graph. This reduces memory usage introduced by
     # control flow ops in layers that have different implementations for
     # training and inference (e.g., batch norm).
-    tf.keras.backend.set_learning_phase(1)
+    if flags_obj.set_learning_phase_to_train:
+      # TODO(haoyuzhang): Understand slowdown of setting learning phase when
+      # not using distribution strategy.
+      tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
+
+  if not strategy and flags_obj.explicit_gpu_placement:
+    # TODO(b/135607227): Add device scope automatically in Keras training loop
+    # when not using distribition strategy.
+    no_dist_strat_device = tf.device('/device:GPU:0')
+    no_dist_strat_device.__enter__()
 
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
@@ -244,6 +253,10 @@ def run(flags_obj):
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=2)
+
+  if not strategy and flags_obj.explicit_gpu_placement:
+    no_dist_strat_device.__exit__()
+
   stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
 

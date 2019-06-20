@@ -83,6 +83,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     """Test keras based model with eager and no dist strat."""
     self._setup()
     FLAGS.num_gpus = 1
+    FLAGS.explicit_gpu_placement = True
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
@@ -186,6 +187,19 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_tweaked(self):
+    """Test no distribution strategy with manual config."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.explicit_gpu_placement = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.set_learning_phase_to_train = False
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_tweaked')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
