@@ -87,7 +87,7 @@ def _get_train_and_eval_data(producer, params):
     features[rconst.DUPLICATE_MASK] = fake_dup_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
 
-    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
+    if params["distribute_strategy"] or not keras_utils.is_v2_0():
       return features
     else:
       # b/134708104
@@ -100,7 +100,7 @@ def _get_train_and_eval_data(producer, params):
   def preprocess_eval_input(features):
     """Pre-process the eval data.
 
-    This is needed becasue:
+    This is needed because:
     - The label needs to be extended to be used in the loss fn
     - We need the same inputs for training and eval so adding fake inputs
       for VALID_PT_MASK in eval data.
@@ -112,7 +112,7 @@ def _get_train_and_eval_data(producer, params):
     features[rconst.VALID_POINT_MASK] = fake_valid_pt_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
 
-    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
+    if params["distribute_strategy"] or not keras_utils.is_v2_0():
       return features
     else:
       # b/134708104
