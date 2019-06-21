@@ -34,9 +34,9 @@ class KerasImagenetTest(googletest.TestCase):
   """Unit tests for Keras ResNet with ImageNet."""
 
   _extra_flags = [
-      '-batch_size', '4',
-      '-train_steps', '1',
-      '-use_synthetic_data', 'true'
+      "-batch_size", "4",
+      "-train_steps", "1",
+      "-use_synthetic_data", "true"
   ]
   _tempdir = None
 
@@ -48,12 +48,11 @@ class KerasImagenetTest(googletest.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(KerasImagenetTest, cls).setUpClass()
-    imagenet_main.define_imagenet_flags()
-    keras_common.define_keras_flags()
+    keras_imagenet_main.define_imagenet_keras_flags()
 
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
-    imagenet_main.NUM_IMAGES['validation'] = 4
+    imagenet_main.NUM_IMAGES["validation"] = 4
 
   def tearDown(self):
     super(KerasImagenetTest, self).tearDown()
