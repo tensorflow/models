@@ -92,9 +92,6 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.num_gpus = 2
     FLAGS.param_set = "base"
     FLAGS.dtype = "fp16"
-    policy = tf.keras.mixed_precision.experimental.Policy(
-        'infer_float32_vars')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
     t = tm.TransformerTask(FLAGS)
     t.train()
 
@@ -131,9 +128,6 @@ class TransformerTaskTest(tf.test.TestCase):
 
   def test_predict_fp16(self):
     self._prepare_files_and_flags("--dtype=fp16")
-    policy = tf.keras.mixed_precision.experimental.Policy(
-        'infer_float32_vars')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
     t = tm.TransformerTask(FLAGS)
     t.predict()
 

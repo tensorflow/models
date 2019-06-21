@@ -234,6 +234,20 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_dist_strat_tweaked(self):
+    """Test with 1 GPU, no distribution strategy, and manual tuning."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.explicit_gpu_placement = True
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.set_learning_phase_to_train = False
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_tweaked')
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_no_dist_strat_run_eagerly(self):
     """Test Keras model with 1 GPU, no distribution strategy, run eagerly."""
     self._setup()

@@ -24,6 +24,7 @@ import tensorflow as tf
 from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
 from official.resnet.keras import keras_imagenet_main
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
 # pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
@@ -34,9 +35,9 @@ class KerasImagenetTest(googletest.TestCase):
   """Unit tests for Keras ResNet with ImageNet."""
 
   _extra_flags = [
-      '-batch_size', '4',
-      '-train_steps', '1',
-      '-use_synthetic_data', 'true'
+      "-batch_size", "4",
+      "-train_steps", "1",
+      "-use_synthetic_data", "true"
   ]
   _tempdir = None
 
@@ -48,12 +49,11 @@ class KerasImagenetTest(googletest.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(KerasImagenetTest, cls).setUpClass()
-    imagenet_main.define_imagenet_flags()
-    keras_common.define_keras_flags()
+    keras_imagenet_main.define_imagenet_keras_flags()
 
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
-    imagenet_main.NUM_IMAGES['validation'] = 4
+    imagenet_main.NUM_IMAGES["validation"] = 4
 
   def tearDown(self):
     super(KerasImagenetTest, self).tearDown()
@@ -61,7 +61,7 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     extra_flags = [
@@ -95,7 +95,7 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_1_gpu(self):
     """Test Keras model with 1 GPU."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 1:
@@ -141,7 +141,7 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:
@@ -164,7 +164,7 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_xla_2_gpu(self):
     """Test Keras model with XLA and 2 GPUs."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:
@@ -188,7 +188,7 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_2_gpu_fp16(self):
     """Test Keras model with 2 GPUs and fp16."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:
@@ -212,7 +212,7 @@ class KerasImagenetTest(googletest.TestCase):
 
   def test_end_to_end_xla_2_gpu_fp16(self):
     """Test Keras model with XLA, 2 GPUs and fp16."""
-    config = keras_common.get_config_proto_v1()
+    config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:

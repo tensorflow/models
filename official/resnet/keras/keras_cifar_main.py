@@ -99,7 +99,8 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  keras_utils.set_session_config(enable_eager=flags_obj.enable_eager)
+  keras_utils.set_session_config(enable_eager=flags_obj.enable_eager,
+                                 enable_xla=flags_obj.enable_xla)
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
@@ -168,9 +169,18 @@ def run(flags_obj):
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
-    tf.keras.backend.set_learning_phase(1)
+    if flags_obj.set_learning_phase_to_train:
+      # TODO(haoyuzhang): Understand slowdown of setting learning phase when
+      # not using distribution strategy.
+      tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
+
+  if not strategy and flags_obj.explicit_gpu_placement:
+    # TODO(b/135607227): Add device scope automatically in Keras training loop
+    # when not using distribition strategy.
+    no_dist_strat_device = tf.device('/device:GPU:0')
+    no_dist_strat_device.__enter__()
 
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
@@ -185,8 +195,22 @@ def run(flags_obj):
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=2)
+
+  if not strategy and flags_obj.explicit_gpu_placement:
+    no_dist_strat_device.__exit__()
+
   stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
+
+
+def define_cifar_flags():
+  keras_common.define_keras_flags(dynamic_loss_scale=False)
+
+  flags_core.set_defaults(data_dir='/tmp/cifar10_data/cifar-10-batches-bin',
+                          model_dir='/tmp/cifar10_model',
+                          train_epochs=182,
+                          epochs_between_evals=10,
+                          batch_size=128)
 
 
 def main(_):
@@ -196,6 +220,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  cifar_main.define_cifar_flags()
-  keras_common.define_keras_flags()
+  define_cifar_flags()
   absl_app.run(main)

@@ -153,7 +153,7 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
 
     self._setup()
     self.num_gpus = 2
-    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_mprc')
+    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_mrpc')
     FLAGS.train_data_path = self.train_data_path
     FLAGS.eval_data_path = self.eval_data_path
     FLAGS.input_meta_data_path = self.input_meta_data_path
