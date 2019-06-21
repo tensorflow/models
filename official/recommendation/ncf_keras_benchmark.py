@@ -221,7 +221,6 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.train_epochs = 7
     FLAGS.distribution_strategy = 'off'
-    FLAGS.early_stopping = True
     FLAGS.run_eagerly = True
     self._run_and_report_benchmark()
 
