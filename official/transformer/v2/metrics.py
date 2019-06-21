@@ -160,16 +160,9 @@ class MetricLayer(tf.keras.layers.Layer):
 
   def call(self, inputs):
     logits, targets = inputs[0], inputs[1]
-    rc = tf.distribute.get_replica_context()
-    def merge_fn(_):
-      return 1
-    if rc:
-      pass
-      #rc.merge_call(merge_fn)                    
-    
-    #for mean, fn in self.metric_mean_fns:
-    #  m = mean(*fn(logits, targets))
-    #  self.add_metric(m)
+    for mean, fn in self.metric_mean_fns:
+      m = mean(*fn(logits, targets))
+      self.add_metric(m)
     return logits
 
 
