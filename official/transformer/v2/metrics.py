@@ -181,4 +181,3 @@ def transformer_loss(logits, labels, smoothing, vocab_size):
   xentropy, weights = padded_cross_entropy_loss(logits, labels, smoothing,
                                                 vocab_size)
   return tf.reduce_sum(xentropy) / tf.reduce_sum(weights)
-
