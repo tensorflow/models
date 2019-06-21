@@ -37,12 +37,14 @@ from __future__ import print_function
 
 import os
 import re
+import sys
 import tarfile
 import urllib
 import zipfile
 
-import cifar10_input
 import tensorflow as tf
+
+import cifar10_input
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -149,7 +151,6 @@ def distorted_inputs():
 
 def inputs(eval_data):
   """Construct input for CIFAR evaluation using the Reader ops.
-
   Args:
     eval_data: bool, indicating if one should use the train or eval data set.
 
@@ -157,8 +158,7 @@ def inputs(eval_data):
     images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
     labels: Labels. 1D tensor of [batch_size] size.
   """
-  images, labels = cifar10_input.inputs(eval_data=eval_data,
-                                        batch_size=FLAGS.batch_size)
+  images, labels = cifar10_input.inputs(eval_data=eval_data, batch_size=FLAGS.batch_size)
   if FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
     labels = tf.cast(labels, tf.float16)
@@ -166,30 +166,34 @@ def inputs(eval_data):
 
 
 def maybe_download_and_extract():
-    main_directory = "./data_set/"
-    cifar_10_directory = main_directory+"cifar_10/"
-    if not os.path.exists(main_directory):
-        os.makedirs(main_directory)
+  main_directory = "./data_set/"
+  cifar_10_directory = main_directory+"cifar_10/"
+  if not os.path.exists(main_directory):
+    os.makedirs(main_directory)
 
-        url = "http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
-        filename = url.split('/')[-1]
-        file_path = os.path.join(main_directory, filename)
-        zip_cifar_10 = file_path
-        file_path, _ = urllib.urlretrieve(
-            url=url, filename=file_path, reporthook=_print_download_progress)
+    url = "http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
+    filename = url.split('/')[-1]
+    file_path = os.path.join(main_directory, filename)
+    zip_cifar_10 = file_path
+    file_path, _ = urllib.urlretrieve(
+        url=url, filename=file_path, reporthook=_print_download_progress)
 
-        print()
-        print("Download finished. Extracting files.")
-        if file_path.endswith(".zip"):
-            zipfile.ZipFile(file=file_path, mode="r").extractall(
-                main_directory)
-        elif file_path.endswith((".tar.gz", ".tgz")):
-            tarfile.open(name=file_path, mode="r:gz").extractall(
-                main_directory)
-        print("Done.")
+    print("Download finished. Extracting files.")
+    if file_path.endswith(".zip"):
+      zipfile.ZipFile(file=file_path, mode="r").extractall(main_directory)
+    elif file_path.endswith((".tar.gz", ".tgz")):
+      tarfile.open(name=file_path, mode="r:gz").extractall(main_directory)
+    print("Done.")
 
-        os.rename(main_directory+"./cifar-10-batches-py", cifar_10_directory)
-        os.remove(zip_cifar_10)
+    os.rename(main_directory+"./cifar-10-batches-py", cifar_10_directory)
+    os.remove(zip_cifar_10)
+
+
+def _print_download_progress(count, block_size, total_size):
+    pct_complete = float(count * block_size) / total_size
+    msg = "\r- Download progress: {0:.1%}".format(pct_complete)
+    sys.stdout.write(msg)
+    sys.stdout.flush()
 
 
 def inference(images):
