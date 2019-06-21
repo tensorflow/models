@@ -162,6 +162,33 @@ def inputs(eval_data):
   return images, labels
 
 
+def maybe_download_and_extract():
+    main_directory = "./data_set/"
+    cifar_10_directory = main_directory+"cifar_10/"
+    if not os.path.exists(main_directory):
+        os.makedirs(main_directory)
+
+        url = "http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
+        filename = url.split('/')[-1]
+        file_path = os.path.join(main_directory, filename)
+        zip_cifar_10 = file_path
+        file_path, _ = urllib.urlretrieve(
+            url=url, filename=file_path, reporthook=_print_download_progress)
+
+        print()
+        print("Download finished. Extracting files.")
+        if file_path.endswith(".zip"):
+            zipfile.ZipFile(file=file_path, mode="r").extractall(
+                main_directory)
+        elif file_path.endswith((".tar.gz", ".tgz")):
+            tarfile.open(name=file_path, mode="r:gz").extractall(
+                main_directory)
+        print("Done.")
+
+        os.rename(main_directory+"./cifar-10-batches-py", cifar_10_directory)
+        os.remove(zip_cifar_10)
+
+
 def inference(images):
   """Build the CIFAR-10 model.
 
