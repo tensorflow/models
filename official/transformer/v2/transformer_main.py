@@ -119,6 +119,7 @@ class TransformerTask(object):
     params["batch_size"] = flags_obj.batch_size or params["default_batch_size"]
     params["repeat_dataset"] = None
     params["dtype"] = flags_core.get_tf_dtype(flags_obj)
+    params["enable_metrics_in_training"] = flags_obj.enable_metrics_in_training
 
     if params["dtype"] == tf.float16:
       # TODO(reedwm): It's pretty ugly to set the global policy in a constructor
