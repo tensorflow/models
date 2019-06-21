@@ -35,12 +35,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import re
-
-import tensorflow as tf
+import tarfile
+import urllib
+import zipfile
 
 import cifar10_input
-import os
+import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 
