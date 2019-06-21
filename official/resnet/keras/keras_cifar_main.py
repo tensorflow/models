@@ -99,7 +99,8 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  keras_utils.set_session_config(enable_eager=flags_obj.enable_eager)
+  keras_utils.set_session_config(enable_eager=flags_obj.enable_eager,
+                                 enable_xla=flags_obj.enable_xla)
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
@@ -202,6 +203,16 @@ def run(flags_obj):
   return stats
 
 
+def define_cifar_flags():
+  keras_common.define_keras_flags(dynamic_loss_scale=False)
+
+  flags_core.set_defaults(data_dir='/tmp/cifar10_data/cifar-10-batches-bin',
+                          model_dir='/tmp/cifar10_model',
+                          train_epochs=182,
+                          epochs_between_evals=10,
+                          batch_size=128)
+
+
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
     return run(flags.FLAGS)
@@ -209,6 +220,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  cifar_main.define_cifar_flags()
-  keras_common.define_keras_flags()
+  define_cifar_flags()
   absl_app.run(main)

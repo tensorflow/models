@@ -262,8 +262,8 @@ def run(flags_obj):
 
 
 def define_imagenet_keras_flags():
-  imagenet_main.define_imagenet_flags(dynamic_loss_scale=True, enable_xla=True)
   keras_common.define_keras_flags()
+  flags_core.set_defaults(train_epochs=90)
 
 
 def main(_):

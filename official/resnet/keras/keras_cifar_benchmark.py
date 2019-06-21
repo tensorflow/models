@@ -49,9 +49,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     """
 
     self.data_dir = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)
-    flag_methods = [
-        keras_common.define_keras_flags, cifar_main.define_cifar_flags
-    ]
+    flag_methods = [keras_cifar_main.define_cifar_flags]
 
     super(Resnet56KerasAccuracy, self).__init__(
         output_dir=output_dir, flag_methods=flag_methods)
@@ -161,9 +159,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   """Short performance tests for ResNet56 via Keras and CIFAR-10."""
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [
-        keras_common.define_keras_flags, cifar_main.define_cifar_flags
-    ]
+    flag_methods = [keras_cifar_main.define_cifar_flags]
 
     super(Resnet56KerasBenchmarkBase, self).__init__(
         output_dir=output_dir,

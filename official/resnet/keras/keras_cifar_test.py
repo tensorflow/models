@@ -35,9 +35,9 @@ class KerasCifarTest(googletest.TestCase):
   """Unit tests for Keras ResNet with Cifar."""
 
   _extra_flags = [
-      '-batch_size', '4',
-      '-train_steps', '1',
-      '-use_synthetic_data', 'true'
+      "-batch_size", "4",
+      "-train_steps", "1",
+      "-use_synthetic_data", "true"
   ]
   _tempdir = None
 
@@ -49,12 +49,11 @@ class KerasCifarTest(googletest.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(KerasCifarTest, cls).setUpClass()
-    cifar10_main.define_cifar_flags()
-    keras_common.define_keras_flags()
+    keras_cifar_main.define_cifar_flags()
 
   def setUp(self):
     super(KerasCifarTest, self).setUp()
-    cifar10_main.NUM_IMAGES['validation'] = 4
+    cifar10_main.NUM_IMAGES["validation"] = 4
 
   def tearDown(self):
     super(KerasCifarTest, self).tearDown()

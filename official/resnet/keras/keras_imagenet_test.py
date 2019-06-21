@@ -35,9 +35,9 @@ class KerasImagenetTest(googletest.TestCase):
   """Unit tests for Keras ResNet with ImageNet."""
 
   _extra_flags = [
-      '-batch_size', '4',
-      '-train_steps', '1',
-      '-use_synthetic_data', 'true'
+      "-batch_size", "4",
+      "-train_steps", "1",
+      "-use_synthetic_data", "true"
   ]
   _tempdir = None
 
@@ -53,7 +53,7 @@ class KerasImagenetTest(googletest.TestCase):
 
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
-    imagenet_main.NUM_IMAGES['validation'] = 4
+    imagenet_main.NUM_IMAGES["validation"] = 4
 
   def tearDown(self):
     super(KerasImagenetTest, self).tearDown()

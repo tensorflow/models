@@ -87,7 +87,7 @@ def _get_train_and_eval_data(producer, params):
     features[rconst.DUPLICATE_MASK] = fake_dup_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
 
-    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
+    if params["distribute_strategy"] or not keras_utils.is_v2_0():
       return features
     else:
       # b/134708104
@@ -100,7 +100,7 @@ def _get_train_and_eval_data(producer, params):
   def preprocess_eval_input(features):
     """Pre-process the eval data.
 
-    This is needed becasue:
+    This is needed because:
     - The label needs to be extended to be used in the loss fn
     - We need the same inputs for training and eval so adding fake inputs
       for VALID_PT_MASK in eval data.
@@ -112,7 +112,7 @@ def _get_train_and_eval_data(producer, params):
     features[rconst.VALID_POINT_MASK] = fake_valid_pt_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
 
-    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
+    if params["distribute_strategy"] or not keras_utils.is_v2_0():
       return features
     else:
       # b/134708104
@@ -251,6 +251,8 @@ def _get_keras_model(params):
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
 
+  keras_utils.set_session_config(enable_xla=FLAGS.enable_xla)
+
   if FLAGS.seed is not None:
     print("Setting tf seed")
     tf.random.set_seed(FLAGS.seed)
@@ -272,7 +274,7 @@ def run_ncf(_):
   params["distribute_strategy"] = strategy
 
   if (params["keras_use_ctl"] and (
-      not ncf_common.is_tf_v2() or strategy is None)):
+      not keras_utils.is_v2_0() or strategy is None)):
     logging.error(
         "Custom training loop only works with tensorflow 2.0 and dist strat.")
     return
@@ -398,7 +400,8 @@ def run_ncf(_):
   else:
     with distribution_utils.get_strategy_scope(strategy):
 
-      keras_model.compile(optimizer=optimizer)
+      keras_model.compile(optimizer=optimizer,
+                          run_eagerly=FLAGS.run_eagerly)
 
       history = keras_model.fit(train_input_dataset,
                                 epochs=FLAGS.train_epochs,

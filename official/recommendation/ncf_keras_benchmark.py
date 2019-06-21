@@ -132,6 +132,19 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_early_stop(self):
+    self._setup()
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.early_stopping = True
+    FLAGS.run_eagerly = True
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_early_stop(self):
+    self._setup()
+    FLAGS.early_stopping = True
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
   # NCF with custom training loop. Works only in TF 2.0
   def benchmark_1_gpu_ctl(self):
     self._setup()
@@ -145,6 +158,13 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
+  def benchmark_xla_1_gpu_ctl_early_stop(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.early_stopping = True
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
   def benchmark_2_gpus(self):
     self._setup()
     FLAGS.num_gpus = 2
@@ -156,15 +176,15 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
-  # NCF with custom training loop. Works only in TF 2.0
   def benchmark_2_gpus_ctl(self):
+    """NCF with custom training loop. Works only in TF 2.0."""
     self._setup()
     FLAGS.keras_use_ctl = True
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
-  # NCF with custom training loop. Works only in TF 2.0
   def benchmark_2_gpus_ctl_early_stop(self):
+    """NCF with custom training loop. Works only in TF 2.0."""
     self._setup()
     FLAGS.keras_use_ctl = True
     FLAGS.early_stopping = True
@@ -172,11 +192,12 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_ctl_mlperf_like(self):
-    """1-GPU test to compare Google implementation with MLperf0.5.
-       Using similar rules as MLPerf0.5
-       Using Google's convergence hparams as base for 1-GPU test.
-       Fixed the number of epochs to 7, to remove the perf variance.
-       MLPerf submission consistently converges in 7 epochs.
+    """1-GPU test to compare Google implementation with MLPerf 0.5.
+
+       Using similar rules as MLPerf 0.5
+       - Using Google's convergence hparams as base for 1-GPU test.
+       - Fixed the number of epochs to 7, to remove the perf variance.
+       - MLPerf submission consistently converges in 7 epochs.
     """
     self._setup()
     FLAGS.keras_use_ctl = True
@@ -184,17 +205,39 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_mlperf_like(self):
-    """1-GPU MLPerf like test with compile/fit version"""
+    """1-GPU MLPerf like test with compile/fit version."""
     self._setup()
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_dist_strat_mlperf_like(self):
+    """1-GPU MLPerf like test with compile/fit version without dist_strat."""
+    self._setup()
+    FLAGS.train_epochs = 7
+    FLAGS.distribution_strategy = 'off'
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_mlperf_like(self):
+    self._setup()
+    FLAGS.train_epochs = 7
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.run_eagerly = True
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_mlperf_like(self):
+    """1-GPU MLPerf like test with compile/fit version w/xla."""
+    self._setup()
+    FLAGS.train_epochs = 7
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu_ctl_mlperf_like(self):
-    """8 GPU test meant to compare Google implementation
-       with MLperf top line submission using the
-       hyper-parameters from the winning MLPerf0.5 submission.
-       Using similar rules as MLPerf0.5
-       Fixed epochs to MLPerf sumbmission's convergnce on 17 epochs
+    """8 GPU test meant to compare Google implementation.
+
+       MLPerf 0.5 top line submission using the
+       - hyper-parameters from the winning MLPerf0.5 submission.
+       - Using similar rules as MLPerf0.5
+       - Fixed epochs to MLPerf submission's convergence on 17 epochs
     """
     self._setup()
     FLAGS.keras_use_ctl = True
