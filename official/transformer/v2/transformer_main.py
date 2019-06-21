@@ -169,7 +169,6 @@ class TransformerTask(object):
           # If TimeHistory is enabled, progress bar would be messy. Increase the
           # verbose level to get rid of it.
           verbose=(2 if flags_obj.enable_time_history else 1))
-      print("Model.losses=", model.losses)
       print("End train iteration:{}/{} global step:{}".format(
           i,
           iterations,
