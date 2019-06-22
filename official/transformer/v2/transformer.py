@@ -47,7 +47,7 @@ def create_model(params, is_train):
       logits = tf.keras.layers.Lambda(lambda x: x, name="logits")(logits)
       model = tf.keras.Model([inputs, targets], logits)
       loss = metrics.transformer_loss(
-        logits, targets, label_smoothing, vocab_size)
+          logits, targets, label_smoothing, vocab_size)
       model.add_loss(loss)
       return model
     else:
