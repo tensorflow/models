@@ -22,6 +22,7 @@ import tensorflow.contrib.eager as tfe  # pylint: disable=g-bad-import-order
 
 from official.mnist import mnist
 from official.mnist import mnist_eager
+from official.utils.misc import keras_utils
 
 
 def device():
@@ -62,6 +63,11 @@ def evaluate(defun=False):
 class MNISTTest(tf.test.TestCase):
   """Run tests for MNIST eager loop."""
 
+  def setUp(self):
+    if not keras_utils.is_v2_0():
+      tf.compat.v1.enable_v2_behavior()
+    super(MNISTTest, self).setUp()
+
   def test_train(self):
     train(defun=False)
 
@@ -76,5 +82,4 @@ class MNISTTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
-  tfe.enable_eager_execution()
   tf.test.main()
