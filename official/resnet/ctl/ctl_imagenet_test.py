@@ -24,8 +24,8 @@ import tensorflow as tf
 from official.resnet import imagenet_main
 from official.resnet.ctl import ctl_imagenet_main
 from official.resnet.ctl import ctl_common
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
-from official.resnet.keras import keras_common
 # pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
@@ -54,6 +54,8 @@ class CtlImagenetTest(googletest.TestCase):
 
   def setUp(self):
     super(CtlImagenetTest, self).setUp()
+    if not keras_utils.is_v2_0():
+      tf.compat.v1.enable_v2_behavior()
     imagenet_main.NUM_IMAGES['validation'] = 4
 
   def tearDown(self):
@@ -64,9 +66,9 @@ class CtlImagenetTest(googletest.TestCase):
     """Test Keras model with 1 GPU, no distribution strategy."""
 
     extra_flags = [
-        "-distribution_strategy", "off",
-        "-model_dir", "ctl_imagenet_no_dist_strat",
-        "-data_format", "channels_last",
+        '-distribution_strategy', 'off',
+        '-model_dir', 'ctl_imagenet_no_dist_strat',
+        '-data_format', 'channels_last',
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -78,15 +80,15 @@ class CtlImagenetTest(googletest.TestCase):
 
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
-    num_gpus = "2"
+    num_gpus = '2'
     if context.num_gpus() < 2:
-      num_gpus = "0"
+      num_gpus = '0'
 
     extra_flags = [
-        "-num_gpus", num_gpus,
-        "-distribution_strategy", "default",
-        "-model_dir", "ctl_imagenet_2_gpu",
-        "-data_format", "channels_last",
+        '-num_gpus', num_gpus,
+        '-distribution_strategy', 'default',
+        '-model_dir', 'ctl_imagenet_2_gpu',
+        '-data_format', 'channels_last',
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -97,6 +99,4 @@ class CtlImagenetTest(googletest.TestCase):
     )
 
 if __name__ == '__main__':
-  if not keras_common.is_v2_0():
-    tf.enable_v2_behavior()
   googletest.main()
