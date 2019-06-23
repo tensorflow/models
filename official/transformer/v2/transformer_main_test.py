@@ -92,8 +92,8 @@ class TransformerTaskTest(tf.test.TestCase):
     t.train()
 
   @unittest.skipUnless(
-    tf.test.is_built_with_cuda() and context.num_gpus() >=2,
-    'requires 2 GPUs')
+      tf.test.is_built_with_cuda() and context.num_gpus() >= 2,
+      'requires 2 GPUs')
   def test_train_2_gpu(self):
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.num_gpus = 2
