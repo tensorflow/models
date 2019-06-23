@@ -77,11 +77,13 @@ class TransformerTaskTest(tf.test.TestCase):
   def _assert_exists(self, filepath):
     self.assertTrue(os.path.exists(filepath))
 
-  def test_train(self):
+  def test_train_no_dist_strat(self):
+    FLAGS.distribution_strategy = 'off'
     t = tm.TransformerTask(FLAGS)
     t.train()
 
   def test_train_static_batch(self):
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.static_batch = True
     t = tm.TransformerTask(FLAGS)
     t.train()
