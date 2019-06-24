@@ -226,8 +226,9 @@ def run_bert(strategy, input_meta_data):
       use_remote_tpu=use_remote_tpu)
 
   if FLAGS.model_export_path:
-    model_saving_utils.export_bert_model(
-        FLAGS.model_export_path, model=trained_model)
+    with tf.device(model_training_utils.get_primary_cpu_task(use_remote_tpu)):
+      model_saving_utils.export_bert_model(
+          FLAGS.model_export_path, model=trained_model)
   return trained_model
 
 
@@ -257,4 +258,5 @@ def main(_):
 if __name__ == '__main__':
   flags.mark_flag_as_required('bert_config_file')
   flags.mark_flag_as_required('input_meta_data_path')
+  flags.mark_flag_as_required('model_dir')
   app.run(main)

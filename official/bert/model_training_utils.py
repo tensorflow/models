@@ -65,7 +65,9 @@ def _float_metric_value(metric):
 
 def _steps_to_run(current_step, steps_per_epoch, steps_per_loop):
   """Calculates steps to run on device."""
-  if steps_per_loop <= 1:
+  if steps_per_loop <= 0:
+    raise ValueError('steps_per_loop should be positive integer.')
+  if steps_per_loop == 1:
     return steps_per_loop
   remainder_in_epoch = current_step % steps_per_epoch
   if remainder_in_epoch != 0:
@@ -198,9 +200,25 @@ def run_customized_training_loop(
           eval_metric.__class__.from_config(eval_metric.get_config())
           if eval_metric else None)
 
+      def _replicated_step(inputs):
+        """Replicated training step."""
+
+        inputs, labels = inputs
+        with tf.GradientTape() as tape:
+          model_outputs = model(inputs)
+          loss = loss_fn(labels, model_outputs)
+
+        tvars = model.trainable_variables
+        grads = tape.gradient(loss, tvars)
+        optimizer.apply_gradients(zip(grads, tvars))
+        # For reporting, the metric takes the mean of losses.
+        train_loss_metric.update_state(loss)
+        if train_metric:
+          train_metric.update_state(labels, model_outputs)
+
       @tf.function
-      def train_step(iterator, steps):
-        """Performs a distributed training step.
+      def train_steps(iterator, steps):
+        """Performs distributed training steps in a loop.
 
         Args:
           iterator: the distributed iterator of training datasets.
@@ -213,24 +231,19 @@ def run_customized_training_loop(
           raise ValueError('steps should be an Tensor. Python object may cause '
                            'retracing.')
 
-        def _replicated_step(inputs):
-          """Replicated training step."""
-
-          inputs, labels = inputs
-          with tf.GradientTape() as tape:
-            model_outputs = model(inputs)
-            loss = loss_fn(labels, model_outputs)
-
-          tvars = model.trainable_variables
-          grads = tape.gradient(loss, tvars)
-          optimizer.apply_gradients(zip(grads, tvars))
-          # For reporting, the metric takes the mean of losses.
-          train_loss_metric.update_state(loss)
-          if train_metric:
-            train_metric.update_state(labels, model_outputs)
-
         for _ in tf.range(steps):
           strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+
+      @tf.function
+      def train_single_step(iterator):
+        """Performs a distributed training step.
+
+        Args:
+          iterator: the distributed iterator of training datasets.
+        Raises:
+          ValueError: Any of the arguments or tensor shapes are invalid.
+        """
+        strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
 
       @tf.function
       def test_step(iterator):
@@ -289,8 +302,15 @@ def run_customized_training_loop(
         _run_callbacks_on_batch_begin(current_step)
         # Runs several steps in the host while loop.
         steps = _steps_to_run(current_step, steps_per_epoch, steps_per_loop)
-        # Converts steps to a Tensor to avoid tf.function retracing.
-        train_step(train_iterator, tf.convert_to_tensor(steps, dtype=tf.int32))
+
+        if steps == 1:
+          # TODO(zongweiz): merge with train_steps once tf.while_loop
+          # GPU performance bugs are fixed.
+          train_single_step(train_iterator)
+        else:
+          # Converts steps to a Tensor to avoid tf.function retracing.
+          train_steps(train_iterator,
+                      tf.convert_to_tensor(steps, dtype=tf.int32))
         _run_callbacks_on_batch_end(current_step)
         current_step += steps
 
