@@ -10,7 +10,7 @@ from tensorflow.python.training import checkpoint_utils as cp
 
 # In[ ]:
 
-
+# add location or path where model.ckpt file is located
 for i in range(0,51): 
     variable_name = 'd' + str(i)
     variable_name = tf.get_variable(cp.list_variables(r'C:\tensorflow1\models\research\object_detection\training\fast-style-model.ckpt-done')[i][0],initializer = tf.constant(cp.list_variables(r'C:\tensorflow1\models\research\object_detection\training\fast-style-model.ckpt-done')[i][1]))
@@ -64,8 +64,8 @@ os.getcwd()
 
 # In[ ]:
 
-
-import os
+# in listdir you can enter path where you want to save these file in your computer
+import os 
 for file in os.listdir('.'):
     if 'saved_variable' in file:
         print(file)
