@@ -177,7 +177,7 @@ class BaseTest(tf.test.TestCase):
       init = tf.compat.v1.global_variables_initializer()
       saver = tf.compat.v1.train.Saver()
 
-    with self.test_session(graph=graph) as sess:
+    with self.session(graph=graph) as sess:
       sess.run(init)
       saver.save(sess=sess, save_path=os.path.join(data_dir, self.ckpt_prefix))
 
@@ -244,7 +244,7 @@ class BaseTest(tf.test.TestCase):
                   tf.version.VERSION, tf.version.GIT_VERSION)
       )
 
-    with self.test_session(graph=graph) as sess:
+    with self.session(graph=graph) as sess:
       sess.run(init)
       try:
         saver.restore(sess=sess, save_path=os.path.join(
@@ -266,7 +266,10 @@ class BaseTest(tf.test.TestCase):
         result_json = os.path.join(data_dir, "results.json")
         with tf.io.gfile.GFile(result_json, "r") as f:
           expected_results = json.load(f)
-        self.assertAllClose(results, expected_results)
+        self.assertAllClose(results,
+                            expected_results)
+                            # rtol=1e-05,
+                            # atol=1e-05,)
 
   def _save_or_test_ops(self, name, graph, ops_to_eval=None, test=True,
                         correctness_function=None):

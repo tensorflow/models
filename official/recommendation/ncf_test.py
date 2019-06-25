@@ -31,7 +31,9 @@ from official.recommendation import neumf_model
 from official.recommendation import ncf_common
 from official.recommendation import ncf_estimator_main
 from official.recommendation import ncf_keras_main
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
+
 from tensorflow.python.eager import context # pylint: disable=ungrouped-imports
 
 
@@ -85,7 +87,7 @@ class NcfTest(tf.test.TestCase):
       init = [tf.global_variables_initializer(),
               tf.local_variables_initializer()]
 
-    with self.test_session(graph=g) as sess:
+    with self.session(graph=g) as sess:
       sess.run(init)
       return sess.run([hr[1], ndcg[1]])
 

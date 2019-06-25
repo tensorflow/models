@@ -28,15 +28,19 @@ from __future__ import division
 from __future__ import print_function
 
 import sys
-import unittest
-import warnings
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
+from official.utils.misc import keras_utils
 from official.utils.testing import reference_data
 
 
 class GoldenBaseTest(reference_data.BaseTest):
   """Class to ensure that reference data testing runs properly."""
+
+  def setUp(self):
+    if keras_utils.is_v2_0():
+      tf.compat.v1.disable_eager_execution()
+    super(GoldenBaseTest, self).setUp()
 
   @property
   def test_name(self):

@@ -26,7 +26,6 @@ from official.datasets import movielens
 from official.utils.testing import integration
 from official.wide_deep import movielens_dataset
 from official.wide_deep import movielens_main
-from official.wide_deep import wide_deep_run_loop
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -83,7 +82,6 @@ class BaseTest(tf.test.TestCase):
     with tf.gfile.Open(self.item_csv, "w") as f:
       f.write(TEST_ITEM_DATA)
 
-
   def test_input_fn(self):
     train_input_fn, _, _ = movielens_dataset.construct_input_fns(
         dataset=movielens.ML_1M, data_dir=self.temp_dir, batch_size=8, repeat=1)
@@ -91,7 +89,7 @@ class BaseTest(tf.test.TestCase):
     dataset = train_input_fn()
     features, labels = dataset.make_one_shot_iterator().get_next()
 
-    with self.test_session() as sess:
+    with self.session() as sess:
       features, labels = sess.run((features, labels))
 
       # Compare the two features dictionaries.

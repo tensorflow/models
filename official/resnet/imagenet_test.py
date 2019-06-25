@@ -41,6 +41,7 @@ class BaseTest(tf.test.TestCase):
 
   def setUp(self):
     super(BaseTest, self).setUp()
+    tf.compat.v1.disable_eager_execution()
     self._num_validation_images = imagenet_main.NUM_IMAGES['validation']
     imagenet_main.NUM_IMAGES['validation'] = 4
 
@@ -62,7 +63,7 @@ class BaseTest(tf.test.TestCase):
 
     graph = tf.Graph()
 
-    with graph.as_default(), self.test_session(
+    with graph.as_default(), self.session(
         graph=graph, use_gpu=with_gpu, force_gpu=with_gpu):
       model = imagenet_main.ImagenetModel(
           resnet_size=resnet_size,

@@ -42,6 +42,7 @@ class BaseTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
+    tf.compat.v1.disable_eager_execution()
     cifar10_main.define_cifar_flags()
 
   def setUp(self):
@@ -76,7 +77,7 @@ class BaseTest(tf.test.TestCase):
     self.assertAllEqual(label.shape, ())
     self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))
 
-    with self.test_session() as sess:
+    with self.session() as sess:
       image, label = sess.run([image, label])
 
       self.assertEqual(label, 7)
