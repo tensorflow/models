@@ -250,6 +250,23 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.epsilon = 1e-8
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_mlperf_like(self):
+    """8 GPU test meant to compare Google implementation
+       with MLperf top line submission using the
+       hyper-parameters from the winning MLPerf0.5 submission.
+       Using similar rules as MLPerf0.5
+       Fixed epochs to MLPerf sumbmission's convergnce on 17 epochs
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    self._run_and_report_benchmark()
+
 class NCFKerasSynth(NCFKerasBenchmarkBase):
   """Benchmark NCF model using synthetic data."""
 

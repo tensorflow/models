@@ -102,6 +102,9 @@ def define_transformer_flags():
   flags.DEFINE_boolean(
       name='enable_tensorboard', default=False,
       help='Whether to enable Tensorboard callback.')
+  flags.DEFINE_boolean(
+      name='enable_metrics_in_training', default=False,
+      help='Whether to enable metrics during training.')
   flags.DEFINE_string(
       name='profile_steps', default=None,
       help='Save profiling data to model dir at given range of steps. The '
