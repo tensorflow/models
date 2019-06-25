@@ -34,6 +34,7 @@ try:
 except ImportError:
   bigquery = None
 
+from official.utils.misc import keras_utils
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 
@@ -261,9 +262,15 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
                      {"name": "batch_size", "long_value": 32})
     self.assertEqual(run_info["run_parameters"][1],
                      {"name": "dtype", "string_value": "fp16"})
-    self.assertEqual(run_info["run_parameters"][2],
-                     {"name": "random_tensor", "string_value":
-                          "Tensor(\"Const:0\", shape=(), dtype=float32)"})
+    if keras_utils.is_v2_0():
+      self.assertEqual(run_info["run_parameters"][2],
+                       {"name": "random_tensor", "string_value":
+                            "tf.Tensor(2.0, shape=(), dtype=float32)"})
+    else:
+      self.assertEqual(run_info["run_parameters"][2],
+                       {"name": "random_tensor", "string_value":
+                            "Tensor(\"Const:0\", shape=(), dtype=float32)"})
+
     self.assertEqual(run_info["run_parameters"][3],
                      {"name": "resnet_size", "long_value": 50})
     self.assertEqual(run_info["run_parameters"][4],
