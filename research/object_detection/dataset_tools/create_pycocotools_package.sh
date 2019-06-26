@@ -44,7 +44,7 @@ sed "s/\.\.\/common/common/g" pycocotools/_mask.pyx > _mask.pyx.updated
 cp -f _mask.pyx.updated pycocotools/_mask.pyx
 rm _mask.pyx.updated
 
-sed "s/import matplotlib\.pyplot as plt/import matplotlib\nmatplotlib\.use\(\'Agg\'\)\nimport matplotlib\.pyplot as plt/g" pycocotools/coco.py > coco.py.updated
+sed "s/import matplotlib\.pyplot as plt/import matplotlib;matplotlib\.use\(\'Agg\'\);import matplotlib\.pyplot as plt/g" pycocotools/coco.py > coco.py.updated
 cp -f coco.py.updated pycocotools/coco.py
 rm coco.py.updated
 
