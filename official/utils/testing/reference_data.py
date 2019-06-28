@@ -261,19 +261,12 @@ class BaseTest(tf.test.TestCase):
             .format(differences, tf_version_comparison))
 
       eval_results = [op.eval() for op in ops_to_eval]
-      print("eval_resuls:{}".format(eval_results))
       if correctness_function is not None:
         results = correctness_function(*eval_results)
         result_json = os.path.join(data_dir, "results.json")
-        print("results:{}".format(results))
-        print("data_dir:{}".format(data_dir))
         with tf.io.gfile.GFile(result_json, "r") as f:
           expected_results = json.load(f)
-          print("expected_results:{}".format(expected_results))
-        self.assertAllClose(results,
-                            expected_results)
-                            # rtol=1e-05,
-                            # atol=1e-05,)
+        self.assertAllClose(results, expected_results)
 
   def _save_or_test_ops(self, name, graph, ops_to_eval=None, test=True,
                         correctness_function=None):

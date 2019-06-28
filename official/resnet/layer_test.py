@@ -36,6 +36,7 @@ import unittest
 
 import tensorflow as tf   # pylint: disable=g-bad-import-order
 from official.resnet import resnet_model
+from official.utils.misc import keras_utils
 from official.utils.testing import reference_data
 
 
@@ -66,7 +67,8 @@ class BaseTest(reference_data.BaseTest):
 
   def setUp(self):
     super(BaseTest, self).setUp()
-    tf.compat.v1.disable_eager_execution()
+    if keras_utils.is_v2_0:
+      tf.compat.v1.disable_eager_execution()
 
   @property
   def test_name(self):
