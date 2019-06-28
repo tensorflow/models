@@ -47,7 +47,7 @@ class BeamSearchHelperTests(tf.test.TestCase):
 
   def test_get_shape_keep_last_dim(self):
     y = tf.constant(4.0)
-    x = tf.ones([7, tf.compat.v1.to_int32(tf.sqrt(y)), 2, 5])
+    x = tf.ones([7, tf.cast(tf.sqrt(y), tf.int32), 2, 5])
     shape = beam_search._get_shape_keep_last_dim(x)
     self.assertAllEqual([None, None, None, 5],
                         shape.as_list())
