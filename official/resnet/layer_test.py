@@ -178,9 +178,8 @@ class BaseTest(reference_data.BaseTest):
     """Tests batch norm layer correctness.
 
     Test fails on a GTX 1080 with the last value being significantly different:
-    7.629395e-05 (expected) -> -4.159546e-02 (actual). While concerning the test
-    was setup for CPU and it was for TF 1.0 thus it is pragmatically disabled
-    for GPU tests.
+    7.629395e-05 (expected) -> -4.159546e-02 (actual). The tests passes on CPU
+    on TF 1.0 and TF 2.0.
     """
     self._batch_norm_ops(test=True)
 
