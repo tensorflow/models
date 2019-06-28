@@ -339,8 +339,9 @@ def run_ncf(_):
           loss *= (1.0 / (batch_size*strategy.num_replicas_in_sync))
 
         grads = tape.gradient(loss, keras_model.trainable_variables)
-        optimizer.apply_gradients(list(zip(grads,
-                                           keras_model.trainable_variables)))
+        # Converting gradients to dense form helps in perf on GPU for NCF
+        grads = neumf_model.sparse_to_dense_grads(list(zip(grads, keras_model.trainable_variables)))
+        optimizer.apply_gradients(grads)
         return loss
 
       per_replica_losses = strategy.experimental_run(step_fn,
