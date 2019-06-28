@@ -71,7 +71,7 @@ flags.DEFINE_string(
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
 flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
-flags.DEFINE_integer('eval_batch_size', 8, 'Batch size for evaluation.')
+flags.DEFINE_integer('eval_batch_size', 32, 'Batch size for evaluation.')
 flags.DEFINE_integer('num_train_epochs', 3,
                      'Total number of training epochs to perform.')
 flags.DEFINE_integer(

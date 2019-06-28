@@ -214,8 +214,8 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     super(BertSquadAccuracy, self)._report_benchmark(
         stats=summary,
         wall_time_sec=wall_time_sec,
-        min_accuracy=0.902,
-        max_accuracy=0.906)
+        min_accuracy=0.900,
+        max_accuracy=0.908)
 
   def benchmark_8_gpu(self):
     """Tests BERT SQuAD model accuracy with 8 GPUs."""
