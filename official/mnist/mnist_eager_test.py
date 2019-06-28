@@ -17,8 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
+
 import tensorflow as tf  # pylint: disable=g-bad-import-order
-import tensorflow.contrib.eager as tfe  # pylint: disable=g-bad-import-order
+from tensorflow.python import eager as tfe  # pylint: disable=g-bad-import-order
 
 from official.mnist import mnist
 from official.mnist import mnist_eager
@@ -26,11 +28,11 @@ from official.utils.misc import keras_utils
 
 
 def device():
-  return "/device:GPU:0" if tfe.num_gpus() else "/device:CPU:0"
+  return '/device:GPU:0' if tfe.num_gpus() else '/device:CPU:0'
 
 
 def data_format():
-  return "channels_first" if tfe.num_gpus() else "channels_last"
+  return 'channels_first' if tfe.num_gpus() else 'channels_last'
 
 
 def random_dataset():
@@ -61,25 +63,33 @@ def evaluate(defun=False):
 
 
 class MNISTTest(tf.test.TestCase):
-  """Run tests for MNIST eager loop."""
+  """Run tests for MNIST eager loop.
+
+  MNIST eager uses contrib and will not work with TF 2.0.  All tests are
+  disabled if using TF 2.0.
+  """
 
   def setUp(self):
     if not keras_utils.is_v2_0():
       tf.compat.v1.enable_v2_behavior()
     super(MNISTTest, self).setUp()
 
+  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_train(self):
     train(defun=False)
 
+  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_evaluate(self):
     evaluate(defun=False)
 
+  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_train_with_defun(self):
     train(defun=True)
 
+  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_evaluate_with_defun(self):
     evaluate(defun=True)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   tf.test.main()
