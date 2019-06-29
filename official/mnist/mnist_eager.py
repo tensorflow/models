@@ -33,6 +33,7 @@ import time
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
+from tensorflow.python import eager as tfe
 # pylint: enable=g-bad-import-order
 
 from official.mnist import dataset as mnist_dataset
@@ -40,8 +41,6 @@ from official.mnist import mnist
 from official.utils.flags import core as flags_core
 from official.utils.misc import model_helpers
 
-
-tfe = tf.contrib.eager
 
 def loss(logits, labels):
   return tf.reduce_mean(
