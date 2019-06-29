@@ -28,11 +28,11 @@ from official.utils.misc import keras_utils
 
 
 def device():
-  return '/device:GPU:0' if tfe.num_gpus() else '/device:CPU:0'
+  return '/device:GPU:0' if tfe.context.num_gpus() else '/device:CPU:0'
 
 
 def data_format():
-  return 'channels_first' if tfe.num_gpus() else 'channels_last'
+  return 'channels_first' if tfe.context.num_gpus() else 'channels_last'
 
 
 def random_dataset():
