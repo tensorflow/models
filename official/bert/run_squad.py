@@ -29,6 +29,7 @@ import tensorflow as tf
 
 # Import BERT model libraries.
 from official.bert import bert_models
+from official.bert import common_flags
 from official.bert import input_pipeline
 from official.bert import model_training_utils
 from official.bert import modeling
@@ -41,31 +42,12 @@ flags.DEFINE_bool('do_train', False, 'Whether to run training.')
 flags.DEFINE_bool('do_predict', False, 'Whether to run eval on the dev set.')
 flags.DEFINE_string('train_data_path', '',
                     'Training data path with train tfrecords.')
-flags.DEFINE_string('bert_config_file', None,
-                    'Bert configuration file to define core bert layers.')
-flags.DEFINE_string(
-    'model_dir', None,
-    ('The directory where the model weights and training/evaluation summaries '
-     'are stored.'))
 flags.DEFINE_string(
     'input_meta_data_path', None,
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
-flags.DEFINE_string('tpu', '', 'TPU address to connect to.')
-flags.DEFINE_string(
-    'init_checkpoint', None,
-    'Initial checkpoint (usually from a pre-trained BERT model).')
-flags.DEFINE_enum(
-    'strategy_type', 'mirror', ['tpu', 'mirror'],
-    'Distribution Strategy type to use for training. `tpu` uses '
-    'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
-    'single host.')
 # Model training specific flags.
 flags.DEFINE_integer('train_batch_size', 32, 'Total batch size for training.')
-flags.DEFINE_integer('num_train_epochs', 3,
-                     'Total number of training epochs to perform.')
-flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
-
 # Predict processing related.
 flags.DEFINE_string('predict_file', None,
                     'Prediction data path with train tfrecords.')
@@ -89,6 +71,8 @@ flags.DEFINE_integer(
     'max_answer_length', 30,
     'The maximum length of an answer that can be generated. This is needed '
     'because the start and end predictions are not conditioned on one another.')
+
+common_flags.define_common_bert_flags()
 
 FLAGS = flags.FLAGS
 
@@ -230,6 +214,7 @@ def train_squad(strategy, input_meta_data, custom_callbacks=None):
       loss_fn=loss_fn,
       model_dir=FLAGS.model_dir,
       steps_per_epoch=steps_per_epoch,
+      steps_per_loop=FLAGS.steps_per_loop,
       epochs=epochs,
       train_input_fn=train_input_fn,
       init_checkpoint=FLAGS.init_checkpoint,
