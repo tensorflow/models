@@ -159,7 +159,7 @@ def get_logging_metric_hook(tensors_to_log=None,
 def get_step_counter_hook(**kwargs):
   """Function to get StepCounterHook."""
   del kwargs
-  return tf.train.StepCounterHook()
+  return tf.estimator.StepCounterHook()
 
 
 # A dictionary to map one hook name and its corresponding function
