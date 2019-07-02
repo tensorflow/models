@@ -212,6 +212,11 @@ def input_fn(is_training,
       cycle_length=10,
       num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
+  # Allow files to be read in a non-determinstic order, improving performance
+  options = tf.data.Options()
+  options.experimental_deterministic = False
+  dataset = dataset.with_options(options)
+
   return resnet_run_loop.process_record_dataset(
       dataset=dataset,
       is_training=is_training,
