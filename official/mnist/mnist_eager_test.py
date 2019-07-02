@@ -45,7 +45,7 @@ def random_dataset():
 def train(defun=False):
   model = mnist.create_model(data_format())
   if defun:
-    model.call = tfe.defun(model.call)
+    model.call = tf.function(model.call)
   optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.01)
   dataset = random_dataset()
   with tf.device(device()):
@@ -57,7 +57,7 @@ def evaluate(defun=False):
   model = mnist.create_model(data_format())
   dataset = random_dataset()
   if defun:
-    model.call = tfe.defun(model.call)
+    model.call = tf.function(model.call)
   with tf.device(device()):
     mnist_eager.test(model, dataset)
 
