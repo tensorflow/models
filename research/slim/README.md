@@ -141,6 +141,13 @@ and build TFRecords with the following instructions
 [here](https://github.com/tensorflow/models/blob/master/research/slim/datasets/build_visualwakewords_data.py).
 
 
+## Make Tfrecord for self dataset.
+```python
+tfrecord_mk = MakeTfRecord()
+tfrecord_mk.build()
+```
+
+
 ## Creating a TF-Slim Dataset Descriptor.
 
 Once the TFRecord files have been created, you can easily define a Slim
