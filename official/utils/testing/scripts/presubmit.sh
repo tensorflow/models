@@ -62,7 +62,12 @@ py_test() {
   for test_file in `find official/ -name '*test.py' -print`
   do
     echo "####=======Testing ${test_file}=======####"
-    ${PY_BINARY} "${test_file}" || exit_code=$?
+    ${PY_BINARY} "${test_file}"
+    _exit_code=$?
+    if [[ $_exit_code != 0 ]]; then
+      exit_code=$_exit_code
+      echo "FAIL: ${test_file}"
+    fi
   done
 
   return "${exit_code}"
