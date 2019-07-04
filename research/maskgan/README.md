@@ -87,6 +87,7 @@ python generate_samples.py \
  --number_epochs=4
 ```
 
+
 *  While trying to run Step 2, the following error appears:
    NotFoundError (see above for traceback): Restoring from checkpoint failed. This is most likely due to a Variable name or other graph    key that is missing from the checkpoint. Please ensure that you have not altered the graph expected based on the checkpoint. Original    error:
 
@@ -94,7 +95,7 @@ python generate_samples.py \
    [[node save/RestoreV2 (defined at train_mask_gan.py:431) ]]
 
    This is an issue with seq2seq model because it uses the attention mechanism.
-   The issue arises if you saved the model with an earlier version (seq2seq is old) and restore with a recent one (saver.restore got        updated).
+   The issue arises if you saved the model with an earlier version (seq2seq is old) and restore with a recent one (saver.restore got updated).
    The naming convention for LSTM parameters changed, e.g. cell_0/basic_lstm_cell/weights became cell_0/basic_lstm_cell/kernel.
    Which is why you cannot restore them if you try to restore old checkpoints with recent TF.
    Please edit the original maskGAN readme file and add this information.
