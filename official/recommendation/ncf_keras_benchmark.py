@@ -117,18 +117,14 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
 
     return metrics
 
-  def benchmark_1_gpu(self):
+  def benchmark_1_gpu_early_stop(self):
     self._setup()
+    FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_early_stop(self):
     self._setup()
     FLAGS.distribution_strategy = 'off'
-    FLAGS.early_stopping = True
-    self._run_and_report_benchmark()
-
-  def benchmark_1_gpu_early_stop(self):
-    self._setup()
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
@@ -145,13 +141,6 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
-  # NCF with custom training loop. Works only in TF 2.0
-  def benchmark_1_gpu_ctl(self):
-    self._setup()
-    FLAGS.keras_use_ctl = True
-    self._run_and_report_benchmark()
-
-  # NCF with custom training loop. Works only in TF 2.0
   def benchmark_1_gpu_ctl_early_stop(self):
     self._setup()
     FLAGS.keras_use_ctl = True
@@ -165,21 +154,9 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
-  def benchmark_2_gpus(self):
-    self._setup()
-    FLAGS.num_gpus = 2
-    self._run_and_report_benchmark()
-
   def benchmark_2_gpus_early_stop(self):
     self._setup()
     FLAGS.early_stopping = True
-    FLAGS.num_gpus = 2
-    self._run_and_report_benchmark()
-
-  def benchmark_2_gpus_ctl(self):
-    """NCF with custom training loop. Works only in TF 2.0."""
-    self._setup()
-    FLAGS.keras_use_ctl = True
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
@@ -191,33 +168,31 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_ctl_mlperf_like(self):
-    """1-GPU test to compare Google implementation with MLPerf 0.5.
-
-       Using similar rules as MLPerf 0.5
-       - Using Google's convergence hparams as base for 1-GPU test.
-       - Fixed the number of epochs to 7, to remove the perf variance.
-       - MLPerf submission consistently converges in 7 epochs.
-    """
-    self._setup()
-    FLAGS.keras_use_ctl = True
-    FLAGS.train_epochs = 7
-    self._run_and_report_benchmark()
+#############################################
+# Tests below with mlperf in the test name are of two types
+#  1) 1 GPU tests are based on MLPerf 0.5 and the TensorFlow pulled submission.
+#  2) 8 GPU tests are based on MLPerf 0.5 and use NVIDIA's hyper parameters.
+#
+# The purpose of both is to get a number to compare to existing results. To do
+# this the number of epochs is held constant rather than a race to a given
+# accuracy. The accuracy validation is done by the "early_stop" tests.
+#############################################
 
   def benchmark_1_gpu_mlperf_like(self):
-    """1-GPU MLPerf like test with compile/fit version."""
+    """1 GPU using keras fit/compile."""
     self._setup()
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_mlperf_like(self):
-    """1-GPU MLPerf like test with compile/fit version without dist_strat."""
+    """1 GPU using compile/fit without dist_strat."""
     self._setup()
     FLAGS.train_epochs = 7
     FLAGS.distribution_strategy = 'off'
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_run_eagerly_mlperf_like(self):
+    """1 GPU using compile/fit without dist_strat and force run eager."""
     self._setup()
     FLAGS.train_epochs = 7
     FLAGS.distribution_strategy = 'off'
@@ -225,20 +200,54 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._run_and_report_benchmark()
 
   def benchmark_xla_1_gpu_mlperf_like(self):
-    """1-GPU MLPerf like test with compile/fit version w/xla."""
+    """1 GPU using compile/fit with XLA."""
     self._setup()
     FLAGS.train_epochs = 7
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
-  def benchmark_8_gpu_ctl_mlperf_like(self):
-    """8 GPU test meant to compare Google implementation.
+  def benchmark_1_gpu_ctl_mlperf_like(self):
+    """1 GPU using CTL."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
 
-       MLPerf 0.5 top line submission using the
-       - hyper-parameters from the winning MLPerf0.5 submission.
-       - Using similar rules as MLPerf0.5
-       - Fixed epochs to MLPerf submission's convergence on 17 epochs
-    """
+  def benchmark_xla_1_gpu_ctl_mlperf_like(self):
+    """1 GPU using CTL with XLA."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.enable_xla = True
+    FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_mlperf_like(self):
+    """8 GPU using keras fit/compile."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_mlperf_like(self):
+    """8 GPU using keras fit/compile with XLA."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.enable_xla = True
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_ctl_mlperf_like(self):
+    """8 GPU using CTL."""
     self._setup()
     FLAGS.keras_use_ctl = True
     FLAGS.num_gpus = 8
@@ -250,14 +259,11 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.epsilon = 1e-8
     self._run_and_report_benchmark()
 
-  def benchmark_8_gpu_mlperf_like(self):
-    """8 GPU test meant to compare Google implementation
-       with MLperf top line submission using the
-       hyper-parameters from the winning MLPerf0.5 submission.
-       Using similar rules as MLPerf0.5
-       Fixed epochs to MLPerf sumbmission's convergnce on 17 epochs
-    """
+  def benchmark_xla_8_gpu_ctl_mlperf_like(self):
+    """8 GPU using CTL with XLA."""
     self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.enable_xla = True
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576
@@ -266,6 +272,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.beta2 = 0.5
     FLAGS.epsilon = 1e-8
     self._run_and_report_benchmark()
+
 
 class NCFKerasSynth(NCFKerasBenchmarkBase):
   """Benchmark NCF model using synthetic data."""
