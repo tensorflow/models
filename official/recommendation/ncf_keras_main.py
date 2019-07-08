@@ -340,7 +340,8 @@ def run_ncf(_):
 
         grads = tape.gradient(loss, keras_model.trainable_variables)
         # Converting gradients to dense form helps in perf on GPU for NCF
-        grads = neumf_model.sparse_to_dense_grads(list(zip(grads, keras_model.trainable_variables)))
+        grads = neumf_model.sparse_to_dense_grads(
+            list(zip(grads, keras_model.trainable_variables)))
         optimizer.apply_gradients(grads)
         return loss
 
