@@ -117,8 +117,7 @@ def evaluate():
   """Eval CIFAR-10 for a number of steps."""
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
-    eval_data = FLAGS.eval_data == 'test'
-    images, labels = cifar10.inputs(eval_data=eval_data)
+    images, labels = cifar10.inputs(eval_data=FLAGS.eval_data)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
