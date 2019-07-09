@@ -115,7 +115,10 @@ def run(flags_obj):
 
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
-      num_gpus=flags_obj.num_gpus)
+      num_gpus=flags_obj.num_gpus,
+      num_workers=distribution_utils.configure_cluster(),
+      all_reduce_alg=flags_obj.all_reduce_alg,
+      num_packs=flags_obj.num_packs)
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
@@ -136,14 +139,18 @@ def run(flags_obj):
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras)
+      parse_record_fn=parse_record_keras,
+      datasets_num_private_threads=flags_obj.datasets_num_private_threads,
+      dtype=dtype)
 
-  eval_input_dataset = input_fn(
-      is_training=False,
-      data_dir=flags_obj.data_dir,
-      batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras)
+  eval_input_dataset = None
+  if not flags_obj.skip_eval:
+    eval_input_dataset = input_fn(
+        is_training=False,
+        data_dir=flags_obj.data_dir,
+        batch_size=flags_obj.batch_size,
+        num_epochs=flags_obj.train_epochs,
+        parse_record_fn=parse_record_keras)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
@@ -151,8 +158,9 @@ def run(flags_obj):
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=optimizer,
-                  run_eagerly=flags_obj.run_eagerly,
-                  metrics=['categorical_accuracy'])
+                  metrics=(['categorical_accuracy']
+                           if flags_obj.report_accuracy_metrics else None),
+                  run_eagerly=flags_obj.run_eagerly)
 
   callbacks = keras_common.get_callbacks(
       learning_rate_schedule, cifar_main.NUM_IMAGES['train'])

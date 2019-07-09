@@ -59,7 +59,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     FLAGS.dtype = 'fp32'
@@ -70,7 +70,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.dtype = 'fp32'
@@ -126,7 +126,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.explicit_gpu_placement = True
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
     FLAGS.dtype = 'fp32'
@@ -139,7 +139,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu_no_dist_strat_run_eagerly')
@@ -154,7 +154,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._setup()
     FLAGS.num_gpus = 2
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 512
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu')
     FLAGS.dtype = 'fp32'
@@ -166,7 +166,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     self._setup()
     FLAGS.num_gpus = 2
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 512
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_2_gpu')
     FLAGS.dtype = 'fp32'
@@ -178,7 +178,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'off'
     FLAGS.num_gpus = 1
     FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
     FLAGS.dtype = 'fp32'
@@ -227,7 +227,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     self._run_and_report_benchmark()
 
   def benchmark_graph_1_gpu(self):
@@ -237,7 +237,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = False
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat(self):
@@ -247,7 +247,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     self._run_and_report_benchmark()
 
   def benchmark_graph_1_gpu_no_dist_strat(self):
@@ -257,14 +257,14 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = False
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_run_eagerly(self):
     """Test 1 gpu without distribution strategy and forced eager."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 256
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu_no_dist_strat_run_eagerly')
     FLAGS.dtype = 'fp32'
@@ -280,7 +280,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu')
-    FLAGS.batch_size = 128 * 2  # 2 GPUs
+    FLAGS.batch_size = 256 * 2  # 2 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_graph_2_gpu(self):
@@ -290,7 +290,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = False
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_2_gpu')
-    FLAGS.batch_size = 128 * 2  # 2 GPUs
+    FLAGS.batch_size = 256 * 2  # 2 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_cpu(self):
