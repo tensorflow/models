@@ -687,6 +687,7 @@ def visualize_boxes_and_labels_on_image_array(
     classes,
     scores,
     category_index,
+    bounding_boxes_location = [],
     instance_masks=None,
     instance_boundaries=None,
     keypoints=None,
@@ -830,7 +831,7 @@ def visualize_boxes_and_labels_on_image_array(
           color=color,
           radius=line_thickness / 2,
           use_normalized_coordinates=use_normalized_coordinates)
-
+    bounding_boxes_location += [box]
   return image
 
 
