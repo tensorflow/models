@@ -113,8 +113,12 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
-        metrics[key] = value_op
+      try : 
+        for key, (value_op, _) in metric_ops.iteritems():
+          metrics[key] = value_op
+      except AttributeError :
+        for key, (value_op, _) in metric_ops.iteritems():
+          metrics[key] = value_op
       sess.run(update_op)
       metrics = sess.run(metrics)
       self.assertAlmostEqual(1.0, metrics['DetectionBoxes_Precision/mAP'])
@@ -142,8 +146,12 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
-        metrics[key] = value_op
+      try : 
+        for key, (value_op, _) in metric_ops.iteritems():
+          metrics[key] = value_op
+      except AttributeError :
+        for key, (value_op, _) in metric_ops.items():
+          metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)
       metrics = sess.run(metrics)
@@ -173,8 +181,12 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
-        metrics[key] = value_op
+      try :
+        for key, (value_op, _) in metric_ops.iteritems():
+          metrics[key] = value_op
+      except AttributeError : 
+        for key, (value_op, _) in metric_ops.items():
+          metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)
       metrics = sess.run(metrics)

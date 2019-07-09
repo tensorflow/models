@@ -246,7 +246,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
           category_name = unicode(category_name, 'utf-8')
-        except TypeError:
+        except (TypeError, NameError):
           pass
         category_name = unicodedata.normalize('NFKD', category_name).encode(
             'ascii', 'ignore')
@@ -384,7 +384,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
           category_name = unicode(category_name, 'utf-8')
-        except TypeError:
+        except (TypeError, NameError):
           pass
         category_name = unicodedata.normalize(
             'NFKD', category_name).encode('ascii', 'ignore')
