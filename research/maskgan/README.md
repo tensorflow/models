@@ -98,7 +98,6 @@ python generate_samples.py \
    The issue arises if you saved the model with an earlier version (seq2seq is old) and restore with a recent one (saver.restore got updated).
    The naming convention for LSTM parameters changed, e.g. cell_0/basic_lstm_cell/weights became cell_0/basic_lstm_cell/kernel.
    Which is why you cannot restore them if you try to restore old checkpoints with recent TF.
-   Please edit the original maskGAN readme file and add this information.
    The below script will help rename the variables and everything will work as expected.
    https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/rnn/python/tools/checkpoint_convert.py
 
