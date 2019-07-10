@@ -46,14 +46,13 @@ class TimeHistory(tf.keras.callbacks.Callback):
     Args:
       batch_size: Total batch size.
       log_steps: Interval of time history logs.
-
     """
     self.batch_size = batch_size
     super(TimeHistory, self).__init__()
     self.log_steps = log_steps
     self.global_steps = 0
 
-    # Logs start of step 0 then end of each step based on log_steps interval.
+    # Logs start of step 1 then end of each step based on log_steps interval.
     self.timestamp_log = []
 
   def on_train_end(self, logs=None):
