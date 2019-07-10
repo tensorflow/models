@@ -226,7 +226,6 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.batch_size = 128
-    FLAGS.train_epochs = 3
     self._run_and_report_benchmark()
 
   def benchmark_graph_1_gpu(self):
