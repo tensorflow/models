@@ -83,10 +83,22 @@ class TransformerBenchmark(PerfZeroBenchmark):
 
     metrics = []
     if 'bleu_uncased' in stats:
-      metrics.append({'name': 'bleu_uncased',
-                      'value': stats['bleu_uncased'],
-                      'min_value': bleu_min,
-                      'max_value': bleu_max})
+      if 'bleu_uncased_history' in stats:
+        bleu_uncased_best = max(stats['bleu_uncased_history'],
+                                key=lambda x: x[1])
+        metrics.append({'name': 'bleu_uncased',
+                        'value': bleu_uncased_best[1],
+                        'min_value': bleu_min,
+                        'max_value': bleu_max})
+        metrics.append({'name': 'bleu_best_score_iteration',
+                        'value': bleu_uncased_best[0]})
+        metrics.append({'name': 'bleu_uncased_last',
+                        'value': stats['bleu_uncased']})
+      else:
+        metrics.append({'name': 'bleu_uncased',
+                        'value': stats['bleu_uncased'],
+                        'min_value': bleu_min,
+                        'max_value': bleu_max})
 
     if (warmup and 'step_timestamp_log' in stats and
         len(stats['step_timestamp_log']) > warmup):
@@ -142,9 +154,9 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     FLAGS['bleu_source'].value = self.bleu_source
     FLAGS['bleu_ref'].value = self.bleu_ref
     FLAGS.param_set = 'base'
-    FLAGS.batch_size = 4096
-    FLAGS.train_steps = 100000
-    FLAGS.steps_between_evals = 5000
+    FLAGS.batch_size = 2048
+    FLAGS.train_steps = 1000
+    FLAGS.steps_between_evals = 500
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     # These bleu scores are based on test runs after at this limited
     # number of steps and batch size after verifying SOTA at 8xV100s.
