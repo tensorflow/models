@@ -167,6 +167,7 @@ class TransformerTask(object):
     iterations = flags_obj.train_steps // flags_obj.steps_between_evals
 
     cased_score, uncased_score = None, None
+    cased_score_history, uncased_score_history = [], []
     for i in range(1, iterations + 1):
       print("Start train iteration:{}/{}".format(i, iterations))
       history = model.fit(
@@ -187,13 +188,15 @@ class TransformerTask(object):
 
       if (flags_obj.bleu_source and flags_obj.bleu_ref):
         uncased_score, cased_score = self.eval()
-
-      print("BLEU: uncased={}, cased={}".format(uncased_score, cased_score))
+        cased_score_history.append([i, cased_score])
+        uncased_score_history.append([i, uncased_score])
 
     stats = misc.build_stats(history, callbacks)
     if uncased_score and cased_score:
       stats["bleu_uncased"] = uncased_score
       stats["bleu_cased"] = cased_score
+      stats["bleu_uncased_history"] = uncased_score_history
+      stats["bleu_cased_history"] = cased_score_history
     return stats
 
   def eval(self):
