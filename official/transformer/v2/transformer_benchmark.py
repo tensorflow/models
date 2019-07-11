@@ -90,7 +90,7 @@ class TransformerBenchmark(PerfZeroBenchmark):
                         'value': bleu_uncased_best[1],
                         'min_value': bleu_min,
                         'max_value': bleu_max})
-        metrics.append({'name': 'bleu_recorded_iteration',
+        metrics.append({'name': 'bleu_best_score_iteration',
                         'value': bleu_uncased_best[0]})
         metrics.append({'name': 'bleu_uncased_last',
                         'value': stats['bleu_uncased']})
