@@ -66,6 +66,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
                                                self.start_time))
 
   def on_batch_end(self, batch, logs=None):
+    """Records elapse time of the batch and calculates examples per second."""
     if self.global_steps % self.log_steps == 0:
       timestamp = time.time()
       elapsed_time = timestamp - self.start_time
