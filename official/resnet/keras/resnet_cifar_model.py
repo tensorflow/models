@@ -26,6 +26,7 @@ from __future__ import print_function
 import functools
 import tensorflow as tf
 from tensorflow.python.keras import backend
+from tensorflow.python.keras  import initializers
 from tensorflow.python.keras import layers
 from tensorflow.python.keras import regularizers
 
@@ -241,9 +242,11 @@ def resnet(num_blocks, classes=10, training=None):
 
   rm_axes = [1, 2] if backend.image_data_format() == 'channels_last' else [2, 3]
   x = layers.Lambda(lambda x: backend.mean(x, rm_axes), name='reduce_mean')(x)
-  x = layers.Dense(classes, activation='softmax',
-                   # kernel_initializer='he_normal',
+  x = layers.Dense(classes,
+                   activation='softmax',
+                   kernel_initializer=initializers.RandomNormal(stddev=0.01),
                    kernel_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
+                   bias_regularizer=regularizers.l2(L2_WEIGHT_DECAY),
                    name='fc10')(x)
 
   inputs = img_input
