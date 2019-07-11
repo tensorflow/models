@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from object_detection import model_hparams
 from object_detection import model_lib
+from object_detection import model_runconfig
 
 flags.DEFINE_string(
     'model_dir', None, 'Path to output model directory '
@@ -46,6 +47,10 @@ flags.DEFINE_string(
     'represented as a string containing comma-separated '
     'hparam_name=value pairs.')
 flags.DEFINE_string(
+    'runconfig_overrides', None, 'run config overrides, '
+    'represented as a string containing comma-separated '
+    'param_name=value pairs.')
+flags.DEFINE_string(
     'checkpoint_dir', None, 'Path to directory holding a checkpoint.  If '
     '`checkpoint_dir` is provided, this binary operates in eval-only mode, '
     'writing resulting metrics to `model_dir`.')
@@ -59,7 +64,8 @@ FLAGS = flags.FLAGS
 def main(unused_argv):
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
-  config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir)
+  config = model_runconfig.create_runconfig(FLAGS.model_dir,
+                                            FLAGS.runconfig_overrides)
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
