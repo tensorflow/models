@@ -302,9 +302,9 @@ def run_ncf(_):
   # drop_remainder = True, as we would like batch call to return a fixed shape
   # vs None, this prevents a expensive broadcast during weighted_loss
   train_input_dataset = train_input_dataset.batch(batches_per_step,
-      drop_remainder=True)
+                                                  drop_remainder=True)
   eval_input_dataset = eval_input_dataset.batch(batches_per_step,
-      drop_remainder=True)
+                                                drop_remainder=True)
 
   time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
   per_epoch_callback = IncrementEpochCallback(producer)
