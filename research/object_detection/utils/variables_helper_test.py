@@ -14,6 +14,11 @@
 # ==============================================================================
 
 """Tests for object_detection.utils.variables_helper."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 
 import tensorflow as tf
@@ -204,7 +209,7 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
           graph2_variables_dict, checkpoint_path)
 
     self.assertTrue(isinstance(out_variables, dict))
-    self.assertItemsEqual(out_variables.keys(), ['ckpt_weights'])
+    self.assertItemsEqual(list(out_variables.keys()), ['ckpt_weights'])
     self.assertTrue(out_variables['ckpt_weights'].op.name == 'weights')
 
   def test_return_variables_with_correct_sizes(self):

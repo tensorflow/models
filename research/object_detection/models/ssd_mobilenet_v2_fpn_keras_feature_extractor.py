@@ -20,6 +20,7 @@ import tensorflow as tf
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
 from object_detection.models.keras_models import mobilenet_v2
+from object_detection.models.keras_models import model_utils
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 
@@ -29,7 +30,7 @@ NUM_LAYERS = 19
 
 # A modified config of mobilenet v2 that makes it more detection friendly.
 def _create_modified_mobilenet_config():
-  last_conv = mobilenet_v2.ConvDefs(conv_name='Conv_1', filters=256)
+  last_conv = model_utils.ConvDefs(conv_name='Conv_1', filters=256)
   return [last_conv]
 
 

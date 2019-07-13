@@ -25,6 +25,7 @@ class FasterRcnnResnetV1FeatureExtractorTest(tf.test.TestCase):
 
   def _build_feature_extractor(self,
                                first_stage_features_stride,
+                               activation_fn=tf.nn.relu,
                                architecture='resnet_v1_101'):
     feature_extractor_map = {
         'resnet_v1_50':
@@ -37,6 +38,7 @@ class FasterRcnnResnetV1FeatureExtractorTest(tf.test.TestCase):
     return feature_extractor_map[architecture](
         is_training=False,
         first_stage_features_stride=first_stage_features_stride,
+        activation_fn=activation_fn,
         batch_norm_trainable=False,
         reuse_weights=None,
         weight_decay=0.0)
@@ -131,6 +133,32 @@ class FasterRcnnResnetV1FeatureExtractorTest(tf.test.TestCase):
       sess.run(init_op)
       features_shape_out = sess.run(features_shape)
       self.assertAllEqual(features_shape_out, [3, 7, 7, 2048])
+
+  def test_overwriting_activation_fn(self):
+    for architecture in ['resnet_v1_50', 'resnet_v1_101', 'resnet_v1_152']:
+      feature_extractor = self._build_feature_extractor(
+          first_stage_features_stride=16,
+          architecture=architecture,
+          activation_fn=tf.nn.relu6)
+      preprocessed_inputs = tf.random_uniform([4, 224, 224, 3],
+                                              maxval=255,
+                                              dtype=tf.float32)
+      rpn_feature_map, _ = feature_extractor.extract_proposal_features(
+          preprocessed_inputs, scope='TestStage1Scope')
+      _ = feature_extractor.extract_box_classifier_features(
+          rpn_feature_map, scope='TestStaget2Scope')
+      conv_ops = [
+          op for op in tf.get_default_graph().get_operations()
+          if op.type == 'Relu6'
+      ]
+      op_names = [op.name for op in conv_ops]
+
+      self.assertIsNotNone(conv_ops)
+      self.assertIn('TestStage1Scope/resnet_v1_50/resnet_v1_50/conv1/Relu6',
+                    op_names)
+      self.assertIn(
+          'TestStaget2Scope/resnet_v1_50/block4/unit_1/bottleneck_v1/conv1/Relu6',
+          op_names)
 
 
 if __name__ == '__main__':

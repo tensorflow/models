@@ -13,9 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 """Functions for computing metrics like precision, recall, CorLoc and etc."""
+from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
 
 import numpy as np
+from six.moves import range
 
 
 def compute_precision_recall(scores, labels, num_gt):

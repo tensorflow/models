@@ -26,7 +26,12 @@ Classification losses:
  * WeightedSoftmaxClassificationAgainstLogitsLoss
  * BootstrappedSigmoidClassificationLoss
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import abc
+import six
 import tensorflow as tf
 
 from object_detection.core import box_list
@@ -36,9 +41,8 @@ from object_detection.utils import ops
 slim = tf.contrib.slim
 
 
-class Loss(object):
+class Loss(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for loss functions."""
-  __metaclass__ = abc.ABCMeta
 
   def __call__(self,
                prediction_tensor,
@@ -153,6 +157,7 @@ class WeightedSmoothL1LocalizationLoss(Loss):
     Args:
       delta: delta for smooth L1 loss.
     """
+    super(WeightedSmoothL1LocalizationLoss, self).__init__()
     self._delta = delta
 
   def _compute_loss(self, prediction_tensor, target_tensor, weights):
@@ -257,6 +262,7 @@ class SigmoidFocalClassificationLoss(Loss):
       gamma: exponent of the modulating factor (1 - p_t) ^ gamma.
       alpha: optional alpha weighting factor to balance positives vs negatives.
     """
+    super(SigmoidFocalClassificationLoss, self).__init__()
     self._alpha = alpha
     self._gamma = gamma
 
@@ -316,6 +322,7 @@ class WeightedSoftmaxClassificationLoss(Loss):
                    (default 1.0)
 
     """
+    super(WeightedSoftmaxClassificationLoss, self).__init__()
     self._logit_scale = logit_scale
 
   def _compute_loss(self, prediction_tensor, target_tensor, weights):
@@ -360,6 +367,7 @@ class WeightedSoftmaxClassificationAgainstLogitsLoss(Loss):
                    (default 1.0)
 
     """
+    super(WeightedSoftmaxClassificationAgainstLogitsLoss, self).__init__()
     self._logit_scale = logit_scale
 
   def _scale_and_softmax_logits(self, logits):
@@ -423,6 +431,7 @@ class BootstrappedSigmoidClassificationLoss(Loss):
     Raises:
       ValueError: if bootstrap_type is not either 'hard' or 'soft'
     """
+    super(BootstrappedSigmoidClassificationLoss, self).__init__()
     if bootstrap_type != 'hard' and bootstrap_type != 'soft':
       raise ValueError('Unrecognized bootstrap_type: must be one of '
                        '\'hard\' or \'soft.\'')
@@ -673,3 +682,5 @@ class HardExampleMiner(object):
     num_negatives = tf.size(subsampled_selection_indices) - num_positives
     return (tf.reshape(tf.gather(indices, subsampled_selection_indices), [-1]),
             num_positives, num_negatives)
+
+

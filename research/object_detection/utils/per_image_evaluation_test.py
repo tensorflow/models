@@ -15,7 +15,12 @@
 
 """Tests for object_detection.utils.per_image_evaluation."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.utils import per_image_evaluation

@@ -14,7 +14,12 @@
 # ==============================================================================
 """Tests for object_detection.utils.label_map_util."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
+from six.moves import range
 import tensorflow as tf
 
 from google.protobuf import text_format

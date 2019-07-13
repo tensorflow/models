@@ -188,6 +188,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                             [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]]]
     raw_detection_scores = [[[0, 0], [0, 0], [0, 0], [0, 0]],
                             [[0, 0], [0, 0], [0, 0], [0, 0]]]
+    detection_anchor_indices = [[0, 2, 1, 0, 0], [0, 2, 1, 0, 0]]
 
     for input_shape in input_shapes:
       tf_graph = tf.Graph()
@@ -229,6 +230,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                           raw_detection_boxes)
       self.assertAllEqual(detections_out['raw_detection_scores'],
                           raw_detection_scores)
+      self.assertAllEqual(detections_out['detection_anchor_indices'],
+                          detection_anchor_indices)
 
   def test_postprocess_results_are_correct_static(self, use_keras):
     with tf.Graph().as_default():

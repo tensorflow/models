@@ -18,6 +18,10 @@
 The rank 4 tensor_shape must be of the form [batch_size, height, width, depth].
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 
 def get_dim_as_int(dim):
   """Utility to get v1 or v2 TensorShape dim as an int.

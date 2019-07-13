@@ -18,18 +18,22 @@
 Region Similarity Calculators compare a pairwise measure of similarity
 between the boxes in two BoxLists.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from abc import ABCMeta
 from abc import abstractmethod
 
+import six
 import tensorflow as tf
 
 from object_detection.core import box_list_ops
 from object_detection.core import standard_fields as fields
 
 
-class RegionSimilarityCalculator(object):
+class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
   """Abstract base class for region similarity calculator."""
-  __metaclass__ = ABCMeta
 
   def compare(self, boxlist1, boxlist2, scope=None):
     """Computes matrix of pairwise similarity between BoxLists.
@@ -131,6 +135,7 @@ class ThresholdedIouSimilarity(RegionSimilarityCalculator):
         then the comparison result will be the foreground probability of
         the first box, otherwise it will be zero.
     """
+    super(ThresholdedIouSimilarity, self).__init__()
     self._iou_threshold = iou_threshold
 
   def _compare(self, boxlist1, boxlist2):
