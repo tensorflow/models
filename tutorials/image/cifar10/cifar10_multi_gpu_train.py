@@ -163,6 +163,8 @@ def train():
 
     # Get images and labels for CIFAR-10.
     images, labels = cifar10.distorted_inputs()
+    images = tf.reshape(images, [cifar10.FLAGS.batch_size, 24, 24, 3])
+    labels = tf.reshape(labels, [cifar10.FLAGS.batch_size])
     batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
           [images, labels], capacity=2 * FLAGS.num_gpus)
     # Calculate the gradients for each model tower.
