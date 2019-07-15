@@ -220,7 +220,7 @@ class SsdMobilenetV1FpnFeatureExtractorTest(
       _ = feature_extractor.extract_features(preprocessed_image)
 
     self.assertTrue(
-        any(op.type == 'FusedBatchNorm'
+        any('FusedBatchNorm' in op.type
             for op in tf.get_default_graph().get_operations()))
 
 

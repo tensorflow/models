@@ -14,14 +14,284 @@
 # ==============================================================================
 """Post-processing operations on detected boxes."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import collections
 import numpy as np
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
+
+_NMS_TILE_SIZE = 512
+
+
+def batch_iou(boxes1, boxes2):
+  """Calculates the overlap between proposal and ground truth boxes.
+
+  Some `boxes2` may have been padded.  The returned `iou` tensor for these
+  boxes will be -1.
+
+  Args:
+    boxes1: a tensor with a shape of [batch_size, N, 4]. N is the number of
+      proposals before groundtruth assignment. The last dimension is the pixel
+      coordinates in [ymin, xmin, ymax, xmax] form.
+    boxes2: a tensor with a shape of [batch_size, MAX_NUM_INSTANCES, 4]. This
+      tensor might have paddings with a negative value.
+
+  Returns:
+    iou: a tensor with as a shape of [batch_size, N, MAX_NUM_INSTANCES].
+  """
+  with tf.name_scope('BatchIOU'):
+    y1_min, x1_min, y1_max, x1_max = tf.split(
+        value=boxes1, num_or_size_splits=4, axis=2)
+    y2_min, x2_min, y2_max, x2_max = tf.split(
+        value=boxes2, num_or_size_splits=4, axis=2)
+
+    # Calculates the intersection area.
+    intersection_xmin = tf.maximum(x1_min, tf.transpose(x2_min, [0, 2, 1]))
+    intersection_xmax = tf.minimum(x1_max, tf.transpose(x2_max, [0, 2, 1]))
+    intersection_ymin = tf.maximum(y1_min, tf.transpose(y2_min, [0, 2, 1]))
+    intersection_ymax = tf.minimum(y1_max, tf.transpose(y2_max, [0, 2, 1]))
+    intersection_area = tf.maximum(
+        (intersection_xmax - intersection_xmin), 0) * tf.maximum(
+            (intersection_ymax - intersection_ymin), 0)
+
+    # Calculates the union area.
+    area1 = (y1_max - y1_min) * (x1_max - x1_min)
+    area2 = (y2_max - y2_min) * (x2_max - x2_min)
+    # Adds a small epsilon to avoid divide-by-zero.
+    union_area = area1 + tf.transpose(area2,
+                                      [0, 2, 1]) - intersection_area + 1e-8
+
+    # Calculates IoU.
+    iou = intersection_area / union_area
+
+    # Fills -1 for padded ground truth boxes.
+    padding_mask = tf.logical_and(
+        tf.less(intersection_xmax, 0), tf.less(intersection_ymax, 0))
+    iou = tf.where(padding_mask, -tf.ones_like(iou), iou)
+
+    return iou
+
+
+def _self_suppression(iou, iou_threshold, loop_condition, iou_sum):
+  """Bounding-boxes self-suppression loop body.
+
+  Args:
+    iou: A float Tensor with shape [1, num_boxes, max_num_instance]: IOUs.
+    iou_threshold: A scalar, representing IOU threshold.
+    loop_condition: The loop condition returned from last iteration.
+    iou_sum: iou_sum_new returned from last iteration.
+
+  Returns:
+    iou_suppressed: A float Tensor with shape [1, num_boxes, max_num_instance],
+                    IOU after suppression.
+    iou_threshold: A scalar, representing IOU threshold.
+    loop_condition: Bool Tensor of shape [], the loop condition.
+    iou_sum_new: The new IOU sum.
+  """
+  del loop_condition
+  can_suppress_others = tf.cast(
+      tf.reshape(tf.reduce_max(iou, 1) <= iou_threshold, [1, -1, 1]), iou.dtype)
+  iou_suppressed = tf.reshape(
+      tf.cast(
+          tf.reduce_max(can_suppress_others * iou, 1) <= iou_threshold,
+          iou.dtype), [1, -1, 1]) * iou
+  iou_sum_new = tf.reduce_sum(iou_suppressed, [1, 2])
+  return [
+      iou_suppressed, iou_threshold,
+      tf.reduce_any(iou_sum - iou_sum_new > iou_threshold), iou_sum_new
+  ]
+
+
+def _cross_suppression(boxes, box_slice, iou_threshold, inner_idx):
+  """Bounding-boxes cross-suppression loop body.
+
+  Args:
+    boxes: A float Tensor of shape [1, anchors, 4], representing boxes.
+    box_slice: A float Tensor of shape [1, _NMS_TILE_SIZE, 4], the box tile
+      returned from last iteration
+    iou_threshold: A scalar, representing IOU threshold.
+    inner_idx: A scalar, representing inner index.
+
+  Returns:
+    boxes: A float Tensor of shape [1, anchors, 4], representing boxes.
+    ret_slice: A float Tensor of shape [1, _NMS_TILE_SIZE, 4], the box tile
+               after suppression
+    iou_threshold: A scalar, representing IOU threshold.
+    inner_idx: A scalar, inner index incremented.
+  """
+  new_slice = tf.slice(boxes, [0, inner_idx * _NMS_TILE_SIZE, 0],
+                       [1, _NMS_TILE_SIZE, 4])
+  iou = batch_iou(new_slice, box_slice)
+  ret_slice = tf.expand_dims(
+      tf.cast(tf.reduce_all(iou < iou_threshold, [1]), box_slice.dtype),
+      2) * box_slice
+  return boxes, ret_slice, iou_threshold, inner_idx + 1
+
+
+def _suppression_loop_body(boxes, iou_threshold, output_size, idx):
+  """Process boxes in the range [idx*_NMS_TILE_SIZE, (idx+1)*_NMS_TILE_SIZE).
+
+  Args:
+    boxes: a tensor with a shape of [1, anchors, 4].
+    iou_threshold: a float representing the threshold for deciding whether boxes
+      overlap too much with respect to IOU.
+    output_size: an int32 tensor of size [1]. Representing the number of
+      selected boxes.
+    idx: an integer scalar representing induction variable.
+
+  Returns:
+    boxes: updated boxes.
+    iou_threshold: pass down iou_threshold to the next iteration.
+    output_size: the updated output_size.
+    idx: the updated induction variable.
+  """
+  num_tiles = tf.shape(boxes)[1] // _NMS_TILE_SIZE
+
+  # Iterates over tiles that can possibly suppress the current tile.
+  box_slice = tf.slice(boxes, [0, idx * _NMS_TILE_SIZE, 0],
+                       [1, _NMS_TILE_SIZE, 4])
+  _, box_slice, _, _ = tf.while_loop(
+      lambda _boxes, _box_slice, _threshold, inner_idx: inner_idx < idx,
+      _cross_suppression, [boxes, box_slice, iou_threshold,
+                           tf.constant(0)])
+
+  # Iterates over the current tile to compute self-suppression.
+  iou = batch_iou(box_slice, box_slice)
+  mask = tf.expand_dims(
+      tf.reshape(tf.range(_NMS_TILE_SIZE), [1, -1]) > tf.reshape(
+          tf.range(_NMS_TILE_SIZE), [-1, 1]), 0)
+  iou *= tf.cast(tf.logical_and(mask, iou >= iou_threshold), iou.dtype)
+  suppressed_iou, _, _, _ = tf.while_loop(
+      lambda _iou, _threshold, loop_condition, _iou_sum: loop_condition,
+      _self_suppression,
+      [iou, iou_threshold,
+       tf.constant(True),
+       tf.reduce_sum(iou, [1, 2])])
+  suppressed_box = tf.reduce_sum(suppressed_iou, 1) > 0
+  box_slice *= tf.expand_dims(1.0 - tf.cast(suppressed_box, box_slice.dtype), 2)
+
+  # Uses box_slice to update the input boxes.
+  mask = tf.reshape(
+      tf.cast(tf.equal(tf.range(num_tiles), idx), boxes.dtype), [1, -1, 1, 1])
+  boxes = tf.tile(tf.expand_dims(box_slice, [1]),
+                  [1, num_tiles, 1, 1]) * mask + tf.reshape(
+                      boxes, [1, num_tiles, _NMS_TILE_SIZE, 4]) * (1 - mask)
+  boxes = tf.reshape(boxes, [1, -1, 4])
+
+  # Updates output_size.
+  output_size += tf.reduce_sum(
+      tf.cast(tf.reduce_any(box_slice > 0, [2]), tf.int32), [1])
+  return boxes, iou_threshold, output_size, idx + 1
+
+
+def partitioned_non_max_suppression_padded(boxes,
+                                           scores,
+                                           max_output_size,
+                                           iou_threshold=0.5,
+                                           score_threshold=float('-inf')):
+  """A tiled version of [`tf.image.non_max_suppression_padded`](https://www.tensorflow.org/api_docs/python/tf/image/non_max_suppression_padded).
+
+  The overall design of the algorithm is to handle boxes tile-by-tile:
+
+  boxes = boxes.pad_to_multiple_of(tile_size)
+  num_tiles = len(boxes) // tile_size
+  output_boxes = []
+  for i in range(num_tiles):
+    box_tile = boxes[i*tile_size : (i+1)*tile_size]
+    for j in range(i - 1):
+      suppressing_tile = boxes[j*tile_size : (j+1)*tile_size]
+      iou = batch_iou(box_tile, suppressing_tile)
+      # if the box is suppressed in iou, clear it to a dot
+      box_tile *= _update_boxes(iou)
+    # Iteratively handle the diagonal tile.
+    iou = _box_overlap(box_tile, box_tile)
+    iou_changed = True
+    while iou_changed:
+      # boxes that are not suppressed by anything else
+      suppressing_boxes = _get_suppressing_boxes(iou)
+      # boxes that are suppressed by suppressing_boxes
+      suppressed_boxes = _get_suppressed_boxes(iou, suppressing_boxes)
+      # clear iou to 0 for boxes that are suppressed, as they cannot be used
+      # to suppress other boxes any more
+      new_iou = _clear_iou(iou, suppressed_boxes)
+      iou_changed = (new_iou != iou)
+      iou = new_iou
+    # remaining boxes that can still suppress others, are selected boxes.
+    output_boxes.append(_get_suppressing_boxes(iou))
+    if len(output_boxes) >= max_output_size:
+      break
+
+  Args:
+    boxes: A 2-D float `Tensor` of shape `[num_boxes, 4]`.
+    scores: A 1-D float `Tensor` of shape `[num_boxes]` representing a single
+      score corresponding to each box (each row of boxes).
+    max_output_size: a scalar integer `Tensor` representing the maximum number
+      of boxes to be selected by non max suppression.
+    iou_threshold: a float representing the threshold for deciding whether boxes
+      overlap too much with respect to IOU.
+    score_threshold: A float representing the threshold for deciding when to
+      remove boxes based on score.
+
+  Returns:
+    selected_indices: a tensor of shape [anchors].
+    num_valid_boxes: a scalar int tensor.
+    nms_proposals: a tensor with a shape of [anchors, 4]. It has
+      same dtype as input boxes.
+    nms_scores: a tensor with a shape of [anchors]. It has same
+      dtype as input scores.
+    argsort_ids: a tensor of shape [anchors], mapping from input order of boxes
+      to output order of boxes.
+  """
+  num_boxes = tf.shape(boxes)[0]
+  pad = tf.cast(
+      tf.ceil(tf.cast(num_boxes, tf.float32) / _NMS_TILE_SIZE),
+      tf.int32) * _NMS_TILE_SIZE - num_boxes
+
+  scores, argsort_ids = tf.nn.top_k(scores, k=num_boxes, sorted=True)
+  boxes = tf.gather(boxes, argsort_ids)
+  num_boxes = tf.shape(boxes)[0]
+  num_boxes += pad
+  boxes = tf.pad(
+      tf.cast(boxes, tf.float32), [[0, pad], [0, 0]], constant_values=-1)
+  scores = tf.pad(tf.cast(scores, tf.float32), [[0, pad]])
+
+  # mask boxes to -1 by score threshold
+  scores_mask = tf.expand_dims(
+      tf.cast(scores > score_threshold, boxes.dtype), axis=1)
+  boxes = ((boxes + 1.) * scores_mask) - 1.
+
+  boxes = tf.expand_dims(boxes, axis=0)
+  scores = tf.expand_dims(scores, axis=0)
+
+  def _loop_cond(unused_boxes, unused_threshold, output_size, idx):
+    return tf.logical_and(
+        tf.reduce_min(output_size) < max_output_size,
+        idx < num_boxes // _NMS_TILE_SIZE)
+
+  selected_boxes, _, output_size, _ = tf.while_loop(
+      _loop_cond, _suppression_loop_body,
+      [boxes, iou_threshold,
+       tf.zeros([1], tf.int32),
+       tf.constant(0)])
+  idx = num_boxes - tf.cast(
+      tf.nn.top_k(
+          tf.cast(tf.reduce_any(selected_boxes > 0, [2]), tf.int32) *
+          tf.expand_dims(tf.range(num_boxes, 0, -1), 0), max_output_size)[0],
+      tf.int32)
+  idx = tf.minimum(idx, num_boxes - 1 - pad)
+  idx = tf.reshape(idx + tf.reshape(tf.range(1) * num_boxes, [-1, 1]), [-1])
+  num_valid_boxes = tf.reduce_sum(output_size)
+  return (idx, num_valid_boxes, tf.reshape(boxes, [-1, 4]),
+          tf.reshape(scores, [-1]), argsort_ids)
 
 
 def _validate_boxes_scores_iou_thresh(boxes, scores, iou_thresh,
@@ -55,7 +325,7 @@ def _validate_boxes_scores_iou_thresh(boxes, scores, iou_thresh,
     raise ValueError('iou_thresh must be between 0 and 1')
   if scores.shape.ndims != 2:
     raise ValueError('scores field must be of rank 2')
-  if scores.shape[1].value is None:
+  if shape_utils.get_dim_as_int(scores.shape[1]) is None:
     raise ValueError('scores must have statically defined second ' 'dimension')
   if boxes.shape.ndims != 3:
     raise ValueError('boxes must be of rank 3.')
@@ -64,7 +334,7 @@ def _validate_boxes_scores_iou_thresh(boxes, scores, iou_thresh,
           shape_utils.get_dim_as_int(boxes.shape[1]) == 1):
     raise ValueError('second dimension of boxes must be either 1 or equal '
                      'to the second dimension of scores')
-  if boxes.shape[2].value != 4:
+  if shape_utils.get_dim_as_int(boxes.shape[2]) != 4:
     raise ValueError('last dimension of boxes must be of size 4.')
   if change_coordinate_frame and clip_window is None:
     raise ValueError('if change_coordinate_frame is True, then a clip_window'
@@ -124,6 +394,7 @@ def multiclass_non_max_suppression(boxes,
                                    boundaries=None,
                                    pad_to_max_output_size=False,
                                    additional_fields=None,
+                                   soft_nms_sigma=0.0,
                                    scope=None):
   """Multi-class version of non maximum suppression.
 
@@ -171,6 +442,11 @@ def multiclass_non_max_suppression(boxes,
       tensors whose first dimensions are all of size `k`. After non-maximum
       suppression, all tensors corresponding to the selected boxes will be
       added to resulting BoxList.
+    soft_nms_sigma: A scalar float representing the Soft NMS sigma parameter;
+      See Bodla et al, https://arxiv.org/abs/1704.04503).  When
+      `soft_nms_sigma=0.0` (which is default), we fall back to standard (hard)
+      NMS.  Soft NMS is currently only supported when pad_to_max_output_size is
+      False.
     scope: name scope.
 
   Returns:
@@ -184,9 +460,14 @@ def multiclass_non_max_suppression(boxes,
   Raises:
     ValueError: if iou_thresh is not in [0, 1] or if input boxlist does not have
       a valid scores field.
+    ValueError: if Soft NMS (tf.image.non_max_suppression_with_scores) is not
+      supported in the current TF version and `soft_nms_sigma` is nonzero.
   """
   _validate_boxes_scores_iou_thresh(boxes, scores, iou_thresh,
                                     change_coordinate_frame, clip_window)
+  if pad_to_max_output_size and soft_nms_sigma != 0.0:
+    raise ValueError('Soft NMS (soft_nms_sigma != 0.0) is currently not '
+                     'supported when pad_to_max_output_size is True.')
 
   with tf.name_scope(scope, 'MultiClassNonMaxSuppression'):
     num_scores = tf.shape(scores)[0]
@@ -221,38 +502,69 @@ def multiclass_non_max_suppression(boxes,
         for key, tensor in additional_fields.items():
           boxlist_and_class_scores.add_field(key, tensor)
 
+      nms_result = None
+      selected_scores = None
       if pad_to_max_output_size:
         max_selection_size = max_size_per_class
-        selected_indices, num_valid_nms_boxes = (
-            tf.image.non_max_suppression_padded(
-                boxlist_and_class_scores.get(),
-                boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
-                max_selection_size,
-                iou_threshold=iou_thresh,
-                score_threshold=score_thresh,
-                pad_to_max_output_size=True))
+        (selected_indices, num_valid_nms_boxes,
+         boxlist_and_class_scores.data['boxes'],
+         boxlist_and_class_scores.data['scores'],
+         _) = partitioned_non_max_suppression_padded(
+             boxlist_and_class_scores.get(),
+             boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+             max_selection_size,
+             iou_threshold=iou_thresh,
+             score_threshold=score_thresh)
+        nms_result = box_list_ops.gather(boxlist_and_class_scores,
+                                         selected_indices)
+        selected_scores = nms_result.get_field(fields.BoxListFields.scores)
       else:
         max_selection_size = tf.minimum(max_size_per_class,
                                         boxlist_and_class_scores.num_boxes())
-        selected_indices = tf.image.non_max_suppression(
-            boxlist_and_class_scores.get(),
-            boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
-            max_selection_size,
-            iou_threshold=iou_thresh,
-            score_threshold=score_thresh)
-        num_valid_nms_boxes = tf.shape(selected_indices)[0]
-        selected_indices = tf.concat(
-            [selected_indices,
-             tf.zeros(max_selection_size-num_valid_nms_boxes, tf.int32)], 0)
-      nms_result = box_list_ops.gather(boxlist_and_class_scores,
-                                       selected_indices)
+        if (hasattr(tf.image, 'non_max_suppression_with_scores') and
+            tf.compat.forward_compatible(2019, 6, 6)):
+          (selected_indices, selected_scores
+          ) = tf.image.non_max_suppression_with_scores(
+              boxlist_and_class_scores.get(),
+              boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+              max_selection_size,
+              iou_threshold=iou_thresh,
+              score_threshold=score_thresh,
+              soft_nms_sigma=soft_nms_sigma)
+          num_valid_nms_boxes = tf.shape(selected_indices)[0]
+          selected_indices = tf.concat(
+              [selected_indices,
+               tf.zeros(max_selection_size-num_valid_nms_boxes, tf.int32)], 0)
+          selected_scores = tf.concat(
+              [selected_scores,
+               tf.zeros(max_selection_size-num_valid_nms_boxes,
+                        tf.float32)], -1)
+          nms_result = box_list_ops.gather(boxlist_and_class_scores,
+                                           selected_indices)
+        else:
+          if soft_nms_sigma != 0:
+            raise ValueError('Soft NMS not supported in current TF version!')
+          selected_indices = tf.image.non_max_suppression(
+              boxlist_and_class_scores.get(),
+              boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+              max_selection_size,
+              iou_threshold=iou_thresh,
+              score_threshold=score_thresh)
+          num_valid_nms_boxes = tf.shape(selected_indices)[0]
+          selected_indices = tf.concat(
+              [selected_indices,
+               tf.zeros(max_selection_size-num_valid_nms_boxes, tf.int32)], 0)
+          nms_result = box_list_ops.gather(boxlist_and_class_scores,
+                                           selected_indices)
+          selected_scores = nms_result.get_field(fields.BoxListFields.scores)
       # Make the scores -1 for invalid boxes.
-      valid_nms_boxes_indx = tf.less(
+      valid_nms_boxes_indices = tf.less(
           tf.range(max_selection_size), num_valid_nms_boxes)
-      nms_scores = nms_result.get_field(fields.BoxListFields.scores)
-      nms_result.add_field(fields.BoxListFields.scores,
-                           tf.where(valid_nms_boxes_indx,
-                                    nms_scores, -1*tf.ones(max_selection_size)))
+
+      nms_result.add_field(
+          fields.BoxListFields.scores,
+          tf.where(valid_nms_boxes_indices,
+                   selected_scores, -1*tf.ones(max_selection_size)))
       num_valid_nms_boxes_cumulative += num_valid_nms_boxes
 
       nms_result.add_field(
@@ -295,6 +607,7 @@ def class_agnostic_non_max_suppression(boxes,
                                        boundaries=None,
                                        pad_to_max_output_size=False,
                                        additional_fields=None,
+                                       soft_nms_sigma=0.0,
                                        scope=None):
   """Class-agnostic version of non maximum suppression.
 
@@ -344,6 +657,11 @@ def class_agnostic_non_max_suppression(boxes,
       tensors whose first dimensions are all of size `k`. After non-maximum
       suppression, all tensors corresponding to the selected boxes will be added
       to resulting BoxList.
+    soft_nms_sigma: A scalar float representing the Soft NMS sigma parameter;
+      See Bodla et al, https://arxiv.org/abs/1704.04503).  When
+      `soft_nms_sigma=0.0` (which is default), we fall back to standard (hard)
+      NMS.  Soft NMS is currently only supported when pad_to_max_output_size is
+      False.
     scope: name scope.
 
   Returns:
@@ -356,14 +674,18 @@ def class_agnostic_non_max_suppression(boxes,
 
   Raises:
     ValueError: if iou_thresh is not in [0, 1] or if input boxlist does not have
-      a valid scores field.
+      a valid scores field or if non-zero soft_nms_sigma is provided when
+      pad_to_max_output_size is True.
   """
   _validate_boxes_scores_iou_thresh(boxes, scores, iou_thresh,
                                     change_coordinate_frame, clip_window)
+  if pad_to_max_output_size and soft_nms_sigma != 0.0:
+    raise ValueError('Soft NMS (soft_nms_sigma != 0.0) is currently not '
+                     'supported when pad_to_max_output_size is True.')
 
   if max_classes_per_detection > 1:
     raise ValueError('Max classes per detection box >1 not supported.')
-  q = boxes.shape[1].value
+  q = shape_utils.get_dim_as_int(boxes.shape[1])
   if q > 1:
     class_ids = tf.expand_dims(
         tf.argmax(scores, axis=1, output_type=tf.int32), axis=1)
@@ -393,45 +715,75 @@ def class_agnostic_non_max_suppression(boxes,
       for key, tensor in additional_fields.items():
         boxlist_and_class_scores.add_field(key, tensor)
 
+    nms_result = None
+    selected_scores = None
     if pad_to_max_output_size:
       max_selection_size = max_total_size
-      selected_indices, num_valid_nms_boxes = (
-          tf.image.non_max_suppression_padded(
-              boxlist_and_class_scores.get(),
-              boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
-              max_selection_size,
-              iou_threshold=iou_thresh,
-              score_threshold=score_thresh,
-              pad_to_max_output_size=True))
+      (selected_indices, num_valid_nms_boxes,
+       boxlist_and_class_scores.data['boxes'],
+       boxlist_and_class_scores.data['scores'],
+       argsort_ids) = partitioned_non_max_suppression_padded(
+           boxlist_and_class_scores.get(),
+           boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+           max_selection_size,
+           iou_threshold=iou_thresh,
+           score_threshold=score_thresh)
+      nms_result = box_list_ops.gather(boxlist_and_class_scores,
+                                       selected_indices)
+      selected_scores = nms_result.get_field(fields.BoxListFields.scores)
+      classes_with_max_scores = tf.gather(classes_with_max_scores, argsort_ids)
     else:
       max_selection_size = tf.minimum(max_total_size,
                                       boxlist_and_class_scores.num_boxes())
-      selected_indices = tf.image.non_max_suppression(
-          boxlist_and_class_scores.get(),
-          boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
-          max_selection_size,
-          iou_threshold=iou_thresh,
-          score_threshold=score_thresh)
-      num_valid_nms_boxes = tf.shape(selected_indices)[0]
-      selected_indices = tf.concat([
-          selected_indices,
-          tf.zeros(max_selection_size - num_valid_nms_boxes, tf.int32)
-      ], 0)
-
-    nms_result = box_list_ops.gather(boxlist_and_class_scores, selected_indices)
-
-    valid_nms_boxes_indx = tf.less(
+      if (hasattr(tf.image, 'non_max_suppression_with_scores') and
+          tf.compat.forward_compatible(2019, 6, 6)):
+        (selected_indices, selected_scores
+        ) = tf.image.non_max_suppression_with_scores(
+            boxlist_and_class_scores.get(),
+            boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+            max_selection_size,
+            iou_threshold=iou_thresh,
+            score_threshold=score_thresh,
+            soft_nms_sigma=soft_nms_sigma)
+        num_valid_nms_boxes = tf.shape(selected_indices)[0]
+        selected_indices = tf.concat([
+            selected_indices,
+            tf.zeros(max_selection_size - num_valid_nms_boxes, tf.int32)
+        ], 0)
+        selected_scores = tf.concat(
+            [selected_scores,
+             tf.zeros(max_selection_size-num_valid_nms_boxes, tf.float32)], -1)
+        nms_result = box_list_ops.gather(boxlist_and_class_scores,
+                                         selected_indices)
+      else:
+        if soft_nms_sigma != 0:
+          raise ValueError('Soft NMS not supported in current TF version!')
+        selected_indices = tf.image.non_max_suppression(
+            boxlist_and_class_scores.get(),
+            boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+            max_selection_size,
+            iou_threshold=iou_thresh,
+            score_threshold=score_thresh)
+        num_valid_nms_boxes = tf.shape(selected_indices)[0]
+        selected_indices = tf.concat(
+            [selected_indices,
+             tf.zeros(max_selection_size-num_valid_nms_boxes, tf.int32)], 0)
+        nms_result = box_list_ops.gather(boxlist_and_class_scores,
+                                         selected_indices)
+        selected_scores = nms_result.get_field(fields.BoxListFields.scores)
+    valid_nms_boxes_indices = tf.less(
         tf.range(max_selection_size), num_valid_nms_boxes)
-    nms_scores = nms_result.get_field(fields.BoxListFields.scores)
     nms_result.add_field(
         fields.BoxListFields.scores,
-        tf.where(valid_nms_boxes_indx, nms_scores,
-                 -1 * tf.ones(max_selection_size)))
+        tf.where(valid_nms_boxes_indices,
+                 selected_scores, -1*tf.ones(max_selection_size)))
+
     selected_classes = tf.gather(classes_with_max_scores, selected_indices)
     nms_result.add_field(fields.BoxListFields.classes, selected_classes)
     selected_boxes = nms_result
     sorted_boxes = box_list_ops.sort_by_field(selected_boxes,
                                               fields.BoxListFields.scores)
+
     if clip_window is not None:
       # When pad_to_max_output_size is False, it prunes the boxes with zero
       # area.
@@ -463,6 +815,7 @@ def batch_multiclass_non_max_suppression(boxes,
                                          num_valid_boxes=None,
                                          masks=None,
                                          additional_fields=None,
+                                         soft_nms_sigma=0.0,
                                          scope=None,
                                          use_static_shapes=False,
                                          parallel_iterations=32,
@@ -506,6 +859,11 @@ def batch_multiclass_non_max_suppression(boxes,
       or 1 depending on whether a separate mask is predicted per class.
     additional_fields: (optional) If not None, a dictionary that maps keys to
       tensors whose dimensions are [batch_size, num_anchors, ...].
+    soft_nms_sigma: A scalar float representing the Soft NMS sigma parameter;
+      See Bodla et al, https://arxiv.org/abs/1704.04503).  When
+      `soft_nms_sigma=0.0` (which is default), we fall back to standard (hard)
+      NMS.  Soft NMS is currently only supported when pad_to_max_output_size is
+      False.
     scope: tf scope name.
     use_static_shapes: If true, the output nmsed boxes are padded to be of
       length `max_size_per_class` and it doesn't clip boxes to max_total_size.
@@ -689,7 +1047,8 @@ def batch_multiclass_non_max_suppression(boxes,
             change_coordinate_frame=change_coordinate_frame,
             masks=per_image_masks,
             pad_to_max_output_size=use_static_shapes,
-            additional_fields=per_image_additional_fields)
+            additional_fields=per_image_additional_fields,
+            soft_nms_sigma=soft_nms_sigma)
       else:
         nmsed_boxlist, num_valid_nms_boxes = multiclass_non_max_suppression(
             per_image_boxes,
@@ -702,7 +1061,8 @@ def batch_multiclass_non_max_suppression(boxes,
             change_coordinate_frame=change_coordinate_frame,
             masks=per_image_masks,
             pad_to_max_output_size=use_static_shapes,
-            additional_fields=per_image_additional_fields)
+            additional_fields=per_image_additional_fields,
+            soft_nms_sigma=soft_nms_sigma)
 
       if not use_static_shapes:
         nmsed_boxlist = box_list_ops.pad_or_clip_box_list(

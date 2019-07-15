@@ -63,9 +63,16 @@ we pass it to the functions. At the end of the preprocess we expand the image
 back to rank 4.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import functools
 import inspect
 import sys
+import six
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
@@ -75,6 +82,7 @@ from object_detection.core import box_list_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import preprocessor_cache
 from object_detection.core import standard_fields as fields
+from object_detection.utils import autoaugment_utils
 from object_detection.utils import shape_utils
 
 
@@ -342,6 +350,112 @@ def retain_boxes_above_threshold(boxes,
       result.append(retained_keypoints)
 
     return result
+
+
+def drop_label_probabilistically(boxes,
+                                 labels,
+                                 label_weights,
+                                 label_confidences=None,
+                                 multiclass_scores=None,
+                                 masks=None,
+                                 keypoints=None,
+                                 dropped_label=None,
+                                 drop_probability=0.0,
+                                 seed=None):
+  """Drops boxes of a certain label with probability drop_probability.
+
+  Boxes of the label dropped_label will not appear in the returned tensor.
+
+  Args:
+    boxes: float32 tensor of shape [num_instance, 4] representing boxes
+      location in normalized coordinates.
+    labels: rank 1 int32 tensor of shape [num_instance] containing the object
+      classes.
+    label_weights: float32 tensor of shape [num_instance] representing the
+      weight for each box.
+    label_confidences: float32 tensor of shape [num_instance] representing the
+      confidence for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
+    masks: (optional) rank 3 float32 tensor with shape
+      [num_instances, height, width] containing instance masks. The masks are of
+      the same height, width as the input `image`.
+    keypoints: (optional) rank 3 float32 tensor with shape
+      [num_instances, num_keypoints, 2]. The keypoints are in y-x normalized
+      coordinates.
+    dropped_label: int32 id of label to drop.
+    drop_probability: float32 probability of dropping a label.
+    seed: random seed.
+
+  Returns:
+    retained_boxes: [num_retained_instance, 4]
+    retianed_labels: [num_retained_instance]
+    retained_label_weights: [num_retained_instance]
+
+    If multiclass_scores, masks, or keypoints are not None, the function also
+      returns:
+
+    retained_multiclass_scores: [num_retained_instance, num_classes]
+    retained_masks: [num_retained_instance, height, width]
+    retained_keypoints: [num_retained_instance, num_keypoints, 2]
+  """
+  with tf.name_scope('DropLabelProbabilistically',
+                     values=[boxes, labels]):
+    indices = tf.where(
+        tf.logical_or(
+            tf.random_uniform(tf.shape(labels), seed=seed) > drop_probability,
+            tf.not_equal(labels, dropped_label)))
+    indices = tf.squeeze(indices, axis=1)
+
+    retained_boxes = tf.gather(boxes, indices)
+    retained_labels = tf.gather(labels, indices)
+    retained_label_weights = tf.gather(label_weights, indices)
+    result = [retained_boxes, retained_labels, retained_label_weights]
+
+    if label_confidences is not None:
+      retained_label_confidences = tf.gather(label_confidences, indices)
+      result.append(retained_label_confidences)
+
+    if multiclass_scores is not None:
+      retained_multiclass_scores = tf.gather(multiclass_scores, indices)
+      result.append(retained_multiclass_scores)
+
+    if masks is not None:
+      retained_masks = tf.gather(masks, indices)
+      result.append(retained_masks)
+
+    if keypoints is not None:
+      retained_keypoints = tf.gather(keypoints, indices)
+      result.append(retained_keypoints)
+
+    return result
+
+
+def remap_labels(labels,
+                 original_labels=None,
+                 new_label=None):
+  """Remaps labels that have an id in original_labels to new_label.
+
+  Args:
+    labels: rank 1 int32 tensor of shape [num_instance] containing the object
+      classes.
+      original_labels: int list of original labels that should be mapped from.
+      new_label: int label to map to
+  Returns:
+    Remapped labels
+  """
+  new_labels = labels
+  for original_label in original_labels:
+    change = tf.where(
+        tf.equal(new_labels, original_label),
+        tf.add(tf.zeros_like(new_labels), new_label - original_label),
+        tf.zeros_like(new_labels))
+    new_labels = tf.add(
+        new_labels,
+        change)
+  new_labels = tf.reshape(new_labels, tf.shape(labels))
+  return new_labels
 
 
 def _flip_boxes_left_right(boxes):
@@ -2170,6 +2284,37 @@ def random_black_patches(image,
     return image
 
 
+# TODO(barretzoph): Put in AutoAugment Paper link when paper is live.
+def autoaugment_image(image, boxes, policy_name='v0'):
+  """Apply an autoaugment policy to the image and boxes.
+
+
+  Args:
+    image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
+           with pixel values varying between [0, 255].
+    boxes: rank 2 float32 tensor containing the bounding boxes with shape
+           [num_instances, 4].
+           Boxes are in normalized form meaning their coordinates vary
+           between [0, 1].
+           Each row is in the form of [ymin, xmin, ymax, xmax].
+    policy_name: The name of the AutoAugment policy to use. The available
+      options are `v0`, `v1`, `v2`, `v3` and `test`. `v0` is the policy used for
+      all of the results in the paper and was found to achieve the best results
+      on the COCO dataset. `v1`, `v2` and `v3` are additional good policies
+      found on the COCO dataset that have slight variation in what operations
+      were used during the search procedure along with how many operations are
+      applied in parallel to a single image (2 vs 3).
+
+
+  Returns:
+    image: the augmented image.
+    boxes: boxes which is the same rank as input boxes. Boxes are in normalized
+           form. boxes will have been augmented along with image.
+  """
+  return autoaugment_utils.distort_image_with_autoaugment(
+      image, boxes, policy_name)
+
+
 def image_to_float(image):
   """Used in Faster R-CNN. Casts image pixel values to float.
 
@@ -3393,6 +3538,8 @@ def get_default_func_arg_map(include_label_weights=True,
           groundtruth_keypoints,
       ),
       random_black_patches: (fields.InputDataFields.image,),
+      autoaugment_image: (fields.InputDataFields.image,
+                          fields.InputDataFields.groundtruth_boxes,),
       retain_boxes_above_threshold: (
           fields.InputDataFields.groundtruth_boxes,
           fields.InputDataFields.groundtruth_classes,
@@ -3402,6 +3549,16 @@ def get_default_func_arg_map(include_label_weights=True,
           groundtruth_instance_masks,
           groundtruth_keypoints,
       ),
+      drop_label_probabilistically: (
+          fields.InputDataFields.groundtruth_boxes,
+          fields.InputDataFields.groundtruth_classes,
+          groundtruth_label_weights,
+          groundtruth_label_confidences,
+          multiclass_scores,
+          groundtruth_instance_masks,
+          groundtruth_keypoints,
+      ),
+      remap_labels: (fields.InputDataFields.groundtruth_classes,),
       image_to_float: (fields.InputDataFields.image,),
       random_resize_method: (fields.InputDataFields.image,),
       resize_to_range: (
@@ -3540,9 +3697,15 @@ def preprocess(tensor_dict,
       return tensor_dict[key] if key is not None else None
 
     args = [get_arg(a) for a in arg_names]
-    if (preprocess_vars_cache is not None and
-        'preprocess_vars_cache' in inspect.getargspec(func).args):
-      params['preprocess_vars_cache'] = preprocess_vars_cache
+    if preprocess_vars_cache is not None:
+      if six.PY2:
+        # pylint: disable=deprecated-method
+        arg_spec = inspect.getargspec(func)
+        # pylint: enable=deprecated-method
+      else:
+        arg_spec = inspect.getfullargspec(func)
+      if 'preprocess_vars_cache' in arg_spec.args:
+        params['preprocess_vars_cache'] = preprocess_vars_cache
 
     results = func(*args, **params)
     if not isinstance(results, (list, tuple)):

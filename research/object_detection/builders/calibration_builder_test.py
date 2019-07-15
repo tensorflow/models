@@ -94,37 +94,34 @@ class CalibrationBuilderTest(tf.test.TestCase):
 
   @staticmethod
   def _add_function_approximation_to_calibration_proto(calibration_proto,
-                                                       x_array,
-                                                       y_array,
-                                                       class_label):
-    """Adds a function approximation to calibration proto for a class label."""
+                                                       x_array, y_array,
+                                                       class_id):
+    """Adds a function approximation to calibration proto for a class id."""
     # Per-class calibration.
-    if class_label:
-      label_function_approximation = (calibration_proto
-                                      .label_function_approximations
-                                      .label_xy_pairs_map[class_label])
+    if class_id is not None:
+      function_approximation = (
+          calibration_proto.class_id_function_approximations
+          .class_id_xy_pairs_map[class_id])
     # Class-agnostic calibration.
     else:
-      label_function_approximation = (calibration_proto
-                                      .function_approximation
-                                      .x_y_pairs)
+      function_approximation = (
+          calibration_proto.function_approximation.x_y_pairs)
+
     for x, y in zip(x_array, y_array):
-      x_y_pair_message = label_function_approximation.x_y_pair.add()
+      x_y_pair_message = function_approximation.x_y_pair.add()
       x_y_pair_message.x = x
       x_y_pair_message.y = y
 
   def test_class_agnostic_function_approximation(self):
-    """Ensures that calibration appropriate values, regardless of class."""
+    """Tests that calibration produces correct class-agnostic values."""
     # Generate fake calibration proto. For this interpolation, any input on
     # [0.0, 0.5] should be divided by 2 and any input on (0.5, 1.0] should have
     # 0.25 subtracted from it.
     class_agnostic_x = np.asarray([0.0, 0.5, 1.0])
     class_agnostic_y = np.asarray([0.0, 0.25, 0.75])
     calibration_config = calibration_pb2.CalibrationConfig()
-    self._add_function_approximation_to_calibration_proto(calibration_config,
-                                                          class_agnostic_x,
-                                                          class_agnostic_y,
-                                                          class_label=None)
+    self._add_function_approximation_to_calibration_proto(
+        calibration_config, class_agnostic_x, class_agnostic_y, class_id=None)
 
     od_graph = tf.Graph()
     with self.test_session(graph=od_graph) as sess:
@@ -143,6 +140,56 @@ class CalibrationBuilderTest(tf.test.TestCase):
                                                 [0.2, 0.25, 0.0]],
                                                [[0.35, 0.45, 0.55],
                                                 [0.65, 0.75, 0.75]]])
+
+  def test_multiclass_function_approximations(self):
+    """Tests that calibration produces correct multiclass values."""
+    # Background class (0-index) maps all predictions to 0.5.
+    class_0_x = np.asarray([0.0, 0.5, 1.0])
+    class_0_y = np.asarray([0.5, 0.5, 0.5])
+    calibration_config = calibration_pb2.CalibrationConfig()
+    self._add_function_approximation_to_calibration_proto(
+        calibration_config, class_0_x, class_0_y, class_id=0)
+
+    # Class id 1 will interpolate using these values.
+    class_1_x = np.asarray([0.0, 0.2, 1.0])
+    class_1_y = np.asarray([0.0, 0.6, 1.0])
+    self._add_function_approximation_to_calibration_proto(
+        calibration_config, class_1_x, class_1_y, class_id=1)
+
+    od_graph = tf.Graph()
+    with self.test_session(graph=od_graph) as sess:
+      calibration_fn = calibration_builder.build(calibration_config)
+      # batch_size = 2, num_classes = 2, num_anchors = 2.
+      class_predictions_with_background = tf.constant(
+          [[[0.1, 0.2], [0.9, 0.1]],
+           [[0.6, 0.4], [0.08, 0.92]]],
+          dtype=tf.float32)
+      calibrated_scores = calibration_fn(class_predictions_with_background)
+      calibrated_scores_np = sess.run(calibrated_scores)
+    self.assertAllClose(calibrated_scores_np, [[[0.5, 0.6], [0.5, 0.3]],
+                                               [[0.5, 0.7], [0.5, 0.96]]])
+
+  def test_skips_class_when_calibration_parameters_not_present(self):
+    """Tests that graph fails when parameters not present for all classes."""
+    # Only adding calibration parameters for class id = 0, even though class id
+    # 1 is present in the data.
+    class_0_x = np.asarray([0.0, 0.5, 1.0])
+    class_0_y = np.asarray([0.5, 0.5, 0.5])
+    calibration_config = calibration_pb2.CalibrationConfig()
+    self._add_function_approximation_to_calibration_proto(
+        calibration_config, class_0_x, class_0_y, class_id=0)
+    od_graph = tf.Graph()
+    with self.test_session(graph=od_graph) as sess:
+      calibration_fn = calibration_builder.build(calibration_config)
+      # batch_size = 2, num_classes = 2, num_anchors = 2.
+      class_predictions_with_background = tf.constant(
+          [[[0.1, 0.2], [0.9, 0.1]],
+           [[0.6, 0.4], [0.08, 0.92]]],
+          dtype=tf.float32)
+      calibrated_scores = calibration_fn(class_predictions_with_background)
+      calibrated_scores_np = sess.run(calibrated_scores)
+    self.assertAllClose(calibrated_scores_np, [[[0.5, 0.2], [0.5, 0.1]],
+                                               [[0.5, 0.4], [0.5, 0.92]]])
 
 if __name__ == '__main__':
   tf.test.main()

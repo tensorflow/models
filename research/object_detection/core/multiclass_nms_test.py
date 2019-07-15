@@ -521,5 +521,6 @@ class MulticlassNonMaxSuppressionTest(test_case.TestCase):
       self.assertAllClose(nms_classes_output, exp_nms_classes)
 
 
+
 if __name__ == '__main__':
   tf.test.main()

@@ -167,12 +167,13 @@ class ConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
       self._shared_nets.append(net)
     self.built = True
 
-  def _predict(self, image_features):
+  def _predict(self, image_features, **kwargs):
     """Computes encoded object locations and corresponding confidences.
 
     Args:
       image_features: A list of float tensors of shape [batch_size, height_i,
         width_i, channels_i] containing features for a batch of images.
+      **kwargs: Unused Keyword args
 
     Returns:
       box_encodings: A list of float tensors of shape
@@ -330,13 +331,17 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
           tower_name_scope, additional_conv_layer_idx)
       if tower_name_scope not in self._head_scope_conv_layers:
         if self._use_depthwise:
+          kwargs = self._conv_hyperparams.params(use_bias=use_bias)
+          # Both the regularizer and initializer apply to the depthwise layer,
+          # so we remap the kernel_* to depthwise_* here.
+          kwargs['depthwise_regularizer'] = kwargs['kernel_regularizer']
+          kwargs['depthwise_initializer'] = kwargs['kernel_initializer']
           conv_layers.append(
               tf.keras.layers.SeparableConv2D(
-                  self._depth,
-                  [self._kernel_size, self._kernel_size],
+                  self._depth, [self._kernel_size, self._kernel_size],
                   padding='SAME',
                   name=layer_name,
-                  **self._conv_hyperparams.params(use_bias=use_bias)))
+                  **kwargs))
         else:
           conv_layers.append(
               tf.keras.layers.Conv2D(
@@ -421,12 +426,13 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
 
     self.built = True
 
-  def _predict(self, image_features):
+  def _predict(self, image_features, **kwargs):
     """Computes encoded object locations and corresponding confidences.
 
     Args:
       image_features: A list of float tensors of shape [batch_size, height_i,
         width_i, channels_i] containing features for a batch of images.
+      **kwargs: Unused Keyword args
 
     Returns:
       box_encodings: A list of float tensors of shape

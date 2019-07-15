@@ -383,6 +383,11 @@ class FasterRCNNMetaArchTest(
     class_predictions_with_background_shapes = [(16, 3), (None, 3)]
     proposal_boxes_shapes = [(2, 8, 4), (None, 8, 4)]
     batch_size = 2
+    initial_crop_size = 3
+    maxpool_stride = 1
+    height = initial_crop_size/maxpool_stride
+    width = initial_crop_size/maxpool_stride
+    depth = 3
     image_shape = np.array((2, 36, 48, 3), dtype=np.int32)
     for (num_proposals_shape, refined_box_encoding_shape,
          class_predictions_with_background_shape,
@@ -433,6 +438,7 @@ class FasterRCNNMetaArchTest(
             'detection_scores': tf.zeros([2, 5]),
             'detection_classes': tf.zeros([2, 5]),
             'num_detections': tf.zeros([2]),
+            'detection_features': tf.zeros([2, 5, width, height, depth])
         }, true_image_shapes)
       with self.test_session(graph=tf_graph) as sess:
         detections_out = sess.run(
@@ -453,6 +459,9 @@ class FasterRCNNMetaArchTest(
       self.assertAllClose(detections_out['num_detections'].shape, [2])
       self.assertTrue(np.amax(detections_out['detection_masks'] <= 1.0))
       self.assertTrue(np.amin(detections_out['detection_masks'] >= 0.0))
+      self.assertAllEqual(detections_out['detection_features'].shape,
+                          [2, 5, width, height, depth])
+      self.assertGreaterEqual(np.amax(detections_out['detection_features']), 0)
 
   def _get_box_classifier_features_shape(self,
                                          image_size,

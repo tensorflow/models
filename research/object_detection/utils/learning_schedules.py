@@ -14,7 +14,12 @@
 # ==============================================================================
 """Library of common learning rate schedules."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import numpy as np
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 
@@ -191,7 +196,7 @@ def manual_stepping(global_step, boundaries, rates, warmup=False):
 
   if warmup and boundaries:
     slope = (rates[1] - rates[0]) * 1.0 / boundaries[0]
-    warmup_steps = range(boundaries[0])
+    warmup_steps = list(range(boundaries[0]))
     warmup_rates = [rates[0] + slope * step for step in warmup_steps]
     boundaries = warmup_steps + boundaries
     rates = warmup_rates + rates[1:]

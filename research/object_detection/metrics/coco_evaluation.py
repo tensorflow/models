@@ -13,7 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 """Class for evaluating object detections with COCO metrics."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import standard_fields

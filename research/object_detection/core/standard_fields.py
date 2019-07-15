@@ -119,6 +119,9 @@ class DetectionResultFields(object):
     raw_detection_boxes: contains decoded detection boxes without Non-Max
       suppression.
     raw_detection_scores: contains class score logits for raw detection boxes.
+    detection_anchor_indices: The anchor indices of the detections after NMS.
+    detection_features: contains extracted features for each detected box
+      after NMS.
   """
 
   source_id = 'source_id'
@@ -126,6 +129,7 @@ class DetectionResultFields(object):
   detection_boxes = 'detection_boxes'
   detection_scores = 'detection_scores'
   detection_multiclass_scores = 'detection_multiclass_scores'
+  detection_features = 'detection_features'
   detection_classes = 'detection_classes'
   detection_masks = 'detection_masks'
   detection_boundaries = 'detection_boundaries'
@@ -133,6 +137,7 @@ class DetectionResultFields(object):
   num_detections = 'num_detections'
   raw_detection_boxes = 'raw_detection_boxes'
   raw_detection_scores = 'raw_detection_scores'
+  detection_anchor_indices = 'detection_anchor_indices'
 
 
 class BoxListFields(object):
