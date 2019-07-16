@@ -147,6 +147,14 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_ctl_default_ds_run_eagerly_early_stop(self):
+    self._setup()
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.keras_use_ctl = True
+    FLAGS.early_stopping = True
+    FLAGS.run_eagerly = True
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu_ctl_early_stop(self):
     self._setup()
     FLAGS.keras_use_ctl = True
@@ -169,7 +177,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._run_and_report_benchmark()
 
 #############################################
-# Tests below with mlperf in the test name are of two types
+# Tests below with mlperf in the test name are of two types:
 #  1) 1 GPU tests are based on MLPerf 0.5 and the TensorFlow pulled submission.
 #  2) 8 GPU tests are based on MLPerf 0.5 and use NVIDIA's hyper parameters.
 #
@@ -210,6 +218,15 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     """1 GPU using CTL."""
     self._setup()
     FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_ctl_default_ds_run_eagerly_mlperf_like(self):
+    """1 GPU using CTL with eager and default distribution strategy."""
+    self._setup()
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.keras_use_ctl = True
+    FLAGS.run_eagerly = True
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark()
 
