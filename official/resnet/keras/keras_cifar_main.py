@@ -99,8 +99,16 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  keras_utils.set_session_config(enable_eager=flags_obj.enable_eager,
-                                 enable_xla=flags_obj.enable_xla)
+  keras_utils.set_session_config(
+      enable_eager=flags_obj.enable_eager,
+      enable_xla=flags_obj.enable_xla,
+      enable_grappler_layout_optimizer=
+      flags_obj.enable_grappler_layout_optimizer)
+
+  # Execute flag override logic for better model performance
+  if flags_obj.tf_gpu_thread_mode:
+    keras_common.set_gpu_thread_mode_and_count(flags_obj)
+  keras_common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
