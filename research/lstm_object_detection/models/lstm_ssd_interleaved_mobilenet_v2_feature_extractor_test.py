@@ -149,7 +149,7 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractorTest(
                                                        pad_to_multiple)
     preprocessed_image = feature_extractor.preprocess(image_placeholder)
     _ = feature_extractor.extract_features(preprocessed_image, unroll_length=1)
-    self.assertTrue(any(op.type == 'FusedBatchNorm'
+    self.assertTrue(any(op.type.startswith('FusedBatchNorm')
                         for op in tf.get_default_graph().get_operations()))
 
   def test_variables_for_tflite(self):
