@@ -224,6 +224,7 @@ def _get_keras_model(params):
       [zeros, logits],
       axis=-1)
 
+  """CTL does metric calculation as part of eval_step function"""
   if not params["keras_use_ctl"]:
     softmax_logits = MetricLayer(params)([softmax_logits, dup_mask_input])
 
