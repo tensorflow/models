@@ -224,7 +224,9 @@ def _get_keras_model(params):
       [zeros, logits],
       axis=-1)
 
-  softmax_logits = MetricLayer(params)([softmax_logits, dup_mask_input])
+  """CTL does metric calculation as part of eval_step function"""
+  if not params["keras_use_ctl"]:
+    softmax_logits = MetricLayer(params)([softmax_logits, dup_mask_input])
 
   keras_model = tf.keras.Model(
       inputs={
@@ -298,8 +300,12 @@ def run_ncf(_):
   # It is required that for distributed training, the dataset must call
   # batch(). The parameter of batch() here is the number of replicas involed,
   # such that each replica evenly gets a slice of data.
-  train_input_dataset = train_input_dataset.batch(batches_per_step)
-  eval_input_dataset = eval_input_dataset.batch(batches_per_step)
+  # drop_remainder = True, as we would like batch call to return a fixed shape
+  # vs None, this prevents a expensive broadcast during weighted_loss
+  train_input_dataset = train_input_dataset.batch(batches_per_step,
+                                                  drop_remainder=True)
+  eval_input_dataset = eval_input_dataset.batch(batches_per_step,
+                                                drop_remainder=True)
 
   time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
   per_epoch_callback = IncrementEpochCallback(producer)
