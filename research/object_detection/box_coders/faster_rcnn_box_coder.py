@@ -107,8 +107,8 @@ class FasterRcnnBoxCoder(box_coder.BoxCoder):
       tx /= self._scale_factors[1]
       th /= self._scale_factors[2]
       tw /= self._scale_factors[3]
-    w = tf.exp(tw) * wa
-    h = tf.exp(th) * ha
+    w = tf.exp(tf.minimum(tw, 80)) * wa
+    h = tf.exp(tf.minimum(th, 80)) * ha
     ycenter = ty * ha + ycenter_a
     xcenter = tx * wa + xcenter_a
     ymin = ycenter - h / 2.
