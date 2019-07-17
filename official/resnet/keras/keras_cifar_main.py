@@ -128,6 +128,14 @@ def run(flags_obj):
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
 
+  if strategy:
+    # flags_obj.enable_get_next_as_optional controls whether enabling
+    # get_next_as_optional behavior in DistributedIterator. If true, last
+    # partial batch can be supported.
+    strategy.extended.experimental_enable_get_next_as_optional = (
+        flags_obj.enable_get_next_as_optional
+    )
+
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
   if flags_obj.use_synthetic_data:
@@ -137,7 +145,8 @@ def run(flags_obj):
         width=cifar_main.WIDTH,
         num_channels=cifar_main.NUM_CHANNELS,
         num_classes=cifar_main.NUM_CLASSES,
-        dtype=flags_core.get_tf_dtype(flags_obj))
+        dtype=flags_core.get_tf_dtype(flags_obj),
+        drop_remainder=True)
   else:
     distribution_utils.undo_set_up_synthetic_data()
     input_fn = cifar_main.input_fn
@@ -149,7 +158,11 @@ def run(flags_obj):
       num_epochs=flags_obj.train_epochs,
       parse_record_fn=parse_record_keras,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-      dtype=dtype)
+      dtype=dtype,
+      # Setting drop_remainder to avoid the partial batch logic in normalization
+      # layer, which triggers tf.where and leads to extra memory copy of input
+      # sizes between host and GPU.
+      drop_remainder=(not flags_obj.enable_get_next_as_optional))
 
   eval_input_dataset = None
   if not flags_obj.skip_eval:
