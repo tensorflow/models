@@ -228,6 +228,18 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_tweaked(self):
+    """Test 1 gpu with manual config tuning."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_tweaked')
+    FLAGS.batch_size = 128
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.enable_grappler_layout_optimizer
+    self._run_and_report_benchmark()
+
   def benchmark_graph_1_gpu(self):
     """Test 1 gpu graph."""
     self._setup()
@@ -236,6 +248,18 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_1_gpu_tweaked(self):
+    """Test 1 gpu graph."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_tweaked')
+    FLAGS.batch_size = 128
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.enable_grappler_layout_optimizer = False
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat(self):
