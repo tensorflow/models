@@ -65,26 +65,6 @@ def learning_rate_schedule(current_epoch,
   return learning_rate
 
 
-def parse_record_keras(raw_record, is_training, dtype):
-  """Parses a record containing a training example of an image.
-
-  The input record is parsed into a label and image, and the image is passed
-  through preprocessing steps (cropping, flipping, and so on).
-
-  This method converts the label to one hot to fit the loss function.
-
-  Args:
-    raw_record: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
-    is_training: A boolean denoting whether the input is for training.
-    dtype: Data type to use for input images.
-
-  Returns:
-    Tuple with processed image tensor and one-hot-encoded label tensor.
-  """
-  return cifar_main.parse_record(raw_record, is_training, dtype)
-
-
 def run(flags_obj):
   """Run ResNet Cifar-10 training and eval loop using native Keras APIs.
 
@@ -137,7 +117,7 @@ def run(flags_obj):
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras,
+      parse_record_fn=cifar_main.parse_record,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype)
 
@@ -148,7 +128,7 @@ def run(flags_obj):
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
-        parse_record_fn=parse_record_keras)
+        parse_record_fn=cifar_main.parse_record)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
