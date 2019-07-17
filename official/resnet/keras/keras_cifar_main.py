@@ -82,9 +82,7 @@ def parse_record_keras(raw_record, is_training, dtype):
   Returns:
     Tuple with processed image tensor and one-hot-encoded label tensor.
   """
-  image, label = cifar_main.parse_record(raw_record, is_training, dtype)
-  label = tf.compat.v1.sparse_to_dense(label, (cifar_main.NUM_CLASSES,), 1)
-  return image, label
+  return cifar_main.parse_record(raw_record, is_training, dtype)
 
 
 def run(flags_obj):
@@ -156,9 +154,9 @@ def run(flags_obj):
     optimizer = keras_common.get_optimizer()
     model = resnet_cifar_model.resnet56(classes=cifar_main.NUM_CLASSES)
 
-    model.compile(loss='categorical_crossentropy',
+    model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,
-                  metrics=(['categorical_accuracy']
+                  metrics=(['sparse_categorical_accuracy']
                            if flags_obj.report_accuracy_metrics else None),
                   run_eagerly=flags_obj.run_eagerly)
 
