@@ -238,7 +238,7 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
   def benchmark_1_gpu(self):
     """Benchmark 1 gpu."""
     self._setup()
-    FLAGS.num_gpus = 0
+    FLAGS.num_gpus = 1
     FLAGS.batch_size = 64
     self._run_and_report_benchmark()
 
@@ -279,4 +279,10 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.batch_size = 64 * 8
+    FLAGS.enable_xla = True
     self._run_and_report_benchmark()
+
+  def _run_and_report_benchmark(self):
+    """Run and report benchmark."""
+    super(ShakespeareKerasBenchmarkReal, self)._run_and_report_benchmark(
+        top_1_train_min=None)

@@ -29,7 +29,6 @@ from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
-EPOCHS = 45
 EMBEDDING_DIM = 256
 RNN_UNITS = 1024
 SEQ_LENGTH = 100
@@ -56,7 +55,8 @@ def define_flags():
                                 dtype=False,
                                 enable_xla=True)
 
-  # TODO(tobyboyd): Add defaults for batch-size train epochs.
+  flags_core.set_defaults(train_epochs=43,
+                          batch_size=64)
 
   flags.DEFINE_boolean(name='enable_eager', default=True, help='Enable eager?')
   flags.DEFINE_boolean(
