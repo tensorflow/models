@@ -17,7 +17,7 @@ Then train the model:
 ```python
 python3 shakespeare_main.py --training_data shakespeare.txt \
     --model_dir /tmp/shakespeare
-````
+```
 
 This will place model checkpoints in `/tmp/shakespeare`, so that we can use them to make predictions.
 
