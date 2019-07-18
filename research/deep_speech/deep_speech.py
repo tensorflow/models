@@ -223,7 +223,7 @@ def run_deep_speech(_):
 
   # Use distribution strategy for multi-gpu training
   num_gpus = flags_core.get_num_gpus(flags_obj)
-  distribution_strategy = distribution_utils.get_distribution_strategy(num_gpus)
+  distribution_strategy = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy)
 

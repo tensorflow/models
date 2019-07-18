@@ -26,10 +26,10 @@ import tensorflow as tf   # pylint: disable=g-bad-import-order
 from official.utils.flags._conventions import help_wrap
 
 
-# Map string to (TensorFlow dtype, default loss scale)
+# Map string to TensorFlow dtype
 DTYPE_MAP = {
-    "fp16": (tf.float16, 128),
-    "fp32": (tf.float32, 1),
+    "fp16": tf.float16,
+    "fp32": tf.float32,
 }
 
 
@@ -38,15 +38,19 @@ def get_tf_dtype(flags_obj):
     # If the graph_rewrite is used, we build the graph with fp32, and let the
     # graph rewrite change ops to fp16.
     return tf.float32
-  return DTYPE_MAP[flags_obj.dtype][0]
+  return DTYPE_MAP[flags_obj.dtype]
 
 
-def get_loss_scale(flags_obj):
+def get_loss_scale(flags_obj, default_for_fp16):
   if flags_obj.loss_scale == "dynamic":
     return flags_obj.loss_scale
   elif flags_obj.loss_scale is not None:
     return float(flags_obj.loss_scale)
-  return DTYPE_MAP[flags_obj.dtype][1]
+  elif flags_obj.dtype == "fp32":
+    return 1  # No loss scaling is needed for fp32
+  else:
+    assert flags_obj.dtype == "fp16"
+    return default_for_fp16
 
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
@@ -57,7 +61,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        datasets_num_parallel_batches=False,
                        dynamic_loss_scale=False, fp16_implementation=False,
                        loss_scale=False,
-                       tf_data_experimental_slack=False):
+                       tf_data_experimental_slack=False, enable_xla=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -82,6 +86,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
       training. Can only be turned on if dtype is also True.
     tf_data_experimental_slack: Determines whether to enable tf.data's
       `experimental_slack` option.
+    enable_xla: Determines if XLA (auto clustering) is turned on.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -265,5 +270,10 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         help=help_wrap(
             "Whether to enable tf.data's `experimental_slack` option.")
     )
+
+  if enable_xla:
+    flags.DEFINE_boolean(
+        name="enable_xla", default=False,
+        help="Whether to enable XLA auto jit compilation")
 
   return key_flags

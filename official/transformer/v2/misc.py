@@ -68,14 +68,28 @@ def define_transformer_flags():
       intra_op=False,
       synthetic_data=True,
       max_train_steps=False,
-      dtype=False,
-      all_reduce_alg=True
+      dtype=True,
+      loss_scale=True,
+      all_reduce_alg=True,
+      enable_xla=True
   )
+
+  # Additional performance flags
+  # TODO(b/76028325): Remove when generic layout optimizer is ready.
+  flags.DEFINE_boolean(
+      name='enable_grappler_layout_optimizer',
+      default=True,
+      help='Enable Grappler layout optimizer. Currently Grappler can '
+           'de-optimize fp16 graphs by forcing NCHW layout for all '
+           'convolutions and batch normalizations, and this flag allows to '
+           'disable it.'
+  )
+
   flags_core.define_benchmark()
   flags_core.define_device(tpu=True)
 
   flags.DEFINE_integer(
-      name='train_steps', short_name='ts', default=None,
+      name='train_steps', short_name='ts', default=300000,
       help=flags_core.help_wrap('The number of steps used to train.'))
   flags.DEFINE_integer(
       name='steps_between_evals', short_name='sbe', default=1000,
@@ -88,6 +102,9 @@ def define_transformer_flags():
   flags.DEFINE_boolean(
       name='enable_tensorboard', default=False,
       help='Whether to enable Tensorboard callback.')
+  flags.DEFINE_boolean(
+      name='enable_metrics_in_training', default=False,
+      help='Whether to enable metrics during training.')
   flags.DEFINE_string(
       name='profile_steps', default=None,
       help='Save profiling data to model dir at given range of steps. The '

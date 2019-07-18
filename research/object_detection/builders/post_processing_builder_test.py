@@ -30,6 +30,7 @@ class PostProcessingBuilderTest(tf.test.TestCase):
         iou_threshold: 0.6
         max_detections_per_class: 100
         max_total_detections: 300
+        soft_nms_sigma: 0.4
       }
     """
     post_processing_config = post_processing_pb2.PostProcessing()
@@ -40,6 +41,7 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     self.assertEqual(non_max_suppressor.keywords['max_total_size'], 300)
     self.assertAlmostEqual(non_max_suppressor.keywords['score_thresh'], 0.7)
     self.assertAlmostEqual(non_max_suppressor.keywords['iou_thresh'], 0.6)
+    self.assertAlmostEqual(non_max_suppressor.keywords['soft_nms_sigma'], 0.4)
 
   def test_build_non_max_suppressor_with_correct_parameters_classagnostic_nms(
       self):

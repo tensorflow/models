@@ -128,10 +128,7 @@ class Resnet50EstimatorAccuracy(EstimatorBenchmark):
                 constructor forward compatible in case PerfZero provides more
                 named arguments before updating the constructor.
     """
-    flag_methods = [
-        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True,
-                                                    fp16_implementation=True)
-    ]
+    flag_methods = [imagenet_main.define_imagenet_flags]
 
     self.data_dir = os.path.join(root_data_dir, IMAGENET_DATA_DIR_NAME)
     super(Resnet50EstimatorAccuracy, self).__init__(
@@ -193,10 +190,7 @@ class Resnet50EstimatorBenchmarkBase(EstimatorBenchmark):
   local_flags = None
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [
-        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True,
-                                                    fp16_implementation=True)
-    ]
+    flag_methods = [imagenet_main.define_imagenet_flags]
 
     super(Resnet50EstimatorBenchmarkBase, self).__init__(
         output_dir=output_dir,

@@ -54,7 +54,6 @@ def process_record_dataset(dataset,
                            num_epochs=1,
                            dtype=tf.float32,
                            datasets_num_private_threads=None,
-                           num_parallel_batches=1,
                            drop_remainder=False,
                            tf_data_experimental_slack=False):
   """Given a Dataset with raw records, return an iterator over the records.
@@ -72,7 +71,6 @@ def process_record_dataset(dataset,
     dtype: Data type to use for images/features.
     datasets_num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
-    num_parallel_batches: Number of parallel batches for tf.data.
     drop_remainder: A boolean indicates whether to drop the remainder of the
       batches. If True, the batch dimension will be static.
     tf_data_experimental_slack: Whether to enable tf.data's
@@ -462,8 +460,9 @@ def resnet_model_fn(features, labels, mode, model_class,
 
     fp16_implementation = getattr(flags.FLAGS, 'fp16_implementation', None)
     if fp16_implementation == 'graph_rewrite':
-      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
-          optimizer, loss_scale=loss_scale)
+      optimizer = (
+          tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
+              optimizer, loss_scale=loss_scale))
 
     def _dense_grad_filter(gvs):
       """Only apply gradient updates to the final layer.
@@ -539,7 +538,8 @@ def resnet_main(
     shape: list of ints representing the shape of the images used for training.
       This is only used if flags_obj.export_dir is passed.
 
-  Dict of results of the run.  Contains the keys `eval_results` and
+  Returns:
+     Dict of results of the run.  Contains the keys `eval_results` and
     `train_hooks`. `eval_results` contains accuracy (top_1) and accuracy_top_5.
     `train_hooks` is a list the instances of hooks used during training.
   """
@@ -591,7 +591,8 @@ def resnet_main(
           'data_format': flags_obj.data_format,
           'batch_size': flags_obj.batch_size,
           'resnet_version': int(flags_obj.resnet_version),
-          'loss_scale': flags_core.get_loss_scale(flags_obj),
+          'loss_scale': flags_core.get_loss_scale(flags_obj,
+                                                  default_for_fp16=128),
           'dtype': flags_core.get_tf_dtype(flags_obj),
           'fine_tune': flags_obj.fine_tune,
           'num_workers': num_workers,
@@ -627,7 +628,6 @@ def resnet_main(
         num_epochs=num_epochs,
         dtype=flags_core.get_tf_dtype(flags_obj),
         datasets_num_private_threads=flags_obj.datasets_num_private_threads,
-        num_parallel_batches=flags_obj.datasets_num_parallel_batches,
         input_context=input_context)
 
   def input_fn_eval():
@@ -729,7 +729,6 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
   flags_core.define_performance(num_parallel_calls=False,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
-                                datasets_num_parallel_batches=True,
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 fp16_implementation=fp16_implementation,
                                 loss_scale=True,

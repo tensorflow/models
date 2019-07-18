@@ -19,6 +19,10 @@ These functions often receive an image, perform some visualization on the image.
 The functions do not return a value, instead they modify the image itself.
 
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import abc
 import collections
 # Set headless-friendly backend.
@@ -30,6 +34,8 @@ import PIL.ImageColor as ImageColor
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import six
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -771,7 +777,7 @@ def visualize_boxes_and_labels_on_image_array(
         display_str = ''
         if not skip_labels:
           if not agnostic_mode:
-            if classes[i] in category_index.keys():
+            if classes[i] in six.viewkeys(category_index):
               class_name = category_index[classes[i]]['name']
             else:
               class_name = 'N/A'
@@ -894,7 +900,7 @@ def add_hist_image_summary(values, bins, name):
   tf.summary.image(name, hist_plot)
 
 
-class EvalMetricOpsVisualization(object):
+class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class responsible for visualizations during evaluation.
 
   Currently, summary images are not run during evaluation. One way to produce
@@ -903,7 +909,6 @@ class EvalMetricOpsVisualization(object):
   responsible for accruing images (with overlaid detections and groundtruth)
   and returning a dictionary that can be passed to `eval_metric_ops`.
   """
-  __metaclass__ = abc.ABCMeta
 
   def __init__(self,
                category_index,

@@ -363,6 +363,51 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                                         'probability': 0.95,
                                         'size_to_image_ratio': 0.12})
 
+  def test_auto_augment_image(self):
+    preprocessor_text_proto = """
+    autoaugment_image {
+      policy_name: 'v0'
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Merge(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.autoaugment_image)
+    self.assert_dictionary_close(args, {'policy_name': 'v0'})
+
+  def test_drop_label_probabilistically(self):
+    preprocessor_text_proto = """
+    drop_label_probabilistically{
+      label: 2
+      drop_probability: 0.5
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Merge(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.drop_label_probabilistically)
+    self.assert_dictionary_close(args, {
+        'dropped_label': 2,
+        'drop_probability': 0.5
+    })
+
+  def test_remap_labels(self):
+    preprocessor_text_proto = """
+    remap_labels{
+      original_labels: 1
+      original_labels: 2
+      new_label: 3
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Merge(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.remap_labels)
+    self.assert_dictionary_close(args, {
+        'original_labels': [1, 2],
+        'new_label': 3
+    })
+
   def test_build_random_resize_method(self):
     preprocessor_text_proto = """
     random_resize_method {

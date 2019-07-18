@@ -40,7 +40,7 @@ from tensorflow.python.platform import app
 from delf import delf_config_pb2
 from delf import feature_io
 from delf.python.detect_to_retrieve import dataset
-from delf import extract_features
+from delf import extractor
 
 cmd_args = None
 
@@ -85,15 +85,15 @@ def main(argv):
     text_format.Merge(f.read(), config)
 
   # Create output directory if necessary.
-  if not os.path.exists(cmd_args.output_features_dir):
-    os.makedirs(cmd_args.output_features_dir)
+  if not tf.gfile.Exists(cmd_args.output_features_dir):
+    tf.gfile.MakeDirs(cmd_args.output_features_dir)
 
   with tf.Graph().as_default():
     with tf.Session() as sess:
       # Initialize variables, construct DELF extractor.
       init_op = tf.global_variables_initializer()
       sess.run(init_op)
-      extractor_fn = extract_features.MakeExtractor(sess, config)
+      extractor_fn = extractor.MakeExtractor(sess, config)
 
       start = time.clock()
       for i in range(num_images):

@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Common util functions and classes used by both keras cifar and imagenet."""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -27,9 +26,9 @@ import numpy as np
 from absl import flags
 import tensorflow as tf
 
+from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
 # pylint: disable=ungrouped-imports
-from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
                                                   gradient_descent_v2)
 
@@ -145,31 +144,6 @@ class PiecewiseConstantDecayWithWarmup(
     }
 
 
-def get_config_proto_v1():
-  """Return config proto according to flag settings, or None to use default."""
-  config = None
-  if FLAGS.enable_xla:
-    config = tf.compat.v1.ConfigProto()
-    config.graph_options.optimizer_options.global_jit_level = (
-        tf.OptimizerOptions.ON_2)
-    # Disable PinToHostOptimizer in grappler when enabling XLA because it causes
-    # OOM and performance regression.
-    config.graph_options.rewrite_options.pin_to_host_optimization = (
-        rewriter_config_pb2.RewriterConfig.OFF)
-  return config
-
-
-def set_config_v2():
-  """Config eager context according to flag values using TF 2.0 API."""
-  if FLAGS.enable_xla:
-    tf.config.optimizer.set_jit(True)
-    # Disable PinToHostOptimizer in grappler when enabling XLA because it
-    # causes OOM and performance regression.
-    tf.config.optimizer.set_experimental_options(
-        {"pin_to_host_optimization": False}
-    )
-
-
 def set_gpu_thread_mode_and_count(flags_obj):
   """Set GPU thread mode and count, and adjust dataset threads count."""
   cpu_count = multiprocessing.cpu_count()
@@ -275,24 +249,37 @@ def build_stats(history, eval_output, callbacks):
   return stats
 
 
-def define_keras_flags():
+def define_keras_flags(dynamic_loss_scale=True):
   """Define flags for Keras models."""
+  flags_core.define_base(run_eagerly=True)
+  flags_core.define_performance(num_parallel_calls=False,
+                                tf_gpu_thread_mode=True,
+                                datasets_num_private_threads=True,
+                                dynamic_loss_scale=dynamic_loss_scale,
+                                loss_scale=True,
+                                tf_data_experimental_slack=True,
+                                enable_xla=True)
+  flags_core.define_image()
+  flags_core.define_benchmark()
+  flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')
-  flags.DEFINE_boolean(
-      name='run_eagerly', default=False,
-      help='Run the model op by op without building a model function.')
   flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
+  # TODO(b/135607288): Remove this flag once we understand the root cause of
+  # slowdown when setting the learning phase in Keras backend.
+  flags.DEFINE_boolean(
+      name='set_learning_phase_to_train', default=True,
+      help='If skip eval, also set Keras learning phase to 1 (training).')
+  flags.DEFINE_boolean(
+      name='explicit_gpu_placement', default=False,
+      help='If not using distribution strategy, explicitly set device scope '
+      'for the Keras training loop.')
   flags.DEFINE_boolean(name='use_trivial_model', default=False,
                        help='Whether to use a trivial Keras model.')
   flags.DEFINE_boolean(name='report_accuracy_metrics', default=True,
                        help='Report metrics during training and evaluation.')
   flags.DEFINE_boolean(name='use_tensor_lr', default=False,
                        help='Use learning rate tensor instead of a callback.')
-  flags.DEFINE_boolean(
-      name='enable_xla', default=False,
-      help='Whether to enable XLA auto jit compilation. This is still an '
-      'experimental feature, and is not yet effective with TF 2.0.')
   flags.DEFINE_boolean(
       name='enable_tensorboard', default=False,
       help='Whether to enable Tensorboard callback.')
@@ -326,7 +313,15 @@ def define_keras_flags():
   flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
-
+  # TODO(b/76028325): Remove when generic layout optimizer is ready.
+  flags.DEFINE_boolean(
+      name='enable_grappler_layout_optimizer',
+      default=True,
+      help='Enable Grappler layout optimizer. Currently Grappler can '
+           'de-optimize fp16 graphs byt forcing NCHW layout for all '
+           'convolutions and batch normalizations, and this flag allows to '
+           'disable it.'
+  )
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32, drop_remainder=True):
@@ -379,14 +374,6 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   return input_fn
 
 
-def is_v2_0():
-  """Returns true if using tf 2.0."""
-  if hasattr(tf, 'contrib'):
-    return False
-  else:
-    return True
-
-
 def data_delay_prefetch():
   """Use unstable code for perf tuning purposes."""
   if not FLAGS.use_synthetic_data:
@@ -394,8 +381,11 @@ def data_delay_prefetch():
 
 
 def set_cudnn_batchnorm_mode():
-  """Set CuDNN batchnorm mode for better performance. Note that the spatial
-     persistent mode may lead to accuracy losses for certain models."""
+  """Set CuDNN batchnorm mode for better performance.
+
+     Note: Spatial Persistent mode may lead to accuracy losses for certain
+     models.
+  """
   if FLAGS.batchnorm_spatial_persistent:
     os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'
   else:

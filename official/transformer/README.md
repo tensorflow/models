@@ -1,5 +1,7 @@
 # Transformer Translation Model
-This is an implementation of the Transformer translation model as described in the [Attention is All You Need](https://arxiv.org/abs/1706.03762) paper. Based on the code provided by the authors: [Transformer code](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py) from [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor). Also, check out the [tutorial](https://www.tensorflow.org/alpha/tutorials/sequences/transformer) on Transformer in TF 2.0.
+This is an implementation of the Transformer translation model as described in the [Attention is All You Need](https://arxiv.org/abs/1706.03762) paper. Based on the code provided by the authors: [Transformer code](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py) from [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor). Also, check out the [tutorial](https://www.tensorflow.org/beta/tutorials/text/transformer) on Transformer in TF 2.0.
+
+**A new Keras-based TF 2.0 implementation is located inside v2 folder. Please follow the [README](v2/README.md) in v2 folder to walk through the new Transformer.**
 
 Transformer is a neural network architecture that solves sequence to sequence problems using attention mechanisms. Unlike traditional neural seq2seq models, Transformer does not involve recurrent connections. The attention mechanism learns dependencies between tokens in two sequences. Since attention weights apply to all tokens in the sequences, the Transformer model is able to easily capture long-distance dependencies.
 

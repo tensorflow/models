@@ -30,6 +30,7 @@ import tensorflow as tf
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.models.keras_models import inception_resnet_v2
 from object_detection.utils import model_util
+from object_detection.utils import variables_helper
 
 
 class FasterRCNNInceptionResnetV2KerasFeatureExtractor(
@@ -1070,7 +1071,7 @@ class FasterRCNNInceptionResnetV2KerasFeatureExtractor(
     }
 
     variables_to_restore = {}
-    for variable in tf.global_variables():
+    for variable in variables_helper.get_global_variables_safely():
       var_name = keras_to_slim_name_mapping.get(variable.op.name)
       if var_name:
         variables_to_restore[var_name] = variable

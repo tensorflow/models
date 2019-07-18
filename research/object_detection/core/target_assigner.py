@@ -31,6 +31,12 @@ Note that TargetAssigners only operate on detections from a single
 image at a time, so any logic for applying a TargetAssigner to multiple
 images must be handled externally.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.box_coders import faster_rcnn_box_coder

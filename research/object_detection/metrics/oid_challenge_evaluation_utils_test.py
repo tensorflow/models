@@ -18,13 +18,41 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import base64
+import zlib
+
 import numpy as np
 import pandas as pd
-from pycocotools import mask
+from pycocotools import mask as coco_mask
 import tensorflow as tf
 
 from object_detection.core import standard_fields
 from object_detection.metrics import oid_challenge_evaluation_utils as utils
+
+
+def encode_mask(mask_to_encode):
+  """Encodes a binary mask into the Kaggle challenge text format.
+
+  The encoding is done in three stages:
+   - COCO RLE-encoding,
+   - zlib compression,
+   - base64 encoding (to use as entry in csv file).
+
+  Args:
+    mask_to_encode: binary np.ndarray of dtype bool and 2d shape.
+
+  Returns:
+    A (base64) text string of the encoded mask.
+  """
+  mask_to_encode = np.squeeze(mask_to_encode)
+  mask_to_encode = mask_to_encode.reshape(mask_to_encode.shape[0],
+                                          mask_to_encode.shape[1], 1)
+  mask_to_encode = mask_to_encode.astype(np.uint8)
+  mask_to_encode = np.asfortranarray(mask_to_encode)
+  encoded_mask = coco_mask.encode(mask_to_encode)[0]['counts']
+  compressed_mask = zlib.compress(encoded_mask, zlib.Z_BEST_COMPRESSION)
+  base64_mask = base64.b64encode(compressed_mask)
+  return base64_mask
 
 
 class OidUtilTest(tf.test.TestCase):
@@ -44,10 +72,10 @@ class OidUtilTest(tf.test.TestCase):
     mask1 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [0, 0, 0, 0]], dtype=np.uint8)
     mask2 = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], dtype=np.uint8)
 
-    encoding1 = mask.encode(np.asfortranarray(mask1))
-    encoding2 = mask.encode(np.asfortranarray(mask2))
+    encoding1 = encode_mask(mask1)
+    encoding2 = encode_mask(mask2)
 
-    vals = pd.Series([encoding1['counts'], encoding2['counts']])
+    vals = pd.Series([encoding1, encoding2])
     image_widths = pd.Series([mask1.shape[1], mask2.shape[1]])
     image_heights = pd.Series([mask1.shape[0], mask2.shape[0]])
 
@@ -59,6 +87,15 @@ class OidUtilTest(tf.test.TestCase):
     expected_bbox = np.array([[0.0, 0.5, 2.0 / 3.0, 1.0], [0, 0, 0, 0]])
     self.assertAllEqual(expected_segm, segm)
     self.assertAllEqual(expected_bbox, bbox)
+
+  def testDecodeToTensorsNoMasks(self):
+    vals = pd.Series([None, None])
+    image_widths = pd.Series([None, None])
+    image_heights = pd.Series([None, None])
+    segm, bbox = utils._decode_raw_data_into_masks_and_boxes(
+        vals, image_widths, image_heights)
+    self.assertAllEqual(np.zeros((2, 1, 1), dtype=np.uint8), segm)
+    self.assertAllEqual(np.zeros((2, 4), dtype=np.float32), bbox)
 
 
 class OidChallengeEvaluationUtilTest(tf.test.TestCase):
@@ -140,13 +177,13 @@ class OidChallengeEvaluationUtilTest(tf.test.TestCase):
     mask2 = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
                      dtype=np.uint8)
 
-    encoding1 = mask.encode(np.asfortranarray(mask1))
-    encoding2 = mask.encode(np.asfortranarray(mask2))
+    encoding1 = encode_mask(mask1)
+    encoding2 = encode_mask(mask2)
 
     np_data = pd.DataFrame(
         [[
             'fe58ec1b06db2bb7', mask1.shape[1], mask1.shape[0], '/m/04bcr3',
-            0.0, 0.3, 0.5, 0.6, 0, None, encoding1['counts']
+            0.0, 0.3, 0.5, 0.6, 0, None, encoding1
         ],
          [
              'fe58ec1b06db2bb7', None, None, '/m/02gy9n', 0.1, 0.2, 0.3, 0.4, 1,
@@ -154,7 +191,7 @@ class OidChallengeEvaluationUtilTest(tf.test.TestCase):
          ],
          [
              'fe58ec1b06db2bb7', mask2.shape[1], mask2.shape[0], '/m/02gy9n',
-             0.5, 0.6, 0.8, 0.9, 0, None, encoding2['counts']
+             0.5, 0.6, 0.8, 0.9, 0, None, encoding2
          ],
          [
              'fe58ec1b06db2bb7', None, None, '/m/04bcr3', None, None, None,
@@ -218,21 +255,21 @@ class OidChallengeEvaluationUtilTest(tf.test.TestCase):
     mask2 = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
                      dtype=np.uint8)
 
-    encoding1 = mask.encode(np.asfortranarray(mask1))
-    encoding2 = mask.encode(np.asfortranarray(mask2))
+    encoding1 = encode_mask(mask1)
+    encoding2 = encode_mask(mask2)
 
-    np_data = pd.DataFrame(
-        [[
-            'fe58ec1b06db2bb7', mask1.shape[1], mask1.shape[0], '/m/04bcr3',
-            encoding1['counts'], 0.8
-        ],
-         [
-             'fe58ec1b06db2bb7', mask2.shape[1], mask2.shape[0], '/m/02gy9n',
-             encoding2['counts'], 0.6
-         ]],
-        columns=[
-            'ImageID', 'ImageWidth', 'ImageHeight', 'LabelName', 'Mask', 'Score'
-        ])
+    np_data = pd.DataFrame([[
+        'fe58ec1b06db2bb7', mask1.shape[1], mask1.shape[0], '/m/04bcr3',
+        encoding1, 0.8
+    ],
+                            [
+                                'fe58ec1b06db2bb7', mask2.shape[1],
+                                mask2.shape[0], '/m/02gy9n', encoding2, 0.6
+                            ]],
+                           columns=[
+                               'ImageID', 'ImageWidth', 'ImageHeight',
+                               'LabelName', 'Mask', 'Score'
+                           ])
     class_label_map = {'/m/04bcr3': 1, '/m/02gy9n': 3}
     prediction_dictionary = utils.build_predictions_dictionary(
         np_data, class_label_map)

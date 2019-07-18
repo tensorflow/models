@@ -31,7 +31,12 @@ consider this box a positive example (match) nor a negative example (no match).
 The Match class is used to store the match results and it provides simple apis
 to query the results.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import abc
+import six
 import tensorflow as tf
 
 from object_detection.utils import ops
@@ -210,10 +215,9 @@ class Match(object):
     return gathered_tensor
 
 
-class Matcher(object):
+class Matcher(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for matcher.
   """
-  __metaclass__ = abc.ABCMeta
 
   def __init__(self, use_matmul_gather=False):
     """Constructs a Matcher.

@@ -25,6 +25,7 @@ from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.transformer import transformer_main as transformer_main
+from official.utils.flags import core as flags_core
 from official.utils.logs import hooks
 
 TRANSFORMER_EN2DE_DATA_DIR_NAME = 'wmt32k-en2de-official'
@@ -100,10 +101,12 @@ class EstimatorBenchmark(tf.test.Benchmark):
       exp_per_sec = sum(exp_per_second_list) / (len(exp_per_second_list))
       metrics.append({'name': 'exp_per_second',
                       'value': exp_per_sec})
-    self.report_benchmark(
-        iters=eval_results['global_step'],
-        wall_time=wall_time_sec,
-        metrics=metrics)
+
+    flags_str = flags_core.get_nondefault_flags_as_str()
+    self.report_benchmark(iters=eval_results['global_step'],
+                          wall_time=wall_time_sec,
+                          metrics=metrics,
+                          extras={'flags': flags_str})
 
 
 class TransformerBigEstimatorAccuracy(EstimatorBenchmark):

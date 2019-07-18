@@ -14,10 +14,16 @@
 # ==============================================================================
 
 """A module for helper tensorflow ops."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import collections
 import math
 import six
 
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields

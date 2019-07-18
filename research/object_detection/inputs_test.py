@@ -611,6 +611,62 @@ class DataTransformationFnTest(test_case.TestCase):
     self.assertAllClose(transformed_inputs[fields.InputDataFields.image],
                         np.concatenate((image, additional_channels), axis=2))
 
+  def test_use_multiclass_scores_when_present(self):
+    image = np.random.rand(4, 4, 3).astype(np.float32)
+    tensor_dict = {
+        fields.InputDataFields.image:
+            tf.constant(image),
+        fields.InputDataFields.groundtruth_boxes:
+            tf.constant(np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]], np.float32)),
+        fields.InputDataFields.multiclass_scores:
+            tf.constant(np.array([0.2, 0.3, 0.5, 0.1, 0.6, 0.3], np.float32)),
+        fields.InputDataFields.groundtruth_classes:
+            tf.constant(np.array([1, 2], np.int32))
+    }
+
+    input_transformation_fn = functools.partial(
+        inputs.transform_input_data,
+        model_preprocess_fn=_fake_model_preprocessor_fn,
+        image_resizer_fn=_fake_image_resizer_fn,
+        num_classes=3, use_multiclass_scores=True)
+    with self.test_session() as sess:
+      transformed_inputs = sess.run(
+          input_transformation_fn(tensor_dict=tensor_dict))
+
+    self.assertAllClose(
+        np.array([[0.2, 0.3, 0.5], [0.1, 0.6, 0.3]], np.float32),
+        transformed_inputs[fields.InputDataFields.groundtruth_classes])
+
+  def test_use_multiclass_scores_when_not_present(self):
+    image = np.random.rand(4, 4, 3).astype(np.float32)
+    tensor_dict = {
+        fields.InputDataFields.image:
+            tf.constant(image),
+        fields.InputDataFields.groundtruth_boxes:
+            tf.constant(np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]], np.float32)),
+        fields.InputDataFields.multiclass_scores:
+            tf.placeholder(tf.float32),
+        fields.InputDataFields.groundtruth_classes:
+            tf.constant(np.array([1, 2], np.int32))
+    }
+
+    input_transformation_fn = functools.partial(
+        inputs.transform_input_data,
+        model_preprocess_fn=_fake_model_preprocessor_fn,
+        image_resizer_fn=_fake_image_resizer_fn,
+        num_classes=3, use_multiclass_scores=True)
+    with self.test_session() as sess:
+      transformed_inputs = sess.run(
+          input_transformation_fn(tensor_dict=tensor_dict),
+          feed_dict={
+              tensor_dict[fields.InputDataFields.multiclass_scores]:
+                  np.array([], dtype=np.float32)
+          })
+
+    self.assertAllClose(
+        np.array([[0, 1, 0], [0, 0, 1]], np.float32),
+        transformed_inputs[fields.InputDataFields.groundtruth_classes])
+
   def test_returns_correct_class_label_encodings(self):
     tensor_dict = {
         fields.InputDataFields.image:

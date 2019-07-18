@@ -37,6 +37,7 @@ class TransformerV2Test(tf.test.TestCase):
     params["vocab_size"] = 41
     params["extra_decode_length"] = 2
     params["beam_size"] = 3
+    params["dtype"] = tf.float32
 
   def test_create_model_train(self):
     model = transformer.create_model(self.params, True)

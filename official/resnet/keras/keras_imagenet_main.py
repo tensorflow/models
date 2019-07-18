@@ -29,6 +29,7 @@ from official.resnet.keras import trivial_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 
 
@@ -92,17 +93,11 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  # TODO(tobyboyd): Remove eager flag when tf 1.0 testing ends.
-  # Eager is default in tf 2.0 and should not be toggled
-  if keras_common.is_v2_0():
-    keras_common.set_config_v2()
-  else:
-    config = keras_common.get_config_proto_v1()
-    if flags_obj.enable_eager:
-      tf.compat.v1.enable_eager_execution(config=config)
-    else:
-      sess = tf.Session(config=config)
-      tf.keras.backend.set_session(sess)
+  keras_utils.set_session_config(
+      enable_eager=flags_obj.enable_eager,
+      enable_xla=flags_obj.enable_xla,
+      enable_grappler_layout_optimizer=
+      flags_obj.enable_grappler_layout_optimizer)
 
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
@@ -196,27 +191,15 @@ def run(flags_obj):
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj))
-
-    if flags_obj.enable_xla and not flags_obj.enable_eager:
-      # TODO(b/129861005): Fix OOM issue in eager mode when setting
-      # `batch_size` in keras.Input layer.
-      if strategy and strategy.num_replicas_in_sync > 1:
-        # TODO(b/129791381): Specify `input_layer_batch_size` value in
-        # DistributionStrategy multi-replica case.
-        input_layer_batch_size = None
-      else:
-        input_layer_batch_size = flags_obj.batch_size
-    else:
-      input_layer_batch_size = None
+          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
+                                                          default_for_fp16=128))
 
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(imagenet_main.NUM_CLASSES, dtype)
     else:
       model = resnet_model.resnet50(
           num_classes=imagenet_main.NUM_CLASSES,
-          dtype=dtype,
-          batch_size=input_layer_batch_size)
+          dtype=dtype)
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=optimizer,
@@ -243,9 +226,18 @@ def run(flags_obj):
     # Only build the training graph. This reduces memory usage introduced by
     # control flow ops in layers that have different implementations for
     # training and inference (e.g., batch norm).
-    tf.keras.backend.set_learning_phase(1)
+    if flags_obj.set_learning_phase_to_train:
+      # TODO(haoyuzhang): Understand slowdown of setting learning phase when
+      # not using distribution strategy.
+      tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
+
+  if not strategy and flags_obj.explicit_gpu_placement:
+    # TODO(b/135607227): Add device scope automatically in Keras training loop
+    # when not using distribition strategy.
+    no_dist_strat_device = tf.device('/device:GPU:0')
+    no_dist_strat_device.__enter__()
 
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
@@ -261,8 +253,17 @@ def run(flags_obj):
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=2)
+
+  if not strategy and flags_obj.explicit_gpu_placement:
+    no_dist_strat_device.__exit__()
+
   stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
+
+
+def define_imagenet_keras_flags():
+  keras_common.define_keras_flags()
+  flags_core.set_defaults(train_epochs=90)
 
 
 def main(_):
@@ -273,6 +274,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
-  keras_common.define_keras_flags()
+  define_imagenet_keras_flags()
   absl_app.run(main)

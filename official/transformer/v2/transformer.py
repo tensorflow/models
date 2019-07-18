@@ -42,7 +42,8 @@ def create_model(params, is_train):
       logits = internal_model([inputs, targets], training=is_train)
       vocab_size = params["vocab_size"]
       label_smoothing = params["label_smoothing"]
-      logits = metrics.MetricLayer(vocab_size)([logits, targets])
+      if params["enable_metrics_in_training"]:
+        logits = metrics.MetricLayer(vocab_size)([logits, targets])
       logits = metrics.LossLayer(vocab_size, label_smoothing)([logits, targets])
       logits = tf.keras.layers.Lambda(lambda x: x, name="logits")(logits)
       return tf.keras.Model([inputs, targets], logits)
@@ -102,6 +103,7 @@ class Transformer(tf.keras.Model):
         returns a dictionary {
           outputs: [batch_size, decoded length]
           scores: [batch_size, float]}
+      Even when float16 is used, the output tensor(s) are always float32.
     """
     if len(inputs) == 2:
       inputs, targets = inputs[0], inputs[1]
@@ -141,12 +143,15 @@ class Transformer(tf.keras.Model):
       # Prepare inputs to the layer stack by adding positional encodings and
       # applying dropout.
       embedded_inputs = self.embedding_softmax_layer(inputs)
+      embedded_inputs = tf.cast(embedded_inputs, self.params["dtype"])
       inputs_padding = model_utils.get_padding(inputs)
+      attention_bias = tf.cast(attention_bias, self.params["dtype"])
 
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
         pos_encoding = model_utils.get_position_encoding(
             length, self.params["hidden_size"])
+        pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
 
       if training:
@@ -174,21 +179,25 @@ class Transformer(tf.keras.Model):
       # Prepare inputs to decoder layers by shifting targets, adding positional
       # encoding and applying dropout.
       decoder_inputs = self.embedding_softmax_layer(targets)
+      decoder_inputs = tf.cast(decoder_inputs, self.params['dtype'])
+      attention_bias = tf.cast(attention_bias, self.params["dtype"])
       with tf.name_scope("shift_targets"):
         # Shift targets to the right, and remove the last element
         decoder_inputs = tf.pad(decoder_inputs,
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
-        decoder_inputs += model_utils.get_position_encoding(
+        pos_encoding = model_utils.get_position_encoding(
             length, self.params["hidden_size"])
+        pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
+        decoder_inputs += pos_encoding
       if training:
         decoder_inputs = tf.nn.dropout(
             decoder_inputs, rate=self.params["layer_postprocess_dropout"])
 
       # Run values
       decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
-          length)
+          length, dtype=self.params['dtype'])
       outputs = self.decoder_stack(
           decoder_inputs,
           encoder_outputs,
@@ -196,6 +205,7 @@ class Transformer(tf.keras.Model):
           attention_bias,
           training=training)
       logits = self.embedding_softmax_layer(outputs, mode="linear")
+      logits = tf.cast(logits, tf.float32)
       return logits
 
   def _get_symbols_to_logits_fn(self, max_decode_length, training):
@@ -244,6 +254,9 @@ class Transformer(tf.keras.Model):
 
   def predict(self, encoder_outputs, encoder_decoder_attention_bias, training):
     """Return predicted sequence."""
+    # Currently, we always do prediction in float32.
+    # TODO(reedwm): Add float16 support.
+    encoder_outputs = tf.cast(encoder_outputs, tf.float32)
     batch_size = tf.shape(encoder_outputs)[0]
     input_length = tf.shape(encoder_outputs)[1]
     max_decode_length = input_length + self.params["extra_decode_length"]
@@ -295,16 +308,22 @@ class LayerNormalization(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     """Builds the layer."""
+    # Passing experimental_autocast=False causes these variables to not be
+    # automatically casted to fp16 when mixed precision is used. Since we use
+    # float32 in call() for numeric stability, we do not want variables to be
+    # casted to fp16.
     self.scale = self.add_weight(
         "layer_norm_scale",
         shape=[self.hidden_size],
         dtype="float32",
-        initializer=tf.ones_initializer())
+        initializer=tf.ones_initializer(),
+        experimental_autocast=False)
     self.bias = self.add_weight(
         "layer_norm_bias",
         shape=[self.hidden_size],
         dtype="float32",
-        initializer=tf.zeros_initializer())
+        initializer=tf.zeros_initializer(),
+        experimental_autocast=False)
     super(LayerNormalization, self).build(input_shape)
 
   def get_config(self):
@@ -313,10 +332,13 @@ class LayerNormalization(tf.keras.layers.Layer):
     }
 
   def call(self, x, epsilon=1e-6):
+    input_dtype = x.dtype
+    if input_dtype == tf.float16:
+      x = tf.cast(x, tf.float32)
     mean = tf.reduce_mean(x, axis=[-1], keepdims=True)
     variance = tf.reduce_mean(tf.square(x - mean), axis=[-1], keepdims=True)
     norm_x = (x - mean) * tf.math.rsqrt(variance + epsilon)
-    return norm_x * self.scale + self.bias
+    return tf.cast(norm_x * self.scale + self.bias, input_dtype)
 
 
 class PrePostProcessingWrapper(tf.keras.layers.Layer):
