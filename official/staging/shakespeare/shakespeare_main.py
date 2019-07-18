@@ -20,10 +20,12 @@ from __future__ import print_function
 
 import os
 
+# pylint: disable=wrong-import-order
 from absl import app as absl_app
 from absl import flags
 import numpy as np
 import tensorflow as tf
+# pylint: enable=wrong-import-order
 
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
