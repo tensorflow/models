@@ -190,7 +190,7 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
   """Benchmark accuracy tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    """Benchmark accuracy tests for Transformer Big model w/ Keras.
+    """Benchmark tests w/Keras.
 
     Args:
       output_dir: directory where to output e.g. log files
