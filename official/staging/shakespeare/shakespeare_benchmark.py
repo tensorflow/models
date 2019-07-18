@@ -42,7 +42,9 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
 
   def _run_and_report_benchmark(self,
                                 top_1_train_min=0.923,
-                                top_1_train_max=0.93):
+                                top_1_train_max=0.93,
+                                warmup=1,
+                                log_steps=100):
     """Report benchmark results by writing to local protobuf file.
 
     Average epoch time is calculated by skipping the first epoch. This average
@@ -52,7 +54,10 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
     Args:
       top_1_train_min: lowest passing value.
       top_1_train_max: highest passing value.
+      warmup: number of entries in `timestamp_log` to ignore.
+      log_steps: How often the log was created for `timestamp_log`.
     """
+    total_batch_size = FLAGS.batch_size
     metrics = []
     start_time_sec = time.time()
     stats = shakespeare_main.run(FLAGS)
@@ -71,6 +76,16 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
         average_time = sum(epoch_timings[1:]) / len(epoch_timings[1:])
         metrics.append({'name': 'avg_epoch_time',
                         'value': average_time})
+
+      # First entry in timestamp_log is the start of step 1. The rest of the
+      # entries are the end of each step recorded.
+      time_log = callback.timestamp_log
+      elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
+      num_examples = (
+          total_batch_size * log_steps * (len(time_log) - warmup - 1))
+      examples_per_sec = num_examples / elapsed
+      metrics.append({'name': 'exp_per_second',
+                      'value': examples_per_sec})
 
     flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(iters=-1, wall_time=wall_time_sec,
