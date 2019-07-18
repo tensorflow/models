@@ -76,7 +76,7 @@ bool MobileSSDClient::BatchDetect(
       LOG(ERROR) << "Post Processing not supported.";
       return false;
     } else {
-      if (NoPostProcessNoAnchors(detections[batch])) {
+      if (!NoPostProcessNoAnchors(detections[batch])) {
         LOG(ERROR) << "NoPostProcessNoAnchors failed.";
         return false;
       }
