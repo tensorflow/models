@@ -135,6 +135,7 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
     return super(AdamWeightDecay, self).apply_gradients(zip(grads, tvars))
 
   def _get_lr(self, var_device, var_dtype, apply_state):
+    """Retrieves the learning rate with the given state."""
     if apply_state is None:
       return self._decayed_lr_t[var_dtype], {}
 
