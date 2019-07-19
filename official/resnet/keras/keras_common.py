@@ -307,10 +307,6 @@ def define_keras_flags(dynamic_loss_scale=True):
       name='batchnorm_spatial_persistent', default=True,
       help='Enable the spacial persistent mode for CuDNN batch norm kernel.')
   flags.DEFINE_boolean(
-      name='clone_model_in_keras_dist_strat', default=None,
-      help='If False, then the experimental code path is used that doesn\'t '
-           'clone models for distribution.')
-  flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
   # TODO(b/76028325): Remove when generic layout optimizer is ready.
