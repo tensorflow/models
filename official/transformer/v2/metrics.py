@@ -181,25 +181,3 @@ def transformer_loss(logits, labels, smoothing, vocab_size):
   xentropy, weights = padded_cross_entropy_loss(logits, labels, smoothing,
                                                 vocab_size)
   return tf.reduce_sum(xentropy) / tf.reduce_sum(weights)
-
-
-class LossLayer(tf.keras.layers.Layer):
-  """Custom a layer of transformer loss for Transformer model."""
-
-  def __init__(self, vocab_size, label_smoothing):
-    super(LossLayer, self).__init__()
-    self.vocab_size = vocab_size
-    self.label_smoothing = label_smoothing
-
-  def get_config(self):
-    return {
-        "vocab_size": self.vocab_size,
-        "label_smoothing": self.label_smoothing,
-    }
-
-  def call(self, inputs):
-    logits, targets = inputs[0], inputs[1]
-    loss = transformer_loss(logits, targets, self.label_smoothing,
-                            self.vocab_size)
-    self.add_loss(loss)
-    return logits
