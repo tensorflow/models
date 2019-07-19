@@ -204,7 +204,5 @@ def set_config_v2(enable_xla=False,
 
 def is_v2_0():
   """Returns true if using tf 2.0."""
-  if hasattr(tf, 'contrib'):
-    return False
-  else:
-    return True
+  from tensorflow.python import tf2
+  return tf2.enabled()
