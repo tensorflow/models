@@ -39,12 +39,6 @@ do_pylint() {
 
     echo "ERROR_WHITELIST=\"${ERROR_WHITELIST}\""
 
-    # if [[ $# != "1" ]] && [[ $# != "2" ]]; then
-    #     echo "Invalid syntax when invoking do_pylint"
-    #     echo "Usage: do_pylint [--incremental]"
-    #     return 1
-    # fi
-
     PYLINT_BIN="pylint"
 
     PYTHON_SRC_FILES=$(get_py_files_to_check $1)
