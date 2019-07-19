@@ -278,7 +278,7 @@ def run_ncf(_):
   if keras_utils.is_v2_0() and strategy is not None:
     logging.error("NCF Keras only works with distribution strategy in TF 2.0")
     return
-  
+
   if (params["keras_use_ctl"] and (
       not keras_utils.is_v2_0() or strategy is None)):
     logging.error(
