@@ -40,8 +40,8 @@ flags.DEFINE_string(
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
-flags.DEFINE_enum("classification_task_name", "mnli",
-                  ["cola", "mnli", "mrpc", "xnli"],
+flags.DEFINE_enum("classification_task_name", "MNLI",
+                  ["COLA", "MNLI", "MRPC", "XNLI"],
                   "The name of the task to train BERT classifier.")
 
 # BERT Squad task specific flags.

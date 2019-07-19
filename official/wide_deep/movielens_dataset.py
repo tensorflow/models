@@ -35,12 +35,14 @@ from official.utils.flags import core as flags_core
 
 _BUFFER_SUBDIR = "wide_deep_buffer"
 _FEATURE_MAP = {
-    movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-    movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-    movielens.TIMESTAMP_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-    movielens.GENRE_COLUMN: tf.FixedLenFeature(
+    movielens.USER_COLUMN: tf.compat.v1.FixedLenFeature([1], dtype=tf.int64),
+    movielens.ITEM_COLUMN: tf.compat.v1.FixedLenFeature([1], dtype=tf.int64),
+    movielens.TIMESTAMP_COLUMN: tf.compat.v1.FixedLenFeature([1],
+                                                             dtype=tf.int64),
+    movielens.GENRE_COLUMN: tf.compat.v1.FixedLenFeature(
         [movielens.N_GENRE], dtype=tf.int64),
-    movielens.RATING_COLUMN: tf.FixedLenFeature([1], dtype=tf.float32),
+    movielens.RATING_COLUMN: tf.compat.v1.FixedLenFeature([1],
+                                                          dtype=tf.float32),
 }
 
 _BUFFER_SIZE = {

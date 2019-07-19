@@ -20,6 +20,8 @@ from __future__ import print_function
 
 from absl.testing import parameterized
 
+import six
+from six.moves import range
 import tensorflow as tf
 
 from object_detection import eval_util
@@ -113,7 +115,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op)
       metrics = sess.run(metrics)
@@ -142,7 +144,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)
@@ -173,7 +175,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)

@@ -28,7 +28,9 @@ import tensorflow as tf
 
 from official.transformer.v2 import misc
 from official.transformer.v2 import transformer_main as tm
-from tensorflow.python.eager import context
+from official.utils.misc import keras_utils
+
+from tensorflow.python.eager import context # pylint: disable=ungrouped-imports
 
 FLAGS = flags.FLAGS
 FIXED_TIMESTAMP = 'my_time_stamp'
@@ -82,21 +84,27 @@ class TransformerTaskTest(tf.test.TestCase):
     t = tm.TransformerTask(FLAGS)
     t.train()
 
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_train_static_batch(self):
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.static_batch = True
     t = tm.TransformerTask(FLAGS)
     t.train()
 
-  def test_train_dist_strat(self):
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
+  def test_train_1_gpu_with_dist_strat(self):
     FLAGS.distribution_strategy = 'one_device'
     t = tm.TransformerTask(FLAGS)
     t.train()
 
-  @unittest.skipUnless(
-      tf.test.is_built_with_cuda() and context.num_gpus() >= 2,
-      'requires 2 GPUs')
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_train_2_gpu(self):
+    if context.num_gpus() < 2:
+      self.skipTest(
+          '{} GPUs are not available for this test. {} GPUs are available'.
+          format(2, context.num_gpus()))
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.num_gpus = 2
     FLAGS.param_set = 'base'
@@ -104,7 +112,12 @@ class TransformerTaskTest(tf.test.TestCase):
     t.train()
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_train_2_gpu_fp16(self):
+    if context.num_gpus() < 2:
+      self.skipTest(
+          '{} GPUs are not available for this test. {} GPUs are available'.
+          format(2, context.num_gpus()))
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.num_gpus = 2
     FLAGS.param_set = 'base'

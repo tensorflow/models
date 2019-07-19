@@ -29,6 +29,7 @@ import tensorflow as tf
 
 # Import BERT model libraries.
 from official.bert import bert_models
+from official.bert import common_flags
 from official.bert import input_pipeline
 from official.bert import model_saving_utils
 from official.bert import model_training_utils
@@ -42,44 +43,23 @@ flags.DEFINE_enum(
     'trains the model and evaluates in the meantime. '
     '`export_only`: will take the latest checkpoint inside '
     'model_dir and export a `SavedModel`.')
-flags.DEFINE_string('bert_config_file', None,
-                    'Bert configuration file to define core bert layers.')
-flags.DEFINE_string(
-    'model_dir', None,
-    ('The directory where the model weights and training/evaluation summaries '
-     'are stored. If not specified, save to /tmp/bert20/.'))
-flags.DEFINE_string('tpu', '', 'TPU address to connect to.')
 flags.DEFINE_string('train_data_path', None,
                     'Path to training data for BERT classifier.')
 flags.DEFINE_string('eval_data_path', None,
                     'Path to evaluation data for BERT classifier.')
 flags.DEFINE_string(
-    'init_checkpoint', None,
-    'Initial checkpoint (usually from a pre-trained BERT model).')
-flags.DEFINE_string(
     'model_export_path', None,
     'Path to the directory, where trainined model will be '
     'exported.')
-flags.DEFINE_enum(
-    'strategy_type', 'mirror', ['tpu', 'mirror'],
-    'Distribution Strategy type to use for training. `tpu` uses '
-    'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
-    'single host.')
 # Model training specific flags.
 flags.DEFINE_string(
     'input_meta_data_path', None,
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
 flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
-flags.DEFINE_integer('eval_batch_size', 8, 'Batch size for evaluation.')
-flags.DEFINE_integer('num_train_epochs', 3,
-                     'Total number of training epochs to perform.')
-flags.DEFINE_integer(
-    'steps_per_loop', 200,
-    'Number of steps per graph-mode loop. Only training step '
-    'happens inside the loop. Callbacks will not be called '
-    'inside.')
-flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
+flags.DEFINE_integer('eval_batch_size', 32, 'Batch size for evaluation.')
+
+common_flags.define_common_bert_flags()
 
 FLAGS = flags.FLAGS
 
@@ -226,8 +206,9 @@ def run_bert(strategy, input_meta_data):
       use_remote_tpu=use_remote_tpu)
 
   if FLAGS.model_export_path:
-    model_saving_utils.export_bert_model(
-        FLAGS.model_export_path, model=trained_model)
+    with tf.device(model_training_utils.get_primary_cpu_task(use_remote_tpu)):
+      model_saving_utils.export_bert_model(
+          FLAGS.model_export_path, model=trained_model)
   return trained_model
 
 
@@ -257,4 +238,5 @@ def main(_):
 if __name__ == '__main__':
   flags.mark_flag_as_required('bert_config_file')
   flags.mark_flag_as_required('input_meta_data_path')
+  flags.mark_flag_as_required('model_dir')
   app.run(main)

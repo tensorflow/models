@@ -83,10 +83,22 @@ class TransformerBenchmark(PerfZeroBenchmark):
 
     metrics = []
     if 'bleu_uncased' in stats:
-      metrics.append({'name': 'bleu_uncased',
-                      'value': stats['bleu_uncased'],
-                      'min_value': bleu_min,
-                      'max_value': bleu_max})
+      if 'bleu_uncased_history' in stats:
+        bleu_uncased_best = max(stats['bleu_uncased_history'],
+                                key=lambda x: x[1])
+        metrics.append({'name': 'bleu_uncased',
+                        'value': bleu_uncased_best[1],
+                        'min_value': bleu_min,
+                        'max_value': bleu_max})
+        metrics.append({'name': 'bleu_best_score_iteration',
+                        'value': bleu_uncased_best[0]})
+        metrics.append({'name': 'bleu_uncased_last',
+                        'value': stats['bleu_uncased']})
+      else:
+        metrics.append({'name': 'bleu_uncased',
+                        'value': stats['bleu_uncased'],
+                        'min_value': bleu_min,
+                        'max_value': bleu_max})
 
     if (warmup and 'step_timestamp_log' in stats and
         len(stats['step_timestamp_log']) > warmup):
@@ -142,9 +154,9 @@ class TransformerBaseKerasAccuracy(TransformerBenchmark):
     FLAGS['bleu_source'].value = self.bleu_source
     FLAGS['bleu_ref'].value = self.bleu_ref
     FLAGS.param_set = 'base'
-    FLAGS.batch_size = 4096
-    FLAGS.train_steps = 100000
-    FLAGS.steps_between_evals = 5000
+    FLAGS.batch_size = 2048
+    FLAGS.train_steps = 1000
+    FLAGS.steps_between_evals = 500
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     # These bleu scores are based on test runs after at this limited
     # number of steps and batch size after verifying SOTA at 8xV100s.
@@ -249,7 +261,10 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
   def benchmark_8_gpu(self):
     """Benchmark 8 gpu.
 
-      Should converge to 28.4 BLEU (uncased). This has not be verified yet."
+    Over 6 runs with eval every 20K steps the average highest value was 28.195
+    (bleu uncased). 28.424 was the highest and 27.96 the lowest. The values are
+    the highest value seen during a run and occurred at a median of iteration 9.
+    Iterations are not epochs, an iteration is a number of steps between evals.
     """
     self._setup()
     FLAGS.num_gpus = 8
@@ -260,7 +275,7 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
     FLAGS['bleu_ref'].value = self.bleu_ref
     FLAGS.param_set = 'big'
     FLAGS.batch_size = 3072*8
-    FLAGS.train_steps = 400000
+    FLAGS.train_steps = 20000 * 12
     FLAGS.steps_between_evals = 20000
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
@@ -271,7 +286,7 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
   def benchmark_8_gpu_static_batch(self):
     """Benchmark 8 gpu.
 
-      Should converge to 28.4 BLEU (uncased). This has not be verified yet."
+    Should converge to 28.4 BLEU (uncased). This has not be verified yet."
     """
     self._setup()
     FLAGS.num_gpus = 8
@@ -284,9 +299,84 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
     FLAGS.batch_size = 3072*8
     FLAGS.static_batch = True
     FLAGS.max_length = 64
-    FLAGS.train_steps = 100000
-    FLAGS.steps_between_evals = 5000
+    FLAGS.train_steps = 20000 * 12
+    FLAGS.steps_between_evals = 20000
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=28,
+                                   bleu_max=29)
+
+  def benchmark_8_gpu_fp16(self):
+    """Benchmark 8 gpu with dynamic batch and fp16.
+
+      Should converge to 28.4 BLEU (uncased). This has not be verified yet."
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'big'
+    FLAGS.batch_size = 3072*8
+    FLAGS.train_steps = 20000 * 12
+    FLAGS.steps_between_evals = 20000
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=28,
+                                   bleu_max=29)
+
+  def benchmark_8_gpu_static_batch_fp16(self):
+    """Benchmark 8 gpu with static batch and fp16.
+
+      Should converge to 28.4 BLEU (uncased). This has not be verified yet."
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'big'
+    FLAGS.batch_size = 3072*8
+    FLAGS.static_batch = True
+    FLAGS.max_length = 64
+    FLAGS.train_steps = 400000
+    FLAGS.steps_between_evals = 20000
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_static_batch_fp16')
+    self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
+                                   log_steps=FLAGS.log_steps,
+                                   bleu_min=28,
+                                   bleu_max=29)
+
+  def benchmark_xla_8_gpu_static_batch_fp16(self):
+    """Benchmark 8 gpu with static batch, XLA, and FP16.
+
+      Should converge to 28.4 BLEU (uncased). This has not be verified yet."
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_xla = True
+    FLAGS.data_dir = self.train_data_dir
+    FLAGS.vocab_file = self.vocab_file
+    # Sets values directly to avoid validation check.
+    FLAGS['bleu_source'].value = self.bleu_source
+    FLAGS['bleu_ref'].value = self.bleu_ref
+    FLAGS.param_set = 'big'
+    FLAGS.batch_size = 3072*8
+    FLAGS.static_batch = True
+    FLAGS.max_length = 64
+    FLAGS.train_steps = 400000
+    FLAGS.steps_between_evals = 20000
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_xla_8_gpu_static_batch_fp16')
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps,
                                    bleu_min=28,

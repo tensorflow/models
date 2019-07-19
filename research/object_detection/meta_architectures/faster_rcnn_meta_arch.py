@@ -108,6 +108,7 @@ from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
+from object_detection.utils import variables_helper
 
 slim = tf.contrib.slim
 
@@ -210,7 +211,7 @@ class FasterRCNNFeatureExtractor(object):
       the model graph.
     """
     variables_to_restore = {}
-    for variable in tf.global_variables():
+    for variable in variables_helper.get_global_variables_safely():
       for scope_name in [first_stage_feature_extractor_scope,
                          second_stage_feature_extractor_scope]:
         if variable.op.name.startswith(scope_name):
@@ -275,7 +276,7 @@ class FasterRCNNKerasFeatureExtractor(object):
       the model graph.
     """
     variables_to_restore = {}
-    for variable in tf.global_variables():
+    for variable in variables_helper.get_global_variables_safely():
       for scope_name in [first_stage_feature_extractor_scope,
                          second_stage_feature_extractor_scope]:
         if variable.op.name.startswith(scope_name):
@@ -1193,6 +1194,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         detection_masks = self._gather_instance_masks(
             detection_masks, detection_classes)
 
+      detection_masks = tf.cast(detection_masks, tf.float32)
       prediction_dict[fields.DetectionResultFields.detection_masks] = (
           tf.reshape(tf.sigmoid(detection_masks),
                      [batch_size, max_detection, mask_height, mask_width]))
@@ -1461,9 +1463,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
             mask_predictions=mask_predictions)
 
       if 'rpn_features_to_crop' in prediction_dict and self._initial_crop_size:
-        self._add_detection_features_output_node(
-            detections_dict[fields.DetectionResultFields.detection_boxes],
-            prediction_dict['rpn_features_to_crop'])
+        detections_dict[
+            'detection_features'] = self._add_detection_features_output_node(
+                detections_dict[fields.DetectionResultFields.detection_boxes],
+                prediction_dict['rpn_features_to_crop'])
 
       return detections_dict
 
@@ -1474,18 +1477,25 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
   def _add_detection_features_output_node(self, detection_boxes,
                                           rpn_features_to_crop):
-    """Add the detection features to the output node.
+    """Add detection features to outputs.
 
-    The detection features are from cropping rpn_features with boxes.
-    Each bounding box has one feature vector of length depth, which comes from
-    mean_pooling of the cropped rpn_features.
+    This function extracts box features for each box in rpn_features_to_crop.
+    It returns the extracted box features, reshaped to
+    [batch size, max_detections, height, width, depth], and average pools
+    the extracted features across the spatial dimensions and adds a graph node
+    to the pooled features named 'pooled_detection_features'
 
     Args:
       detection_boxes: a 3-D float32 tensor of shape
-        [batch_size, max_detection, 4] which represents the bounding boxes.
+        [batch_size, max_detections, 4] which represents the bounding boxes.
       rpn_features_to_crop: A 4-D float32 tensor with shape
         [batch, height, width, depth] representing image features to crop using
         the proposals boxes.
+
+    Returns:
+      detection_features: a 4-D float32 tensor of shape
+        [batch size, max_detections, height, width, depth] representing
+        cropped image features
     """
     with tf.name_scope('SecondStageDetectionFeaturesExtract'):
       flattened_detected_feature_maps = (
@@ -1495,15 +1505,23 @@ class FasterRCNNMetaArch(model.DetectionModel):
           flattened_detected_feature_maps)
 
       batch_size = tf.shape(detection_boxes)[0]
-      max_detection = tf.shape(detection_boxes)[1]
+      max_detections = tf.shape(detection_boxes)[1]
       detection_features_pool = tf.reduce_mean(
           detection_features_unpooled, axis=[1, 2])
-      detection_features = tf.reshape(
+      reshaped_detection_features_pool = tf.reshape(
           detection_features_pool,
-          [batch_size, max_detection, tf.shape(detection_features_pool)[-1]])
+          [batch_size, max_detections, tf.shape(detection_features_pool)[-1]])
+      reshaped_detection_features_pool = tf.identity(
+          reshaped_detection_features_pool, 'pooled_detection_features')
 
-    detection_features = tf.identity(
-        detection_features, 'detection_features')
+      reshaped_detection_features = tf.reshape(
+          detection_features_unpooled,
+          [batch_size, max_detections,
+           tf.shape(detection_features_unpooled)[1],
+           tf.shape(detection_features_unpooled)[2],
+           tf.shape(detection_features_unpooled)[3]])
+
+    return reshaped_detection_features
 
   def _postprocess_rpn(self,
                        rpn_box_encodings_batch,
@@ -1749,6 +1767,15 @@ class FasterRCNNMetaArch(model.DetectionModel):
         resized_masks_list.append(resized_mask)
 
       groundtruth_masks_list = resized_masks_list
+    # Masks could be set to bfloat16 in the input pipeline for performance
+    # reasons. Convert masks back to floating point space here since the rest of
+    # this module assumes groundtruth to be of float32 type.
+    float_groundtruth_masks_list = []
+    if groundtruth_masks_list:
+      for mask in groundtruth_masks_list:
+        float_groundtruth_masks_list.append(tf.cast(mask, tf.float32))
+      groundtruth_masks_list = float_groundtruth_masks_list
+
     if self.groundtruth_has_field(fields.BoxListFields.weights):
       groundtruth_weights_list = self.groundtruth_lists(
           fields.BoxListFields.weights)
@@ -2619,7 +2646,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
           self.first_stage_feature_extractor_scope,
           self.second_stage_feature_extractor_scope)
 
-    variables_to_restore = tf.global_variables()
+    variables_to_restore = variables_helper.get_global_variables_safely()
     variables_to_restore.append(slim.get_or_create_global_step())
     # Only load feature extractor variables to be consistent with loading from
     # a classification checkpoint.

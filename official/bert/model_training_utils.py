@@ -24,7 +24,8 @@ import os
 from absl import logging
 import tensorflow as tf
 
-SUMMARY_TXT = 'training_summary.txt'
+_SUMMARY_TXT = 'training_summary.txt'
+_MIN_SUMMARY_STEPS = 10
 
 
 def get_primary_cpu_task(use_remote_tpu=False):
@@ -65,13 +66,23 @@ def _float_metric_value(metric):
 
 def _steps_to_run(current_step, steps_per_epoch, steps_per_loop):
   """Calculates steps to run on device."""
-  if steps_per_loop <= 1:
+  if steps_per_loop <= 0:
+    raise ValueError('steps_per_loop should be positive integer.')
+  if steps_per_loop == 1:
     return steps_per_loop
   remainder_in_epoch = current_step % steps_per_epoch
   if remainder_in_epoch != 0:
     return min(steps_per_epoch - remainder_in_epoch, steps_per_loop)
   else:
     return steps_per_loop
+
+
+def _write_txt_summary(training_summary, model_dir):
+  """Writes a summary text file to record stats."""
+  summary_path = os.path.join(model_dir, _SUMMARY_TXT)
+  with tf.io.gfile.GFile(summary_path, 'wb') as f:
+    logging.info('Training Summary: \n%s', str(training_summary))
+    f.write(json.dumps(training_summary, indent=4))
 
 
 def run_customized_training_loop(
@@ -91,7 +102,8 @@ def run_customized_training_loop(
     metric_fn=None,
     init_checkpoint=None,
     use_remote_tpu=False,
-    custom_callbacks=None):
+    custom_callbacks=None,
+    run_eagerly=False):
   """Run BERT pretrain model training using low-level API.
 
   Arguments:
@@ -128,6 +140,8 @@ def run_customized_training_loop(
       custom_callbacks: A list of Keras Callbacks objects to run during
         training. More specifically, `on_batch_begin()`, `on_batch_end()`,
         methods are invoked during training.
+      run_eagerly: Whether to run model training in pure eager execution. This
+        should be disable for TPUStrategy.
 
   Returns:
       Trained model.
@@ -157,6 +171,16 @@ def run_customized_training_loop(
     steps_per_loop = steps_per_epoch
   assert tf.executing_eagerly()
 
+  if run_eagerly:
+    if steps_per_loop > 1:
+      raise ValueError(
+          'steps_per_loop is used for performance optimization. When you want '
+          'to run eagerly, you cannot leverage graph mode loop.')
+    if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
+      raise ValueError(
+          'TPUStrategy should not run eagerly as it heavily replies on graph'
+          ' optimization for the distributed system.')
+
   if eval_input_fn and (eval_steps is None or metric_fn is None):
     raise ValueError(
         '`eval_step` and `metric_fn` are required when `eval_input_fn ` '
@@ -165,14 +189,14 @@ def run_customized_training_loop(
     raise ValueError(
         'if `metric_fn` is specified, metric_fn must be a callable.')
 
+  total_training_steps = steps_per_epoch * epochs
+
   # To reduce unnecessary send/receive input pipeline operation, we place input
   # pipeline ops in worker task.
   with tf.device(get_primary_cpu_task(use_remote_tpu)):
     train_iterator = _get_input_iterator(train_input_fn, strategy)
 
     with strategy.scope():
-      total_training_steps = steps_per_epoch * epochs
-
       # To correctly place the model weights on accelerators,
       # model and optimizer should be created in scope.
       model, sub_model = model_fn()
@@ -198,9 +222,36 @@ def run_customized_training_loop(
           eval_metric.__class__.from_config(eval_metric.get_config())
           if eval_metric else None)
 
+      # Create summary writers
+      eval_summary_writer = tf.summary.create_file_writer(
+          os.path.join(model_dir, 'summaries/eval'))
+      if steps_per_loop >= _MIN_SUMMARY_STEPS:
+        # Only writes summary when the stats are collected sufficiently over
+        # enough steps.
+        train_summary_writer = tf.summary.create_file_writer(
+            os.path.join(model_dir, 'summaries/train'))
+      else:
+        train_summary_writer = None
+
+      def _replicated_step(inputs):
+        """Replicated training step."""
+
+        inputs, labels = inputs
+        with tf.GradientTape() as tape:
+          model_outputs = model(inputs)
+          loss = loss_fn(labels, model_outputs)
+
+        tvars = model.trainable_variables
+        grads = tape.gradient(loss, tvars)
+        optimizer.apply_gradients(zip(grads, tvars))
+        # For reporting, the metric takes the mean of losses.
+        train_loss_metric.update_state(loss)
+        if train_metric:
+          train_metric.update_state(labels, model_outputs)
+
       @tf.function
-      def train_step(iterator, steps):
-        """Performs a distributed training step.
+      def train_steps(iterator, steps):
+        """Performs distributed training steps in a loop.
 
         Args:
           iterator: the distributed iterator of training datasets.
@@ -213,26 +264,19 @@ def run_customized_training_loop(
           raise ValueError('steps should be an Tensor. Python object may cause '
                            'retracing.')
 
-        def _replicated_step(inputs):
-          """Replicated training step."""
-
-          inputs, labels = inputs
-          with tf.GradientTape() as tape:
-            model_outputs = model(inputs)
-            loss = loss_fn(labels, model_outputs)
-
-          tvars = model.trainable_variables
-          grads = tape.gradient(loss, tvars)
-          optimizer.apply_gradients(zip(grads, tvars))
-          # For reporting, the metric takes the mean of losses.
-          train_loss_metric.update_state(loss)
-          if train_metric:
-            train_metric.update_state(labels, model_outputs)
-
         for _ in tf.range(steps):
           strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
 
-      @tf.function
+      def train_single_step(iterator):
+        """Performs a distributed training step.
+
+        Args:
+          iterator: the distributed iterator of training datasets.
+        Raises:
+          ValueError: Any of the arguments or tensor shapes are invalid.
+        """
+        strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+
       def test_step(iterator):
         """Calculates evaluation metrics on distributed devices."""
 
@@ -245,12 +289,21 @@ def run_customized_training_loop(
 
         strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
+      if not run_eagerly:
+        train_single_step = tf.function(train_single_step)
+        test_step = tf.function(test_step)
+
       def _run_evaluation(current_training_step, test_iterator):
         """Runs validation steps and aggregate metrics."""
         for _ in range(eval_steps):
           test_step(test_iterator)
+        eval_metric_value = _float_metric_value(eval_metric)
         logging.info('Step: [%d] Validation metric = %f', current_training_step,
-                     _float_metric_value(eval_metric))
+                     eval_metric_value)
+        with eval_summary_writer.as_default():
+          tf.summary.scalar(
+              eval_metric.name, eval_metric_value, step=current_training_step)
+          eval_summary_writer.flush()
 
       def _run_callbacks_on_batch_begin(batch):
         """Runs custom callbacks at the start of every step."""
@@ -289,19 +342,37 @@ def run_customized_training_loop(
         _run_callbacks_on_batch_begin(current_step)
         # Runs several steps in the host while loop.
         steps = _steps_to_run(current_step, steps_per_epoch, steps_per_loop)
-        # Converts steps to a Tensor to avoid tf.function retracing.
-        train_step(train_iterator, tf.convert_to_tensor(steps, dtype=tf.int32))
+
+        if steps == 1:
+          # TODO(zongweiz): merge with train_steps once tf.while_loop
+          # GPU performance bugs are fixed.
+          train_single_step(train_iterator)
+        else:
+          # Converts steps to a Tensor to avoid tf.function retracing.
+          train_steps(train_iterator,
+                      tf.convert_to_tensor(steps, dtype=tf.int32))
         _run_callbacks_on_batch_end(current_step)
         current_step += steps
 
+        train_loss = _float_metric_value(train_loss_metric)
         # Updates training logging.
         training_status = 'Train Step: %d/%d  / loss = %s' % (
-            current_step, total_training_steps,
-            _float_metric_value(train_loss_metric))
+            current_step, total_training_steps, train_loss)
         if train_metric:
-          training_status += ' training metric = %s' % _float_metric_value(
-              train_metric)
+          train_metric_value = _float_metric_value(train_metric)
+          training_status += ' training metric = %f' % train_metric_value
+        else:
+          train_metric_value = None
         logging.info(training_status)
+
+        if train_summary_writer:
+          with train_summary_writer.as_default():
+            tf.summary.scalar(
+                train_loss_metric.name, train_loss, step=current_step)
+            if train_metric_value:
+              tf.summary.scalar(
+                  train_metric.name, train_metric_value, step=current_step)
+            train_summary_writer.flush()
 
         # Saves model checkpoints and run validation steps at every epoch end.
         if current_step % steps_per_epoch == 0:
@@ -335,9 +406,6 @@ def run_customized_training_loop(
             train_metric)
         training_summary['eval_metrics'] = _float_metric_value(eval_metric)
 
-      summary_path = os.path.join(model_dir, SUMMARY_TXT)
-      with tf.io.gfile.GFile(summary_path, 'wb') as f:
-        logging.info('Training Summary: \n%s', str(training_summary))
-        f.write(json.dumps(training_summary, indent=4))
+      _write_txt_summary(training_summary, model_dir)
 
       return model

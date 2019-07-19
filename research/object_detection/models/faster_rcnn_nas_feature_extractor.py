@@ -23,6 +23,7 @@ https://arxiv.org/abs/1707.07012
 import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
+from object_detection.utils import variables_helper
 from nets.nasnet import nasnet
 from nets.nasnet import nasnet_utils
 
@@ -307,7 +308,7 @@ class FasterRCNNNASFeatureExtractor(
     # Note that the NAS checkpoint only contains the moving average version of
     # the Variables so we need to generate an appropriate dictionary mapping.
     variables_to_restore = {}
-    for variable in tf.global_variables():
+    for variable in variables_helper.get_global_variables_safely():
       if variable.op.name.startswith(
           first_stage_feature_extractor_scope):
         var_name = variable.op.name.replace(

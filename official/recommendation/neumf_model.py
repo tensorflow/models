@@ -45,7 +45,7 @@ from official.recommendation import stat_utils
 from official.utils.logs import mlperf_helper
 
 
-def _sparse_to_dense_grads(grads_and_vars):
+def sparse_to_dense_grads(grads_and_vars):
   """Convert sparse gradients to dense gradients.
 
   All sparse gradients, which are represented as instances of tf.IndexedSlices,
@@ -135,7 +135,7 @@ def neumf_model_fn(features, labels, mode, params):
     tvars = tf.compat.v1.trainable_variables()
     gradients = optimizer.compute_gradients(
         loss, tvars, colocate_gradients_with_ops=True)
-    gradients = _sparse_to_dense_grads(gradients)
+    gradients = sparse_to_dense_grads(gradients)
     minimize_op = optimizer.apply_gradients(
         gradients, global_step=global_step, name="train")
     update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)

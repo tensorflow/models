@@ -21,7 +21,7 @@ Please follow the below steps before running models in this repo:
    ```
    export PYTHONPATH="$PYTHONPATH:/path/to/models"
    ```
-   
+
    Using Colab:
    ```
    import os
@@ -45,6 +45,8 @@ To make Official Models easier to use, we are planning to create a pip installab
 
 **NOTE:** Please make sure to follow the steps in the [Requirements](#requirements) section.
 
+* [bert](bert): A powerful pre-trained language representation model: BERT, which
+  stands for Bidirectional Encoder Representations from Transformers.
 * [boosted_trees](boosted_trees): A Gradient Boosted Trees model to classify higgs boson process from HIGGS Data Set.
 * [mnist](mnist): A basic model to classify digits from the MNIST dataset.
 * [resnet](resnet): A deep residual network that can be used to classify both CIFAR-10 and ImageNet's dataset of 1000 classes.

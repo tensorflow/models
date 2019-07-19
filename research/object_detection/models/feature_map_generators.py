@@ -79,14 +79,19 @@ def create_conv_block(
   """
   layers = []
   if use_depthwise:
-    layers.append(tf.keras.layers.SeparableConv2D(
-        depth,
-        [kernel_size, kernel_size],
-        depth_multiplier=1,
-        padding=padding,
-        strides=stride,
-        name=layer_name + '_depthwise_conv',
-        **conv_hyperparams.params()))
+    kwargs = conv_hyperparams.params()
+    # Both the regularizer and initializer apply to the depthwise layer,
+    # so we remap the kernel_* to depthwise_* here.
+    kwargs['depthwise_regularizer'] = kwargs['kernel_regularizer']
+    kwargs['depthwise_initializer'] = kwargs['kernel_initializer']
+    layers.append(
+        tf.keras.layers.SeparableConv2D(
+            depth, [kernel_size, kernel_size],
+            depth_multiplier=1,
+            padding=padding,
+            strides=stride,
+            name=layer_name + '_depthwise_conv',
+            **kwargs))
   else:
     layers.append(tf.keras.layers.Conv2D(
         depth,

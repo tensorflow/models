@@ -23,6 +23,7 @@ import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -42,6 +43,8 @@ class BaseTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
+    if keras_utils.is_v2_0:
+      tf.compat.v1.disable_eager_execution()
     cifar10_main.define_cifar_flags()
 
   def setUp(self):
@@ -76,7 +79,7 @@ class BaseTest(tf.test.TestCase):
     self.assertAllEqual(label.shape, ())
     self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))
 
-    with self.test_session() as sess:
+    with self.session() as sess:
       image, label = sess.run([image, label])
 
       self.assertEqual(label, 7)

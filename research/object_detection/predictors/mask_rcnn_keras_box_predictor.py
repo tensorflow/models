@@ -87,7 +87,8 @@ class MaskRCNNKerasBoxPredictor(box_predictor.KerasBoxPredictor):
 
   def _predict(self,
                image_features,
-               prediction_stage=2):
+               prediction_stage=2,
+               **kwargs):
     """Optionally computes encoded object locations, confidences, and masks.
 
     Predicts the heads belonging to the given prediction stage.
@@ -98,6 +99,7 @@ class MaskRCNNKerasBoxPredictor(box_predictor.KerasBoxPredictor):
         features for each image. The length of the list should be 1 otherwise
         a ValueError will be raised.
       prediction_stage: Prediction stage. Acceptable values are 2 and 3.
+      **kwargs: Unused Keyword args
 
     Returns:
       A dictionary containing the predicted tensors that are listed in

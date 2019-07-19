@@ -19,19 +19,21 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import mock
+import unittest
 
+import mock
 import numpy as np
 import tensorflow as tf
 
-from absl.testing import flagsaver
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import neumf_model
 from official.recommendation import ncf_common
 from official.recommendation import ncf_estimator_main
 from official.recommendation import ncf_keras_main
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
+
 from tensorflow.python.eager import context # pylint: disable=ungrouped-imports
 
 
@@ -54,6 +56,7 @@ class NcfTest(tf.test.TestCase):
     rconst.NUM_EVAL_NEGATIVES = self.num_eval_negatives_old
     rconst.TOP_K = self.top_k_old
 
+  @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
   def get_hit_rate_and_ndcg(self, predicted_scores_by_user, items_by_user,
                             top_k=rconst.TOP_K, match_mlperf=False):
     rconst.TOP_K = top_k
@@ -82,10 +85,10 @@ class NcfTest(tf.test.TestCase):
       hr = metric_ops[rconst.HR_KEY]
       ndcg = metric_ops[rconst.NDCG_KEY]
 
-      init = [tf.global_variables_initializer(),
-              tf.local_variables_initializer()]
+      init = [tf.compat.v1.global_variables_initializer(),
+              tf.compat.v1.local_variables_initializer()]
 
-    with self.test_session(graph=g) as sess:
+    with self.session(graph=g) as sess:
       sess.run(init)
       return sess.run([hr[1], ndcg[1]])
 
@@ -188,12 +191,14 @@ class NcfTest(tf.test.TestCase):
 
   _BASE_END_TO_END_FLAGS = ['-batch_size', '1024', '-train_epochs', '1']
 
+  @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator(self):
     integration.run_synthetic(
         ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
         extra_flags=self._BASE_END_TO_END_FLAGS)
 
+  @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator_mlperf(self):
     integration.run_synthetic(
