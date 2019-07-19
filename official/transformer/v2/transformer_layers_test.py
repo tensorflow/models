@@ -77,16 +77,6 @@ class TransformerLayersTest(tf.test.TestCase):
     output_logits = metrics.MetricLayer(vocab_size)([logits, targets])
     self.assertEqual(output_logits.shape.as_list(), [None, None, vocab_size,])
 
-  def test_loss_layer(self):
-    vocab_size, label_smoothing = 50, 0.1
-    logits = tf.keras.layers.Input((None, vocab_size),
-                                   dtype="float32",
-                                   name="logits")
-    targets = tf.keras.layers.Input((None,), dtype="int64", name="targets")
-    output_logits = metrics.LossLayer(vocab_size,
-                                      label_smoothing)([logits, targets])
-    self.assertEqual(output_logits.shape.as_list(), [None, None, vocab_size,])
-
 
 if __name__ == "__main__":
   tf.test.main()
