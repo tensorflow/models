@@ -213,12 +213,14 @@ class NcfTest(tf.test.TestCase):
         ['-distribution_strategy', 'off'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_end_to_end_keras_dist_strat(self):
     integration.run_synthetic(
         ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
         extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '0'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_end_to_end_keras_dist_strat_ctl(self):
     flags = (self._BASE_END_TO_END_FLAGS +
              ['-num_gpus', '0'] +
@@ -228,6 +230,7 @@ class NcfTest(tf.test.TestCase):
         extra_flags=flags)
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_end_to_end_keras_1_gpu_dist_strat(self):
     if context.num_gpus() < 1:
       self.skipTest(
@@ -239,6 +242,7 @@ class NcfTest(tf.test.TestCase):
         extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '1'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_end_to_end_keras_2_gpu(self):
     if context.num_gpus() < 2:
       self.skipTest(
