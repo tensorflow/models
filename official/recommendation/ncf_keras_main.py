@@ -275,6 +275,10 @@ def run_ncf(_):
       num_gpus=FLAGS.num_gpus)
   params["distribute_strategy"] = strategy
 
+  if keras_utils.is_v2_0() and strategy is not None:
+    logging.error("NCF Keras only works with distribution strategy in TF 2.0")
+    return
+  
   if (params["keras_use_ctl"] and (
       not keras_utils.is_v2_0() or strategy is None)):
     logging.error(
