@@ -60,6 +60,9 @@ no-docstring-rgx=(__.*__|main)
 # Min length in lines of a function that requires a docstring.
 docstring-min-length=10
 
+# List of builtins function names that should not be used, separated by a comma
+bad-functions=apply,input,reduce
+
 # Regular expression matching correct argument names
 argument-rgx=^[a-z][a-z0-9_]*$
 
@@ -89,10 +92,6 @@ method-rgx=^(?:(?P<exempt>__[a-z0-9_]+__|next)|(?P<camel_case>_{0,2}[A-Z][a-zA-Z
 
 # Regular expression matching correct module names
 module-rgx=^(_?[a-z][a-z0-9_]*)|__init__|PRESUBMIT|PRESUBMIT_unittest$
-
-# Regular expression which should only match function or class names that do
-# not require a docstring.
-no-docstring-rgx=(__.*__|main|.*ArgParser)
 
 # Naming hint for variable names
 variable-name-hint=[a-z_][a-z0-9_]{2,30}$
