@@ -169,6 +169,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_force_dist_strat')
     FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
     FLAGS.force_run_distributed = True
     self._run_and_report_benchmark()
