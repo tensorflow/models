@@ -62,7 +62,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
                        dynamic_loss_scale=False, fp16_implementation=False,
                        loss_scale=False,
                        tf_data_experimental_slack=False, enable_xla=False,
-                       force_run_distributed=False):
+                       force_v2_in_keras_compile=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -88,7 +88,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     tf_data_experimental_slack: Determines whether to enable tf.data's
       `experimental_slack` option.
     enable_xla: Determines if XLA (auto clustering) is turned on.
-    force_run_distributed: Forces the use of run_distribued path even if not
+    force_v2_in_keras_compile: Forces the use of run_distribued path even if not
       using a `strategy`. This is not the same as
       `tf.distribute.OneDeviceStrategy`
 
@@ -280,9 +280,9 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         name="enable_xla", default=False,
         help="Whether to enable XLA auto jit compilation")
 
-  if force_run_distributed:
+  if force_v2_in_keras_compile:
     flags.DEFINE_boolean(
-        name="force_run_distributed", default=False,
+        name="force_v2_in_keras_compile", default=False,
         help="Forces the use of run_distribued path even if not"
              "using a `strategy`. This is not the same as"
              "`tf.distribute.OneDeviceStrategy`")

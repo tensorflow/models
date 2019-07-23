@@ -259,7 +259,7 @@ def define_keras_flags(dynamic_loss_scale=True):
                                 loss_scale=True,
                                 tf_data_experimental_slack=True,
                                 enable_xla=True,
-                                force_run_distributed=True)
+                                force_v2_in_keras_compile=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)

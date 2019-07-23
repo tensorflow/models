@@ -71,7 +71,8 @@ def define_transformer_flags():
       dtype=True,
       loss_scale=True,
       all_reduce_alg=True,
-      enable_xla=True
+      enable_xla=True,
+      force_v2_in_keras_compile=True
   )
 
   # Additional performance flags
