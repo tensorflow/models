@@ -56,7 +56,7 @@ def define_flags():
                                 max_train_steps=False,
                                 dtype=False,
                                 enable_xla=True,
-                                force_run_distributed=True)
+                                force_v2_in_keras_compile=True)
 
   flags_core.set_defaults(train_epochs=43,
                           batch_size=64)
