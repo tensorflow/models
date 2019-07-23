@@ -76,7 +76,6 @@ class BertBenchmarkBase(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
     self.timer_callback = BenchmarkTimerCallback()
 
     if BertBenchmarkBase.local_flags is None:
