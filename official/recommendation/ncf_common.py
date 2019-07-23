@@ -108,6 +108,7 @@ def parse_flags(flags_obj):
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
+      "stream_files": flags_obj.tpu is not None,
   }
 
 
