@@ -439,7 +439,8 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 0
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
-    FLAGS.model_dir = self._get_model_dir('benchmark_cpu_no_dist_strat_force_v2')
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_cpu_no_dist_strat_force_v2')
     FLAGS.batch_size = 128
     FLAGS.data_format = 'channels_last'
     FLAGS.force_v2_in_keras_compile = True
