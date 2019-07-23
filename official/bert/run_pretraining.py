@@ -29,6 +29,7 @@ import tensorflow as tf
 from official.bert import bert_models
 from official.bert import common_flags
 from official.bert import input_pipeline
+from official.bert import model_saving_utils
 from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
@@ -124,7 +125,7 @@ def run_customized_training(strategy,
         initial_lr, steps_per_epoch * epochs, warmup_steps)
     return pretrain_model, core_model
 
-  return model_training_utils.run_customized_training_loop(
+  trained_model = model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_pretrain_model,
       loss_fn=get_loss_fn(),
@@ -134,6 +135,16 @@ def run_customized_training(strategy,
       steps_per_loop=steps_per_loop,
       epochs=epochs,
       use_remote_tpu=use_remote_tpu)
+
+  # Creates the BERT core model outside distribution strategy scope.
+  _, core_model = bert_models.pretrain_model(bert_config, max_seq_length,
+                                             max_predictions_per_seq)
+
+  # Restores the core model from model checkpoints and get a new checkpoint only
+  # contains the core model.
+  model_saving_utils.export_pretraining_checkpoint(
+      checkpoint_dir=model_dir, model=core_model)
+  return trained_model
 
 
 def run_bert_pretrain(strategy):
@@ -183,7 +194,7 @@ def main(_):
   if strategy:
     print('***** Number of cores used : ', strategy.num_replicas_in_sync)
 
-  return run_bert_pretrain(strategy)
+  run_bert_pretrain(strategy)
 
 
 if __name__ == '__main__':

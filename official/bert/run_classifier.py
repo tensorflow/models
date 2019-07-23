@@ -159,13 +159,11 @@ def export_classifier(model_export_path, input_meta_data):
     raise ValueError('Export path is not specified: %s' % model_export_path)
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
 
-  def _model_fn():
-    return bert_models.classifier_model(bert_config, tf.float32,
-                                        input_meta_data['num_labels'],
-                                        input_meta_data['max_seq_length'])[0]
-
+  classifier_model = bert_models.classifier_model(
+      bert_config, tf.float32, input_meta_data['num_labels'],
+      input_meta_data['max_seq_length'])[0]
   model_saving_utils.export_bert_model(
-      model_export_path, model_fn=_model_fn, checkpoint_dir=FLAGS.model_dir)
+      model_export_path, model=classifier_model, checkpoint_dir=FLAGS.model_dir)
 
 
 def run_bert(strategy, input_meta_data):

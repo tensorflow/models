@@ -16,42 +16,76 @@
 
 from __future__ import absolute_import
 from __future__ import division
+# from __future__ import google_type_annotations
 from __future__ import print_function
 
 import os
 
 from absl import logging
 import tensorflow as tf
+import typing
 
 
-def export_bert_model(model_export_path,
-                      model=None,
-                      model_fn=None,
-                      checkpoint_dir=None):
+def export_bert_model(
+    model_export_path: typing.Text,
+    model: tf.keras.Model,
+    checkpoint_dir: typing.Optional[typing.Text] = None) -> None:
   """Export BERT model for serving which does not include the optimizer.
 
   Arguments:
       model_export_path: Path to which exported model will be saved.
-      model: Keras model object to export. If none, new model is created via
-        `model_fn`.
-      model_fn: Function that returns a BERT model. Used when `model` is not
-        provided.
-      checkpoint_dir: Path from which model weights will be loaded.
-  """
-  if model:
-    model.save(model_export_path, include_optimizer=False, save_format='tf')
-    return
+      model: Keras model object to export.
+      checkpoint_dir: Path from which model weights will be loaded, if
+        specified.
 
-  assert model_fn and checkpoint_dir
-  model_to_export = model_fn()
-  checkpoint = tf.train.Checkpoint(model=model_to_export)
+  Raises:
+    ValueError when either model_export_path or model is not specified.
+  """
+  if not model_export_path:
+    raise ValueError('model_export_path must be specified.')
+  if not isinstance(model, tf.keras.Model):
+    raise ValueError('model must be a tf.keras.Model object.')
+
+  if checkpoint_dir:
+    # Restores the model from latest checkpoint.
+    checkpoint = tf.train.Checkpoint(model=model)
+    latest_checkpoint_file = tf.train.latest_checkpoint(checkpoint_dir)
+    assert latest_checkpoint_file
+    logging.info('Checkpoint file %s found and restoring from '
+                 'checkpoint', latest_checkpoint_file)
+    checkpoint.restore(latest_checkpoint_file).assert_existing_objects_matched()
+
+  model.save(model_export_path, include_optimizer=False, save_format='tf')
+
+
+def export_pretraining_checkpoint(
+    checkpoint_dir: typing.Text,
+    model: tf.keras.Model,
+    checkpoint_name: typing.Optional[
+        typing.Text] = 'pretrained/bert_model.ckpt'):
+  """Exports BERT model for as a checkpoint without optimizer.
+
+  Arguments:
+      checkpoint_dir: Path to where training mdoel checkpoints are stored.
+      model: Keras model object to export.
+      checkpoint_name: File name or suffix path to export pretrained checkpoint.
+
+  Raises:
+    ValueError when either checkpoint_dir or model is not specified.
+  """
+  if not checkpoint_dir:
+    raise ValueError('checkpoint_dir must be specified.')
+  if not isinstance(model, tf.keras.Model):
+    raise ValueError('model must be a tf.keras.Model object.')
+
+  checkpoint = tf.train.Checkpoint(model=model)
   latest_checkpoint_file = tf.train.latest_checkpoint(checkpoint_dir)
   assert latest_checkpoint_file
   logging.info('Checkpoint file %s found and restoring from '
                'checkpoint', latest_checkpoint_file)
   checkpoint.restore(latest_checkpoint_file).assert_existing_objects_matched()
-  model_to_export.save(
-      model_export_path, include_optimizer=False, save_format='tf')
+  saved_path = checkpoint.save(os.path.join(checkpoint_dir, checkpoint_name))
+  logging.info('Exporting the model as a new TF checkpoint: %s', saved_path)
 
 
 class BertModelCheckpoint(tf.keras.callbacks.Callback):
