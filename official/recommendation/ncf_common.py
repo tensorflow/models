@@ -163,7 +163,8 @@ def define_ncf_flags():
       max_train_steps=False,
       dtype=False,
       all_reduce_alg=False,
-      enable_xla=True
+      enable_xla=True,
+      force_v2_in_keras_compile=True
   )
   flags_core.define_device(tpu=True)
   flags_core.define_benchmark()

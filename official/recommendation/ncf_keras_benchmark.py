@@ -122,10 +122,23 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_force_v2_early_stop(self):
+    self._setup()
+    FLAGS.early_stopping = True
+    FLAGS.force_v2_in_keras_compile = True
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_no_dist_strat_early_stop(self):
     self._setup()
     FLAGS.distribution_strategy = 'off'
     FLAGS.early_stopping = True
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_force_v2_early_stop(self):
+    self._setup()
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.early_stopping = True
+    FLAGS.force_v2_in_keras_compile = True
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_run_eagerly_early_stop(self):
@@ -139,6 +152,13 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.early_stopping = True
     FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_force_v2_early_stop(self):
+    self._setup()
+    FLAGS.early_stopping = True
+    FLAGS.enable_xla = True
+    FLAGS.force_v2_in_keras_compile = True
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_ctl_early_stop(self):
@@ -182,6 +202,14 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     """1 GPU using keras fit/compile."""
     self._setup()
     FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_force_v2_mlperf_like(self):
+    """1 GPU using compile/fit without dist_strat."""
+    self._setup()
+    FLAGS.train_epochs = 7
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.force_v2_in_keras_compile = True
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_mlperf_like(self):

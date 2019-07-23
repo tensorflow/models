@@ -205,7 +205,8 @@ def run(flags_obj):
                   optimizer=optimizer,
                   metrics=(['sparse_categorical_accuracy']
                            if flags_obj.report_accuracy_metrics else None),
-                  run_eagerly=flags_obj.run_eagerly)
+                  run_eagerly=flags_obj.run_eagerly,
+                  run_distributed=flags_obj.force_v2_in_keras_compile)
 
   callbacks = keras_common.get_callbacks(
       learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])

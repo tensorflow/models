@@ -55,7 +55,8 @@ def define_flags():
                                 synthetic_data=False,
                                 max_train_steps=False,
                                 dtype=False,
-                                enable_xla=True)
+                                enable_xla=True,
+                                force_v2_in_keras_compile=True)
 
   flags_core.set_defaults(train_epochs=43,
                           batch_size=64)
@@ -166,7 +167,8 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
                   metrics=[
                       tf.keras.metrics.Recall(top_k=1, name='RecallAt1'),
                       tf.keras.metrics.Recall(top_k=5, name='RecallAt5')],
-                  run_eagerly=flags_obj.run_eagerly)
+                  run_eagerly=flags_obj.run_eagerly,
+                  run_distributed=flags_obj.force_v2_in_keras_compile)
 
   callbacks = []
   if checkpoint_dir:
