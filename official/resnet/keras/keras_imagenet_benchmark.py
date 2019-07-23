@@ -136,7 +136,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    self._run_and_report_benchmark()
+    self._run_and_report_benchmark(top_1_min=0.736)
 
   def benchmark_8_gpu_mlperf_like(self):
     """Test similar to the rules for MLPerf 0.5.
@@ -160,7 +160,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    self._run_and_report_benchmark()
+    self._run_and_report_benchmark(top_1_min=0.736)
 
   def benchmark_xla_8_gpu_fp16_dynamic(self):
     """Test Keras model with XLA, eager, dist_strat, 8 GPUs, dynamic fp16."""
@@ -178,9 +178,11 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     # Thread tuning to improve performance.
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.use_tensor_lr = True
-    self._run_and_report_benchmark()
+    self._run_and_report_benchmark(top_1_min=0.736)
 
-  def _run_and_report_benchmark(self):
+  def _run_and_report_benchmark(self,
+                                top_1_min=MIN_TOP_1_ACCURACY,
+                                top_1_max=MAX_TOP_1_ACCURACY):
     start_time_sec = time.time()
     stats = keras_imagenet_main.run(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
@@ -188,8 +190,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     super(Resnet50KerasAccuracy, self)._report_benchmark(
         stats,
         wall_time_sec,
-        top_1_min=MIN_TOP_1_ACCURACY,
-        top_1_max=MAX_TOP_1_ACCURACY,
+        top_1_min=top_1_min,
+        top_1_max=top_1_max,
         total_batch_size=FLAGS.batch_size,
         log_steps=100)
 
