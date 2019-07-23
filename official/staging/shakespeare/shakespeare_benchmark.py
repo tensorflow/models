@@ -220,6 +220,7 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     def_flags['training_data'] = self.train_data
     def_flags['model_dir'] = ''
     def_flags['train_epochs'] = 4
+    def_flags['log_steps'] = 50
 
     super(ShakespeareKerasBenchmarkReal, self).__init__(
         output_dir=output_dir,
@@ -287,6 +288,7 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.batch_size = 64 * 8
+    FLAGS.log_steps = 10
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu(self):
@@ -294,10 +296,11 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.batch_size = 64 * 8
+    FLAGS.log_steps = 10
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
   def _run_and_report_benchmark(self):
     """Run and report benchmark."""
     super(ShakespeareKerasBenchmarkReal, self)._run_and_report_benchmark(
-        top_1_train_min=None)
+        top_1_train_min=None, log_steps=FLAGS.log_steps)

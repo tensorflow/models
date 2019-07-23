@@ -70,6 +70,10 @@ def define_flags():
   flags.DEFINE_integer(
       name='predict_length', default=1000,
       help='Length of the predicted text including the context.')
+  flags.DEFINE_integer(
+      name='log_steps', default=100,
+      help='For every log_steps, we log the timing information such as '
+      'examples per second.')
   flags.DEFINE_string(
       name='training_data', default=None,
       help='Path to file containing the training data.')
@@ -171,7 +175,8 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
         filepath=checkpoint_prefix,
         save_weights_only=True)
     callbacks.append(checkpoint_callback)
-  time_callback = keras_utils.TimeHistory(flags_obj.batch_size, 100)
+  time_callback = keras_utils.TimeHistory(flags_obj.batch_size,
+                                          flags_obj.log_steps)
   callbacks.append(time_callback)
   history = model.fit(dataset,
                       epochs=flags_obj.train_epochs,
