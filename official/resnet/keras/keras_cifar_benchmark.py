@@ -326,12 +326,13 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'off'
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_force_v2(self):
+  def benchmark_1_gpu_no_dist_strat_force_v2(self):
     """No dist strat but forced v2 execution path."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.batch_size = 128
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_force_v2')
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_force_v2')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
