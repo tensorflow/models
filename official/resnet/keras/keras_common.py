@@ -258,7 +258,8 @@ def define_keras_flags(dynamic_loss_scale=True):
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 loss_scale=True,
                                 tf_data_experimental_slack=True,
-                                enable_xla=True)
+                                enable_xla=True,
+                                force_v2_in_keras_compile=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
@@ -306,10 +307,6 @@ def define_keras_flags(dynamic_loss_scale=True):
   flags.DEFINE_boolean(
       name='batchnorm_spatial_persistent', default=True,
       help='Enable the spacial persistent mode for CuDNN batch norm kernel.')
-  flags.DEFINE_boolean(
-      name='clone_model_in_keras_dist_strat', default=None,
-      help='If False, then the experimental code path is used that doesn\'t '
-           'clone models for distribution.')
   flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')

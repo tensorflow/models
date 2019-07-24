@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.utils import spatial_transform_ops as spatial_ops

@@ -149,8 +149,8 @@ def _filter_index_sort(raw_rating_path, cache_path):
     df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
                    inplace=True, kind="mergesort")
 
-    df = df.reset_index()  # The dataframe does not reconstruct indices in the
-                           # sort or filter steps.
+    # The dataframe does not reconstruct indices in the sort or filter steps.
+    df = df.reset_index()
 
     grouped = df.groupby(movielens.USER_COLUMN, group_keys=False)
     eval_df, train_df = grouped.tail(1), grouped.apply(lambda x: x.iloc[:-1])
@@ -177,9 +177,14 @@ def _filter_index_sort(raw_rating_path, cache_path):
   return data, valid_cache
 
 
-def instantiate_pipeline(dataset, data_dir, params, constructor_type=None,
-                         deterministic=False, epoch_dir=None):
-  # type: (str, str, dict, typing.Optional[str], bool, typing.Optional[str]) -> (int, int, data_pipeline.BaseDataConstructor)
+def instantiate_pipeline(dataset,
+                         data_dir,
+                         params,
+                         constructor_type=None,
+                         deterministic=False,
+                         epoch_dir=None,
+                         generate_data_offline=False):
+  # type: (str, str, dict, typing.Optional[str], bool, typing.Optional[str], bool) -> (int, int, data_pipeline.BaseDataConstructor)
   """Load and digest data CSV into a usable form.
 
   Args:
@@ -190,6 +195,8 @@ def instantiate_pipeline(dataset, data_dir, params, constructor_type=None,
       for the input pipeline.
     deterministic: Tell the data constructor to produce deterministically.
     epoch_dir: Directory in which to store the training epochs.
+    generate_data_offline: Boolean, whether current pipeline is done offline
+      or while training.
   """
   logging.info("Beginning data preprocessing.")
 
@@ -223,10 +230,10 @@ def instantiate_pipeline(dataset, data_dir, params, constructor_type=None,
       eval_pos_items=raw_data[rconst.EVAL_ITEM_KEY],
       eval_batch_size=params["eval_batch_size"],
       batches_per_eval_step=params["batches_per_step"],
-      stream_files=params["use_tpu"],
+      stream_files=params["stream_files"],
       deterministic=deterministic,
-      epoch_dir=epoch_dir
-  )
+      epoch_dir=epoch_dir,
+      create_data_offline=generate_data_offline)
 
   run_time = timeit.default_timer() - st
   logging.info("Data preprocessing complete. Time: {:.1f} sec."

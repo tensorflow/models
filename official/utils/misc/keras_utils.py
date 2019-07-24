@@ -22,6 +22,7 @@ import time
 
 import tensorflow as tf
 from tensorflow.core.protobuf import rewriter_config_pb2
+from tensorflow.python import tf2
 from tensorflow.python.eager import profiler
 
 
@@ -41,11 +42,11 @@ class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
 
   def __init__(self, batch_size, log_steps):
-    """Callback for logging performance (# examples/second).
+    """Callback for logging performance.
 
     Args:
       batch_size: Total batch size.
-      log_steps: Interval of time history logs.
+      log_steps: Interval of steps between logging of batch level stats.
     """
     self.batch_size = batch_size
     super(TimeHistory, self).__init__()
@@ -55,8 +56,14 @@ class TimeHistory(tf.keras.callbacks.Callback):
     # Logs start of step 1 then end of each step based on log_steps interval.
     self.timestamp_log = []
 
+    # Records the time each epoch takes to run from start to finish of epoch.
+    self.epoch_runtime_log = []
+
   def on_train_end(self, logs=None):
     self.train_finish_time = time.time()
+
+  def on_epoch_begin(self, epoch, logs=None):
+    self.epoch_start = time.time()
 
   def on_batch_begin(self, batch, logs=None):
     self.global_steps += 1
@@ -77,6 +84,13 @@ class TimeHistory(tf.keras.callbacks.Callback):
           "'examples_per_second': %f}" %
           (self.global_steps, elapsed_time, examples_per_second))
       self.start_time = timestamp
+
+  def on_epoch_end(self, epoch, logs=None):
+    epoch_run_time = time.time() - self.epoch_start
+    self.epoch_runtime_log.append(epoch_run_time)
+    tf.compat.v1.logging.info(
+        "BenchmarkMetric: {'epoch':%d, 'time_taken': %f}" %
+        (epoch, epoch_run_time))
 
 
 def get_profiler_callback(model_dir, profile_steps, enable_tensorboard):
@@ -189,9 +203,7 @@ def set_config_v2(enable_xla=False,
         {'layout_optimizer': False}
     )
 
+
 def is_v2_0():
   """Returns true if using tf 2.0."""
-  if hasattr(tf, 'contrib'):
-    return False
-  else:
-    return True
+  return tf2.enabled()

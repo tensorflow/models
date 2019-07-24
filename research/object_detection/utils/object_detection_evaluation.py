@@ -27,12 +27,19 @@ It supports the following operations:
 Note: This module operates on numpy boxes and box lists.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from abc import ABCMeta
 from abc import abstractmethod
 import collections
 import logging
 import unicodedata
 import numpy as np
+import six
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import standard_fields
@@ -41,7 +48,7 @@ from object_detection.utils import metrics
 from object_detection.utils import per_image_evaluation
 
 
-class DetectionEvaluator(object):
+class DetectionEvaluator(six.with_metaclass(ABCMeta, object)):
   """Interface for object detection evalution classes.
 
   Example usage of the Evaluator:
@@ -58,7 +65,6 @@ class DetectionEvaluator(object):
 
   metrics_dict = evaluator.evaluate()
   """
-  __metaclass__ = ABCMeta
 
   def __init__(self, categories):
     """Constructor.
@@ -96,8 +102,8 @@ class DetectionEvaluator(object):
 
     Args:
       image_id: A unique string/integer identifier for the image.
-      groundtruth_dict: A dictionary of groundtruth numpy arrays required
-        for evaluations.
+      groundtruth_dict: A dictionary of groundtruth numpy arrays required for
+        evaluations.
     """
     pass
 
@@ -107,8 +113,8 @@ class DetectionEvaluator(object):
 
     Args:
       image_id: A unique string/integer identifier for the image.
-      detections_dict: A dictionary of detection numpy arrays required
-        for evaluation.
+      detections_dict: A dictionary of detection numpy arrays required for
+        evaluation.
     """
     pass
 
@@ -164,8 +170,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         boxes to detection boxes.
       recall_lower_bound: lower bound of recall operating area.
       recall_upper_bound: upper bound of recall operating area.
-      evaluate_corlocs: (optional) boolean which determines if corloc scores
-        are to be returned or not.
+      evaluate_corlocs: (optional) boolean which determines if corloc scores are
+        to be returned or not.
       evaluate_precision_recall: (optional) boolean which determines if
         precision and recall values are to be returned or not.
       metric_prefix: (optional) string prefix for metric name; if None, no
@@ -173,8 +179,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       use_weighted_mean_ap: (optional) boolean which determines if the mean
         average precision is computed directly from the scores and tp_fp_labels
         of all classes.
-      evaluate_masks: If False, evaluation will be performed based on boxes.
-        If True, mask evaluation will be performed instead.
+      evaluate_masks: If False, evaluation will be performed based on boxes. If
+        True, mask evaluation will be performed instead.
       group_of_weight: Weight of group-of boxes.If set to 0, detections of the
         correct class within a group-of box are ignored. If weight is > 0, then
         if at least one detection falls within a group-of box with
@@ -245,18 +251,20 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if idx + self._label_id_offset in category_index:
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
-          category_name = unicode(category_name, 'utf-8')
+          category_name = six.text_type(category_name, 'utf-8')
         except TypeError:
           pass
-        category_name = unicodedata.normalize('NFKD', category_name).encode(
-            'ascii', 'ignore')
+        category_name = unicodedata.normalize('NFKD', category_name)
+        if six.PY2:
+          category_name = category_name.encode('ascii', 'ignore')
         self._metric_names.append(
             self._metric_prefix + 'PerformanceByCategory/AP@{}IOU/{}'.format(
                 self._matching_iou_threshold, category_name))
         if self._evaluate_corlocs:
           self._metric_names.append(
-              self._metric_prefix + 'PerformanceByCategory/CorLoc@{}IOU/{}'
-              .format(self._matching_iou_threshold, category_name))
+              self._metric_prefix +
+              'PerformanceByCategory/CorLoc@{}IOU/{}'.format(
+                  self._matching_iou_threshold, category_name))
 
   def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
     """Adds groundtruth for a single image to be used for evaluation.
@@ -270,10 +278,10 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         standard_fields.InputDataFields.groundtruth_classes: integer numpy array
           of shape [num_boxes] containing 1-indexed groundtruth classes for the
           boxes.
-        standard_fields.InputDataFields.groundtruth_difficult: Optional length
-          M numpy boolean array denoting whether a ground truth box is a
-          difficult instance or not. This field is optional to support the case
-          that no boxes are difficult.
+        standard_fields.InputDataFields.groundtruth_difficult: Optional length M
+          numpy boolean array denoting whether a ground truth box is a difficult
+          instance or not. This field is optional to support the case that no
+          boxes are difficult.
         standard_fields.InputDataFields.groundtruth_instance_masks: Optional
           numpy array of shape [num_boxes, height, width] with values in {0, 1}.
 
@@ -290,8 +298,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     # If the key is not present in the groundtruth_dict or the array is empty
     # (unless there are no annotations for the groundtruth on this image)
     # use values from the dictionary or insert None otherwise.
-    if (standard_fields.InputDataFields.groundtruth_difficult in
-        groundtruth_dict.keys() and
+    if (standard_fields.InputDataFields.groundtruth_difficult in six.viewkeys(
+        groundtruth_dict) and
         (groundtruth_dict[standard_fields.InputDataFields.groundtruth_difficult]
          .size or not groundtruth_classes.size)):
       groundtruth_difficult = groundtruth_dict[
@@ -299,7 +307,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     else:
       groundtruth_difficult = None
       if not len(self._image_ids) % 1000:
-        logging.warn(
+        logging.warning(
             'image %s does not have groundtruth difficult flag specified',
             image_id)
     groundtruth_masks = None
@@ -332,9 +340,9 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         standard_fields.DetectionResultFields.detection_classes: integer numpy
           array of shape [num_boxes] containing 1-indexed detection classes for
           the boxes.
-        standard_fields.DetectionResultFields.detection_masks: uint8 numpy
-          array of shape [num_boxes, height, width] containing `num_boxes` masks
-          of values ranging between 0 and 1.
+        standard_fields.DetectionResultFields.detection_masks: uint8 numpy array
+          of shape [num_boxes, height, width] containing `num_boxes` masks of
+          values ranging between 0 and 1.
 
     Raises:
       ValueError: If detection masks are not in detections dictionary.
@@ -383,11 +391,12 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if idx + self._label_id_offset in category_index:
         category_name = category_index[idx + self._label_id_offset]['name']
         try:
-          category_name = unicode(category_name, 'utf-8')
+          category_name = six.text_type(category_name, 'utf-8')
         except TypeError:
           pass
-        category_name = unicodedata.normalize(
-            'NFKD', category_name).encode('ascii', 'ignore')
+        category_name = unicodedata.normalize('NFKD', category_name)
+        if six.PY2:
+          category_name = category_name.encode('ascii', 'ignore')
         display_name = (
             self._metric_prefix + 'PerformanceByCategory/AP@{}IOU/{}'.format(
                 self._matching_iou_threshold, category_name))
@@ -409,8 +418,9 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         # Optionally add CorLoc metrics.classes
         if self._evaluate_corlocs:
           display_name = (
-              self._metric_prefix + 'PerformanceByCategory/CorLoc@{}IOU/{}'
-              .format(self._matching_iou_threshold, category_name))
+              self._metric_prefix +
+              'PerformanceByCategory/CorLoc@{}IOU/{}'.format(
+                  self._matching_iou_threshold, category_name))
           pascal_metrics[display_name] = per_class_corloc[idx]
 
     return pascal_metrics
@@ -446,7 +456,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
       if key in self._expected_keys:
         eval_dict_filtered[key] = value
 
-    eval_dict_keys = eval_dict_filtered.keys()
+    eval_dict_keys = list(eval_dict_filtered.keys())
 
     def update_op(image_id, *eval_dict_batched_as_list):
       """Update operation that adds batch of images to ObjectDetectionEvaluator.
@@ -468,7 +478,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
           self.add_single_detected_image_info(image_id, single_example_dict)
 
     args = [eval_dict_filtered[standard_fields.InputDataFields.key]]
-    args.extend(eval_dict_filtered.values())
+    args.extend(six.itervalues(eval_dict_filtered))
     update_op = tf.py_func(update_op, args, [])
 
     def first_value_func():
@@ -651,8 +661,8 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
         standard_fields.InputDataFields.groundtruth_classes: integer numpy array
           of shape [num_boxes] containing 1-indexed groundtruth classes for the
           boxes.
-        standard_fields.InputDataFields.groundtruth_group_of: Optional length
-          M numpy boolean array denoting whether a groundtruth box contains a
+        standard_fields.InputDataFields.groundtruth_group_of: Optional length M
+          numpy boolean array denoting whether a groundtruth box contains a
           group of instances.
 
     Raises:
@@ -667,8 +677,8 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
     # If the key is not present in the groundtruth_dict or the array is empty
     # (unless there are no annotations for the groundtruth on this image)
     # use values from the dictionary or insert None otherwise.
-    if (standard_fields.InputDataFields.groundtruth_group_of in
-        groundtruth_dict.keys() and
+    if (standard_fields.InputDataFields.groundtruth_group_of in six.viewkeys(
+        groundtruth_dict) and
         (groundtruth_dict[standard_fields.InputDataFields.groundtruth_group_of]
          .size or not groundtruth_classes.size)):
       groundtruth_group_of = groundtruth_dict[
@@ -676,7 +686,7 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
     else:
       groundtruth_group_of = None
       if not len(self._image_ids) % 1000:
-        logging.warn(
+        logging.warning(
             'image %s does not have groundtruth group_of flag specified',
             image_id)
     if self._evaluate_masks:
@@ -741,18 +751,18 @@ class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
       matching_iou_threshold: IOU threshold to use for matching groundtruth
         boxes to detection boxes.
       evaluate_corlocs: if True, additionally evaluates and returns CorLoc.
-      group_of_weight: weight of a group-of box. If set to 0, detections of the
-        correct class within a group-of box are ignored. If weight is > 0
-        (default for Open Images Detection Challenge), then if at least one
-        detection falls within a group-of box with matching_iou_threshold,
-        weight group_of_weight is added to true positives. Consequently, if no
-        detection falls within a group-of box, weight group_of_weight is added
-        to false negatives.
+      group_of_weight: Weight of group-of boxes. If set to 0, detections of the
+        correct class within a group-of box are ignored. If weight is > 0, then
+        if at least one detection falls within a group-of box with
+        matching_iou_threshold, weight group_of_weight is added to true
+        positives. Consequently, if no detection falls within a group-of box,
+        weight group_of_weight is added to false negatives.
     """
     if not evaluate_masks:
       metrics_prefix = 'OpenImagesDetectionChallenge'
     else:
       metrics_prefix = 'OpenImagesInstanceSegmentationChallenge'
+
     super(OpenImagesChallengeEvaluator, self).__init__(
         categories,
         matching_iou_threshold,
@@ -779,8 +789,8 @@ class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
           boxes.
         standard_fields.InputDataFields.groundtruth_image_classes: integer 1D
           numpy array containing all classes for which labels are verified.
-        standard_fields.InputDataFields.groundtruth_group_of: Optional length
-          M numpy boolean array denoting whether a groundtruth box contains a
+        standard_fields.InputDataFields.groundtruth_group_of: Optional length M
+          numpy boolean array denoting whether a groundtruth box contains a
           group of instances.
 
     Raises:
@@ -864,8 +874,7 @@ class OpenImagesDetectionChallengeEvaluator(OpenImagesChallengeEvaluator):
   def __init__(self,
                categories,
                matching_iou_threshold=0.5,
-               evaluate_corlocs=False,
-               group_of_weight=1.0):
+               evaluate_corlocs=False):
     """Constructor.
 
     Args:
@@ -875,13 +884,6 @@ class OpenImagesDetectionChallengeEvaluator(OpenImagesChallengeEvaluator):
       matching_iou_threshold: IOU threshold to use for matching groundtruth
         boxes to detection boxes.
       evaluate_corlocs: if True, additionally evaluates and returns CorLoc.
-      group_of_weight: weight of a group-of box. If set to 0, detections of the
-        correct class within a group-of box are ignored. If weight is > 0
-        (default for Open Images Detection Challenge), then if at least one
-        detection falls within a group-of box with matching_iou_threshold,
-        weight group_of_weight is added to true positives. Consequently, if no
-        detection falls within a group-of box, weight group_of_weight is added
-        to false negatives.
     """
     super(OpenImagesDetectionChallengeEvaluator, self).__init__(
         categories=categories,
@@ -898,8 +900,7 @@ class OpenImagesInstanceSegmentationChallengeEvaluator(
   def __init__(self,
                categories,
                matching_iou_threshold=0.5,
-               evaluate_corlocs=False,
-               group_of_weight=1.0):
+               evaluate_corlocs=False):
     """Constructor.
 
     Args:
@@ -909,20 +910,13 @@ class OpenImagesInstanceSegmentationChallengeEvaluator(
       matching_iou_threshold: IOU threshold to use for matching groundtruth
         boxes to detection boxes.
       evaluate_corlocs: if True, additionally evaluates and returns CorLoc.
-      group_of_weight: weight of a group-of box. If set to 0, detections of the
-        correct class within a group-of box are ignored. If weight is > 0
-        (default for Open Images Detection Challenge), then if at least one
-        detection falls within a group-of box with matching_iou_threshold,
-        weight group_of_weight is added to true positives. Consequently, if no
-        detection falls within a group-of box, weight group_of_weight is added
-        to false negatives.
     """
     super(OpenImagesInstanceSegmentationChallengeEvaluator, self).__init__(
         categories=categories,
         evaluate_masks=True,
         matching_iou_threshold=matching_iou_threshold,
         evaluate_corlocs=False,
-        group_of_weight=1.0)
+        group_of_weight=0.0)
 
 
 class ObjectDetectionEvaluation(object):
@@ -943,8 +937,8 @@ class ObjectDetectionEvaluation(object):
 
     Args:
       num_groundtruth_classes: Number of ground-truth classes.
-      matching_iou_threshold: IOU threshold used for matching detected boxes
-        to ground-truth boxes.
+      matching_iou_threshold: IOU threshold used for matching detected boxes to
+        ground-truth boxes.
       nms_iou_threshold: IOU threshold used for non-maximum suppression.
       nms_max_output_boxes: Maximum number of boxes returned by non-maximum
         suppression.
@@ -960,8 +954,8 @@ class ObjectDetectionEvaluation(object):
         matching_iou_threshold, weight group_of_weight is added to true
         positives. Consequently, if no detection falls within a group-of box,
         weight group_of_weight is added to false negatives.
-      per_image_eval_class: The class that contains functions for computing
-        per image metrics.
+      per_image_eval_class: The class that contains functions for computing per
+        image metrics.
 
     Raises:
       ValueError: if num_groundtruth_classes is smaller than 1.
@@ -1019,23 +1013,23 @@ class ObjectDetectionEvaluation(object):
 
     Args:
       image_key: A unique string/integer identifier for the image.
-      groundtruth_boxes: float32 numpy array of shape [num_boxes, 4]
-        containing `num_boxes` groundtruth boxes of the format
-        [ymin, xmin, ymax, xmax] in absolute image coordinates.
+      groundtruth_boxes: float32 numpy array of shape [num_boxes, 4] containing
+        `num_boxes` groundtruth boxes of the format [ymin, xmin, ymax, xmax] in
+        absolute image coordinates.
       groundtruth_class_labels: integer numpy array of shape [num_boxes]
         containing 0-indexed groundtruth classes for the boxes.
       groundtruth_is_difficult_list: A length M numpy boolean array denoting
         whether a ground truth box is a difficult instance or not. To support
         the case that no boxes are difficult, it is by default set as None.
       groundtruth_is_group_of_list: A length M numpy boolean array denoting
-          whether a ground truth box is a group-of box or not. To support
-          the case that no boxes are groups-of, it is by default set as None.
-      groundtruth_masks: uint8 numpy array of shape
-        [num_boxes, height, width] containing `num_boxes` groundtruth masks.
-        The mask values range from 0 to 1.
+        whether a ground truth box is a group-of box or not. To support the case
+        that no boxes are groups-of, it is by default set as None.
+      groundtruth_masks: uint8 numpy array of shape [num_boxes, height, width]
+        containing `num_boxes` groundtruth masks. The mask values range from 0
+        to 1.
     """
     if image_key in self.groundtruth_boxes:
-      logging.warn(
+      logging.warning(
           'image %s has already been added to the ground truth database.',
           image_key)
       return
@@ -1051,31 +1045,42 @@ class ObjectDetectionEvaluation(object):
     if groundtruth_is_group_of_list is None:
       num_boxes = groundtruth_boxes.shape[0]
       groundtruth_is_group_of_list = np.zeros(num_boxes, dtype=bool)
+    if groundtruth_masks is None:
+      num_boxes = groundtruth_boxes.shape[0]
+      mask_presence_indicator = np.zeros(num_boxes, dtype=bool)
+    else:
+      mask_presence_indicator = (np.sum(groundtruth_masks,
+                                        axis=(1, 2)) == 0).astype(dtype=bool)
+
     self.groundtruth_is_group_of_list[
         image_key] = groundtruth_is_group_of_list.astype(dtype=bool)
 
     self._update_ground_truth_statistics(
         groundtruth_class_labels,
-        groundtruth_is_difficult_list.astype(dtype=bool),
+        groundtruth_is_difficult_list.astype(dtype=bool)
+        | mask_presence_indicator,  # ignore boxes without masks
         groundtruth_is_group_of_list.astype(dtype=bool))
 
-  def add_single_detected_image_info(self, image_key, detected_boxes,
-                                     detected_scores, detected_class_labels,
+  def add_single_detected_image_info(self,
+                                     image_key,
+                                     detected_boxes,
+                                     detected_scores,
+                                     detected_class_labels,
                                      detected_masks=None):
     """Adds detections for a single image to be used for evaluation.
 
     Args:
       image_key: A unique string/integer identifier for the image.
-      detected_boxes: float32 numpy array of shape [num_boxes, 4]
-        containing `num_boxes` detection boxes of the format
-        [ymin, xmin, ymax, xmax] in absolute image coordinates.
+      detected_boxes: float32 numpy array of shape [num_boxes, 4] containing
+        `num_boxes` detection boxes of the format [ymin, xmin, ymax, xmax] in
+        absolute image coordinates.
       detected_scores: float32 numpy array of shape [num_boxes] containing
         detection scores for the boxes.
       detected_class_labels: integer numpy array of shape [num_boxes] containing
         0-indexed detection classes for the boxes.
       detected_masks: np.uint8 numpy array of shape [num_boxes, height, width]
-        containing `num_boxes` detection masks with values ranging
-        between 0 and 1.
+        containing `num_boxes` detection masks with values ranging between 0 and
+        1.
 
     Raises:
       ValueError: if the number of boxes, scores and class labels differ in
@@ -1083,13 +1088,14 @@ class ObjectDetectionEvaluation(object):
     """
     if (len(detected_boxes) != len(detected_scores) or
         len(detected_boxes) != len(detected_class_labels)):
-      raise ValueError('detected_boxes, detected_scores and '
-                       'detected_class_labels should all have same lengths. Got'
-                       '[%d, %d, %d]' % len(detected_boxes),
-                       len(detected_scores), len(detected_class_labels))
+      raise ValueError(
+          'detected_boxes, detected_scores and '
+          'detected_class_labels should all have same lengths. Got'
+          '[%d, %d, %d]' % len(detected_boxes), len(detected_scores),
+          len(detected_class_labels))
 
     if image_key in self.detection_keys:
-      logging.warn(
+      logging.warning(
           'image %s has already been added to the detection result database',
           image_key)
       return
@@ -1100,8 +1106,7 @@ class ObjectDetectionEvaluation(object):
       groundtruth_class_labels = self.groundtruth_class_labels[image_key]
       # Masks are popped instead of look up. The reason is that we do not want
       # to keep all masks in memory which can cause memory overflow.
-      groundtruth_masks = self.groundtruth_masks.pop(
-          image_key)
+      groundtruth_masks = self.groundtruth_masks.pop(image_key)
       groundtruth_is_difficult_list = self.groundtruth_is_difficult_list[
           image_key]
       groundtruth_is_group_of_list = self.groundtruth_is_group_of_list[
@@ -1145,19 +1150,21 @@ class ObjectDetectionEvaluation(object):
     statitistics.
 
     Args:
-      groundtruth_class_labels: An integer numpy array of length M,
-          representing M class labels of object instances in ground truth
+      groundtruth_class_labels: An integer numpy array of length M, representing
+        M class labels of object instances in ground truth
       groundtruth_is_difficult_list: A boolean numpy array of length M denoting
-          whether a ground truth box is a difficult instance or not
+        whether a ground truth box is a difficult instance or not
       groundtruth_is_group_of_list: A boolean numpy array of length M denoting
-          whether a ground truth box is a group-of box or not
+        whether a ground truth box is a group-of box or not
     """
     for class_index in range(self.num_class):
       num_gt_instances = np.sum(groundtruth_class_labels[
           ~groundtruth_is_difficult_list
           & ~groundtruth_is_group_of_list] == class_index)
       num_groupof_gt_instances = self.group_of_weight * np.sum(
-          groundtruth_class_labels[groundtruth_is_group_of_list] == class_index)
+          groundtruth_class_labels[groundtruth_is_group_of_list
+                                   & ~groundtruth_is_difficult_list] ==
+          class_index)
       self.num_gt_instances_per_class[
           class_index] += num_gt_instances + num_groupof_gt_instances
       if np.any(groundtruth_class_labels == class_index):
@@ -1178,7 +1185,7 @@ class ObjectDetectionEvaluation(object):
         mean_corloc: Mean CorLoc score for each class, float scalar
     """
     if (self.num_gt_instances_per_class == 0).any():
-      logging.warn(
+      logging.warning(
           'The following classes have no ground truth examples: %s',
           np.squeeze(np.argwhere(self.num_gt_instances_per_class == 0)) +
           self.label_id_offset)
@@ -1233,6 +1240,7 @@ class ObjectDetectionEvaluation(object):
     else:
       mean_ap = np.nanmean(self.average_precision_per_class)
     mean_corloc = np.nanmean(self.corloc_per_class)
-    return ObjectDetectionEvalMetrics(
-        self.average_precision_per_class, mean_ap, self.precisions_per_class,
-        self.recalls_per_class, self.corloc_per_class, mean_corloc)
+    return ObjectDetectionEvalMetrics(self.average_precision_per_class, mean_ap,
+                                      self.precisions_per_class,
+                                      self.recalls_per_class,
+                                      self.corloc_per_class, mean_corloc)

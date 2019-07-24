@@ -13,13 +13,15 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for google3.third_party.tensorflow_models.object_detection.core.class_agnostic_nms."""
+from absl.testing import parameterized
 import tensorflow as tf
 from object_detection.core import post_processing
 from object_detection.core import standard_fields as fields
 from object_detection.utils import test_case
 
 
-class ClassAgnosticNonMaxSuppressionTest(test_case.TestCase):
+class ClassAgnosticNonMaxSuppressionTest(test_case.TestCase,
+                                         parameterized.TestCase):
 
   def test_class_agnostic_nms_select_with_shared_boxes(self):
     boxes = tf.constant(
@@ -52,6 +54,7 @@ class ClassAgnosticNonMaxSuppressionTest(test_case.TestCase):
       self.assertAllClose(nms_corners_output, exp_nms_corners)
       self.assertAllClose(nms_scores_output, exp_nms_scores)
       self.assertAllClose(nms_classes_output, exp_nms_classes)
+
 
   def test_class_agnostic_nms_select_with_per_class_boxes(self):
     boxes = tf.constant(
@@ -98,7 +101,14 @@ class ClassAgnosticNonMaxSuppressionTest(test_case.TestCase):
       self.assertAllClose(nms_scores_output, exp_nms_scores)
       self.assertAllClose(nms_classes_output, exp_nms_classes)
 
-  def test_batch_classagnostic_nms_with_batch_size_1(self):
+  # Two cases will be tested here: using / not using static shapes.
+  # Named the two test cases for easier control during testing, with a flag of
+  # '--test_filter=ClassAgnosticNonMaxSuppressionTest.test_batch_classagnostic_nms_with_batch_size_1'
+  # or
+  # '--test_filter=ClassAgnosticNonMaxSuppressionTest.test_batch_classagnostic_nms_with_batch_size_1_use_static_shapes'.
+  @parameterized.named_parameters(('', False), ('_use_static_shapes', True))
+  def test_batch_classagnostic_nms_with_batch_size_1(self,
+                                                     use_static_shapes=False):
     boxes = tf.constant(
         [[[[0, 0, 1, 1]], [[0, 0.1, 1, 1.1]], [[0, -0.1, 1, 0.9]],
           [[0, 10, 1, 11]], [[0, 10.1, 1, 11.1]], [[0, 100, 1, 101]],
@@ -126,6 +136,7 @@ class ClassAgnosticNonMaxSuppressionTest(test_case.TestCase):
          max_size_per_class=max_output_size,
          max_total_size=max_output_size,
          use_class_agnostic_nms=use_class_agnostic_nms,
+         use_static_shapes=use_static_shapes,
          max_classes_per_detection=max_classes_per_detection)
 
     self.assertIsNone(nmsed_masks)

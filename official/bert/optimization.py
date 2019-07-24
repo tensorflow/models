@@ -134,29 +134,30 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
     (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
     return super(AdamWeightDecay, self).apply_gradients(zip(grads, tvars))
 
-  def _resource_apply_dense(self, grad, var):
-    var_dtype = var.dtype.base_dtype
+  def _get_lr(self, var_device, var_dtype, apply_state):
+    """Retrieves the learning rate with the given state."""
+    if apply_state is None:
+      return self._decayed_lr_t[var_dtype], {}
 
-    try:
-      lr_t = self.apply_cache[var.device, var.dtype.base_dtype].lr_t
-    except AttributeError:
-      lr_t = self._decayed_lr_t[var_dtype]
+    apply_state = apply_state or {}
+    coefficients = apply_state.get((var_device, var_dtype))
+    if coefficients is None:
+      coefficients = self._fallback_apply_state(var_device, var_dtype)
+      apply_state[(var_device, var_dtype)] = coefficients
 
+    return coefficients['lr_t'], dict(apply_state=apply_state)
+
+  def _resource_apply_dense(self, grad, var, apply_state=None):
+    lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
     with tf.control_dependencies([self._decay_weights_op(var, lr_t)]):
       return super(AdamWeightDecay, self)._resource_apply_dense(
-          grad, var)
+          grad, var, **kwargs)
 
-  def _resource_apply_sparse(self, grad, var, indices):
-    var_dtype = var.dtype.base_dtype
-
-    try:
-      lr_t = self.apply_cache[var.device, var.dtype.base_dtype].lr_t
-    except AttributeError:
-      lr_t = self._decayed_lr_t[var_dtype]
-
+  def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
+    lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
     with tf.control_dependencies([self._decay_weights_op(var, lr_t)]):
       return super(AdamWeightDecay, self)._resource_apply_sparse(
-          grad, var, indices)
+          grad, var, indices, **kwargs)
 
   def get_config(self):
     config = super(AdamWeightDecay, self).get_config()

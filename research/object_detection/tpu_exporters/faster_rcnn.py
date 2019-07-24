@@ -51,6 +51,10 @@ RPN_FEATURES_TO_CROP = 'rpn_features_to_crop'
 RPN_OBJECTNESS_PREDICTIONS_WITH_BACKGROUND = \
     'rpn_objectness_predictions_with_background'
 
+INPUT_BUILDER_UTIL_MAP = {
+    'model_build': model_builder.build,
+}
+
 
 def modify_config(pipeline_config):
   """Modifies pipeline config to build the correct graph for TPU."""
@@ -82,7 +86,7 @@ def get_prediction_tensor_shapes(pipeline_config):
     A python dict of tensors' names and their shapes.
   """
   pipeline_config = modify_config(pipeline_config)
-  detection_model = model_builder.build(
+  detection_model = INPUT_BUILDER_UTIL_MAP['model_build'](
       pipeline_config.model, is_training=False)
 
   _, input_tensors = exporter.input_placeholder_fn_map['image_tensor']()
@@ -118,7 +122,7 @@ def build_graph(pipeline_config,
     result_tensor_dict: A python dict of tensors' names and tensors.
   """
   pipeline_config = modify_config(pipeline_config)
-  detection_model = model_builder.build(
+  detection_model = INPUT_BUILDER_UTIL_MAP['model_build'](
       pipeline_config.model, is_training=False)
 
   placeholder_tensor, input_tensors = \
@@ -134,62 +138,50 @@ def build_graph(pipeline_config,
     preprocessed_inputs = tf.cast(preprocessed_inputs, dtype=tf.bfloat16)
 
   # TPU feature extraction
-  def tpu_subgraph_first_stage_fn(preprocessed_inputs):
+  def tpu_subgraph_predict_fn(preprocessed_inputs, true_image_shapes):
     """Defines the first part of graph on TPU."""
     # [b, c, h, w] -> [b, h, w, c]
     preprocessed_inputs = tf.transpose(preprocessed_inputs, perm=[0, 2, 3, 1])
 
-    prediction_dict = detection_model._predict_first_stage(preprocessed_inputs)
+    prediction_dict = detection_model.predict(preprocessed_inputs,
+                                              true_image_shapes)
 
-    # [b, h, w, c] -> [b, c, h, w]
-    rpn_box_predictor_features = tf.transpose(
-        prediction_dict[RPN_BOX_PREDICTOR_FEATURES], perm=[0, 3, 1, 2])
-    # [b, h, w, c] -> [b, c, h, w]
-    rpn_features_to_crop = tf.transpose(
-        prediction_dict[RPN_FEATURES_TO_CROP], perm=[0, 3, 1, 2])
-    # [batch, anchor, depth] -> [depth, batch, anchor]
-    rpn_box_encodings = tf.transpose(
-        prediction_dict[RPN_BOX_ENCODINGS], perm=[2, 0, 1])
-    # [batch, anchor, depth] -> [depth, batch, anchor]
-    rpn_objectness_predictions_with_background = tf.transpose(
-        prediction_dict[RPN_OBJECTNESS_PREDICTIONS_WITH_BACKGROUND],
-        perm=[2, 0, 1])
-    # [anchors, depth]
-    anchors = tf.transpose(prediction_dict[ANCHORS], perm=[1, 0])
-
-    return (rpn_box_predictor_features, rpn_features_to_crop,
-            prediction_dict['image_shape'], rpn_box_encodings,
-            rpn_objectness_predictions_with_background, anchors)
+    return (
+        # [batch, anchor, depth] -> [depth, batch, anchor]
+        tf.transpose(prediction_dict[RPN_BOX_ENCODINGS], perm=[2, 0, 1]),
+        # [batch, anchor, depth] -> [depth, batch, anchor]
+        tf.transpose(
+            prediction_dict[RPN_OBJECTNESS_PREDICTIONS_WITH_BACKGROUND],
+            perm=[2, 0, 1]),
+        # [anchors, depth]
+        tf.transpose(prediction_dict[ANCHORS], perm=[1, 0]),
+        # [num_proposals, num_classes, code_size]
+        prediction_dict[REFINED_BOX_ENCODINGS],
+        prediction_dict[CLASS_PREDICTIONS_WITH_BACKGROUND],
+        prediction_dict[NUM_PROPOSALS],
+        prediction_dict[PROPOSAL_BOXES])
 
   @function.Defun(capture_resource_var_by_value=False)
-  def tpu_subgraph_first_stage():
+  def tpu_subgraph_predict():
     if use_bfloat16:
       with tf.contrib.tpu.bfloat16_scope():
-        return tf.contrib.tpu.rewrite(tpu_subgraph_first_stage_fn,
-                                      [preprocessed_inputs])
+        return tf.contrib.tpu.rewrite(tpu_subgraph_predict_fn,
+                                      [preprocessed_inputs, true_image_shapes])
     else:
-      return tf.contrib.tpu.rewrite(tpu_subgraph_first_stage_fn,
-                                    [preprocessed_inputs])
+      return tf.contrib.tpu.rewrite(tpu_subgraph_predict_fn,
+                                    [preprocessed_inputs, true_image_shapes])
 
-  (rpn_box_predictor_features, rpn_features_to_crop, image_shape,
-   rpn_box_encodings, rpn_objectness_predictions_with_background,
-   anchors) = \
-      tpu_functional.TPUPartitionedCall(
-          args=tpu_subgraph_first_stage.captured_inputs,
-          device_ordinal=tpu_ops.tpu_ordinal_selector(),
-          Tout=[
-              o.type
-              for o in tpu_subgraph_first_stage.definition.signature.output_arg
-          ],
-          f=tpu_subgraph_first_stage)
+  (rpn_box_encodings, rpn_objectness_predictions_with_background, anchors,
+   refined_box_encodings, class_predictions_with_background, num_proposals,
+   proposal_boxes) = tpu_functional.TPUPartitionedCall(
+       args=tpu_subgraph_predict.captured_inputs,
+       device_ordinal=tpu_ops.tpu_ordinal_selector(),
+       Tout=[
+           o.type for o in tpu_subgraph_predict.definition.signature.output_arg
+       ],
+       f=tpu_subgraph_predict)
 
   prediction_dict = {
-      RPN_BOX_PREDICTOR_FEATURES:
-          tf.transpose(rpn_box_predictor_features, perm=[0, 2, 3, 1]),
-      RPN_FEATURES_TO_CROP:
-          tf.transpose(rpn_features_to_crop, perm=[0, 2, 3, 1]),
-      IMAGE_SHAPE:
-          image_shape,
       RPN_BOX_ENCODINGS:
           tf.transpose(rpn_box_encodings, perm=[1, 2, 0]),
       RPN_OBJECTNESS_PREDICTIONS_WITH_BACKGROUND:
@@ -197,91 +189,18 @@ def build_graph(pipeline_config,
               rpn_objectness_predictions_with_background, perm=[1, 2, 0]),
       ANCHORS:
           tf.transpose(anchors, perm=[1, 0]),
+      REFINED_BOX_ENCODINGS:
+          refined_box_encodings,
+      CLASS_PREDICTIONS_WITH_BACKGROUND:
+          class_predictions_with_background,
+      NUM_PROPOSALS:
+          num_proposals,
+      PROPOSAL_BOXES:
+          proposal_boxes
   }
 
   for k in prediction_dict:
     prediction_dict[k].set_shape(shapes_info[k])
-
-  if use_bfloat16:
-    prediction_dict = utils.bfloat16_to_float32_nested(prediction_dict)
-
-  # CPU region proposal (NMS)
-  proposal_boxes_normalized, num_proposals = \
-      detection_model._proposal_postprocess(
-          tf.cast(prediction_dict[RPN_BOX_ENCODINGS], dtype=tf.float32),
-          tf.cast(
-              prediction_dict[RPN_OBJECTNESS_PREDICTIONS_WITH_BACKGROUND],
-              dtype=tf.float32), prediction_dict[ANCHORS],
-          prediction_dict[IMAGE_SHAPE], true_image_shapes)
-  prediction_dict[NUM_PROPOSALS] = num_proposals
-
-  # [b, h, w, c] -> [b, c, h, w]
-  prediction_dict[RPN_FEATURES_TO_CROP] = tf.transpose(
-      prediction_dict[RPN_FEATURES_TO_CROP], perm=[0, 3, 1, 2])
-
-  if use_bfloat16:
-    prediction_dict[RPN_FEATURES_TO_CROP] = tf.cast(
-        prediction_dict[RPN_FEATURES_TO_CROP], dtype=tf.bfloat16)
-    proposal_boxes_normalized = tf.cast(
-        proposal_boxes_normalized, dtype=tf.bfloat16)
-
-  # TPU box prediction
-  def tpu_subgraph_second_stage_fn(rpn_features_to_crop,
-                                   proposal_boxes_normalized, image_shape):
-    """Defines the second part of graph on TPU."""
-    rpn_features_to_crop = tf.transpose(rpn_features_to_crop, perm=[0, 2, 3, 1])
-
-    output_dict = detection_model._box_prediction(
-        rpn_features_to_crop, proposal_boxes_normalized, image_shape)
-
-    return [
-        output_dict[REFINED_BOX_ENCODINGS],
-        output_dict[CLASS_PREDICTIONS_WITH_BACKGROUND],
-        output_dict[PROPOSAL_BOXES], output_dict[BOX_CLASSIFIER_FEATURES]
-    ]
-
-  @function.Defun(capture_resource_var_by_value=False)
-  def tpu_subgraph_second_stage():
-    """TPU subgraph 2 wrapper."""
-    if use_bfloat16:
-      with tf.contrib.tpu.bfloat16_scope():
-        return tf.contrib.tpu.rewrite(tpu_subgraph_second_stage_fn, [
-            prediction_dict[RPN_FEATURES_TO_CROP],
-            proposal_boxes_normalized,
-            prediction_dict[IMAGE_SHAPE],
-        ])
-    else:
-      return tf.contrib.tpu.rewrite(tpu_subgraph_second_stage_fn, [
-          prediction_dict[RPN_FEATURES_TO_CROP],
-          proposal_boxes_normalized,
-          prediction_dict[IMAGE_SHAPE],
-      ])
-
-  (refined_box_encodings, class_predictions_with_background, proposal_boxes,
-   box_classifier_features) = tpu_functional.TPUPartitionedCall(
-       args=tpu_subgraph_second_stage.captured_inputs,
-       device_ordinal=tpu_ops.tpu_ordinal_selector(),
-       Tout=[
-           o.type
-           for o in tpu_subgraph_second_stage.definition.signature.output_arg
-       ],
-       f=tpu_subgraph_second_stage)
-
-  prediction_dict[RPN_FEATURES_TO_CROP] = tf.transpose(
-      prediction_dict[RPN_FEATURES_TO_CROP], perm=[0, 2, 3, 1])
-
-  prediction_dict_updater = {
-      REFINED_BOX_ENCODINGS: refined_box_encodings,
-      CLASS_PREDICTIONS_WITH_BACKGROUND: class_predictions_with_background,
-      PROPOSAL_BOXES: proposal_boxes,
-      BOX_CLASSIFIER_FEATURES: box_classifier_features,
-      PROPOSAL_BOXES_NORMALIZED: proposal_boxes_normalized,
-  }
-
-  for k in prediction_dict_updater:
-    prediction_dict_updater[k].set_shape(shapes_info[k])
-
-  prediction_dict.update(prediction_dict_updater)
 
   if use_bfloat16:
     prediction_dict = utils.bfloat16_to_float32_nested(prediction_dict)

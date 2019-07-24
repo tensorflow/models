@@ -108,6 +108,7 @@ def parse_flags(flags_obj):
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
+      "stream_files": flags_obj.tpu is not None,
   }
 
 
@@ -162,7 +163,8 @@ def define_ncf_flags():
       max_train_steps=False,
       dtype=False,
       all_reduce_alg=False,
-      enable_xla=True
+      enable_xla=True,
+      force_v2_in_keras_compile=True
   )
   flags_core.define_device(tpu=True)
   flags_core.define_benchmark()

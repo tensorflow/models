@@ -15,6 +15,10 @@
 
 """Test utility functions for manipulating Keras models."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import tensorflow as tf
 
 from object_detection.utils import model_util

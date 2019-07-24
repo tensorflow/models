@@ -14,11 +14,17 @@
 # ==============================================================================
 
 """Tests for object_detection.utils.visualization_utils."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import logging
 import os
 
 import numpy as np
 import PIL.Image as Image
+import six
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -387,12 +393,12 @@ class VisualizationUtilsTest(tf.test.TestCase):
             groundtruth_classes
     }
     metric_ops = eval_metric_ops.get_estimator_eval_metric_ops(eval_dict)
-    _, update_op = metric_ops[metric_ops.keys()[0]]
+    _, update_op = metric_ops[next(six.iterkeys(metric_ops))]
 
     with self.test_session() as sess:
       sess.run(tf.global_variables_initializer())
       value_ops = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         value_ops[key] = value_op
 
       # First run enough update steps to surpass `max_examples_to_draw`.
@@ -413,7 +419,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
                                    [6 + i, 7 + i, 3], [6 + i, 7 + i, 3]]
             })
       value_ops_out = sess.run(value_ops)
-      for key, value_op in value_ops_out.iteritems():
+      for key, value_op in six.iteritems(value_ops_out):
         self.assertNotEqual('', value_op)
 
       # Now run fewer update steps than `max_examples_to_draw`. A single value
@@ -437,7 +443,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
             })
       value_ops_out = sess.run(value_ops)
       self.assertEqual(
-          '',
+          six.b(''),
           value_ops_out[metric_op_base + '/' + str(max_examples_to_draw - 1)])
 
 

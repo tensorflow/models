@@ -439,7 +439,7 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
             bottleneck_concat = lstm_utils.quantizable_concat(
                 [inputs, h_list[k]],
                 axis=3,
-                is_training=False,
+                is_training=self._is_training,
                 is_quantized=self._is_quantized,
                 scope='bottleneck_%d/quantized_concat' % k)
 

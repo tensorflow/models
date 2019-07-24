@@ -44,9 +44,12 @@ def create_model(params, is_train):
       label_smoothing = params["label_smoothing"]
       if params["enable_metrics_in_training"]:
         logits = metrics.MetricLayer(vocab_size)([logits, targets])
-      logits = metrics.LossLayer(vocab_size, label_smoothing)([logits, targets])
       logits = tf.keras.layers.Lambda(lambda x: x, name="logits")(logits)
-      return tf.keras.Model([inputs, targets], logits)
+      model = tf.keras.Model([inputs, targets], logits)
+      loss = metrics.transformer_loss(
+          logits, targets, label_smoothing, vocab_size)
+      model.add_loss(loss)
+      return model
 
     else:
       inputs = tf.keras.layers.Input((None,), dtype="int64", name="inputs")

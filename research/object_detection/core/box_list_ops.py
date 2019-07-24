@@ -23,6 +23,11 @@ Example box operations that are supported:
 Whenever box_list_ops functions output a BoxList, the fields of the incoming
 BoxList are retained unless documented otherwise.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.core import box_list

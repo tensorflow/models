@@ -37,4 +37,3 @@ class IdentityContextManager(object):
     del exec_value
     del traceback
     return False
-

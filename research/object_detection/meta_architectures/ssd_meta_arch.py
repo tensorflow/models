@@ -28,6 +28,7 @@ from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
+from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils
 
 slim = tf.contrib.slim
@@ -45,6 +46,7 @@ class SSDFeatureExtractor(object):
                reuse_weights=None,
                use_explicit_padding=False,
                use_depthwise=False,
+               num_layers=6,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
 
@@ -61,6 +63,7 @@ class SSDFeatureExtractor(object):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      num_layers: Number of SSD layers.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams_fn`.
@@ -73,6 +76,7 @@ class SSDFeatureExtractor(object):
     self._reuse_weights = reuse_weights
     self._use_explicit_padding = use_explicit_padding
     self._use_depthwise = use_depthwise
+    self._num_layers = num_layers
     self._override_base_feature_extractor_hyperparams = (
         override_base_feature_extractor_hyperparams)
 
@@ -126,7 +130,7 @@ class SSDFeatureExtractor(object):
       the model graph.
     """
     variables_to_restore = {}
-    for variable in tf.global_variables():
+    for variable in variables_helper.get_global_variables_safely():
       var_name = variable.op.name
       if var_name.startswith(feature_extractor_scope + '/'):
         var_name = var_name.replace(feature_extractor_scope + '/', '')
@@ -148,6 +152,7 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
                inplace_batchnorm_update,
                use_explicit_padding=False,
                use_depthwise=False,
+               num_layers=6,
                override_base_feature_extractor_hyperparams=False,
                name=None):
     """Constructor.
@@ -172,6 +177,7 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      num_layers: Number of SSD layers.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams_config`.
@@ -189,6 +195,7 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
     self._inplace_batchnorm_update = inplace_batchnorm_update
     self._use_explicit_padding = use_explicit_padding
     self._use_depthwise = use_depthwise
+    self._num_layers = num_layers
     self._override_base_feature_extractor_hyperparams = (
         override_base_feature_extractor_hyperparams)
 
@@ -247,11 +254,13 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
       the model graph.
     """
     variables_to_restore = {}
-    for variable in tf.global_variables():
-      var_name = variable.op.name
+    for variable in self.variables:
+      # variable.name includes ":0" at the end, but the names in the checkpoint
+      # do not have the suffix ":0". So, we strip it here.
+      var_name = variable.name[:-2]
       if var_name.startswith(feature_extractor_scope + '/'):
         var_name = var_name.replace(feature_extractor_scope + '/', '')
-        variables_to_restore[var_name] = variable
+      variables_to_restore[var_name] = variable
 
     return variables_to_restore
 
@@ -709,6 +718,14 @@ class SSDMetaArch(model.DetectionModel):
       additional_fields = {
           'multiclass_scores': detection_scores_with_background
       }
+      if self._anchors is not None:
+        anchor_indices = tf.range(self._anchors.num_boxes_static())
+        batch_anchor_indices = tf.tile(
+            tf.expand_dims(anchor_indices, 0), [batch_size, 1])
+        # All additional fields need to be float.
+        additional_fields.update({
+            'anchor_indices': tf.cast(batch_anchor_indices, tf.float32),
+        })
       if detection_keypoints is not None:
         detection_keypoints = tf.identity(
             detection_keypoints, 'raw_keypoint_locations')
@@ -737,6 +754,12 @@ class SSDMetaArch(model.DetectionModel):
           fields.DetectionResultFields.raw_detection_scores:
               detection_scores_with_background
       }
+      if (nmsed_additional_fields is not None and
+          'anchor_indices' in nmsed_additional_fields):
+        detection_dict.update({
+            fields.DetectionResultFields.detection_anchor_indices:
+                tf.cast(nmsed_additional_fields['anchor_indices'], tf.int32),
+        })
       if (nmsed_additional_fields is not None and
           fields.BoxListFields.keypoints in nmsed_additional_fields):
         detection_dict[fields.DetectionResultFields.detection_keypoints] = (
@@ -1218,13 +1241,24 @@ class SSDMetaArch(model.DetectionModel):
 
     if fine_tune_checkpoint_type == 'detection':
       variables_to_restore = {}
-      for variable in tf.global_variables():
-        var_name = variable.op.name
-        if load_all_detection_checkpoint_vars:
-          variables_to_restore[var_name] = variable
-        else:
-          if var_name.startswith(self._extract_features_scope):
+      if tf.executing_eagerly():
+        for variable in self.variables:
+          # variable.name includes ":0" at the end, but the names in the
+          # checkpoint do not have the suffix ":0". So, we strip it here.
+          var_name = variable.name[:-2]
+          if load_all_detection_checkpoint_vars:
             variables_to_restore[var_name] = variable
+          else:
+            if var_name.startswith(self._extract_features_scope):
+              variables_to_restore[var_name] = variable
+      else:
+        for variable in variables_helper.get_global_variables_safely():
+          var_name = variable.op.name
+          if load_all_detection_checkpoint_vars:
+            variables_to_restore[var_name] = variable
+          else:
+            if var_name.startswith(self._extract_features_scope):
+              variables_to_restore[var_name] = variable
 
     return variables_to_restore
 

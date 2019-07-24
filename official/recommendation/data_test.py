@@ -109,6 +109,7 @@ class BaseTest(tf.test.TestCase):
         "match_mlperf": True,
         "use_tpu": False,
         "use_xla_for_gpu": False,
+        "stream_files": False,
     }
 
   def test_preprocessing(self):

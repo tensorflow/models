@@ -138,6 +138,8 @@ Model name                                                                      
 
 
 [^2]: This is PASCAL mAP with a slightly different way of true positives computation: see [Open Images evaluation protocols](evaluation_protocols.md), oid_V2_detection_metrics.
+
 [^3]: Non-face boxes are dropped during training and non-face groundtruth boxes are ignored when evaluating.
+
 [^4]: This is Open Images Challenge metric: see [Open Images evaluation protocols](evaluation_protocols.md), oid_challenge_detection_metrics.
 

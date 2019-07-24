@@ -40,6 +40,7 @@ class SSDMobileNetV1KerasFeatureExtractor(
                inplace_batchnorm_update,
                use_explicit_padding=False,
                use_depthwise=False,
+               num_layers=6,
                override_base_feature_extractor_hyperparams=False,
                name=None):
     """Keras MobileNetV1 Feature Extractor for SSD Models.
@@ -65,6 +66,7 @@ class SSDMobileNetV1KerasFeatureExtractor(
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      num_layers: Number of SSD layers.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams`.
@@ -81,13 +83,14 @@ class SSDMobileNetV1KerasFeatureExtractor(
         inplace_batchnorm_update=inplace_batchnorm_update,
         use_explicit_padding=use_explicit_padding,
         use_depthwise=use_depthwise,
+        num_layers=num_layers,
         override_base_feature_extractor_hyperparams=
         override_base_feature_extractor_hyperparams,
         name=name)
     self._feature_map_layout = {
         'from_layer': ['Conv2d_11_pointwise', 'Conv2d_13_pointwise', '', '',
-                       '', ''],
-        'layer_depth': [-1, -1, 512, 256, 256, 128],
+                       '', ''][:self._num_layers],
+        'layer_depth': [-1, -1, 512, 256, 256, 128][:self._num_layers],
         'use_explicit_padding': self._use_explicit_padding,
         'use_depthwise': self._use_depthwise,
     }
