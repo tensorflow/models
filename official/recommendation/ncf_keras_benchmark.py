@@ -115,7 +115,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     Note: MLPerf like tests are not tuned to hit a specific hr@10 value, but
     we want it recorded.
     """
-    self._run_and_report_benchmark(hr_at_10_min=0.61)
+    self._run_and_report_benchmark(hr_at_10_min=0.61, hr_at_10_max=0.65)
 
   def _run_and_report_benchmark(self, hr_at_10_min=0.630, hr_at_10_max=0.640):
     """Run test and report results.
