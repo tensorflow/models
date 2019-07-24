@@ -1,4 +1,4 @@
-# BERT in TensorFlow
+# BERT (Bidirectional Encoder Representations from Transformers)
 
 Note> Please do not create pull request. This model is still under development
 and testing.
