@@ -242,7 +242,8 @@ def run_customized_training_loop(
           model_outputs = model(inputs)
           loss = loss_fn(labels, model_outputs)
 
-        tvars = model.trainable_variables
+        # De-dupes variables due to keras tracking issues.
+        tvars = list(set(model.trainable_variables))
         grads = tape.gradient(loss, tvars)
         optimizer.apply_gradients(zip(grads, tvars))
         # For reporting, the metric takes the mean of losses.
