@@ -1,8 +1,8 @@
 # Tensorflow detection model zoo
 
 We provide a collection of detection models pre-trained on the [COCO
-dataset](http://mscoco.org), the [Kitti dataset](http://www.cvlibs.net/datasets/kitti/),
-the [Open Images dataset](https://github.com/openimages/dataset), the
+dataset](http://cocodataset.org/), the [Kitti dataset](http://www.cvlibs.net/datasets/kitti/),
+the [Open Images dataset](https://storage.googleapis.com/openimages/web/index.html), the
 [AVA v2.1 dataset](https://research.google.com/ava/) and the
 [iNaturalist Species Detection Dataset](https://github.com/visipedia/inat_comp/blob/master/2017/README.md#bounding-boxes).
 These models can be useful for out-of-the-box inference if you are interested in
