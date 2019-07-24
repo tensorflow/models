@@ -181,9 +181,8 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_ctl_default_ds_run_eagerly_early_stop(self):
+  def benchmark_1_gpu_ctl_run_eagerly_early_stop(self):
     self._setup()
-    FLAGS.distribution_strategy = 'default'
     FLAGS.keras_use_ctl = True
     FLAGS.early_stopping = True
     FLAGS.run_eagerly = True
@@ -262,10 +261,9 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark_mlperf_like()
 
-  def benchmark_1_gpu_ctl_default_ds_run_eagerly_mlperf_like(self):
-    """1 GPU using CTL with eager and default distribution strategy."""
+  def benchmark_1_gpu_ctl_run_eagerly_mlperf_like(self):
+    """1 GPU using CTL with eager and distribution strategy."""
     self._setup()
-    FLAGS.distribution_strategy = 'default'
     FLAGS.keras_use_ctl = True
     FLAGS.run_eagerly = True
     FLAGS.train_epochs = 7
