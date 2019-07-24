@@ -115,7 +115,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     Note: MLPerf like tests are not tuned to hit a specific hr@10 value, but
     we want it recorded.
     """
-    super(NCFKerasAccuracy, self)._run_and_report_benchmark(hr_at_10_min=0.61)
+    self._run_and_report_benchmark(hr_at_10_min=0.61)
 
   def _run_and_report_benchmark(self, hr_at_10_min=0.630, hr_at_10_max=0.640):
     """Run test and report results.
@@ -128,8 +128,8 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
       hr_at_10_max: Maximum acceptable hr@10 value.
     """
     super(NCFKerasAccuracy, self)._run_and_report_benchmark(
-        top_1_min=hr_at_10_min,
-        top_1_max=hr_at_10_max)
+        hr_at_10_min=hr_at_10_min,
+        hr_at_10_max=hr_at_10_max)
 
   def benchmark_1_gpu_early_stop(self):
     self._setup()
