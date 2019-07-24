@@ -128,8 +128,8 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
       hr_at_10_max: Maximum acceptable hr@10 value.
     """
     super(NCFKerasAccuracy, self)._run_and_report_benchmark(
-        top_1_min=hr_at_10_min,
-        top_1_max=hr_at_10_max)
+        hr_at_10_min=hr_at_10_min,
+        hr_at_10_max=hr_at_10_max)
 
   def benchmark_1_gpu_early_stop(self):
     self._setup()
