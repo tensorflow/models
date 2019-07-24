@@ -269,7 +269,7 @@ def define_imagenet_keras_flags():
 def main(_):
   model_helpers.apply_clean(flags.FLAGS)
   with logger.benchmark_context(flags.FLAGS):
-    return run(flags.FLAGS)
+    run(flags.FLAGS)
 
 
 if __name__ == '__main__':
