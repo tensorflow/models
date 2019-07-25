@@ -120,6 +120,9 @@ def get_distribution_strategy(distribution_strategy="default",
           "flag cannot be set to 'off'.".format(num_gpus, num_workers))
     return None
 
+  if distribution_strategy == "noop":
+    return tf.distribute.get_strategy()
+
   if distribution_strategy == "multi_worker_mirrored":
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=_collective_communication(all_reduce_alg))
