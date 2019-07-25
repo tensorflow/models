@@ -206,6 +206,17 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_eager(self):
+    """Test Keras model with 1 GPU in pure eager mode."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_eager')
+    FLAGS.batch_size = 64
+    FLAGS.use_tf_function = False
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu(self):
     """Test Keras model with 8 GPUs."""
     self._setup()
