@@ -169,7 +169,7 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.eval_batch_size = 4
 
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
-    self._run_and_report_benchmark(summary_path, use_xla=True)
+    self._run_and_report_benchmark(summary_path, enable_xla=True)
 
   def benchmark_1_gpu_mrpc_no_dist_strat(self):
     """Test BERT model performance with 1 GPU, no distribution strategy."""
