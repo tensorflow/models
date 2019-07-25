@@ -107,8 +107,10 @@ class FasterRcnnBoxCoder(box_coder.BoxCoder):
       tx /= self._scale_factors[1]
       th /= self._scale_factors[2]
       tw /= self._scale_factors[3]
-    w = tf.exp(tf.minimum(tw, 80)) * wa
-    h = tf.exp(tf.minimum(th, 80)) * ha
+    # Avoid INF in exp and w,h below. We set 80 as a upper_bound since tf.exp(89) yields INF.
+    UPPER_BOUND = 80
+    w = tf.exp(tf.minimum(tw, UPPER_BOUND)) * wa
+    h = tf.exp(tf.minimum(th, UPPER_BOUND)) * ha
     ycenter = ty * ha + ycenter_a
     xcenter = tx * wa + xcenter_a
     ymin = ycenter - h / 2.
