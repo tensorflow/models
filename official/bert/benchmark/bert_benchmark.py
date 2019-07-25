@@ -119,12 +119,12 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
                                 min_accuracy=0,
                                 max_accuracy=1,
                                 use_ds=True,
-                                use_xla=False):
+                                enable_xla=False):
     """Starts BERT performance benchmark test."""
 
     start_time_sec = time.time()
     self._run_bert_classifier(
-        callbacks=[self.timer_callback], use_ds=use_ds, use_xla=use_xla)
+        callbacks=[self.timer_callback], use_ds=use_ds, enable_xla=enable_xla)
     wall_time_sec = time.time() - start_time_sec
 
     with tf.io.gfile.GFile(training_summary_path, 'rb') as reader:
@@ -253,11 +253,11 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
                                 training_summary_path,
                                 min_accuracy=0.84,
                                 max_accuracy=0.88,
-                                use_xla=False):
+                                enable_xla=False):
     """Starts BERT accuracy benchmark test."""
 
     start_time_sec = time.time()
-    self._run_bert_classifier(callbacks=[self.timer_callback], use_xla=use_xla)
+    self._run_bert_classifier(callbacks=[self.timer_callback], enable_xla=enable_xla)
     wall_time_sec = time.time() - start_time_sec
 
     with tf.io.gfile.GFile(training_summary_path, 'rb') as reader:
