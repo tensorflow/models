@@ -299,6 +299,8 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
     """
     self._setup()
     self.num_gpus = 1
+    FLAGS.train_batch_size = 4
+    FLAGS.eval_batch_size = 4
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mrpc_xla')
 
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
