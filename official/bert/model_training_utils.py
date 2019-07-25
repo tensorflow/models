@@ -23,6 +23,7 @@ import os
 
 from absl import logging
 import tensorflow as tf
+from official.utils.misc import distribution_utils
 
 _SUMMARY_TXT = 'training_summary.txt'
 _MIN_SUMMARY_STEPS = 10
@@ -196,7 +197,7 @@ def run_customized_training_loop(
   with tf.device(get_primary_cpu_task(use_remote_tpu)):
     train_iterator = _get_input_iterator(train_input_fn, strategy)
 
-    with strategy.scope():
+    with distribution_utils.get_strategy_scope(strategy):
       # To correctly place the model weights on accelerators,
       # model and optimizer should be created in scope.
       model, sub_model = model_fn()
