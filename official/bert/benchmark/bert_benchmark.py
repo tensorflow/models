@@ -270,7 +270,7 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
         max_accuracy=max_accuracy)
 
   def _setup(self):
-    super(BertClassifyAccuracy, self).__init__()
+    super(BertClassifyAccuracy, self)._setup()
     FLAGS.train_data_path = self.train_data_path
     FLAGS.eval_data_path = self.eval_data_path
     FLAGS.input_meta_data_path = self.input_meta_data_path
