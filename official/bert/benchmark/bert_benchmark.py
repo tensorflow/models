@@ -301,7 +301,7 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mrpc_xla')
 
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
-    self._run_and_report_benchmark(summary_path)
+    self._run_and_report_benchmark(summary_path, enable_xla=True)
 
 
 if __name__ == '__main__':
