@@ -147,8 +147,19 @@ class ShakespeareAccuracy(ShakespeareBenchmarkBase):
     FLAGS.model_dir = ''
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_no_ds_run_eagerly(self):
+  def benchmark_1_gpu_no_ds(self):
     """Benchmark 1 gpu without distribution strategies."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.training_data = self.train_data
+    FLAGS.batch_size = 64
+    FLAGS.train_epochs = 43
+    FLAGS.model_dir = ''
+    FLAGS.distribution_strategy = 'off'
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_ds_run_eagerly(self):
+    """Benchmark 1 gpu without distribution strategies and run eagerly."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.training_data = self.train_data
@@ -157,7 +168,6 @@ class ShakespeareAccuracy(ShakespeareBenchmarkBase):
     FLAGS.model_dir = ''
     FLAGS.run_eagerly = True
     FLAGS.distribution_strategy = 'off'
-
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_ds_force_v2(self):
@@ -264,6 +274,14 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     FLAGS.distribution_strategy = 'off'
     self._run_and_report_benchmark()
 
+  def benchmark_cpu_no_ds_force_v2(self):
+    """Benchmark cpu no ds, and force v2."""
+    self._setup()
+    FLAGS.num_gpus = 0
+    FLAGS.batch_size = 64
+    FLAGS.distribution_strategy = 'off'
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu(self):
     """Benchmark 1 gpu."""
     self._setup()
@@ -276,6 +294,15 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.batch_size = 64
+    FLAGS.distribution_strategy = 'off'
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_ds_force_v2(self):
+    """Benchmark 1 gpu no ds, and force v2."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.batch_size = 64
+    FLAGS.force_v2_in_keras_compile = True
     FLAGS.distribution_strategy = 'off'
     self._run_and_report_benchmark()
 
