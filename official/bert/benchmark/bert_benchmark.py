@@ -298,6 +298,7 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
     set the wide range of allowed accuracy (84% to 88%).
     """
     self._setup()
+    self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mrpc_xla')
 
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
