@@ -16,7 +16,10 @@ class VariationalAutoencoder(object):
 
         # sample from gaussian distribution
         eps = tf.random_normal(tf.stack([tf.shape(self.x)[0], self.n_hidden]), 0, 1, dtype = tf.float32)
-        self.z = tf.add(self.z_mean, tf.multiply(tf.sqrt(tf.exp(self.z_log_sigma_sq)), eps))
+        # to avoid INF and NAN after unsafe tf.exp. we set 80 as an UPPER_BOUND since tf.exp(89) yields INF.
+        UPPER_BOUND = 80
+        bounded_z_log_sigma_sq = tf.minimum(self.z_log_sigma_sq, UPPER_BOUND)
+        self.z = tf.add(self.z_mean, tf.multiply(tf.sqrt(tf.exp(bounded_z_log_sigma_sq)), eps))
 
         self.reconstruction = tf.add(tf.matmul(self.z, self.weights['w2']), self.weights['b2'])
 
@@ -24,7 +27,7 @@ class VariationalAutoencoder(object):
         reconstr_loss = 0.5 * tf.reduce_sum(tf.pow(tf.subtract(self.reconstruction, self.x), 2.0))
         latent_loss = -0.5 * tf.reduce_sum(1 + self.z_log_sigma_sq
                                            - tf.square(self.z_mean)
-                                           - tf.exp(self.z_log_sigma_sq), 1)
+                                           - tf.exp(bounded_z_log_sigma_sq), 1)
         self.cost = tf.reduce_mean(reconstr_loss + latent_loss)
         self.optimizer = optimizer.minimize(self.cost)
 
