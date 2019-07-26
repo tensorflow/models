@@ -144,7 +144,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
     logging.info('Restoring checkpoints from %s', checkpoint_path)
     checkpoint = tf.train.Checkpoint(model=squad_model)
-    checkpoint.restore(checkpoint_path)
+    checkpoint.restore(checkpoint_path).expect_partial()
 
     @tf.function
     def predict_step(iterator):
