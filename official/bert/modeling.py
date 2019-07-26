@@ -156,7 +156,7 @@ class BertModel(tf.keras.layers.Layer):
         vocab_size=self.config.vocab_size,
         embedding_size=self.config.hidden_size,
         initializer_range=self.config.initializer_range,
-        dtype=self.float_type,
+        dtype=tf.float32,
         name="word_embeddings")
     self.embedding_postprocessor = EmbeddingPostprocessor(
         use_type_embeddings=True,
@@ -176,6 +176,7 @@ class BertModel(tf.keras.layers.Layer):
         attention_probs_dropout_prob=self.config.attention_probs_dropout_prob,
         initializer_range=self.config.initializer_range,
         backward_compatible=self.config.backward_compatible,
+        float_type=self.float_type,
         name="encoder")
     self.pooler_transform = tf.keras.layers.Dense(
         units=self.config.hidden_size,
@@ -202,6 +203,8 @@ class BertModel(tf.keras.layers.Layer):
     word_embeddings = self.embedding_lookup(input_word_ids)
     embedding_tensor = self.embedding_postprocessor(
         word_embeddings=word_embeddings, token_type_ids=input_type_ids)
+    if self.float_type == tf.float16:
+      embedding_tensor = tf.cast(embedding_tensor, tf.float16)
     attention_mask = None
     if input_mask is not None:
       attention_mask = create_attention_mask_from_input_mask(
@@ -441,7 +444,7 @@ class Attention(tf.keras.layers.Layer):
       # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
       # masked positions, this operation will create a tensor which is 0.0 for
       # positions we want to attend and -10000.0 for masked positions.
-      adder = (1.0 - tf.cast(attention_mask, self.dtype)) * -10000.0
+      adder = (1.0 - tf.cast(attention_mask, attention_scores.dtype)) * -10000.0
 
       # Since we are adding it to the raw scores before the softmax, this is
       # effectively the same as removing these entirely.
@@ -654,6 +657,7 @@ class TransformerBlock(tf.keras.layers.Layer):
                attention_probs_dropout_prob=0.0,
                initializer_range=0.02,
                backward_compatible=False,
+               float_type=tf.float32,
                **kwargs):
     super(TransformerBlock, self).__init__(**kwargs)
     self.hidden_size = hidden_size
@@ -664,6 +668,7 @@ class TransformerBlock(tf.keras.layers.Layer):
     self.attention_probs_dropout_prob = attention_probs_dropout_prob
     self.initializer_range = initializer_range
     self.backward_compatible = backward_compatible
+    self.float_type = float_type
 
     if self.hidden_size % self.num_attention_heads != 0:
       raise ValueError(
@@ -719,13 +724,24 @@ class TransformerBlock(tf.keras.layers.Layer):
         attention_mask=attention_mask)
     attention_output = self.attention_output_dense(attention_output)
     attention_output = self.attention_dropout(attention_output)
+    # Use float32 in keras layer norm and the gelu activation in the
+    # intermediate dense layer for numeric stability
+    if self.float_type == tf.float16:
+      input_tensor = tf.cast(input_tensor, tf.float32)
+      attention_output = tf.cast(attention_output, tf.float32)
     attention_output = self.attention_layer_norm(input_tensor +
                                                  attention_output)
-
     intermediate_output = self.intermediate_dense(attention_output)
+    if self.float_type == tf.float16:
+      intermediate_output = tf.cast(intermediate_output, tf.float16)
     layer_output = self.output_dense(intermediate_output)
     layer_output = self.output_dropout(layer_output)
+    # Use float32 in keras layer norm for numeric stability
+    if self.float_type == tf.float16:
+      layer_output = tf.cast(layer_output, tf.float32)
     layer_output = self.output_layer_norm(layer_output + attention_output)
+    if self.float_type == tf.float16:
+      layer_output = tf.cast(layer_output, tf.float16)
     return layer_output
 
 
@@ -751,6 +767,7 @@ class Transformer(tf.keras.layers.Layer):
                attention_probs_dropout_prob=0.0,
                initializer_range=0.02,
                backward_compatible=False,
+               float_type=tf.float32,
                **kwargs):
     super(Transformer, self).__init__(**kwargs)
     self.num_hidden_layers = num_hidden_layers
@@ -762,6 +779,7 @@ class Transformer(tf.keras.layers.Layer):
     self.attention_probs_dropout_prob = attention_probs_dropout_prob
     self.initializer_range = initializer_range
     self.backward_compatible = backward_compatible
+    self.float_type = float_type
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
@@ -777,6 +795,7 @@ class Transformer(tf.keras.layers.Layer):
               attention_probs_dropout_prob=self.attention_probs_dropout_prob,
               initializer_range=self.initializer_range,
               backward_compatible=self.backward_compatible,
+              float_type=self.float_type,
               name=("layer_%d" % i)))
     super(Transformer, self).build(unused_input_shapes)
 

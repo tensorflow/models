@@ -15,6 +15,9 @@
 """Defining common flags used across all BERT models/applications."""
 
 from absl import flags
+import tensorflow as tf
+
+from official.utils.flags import core as flags_core
 
 
 def define_common_bert_flags():
@@ -42,3 +45,26 @@ def define_common_bert_flags():
       'inside.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
+
+  # add flags for mixed precision training.
+  flags_core.define_performance(
+      num_parallel_calls=False,
+      inter_op=False,
+      intra_op=False,
+      synthetic_data=False,
+      max_train_steps=False,
+      dtype=True,
+      dynamic_loss_scale=True,
+      loss_scale=True,
+      all_reduce_alg=False,
+      num_packs=False,
+      enable_xla=False
+  )
+
+
+def use_float16():
+  return flags_core.get_tf_dtype(flags.FLAGS) == tf.float16
+
+
+def get_loss_scale():
+  return flags_core.get_loss_scale(flags.FLAGS, default_for_fp16='dynamic')

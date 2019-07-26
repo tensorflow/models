@@ -205,6 +205,8 @@ def run_customized_training_loop(
         raise ValueError('User should set optimizer attribute to model '
                          'inside `model_fn`.')
       optimizer = model.optimizer
+      use_float16 = isinstance(
+          optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer)
 
       if init_checkpoint:
         logging.info(
@@ -242,10 +244,16 @@ def run_customized_training_loop(
         with tf.GradientTape() as tape:
           model_outputs = model(inputs)
           loss = loss_fn(labels, model_outputs)
+          if use_float16:
+            scaled_loss = optimizer.get_scaled_loss(loss)
 
         # De-dupes variables due to keras tracking issues.
         tvars = list(set(model.trainable_variables))
-        grads = tape.gradient(loss, tvars)
+        if use_float16:
+          scaled_grads = tape.gradient(scaled_loss, tvars)
+          grads = optimizer.get_unscaled_gradients(scaled_grads)
+        else:
+          grads = tape.gradient(loss, tvars)
         optimizer.apply_gradients(zip(grads, tvars))
         # For reporting, the metric takes the mean of losses.
         train_loss_metric.update_state(loss)

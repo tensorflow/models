@@ -318,6 +318,8 @@ class BertSquadLogitsLayer(tf.keras.layers.Layer):
     logits = tf.keras.backend.reshape(logits, [-1, sequence_length, 2])
     logits = tf.transpose(logits, [2, 0, 1])
     unstacked_logits = tf.unstack(logits, axis=0)
+    if self.float_type == tf.float16:
+      unstacked_logits = tf.cast(unstacked_logits, tf.float32)
     return unstacked_logits[0], unstacked_logits[1]
 
 
