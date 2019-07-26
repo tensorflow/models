@@ -104,8 +104,8 @@ evaluation metric implementation is available in the class
 
 ```
 HIERARCHY_FILE=/path/to/challenge-2019-label300-hierarchy.json
-BOUNDING_BOXES=/path/to/challenge-2019-validation-detection-bbox
-IMAGE_LABELS=/path/to/challenge-2019-validation-detection-human-imagelabels
+BOUNDING_BOXES=/path/to/challenge-2019-validation-segmentation-bbox
+IMAGE_LABELS=/path/to/challenge-2019-validation-segmentation-labels
 
 python object_detection/dataset_tools/oid_hierarchical_labels_expansion.py \
     --json_hierarchy_file=${HIERARCHY_FILE} \
