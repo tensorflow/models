@@ -109,6 +109,9 @@ def parse_flags(flags_obj):
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
       "stream_files": flags_obj.tpu is not None,
+      "train_dataset_path": flags_obj.train_dataset_path,
+      "eval_dataset_path": flags_obj.eval_dataset_path,
+      "input_meta_data_path": flags_obj.input_meta_data_path,
   }
 
 
@@ -260,6 +263,21 @@ def define_ncf_flags():
           "Strategy to use for generating false negatives. materialized has a"
           "precompute that scales badly, but a faster per-epoch construction"
           "time and can be faster on very large systems."))
+
+  flags.DEFINE_string(
+      name="train_dataset_path",
+      default=None,
+      help=flags_core.help_wrap("Path to training data."))
+
+  flags.DEFINE_string(
+      name="eval_dataset_path",
+      default=None,
+      help=flags_core.help_wrap("Path to evaluation data."))
+
+  flags.DEFINE_string(
+      name="input_meta_data_path",
+      default=None,
+      help=flags_core.help_wrap("Path to input meta data file."))
 
   flags.DEFINE_bool(
       name="ml_perf", default=False,

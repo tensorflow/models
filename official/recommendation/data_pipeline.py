@@ -125,13 +125,16 @@ class DatasetManager(object):
     return tf.train.Example(
         features=tf.train.Features(feature=feature_dict)).SerializeToString()
 
-  def deserialize(self, serialized_data, batch_size):
+  @staticmethod
+  def deserialize(serialized_data, batch_size=None, is_training=True):
     """Convert serialized TFRecords into tensors.
 
     Args:
       serialized_data: A tensor containing serialized records.
       batch_size: The data arrives pre-batched, so batch size is needed to
         deserialize the data.
+      is_training: Boolean, whether data to deserialize to training data
+        or evaluation data.
     """
 
     def _get_feature_map(batch_size, is_training=True):
@@ -159,7 +162,7 @@ class DatasetManager(object):
         }
 
     features = tf.parse_single_example(
-        serialized_data, _get_feature_map(batch_size, self._is_training))
+        serialized_data, _get_feature_map(batch_size, is_training=is_training))
     users = tf.reshape(
         tf.cast(features[movielens.USER_COLUMN], rconst.USER_DTYPE),
         (batch_size,))
@@ -167,25 +170,39 @@ class DatasetManager(object):
         tf.cast(features[movielens.ITEM_COLUMN], rconst.ITEM_DTYPE),
         (batch_size,))
 
-    if self._is_training:
+    if is_training:
       valid_point_mask = tf.reshape(
           tf.cast(features[movielens.ITEM_COLUMN], tf.bool), (batch_size,))
+      fake_dup_mask = tf.zeros_like(features[movielens.USER_COLUMN])
       return {
           movielens.USER_COLUMN: users,
           movielens.ITEM_COLUMN: items,
           rconst.VALID_POINT_MASK: valid_point_mask,
-      }, tf.reshape(tf.cast(features["labels"], tf.bool), (batch_size,))
-
-    return {
-        movielens.USER_COLUMN:
-            users,
-        movielens.ITEM_COLUMN:
-            items,
-        rconst.DUPLICATE_MASK:
-            tf.reshape(
-                tf.cast(features[rconst.DUPLICATE_MASK], tf.bool),
-                (batch_size,))
-    }
+          rconst.TRAIN_LABEL_KEY:
+              tf.reshape(tf.cast(features["labels"], tf.bool),
+                         (batch_size, 1)),
+          rconst.DUPLICATE_MASK: fake_dup_mask
+      }
+    else:
+      labels = tf.reshape(
+          tf.cast(tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool),
+          (batch_size, 1))
+      fake_valid_pt_mask = tf.cast(
+          tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
+      return {
+          movielens.USER_COLUMN:
+              users,
+          movielens.ITEM_COLUMN:
+              items,
+          rconst.DUPLICATE_MASK:
+              tf.reshape(
+                  tf.cast(features[rconst.DUPLICATE_MASK], tf.bool),
+                  (batch_size,)),
+          rconst.VALID_POINT_MASK:
+              fake_valid_pt_mask,
+          rconst.TRAIN_LABEL_KEY:
+              labels
+      }
 
   def put(self, index, data):
     # type: (int, dict) -> None
@@ -287,7 +304,10 @@ class DatasetManager(object):
           files=file_pattern, worker_job=popen_helper.worker_job(),
           num_parallel_reads=rconst.NUM_FILE_SHARDS, num_epochs=1,
           sloppy=not self._deterministic)
-      map_fn = functools.partial(self.deserialize, batch_size=batch_size)
+      map_fn = functools.partial(
+          self.deserialize,
+          batch_size=batch_size,
+          is_training=self._is_training)
       dataset = dataset.map(map_fn, num_parallel_calls=16)
 
     else:
@@ -671,6 +691,11 @@ class BaseDataConstructor(threading.Thread):
 
 class DummyConstructor(threading.Thread):
   """Class for running with synthetic data."""
+
+  def __init__(self, *args, **kwargs):
+    super(DummyConstructor, self).__init__(*args, **kwargs)
+    self.train_batches_per_epoch = rconst.SYNTHETIC_BATCHES_PER_EPOCH
+    self.eval_batches_per_epoch = rconst.SYNTHETIC_BATCHES_PER_EPOCH
 
   def run(self):
     pass
