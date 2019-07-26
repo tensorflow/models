@@ -22,10 +22,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 import os
 
 # pylint: disable=g-bad-import-order
-from absl import app as absl_app
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -34,6 +34,7 @@ import tensorflow as tf
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import ncf_common
+from official.recommendation import ncf_input_pipeline
 from official.recommendation import neumf_model
 from official.utils.logs import logger
 from official.utils.logs import mlperf_helper
@@ -69,60 +70,6 @@ class MetricLayer(tf.keras.layers.Layer):
     in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
     self.add_metric(self.metric(in_top_k, sample_weight=metric_weights))
     return logits
-
-
-def _get_train_and_eval_data(producer, params):
-  """Returns the datasets for training and evalutating."""
-
-  def preprocess_train_input(features, labels):
-    """Pre-process the training data.
-
-    This is needed because
-    - The label needs to be extended to be used in the loss fn
-    - We need the same inputs for training and eval so adding fake inputs
-      for DUPLICATE_MASK in training data.
-    """
-    labels = tf.expand_dims(labels, -1)
-    fake_dup_mask = tf.zeros_like(features[movielens.USER_COLUMN])
-    features[rconst.DUPLICATE_MASK] = fake_dup_mask
-    features[rconst.TRAIN_LABEL_KEY] = labels
-
-    if params["distribute_strategy"] or not keras_utils.is_v2_0():
-      return features
-    else:
-      # b/134708104
-      return (features,)
-
-  train_input_fn = producer.make_input_fn(is_training=True)
-  train_input_dataset = train_input_fn(params).map(
-      preprocess_train_input)
-
-  def preprocess_eval_input(features):
-    """Pre-process the eval data.
-
-    This is needed because:
-    - The label needs to be extended to be used in the loss fn
-    - We need the same inputs for training and eval so adding fake inputs
-      for VALID_PT_MASK in eval data.
-    """
-    labels = tf.cast(tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
-    labels = tf.expand_dims(labels, -1)
-    fake_valid_pt_mask = tf.cast(
-        tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
-    features[rconst.VALID_POINT_MASK] = fake_valid_pt_mask
-    features[rconst.TRAIN_LABEL_KEY] = labels
-
-    if params["distribute_strategy"] or not keras_utils.is_v2_0():
-      return features
-    else:
-      # b/134708104
-      return (features,)
-
-  eval_input_fn = producer.make_input_fn(is_training=False)
-  eval_input_dataset = eval_input_fn(params).map(
-      lambda features: preprocess_eval_input(features))
-
-  return train_input_dataset, eval_input_dataset
 
 
 class IncrementEpochCallback(tf.keras.callbacks.Callback):
@@ -269,6 +216,7 @@ def run_ncf(_):
     FLAGS.eval_batch_size = FLAGS.batch_size
 
   params = ncf_common.parse_flags(FLAGS)
+  model_helpers.apply_clean(flags.FLAGS)
 
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
@@ -291,36 +239,36 @@ def run_ncf(_):
   params["batch_size"] = params["eval_batch_size"]
   batch_size = params["batch_size"]
 
-  num_users, num_items, num_train_steps, num_eval_steps, producer = (
-      ncf_common.get_inputs(params))
+  time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
+  callbacks = [time_callback]
+
+  producer, input_meta_data = None, None
+  generate_input_online = params["train_dataset_path"] is None
+
+  if generate_input_online:
+    # Start data producing thread.
+    num_users, num_items, num_train_steps, num_eval_steps, producer = (
+        ncf_common.get_inputs(params))
+    producer.start()
+    per_epoch_callback = IncrementEpochCallback(producer)
+    callbacks.append(per_epoch_callback)
+  else:
+    assert params["eval_dataset_path"] and params["input_meta_data_path"]
+    with tf.gfile.GFile(params["input_meta_data_path"], "rb") as reader:
+      input_meta_data = json.loads(reader.read().decode("utf-8"))
+      num_users = input_meta_data["num_users"]
+      num_items = input_meta_data["num_items"]
 
   params["num_users"], params["num_items"] = num_users, num_items
-  producer.start()
-  model_helpers.apply_clean(flags.FLAGS)
-
-  batches_per_step = params["batches_per_step"]
-  train_input_dataset, eval_input_dataset = _get_train_and_eval_data(producer,
-                                                                     params)
-  # It is required that for distributed training, the dataset must call
-  # batch(). The parameter of batch() here is the number of replicas involed,
-  # such that each replica evenly gets a slice of data.
-  # drop_remainder = True, as we would like batch call to return a fixed shape
-  # vs None, this prevents a expensive broadcast during weighted_loss
-  train_input_dataset = train_input_dataset.batch(batches_per_step,
-                                                  drop_remainder=True)
-  eval_input_dataset = eval_input_dataset.batch(batches_per_step,
-                                                drop_remainder=True)
-
-  time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
-  per_epoch_callback = IncrementEpochCallback(producer)
-  callbacks = [per_epoch_callback, time_callback]
+  (train_input_dataset, eval_input_dataset, num_train_steps, num_eval_steps) = \
+      (ncf_input_pipeline.create_ncf_input_data(
+          params, producer, input_meta_data))
+  steps_per_epoch = None if generate_input_online else num_train_steps
 
   if FLAGS.early_stopping:
     early_stopping_callback = CustomEarlyStopping(
         "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
-
-
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
     optimizer = tf.keras.optimizers.Adam(
@@ -331,7 +279,7 @@ def run_ncf(_):
 
   if params["keras_use_ctl"]:
     loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM,
+        reduction="sum",
         from_logits=True)
     train_input_iterator = strategy.make_dataset_iterator(train_input_dataset)
     eval_input_iterator = strategy.make_dataset_iterator(eval_input_dataset)
@@ -383,8 +331,17 @@ def run_ncf(_):
 
     time_callback.on_train_begin()
     for epoch in range(FLAGS.train_epochs):
-      per_epoch_callback.on_epoch_begin(epoch)
-      train_input_iterator.initialize()
+      for cb in callbacks:
+        cb.on_epoch_begin(epoch)
+
+      # As NCF dataset is sampled with randomness, not repeating
+      # data elements in each epoch has significant impact on
+      # convergence. As so, offline-generated TF record files
+      # contains all epoch worth of data. Thus we do not need
+      # to initialize dataset when reading from tf record files.
+      if generate_input_online:
+        train_input_iterator.initialize()
+
       train_loss = 0
       for step in range(num_train_steps):
         time_callback.on_batch_begin(step+epoch*num_train_steps)
@@ -416,19 +373,19 @@ def run_ncf(_):
                           run_eagerly=FLAGS.run_eagerly,
                           run_distributed=FLAGS.force_v2_in_keras_compile)
 
-      history = keras_model.fit(train_input_dataset,
-                                epochs=FLAGS.train_epochs,
-                                callbacks=callbacks,
-                                validation_data=eval_input_dataset,
-                                validation_steps=num_eval_steps,
-                                verbose=2)
+      history = keras_model.fit(
+          train_input_dataset,
+          epochs=FLAGS.train_epochs,
+          steps_per_epoch=steps_per_epoch,
+          callbacks=callbacks,
+          validation_data=eval_input_dataset,
+          validation_steps=num_eval_steps,
+          verbose=2)
 
       logging.info("Training done. Start evaluating")
 
       eval_results = keras_model.evaluate(
-          eval_input_dataset,
-          steps=num_eval_steps,
-          verbose=2)
+          eval_input_dataset, steps=num_eval_steps, verbose=2)
 
       logging.info("Keras evaluation is done.")
 
