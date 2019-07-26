@@ -81,7 +81,7 @@ def squad_loss_fn(start_positions,
                   end_positions,
                   start_logits,
                   end_logits,
-                  loss_scale=1.0):
+                  loss_factor=1.0):
   """Returns sparse categorical crossentropy for start/end logits."""
   start_loss = tf.keras.backend.sparse_categorical_crossentropy(
       start_positions, start_logits, from_logits=True)
@@ -89,11 +89,11 @@ def squad_loss_fn(start_positions,
       end_positions, end_logits, from_logits=True)
 
   total_loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
-  total_loss *= loss_scale
+  total_loss *= loss_factor
   return total_loss
 
 
-def get_loss_fn(loss_scale=1.0):
+def get_loss_fn(loss_factor=1.0):
   """Gets a loss function for squad task."""
 
   def _loss_fn(labels, model_outputs):
@@ -105,7 +105,7 @@ def get_loss_fn(loss_scale=1.0):
         end_positions,
         start_logits,
         end_logits,
-        loss_scale=loss_scale)
+        loss_factor=loss_factor)
 
   return _loss_fn
 
@@ -182,6 +182,11 @@ def train_squad(strategy,
     logging.info('Training using customized training loop with distribution'
                  ' strategy.')
 
+  use_float16 = common_flags.use_float16()
+  if use_float16:
+    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
+    tf.keras.mixed_precision.experimental.set_policy(policy)
+
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   epochs = FLAGS.num_train_epochs
   num_train_examples = input_meta_data['train_data_size']
@@ -196,17 +201,24 @@ def train_squad(strategy,
       is_training=True)
 
   def _get_squad_model():
+    """Get Squad model and optimizer."""
     squad_model, core_model = bert_models.squad_model(
-        bert_config, max_seq_length, float_type=tf.float32)
+        bert_config,
+        max_seq_length,
+        float_type=tf.float16 if use_float16 else tf.float32)
     squad_model.optimizer = optimization.create_optimizer(
         FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
+    if use_float16:
+      squad_model.optimizer = (
+          tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+              squad_model.optimizer, loss_scale=common_flags.get_loss_scale()))
     return squad_model, core_model
 
   # The original BERT model does not scale the loss by
   # 1/num_replicas_in_sync. It could be an accident. So, in order to use
   # the same hyper parameter, we do the same thing here by keeping each
   # replica loss as it is.
-  loss_fn = get_loss_fn(loss_scale=1.0)
+  loss_fn = get_loss_fn(loss_factor=1.0)
   use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
 
   model_training_utils.run_customized_training_loop(
