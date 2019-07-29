@@ -66,7 +66,7 @@ def export_pretraining_checkpoint(
   """Exports BERT model for as a checkpoint without optimizer.
 
   Arguments:
-      checkpoint_dir: Path to where training mdoel checkpoints are stored.
+      checkpoint_dir: Path to where training model checkpoints are stored.
       model: Keras model object to export.
       checkpoint_name: File name or suffix path to export pretrained checkpoint.
 
@@ -83,7 +83,8 @@ def export_pretraining_checkpoint(
   assert latest_checkpoint_file
   logging.info('Checkpoint file %s found and restoring from '
                'checkpoint', latest_checkpoint_file)
-  checkpoint.restore(latest_checkpoint_file).assert_existing_objects_matched()
+  status = checkpoint.restore(latest_checkpoint_file)
+  status.assert_existing_objects_matched().expect_partial()
   saved_path = checkpoint.save(os.path.join(checkpoint_dir, checkpoint_name))
   logging.info('Exporting the model as a new TF checkpoint: %s', saved_path)
 
