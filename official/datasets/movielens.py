@@ -22,7 +22,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import sys
 import tempfile
 import zipfile
 
@@ -31,7 +30,6 @@ import numpy as np
 import pandas as pd
 import six
 from six.moves import urllib  # pylint: disable=redefined-builtin
-from absl import app as absl_app
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -39,10 +37,10 @@ import tensorflow as tf
 
 from official.utils.flags import core as flags_core
 
-
+ML_100K = "ml-100k"
 ML_1M = "ml-1m"
 ML_20M = "ml-20m"
-DATASETS = [ML_1M, ML_20M]
+DATASETS = [ML_100K, ML_1M, ML_20M]
 
 RATINGS_FILE = "ratings.csv"
 MOVIES_FILE = "movies.csv"
@@ -57,18 +55,34 @@ TIMESTAMP_COLUMN = "timestamp"
 TITLE_COLUMN = "titles"
 USER_COLUMN = "user_id"
 
-GENRES = [
-    'Action', 'Adventure', 'Animation', "Children", 'Comedy', 'Crime',
-    'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', "IMAX", 'Musical',
-    'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western'
+GENRES_100K = [
+    "unknown", "Action", "Adventure", "Animation", "Children", "Comedy",
+    "Crime", "Documentary", "Drama", "Fantasy", "Film-Noir", "Horror",
+    "Musical", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"
 ]
+# genres for 1m and 20m
+GENRES = [
+    "Action", "Adventure", "Animation", "Children", "Comedy",
+    "Crime", "Documentary", "Drama", "Fantasy", "Film-Noir", "Horror", "IMAX",
+    "Musical", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"
+]
+# combined genres
+GENRES_COMBINED = [
+    "unknown", "Action", "Adventure", "Animation", "Children", "Comedy",
+    "Crime", "Documentary", "Drama", "Fantasy", "Film-Noir", "Horror", "IMAX",
+    "Musical", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"
+]
+
+N_GENRE_100K = len(GENRES_100K)
 N_GENRE = len(GENRES)
+N_GENRE_COMBINED = len(GENRES_COMBINED)
 
 RATING_COLUMNS = [USER_COLUMN, ITEM_COLUMN, RATING_COLUMN, TIMESTAMP_COLUMN]
 MOVIE_COLUMNS = [ITEM_COLUMN, TITLE_COLUMN, GENRE_COLUMN]
 
 # Note: Users are indexed [1, k], not [0, k-1]
 NUM_USER_IDS = {
+    ML_100K: 983,
     ML_1M: 6040,
     ML_20M: 138493,
 }
@@ -76,10 +90,12 @@ NUM_USER_IDS = {
 # Note: Movies are indexed [1, k], not [0, k-1]
 # Both the 1m and 20m datasets use the same movie set.
 NUM_ITEM_IDS = 3952
+NUM_ITEM_IDS_100K = 1692
 
 MAX_RATING = 5
 
 NUM_RATINGS = {
+    ML_100K: 100000,
     ML_1M: 1000209,
     ML_20M: 20000263
 }
@@ -117,21 +133,22 @@ def _download_and_clean(dataset, data_dir):
     # A new line to clear the carriage return from download progress
     # logging.info is not applicable here
     print()
-    logging.info(
-        "Successfully downloaded {} {} bytes".format(
-            zip_path, statinfo.st_size))
+    logging.info("Successfully downloaded {} {} bytes".format(
+        zip_path, statinfo.st_size))
 
     zipfile.ZipFile(zip_path, "r").extractall(temp_dir)
 
-    if dataset == ML_1M:
+    if dataset == ML_100K:
+      _regularize_100k_dataset(temp_dir)
+    elif dataset == ML_1M:
       _regularize_1m_dataset(temp_dir)
-    else:
+    elif dataset == ML_20M:
       _regularize_20m_dataset(temp_dir)
 
     for fname in tf.io.gfile.listdir(temp_dir):
       if not tf.io.gfile.exists(os.path.join(data_subdir, fname)):
-        tf.io.gfile.copy(os.path.join(temp_dir, fname),
-                         os.path.join(data_subdir, fname))
+        tf.io.gfile.copy(
+            os.path.join(temp_dir, fname), os.path.join(data_subdir, fname))
       else:
         logging.info("Skipping copy of {}, as it already exists in the "
                      "destination folder.".format(fname))
@@ -166,14 +183,98 @@ def _transform_csv(input_path, output_path, names, skip_first, separator=","):
       line = line.decode("utf-8", errors="ignore")
       fields = line.split(separator)
       if separator != ",":
-        fields = ['"{}"'.format(field) if "," in field else field
-                  for field in fields]
+        fields = [
+            '"{}"'.format(field) if "," in field else field for field in fields
+        ]
       f_out.write(",".join(fields).encode("utf-8"))
 
 
-def _regularize_1m_dataset(temp_dir):
+def _transform_100k_item_csv(input_path,
+                             output_path,
+                             names,
+                             skip_first,
+                             separator=","):
+  """Transform csv to a regularized format.
+
+  Format in `u.item`; MovieID|Title|Time||Url|<Multihot_Genres>
+
+  Args:
+    input_path: The path of the raw csv.
+    output_path: The path of the cleaned csv.
+    names: The csv column names.
+    skip_first: Boolean of whether to skip the first line of the raw csv.
+    separator: Character used to separate fields in the raw csv.
   """
-  ratings.dat
+  if six.PY2:
+    names = [n.decode("utf-8") for n in names]
+
+  with tf.io.gfile.GFile(output_path, "wb") as f_out, \
+      tf.io.gfile.GFile(input_path, "rb") as f_in:
+
+    # Write column names to the csv.
+    f_out.write(",".join(names).encode("utf-8"))
+    f_out.write(b"\n")
+    for i, line in enumerate(f_in):
+      if i == 0 and skip_first:
+        continue  # ignore existing labels in the csv
+
+      line = line.decode("utf-8", errors="ignore")
+      fields = line.strip().split(separator)
+      if separator != ",":
+        fields = [
+            '"{}"'.format(field) if "," in field else field for field in fields
+        ]
+      # combine final genres
+      genres = [
+          GENRES_100K[idx]
+          for idx, field in enumerate(fields[-N_GENRE_100K:])
+          if field == "1"
+      ]
+
+      genre_string = "|".join(genres)
+      f_out.write(
+          (",".join(fields[:2] + [genre_string]) + "\n").encode("utf-8"))
+
+
+def _regularize_100k_dataset(temp_dir):
+  """u.data
+
+    The file has no header row, and each line is in the following format:
+    UserID\tMovieID\tRating\tTimestamp
+      - UserIDs range from 1 and 943
+      - MovieIDs range from 1 and 1682
+      - Ratings are made on a 5-star scale (whole-star ratings only)
+      - Timestamp is represented in seconds since midnight Coordinated Universal
+        Time (UTC) of January 1, 1970.
+      - Each user has at least 20 ratings
+
+  u.item
+    Each line has the following format:
+    MovieID|Title|Time||Url|<Multihot_Genres>
+      - MovieIDs range from 1 and 3952
+  """
+  working_dir = os.path.join(temp_dir, ML_100K)
+
+  _transform_csv(
+      input_path=os.path.join(working_dir, "u.data"),
+      output_path=os.path.join(temp_dir, RATINGS_FILE),
+      names=RATING_COLUMNS,
+      skip_first=False,
+      separator="\t")
+
+  _transform_100k_item_csv(
+      input_path=os.path.join(working_dir, "u.item"),
+      output_path=os.path.join(temp_dir, MOVIES_FILE),
+      names=MOVIE_COLUMNS,
+      skip_first=False,
+      separator="|")
+
+  tf.io.gfile.rmtree(working_dir)
+
+
+def _regularize_1m_dataset(temp_dir):
+  """ratings.dat
+
     The file has no header row, and each line is in the following format:
     UserID::MovieID::Rating::Timestamp
       - UserIDs range from 1 and 6040
@@ -193,19 +294,23 @@ def _regularize_1m_dataset(temp_dir):
   _transform_csv(
       input_path=os.path.join(working_dir, "ratings.dat"),
       output_path=os.path.join(temp_dir, RATINGS_FILE),
-      names=RATING_COLUMNS, skip_first=False, separator="::")
+      names=RATING_COLUMNS,
+      skip_first=False,
+      separator="::")
 
   _transform_csv(
       input_path=os.path.join(working_dir, "movies.dat"),
       output_path=os.path.join(temp_dir, MOVIES_FILE),
-      names=MOVIE_COLUMNS, skip_first=False, separator="::")
+      names=MOVIE_COLUMNS,
+      skip_first=False,
+      separator="::")
 
   tf.io.gfile.rmtree(working_dir)
 
 
 def _regularize_20m_dataset(temp_dir):
-  """
-  ratings.csv
+  """ratings.csv
+
     Each line of this file after the header row represents one rating of one
     movie by one user, and has the following format:
     userId,movieId,rating,timestamp
@@ -227,12 +332,16 @@ def _regularize_20m_dataset(temp_dir):
   _transform_csv(
       input_path=os.path.join(working_dir, "ratings.csv"),
       output_path=os.path.join(temp_dir, RATINGS_FILE),
-      names=RATING_COLUMNS, skip_first=True, separator=",")
+      names=RATING_COLUMNS,
+      skip_first=True,
+      separator=",")
 
   _transform_csv(
       input_path=os.path.join(working_dir, "movies.csv"),
       output_path=os.path.join(temp_dir, MOVIES_FILE),
-      names=MOVIE_COLUMNS, skip_first=True, separator=",")
+      names=MOVIE_COLUMNS,
+      skip_first=True,
+      separator=",")
 
   tf.io.gfile.rmtree(working_dir)
 
@@ -244,16 +353,14 @@ def download(dataset, data_dir):
     _ = [_download_and_clean(d, data_dir) for d in DATASETS]
 
 
-def ratings_csv_to_dataframe(data_dir, dataset):
-  with tf.io.gfile.GFile(os.path.join(data_dir, dataset, RATINGS_FILE)) as f:
+def csv_to_dataframe(data_dir, dataset, filename):
+  with tf.io.gfile.GFile(os.path.join(data_dir, dataset, filename)) as f:
     return pd.read_csv(f, encoding="utf-8")
 
 
 def csv_to_joint_dataframe(data_dir, dataset):
-  ratings = ratings_csv_to_dataframe(data_dir, dataset)
-
-  with tf.io.gfile.GFile(os.path.join(data_dir, dataset, MOVIES_FILE)) as f:
-    movies = pd.read_csv(f, encoding="utf-8")
+  ratings = csv_to_dataframe(data_dir, dataset, RATINGS_FILE)
+  movies = csv_to_dataframe(data_dir, dataset, MOVIES_FILE)
 
   df = ratings.merge(movies, on=ITEM_COLUMN)
   df[RATING_COLUMN] = df[RATING_COLUMN].astype(np.float32)
@@ -270,6 +377,7 @@ def integerize_genres(dataframe):
   Returns:
     The transformed dataframe.
   """
+
   def _map_fn(entry):
     entry.replace("Children's", "Children")  # naming difference.
     movie_genres = entry.split("|")
@@ -287,13 +395,15 @@ def integerize_genres(dataframe):
 def define_data_download_flags():
   """Add flags specifying data download arguments."""
   flags.DEFINE_string(
-      name="data_dir", default="/tmp/movielens-data/",
-      help=flags_core.help_wrap(
-          "Directory to download and extract data."))
+      name="data_dir",
+      default="/tmp/movielens-data/",
+      help=flags_core.help_wrap("Directory to download and extract data."))
 
   flags.DEFINE_enum(
-      name="dataset", default=None,
-      enum_values=DATASETS, case_sensitive=False,
+      name="dataset",
+      default=None,
+      enum_values=DATASETS,
+      case_sensitive=False,
       help=flags_core.help_wrap("Dataset to be trained and evaluated."))
 
 
