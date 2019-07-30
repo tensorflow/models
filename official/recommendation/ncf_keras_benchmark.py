@@ -193,6 +193,13 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
+    
+  def benchmark_2_gpus_early_stop_force_V2(self):
+    self._setup()
+    FLAGS.early_stopping = True
+    FLAGS.num_gpus = 2
+    FLAGS.force_v2_in_keras_compile = True
+    self._run_and_report_benchmark()
 
   def benchmark_2_gpus_ctl_early_stop(self):
     """NCF with custom training loop. Works only in TF 2.0."""
@@ -272,6 +279,19 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
     FLAGS.epsilon = 1e-8
+    self._run_and_report_benchmark_mlperf_like()
+    
+  def benchmark_8_gpu_force_v2_mlperf_like(self):
+    """8 GPU using keras fit/compile V2 codepath."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    FLAGS.force_v2_in_keras_compile = True
     self._run_and_report_benchmark_mlperf_like()
 
   def benchmark_xla_8_gpu_mlperf_like(self):
