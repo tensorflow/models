@@ -79,7 +79,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
     
-   def benchmark_8_gpu_force_v2(self):
+  def benchmark_8_gpu_force_v2(self):
     """Test Keras model with eager, dist_strat, force v2 and 8 GPUs."""
     self._setup()
     FLAGS.num_gpus = 8
