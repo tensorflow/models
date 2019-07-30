@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""DELF feature extractor.
-"""
+"""DELF feature extractor."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -53,6 +52,7 @@ def CalculateReceptiveBoxes(height, width, rf, stride, padding):
     rf: The receptive field size.
     stride: The effective stride between two adjacent feature points.
     padding: The effective padding size.
+
   Returns:
     rf_boxes: [N, 4] receptive boxes tensor. Here N equals to height x width.
     Each box is represented by [ymin, xmin, ymax, xmax].
@@ -94,12 +94,10 @@ def ExtractKeypointDescriptor(image, layer_name, image_scales, iou,
     abs_thres: A float tensor denoting the score threshold for feature
       selection.
     model_fn: Model function. Follows the signature:
-
       * Args:
         * `images`: Image tensor which is re-scaled.
         * `normalized_image`: Whether or not the images are normalized.
         * `reuse`: Whether or not the layer and its variables should be reused.
-
       * Returns:
         * `attention`: Attention score after the non-linearity.
         * `feature_map`: Feature map obtained from the ResNet model.
@@ -254,7 +252,7 @@ def BuildModel(layer_name, attention_nonlinear, attention_type,
       Currently, only 'softplus' is supported.
     attention_type: Type of the attention used. Options are:
       'use_l2_normalized_feature' and 'use_default_input_feature'. Note that
-       this is irrelevant during inference time.
+      this is irrelevant during inference time.
     attention_kernel_size: Size of attention kernel (kernel is square).
 
   Returns:
@@ -268,6 +266,7 @@ def BuildModel(layer_name, attention_nonlinear, attention_type,
       images: Image tensor.
       normalized_image: Whether or not the images are normalized.
       reuse: Whether or not the layer and its variables should be reused.
+
     Returns:
       attention: Attention score after the non-linearity.
       feature_map: Feature map after ResNet convolution.
@@ -367,10 +366,11 @@ def DelfFeaturePostProcessing(boxes, descriptors, config):
       pca_dim = config.delf_local_config.pca_parameters.pca_dim
       pca_variances = None
       if config.delf_local_config.pca_parameters.use_whitening:
-        pca_variances = tf.constant(
-            datum_io.ReadFromFile(
-                config.delf_local_config.pca_parameters.pca_variances_path),
-            dtype=tf.float32)
+        pca_variances = tf.squeeze(
+            tf.constant(
+                datum_io.ReadFromFile(
+                    config.delf_local_config.pca_parameters.pca_variances_path),
+                dtype=tf.float32))
 
       # Apply PCA, and whitening if desired.
       final_descriptors = ApplyPcaAndWhitening(
