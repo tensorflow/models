@@ -161,7 +161,7 @@ class DatasetManager(object):
                 tf.io.FixedLenFeature([batch_size], dtype=tf.int64)
         }
 
-    features = tf.parse_single_example(
+    features = tf.io.parse_single_example(
         serialized_data, _get_feature_map(batch_size, is_training=is_training))
     users = tf.reshape(
         tf.cast(features[movielens.USER_COLUMN], rconst.USER_DTYPE),

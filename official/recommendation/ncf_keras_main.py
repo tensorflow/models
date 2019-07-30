@@ -255,7 +255,7 @@ def run_ncf(_):
     callbacks.append(per_epoch_callback)
   else:
     assert params["eval_dataset_path"] and params["input_meta_data_path"]
-    with tf.gfile.GFile(params["input_meta_data_path"], "rb") as reader:
+    with tf.io.gfile.GFile(params["input_meta_data_path"], "rb") as reader:
       input_meta_data = json.loads(reader.read().decode("utf-8"))
       num_users = input_meta_data["num_users"]
       num_items = input_meta_data["num_items"]
