@@ -78,6 +78,23 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.datasets_num_private_threads = 14
     FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
+    
+  def benchmark_8_gpu_force_v2(self):
+    """Test Keras model with eager, dist_strat, force v2 and 8 GPUs."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 128 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_force_v2')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    # Add some thread tunings to improve performance.
+    FLAGS.datasets_num_private_threads = 14
+    FLAGS.use_tensor_lr = True
+    FLAGS.force_v2_in_keras_compile = True
+    self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16(self):
     """Test Keras model with eager, dist_strat, 8 GPUs, and fp16."""
@@ -561,6 +578,18 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+    
+  def benchmark_8_gpu_force_v2(self):
+    """Test Keras model with 8 GPUs and v2 codepath."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_force_v2')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    FLAGS.force_v2_in_keras_compile = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_tweaked(self):
