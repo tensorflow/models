@@ -23,8 +23,7 @@ import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main
-from official.resnet.keras import keras_cifar_main
-from official.resnet.keras import keras_common
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -44,8 +43,9 @@ class BaseTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
+    if keras_utils.is_v2_0:
+      tf.compat.v1.disable_eager_execution()
     cifar10_main.define_cifar_flags()
-    keras_common.define_keras_flags()
 
   def setUp(self):
     super(BaseTest, self).setUp()
@@ -79,7 +79,7 @@ class BaseTest(tf.test.TestCase):
     self.assertAllEqual(label.shape, ())
     self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))
 
-    with self.test_session() as sess:
+    with self.session() as sess:
       image, label = sess.run([image, label])
 
       self.assertEqual(label, 7)
@@ -175,13 +175,6 @@ class BaseTest(tf.test.TestCase):
     integration.run_synthetic(
         main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
         extra_flags=['-resnet_version', '2', '-batch_size', '4']
-    )
-
-  def test_cifar10_end_to_end_keras_synthetic_v1(self):
-    integration.run_synthetic(
-        main=keras_cifar_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '1', '-batch_size', '4',
-                     '-train_steps', '1']
     )
 
 

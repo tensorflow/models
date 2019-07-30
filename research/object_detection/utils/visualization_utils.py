@@ -19,9 +19,12 @@ These functions often receive an image, perform some visualization on the image.
 The functions do not return a value, instead they modify the image itself.
 
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import abc
 import collections
-import functools
 # Set headless-friendly backend.
 import matplotlib; matplotlib.use('Agg')  # pylint: disable=multiple-statements
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
@@ -31,6 +34,8 @@ import PIL.ImageColor as ImageColor
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import six
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -63,6 +68,34 @@ STANDARD_COLORS = [
     'Teal', 'Thistle', 'Tomato', 'Turquoise', 'Violet', 'Wheat', 'White',
     'WhiteSmoke', 'Yellow', 'YellowGreen'
 ]
+
+
+def _get_multiplier_for_color_randomness():
+  """Returns a multiplier to get semi-random colors from successive indices.
+
+  This function computes a prime number, p, in the range [2, 17] that:
+  - is closest to len(STANDARD_COLORS) / 10
+  - does not divide len(STANDARD_COLORS)
+
+  If no prime numbers in that range satisfy the constraints, p is returned as 1.
+
+  Once p is established, it can be used as a multiplier to select
+  non-consecutive colors from STANDARD_COLORS:
+  colors = [(p * i) % len(STANDARD_COLORS) for i in range(20)]
+  """
+  num_colors = len(STANDARD_COLORS)
+  prime_candidates = [5, 7, 11, 13, 17]
+
+  # Remove all prime candidates that divide the number of colors.
+  prime_candidates = [p for p in prime_candidates if num_colors % p]
+  if not prime_candidates:
+    return 1
+
+  # Return the closest prime number to num_colors / 10.
+  abs_distance = [np.abs(num_colors / 10. - p) for p in prime_candidates]
+  num_candidates = len(abs_distance)
+  inds = [i for _, i in sorted(zip(abs_distance, range(num_candidates)))]
+  return prime_candidates[inds[0]]
 
 
 def save_image_array_as_png(image, output_path):
@@ -266,46 +299,98 @@ def draw_bounding_boxes_on_image(image,
                                boxes[i, 3], color, thickness, display_str_list)
 
 
-def _visualize_boxes(image, boxes, classes, scores, category_index, **kwargs):
-  return visualize_boxes_and_labels_on_image_array(
-      image, boxes, classes, scores, category_index=category_index, **kwargs)
+def create_visualization_fn(category_index, include_masks=False,
+                            include_keypoints=False, include_track_ids=False,
+                            **kwargs):
+  """Constructs a visualization function that can be wrapped in a py_func.
 
+  py_funcs only accept positional arguments. This function returns a suitable
+  function with the correct positional argument mapping. The positional
+  arguments in order are:
+  0: image
+  1: boxes
+  2: classes
+  3: scores
+  [4-6]: masks (optional)
+  [4-6]: keypoints (optional)
+  [4-6]: track_ids (optional)
 
-def _visualize_boxes_and_masks(image, boxes, classes, scores, masks,
-                               category_index, **kwargs):
-  return visualize_boxes_and_labels_on_image_array(
-      image,
-      boxes,
-      classes,
-      scores,
-      category_index=category_index,
-      instance_masks=masks,
-      **kwargs)
+  -- Example 1 --
+  vis_only_masks_fn = create_visualization_fn(category_index,
+    include_masks=True, include_keypoints=False, include_track_ids=False,
+    **kwargs)
+  image = tf.py_func(vis_only_masks_fn,
+                     inp=[image, boxes, classes, scores, masks],
+                     Tout=tf.uint8)
 
+  -- Example 2 --
+  vis_masks_and_track_ids_fn = create_visualization_fn(category_index,
+    include_masks=True, include_keypoints=False, include_track_ids=True,
+    **kwargs)
+  image = tf.py_func(vis_masks_and_track_ids_fn,
+                     inp=[image, boxes, classes, scores, masks, track_ids],
+                     Tout=tf.uint8)
 
-def _visualize_boxes_and_keypoints(image, boxes, classes, scores, keypoints,
-                                   category_index, **kwargs):
-  return visualize_boxes_and_labels_on_image_array(
-      image,
-      boxes,
-      classes,
-      scores,
-      category_index=category_index,
-      keypoints=keypoints,
-      **kwargs)
+  Args:
+    category_index: a dict that maps integer ids to category dicts. e.g.
+      {1: {1: 'dog'}, 2: {2: 'cat'}, ...}
+    include_masks: Whether masks should be expected as a positional argument in
+      the returned function.
+    include_keypoints: Whether keypoints should be expected as a positional
+      argument in the returned function.
+    include_track_ids: Whether track ids should be expected as a positional
+      argument in the returned function.
+    **kwargs: Additional kwargs that will be passed to
+      visualize_boxes_and_labels_on_image_array.
 
+  Returns:
+    Returns a function that only takes tensors as positional arguments.
+  """
 
-def _visualize_boxes_and_masks_and_keypoints(
-    image, boxes, classes, scores, masks, keypoints, category_index, **kwargs):
-  return visualize_boxes_and_labels_on_image_array(
-      image,
-      boxes,
-      classes,
-      scores,
-      category_index=category_index,
-      instance_masks=masks,
-      keypoints=keypoints,
-      **kwargs)
+  def visualization_py_func_fn(*args):
+    """Visualization function that can be wrapped in a tf.py_func.
+
+    Args:
+      *args: First 4 positional arguments must be:
+        image - uint8 numpy array with shape (img_height, img_width, 3).
+        boxes - a numpy array of shape [N, 4].
+        classes - a numpy array of shape [N].
+        scores - a numpy array of shape [N] or None.
+        -- Optional positional arguments --
+        instance_masks - a numpy array of shape [N, image_height, image_width].
+        keypoints - a numpy array of shape [N, num_keypoints, 2].
+        track_ids - a numpy array of shape [N] with unique track ids.
+
+    Returns:
+      uint8 numpy array with shape (img_height, img_width, 3) with overlaid
+      boxes.
+    """
+    image = args[0]
+    boxes = args[1]
+    classes = args[2]
+    scores = args[3]
+    masks = keypoints = track_ids = None
+    pos_arg_ptr = 4  # Positional argument for first optional tensor (masks).
+    if include_masks:
+      masks = args[pos_arg_ptr]
+      pos_arg_ptr += 1
+    if include_keypoints:
+      keypoints = args[pos_arg_ptr]
+      pos_arg_ptr += 1
+    if include_track_ids:
+      track_ids = args[pos_arg_ptr]
+
+    return visualize_boxes_and_labels_on_image_array(
+        image,
+        boxes,
+        classes,
+        scores,
+        category_index=category_index,
+        instance_masks=masks,
+        keypoints=keypoints,
+        track_ids=track_ids,
+        **kwargs)
+  return visualization_py_func_fn
 
 
 def _resize_original_image(image, image_shape):
@@ -327,6 +412,7 @@ def draw_bounding_boxes_on_image_tensors(images,
                                          true_image_shape=None,
                                          instance_masks=None,
                                          keypoints=None,
+                                         track_ids=None,
                                          max_boxes_to_draw=20,
                                          min_score_thresh=0.2,
                                          use_normalized_coordinates=True):
@@ -350,6 +436,9 @@ def draw_bounding_boxes_on_image_tensors(images,
       instance masks.
     keypoints: A 4D float32 tensor of shape [N, max_detection, num_keypoints, 2]
       with keypoints.
+    track_ids: [N, max_detections] int32 tensor of unique tracks ids (i.e.
+      instance ids for each object). If provided, the color-coding of boxes is
+      dictated by these ids, and not classes.
     max_boxes_to_draw: Maximum number of boxes to draw on an image. Default 20.
     min_score_thresh: Minimum score threshold for visualization. Default 0.2.
     use_normalized_coordinates: Whether to assume boxes and kepoints are in
@@ -380,40 +469,20 @@ def draw_bounding_boxes_on_image_tensors(images,
   else:
     original_shapes = original_image_spatial_shape
 
-  if instance_masks is not None and keypoints is None:
-    visualize_boxes_fn = functools.partial(
-        _visualize_boxes_and_masks,
-        category_index=category_index,
-        **visualization_keyword_args)
-    elems = [
-        true_shapes, original_shapes, images, boxes, classes, scores,
-        instance_masks
-    ]
-  elif instance_masks is None and keypoints is not None:
-    visualize_boxes_fn = functools.partial(
-        _visualize_boxes_and_keypoints,
-        category_index=category_index,
-        **visualization_keyword_args)
-    elems = [
-        true_shapes, original_shapes, images, boxes, classes, scores, keypoints
-    ]
-  elif instance_masks is not None and keypoints is not None:
-    visualize_boxes_fn = functools.partial(
-        _visualize_boxes_and_masks_and_keypoints,
-        category_index=category_index,
-        **visualization_keyword_args)
-    elems = [
-        true_shapes, original_shapes, images, boxes, classes, scores,
-        instance_masks, keypoints
-    ]
-  else:
-    visualize_boxes_fn = functools.partial(
-        _visualize_boxes,
-        category_index=category_index,
-        **visualization_keyword_args)
-    elems = [
-        true_shapes, original_shapes, images, boxes, classes, scores
-    ]
+  visualize_boxes_fn = create_visualization_fn(
+      category_index,
+      include_masks=instance_masks is not None,
+      include_keypoints=keypoints is not None,
+      include_track_ids=track_ids is not None,
+      **visualization_keyword_args)
+
+  elems = [true_shapes, original_shapes, images, boxes, classes, scores]
+  if instance_masks is not None:
+    elems.append(instance_masks)
+  if keypoints is not None:
+    elems.append(keypoints)
+  if track_ids is not None:
+    elems.append(track_ids)
 
   def draw_boxes(image_and_detections):
     """Draws boxes on image."""
@@ -627,6 +696,7 @@ def visualize_boxes_and_labels_on_image_array(
     instance_masks=None,
     instance_boundaries=None,
     keypoints=None,
+    track_ids=None,
     use_normalized_coordinates=False,
     max_boxes_to_draw=20,
     min_score_thresh=.5,
@@ -634,7 +704,8 @@ def visualize_boxes_and_labels_on_image_array(
     line_thickness=4,
     groundtruth_box_visualization_color='black',
     skip_scores=False,
-    skip_labels=False):
+    skip_labels=False,
+    skip_track_ids=False):
   """Overlay labeled boxes on an image with formatted scores and label names.
 
   This function groups boxes that correspond to the same location
@@ -658,6 +729,9 @@ def visualize_boxes_and_labels_on_image_array(
       with values ranging between 0 and 1, can be None.
     keypoints: a numpy array of shape [N, num_keypoints, 2], can
       be None
+    track_ids: a numpy array of shape [N] with unique track ids. If provided,
+      color-coding of boxes will be determined by these ids, and not the class
+      indices.
     use_normalized_coordinates: whether boxes is to be interpreted as
       normalized coordinates or not.
     max_boxes_to_draw: maximum number of boxes to visualize.  If None, draw
@@ -671,6 +745,7 @@ def visualize_boxes_and_labels_on_image_array(
       boxes
     skip_scores: whether to skip score when drawing a single detection
     skip_labels: whether to skip label when drawing a single detection
+    skip_track_ids: whether to skip track id when drawing a single detection
 
   Returns:
     uint8 numpy array with shape (img_height, img_width, 3) with overlaid boxes.
@@ -682,6 +757,7 @@ def visualize_boxes_and_labels_on_image_array(
   box_to_instance_masks_map = {}
   box_to_instance_boundaries_map = {}
   box_to_keypoints_map = collections.defaultdict(list)
+  box_to_track_ids_map = {}
   if not max_boxes_to_draw:
     max_boxes_to_draw = boxes.shape[0]
   for i in range(min(max_boxes_to_draw, boxes.shape[0])):
@@ -693,13 +769,15 @@ def visualize_boxes_and_labels_on_image_array(
         box_to_instance_boundaries_map[box] = instance_boundaries[i]
       if keypoints is not None:
         box_to_keypoints_map[box].extend(keypoints[i])
+      if track_ids is not None:
+        box_to_track_ids_map[box] = track_ids[i]
       if scores is None:
         box_to_color_map[box] = groundtruth_box_visualization_color
       else:
         display_str = ''
         if not skip_labels:
           if not agnostic_mode:
-            if classes[i] in category_index.keys():
+            if classes[i] in six.viewkeys(category_index):
               class_name = category_index[classes[i]]['name']
             else:
               class_name = 'N/A'
@@ -709,9 +787,18 @@ def visualize_boxes_and_labels_on_image_array(
             display_str = '{}%'.format(int(100*scores[i]))
           else:
             display_str = '{}: {}%'.format(display_str, int(100*scores[i]))
+        if not skip_track_ids and track_ids is not None:
+          if not display_str:
+            display_str = 'ID {}'.format(track_ids[i])
+          else:
+            display_str = '{}: ID {}'.format(display_str, track_ids[i])
         box_to_display_str_map[box].append(display_str)
         if agnostic_mode:
           box_to_color_map[box] = 'DarkOrange'
+        elif track_ids is not None:
+          prime_multipler = _get_multiplier_for_color_randomness()
+          box_to_color_map[box] = STANDARD_COLORS[
+              (prime_multipler * track_ids[i]) % len(STANDARD_COLORS)]
         else:
           box_to_color_map[box] = STANDARD_COLORS[
               classes[i] % len(STANDARD_COLORS)]
@@ -813,7 +900,7 @@ def add_hist_image_summary(values, bins, name):
   tf.summary.image(name, hist_plot)
 
 
-class EvalMetricOpsVisualization(object):
+class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class responsible for visualizations during evaluation.
 
   Currently, summary images are not run during evaluation. One way to produce
@@ -822,7 +909,6 @@ class EvalMetricOpsVisualization(object):
   responsible for accruing images (with overlaid detections and groundtruth)
   and returning a dictionary that can be passed to `eval_metric_ops`.
   """
-  __metaclass__ = abc.ABCMeta
 
   def __init__(self,
                category_index,
@@ -924,9 +1010,13 @@ class EvalMetricOpsVisualization(object):
           lambda: tf.summary.image(summary_name, image),
           lambda: tf.constant(''))
 
-    update_op = tf.py_func(self.add_images, [[images[0]]], [])
-    image_tensors = tf.py_func(
-        get_images, [], [tf.uint8] * self._max_examples_to_draw)
+    if tf.executing_eagerly():
+      update_op = self.add_images([[images[0]]])
+      image_tensors = get_images()
+    else:
+      update_op = tf.py_func(self.add_images, [[images[0]]], [])
+      image_tensors = tf.py_func(
+          get_images, [], [tf.uint8] * self._max_examples_to_draw)
     eval_metric_ops = {}
     for i, image in enumerate(image_tensors):
       summary_name = self._summary_name_prefix + '/' + str(i)

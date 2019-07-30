@@ -20,12 +20,12 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import logging
 import os
 
 # pylint: disable=g-bad-import-order
 import numpy as np
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -35,6 +35,7 @@ from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 
 
 FLAGS = flags.FLAGS
@@ -105,41 +106,31 @@ def parse_flags(flags_obj):
       "match_mlperf": flags_obj.ml_perf,
       "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
       "epochs_between_evals": FLAGS.epochs_between_evals,
-      "turn_off_distribution_strategy": FLAGS.turn_off_distribution_strategy,
+      "keras_use_ctl": flags_obj.keras_use_ctl,
+      "hr_threshold": flags_obj.hr_threshold,
+      "stream_files": flags_obj.tpu is not None,
+      "train_dataset_path": flags_obj.train_dataset_path,
+      "eval_dataset_path": flags_obj.eval_dataset_path,
+      "input_meta_data_path": flags_obj.input_meta_data_path,
   }
-
-
-def get_optimizer(params):
-  optimizer = tf.train.AdamOptimizer(
-      learning_rate=params["learning_rate"],
-      beta1=params["beta1"],
-      beta2=params["beta2"],
-      epsilon=params["epsilon"])
-  if params["use_tpu"]:
-    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
-
-  return optimizer
 
 
 def get_distribution_strategy(params):
   """Returns the distribution strategy to use."""
-  if params["turn_off_distribution_strategy"]:
-    return None
-
   if params["use_tpu"]:
     # Some of the networking libraries are quite chatty.
     for name in ["googleapiclient.discovery", "googleapiclient.discovery_cache",
                  "oauth2client.transport"]:
       logging.getLogger(name).setLevel(logging.ERROR)
 
-    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+    tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
         tpu=params["tpu"],
         zone=params["tpu_zone"],
         project=params["tpu_gcp_project"],
         coordinator_name="coordinator"
     )
 
-    tf.logging.info("Issuing reset command to TPU to ensure a clean state.")
+    logging.info("Issuing reset command to TPU to ensure a clean state.")
     tf.Session.reset(tpu_cluster_resolver.get_master())
 
     # Estimator looks at the master it connects to for MonitoredTrainingSession
@@ -151,9 +142,9 @@ def get_distribution_strategy(params):
         "coordinator": tpu_cluster_resolver.cluster_spec()
                        .as_dict()["coordinator"]
     }
-    os.environ['TF_CONFIG'] = json.dumps(tf_config_env)
+    os.environ["TF_CONFIG"] = json.dumps(tf_config_env)
 
-    distribution = tf.contrib.distribute.TPUStrategy(
+    distribution = tf.distribute.experimental.TPUStrategy(
         tpu_cluster_resolver, steps_per_run=100)
 
   else:
@@ -166,7 +157,7 @@ def get_distribution_strategy(params):
 def define_ncf_flags():
   """Add flags for running ncf_main."""
   # Add common flags
-  flags_core.define_base(export_dir=False)
+  flags_core.define_base(export_dir=False, run_eagerly=True)
   flags_core.define_performance(
       num_parallel_calls=False,
       inter_op=False,
@@ -174,7 +165,9 @@ def define_ncf_flags():
       synthetic_data=True,
       max_train_steps=False,
       dtype=False,
-      all_reduce_alg=False
+      all_reduce_alg=False,
+      enable_xla=True,
+      force_v2_in_keras_compile=True
   )
   flags_core.define_device(tpu=True)
   flags_core.define_benchmark()
@@ -255,7 +248,7 @@ def define_ncf_flags():
                                 "optimizer."))
 
   flags.DEFINE_float(
-      name="hr_threshold", default=None,
+      name="hr_threshold", default=1.0,
       help=flags_core.help_wrap(
           "If passed, training will stop when the evaluation metric HR is "
           "greater than or equal to hr_threshold. For dataset ml-1m, the "
@@ -270,6 +263,21 @@ def define_ncf_flags():
           "Strategy to use for generating false negatives. materialized has a"
           "precompute that scales badly, but a faster per-epoch construction"
           "time and can be faster on very large systems."))
+
+  flags.DEFINE_string(
+      name="train_dataset_path",
+      default=None,
+      help=flags_core.help_wrap("Path to training data."))
+
+  flags.DEFINE_string(
+      name="eval_dataset_path",
+      default=None,
+      help=flags_core.help_wrap("Path to evaluation data."))
+
+  flags.DEFINE_string(
+      name="input_meta_data_path",
+      default=None,
+      help=flags_core.help_wrap("Path to input meta data file."))
 
   flags.DEFINE_bool(
       name="ml_perf", default=False,
@@ -302,12 +310,6 @@ def define_ncf_flags():
       name="seed", default=None, help=flags_core.help_wrap(
           "This value will be used to seed both NumPy and TensorFlow."))
 
-  flags.DEFINE_boolean(
-      name="turn_off_distribution_strategy",
-      default=False,
-      help=flags_core.help_wrap(
-          "If set, do not use any distribution strategy."))
-
   @flags.validator("eval_batch_size", "eval_batch_size must be at least {}"
                    .format(rconst.NUM_EVAL_NEGATIVES + 1))
   def eval_size_check(eval_batch_size):
@@ -324,11 +326,27 @@ def define_ncf_flags():
   def xla_validator(flag_dict):
     return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
 
+  flags.DEFINE_bool(
+      name="early_stopping",
+      default=False,
+      help=flags_core.help_wrap(
+          "If True, we stop the training when it reaches hr_threshold"))
+
+  flags.DEFINE_bool(
+      name="keras_use_ctl",
+      default=False,
+      help=flags_core.help_wrap(
+          "If True, we use a custom training loop for keras."))
+
 
 def convert_to_softmax_logits(logits):
-  '''Convert the logits returned by the base model to softmax logits.
+  """Convert the logits returned by the base model to softmax logits.
 
-  Softmax with the first column of zeros is equivalent to sigmoid.
-  '''
+  Args:
+    logits: used to create softmax.
+
+  Returns:
+    Softmax with the first column of zeros is equivalent to sigmoid.
+  """
   softmax_logits = tf.concat([logits * 0, logits], axis=1)
   return softmax_logits

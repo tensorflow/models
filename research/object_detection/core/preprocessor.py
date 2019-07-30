@@ -63,9 +63,16 @@ we pass it to the functions. At the end of the preprocess we expand the image
 back to rank 4.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import functools
 import inspect
 import sys
+import six
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
@@ -75,6 +82,7 @@ from object_detection.core import box_list_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import preprocessor_cache
 from object_detection.core import standard_fields as fields
+from object_detection.utils import autoaugment_utils
 from object_detection.utils import shape_utils
 
 
@@ -261,7 +269,7 @@ def normalize_image(image, original_minval, original_maxval, target_minval,
     original_maxval = float(original_maxval)
     target_minval = float(target_minval)
     target_maxval = float(target_maxval)
-    image = tf.to_float(image)
+    image = tf.cast(image, dtype=tf.float32)
     image = tf.subtract(image, original_minval)
     image = tf.multiply(image, (target_maxval - target_minval) /
                         (original_maxval - original_minval))
@@ -342,6 +350,112 @@ def retain_boxes_above_threshold(boxes,
       result.append(retained_keypoints)
 
     return result
+
+
+def drop_label_probabilistically(boxes,
+                                 labels,
+                                 label_weights,
+                                 label_confidences=None,
+                                 multiclass_scores=None,
+                                 masks=None,
+                                 keypoints=None,
+                                 dropped_label=None,
+                                 drop_probability=0.0,
+                                 seed=None):
+  """Drops boxes of a certain label with probability drop_probability.
+
+  Boxes of the label dropped_label will not appear in the returned tensor.
+
+  Args:
+    boxes: float32 tensor of shape [num_instance, 4] representing boxes
+      location in normalized coordinates.
+    labels: rank 1 int32 tensor of shape [num_instance] containing the object
+      classes.
+    label_weights: float32 tensor of shape [num_instance] representing the
+      weight for each box.
+    label_confidences: float32 tensor of shape [num_instance] representing the
+      confidence for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
+    masks: (optional) rank 3 float32 tensor with shape
+      [num_instances, height, width] containing instance masks. The masks are of
+      the same height, width as the input `image`.
+    keypoints: (optional) rank 3 float32 tensor with shape
+      [num_instances, num_keypoints, 2]. The keypoints are in y-x normalized
+      coordinates.
+    dropped_label: int32 id of label to drop.
+    drop_probability: float32 probability of dropping a label.
+    seed: random seed.
+
+  Returns:
+    retained_boxes: [num_retained_instance, 4]
+    retianed_labels: [num_retained_instance]
+    retained_label_weights: [num_retained_instance]
+
+    If multiclass_scores, masks, or keypoints are not None, the function also
+      returns:
+
+    retained_multiclass_scores: [num_retained_instance, num_classes]
+    retained_masks: [num_retained_instance, height, width]
+    retained_keypoints: [num_retained_instance, num_keypoints, 2]
+  """
+  with tf.name_scope('DropLabelProbabilistically',
+                     values=[boxes, labels]):
+    indices = tf.where(
+        tf.logical_or(
+            tf.random_uniform(tf.shape(labels), seed=seed) > drop_probability,
+            tf.not_equal(labels, dropped_label)))
+    indices = tf.squeeze(indices, axis=1)
+
+    retained_boxes = tf.gather(boxes, indices)
+    retained_labels = tf.gather(labels, indices)
+    retained_label_weights = tf.gather(label_weights, indices)
+    result = [retained_boxes, retained_labels, retained_label_weights]
+
+    if label_confidences is not None:
+      retained_label_confidences = tf.gather(label_confidences, indices)
+      result.append(retained_label_confidences)
+
+    if multiclass_scores is not None:
+      retained_multiclass_scores = tf.gather(multiclass_scores, indices)
+      result.append(retained_multiclass_scores)
+
+    if masks is not None:
+      retained_masks = tf.gather(masks, indices)
+      result.append(retained_masks)
+
+    if keypoints is not None:
+      retained_keypoints = tf.gather(keypoints, indices)
+      result.append(retained_keypoints)
+
+    return result
+
+
+def remap_labels(labels,
+                 original_labels=None,
+                 new_label=None):
+  """Remaps labels that have an id in original_labels to new_label.
+
+  Args:
+    labels: rank 1 int32 tensor of shape [num_instance] containing the object
+      classes.
+      original_labels: int list of original labels that should be mapped from.
+      new_label: int label to map to
+  Returns:
+    Remapped labels
+  """
+  new_labels = labels
+  for original_label in original_labels:
+    change = tf.where(
+        tf.equal(new_labels, original_label),
+        tf.add(tf.zeros_like(new_labels), new_label - original_label),
+        tf.zeros_like(new_labels))
+    new_labels = tf.add(
+        new_labels,
+        change)
+  new_labels = tf.reshape(new_labels, tf.shape(labels))
+  return new_labels
 
 
 def _flip_boxes_left_right(boxes):
@@ -810,10 +924,12 @@ def random_image_scale(image,
         generator_func, preprocessor_cache.PreprocessorCache.IMAGE_SCALE,
         preprocess_vars_cache)
 
-    image_newysize = tf.to_int32(
-        tf.multiply(tf.to_float(image_height), size_coef))
-    image_newxsize = tf.to_int32(
-        tf.multiply(tf.to_float(image_width), size_coef))
+    image_newysize = tf.cast(
+        tf.multiply(tf.cast(image_height, dtype=tf.float32), size_coef),
+        dtype=tf.int32)
+    image_newxsize = tf.cast(
+        tf.multiply(tf.cast(image_width, dtype=tf.float32), size_coef),
+        dtype=tf.int32)
     image = tf.image.resize_images(
         image, [image_newysize, image_newxsize], align_corners=True)
     result.append(image)
@@ -1237,7 +1353,7 @@ def _strict_random_crop_image(image,
     new_image.set_shape([None, None, image.get_shape()[2]])
 
     # [1, 4]
-    im_box_rank2 = tf.squeeze(im_box, squeeze_dims=[0])
+    im_box_rank2 = tf.squeeze(im_box, axis=[0])
     # [4]
     im_box_rank1 = tf.squeeze(im_box)
 
@@ -1555,13 +1671,15 @@ def random_pad_image(image,
   new_image += image_color_padded
 
   # setting boxes
-  new_window = tf.to_float(
+  new_window = tf.cast(
       tf.stack([
           -offset_height, -offset_width, target_height - offset_height,
           target_width - offset_width
-      ]))
-  new_window /= tf.to_float(
-      tf.stack([image_height, image_width, image_height, image_width]))
+      ]),
+      dtype=tf.float32)
+  new_window /= tf.cast(
+      tf.stack([image_height, image_width, image_height, image_width]),
+      dtype=tf.float32)
   boxlist = box_list.BoxList(boxes)
   new_boxlist = box_list_ops.change_coordinate_frame(boxlist, new_window)
   new_boxes = new_boxlist.get()
@@ -1616,8 +1734,8 @@ def random_absolute_pad_image(image,
            form.
   """
   min_image_size = tf.shape(image)[:2]
-  max_image_size = min_image_size + tf.to_int32(
-      [max_height_padding, max_width_padding])
+  max_image_size = min_image_size + tf.cast(
+      [max_height_padding, max_width_padding], dtype=tf.int32)
   return random_pad_image(image, boxes, min_image_size=min_image_size,
                           max_image_size=max_image_size, pad_color=pad_color,
                           seed=seed,
@@ -1723,12 +1841,14 @@ def random_crop_pad_image(image,
 
   cropped_image, cropped_boxes, cropped_labels = result[:3]
 
-  min_image_size = tf.to_int32(
-      tf.to_float(tf.stack([image_height, image_width])) *
-      min_padded_size_ratio)
-  max_image_size = tf.to_int32(
-      tf.to_float(tf.stack([image_height, image_width])) *
-      max_padded_size_ratio)
+  min_image_size = tf.cast(
+      tf.cast(tf.stack([image_height, image_width]), dtype=tf.float32) *
+      min_padded_size_ratio,
+      dtype=tf.int32)
+  max_image_size = tf.cast(
+      tf.cast(tf.stack([image_height, image_width]), dtype=tf.float32) *
+      max_padded_size_ratio,
+      dtype=tf.int32)
 
   padded_image, padded_boxes = random_pad_image(
       cropped_image,
@@ -1840,16 +1960,23 @@ def random_crop_to_aspect_ratio(image,
     image_shape = tf.shape(image)
     orig_height = image_shape[0]
     orig_width = image_shape[1]
-    orig_aspect_ratio = tf.to_float(orig_width) / tf.to_float(orig_height)
+    orig_aspect_ratio = tf.cast(
+        orig_width, dtype=tf.float32) / tf.cast(
+            orig_height, dtype=tf.float32)
     new_aspect_ratio = tf.constant(aspect_ratio, dtype=tf.float32)
+
     def target_height_fn():
-      return tf.to_int32(tf.round(tf.to_float(orig_width) / new_aspect_ratio))
+      return tf.cast(
+          tf.round(tf.cast(orig_width, dtype=tf.float32) / new_aspect_ratio),
+          dtype=tf.int32)
 
     target_height = tf.cond(orig_aspect_ratio >= new_aspect_ratio,
                             lambda: orig_height, target_height_fn)
 
     def target_width_fn():
-      return tf.to_int32(tf.round(tf.to_float(orig_height) * new_aspect_ratio))
+      return tf.cast(
+          tf.round(tf.cast(orig_height, dtype=tf.float32) * new_aspect_ratio),
+          dtype=tf.int32)
 
     target_width = tf.cond(orig_aspect_ratio <= new_aspect_ratio,
                            lambda: orig_width, target_width_fn)
@@ -1870,10 +1997,14 @@ def random_crop_to_aspect_ratio(image,
         image, offset_height, offset_width, target_height, target_width)
 
     im_box = tf.stack([
-        tf.to_float(offset_height) / tf.to_float(orig_height),
-        tf.to_float(offset_width) / tf.to_float(orig_width),
-        tf.to_float(offset_height + target_height) / tf.to_float(orig_height),
-        tf.to_float(offset_width + target_width) / tf.to_float(orig_width)
+        tf.cast(offset_height, dtype=tf.float32) /
+        tf.cast(orig_height, dtype=tf.float32),
+        tf.cast(offset_width, dtype=tf.float32) /
+        tf.cast(orig_width, dtype=tf.float32),
+        tf.cast(offset_height + target_height, dtype=tf.float32) /
+        tf.cast(orig_height, dtype=tf.float32),
+        tf.cast(offset_width + target_width, dtype=tf.float32) /
+        tf.cast(orig_width, dtype=tf.float32)
     ])
 
     boxlist = box_list.BoxList(boxes)
@@ -1996,8 +2127,8 @@ def random_pad_to_aspect_ratio(image,
 
   with tf.name_scope('RandomPadToAspectRatio', values=[image]):
     image_shape = tf.shape(image)
-    image_height = tf.to_float(image_shape[0])
-    image_width = tf.to_float(image_shape[1])
+    image_height = tf.cast(image_shape[0], dtype=tf.float32)
+    image_width = tf.cast(image_shape[1], dtype=tf.float32)
     image_aspect_ratio = image_width / image_height
     new_aspect_ratio = tf.constant(aspect_ratio, dtype=tf.float32)
     target_height = tf.cond(
@@ -2034,7 +2165,8 @@ def random_pad_to_aspect_ratio(image,
     target_width = tf.round(scale * target_width)
 
     new_image = tf.image.pad_to_bounding_box(
-        image, 0, 0, tf.to_int32(target_height), tf.to_int32(target_width))
+        image, 0, 0, tf.cast(target_height, dtype=tf.int32),
+        tf.cast(target_width, dtype=tf.int32))
 
     im_box = tf.stack([
         0.0,
@@ -2050,9 +2182,9 @@ def random_pad_to_aspect_ratio(image,
 
     if masks is not None:
       new_masks = tf.expand_dims(masks, -1)
-      new_masks = tf.image.pad_to_bounding_box(new_masks, 0, 0,
-                                               tf.to_int32(target_height),
-                                               tf.to_int32(target_width))
+      new_masks = tf.image.pad_to_bounding_box(
+          new_masks, 0, 0, tf.cast(target_height, dtype=tf.int32),
+          tf.cast(target_width, dtype=tf.int32))
       new_masks = tf.squeeze(new_masks, [-1])
       result.append(new_masks)
 
@@ -2106,10 +2238,12 @@ def random_black_patches(image,
     image_shape = tf.shape(image)
     image_height = image_shape[0]
     image_width = image_shape[1]
-    box_size = tf.to_int32(
+    box_size = tf.cast(
         tf.multiply(
-            tf.minimum(tf.to_float(image_height), tf.to_float(image_width)),
-            size_to_image_ratio))
+            tf.minimum(
+                tf.cast(image_height, dtype=tf.float32),
+                tf.cast(image_width, dtype=tf.float32)), size_to_image_ratio),
+        dtype=tf.int32)
 
     generator_func = functools.partial(tf.random_uniform, [], minval=0.0,
                                        maxval=(1.0 - size_to_image_ratio),
@@ -2123,8 +2257,12 @@ def random_black_patches(image,
         preprocessor_cache.PreprocessorCache.ADD_BLACK_PATCH,
         preprocess_vars_cache, key=str(idx) + 'x')
 
-    y_min = tf.to_int32(normalized_y_min * tf.to_float(image_height))
-    x_min = tf.to_int32(normalized_x_min * tf.to_float(image_width))
+    y_min = tf.cast(
+        normalized_y_min * tf.cast(image_height, dtype=tf.float32),
+        dtype=tf.int32)
+    x_min = tf.cast(
+        normalized_x_min * tf.cast(image_width, dtype=tf.float32),
+        dtype=tf.int32)
     black_box = tf.ones([box_size, box_size, 3], dtype=tf.float32)
     mask = 1.0 - tf.image.pad_to_bounding_box(black_box, y_min, x_min,
                                               image_height, image_width)
@@ -2146,6 +2284,37 @@ def random_black_patches(image,
     return image
 
 
+# TODO(barretzoph): Put in AutoAugment Paper link when paper is live.
+def autoaugment_image(image, boxes, policy_name='v0'):
+  """Apply an autoaugment policy to the image and boxes.
+
+
+  Args:
+    image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
+           with pixel values varying between [0, 255].
+    boxes: rank 2 float32 tensor containing the bounding boxes with shape
+           [num_instances, 4].
+           Boxes are in normalized form meaning their coordinates vary
+           between [0, 1].
+           Each row is in the form of [ymin, xmin, ymax, xmax].
+    policy_name: The name of the AutoAugment policy to use. The available
+      options are `v0`, `v1`, `v2`, `v3` and `test`. `v0` is the policy used for
+      all of the results in the paper and was found to achieve the best results
+      on the COCO dataset. `v1`, `v2` and `v3` are additional good policies
+      found on the COCO dataset that have slight variation in what operations
+      were used during the search procedure along with how many operations are
+      applied in parallel to a single image (2 vs 3).
+
+
+  Returns:
+    image: the augmented image.
+    boxes: boxes which is the same rank as input boxes. Boxes are in normalized
+           form. boxes will have been augmented along with image.
+  """
+  return autoaugment_utils.distort_image_with_autoaugment(
+      image, boxes, policy_name)
+
+
 def image_to_float(image):
   """Used in Faster R-CNN. Casts image pixel values to float.
 
@@ -2156,7 +2325,7 @@ def image_to_float(image):
     image: image in tf.float32 format.
   """
   with tf.name_scope('ImageToFloat', values=[image]):
-    image = tf.to_float(image)
+    image = tf.cast(image, dtype=tf.float32)
     return image
 
 
@@ -2298,11 +2467,20 @@ def resize_to_range(image,
     return result
 
 
+def _get_image_info(image):
+  """Returns the height, width and number of channels in the image."""
+  image_height = tf.shape(image)[0]
+  image_width = tf.shape(image)[1]
+  num_channels = tf.shape(image)[2]
+  return (image_height, image_width, num_channels)
+
+
 # TODO(alirezafathi): Make sure the static shapes are preserved.
-def resize_to_min_dimension(image, masks=None, min_dimension=600):
+def resize_to_min_dimension(image, masks=None, min_dimension=600,
+                            method=tf.image.ResizeMethod.BILINEAR):
   """Resizes image and masks given the min size maintaining the aspect ratio.
 
-  If one of the image dimensions is smaller that min_dimension, it will scale
+  If one of the image dimensions is smaller than min_dimension, it will scale
   the image such that its smallest dimension is equal to min_dimension.
   Otherwise, will keep the image size as is.
 
@@ -2310,8 +2488,11 @@ def resize_to_min_dimension(image, masks=None, min_dimension=600):
     image: a tensor of size [height, width, channels].
     masks: (optional) a tensors of size [num_instances, height, width].
     min_dimension: minimum image dimension.
+    method: (optional) interpolation method used in resizing. Defaults to
+    BILINEAR.
 
   Returns:
+    An array containing resized_image, resized_masks, and resized_image_shape.
     Note that the position of the resized_image_shape changes based on whether
     masks are present.
     resized_image: A tensor of size [new_height, new_width, channels].
@@ -2327,18 +2508,76 @@ def resize_to_min_dimension(image, masks=None, min_dimension=600):
     raise ValueError('Image should be 3D tensor')
 
   with tf.name_scope('ResizeGivenMinDimension', values=[image, min_dimension]):
-    image_height = tf.shape(image)[0]
-    image_width = tf.shape(image)[1]
-    num_channels = tf.shape(image)[2]
+    (image_height, image_width, num_channels) = _get_image_info(image)
     min_image_dimension = tf.minimum(image_height, image_width)
     min_target_dimension = tf.maximum(min_image_dimension, min_dimension)
-    target_ratio = tf.to_float(min_target_dimension) / tf.to_float(
-        min_image_dimension)
-    target_height = tf.to_int32(tf.to_float(image_height) * target_ratio)
-    target_width = tf.to_int32(tf.to_float(image_width) * target_ratio)
-    image = tf.image.resize_bilinear(
-        tf.expand_dims(image, axis=0),
-        size=[target_height, target_width],
+    target_ratio = tf.cast(min_target_dimension, dtype=tf.float32) / tf.cast(
+        min_image_dimension, dtype=tf.float32)
+    target_height = tf.cast(
+        tf.cast(image_height, dtype=tf.float32) * target_ratio, dtype=tf.int32)
+    target_width = tf.cast(
+        tf.cast(image_width, dtype=tf.float32) * target_ratio, dtype=tf.int32)
+    image = tf.image.resize_images(
+        tf.expand_dims(image, axis=0), size=[target_height, target_width],
+        method=method,
+        align_corners=True)
+    result = [tf.squeeze(image, axis=0)]
+
+    if masks is not None:
+      masks = tf.image.resize_nearest_neighbor(
+          tf.expand_dims(masks, axis=3),
+          size=[target_height, target_width],
+          align_corners=True)
+      result.append(tf.squeeze(masks, axis=3))
+
+    result.append(tf.stack([target_height, target_width, num_channels]))
+    return result
+
+
+def resize_to_max_dimension(image, masks=None, max_dimension=600,
+                            method=tf.image.ResizeMethod.BILINEAR):
+  """Resizes image and masks given the max size maintaining the aspect ratio.
+
+  If one of the image dimensions is greater than max_dimension, it will scale
+  the image such that its largest dimension is equal to max_dimension.
+  Otherwise, will keep the image size as is.
+
+  Args:
+    image: a tensor of size [height, width, channels].
+    masks: (optional) a tensors of size [num_instances, height, width].
+    max_dimension: maximum image dimension.
+    method: (optional) interpolation method used in resizing. Defaults to
+    BILINEAR.
+
+  Returns:
+    An array containing resized_image, resized_masks, and resized_image_shape.
+    Note that the position of the resized_image_shape changes based on whether
+    masks are present.
+    resized_image: A tensor of size [new_height, new_width, channels].
+    resized_masks: If masks is not None, also outputs masks. A 3D tensor of
+      shape [num_instances, new_height, new_width]
+    resized_image_shape: A 1D tensor of shape [3] containing the shape of the
+      resized image.
+
+  Raises:
+    ValueError: if the image is not a 3D tensor.
+  """
+  if len(image.get_shape()) != 3:
+    raise ValueError('Image should be 3D tensor')
+
+  with tf.name_scope('ResizeGivenMaxDimension', values=[image, max_dimension]):
+    (image_height, image_width, num_channels) = _get_image_info(image)
+    max_image_dimension = tf.maximum(image_height, image_width)
+    max_target_dimension = tf.minimum(max_image_dimension, max_dimension)
+    target_ratio = tf.cast(max_target_dimension, dtype=tf.float32) / tf.cast(
+        max_image_dimension, dtype=tf.float32)
+    target_height = tf.cast(
+        tf.cast(image_height, dtype=tf.float32) * target_ratio, dtype=tf.int32)
+    target_width = tf.cast(
+        tf.cast(image_width, dtype=tf.float32) * target_ratio, dtype=tf.int32)
+    image = tf.image.resize_images(
+        tf.expand_dims(image, axis=0), size=[target_height, target_width],
+        method=method,
         align_corners=True)
     result = [tf.squeeze(image, axis=0)]
 
@@ -2573,11 +2812,11 @@ def random_self_concat_image(
 
     if axis == 0:
       # Concat vertically, so need to reduce the y coordinates.
-      old_scaling = tf.to_float([0.5, 1.0, 0.5, 1.0])
-      new_translation = tf.to_float([0.5, 0.0, 0.5, 0.0])
+      old_scaling = tf.constant([0.5, 1.0, 0.5, 1.0])
+      new_translation = tf.constant([0.5, 0.0, 0.5, 0.0])
     elif axis == 1:
-      old_scaling = tf.to_float([1.0, 0.5, 1.0, 0.5])
-      new_translation = tf.to_float([0.0, 0.5, 0.0, 0.5])
+      old_scaling = tf.constant([1.0, 0.5, 1.0, 0.5])
+      new_translation = tf.constant([0.0, 0.5, 0.0, 0.5])
 
     old_boxes = old_scaling * boxes
     new_boxes = old_boxes + new_translation
@@ -3299,6 +3538,8 @@ def get_default_func_arg_map(include_label_weights=True,
           groundtruth_keypoints,
       ),
       random_black_patches: (fields.InputDataFields.image,),
+      autoaugment_image: (fields.InputDataFields.image,
+                          fields.InputDataFields.groundtruth_boxes,),
       retain_boxes_above_threshold: (
           fields.InputDataFields.groundtruth_boxes,
           fields.InputDataFields.groundtruth_classes,
@@ -3308,6 +3549,16 @@ def get_default_func_arg_map(include_label_weights=True,
           groundtruth_instance_masks,
           groundtruth_keypoints,
       ),
+      drop_label_probabilistically: (
+          fields.InputDataFields.groundtruth_boxes,
+          fields.InputDataFields.groundtruth_classes,
+          groundtruth_label_weights,
+          groundtruth_label_confidences,
+          multiclass_scores,
+          groundtruth_instance_masks,
+          groundtruth_keypoints,
+      ),
+      remap_labels: (fields.InputDataFields.groundtruth_classes,),
       image_to_float: (fields.InputDataFields.image,),
       random_resize_method: (fields.InputDataFields.image,),
       resize_to_range: (
@@ -3446,9 +3697,15 @@ def preprocess(tensor_dict,
       return tensor_dict[key] if key is not None else None
 
     args = [get_arg(a) for a in arg_names]
-    if (preprocess_vars_cache is not None and
-        'preprocess_vars_cache' in inspect.getargspec(func).args):
-      params['preprocess_vars_cache'] = preprocess_vars_cache
+    if preprocess_vars_cache is not None:
+      if six.PY2:
+        # pylint: disable=deprecated-method
+        arg_spec = inspect.getargspec(func)
+        # pylint: enable=deprecated-method
+      else:
+        arg_spec = inspect.getfullargspec(func)
+      if 'preprocess_vars_cache' in arg_spec.args:
+        params['preprocess_vars_cache'] = preprocess_vars_cache
 
     results = func(*args, **params)
     if not isinstance(results, (list, tuple)):

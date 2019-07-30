@@ -22,6 +22,23 @@ message BatchNonMaxSuppression {
 
   // Whether to use the implementation of NMS that guarantees static shapes.
   optional bool use_static_shapes = 6 [default = false];
+
+  // Whether to use class agnostic NMS.
+  // Class-agnostic NMS function implements a class-agnostic version
+  // of Non Maximal Suppression where if max_classes_per_detection=k,
+  // 1) we keep the top-k scores for each detection and
+  // 2) during NMS, each detection only uses the highest class score for sorting.
+  // 3) Compared to regular NMS, the worst runtime of this version is O(N^2)
+  // instead of O(KN^2) where N is the number of detections and K the number of
+  // classes.
+  optional bool use_class_agnostic_nms = 7 [default = false];
+
+  // Number of classes retained per detection in class agnostic NMS.
+
+  optional int32 max_classes_per_detection = 8 [default = 1];
+
+  // Soft NMS sigma parameter; Bodla et al, https://arxiv.org/abs/1704.04503)
+  optional float soft_nms_sigma = 9 [default = 0.0];
 }
 
 // Configuration proto for post-processing predicted boxes and

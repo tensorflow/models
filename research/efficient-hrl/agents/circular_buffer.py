@@ -47,7 +47,7 @@ class CircularBuffer(object):
     self._tensors = collections.OrderedDict()
     with tf.variable_scope(self._scope):
       self._num_adds = tf.Variable(0, dtype=tf.int64, name='num_adds')
-    self._num_adds_cs = tf.contrib.framework.CriticalSection(name='num_adds')
+    self._num_adds_cs = tf.CriticalSection(name='num_adds')
 
   @property
   def buffer_size(self):

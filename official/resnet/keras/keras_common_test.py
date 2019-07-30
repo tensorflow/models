@@ -19,10 +19,10 @@ from __future__ import print_function
 from mock import Mock
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
+from tensorflow.python.platform import googletest
 
 from official.resnet.keras import keras_common
-
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+from official.utils.misc import keras_utils
 
 
 class KerasCommonTests(tf.test.TestCase):
@@ -36,12 +36,13 @@ class KerasCommonTests(tf.test.TestCase):
 
     history = self._build_history(1.145, cat_accuracy=.99988)
     eval_output = self._build_eval_output(.56432111, 5.990)
-    th = keras_common.TimeHistory(128, 100)
+    th = keras_utils.TimeHistory(128, 100)
 
-    th.batch_start_timestamps = [1, 2, 3]
-    th.batch_end_timestamps = [4, 5, 6]
+    th.timestamp_log = [keras_utils.BatchTimestamp(0, 1),
+                        keras_utils.BatchTimestamp(1, 2),
+                        keras_utils.BatchTimestamp(2, 3)]
     th.train_finish_time = 12345
-    stats = keras_common.build_stats(history, eval_output, th)
+    stats = keras_common.build_stats(history, eval_output, [th])
 
     self.assertEqual(1.145, stats['loss'])
     self.assertEqual(.99988, stats['training_accuracy_top_1'])
@@ -49,8 +50,7 @@ class KerasCommonTests(tf.test.TestCase):
     self.assertEqual(.56432111, stats['accuracy_top_1'])
     self.assertEqual(5.990, stats['eval_loss'])
 
-    self.assertItemsEqual([1, 2, 3], stats['batch_start_timestamps'])
-    self.assertItemsEqual([4, 5, 6], stats['batch_end_timestamps'])
+    self.assertEqual(3, stats['step_timestamp_log'][2].timestamp)
     self.assertEqual(12345, stats['train_finish_time'])
 
   def test_build_stats_sparse(self):
@@ -66,7 +66,7 @@ class KerasCommonTests(tf.test.TestCase):
     self.assertEqual(1.9844, stats['eval_loss'])
 
   def test_time_history(self):
-    th = keras_common.TimeHistory(batch_size=128, log_steps=3)
+    th = keras_utils.TimeHistory(batch_size=128, log_steps=3)
 
     th.on_train_begin()
     th.on_batch_begin(0)
@@ -85,15 +85,7 @@ class KerasCommonTests(tf.test.TestCase):
     th.on_batch_end(6)
     th.on_train_end()
 
-    self.assertEqual(3, len(th.batch_start_timestamps))
-    self.assertEqual(2, len(th.batch_end_timestamps))
-
-    self.assertEqual(0, th.batch_start_timestamps[0].batch_index)
-    self.assertEqual(1, th.batch_start_timestamps[1].batch_index)
-    self.assertEqual(4, th.batch_start_timestamps[2].batch_index)
-
-    self.assertEqual(3, th.batch_end_timestamps[0].batch_index)
-    self.assertEqual(6, th.batch_end_timestamps[1].batch_index)
+    self.assertEqual(3, len(th.timestamp_log))
 
   def _build_history(self, loss, cat_accuracy=None,
                      cat_accuracy_sparse=None):
@@ -111,3 +103,7 @@ class KerasCommonTests(tf.test.TestCase):
   def _build_eval_output(self, top_1, eval_loss):
     eval_output = [np.float64(eval_loss), np.float64(top_1)]
     return eval_output
+
+if __name__ == '__main__':
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+  googletest.main()

@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# Presubmit script that run tests and lint under local environment.
+# Presubmit script that runs tests and lint under local environment.
 # Make sure that tensorflow and pylint is installed.
 # usage: models >: ./official/utils/testing/scripts/presubmit.sh
 # usage: models >: ./official/utils/testing/scripts/presubmit.sh lint py2_test py3_test
@@ -26,16 +26,14 @@ MODEL_ROOT="$(pwd)"
 
 export PYTHONPATH="$PYTHONPATH:${MODEL_ROOT}"
 
-cd official
-
 lint() {
   local exit_code=0
 
-  RC_FILE="utils/testing/pylint.rcfile"
+  RC_FILE="official/utils/testing/pylint.rcfile"
   PROTO_SKIP="DO\sNOT\sEDIT!"
 
   echo "===========Running lint test============"
-  for file in `find . -name '*.py' ! -name '*test.py' -print`
+  for file in `find official/ -name '*.py' ! -name '*test.py' -print`
   do
     if grep ${PROTO_SKIP} ${file}; then
       echo "Linting ${file} (Skipped: Machine generated file)"
@@ -46,7 +44,7 @@ lint() {
   done
 
   # More lenient for test files.
-  for file in `find . -name '*test.py' -print`
+  for file in `find official/ -name '*test.py' -print`
   do
     echo "Linting ${file}"
     pylint --rcfile="${RC_FILE}" --disable=missing-docstring,protected-access "${file}" || exit_code=$?
@@ -61,10 +59,15 @@ py_test() {
 
   echo "===========Running Python test============"
 
-  for test_file in `find . -name '*test.py' -print`
+  for test_file in `find official/ -name '*test.py' -print`
   do
-    echo "Testing ${test_file}"
-    ${PY_BINARY} "${test_file}" || exit_code=$?
+    echo "####=======Testing ${test_file}=======####"
+    ${PY_BINARY} "${test_file}"
+    _exit_code=$?
+    if [[ $_exit_code != 0 ]]; then
+      exit_code=$_exit_code
+      echo "FAIL: ${test_file}"
+    fi
   done
 
   return "${exit_code}"

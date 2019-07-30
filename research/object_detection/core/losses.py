@@ -26,9 +26,12 @@ Classification losses:
  * WeightedSoftmaxClassificationAgainstLogitsLoss
  * BootstrappedSigmoidClassificationLoss
 """
-from abc import ABCMeta
-from abc import abstractmethod
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
+import abc
+import six
 import tensorflow as tf
 
 from object_detection.core import box_list
@@ -38,9 +41,8 @@ from object_detection.utils import ops
 slim = tf.contrib.slim
 
 
-class Loss(object):
+class Loss(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for loss functions."""
-  __metaclass__ = ABCMeta
 
   def __call__(self,
                prediction_tensor,
@@ -96,7 +98,7 @@ class Loss(object):
     loss_multiplier_shape = tf.stack([-1] + [1] * (len(tensor.shape) - 1))
     return tf.cast(tf.reshape(losses_mask, loss_multiplier_shape), tf.float32)
 
-  @abstractmethod
+  @abc.abstractmethod
   def _compute_loss(self, prediction_tensor, target_tensor, **params):
     """Method to be overridden by implementations.
 
@@ -155,6 +157,7 @@ class WeightedSmoothL1LocalizationLoss(Loss):
     Args:
       delta: delta for smooth L1 loss.
     """
+    super(WeightedSmoothL1LocalizationLoss, self).__init__()
     self._delta = delta
 
   def _compute_loss(self, prediction_tensor, target_tensor, weights):
@@ -259,6 +262,7 @@ class SigmoidFocalClassificationLoss(Loss):
       gamma: exponent of the modulating factor (1 - p_t) ^ gamma.
       alpha: optional alpha weighting factor to balance positives vs negatives.
     """
+    super(SigmoidFocalClassificationLoss, self).__init__()
     self._alpha = alpha
     self._gamma = gamma
 
@@ -318,6 +322,7 @@ class WeightedSoftmaxClassificationLoss(Loss):
                    (default 1.0)
 
     """
+    super(WeightedSoftmaxClassificationLoss, self).__init__()
     self._logit_scale = logit_scale
 
   def _compute_loss(self, prediction_tensor, target_tensor, weights):
@@ -362,6 +367,7 @@ class WeightedSoftmaxClassificationAgainstLogitsLoss(Loss):
                    (default 1.0)
 
     """
+    super(WeightedSoftmaxClassificationAgainstLogitsLoss, self).__init__()
     self._logit_scale = logit_scale
 
   def _scale_and_softmax_logits(self, logits):
@@ -425,6 +431,7 @@ class BootstrappedSigmoidClassificationLoss(Loss):
     Raises:
       ValueError: if bootstrap_type is not either 'hard' or 'soft'
     """
+    super(BootstrappedSigmoidClassificationLoss, self).__init__()
     if bootstrap_type != 'hard' and bootstrap_type != 'soft':
       raise ValueError('Unrecognized bootstrap_type: must be one of '
                        '\'hard\' or \'soft.\'')
@@ -616,8 +623,10 @@ class HardExampleMiner(object):
   def summarize(self):
     """Summarize the number of positives and negatives after mining."""
     if self._num_positives_list and self._num_negatives_list:
-      avg_num_positives = tf.reduce_mean(tf.to_float(self._num_positives_list))
-      avg_num_negatives = tf.reduce_mean(tf.to_float(self._num_negatives_list))
+      avg_num_positives = tf.reduce_mean(
+          tf.cast(self._num_positives_list, dtype=tf.float32))
+      avg_num_negatives = tf.reduce_mean(
+          tf.cast(self._num_negatives_list, dtype=tf.float32))
       tf.summary.scalar('HardExampleMiner/NumPositives', avg_num_positives)
       tf.summary.scalar('HardExampleMiner/NumNegatives', avg_num_negatives)
 
@@ -661,14 +670,17 @@ class HardExampleMiner(object):
     """
     positives_indicator = tf.gather(match.matched_column_indicator(), indices)
     negatives_indicator = tf.gather(match.unmatched_column_indicator(), indices)
-    num_positives = tf.reduce_sum(tf.to_int32(positives_indicator))
-    max_negatives = tf.maximum(min_negatives_per_image,
-                               tf.to_int32(max_negatives_per_positive *
-                                           tf.to_float(num_positives)))
+    num_positives = tf.reduce_sum(tf.cast(positives_indicator, dtype=tf.int32))
+    max_negatives = tf.maximum(
+        min_negatives_per_image,
+        tf.cast(max_negatives_per_positive *
+                tf.cast(num_positives, dtype=tf.float32), dtype=tf.int32))
     topk_negatives_indicator = tf.less_equal(
-        tf.cumsum(tf.to_int32(negatives_indicator)), max_negatives)
+        tf.cumsum(tf.cast(negatives_indicator, dtype=tf.int32)), max_negatives)
     subsampled_selection_indices = tf.where(
         tf.logical_or(positives_indicator, topk_negatives_indicator))
     num_negatives = tf.size(subsampled_selection_indices) - num_positives
     return (tf.reshape(tf.gather(indices, subsampled_selection_indices), [-1]),
             num_positives, num_negatives)
+
+

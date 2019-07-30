@@ -18,44 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-import time
-import json
-
-from absl import flags
-from absl.testing import flagsaver
-import tensorflow as tf  # pylint: disable=g-bad-import-order
-
-FLAGS = flags.FLAGS
+from official.utils.flags import core as flags_core
+from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 
-class KerasBenchmark(tf.test.Benchmark):
+class KerasBenchmark(PerfZeroBenchmark):
   """Base benchmark class with methods to simplify testing."""
-  local_flags = None
 
   def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
-    self.output_dir = output_dir
-    self.default_flags = default_flags or {}
-    self.flag_methods = flag_methods or {}
-
-  def _get_model_dir(self, folder_name):
-    return os.path.join(self.output_dir, folder_name)
-
-  def _setup(self):
-    """Sets up and resets flags before each test."""
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
-    if KerasBenchmark.local_flags is None:
-      for flag_method in self.flag_methods:
-        flag_method()
-      # Loads flags to get defaults to then override. List cannot be empty.
-      flags.FLAGS(['foo'])
-      # Overrides flag values with defaults for the class of tests.
-      for k, v in self.default_flags.items():
-        setattr(FLAGS, k, v)
-      saved_flag_values = flagsaver.save_flag_values()
-      KerasBenchmark.local_flags = saved_flag_values
-    else:
-      flagsaver.restore_flag_values(KerasBenchmark.local_flags)
+    super(KerasBenchmark, self).__init__(
+        output_dir=output_dir,
+        default_flags=default_flags,
+        flag_methods=flag_methods)
 
   def _report_benchmark(self,
                         stats,
@@ -77,15 +51,14 @@ class KerasBenchmark(tf.test.Benchmark):
       warmup: number of entries in stats['step_timestamp_log'] to ignore.
     """
 
-    extras = {}
+    metrics = []
     if 'accuracy_top_1' in stats:
-      extras['accuracy_top_1'] = self._json_description(
-          stats['accuracy_top_1'],
-          priority=0,
-          min_value=top_1_min,
-          max_value=top_1_max)
-      extras['top_1_train_accuracy'] = self._json_description(
-          stats['training_accuracy_top_1'], priority=1)
+      metrics.append({'name': 'accuracy_top_1',
+                      'value': stats['accuracy_top_1'],
+                      'min_value': top_1_min,
+                      'max_value': top_1_max})
+      metrics.append({'name': 'top_1_train_accuracy',
+                      'value': stats['training_accuracy_top_1']})
 
     if (warmup and 'step_timestamp_log' in stats and
         len(stats['step_timestamp_log']) > warmup):
@@ -96,37 +69,15 @@ class KerasBenchmark(tf.test.Benchmark):
       num_examples = (
           total_batch_size * log_steps * (len(time_log) - warmup - 1))
       examples_per_sec = num_examples / elapsed
-      extras['exp_per_second'] = self._json_description(
-          examples_per_sec, priority=2)
+      metrics.append({'name': 'exp_per_second',
+                      'value': examples_per_sec})
 
     if 'avg_exp_per_second' in stats:
-      extras['avg_exp_per_second'] = self._json_description(
-          stats['avg_exp_per_second'], priority=3)
-
-    self.report_benchmark(iters=-1, wall_time=wall_time_sec, extras=extras)
-
-  def _json_description(self,
-                        value,
-                        priority=None,
-                        min_value=None,
-                        max_value=None):
-    """Get a json-formatted string describing the attributes for a metric"""
-
-    attributes = {}
-    attributes['value'] = value
-    if priority:
-      attributes['priority'] = priority
-    if min_value:
-      attributes['min_value'] = min_value
-    if max_value:
-      attributes['max_value'] = max_value
-
-    if min_value or max_value:
-      succeeded = True
-      if min_value and value < min_value:
-        succeeded = False
-      if max_value and value > max_value:
-        succeeded = False
-      attributes['succeeded'] = succeeded
-
-    return json.dumps(attributes)
+      metrics.append({'name': 'avg_exp_per_second',
+                      'value': stats['avg_exp_per_second']})
+    flags_str = flags_core.get_nondefault_flags_as_str()
+    self.report_benchmark(
+        iters=-1,
+        wall_time=wall_time_sec,
+        metrics=metrics,
+        extras={'flags': flags_str})

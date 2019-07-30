@@ -31,6 +31,7 @@ from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
 from official.recommendation import popen_helper
+from official.utils.misc import keras_utils
 
 
 DATASET = "ml-test"
@@ -50,15 +51,19 @@ FRESH_RANDOMNESS_MD5 = "63d0dff73c0e5f1048fbdc8c65021e22"
 def mock_download(*args, **kwargs):
   return
 
+
 # The forkpool used by data producers interacts badly with the threading
 # used by TestCase. Without this patch tests will hang, and no amount
 # of diligent closing and joining within the producer will prevent it.
 @mock.patch.object(popen_helper, "get_forkpool", popen_helper.get_fauxpool)
 class BaseTest(tf.test.TestCase):
+
   def setUp(self):
+    if keras_utils.is_v2_0:
+      tf.compat.v1.disable_eager_execution()
     self.temp_data_dir = self.get_temp_dir()
     ratings_folder = os.path.join(self.temp_data_dir, DATASET)
-    tf.gfile.MakeDirs(ratings_folder)
+    tf.io.gfile.makedirs(ratings_folder)
     np.random.seed(0)
     raw_user_ids = np.arange(NUM_USERS * 3)
     np.random.shuffle(raw_user_ids)
@@ -76,7 +81,7 @@ class BaseTest(tf.test.TestCase):
     self.rating_file = os.path.join(ratings_folder, movielens.RATINGS_FILE)
     self.seen_pairs = set()
     self.holdout = {}
-    with tf.gfile.Open(self.rating_file, "w") as f:
+    with tf.io.gfile.GFile(self.rating_file, "w") as f:
       f.write("user_id,item_id,rating,timestamp\n")
       for usr, itm, scr, ts in zip(users, items, scores, times):
         pair = (usr, itm)
@@ -104,6 +109,7 @@ class BaseTest(tf.test.TestCase):
         "match_mlperf": True,
         "use_tpu": False,
         "use_xla_for_gpu": False,
+        "stream_files": False,
     }
 
   def test_preprocessing(self):
@@ -119,7 +125,7 @@ class BaseTest(tf.test.TestCase):
 
   def drain_dataset(self, dataset, g):
     # type: (tf.data.Dataset, tf.Graph) -> list
-    with self.test_session(graph=g) as sess:
+    with self.session(graph=g) as sess:
       with g.as_default():
         batch = dataset.make_one_shot_iterator().get_next()
       output = []
@@ -341,5 +347,4 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   tf.test.main()

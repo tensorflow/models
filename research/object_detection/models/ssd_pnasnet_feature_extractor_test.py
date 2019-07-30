@@ -26,26 +26,35 @@ slim = tf.contrib.slim
 class SsdPnasNetFeatureExtractorTest(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
-  def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                is_training=True, use_explicit_padding=False):
+  def _create_feature_extractor(self,
+                                depth_multiplier,
+                                pad_to_multiple,
+                                use_explicit_padding=False,
+                                num_layers=6,
+                                is_training=True):
     """Constructs a new feature extractor.
 
     Args:
       depth_multiplier: float depth multiplier for feature extractor
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
-      is_training: whether the network is in training mode.
       use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
+      num_layers: number of SSD layers.
+      is_training: whether the network is in training mode.
     Returns:
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
     min_depth = 32
     return ssd_pnasnet_feature_extractor.SSDPNASNetFeatureExtractor(
-        is_training, depth_multiplier, min_depth, pad_to_multiple,
+        is_training,
+        depth_multiplier,
+        min_depth,
+        pad_to_multiple,
         self.conv_hyperparams_fn,
-        use_explicit_padding=use_explicit_padding)
+        use_explicit_padding=use_explicit_padding,
+        num_layers=num_layers)
 
   def test_extract_features_returns_correct_shapes_128(self):
     image_height = 128
@@ -81,6 +90,17 @@ class SsdPnasNetFeatureExtractorTest(
                                                        pad_to_multiple)
     preprocessed_image = feature_extractor.preprocess(test_image)
     self.assertTrue(np.all(np.less_equal(np.abs(preprocessed_image), 1.0)))
+
+  def test_extract_features_with_fewer_layers(self):
+    image_height = 128
+    image_width = 128
+    depth_multiplier = 1.0
+    pad_to_multiple = 1
+    expected_feature_map_shape = [(2, 8, 8, 2160), (2, 4, 4, 4320),
+                                  (2, 2, 2, 512), (2, 1, 1, 256)]
+    self.check_extract_features_returns_correct_shape(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape, num_layers=4)
 
 
 if __name__ == '__main__':

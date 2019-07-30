@@ -178,7 +178,7 @@ class SsdMobilenetV1PpnFeatureExtractorTest(
                                                        pad_to_multiple)
     preprocessed_image = feature_extractor.preprocess(image_placeholder)
     _ = feature_extractor.extract_features(preprocessed_image)
-    self.assertTrue(any(op.type == 'FusedBatchNorm'
+    self.assertTrue(any('FusedBatchNorm' in op.type
                         for op in tf.get_default_graph().get_operations()))
 
 if __name__ == '__main__':

@@ -33,6 +33,7 @@ from google.protobuf import text_format
 
 from object_detection.builders import hyperparams_builder
 from object_detection.models.keras_models import mobilenet_v1
+from object_detection.models.keras_models import model_utils
 from object_detection.models.keras_models import test_utils
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import test_case
@@ -88,7 +89,8 @@ class MobilenetV1Test(test_case.TestCase):
       conv_hyperparams=None,
       use_explicit_padding=False,
       alpha=1.0,
-      min_depth=None):
+      min_depth=None,
+      conv_defs=None):
     """Constructs Keras MobilenetV1 that extracts intermediate layer outputs."""
     if not layer_names:
       layer_names = _KERAS_LAYERS_TO_CHECK
@@ -99,6 +101,7 @@ class MobilenetV1Test(test_case.TestCase):
         use_explicit_padding=use_explicit_padding,
         alpha=alpha,
         min_depth=min_depth,
+        conv_defs=conv_defs,
         include_top=False)
     layer_outputs = [full_model.get_layer(name=layer).output
                      for layer in layer_names]
@@ -109,14 +112,15 @@ class MobilenetV1Test(test_case.TestCase):
   def _check_returns_correct_shape(
       self, image_height, image_width, depth_multiplier,
       expected_feature_map_shape, use_explicit_padding=False, min_depth=8,
-      layer_names=None):
+      layer_names=None, conv_defs=None):
     def graph_fn(image_tensor):
       model = self._create_application_with_layer_outputs(
           layer_names=layer_names,
           batchnorm_training=False,
           use_explicit_padding=use_explicit_padding,
           min_depth=min_depth,
-          alpha=depth_multiplier)
+          alpha=depth_multiplier,
+          conv_defs=conv_defs)
       return model(image_tensor)
 
     image_tensor = np.random.rand(_BATCH_SIZE, image_height, image_width,
@@ -210,6 +214,23 @@ class MobilenetV1Test(test_case.TestCase):
         test_utils.moblenet_v1_expected_feature_map_shape_enforcing_min_depth)
     self._check_returns_correct_shape(
         image_height, image_width, depth_multiplier, expected_feature_map_shape)
+
+  def test_returns_correct_shapes_with_conv_defs(
+      self):
+    image_height = 299
+    image_width = 299
+    depth_multiplier = 1.0
+    conv_def_block_12 = model_utils.ConvDefs(
+        conv_name='conv_pw_12', filters=512)
+    conv_def_block_13 = model_utils.ConvDefs(
+        conv_name='conv_pw_13', filters=256)
+    conv_defs = [conv_def_block_12, conv_def_block_13]
+
+    expected_feature_map_shape = (
+        test_utils.moblenet_v1_expected_feature_map_shape_with_conv_defs)
+    self._check_returns_correct_shape(
+        image_height, image_width, depth_multiplier, expected_feature_map_shape,
+        conv_defs=conv_defs)
 
   def test_hyperparam_override(self):
     hyperparams = self._build_conv_hyperparams()

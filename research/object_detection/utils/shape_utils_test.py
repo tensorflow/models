@@ -15,6 +15,10 @@
 
 """Tests for object_detection.utils.shape_utils."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
 import tensorflow as tf
 
@@ -331,6 +335,80 @@ class AssertShapeEqualTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(op, feed_dict={tensor_a: np.zeros([5, 2, 2, 3]),
                               tensor_b: np.zeros([5])})
+
+
+class FlattenExpandDimensionTest(tf.test.TestCase):
+
+  def test_flatten_given_dims(self):
+    inputs = tf.random_uniform([5, 2, 10, 10, 3])
+    actual_flattened = shape_utils.flatten_dimensions(inputs, first=1, last=3)
+    expected_flattened = tf.reshape(inputs, [5, 20, 10, 3])
+    with self.test_session() as sess:
+      (actual_flattened_np,
+       expected_flattened_np) = sess.run([actual_flattened, expected_flattened])
+    self.assertAllClose(expected_flattened_np, actual_flattened_np)
+
+  def test_raises_value_error_incorrect_dimensions(self):
+    inputs = tf.random_uniform([5, 2, 10, 10, 3])
+    with self.assertRaises(ValueError):
+      shape_utils.flatten_dimensions(inputs, first=0, last=6)
+
+  def test_flatten_first_two_dimensions(self):
+    inputs = tf.constant(
+        [
+            [[1, 2], [3, 4]],
+            [[5, 6], [7, 8]],
+            [[9, 10], [11, 12]]
+        ], dtype=tf.int32)
+    flattened_tensor = shape_utils.flatten_first_n_dimensions(
+        inputs, 2)
+    with self.test_session() as sess:
+      flattened_tensor_out = sess.run(flattened_tensor)
+
+    expected_output = [[1, 2],
+                       [3, 4],
+                       [5, 6],
+                       [7, 8],
+                       [9, 10],
+                       [11, 12]]
+    self.assertAllEqual(expected_output, flattened_tensor_out)
+
+  def test_expand_first_dimension(self):
+    inputs = tf.constant(
+        [
+            [1, 2],
+            [3, 4],
+            [5, 6],
+            [7, 8],
+            [9, 10],
+            [11, 12]
+        ], dtype=tf.int32)
+    dims = [3, 2]
+    expanded_tensor = shape_utils.expand_first_dimension(
+        inputs, dims)
+    with self.test_session() as sess:
+      expanded_tensor_out = sess.run(expanded_tensor)
+
+    expected_output = [
+        [[1, 2], [3, 4]],
+        [[5, 6], [7, 8]],
+        [[9, 10], [11, 12]]]
+    self.assertAllEqual(expected_output, expanded_tensor_out)
+
+  def test_expand_first_dimension_with_incompatible_dims(self):
+    inputs_default = tf.constant(
+        [
+            [[1, 2]],
+            [[3, 4]],
+            [[5, 6]],
+        ], dtype=tf.int32)
+    inputs = tf.placeholder_with_default(inputs_default, [None, 1, 2])
+    dims = [3, 2]
+    expanded_tensor = shape_utils.expand_first_dimension(
+        inputs, dims)
+    with self.test_session() as sess:
+      with self.assertRaises(tf.errors.InvalidArgumentError):
+        sess.run(expanded_tensor)
 
 
 if __name__ == '__main__':

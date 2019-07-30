@@ -39,7 +39,7 @@ def _get_step_config_from_proto(preprocessor_step_config, step_name):
     if field.name == step_name:
       return value
 
-  raise ValueError('Could not get field %s from proto!', step_name)
+  raise ValueError('Could not get field %s from proto!' % step_name)
 
 
 def _get_dict_from_proto(config):
@@ -194,7 +194,7 @@ def build(preprocessor_step_config):
       if len(pad_color) != 3:
         tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
 
-      pad_color = tf.to_float([x for x in config.pad_color])
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
     return (preprocessor.random_pad_image,
             {
                 'min_image_size': min_image_size,
@@ -213,7 +213,7 @@ def build(preprocessor_step_config):
       if len(pad_color) != 3:
         tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
 
-      pad_color = tf.to_float([x for x in config.pad_color])
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
 
     return (preprocessor.random_absolute_pad_image,
             {
@@ -234,7 +234,7 @@ def build(preprocessor_step_config):
       if len(pad_color) != 3:
         tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
 
-      pad_color = tf.to_float([x for x in config.pad_color])
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
 
     kwargs = {
         'min_object_covered': config.min_object_covered,
@@ -296,6 +296,26 @@ def build(preprocessor_step_config):
                   'random_coef': random_coef,
               })
     return (preprocessor.ssd_random_crop, {})
+
+  if step_type == 'autoaugment_image':
+    config = preprocessor_step_config.autoaugment_image
+    return (preprocessor.autoaugment_image, {
+        'policy_name': config.policy_name,
+    })
+
+  if step_type == 'drop_label_probabilistically':
+    config = preprocessor_step_config.drop_label_probabilistically
+    return (preprocessor.drop_label_probabilistically, {
+        'dropped_label': config.label,
+        'drop_probability': config.drop_probability,
+    })
+
+  if step_type == 'remap_labels':
+    config = preprocessor_step_config.remap_labels
+    return (preprocessor.remap_labels, {
+        'original_labels': config.original_labels,
+        'new_label': config.new_label
+    })
 
   if step_type == 'ssd_random_crop_pad':
     config = preprocessor_step_config.ssd_random_crop_pad

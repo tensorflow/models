@@ -28,7 +28,7 @@ https://github.com/tensorflow/tensorflow/tree/master/tools/tf_env_collect.sh
 
 You can obtain the TensorFlow version with
 
-python -c "import tensorflow as tf; print(tf.GIT_VERSION, tf.VERSION)"
+`python -c "import tensorflow as tf; print(tf.GIT_VERSION, tf.VERSION)"`
 
 ### Describe the problem
 Describe the problem clearly here. Be sure to convey here why it's a bug in TensorFlow or a feature request.

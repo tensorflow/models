@@ -30,10 +30,10 @@ import sys
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.spatial import cKDTree
-from skimage.feature import plot_matches
-from skimage.measure import ransac
-from skimage.transform import AffineTransform
+from scipy import spatial
+from skimage import feature
+from skimage import measure
+from skimage import transform
 import tensorflow as tf
 
 from tensorflow.python.platform import app
@@ -58,7 +58,7 @@ def main(unused_argv):
   tf.logging.info("Loaded image 2's %d features" % num_features_2)
 
   # Find nearest-neighbor matches using a KD tree.
-  d1_tree = cKDTree(descriptors_1)
+  d1_tree = spatial.cKDTree(descriptors_1)
   _, indices = d1_tree.query(
       descriptors_2, distance_upper_bound=_DISTANCE_THRESHOLD)
 
@@ -75,12 +75,11 @@ def main(unused_argv):
   ])
 
   # Perform geometric verification using RANSAC.
-  _, inliers = ransac(
-      (locations_1_to_use, locations_2_to_use),
-      AffineTransform,
-      min_samples=3,
-      residual_threshold=20,
-      max_trials=1000)
+  _, inliers = measure.ransac((locations_1_to_use, locations_2_to_use),
+                              transform.AffineTransform,
+                              min_samples=3,
+                              residual_threshold=20,
+                              max_trials=1000)
 
   tf.logging.info('Found %d inliers' % sum(inliers))
 
@@ -89,7 +88,7 @@ def main(unused_argv):
   img_1 = mpimg.imread(cmd_args.image_1_path)
   img_2 = mpimg.imread(cmd_args.image_2_path)
   inlier_idxs = np.nonzero(inliers)[0]
-  plot_matches(
+  feature.plot_matches(
       ax,
       img_1,
       img_2,

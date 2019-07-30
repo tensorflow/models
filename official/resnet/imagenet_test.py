@@ -22,8 +22,7 @@ import unittest
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
-from official.resnet.keras import keras_common
-from official.resnet.keras import keras_imagenet_main
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -40,10 +39,11 @@ class BaseTest(tf.test.TestCase):
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
     imagenet_main.define_imagenet_flags()
-    keras_common.define_keras_flags()
 
   def setUp(self):
     super(BaseTest, self).setUp()
+    if keras_utils.is_v2_0:
+      tf.compat.v1.disable_eager_execution()
     self._num_validation_images = imagenet_main.NUM_IMAGES['validation']
     imagenet_main.NUM_IMAGES['validation'] = 4
 
@@ -317,13 +317,6 @@ class BaseTest(tf.test.TestCase):
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-resnet_version', '2', '-batch_size', '4',
                      '-resnet_size', '200']
-    )
-
-  def test_imagenet_end_to_end_keras_synthetic_v1(self):
-    integration.run_synthetic(
-        main=keras_imagenet_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '1', '-batch_size', '4',
-                     '-train_steps', '1']
     )
 
 

@@ -56,6 +56,30 @@ class MaskRCNNClassHeadTest(test_case.TestCase):
         features=roi_pooled_features, num_predictions_per_location=1)
     self.assertAllEqual([64, 1, 20], prediction.get_shape().as_list())
 
+  def test_scope_name(self):
+    expected_var_names = set([
+        """ClassPredictor/weights""",
+        """ClassPredictor/biases"""
+    ])
+
+    g = tf.Graph()
+    with g.as_default():
+      class_prediction_head = class_head.MaskRCNNClassHead(
+          is_training=True,
+          num_class_slots=20,
+          fc_hyperparams_fn=self._build_arg_scope_with_hyperparams(),
+          use_dropout=True,
+          dropout_keep_prob=0.5)
+      image_feature = tf.random_uniform(
+          [64, 17, 19, 1024], minval=-10.0, maxval=10.0, dtype=tf.float32)
+      class_prediction_head.predict(
+          features=image_feature,
+          num_predictions_per_location=1)
+      actual_variable_set = set([
+          var.op.name for var in g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+      ])
+      self.assertSetEqual(expected_var_names, actual_variable_set)
+
 
 class ConvolutionalClassPredictorTest(test_case.TestCase):
 
@@ -92,6 +116,29 @@ class ConvolutionalClassPredictorTest(test_case.TestCase):
     self.assertAllEqual([64, 323, 20],
                         class_predictions.get_shape().as_list())
 
+  def test_scope_name(self):
+    expected_var_names = set([
+        """ClassPredictor/weights""",
+        """ClassPredictor/biases"""
+    ])
+    g = tf.Graph()
+    with g.as_default():
+      class_prediction_head = class_head.ConvolutionalClassHead(
+          is_training=True,
+          num_class_slots=20,
+          use_dropout=True,
+          dropout_keep_prob=0.5,
+          kernel_size=3)
+      image_feature = tf.random_uniform(
+          [64, 17, 19, 1024], minval=-10.0, maxval=10.0, dtype=tf.float32)
+      class_prediction_head.predict(
+          features=image_feature,
+          num_predictions_per_location=1)
+      actual_variable_set = set([
+          var.op.name for var in g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+      ])
+      self.assertSetEqual(expected_var_names, actual_variable_set)
+
 
 class WeightSharedConvolutionalClassPredictorTest(test_case.TestCase):
 
@@ -122,6 +169,25 @@ class WeightSharedConvolutionalClassPredictorTest(test_case.TestCase):
         features=image_feature,
         num_predictions_per_location=1)
     self.assertAllEqual([64, 323, 20], class_predictions.get_shape().as_list())
+
+  def test_scope_name(self):
+    expected_var_names = set([
+        """ClassPredictor/weights""",
+        """ClassPredictor/biases"""
+    ])
+    g = tf.Graph()
+    with g.as_default():
+      class_prediction_head = class_head.WeightSharedConvolutionalClassHead(
+          num_class_slots=20)
+      image_feature = tf.random_uniform(
+          [64, 17, 19, 1024], minval=-10.0, maxval=10.0, dtype=tf.float32)
+      class_prediction_head.predict(
+          features=image_feature,
+          num_predictions_per_location=1)
+      actual_variable_set = set([
+          var.op.name for var in g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+      ])
+      self.assertSetEqual(expected_var_names, actual_variable_set)
 
 
 if __name__ == '__main__':

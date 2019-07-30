@@ -30,6 +30,7 @@ class PostProcessingBuilderTest(tf.test.TestCase):
         iou_threshold: 0.6
         max_detections_per_class: 100
         max_total_detections: 300
+        soft_nms_sigma: 0.4
       }
     """
     post_processing_config = post_processing_pb2.PostProcessing()
@@ -38,6 +39,32 @@ class PostProcessingBuilderTest(tf.test.TestCase):
         post_processing_config)
     self.assertEqual(non_max_suppressor.keywords['max_size_per_class'], 100)
     self.assertEqual(non_max_suppressor.keywords['max_total_size'], 300)
+    self.assertAlmostEqual(non_max_suppressor.keywords['score_thresh'], 0.7)
+    self.assertAlmostEqual(non_max_suppressor.keywords['iou_thresh'], 0.6)
+    self.assertAlmostEqual(non_max_suppressor.keywords['soft_nms_sigma'], 0.4)
+
+  def test_build_non_max_suppressor_with_correct_parameters_classagnostic_nms(
+      self):
+    post_processing_text_proto = """
+      batch_non_max_suppression {
+        score_threshold: 0.7
+        iou_threshold: 0.6
+        max_detections_per_class: 10
+        max_total_detections: 300
+        use_class_agnostic_nms: True
+        max_classes_per_detection: 1
+      }
+    """
+    post_processing_config = post_processing_pb2.PostProcessing()
+    text_format.Merge(post_processing_text_proto, post_processing_config)
+    non_max_suppressor, _ = post_processing_builder.build(
+        post_processing_config)
+    self.assertEqual(non_max_suppressor.keywords['max_size_per_class'], 10)
+    self.assertEqual(non_max_suppressor.keywords['max_total_size'], 300)
+    self.assertEqual(non_max_suppressor.keywords['max_classes_per_detection'],
+                     1)
+    self.assertEqual(non_max_suppressor.keywords['use_class_agnostic_nms'],
+                     True)
     self.assertAlmostEqual(non_max_suppressor.keywords['score_thresh'], 0.7)
     self.assertAlmostEqual(non_max_suppressor.keywords['iou_thresh'], 0.6)
 

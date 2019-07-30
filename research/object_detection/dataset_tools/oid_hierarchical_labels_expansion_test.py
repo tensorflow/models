@@ -30,11 +30,17 @@ def create_test_data():
       'Subcategory': [{
           'LabelName': 'b'
       }, {
-          'LabelName': 'c',
+          'LabelName':
+              'c',
           'Subcategory': [{
               'LabelName': 'd'
           }, {
               'LabelName': 'e'
+          }, {
+              'LabelName': 'f',
+              'Subcategory': [{
+                  'LabelName': 'd'
+              },]
           }]
       }, {
           'LabelName': 'f',
@@ -50,19 +56,24 @@ def create_test_data():
   label_rows = [
       '123,verification,b,0', '123,verification,c,0', '124,verification,d,1'
   ]
-  return hierarchy, bbox_rows, label_rows
+  segm_rows = [
+      '123,cc,b,100,100,0.1,0.2,0.1,0.2,0,MASK',
+      '123,cc,d,100,100,0.2,0.3,0.1,0.2,0,MASK',
+  ]
+  return hierarchy, bbox_rows, segm_rows, label_rows
 
 
 class HierarchicalLabelsExpansionTest(tf.test.TestCase):
 
   def test_bbox_expansion(self):
-    hierarchy, bbox_rows, _ = create_test_data()
+    hierarchy, bbox_rows, _, _ = create_test_data()
     expansion_generator = (
         oid_hierarchical_labels_expansion.OIDHierarchicalLabelsExpansion(
             hierarchy))
     all_result_rows = []
     for row in bbox_rows:
-      all_result_rows.extend(expansion_generator.expand_boxes_from_csv(row))
+      all_result_rows.extend(
+          expansion_generator.expand_boxes_or_segments_from_csv(row, 2))
     self.assertItemsEqual([
         '123,xclick,b,1,0.1,0.2,0.1,0.2,1,1,0,0,0',
         '123,xclick,d,1,0.2,0.3,0.1,0.2,1,1,0,0,0',
@@ -70,18 +81,35 @@ class HierarchicalLabelsExpansionTest(tf.test.TestCase):
         '123,xclick,c,1,0.2,0.3,0.1,0.2,1,1,0,0,0'
     ], all_result_rows)
 
+  def test_segm_expansion(self):
+    hierarchy, _, segm_rows, _ = create_test_data()
+    expansion_generator = (
+        oid_hierarchical_labels_expansion.OIDHierarchicalLabelsExpansion(
+            hierarchy))
+    all_result_rows = []
+    for row in segm_rows:
+      all_result_rows.extend(
+          expansion_generator.expand_boxes_or_segments_from_csv(row, 2))
+    self.assertItemsEqual([
+        '123,cc,b,100,100,0.1,0.2,0.1,0.2,0,MASK',
+        '123,cc,d,100,100,0.2,0.3,0.1,0.2,0,MASK',
+        '123,cc,f,100,100,0.2,0.3,0.1,0.2,0,MASK',
+        '123,cc,c,100,100,0.2,0.3,0.1,0.2,0,MASK'
+    ], all_result_rows)
+
   def test_labels_expansion(self):
-    hierarchy, _, label_rows = create_test_data()
+    hierarchy, _, _, label_rows = create_test_data()
     expansion_generator = (
         oid_hierarchical_labels_expansion.OIDHierarchicalLabelsExpansion(
             hierarchy))
     all_result_rows = []
     for row in label_rows:
-      all_result_rows.extend(expansion_generator.expand_labels_from_csv(row))
+      all_result_rows.extend(
+          expansion_generator.expand_labels_from_csv(row, 2, 3))
     self.assertItemsEqual([
         '123,verification,b,0', '123,verification,c,0', '123,verification,d,0',
-        '123,verification,e,0', '124,verification,d,1', '124,verification,f,1',
-        '124,verification,c,1'
+        '123,verification,f,0', '123,verification,e,0', '124,verification,d,1',
+        '124,verification,f,1', '124,verification,c,1'
     ], all_result_rows)
 
 if __name__ == '__main__':

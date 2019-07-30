@@ -16,6 +16,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from six import iteritems
 
 from collections import defaultdict
 
@@ -79,7 +80,7 @@ def main(_):
     fill_vocab_from_doc(doc, vocab_freqs, doc_counts)
 
   # Filter out low-occurring terms
-  vocab_freqs = dict((term, freq) for term, freq in vocab_freqs.iteritems()
+  vocab_freqs = dict((term, freq) for term, freq in iteritems(vocab_freqs)
                      if doc_counts[term] > FLAGS.doc_count_threshold)
 
   # Sort by frequency

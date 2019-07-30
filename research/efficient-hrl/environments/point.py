@@ -17,6 +17,7 @@
 
 import math
 import numpy as np
+import mujoco_py
 from gym import utils
 from gym.envs.mujoco import mujoco_env
 
@@ -33,7 +34,13 @@ class PointEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
   @property
   def physics(self):
-    return self.model
+    # check mujoco version is greater than version 1.50 to call correct physics
+    # model containing PyMjData object for getting and setting position/velocity
+    # check https://github.com/openai/mujoco-py/issues/80 for updates to api
+    if mujoco_py.get_version() >= '1.50':  
+      return self.sim
+    else:
+      return self.model
 
   def _step(self, a):
     return self.step(a)
@@ -80,7 +87,7 @@ class PointEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     return self._get_obs()
 
   def get_ori(self):
-    return self.model.data.qpos[self.__class__.ORI_IND]
+    return self.physics.data.qpos[self.__class__.ORI_IND]
 
   def set_xy(self, xy):
     qpos = np.copy(self.physics.data.qpos)

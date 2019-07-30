@@ -20,6 +20,8 @@ from __future__ import print_function
 
 from absl.testing import parameterized
 
+import six
+from six.moves import range
 import tensorflow as tf
 
 from object_detection import eval_util
@@ -31,9 +33,9 @@ from object_detection.utils import test_case
 class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
   def _get_categories_list(self):
-    return [{'id': 0, 'name': 'person'},
-            {'id': 1, 'name': 'dog'},
-            {'id': 2, 'name': 'cat'}]
+    return [{'id': 1, 'name': 'person'},
+            {'id': 2, 'name': 'dog'},
+            {'id': 3, 'name': 'cat'}]
 
   def _make_evaluation_dict(self,
                             resized_groundtruth_masks=False,
@@ -113,7 +115,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op)
       metrics = sess.run(metrics)
@@ -142,7 +144,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)
@@ -173,7 +175,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)
@@ -192,43 +194,66 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
   def test_get_eval_metric_ops_for_evaluators(self):
     eval_config = eval_pb2.EvalConfig()
-    eval_config.metrics_set.extend(
-        ['coco_detection_metrics', 'coco_mask_metrics'])
+    eval_config.metrics_set.extend([
+        'coco_detection_metrics', 'coco_mask_metrics',
+        'precision_at_recall_detection_metrics'
+    ])
     eval_config.include_metrics_per_category = True
+    eval_config.recall_lower_bound = 0.2
+    eval_config.recall_upper_bound = 0.6
 
     evaluator_options = eval_util.evaluator_options_from_eval_config(
         eval_config)
-    self.assertTrue(evaluator_options['coco_detection_metrics'][
-        'include_metrics_per_category'])
-    self.assertTrue(evaluator_options['coco_mask_metrics'][
-        'include_metrics_per_category'])
+    self.assertTrue(evaluator_options['coco_detection_metrics']
+                    ['include_metrics_per_category'])
+    self.assertTrue(
+        evaluator_options['coco_mask_metrics']['include_metrics_per_category'])
+    self.assertAlmostEqual(
+        evaluator_options['precision_at_recall_detection_metrics']
+        ['recall_lower_bound'], eval_config.recall_lower_bound)
+    self.assertAlmostEqual(
+        evaluator_options['precision_at_recall_detection_metrics']
+        ['recall_upper_bound'], eval_config.recall_upper_bound)
 
   def test_get_evaluator_with_evaluator_options(self):
     eval_config = eval_pb2.EvalConfig()
-    eval_config.metrics_set.extend(['coco_detection_metrics'])
+    eval_config.metrics_set.extend(
+        ['coco_detection_metrics', 'precision_at_recall_detection_metrics'])
     eval_config.include_metrics_per_category = True
+    eval_config.recall_lower_bound = 0.2
+    eval_config.recall_upper_bound = 0.6
     categories = self._get_categories_list()
 
     evaluator_options = eval_util.evaluator_options_from_eval_config(
         eval_config)
-    evaluator = eval_util.get_evaluators(
-        eval_config, categories, evaluator_options)
+    evaluator = eval_util.get_evaluators(eval_config, categories,
+                                         evaluator_options)
 
     self.assertTrue(evaluator[0]._include_metrics_per_category)
+    self.assertAlmostEqual(evaluator[1]._recall_lower_bound,
+                           eval_config.recall_lower_bound)
+    self.assertAlmostEqual(evaluator[1]._recall_upper_bound,
+                           eval_config.recall_upper_bound)
 
   def test_get_evaluator_with_no_evaluator_options(self):
     eval_config = eval_pb2.EvalConfig()
-    eval_config.metrics_set.extend(['coco_detection_metrics'])
+    eval_config.metrics_set.extend(
+        ['coco_detection_metrics', 'precision_at_recall_detection_metrics'])
     eval_config.include_metrics_per_category = True
+    eval_config.recall_lower_bound = 0.2
+    eval_config.recall_upper_bound = 0.6
     categories = self._get_categories_list()
 
     evaluator = eval_util.get_evaluators(
         eval_config, categories, evaluator_options=None)
 
     # Even though we are setting eval_config.include_metrics_per_category = True
-    # this option is never passed into the DetectionEvaluator constructor (via
-    # `evaluator_options`).
+    # and bounds on recall, these options are never passed into the
+    # DetectionEvaluator constructor (via `evaluator_options`).
     self.assertFalse(evaluator[0]._include_metrics_per_category)
+    self.assertAlmostEqual(evaluator[1]._recall_lower_bound, 0.0)
+    self.assertAlmostEqual(evaluator[1]._recall_upper_bound, 1.0)
+
 
 if __name__ == '__main__':
   tf.test.main()

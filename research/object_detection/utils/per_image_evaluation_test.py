@@ -15,7 +15,12 @@
 
 """Tests for object_detection.utils.per_image_evaluation."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.utils import per_image_evaluation
@@ -468,6 +473,158 @@ class SingleClassTpFpNoDifficultBoxesTest(tf.test.TestCase):
         groundtruth_groundtruth_is_group_of_list)
     expected_scores = np.array([0.8, 0.6, 0.5], dtype=float)
     expected_tp_fp_labels = np.array([False, True, True], dtype=bool)
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+
+class SingleClassTpFpEmptyMaskAndBoxesTest(tf.test.TestCase):
+
+  def setUp(self):
+    num_groundtruth_classes = 1
+    matching_iou_threshold_iou = 0.5
+    nms_iou_threshold = 1.0
+    nms_max_output_boxes = 10000
+    self.eval = per_image_evaluation.PerImageEvaluation(
+        num_groundtruth_classes, matching_iou_threshold_iou, nms_iou_threshold,
+        nms_max_output_boxes)
+
+  def test_mask_tp_and_ignore(self):
+    # GT: one box with mask, one without
+    # Det: One mask matches gt1, one matches box gt2 and is ignored
+    groundtruth_boxes = np.array([[0, 0, 2, 3], [0, 0, 2, 2]], dtype=float)
+    groundtruth_mask_0 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_mask_1 = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_masks = np.stack([groundtruth_mask_0, groundtruth_mask_1],
+                                 axis=0)
+    groundtruth_groundtruth_is_difficult_list = np.zeros(2, dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array([False, False],
+                                                        dtype=bool)
+
+    detected_boxes = np.array([[0, 0, 2, 3], [0, 0, 2, 2]], dtype=float)
+    detected_scores = np.array([0.6, 0.8], dtype=float)
+    detected_masks_0 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks_1 = np.array([[1, 0, 0, 0], [1, 1, 0, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks = np.stack([detected_masks_0, detected_masks_1], axis=0)
+
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        detected_boxes, detected_scores, groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list, detected_masks,
+        groundtruth_masks)
+    expected_scores = np.array([0.6], dtype=float)
+    expected_tp_fp_labels = np.array([True], dtype=bool)
+
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_mask_one_tp_one_fp(self):
+    # GT: one box with mask, one without
+    # Det: one mask matches gt1, one is fp (box does not match)
+    groundtruth_boxes = np.array([[0, 0, 2, 3], [2, 2, 4, 4]], dtype=float)
+    groundtruth_mask_0 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_mask_1 = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_masks = np.stack([groundtruth_mask_0, groundtruth_mask_1],
+                                 axis=0)
+    groundtruth_groundtruth_is_difficult_list = np.zeros(2, dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array([False, False],
+                                                        dtype=bool)
+
+    detected_boxes = np.array([[0, 0, 2, 3], [0, 0, 2, 2]], dtype=float)
+    detected_scores = np.array([0.6, 0.8], dtype=float)
+    detected_masks_0 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks_1 = np.array([[1, 0, 0, 0], [1, 1, 0, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks = np.stack([detected_masks_0, detected_masks_1], axis=0)
+
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        detected_boxes,
+        detected_scores,
+        groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=detected_masks,
+        groundtruth_masks=groundtruth_masks)
+    expected_scores = np.array([0.8, 0.6], dtype=float)
+    expected_tp_fp_labels = np.array([False, True], dtype=bool)
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_two_mask_one_gt_one_ignore(self):
+    # GT: one box with mask, one without.
+    # Det: two mask matches same gt, one is tp, one is passed down to box match
+    # and ignored.
+    groundtruth_boxes = np.array([[0, 0, 2, 3], [0, 0, 2, 3]], dtype=float)
+    groundtruth_mask_0 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_mask_1 = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_masks = np.stack([groundtruth_mask_0, groundtruth_mask_1],
+                                 axis=0)
+    groundtruth_groundtruth_is_difficult_list = np.zeros(2, dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array([False, False],
+                                                        dtype=bool)
+
+    detected_boxes = np.array([[0, 0, 2, 3], [0, 0, 2, 3]], dtype=float)
+    detected_scores = np.array([0.6, 0.8], dtype=float)
+    detected_masks_0 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks_1 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks = np.stack([detected_masks_0, detected_masks_1], axis=0)
+
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        detected_boxes,
+        detected_scores,
+        groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=detected_masks,
+        groundtruth_masks=groundtruth_masks)
+    expected_scores = np.array([0.8], dtype=float)
+    expected_tp_fp_labels = np.array([True], dtype=bool)
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_two_mask_one_gt_one_fp(self):
+    # GT: one box with mask, one without.
+    # Det: two mask matches same gt, one is tp, one is passed down to box match
+    # and is fp.
+    groundtruth_boxes = np.array([[0, 0, 2, 3], [2, 3, 4, 6]], dtype=float)
+    groundtruth_mask_0 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_mask_1 = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_masks = np.stack([groundtruth_mask_0, groundtruth_mask_1],
+                                 axis=0)
+    groundtruth_groundtruth_is_difficult_list = np.zeros(2, dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array([False, False],
+                                                        dtype=bool)
+
+    detected_boxes = np.array([[0, 0, 2, 3], [0, 0, 2, 3]], dtype=float)
+    detected_scores = np.array([0.6, 0.8], dtype=float)
+    detected_masks_0 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks_1 = np.array([[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks = np.stack([detected_masks_0, detected_masks_1], axis=0)
+
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        detected_boxes,
+        detected_scores,
+        groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=detected_masks,
+        groundtruth_masks=groundtruth_masks)
+    expected_scores = np.array([0.8, 0.6], dtype=float)
+    expected_tp_fp_labels = np.array([True, False], dtype=bool)
     self.assertTrue(np.allclose(expected_scores, scores))
     self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
 

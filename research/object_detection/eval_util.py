@@ -13,12 +13,17 @@
 # limitations under the License.
 # ==============================================================================
 """Common utility functions for evaluation."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import collections
 import os
 import re
 import time
 
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.core import box_list
@@ -44,10 +49,15 @@ EVAL_METRICS_CLASS_DICT = {
         coco_evaluation.CocoMaskEvaluator,
     'oid_challenge_detection_metrics':
         object_detection_evaluation.OpenImagesDetectionChallengeEvaluator,
+    'oid_challenge_segmentation_metrics':
+        object_detection_evaluation
+        .OpenImagesInstanceSegmentationChallengeEvaluator,
     'pascal_voc_detection_metrics':
         object_detection_evaluation.PascalDetectionEvaluator,
     'weighted_pascal_voc_detection_metrics':
         object_detection_evaluation.WeightedPascalDetectionEvaluator,
+    'precision_at_recall_detection_metrics':
+        object_detection_evaluation.PrecisionAtRecallDetectionEvaluator,
     'pascal_voc_instance_segmentation_metrics':
         object_detection_evaluation.PascalInstanceSegmentationEvaluator,
     'weighted_pascal_voc_instance_segmentation_metrics':
@@ -776,7 +786,8 @@ def result_dict_for_batched_example(images,
   detection_fields = fields.DetectionResultFields
   detection_boxes = detections[detection_fields.detection_boxes]
   detection_scores = detections[detection_fields.detection_scores]
-  num_detections = tf.to_int32(detections[detection_fields.num_detections])
+  num_detections = tf.cast(detections[detection_fields.num_detections],
+                           dtype=tf.int32)
 
   if class_agnostic:
     detection_classes = tf.ones_like(detection_scores, dtype=tf.int64)
@@ -938,5 +949,10 @@ def evaluator_options_from_eval_config(eval_config):
       evaluator_options[eval_metric_fn_key] = {
           'include_metrics_per_category': (
               eval_config.include_metrics_per_category)
+      }
+    elif eval_metric_fn_key == 'precision_at_recall_detection_metrics':
+      evaluator_options[eval_metric_fn_key] = {
+          'recall_lower_bound': (eval_config.recall_lower_bound),
+          'recall_upper_bound': (eval_config.recall_upper_bound)
       }
   return evaluator_options

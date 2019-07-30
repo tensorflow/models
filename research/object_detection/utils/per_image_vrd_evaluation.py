@@ -19,7 +19,12 @@ a predefined IOU ratio. Multi-class detection is supported by default.
 Based on the settings, per image evaluation is performed either on phrase
 detection subtask or on relation detection subtask.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import range
 
 from object_detection.utils import np_box_list
 from object_detection.utils import np_box_list_ops

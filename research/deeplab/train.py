@@ -107,8 +107,8 @@ flags.DEFINE_integer('train_batch_size', 8,
 flags.DEFINE_float('weight_decay', 0.00004,
                    'The value of the weight decay for training.')
 
-flags.DEFINE_multi_integer('train_crop_size', [513, 513],
-                           'Image crop size [height, width] during training.')
+flags.DEFINE_list('train_crop_size', '513,513',
+                  'Image crop size [height, width] during training.')
 
 flags.DEFINE_float(
     'last_layer_gradient_multiplier', 1.0,
@@ -166,7 +166,6 @@ flags.DEFINE_integer('output_stride', 16,
                      'The ratio of input to output spatial resolution.')
 
 # Hard example mining related flags.
-
 flags.DEFINE_integer(
     'hard_example_mining_step', 0,
     'The training step in which exact hard example mining kicks off. Note we '
@@ -180,6 +179,11 @@ flags.DEFINE_float(
     'top_k_percent_pixels', 1.0,
     'The top k percent pixels (in terms of the loss values) used to compute '
     'loss during training. This is useful for hard pixel mining.')
+
+# Quantization setting.
+flags.DEFINE_integer(
+    'quantize_delay_step', -1,
+    'Steps to start quantized training. If < 0, will not quantize model.')
 
 # Dataset settings.
 flags.DEFINE_string('dataset', 'pascal_voc_seg',
@@ -209,7 +213,7 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
 
   model_options = common.ModelOptions(
       outputs_to_num_classes=outputs_to_num_classes,
-      crop_size=FLAGS.train_crop_size,
+      crop_size=[int(sz) for sz in FLAGS.train_crop_size],
       atrous_rates=FLAGS.atrous_rates,
       output_stride=FLAGS.output_stride)
 
@@ -344,39 +348,46 @@ def _train_deeplab_model(iterator, num_of_classes, ignore_label):
     summary_op: An operation to log the summaries.
   """
   global_step = tf.train.get_or_create_global_step()
-  summaries = []
 
   learning_rate = train_utils.get_model_learning_rate(
       FLAGS.learning_policy, FLAGS.base_learning_rate,
       FLAGS.learning_rate_decay_step, FLAGS.learning_rate_decay_factor,
       FLAGS.training_number_of_steps, FLAGS.learning_power,
       FLAGS.slow_start_step, FLAGS.slow_start_learning_rate)
-  summaries.append(tf.summary.scalar('learning_rate', learning_rate))
+  tf.summary.scalar('learning_rate', learning_rate)
 
   optimizer = tf.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
 
+  tower_losses = []
   tower_grads = []
-  tower_summaries = None
   for i in range(FLAGS.num_clones):
     with tf.device('/gpu:%d' % i):
-      with tf.name_scope('clone_%d' % i) as scope:
+      # First tower has default name scope.
+      name_scope = ('clone_%d' % i) if i else ''
+      with tf.name_scope(name_scope) as scope:
         loss = _tower_loss(
             iterator=iterator,
             num_of_classes=num_of_classes,
             ignore_label=ignore_label,
             scope=scope,
             reuse_variable=(i != 0))
-        grads = optimizer.compute_gradients(loss)
-        tower_grads.append(grads)
+        tower_losses.append(loss)
 
-        # Retain the summaries from the first tower.
-        if not i:
-          tower_summaries = tf.summary.merge_all(scope=scope)
+  if FLAGS.quantize_delay_step >= 0:
+    if FLAGS.num_clones > 1:
+      raise ValueError('Quantization doesn\'t support multi-clone yet.')
+    tf.contrib.quantize.create_training_graph(
+        quant_delay=FLAGS.quantize_delay_step)
+
+  for i in range(FLAGS.num_clones):
+    with tf.device('/gpu:%d' % i):
+      name_scope = ('clone_%d' % i) if i else ''
+      with tf.name_scope(name_scope) as scope:
+        grads = optimizer.compute_gradients(tower_losses[i])
+        tower_grads.append(grads)
 
   with tf.device('/cpu:0'):
     grads_and_vars = _average_gradients(tower_grads)
-    if tower_summaries is not None:
-      summaries.append(tower_summaries)
 
     # Modify the gradients for biases and last layer variables.
     last_layers = model.get_extra_layer_scopes(
@@ -407,11 +418,12 @@ def _train_deeplab_model(iterator, num_of_classes, ignore_label):
         lambda: tf.Print(total_loss, [total_loss], 'Total loss is :'),
         lambda: total_loss)
 
-    summaries.append(tf.summary.scalar('total_loss', total_loss))
-
+    tf.summary.scalar('total_loss', total_loss)
     with tf.control_dependencies([update_op]):
       train_tensor = tf.identity(total_loss, name='train_op')
-    summary_op = tf.summary.merge(summaries)
+
+    # Excludes summaries from towers other than the first one.
+    summary_op = tf.summary.merge_all(scope='(?!clone_)')
 
   return train_tensor, summary_op
 
@@ -434,7 +446,7 @@ def main(unused_argv):
           split_name=FLAGS.train_split,
           dataset_dir=FLAGS.dataset_dir,
           batch_size=clone_batch_size,
-          crop_size=FLAGS.train_crop_size,
+          crop_size=[int(sz) for sz in FLAGS.train_crop_size],
           min_resize_value=FLAGS.min_resize_value,
           max_resize_value=FLAGS.max_resize_value,
           resize_factor=FLAGS.resize_factor,
@@ -471,7 +483,8 @@ def main(unused_argv):
           summary_op=summary_op,
       )
 
-      stop_hook = tf.train.StopAtStepHook(FLAGS.training_number_of_steps)
+      stop_hook = tf.train.StopAtStepHook(
+          last_step=FLAGS.training_number_of_steps)
 
       profile_dir = FLAGS.profile_logdir
       if profile_dir is not None:

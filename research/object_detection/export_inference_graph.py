@@ -45,10 +45,16 @@ and the following output nodes returned by the model.postprocess(..):
   * `raw_detection_scores`: Outputs float32 tensors of the form
       [batch, raw_num_boxes, num_classes_with_background] containing class score
       logits for raw detection boxes.
-  * `detection_masks`: Outputs float32 tensors of the form
+  * `detection_masks`: (Optional) Outputs float32 tensors of the form
       [batch, num_boxes, mask_height, mask_width] containing predicted instance
       masks for each box if its present in the dictionary of postprocessed
       tensors returned by the model.
+  * detection_multiclass_scores: (Optional) Outputs float32 tensor of shape
+      [batch, num_boxes, num_classes_with_background] for containing class
+      score distribution for detected boxes including background if any.
+  * detection_features: (Optional) float32 tensor of shape
+      [batch, num_boxes, roi_height, roi_width, depth]
+  containing classifier features
 
 Notes:
  * This tool uses `use_moving_averages` from eval_config to decide which

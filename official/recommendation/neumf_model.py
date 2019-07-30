@@ -45,7 +45,7 @@ from official.recommendation import stat_utils
 from official.utils.logs import mlperf_helper
 
 
-def _sparse_to_dense_grads(grads_and_vars):
+def sparse_to_dense_grads(grads_and_vars):
   """Convert sparse gradients to dense gradients.
 
   All sparse gradients, which are represented as instances of tf.IndexedSlices,
@@ -109,12 +109,20 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
-    optimizer = ncf_common.get_optimizer(params)
+
+    optimizer = tf.compat.v1.train.AdamOptimizer(
+        learning_rate=params["learning_rate"],
+        beta1=params["beta1"],
+        beta2=params["beta2"],
+        epsilon=params["epsilon"])
+    if params["use_tpu"]:
+      # TODO(seemuch): remove this contrib import
+      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
 
-    loss = tf.losses.sparse_softmax_cross_entropy(
+    loss = tf.compat.v1.losses.sparse_softmax_cross_entropy(
         labels=labels,
         logits=softmax_logits,
         weights=tf.cast(valid_pt_mask, tf.float32)
@@ -123,14 +131,14 @@ def neumf_model_fn(features, labels, mode, params):
     # This tensor is used by logging hooks.
     tf.identity(loss, name="cross_entropy")
 
-    global_step = tf.train.get_global_step()
-    tvars = tf.trainable_variables()
+    global_step = tf.compat.v1.train.get_global_step()
+    tvars = tf.compat.v1.trainable_variables()
     gradients = optimizer.compute_gradients(
         loss, tvars, colocate_gradients_with_ops=True)
-    gradients = _sparse_to_dense_grads(gradients)
+    gradients = sparse_to_dense_grads(gradients)
     minimize_op = optimizer.apply_gradients(
         gradients, global_step=global_step, name="train")
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
 
     return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
@@ -381,15 +389,17 @@ def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
   # ignore padded examples
   example_weights *= tf.cast(expanded_metric_weights, tf.float32)
 
-  cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+  cross_entropy = tf.compat.v1.losses.sparse_softmax_cross_entropy(
       logits=softmax_logits, labels=eval_labels, weights=example_weights)
 
   def metric_fn(top_k_tensor, ndcg_tensor, weight_tensor):
     return {
-        rconst.HR_KEY: tf.metrics.mean(top_k_tensor, weights=weight_tensor,
-                                       name=rconst.HR_METRIC_NAME),
-        rconst.NDCG_KEY: tf.metrics.mean(ndcg_tensor, weights=weight_tensor,
-                                         name=rconst.NDCG_METRIC_NAME),
+        rconst.HR_KEY: tf.compat.v1.metrics.mean(top_k_tensor,
+                                                 weights=weight_tensor,
+                                                 name=rconst.HR_METRIC_NAME),
+        rconst.NDCG_KEY: tf.compat.v1.metrics.mean(ndcg_tensor,
+                                                   weights=weight_tensor,
+                                                   name=rconst.NDCG_METRIC_NAME)
     }
 
   return cross_entropy, metric_fn, in_top_k, ndcg, metric_weights
@@ -417,8 +427,9 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
     (num_users_in_batch, (rconst.NUM_EVAL_NEGATIVES + 1)).
   """
   logits_by_user = tf.reshape(logits, (-1, rconst.NUM_EVAL_NEGATIVES + 1))
-  duplicate_mask_by_user = tf.reshape(duplicate_mask,
-                                      (-1, rconst.NUM_EVAL_NEGATIVES + 1))
+  duplicate_mask_by_user = tf.cast(
+      tf.reshape(duplicate_mask, (-1, rconst.NUM_EVAL_NEGATIVES + 1)),
+      tf.float32)
 
   if match_mlperf:
     # Set duplicate logits to the min value for that dtype. The MLPerf
@@ -428,7 +439,7 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
 
   # Determine the location of the first element in each row after the elements
   # are sorted.
-  sort_indices = tf.contrib.framework.argsort(
+  sort_indices = tf.argsort(
       logits_by_user, axis=1, direction="DESCENDING")
 
   # Use matrix multiplication to extract the position of the true item from the
@@ -443,7 +454,8 @@ def compute_top_k_and_ndcg(logits,              # type: tf.Tensor
   position_vector = tf.reduce_sum(sparse_positions, axis=1)
 
   in_top_k = tf.cast(tf.less(position_vector, rconst.TOP_K), tf.float32)
-  ndcg = tf.log(2.) / tf.log(tf.cast(position_vector, tf.float32) + 2)
+  ndcg = tf.math.log(2.) / tf.math.log(
+      tf.cast(position_vector, tf.float32) + 2)
   ndcg *= in_top_k
 
   # If a row is a padded row, all but the first element will be a duplicate.

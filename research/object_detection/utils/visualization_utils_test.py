@@ -14,11 +14,17 @@
 # ==============================================================================
 
 """Tests for object_detection.utils.visualization_utils."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import logging
 import os
 
 import numpy as np
 import PIL.Image as Image
+import six
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -28,6 +34,30 @@ _TESTDATA_PATH = 'object_detection/test_images'
 
 
 class VisualizationUtilsTest(tf.test.TestCase):
+
+  def test_get_prime_multiplier_for_color_randomness(self):
+    # Show that default multipler is not 1 and does not divide the total number
+    # of standard colors.
+    multiplier = visualization_utils._get_multiplier_for_color_randomness()
+    self.assertNotEqual(
+        0, multiplier % len(visualization_utils.STANDARD_COLORS))
+    self.assertNotEqual(1, multiplier)
+
+    # Show that with 34 colors, the closest prime number to 34/10 that
+    # satisfies the constraints is 5.
+    visualization_utils.STANDARD_COLORS = [
+        'color_{}'.format(str(i)) for i in range(34)
+    ]
+    multiplier = visualization_utils._get_multiplier_for_color_randomness()
+    self.assertEqual(5, multiplier)
+
+    # Show that with 110 colors, the closest prime number to 110/10 that
+    # satisfies the constraints is 13 (since 11 equally divides 110).
+    visualization_utils.STANDARD_COLORS = [
+        'color_{}'.format(str(i)) for i in range(110)
+    ]
+    multiplier = visualization_utils._get_multiplier_for_color_randomness()
+    self.assertEqual(13, multiplier)
 
   def create_colorful_test_image(self):
     """This function creates an image that can be used to test vis functions.
@@ -153,6 +183,55 @@ class VisualizationUtilsTest(tf.test.TestCase):
             tuple(original_image_shape[0]), images_with_boxes_np.shape[1:3])
         for i in range(images_with_boxes_np.shape[0]):
           img_name = 'image_' + str(i) + '.png'
+          output_file = os.path.join(self.get_temp_dir(), img_name)
+          logging.info('Writing output image %d to %s', i, output_file)
+          image_pil = Image.fromarray(images_with_boxes_np[i, ...])
+          image_pil.save(output_file)
+
+  def test_draw_bounding_boxes_on_image_tensors_with_track_ids(self):
+    """Tests that bounding box utility produces reasonable results."""
+    category_index = {1: {'id': 1, 'name': 'dog'}, 2: {'id': 2, 'name': 'cat'}}
+
+    fname = os.path.join(_TESTDATA_PATH, 'image1.jpg')
+    image_np = np.array(Image.open(fname))
+    images_np = np.stack((image_np, image_np), axis=0)
+    original_image_shape = [[636, 512], [636, 512]]
+
+    with tf.Graph().as_default():
+      images_tensor = tf.constant(value=images_np, dtype=tf.uint8)
+      image_shape = tf.constant(original_image_shape, dtype=tf.int32)
+      boxes = tf.constant([[[0.4, 0.25, 0.75, 0.75],
+                            [0.5, 0.3, 0.7, 0.9],
+                            [0.7, 0.5, 0.8, 0.9]],
+                           [[0.41, 0.25, 0.75, 0.75],
+                            [0.51, 0.3, 0.7, 0.9],
+                            [0.75, 0.5, 0.8, 0.9]]])
+      classes = tf.constant([[1, 1, 2], [1, 1, 2]], dtype=tf.int64)
+      scores = tf.constant([[0.8, 0.5, 0.7], [0.6, 0.5, 0.8]])
+      track_ids = tf.constant([[3, 9, 7], [3, 9, 144]], dtype=tf.int32)
+      images_with_boxes = (
+          visualization_utils.draw_bounding_boxes_on_image_tensors(
+              images_tensor,
+              boxes,
+              classes,
+              scores,
+              category_index,
+              original_image_spatial_shape=image_shape,
+              true_image_shape=image_shape,
+              track_ids=track_ids,
+              min_score_thresh=0.2))
+
+      with self.test_session() as sess:
+        sess.run(tf.global_variables_initializer())
+
+        # Write output images for visualization.
+        images_with_boxes_np = sess.run(images_with_boxes)
+        self.assertEqual(images_np.shape[0], images_with_boxes_np.shape[0])
+        self.assertEqual(images_np.shape[3], images_with_boxes_np.shape[3])
+        self.assertEqual(
+            tuple(original_image_shape[0]), images_with_boxes_np.shape[1:3])
+        for i in range(images_with_boxes_np.shape[0]):
+          img_name = 'image_with_track_ids_' + str(i) + '.png'
           output_file = os.path.join(self.get_temp_dir(), img_name)
           logging.info('Writing output image %d to %s', i, output_file)
           image_pil = Image.fromarray(images_with_boxes_np[i, ...])
@@ -314,12 +393,12 @@ class VisualizationUtilsTest(tf.test.TestCase):
             groundtruth_classes
     }
     metric_ops = eval_metric_ops.get_estimator_eval_metric_ops(eval_dict)
-    _, update_op = metric_ops[metric_ops.keys()[0]]
+    _, update_op = metric_ops[next(six.iterkeys(metric_ops))]
 
     with self.test_session() as sess:
       sess.run(tf.global_variables_initializer())
       value_ops = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         value_ops[key] = value_op
 
       # First run enough update steps to surpass `max_examples_to_draw`.
@@ -340,7 +419,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
                                    [6 + i, 7 + i, 3], [6 + i, 7 + i, 3]]
             })
       value_ops_out = sess.run(value_ops)
-      for key, value_op in value_ops_out.iteritems():
+      for key, value_op in six.iteritems(value_ops_out):
         self.assertNotEqual('', value_op)
 
       # Now run fewer update steps than `max_examples_to_draw`. A single value
@@ -364,7 +443,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
             })
       value_ops_out = sess.run(value_ops)
       self.assertEqual(
-          '',
+          six.b(''),
           value_ops_out[metric_op_base + '/' + str(max_examples_to_draw - 1)])
 
 
