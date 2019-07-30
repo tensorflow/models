@@ -26,6 +26,7 @@ import json
 import os
 
 # pylint: disable=g-bad-import-order
+from absl import app as absl_app
 from absl import flags
 from absl import logging
 import tensorflow as tf
