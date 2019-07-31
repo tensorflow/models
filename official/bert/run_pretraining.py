@@ -77,14 +77,18 @@ def get_pretrain_input_data(input_file_pattern, seq_length,
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
 
   def _dataset_fn(ctx=None):
-    del ctx
-
+    """Returns tf.data.Dataset for distributed BERT pretraining."""
     input_files = []
     for input_pattern in input_file_pattern.split(','):
       input_files.extend(tf.io.gfile.glob(input_pattern))
 
     train_dataset = input_pipeline.create_pretrain_dataset(
-        input_files, seq_length, max_predictions_per_seq, batch_size)
+        input_files,
+        seq_length,
+        max_predictions_per_seq,
+        batch_size,
+        is_training=True,
+        input_pipeline_context=ctx)
     return train_dataset
 
   return _dataset_fn if use_dataset_fn else _dataset_fn()
