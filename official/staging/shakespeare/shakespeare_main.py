@@ -162,13 +162,13 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
 
   with strategy_scope:
     model = build_model(vocab_size=vocab_size, batch_size=flags_obj.batch_size)
-    model.compile(optimizer=tf.keras.optimizers.Adam(),
-                  loss=tf.keras.losses.CategoricalCrossentropy(),
-                  metrics=[
-                      tf.keras.metrics.Recall(top_k=1, name='RecallAt1'),
-                      tf.keras.metrics.Recall(top_k=5, name='RecallAt5')],
-                  run_eagerly=flags_obj.run_eagerly,
-                  run_distributed=flags_obj.force_v2_in_keras_compile)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        loss=tf.keras.losses.CategoricalCrossentropy(),
+        metrics=[tf.keras.metrics.Recall(top_k=1, name='RecallAt1'),
+                 tf.keras.metrics.Recall(top_k=5, name='RecallAt5')],
+        run_eagerly=flags_obj.run_eagerly,
+        experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
 
   callbacks = []
   if checkpoint_dir:

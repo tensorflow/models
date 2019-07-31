@@ -177,12 +177,13 @@ def run(flags_obj):
     optimizer = keras_common.get_optimizer()
     model = resnet_cifar_model.resnet56(classes=cifar_main.NUM_CLASSES)
 
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=optimizer,
-                  metrics=(['categorical_accuracy']
-                           if flags_obj.report_accuracy_metrics else None),
-                  run_eagerly=flags_obj.run_eagerly,
-                  run_distributed=flags_obj.force_v2_in_keras_compile)
+    model.compile(
+        loss='categorical_crossentropy',
+        optimizer=optimizer,
+        metrics=(['categorical_accuracy']
+                 if flags_obj.report_accuracy_metrics else None),
+        run_eagerly=flags_obj.run_eagerly,
+        experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
 
   callbacks = keras_common.get_callbacks(
       learning_rate_schedule, cifar_main.NUM_IMAGES['train'])
