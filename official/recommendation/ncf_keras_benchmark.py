@@ -200,7 +200,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 2
     FLAGS.force_v2_in_keras_compile = True
     self._run_and_report_benchmark()
-    
+
   def benchmark_2_gpus_ctl_early_stop(self):
     """NCF with custom training loop. Works only in TF 2.0."""
     self._setup()
@@ -293,7 +293,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.epsilon = 1e-8
     FLAGS.force_v2_in_keras_compile = True
     self._run_and_report_benchmark_mlperf_like()
-    
+
   def benchmark_xla_8_gpu_mlperf_like(self):
     """8 GPU using keras fit/compile with XLA."""
     self._setup()
