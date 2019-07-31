@@ -314,3 +314,24 @@ def ComputeMetrics(sorted_index_ids, ground_truth, desired_pr_ranks):
 
   return (mean_average_precision, mean_precisions, mean_recalls,
           average_precisions, precisions, recalls)
+
+
+def SaveMetricsFile(mean_average_precision, mean_precisions, mean_recalls,
+                    pr_ranks, output_path):
+  """Saves aggregated retrieval metrics to text file.
+
+  Args:
+    mean_average_precision: Dict mapping each dataset protocol to a float.
+    mean_precisions: Dict mapping each dataset protocol to a NumPy array of
+      floats with shape [len(pr_ranks)].
+    mean_recalls: Dict mapping each dataset protocol to a NumPy array of floats
+      with shape [len(pr_ranks)].
+    pr_ranks: List of integers.
+    output_path: Full file path.
+  """
+  with tf.gfile.GFile(output_path, 'w') as f:
+    for k in sorted(mean_average_precision.keys()):
+      f.write('{}\n  mAP={}\n  mP@k{} {}\n  mR@k{} {}\n'.format(
+          k, np.around(mean_average_precision[k] * 100, decimals=2),
+          np.array(pr_ranks), np.around(mean_precisions[k] * 100, decimals=2),
+          np.array(pr_ranks), np.around(mean_recalls[k] * 100, decimals=2)))

@@ -327,6 +327,51 @@ def ApplyPcaAndWhitening(data,
   return output
 
 
+def PostProcessDescriptors(descriptors, use_pca, pca_parameters):
+  """Post-process descriptors.
+
+  Args:
+    descriptors: [N, input_dim] float tensor.
+    use_pca: Whether to use PCA.
+    pca_parameters: DelfPcaParameters proto.
+
+  Returns:
+    final_descriptors: [N, output_dim] float tensor with descriptors after
+      normalization and (possibly) PCA/whitening.
+  """
+  # L2-normalize, and if desired apply PCA (followed by L2-normalization).
+  with tf.variable_scope('postprocess'):
+    final_descriptors = tf.nn.l2_normalize(
+        descriptors, axis=1, name='l2_normalization')
+
+    if use_pca:
+      # Load PCA parameters.
+      pca_mean = tf.constant(
+          datum_io.ReadFromFile(pca_parameters.mean_path), dtype=tf.float32)
+      pca_matrix = tf.constant(
+          datum_io.ReadFromFile(pca_parameters.projection_matrix_path),
+          dtype=tf.float32)
+      pca_dim = pca_parameters.pca_dim
+      pca_variances = None
+      if pca_parameters.use_whitening:
+        pca_variances = tf.squeeze(
+            tf.constant(
+                datum_io.ReadFromFile(pca_parameters.pca_variances_path),
+                dtype=tf.float32))
+
+      # Apply PCA, and whitening if desired.
+      final_descriptors = ApplyPcaAndWhitening(final_descriptors, pca_matrix,
+                                               pca_mean, pca_dim,
+                                               pca_parameters.use_whitening,
+                                               pca_variances)
+
+      # Re-normalize.
+      final_descriptors = tf.nn.l2_normalize(
+          final_descriptors, axis=1, name='pca_l2_normalization')
+
+  return final_descriptors
+
+
 def DelfFeaturePostProcessing(boxes, descriptors, config):
   """Extract DELF features from input image.
 
@@ -346,39 +391,8 @@ def DelfFeaturePostProcessing(boxes, descriptors, config):
 
   # Get center of descriptor boxes, corresponding to feature locations.
   locations = CalculateKeypointCenters(boxes)
-
-  # Post-process descriptors: L2-normalize, and if desired apply PCA (followed
-  # by L2-normalization).
-  with tf.variable_scope('postprocess'):
-    final_descriptors = tf.nn.l2_normalize(
-        descriptors, dim=1, name='l2_normalization')
-
-    if config.delf_local_config.use_pca:
-      # Load PCA parameters.
-      pca_mean = tf.constant(
-          datum_io.ReadFromFile(
-              config.delf_local_config.pca_parameters.mean_path),
-          dtype=tf.float32)
-      pca_matrix = tf.constant(
-          datum_io.ReadFromFile(
-              config.delf_local_config.pca_parameters.projection_matrix_path),
-          dtype=tf.float32)
-      pca_dim = config.delf_local_config.pca_parameters.pca_dim
-      pca_variances = None
-      if config.delf_local_config.pca_parameters.use_whitening:
-        pca_variances = tf.squeeze(
-            tf.constant(
-                datum_io.ReadFromFile(
-                    config.delf_local_config.pca_parameters.pca_variances_path),
-                dtype=tf.float32))
-
-      # Apply PCA, and whitening if desired.
-      final_descriptors = ApplyPcaAndWhitening(
-          final_descriptors, pca_matrix, pca_mean, pca_dim,
-          config.delf_local_config.pca_parameters.use_whitening, pca_variances)
-
-      # Re-normalize.
-      final_descriptors = tf.nn.l2_normalize(
-          final_descriptors, dim=1, name='pca_l2_normalization')
+  final_descriptors = PostProcessDescriptors(
+      descriptors, config.delf_local_config.use_pca,
+      config.delf_local_config.pca_parameters)
 
   return locations, final_descriptors
