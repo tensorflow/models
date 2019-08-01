@@ -33,7 +33,6 @@ from official.bert import modeling
 from official.bert import run_classifier
 from official.bert.benchmark import benchmark_utils
 from official.utils.misc import distribution_utils
-from official.utils.misc import keras_utils
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16/bert_model.ckpt'
@@ -55,7 +54,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     self.num_steps_per_epoch = None
 
   @flagsaver.flagsaver
-  def _run_bert_classifier(self, callbacks=None, use_ds=True, enable_xla=False):
+  def _run_bert_classifier(self, callbacks=None, use_ds=True):
     """Starts BERT classification task."""
     with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
       input_meta_data = json.loads(reader.read().decode('utf-8'))
@@ -73,8 +72,6 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     strategy = distribution_utils.get_distribution_strategy(
         distribution_strategy='mirrored' if use_ds else 'off',
         num_gpus=self.num_gpus)
-    # TODO(hongkuny): Enable XLA once we are confident with its performance.
-    keras_utils.set_config_v2(enable_xla)
 
     steps_per_loop = 1
 
@@ -119,13 +116,10 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
                                 training_summary_path,
                                 min_accuracy=0,
                                 max_accuracy=1,
-                                use_ds=True,
-                                enable_xla=False):
+                                use_ds=True):
     """Starts BERT performance benchmark test."""
-
     start_time_sec = time.time()
-    self._run_bert_classifier(
-        callbacks=[self.timer_callback], use_ds=use_ds, enable_xla=enable_xla)
+    self._run_bert_classifier(callbacks=[self.timer_callback], use_ds=use_ds)
     wall_time_sec = time.time() - start_time_sec
 
     with tf.io.gfile.GFile(training_summary_path, 'rb') as reader:
@@ -168,9 +162,10 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.bert_config_file = self.bert_config_file
     FLAGS.train_batch_size = 4
     FLAGS.eval_batch_size = 4
+    FLAGS.enable_xla = True
 
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
-    self._run_and_report_benchmark(summary_path, enable_xla=True)
+    self._run_and_report_benchmark(summary_path)
 
   def benchmark_1_gpu_mrpc_no_dist_strat(self):
     """Test BERT model performance with 1 GPU, no distribution strategy."""
@@ -253,13 +248,11 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
   def _run_and_report_benchmark(self,
                                 training_summary_path,
                                 min_accuracy=0.84,
-                                max_accuracy=0.88,
-                                enable_xla=False):
+                                max_accuracy=0.88):
     """Starts BERT accuracy benchmark test."""
 
     start_time_sec = time.time()
-    self._run_bert_classifier(
-        callbacks=[self.timer_callback], enable_xla=enable_xla)
+    self._run_bert_classifier(callbacks=[self.timer_callback])
     wall_time_sec = time.time() - start_time_sec
 
     with tf.io.gfile.GFile(training_summary_path, 'rb') as reader:
@@ -296,9 +289,9 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
     """Run BERT model accuracy test with 8 GPUs with XLA."""
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mrpc_xla')
-
+    FLAGS.enable_xla = True
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
-    self._run_and_report_benchmark(summary_path, enable_xla=True)
+    self._run_and_report_benchmark(summary_path)
 
 
 if __name__ == '__main__':

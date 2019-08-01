@@ -32,7 +32,6 @@ from official.bert import run_squad
 from official.bert.benchmark import benchmark_utils
 from official.bert.benchmark import squad_evaluate_v1_1
 from official.utils.misc import distribution_utils
-from official.utils.misc import keras_utils
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16/bert_model.ckpt'
@@ -131,10 +130,8 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
   def _run_and_report_benchmark(self,
                                 use_ds=True,
-                                enable_xla=False,
                                 run_eagerly=False):
     """Runs the benchmark and reports various metrics."""
-    keras_utils.set_config_v2(enable_xla)
     start_time_sec = time.time()
     self._train_squad(use_ds=use_ds, run_eagerly=run_eagerly)
     wall_time_sec = time.time() - start_time_sec
@@ -164,8 +161,9 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_xla_squad')
     FLAGS.train_batch_size = 4
+    FLAGS.enable_xla = True
 
-    self._run_and_report_benchmark(enable_xla=True)
+    self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat(self):
     """Tests BERT SQuAD model performance with 1 GPU without DS."""
@@ -291,10 +289,8 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
 
   def _run_and_report_benchmark(self,
                                 use_ds=True,
-                                enable_xla=False,
                                 run_eagerly=False):
     """Runs the benchmark and reports various metrics."""
-    keras_utils.set_config_v2(enable_xla)
     start_time_sec = time.time()
     self._train_squad(use_ds=use_ds, run_eagerly=run_eagerly)
     self._evaluate_squad()
@@ -348,8 +344,9 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     self.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad_xla')
     FLAGS.train_batch_size = 32
+    FLAGS.enable_xla = True
 
-    self._run_and_report_benchmark(enable_xla=True)
+    self._run_and_report_benchmark()
 
 
 if __name__ == '__main__':

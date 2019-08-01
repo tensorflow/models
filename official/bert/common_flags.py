@@ -58,7 +58,7 @@ def define_common_bert_flags():
       loss_scale=True,
       all_reduce_alg=False,
       num_packs=False,
-      enable_xla=False
+      enable_xla=True
   )
 
 
