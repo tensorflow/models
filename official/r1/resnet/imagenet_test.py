@@ -21,7 +21,7 @@ import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet import imagenet_main
+from official.r1.resnet import imagenet_main
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 

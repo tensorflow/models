@@ -22,7 +22,7 @@ from tempfile import mkstemp
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet import cifar10_main
+from official.r1.resnet import cifar10_main
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
