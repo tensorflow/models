@@ -24,8 +24,8 @@ from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet import cifar10_main as cifar_main
-from official.resnet import imagenet_main
+from official.r1.resnet import cifar10_main as cifar_main
+from official.r1.resnet import imagenet_main
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks
 

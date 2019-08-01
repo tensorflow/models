@@ -28,17 +28,15 @@ import math
 import multiprocessing
 import os
 
-
-# pylint: disable=g-bad-import-order
 from absl import flags
 import tensorflow as tf
 
-from official.resnet import resnet_model
-from official.utils.flags import core as flags_core
+from official.r1.resnet import imagenet_preprocessing
+from official.r1.resnet import resnet_model
 from official.utils.export import export
+from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
-from official.resnet import imagenet_preprocessing
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 

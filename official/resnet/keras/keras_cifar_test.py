@@ -21,7 +21,7 @@ from __future__ import print_function
 from tempfile import mkdtemp
 import tensorflow as tf
 
-from official.resnet import cifar10_main
+from official.r1.resnet import cifar10_main
 from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
 from official.utils.misc import keras_utils
