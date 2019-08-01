@@ -37,6 +37,7 @@ from official.bert import optimization
 from official.bert import squad_lib
 from official.bert import tokenization
 from official.bert import tpu_lib
+from official.utils.misc import keras_utils
 
 flags.DEFINE_bool('do_train', False, 'Whether to run training.')
 flags.DEFINE_bool('do_predict', False, 'Whether to run eval on the dev set.')
@@ -181,6 +182,8 @@ def train_squad(strategy,
   if strategy:
     logging.info('Training using customized training loop with distribution'
                  ' strategy.')
+  # Enables XLA in Session Config. Should not be set for TPU.
+  keras_utils.set_config_v2(FLAGS.enable_xla)
 
   use_float16 = common_flags.use_float16()
   if use_float16:

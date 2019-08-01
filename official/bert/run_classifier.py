@@ -36,6 +36,7 @@ from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
 from official.bert import tpu_lib
+from official.utils.misc import keras_utils
 
 flags.DEFINE_enum(
     'mode', 'train_and_eval', ['train_and_eval', 'export_only'],
@@ -174,6 +175,8 @@ def run_bert(strategy, input_meta_data):
 
   if FLAGS.mode != 'train_and_eval':
     raise ValueError('Unsupported mode is specified: %s' % FLAGS.mode)
+  # Enables XLA in Session Config. Should not be set for TPU.
+  keras_utils.set_config_v2(FLAGS.enable_xla)
 
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   epochs = FLAGS.num_train_epochs
