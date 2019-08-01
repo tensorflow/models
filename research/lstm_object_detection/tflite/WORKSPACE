@@ -1,6 +1,7 @@
 workspace(name = "lstm_object_detection")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 http_archive(
     name = "bazel_skylib",
@@ -118,3 +119,9 @@ http_archive(
 
 load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
 tf_workspace(tf_repo_name = "org_tensorflow")
+
+git_repository(
+    name = "libedgetpu",
+    remote = "sso://coral.googlesource.com/edgetpu-native",
+    commit = "83e47d1bcf22686fae5150ebb99281f6134ef062",
+)

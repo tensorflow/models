@@ -37,7 +37,7 @@ constexpr int GetScoreIndex(const int layer) { return (2 * layer + 1); }
 
 MobileSSDTfLiteClient::MobileSSDTfLiteClient() {}
 
-std::unique_ptr<::tflite::OpResolver>
+std::unique_ptr<::tflite::MutableOpResolver>
 MobileSSDTfLiteClient::CreateOpResolver() {
   return absl::make_unique<::tflite::ops::builtin::BuiltinOpResolver>();
 }
@@ -76,6 +76,12 @@ bool MobileSSDTfLiteClient::InitializeClient(
   LoadLabelMap();
 
   resolver_ = CreateOpResolver();
+
+#ifdef ENABLE_EDGETPU
+  edge_tpu_context_ =
+      edgetpu::EdgeTpuManager::GetSingleton()->NewEdgeTpuContext();
+  resolver_->AddCustom(edgetpu::kCustomOp, edgetpu::RegisterCustomOp());
+#endif
 
   ::tflite::InterpreterBuilder(*model_, *resolver_)(&interpreter_);
   if (!interpreter_) {
@@ -177,6 +183,11 @@ bool MobileSSDTfLiteClient::InitializeInterpreter(
     return false;
   }
   interpreter_->UseNNAPI(false);
+
+#ifdef ENABLE_EDGETPU
+  interpreter_->SetExternalContext(kTfLiteEdgeTpuContext,
+                                   edge_tpu_context_.get());
+#endif
 
   if (options.num_threads() > 0) {
     interpreter_->SetNumThreads(options.num_threads());
