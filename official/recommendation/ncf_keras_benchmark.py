@@ -193,7 +193,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
-    
+
   def benchmark_2_gpus_early_stop_force_V2(self):
     self._setup()
     FLAGS.early_stopping = True
@@ -280,7 +280,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.beta2 = 0.5
     FLAGS.epsilon = 1e-8
     self._run_and_report_benchmark_mlperf_like()
-    
+
   def benchmark_8_gpu_force_v2_mlperf_like(self):
     """8 GPU using keras fit/compile V2 codepath."""
     self._setup()
