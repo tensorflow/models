@@ -13,14 +13,14 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Bring in the v1 ResNet modules into this module.
+"""Bring in the shared ResNet modules into this module.
 
 The TensorFlow v1 official models are moved under official/r1/resnet. In order
 to be backward compatible with models that directly import v1 modules, we import
 the v1 ResNet modules under official.resnet.
 
-New TF models should no longer depend on these modules which will be soon
-deprecated and removed from this path.
+New TF models should not depend on modules directly under this path (which will
+soon be deprecated and removed).
 """
 
 from __future__ import absolute_import
