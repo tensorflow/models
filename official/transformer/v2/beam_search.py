@@ -49,8 +49,9 @@ class SequenceBeamSearchV2(v1.SequenceBeamSearch):
     # Account for corner case where there are no finished sequences for a
     # particular batch item. In that case, return alive sequences for that batch
     # item.
-    finished_seq = tf.where(seq_cond, finished_seq, alive_seq)
-    finished_scores = tf.where(score_cond, finished_scores, alive_log_probs)
+    finished_seq = tf.compat.v2.where(seq_cond, finished_seq, alive_seq)
+    finished_scores = tf.compat.v2.where(
+        score_cond, finished_scores, alive_log_probs)
     return finished_seq, finished_scores
 
 

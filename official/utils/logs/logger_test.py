@@ -262,14 +262,12 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
                      {"name": "batch_size", "long_value": 32})
     self.assertEqual(run_info["run_parameters"][1],
                      {"name": "dtype", "string_value": "fp16"})
-    if keras_utils.is_v2_0():
-      self.assertEqual(run_info["run_parameters"][2],
-                       {"name": "random_tensor", "string_value":
-                            "tf.Tensor(2.0, shape=(), dtype=float32)"})
-    else:
-      self.assertEqual(run_info["run_parameters"][2],
-                       {"name": "random_tensor", "string_value":
-                            "Tensor(\"Const:0\", shape=(), dtype=float32)"})
+    v1_tensor = {"name": "random_tensor", "string_value":
+                     "Tensor(\"Const:0\", shape=(), dtype=float32)"}
+    v2_tensor = {"name": "random_tensor", "string_value":
+                     "tf.Tensor(2.0, shape=(), dtype=float32)"}
+    self.assertIn(run_info["run_parameters"][2], [v1_tensor, v2_tensor])
+
 
     self.assertEqual(run_info["run_parameters"][3],
                      {"name": "resnet_size", "long_value": 50})
