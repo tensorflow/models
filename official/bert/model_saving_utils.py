@@ -37,6 +37,7 @@ def export_bert_model(
       model: Keras model object to export.
       checkpoint_dir: Path from which model weights will be loaded, if
         specified.
+
   Raises:
     ValueError when either model_export_path or model is not specified.
   """
