@@ -20,9 +20,10 @@ from __future__ import print_function
 
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet import imagenet_main
+from official.resnet.keras import imagenet_preprocessing
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_model
 from official.resnet.keras import trivial_model
@@ -68,17 +69,6 @@ def learning_rate_schedule(current_epoch,
     else:
       break
   return learning_rate
-
-
-def parse_record_keras(raw_record, is_training, dtype):
-  """Adjust the shape of label."""
-  image, label = imagenet_main.parse_record(raw_record, is_training, dtype)
-
-  # Subtract one so that labels are in [0, 1000), and cast to float32 for
-  # Keras model.
-  label = tf.cast(tf.cast(tf.reshape(label, shape=[1]), dtype=tf.int32) - 1,
-                  dtype=tf.float32)
-  return image, label
 
 
 def run(flags_obj):
@@ -138,15 +128,15 @@ def run(flags_obj):
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(
-        height=imagenet_main.DEFAULT_IMAGE_SIZE,
-        width=imagenet_main.DEFAULT_IMAGE_SIZE,
-        num_channels=imagenet_main.NUM_CHANNELS,
-        num_classes=imagenet_main.NUM_CLASSES,
+        height=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
+        width=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_preprocessing.NUM_CHANNELS,
+        num_classes=imagenet_preprocessing.NUM_CLASSES,
         dtype=dtype,
         drop_remainder=True)
   else:
     distribution_utils.undo_set_up_synthetic_data()
-    input_fn = imagenet_main.input_fn
+    input_fn = imagenet_preprocessing.input_fn
 
   # When `enable_xla` is True, we always drop the remainder of the batches
   # in the dataset, as XLA-GPU doesn't support dynamic shapes.
@@ -157,7 +147,7 @@ def run(flags_obj):
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras,
+      parse_record_fn=imagenet_preprocessing.parse_record,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
       drop_remainder=drop_remainder,
@@ -171,7 +161,7 @@ def run(flags_obj):
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
-        parse_record_fn=parse_record_keras,
+        parse_record_fn=imagenet_preprocessing.parse_record,
         dtype=dtype,
         drop_remainder=drop_remainder)
 
@@ -179,7 +169,7 @@ def run(flags_obj):
   if flags_obj.use_tensor_lr:
     lr_schedule = keras_common.PiecewiseConstantDecayWithWarmup(
         batch_size=flags_obj.batch_size,
-        epoch_size=imagenet_main.NUM_IMAGES['train'],
+        epoch_size=imagenet_preprocessing.NUM_IMAGES['train'],
         warmup_epochs=LR_SCHEDULE[0][1],
         boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
         multipliers=list(p[0] for p in LR_SCHEDULE),
@@ -195,11 +185,11 @@ def run(flags_obj):
                                                           default_for_fp16=128))
 
     if flags_obj.use_trivial_model:
-      model = trivial_model.trivial_model(imagenet_main.NUM_CLASSES, dtype)
+      model = trivial_model.trivial_model(
+          imagenet_preprocessing.NUM_CLASSES, dtype)
     else:
       model = resnet_model.resnet50(
-          num_classes=imagenet_main.NUM_CLASSES,
-          dtype=dtype)
+          num_classes=imagenet_preprocessing.NUM_CLASSES, dtype=dtype)
 
     model.compile(
         loss='sparse_categorical_crossentropy',
@@ -210,17 +200,18 @@ def run(flags_obj):
         experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
 
   callbacks = keras_common.get_callbacks(
-      learning_rate_schedule, imagenet_main.NUM_IMAGES['train'])
+      learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])
 
-  train_steps = imagenet_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_steps = (
+      imagenet_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
   train_epochs = flags_obj.train_epochs
 
   if flags_obj.train_steps:
     train_steps = min(flags_obj.train_steps, train_steps)
     train_epochs = 1
 
-  num_eval_steps = (imagenet_main.NUM_IMAGES['validation'] //
-                    flags_obj.batch_size)
+  num_eval_steps = (
+      imagenet_preprocessing.NUM_IMAGES['validation'] // flags_obj.batch_size)
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
@@ -271,10 +262,10 @@ def main(_):
   model_helpers.apply_clean(flags.FLAGS)
   with logger.benchmark_context(flags.FLAGS):
     stats = run(flags.FLAGS)
-  tf.compat.v1.logging.info('Run stats:\n%s' % stats)
+  logging.info('Run stats:\n%s', stats)
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_imagenet_keras_flags()
   absl_app.run(main)
