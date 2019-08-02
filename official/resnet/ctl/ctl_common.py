@@ -21,19 +21,9 @@ from __future__ import print_function
 from absl import flags
 
 
-FLAGS = flags.FLAGS
-
-
 def define_ctl_flags():
   """Define flags for CTL."""
 
   flags.DEFINE_boolean(name='use_tf_function', default=True,
                        help='Wrap the train and test step inside a '
                        'tf.function.')
-  flags.DEFINE_boolean(name='skip_eval', default=False, help='Skip evaluation?')
-  flags.DEFINE_integer(
-      name='train_steps', default=None,
-      help='The number of steps to run for training. If it is larger than '
-      '# batches per epoch, then use # batches per epoch. When this flag is '
-      'set, only one epoch is going to run for training.')
-  
