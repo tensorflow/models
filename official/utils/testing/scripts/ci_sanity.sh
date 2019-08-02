@@ -39,7 +39,7 @@ do_pylint() {
 
     echo "ERROR_WHITELIST=\"${ERROR_WHITELIST}\""
 
-    PYLINT_BIN="pylint"
+    PYLINT_BIN="python3 -m pylint"
 
     PYTHON_SRC_FILES=$(get_py_files_to_check $1)
     if [[ -z ${PYTHON_SRC_FILES} ]]; then
