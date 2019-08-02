@@ -26,33 +26,6 @@ MODEL_ROOT="$(pwd)"
 
 export PYTHONPATH="$PYTHONPATH:${MODEL_ROOT}"
 
-lint() {
-  local exit_code=0
-
-  RC_FILE="official/utils/testing/pylint.rcfile"
-  PROTO_SKIP="DO\sNOT\sEDIT!"
-
-  echo "===========Running lint test============"
-  for file in `find official/ -name '*.py' ! -name '*test.py' -print`
-  do
-    if grep ${PROTO_SKIP} ${file}; then
-      echo "Linting ${file} (Skipped: Machine generated file)"
-    else
-      echo "Linting ${file}"
-      pylint --rcfile="${RC_FILE}" "${file}" || exit_code=$?
-    fi
-  done
-
-  # More lenient for test files.
-  for file in `find official/ -name '*test.py' -print`
-  do
-    echo "Linting ${file}"
-    pylint --rcfile="${RC_FILE}" --disable=missing-docstring,protected-access "${file}" || exit_code=$?
-  done
-
-  return "${exit_code}"
-}
-
 py_test() {
   local PY_BINARY="$1"
   local exit_code=0
