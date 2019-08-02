@@ -799,9 +799,9 @@ class Transformer(tf.keras.layers.Layer):
               name=("layer_%d" % i)))
     super(Transformer, self).build(unused_input_shapes)
 
-  def __call__(self, input_tensor, attention_mask=None):
+  def __call__(self, input_tensor, attention_mask=None, **kwargs):
     inputs = pack_inputs([input_tensor, attention_mask])
-    return super(Transformer, self).__call__(inputs=inputs)
+    return super(Transformer, self).__call__(inputs=inputs, **kwargs)
 
   def call(self, inputs):
     """Implements call() for the layer."""

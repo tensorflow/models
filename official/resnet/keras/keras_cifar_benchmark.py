@@ -288,6 +288,17 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_xla(self):
+    """Test 1 gpu with xla enabled."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_xla')
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_force_v2(self):
     """Test 1 gpu using forced v2 execution path."""
     self._setup()

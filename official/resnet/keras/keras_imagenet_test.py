@@ -21,7 +21,7 @@ from __future__ import print_function
 from tempfile import mkdtemp
 import tensorflow as tf
 
-from official.resnet import imagenet_main
+from official.resnet.keras import imagenet_preprocessing
 from official.resnet.keras import keras_imagenet_main
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
@@ -52,7 +52,7 @@ class KerasImagenetTest(googletest.TestCase):
 
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
-    imagenet_main.NUM_IMAGES["validation"] = 4
+    imagenet_preprocessing.NUM_IMAGES["validation"] = 4
 
   def tearDown(self):
     super(KerasImagenetTest, self).tearDown()
