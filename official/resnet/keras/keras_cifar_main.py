@@ -20,9 +20,9 @@ from __future__ import print_function
 
 from absl import app as absl_app
 from absl import flags
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
-from official.resnet import cifar10_main as cifar_main
+from official.resnet.keras import cifar_preprocessing
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_cifar_model
 from official.utils.flags import core as flags_core
@@ -63,28 +63,6 @@ def learning_rate_schedule(current_epoch,
     else:
       break
   return learning_rate
-
-
-def parse_record_keras(raw_record, is_training, dtype):
-  """Parses a record containing a training example of an image.
-
-  The input record is parsed into a label and image, and the image is passed
-  through preprocessing steps (cropping, flipping, and so on).
-
-  This method converts the label to one hot to fit the loss function.
-
-  Args:
-    raw_record: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
-    is_training: A boolean denoting whether the input is for training.
-    dtype: Data type to use for input images.
-
-  Returns:
-    Tuple with processed image tensor and one-hot-encoded label tensor.
-  """
-  image, label = cifar_main.parse_record(raw_record, is_training, dtype)
-  label = tf.compat.v1.sparse_to_dense(label, (cifar_main.NUM_CLASSES,), 1)
-  return image, label
 
 
 def run(flags_obj):
@@ -141,22 +119,22 @@ def run(flags_obj):
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(
-        height=cifar_main.HEIGHT,
-        width=cifar_main.WIDTH,
-        num_channels=cifar_main.NUM_CHANNELS,
-        num_classes=cifar_main.NUM_CLASSES,
+        height=cifar_preprocessing.HEIGHT,
+        width=cifar_preprocessing.WIDTH,
+        num_channels=cifar_preprocessing.NUM_CHANNELS,
+        num_classes=cifar_preprocessing.NUM_CLASSES,
         dtype=flags_core.get_tf_dtype(flags_obj),
         drop_remainder=True)
   else:
     distribution_utils.undo_set_up_synthetic_data()
-    input_fn = cifar_main.input_fn
+    input_fn = cifar_preprocessing.input_fn
 
   train_input_dataset = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras,
+      parse_record_fn=cifar_preprocessing.parse_record,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
       # Setting drop_remainder to avoid the partial batch logic in normalization
@@ -171,11 +149,11 @@ def run(flags_obj):
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
-        parse_record_fn=parse_record_keras)
+        parse_record_fn=cifar_preprocessing.parse_record)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
-    model = resnet_cifar_model.resnet56(classes=cifar_main.NUM_CLASSES)
+    model = resnet_cifar_model.resnet56(classes=cifar_preprocessing.NUM_CLASSES)
 
     model.compile(
         loss='categorical_crossentropy',
@@ -186,16 +164,16 @@ def run(flags_obj):
         experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
 
   callbacks = keras_common.get_callbacks(
-      learning_rate_schedule, cifar_main.NUM_IMAGES['train'])
+      learning_rate_schedule, cifar_preprocessing.NUM_IMAGES['train'])
 
-  train_steps = cifar_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_steps = cifar_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
 
   if flags_obj.train_steps:
     train_steps = min(flags_obj.train_steps, train_steps)
     train_epochs = 1
 
-  num_eval_steps = (cifar_main.NUM_IMAGES['validation'] //
+  num_eval_steps = (cifar_preprocessing.NUM_IMAGES['validation'] //
                     flags_obj.batch_size)
 
   validation_data = eval_input_dataset

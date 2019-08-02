@@ -21,7 +21,7 @@ from __future__ import print_function
 from tempfile import mkdtemp
 import tensorflow as tf
 
-from official.resnet import cifar10_main
+from official.resnet.keras import cifar_preprocessing
 from official.resnet.keras import keras_cifar_main
 from official.resnet.keras import keras_common
 from official.utils.misc import keras_utils
@@ -53,7 +53,7 @@ class KerasCifarTest(googletest.TestCase):
 
   def setUp(self):
     super(KerasCifarTest, self).setUp()
-    cifar10_main.NUM_IMAGES["validation"] = 4
+    cifar_preprocessing.NUM_IMAGES["validation"] = 4
 
   def tearDown(self):
     super(KerasCifarTest, self).tearDown()

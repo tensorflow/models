@@ -22,7 +22,7 @@ import time
 from absl import flags
 import tensorflow as tf
 
-from official.resnet import imagenet_main
+from official.resnet.keras import keras_common
 from official.resnet.ctl import ctl_imagenet_main
 from official.resnet.ctl import ctl_common
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
@@ -118,7 +118,7 @@ class Resnet50CtlAccuracy(CtlBenchmark):
 
     flag_methods = [
         ctl_common.define_ctl_flags,
-        lambda: imagenet_main.define_imagenet_flags()
+        keras_common.define_keras_flags
     ]
 
     self.data_dir = os.path.join(root_data_dir, 'imagenet')
@@ -162,7 +162,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
   def __init__(self, output_dir=None, default_flags=None):
     flag_methods = [
         ctl_common.define_ctl_flags,
-        lambda: imagenet_main.define_imagenet_flags()
+        keras_common.define_keras_flags
     ]
 
     super(Resnet50CtlBenchmarkBase, self).__init__(

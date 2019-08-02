@@ -21,14 +21,14 @@ from __future__ import print_function
 from tempfile import mkdtemp
 import tensorflow as tf
 
-from official.resnet import imagenet_main
-from official.resnet.ctl import ctl_imagenet_main
-from official.resnet.ctl import ctl_common
-from official.utils.misc import keras_utils
-from official.utils.testing import integration
-# pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
+from official.resnet.ctl import ctl_common
+from official.resnet.ctl import ctl_imagenet_main
+from official.resnet.keras import imagenet_preprocessing
+from official.resnet.keras import keras_common
+from official.utils.misc import keras_utils
+from official.utils.testing import integration
 
 
 class CtlImagenetTest(googletest.TestCase):
@@ -49,14 +49,14 @@ class CtlImagenetTest(googletest.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(CtlImagenetTest, cls).setUpClass()
-    imagenet_main.define_imagenet_flags()
+    keras_common.define_keras_flags()
     ctl_common.define_ctl_flags()
 
   def setUp(self):
     super(CtlImagenetTest, self).setUp()
     if not keras_utils.is_v2_0():
       tf.compat.v1.enable_v2_behavior()
-    imagenet_main.NUM_IMAGES['validation'] = 4
+    imagenet_preprocessing.NUM_IMAGES['validation'] = 4
 
   def tearDown(self):
     super(CtlImagenetTest, self).tearDown()
