@@ -23,22 +23,35 @@ cc_library(
     ],
 )
 
+config_setting(
+    name = "enable_edgetpu",
+    define_values = {"enable_edgetpu": "true"},
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "mobile_ssd_tflite_client",
     srcs = ["mobile_ssd_tflite_client.cc"],
     hdrs = ["mobile_ssd_tflite_client.h"],
+    defines = select({
+        "//conditions:default": [],
+        "enable_edgetpu": ["ENABLE_EDGETPU"],
+    }),
     deps = [
         ":mobile_ssd_client",
-        "//protos:anchor_generation_options_cc_proto",
-        "//utils:file_utils",
-        "//utils:ssd_utils",
-        "@com_google_absl//absl/memory",
         "@com_google_glog//:glog",
+        "@com_google_absl//absl/memory",
         "@org_tensorflow//tensorflow/lite:arena_planner",
         "@org_tensorflow//tensorflow/lite:framework",
         "@org_tensorflow//tensorflow/lite/delegates/nnapi:nnapi_delegate",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
-    ],
+        "//protos:anchor_generation_options_cc_proto",
+        "//utils:file_utils",
+        "//utils:ssd_utils",
+    ] + select({
+        "//conditions:default": [],
+        "enable_edgetpu": ["@libedgetpu//libedgetpu:header"],
+    }),
     alwayslink = 1,
 )
 
@@ -51,6 +64,7 @@ cc_library(
         ":mobile_ssd_tflite_client",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_glog//:glog",
+        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
     ],
     alwayslink = 1,
 )

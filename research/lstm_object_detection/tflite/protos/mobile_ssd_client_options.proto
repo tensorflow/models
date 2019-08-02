@@ -19,7 +19,6 @@ package lstm_object_detection.tflite.protos;
 
 import "protos/anchor_generation_options.proto";
 import "protos/box_encodings.proto";
-import "protos/labelmap.proto";
 
 // Next ID: 17
 message ClientOptions {
@@ -54,7 +53,6 @@ message ClientOptions {
 
   // Number of keypoints.
   optional uint32 num_keypoints = 10 [default = 0];
-
 
   // Optional anchor generations options. This can be used to generate
   // anchors for an SSD model. It is utilized in
