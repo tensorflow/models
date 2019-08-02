@@ -142,17 +142,12 @@ class ProfilerCallback(tf.keras.callbacks.Callback):
 
 
 def set_session_config(enable_eager=False,
-                       enable_xla=False,
-                       enable_grappler_layout_optimizer=True):
+                       enable_xla=False):
   """Sets the session config."""
   if is_v2_0():
-    set_config_v2(
-        enable_xla=enable_xla,
-        enable_grappler_layout_optimizer=enable_grappler_layout_optimizer)
+    set_config_v2(enable_xla=enable_xla)
   else:
-    config = get_config_proto_v1(
-        enable_xla=enable_xla,
-        enable_grappler_layout_optimizer=enable_grappler_layout_optimizer)
+    config = get_config_proto_v1(enable_xla=enable_xla)
     if enable_eager:
       tf.compat.v1.enable_eager_execution(config=config)
     else:
@@ -160,8 +155,7 @@ def set_session_config(enable_eager=False,
       tf.keras.backend.set_session(sess)
 
 
-def get_config_proto_v1(enable_xla=False,
-                        enable_grappler_layout_optimizer=True):
+def get_config_proto_v1(enable_xla=False):
   """Return config proto according to flag settings, or None to use default."""
   config = None
   if enable_xla:
@@ -172,20 +166,10 @@ def get_config_proto_v1(enable_xla=False,
     # OOM and performance regression.
     config.graph_options.rewrite_options.pin_to_host_optimization = (
         rewriter_config_pb2.RewriterConfig.OFF)
-  # TODO(b/76028325): Remove when generic layout optimizer will be ready.
-  if not enable_grappler_layout_optimizer:
-    if config is None:
-      config = tf.compat.v1.ConfigProto()
-    # Disable LayoutOptimizer in grappler, because it might de-optimize fp16
-    # graphs, and force NCHW data format in all convolutions and batch
-    # normalizations.
-    config.graph_options.rewrite_options.layout_optimizer = (
-        rewriter_config_pb2.RewriterConfig.OFF)
   return config
 
 
-def set_config_v2(enable_xla=False,
-                  enable_grappler_layout_optimizer=False):
+def set_config_v2(enable_xla=False):
   """Config eager context according to flag values using TF 2.0 API."""
   if enable_xla:
     tf.config.optimizer.set_jit(True)
@@ -193,14 +177,6 @@ def set_config_v2(enable_xla=False,
     # causes OOM and performance regression.
     tf.config.optimizer.set_experimental_options(
         {'pin_to_host_optimization': False}
-    )
-  # TODO(b/76028325): Remove when generic layout optimizer will be ready.
-  if not enable_grappler_layout_optimizer:
-    # Disable LayoutOptimizer in grappler, because it might de-optimize fp16
-    # graphs, and force NCHW data format in all convolutions and batch
-    # normalizations.
-    tf.config.optimizer.set_experimental_options(
-        {'layout_optimizer': False}
     )
 
 
