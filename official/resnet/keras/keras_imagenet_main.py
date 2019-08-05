@@ -189,13 +189,23 @@ def run(flags_obj):
       model = resnet_model.resnet50(
           num_classes=imagenet_preprocessing.NUM_CLASSES, dtype=dtype)
 
-    model.compile(
-        loss='sparse_categorical_crossentropy',
-        optimizer=optimizer,
-        metrics=(['sparse_categorical_accuracy']
-                 if flags_obj.report_accuracy_metrics else None),
-        run_eagerly=flags_obj.run_eagerly,
-        experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
+    # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
+    # a valid arg for this model. Also remove as a valid flag.
+    if flags_obj.force_v2_in_keras_compile is not None:
+      model.compile(
+          loss='sparse_categorical_crossentropy',
+          optimizer=optimizer,
+          metrics=(['sparse_categorical_accuracy']
+                   if flags_obj.report_accuracy_metrics else None),
+          run_eagerly=flags_obj.run_eagerly,
+          experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
+    else:
+      model.compile(
+          loss='sparse_categorical_crossentropy',
+          optimizer=optimizer,
+          metrics=(['sparse_categorical_accuracy']
+                   if flags_obj.report_accuracy_metrics else None),
+          run_eagerly=flags_obj.run_eagerly)
 
   callbacks = keras_common.get_callbacks(
       learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])

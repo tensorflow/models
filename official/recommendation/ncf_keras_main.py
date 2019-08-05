@@ -369,11 +369,17 @@ def run_ncf(_):
 
   else:
     with distribution_utils.get_strategy_scope(strategy):
-
-      keras_model.compile(
-          optimizer=optimizer,
-          run_eagerly=FLAGS.run_eagerly,
-          experimental_run_tf_function=FLAGS.force_v2_in_keras_compile)
+      # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
+      # a valid arg for this model. Also remove as a valid flag.
+      if FLAGS.force_v2_in_keras_compile is not None:
+        keras_model.compile(
+            optimizer=optimizer,
+            run_eagerly=FLAGS.run_eagerly,
+            experimental_run_tf_function=FLAGS.force_v2_in_keras_compile)
+      else:
+        keras_model.compile(
+            optimizer=optimizer,
+            run_eagerly=FLAGS.run_eagerly)
 
       history = keras_model.fit(
           train_input_dataset,
