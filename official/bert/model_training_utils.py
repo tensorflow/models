@@ -23,6 +23,7 @@ import os
 
 from absl import logging
 import tensorflow as tf
+from tensorflow.python.util import object_identity
 from official.utils.misc import distribution_utils
 
 _SUMMARY_TXT = 'training_summary.txt'
@@ -248,7 +249,8 @@ def run_customized_training_loop(
             scaled_loss = optimizer.get_scaled_loss(loss)
 
         # De-dupes variables due to keras tracking issues.
-        tvars = list(set(model.trainable_variables))
+        tvars = list(
+            object_identity.ObjectIdentitySet(model.trainable_variables))
         if use_float16:
           scaled_grads = tape.gradient(scaled_loss, tvars)
           grads = optimizer.get_unscaled_gradients(scaled_grads)
