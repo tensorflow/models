@@ -280,6 +280,20 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 64
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_tweaked(self):
+    """Test Keras model with 1 GPU, no distribution strategy, run eagerly."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.explicit_gpu_placement = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_run_eagerly_tweaked')
+    FLAGS.batch_size = 64
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_no_dist_strat_force_v2_run_eagerly(self):
     """Forced v2 execution in tf.compile path and force eager."""
     self._setup()
@@ -290,6 +304,21 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu_force_dist_strat_run_eagerly')
+    FLAGS.batch_size = 64
+    FLAGS.force_v2_in_keras_compile = True
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_force_v2_run_eagerly_tweaked(self):
+    """Forced v2 execution in tf.compile path and force eager."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.explicit_gpu_placement = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_force_dist_strat_run_eagerly_tweaked')
     FLAGS.batch_size = 64
     FLAGS.force_v2_in_keras_compile = True
     self._run_and_report_benchmark()
@@ -317,6 +346,21 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu_no_dist_strat_run_eagerly_fp16')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_fp16_tweaked(self):
+    """Test with 1 GPU, no distribution strategy, fp16, run eagerly."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.explicit_gpu_placement = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_run_eagerly_fp16_tweaked')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
