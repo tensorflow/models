@@ -310,15 +310,6 @@ def define_keras_flags(dynamic_loss_scale=True):
   flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
-  # TODO(b/76028325): Remove when generic layout optimizer is ready.
-  flags.DEFINE_boolean(
-      name='enable_grappler_layout_optimizer',
-      default=True,
-      help='Enable Grappler layout optimizer. Currently Grappler can '
-           'de-optimize fp16 graphs byt forcing NCHW layout for all '
-           'convolutions and batch normalizations, and this flag allows to '
-           'disable it.'
-  )
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32, drop_remainder=True):

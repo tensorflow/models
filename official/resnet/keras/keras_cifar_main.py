@@ -79,9 +79,7 @@ def run(flags_obj):
   """
   keras_utils.set_session_config(
       enable_eager=flags_obj.enable_eager,
-      enable_xla=flags_obj.enable_xla,
-      enable_grappler_layout_optimizer=
-      flags_obj.enable_grappler_layout_optimizer)
+      enable_xla=flags_obj.enable_xla)
 
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
