@@ -127,7 +127,7 @@ class TransformerTask(object):
       # We should have a better way in the tf.keras.mixed_precision API of doing
       # this.
       policy = tf.keras.mixed_precision.experimental.Policy(
-          'infer_float32_vars')
+          "infer_float32_vars")
       tf.keras.mixed_precision.experimental.set_policy(policy)
 
   def train(self):
@@ -135,9 +135,7 @@ class TransformerTask(object):
     params, flags_obj, is_train = self.params, self.flags_obj, True
     # Sets config options.
     keras_utils.set_session_config(
-        enable_xla=flags_obj.enable_xla,
-        enable_grappler_layout_optimizer=
-        flags_obj.enable_grappler_layout_optimizer)
+        enable_xla=flags_obj.enable_xla)
 
     _ensure_dir(flags_obj.model_dir)
     if self.distribution_strategy:
@@ -154,7 +152,7 @@ class TransformerTask(object):
 
     train_ds = data_pipeline.train_input_fn(params)
     map_data_fn = data_pipeline.map_data_for_transformer_fn
-    train_ds = train_ds.map(map_data_fn, 
+    train_ds = train_ds.map(map_data_fn,
                             num_parallel_calls=params["num_parallel_calls"])
 
     callbacks = self._create_callbacks(flags_obj.model_dir, 0, params)
