@@ -147,6 +147,17 @@ class ShakespeareAccuracy(ShakespeareBenchmarkBase):
     FLAGS.model_dir = ''
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_cudnn(self):
+    """Benchmark 1 gpu."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.training_data = self.train_data
+    FLAGS.batch_size = 64
+    FLAGS.train_epochs = 43
+    FLAGS.model_dir = ''
+    FLAGS.cudnn = False
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_no_ds(self):
     """Benchmark 1 gpu without distribution strategies."""
     self._setup()
