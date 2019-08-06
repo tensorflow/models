@@ -282,7 +282,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
 
   if force_v2_in_keras_compile:
     flags.DEFINE_boolean(
-        name="force_v2_in_keras_compile", default=False,
+        name="force_v2_in_keras_compile", default=None,
         help="Forces the use of run_distribued path even if not"
              "using a `strategy`. This is not the same as"
              "`tf.distribute.OneDeviceStrategy`")
