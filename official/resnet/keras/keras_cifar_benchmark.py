@@ -159,7 +159,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp32'
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_no_dist_strat_v1_path(self):
+  def benchmark_1_gpu_no_dist_strat_force_v1_path(self):
     """No dist strat forced v1 execution path."""
     self._setup()
     FLAGS.distribution_strategy = 'off'
@@ -168,7 +168,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
     FLAGS.model_dir = self._get_model_dir(
-        'benchmark_1_gpu_no_dist_strat_v1_path')
+        'benchmark_1_gpu_no_dist_strat_force_v1_path')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
     FLAGS.force_v2_in_keras_compile = False
