@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
 import os
 
 # pylint: disable=wrong-import-order
@@ -78,6 +79,7 @@ def define_flags():
   flags.DEFINE_string(
       name='training_data', default=None,
       help='Path to file containing the training data.')
+  flags.DEFINE_boolean(name='cudnn', default=True, help='Use CuDNN LSTM.')
 
 
 def get_dataset(path_to_file, batch_size=None, seq_length=SEQ_LENGTH):
@@ -120,7 +122,8 @@ def build_model(vocab_size,
                 embedding_dim=EMBEDDING_DIM,
                 rnn_units=RNN_UNITS,
                 batch_size=None,
-                stateful=False):
+                stateful=False,
+                use_cudnn=True):
   """Builds the Shakespeare model.
 
   Args:
@@ -133,14 +136,31 @@ def build_model(vocab_size,
   Returns:
     A Keras Model.
   """
+  # In V1 there is a separate class for CuDNN. In V2 the LSTM class will use
+  # CuDNN automatically if applicable.
+  if use_cudnn and not keras_utils.is_v2_0():
+    LSTM = tf.compat.v1.CuDNNLSTM
+  else:
+    # The LSTM call was rewritten to be more efficient in 2.0. However because
+    # we want to compare the performance of the two runtimes, we force both
+    # V1 and V2 to use the more efficient implementation.
+    LSTM = functools.partial(tf.keras.layers.LSTM, implementation=2)
+
+  # By indirecting the activation through a lambda layer, the logic to dispatch
+  # to CuDNN in V2 doesn't trigger and we force the LSTM to run in non-CuDNN
+  # mode.
+  lstm_activation = ('tanh' if use_cudnn else
+                     lambda x: tf.math.tanh(x))
+
   batch_shape = [batch_size if stateful else None, None]
   return tf.keras.Sequential([
       tf.keras.layers.Embedding(vocab_size, embedding_dim,
                                 batch_input_shape=batch_shape),
-      tf.keras.layers.LSTM(rnn_units,
-                           return_sequences=True,
-                           stateful=stateful,
-                           recurrent_initializer='glorot_uniform'),
+      LSTM(rnn_units,
+           activation=lstm_activation,
+           return_sequences=True,
+           stateful=stateful,
+           recurrent_initializer='glorot_uniform'),
       tf.keras.layers.Dense(vocab_size, activation='softmax')])
 
 
@@ -161,7 +181,8 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
   with strategy_scope:
-    model = build_model(vocab_size=vocab_size, batch_size=flags_obj.batch_size)
+    model = build_model(vocab_size=vocab_size, batch_size=flags_obj.batch_size,
+                        use_cudnn=flags_obj.cudnn)
     model.compile(
         optimizer=tf.keras.optimizers.Adam(),
         loss=tf.keras.losses.CategoricalCrossentropy(),

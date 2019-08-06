@@ -289,6 +289,15 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     FLAGS.batch_size = 64
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_no_cudnn(self):
+    """Benchmark 1 gpu with CuDNN disabled."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.batch_size = 64
+    FLAGS.cudnn = False
+    FLAGS.enable_eager = keras_utils.is_v2_0()
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_no_ds(self):
     """Benchmark 1 gpu without distribution strategies."""
     self._setup()
@@ -323,6 +332,16 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
+  def benchmark_xla_1_gpu_no_cudnn(self):
+    """Benchmark 1 gpu w/xla and CuDNN disabled."""
+    self._setup()
+    FLAGS.num_gpus = 1
+    FLAGS.batch_size = 64
+    FLAGS.cudnn = False
+    FLAGS.enable_eager = keras_utils.is_v2_0()
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu(self):
     """Benchmark 8 gpu."""
     self._setup()
@@ -331,12 +350,31 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     FLAGS.log_steps = 10
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_no_cudnn(self):
+    """Benchmark 8 gpu with CuDNN disabled."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.batch_size = 64 * 8
+    FLAGS.cudnn = False
+    FLAGS.enable_eager = keras_utils.is_v2_0()
+    self._run_and_report_benchmark()
+
   def benchmark_xla_8_gpu(self):
     """Benchmark 8 gpu w/xla."""
     self._setup()
     FLAGS.num_gpus = 1
     FLAGS.batch_size = 64 * 8
     FLAGS.log_steps = 10
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_no_cudnn(self):
+    """Benchmark 8 gpu w/xla and CuDNN disabled."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.batch_size = 64 * 8
+    FLAGS.cudnn = False
+    FLAGS.enable_eager = keras_utils.is_v2_0()
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
