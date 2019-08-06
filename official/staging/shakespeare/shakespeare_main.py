@@ -139,7 +139,7 @@ def build_model(vocab_size,
   if use_cudnn and not keras_utils.is_v2_0():
     LSTM = tf.compat.v1.CuDNNLSTM
   else:
-    LSTM = functools.partial(tf.keras.layers.LSTM, implementation=2)
+    LSTM = tf.keras.layers.LSTM
 
   lstm_activation = ('tanh' if use_cudnn else
                      lambda x: tf.math.tanh(x))
