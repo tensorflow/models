@@ -156,6 +156,7 @@ class ShakespeareAccuracy(ShakespeareBenchmarkBase):
     FLAGS.train_epochs = 43
     FLAGS.model_dir = ''
     FLAGS.cudnn = False
+    FLAGS.enable_eager = keras_utils.is_v2_0()
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_ds(self):
