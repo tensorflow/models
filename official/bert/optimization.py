@@ -110,7 +110,7 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                **kwargs):
     super(AdamWeightDecay, self).__init__(
         learning_rate, beta_1, beta_2, epsilon, amsgrad, name, **kwargs)
-    self._set_hyper('weight_decay_rate', weight_decay_rate)
+    self.weight_decay_rate = weight_decay_rate
     self._exclude_from_weight_decay = exclude_from_weight_decay
 
   @classmethod
@@ -120,12 +120,18 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
     return super(AdamWeightDecay, cls).from_config(
         config, custom_objects=custom_objects)
 
-  def _decay_weights_op(self, var, learning_rate):
+  def _prepare_local(self, var_device, var_dtype, apply_state):
+    super(AdamWeightDecay, self)._prepare_local(var_device, var_dtype,
+                                                apply_state)
+    apply_state['weight_decay_rate'] = tf.constant(
+        self.weight_decay_rate, name='adam_weight_decay_rate')
+
+  def _decay_weights_op(self, var, learning_rate, apply_state):
     do_decay = self._do_use_weight_decay(var.name)
     if do_decay:
       return var.assign_sub(
           learning_rate * var *
-          self._get_hyper('weight_decay_rate'),
+          apply_state['weight_decay_rate'],
           use_locking=self._use_locking)
     return tf.no_op()
 
@@ -149,26 +155,29 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
 
   def _resource_apply_dense(self, grad, var, apply_state=None):
     lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
-    with tf.control_dependencies([self._decay_weights_op(var, lr_t)]):
+    decay = self._decay_weights_op(var, lr_t, apply_state)
+    with tf.control_dependencies([decay]):
       return super(AdamWeightDecay, self)._resource_apply_dense(
           grad, var, **kwargs)
 
   def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
     lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
-    with tf.control_dependencies([self._decay_weights_op(var, lr_t)]):
+    decay = self._decay_weights_op(var, lr_t, apply_state)
+    with tf.control_dependencies([decay]):
       return super(AdamWeightDecay, self)._resource_apply_sparse(
           grad, var, indices, **kwargs)
 
   def get_config(self):
     config = super(AdamWeightDecay, self).get_config()
     config.update({
-        'weight_decay_rate':
-            self._serialize_hyperparameter('weight_decay_rate'),
+        'weight_decay_rate': self.weight_decay_rate,
     })
     return config
 
   def _do_use_weight_decay(self, param_name):
     """Whether to use L2 weight decay for `param_name`."""
+    if self.weight_decay_rate == 0:
+      return False
     if self._exclude_from_weight_decay:
       for r in self._exclude_from_weight_decay:
         if re.search(r, param_name) is not None:
