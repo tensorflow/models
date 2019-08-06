@@ -136,11 +136,16 @@ def build_model(vocab_size,
   Returns:
     A Keras Model.
   """
+  # In V1 there is a separate class for CuDNN. In V2 the LSTM class will use
+  # CuDNN automatically if applicable.
   if use_cudnn and not keras_utils.is_v2_0():
     LSTM = tf.compat.v1.CuDNNLSTM
   else:
     LSTM = tf.keras.layers.LSTM
 
+  # By indirecting the activation through a lambda layer, the logic to dispatch
+  # to CuDNN in V2 doesn't trigger and we force the LSTM to run in non-CuDNN
+  # mode.
   lstm_activation = ('tanh' if use_cudnn else
                      lambda x: tf.math.tanh(x))
 
