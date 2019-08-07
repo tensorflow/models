@@ -23,6 +23,10 @@ import time
 
 from absl import flags
 from absl.testing import flagsaver
+
+os.environ["TF_CPP_VMODULE"] = "meta_optimizer=2"
+os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "1"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.recommendation import ncf_common
