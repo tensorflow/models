@@ -83,6 +83,7 @@ class TransformerTaskTest(tf.test.TestCase):
     t = tm.TransformerTask(FLAGS)
     t.train()
 
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_static_batch(self):
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.static_batch = True

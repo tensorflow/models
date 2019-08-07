@@ -176,6 +176,25 @@ def define_transformer_flags():
   flags.DEFINE_string(
       name='mode', default='train',
       help=flags_core.help_wrap('mode: train, eval, or predict'))
+  flags.DEFINE_bool(
+      name='use_ctl',
+      default=False,
+      help=flags_core.help_wrap(
+          'Whether the model runs with custom training loop.'))
+  flags.DEFINE_bool(
+      name='use_tpu',
+      default=False,
+      help=flags_core.help_wrap('Whether the model runs on TPU.'))
+  flags.DEFINE_bool(
+      name='is_tpu_pod',
+      default=False,
+      help=flags_core.help_wrap('Whether the model runs on a TPU pod.'))
+  flags.DEFINE_bool(
+      name='use_tpu_2vm_config',
+      default=False,
+      help=flags_core.help_wrap(
+          'Whether the model runs in 2VM mode, Headless server and unit test '
+          'all use 1VM config.'))
 
   flags_core.set_defaults(data_dir='/tmp/translate_ende',
                           model_dir='/tmp/transformer_model',
@@ -215,8 +234,6 @@ def define_transformer_flags():
       return flags_dict['vocab_file'] is not None
     return True
   # pylint: enable=unused-variable
-
-  flags_core.require_cloud_storage(['data_dir', 'model_dir', 'export_dir'])
 
 
 def get_callbacks():
