@@ -33,6 +33,7 @@ PAD_ID = 0
 EOS = "<EOS>"
 EOS_ID = 1
 RESERVED_TOKENS = [PAD, EOS]
+DUMMY = "<dummy>"
 
 # Set of characters that will be used in the function _escape_token() (see func
 # docstring for more details).
@@ -61,7 +62,7 @@ _MAX_MIN_COUNT = 1000  # max value to use when binary searching for min_count
 class Subtokenizer(object):
   """Encodes and decodes strings to/from integer IDs."""
 
-  def __init__(self, vocab_file, reserved_tokens=None):
+  def __init__(self, vocab_file, reserved_tokens=None, padding_requirement=None):
     """Initializes class, creating a vocab file if data_files is provided."""
     tf.compat.v1.logging.info("Initializing Subtokenizer from file %s." %
                               vocab_file)
@@ -69,7 +70,7 @@ class Subtokenizer(object):
     if reserved_tokens is None:
       reserved_tokens = RESERVED_TOKENS
 
-    self.subtoken_list = _load_vocab_file(vocab_file, reserved_tokens)
+    self.subtoken_list = _load_vocab_file(vocab_file, reserved_tokens, padding_requirement)
     self.alphabet = _generate_alphabet_dict(self.subtoken_list)
     self.subtoken_to_id_dict = _list_to_index_dict(self.subtoken_list)
 
@@ -186,7 +187,7 @@ def _save_vocab_file(vocab_file, subtoken_list):
       f.write("'%s'\n" % _unicode_to_native(subtoken))
 
 
-def _load_vocab_file(vocab_file, reserved_tokens=None):
+def _load_vocab_file(vocab_file, reserved_tokens=None, padding_requirement=None):
   """Load vocabulary while ensuring reserved tokens are at the top."""
   if reserved_tokens is None:
     reserved_tokens = RESERVED_TOKENS
@@ -199,7 +200,13 @@ def _load_vocab_file(vocab_file, reserved_tokens=None):
       if subtoken in reserved_tokens:
         continue
       subtoken_list.append(native_to_unicode(subtoken))
-  return reserved_tokens + subtoken_list
+
+  subtoken_list = reserved_tokens + subtoken_list
+  if padding_requirement is not None:
+    while (len(subtoken_list) % padding_requirement) != 0:
+      subtoken_list.append(DUMMY)
+
+  return subtoken_list
 
 
 def native_to_unicode(s):

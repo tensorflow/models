@@ -173,6 +173,13 @@ def define_transformer_flags():
           'Path to subtoken vocabulary file. If data_download.py was used to '
           'download and encode the training data, look in the data_dir to find '
           'the vocab file.'))
+  flags.DEFINE_integer(
+      name='vocab_padding_requirement', short_name='vpr', default=None,
+      help=flags_core.help_wrap(
+          'Padding requirement for the vocab list. This is useful to make the '
+          'size of vocab list multiples of a fixed number. For example, using 8 '
+          'as padding requirement will enable the TensorCore on Volta or newer '
+          'GPUs for vocab / embedding related matrix multiplications.'))
   flags.DEFINE_string(
       name='mode', default='train',
       help=flags_core.help_wrap('mode: train, eval, or predict'))

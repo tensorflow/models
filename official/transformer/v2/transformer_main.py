@@ -24,6 +24,7 @@ from __future__ import print_function
 
 import os
 import tempfile
+import math
 
 from absl import app as absl_app  # pylint: disable=unused-import
 from absl import flags
@@ -68,9 +69,11 @@ def translate_and_compute_bleu(model, subtokenizer, bleu_source, bleu_ref):
   return uncased_score, cased_score
 
 
-def evaluate_and_log_bleu(model, bleu_source, bleu_ref, vocab_file):
+def evaluate_and_log_bleu(model, bleu_source, bleu_ref, 
+       vocab_file, vocab_padding_requirement=None):
   """Calculate and record the BLEU score."""
-  subtokenizer = tokenizer.Subtokenizer(vocab_file)
+  subtokenizer = tokenizer.Subtokenizer(
+      vocab_file, padding_requirement=vocab_padding_requirement)
 
   uncased_score, cased_score = translate_and_compute_bleu(
       model, subtokenizer, bleu_source, bleu_ref)
@@ -120,6 +123,12 @@ class TransformerTask(object):
     params["repeat_dataset"] = None
     params["dtype"] = flags_core.get_tf_dtype(flags_obj)
     params["enable_metrics_in_training"] = flags_obj.enable_metrics_in_training
+    
+    padding_requirement = flags_obj.vocab_padding_requirement
+    params["vocab_padding_requirement"] = padding_requirement
+    if padding_requirement is not None:
+      params["vocab_size"] = math.ceil(
+          params["vocab_size"] * 1.0 / padding_requirement) * padding_requirement
 
     if params["dtype"] == tf.float16:
       # TODO(reedwm): It's pretty ugly to set the global policy in a constructor
@@ -202,10 +211,12 @@ class TransformerTask(object):
         self.predict_model,
         tf.train.latest_checkpoint(self.flags_obj.model_dir))
     self.predict_model.summary()
-    return evaluate_and_log_bleu(self.predict_model,
-                                 self.flags_obj.bleu_source,
-                                 self.flags_obj.bleu_ref,
-                                 self.flags_obj.vocab_file)
+    return evaluate_and_log_bleu(
+        self.predict_model,
+        self.flags_obj.bleu_source,
+        self.flags_obj.bleu_ref,
+        self.flags_obj.vocab_file,
+        vocab_padding_requirement=self.flags_obj.vocab_padding_requirement)
 
   def predict(self):
     """Predicts result from the model."""
@@ -216,7 +227,8 @@ class TransformerTask(object):
       self._load_weights_if_possible(
           model, tf.train.latest_checkpoint(self.flags_obj.model_dir))
       model.summary()
-    subtokenizer = tokenizer.Subtokenizer(flags_obj.vocab_file)
+    subtokenizer = tokenizer.Subtokenizer(flags_obj.vocab_file,
+        padding_requirement=flags_obj.vocab_padding_requirement)
 
     ds = data_pipeline.eval_input_fn(params)
     ds = ds.map(lambda x, y: x).take(_SINGLE_SAMPLE)
