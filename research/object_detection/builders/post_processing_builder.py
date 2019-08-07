@@ -91,25 +91,25 @@ def _build_non_max_suppressor(nms_config):
 
   if nms_config.combined_nms:
     if nms_config.use_class_agnostic_nms:
-        raise ValueError('combined_nms does not support use_class_agnostic_nms')
+      raise ValueError('combined_nms does not support use_class_agnostic_nms')
     non_max_suppressor_fn = functools.partial(
-      post_processing.combined_non_max_suppression,
-      score_thresh=nms_config.score_threshold,
-      iou_thresh=nms_config.iou_threshold,
-      max_size_per_class=nms_config.max_detections_per_class,
-      max_total_size=nms_config.max_total_detections,
-      use_static_shapes=nms_config.use_static_shapes)
+        post_processing.combined_non_max_suppression,
+        score_thresh=nms_config.score_threshold,
+        iou_thresh=nms_config.iou_threshold,
+        max_size_per_class=nms_config.max_detections_per_class,
+        max_total_size=nms_config.max_total_detections,
+        use_static_shapes=nms_config.use_static_shapes)
   else:
     non_max_suppressor_fn = functools.partial(
-      post_processing.batch_multiclass_non_max_suppression,
-      score_thresh=nms_config.score_threshold,
-      iou_thresh=nms_config.iou_threshold,
-      max_size_per_class=nms_config.max_detections_per_class,
-      max_total_size=nms_config.max_total_detections,
-      use_static_shapes=nms_config.use_static_shapes,
-      use_class_agnostic_nms=nms_config.use_class_agnostic_nms,
-      max_classes_per_detection=nms_config.max_classes_per_detection,
-      soft_nms_sigma=nms_config.soft_nms_sigma)
+        post_processing.batch_multiclass_non_max_suppression,
+        score_thresh=nms_config.score_threshold,
+        iou_thresh=nms_config.iou_threshold,
+        max_size_per_class=nms_config.max_detections_per_class,
+        max_total_size=nms_config.max_total_detections,
+        use_static_shapes=nms_config.use_static_shapes,
+        use_class_agnostic_nms=nms_config.use_class_agnostic_nms,
+        max_classes_per_detection=nms_config.max_classes_per_detection,
+        soft_nms_sigma=nms_config.soft_nms_sigma)
   return non_max_suppressor_fn
 
 
