@@ -90,6 +90,8 @@ def _build_non_max_suppressor(nms_config):
     raise ValueError('soft_nms_sigma should be non-negative.')
 
   if nms_config.combined_nms:
+    if nms_config.use_class_agnostic_nms:
+        raise ValueError('combined_nms does not support use_class_agnostic_nms')
     non_max_suppressor_fn = functools.partial(
       post_processing.combined_non_max_suppression,
       score_thresh=nms_config.score_threshold,

@@ -1126,11 +1126,6 @@ def combined_non_max_suppression(boxes,
                                  iou_thresh,
                                  max_size_per_class,
                                  max_total_size=0,
-                                 clip_window=None,
-                                 change_coordinate_frame=False,
-                                 num_valid_boxes=None,
-                                 masks=None,
-                                 additional_fields=None,
                                  use_static_shapes=False,
                                  scope=None):
   """Multi-class version of non maximum suppression that operates on a batch.
