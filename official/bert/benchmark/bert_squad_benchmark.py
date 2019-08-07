@@ -81,6 +81,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _train_squad(self, use_ds=True, run_eagerly=False):
     """Runs BERT SQuAD training."""
+    assert tf.version.VERSION.startswith('2.')
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(use_ds)
 
@@ -93,6 +94,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _evaluate_squad(self, use_ds=True):
     """Runs BERT SQuAD evaluation."""
+    assert tf.version.VERSION.startswith('2.')
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(use_ds)
 
@@ -160,7 +162,8 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_xla_squad')
-    FLAGS.train_batch_size = 4
+    # XLA runs out of memory when running with batch size 4.
+    FLAGS.train_batch_size = 3
     FLAGS.enable_xla = True
 
     self._run_and_report_benchmark()
