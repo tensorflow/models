@@ -250,7 +250,7 @@ class TransformerTask(object):
   def _create_optimizer(self):
     """Creates optimizer."""
     params = self.params
-    opt = optimizer.LazyAdam(
+    opt = tf.keras.optimizers.Adam(
         params["learning_rate"],
         params["optimizer_adam_beta1"],
         params["optimizer_adam_beta2"],
