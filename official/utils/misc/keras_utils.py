@@ -83,6 +83,9 @@ class TimeHistory(tf.keras.callbacks.Callback):
           "BenchmarkMetric: {'global step':%d, 'time_taken': %f,"
           "'examples_per_second': %f}" %
           (self.global_steps, elapsed_time, examples_per_second))
+      tf.compat.v1.logging.info(
+          "Loss: %f" %
+          (logs.get('loss')))
       self.start_time = timestamp
 
   def on_epoch_end(self, epoch, logs=None):
