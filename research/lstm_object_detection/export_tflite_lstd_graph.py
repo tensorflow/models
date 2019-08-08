@@ -48,7 +48,7 @@ else:
 
 Example Usage:
 --------------
-python lstm_object_detection/export_tflite_graph \
+python lstm_object_detection/export_tflite_lstd_graph.py \
     --pipeline_config_path path/to/lstm_pipeline.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
     --output_directory path/to/exported_model_directory
@@ -66,7 +66,7 @@ eval config.
 
 Example Usage (in which we change the NMS iou_threshold to be 0.5 and
 NMS score_threshold to be 0.0):
-python lstm_object_detection/export_tflite_graph.py \
+python lstm_object_detection/export_tflite_lstd_graph.py \
     --pipeline_config_path path/to/lstm_pipeline.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
     --output_directory path/to/exported_model_directory
@@ -86,7 +86,7 @@ python lstm_object_detection/export_tflite_graph.py \
 
 import tensorflow as tf
 from lstm_object_detection.utils import config_util
-from lstm_object_detection import export_tflite_graph_lib
+from lstm_object_detection import export_tflite_lstd_graph_lib
 
 flags = tf.app.flags
 flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
@@ -123,7 +123,7 @@ def main(argv):
   pipeline_config = config_util.get_configs_from_pipeline_file(
     FLAGS.pipeline_config_path)
 
-  export_tflite_graph_lib.export_tflite_graph(
+  export_tflite_lstd_graph_lib.export_tflite_graph(
       pipeline_config, FLAGS.trained_checkpoint_prefix, FLAGS.output_directory,
       FLAGS.add_postprocessing_op, FLAGS.max_detections,
       FLAGS.max_classes_per_detection, use_regular_nms=FLAGS.use_regular_nms)

@@ -16,7 +16,7 @@ tensorflow/models/research:
 PIPELINE_CONFIG_PATH={path to pipeline config}
 TRAINED_CKPT_PREFIX=/{path to model.ckpt}
 EXPORT_DIR={path to folder that will be used for export}
-python lstm_object_detection/export_tflite_graph.py \
+python lstm_object_detection/export_tflite_lstd_graph.py \
     --pipeline_config_path ${PIPELINE_CONFIG_PATH} \
     --trained_checkpoint_prefix ${TRAINED_CKPT_PREFIX} \
     --output_directory ${EXPORT_DIR} \
@@ -39,7 +39,7 @@ TFLite FlatBuffer file by running the following:
 FROZEN_GRAPH_PATH={path to exported tflite_graph.pb}
 EXPORT_PATH={path to filename that will be used for export}
 PIPELINE_CONFIG_PATH={path to pipeline config}
-python lstm_object_detection/export_tflite_model.py \
+python lstm_object_detection/export_tflite_lstd_model.py \
 	   --export_path ${EXPORT_PATH} \
 	   --frozen_graph_path ${FROZEN_GRAPH_PATH} \
 	   --pipeline_config_path ${PIPELINE_CONFIG_PATH}

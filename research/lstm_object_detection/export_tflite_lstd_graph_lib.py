@@ -14,7 +14,7 @@
 # ==============================================================================
 r"""Exports detection models to use with tf-lite.
 
-See export_tflite_graph.py for usage.
+See export_tflite_lstd_graph.py for usage.
 """
 import os
 import tempfile
