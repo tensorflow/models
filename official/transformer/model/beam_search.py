@@ -38,7 +38,9 @@ def inf(dtype):
   if dtype == "float32":
     return 1e7
   elif dtype == "float16":
-    return np.finfo(np.float16).max
+    # Disable no-member lint error, as the linter thinks np.float16 does not
+    # exist for some reason.
+    return np.finfo(np.float16).max  # pylint: disable=no-member
   else:
     raise AssertionError('Invalid dtype: %s' % dtype)
 
