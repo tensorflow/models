@@ -55,7 +55,7 @@ python lstm_object_detection/export_tflite_graph \
 
 The expected output would be in the directory
 path/to/exported_model_directory (which is created if it does not exist)
-with contents:2
+with contents:
  - tflite_graph.pbtxt
  - tflite_graph.pb
 Config overrides (see the `config_override` flag) are text protobufs
