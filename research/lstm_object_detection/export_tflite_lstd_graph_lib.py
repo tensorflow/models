@@ -224,7 +224,7 @@ def export_tflite_graph(pipeline_config,
     height = image_resizer_config.fixed_shape_resizer.height
     width = image_resizer_config.fixed_shape_resizer.width
     if image_resizer_config.fixed_shape_resizer.convert_to_grayscale:
-      num_channels = 10
+      num_channels = 1
     #TODO(richardbrks) figure out how to make with a None defined batch size
     shape = [lstm_config.eval_unroll_length, height, width, num_channels]
   else:
