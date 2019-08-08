@@ -129,6 +129,11 @@ class TransformerTask(object):
       policy = tf.keras.mixed_precision.experimental.Policy(
           "infer_float32_vars")
       tf.keras.mixed_precision.experimental.set_policy(policy)
+  
+    if flags_obj.loss_scale is None:
+      params["loss_scale"] = "dynamic"
+    else:
+      params["loss_scale"] = flags_obj.loss_scale
 
   def train(self):
     """Trains the model."""
@@ -258,7 +263,7 @@ class TransformerTask(object):
     if params["dtype"] == tf.float16:
       opt = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
           opt, loss_scale=flags_core.get_loss_scale(self.flags_obj,
-                                                    default_for_fp16="dynamic"))
+            default_for_fp16=params["loss_scale"]))
     return opt
 
 
