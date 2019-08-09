@@ -259,6 +259,12 @@ class TransformerTask(object):
       opt = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
           opt, loss_scale=flags_core.get_loss_scale(self.flags_obj,
                                                     default_for_fp16="dynamic"))
+    if self.flags_obj.automatic_mixed_precision:
+        if params["dtype"] == tf.float16:
+            raise RuntimeError("Automatic mixed precision should not be called in conjunction with "
+                               "other types of mixed precision training. Set --dtype=fp32 instead.")
+        opt = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(opt)
+    
     return opt
 
 

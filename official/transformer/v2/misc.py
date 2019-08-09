@@ -85,7 +85,10 @@ def define_transformer_flags():
            'convolutions and batch normalizations, and this flag allows to '
            'disable it.'
   )
-
+  flags.DEFINE_boolean(
+      name='automatic_mixed_precision', default=False,
+      help='Enable automatic mixed precision training via a graph rewrite.')
+    
   flags_core.define_benchmark()
   flags_core.define_device(tpu=True)
 
