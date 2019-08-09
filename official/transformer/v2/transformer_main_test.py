@@ -96,6 +96,12 @@ class TransformerTaskTest(tf.test.TestCase):
     t.train()
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
+  def test_train_fp16(self):
+    FLAGS.dtype = 'fp16'
+    t = tm.TransformerTask(FLAGS)
+    t.train()
+
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_2_gpu(self):
     if context.num_gpus() < 2:
       self.skipTest(

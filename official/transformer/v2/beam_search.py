@@ -57,7 +57,7 @@ class SequenceBeamSearchV2(v1.SequenceBeamSearch):
 
 def sequence_beam_search(
     symbols_to_logits_fn, initial_ids, initial_cache, vocab_size, beam_size,
-    alpha, max_decode_length, eos_id):
+    alpha, max_decode_length, eos_id, dtype="float32"):
   """Search for sequence of subtoken ids with the largest probability.
 
   Args:
@@ -76,7 +76,8 @@ def sequence_beam_search(
     beam_size: int number of beams
     alpha: float defining the strength of length normalization
     max_decode_length: maximum length to decoded sequence
-    eos_id: int id of eos token, used to determine when a sequence has finished
+    eos_id: int id of eos token, used to determine when a sequence has finished,
+    dtype: The dtype to use.
 
   Returns:
     Top decoded sequences [batch_size, beam_size, max_decode_length]
@@ -85,10 +86,12 @@ def sequence_beam_search(
   batch_size = tf.shape(initial_ids)[0]
   if misc.is_v2():
     sbs = SequenceBeamSearchV2(symbols_to_logits_fn, vocab_size, batch_size,
-                               beam_size, alpha, max_decode_length, eos_id)
+                               beam_size, alpha, max_decode_length, eos_id,
+                               dtype)
   else:
     sbs = v1.SequenceBeamSearch(symbols_to_logits_fn, vocab_size, batch_size,
-                                beam_size, alpha, max_decode_length, eos_id)
+                                beam_size, alpha, max_decode_length, eos_id,
+                                dtype)
   return sbs.search(initial_ids, initial_cache)
 
 

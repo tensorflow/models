@@ -289,7 +289,6 @@ def run_ncf(_):
     train_input_iterator = strategy.make_dataset_iterator(train_input_dataset)
     eval_input_iterator = strategy.make_dataset_iterator(eval_input_dataset)
 
-    @tf.function
     def train_step():
       """Called once per step to train the model."""
       def step_fn(features):
@@ -318,7 +317,6 @@ def run_ncf(_):
           tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
       return mean_loss
 
-    @tf.function
     def eval_step():
       """Called once per eval step to compute eval metrics."""
       def step_fn(features):
@@ -337,6 +335,10 @@ def run_ncf(_):
       hr_count = strategy.reduce(
           tf.distribute.ReduceOp.SUM, per_replica_hr_count, axis=None)
       return hr_sum, hr_count
+
+    if not FLAGS.run_eagerly:
+      train_step = tf.function(train_step)
+      eval_step = tf.function(eval_step)
 
     time_callback.on_train_begin()
     for epoch in range(FLAGS.train_epochs):
