@@ -24,14 +24,24 @@ import tensorflow as tf
 class EmbeddingSharedWeights(tf.keras.layers.Layer):
   """Calculates input embeddings and pre-softmax linear with shared weights."""
 
-  def __init__(self, vocab_size, hidden_size):
+  def __init__(self, vocab_size, hidden_size, dtype=None):
     """Specify characteristic parameters of embedding layer.
 
     Args:
       vocab_size: Number of tokens in the embedding. (Typically ~32,000)
       hidden_size: Dimensionality of the embedding. (Typically 512 or 1024)
+      dtype: The dtype of the layer: float16 or float32.
     """
-    super(EmbeddingSharedWeights, self).__init__()
+    if dtype == tf.float16:
+      # We cannot rely on the global policy of "infer_with_float32_vars", as
+      # this layer is called on both int64 inputs and floating-point inputs.
+      # If "infer_with_float32_vars" is used, the dtype will be inferred to be
+      # int64, which means floating-point inputs would not be casted.
+      # TODO(b/138859351): Remove this logic once we stop using the deprecated
+      # "infer_with_float32_vars" policy
+      dtype = tf.keras.mixed_precision.experimental.Policy(
+          "float16_with_float32_vars")
+    super(EmbeddingSharedWeights, self).__init__(dtype=dtype)
     self.vocab_size = vocab_size
     self.hidden_size = hidden_size
 
@@ -78,8 +88,8 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
     """Applies embedding based on inputs tensor."""
     with tf.name_scope("embedding"):
       # Create binary mask of size [batch_size, length]
-      mask = tf.cast(tf.not_equal(inputs, 0), tf.float32)
       embeddings = tf.gather(self.shared_weights, inputs)
+      mask = tf.cast(tf.not_equal(inputs, 0), embeddings.dtype)
       embeddings *= tf.expand_dims(mask, -1)
       # Scale embedding by the sqrt of the hidden size
       embeddings *= self.hidden_size ** 0.5

@@ -18,11 +18,31 @@ Source implementation from Tensor2Tensor:
 https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/beam_search.py
 """
 
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.util import nest
 
-# Default value for INF
-INF = 1. * 1e7
+
+def inf(dtype):
+  """Returns a value close to infinity, but is still finite in `dtype`.
+
+  This is useful to get a very large value that is still zero when multiplied by
+  zero. The floating-point "Inf" value is NaN when multiplied by zero.
+
+  Args:
+    dtype: A dtype. The returned value will be finite when casted to this dtype.
+
+  Returns:
+    A very large value.
+  """
+  if dtype == "float32":
+    return 1e7
+  elif dtype == "float16":
+    # Disable no-member lint error, as the linter thinks np.float16 does not
+    # exist for some reason.
+    return np.finfo(np.float16).max  # pylint: disable=no-member
+  else:
+    raise AssertionError('Invalid dtype: %s' % dtype)
 
 
 class _StateKeys(object):
@@ -60,7 +80,7 @@ class SequenceBeamSearch(object):
   """Implementation of beam search loop."""
 
   def __init__(self, symbols_to_logits_fn, vocab_size, batch_size,
-               beam_size, alpha, max_decode_length, eos_id):
+               beam_size, alpha, max_decode_length, eos_id, dtype=tf.float32):
     self.symbols_to_logits_fn = symbols_to_logits_fn
     self.vocab_size = vocab_size
     self.batch_size = batch_size
@@ -68,6 +88,7 @@ class SequenceBeamSearch(object):
     self.alpha = alpha
     self.max_decode_length = max_decode_length
     self.eos_id = eos_id
+    self.dtype = tf.as_dtype(dtype)
 
   def search(self, initial_ids, initial_cache):
     """Beam search for sequences with highest scores."""
@@ -105,6 +126,14 @@ class SequenceBeamSearch(object):
     Returns:
         state and shape invariant dictionaries with keys from _StateKeys
     """
+    for key, value in initial_cache.items():
+      for inner_value in nest.flatten(value):
+        if inner_value.dtype != self.dtype:
+          raise TypeError(
+              "initial_cache element for key '%s' has dtype %s that does not "
+              "match SequenceBeamSearch's dtype of %s. Value: %s" %
+              (key, value.dtype.name, self.dtype.name, inner_value))
+
     # Current loop index (starts at 0)
     cur_index = tf.constant(0)
 
@@ -115,7 +144,7 @@ class SequenceBeamSearch(object):
     # Create tensor for storing initial log probabilities.
     # Assume initial_ids are prob 1.0
     initial_log_probs = tf.constant(
-        [[0.] + [-float("inf")] * (self.beam_size - 1)])
+        [[0.] + [-float("inf")] * (self.beam_size - 1)], dtype=self.dtype)
     alive_log_probs = tf.tile(initial_log_probs, [self.batch_size, 1])
 
     # Expand all values stored in the dictionary to the beam size, so that each
@@ -127,7 +156,8 @@ class SequenceBeamSearch(object):
     finished_seq = tf.zeros(tf.shape(alive_seq), tf.int32)
 
     # Set scores of the initial finished seqs to negative infinity.
-    finished_scores = tf.ones([self.batch_size, self.beam_size]) * -INF
+    finished_scores = tf.ones([self.batch_size, self.beam_size],
+                              dtype=self.dtype) * -inf(self.dtype)
 
     # Initialize finished flags with all False values.
     finished_flags = tf.zeros([self.batch_size, self.beam_size], tf.bool)
@@ -185,20 +215,22 @@ class SequenceBeamSearch(object):
     not_at_max_decode_length = tf.less(i, self.max_decode_length)
 
     # Calculate largest length penalty (the larger penalty, the better score).
-    max_length_norm = _length_normalization(self.alpha, self.max_decode_length)
+    max_length_norm = _length_normalization(self.alpha, self.max_decode_length,
+                                            dtype=self.dtype)
     # Get the best possible scores from alive sequences.
     best_alive_scores = alive_log_probs[:, 0] / max_length_norm
 
     # Compute worst score in finished sequences for each batch element
     finished_scores *= tf.cast(finished_flags,
-                               tf.float32)  # set filler scores to zero
+                               self.dtype)  # set filler scores to zero
     lowest_finished_scores = tf.reduce_min(finished_scores, axis=1)
 
     # If there are no finished sequences in a batch element, then set the lowest
     # finished score to -INF for that element.
     finished_batches = tf.reduce_any(finished_flags, 1)
-    lowest_finished_scores += (1.0 -
-                               tf.cast(finished_batches, tf.float32)) * -INF
+    lowest_finished_scores += ((1.0 -
+                                tf.cast(finished_batches, self.dtype)) *
+                               -inf(self.dtype))
 
     worst_finished_score_better_than_best_alive_score = tf.reduce_all(
         tf.greater(lowest_finished_scores, best_alive_scores)
@@ -319,9 +351,9 @@ class SequenceBeamSearch(object):
          Log probabilities of top alive sequences
          Dict cache storing decoder states for top alive sequences}
     """
-    # To prevent finished sequences from being considered, set log probs to -INF
+    # To prevent finished sequences from being considered, set log probs to -inf
     new_finished_flags = tf.equal(new_seq[:, :, -1], self.eos_id)
-    new_log_probs += tf.cast(new_finished_flags, tf.float32) * -INF
+    new_log_probs += tf.cast(new_finished_flags, self.dtype) * -inf(self.dtype)
 
     top_alive_seq, top_alive_log_probs, top_alive_cache = _gather_topk_beams(
         [new_seq, new_log_probs, new_cache], new_log_probs, self.batch_size,
@@ -361,12 +393,13 @@ class SequenceBeamSearch(object):
          tf.zeros([self.batch_size, self.beam_size, 1], tf.int32)], axis=2)
 
     # Calculate new seq scores from log probabilities.
-    length_norm = _length_normalization(self.alpha, i + 1)
+    length_norm = _length_normalization(self.alpha, i + 1, dtype=self.dtype)
     new_scores = new_log_probs / length_norm
 
     # Set the scores of the still-alive seq in new_seq to large negative values.
     new_finished_flags = tf.equal(new_seq[:, :, -1], self.eos_id)
-    new_scores += (1. - tf.cast(new_finished_flags, tf.float32)) * -INF
+    new_scores += ((1. - tf.cast(new_finished_flags, self.dtype)) *
+                   -inf(self.dtype))
 
     # Combine sequences, scores, and flags.
     finished_seq = tf.concat([finished_seq, new_seq], axis=1)
@@ -422,9 +455,9 @@ def _log_prob_from_logits(logits):
   return logits - tf.reduce_logsumexp(logits, axis=2, keepdims=True)
 
 
-def _length_normalization(alpha, length):
+def _length_normalization(alpha, length, dtype=tf.float32):
   """Return length normalization factor."""
-  return tf.pow(((5. + tf.cast(length, tf.float32)) / 6.), alpha)
+  return tf.pow(((5. + tf.cast(length, dtype)) / 6.), alpha)
 
 
 def _expand_to_beam_size(tensor, beam_size):
