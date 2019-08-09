@@ -181,7 +181,12 @@ def run(flags_obj):
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
                                                           default_for_fp16=128))
-
+    if flags_obj.automatic_mixed_precision:
+        if dtype == 'float16':
+            raise RuntimeError("Automatic mixed precision should not be called in conjunction with "
+                               "other types of mixed precision training. Set --dtype=fp32 instead.")
+        optimizer = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+        
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
           imagenet_preprocessing.NUM_CLASSES, dtype)

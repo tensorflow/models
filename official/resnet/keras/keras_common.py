@@ -310,6 +310,9 @@ def define_keras_flags(dynamic_loss_scale=True):
   flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
+  flags.DEFINE_boolean(
+      name='automatic_mixed_precision', default=False,
+      help='Enable GPU automatic mixed precision.')
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32, drop_remainder=True):
