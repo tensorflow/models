@@ -114,13 +114,13 @@ def get_distribution_strategy(distribution_strategy="default",
 
   distribution_strategy = distribution_strategy.lower()
   if distribution_strategy == "off":
-    if num_gpus > 1 or num_workers > 1:
+    if num_gpus > 1:
       raise ValueError(
           "When {} GPUs and  {} workers are specified, distribution_strategy "
           "flag cannot be set to 'off'.".format(num_gpus, num_workers))
     return None
 
-  if distribution_strategy == "multi_worker_mirrored" or num_workers > 1:
+  if distribution_strategy == "multi_worker_mirrored":
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=_collective_communication(all_reduce_alg))
 

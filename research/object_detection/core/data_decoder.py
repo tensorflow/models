@@ -18,13 +18,16 @@
 Data decoders decode the input data and return a dictionary of tensors keyed by
 the entries in core.reader.Fields.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 from abc import ABCMeta
 from abc import abstractmethod
+import six
 
 
-class DataDecoder(object):
+class DataDecoder(six.with_metaclass(ABCMeta, object)):
   """Interface for data decoders."""
-  __metaclass__ = ABCMeta
 
   @abstractmethod
   def decode(self, data):

@@ -36,6 +36,9 @@ message PreprocessingStep {
     ConvertClassLogitsToSoftmax convert_class_logits_to_softmax = 28;
     RandomAbsolutePadImage random_absolute_pad_image = 29;
     RandomSelfConcatImage random_self_concat_image = 30;
+    AutoAugmentImage autoaugment_image = 31;
+    DropLabelProbabilistically drop_label_probabilistically = 32;
+    RemapLabels remap_labels = 33;
   }
 }
 
@@ -460,4 +463,30 @@ message RandomSelfConcatImage {
   optional float concat_vertical_probability = 1 [default = 0.1];
   // Probability of concatenating the image horizontally.
   optional float concat_horizontal_probability = 2 [default = 0.1];
+}
+
+// Apply an Autoaugment policy to the image and bounding boxes.
+message AutoAugmentImage {
+
+  // What AutoAugment policy to apply to the Image
+  optional string policy_name = 1 [default="v0"];
+}
+
+
+// Randomly drops ground truth boxes for a label with some probability.
+message DropLabelProbabilistically {
+  // The label that should be dropped. This corresponds to one of the entries
+  // in the label map.
+  optional int32 label = 1;
+  // Probability of dropping the label.
+  optional float drop_probability = 2 [default = 1.0];
+}
+
+
+//Remap a set of labels to a new label.
+message RemapLabels {
+   // Labels to be remapped.
+  repeated int32 original_labels = 1;
+  // Label to map to.
+  optional int32 new_label = 2;
 }

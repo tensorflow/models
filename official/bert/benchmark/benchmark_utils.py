@@ -28,6 +28,8 @@ from absl.testing import flagsaver
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
+from official.utils.flags import core as flags_core
+
 FLAGS = flags.FLAGS
 
 
@@ -74,7 +76,6 @@ class BertBenchmarkBase(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
     self.timer_callback = BenchmarkTimerCallback()
 
     if BertBenchmarkBase.local_flags is None:
@@ -113,8 +114,9 @@ class BertBenchmarkBase(tf.test.Benchmark):
           'min_value': min_accuracy,
           'max_value': max_accuracy,
       })
-
+    flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(
         iters=stats['total_training_steps'],
         wall_time=wall_time_sec,
-        metrics=metrics)
+        metrics=metrics,
+        extras={'flags': flags_str})

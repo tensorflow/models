@@ -28,7 +28,7 @@ from official.utils.logs import hooks_helper
 def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                 epochs_between_evals=True, stop_threshold=True, batch_size=True,
                 num_gpu=True, hooks=True, export_dir=True,
-                distribution_strategy=True):
+                distribution_strategy=True, run_eagerly=False):
   """Register base flags.
 
   Args:
@@ -44,6 +44,7 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
     export_dir: Create a flag to specify where a SavedModel should be exported.
     distribution_strategy: Create a flag to specify which Distribution Strategy
       to use.
+    run_eagerly: Create a flag to specify to run eagerly op by op.
   Returns:
     A list of flags for core.py to marks as key flags.
   """
@@ -106,6 +107,11 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
             "How many GPUs to use at each worker with the "
             "DistributionStrategies API. The default is 1."))
 
+  if run_eagerly:
+    flags.DEFINE_boolean(
+        name="run_eagerly", default=False,
+        help="Run the model op by op without building a model function.")
+
   if hooks:
     # Construct a pretty summary of hooks.
     hook_list_str = (
@@ -141,6 +147,7 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                        "from `MirroredStrategy` or `OneDeviceStrategy` "
                        "according to the number of GPUs.")
     )
+
 
   return key_flags
 

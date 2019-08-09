@@ -14,8 +14,13 @@
 # ==============================================================================
 
 """Provides functions to batch a dictionary of input tensors."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import collections
 
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.core import prefetcher

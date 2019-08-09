@@ -78,7 +78,7 @@ Extras:
   * <a href='g3doc/instance_segmentation.md'>
       Run an instance segmentation model</a><br>
   * <a href='g3doc/challenge_evaluation.md'>
-      Run the evaluation for the Open Images Challenge 2018</a><br>
+      Run the evaluation for the Open Images Challenge 2018/2019</a><br>
   * <a href='g3doc/tpu_compatibility.md'>
       TPU compatible detection pipelines</a><br>
   * <a href='g3doc/running_on_mobile_tensorflowlite.md'>
@@ -101,9 +101,23 @@ reporting an issue.
 
 ## Release information
 
+### July 1st, 2019
+
+We have released an updated set of utils and an updated
+[tutorial](g3doc/challenge_evaluation.md) for all three tracks of the
+[Open Images Challenge 2019](https://storage.googleapis.com/openimages/web/challenge2019.html)!
+
+The Instance Segmentation metric for
+[Open Images V5](https://storage.googleapis.com/openimages/web/index.html)
+and [Challenge 2019](https://storage.googleapis.com/openimages/web/challenge2019.html)
+is part of this release. Check out [the metric description](https://storage.googleapis.com/openimages/web/evaluation.html#instance_segmentation_eval)
+on the Open Images website.
+
+<b>Thanks to contributors</b>: Alina Kuznetsova, Rodrigo Benenson
+
 ### Feb 11, 2019
 
-We have released detection models trained on the [Open Images Dataset V4](https://storage.googleapis.com/openimages/web/challenge.html)
+We have released detection models trained on the Open Images Dataset V4
 in our detection model zoo, including
 
 * Faster R-CNN detector with Inception Resnet V2 feature extractor

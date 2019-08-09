@@ -35,6 +35,7 @@ from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 
 
 FLAGS = flags.FLAGS
@@ -107,6 +108,10 @@ def parse_flags(flags_obj):
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
+      "stream_files": flags_obj.tpu is not None,
+      "train_dataset_path": flags_obj.train_dataset_path,
+      "eval_dataset_path": flags_obj.eval_dataset_path,
+      "input_meta_data_path": flags_obj.input_meta_data_path,
   }
 
 
@@ -152,7 +157,7 @@ def get_distribution_strategy(params):
 def define_ncf_flags():
   """Add flags for running ncf_main."""
   # Add common flags
-  flags_core.define_base(export_dir=False)
+  flags_core.define_base(export_dir=False, run_eagerly=True)
   flags_core.define_performance(
       num_parallel_calls=False,
       inter_op=False,
@@ -160,7 +165,9 @@ def define_ncf_flags():
       synthetic_data=True,
       max_train_steps=False,
       dtype=False,
-      all_reduce_alg=False
+      all_reduce_alg=False,
+      enable_xla=True,
+      force_v2_in_keras_compile=True
   )
   flags_core.define_device(tpu=True)
   flags_core.define_benchmark()
@@ -257,6 +264,21 @@ def define_ncf_flags():
           "precompute that scales badly, but a faster per-epoch construction"
           "time and can be faster on very large systems."))
 
+  flags.DEFINE_string(
+      name="train_dataset_path",
+      default=None,
+      help=flags_core.help_wrap("Path to training data."))
+
+  flags.DEFINE_string(
+      name="eval_dataset_path",
+      default=None,
+      help=flags_core.help_wrap("Path to evaluation data."))
+
+  flags.DEFINE_string(
+      name="input_meta_data_path",
+      default=None,
+      help=flags_core.help_wrap("Path to input meta data file."))
+
   flags.DEFINE_bool(
       name="ml_perf", default=False,
       help=flags_core.help_wrap(
@@ -318,14 +340,13 @@ def define_ncf_flags():
 
 
 def convert_to_softmax_logits(logits):
-  '''Convert the logits returned by the base model to softmax logits.
+  """Convert the logits returned by the base model to softmax logits.
 
-  Softmax with the first column of zeros is equivalent to sigmoid.
-  '''
+  Args:
+    logits: used to create softmax.
+
+  Returns:
+    Softmax with the first column of zeros is equivalent to sigmoid.
+  """
   softmax_logits = tf.concat([logits * 0, logits], axis=1)
   return softmax_logits
-
-def is_tf_v2():
-  """Returns whether it is v2."""
-  from tensorflow.python import tf2 as tf2_internal
-  return tf2_internal.enabled()

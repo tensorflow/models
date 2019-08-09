@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for SSD Mobilenet V1 feature extractors.
 
 By using parameterized test decorator, this test serves for both Slim-based and
@@ -37,8 +36,12 @@ slim = tf.contrib.slim
 class SsdMobilenetV1FeatureExtractorTest(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
-  def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                use_explicit_padding=False, is_training=False,
+  def _create_feature_extractor(self,
+                                depth_multiplier,
+                                pad_to_multiple,
+                                use_explicit_padding=False,
+                                num_layers=6,
+                                is_training=False,
                                 use_keras=False):
     """Constructs a new feature extractor.
 
@@ -49,16 +52,18 @@ class SsdMobilenetV1FeatureExtractorTest(
       use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
+      num_layers: number of SSD layers.
       is_training: whether the network is in training mode.
       use_keras: if True builds a keras-based feature extractor, if False builds
         a slim-based one.
+
     Returns:
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
     min_depth = 32
     if use_keras:
-      return (ssd_mobilenet_v1_keras_feature_extractor.
-              SSDMobileNetV1KerasFeatureExtractor(
+      return (ssd_mobilenet_v1_keras_feature_extractor
+              .SSDMobileNetV1KerasFeatureExtractor(
                   is_training=is_training,
                   depth_multiplier=depth_multiplier,
                   min_depth=min_depth,
@@ -68,12 +73,17 @@ class SsdMobilenetV1FeatureExtractorTest(
                   freeze_batchnorm=False,
                   inplace_batchnorm_update=False,
                   use_explicit_padding=use_explicit_padding,
+                  num_layers=num_layers,
                   name='MobilenetV1'))
     else:
       return ssd_mobilenet_v1_feature_extractor.SSDMobileNetV1FeatureExtractor(
-          is_training, depth_multiplier, min_depth, pad_to_multiple,
+          is_training,
+          depth_multiplier,
+          min_depth,
+          pad_to_multiple,
           self.conv_hyperparams_fn,
-          use_explicit_padding=use_explicit_padding)
+          use_explicit_padding=use_explicit_padding,
+          num_layers=num_layers)
 
   def test_extract_features_returns_correct_shapes_128(self, use_keras):
     image_height = 128
@@ -84,12 +94,22 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 2, 2, 512), (2, 1, 1, 256),
                                   (2, 1, 1, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
         use_keras=use_keras)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
         use_keras=use_keras)
 
   def test_extract_features_returns_correct_shapes_299(self, use_keras):
@@ -101,12 +121,22 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 5, 5, 512), (2, 3, 3, 256),
                                   (2, 2, 2, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
         use_keras=use_keras)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
         use_keras=use_keras)
 
   def test_extract_features_with_dynamic_image_shape(self, use_keras):
@@ -118,12 +148,22 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 2, 2, 512), (2, 1, 1, 256),
                                   (2, 1, 1, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shapes_with_dynamic_inputs(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
         use_keras=use_keras)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
         use_keras=use_keras)
 
   def test_extract_features_returns_correct_shapes_enforcing_min_depth(
@@ -133,15 +173,25 @@ class SsdMobilenetV1FeatureExtractorTest(
     depth_multiplier = 0.5**12
     pad_to_multiple = 1
     expected_feature_map_shape = [(2, 19, 19, 32), (2, 10, 10, 32),
-                                  (2, 5, 5, 32), (2, 3, 3, 32),
-                                  (2, 2, 2, 32), (2, 1, 1, 32)]
+                                  (2, 5, 5, 32), (2, 3, 3, 32), (2, 2, 2, 32),
+                                  (2, 1, 1, 32)]
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
         use_keras=use_keras)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
         use_keras=use_keras)
 
   def test_extract_features_returns_correct_shapes_with_pad_to_multiple(
@@ -154,12 +204,22 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 5, 5, 512), (2, 3, 3, 256),
                                   (2, 2, 2, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
         use_keras=use_keras)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True,
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
         use_keras=use_keras)
 
   def test_extract_features_raises_error_with_invalid_image_size(
@@ -169,7 +229,10 @@ class SsdMobilenetV1FeatureExtractorTest(
     depth_multiplier = 1.0
     pad_to_multiple = 1
     self.check_extract_features_raises_error_with_invalid_image_size(
-        image_height, image_width, depth_multiplier, pad_to_multiple,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
         use_keras=use_keras)
 
   def test_preprocess_returns_correct_value_range(self, use_keras):
@@ -178,9 +241,8 @@ class SsdMobilenetV1FeatureExtractorTest(
     depth_multiplier = 1
     pad_to_multiple = 1
     test_image = np.random.rand(2, image_height, image_width, 3)
-    feature_extractor = self._create_feature_extractor(depth_multiplier,
-                                                       pad_to_multiple,
-                                                       use_keras=use_keras)
+    feature_extractor = self._create_feature_extractor(
+        depth_multiplier, pad_to_multiple, use_keras=use_keras)
     preprocessed_image = feature_extractor.preprocess(test_image)
     self.assertTrue(np.all(np.less_equal(np.abs(preprocessed_image), 1.0)))
 
@@ -212,8 +274,22 @@ class SsdMobilenetV1FeatureExtractorTest(
       _ = feature_extractor(preprocessed_image)
     else:
       _ = feature_extractor.extract_features(preprocessed_image)
-    self.assertTrue(any(op.type == 'FusedBatchNorm'
-                        for op in tf.get_default_graph().get_operations()))
+    self.assertTrue(
+        any('FusedBatchNorm' in op.type
+            for op in tf.get_default_graph().get_operations()))
+
+  def test_extract_features_with_fewer_layers(self, use_keras):
+    image_height = 128
+    image_width = 128
+    depth_multiplier = 1.0
+    pad_to_multiple = 1
+    expected_feature_map_shape = [(2, 8, 8, 512), (2, 4, 4, 1024),
+                                  (2, 2, 2, 512), (2, 1, 1, 256)]
+    self.check_extract_features_returns_correct_shape(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape, use_explicit_padding=False, num_layers=4,
+        use_keras=use_keras)
+
 
 if __name__ == '__main__':
   tf.test.main()

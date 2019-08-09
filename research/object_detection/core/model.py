@@ -54,7 +54,12 @@ By default, DetectionModels produce bounding box detections; However, we support
 a handful of auxiliary annotations associated with each bounding box, namely,
 instance masks and keypoints.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import abc
+import six
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -68,12 +73,11 @@ except AttributeError:
   _BaseClass = object
 
 
-class DetectionModel(_BaseClass):
+class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
   """Abstract base class for detection models.
 
   Extends tf.Module to guarantee variable tracking.
   """
-  __metaclass__ = abc.ABCMeta
 
   def __init__(self, num_classes):
     """Constructor.

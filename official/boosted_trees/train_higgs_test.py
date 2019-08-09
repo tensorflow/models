@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import os
 import tempfile
+import unittest
 
 import numpy as np
 import pandas as pd
@@ -26,11 +27,12 @@ import tensorflow as tf
 
 # pylint: disable=g-bad-import-order
 from official.boosted_trees import train_higgs
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
 TEST_CSV = os.path.join(os.path.dirname(__file__), "train_higgs_test.csv")
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 class BaseTest(tf.test.TestCase):
@@ -51,8 +53,9 @@ class BaseTest(tf.test.TestCase):
     # numpy.savez doesn't take gfile.Gfile, so need to write down and copy.
     tmpfile = tempfile.NamedTemporaryFile()
     np.savez_compressed(tmpfile, data=data)
-    tf.gfile.Copy(tmpfile.name, self.input_npz)
+    tf.io.gfile.copy(tmpfile.name, self.input_npz)
 
+  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
   def test_read_higgs_data(self):
     """Tests read_higgs_data() function."""
     # Error when a wrong data_dir is given.
@@ -68,6 +71,7 @@ class BaseTest(tf.test.TestCase):
     self.assertEqual((15, 29), train_data.shape)
     self.assertEqual((5, 29), eval_data.shape)
 
+  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
   def test_make_inputs_from_np_arrays(self):
     """Tests make_inputs_from_np_arrays() function."""
     train_data, _ = train_higgs.read_higgs_data(
@@ -115,6 +119,7 @@ class BaseTest(tf.test.TestCase):
          1.409523, -0.307865, 1.474605],
         np.squeeze(features[feature_names[10]], 1))
 
+  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
   def test_end_to_end(self):
     """Tests end-to-end running."""
     model_dir = os.path.join(self.get_temp_dir(), "model")
@@ -131,6 +136,7 @@ class BaseTest(tf.test.TestCase):
         synth=False, max_train=None)
     self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, "checkpoint")))
 
+  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
   def test_end_to_end_with_export(self):
     """Tests end-to-end running."""
     model_dir = os.path.join(self.get_temp_dir(), "model")

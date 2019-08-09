@@ -129,8 +129,8 @@ class Attention(tf.keras.layers.Layer):
 
     if cache is not None:
       # Combine cached keys and values with new keys and values.
-      k = tf.concat([cache["k"], k], axis=1)
-      v = tf.concat([cache["v"], v], axis=1)
+      k = tf.concat([tf.cast(cache["k"], k.dtype), k], axis=1)
+      v = tf.concat([tf.cast(cache["v"], k.dtype), v], axis=1)
 
       # Update cache
       cache["k"] = k
@@ -148,6 +148,9 @@ class Attention(tf.keras.layers.Layer):
     # Calculate dot product attention
     logits = tf.matmul(q, k, transpose_b=True)
     logits += bias
+    # Note that softmax internally performs math operations using float32
+    # for numeric stability. When training with float16, we keep the input
+    # and output in float16 for better performance.
     weights = tf.nn.softmax(logits, name="attention_weights")
     if training:
       weights = tf.nn.dropout(weights, rate=self.attention_dropout)

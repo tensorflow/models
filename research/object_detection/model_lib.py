@@ -24,7 +24,6 @@ import os
 
 import tensorflow as tf
 
-from tensorflow.python.util import function_utils
 from object_detection import eval_util
 from object_detection import exporter as exporter_lib
 from object_detection import inputs
@@ -187,7 +186,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   return unbatched_tensor_dict
 
 
-def _provide_groundtruth(model, labels):
+def provide_groundtruth(model, labels):
   """Provides the labels to a model as groundtruth.
 
   This helper function extracts the corresponding boxes, classes,
@@ -287,7 +286,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
           labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
-      _provide_groundtruth(detection_model, labels)
+      provide_groundtruth(detection_model, labels)
 
     preprocessed_images = features[fields.InputDataFields.image]
     if use_tpu and train_config.use_bfloat16:
@@ -524,7 +523,7 @@ def create_estimator_and_inputs(run_config,
                                 pipeline_config_path,
                                 config_override=None,
                                 train_steps=None,
-                                sample_1_of_n_eval_examples=1,
+                                sample_1_of_n_eval_examples=None,
                                 sample_1_of_n_eval_on_train_examples=1,
                                 model_fn_creator=create_model_fn,
                                 use_tpu_estimator=False,
@@ -606,9 +605,12 @@ def create_estimator_and_inputs(run_config,
       pipeline_config_path, config_override=config_override)
   kwargs.update({
       'train_steps': train_steps,
-      'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples,
       'use_bfloat16': configs['train_config'].use_bfloat16 and use_tpu
   })
+  if sample_1_of_n_eval_examples >= 1:
+    kwargs.update({
+        'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples
+    })
   if override_eval_num_epochs:
     kwargs.update({'eval_num_epochs': 1})
     tf.logging.warning(
@@ -667,11 +669,6 @@ def create_estimator_and_inputs(run_config,
   model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu,
                               postprocess_on_cpu)
   if use_tpu_estimator:
-    # Multicore inference disabled due to b/129367127
-    tpu_estimator_args = function_utils.fn_args(tf.contrib.tpu.TPUEstimator)
-    kwargs = {}
-    if 'experimental_export_device_assignment' in tpu_estimator_args:
-      kwargs['experimental_export_device_assignment'] = True
     estimator = tf.contrib.tpu.TPUEstimator(
         model_fn=model_fn,
         train_batch_size=train_config.batch_size,
@@ -681,8 +678,7 @@ def create_estimator_and_inputs(run_config,
         config=run_config,
         export_to_tpu=export_to_tpu,
         eval_on_tpu=False,  # Eval runs on CPU, so disable eval on TPU
-        params=params if params else {},
-        **kwargs)
+        params=params if params else {})
   else:
     estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
 

@@ -49,14 +49,15 @@ class SequenceBeamSearchV2(v1.SequenceBeamSearch):
     # Account for corner case where there are no finished sequences for a
     # particular batch item. In that case, return alive sequences for that batch
     # item.
-    finished_seq = tf.where(seq_cond, finished_seq, alive_seq)
-    finished_scores = tf.where(score_cond, finished_scores, alive_log_probs)
+    finished_seq = tf.compat.v2.where(seq_cond, finished_seq, alive_seq)
+    finished_scores = tf.compat.v2.where(
+        score_cond, finished_scores, alive_log_probs)
     return finished_seq, finished_scores
 
 
 def sequence_beam_search(
     symbols_to_logits_fn, initial_ids, initial_cache, vocab_size, beam_size,
-    alpha, max_decode_length, eos_id):
+    alpha, max_decode_length, eos_id, dtype="float32"):
   """Search for sequence of subtoken ids with the largest probability.
 
   Args:
@@ -75,7 +76,8 @@ def sequence_beam_search(
     beam_size: int number of beams
     alpha: float defining the strength of length normalization
     max_decode_length: maximum length to decoded sequence
-    eos_id: int id of eos token, used to determine when a sequence has finished
+    eos_id: int id of eos token, used to determine when a sequence has finished,
+    dtype: The dtype to use.
 
   Returns:
     Top decoded sequences [batch_size, beam_size, max_decode_length]
@@ -84,10 +86,12 @@ def sequence_beam_search(
   batch_size = tf.shape(initial_ids)[0]
   if misc.is_v2():
     sbs = SequenceBeamSearchV2(symbols_to_logits_fn, vocab_size, batch_size,
-                               beam_size, alpha, max_decode_length, eos_id)
+                               beam_size, alpha, max_decode_length, eos_id,
+                               dtype)
   else:
     sbs = v1.SequenceBeamSearch(symbols_to_logits_fn, vocab_size, batch_size,
-                                beam_size, alpha, max_decode_length, eos_id)
+                                beam_size, alpha, max_decode_length, eos_id,
+                                dtype)
   return sbs.search(initial_ids, initial_cache)
 
 

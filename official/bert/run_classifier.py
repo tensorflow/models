@@ -29,12 +29,14 @@ import tensorflow as tf
 
 # Import BERT model libraries.
 from official.bert import bert_models
+from official.bert import common_flags
 from official.bert import input_pipeline
 from official.bert import model_saving_utils
 from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
 from official.bert import tpu_lib
+from official.utils.misc import keras_utils
 
 flags.DEFINE_enum(
     'mode', 'train_and_eval', ['train_and_eval', 'export_only'],
@@ -42,39 +44,23 @@ flags.DEFINE_enum(
     'trains the model and evaluates in the meantime. '
     '`export_only`: will take the latest checkpoint inside '
     'model_dir and export a `SavedModel`.')
-flags.DEFINE_string('bert_config_file', None,
-                    'Bert configuration file to define core bert layers.')
-flags.DEFINE_string(
-    'model_dir', None,
-    ('The directory where the model weights and training/evaluation summaries '
-     'are stored. If not specified, save to /tmp/bert20/.'))
-flags.DEFINE_string('tpu', '', 'TPU address to connect to.')
 flags.DEFINE_string('train_data_path', None,
                     'Path to training data for BERT classifier.')
 flags.DEFINE_string('eval_data_path', None,
                     'Path to evaluation data for BERT classifier.')
 flags.DEFINE_string(
-    'init_checkpoint', None,
-    'Initial checkpoint (usually from a pre-trained BERT model).')
-flags.DEFINE_string(
     'model_export_path', None,
     'Path to the directory, where trainined model will be '
     'exported.')
-flags.DEFINE_enum(
-    'strategy_type', 'mirror', ['tpu', 'mirror'],
-    'Distribution Strategy type to use for training. `tpu` uses '
-    'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
-    'single host.')
 # Model training specific flags.
 flags.DEFINE_string(
     'input_meta_data_path', None,
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
 flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
-flags.DEFINE_integer('eval_batch_size', 8, 'Batch size for evaluation.')
-flags.DEFINE_integer('num_train_epochs', 3,
-                     'Total number of training epochs to perform.')
-flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
+flags.DEFINE_integer('eval_batch_size', 32, 'Batch size for evaluation.')
+
+common_flags.define_common_bert_flags()
 
 FLAGS = flags.FLAGS
 
@@ -103,12 +89,14 @@ def run_customized_training(strategy,
                             model_dir,
                             epochs,
                             steps_per_epoch,
+                            steps_per_loop,
                             eval_steps,
                             warmup_steps,
                             initial_lr,
                             init_checkpoint,
                             use_remote_tpu=False,
-                            custom_callbacks=None):
+                            custom_callbacks=None,
+                            run_eagerly=False):
   """Run BERT classifier training using low-level API."""
   max_seq_length = input_meta_data['max_seq_length']
   num_classes = input_meta_data['num_labels']
@@ -148,6 +136,7 @@ def run_customized_training(strategy,
       loss_fn=loss_fn,
       model_dir=model_dir,
       steps_per_epoch=steps_per_epoch,
+      steps_per_loop=steps_per_loop,
       epochs=epochs,
       train_input_fn=train_input_fn,
       eval_input_fn=eval_input_fn,
@@ -155,7 +144,8 @@ def run_customized_training(strategy,
       init_checkpoint=init_checkpoint,
       metric_fn=metric_fn,
       use_remote_tpu=use_remote_tpu,
-      custom_callbacks=custom_callbacks)
+      custom_callbacks=custom_callbacks,
+      run_eagerly=run_eagerly)
 
 
 def export_classifier(model_export_path, input_meta_data):
@@ -172,13 +162,11 @@ def export_classifier(model_export_path, input_meta_data):
     raise ValueError('Export path is not specified: %s' % model_export_path)
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
 
-  def _model_fn():
-    return bert_models.classifier_model(bert_config, tf.float32,
-                                        input_meta_data['num_labels'],
-                                        input_meta_data['max_seq_length'])[0]
-
+  classifier_model = bert_models.classifier_model(
+      bert_config, tf.float32, input_meta_data['num_labels'],
+      input_meta_data['max_seq_length'])[0]
   model_saving_utils.export_bert_model(
-      model_export_path, model_fn=_model_fn, checkpoint_dir=FLAGS.model_dir)
+      model_export_path, model=classifier_model, checkpoint_dir=FLAGS.model_dir)
 
 
 def run_bert(strategy, input_meta_data):
@@ -189,6 +177,8 @@ def run_bert(strategy, input_meta_data):
 
   if FLAGS.mode != 'train_and_eval':
     raise ValueError('Unsupported mode is specified: %s' % FLAGS.mode)
+  # Enables XLA in Session Config. Should not be set for TPU.
+  keras_utils.set_config_v2(FLAGS.enable_xla)
 
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   epochs = FLAGS.num_train_epochs
@@ -204,18 +194,26 @@ def run_bert(strategy, input_meta_data):
   logging.info('Training using customized training loop TF 2.0 with distrubuted'
                'strategy.')
   use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
-  return run_customized_training(
+  trained_model = run_customized_training(
       strategy,
       bert_config,
       input_meta_data,
       FLAGS.model_dir,
       epochs,
       steps_per_epoch,
+      FLAGS.steps_per_loop,
       eval_steps,
       warmup_steps,
       FLAGS.learning_rate,
       FLAGS.init_checkpoint,
-      use_remote_tpu=use_remote_tpu)
+      use_remote_tpu=use_remote_tpu,
+      run_eagerly=FLAGS.run_eagerly)
+
+  if FLAGS.model_export_path:
+    with tf.device(model_training_utils.get_primary_cpu_task(use_remote_tpu)):
+      model_saving_utils.export_bert_model(
+          FLAGS.model_export_path, model=trained_model)
+  return trained_model
 
 
 def main(_):
@@ -244,4 +242,5 @@ def main(_):
 if __name__ == '__main__':
   flags.mark_flag_as_required('bert_config_file')
   flags.mark_flag_as_required('input_meta_data_path')
+  flags.mark_flag_as_required('model_dir')
   app.run(main)

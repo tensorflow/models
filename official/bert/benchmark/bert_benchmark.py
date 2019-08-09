@@ -49,13 +49,12 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
 
   def __init__(self, output_dir=None):
+    super(BertClassifyBenchmarkBase, self).__init__(output_dir)
     self.num_epochs = None
     self.num_steps_per_epoch = None
 
-    super(BertClassifyBenchmarkBase, self).__init__(output_dir)
-
   @flagsaver.flagsaver
-  def _run_bert_classifier(self, callbacks=None):
+  def _run_bert_classifier(self, callbacks=None, use_ds=True):
     """Starts BERT classification task."""
     with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
       input_meta_data = json.loads(reader.read().decode('utf-8'))
@@ -71,7 +70,10 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     eval_steps = int(
         math.ceil(input_meta_data['eval_data_size'] / FLAGS.eval_batch_size))
     strategy = distribution_utils.get_distribution_strategy(
-        distribution_strategy='mirrored', num_gpus=self.num_gpus)
+        distribution_strategy='mirrored' if use_ds else 'off',
+        num_gpus=self.num_gpus)
+
+    steps_per_loop = 1
 
     run_classifier.run_customized_training(
         strategy,
@@ -80,6 +82,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
         FLAGS.model_dir,
         epochs,
         steps_per_epoch,
+        steps_per_loop,
         eval_steps,
         warmup_steps,
         FLAGS.learning_rate,
@@ -112,11 +115,11 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
   def _run_and_report_benchmark(self,
                                 training_summary_path,
                                 min_accuracy=0,
-                                max_accuracy=1):
+                                max_accuracy=1,
+                                use_ds=True):
     """Starts BERT performance benchmark test."""
-
     start_time_sec = time.time()
-    self._run_bert_classifier(callbacks=[self.timer_callback])
+    self._run_bert_classifier(callbacks=[self.timer_callback], use_ds=use_ds)
     wall_time_sec = time.time() - start_time_sec
 
     with tf.io.gfile.GFile(training_summary_path, 'rb') as reader:
@@ -147,12 +150,45 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
+  def benchmark_1_gpu_mrpc_xla(self):
+    """Test BERT model performance with 1 GPU."""
+
+    self._setup()
+    self.num_gpus = 1
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_mrpc_xla')
+    FLAGS.train_data_path = self.train_data_path
+    FLAGS.eval_data_path = self.eval_data_path
+    FLAGS.input_meta_data_path = self.input_meta_data_path
+    FLAGS.bert_config_file = self.bert_config_file
+    FLAGS.train_batch_size = 4
+    FLAGS.eval_batch_size = 4
+    FLAGS.enable_xla = True
+
+    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    self._run_and_report_benchmark(summary_path)
+
+  def benchmark_1_gpu_mrpc_no_dist_strat(self):
+    """Test BERT model performance with 1 GPU, no distribution strategy."""
+
+    self._setup()
+    self.num_gpus = 1
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_mrpc_no_dist_strat')
+    FLAGS.train_data_path = self.train_data_path
+    FLAGS.eval_data_path = self.eval_data_path
+    FLAGS.input_meta_data_path = self.input_meta_data_path
+    FLAGS.bert_config_file = self.bert_config_file
+    FLAGS.train_batch_size = 4
+    FLAGS.eval_batch_size = 4
+
+    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    self._run_and_report_benchmark(summary_path, use_ds=False)
+
   def benchmark_2_gpu_mrpc(self):
     """Test BERT model performance with 2 GPUs."""
 
     self._setup()
     self.num_gpus = 2
-    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_mprc')
+    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_mrpc')
     FLAGS.train_data_path = self.train_data_path
     FLAGS.eval_data_path = self.eval_data_path
     FLAGS.input_meta_data_path = self.input_meta_data_path
@@ -228,6 +264,14 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
         min_accuracy=min_accuracy,
         max_accuracy=max_accuracy)
 
+  def _setup(self):
+    super(BertClassifyAccuracy, self)._setup()
+    FLAGS.train_data_path = self.train_data_path
+    FLAGS.eval_data_path = self.eval_data_path
+    FLAGS.input_meta_data_path = self.input_meta_data_path
+    FLAGS.bert_config_file = self.bert_config_file
+    FLAGS.init_checkpoint = self.pretrained_checkpoint_path
+
   def benchmark_8_gpu_mrpc(self):
     """Run BERT model accuracy test with 8 GPUs.
 
@@ -235,15 +279,17 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
     accuracy metric has high variance between trainings. As so, we
     set the wide range of allowed accuracy (84% to 88%).
     """
-
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mrpc')
-    FLAGS.train_data_path = self.train_data_path
-    FLAGS.eval_data_path = self.eval_data_path
-    FLAGS.input_meta_data_path = self.input_meta_data_path
-    FLAGS.bert_config_file = self.bert_config_file
-    FLAGS.init_checkpoint = self.pretrained_checkpoint_path
 
+    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    self._run_and_report_benchmark(summary_path)
+
+  def benchmark_8_gpu_mrpc_xla(self):
+    """Run BERT model accuracy test with 8 GPUs with XLA."""
+    self._setup()
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mrpc_xla')
+    FLAGS.enable_xla = True
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 

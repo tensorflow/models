@@ -18,17 +18,18 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import unittest
 
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.datasets import movielens
+from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.wide_deep import movielens_dataset
 from official.wide_deep import movielens_main
-from official.wide_deep import wide_deep_run_loop
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 TEST_INPUT_VALUES = {
@@ -70,20 +71,20 @@ class BaseTest(tf.test.TestCase):
   def setUp(self):
     # Create temporary CSV file
     self.temp_dir = self.get_temp_dir()
-    tf.gfile.MakeDirs(os.path.join(self.temp_dir, movielens.ML_1M))
+    tf.io.gfile.makedirs(os.path.join(self.temp_dir, movielens.ML_1M))
 
     self.ratings_csv = os.path.join(
         self.temp_dir, movielens.ML_1M, movielens.RATINGS_FILE)
     self.item_csv = os.path.join(
         self.temp_dir, movielens.ML_1M, movielens.MOVIES_FILE)
 
-    with tf.gfile.Open(self.ratings_csv, "w") as f:
+    with tf.io.gfile.GFile(self.ratings_csv, "w") as f:
       f.write(TEST_RATING_DATA)
 
-    with tf.gfile.Open(self.item_csv, "w") as f:
+    with tf.io.gfile.GFile(self.item_csv, "w") as f:
       f.write(TEST_ITEM_DATA)
 
-
+  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
   def test_input_fn(self):
     train_input_fn, _, _ = movielens_dataset.construct_input_fns(
         dataset=movielens.ML_1M, data_dir=self.temp_dir, batch_size=8, repeat=1)
@@ -91,7 +92,7 @@ class BaseTest(tf.test.TestCase):
     dataset = train_input_fn()
     features, labels = dataset.make_one_shot_iterator().get_next()
 
-    with self.test_session() as sess:
+    with self.session() as sess:
       features, labels = sess.run((features, labels))
 
       # Compare the two features dictionaries.
@@ -101,6 +102,7 @@ class BaseTest(tf.test.TestCase):
 
       self.assertAllClose(labels[0], [1.0])
 
+  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
   def test_end_to_end_deep(self):
     integration.run_synthetic(
         main=movielens_main.main, tmp_root=self.temp_dir,

@@ -32,6 +32,11 @@ from official.transformer.v2 import ffn_layer
 from official.transformer.v2 import metrics
 
 
+# Disable the not-callable lint error, since it claims many objects are not
+# callable when they actually are.
+# pylint: disable=not-callable
+
+
 def create_model(params, is_train):
   """Creates transformer model."""
   with tf.name_scope("model"):
@@ -42,10 +47,14 @@ def create_model(params, is_train):
       logits = internal_model([inputs, targets], training=is_train)
       vocab_size = params["vocab_size"]
       label_smoothing = params["label_smoothing"]
-      logits = metrics.MetricLayer(vocab_size)([logits, targets])
-      logits = metrics.LossLayer(vocab_size, label_smoothing)([logits, targets])
+      if params["enable_metrics_in_training"]:
+        logits = metrics.MetricLayer(vocab_size)([logits, targets])
       logits = tf.keras.layers.Lambda(lambda x: x, name="logits")(logits)
-      return tf.keras.Model([inputs, targets], logits)
+      model = tf.keras.Model([inputs, targets], logits)
+      loss = metrics.transformer_loss(
+          logits, targets, label_smoothing, vocab_size)
+      model.add_loss(loss)
+      return model
 
     else:
       inputs = tf.keras.layers.Input((None,), dtype="int64", name="inputs")
@@ -76,7 +85,7 @@ class Transformer(tf.keras.Model):
     super(Transformer, self).__init__(name=name)
     self.params = params
     self.embedding_softmax_layer = embedding_layer.EmbeddingSharedWeights(
-        params["vocab_size"], params["hidden_size"])
+        params["vocab_size"], params["hidden_size"], dtype=params["dtype"])
     self.encoder_stack = EncoderStack(params)
     self.decoder_stack = DecoderStack(params)
 
@@ -102,6 +111,7 @@ class Transformer(tf.keras.Model):
         returns a dictionary {
           outputs: [batch_size, decoded length]
           scores: [batch_size, float]}
+      Even when float16 is used, the output tensor(s) are always float32.
     """
     if len(inputs) == 2:
       inputs, targets = inputs[0], inputs[1]
@@ -141,12 +151,15 @@ class Transformer(tf.keras.Model):
       # Prepare inputs to the layer stack by adding positional encodings and
       # applying dropout.
       embedded_inputs = self.embedding_softmax_layer(inputs)
+      embedded_inputs = tf.cast(embedded_inputs, self.params["dtype"])
       inputs_padding = model_utils.get_padding(inputs)
+      attention_bias = tf.cast(attention_bias, self.params["dtype"])
 
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
         pos_encoding = model_utils.get_position_encoding(
             length, self.params["hidden_size"])
+        pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
 
       if training:
@@ -174,21 +187,25 @@ class Transformer(tf.keras.Model):
       # Prepare inputs to decoder layers by shifting targets, adding positional
       # encoding and applying dropout.
       decoder_inputs = self.embedding_softmax_layer(targets)
+      decoder_inputs = tf.cast(decoder_inputs, self.params['dtype'])
+      attention_bias = tf.cast(attention_bias, self.params["dtype"])
       with tf.name_scope("shift_targets"):
         # Shift targets to the right, and remove the last element
         decoder_inputs = tf.pad(decoder_inputs,
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
-        decoder_inputs += model_utils.get_position_encoding(
+        pos_encoding = model_utils.get_position_encoding(
             length, self.params["hidden_size"])
+        pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
+        decoder_inputs += pos_encoding
       if training:
         decoder_inputs = tf.nn.dropout(
             decoder_inputs, rate=self.params["layer_postprocess_dropout"])
 
       # Run values
       decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
-          length)
+          length, dtype=self.params['dtype'])
       outputs = self.decoder_stack(
           decoder_inputs,
           encoder_outputs,
@@ -196,6 +213,7 @@ class Transformer(tf.keras.Model):
           attention_bias,
           training=training)
       logits = self.embedding_softmax_layer(outputs, mode="linear")
+      logits = tf.cast(logits, tf.float32)
       return logits
 
   def _get_symbols_to_logits_fn(self, max_decode_length, training):
@@ -203,8 +221,9 @@ class Transformer(tf.keras.Model):
 
     timing_signal = model_utils.get_position_encoding(
         max_decode_length + 1, self.params["hidden_size"])
+    timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
-        max_decode_length)
+        max_decode_length, dtype=self.params["dtype"])
 
     def symbols_to_logits_fn(ids, i, cache):
       """Generate logits for next potential IDs.
@@ -247,6 +266,8 @@ class Transformer(tf.keras.Model):
     batch_size = tf.shape(encoder_outputs)[0]
     input_length = tf.shape(encoder_outputs)[1]
     max_decode_length = input_length + self.params["extra_decode_length"]
+    encoder_decoder_attention_bias = tf.cast(encoder_decoder_attention_bias,
+                                             self.params["dtype"])
 
     symbols_to_logits_fn = self._get_symbols_to_logits_fn(
         max_decode_length, training)
@@ -258,8 +279,10 @@ class Transformer(tf.keras.Model):
     # pylint: disable=g-complex-comprehension
     cache = {
         "layer_%d" % layer: {
-            "k": tf.zeros([batch_size, 0, self.params["hidden_size"]]),
-            "v": tf.zeros([batch_size, 0, self.params["hidden_size"]])
+            "k": tf.zeros([batch_size, 0, self.params["hidden_size"]],
+                          dtype=self.params["dtype"]),
+            "v": tf.zeros([batch_size, 0, self.params["hidden_size"]],
+                          dtype=self.params["dtype"])
         } for layer in range(self.params["num_hidden_layers"])
     }
     # pylint: enable=g-complex-comprehension
@@ -277,7 +300,8 @@ class Transformer(tf.keras.Model):
         beam_size=self.params["beam_size"],
         alpha=self.params["alpha"],
         max_decode_length=max_decode_length,
-        eos_id=EOS_ID)
+        eos_id=EOS_ID,
+        dtype=self.params["dtype"])
 
     # Get the top sequence for each batch element
     top_decoded_ids = decoded_ids[:, 0, 1:]
@@ -295,16 +319,22 @@ class LayerNormalization(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     """Builds the layer."""
+    # Passing experimental_autocast=False causes these variables to not be
+    # automatically casted to fp16 when mixed precision is used. Since we use
+    # float32 in call() for numeric stability, we do not want variables to be
+    # casted to fp16.
     self.scale = self.add_weight(
         "layer_norm_scale",
         shape=[self.hidden_size],
         dtype="float32",
-        initializer=tf.ones_initializer())
+        initializer=tf.ones_initializer(),
+        experimental_autocast=False)
     self.bias = self.add_weight(
         "layer_norm_bias",
         shape=[self.hidden_size],
         dtype="float32",
-        initializer=tf.zeros_initializer())
+        initializer=tf.zeros_initializer(),
+        experimental_autocast=False)
     super(LayerNormalization, self).build(input_shape)
 
   def get_config(self):
@@ -313,10 +343,13 @@ class LayerNormalization(tf.keras.layers.Layer):
     }
 
   def call(self, x, epsilon=1e-6):
+    input_dtype = x.dtype
+    if input_dtype == tf.float16:
+      x = tf.cast(x, tf.float32)
     mean = tf.reduce_mean(x, axis=[-1], keepdims=True)
     variance = tf.reduce_mean(tf.square(x - mean), axis=[-1], keepdims=True)
     norm_x = (x - mean) * tf.math.rsqrt(variance + epsilon)
-    return norm_x * self.scale + self.bias
+    return tf.cast(norm_x * self.scale + self.bias, input_dtype)
 
 
 class PrePostProcessingWrapper(tf.keras.layers.Layer):

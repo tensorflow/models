@@ -206,6 +206,9 @@ def _build_ssd_feature_extractor(feature_extractor_config,
             feature_extractor_config.replace_preprocessor_with_placeholder
     })
 
+  if feature_extractor_config.HasField('num_layers'):
+    kwargs.update({'num_layers': feature_extractor_config.num_layers})
+
   if is_keras_extractor:
     kwargs.update({
         'conv_hyperparams': conv_hyperparams,

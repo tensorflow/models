@@ -20,7 +20,12 @@ detection is supported by default.
 Based on the settings, per image evaluation is either performed on boxes or
 on object masks.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import range
 
 from object_detection.utils import np_box_list
 from object_detection.utils import np_box_list_ops

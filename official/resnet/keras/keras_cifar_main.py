@@ -20,14 +20,15 @@ from __future__ import print_function
 
 from absl import app as absl_app
 from absl import flags
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
-from official.resnet import cifar10_main as cifar_main
+from official.resnet.keras import cifar_preprocessing
 from official.resnet.keras import keras_common
 from official.resnet.keras import resnet_cifar_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 
 
 LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
@@ -64,28 +65,6 @@ def learning_rate_schedule(current_epoch,
   return learning_rate
 
 
-def parse_record_keras(raw_record, is_training, dtype):
-  """Parses a record containing a training example of an image.
-
-  The input record is parsed into a label and image, and the image is passed
-  through preprocessing steps (cropping, flipping, and so on).
-
-  This method converts the label to one hot to fit the loss function.
-
-  Args:
-    raw_record: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
-    is_training: A boolean denoting whether the input is for training.
-    dtype: Data type to use for input images.
-
-  Returns:
-    Tuple with processed image tensor and one-hot-encoded label tensor.
-  """
-  image, label = cifar_main.parse_record(raw_record, is_training, dtype)
-  label = tf.compat.v1.sparse_to_dense(label, (cifar_main.NUM_CLASSES,), 1)
-  return image, label
-
-
 def run(flags_obj):
   """Run ResNet Cifar-10 training and eval loop using native Keras APIs.
 
@@ -98,17 +77,14 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  # TODO(tobyboyd): Remove eager flag when tf 1.0 testing ends.
-  # Eager is default in tf 2.0 and should not be toggled
-  if keras_common.is_v2_0():
-    keras_common.set_config_v2()
-  else:
-    config = keras_common.get_config_proto_v1()
-    if flags_obj.enable_eager:
-      tf.compat.v1.enable_eager_execution(config=config)
-    else:
-      sess = tf.Session(config=config)
-      tf.keras.backend.set_session(sess)
+  keras_utils.set_session_config(
+      enable_eager=flags_obj.enable_eager,
+      enable_xla=flags_obj.enable_xla)
+
+  # Execute flag override logic for better model performance
+  if flags_obj.tf_gpu_thread_mode:
+    keras_common.set_gpu_thread_mode_and_count(flags_obj)
+  keras_common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
@@ -123,63 +99,105 @@ def run(flags_obj):
 
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
-      num_gpus=flags_obj.num_gpus)
+      num_gpus=flags_obj.num_gpus,
+      num_workers=distribution_utils.configure_cluster(),
+      all_reduce_alg=flags_obj.all_reduce_alg,
+      num_packs=flags_obj.num_packs)
+
+  if strategy:
+    # flags_obj.enable_get_next_as_optional controls whether enabling
+    # get_next_as_optional behavior in DistributedIterator. If true, last
+    # partial batch can be supported.
+    strategy.extended.experimental_enable_get_next_as_optional = (
+        flags_obj.enable_get_next_as_optional
+    )
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
     input_fn = keras_common.get_synth_input_fn(
-        height=cifar_main.HEIGHT,
-        width=cifar_main.WIDTH,
-        num_channels=cifar_main.NUM_CHANNELS,
-        num_classes=cifar_main.NUM_CLASSES,
-        dtype=flags_core.get_tf_dtype(flags_obj))
+        height=cifar_preprocessing.HEIGHT,
+        width=cifar_preprocessing.WIDTH,
+        num_channels=cifar_preprocessing.NUM_CHANNELS,
+        num_classes=cifar_preprocessing.NUM_CLASSES,
+        dtype=flags_core.get_tf_dtype(flags_obj),
+        drop_remainder=True)
   else:
     distribution_utils.undo_set_up_synthetic_data()
-    input_fn = cifar_main.input_fn
+    input_fn = cifar_preprocessing.input_fn
 
   train_input_dataset = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras)
+      parse_record_fn=cifar_preprocessing.parse_record,
+      datasets_num_private_threads=flags_obj.datasets_num_private_threads,
+      dtype=dtype,
+      # Setting drop_remainder to avoid the partial batch logic in normalization
+      # layer, which triggers tf.where and leads to extra memory copy of input
+      # sizes between host and GPU.
+      drop_remainder=(not flags_obj.enable_get_next_as_optional))
 
-  eval_input_dataset = input_fn(
-      is_training=False,
-      data_dir=flags_obj.data_dir,
-      batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
-      parse_record_fn=parse_record_keras)
+  eval_input_dataset = None
+  if not flags_obj.skip_eval:
+    eval_input_dataset = input_fn(
+        is_training=False,
+        data_dir=flags_obj.data_dir,
+        batch_size=flags_obj.batch_size,
+        num_epochs=flags_obj.train_epochs,
+        parse_record_fn=cifar_preprocessing.parse_record)
 
   with strategy_scope:
     optimizer = keras_common.get_optimizer()
-    model = resnet_cifar_model.resnet56(classes=cifar_main.NUM_CLASSES)
+    model = resnet_cifar_model.resnet56(classes=cifar_preprocessing.NUM_CLASSES)
 
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=optimizer,
-                  run_eagerly=flags_obj.run_eagerly,
-                  metrics=['categorical_accuracy'])
+    # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
+    # a valid arg for this model. Also remove as a valid flag.
+    if flags_obj.force_v2_in_keras_compile is not None:
+      model.compile(
+          loss='categorical_crossentropy',
+          optimizer=optimizer,
+          metrics=(['categorical_accuracy']
+                   if flags_obj.report_accuracy_metrics else None),
+          run_eagerly=flags_obj.run_eagerly,
+          experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
+    else:
+      model.compile(
+          loss='categorical_crossentropy',
+          optimizer=optimizer,
+          metrics=(['categorical_accuracy']
+                   if flags_obj.report_accuracy_metrics else None),
+          run_eagerly=flags_obj.run_eagerly)
 
   callbacks = keras_common.get_callbacks(
-      learning_rate_schedule, cifar_main.NUM_IMAGES['train'])
+      learning_rate_schedule, cifar_preprocessing.NUM_IMAGES['train'])
 
-  train_steps = cifar_main.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_steps = cifar_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size
   train_epochs = flags_obj.train_epochs
 
   if flags_obj.train_steps:
     train_steps = min(flags_obj.train_steps, train_steps)
     train_epochs = 1
 
-  num_eval_steps = (cifar_main.NUM_IMAGES['validation'] //
+  num_eval_steps = (cifar_preprocessing.NUM_IMAGES['validation'] //
                     flags_obj.batch_size)
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
-    tf.keras.backend.set_learning_phase(1)
+    if flags_obj.set_learning_phase_to_train:
+      # TODO(haoyuzhang): Understand slowdown of setting learning phase when
+      # not using distribution strategy.
+      tf.keras.backend.set_learning_phase(1)
     num_eval_steps = None
     validation_data = None
+
+  if not strategy and flags_obj.explicit_gpu_placement:
+    # TODO(b/135607227): Add device scope automatically in Keras training loop
+    # when not using distribition strategy.
+    no_dist_strat_device = tf.device('/device:GPU:0')
+    no_dist_strat_device.__enter__()
 
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
@@ -194,8 +212,22 @@ def run(flags_obj):
     eval_output = model.evaluate(eval_input_dataset,
                                  steps=num_eval_steps,
                                  verbose=2)
+
+  if not strategy and flags_obj.explicit_gpu_placement:
+    no_dist_strat_device.__exit__()
+
   stats = keras_common.build_stats(history, eval_output, callbacks)
   return stats
+
+
+def define_cifar_flags():
+  keras_common.define_keras_flags(dynamic_loss_scale=False)
+
+  flags_core.set_defaults(data_dir='/tmp/cifar10_data/cifar-10-batches-bin',
+                          model_dir='/tmp/cifar10_model',
+                          train_epochs=182,
+                          epochs_between_evals=10,
+                          batch_size=128)
 
 
 def main(_):
@@ -205,6 +237,5 @@ def main(_):
 
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  cifar_main.define_cifar_flags()
-  keras_common.define_keras_flags()
+  define_cifar_flags()
   absl_app.run(main)

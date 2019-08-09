@@ -46,7 +46,7 @@ FLAGS = tf.app.flags.FLAGS
 # Basic model parameters.
 tf.app.flags.DEFINE_integer('batch_size', 128,
                             """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_boolean('use_fp16', False,
+tf.app.flags.DEFINE_boolean('use_fp16', True,
                             """Train the model using fp16.""")
 
 # Global constants describing the CIFAR-10 data set.
@@ -146,7 +146,6 @@ def distorted_inputs():
 
 def inputs(eval_data):
   """Construct input for CIFAR evaluation using the Reader ops.
-
   Args:
     eval_data: bool, indicating if one should use the train or eval data set.
 
@@ -154,8 +153,7 @@ def inputs(eval_data):
     images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
     labels: Labels. 1D tensor of [batch_size] size.
   """
-  images, labels = cifar10_input.inputs(eval_data=eval_data,
-                                        batch_size=FLAGS.batch_size)
+  images, labels = cifar10_input.inputs(eval_data=eval_data, batch_size=FLAGS.batch_size)
   if FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
     labels = tf.cast(labels, tf.float16)

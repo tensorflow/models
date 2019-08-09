@@ -13,15 +13,22 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for google3.third_party.tensorflow_models.object_detection.core.batch_multiclass_nms."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from absl.testing import parameterized
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 from object_detection.core import post_processing
 from object_detection.utils import test_case
 
 
-class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase):
+class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase,
+                                           parameterized.TestCase):
 
-  def test_batch_multiclass_nms_with_batch_size_1(self):
+  @parameterized.named_parameters(('', False), ('_use_static_shapes', True))
+  def test_batch_multiclass_nms_with_batch_size_1(self, use_static_shapes):
     boxes = tf.constant([[[[0, 0, 1, 1], [0, 0, 4, 5]],
                           [[0, 0.1, 1, 1.1], [0, 0.1, 2, 1.1]],
                           [[0, -0.1, 1, 0.9], [0, -0.1, 1, 0.9]],
@@ -47,10 +54,15 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase):
     exp_nms_classes = [[0, 0, 1, 0]]
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
-     nmsed_additional_fields, num_detections
-    ) = post_processing.batch_multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh,
-        max_size_per_class=max_output_size, max_total_size=max_output_size)
+     nmsed_additional_fields,
+     num_detections) = post_processing.batch_multiclass_non_max_suppression(
+         boxes,
+         scores,
+         score_thresh,
+         iou_thresh,
+         max_size_per_class=max_output_size,
+         max_total_size=max_output_size,
+         use_static_shapes=use_static_shapes)
 
     self.assertIsNone(nmsed_masks)
     self.assertIsNone(nmsed_additional_fields)
@@ -63,6 +75,17 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase):
       self.assertAllClose(nmsed_scores, exp_nms_scores)
       self.assertAllClose(nmsed_classes, exp_nms_classes)
       self.assertEqual(num_detections, [4])
+
+  def test_batch_iou_with_negative_data(self):
+    boxes = tf.constant([[[0, -0.01, 0.1, 1.1], [0, 0.2, 0.2, 5.0],
+                          [0, -0.01, 0.1, 1.], [-1, -1, -1, -1]]], tf.float32)
+    iou = post_processing.batch_iou(boxes, boxes)
+    expected_iou = [[[0.99999994, 0.0917431, 0.9099099, -1.],
+                     [0.0917431, 1., 0.08154944, -1.],
+                     [0.9099099, 0.08154944, 1., -1.], [-1., -1., -1., -1.]]]
+    with self.test_session() as sess:
+      iou = sess.run(iou)
+      self.assertAllClose(iou, expected_iou)
 
   def test_batch_multiclass_nms_with_batch_size_2(self):
     boxes = tf.constant([[[[0, 0, 1, 1], [0, 0, 4, 5]],

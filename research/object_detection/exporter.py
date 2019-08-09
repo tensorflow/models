@@ -58,8 +58,11 @@ def rewrite_nn_resize_op(is_quantized=False):
       inputs=[graph_matcher.OneofPattern([fake_quant_pattern, mul_pattern]),
               'Const'],
       ordered_inputs=False)
+  add_type_name = 'Add'
+  if tf.compat.forward_compatible(2019, 6, 26):
+    add_type_name = 'AddV2'
   add_pattern = graph_matcher.OpTypePattern(
-      'Add', inputs=[reshape_2_pattern, '*'], ordered_inputs=False)
+      add_type_name, inputs=[reshape_2_pattern, '*'], ordered_inputs=False)
 
   matcher = graph_matcher.GraphMatcher(add_pattern)
   for match in matcher.match_graph(tf.get_default_graph()):
@@ -179,6 +182,10 @@ def add_output_tensor_nodes(postprocessed_tensors,
     * detection_multiclass_scores: (Optional) float32 tensor of shape
       [batch_size, num_boxes, num_classes_with_background] for containing class
       score distribution for detected boxes including background if any.
+    * detection_features: (Optional) float32 tensor of shape
+      [batch, num_boxes, roi_height, roi_width, depth]
+      containing classifier features
+      for each detected box
     * detection_classes: float32 tensor of shape [batch_size, num_boxes]
       containing class predictions for the detected boxes.
     * detection_keypoints: (Optional) float32 tensor of shape
@@ -194,6 +201,7 @@ def add_output_tensor_nodes(postprocessed_tensors,
       'detection_scores': [batch, max_detections]
       'detection_multiclass_scores': [batch, max_detections,
         num_classes_with_background]
+      'detection_features': [batch, num_boxes, roi_height, roi_width, depth]
       'detection_classes': [batch, max_detections]
       'detection_masks': [batch, max_detections, mask_height, mask_width]
         (optional).
@@ -211,6 +219,8 @@ def add_output_tensor_nodes(postprocessed_tensors,
   scores = postprocessed_tensors.get(detection_fields.detection_scores)
   multiclass_scores = postprocessed_tensors.get(
       detection_fields.detection_multiclass_scores)
+  box_classifier_features = postprocessed_tensors.get(
+      detection_fields.detection_features)
   raw_boxes = postprocessed_tensors.get(detection_fields.raw_detection_boxes)
   raw_scores = postprocessed_tensors.get(detection_fields.raw_detection_scores)
   classes = postprocessed_tensors.get(
@@ -226,6 +236,10 @@ def add_output_tensor_nodes(postprocessed_tensors,
   if multiclass_scores is not None:
     outputs[detection_fields.detection_multiclass_scores] = tf.identity(
         multiclass_scores, name=detection_fields.detection_multiclass_scores)
+  if box_classifier_features is not None:
+    outputs[detection_fields.detection_features] = tf.identity(
+        box_classifier_features,
+        name=detection_fields.detection_features)
   outputs[detection_fields.detection_classes] = tf.identity(
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(

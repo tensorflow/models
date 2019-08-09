@@ -160,7 +160,12 @@ class _LayersOverride(object):
     """
     if self._conv_hyperparams:
       kwargs = self._conv_hyperparams.params(**kwargs)
+      # Both the regularizer and initializer apply to the depthwise layer in
+      # MobilenetV1, so we remap the kernel_* to depthwise_* here.
+      kwargs['depthwise_regularizer'] = kwargs['kernel_regularizer']
+      kwargs['depthwise_initializer'] = kwargs['kernel_initializer']
     else:
+      kwargs['depthwise_regularizer'] = self.regularizer
       kwargs['depthwise_initializer'] = self.initializer
 
     kwargs['padding'] = 'same'

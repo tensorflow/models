@@ -309,14 +309,10 @@ def _gather_run_info(model_name, dataset_name, run_params, test_id):
       "test_id": test_id,
       "run_date": datetime.datetime.utcnow().strftime(
           _DATE_TIME_FORMAT_PATTERN)}
-  session_config = None
-  if "session_config" in run_params:
-    session_config = run_params["session_config"]
   _collect_tensorflow_info(run_info)
   _collect_tensorflow_environment_variables(run_info)
   _collect_run_params(run_info, run_params)
   _collect_cpu_info(run_info)
-  _collect_gpu_info(run_info, session_config)
   _collect_memory_info(run_info)
   _collect_test_environment(run_info)
   return run_info
@@ -389,24 +385,6 @@ def _collect_cpu_info(run_info):
   except ImportError:
     tf.compat.v1.logging.warn(
         "'cpuinfo' not imported. CPU info will not be logged.")
-
-
-def _collect_gpu_info(run_info, session_config=None):
-  """Collect local GPU information by TF device library."""
-  gpu_info = {}
-  local_device_protos = device_lib.list_local_devices(session_config)
-
-  gpu_info["count"] = len([d for d in local_device_protos
-                           if d.device_type == "GPU"])
-  # The device description usually is a JSON string, which contains the GPU
-  # model info, eg:
-  # "device: 0, name: Tesla P100-PCIE-16GB, pci bus id: 0000:00:04.0"
-  for d in local_device_protos:
-    if d.device_type == "GPU":
-      gpu_info["model"] = _parse_gpu_model(d.physical_device_desc)
-      # Assume all the GPU connected are same model
-      break
-  run_info["machine_config"]["gpu_info"] = gpu_info
 
 
 def _collect_memory_info(run_info):

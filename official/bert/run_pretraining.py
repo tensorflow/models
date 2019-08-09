@@ -27,7 +27,9 @@ import tensorflow as tf
 
 # Import BERT model libraries.
 from official.bert import bert_models
+from official.bert import common_flags
 from official.bert import input_pipeline
+from official.bert import model_saving_utils
 from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
@@ -35,18 +37,6 @@ from official.bert import tpu_lib
 
 flags.DEFINE_string('input_files', None,
                     'File path to retrieve training data for pre-training.')
-flags.DEFINE_string('bert_config_file', None,
-                    'Bert configuration file to define core bert layers.')
-flags.DEFINE_string(
-    'model_dir', None,
-    ('The directory where the model weights and training/evaluation summaries '
-     'are stored. If not specified, save to /tmp/bert20/.'))
-flags.DEFINE_string('tpu', '', 'TPU address to connect to.')
-flags.DEFINE_enum(
-    'strategy_type', 'mirror', ['tpu', 'mirror'],
-    'Distribution Strategy type to use for training. `tpu` uses '
-    'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
-    'single host.')
 # Model training specific flags.
 flags.DEFINE_integer(
     'max_seq_length', 128,
@@ -56,13 +46,12 @@ flags.DEFINE_integer(
 flags.DEFINE_integer('max_predictions_per_seq', 20,
                      'Maximum predictions per sequence_output.')
 flags.DEFINE_integer('train_batch_size', 32, 'Total batch size for training.')
-flags.DEFINE_integer('num_train_epochs', 3,
-                     'Total number of training epochs to perform.')
 flags.DEFINE_integer('num_steps_per_epoch', 1000,
                      'Total number of training steps to run per epoch.')
-flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
 flags.DEFINE_float('warmup_steps', 10000,
                    'Warmup steps for Adam weight decay optimizer.')
+
+common_flags.define_common_bert_flags()
 
 FLAGS = flags.FLAGS
 
@@ -88,14 +77,18 @@ def get_pretrain_input_data(input_file_pattern, seq_length,
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
 
   def _dataset_fn(ctx=None):
-    del ctx
-
+    """Returns tf.data.Dataset for distributed BERT pretraining."""
     input_files = []
     for input_pattern in input_file_pattern.split(','):
       input_files.extend(tf.io.gfile.glob(input_pattern))
 
     train_dataset = input_pipeline.create_pretrain_dataset(
-        input_files, seq_length, max_predictions_per_seq, batch_size)
+        input_files,
+        seq_length,
+        max_predictions_per_seq,
+        batch_size,
+        is_training=True,
+        input_pipeline_context=ctx)
     return train_dataset
 
   return _dataset_fn if use_dataset_fn else _dataset_fn()
@@ -116,6 +109,7 @@ def run_customized_training(strategy,
                             max_predictions_per_seq,
                             model_dir,
                             steps_per_epoch,
+                            steps_per_loop,
                             epochs,
                             initial_lr,
                             warmup_steps,
@@ -135,15 +129,26 @@ def run_customized_training(strategy,
         initial_lr, steps_per_epoch * epochs, warmup_steps)
     return pretrain_model, core_model
 
-  return model_training_utils.run_customized_training_loop(
+  trained_model = model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_pretrain_model,
       loss_fn=get_loss_fn(),
       model_dir=model_dir,
       train_input_fn=train_input_fn,
       steps_per_epoch=steps_per_epoch,
+      steps_per_loop=steps_per_loop,
       epochs=epochs,
       use_remote_tpu=use_remote_tpu)
+
+  # Creates the BERT core model outside distribution strategy scope.
+  _, core_model = bert_models.pretrain_model(bert_config, max_seq_length,
+                                             max_predictions_per_seq)
+
+  # Restores the core model from model checkpoints and get a new checkpoint only
+  # contains the core model.
+  model_saving_utils.export_pretraining_checkpoint(
+      checkpoint_dir=model_dir, model=core_model)
+  return trained_model
 
 
 def run_bert_pretrain(strategy):
@@ -165,6 +170,7 @@ def run_bert_pretrain(strategy):
       FLAGS.max_predictions_per_seq,
       FLAGS.model_dir,
       FLAGS.num_steps_per_epoch,
+      FLAGS.steps_per_loop,
       FLAGS.num_train_epochs,
       FLAGS.learning_rate,
       FLAGS.warmup_steps,
@@ -192,7 +198,7 @@ def main(_):
   if strategy:
     print('***** Number of cores used : ', strategy.num_replicas_in_sync)
 
-  return run_bert_pretrain(strategy)
+  run_bert_pretrain(strategy)
 
 
 if __name__ == '__main__':

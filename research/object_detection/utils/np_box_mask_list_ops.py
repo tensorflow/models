@@ -19,7 +19,12 @@ Example box operations that are supported:
   * Areas: compute bounding box areas
   * IOU: pairwise intersection-over-union scores
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import range
 
 from object_detection.utils import np_box_list_ops
 from object_detection.utils import np_box_mask_list

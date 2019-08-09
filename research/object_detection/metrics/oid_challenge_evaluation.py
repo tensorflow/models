@@ -40,6 +40,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import logging
+
 from absl import app
 from absl import flags
 import pandas as pd
@@ -120,20 +122,22 @@ def main(unused_argv):
       object_detection_evaluation.OpenImagesChallengeEvaluator(
           categories, evaluate_masks=is_instance_segmentation_eval))
 
+  all_predictions = pd.read_csv(FLAGS.input_predictions)
+  images_processed = 0
   for _, groundtruth in enumerate(all_annotations.groupby('ImageID')):
+    logging.info('Processing image %d', images_processed)
     image_id, image_groundtruth = groundtruth
     groundtruth_dictionary = utils.build_groundtruth_dictionary(
         image_groundtruth, class_label_map)
     challenge_evaluator.add_single_ground_truth_image_info(
         image_id, groundtruth_dictionary)
 
-  all_predictions = pd.read_csv(FLAGS.input_predictions)
-  for _, prediction_data in enumerate(all_predictions.groupby('ImageID')):
-    image_id, image_predictions = prediction_data
     prediction_dictionary = utils.build_predictions_dictionary(
-        image_predictions, class_label_map)
+        all_predictions.loc[all_predictions['ImageID'] == image_id],
+        class_label_map)
     challenge_evaluator.add_single_detected_image_info(image_id,
                                                        prediction_dictionary)
+    images_processed += 1
 
   metrics = challenge_evaluator.evaluate()
 

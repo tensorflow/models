@@ -29,6 +29,7 @@ import tensorflow as tf
 
 # Import BERT model libraries.
 from official.bert import bert_models
+from official.bert import common_flags
 from official.bert import input_pipeline
 from official.bert import model_training_utils
 from official.bert import modeling
@@ -36,36 +37,18 @@ from official.bert import optimization
 from official.bert import squad_lib
 from official.bert import tokenization
 from official.bert import tpu_lib
+from official.utils.misc import keras_utils
 
 flags.DEFINE_bool('do_train', False, 'Whether to run training.')
 flags.DEFINE_bool('do_predict', False, 'Whether to run eval on the dev set.')
 flags.DEFINE_string('train_data_path', '',
                     'Training data path with train tfrecords.')
-flags.DEFINE_string('bert_config_file', None,
-                    'Bert configuration file to define core bert layers.')
-flags.DEFINE_string(
-    'model_dir', None,
-    ('The directory where the model weights and training/evaluation summaries '
-     'are stored.'))
 flags.DEFINE_string(
     'input_meta_data_path', None,
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
-flags.DEFINE_string('tpu', '', 'TPU address to connect to.')
-flags.DEFINE_string(
-    'init_checkpoint', None,
-    'Initial checkpoint (usually from a pre-trained BERT model).')
-flags.DEFINE_enum(
-    'strategy_type', 'mirror', ['tpu', 'mirror'],
-    'Distribution Strategy type to use for training. `tpu` uses '
-    'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
-    'single host.')
 # Model training specific flags.
 flags.DEFINE_integer('train_batch_size', 32, 'Total batch size for training.')
-flags.DEFINE_integer('num_train_epochs', 3,
-                     'Total number of training epochs to perform.')
-flags.DEFINE_float('learning_rate', 5e-5, 'The initial learning rate for Adam.')
-
 # Predict processing related.
 flags.DEFINE_string('predict_file', None,
                     'Prediction data path with train tfrecords.')
@@ -90,6 +73,8 @@ flags.DEFINE_integer(
     'The maximum length of an answer that can be generated. This is needed '
     'because the start and end predictions are not conditioned on one another.')
 
+common_flags.define_common_bert_flags()
+
 FLAGS = flags.FLAGS
 
 
@@ -97,7 +82,7 @@ def squad_loss_fn(start_positions,
                   end_positions,
                   start_logits,
                   end_logits,
-                  loss_scale=1.0):
+                  loss_factor=1.0):
   """Returns sparse categorical crossentropy for start/end logits."""
   start_loss = tf.keras.backend.sparse_categorical_crossentropy(
       start_positions, start_logits, from_logits=True)
@@ -105,11 +90,11 @@ def squad_loss_fn(start_positions,
       end_positions, end_logits, from_logits=True)
 
   total_loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
-  total_loss *= loss_scale
+  total_loss *= loss_factor
   return total_loss
 
 
-def get_loss_fn(loss_scale=1.0):
+def get_loss_fn(loss_factor=1.0):
   """Gets a loss function for squad task."""
 
   def _loss_fn(labels, model_outputs):
@@ -121,7 +106,7 @@ def get_loss_fn(loss_scale=1.0):
         end_positions,
         start_logits,
         end_logits,
-        loss_scale=loss_scale)
+        loss_factor=loss_factor)
 
   return _loss_fn
 
@@ -160,7 +145,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
     logging.info('Restoring checkpoints from %s', checkpoint_path)
     checkpoint = tf.train.Checkpoint(model=squad_model)
-    checkpoint.restore(checkpoint_path)
+    checkpoint.restore(checkpoint_path).expect_partial()
 
     @tf.function
     def predict_step(iterator):
@@ -177,7 +162,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
 
       outputs = strategy.experimental_run_v2(
           _replicated_step, args=(next(iterator),))
-      return tf.nest.map_structure(strategy.unwrap, outputs)
+      return tf.nest.map_structure(strategy.experimental_local_results, outputs)
 
     all_results = []
     for _ in range(num_steps):
@@ -189,13 +174,21 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     return all_results
 
 
-def train_squad(strategy, input_meta_data, custom_callbacks=None):
+def train_squad(strategy,
+                input_meta_data,
+                custom_callbacks=None,
+                run_eagerly=False):
   """Run bert squad training."""
-  if not strategy:
-    raise ValueError('Distribution strategy cannot be None.')
+  if strategy:
+    logging.info('Training using customized training loop with distribution'
+                 ' strategy.')
+  # Enables XLA in Session Config. Should not be set for TPU.
+  keras_utils.set_config_v2(FLAGS.enable_xla)
 
-  logging.info('Training using customized training loop with distribution'
-               ' strategy.')
+  use_float16 = common_flags.use_float16()
+  if use_float16:
+    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
+    tf.keras.mixed_precision.experimental.set_policy(policy)
 
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   epochs = FLAGS.num_train_epochs
@@ -211,17 +204,24 @@ def train_squad(strategy, input_meta_data, custom_callbacks=None):
       is_training=True)
 
   def _get_squad_model():
+    """Get Squad model and optimizer."""
     squad_model, core_model = bert_models.squad_model(
-        bert_config, max_seq_length, float_type=tf.float32)
+        bert_config,
+        max_seq_length,
+        float_type=tf.float16 if use_float16 else tf.float32)
     squad_model.optimizer = optimization.create_optimizer(
         FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
+    if use_float16:
+      squad_model.optimizer = (
+          tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+              squad_model.optimizer, loss_scale=common_flags.get_loss_scale()))
     return squad_model, core_model
 
   # The original BERT model does not scale the loss by
   # 1/num_replicas_in_sync. It could be an accident. So, in order to use
   # the same hyper parameter, we do the same thing here by keeping each
   # replica loss as it is.
-  loss_fn = get_loss_fn(loss_scale=1.0)
+  loss_fn = get_loss_fn(loss_factor=1.0)
   use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
 
   model_training_utils.run_customized_training_loop(
@@ -230,10 +230,12 @@ def train_squad(strategy, input_meta_data, custom_callbacks=None):
       loss_fn=loss_fn,
       model_dir=FLAGS.model_dir,
       steps_per_epoch=steps_per_epoch,
+      steps_per_loop=FLAGS.steps_per_loop,
       epochs=epochs,
       train_input_fn=train_input_fn,
       init_checkpoint=FLAGS.init_checkpoint,
       use_remote_tpu=use_remote_tpu,
+      run_eagerly=run_eagerly,
       custom_callbacks=custom_callbacks)
 
 
