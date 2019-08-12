@@ -33,7 +33,7 @@ from official.bert import model_saving_utils
 from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
-from official.bert import tpu_lib
+from official.utils.misc import tpu_lib
 
 flags.DEFINE_string('input_files', None,
                     'File path to retrieve training data for pre-training.')

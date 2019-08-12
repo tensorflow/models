@@ -35,8 +35,8 @@ from official.bert import model_saving_utils
 from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
-from official.bert import tpu_lib
 from official.utils.misc import keras_utils
+from official.utils.misc import tpu_lib
 
 flags.DEFINE_enum(
     'mode', 'train_and_eval', ['train_and_eval', 'export_only'],
