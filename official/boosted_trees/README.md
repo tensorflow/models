@@ -1,4 +1,8 @@
 # Classifying Higgs boson processes in the HIGGS Data Set
+## Archive
+
+This model is subjected to be archived to r1/ folder.
+
 ## Overview
 The [HIGGS Data Set](https://archive.ics.uci.edu/ml/datasets/HIGGS) contains 11 million samples with 28 features, and is for the classification problem to distinguish between a signal process which produces Higgs bosons and a background process which does not.
 

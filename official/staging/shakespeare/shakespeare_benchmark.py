@@ -355,7 +355,6 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.batch_size = 64 * 8
-    FLAGS.log_steps = 10
     FLAGS.cudnn = False
     FLAGS.enable_eager = keras_utils.is_v2_0()
     self._run_and_report_benchmark()
@@ -374,7 +373,6 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.batch_size = 64 * 8
-    FLAGS.log_steps = 10
     FLAGS.cudnn = False
     FLAGS.enable_eager = keras_utils.is_v2_0()
     FLAGS.enable_xla = True

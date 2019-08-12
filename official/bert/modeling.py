@@ -723,6 +723,15 @@ class TransformerBlock(tf.keras.layers.Layer):
         name="output_layer_norm", axis=-1, epsilon=1e-12)
     super(TransformerBlock, self).build(unused_input_shapes)
 
+  def common_layers(self):
+    """Explicitly gets all layer objects inside a Transformer encoder block."""
+    return [
+        self.attention_layer, self.attention_output_dense,
+        self.attention_dropout, self.attention_layer_norm,
+        self.intermediate_dense, self.output_dense, self.output_dropout,
+        self.output_layer_norm
+    ]
+
   def __call__(self, input_tensor, attention_mask=None):
     inputs = pack_inputs([input_tensor, attention_mask])
     return super(TransformerBlock, self).__call__(inputs)

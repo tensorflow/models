@@ -14,7 +14,7 @@
 # ==============================================================================
 """Initializes TPU system for TF 2.0."""
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 def tpu_initialize(tpu_address):
