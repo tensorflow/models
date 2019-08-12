@@ -37,7 +37,6 @@ from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
-
 FLAGS = flags.FLAGS
 
 
@@ -60,13 +59,8 @@ def get_inputs(params):
         dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
         constructor_type=FLAGS.constructor_type,
         deterministic=FLAGS.seed is not None)
-
-    num_train_steps = (producer.train_batches_per_epoch //
-                       params["batches_per_step"])
-    num_eval_steps = (producer.eval_batches_per_epoch //
-                      params["batches_per_step"])
-    assert not producer.train_batches_per_epoch % params["batches_per_step"]
-    assert not producer.eval_batches_per_epoch % params["batches_per_step"]
+    num_train_steps = producer.train_batches_per_epoch
+    num_eval_steps = producer.eval_batches_per_epoch
 
   return num_users, num_items, num_train_steps, num_eval_steps, producer
 
@@ -74,18 +68,13 @@ def get_inputs(params):
 def parse_flags(flags_obj):
   """Convenience function to turn flags into params."""
   num_gpus = flags_core.get_num_gpus(flags_obj)
-  num_devices = FLAGS.num_tpu_shards if FLAGS.tpu else num_gpus or 1
 
-  batch_size = (flags_obj.batch_size + num_devices - 1) // num_devices
-
-  eval_divisor = (rconst.NUM_EVAL_NEGATIVES + 1) * num_devices
+  batch_size = flags_obj.batch_size
   eval_batch_size = flags_obj.eval_batch_size or flags_obj.batch_size
-  eval_batch_size = ((eval_batch_size + eval_divisor - 1) //
-                     eval_divisor * eval_divisor // num_devices)
 
   return {
       "train_epochs": flags_obj.train_epochs,
-      "batches_per_step": num_devices,
+      "batches_per_step": 1,
       "use_seed": flags_obj.seed is not None,
       "batch_size": batch_size,
       "eval_batch_size": eval_batch_size,
@@ -95,6 +84,7 @@ def parse_flags(flags_obj):
       "mf_regularization": flags_obj.mf_regularization,
       "mlp_reg_layers": [float(reg) for reg in flags_obj.mlp_regularization],
       "num_neg": flags_obj.num_neg,
+      "distribution_strategy": flags_obj.distribution_strategy,
       "num_gpus": num_gpus,
       "use_tpu": flags_obj.tpu is not None,
       "tpu": flags_obj.tpu,
@@ -115,7 +105,7 @@ def parse_flags(flags_obj):
   }
 
 
-def get_distribution_strategy(params):
+def get_v1_distribution_strategy(params):
   """Returns the distribution strategy to use."""
   if params["use_tpu"]:
     # Some of the networking libraries are quite chatty.

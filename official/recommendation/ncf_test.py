@@ -189,7 +189,7 @@ class NcfTest(tf.test.TestCase):
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
-  _BASE_END_TO_END_FLAGS = ['-batch_size', '1024', '-train_epochs', '1']
+  _BASE_END_TO_END_FLAGS = ['-batch_size', '1044', '-train_epochs', '1']
 
   @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
