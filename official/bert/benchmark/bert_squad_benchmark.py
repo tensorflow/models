@@ -152,7 +152,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_squad')
-    FLAGS.train_batch_size = 4
+    FLAGS.train_batch_size = 3
 
     self._run_and_report_benchmark()
 
@@ -174,7 +174,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat_squad')
-    FLAGS.train_batch_size = 4
+    FLAGS.train_batch_size = 3
 
     self._run_and_report_benchmark(use_ds=False)
 
@@ -185,7 +185,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu_eager_no_dist_strat_squad')
-    FLAGS.train_batch_size = 4
+    FLAGS.train_batch_size = 3
 
     self._run_and_report_benchmark(use_ds=False, run_eagerly=True)
 
@@ -195,7 +195,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 2
     FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_squad')
-    FLAGS.train_batch_size = 8
+    FLAGS.train_batch_size = 6
 
     self._run_and_report_benchmark()
 
@@ -205,7 +205,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 4
     FLAGS.model_dir = self._get_model_dir('benchmark_4_gpu_squad')
-    FLAGS.train_batch_size = 16
+    FLAGS.train_batch_size = 12
 
     self._run_and_report_benchmark()
 
@@ -215,7 +215,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad')
-    FLAGS.train_batch_size = 32
+    FLAGS.train_batch_size = 24
 
     self._run_and_report_benchmark()
 
@@ -337,7 +337,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad')
-    FLAGS.train_batch_size = 32
+    FLAGS.train_batch_size = 24
 
     self._run_and_report_benchmark()
 
