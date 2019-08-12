@@ -36,8 +36,8 @@ from official.bert import modeling
 from official.bert import optimization
 from official.bert import squad_lib
 from official.bert import tokenization
-from official.bert import tpu_lib
 from official.utils.misc import keras_utils
+from official.utils.misc import tpu_lib
 
 flags.DEFINE_bool('do_train', False, 'Whether to run training.')
 flags.DEFINE_bool('do_predict', False, 'Whether to run eval on the dev set.')
