@@ -1126,8 +1126,17 @@ def combined_non_max_suppression(boxes,
                                  iou_thresh,
                                  max_size_per_class,
                                  max_total_size=0,
+                                 clip_window=None,
+                                 change_coordinate_frame=False,
+                                 num_valid_boxes=None,
+                                 masks=None,
+                                 additional_fields=None,
+                                 soft_nms_sigma=0.0,
+                                 scope=None,
                                  use_static_shapes=False,
-                                 scope=None):
+                                 parallel_iterations=32,
+                                 use_class_agnostic_nms=False,
+                                 max_classes_per_detection=1):
   """Multi-class version of non maximum suppression that operates on a batch.
 
   This function uses TensorFlow operator "CombinedNonMaxSuppression".
@@ -1137,55 +1146,42 @@ def combined_non_max_suppression(boxes,
   Within each batch, it operates independently for each class for which
   scores are provided (via the scores field of the input box_list),
   pruning boxes with score less than a provided threshold prior to applying NMS.
-  
-  Please note that this operation is performed on *all* batches and *all* classes
-  in the batch, therefore any background classes should be removed prior to
-  calling this function. 
-  
-  This op is similar to `multiclass_non_max_suppression` but operates on
+
+  Please note that this operation is performed on *all* batches and
+  *all* classes in the batch, therefore any background classes
+  should be removed prior to calling this function.
+
+  This op is similar to `batch_multiclass_non_max_suppression` but operates on
   a batch of boxes and scores. See documentation for
-  `multiclass_non_max_suppression` for additional details.
-
-  Args:
-    boxes: A [batch_size, num_anchors, q, 4] float32 tensor containing
-      detections. If `q` is 1 then same boxes are used for all classes
-        otherwise, if `q` is equal to number of classes, class-specific boxes
-        are used.
-    scores: A [batch_size, num_anchors, num_classes] float32 tensor containing
-      the scores for each of the `num_anchors` detections. The scores have to be
-      non-negative when use_static_shapes is set True.
-    score_thresh: scalar threshold for score (low scoring boxes are removed).
-    iou_thresh: scalar threshold for IOU (new boxes that have high IOU overlap
-      with previously selected boxes are removed).
-    max_size_per_class: maximum number of retained boxes per class.
-    max_total_size: maximum number of boxes retained over all classes. By
-      default returns all boxes retained after capping boxes per class.
-    use_static_shapes: If false, the outputs nmsed_boxes, scores, classes and
-      selected_indices are padded/clipped to `max_total_size`. If true, the
-      output nmsed boxes, scores, classes and selected_indices are
-      padded/clipped to be of length `max_size_per_class` or `max_total_size`.
-      Defaults to false.
-    scope: tf scope name.
-
-  Returns:
-    'nmsed_boxes': A [batch_size, max_detections, 4] float32 tensor
-      containing the non-max suppressed boxes.
-    'nmsed_scores': A [batch_size, max_detections] float32 tensor containing
-      the scores for the boxes.
-    'nmsed_classes': A [batch_size, max_detections] float32 tensor
-      containing the class for boxes.
-    'num_detections': A [batch_size] int32 tensor indicating the number of
-      valid detections per batch item. Only the top num_detections[i] entries in
-      nms_boxes[i], nms_scores[i] and nms_class[i] are valid. The rest of the
-      entries are zero paddings.
-
-  Raises:
-    ValueError: if `q` in boxes.shape is not 1 or not equal to number of
-      classes as inferred from scores.shape.
+  `batch_multiclass_non_max_suppression` for additional details.
   """
 
+  if change_coordinate_frame:
+    raise ValueError('change_coordinate_frame (normalizing coordinates relative'
+                     'to clip_window) is not supported by combined_nms')
+  if num_valid_boxes is not None:
+    raise ValueError('num_valid_boxes is not supported by combined_nms')
+  if masks is not None:
+    raise ValueError('masks is not supported by combined_nms')
+  if soft_nms_sigma != 0.0:
+    raise ValueError('Soft NMS is not supported by combined_nms')
+  if use_class_agnostic_nms:
+    raise ValueError('class-agnostic NMS is not supported by combined_nms')
+
+  if clip_window is not None:
+    tf.compat.v1.logging.warning('clip_window is not supported by combined_nms'
+                       'unless it is [0. 0. 1. 1.] for each image')
+  if additional_fields is not None:
+    tf.compat.v1.logging.warning('additional_fields is not supported by combined_nms')
+  if parallel_iterations != 32:
+    tf.compat.v1.logging.warning('Number of batch items to be processed in parallel'
+                       'is not configurable by combined_nms')
+  if max_classes_per_detection > 1:
+    tf.compat.v1.logging.warning('max_classes_per_detection is not configurable'
+                       'by combined_nms')
   with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
-    nmsed_boxes, nmsed_scores, nmsed_classes, num_detections = tf.image.combined_non_max_suppression(
+    nmsed_boxes, nmsed_scores, nmsed_classes, num_detections = \
+        tf.image.combined_non_max_suppression(
             boxes, scores, max_size_per_class, max_total_size, iou_thresh,
             score_thresh, use_static_shapes)
 
@@ -1193,6 +1189,4 @@ def combined_non_max_suppression(boxes,
     batch_nmsed_additional_fields = None
     #TODO supriyar: Set static shapes here?
     return (nmsed_boxes, nmsed_scores, nmsed_classes, batch_nmsed_masks,
-           batch_nmsed_additional_fields, num_detections)
-
- 
+            batch_nmsed_additional_fields, num_detections)
