@@ -302,37 +302,10 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.force_v2_in_keras_compile = False
     self._run_and_report_benchmark_mlperf_like()
 
-  def benchmark_xla_8_gpu_mlperf_like(self):
-    """8 GPU using keras fit/compile with XLA."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.enable_xla = True
-    FLAGS.train_epochs = 17
-    FLAGS.batch_size = 1048576
-    FLAGS.learning_rate = 0.0045
-    FLAGS.beta1 = 0.25
-    FLAGS.beta2 = 0.5
-    FLAGS.epsilon = 1e-8
-    self._run_and_report_benchmark_mlperf_like()
-
   def benchmark_8_gpu_ctl_mlperf_like(self):
     """8 GPU using CTL."""
     self._setup()
     FLAGS.keras_use_ctl = True
-    FLAGS.num_gpus = 8
-    FLAGS.train_epochs = 17
-    FLAGS.batch_size = 1048576
-    FLAGS.learning_rate = 0.0045
-    FLAGS.beta1 = 0.25
-    FLAGS.beta2 = 0.5
-    FLAGS.epsilon = 1e-8
-    self._run_and_report_benchmark_mlperf_like()
-
-  def benchmark_xla_8_gpu_ctl_mlperf_like(self):
-    """8 GPU using CTL with XLA."""
-    self._setup()
-    FLAGS.keras_use_ctl = True
-    FLAGS.enable_xla = True
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576
