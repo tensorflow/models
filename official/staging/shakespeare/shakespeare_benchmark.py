@@ -208,21 +208,6 @@ class ShakespeareAccuracy(ShakespeareBenchmarkBase):
     FLAGS.model_dir = ''
     self._run_and_report_benchmark()
 
-  def benchmark_xla_8_gpu(self):
-    """Benchmark 8 gpu w/xla.
-
-    This is test is for accuracy not scaling.  The batch-size is not scaled to
-    the number of gpus.
-    """
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.training_data = self.train_data
-    FLAGS.batch_size = 64
-    FLAGS.train_epochs = 43
-    FLAGS.model_dir = ''
-    FLAGS.enable_xla = True
-    self._run_and_report_benchmark()
-
 
 class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
   """Benchmark accuracy tests."""
