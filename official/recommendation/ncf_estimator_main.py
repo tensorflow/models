@@ -66,7 +66,7 @@ def construct_estimator(model_dir, params):
   Returns:
     An Estimator or TPUEstimator.
   """
-  distribution = ncf_common.get_distribution_strategy(params)
+  distribution = ncf_common.get_v1_distribution_strategy(params)
   run_config = tf.estimator.RunConfig(train_distribute=distribution,
                                       eval_distribute=distribution)
 
