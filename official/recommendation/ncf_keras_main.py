@@ -64,12 +64,20 @@ class MetricLayer(tf.keras.layers.Layer):
   def __init__(self, params):
     super(MetricLayer, self).__init__()
     self.params = params
-    self.metric = tf.keras.metrics.Mean(name=rconst.HR_METRIC_NAME)
 
-  def call(self, inputs):
+  def call(self, inputs, training=False):
     logits, dup_mask = inputs
-    in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
-    self.add_metric(self.metric(in_top_k, sample_weight=metric_weights))
+
+    if training:
+      hr_sum = 0.0
+      hr_count = 0.0
+    else:
+      metric, metric_weights = metric_fn(logits, dup_mask, self.params)
+      hr_sum = tf.reduce_sum(metric * metric_weights)
+      hr_count = tf.reduce_sum(metric_weights)
+
+    self.add_metric(hr_sum, name="hr_sum", aggregation="mean")
+    self.add_metric(hr_count, name="hr_count", aggregation="mean")
     return logits
 
 
@@ -249,7 +257,7 @@ def run_ncf(_):
     (train_input_dataset, eval_input_dataset,
      num_train_steps, num_eval_steps) = \
       (ncf_input_pipeline.create_ncf_input_data(
-          params, producer, input_meta_data))
+          params, producer, input_meta_data, strategy))
     steps_per_epoch = None if generate_input_online else num_train_steps
 
     with distribution_utils.get_strategy_scope(strategy):
@@ -295,10 +303,18 @@ def run_ncf(_):
 
         logging.info("Training done. Start evaluating")
 
-        eval_results = keras_model.evaluate(
+        eval_loss_and_metrics = keras_model.evaluate(
             eval_input_dataset, steps=num_eval_steps, verbose=2)
 
         logging.info("Keras evaluation is done.")
+
+        # Keras evaluate() API returns scalar loss and metric values from
+        # evaluation as a list. Here, the returned list would contain
+        # [evaluation loss, hr sum, hr count].
+        eval_hit_rate = eval_loss_and_metrics[1] / eval_loss_and_metrics[2]
+
+        # Format evaluation result into [eval loss, eval hit accuracy].
+        eval_results = [eval_loss_and_metrics[0], eval_hit_rate]
 
         if history and history.history:
           train_history = history.history
