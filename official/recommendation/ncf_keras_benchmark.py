@@ -199,6 +199,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
+    FLAGS.eval_batch_size = 160000
     self._run_and_report_benchmark()
 
   def benchmark_2_gpus_ctl_early_stop(self):
@@ -207,6 +208,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.keras_use_ctl = True
     FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
+    FLAGS.eval_batch_size = 160000
     self._run_and_report_benchmark()
 
 #############################################
@@ -283,6 +285,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 160000
     FLAGS.learning_rate = 0.0045
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
@@ -295,6 +298,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 160000
     FLAGS.learning_rate = 0.0045
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
@@ -309,6 +313,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 160000
     FLAGS.learning_rate = 0.0045
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
@@ -329,6 +334,7 @@ class NCFKerasSynth(NCFKerasBenchmarkBase):
     default_flags['num_gpus'] = 1
     default_flags['train_epochs'] = 8
     default_flags['batch_size'] = 99000
+    default_flags['eval_batch_size'] = 160000
     default_flags['learning_rate'] = 0.00382059
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003

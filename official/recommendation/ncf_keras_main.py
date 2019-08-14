@@ -66,10 +66,16 @@ class MetricLayer(tf.keras.layers.Layer):
     self.params = params
     self.metric = tf.keras.metrics.Mean(name=rconst.HR_METRIC_NAME)
 
-  def call(self, inputs):
+  def call(self, inputs, training=False):
     logits, dup_mask = inputs
-    in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
-    self.add_metric(self.metric(in_top_k, sample_weight=metric_weights))
+
+    if not training:
+      in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
+      metric = self.metric(in_top_k, sample_weight=metric_weights)
+    else:
+      metric = 0.0
+
+    self.add_metric(metric, name="ncf_metric", aggregation="mean")
     return logits
 
 
@@ -249,7 +255,7 @@ def run_ncf(_):
     (train_input_dataset, eval_input_dataset,
      num_train_steps, num_eval_steps) = \
       (ncf_input_pipeline.create_ncf_input_data(
-          params, producer, input_meta_data))
+          params, producer, input_meta_data, strategy))
     steps_per_epoch = None if generate_input_online else num_train_steps
 
     with distribution_utils.get_strategy_scope(strategy):
