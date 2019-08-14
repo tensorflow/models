@@ -31,3 +31,8 @@ def tpu_initialize(tpu_address):
   tf.config.experimental_connect_to_host(cluster_resolver.master())
   tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
   return cluster_resolver
+
+
+def get_primary_cpu_task(use_remote_tpu=False):
+  """Returns remote TPU worker address. No-op for GPU/CPU training."""
+  return "/job:worker" if use_remote_tpu else ""

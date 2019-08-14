@@ -181,6 +181,13 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_ctl_run_eagerly_early_stop(self):
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.early_stopping = True
+    FLAGS.run_eagerly = True
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu_ctl_early_stop(self):
     self._setup()
     FLAGS.keras_use_ctl = True
@@ -203,7 +210,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._run_and_report_benchmark()
 
 #############################################
-# Tests below with mlperf in the test name are of two types
+# Tests below with mlperf in the test name are of two types:
 #  1) 1 GPU tests are based on MLPerf 0.5 and the TensorFlow pulled submission.
 #  2) 8 GPU tests are based on MLPerf 0.5 and use NVIDIA's hyper parameters.
 #
@@ -254,6 +261,14 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark_mlperf_like()
 
+  def benchmark_1_gpu_ctl_run_eagerly_mlperf_like(self):
+    """1 GPU using CTL with eager and distribution strategy."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.run_eagerly = True
+    FLAGS.train_epochs = 7
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu_ctl_mlperf_like(self):
     """1 GPU using CTL with XLA."""
     self._setup()
@@ -287,37 +302,10 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.force_v2_in_keras_compile = False
     self._run_and_report_benchmark_mlperf_like()
 
-  def benchmark_xla_8_gpu_mlperf_like(self):
-    """8 GPU using keras fit/compile with XLA."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.enable_xla = True
-    FLAGS.train_epochs = 17
-    FLAGS.batch_size = 1048576
-    FLAGS.learning_rate = 0.0045
-    FLAGS.beta1 = 0.25
-    FLAGS.beta2 = 0.5
-    FLAGS.epsilon = 1e-8
-    self._run_and_report_benchmark_mlperf_like()
-
   def benchmark_8_gpu_ctl_mlperf_like(self):
     """8 GPU using CTL."""
     self._setup()
     FLAGS.keras_use_ctl = True
-    FLAGS.num_gpus = 8
-    FLAGS.train_epochs = 17
-    FLAGS.batch_size = 1048576
-    FLAGS.learning_rate = 0.0045
-    FLAGS.beta1 = 0.25
-    FLAGS.beta2 = 0.5
-    FLAGS.epsilon = 1e-8
-    self._run_and_report_benchmark_mlperf_like()
-
-  def benchmark_xla_8_gpu_ctl_mlperf_like(self):
-    """8 GPU using CTL with XLA."""
-    self._setup()
-    FLAGS.keras_use_ctl = True
-    FLAGS.enable_xla = True
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576

@@ -35,8 +35,8 @@ from official.bert import model_saving_utils
 from official.bert import model_training_utils
 from official.bert import modeling
 from official.bert import optimization
-from official.bert import tpu_lib
 from official.utils.misc import keras_utils
+from official.utils.misc import tpu_lib
 
 flags.DEFINE_enum(
     'mode', 'train_and_eval', ['train_and_eval', 'export_only'],
@@ -95,7 +95,8 @@ def run_customized_training(strategy,
                             initial_lr,
                             init_checkpoint,
                             use_remote_tpu=False,
-                            custom_callbacks=None):
+                            custom_callbacks=None,
+                            run_eagerly=False):
   """Run BERT classifier training using low-level API."""
   max_seq_length = input_meta_data['max_seq_length']
   num_classes = input_meta_data['num_labels']
@@ -143,7 +144,8 @@ def run_customized_training(strategy,
       init_checkpoint=init_checkpoint,
       metric_fn=metric_fn,
       use_remote_tpu=use_remote_tpu,
-      custom_callbacks=custom_callbacks)
+      custom_callbacks=custom_callbacks,
+      run_eagerly=run_eagerly)
 
 
 def export_classifier(model_export_path, input_meta_data):
@@ -204,7 +206,8 @@ def run_bert(strategy, input_meta_data):
       warmup_steps,
       FLAGS.learning_rate,
       FLAGS.init_checkpoint,
-      use_remote_tpu=use_remote_tpu)
+      use_remote_tpu=use_remote_tpu,
+      run_eagerly=FLAGS.run_eagerly)
 
   if FLAGS.model_export_path:
     with tf.device(model_training_utils.get_primary_cpu_task(use_remote_tpu)):

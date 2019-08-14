@@ -243,7 +243,7 @@ def run_customized_training_loop(
 
         inputs, labels = inputs
         with tf.GradientTape() as tape:
-          model_outputs = model(inputs)
+          model_outputs = model(inputs, training=True)
           loss = loss_fn(labels, model_outputs)
           if use_float16:
             scaled_loss = optimizer.get_scaled_loss(loss)

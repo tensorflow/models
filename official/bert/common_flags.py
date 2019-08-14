@@ -45,8 +45,11 @@ def define_common_bert_flags():
       'inside.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
+  flags.DEFINE_boolean(
+      'run_eagerly', False,
+      'Run the model op by op without building a model function.')
 
-  # add flags for mixed precision training.
+  # Adds flags for mixed precision training.
   flags_core.define_performance(
       num_parallel_calls=False,
       inter_op=False,
