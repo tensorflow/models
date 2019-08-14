@@ -1,6 +1,6 @@
 # Predicting Income with the Census Income Dataset
 
-Note that, the implementation is based on TF 1.x.
+Note that the implementation is based on TF 1.x.
 It is subjected to move to R1 archive folder.
 
 ## Overview
