@@ -30,6 +30,31 @@ Our current released checkpoints are exactly the same as TF 1.x official BERT
 repository, thus inside `BertConfig`, there is `backward_compatible=True`. We
 are going to release new pre-trained checkpoints soon.
 
+### Access to Pretrained Checkpoints
+
+We provide checkpoints that are converted from [google-research/bert](https://github.com/google-research/bert),
+in order to keep consistent with BERT paper.
+
+*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/wwm_uncased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Large, Cased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/wwm_cased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Uncased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/uncased_L-12_H-768_A-12.tar.gz)**:
+    12-layer, 768-hidden, 12-heads, 110M parameters
+*   **[`BERT-Large, Uncased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/cased_L-12_H-768_A-12.tar.gz)**:
+    12-layer, 768-hidden, 12-heads , 110M parameters
+*   **[`BERT-Large, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/cased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+
+We recommend to host checkpoints on Google Cloud storage buckets when you use
+Cloud GPU/TPU. For example, in the following tutorial, we use:
+
+```shell
+export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16
+```
+
 ### Restoring from Checkpoints
 
 `tf.train.Checkpoint` is used to manage model checkpoints in TF 2.0. To restore
