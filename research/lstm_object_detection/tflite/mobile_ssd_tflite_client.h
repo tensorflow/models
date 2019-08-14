@@ -26,7 +26,7 @@ limitations under the License.
 #include "mobile_ssd_client.h"
 #include "protos/anchor_generation_options.pb.h"
 #ifdef ENABLE_EDGETPU
-#include "libedgetpu/edgetpu.h"
+#include "libedgetpu/libedgetpu.h"
 #endif  // ENABLE_EDGETPU
 
 namespace lstm_object_detection {
