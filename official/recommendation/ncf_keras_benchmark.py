@@ -23,7 +23,6 @@ import time
 
 from absl import flags
 from absl.testing import flagsaver
-
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.recommendation import ncf_common
@@ -260,6 +259,15 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.keras_use_ctl = True
     FLAGS.train_epochs = 7
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_1_gpu_ctl_fp16_mlperf_like(self):
+    """1 GPU using CTL."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
     self._run_and_report_benchmark_mlperf_like()
 
   def benchmark_1_gpu_ctl_run_eagerly_mlperf_like(self):

@@ -261,8 +261,11 @@ def run_ncf(_):
           beta_2=params["beta2"],
           epsilon=params["epsilon"])
       if FLAGS.dtype == "fp16":
-        optimizer = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
-            optimizer, loss_scale=flags_core.get_loss_scale(FLAGS, default_for_fp16="dynamic"))
+        optimizer = \
+          tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
+              optimizer,
+              loss_scale=flags_core.get_loss_scale(FLAGS,
+                                                   default_for_fp16="dynamic"))
 
       if params["keras_use_ctl"]:
         train_loss, eval_results = run_ncf_custom_training(
