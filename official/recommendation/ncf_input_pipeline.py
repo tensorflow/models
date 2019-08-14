@@ -117,10 +117,7 @@ def create_dataset_from_data_producer(producer, params):
   return train_input_dataset, eval_input_dataset
 
 
-def create_ncf_input_data(params,
-                          producer=None,
-                          input_meta_data=None,
-                          strategy=None):
+def create_ncf_input_data(params, producer=None, input_meta_data=None):
   """Creates NCF training/evaluation dataset.
 
   Args:
@@ -131,9 +128,6 @@ def create_ncf_input_data(params,
     input_meta_data: A dictionary of input metadata to be used when reading data
       from tf record files. Must be specified when params["train_input_dataset"]
       is specified.
-    strategy: Distribution strategy used for distributed training. If specified,
-      used to assert that evaluation batch size is correctly a multiple of
-      total number of devices used.
 
   Returns:
     (training dataset, evaluation dataset, train steps per epoch,
@@ -142,17 +136,6 @@ def create_ncf_input_data(params,
   Raises:
     ValueError: If data is being generated online for when using TPU's.
   """
-  # NCF evaluation metric calculation logic assumes that evaluation data
-  # sample size are in multiples of (1 + number of negative samples in
-  # evaluation) for each device. As so, evaluation batch size must be a
-  # multiple of (number of replicas * (1 + number of negative samples)).
-  num_devices = strategy.num_replicas_in_sync if strategy else 1
-  if (params["eval_batch_size"] % (num_devices *
-                                   (1 + rconst.NUM_EVAL_NEGATIVES))):
-    raise ValueError("Evaluation batch size must be divisible by {} "
-                     "times {}".format(num_devices,
-                                       (1 + rconst.NUM_EVAL_NEGATIVES)))
-
   if params["train_dataset_path"]:
     assert params["eval_dataset_path"]
 
