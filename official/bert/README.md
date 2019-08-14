@@ -1,8 +1,5 @@
 # BERT (Bidirectional Encoder Representations from Transformers)
 
-Note> Please do not create pull request. This model is still under development
-and testing.
-
 The academic paper which describes BERT in detail and provides full results on a
 number of tasks can be found here: https://arxiv.org/abs/1810.04805.
 
@@ -95,9 +92,9 @@ Second, you need to install TF 2.0 `tf-night` on your VM:
 pip install tf-nightly-2.0-preview
 ```
 
-Warning: More details TPU-specific set-up instructions and tutorial for TF 2.0
-are coming. Note that this repo is not officially supported by Google Cloud TPU
-team yet.
+Warning: More details TPU-specific set-up instructions and tutorial should come
+along with official TF 2.x release for TPU. Note that this repo is not officially
+supported by Google Cloud TPU team yet.
 
 ## Process Datasets
 
