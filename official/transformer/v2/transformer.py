@@ -49,8 +49,10 @@ def create_model(params, is_train):
       label_smoothing = params["label_smoothing"]
       if params["enable_metrics_in_training"]:
         logits = metrics.MetricLayer(vocab_size)([logits, targets])
-      logits = tf.keras.layers.Lambda(lambda x: x, name="logits")(logits)
+      logits = tf.keras.layers.Lambda(lambda x: x, name="logits",
+                                      dtype="float32")(logits)
       model = tf.keras.Model([inputs, targets], logits)
+      # TODO(reedwm): Can we do this loss in float16 instead of float32?
       loss = metrics.transformer_loss(
           logits, targets, label_smoothing, vocab_size)
       model.add_loss(loss)
@@ -85,7 +87,7 @@ class Transformer(tf.keras.Model):
     super(Transformer, self).__init__(name=name)
     self.params = params
     self.embedding_softmax_layer = embedding_layer.EmbeddingSharedWeights(
-        params["vocab_size"], params["hidden_size"], dtype=params["dtype"])
+        params["vocab_size"], params["hidden_size"])
     self.encoder_stack = EncoderStack(params)
     self.decoder_stack = DecoderStack(params)
 
