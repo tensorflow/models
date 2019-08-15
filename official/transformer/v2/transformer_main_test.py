@@ -89,6 +89,10 @@ class TransformerTaskTest(tf.test.TestCase):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
     FLAGS.distribution_strategy = 'one_device'
+    if tf.test.is_built_with_cuda():
+      FLAGS.num_gpus = 1
+    else:
+      FLAGS.num_gpus = 0
     FLAGS.static_batch = True
     t = tm.TransformerTask(FLAGS)
     t.train()
