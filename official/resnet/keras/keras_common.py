@@ -262,6 +262,7 @@ def define_keras_flags(dynamic_loss_scale=True):
                                 force_v2_in_keras_compile=True)
   flags_core.define_image()
   flags_core.define_benchmark()
+  flags_core.define_distribution()
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')

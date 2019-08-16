@@ -896,5 +896,96 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
         log_steps=FLAGS.log_steps)
 
 
+class Resnet50MultiWorkerKerasBenchmark(Resnet50KerasBenchmarkBase):
+  """Resnet50 distributed benchmark tests with multiple workers."""
+
+  def __init__(self, output_dir=None, default_flags=None):
+    super(Resnet50MultiWorkerKerasBenchmark, self).__init__(
+        output_dir=output_dir, default_flags=default_flags)
+
+  def _benchmark_common(self, eager, num_workers, all_reduce_alg):
+    """Common to all benchmarks in this class."""
+    self._setup()
+
+    num_gpus = 8
+    FLAGS.num_gpus = num_gpus
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = eager
+    FLAGS.enable_xla = False
+    FLAGS.distribution_strategy = 'multi_worker_mirrored'
+    FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_8_gpu_{}_worker_fp16_{}_tweaked'.format(
+            num_workers, all_reduce_alg))
+    FLAGS.batch_size = 256 * num_gpus * num_workers
+    FLAGS.all_reduce_alg = all_reduce_alg
+
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_8_gpu_1_worker_fp16_ring_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 1 worker, fp16, ring all-reduce."""
+    self._benchmark_common(eager=False, num_workers=1, all_reduce_alg='ring')
+
+  def benchmark_graph_8_gpu_1_worker_fp16_nccl_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 1 worker, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=False, num_workers=1, all_reduce_alg='nccl')
+
+  def benchmark_graph_8_gpu_2_workers_fp16_ring_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
+    self._benchmark_common(eager=False, num_workers=2, all_reduce_alg='ring')
+
+  def benchmark_graph_8_gpu_2_workers_fp16_nccl_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 2 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=False, num_workers=2, all_reduce_alg='nccl')
+
+  def benchmark_graph_8_gpu_8_workers_fp16_ring_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 8 workers, fp16, ring all-reduce."""
+    self._benchmark_common(eager=False, num_workers=8, all_reduce_alg='ring')
+
+  def benchmark_graph_8_gpu_8_workers_fp16_nccl_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 8 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=False, num_workers=8, all_reduce_alg='nccl')
+
+  def benchmark_eager_8_gpu_1_worker_fp16_ring_tweaked(self):
+    """Eager, 8 GPUs per worker, 1 worker, fp16, ring all-reduce."""
+    self._benchmark_common(eager=True, num_workers=1, all_reduce_alg='ring')
+
+  def benchmark_eager_8_gpu_1_worker_fp16_nccl_tweaked(self):
+    """Eager, 8 GPUs per worker, 1 worker, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=True, num_workers=1, all_reduce_alg='nccl')
+
+  def benchmark_eager_8_gpu_2_workers_fp16_ring_tweaked(self):
+    """Eager, 8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
+    self._benchmark_common(eager=True, num_workers=2, all_reduce_alg='ring')
+
+  def benchmark_eager_8_gpu_2_workers_fp16_nccl_tweaked(self):
+    """Eager, 8 GPUs per worker, 2 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=True, num_workers=2, all_reduce_alg='nccl')
+
+  def benchmark_eager_8_gpu_8_workers_fp16_ring_tweaked(self):
+    """Eager, 8 GPUs per worker, 8 workers, fp16, ring all-reduce."""
+    self._benchmark_common(eager=True, num_workers=8, all_reduce_alg='ring')
+
+  def benchmark_eager_8_gpu_8_workers_fp16_nccl_tweaked(self):
+    """Eager, 8 GPUs per worker, 8 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=True, num_workers=8, all_reduce_alg='nccl')
+
+
+class Resnet50MultiWorkerKerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
+  """Resnet50 multi-worker synthetic benchmark tests."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    def_flags = {}
+    def_flags['skip_eval'] = True
+    def_flags['report_accuracy_metrics'] = False
+    def_flags['use_synthetic_data'] = True
+    def_flags['train_steps'] = 110
+    def_flags['log_steps'] = 10
+
+    super(Resnet50MultiWorkerKerasBenchmarkSynth, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
+
+
 if __name__ == '__main__':
   tf.test.main()
