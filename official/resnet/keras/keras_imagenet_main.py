@@ -268,6 +268,7 @@ def run(flags_obj):
 def define_imagenet_keras_flags():
   keras_common.define_keras_flags()
   flags_core.set_defaults(train_epochs=90)
+  flags.adopt_module_key_flags(keras_common)
 
 
 def main(_):

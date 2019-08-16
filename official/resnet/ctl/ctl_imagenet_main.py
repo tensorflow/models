@@ -283,4 +283,6 @@ if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
   keras_common.define_keras_flags()
   ctl_common.define_ctl_flags()
+  flags.adopt_module_key_flags(keras_common)
+  flags.adopt_module_key_flags(ctl_common)
   absl_app.run(main)
