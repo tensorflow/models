@@ -66,6 +66,11 @@ bool MobileLSTDTfLiteClient::InitializeInterpreter(
     interpreter_->UseNNAPI(false);
   }
 
+#ifdef ENABLE_EDGETPU
+  interpreter_->SetExternalContext(kTfLiteEdgeTpuContext,
+                                   edge_tpu_context_.get());
+#endif
+
   // Inputs are: normalized_input_image_tensor, raw_inputs/init_lstm_c,
   // raw_inputs/init_lstm_h
   if (interpreter_->inputs().size() != 3) {

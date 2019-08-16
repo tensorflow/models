@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 r"""Exports detection models to use with tf-lite.
 
 See export_tflite_lstd_graph.py for usage.
 """
 import os
 import tempfile
+
 import numpy as np
 import tensorflow as tf
+
 from tensorflow.core.framework import attr_value_pb2
 from tensorflow.core.framework import types_pb2
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.tools.graph_transforms import TransformGraph
+from lstm_object_detection import model_builder
 from object_detection import exporter
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import post_processing_builder
 from object_detection.core import box_list
-
-from lstm_object_detection import model_builder
 
 _DEFAULT_NUM_CHANNELS = 3
 _DEFAULT_NUM_COORD_BOX = 4
@@ -84,11 +84,11 @@ def append_postprocessing_op(frozen_graph_def,
     num_classes: number of classes in SSD detector
     scale_values: scale values is a dict with following key-value pairs
       {y_scale: 10, x_scale: 10, h_scale: 5, w_scale: 5} that are used in decode
-      centersize boxes
+        centersize boxes
     detections_per_class: In regular NonMaxSuppression, number of anchors used
-    for NonMaxSuppression per class
-    use_regular_nms: Flag to set postprocessing op to use Regular NMS instead
-      of Fast NMS.
+      for NonMaxSuppression per class
+    use_regular_nms: Flag to set postprocessing op to use Regular NMS instead of
+      Fast NMS.
 
   Returns:
     transformed_graph_def: Frozen GraphDef with postprocessing custom op
@@ -165,9 +165,9 @@ def export_tflite_graph(pipeline_config,
   is written to output_dir/tflite_graph.pb.
 
   Args:
-    pipeline_config: Dictionary of configuration objects. Keys are `model`, `train_config`,
-      `train_input_config`, `eval_config`, `eval_input_config`, `lstm_model`.
-      Value are the corresponding config objects.
+    pipeline_config: Dictionary of configuration objects. Keys are `model`,
+      `train_config`, `train_input_config`, `eval_config`, `eval_input_config`,
+      `lstm_model`. Value are the corresponding config objects.
     trained_checkpoint_prefix: a file prefix for the checkpoint containing the
       trained parameters of the SSD model.
     output_dir: A directory to write the tflite graph and anchor file to.
@@ -176,9 +176,9 @@ def export_tflite_graph(pipeline_config,
     max_detections: Maximum number of detections (boxes) to show
     max_classes_per_detection: Number of classes to display per detection
     detections_per_class: In regular NonMaxSuppression, number of anchors used
-    for NonMaxSuppression per class
-    use_regular_nms: Flag to set postprocessing op to use Regular NMS instead
-      of Fast NMS.
+      for NonMaxSuppression per class
+    use_regular_nms: Flag to set postprocessing op to use Regular NMS instead of
+      Fast NMS.
     binary_graph_name: Name of the exported graph file in binary format.
     txt_graph_name: Name of the exported graph file in text format.
 
@@ -197,12 +197,10 @@ def export_tflite_graph(pipeline_config,
 
   num_classes = model_config.ssd.num_classes
   nms_score_threshold = {
-      model_config.ssd.post_processing.batch_non_max_suppression.
-      score_threshold
+      model_config.ssd.post_processing.batch_non_max_suppression.score_threshold
   }
   nms_iou_threshold = {
-      model_config.ssd.post_processing.batch_non_max_suppression.
-      iou_threshold
+      model_config.ssd.post_processing.batch_non_max_suppression.iou_threshold
   }
   scale_values = {}
   scale_values['y_scale'] = {
@@ -226,7 +224,7 @@ def export_tflite_graph(pipeline_config,
     width = image_resizer_config.fixed_shape_resizer.width
     if image_resizer_config.fixed_shape_resizer.convert_to_grayscale:
       num_channels = 1
-    #TODO(richardbrks) figure out how to make with a None defined batch size
+
     shape = [lstm_config.eval_unroll_length, height, width, num_channels]
   else:
     raise ValueError(
@@ -235,14 +233,14 @@ def export_tflite_graph(pipeline_config,
             image_resizer_config.WhichOneof('image_resizer_oneof')))
 
   video_tensor = tf.placeholder(
-    tf.float32, shape=shape, name='input_video_tensor')
+      tf.float32, shape=shape, name='input_video_tensor')
 
-  detection_model = model_builder.build(model_config, lstm_config,
-    is_training=False)
+  detection_model = model_builder.build(
+      model_config, lstm_config, is_training=False)
   preprocessed_video, true_image_shapes = detection_model.preprocess(
-    tf.to_float(video_tensor))
+      tf.to_float(video_tensor))
   predicted_tensors = detection_model.predict(preprocessed_video,
-    true_image_shapes)
+                                              true_image_shapes)
   # predicted_tensors = detection_model.postprocess(predicted_tensors,
   #   true_image_shapes)
   # The score conversion occurs before the post-processing custom op
@@ -311,7 +309,7 @@ def export_tflite_graph(pipeline_config,
       initializer_nodes='')
 
   # Add new operation to do post processing in a custom op (TF Lite only)
-  #(richardbrks) Do use this or detection_model.postprocess?
+
   if add_postprocessing_op:
     transformed_graph_def = append_postprocessing_op(
         frozen_graph_def, max_detections, max_classes_per_detection,
