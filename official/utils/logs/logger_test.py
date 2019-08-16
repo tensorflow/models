@@ -41,16 +41,16 @@ class BenchmarkLoggerTest(tf.test.TestCase):
 
   def tearDown(self):
     super(BenchmarkLoggerTest, self).tearDown()
-    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    tf.io.gfile.rmtree(self.get_temp_dir())
     os.environ.clear()
     os.environ.update(self.original_environ)
 
   def test_create_logging_dir(self):
     non_exist_temp_dir = os.path.join(self.get_temp_dir(), "unknown_dir")
-    self.assertFalse(tf.gfile.IsDirectory(non_exist_temp_dir))
+    self.assertFalse(tf.io.gfile.isdir(non_exist_temp_dir))
 
     logger.BenchmarkLogger(non_exist_temp_dir)
-    self.assertTrue(tf.gfile.IsDirectory(non_exist_temp_dir))
+    self.assertTrue(tf.io.gfile.isdir(non_exist_temp_dir))
 
   def test_log_metric(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
@@ -58,8 +58,8 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     log.log_metric("accuracy", 0.999, global_step=1e4, extras={"name": "value"})
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertTrue(tf.gfile.Exists(metric_log))
-    with tf.gfile.GFile(metric_log) as f:
+    self.assertTrue(tf.io.gfile.exists(metric_log))
+    with tf.io.gfile.GFile(metric_log) as f:
       metric = json.loads(f.readline())
       self.assertEqual(metric["name"], "accuracy")
       self.assertEqual(metric["value"], 0.999)
@@ -74,8 +74,8 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     log.log_metric("loss", 0.02, global_step=1e4)
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertTrue(tf.gfile.Exists(metric_log))
-    with tf.gfile.GFile(metric_log) as f:
+    self.assertTrue(tf.io.gfile.exists(metric_log))
+    with tf.io.gfile.GFile(metric_log) as f:
       accuracy = json.loads(f.readline())
       self.assertEqual(accuracy["name"], "accuracy")
       self.assertEqual(accuracy["value"], 0.999)
@@ -97,7 +97,7 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     log.log_metric("accuracy", const)
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertFalse(tf.gfile.Exists(metric_log))
+    self.assertFalse(tf.io.gfile.exists(metric_log))
 
   def test_log_evaluation_result(self):
     eval_result = {"loss": 0.46237424,
@@ -108,8 +108,8 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     log.log_estimator_evaluation_result(eval_result)
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertTrue(tf.gfile.Exists(metric_log))
-    with tf.gfile.GFile(metric_log) as f:
+    self.assertTrue(tf.io.gfile.exists(metric_log))
+    with tf.io.gfile.GFile(metric_log) as f:
       accuracy = json.loads(f.readline())
       self.assertEqual(accuracy["name"], "accuracy")
       self.assertEqual(accuracy["value"], 0.9285)
@@ -129,14 +129,14 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     log.log_estimator_evaluation_result(eval_result)
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertFalse(tf.gfile.Exists(metric_log))
+    self.assertFalse(tf.io.gfile.exists(metric_log))
 
   def test_collect_tensorflow_info(self):
     run_info = {}
     logger._collect_tensorflow_info(run_info)
     self.assertNotEqual(run_info["tensorflow_version"], {})
-    self.assertEqual(run_info["tensorflow_version"]["version"], tf.VERSION)
-    self.assertEqual(run_info["tensorflow_version"]["git_hash"], tf.GIT_VERSION)
+    self.assertEqual(run_info["tensorflow_version"]["version"], tf.version.VERSION)
+    self.assertEqual(run_info["tensorflow_version"]["git_hash"], tf.version.GIT_VERSION)
 
   def test_collect_tensorflow_environment_variables(self):
     os.environ["TF_ENABLE_WINOGRAD_NONFUSED"] = "1"

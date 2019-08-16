@@ -71,13 +71,13 @@ class BigQueryUploader(object):
     """
     expected_file = os.path.join(
         self._logging_dir, logger.BENCHMARK_RUN_LOG_FILE_NAME)
-    with tf.gfile.GFile(expected_file) as f:
+    with tf.io.gfile.GFile(expected_file) as f:
       benchmark_json = json.load(f)
       benchmark_json["model_id"] = run_id
       table_ref = self._bq_client.dataset(dataset_name).table(table_name)
       errors = self._bq_client.insert_rows_json(table_ref, [benchmark_json])
       if errors:
-        tf.logging.error(
+        tf.compat.v1.logging.error(
             "Failed to upload benchmark info to bigquery: {}".format(errors))
 
   def upload_metric(self, dataset_name, table_name, run_id):
@@ -94,7 +94,7 @@ class BigQueryUploader(object):
     """
     expected_file = os.path.join(
         self._logging_dir, logger.METRIC_LOG_FILE_NAME)
-    with tf.gfile.GFile(expected_file) as f:
+    with tf.io.gfile.GFile(expected_file) as f:
       lines = f.readlines()
       metrics = []
       for line in filter(lambda l: l.strip(), lines):
@@ -104,7 +104,7 @@ class BigQueryUploader(object):
       table_ref = self._bq_client.dataset(dataset_name).table(table_name)
       errors = self._bq_client.insert_rows_json(table_ref, metrics)
       if errors:
-        tf.logging.error(
+        tf.compat.v1.logging.error(
             "Failed to upload benchmark info to bigquery: {}".format(errors))
 
 

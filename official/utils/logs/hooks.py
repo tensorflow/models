@@ -23,7 +23,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 
-class ExamplesPerSecondHook(tf.train.SessionRunHook):
+class ExamplesPerSecondHook(tf.estimator.SessionRunHook):
   """Hook to print out examples per second.
 
   Total time is tracked and then divided by the total number of steps
@@ -58,7 +58,7 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
       raise ValueError('exactly one of every_n_steps'
                        ' and every_n_secs should be provided.')
 
-    self._timer = tf.train.SecondOrStepTimer(
+    self._timer = tf.estimator.SecondOrStepTimer(
         every_steps=every_n_steps, every_secs=every_n_secs)
 
     self._step_train_time = 0
@@ -68,7 +68,7 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
 
   def begin(self):
     """Called once before using the session to check global step."""
-    self._global_step_tensor = tf.train.get_global_step()
+    self._global_step_tensor = tf.compat.v1.train.get_global_step()
     if self._global_step_tensor is None:
       raise RuntimeError(
           'Global step should be created to use StepCounterHook.')
@@ -82,7 +82,7 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
     Returns:
       A SessionRunArgs object or None if never triggered.
     """
-    return tf.train.SessionRunArgs(self._global_step_tensor)
+    return tf.estimator.SessionRunArgs(self._global_step_tensor)
 
   def after_run(self, run_context, run_values):  # pylint: disable=unused-argument
     """Called after each call to run().
@@ -110,6 +110,6 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
         current_examples_per_sec = self._batch_size * (
             elapsed_steps / elapsed_time)
         # Current examples/sec followed by average examples/sec
-        tf.logging.info('Batch [%g]:  current exp/sec = %g, average exp/sec = '
+        tf.compat.v1.logging.info('Batch [%g]:  current exp/sec = %g, average exp/sec = '
                         '%g', self._total_steps, current_examples_per_sec,
                         average_examples_per_sec)

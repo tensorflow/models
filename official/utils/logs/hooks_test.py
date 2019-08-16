@@ -27,7 +27,7 @@ from tensorflow.python.training import monitored_session  # pylint: disable=g-ba
 from official.utils.logs import hooks
 
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 class ExamplesPerSecondHookTest(tf.test.TestCase):
@@ -35,22 +35,22 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
 
   def setUp(self):
     """Mock out logging calls to verify if correct info is being monitored."""
-    self._actual_log = tf.logging.info
+    self._actual_log = tf.compat.v1.logging.info
     self.logged_message = None
 
     def mock_log(*args, **kwargs):
       self.logged_message = args
       self._actual_log(*args, **kwargs)
 
-    tf.logging.info = mock_log
+    tf.compat.v1.logging.info = mock_log
 
     self.graph = tf.Graph()
     with self.graph.as_default():
-      self.global_step = tf.train.get_or_create_global_step()
-      self.train_op = tf.assign_add(self.global_step, 1)
+      self.global_step = tf.compat.v1.train.get_or_create_global_step()
+      self.train_op = tf.compat.v1.assign_add(self.global_step, 1)
 
   def tearDown(self):
-    tf.logging.info = self._actual_log
+    tf.compat.v1.logging.info = self._actual_log
 
   def test_raise_in_both_secs_and_steps(self):
     with self.assertRaises(ValueError):
@@ -73,7 +73,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
         warm_steps=warm_steps)
     hook.begin()
     mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
-    sess.run(tf.global_variables_initializer())
+    sess.run(tf.compat.v1.global_variables_initializer())
 
     self.logged_message = ''
     for _ in range(every_n_steps):
@@ -100,19 +100,19 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
     hook.end(sess)
 
   def test_examples_per_sec_every_1_steps(self):
-    with self.graph.as_default(), tf.Session() as sess:
+    with self.graph.as_default(), tf.compat.v1.Session() as sess:
       self._validate_log_every_n_steps(sess, 1, 0)
 
   def test_examples_per_sec_every_5_steps(self):
-    with self.graph.as_default(), tf.Session() as sess:
+    with self.graph.as_default(), tf.compat.v1.Session() as sess:
       self._validate_log_every_n_steps(sess, 5, 0)
 
   def test_examples_per_sec_every_1_steps_with_warm_steps(self):
-    with self.graph.as_default(), tf.Session() as sess:
+    with self.graph.as_default(), tf.compat.v1.Session() as sess:
       self._validate_log_every_n_steps(sess, 1, 10)
 
   def test_examples_per_sec_every_5_steps_with_warm_steps(self):
-    with self.graph.as_default(), tf.Session() as sess:
+    with self.graph.as_default(), tf.compat.v1.Session() as sess:
       self._validate_log_every_n_steps(sess, 5, 10)
 
   def _validate_log_every_n_secs(self, sess, every_n_secs):
@@ -122,7 +122,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
         every_n_secs=every_n_secs)
     hook.begin()
     mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
-    sess.run(tf.global_variables_initializer())
+    sess.run(tf.compat.v1.global_variables_initializer())
 
     self.logged_message = ''
     mon_sess.run(self.train_op)
@@ -136,11 +136,11 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
     hook.end(sess)
 
   def test_examples_per_sec_every_1_secs(self):
-    with self.graph.as_default(), tf.Session() as sess:
+    with self.graph.as_default(), tf.compat.v1.Session() as sess:
       self._validate_log_every_n_secs(sess, 1)
 
   def test_examples_per_sec_every_5_secs(self):
-    with self.graph.as_default(), tf.Session() as sess:
+    with self.graph.as_default(), tf.compat.v1.Session() as sess:
       self._validate_log_every_n_secs(sess, 5)
 
 

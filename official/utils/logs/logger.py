@@ -41,8 +41,8 @@ class BenchmarkLogger(object):
 
   def __init__(self, logging_dir):
     self._logging_dir = logging_dir
-    if not tf.gfile.IsDirectory(self._logging_dir):
-      tf.gfile.MakeDirs(self._logging_dir)
+    if not tf.io.gfile.isdir(self._logging_dir):
+      tf.io.gfile.makedirs(self._logging_dir)
 
   def log_estimator_evaluation_result(self, eval_results):
     """Log the evaluation result for a estimator.
@@ -55,12 +55,12 @@ class BenchmarkLogger(object):
       eval_results: dict, the result of evaluate() from a estimator.
     """
     if not isinstance(eval_results, dict):
-      tf.logging.warning("eval_results should be directory for logging. Got %s",
+      tf.compat.v1.logging.warning("eval_results should be directory for logging. Got %s",
                          type(eval_results))
       return
-    global_step = eval_results[tf.GraphKeys.GLOBAL_STEP]
+    global_step = eval_results[tf.compat.v1.GraphKeys.GLOBAL_STEP]
     for key in sorted(eval_results):
-      if key != tf.GraphKeys.GLOBAL_STEP:
+      if key != tf.compat.v1.GraphKeys.GLOBAL_STEP:
         self.log_metric(key, eval_results[key], global_step=global_step)
 
   def log_metric(self, name, value, unit=None, global_step=None, extras=None):
@@ -78,14 +78,14 @@ class BenchmarkLogger(object):
       extras: map of string:string, the extra information about the metric.
     """
     if not isinstance(value, numbers.Number):
-      tf.logging.warning(
+      tf.compat.v1.logging.warning(
           "Metric value to log should be a number. Got %s", type(value))
       return
     if extras:
       extras = [{"name": k, "value": v} for k, v in sorted(extras.items())]
     else:
       extras = []
-    with tf.gfile.GFile(
+    with tf.io.gfile.GFile(
         os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
       metric = {
           "name": name,
@@ -99,7 +99,7 @@ class BenchmarkLogger(object):
         json.dump(metric, f)
         f.write("\n")
       except (TypeError, ValueError) as e:
-        tf.logging.warning("Failed to dump metric to log file: "
+        tf.compat.v1.logging.warning("Failed to dump metric to log file: "
                            "name %s, value %s, error %s", name, value, e)
 
   def log_run_info(self, model_name):
@@ -120,19 +120,19 @@ class BenchmarkLogger(object):
     _collect_gpu_info(run_info)
     _collect_memory_info(run_info)
 
-    with tf.gfile.GFile(os.path.join(
+    with tf.io.gfile.GFile(os.path.join(
         self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
       try:
         json.dump(run_info, f)
         f.write("\n")
       except (TypeError, ValueError) as e:
-        tf.logging.warning("Failed to dump benchmark run info to log file: %s",
+        tf.compat.v1.logging.warning("Failed to dump benchmark run info to log file: %s",
                            e)
 
 
 def _collect_tensorflow_info(run_info):
   run_info["tensorflow_version"] = {
-      "version": tf.VERSION, "git_hash": tf.GIT_VERSION}
+      "version": tf.version.VERSION, "git_hash": tf.version.GIT_VERSION}
 
 
 def _collect_tensorflow_environment_variables(run_info):

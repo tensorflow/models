@@ -23,7 +23,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.utils.logs import logger
 
 
-class LoggingMetricHook(tf.train.LoggingTensorHook):
+class LoggingMetricHook(tf.estimator.LoggingTensorHook):
   """Hook to log benchmark metric information.
 
   This hook is very similar as tf.train.LoggingTensorHook, which logs given
@@ -77,7 +77,7 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
 
   def begin(self):
     super(LoggingMetricHook, self).begin()
-    self._global_step_tensor = tf.train.get_global_step()
+    self._global_step_tensor = tf.compat.v1.train.get_global_step()
     if self._global_step_tensor is None:
       raise RuntimeError(
           "Global step should be created to use LoggingMetricHook.")
