@@ -16,8 +16,8 @@ usage() {
   --help            Display this help.
 END_OF_USAGE
 }
-
-ckpt_number=0
+#might need to change this checkpoint number
+ckpt_number=300
 network_type="mobilenet_v1"
 while [[ $# -gt 0 ]]; do
   case "$1" in

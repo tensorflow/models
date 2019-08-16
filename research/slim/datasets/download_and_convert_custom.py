@@ -37,10 +37,10 @@ import tensorflow as tf
 from datasets import dataset_utils
 
 # The URL where the data can be downloaded.
-_DATA_URL = "https://dl.dropbox.com/s/cwp20miick6t67m/custom_photos.zip"
+_DATA_URL = "https://dl.dropbox.com/s/mg3shfgycvr3yrw/custom_photos.zip"
 
 # The number of images in the validation set.
-_NUM_VALIDATION = 350
+_NUM_VALIDATION = 400
 
 # Seed for repeatability.
 _RANDOM_SEED = 0

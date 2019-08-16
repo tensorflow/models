@@ -32,9 +32,9 @@ slim = tf.contrib.slim
 _FILE_PATTERN = "images_%s_*.tfrecord"
 
 # be sure to change these! this one is the number of images you're training on
-SPLITS_TO_SIZES = {"train": 1500, "validation": 233}
+SPLITS_TO_SIZES = {"train": 3457, "validation": 400}
 # this one is the number of labels in your dataset
-_NUM_CLASSES = 15
+_NUM_CLASSES = 12
 
 _ITEMS_TO_DESCRIPTIONS = {
     "image": "A color image of varying size.",

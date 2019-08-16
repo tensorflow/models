@@ -39,6 +39,7 @@ https://github.com/tensorflow/models/tree/master/research/slim
 <a href='#Tuning'>Fine tuning to a new task</a><br>
 <a href='#Eval'>Evaluating performance</a><br>
 <a href='#Export'>Exporting Inference Graph</a><br>
+<a href='#Custom'>Training on Custom Data</a><br>
 <a href='#Troubleshooting'>Troubleshooting</a><br>
 
 # Installation
@@ -480,6 +481,28 @@ bazel-bin/tensorflow/examples/label_image/label_image \
   --input_std=255
 ```
 
+# Training on Custom Data
+<a id='Custom'></a>
+
+The instructions above pertain to standard datasets that are downloadable from various sources, but at some point you'll want to train on your own image set. Four scripts are available in the `scripts` folder to help with this.
+
+### Pre-work
+
+Prepare your images, sorted into named folders with the labels you are expecting. Images of cats can go into a cats folder, images of dogs can go into a dogs folder, for example. Store this zip somewhere where you can download it, like Dropbox. Use .jpgs as they are more optimized.
+
+Edit `datasets/download_and_convert_custom.py` to input your link. Note, for Dropbox links, use `dl` rather than `www` for a downloadable dataset.
+
+Edit the same file `datasets/custom.py` with the number of images you are training on. Subtract a chunk of those for a validation set; so if you have 8000 total images, the training set can be 7500 and the validation set can be 500. Input the validation number as well in `datasets/download_and_convert_custom.py`.
+
+### Start the process
+
+Run the scripts in order:
+`bash step1_prepare.sh`
+`bash step2_train.sh`
+`bash step3_evaluate.sh`
+`bash step4_convert.sh`
+
+After step 3, check the accuracy of your model.
 
 # Troubleshooting
 <a id='Troubleshooting'></a>
