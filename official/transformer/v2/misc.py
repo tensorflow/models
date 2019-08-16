@@ -182,10 +182,6 @@ def define_transformer_flags():
       help=flags_core.help_wrap(
           'Whether the model runs with custom training loop.'))
   flags.DEFINE_bool(
-      name='use_tpu',
-      default=False,
-      help=flags_core.help_wrap('Whether the model runs on TPU.'))
-  flags.DEFINE_bool(
       name='is_tpu_pod',
       default=False,
       help=flags_core.help_wrap('Whether the model runs on a TPU pod.'))

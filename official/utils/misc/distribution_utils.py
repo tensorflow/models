@@ -127,10 +127,7 @@ def get_distribution_strategy(distribution_strategy="default",
     return None
 
   if distribution_strategy == "tpu":
-    if not tpu_address:
-      raise ValueError("`tpu_address` must be specified when using "
-                       "TPUStrategy.")
-
+    # When tpu_address is an empty string, we communicate with local TPUs.
     # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(tpu_address)
     return tf.distribute.experimental.TPUStrategy(cluster_resolver)
