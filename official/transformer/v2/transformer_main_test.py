@@ -103,9 +103,9 @@ class TransformerTaskTest(tf.test.TestCase):
     t = tm.TransformerTask(FLAGS)
     t.train()
 
-  @unittest.skipIf(tf.test.is_built_with_cuda(), 'TODO(b/139497127): '
-     'Test is skipped because tf.pad doesn\'t work with GPU.')
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_fp16(self):
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.dtype = 'fp16'
     t = tm.TransformerTask(FLAGS)
     t.train()
