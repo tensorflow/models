@@ -3,7 +3,7 @@ sudo apt install protobuf-compiler python3-tk -y
 pip3 install virtualenv
 rm -rf tf_detection && virtualenv tf_detection --python=python3
 echo "export PYTHONPATH=$PYTHONPATH:$(pwd)/research:$(pwd)/research/slim" >> start_tf_detection
-source start_tf_detection && pip install tensorflow==1.12.0 jupyter notebook Cython contextlib2 matplotlib pillow lxml 
+source start_tf_detection && pip install tensorflow==1.12.0 jupyter notebook Cython contextlib2 matplotlib pillow lxml opencv-python
 git clone https://github.com/JinFree/cocoapi.git
 cp -r cocoapi/PythonAPI/pycocotools research/
 cd research/
