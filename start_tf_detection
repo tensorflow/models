@@ -1,1 +1,2 @@
 source tf_detection/bin/activate
+export PYTHONPATH=:pwd:pwd/slim:pwd:pwd/slim:pwd:pwd/slim:pwd/object_detection:/home/opencv-mds/models/research:/home/opencv-mds/models/research/slim:/home/opencv-mds/models/research:/home/opencv-mds/models/research/slim

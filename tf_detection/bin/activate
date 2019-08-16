@@ -82,4 +82,3 @@ pydoc () {
 if [ -n "${BASH-}" ] || [ -n "${ZSH_VERSION-}" ] ; then
     hash -r 2>/dev/null
 fi
-export PYTHONPATH=$PYTHONPATH:/home/opencv-mds/models/research:/home/opencv-mds/models/research/object_detection:/home/opencv-mds/models/research/slim
