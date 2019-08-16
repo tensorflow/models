@@ -1,0 +1,5 @@
+{
+  "load_extensions": {
+    "jupyter-js-widgets/extension": true
+  }
+}
