@@ -26,7 +26,7 @@ import pandas as pd
 import tensorflow as tf
 
 # pylint: disable=g-bad-import-order
-from official.boosted_trees import train_higgs
+from official.r1.boosted_trees import train_higgs
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
