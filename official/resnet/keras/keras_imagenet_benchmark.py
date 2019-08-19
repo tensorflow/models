@@ -972,7 +972,7 @@ class Resnet50MultiWorkerKerasBenchmark(Resnet50KerasBenchmarkBase):
     self._benchmark_common(eager=True, num_workers=8, all_reduce_alg='nccl')
 
 
-class Resnet50MultiWorkerKerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
+class Resnet50MultiWorkerKerasBenchmarkSynth(Resnet50MultiWorkerKerasBenchmark):
   """Resnet50 multi-worker synthetic benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
