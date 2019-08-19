@@ -403,8 +403,7 @@ def main(_):
     if not flags_obj.distribution_strategy != "tpu":
       _run_task(task)
     else:
-      primary_cpu_task = ("/job:worker"
-                          if flags_obj.use_tpu_2vm_config is not None else "")
+      primary_cpu_task = "/job:worker" if flags_obj.use_tpu_2vm_config else ""
       with tf.device(primary_cpu_task):
         _run_task(task)
 
