@@ -21,17 +21,17 @@ from __future__ import print_function
 from absl import app as absl_app
 from absl import flags
 from absl import logging
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
-from official.resnet.keras import imagenet_preprocessing
-from official.resnet.keras import keras_common
-from official.resnet.keras import resnet_model
-from official.resnet.keras import trivial_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
+from official.vision.image_classification import common
+from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification import resnet_model
+from official.vision.image_classification import trivial_model
 
 
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
@@ -57,7 +57,7 @@ def learning_rate_schedule(current_epoch,
   Returns:
     Adjusted learning rate.
   """
-  initial_lr = keras_common.BASE_LEARNING_RATE * batch_size / 256
+  initial_lr = common.BASE_LEARNING_RATE * batch_size / 256
   epoch = current_epoch + float(current_batch) / batches_per_epoch
   warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
   if epoch < warmup_end_epoch:
@@ -89,10 +89,10 @@ def run(flags_obj):
 
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
-    keras_common.set_gpu_thread_mode_and_count(flags_obj)
+    common.set_gpu_thread_mode_and_count(flags_obj)
   if flags_obj.data_delay_prefetch:
-    keras_common.data_delay_prefetch()
-  keras_common.set_cudnn_batchnorm_mode()
+    common.data_delay_prefetch()
+  common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'float16':
@@ -129,7 +129,7 @@ def run(flags_obj):
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
-    input_fn = keras_common.get_synth_input_fn(
+    input_fn = common.get_synth_input_fn(
         height=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
         width=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
         num_channels=imagenet_preprocessing.NUM_CHANNELS,
@@ -169,7 +169,7 @@ def run(flags_obj):
 
   lr_schedule = 0.1
   if flags_obj.use_tensor_lr:
-    lr_schedule = keras_common.PiecewiseConstantDecayWithWarmup(
+    lr_schedule = common.PiecewiseConstantDecayWithWarmup(
         batch_size=flags_obj.batch_size,
         epoch_size=imagenet_preprocessing.NUM_IMAGES['train'],
         warmup_epochs=LR_SCHEDULE[0][1],
@@ -178,7 +178,7 @@ def run(flags_obj):
         compute_lr_on_cpu=True)
 
   with strategy_scope:
-    optimizer = keras_common.get_optimizer(lr_schedule)
+    optimizer = common.get_optimizer(lr_schedule)
     if dtype == 'float16':
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
@@ -211,7 +211,7 @@ def run(flags_obj):
                    if flags_obj.report_accuracy_metrics else None),
           run_eagerly=flags_obj.run_eagerly)
 
-  callbacks = keras_common.get_callbacks(
+  callbacks = common.get_callbacks(
       learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])
 
   train_steps = (
@@ -261,14 +261,14 @@ def run(flags_obj):
   if not strategy and flags_obj.explicit_gpu_placement:
     no_dist_strat_device.__exit__()
 
-  stats = keras_common.build_stats(history, eval_output, callbacks)
+  stats = common.build_stats(history, eval_output, callbacks)
   return stats
 
 
 def define_imagenet_keras_flags():
-  keras_common.define_keras_flags()
+  common.define_keras_flags()
   flags_core.set_defaults(train_epochs=90)
-  flags.adopt_module_key_flags(keras_common)
+  flags.adopt_module_key_flags(common)
 
 
 def main(_):

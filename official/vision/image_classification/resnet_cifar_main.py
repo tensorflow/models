@@ -22,13 +22,13 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
 
-from official.resnet.keras import cifar_preprocessing
-from official.resnet.keras import keras_common
-from official.resnet.keras import resnet_cifar_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
+from official.vision.image_classification import cifar_preprocessing
+from official.vision.image_classification import common
+from official.vision.image_classification import resnet_cifar_model
 
 
 LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
@@ -55,7 +55,7 @@ def learning_rate_schedule(current_epoch,
     Adjusted learning rate.
   """
   del current_batch, batches_per_epoch  # not used
-  initial_learning_rate = keras_common.BASE_LEARNING_RATE * batch_size / 128
+  initial_learning_rate = common.BASE_LEARNING_RATE * batch_size / 128
   learning_rate = initial_learning_rate
   for mult, start_epoch in LR_SCHEDULE:
     if current_epoch >= start_epoch:
@@ -83,8 +83,8 @@ def run(flags_obj):
 
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
-    keras_common.set_gpu_thread_mode_and_count(flags_obj)
-  keras_common.set_cudnn_batchnorm_mode()
+    common.set_gpu_thread_mode_and_count(flags_obj)
+  common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'fp16':
@@ -116,7 +116,7 @@ def run(flags_obj):
 
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
-    input_fn = keras_common.get_synth_input_fn(
+    input_fn = common.get_synth_input_fn(
         height=cifar_preprocessing.HEIGHT,
         width=cifar_preprocessing.WIDTH,
         num_channels=cifar_preprocessing.NUM_CHANNELS,
@@ -150,7 +150,7 @@ def run(flags_obj):
         parse_record_fn=cifar_preprocessing.parse_record)
 
   with strategy_scope:
-    optimizer = keras_common.get_optimizer()
+    optimizer = common.get_optimizer()
     model = resnet_cifar_model.resnet56(classes=cifar_preprocessing.NUM_CLASSES)
 
     # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
@@ -171,7 +171,7 @@ def run(flags_obj):
                    if flags_obj.report_accuracy_metrics else None),
           run_eagerly=flags_obj.run_eagerly)
 
-  callbacks = keras_common.get_callbacks(
+  callbacks = common.get_callbacks(
       learning_rate_schedule, cifar_preprocessing.NUM_IMAGES['train'])
 
   train_steps = cifar_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size
@@ -216,12 +216,12 @@ def run(flags_obj):
   if not strategy and flags_obj.explicit_gpu_placement:
     no_dist_strat_device.__exit__()
 
-  stats = keras_common.build_stats(history, eval_output, callbacks)
+  stats = common.build_stats(history, eval_output, callbacks)
   return stats
 
 
 def define_cifar_flags():
-  keras_common.define_keras_flags(dynamic_loss_scale=False)
+  common.define_keras_flags(dynamic_loss_scale=False)
 
   flags_core.set_defaults(data_dir='/tmp/cifar10_data/cifar-10-batches-bin',
                           model_dir='/tmp/cifar10_model',

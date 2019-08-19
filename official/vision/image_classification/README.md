@@ -1,17 +1,17 @@
-This folder contains the Keras implementation of the ResNet models. For more 
-information about the models, please refer to this [README file](../README.md).
+This folder contains the Keras implementation of the ResNet models. For more
+information about the models, please refer to this [README file](../../README.md).
 
-Similar to the [estimator implementation](/official/resnet), the Keras 
+Similar to the [estimator implementation](../../r1/resnet), the Keras
 implementation has code for both CIFAR-10 data and ImageNet data. The CIFAR-10
-version uses a ResNet56 model implemented in 
-[`resnet_cifar_model.py`](./resnet_cifar_model.py), and the ImageNet version 
+version uses a ResNet56 model implemented in
+[`resnet_cifar_model.py`](./resnet_cifar_model.py), and the ImageNet version
 uses a ResNet50 model implemented in [`resnet_model.py`](./resnet_model.py).
 
-To use 
-either dataset, make sure that you have the latest version of TensorFlow 
-installed and 
+To use
+either dataset, make sure that you have the latest version of TensorFlow
+installed and
 [add the models folder to your Python path](/official/#running-the-models),
-otherwise you may encounter an error like `ImportError: No module named 
+otherwise you may encounter an error like `ImportError: No module named
 official.resnet`.
 
 ## CIFAR-10
@@ -36,7 +36,7 @@ python keras_cifar_main.py --data_dir=/path/to/cifar
 
 ## ImageNet
 
-Download the ImageNet dataset and convert it to TFRecord format. 
+Download the ImageNet dataset and convert it to TFRecord format.
 The following [script](https://github.com/tensorflow/tpu/blob/master/tools/datasets/imagenet_to_gcs.py)
 and [README](https://github.com/tensorflow/tpu/tree/master/tools/datasets#imagenet_to_gcspy)
 provide a few options.
@@ -56,17 +56,17 @@ python keras_imagenet_main.py --data_dir=/path/to/imagenet
 
 There are more flag options you can specify. Here are some examples:
 
-- `--use_synthetic_data`: when set to true, synthetic data, rather than real 
+- `--use_synthetic_data`: when set to true, synthetic data, rather than real
 data, are used;
 - `--batch_size`: the batch size used for the model;
 - `--model_dir`: the directory to save the model checkpoint;
 - `--train_epochs`: number of epoches to run for training the model;
 - `--train_steps`: number of steps to run for training the model. We now only
 support a number that is smaller than the number of batches in an epoch.
-- `--skip_eval`: when set to true, evaluation as well as validation during 
+- `--skip_eval`: when set to true, evaluation as well as validation during
 training is skipped
 
-For example, this is a typical command line to run with ImageNet data with 
+For example, this is a typical command line to run with ImageNet data with
 batch size 128 per GPU:
 
 ```bash
@@ -82,19 +82,19 @@ python -m keras_imagenet_main \
 See [`keras_common.py`](keras_common.py) for full list of options.
 
 ## Using multiple GPUs
-You can train these models on multiple GPUs using `tf.distribute.Strategy` API. 
-You can read more about them in this 
+You can train these models on multiple GPUs using `tf.distribute.Strategy` API.
+You can read more about them in this
 [guide](https://www.tensorflow.org/guide/distribute_strategy).
 
-In this example, we have made it easier to use is with just a command line flag 
-`--num_gpus`. By default this flag is 1 if TensorFlow is compiled with CUDA, 
+In this example, we have made it easier to use is with just a command line flag
+`--num_gpus`. By default this flag is 1 if TensorFlow is compiled with CUDA,
 and 0 otherwise.
 
 - --num_gpus=0: Uses tf.distribute.OneDeviceStrategy with CPU as the device.
 - --num_gpus=1: Uses tf.distribute.OneDeviceStrategy with GPU as the device.
-- --num_gpus=2+: Uses tf.distribute.MirroredStrategy to run synchronous 
+- --num_gpus=2+: Uses tf.distribute.MirroredStrategy to run synchronous
 distributed training across the GPUs.
 
-If you wish to run without `tf.distribute.Strategy`, you can do so by setting 
+If you wish to run without `tf.distribute.Strategy`, you can do so by setting
 `--distribution_strategy=off`.
 

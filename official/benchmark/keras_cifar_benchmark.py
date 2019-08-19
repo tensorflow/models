@@ -22,8 +22,8 @@ import time
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet.keras import keras_benchmark
-from official.resnet.keras import keras_cifar_main
+from official.benchmark import keras_benchmark
+from official.vision.image_classification import resnet_cifar_main
 
 MIN_TOP_1_ACCURACY = 0.929
 MAX_TOP_1_ACCURACY = 0.938
@@ -47,7 +47,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     """
 
     self.data_dir = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)
-    flag_methods = [keras_cifar_main.define_cifar_flags]
+    flag_methods = [resnet_cifar_main.define_cifar_flags]
 
     super(Resnet56KerasAccuracy, self).__init__(
         output_dir=output_dir, flag_methods=flag_methods)
@@ -199,7 +199,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
-    stats = keras_cifar_main.run(FLAGS)
+    stats = resnet_cifar_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     super(Resnet56KerasAccuracy, self)._report_benchmark(
@@ -215,7 +215,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   """Short performance tests for ResNet56 via Keras and CIFAR-10."""
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [keras_cifar_main.define_cifar_flags]
+    flag_methods = [resnet_cifar_main.define_cifar_flags]
 
     super(Resnet56KerasBenchmarkBase, self).__init__(
         output_dir=output_dir,
@@ -224,7 +224,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
-    stats = keras_cifar_main.run(FLAGS)
+    stats = resnet_cifar_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     super(Resnet56KerasBenchmarkBase, self)._report_benchmark(

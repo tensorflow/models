@@ -21,8 +21,8 @@ import time
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet.keras import keras_benchmark
-from official.resnet.keras import keras_imagenet_main
+from official.benchmark import keras_benchmark
+from official.vision.image_classification import resnet_imagenet_main
 
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77
@@ -44,7 +44,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
                 named arguments before updating the constructor.
     """
 
-    flag_methods = [keras_imagenet_main.define_imagenet_keras_flags]
+    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
 
     self.data_dir = os.path.join(root_data_dir, 'imagenet')
     super(Resnet50KerasAccuracy, self).__init__(
@@ -158,7 +158,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
                                 top_1_min=MIN_TOP_1_ACCURACY,
                                 top_1_max=MAX_TOP_1_ACCURACY):
     start_time_sec = time.time()
-    stats = keras_imagenet_main.run(flags.FLAGS)
+    stats = resnet_imagenet_main.run(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     super(Resnet50KerasAccuracy, self)._report_benchmark(
@@ -177,7 +177,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   """Resnet50 benchmarks."""
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [keras_imagenet_main.define_imagenet_keras_flags]
+    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
 
     super(Resnet50KerasBenchmarkBase, self).__init__(
         output_dir=output_dir,
@@ -186,7 +186,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
-    stats = keras_imagenet_main.run(FLAGS)
+    stats = resnet_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
     # Number of logged step time entries that are excluded in performance
     # report. We keep results from last 100 batches in this case.
@@ -779,7 +779,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
   """Trivial model with real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    flag_methods = [keras_imagenet_main.define_imagenet_keras_flags]
+    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
 
     def_flags = {}
     def_flags['use_trivial_model'] = True
@@ -799,7 +799,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
-    stats = keras_imagenet_main.run(FLAGS)
+    stats = resnet_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     super(TrivialKerasBenchmarkReal, self)._report_benchmark(
