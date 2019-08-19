@@ -24,8 +24,8 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
-from official.wide_deep import census_dataset
-from official.wide_deep import census_main
+from official.r1.wide_deep import census_dataset
+from official.r1.wide_deep import census_main
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 

@@ -26,8 +26,8 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.datasets import movielens
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
-from official.wide_deep import movielens_dataset
-from official.wide_deep import movielens_main
+from official.r1.wide_deep import movielens_dataset
+from official.r1.wide_deep import movielens_main
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
