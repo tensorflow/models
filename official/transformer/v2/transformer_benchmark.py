@@ -280,8 +280,8 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps,
-                                   bleu_min=28,
-                                   bleu_max=29)
+                                   bleu_min=27.9,
+                                   bleu_max=29.2)
 
   def benchmark_8_gpu_static_batch(self):
     """Benchmark 8 gpu.
@@ -305,12 +305,19 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps,
                                    bleu_min=28,
-                                   bleu_max=29)
+                                   bleu_max=29.2)
 
   def benchmark_8_gpu_fp16(self):
     """Benchmark 8 gpu with dynamic batch and fp16.
 
-      Should converge to 28.4 BLEU (uncased). This has not be verified yet."
+    Over 6 runs with eval every 20K steps the average highest value was 28.247
+    (bleu uncased). 28.424 was the highest and 28.09 the lowest. The values are
+    the highest value seen during a run and occurred at a median of iteration
+    11. While this could be interpreted as worse than FP32, if looking at the
+    first iteration at which 28 is passed FP16 performs equal and possibly
+    better. Although not part of the initial test runs, the highest value
+    recorded with the arguments below was 28.9 at iteration 12. Iterations are
+    not epochs, an iteration is a number of steps between evals.
     """
     self._setup()
     FLAGS.num_gpus = 8
@@ -328,7 +335,7 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps,
                                    bleu_min=28,
-                                   bleu_max=29)
+                                   bleu_max=29.2)
 
   def benchmark_8_gpu_static_batch_fp16(self):
     """Benchmark 8 gpu with static batch and fp16.
@@ -353,7 +360,7 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps,
                                    bleu_min=28,
-                                   bleu_max=29)
+                                   bleu_max=29.2)
 
   def benchmark_xla_8_gpu_static_batch_fp16(self):
     """Benchmark 8 gpu with static batch, XLA, and FP16.
@@ -380,7 +387,7 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
     self._run_and_report_benchmark(total_batch_size=FLAGS.batch_size,
                                    log_steps=FLAGS.log_steps,
                                    bleu_min=28,
-                                   bleu_max=29)
+                                   bleu_max=29.2)
 
 
 class TransformerKerasBenchmark(TransformerBenchmark):
