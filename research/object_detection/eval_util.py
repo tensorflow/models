@@ -243,7 +243,7 @@ def best_saver(all_evaluator_metrics, at_step, checkpoint_dirs):
     checkpoint_dirs: path to directories
 
   Returns:
-    json stored with ecaluation metrices
+    json stored with evaluation metrices
   """
 
   all_evaluator_metrics = {key:float(value)for key,value in all_evaluator_metrics.items()}
