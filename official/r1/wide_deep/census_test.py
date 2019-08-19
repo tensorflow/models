@@ -139,7 +139,7 @@ class BaseTest(tf.test.TestCase):
             '--model_type', 'wide',
             '--download_if_missing=false'
         ],
-        synth=False, max_train=None)
+        synth=False)
 
   @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_end_to_end_deep(self):
@@ -150,7 +150,7 @@ class BaseTest(tf.test.TestCase):
             '--model_type', 'deep',
             '--download_if_missing=false'
         ],
-        synth=False, max_train=None)
+        synth=False)
 
   @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_end_to_end_wide_deep(self):
@@ -161,7 +161,7 @@ class BaseTest(tf.test.TestCase):
             '--model_type', 'wide_deep',
             '--download_if_missing=false'
         ],
-        synth=False, max_train=None)
+        synth=False)
 
 
 if __name__ == '__main__':

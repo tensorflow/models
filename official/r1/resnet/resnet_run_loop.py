@@ -730,7 +730,8 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 fp16_implementation=fp16_implementation,
                                 loss_scale=True,
-                                tf_data_experimental_slack=True)
+                                tf_data_experimental_slack=True,
+                                max_train_steps=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags_core.define_distribution()

@@ -282,41 +282,43 @@ class BaseTest(tf.test.TestCase):
   def test_imagenet_end_to_end_synthetic_v1(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '1', '-batch_size', '4']
+        extra_flags=['-resnet_version', '1', '-batch_size', '4',
+                     '--max_train_steps', '1']
     )
 
   def test_imagenet_end_to_end_synthetic_v2(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '2', '-batch_size', '4']
+        extra_flags=['-resnet_version', '2', '-batch_size', '4',
+                     '--max_train_steps', '1']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_tiny(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-resnet_version', '1', '-batch_size', '4',
-                     '-resnet_size', '18']
+                     '-resnet_size', '18', '--max_train_steps', '1']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_tiny(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-resnet_version', '2', '-batch_size', '4',
-                     '-resnet_size', '18']
+                     '-resnet_size', '18', '--max_train_steps', '1']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_huge(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-resnet_version', '1', '-batch_size', '4',
-                     '-resnet_size', '200']
+                     '-resnet_size', '200', '--max_train_steps', '1']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_huge(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-resnet_version', '2', '-batch_size', '4',
-                     '-resnet_size', '200']
+                     '-resnet_size', '200', '--max_train_steps', '1']
     )
 
 

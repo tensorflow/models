@@ -112,7 +112,7 @@ class BaseTest(tf.test.TestCase):
             "--train_epochs", "1",
             "--epochs_between_evals", "1"
         ],
-        synth=False, max_train=None)
+        synth=False)
 
 
 if __name__ == "__main__":
