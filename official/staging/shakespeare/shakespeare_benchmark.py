@@ -41,8 +41,8 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
         flag_methods=[shakespeare_main.define_flags])
 
   def _run_and_report_benchmark(self,
-                                top_1_train_min=0.923,
-                                top_1_train_max=0.93,
+                                top_1_train_min=0.91,
+                                top_1_train_max=0.94,
                                 warmup=1,
                                 log_steps=100):
     """Report benchmark results by writing to local protobuf file.
