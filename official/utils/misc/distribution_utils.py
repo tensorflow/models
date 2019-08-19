@@ -287,10 +287,14 @@ def _undo_monkey_patch_dataset_method(strategy):
 def set_up_synthetic_data():
   _monkey_patch_dataset_method(tf.distribute.OneDeviceStrategy)
   _monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
+  _monkey_patch_dataset_method(
+      tf.distribute.experimental.MultiWorkerMirroredStrategy)
   # TODO(tobyboyd): Remove when contrib.distribute is all in core.
   if hasattr(tf, 'contrib'):
     _monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
     _monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
+    _monkey_patch_dataset_method(
+        tf.contrib.distribute.CollectiveAllReduceStrategy)
   else:
     print('Contrib missing: Skip monkey patch tf.contrib.distribute.*')
 
@@ -298,10 +302,14 @@ def set_up_synthetic_data():
 def undo_set_up_synthetic_data():
   _undo_monkey_patch_dataset_method(tf.distribute.OneDeviceStrategy)
   _undo_monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
+  _undo_monkey_patch_dataset_method(
+      tf.distribute.experimental.MultiWorkerMirroredStrategy)
   # TODO(tobyboyd): Remove when contrib.distribute is all in core.
   if hasattr(tf, 'contrib'):
     _undo_monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
     _undo_monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
+    _undo_monkey_patch_dataset_method(
+        tf.contrib.distribute.CollectiveAllReduceStrategy)
   else:
     print('Contrib missing: Skip remove monkey patch tf.contrib.distribute.*')
 
