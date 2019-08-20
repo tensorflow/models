@@ -90,6 +90,13 @@ http_archive(
     sha256 = "79d102c61e2a479a0b7e5fc167bcfaa4832a0c6aad4a75fa7da0480564931bcc",
 )
 
+#
+# http_archive(
+#     name = "com_google_protobuf",
+#     strip_prefix = "protobuf-master",
+#     urls = ["https://github.com/protocolbuffers/protobuf/archive/master.zip"],
+# )
+
 # Needed by TensorFlow
 http_archive(
     name = "io_bazel_rules_closure",

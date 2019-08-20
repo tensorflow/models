@@ -117,7 +117,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     """
     self._run_and_report_benchmark(hr_at_10_min=0.61)
 
-  def _run_and_report_benchmark(self, hr_at_10_min=0.630, hr_at_10_max=0.640):
+  def _run_and_report_benchmark(self, hr_at_10_min=0.630, hr_at_10_max=0.645):
     """Run test and report results.
 
     Note: Target is 0.635, but some runs are below that level. Until we have
