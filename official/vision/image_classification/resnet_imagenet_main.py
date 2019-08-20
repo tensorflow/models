@@ -186,7 +186,7 @@ def run(flags_obj):
     optimizer = common.get_optimizer(lr_schedule)
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
-          imagenet_preprocessing.NUM_CLASSES, dtype)
+          imagenet_preprocessing.NUM_CLASSES)
     else:
       model = resnet_model.resnet50(
           num_classes=imagenet_preprocessing.NUM_CLASSES)
