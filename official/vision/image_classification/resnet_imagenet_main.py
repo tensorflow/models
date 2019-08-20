@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Runs a ResNet model on the Cifar-10 dataset."""
+"""Runs a ResNet model on the ImageNet dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -20,19 +20,22 @@ from __future__ import print_function
 
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 
-from official.resnet.keras import cifar_preprocessing
-from official.resnet.keras import keras_common
-from official.resnet.keras import resnet_cifar_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
+from official.utils.misc import model_helpers
+from official.vision.image_classification import common
+from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification import resnet_model
+from official.vision.image_classification import trivial_model
 
 
-LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
-    (0.1, 91), (0.01, 136), (0.001, 182)
+LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
+    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
 
 
@@ -40,7 +43,7 @@ def learning_rate_schedule(current_epoch,
                            current_batch,
                            batches_per_epoch,
                            batch_size):
-  """Handles linear scaling rule and LR decay.
+  """Handles linear scaling rule, gradual warmup, and LR decay.
 
   Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
   provided scaling factor.
@@ -54,19 +57,22 @@ def learning_rate_schedule(current_epoch,
   Returns:
     Adjusted learning rate.
   """
-  del current_batch, batches_per_epoch  # not used
-  initial_learning_rate = keras_common.BASE_LEARNING_RATE * batch_size / 128
-  learning_rate = initial_learning_rate
+  initial_lr = common.BASE_LEARNING_RATE * batch_size / 256
+  epoch = current_epoch + float(current_batch) / batches_per_epoch
+  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
+  if epoch < warmup_end_epoch:
+    # Learning rate increases linearly per step.
+    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
   for mult, start_epoch in LR_SCHEDULE:
-    if current_epoch >= start_epoch:
-      learning_rate = initial_learning_rate * mult
+    if epoch >= start_epoch:
+      learning_rate = initial_lr * mult
     else:
       break
   return learning_rate
 
 
 def run(flags_obj):
-  """Run ResNet Cifar-10 training and eval loop using native Keras APIs.
+  """Run ResNet ImageNet training and eval loop using native Keras APIs.
 
   Args:
     flags_obj: An object containing parsed flag values.
@@ -83,13 +89,15 @@ def run(flags_obj):
 
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
-    keras_common.set_gpu_thread_mode_and_count(flags_obj)
-  keras_common.set_cudnn_batchnorm_mode()
+    common.set_gpu_thread_mode_and_count(flags_obj)
+  if flags_obj.data_delay_prefetch:
+    common.data_delay_prefetch()
+  common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
-  if dtype == 'fp16':
-    raise ValueError('dtype fp16 is not supported in Keras. Use the default '
-                     'value(fp32).')
+  if dtype == 'float16':
+    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
+    tf.keras.mixed_precision.experimental.set_policy(policy)
 
   data_format = flags_obj.data_format
   if data_format is None:
@@ -97,10 +105,14 @@ def run(flags_obj):
                    if tf.test.is_built_with_cuda() else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
 
+  # Configures cluster spec for distribution strategy.
+  num_workers = distribution_utils.configure_cluster(flags_obj.worker_hosts,
+                                                     flags_obj.task_index)
+
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
-      num_workers=distribution_utils.configure_cluster(),
+      num_workers=num_workers,
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
 
@@ -114,31 +126,35 @@ def run(flags_obj):
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
+  # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
     distribution_utils.set_up_synthetic_data()
-    input_fn = keras_common.get_synth_input_fn(
-        height=cifar_preprocessing.HEIGHT,
-        width=cifar_preprocessing.WIDTH,
-        num_channels=cifar_preprocessing.NUM_CHANNELS,
-        num_classes=cifar_preprocessing.NUM_CLASSES,
-        dtype=flags_core.get_tf_dtype(flags_obj),
+    input_fn = common.get_synth_input_fn(
+        height=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
+        width=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
+        num_channels=imagenet_preprocessing.NUM_CHANNELS,
+        num_classes=imagenet_preprocessing.NUM_CLASSES,
+        dtype=dtype,
         drop_remainder=True)
   else:
     distribution_utils.undo_set_up_synthetic_data()
-    input_fn = cifar_preprocessing.input_fn
+    input_fn = imagenet_preprocessing.input_fn
+
+  # When `enable_xla` is True, we always drop the remainder of the batches
+  # in the dataset, as XLA-GPU doesn't support dynamic shapes.
+  drop_remainder = flags_obj.enable_xla
 
   train_input_dataset = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
       num_epochs=flags_obj.train_epochs,
-      parse_record_fn=cifar_preprocessing.parse_record,
+      parse_record_fn=imagenet_preprocessing.parse_record,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
-      # Setting drop_remainder to avoid the partial batch logic in normalization
-      # layer, which triggers tf.where and leads to extra memory copy of input
-      # sizes between host and GPU.
-      drop_remainder=(not flags_obj.enable_get_next_as_optional))
+      drop_remainder=drop_remainder,
+      tf_data_experimental_slack=flags_obj.tf_data_experimental_slack,
+  )
 
   eval_input_dataset = None
   if not flags_obj.skip_eval:
@@ -147,45 +163,78 @@ def run(flags_obj):
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
         num_epochs=flags_obj.train_epochs,
-        parse_record_fn=cifar_preprocessing.parse_record)
+        parse_record_fn=imagenet_preprocessing.parse_record,
+        dtype=dtype,
+        drop_remainder=drop_remainder)
+
+  lr_schedule = 0.1
+  if flags_obj.use_tensor_lr:
+    lr_schedule = common.PiecewiseConstantDecayWithWarmup(
+        batch_size=flags_obj.batch_size,
+        epoch_size=imagenet_preprocessing.NUM_IMAGES['train'],
+        warmup_epochs=LR_SCHEDULE[0][1],
+        boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
+        multipliers=list(p[0] for p in LR_SCHEDULE),
+        compute_lr_on_cpu=True)
 
   with strategy_scope:
-    optimizer = keras_common.get_optimizer()
-    model = resnet_cifar_model.resnet56(classes=cifar_preprocessing.NUM_CLASSES)
+    optimizer = common.get_optimizer(lr_schedule)
+    if dtype == 'float16':
+      # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
+      # can be enabled with a single line of code.
+      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
+                                                          default_for_fp16=128))
+    if flags_obj.automatic_mixed_precision:
+        if dtype == 'float16':
+            raise RuntimeError("Automatic mixed precision should not be called in conjunction with "
+                               "other types of mixed precision training. Set --dtype=fp32 instead.")
+        optimizer = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+        
+    if flags_obj.use_trivial_model:
+      model = trivial_model.trivial_model(
+          imagenet_preprocessing.NUM_CLASSES, dtype)
+    else:
+      model = resnet_model.resnet50(
+          num_classes=imagenet_preprocessing.NUM_CLASSES, dtype=dtype)
 
     # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
     # a valid arg for this model. Also remove as a valid flag.
     if flags_obj.force_v2_in_keras_compile is not None:
       model.compile(
-          loss='categorical_crossentropy',
+          loss='sparse_categorical_crossentropy',
           optimizer=optimizer,
-          metrics=(['categorical_accuracy']
+          metrics=(['sparse_categorical_accuracy']
                    if flags_obj.report_accuracy_metrics else None),
           run_eagerly=flags_obj.run_eagerly,
           experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
     else:
       model.compile(
-          loss='categorical_crossentropy',
+          loss='sparse_categorical_crossentropy',
           optimizer=optimizer,
-          metrics=(['categorical_accuracy']
+          metrics=(['sparse_categorical_accuracy']
                    if flags_obj.report_accuracy_metrics else None),
           run_eagerly=flags_obj.run_eagerly)
 
-  callbacks = keras_common.get_callbacks(
-      learning_rate_schedule, cifar_preprocessing.NUM_IMAGES['train'])
+  callbacks = common.get_callbacks(
+      learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])
 
-  train_steps = cifar_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size
+  train_steps = (
+      imagenet_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
   train_epochs = flags_obj.train_epochs
 
   if flags_obj.train_steps:
     train_steps = min(flags_obj.train_steps, train_steps)
     train_epochs = 1
 
-  num_eval_steps = (cifar_preprocessing.NUM_IMAGES['validation'] //
-                    flags_obj.batch_size)
+  num_eval_steps = (
+      imagenet_preprocessing.NUM_IMAGES['validation'] // flags_obj.batch_size)
 
   validation_data = eval_input_dataset
   if flags_obj.skip_eval:
+    # Only build the training graph. This reduces memory usage introduced by
+    # control flow ops in layers that have different implementations for
+    # training and inference (e.g., batch norm).
     if flags_obj.set_learning_phase_to_train:
       # TODO(haoyuzhang): Understand slowdown of setting learning phase when
       # not using distribution strategy.
@@ -207,6 +256,7 @@ def run(flags_obj):
                       validation_data=validation_data,
                       validation_freq=flags_obj.epochs_between_evals,
                       verbose=2)
+
   eval_output = None
   if not flags_obj.skip_eval:
     eval_output = model.evaluate(eval_input_dataset,
@@ -216,26 +266,24 @@ def run(flags_obj):
   if not strategy and flags_obj.explicit_gpu_placement:
     no_dist_strat_device.__exit__()
 
-  stats = keras_common.build_stats(history, eval_output, callbacks)
+  stats = common.build_stats(history, eval_output, callbacks)
   return stats
 
 
-def define_cifar_flags():
-  keras_common.define_keras_flags(dynamic_loss_scale=False)
-
-  flags_core.set_defaults(data_dir='/tmp/cifar10_data/cifar-10-batches-bin',
-                          model_dir='/tmp/cifar10_model',
-                          train_epochs=182,
-                          epochs_between_evals=10,
-                          batch_size=128)
+def define_imagenet_keras_flags():
+  common.define_keras_flags()
+  flags_core.set_defaults(train_epochs=90)
+  flags.adopt_module_key_flags(common)
 
 
 def main(_):
+  model_helpers.apply_clean(flags.FLAGS)
   with logger.benchmark_context(flags.FLAGS):
-    return run(flags.FLAGS)
+    stats = run(flags.FLAGS)
+  logging.info('Run stats:\n%s', stats)
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  define_cifar_flags()
+  logging.set_verbosity(logging.INFO)
+  define_imagenet_keras_flags()
   absl_app.run(main)

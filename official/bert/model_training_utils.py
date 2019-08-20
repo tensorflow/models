@@ -25,16 +25,10 @@ from absl import logging
 import tensorflow as tf
 from tensorflow.python.util import object_identity
 from official.utils.misc import distribution_utils
+from official.utils.misc import tpu_lib
 
 _SUMMARY_TXT = 'training_summary.txt'
 _MIN_SUMMARY_STEPS = 10
-
-
-def get_primary_cpu_task(use_remote_tpu=False):
-  """Returns primary CPU task to which input pipeline Ops are put."""
-
-  # Remote Eager Borg job configures the TPU worker with job name 'worker'.
-  return '/job:worker' if use_remote_tpu else ''
 
 
 def _save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
@@ -195,7 +189,7 @@ def run_customized_training_loop(
 
   # To reduce unnecessary send/receive input pipeline operation, we place input
   # pipeline ops in worker task.
-  with tf.device(get_primary_cpu_task(use_remote_tpu)):
+  with tf.device(tpu_lib.get_primary_cpu_task(use_remote_tpu)):
     train_iterator = _get_input_iterator(train_input_fn, strategy)
 
     with distribution_utils.get_strategy_scope(strategy):

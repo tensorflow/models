@@ -20,17 +20,13 @@ from __future__ import print_function
 import multiprocessing
 import os
 
-import numpy as np
-
-# pylint: disable=g-bad-import-order
 from absl import flags
+import numpy as np
 import tensorflow as tf
 
+from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
-# pylint: disable=ungrouped-imports
-from tensorflow.python.keras.optimizer_v2 import (gradient_descent as
-                                                  gradient_descent_v2)
 
 FLAGS = flags.FLAGS
 BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
@@ -262,6 +258,7 @@ def define_keras_flags(dynamic_loss_scale=True):
                                 force_v2_in_keras_compile=True)
   flags_core.define_image()
   flags_core.define_benchmark()
+  flags_core.define_distribution()
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_boolean(name='enable_eager', default=False, help='Enable eager?')

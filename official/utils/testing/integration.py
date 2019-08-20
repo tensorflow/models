@@ -29,7 +29,7 @@ from absl import flags
 from official.utils.flags import core as flags_core
 
 
-def run_synthetic(main, tmp_root, extra_flags=None, synth=True, max_train=1):
+def run_synthetic(main, tmp_root, extra_flags=None, synth=True):
   """Performs a minimal run of a model.
 
     This function is intended to test for syntax errors throughout a model. A
@@ -41,7 +41,6 @@ def run_synthetic(main, tmp_root, extra_flags=None, synth=True, max_train=1):
     tmp_root: Root path for the temp directory created by the test class.
     extra_flags: Additional flags passed by the caller of this function.
     synth: Use synthetic data.
-    max_train: Maximum number of allowed training steps.
   """
 
   extra_flags = [] if extra_flags is None else extra_flags
@@ -53,9 +52,6 @@ def run_synthetic(main, tmp_root, extra_flags=None, synth=True, max_train=1):
 
   if synth:
     args.append("--use_synthetic_data")
-
-  if max_train is not None:
-    args.extend(["--max_train_steps", str(max_train)])
 
   try:
     flags_core.parse_flags(argv=args)

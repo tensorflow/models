@@ -109,7 +109,6 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
-
     optimizer = tf.compat.v1.train.AdamOptimizer(
         learning_rate=params["learning_rate"],
         beta1=params["beta1"],
@@ -151,7 +150,7 @@ def _strip_first_and_last_dimension(x, batch_size):
   return tf.reshape(x[0, :], (batch_size,))
 
 
-def construct_model(user_input, item_input, params, need_strip=False):
+def construct_model(user_input, item_input, params):
   # type: (tf.Tensor, tf.Tensor, dict) -> tf.keras.Model
   """Initialize NeuMF model.
 
@@ -184,34 +183,33 @@ def construct_model(user_input, item_input, params, need_strip=False):
   # Initializer for embedding layers
   embedding_initializer = "glorot_uniform"
 
-  if need_strip:
-    batch_size = params["batch_size"]
+  def mf_slice_fn(x):
+    x = tf.squeeze(x, [1])
+    return x[:, :mf_dim]
 
-    user_input_reshaped = tf.keras.layers.Lambda(
-        lambda x: _strip_first_and_last_dimension(
-            x, batch_size))(user_input)
-
-    item_input_reshaped = tf.keras.layers.Lambda(
-        lambda x: _strip_first_and_last_dimension(
-            x, batch_size))(item_input)
+  def mlp_slice_fn(x):
+    x = tf.squeeze(x, [1])
+    return x[:, mf_dim:]
 
   # It turns out to be significantly more effecient to store the MF and MLP
   # embedding portions in the same table, and then slice as needed.
-  mf_slice_fn = lambda x: x[:, :mf_dim]
-  mlp_slice_fn = lambda x: x[:, mf_dim:]
   embedding_user = tf.keras.layers.Embedding(
-      num_users, mf_dim + model_layers[0] // 2,
+      num_users,
+      mf_dim + model_layers[0] // 2,
       embeddings_initializer=embedding_initializer,
       embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
-      input_length=1, name="embedding_user")(
-          user_input_reshaped if need_strip else user_input)
+      input_length=1,
+      name="embedding_user")(
+          user_input)
 
   embedding_item = tf.keras.layers.Embedding(
-      num_items, mf_dim + model_layers[0] // 2,
+      num_items,
+      mf_dim + model_layers[0] // 2,
       embeddings_initializer=embedding_initializer,
       embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
-      input_length=1, name="embedding_item")(
-          item_input_reshaped if need_strip else item_input)
+      input_length=1,
+      name="embedding_item")(
+          item_input)
 
   # GMF part
   mf_user_latent = tf.keras.layers.Lambda(

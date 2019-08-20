@@ -82,7 +82,6 @@ def create_dataset_from_data_producer(producer, params):
     Returns:
       Processed training features.
     """
-    labels = tf.expand_dims(labels, -1)
     fake_dup_mask = tf.zeros_like(features[movielens.USER_COLUMN])
     features[rconst.DUPLICATE_MASK] = fake_dup_mask
     features[rconst.TRAIN_LABEL_KEY] = labels
@@ -106,7 +105,6 @@ def create_dataset_from_data_producer(producer, params):
       Processed evaluation features.
     """
     labels = tf.cast(tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
-    labels = tf.expand_dims(labels, -1)
     fake_valid_pt_mask = tf.cast(
         tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
     features[rconst.VALID_POINT_MASK] = fake_valid_pt_mask
@@ -119,7 +117,10 @@ def create_dataset_from_data_producer(producer, params):
   return train_input_dataset, eval_input_dataset
 
 
-def create_ncf_input_data(params, producer=None, input_meta_data=None):
+def create_ncf_input_data(params,
+                          producer=None,
+                          input_meta_data=None,
+                          strategy=None):
   """Creates NCF training/evaluation dataset.
 
   Args:
@@ -130,13 +131,31 @@ def create_ncf_input_data(params, producer=None, input_meta_data=None):
     input_meta_data: A dictionary of input metadata to be used when reading data
       from tf record files. Must be specified when params["train_input_dataset"]
       is specified.
+    strategy: Distribution strategy used for distributed training. If specified,
+      used to assert that evaluation batch size is correctly a multiple of
+      total number of devices used.
 
   Returns:
     (training dataset, evaluation dataset, train steps per epoch,
     eval steps per epoch)
+
+  Raises:
+    ValueError: If data is being generated online for when using TPU's.
   """
+  # NCF evaluation metric calculation logic assumes that evaluation data
+  # sample size are in multiples of (1 + number of negative samples in
+  # evaluation) for each device. As so, evaluation batch size must be a
+  # multiple of (number of replicas * (1 + number of negative samples)).
+  num_devices = strategy.num_replicas_in_sync if strategy else 1
+  if (params["eval_batch_size"] % (num_devices *
+                                   (1 + rconst.NUM_EVAL_NEGATIVES))):
+    raise ValueError("Evaluation batch size must be divisible by {} "
+                     "times {}".format(num_devices,
+                                       (1 + rconst.NUM_EVAL_NEGATIVES)))
 
   if params["train_dataset_path"]:
+    assert params["eval_dataset_path"]
+
     train_dataset = create_dataset_from_tf_record_files(
         params["train_dataset_path"],
         input_meta_data["train_prebatch_size"],
@@ -148,34 +167,18 @@ def create_ncf_input_data(params, producer=None, input_meta_data=None):
         params["eval_batch_size"],
         is_training=False)
 
-    # TODO(b/259377621): Remove number of devices (i.e.
-    # params["batches_per_step"]) in input pipeline logic and only use
-    # global batch size instead.
-    num_train_steps = int(
-        np.ceil(input_meta_data["num_train_steps"] /
-                params["batches_per_step"]))
-    num_eval_steps = (
-        input_meta_data["num_eval_steps"] // params["batches_per_step"])
-
+    num_train_steps = int(input_meta_data["num_train_steps"])
+    num_eval_steps = int(input_meta_data["num_eval_steps"])
   else:
-    assert producer
+    if params["use_tpu"]:
+      raise ValueError("TPU training does not support data producer yet. "
+                       "Use pre-processed data.")
 
+    assert producer
     # Start retrieving data from producer.
     train_dataset, eval_dataset = create_dataset_from_data_producer(
         producer, params)
-    num_train_steps = (
-        producer.train_batches_per_epoch // params["batches_per_step"])
-    num_eval_steps = (
-        producer.eval_batches_per_epoch // params["batches_per_step"])
-    assert not producer.train_batches_per_epoch % params["batches_per_step"]
-    assert not producer.eval_batches_per_epoch % params["batches_per_step"]
+    num_train_steps = producer.train_batches_per_epoch
+    num_eval_steps = producer.eval_batches_per_epoch
 
-  # It is required that for distributed training, the dataset must call
-  # batch(). The parameter of batch() here is the number of replicas involed,
-  # such that each replica evenly gets a slice of data.
-  # drop_remainder = True, as we would like batch call to return a fixed shape
-  # vs None, this prevents a expensive broadcast during weighted_loss
-  batches_per_step = params["batches_per_step"]
-  train_dataset = train_dataset.batch(batches_per_step, drop_remainder=True)
-  eval_dataset = eval_dataset.batch(batches_per_step, drop_remainder=True)
   return train_dataset, eval_dataset, num_train_steps, num_eval_steps

@@ -189,26 +189,26 @@ class NcfTest(tf.test.TestCase):
     self.assertAlmostEqual(ndcg, (1 + math.log(2) / math.log(3) +
                                   2 * math.log(2) / math.log(4)) / 4)
 
-  _BASE_END_TO_END_FLAGS = ['-batch_size', '1024', '-train_epochs', '1']
+  _BASE_END_TO_END_FLAGS = ['-batch_size', '1044', '-train_epochs', '1']
 
   @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator(self):
     integration.run_synthetic(
-        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS)
 
   @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator_mlperf(self):
     integration.run_synthetic(
-        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS + ['-ml_perf', 'True'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras_no_dist_strat(self):
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS +
         ['-distribution_strategy', 'off'])
 
@@ -216,7 +216,7 @@ class NcfTest(tf.test.TestCase):
   @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_end_to_end_keras_dist_strat(self):
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '0'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
@@ -226,7 +226,7 @@ class NcfTest(tf.test.TestCase):
              ['-num_gpus', '0'] +
              ['-keras_use_ctl', 'True'])
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=flags)
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
@@ -238,7 +238,7 @@ class NcfTest(tf.test.TestCase):
           format(1, context.num_gpus()))
 
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '1'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
@@ -250,7 +250,7 @@ class NcfTest(tf.test.TestCase):
           format(2, context.num_gpus()))
 
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '2'])
 
 if __name__ == "__main__":

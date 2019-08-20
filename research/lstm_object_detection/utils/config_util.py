@@ -37,7 +37,7 @@ def get_configs_from_pipeline_file(pipeline_config_path):
 
   Returns:
     Dictionary of configuration objects. Keys are `model`, `train_config`,
-      `train_input_config`, `eval_config`, `eval_input_config`, `lstm_confg`.
+      `train_input_config`, `eval_config`, `eval_input_config`, `lstm_model`.
       Value are the corresponding config objects.
   """
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()

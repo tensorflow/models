@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for the keras_common module."""
+"""Tests for the common module."""
 from __future__ import absolute_import
 from __future__ import print_function
 
 from mock import Mock
 import numpy as np
-import tensorflow as tf  # pylint: disable=g-bad-import-order
-from tensorflow.python.platform import googletest
+import tensorflow as tf
 
-from official.resnet.keras import keras_common
+from tensorflow.python.platform import googletest
 from official.utils.misc import keras_utils
+from official.vision.image_classification import common
 
 
 class KerasCommonTests(tf.test.TestCase):
-  """Tests for keras_common."""
+  """Tests for common."""
 
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
@@ -42,7 +42,7 @@ class KerasCommonTests(tf.test.TestCase):
                         keras_utils.BatchTimestamp(1, 2),
                         keras_utils.BatchTimestamp(2, 3)]
     th.train_finish_time = 12345
-    stats = keras_common.build_stats(history, eval_output, [th])
+    stats = common.build_stats(history, eval_output, [th])
 
     self.assertEqual(1.145, stats['loss'])
     self.assertEqual(.99988, stats['training_accuracy_top_1'])
@@ -57,7 +57,7 @@ class KerasCommonTests(tf.test.TestCase):
 
     history = self._build_history(1.145, cat_accuracy_sparse=.99988)
     eval_output = self._build_eval_output(.928, 1.9844)
-    stats = keras_common.build_stats(history, eval_output, None)
+    stats = common.build_stats(history, eval_output, None)
 
     self.assertEqual(1.145, stats['loss'])
     self.assertEqual(.99988, stats['training_accuracy_top_1'])

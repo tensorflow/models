@@ -730,9 +730,11 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 fp16_implementation=fp16_implementation,
                                 loss_scale=True,
-                                tf_data_experimental_slack=True)
+                                tf_data_experimental_slack=True,
+                                max_train_steps=True)
   flags_core.define_image()
   flags_core.define_benchmark()
+  flags_core.define_distribution()
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_enum(
@@ -768,16 +770,6 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
           'If True, uses `tf.estimator.train_and_evaluate` for the training '
           'and evaluation loop, instead of separate calls to `classifier.train '
           'and `classifier.evaluate`, which is the default behavior.'))
-  flags.DEFINE_string(
-      name='worker_hosts', default=None,
-      help=flags_core.help_wrap(
-          'Comma-separated list of worker ip:port pairs for running '
-          'multi-worker models with DistributionStrategy.  The user would '
-          'start the program on each host with identical value for this flag.'))
-  flags.DEFINE_integer(
-      name='task_index', default=-1,
-      help=flags_core.help_wrap('If multi-worker training, the task_index of '
-                                'this worker.'))
   flags.DEFINE_bool(
       name='enable_lars', default=False,
       help=flags_core.help_wrap(
