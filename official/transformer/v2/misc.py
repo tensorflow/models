@@ -72,7 +72,8 @@ def define_transformer_flags():
       loss_scale=True,
       all_reduce_alg=True,
       enable_xla=True,
-      force_v2_in_keras_compile=True
+      force_v2_in_keras_compile=True,
+      fp16_implementation=True
   )
 
   # Additional performance flags
@@ -85,9 +86,6 @@ def define_transformer_flags():
            'convolutions and batch normalizations, and this flag allows to '
            'disable it.'
   )
-  flags.DEFINE_boolean(
-      name='automatic_mixed_precision', default=False,
-      help='Enable automatic mixed precision training via a graph rewrite.')
     
   flags_core.define_benchmark()
   flags_core.define_device(tpu=True)
