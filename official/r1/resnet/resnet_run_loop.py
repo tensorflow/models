@@ -33,7 +33,7 @@ import tensorflow as tf
 
 from official.r1.resnet import imagenet_preprocessing
 from official.r1.resnet import resnet_model
-from official.utils.export import export
+from official.r1.utils import export
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
