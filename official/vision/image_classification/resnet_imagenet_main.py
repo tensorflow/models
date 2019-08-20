@@ -96,8 +96,11 @@ def run(flags_obj):
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'float16':
-    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    # Mixed precision training via graph rewrite should not be used in conjunction
+    # with tf.keras.mixed_precision
+    if flags_obj["fp16_implementation"] != "graph_rewrite":
+      policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
+      tf.keras.mixed_precision.experimental.set_policy(policy)
 
   data_format = flags_obj.data_format
   if data_format is None:
@@ -182,15 +185,13 @@ def run(flags_obj):
     if dtype == 'float16':
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
-      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
-                                                          default_for_fp16=128))
-    if flags_obj.automatic_mixed_precision:
-        if dtype == 'float16':
-            raise RuntimeError("Automatic mixed precision should not be called in conjunction with "
-                               "other types of mixed precision training. Set --dtype=fp32 instead.")
-        optimizer = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
-        
+      if flags_dict["fp16_implementation"] == "graph_rewrite":
+          optimizer = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+      else:
+          optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+              optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
+                                                              default_for_fp16=128))
+
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
           imagenet_preprocessing.NUM_CLASSES, dtype)

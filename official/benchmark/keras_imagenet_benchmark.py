@@ -90,7 +90,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
     FLAGS.dtype = 'fp32'
     FLAGS.enable_eager = True
-    FLAGS.automatic_mixed_precision = True
+    FLAGS.fp16_implementation = 'graph_rewrite'
     # Add some thread tunings to improve performance.
     FLAGS.datasets_num_private_threads = 14
     FLAGS.use_tensor_lr = True
@@ -326,7 +326,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
-    FLAGS.automatic_mixed_precision = True
+    FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_amp')
     FLAGS.batch_size = 256
@@ -350,7 +350,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
-    FLAGS.automatic_mixed_precision = True
+    FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_amp')
@@ -505,7 +505,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
-    FLAGS.automatic_mixed_precision = True
+    FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
@@ -542,7 +542,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
-    FLAGS.automatic_mixed_precision = True
+    FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_amp')
