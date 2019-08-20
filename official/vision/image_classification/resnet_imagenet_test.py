@@ -137,7 +137,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,  # pylint: disable=undefined-variable
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
