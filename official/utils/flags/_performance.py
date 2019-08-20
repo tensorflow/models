@@ -192,7 +192,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     if fp16_implementation:
       # Currently, this flag is only defined for the estimator resnet model.
       flags.DEFINE_enum(
-          name="fp16_implementation", default="casting",
+          name="fp16_implementation", default="graph_rewrite",
           enum_values=("casting', 'graph_rewrite"),
           help=help_wrap(
               "When --dtype=fp16, how fp16 should be implemented. This has no "
