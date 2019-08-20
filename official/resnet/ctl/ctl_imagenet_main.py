@@ -137,8 +137,6 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
-  dtype = flags_core.get_tf_dtype(flags_obj)
-
   # TODO(anj-s): Set data_format without using Keras.
   data_format = flags_obj.data_format
   if data_format is None:
@@ -163,7 +161,7 @@ def run(flags_obj):
   with strategy_scope:
     model = resnet_model.resnet50(
         num_classes=imagenet_preprocessing.NUM_CLASSES,
-        dtype=dtype, batch_size=flags_obj.batch_size)
+        batch_size=flags_obj.batch_size)
 
     optimizer = tf.keras.optimizers.SGD(
         learning_rate=keras_common.BASE_LEARNING_RATE, momentum=0.9,
