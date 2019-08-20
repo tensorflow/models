@@ -22,6 +22,7 @@ import tempfile
 
 import tensorflow as tf
 
+# pylint: disable=no-name-in-module
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
 from official.utils.misc import keras_utils
@@ -136,7 +137,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=keras_imagenet_main.run,  # pylint: disable=undefined-variable
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
