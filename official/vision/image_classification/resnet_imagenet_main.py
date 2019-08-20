@@ -32,7 +32,7 @@ from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import resnet_model
 from official.vision.image_classification import trivial_model
-
+import pdb
 
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
@@ -96,11 +96,8 @@ def run(flags_obj):
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'float16':
-    # Mixed precision training via graph rewrite should not be used in conjunction
-    # with tf.keras.mixed_precision
-    if flags_obj["fp16_implementation"] != "graph_rewrite":
-      policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
-      tf.keras.mixed_precision.experimental.set_policy(policy)
+    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
+    tf.keras.mixed_precision.experimental.set_policy(policy)
 
   data_format = flags_obj.data_format
   if data_format is None:
@@ -185,13 +182,16 @@ def run(flags_obj):
     if dtype == 'float16':
       # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
       # can be enabled with a single line of code.
-      if flags_dict["fp16_implementation"] == "graph_rewrite":
-          optimizer = tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
-      else:
-          optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-              optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
-                                                              default_for_fp16=128))
-
+      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
+                                                          default_for_fp16=128))
+    pdb.set_trace()
+    if flags_obj.fp16_implementation == "graph_rewrite":
+      # Note: when flags_obj["fp16_implementation"] == "graph_rewrite", 
+      # dtype as determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
+      #
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+            
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
           imagenet_preprocessing.NUM_CLASSES, dtype)
