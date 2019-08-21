@@ -137,6 +137,10 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
+  keras_utils.set_session_config(
+      enable_eager=flags_obj.enable_eager,
+      enable_xla=flags_obj.enable_xla)
+
   dtype = flags_core.get_tf_dtype(flags_obj)
 
   # TODO(anj-s): Set data_format without using Keras.
@@ -163,7 +167,8 @@ def run(flags_obj):
   with strategy_scope:
     model = resnet_model.resnet50(
         num_classes=imagenet_preprocessing.NUM_CLASSES,
-        dtype=dtype, batch_size=flags_obj.batch_size)
+        dtype=dtype, batch_size=flags_obj.batch_size,
+        use_l2_regularizer=not flags_obj.single_l2_loss_op)
 
     optimizer = tf.keras.optimizers.SGD(
         learning_rate=keras_common.BASE_LEARNING_RATE, momentum=0.9,
@@ -175,6 +180,8 @@ def run(flags_obj):
     test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'test_accuracy', dtype=tf.float32)
 
+    trainable_variables = model.trainable_variables
+
     def train_step(train_ds_inputs):
       """Training StepFn."""
       def step_fn(inputs):
@@ -185,13 +192,22 @@ def run(flags_obj):
 
           prediction_loss = tf.keras.losses.sparse_categorical_crossentropy(
               labels, logits)
-          loss1 = tf.reduce_sum(prediction_loss) * (1.0/ flags_obj.batch_size)
-          loss2 = (tf.reduce_sum(model.losses) /
-                   tf.distribute.get_strategy().num_replicas_in_sync)
-          loss = loss1 + loss2
+          loss = tf.reduce_sum(prediction_loss) * (1.0/ flags_obj.batch_size)
+          num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
 
-        grads = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+          if flags_obj.single_l2_loss_op:
+            filtered_variables = [
+                tf.reshape(v, (-1,))
+                for v in trainable_variables
+                if 'bn' not in v.name
+            ]
+            l2_loss = resnet_model.L2_WEIGHT_DECAY * 2 * tf.nn.l2_loss(
+                tf.concat(filtered_variables, axis=0))
+            loss += (l2_loss / num_replicas)
+          else:
+            loss += (tf.reduce_sum(model.losses) / num_replicas)
+        grads = tape.gradient(loss, trainable_variables)
+        optimizer.apply_gradients(zip(grads, trainable_variables))
 
         training_accuracy.update_state(labels, logits)
         return loss
