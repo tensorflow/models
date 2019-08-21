@@ -380,7 +380,7 @@ class TransformerTask(object):
       # Note: when flags_obj.fp16_implementation == "graph_rewrite",
       # dtype as determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
       # which will ensure tf.keras.mixed_precision and tf.train.experimental.enable_mixed_precision_graph_rewrite
-      # does not double up.
+      # do not double up.
       opt = tf.train.experimental.enable_mixed_precision_graph_rewrite(opt)
     
     return opt
