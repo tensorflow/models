@@ -239,7 +239,7 @@ def run(flags_obj):
 
   if not strategy and flags_obj.explicit_gpu_placement:
     # TODO(b/135607227): Add device scope automatically in Keras training loop
-    # when not using distribition strategy.
+    # when not using distribution strategy.
     no_dist_strat_device = tf.device('/device:GPU:0')
     no_dist_strat_device.__enter__()
 
