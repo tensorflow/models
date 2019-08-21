@@ -50,7 +50,7 @@ def create_model(params, is_train):
       if params["enable_metrics_in_training"]:
         logits = metrics.MetricLayer(vocab_size)([logits, targets])
       logits = tf.keras.layers.Lambda(lambda x: x, name="logits",
-                                      dtype="float32")(logits)
+                                      dtype=tf.float32)(logits)
       model = tf.keras.Model([inputs, targets], logits)
       # TODO(reedwm): Can we do this loss in float16 instead of float32?
       loss = metrics.transformer_loss(
