@@ -32,10 +32,10 @@ def define_common_bert_flags():
       'init_checkpoint', None,
       'Initial checkpoint (usually from a pre-trained BERT model).')
   flags.DEFINE_enum(
-      'strategy_type', 'mirror', ['tpu', 'mirror'],
+      'strategy_type', 'mirror', ['tpu', 'mirror', 'multi_worker_mirror'],
       'Distribution Strategy type to use for training. `tpu` uses '
-      'TPUStrategy for running on TPUs, `mirror` uses GPUs with '
-      'single host.')
+      'TPUStrategy for running on TPUs, `mirror` uses GPUs with single host, '
+      '`multi_worker_mirror` uses CPUs or GPUs with multiple hosts.')
   flags.DEFINE_integer('num_train_epochs', 3,
                        'Total number of training epochs to perform.')
   flags.DEFINE_integer(

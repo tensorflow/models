@@ -321,6 +321,8 @@ def main(_):
   strategy = None
   if FLAGS.strategy_type == 'mirror':
     strategy = tf.distribute.MirroredStrategy()
+  elif FLAGS.strategy_type == 'multi_worker_mirror':
+    strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
   elif FLAGS.strategy_type == 'tpu':
     # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
