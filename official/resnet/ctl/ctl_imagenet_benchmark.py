@@ -215,6 +215,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_eager')
     FLAGS.batch_size = 64
     FLAGS.use_tf_function = False
+    FLAGS.single_l2_loss_op = True
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu(self):
