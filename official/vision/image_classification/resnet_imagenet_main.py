@@ -31,7 +31,7 @@ from official.utils.misc import model_helpers
 from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import resnet_model
-from official.vision.image_classification import trivial_model
+from official.benchmark.models import trivial_model
 
 
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
@@ -186,6 +186,7 @@ def run(flags_obj):
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
                                                           default_for_fp16=128))
 
+    # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
           imagenet_preprocessing.NUM_CLASSES, dtype)
