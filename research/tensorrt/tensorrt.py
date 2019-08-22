@@ -187,7 +187,8 @@ def convert_savedmodel_to_frozen_graph(savedmodel_dir, output_dir):
       meta_graph,
       tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY)
 
-  outputs = [v.name for v in signature_def.outputs.itervalues()]
+  outputs = [v.name for v in signature_def.outputs.values()] # for python3
+  
   output_names = [node.split(":")[0] for node in outputs]
 
   graph = tf.Graph()
