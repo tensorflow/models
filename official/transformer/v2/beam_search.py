@@ -63,7 +63,7 @@ def sequence_beam_search(symbols_to_logits_fn,
                          alpha,
                          max_decode_length,
                          eos_id,
-                         padded_decode,
+                         padded_decode=False,
                          dtype="float32"):
   """Search for sequence of subtoken ids with the largest probability.
 
