@@ -21,6 +21,7 @@ import os
 import time
 
 from absl import flags
+import tensorflow as tf
 
 from official.transformer.v2 import misc
 from official.transformer.v2 import transformer_main as transformer_main
@@ -657,3 +658,7 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
     super(TransformerBigKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags,
         root_data_dir=root_data_dir, batch_per_gpu=3072)
+
+
+if __name__ == '__main__':
+  tf.test.main()

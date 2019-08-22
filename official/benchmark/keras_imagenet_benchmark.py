@@ -973,7 +973,7 @@ class Resnet50MultiWorkerKerasBenchmark(Resnet50KerasBenchmarkBase):
 
 
 class Resnet50MultiWorkerKerasBenchmarkSynth(Resnet50MultiWorkerKerasBenchmark):
-  """Resnet50 multi-worker synthetic benchmark tests."""
+  """Resnet50 multi-worker synthetic data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
@@ -984,6 +984,21 @@ class Resnet50MultiWorkerKerasBenchmarkSynth(Resnet50MultiWorkerKerasBenchmark):
     def_flags['log_steps'] = 10
 
     super(Resnet50MultiWorkerKerasBenchmarkSynth, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
+
+
+class Resnet50MultiWorkerKerasBenchmarkReal(Resnet50MultiWorkerKerasBenchmark):
+  """Resnet50 multi-worker real data benchmark tests."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    def_flags = {}
+    def_flags['skip_eval'] = True
+    def_flags['report_accuracy_metrics'] = False
+    def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
+    def_flags['train_steps'] = 110
+    def_flags['log_steps'] = 10
+
+    super(Resnet50MultiWorkerKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
 

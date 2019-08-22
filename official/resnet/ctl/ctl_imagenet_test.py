@@ -25,8 +25,8 @@ from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
 from official.resnet.ctl import ctl_common
 from official.resnet.ctl import ctl_imagenet_main
-from official.resnet.keras import imagenet_preprocessing
-from official.resnet.keras import keras_common
+from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification import common
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
@@ -49,7 +49,7 @@ class CtlImagenetTest(googletest.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(CtlImagenetTest, cls).setUpClass()
-    keras_common.define_keras_flags()
+    common.define_keras_flags()
     ctl_common.define_ctl_flags()
 
   def setUp(self):

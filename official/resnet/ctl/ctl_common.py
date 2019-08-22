@@ -27,3 +27,6 @@ def define_ctl_flags():
   flags.DEFINE_boolean(name='use_tf_function', default=True,
                        help='Wrap the train and test step inside a '
                        'tf.function.')
+  flags.DEFINE_boolean(name='single_l2_loss_op', default=False,
+                       help='Calculate L2_loss on concatenated weights, '
+                       'instead of using Keras per-layer L2 loss.')

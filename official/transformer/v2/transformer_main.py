@@ -52,18 +52,40 @@ BLEU_DIR = "bleu"
 _SINGLE_SAMPLE = 1
 
 
-def translate_and_compute_bleu(model, subtokenizer, bleu_source, bleu_ref):
-  """Translate file and report the cased and uncased bleu scores."""
+def translate_and_compute_bleu(model,
+                               params,
+                               subtokenizer,
+                               bleu_source,
+                               bleu_ref,
+                               distribution_strategy=None):
+  """Translate file and report the cased and uncased bleu scores.
+
+  Args:
+    model: A Keras model, used to generate the translations.
+    params: A dictionary, containing the translation related parameters.
+    subtokenizer: A subtokenizer object, used for encoding and decoding source
+      and translated lines.
+    bleu_source: A file containing source sentences for translation.
+    bleu_ref: A file containing the reference for the translated sentences.
+    distribution_strategy: A platform distribution strategy, used for TPU based
+      translation.
+
+  Returns:
+    uncased_score: A float, the case insensitive BLEU score.
+    cased_score: A float, the case sensitive BLEU score.
+  """
   # Create temporary file to store translation.
   tmp = tempfile.NamedTemporaryFile(delete=False)
   tmp_filename = tmp.name
 
   translate.translate_file(
       model,
+      params,
       subtokenizer,
       bleu_source,
       output_file=tmp_filename,
-      print_all_translations=False)
+      print_all_translations=False,
+      distribution_strategy=distribution_strategy)
 
   # Compute uncased and cased bleu scores.
   uncased_score = compute_bleu.bleu_wrapper(bleu_ref, tmp_filename, False)
@@ -72,12 +94,31 @@ def translate_and_compute_bleu(model, subtokenizer, bleu_source, bleu_ref):
   return uncased_score, cased_score
 
 
-def evaluate_and_log_bleu(model, bleu_source, bleu_ref, vocab_file):
-  """Calculate and record the BLEU score."""
+def evaluate_and_log_bleu(model,
+                          params,
+                          bleu_source,
+                          bleu_ref,
+                          vocab_file,
+                          distribution_strategy=None):
+  """Calculate and record the BLEU score.
+
+  Args:
+    model: A Keras model, used to generate the translations.
+    params: A dictionary, containing the translation related parameters.
+    bleu_source: A file containing source sentences for translation.
+    bleu_ref: A file containing the reference for the translated sentences.
+    vocab_file: A file containing the vocabulary for translation.
+    distribution_strategy: A platform distribution strategy, used for TPU based
+      translation.
+
+  Returns:
+    uncased_score: A float, the case insensitive BLEU score.
+    cased_score: A float, the case sensitive BLEU score.
+  """
   subtokenizer = tokenizer.Subtokenizer(vocab_file)
 
   uncased_score, cased_score = translate_and_compute_bleu(
-      model, subtokenizer, bleu_source, bleu_ref)
+      model, params, subtokenizer, bleu_source, bleu_ref, distribution_strategy)
 
   logging.info("Bleu score (uncased): %s", uncased_score)
   logging.info("Bleu score (cased): %s", cased_score)
@@ -110,6 +151,9 @@ class TransformerTask(object):
     params["model_dir"] = flags_obj.model_dir
     params["static_batch"] = flags_obj.static_batch
     params["max_length"] = flags_obj.max_length
+    params["decode_batch_size"] = flags_obj.decode_batch_size
+    params["decode_max_length"] = flags_obj.decode_max_length
+    params["padded_decode"] = flags_obj.padded_decode
     params["num_parallel_calls"] = (
         flags_obj.num_parallel_calls or tf.data.experimental.AUTOTUNE)
 
@@ -133,6 +177,7 @@ class TransformerTask(object):
         num_gpus=num_gpus,
         tpu_address=flags_obj.tpu or "")
     if self.use_tpu:
+      params["num_replicas"] = self.distribution_strategy.num_replicas_in_sync
       if not params["static_batch"]:
         raise ValueError("TPU requires static batch for input data.")
     else:
@@ -306,10 +351,10 @@ class TransformerTask(object):
         self.predict_model,
         tf.train.latest_checkpoint(self.flags_obj.model_dir))
     self.predict_model.summary()
-    return evaluate_and_log_bleu(self.predict_model,
-                                 self.flags_obj.bleu_source,
-                                 self.flags_obj.bleu_ref,
-                                 self.flags_obj.vocab_file)
+    return evaluate_and_log_bleu(
+        self.predict_model, self.params, self.flags_obj.bleu_source,
+        self.flags_obj.bleu_ref, self.flags_obj.vocab_file,
+        self.distribution_strategy if self.use_tpu else None)
 
   def predict(self):
     """Predicts result from the model."""

@@ -50,13 +50,14 @@ To make Official Models easier to use, we are planning to create a pip installab
 * [mnist](mnist): A basic model to classify digits from the MNIST dataset.
 * [resnet](resnet): A deep residual network that can be used to classify both CIFAR-10 and ImageNet's dataset of 1000 classes.
 * [transformer](transformer): A transformer model to translate the WMT English to German dataset.
-* [wide_deep](wide_deep): A model that combines a wide model and deep network to classify census income data.
 * More models to come!
 
 Models that will not update to TensorFlow 2.x stay inside R1 directory:
 
 * [boosted_trees](r1/boosted_trees): A Gradient Boosted Trees model to classify
   higgs boson process from HIGGS Data Set.
+* [wide_deep](r1/wide_deep): A model that combines a wide model and deep network
+  to classify census income data.
 
 
 If you would like to make any fixes or improvements to the models, please [submit a pull request](https://github.com/tensorflow/models/compare).
