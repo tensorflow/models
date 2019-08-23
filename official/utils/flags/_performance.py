@@ -53,7 +53,7 @@ def get_loss_scale(flags_obj, default_for_fp16):
     return default_for_fp16
 
 
-def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
+def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
                        synthetic_data=True, max_train_steps=False, dtype=True,
                        all_reduce_alg=True, num_packs=True,
                        tf_gpu_thread_mode=False,

@@ -725,6 +725,8 @@ def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
   """Add flags and validators for ResNet."""
   flags_core.define_base()
   flags_core.define_performance(num_parallel_calls=False,
+                                inter_op=True,
+                                intra_op=True,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
                                 dynamic_loss_scale=dynamic_loss_scale,
