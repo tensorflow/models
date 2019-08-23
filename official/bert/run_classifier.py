@@ -210,7 +210,7 @@ def run_bert(strategy, input_meta_data):
       run_eagerly=FLAGS.run_eagerly)
 
   if FLAGS.model_export_path:
-    with tf.device(model_training_utils.get_primary_cpu_task(use_remote_tpu)):
+    with tf.device(tpu_lib.get_primary_cpu_task(use_remote_tpu)):
       model_saving_utils.export_bert_model(
           FLAGS.model_export_path, model=trained_model)
   return trained_model

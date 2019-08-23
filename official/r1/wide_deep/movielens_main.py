@@ -27,8 +27,8 @@ import tensorflow as tf
 from official.datasets import movielens
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
-from official.wide_deep import movielens_dataset
-from official.wide_deep import wide_deep_run_loop
+from official.r1.wide_deep import movielens_dataset
+from official.r1.wide_deep import wide_deep_run_loop
 
 
 def define_movie_flags():

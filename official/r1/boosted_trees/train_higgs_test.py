@@ -26,7 +26,7 @@ import pandas as pd
 import tensorflow as tf
 
 # pylint: disable=g-bad-import-order
-from official.boosted_trees import train_higgs
+from official.r1.boosted_trees import train_higgs
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
@@ -133,7 +133,7 @@ class BaseTest(tf.test.TestCase):
             "--eval_start", "12",
             "--eval_count", "8",
         ],
-        synth=False, max_train=None)
+        synth=False)
     self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, "checkpoint")))
 
   @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
@@ -152,7 +152,7 @@ class BaseTest(tf.test.TestCase):
             "--eval_start", "12",
             "--eval_count", "8",
         ],
-        synth=False, max_train=None)
+        synth=False)
     self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, "checkpoint")))
     self.assertTrue(tf.gfile.Exists(os.path.join(export_dir)))
 

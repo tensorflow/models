@@ -18,16 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tempfile import mkdtemp
+import tempfile
+
 import tensorflow as tf
 
-from official.resnet.keras import imagenet_preprocessing
-from official.resnet.keras import keras_imagenet_main
-from official.utils.misc import keras_utils
-from official.utils.testing import integration
-# pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
+from official.utils.misc import keras_utils
+from official.utils.testing import integration
+from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification import resnet_imagenet_main
 
 
 class KerasImagenetTest(googletest.TestCase):
@@ -42,13 +42,13 @@ class KerasImagenetTest(googletest.TestCase):
 
   def get_temp_dir(self):
     if not self._tempdir:
-      self._tempdir = mkdtemp(dir=googletest.GetTempDir())
+      self._tempdir = tempfile.mkdtemp(dir=googletest.GetTempDir())
     return self._tempdir
 
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(KerasImagenetTest, cls).setUpClass()
-    keras_imagenet_main.define_imagenet_keras_flags()
+    resnet_imagenet_main.define_imagenet_keras_flags()
 
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
@@ -71,7 +71,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -87,7 +87,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -111,7 +111,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -133,7 +133,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -156,7 +156,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -180,7 +180,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -204,7 +204,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -229,7 +229,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -250,7 +250,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -272,7 +272,7 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_imagenet_main.run,
+        main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )

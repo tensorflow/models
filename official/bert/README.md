@@ -1,8 +1,5 @@
 # BERT (Bidirectional Encoder Representations from Transformers)
 
-Note> Please do not create pull request. This model is still under development
-and testing.
-
 The academic paper which describes BERT in detail and provides full results on a
 number of tasks can be found here: https://arxiv.org/abs/1810.04805.
 
@@ -29,6 +26,31 @@ changes to the training code, utility function interface and flags.
 Our current released checkpoints are exactly the same as TF 1.x official BERT
 repository, thus inside `BertConfig`, there is `backward_compatible=True`. We
 are going to release new pre-trained checkpoints soon.
+
+### Access to Pretrained Checkpoints
+
+We provide checkpoints that are converted from [google-research/bert](https://github.com/google-research/bert),
+in order to keep consistent with BERT paper.
+
+*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/wwm_uncased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Large, Cased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/wwm_cased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Uncased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/uncased_L-12_H-768_A-12.tar.gz)**:
+    12-layer, 768-hidden, 12-heads, 110M parameters
+*   **[`BERT-Large, Uncased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/cased_L-12_H-768_A-12.tar.gz)**:
+    12-layer, 768-hidden, 12-heads , 110M parameters
+*   **[`BERT-Large, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/cased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+
+We recommend to host checkpoints on Google Cloud storage buckets when you use
+Cloud GPU/TPU. For example, in the following tutorial, we use:
+
+```shell
+export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16
+```
 
 ### Restoring from Checkpoints
 
@@ -70,9 +92,9 @@ Second, you need to install TF 2.0 `tf-night` on your VM:
 pip install tf-nightly-2.0-preview
 ```
 
-Warning: More details TPU-specific set-up instructions and tutorial for TF 2.0
-are coming. Note that this repo is not officially supported by Google Cloud TPU
-team yet.
+Warning: More details TPU-specific set-up instructions and tutorial should come
+along with official TF 2.x release for TPU. Note that this repo is not officially
+supported by Google Cloud TPU team yet.
 
 ## Process Datasets
 

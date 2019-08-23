@@ -41,8 +41,8 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
         flag_methods=[shakespeare_main.define_flags])
 
   def _run_and_report_benchmark(self,
-                                top_1_train_min=0.923,
-                                top_1_train_max=0.93,
+                                top_1_train_min=0.91,
+                                top_1_train_max=0.94,
                                 warmup=1,
                                 log_steps=100):
     """Report benchmark results by writing to local protobuf file.
@@ -206,21 +206,6 @@ class ShakespeareAccuracy(ShakespeareBenchmarkBase):
     FLAGS.batch_size = 64
     FLAGS.train_epochs = 43
     FLAGS.model_dir = ''
-    self._run_and_report_benchmark()
-
-  def benchmark_xla_8_gpu(self):
-    """Benchmark 8 gpu w/xla.
-
-    This is test is for accuracy not scaling.  The batch-size is not scaled to
-    the number of gpus.
-    """
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.training_data = self.train_data
-    FLAGS.batch_size = 64
-    FLAGS.train_epochs = 43
-    FLAGS.model_dir = ''
-    FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
 

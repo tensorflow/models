@@ -24,10 +24,10 @@ from absl import logging
 import tensorflow as tf
 
 from official.resnet.ctl import ctl_common
-from official.resnet.keras import imagenet_preprocessing
-from official.resnet.keras import keras_common
-from official.resnet.keras import keras_imagenet_main
-from official.resnet.keras import resnet_model
+from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification import common
+from official.vision.image_classification import resnet_imagenet_main
+from official.vision.image_classification import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -73,7 +73,7 @@ def get_input_dataset(flags_obj, strategy):
   """Returns the test and train input datasets."""
   dtype = flags_core.get_tf_dtype(flags_obj)
   if flags_obj.use_synthetic_data:
-    input_fn = keras_common.get_synth_input_fn(
+    input_fn = common.get_synth_input_fn(
         height=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
         width=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
         num_channels=imagenet_preprocessing.NUM_CHANNELS,
@@ -137,6 +137,10 @@ def run(flags_obj):
   Returns:
     Dictionary of training and eval stats.
   """
+  keras_utils.set_session_config(
+      enable_eager=flags_obj.enable_eager,
+      enable_xla=flags_obj.enable_xla)
+
   dtype = flags_core.get_tf_dtype(flags_obj)
 
   # TODO(anj-s): Set data_format without using Keras.
@@ -163,10 +167,11 @@ def run(flags_obj):
   with strategy_scope:
     model = resnet_model.resnet50(
         num_classes=imagenet_preprocessing.NUM_CLASSES,
-        dtype=dtype, batch_size=flags_obj.batch_size)
+        dtype=dtype, batch_size=flags_obj.batch_size,
+        use_l2_regularizer=not flags_obj.single_l2_loss_op)
 
     optimizer = tf.keras.optimizers.SGD(
-        learning_rate=keras_common.BASE_LEARNING_RATE, momentum=0.9,
+        learning_rate=common.BASE_LEARNING_RATE, momentum=0.9,
         nesterov=True)
 
     training_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
@@ -174,6 +179,8 @@ def run(flags_obj):
     test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
     test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'test_accuracy', dtype=tf.float32)
+
+    trainable_variables = model.trainable_variables
 
     def train_step(train_ds_inputs):
       """Training StepFn."""
@@ -185,13 +192,22 @@ def run(flags_obj):
 
           prediction_loss = tf.keras.losses.sparse_categorical_crossentropy(
               labels, logits)
-          loss1 = tf.reduce_sum(prediction_loss) * (1.0/ flags_obj.batch_size)
-          loss2 = (tf.reduce_sum(model.losses) /
-                   tf.distribute.get_strategy().num_replicas_in_sync)
-          loss = loss1 + loss2
+          loss = tf.reduce_sum(prediction_loss) * (1.0/ flags_obj.batch_size)
+          num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
 
-        grads = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+          if flags_obj.single_l2_loss_op:
+            filtered_variables = [
+                tf.reshape(v, (-1,))
+                for v in trainable_variables
+                if 'bn' not in v.name
+            ]
+            l2_loss = resnet_model.L2_WEIGHT_DECAY * 2 * tf.nn.l2_loss(
+                tf.concat(filtered_variables, axis=0))
+            loss += (l2_loss / num_replicas)
+          else:
+            loss += (tf.reduce_sum(model.losses) / num_replicas)
+        grads = tape.gradient(loss, trainable_variables)
+        optimizer.apply_gradients(zip(grads, trainable_variables))
 
         training_accuracy.update_state(labels, logits)
         return loss
@@ -232,7 +248,7 @@ def run(flags_obj):
       training_accuracy.reset_states()
 
       for step in range(train_steps):
-        optimizer.lr = keras_imagenet_main.learning_rate_schedule(
+        optimizer.lr = resnet_imagenet_main.learning_rate_schedule(
             epoch, step, train_steps, flags_obj.batch_size)
 
         time_callback.on_batch_begin(step+epoch*train_steps)
@@ -281,6 +297,8 @@ def main(_):
 
 if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
-  keras_common.define_keras_flags()
+  common.define_keras_flags()
   ctl_common.define_ctl_flags()
+  flags.adopt_module_key_flags(keras_common)
+  flags.adopt_module_key_flags(ctl_common)
   absl_app.run(main)
