@@ -58,8 +58,8 @@ class TransformerBenchmark(PerfZeroBenchmark):
                                  EN2DE_2014_BLEU_DATA_DIR_NAME,
                                  'newstest2014.de')
 
-    default_flags['train_steps'] = 200
-    default_flags['log_steps'] = 10
+    if default_flags is None:
+      default_flags = {}
     default_flags['data_dir'] = self.train_data_dir
     default_flags['vocab_file'] = self.vocab_file
 
@@ -628,6 +628,8 @@ class TransformerBaseKerasBenchmarkReal(TransformerKerasBenchmark):
   def __init__(self, output_dir=TMP_DIR, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['param_set'] = 'base'
+    def_flags['train_steps'] = 200
+    def_flags['log_steps'] = 10
 
     super(TransformerBaseKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags,
@@ -640,6 +642,8 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
   def __init__(self, output_dir=TMP_DIR, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['param_set'] = 'big'
+    def_flags['train_steps'] = 200
+    def_flags['log_steps'] = 10
 
     super(TransformerBigKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags,
