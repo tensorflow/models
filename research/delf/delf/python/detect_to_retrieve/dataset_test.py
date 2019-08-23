@@ -215,12 +215,12 @@ class DatasetTest(tf.test.TestCase):
     # Define expected results.
     expected_metrics = ('hard\n'
                         '  mAP=70.0\n'
-                        '  mP@k[1 5] [ 100.   80.]\n'
-                        '  mR@k[1 5] [ 50.  80.]\n'
+                        '  mP@k[1 5] [100.  80.]\n'
+                        '  mR@k[1 5] [50. 80.]\n'
                         'medium\n'
                         '  mAP=90.0\n'
-                        '  mP@k[1 5] [ 100.  100.]\n'
-                        '  mR@k[1 5] [  50.  100.]\n')
+                        '  mP@k[1 5] [100. 100.]\n'
+                        '  mR@k[1 5] [ 50. 100.]\n')
 
     # Parse actual results, and compare to expected.
     with tf.gfile.GFile(output_path) as f:
