@@ -31,6 +31,7 @@ from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 TRANSFORMER_EN2DE_DATA_DIR_NAME = 'wmt32k-en2de-official'
 EN2DE_2014_BLEU_DATA_DIR_NAME = 'newstest2014'
 FLAGS = flags.FLAGS
+TMP_DIR = os.getenv('TMPDIR')
 
 
 class TransformerBenchmark(PerfZeroBenchmark):
@@ -56,6 +57,11 @@ class TransformerBenchmark(PerfZeroBenchmark):
     self.bleu_ref = os.path.join(root_data_dir,
                                  EN2DE_2014_BLEU_DATA_DIR_NAME,
                                  'newstest2014.de')
+
+    default_flags['train_steps'] = 200
+    default_flags['log_steps'] = 10
+    default_flags['data_dir'] = self.train_data_dir
+    default_flags['vocab_file'] = self.vocab_file
 
     super(TransformerBenchmark, self).__init__(
         output_dir=output_dir,
@@ -619,19 +625,9 @@ class TransformerKerasBenchmark(TransformerBenchmark):
 class TransformerBaseKerasBenchmarkReal(TransformerKerasBenchmark):
   """Transformer based version real data benchmark tests."""
 
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    train_data_dir = os.path.join(root_data_dir,
-                                  TRANSFORMER_EN2DE_DATA_DIR_NAME)
-    vocab_file = os.path.join(root_data_dir,
-                              TRANSFORMER_EN2DE_DATA_DIR_NAME,
-                              'vocab.ende.32768')
-
+  def __init__(self, output_dir=TMP_DIR, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['param_set'] = 'base'
-    def_flags['vocab_file'] = vocab_file
-    def_flags['data_dir'] = train_data_dir
-    def_flags['train_steps'] = 200
-    def_flags['log_steps'] = 10
 
     super(TransformerBaseKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags,
@@ -641,19 +637,9 @@ class TransformerBaseKerasBenchmarkReal(TransformerKerasBenchmark):
 class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
   """Transformer based version real data benchmark tests."""
 
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    train_data_dir = os.path.join(root_data_dir,
-                                  TRANSFORMER_EN2DE_DATA_DIR_NAME)
-    vocab_file = os.path.join(root_data_dir,
-                              TRANSFORMER_EN2DE_DATA_DIR_NAME,
-                              'vocab.ende.32768')
-
+  def __init__(self, output_dir=TMP_DIR, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['param_set'] = 'big'
-    def_flags['vocab_file'] = vocab_file
-    def_flags['data_dir'] = train_data_dir
-    def_flags['train_steps'] = 200
-    def_flags['log_steps'] = 10
 
     super(TransformerBigKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags,
