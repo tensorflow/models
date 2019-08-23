@@ -18,17 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tempfile import mkdtemp
+import tempfile
+
 import tensorflow as tf
 
-from official.resnet.keras import cifar_preprocessing
-from official.resnet.keras import keras_cifar_main
-from official.resnet.keras import keras_common
-from official.utils.misc import keras_utils
-from official.utils.testing import integration
-# pylint: disable=ungrouped-imports
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
+from official.utils.misc import keras_utils
+from official.utils.testing import integration
+from official.vision.image_classification import cifar_preprocessing
+from official.vision.image_classification import resnet_cifar_main
 
 
 class KerasCifarTest(googletest.TestCase):
@@ -43,13 +42,13 @@ class KerasCifarTest(googletest.TestCase):
 
   def get_temp_dir(self):
     if not self._tempdir:
-      self._tempdir = mkdtemp(dir=googletest.GetTempDir())
+      self._tempdir = tempfile.mkdtemp(dir=googletest.GetTempDir())
     return self._tempdir
 
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(KerasCifarTest, cls).setUpClass()
-    keras_cifar_main.define_cifar_flags()
+    resnet_cifar_main.define_cifar_flags()
 
   def setUp(self):
     super(KerasCifarTest, self).setUp()
@@ -72,7 +71,7 @@ class KerasCifarTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_cifar_main.run,
+        main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -88,7 +87,7 @@ class KerasCifarTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_cifar_main.run,
+        main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -112,7 +111,7 @@ class KerasCifarTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_cifar_main.run,
+        main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -134,7 +133,7 @@ class KerasCifarTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_cifar_main.run,
+        main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -157,7 +156,7 @@ class KerasCifarTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_cifar_main.run,
+        main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
@@ -178,7 +177,7 @@ class KerasCifarTest(googletest.TestCase):
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
-        main=keras_cifar_main.run,
+        main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
