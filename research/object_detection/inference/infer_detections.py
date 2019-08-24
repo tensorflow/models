@@ -17,7 +17,7 @@ r"""Infers detections on a TFRecord of TFExamples given an inference graph.
 Example usage:
   ./infer_detections \
     --input_tfrecord_paths=/path/to/input/tfrecord1,/path/to/input/tfrecord2 \
-    --output_tfrecord_path_prefix=/path/to/output/detections.tfrecord \
+    --output_tfrecord_path=/path/to/output/detections.tfrecord \
     --inference_graph=/path/to/frozen_weights_inference_graph.pb
 
 The output is a TFRecord of TFExamples. Each TFExample from the input is first
