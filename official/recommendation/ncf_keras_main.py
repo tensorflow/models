@@ -42,6 +42,7 @@ from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
+from official.utils.flags import core as flags_core
 from official.utils.misc import tpu_lib
 
 FLAGS = flags.FLAGS
@@ -267,6 +268,12 @@ def run_ncf(_):
           beta_1=params["beta1"],
           beta_2=params["beta2"],
           epsilon=params["epsilon"])
+      if FLAGS.dtype == "fp16":
+        optimizer = \
+          tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
+              optimizer,
+              loss_scale=flags_core.get_loss_scale(FLAGS,
+                                                   default_for_fp16="dynamic"))
 
       if params["keras_use_ctl"]:
         train_loss, eval_results = run_ncf_custom_training(
@@ -371,8 +378,12 @@ def run_ncf_custom_training(params,
             softmax_logits,
             sample_weight=features[rconst.VALID_POINT_MASK])
         loss *= (1.0 / params["batch_size"])
+        if FLAGS.dtype == "fp16":
+          loss = optimizer.get_scaled_loss(loss)
 
       grads = tape.gradient(loss, keras_model.trainable_variables)
+      if FLAGS.dtype == "fp16":
+        grads = optimizer.get_unscaled_gradients(grads)
       # Converting gradients to dense form helps in perf on GPU for NCF
       grads = neumf_model.sparse_to_dense_grads(
           list(zip(grads, keras_model.trainable_variables)))

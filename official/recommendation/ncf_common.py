@@ -154,8 +154,10 @@ def define_ncf_flags():
       intra_op=False,
       synthetic_data=True,
       max_train_steps=False,
-      dtype=False,
+      dtype=True,
       all_reduce_alg=False,
+      loss_scale=True,
+      dynamic_loss_scale=True,
       enable_xla=True,
       force_v2_in_keras_compile=True
   )
