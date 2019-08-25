@@ -29,7 +29,7 @@ import train
 FLAGS = flags.FLAGS
 
 
-def provide_random_data(batch_size=2, patch_size=8, colors=1, **unused_kwargs):
+def provide_random_data(batch_size=2, patch_size=4, colors=1, **unused_kwargs):
   return tf.random_normal([batch_size, patch_size, patch_size, colors])
 
 
@@ -37,19 +37,19 @@ class TrainTest(absltest.TestCase):
 
   def setUp(self):
     self._config = {
-        'start_height': 4,
-        'start_width': 4,
+        'start_height': 2,
+        'start_width': 2,
         'scale_base': 2,
         'num_resolutions': 2,
+        'batch_size_schedule': [2],
         'colors': 1,
         'to_rgb_use_tanh_activation': True,
         'kernel_size': 3,
-        'batch_size': 2,
-        'stable_stage_num_images': 4,
-        'transition_stage_num_images': 4,
-        'total_num_images': 12,
-        'save_summaries_num_images': 4,
-        'latent_vector_size': 8,
+        'stable_stage_num_images': 1,
+        'transition_stage_num_images': 1,
+        'total_num_images': 3,
+        'save_summaries_num_images': 2,
+        'latent_vector_size': 2,
         'fmap_base': 8,
         'fmap_decay': 1.0,
         'fmap_max': 8,
@@ -73,11 +73,20 @@ class TrainTest(absltest.TestCase):
       tf.gfile.MakeDirs(train_root_dir)
 
     for stage_id in train.get_stage_ids(**self._config):
+      batch_size = train.get_batch_size(stage_id, **self._config)
       tf.reset_default_graph()
-      real_images = provide_random_data()
-      model = train.build_model(stage_id, real_images, **self._config)
+      real_images = provide_random_data(batch_size=batch_size)
+      model = train.build_model(stage_id, batch_size, real_images,
+                                **self._config)
       train.add_model_summaries(model, **self._config)
       train.train(model, **self._config)
+
+  def test_get_batch_size(self):
+    config = {'num_resolutions': 5, 'batch_size_schedule': [8, 4, 2]}
+    # batch_size_schedule is expanded to [8, 8, 8, 4, 2]
+    # At stage level it is [8, 8, 8, 8, 8, 4, 4, 2, 2]
+    for i, expected_batch_size in enumerate([8, 8, 8, 8, 8, 4, 4, 2, 2]):
+      self.assertEqual(train.get_batch_size(i, **config), expected_batch_size)
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ package object_detection.protos;
 // Message to configure graph rewriter for the tf graph.
 message GraphRewriter {
   optional Quantization quantization = 1;
+  extensions 1000 to max;
 }
 
 // Message for quantization options. See
@@ -20,4 +21,7 @@ message Quantization {
   // Number of bits to use for quantizing activations.
   // Only 8 bit is supported for now.
   optional int32 activation_bits = 3 [default = 8];
+
+  // Whether to use symmetric weight quantization.
+  optional bool symmetric = 4 [default = false];
 }

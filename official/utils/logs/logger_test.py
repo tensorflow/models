@@ -34,6 +34,7 @@ try:
 except ImportError:
   bigquery = None
 
+from official.utils.misc import keras_utils
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 
@@ -46,12 +47,12 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     flags_core.define_benchmark()
 
   def test_get_default_benchmark_logger(self):
-    with flagsaver.flagsaver(benchmark_logger_type='foo'):
+    with flagsaver.flagsaver(benchmark_logger_type="foo"):
       self.assertIsInstance(logger.get_benchmark_logger(),
                             logger.BaseBenchmarkLogger)
 
   def test_config_base_benchmark_logger(self):
-    with flagsaver.flagsaver(benchmark_logger_type='BaseBenchmarkLogger'):
+    with flagsaver.flagsaver(benchmark_logger_type="BaseBenchmarkLogger"):
       logger.config_benchmark_logger()
       self.assertIsInstance(logger.get_benchmark_logger(),
                             logger.BaseBenchmarkLogger)
@@ -59,16 +60,16 @@ class BenchmarkLoggerTest(tf.test.TestCase):
   def test_config_benchmark_file_logger(self):
     # Set the benchmark_log_dir first since the benchmark_logger_type will need
     # the value to be set when it does the validation.
-    with flagsaver.flagsaver(benchmark_log_dir='/tmp'):
-      with flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger'):
+    with flagsaver.flagsaver(benchmark_log_dir="/tmp"):
+      with flagsaver.flagsaver(benchmark_logger_type="BenchmarkFileLogger"):
         logger.config_benchmark_logger()
         self.assertIsInstance(logger.get_benchmark_logger(),
                               logger.BenchmarkFileLogger)
 
-  @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
+  @unittest.skipIf(bigquery is None, "Bigquery dependency is not installed.")
   @mock.patch.object(bigquery, "Client")
   def test_config_benchmark_bigquery_logger(self, mock_bigquery_client):
-    with flagsaver.flagsaver(benchmark_logger_type='BenchmarkBigQueryLogger'):
+    with flagsaver.flagsaver(benchmark_logger_type="BenchmarkBigQueryLogger"):
       logger.config_benchmark_logger()
       self.assertIsInstance(logger.get_benchmark_logger(),
                             logger.BenchmarkBigQueryLogger)
@@ -78,7 +79,7 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     mock_logger = mock.MagicMock()
     mock_config_benchmark_logger.return_value = mock_logger
     with logger.benchmark_context(None):
-      tf.logging.info("start benchmarking")
+      tf.compat.v1.logging.info("start benchmarking")
     mock_logger.on_finish.assert_called_once_with(logger.RUN_STATUS_SUCCESS)
 
   @mock.patch("official.utils.logs.logger.config_benchmark_logger")
@@ -95,18 +96,18 @@ class BaseBenchmarkLoggerTest(tf.test.TestCase):
 
   def setUp(self):
     super(BaseBenchmarkLoggerTest, self).setUp()
-    self._actual_log = tf.logging.info
+    self._actual_log = tf.compat.v1.logging.info
     self.logged_message = None
 
     def mock_log(*args, **kwargs):
       self.logged_message = args
       self._actual_log(*args, **kwargs)
 
-    tf.logging.info = mock_log
+    tf.compat.v1.logging.info = mock_log
 
   def tearDown(self):
     super(BaseBenchmarkLoggerTest, self).tearDown()
-    tf.logging.info = self._actual_log
+    tf.compat.v1.logging.info = self._actual_log
 
   def test_log_metric(self):
     log = logger.BaseBenchmarkLogger()
@@ -128,16 +129,16 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
 
   def tearDown(self):
     super(BenchmarkFileLoggerTest, self).tearDown()
-    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    tf.io.gfile.rmtree(self.get_temp_dir())
     os.environ.clear()
     os.environ.update(self.original_environ)
 
   def test_create_logging_dir(self):
     non_exist_temp_dir = os.path.join(self.get_temp_dir(), "unknown_dir")
-    self.assertFalse(tf.gfile.IsDirectory(non_exist_temp_dir))
+    self.assertFalse(tf.io.gfile.isdir(non_exist_temp_dir))
 
     logger.BenchmarkFileLogger(non_exist_temp_dir)
-    self.assertTrue(tf.gfile.IsDirectory(non_exist_temp_dir))
+    self.assertTrue(tf.io.gfile.isdir(non_exist_temp_dir))
 
   def test_log_metric(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
@@ -145,8 +146,8 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     log.log_metric("accuracy", 0.999, global_step=1e4, extras={"name": "value"})
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertTrue(tf.gfile.Exists(metric_log))
-    with tf.gfile.GFile(metric_log) as f:
+    self.assertTrue(tf.io.gfile.exists(metric_log))
+    with tf.io.gfile.GFile(metric_log) as f:
       metric = json.loads(f.readline())
       self.assertEqual(metric["name"], "accuracy")
       self.assertEqual(metric["value"], 0.999)
@@ -161,8 +162,8 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     log.log_metric("loss", 0.02, global_step=1e4)
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertTrue(tf.gfile.Exists(metric_log))
-    with tf.gfile.GFile(metric_log) as f:
+    self.assertTrue(tf.io.gfile.exists(metric_log))
+    with tf.io.gfile.GFile(metric_log) as f:
       accuracy = json.loads(f.readline())
       self.assertEqual(accuracy["name"], "accuracy")
       self.assertEqual(accuracy["value"], 0.999)
@@ -184,7 +185,7 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     log.log_metric("accuracy", const)
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertFalse(tf.gfile.Exists(metric_log))
+    self.assertFalse(tf.io.gfile.exists(metric_log))
 
   def test_log_evaluation_result(self):
     eval_result = {"loss": 0.46237424,
@@ -195,8 +196,8 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     log.log_evaluation_result(eval_result)
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertTrue(tf.gfile.Exists(metric_log))
-    with tf.gfile.GFile(metric_log) as f:
+    self.assertTrue(tf.io.gfile.exists(metric_log))
+    with tf.io.gfile.GFile(metric_log) as f:
       accuracy = json.loads(f.readline())
       self.assertEqual(accuracy["name"], "accuracy")
       self.assertEqual(accuracy["value"], 0.9285)
@@ -216,7 +217,7 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     log.log_evaluation_result(eval_result)
 
     metric_log = os.path.join(log_dir, "metric.log")
-    self.assertFalse(tf.gfile.Exists(metric_log))
+    self.assertFalse(tf.io.gfile.exists(metric_log))
 
   @mock.patch("official.utils.logs.logger._gather_run_info")
   def test_log_run_info(self, mock_gather_run_info):
@@ -229,8 +230,8 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     log.log_run_info("model_name", "dataset_name", {})
 
     run_log = os.path.join(log_dir, "benchmark_run.log")
-    self.assertTrue(tf.gfile.Exists(run_log))
-    with tf.gfile.GFile(run_log) as f:
+    self.assertTrue(tf.io.gfile.exists(run_log))
+    with tf.io.gfile.GFile(run_log) as f:
       run_info = json.loads(f.readline())
       self.assertEqual(run_info["model_name"], "model_name")
       self.assertEqual(run_info["dataset"], "dataset_name")
@@ -240,8 +241,10 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     run_info = {}
     logger._collect_tensorflow_info(run_info)
     self.assertNotEqual(run_info["tensorflow_version"], {})
-    self.assertEqual(run_info["tensorflow_version"]["version"], tf.VERSION)
-    self.assertEqual(run_info["tensorflow_version"]["git_hash"], tf.GIT_VERSION)
+    self.assertEqual(run_info["tensorflow_version"]["version"],
+                     tf.version.VERSION)
+    self.assertEqual(run_info["tensorflow_version"]["git_hash"],
+                     tf.version.GIT_VERSION)
 
   def test_collect_run_params(self):
     run_info = {}
@@ -259,9 +262,13 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
                      {"name": "batch_size", "long_value": 32})
     self.assertEqual(run_info["run_parameters"][1],
                      {"name": "dtype", "string_value": "fp16"})
-    self.assertEqual(run_info["run_parameters"][2],
-                     {"name": "random_tensor", "string_value":
-                          "Tensor(\"Const:0\", shape=(), dtype=float32)"})
+    v1_tensor = {"name": "random_tensor", "string_value":
+                     "Tensor(\"Const:0\", shape=(), dtype=float32)"}
+    v2_tensor = {"name": "random_tensor", "string_value":
+                     "tf.Tensor(2.0, shape=(), dtype=float32)"}
+    self.assertIn(run_info["run_parameters"][2], [v1_tensor, v2_tensor])
+
+
     self.assertEqual(run_info["run_parameters"][3],
                      {"name": "resnet_size", "long_value": 50})
     self.assertEqual(run_info["run_parameters"][4],
@@ -284,12 +291,6 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     self.assertEqual(run_info["tensorflow_environment_variables"],
                      expected_tf_envs)
 
-  @unittest.skipUnless(tf.test.is_built_with_cuda(), "requires GPU")
-  def test_collect_gpu_info(self):
-    run_info = {"machine_config": {}}
-    logger._collect_gpu_info(run_info)
-    self.assertNotEqual(run_info["machine_config"]["gpu_info"], {})
-
   def test_collect_memory_info(self):
     run_info = {"machine_config": {}}
     logger._collect_memory_info(run_info)
@@ -297,7 +298,7 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     self.assertIsNotNone(run_info["machine_config"]["memory_available"])
 
 
-@unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
+@unittest.skipIf(bigquery is None, "Bigquery dependency is not installed.")
 class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
 
   def setUp(self):
@@ -315,7 +316,7 @@ class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
 
   def tearDown(self):
     super(BenchmarkBigQueryLoggerTest, self).tearDown()
-    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    tf.io.gfile.rmtree(self.get_temp_dir())
     os.environ.clear()
     os.environ.update(self.original_environ)
 

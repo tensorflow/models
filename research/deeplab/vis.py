@@ -17,18 +17,14 @@
 
 See model.py for more details and usage.
 """
-import math
 import os.path
 import time
 import numpy as np
 import tensorflow as tf
 from deeplab import common
 from deeplab import model
-from deeplab.datasets import segmentation_dataset
-from deeplab.utils import input_generator
+from deeplab.datasets import data_generator
 from deeplab.utils import save_annotation
-
-slim = tf.contrib.slim
 
 flags = tf.app.flags
 
@@ -47,8 +43,8 @@ flags.DEFINE_string('checkpoint_dir', None, 'Directory of model checkpoints.')
 flags.DEFINE_integer('vis_batch_size', 1,
                      'The number of images in each batch during evaluation.')
 
-flags.DEFINE_multi_integer('vis_crop_size', [513, 513],
-                           'Crop size [height, width] for visualization.')
+flags.DEFINE_list('vis_crop_size', '513,513',
+                  'Crop size [height, width] for visualization.')
 
 flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                      'How often (in seconds) to run evaluation.')
@@ -69,6 +65,10 @@ flags.DEFINE_multi_float('eval_scales', [1.0],
 # Change to True for adding flipped images during test.
 flags.DEFINE_bool('add_flipped_images', False,
                   'Add flipped images for evaluation or not.')
+
+flags.DEFINE_integer(
+    'quantize_delay_step', -1,
+    'Steps to start quantized training. If < 0, will not quantize model.')
 
 # Dataset settings.
 
@@ -186,11 +186,24 @@ def _process_batch(sess, original_images, semantic_predictions, image_names,
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
+
   # Get dataset-dependent information.
-  dataset = segmentation_dataset.get_dataset(
-      FLAGS.dataset, FLAGS.vis_split, dataset_dir=FLAGS.dataset_dir)
+  dataset = data_generator.Dataset(
+      dataset_name=FLAGS.dataset,
+      split_name=FLAGS.vis_split,
+      dataset_dir=FLAGS.dataset_dir,
+      batch_size=FLAGS.vis_batch_size,
+      crop_size=[int(sz) for sz in FLAGS.vis_crop_size],
+      min_resize_value=FLAGS.min_resize_value,
+      max_resize_value=FLAGS.max_resize_value,
+      resize_factor=FLAGS.resize_factor,
+      model_variant=FLAGS.model_variant,
+      is_training=False,
+      should_shuffle=False,
+      should_repeat=False)
+
   train_id_to_eval_id = None
-  if dataset.name == segmentation_dataset.get_cityscapes_dataset_name():
+  if dataset.dataset_name == data_generator.get_cityscapes_dataset_name():
     tf.logging.info('Cityscapes requires converting train_id to eval_id.')
     train_id_to_eval_id = _CITYSCAPES_TRAIN_ID_TO_EVAL_ID
 
@@ -204,21 +217,12 @@ def main(unused_argv):
 
   tf.logging.info('Visualizing on %s set', FLAGS.vis_split)
 
-  g = tf.Graph()
-  with g.as_default():
-    samples = input_generator.get(dataset,
-                                  FLAGS.vis_crop_size,
-                                  FLAGS.vis_batch_size,
-                                  min_resize_value=FLAGS.min_resize_value,
-                                  max_resize_value=FLAGS.max_resize_value,
-                                  resize_factor=FLAGS.resize_factor,
-                                  dataset_split=FLAGS.vis_split,
-                                  is_training=False,
-                                  model_variant=FLAGS.model_variant)
+  with tf.Graph().as_default():
+    samples = dataset.get_one_shot_iterator().get_next()
 
     model_options = common.ModelOptions(
-        outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_classes},
-        crop_size=FLAGS.vis_crop_size,
+        outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_of_classes},
+        crop_size=[int(sz) for sz in FLAGS.vis_crop_size],
         atrous_rates=FLAGS.atrous_rates,
         output_stride=FLAGS.output_stride)
 
@@ -230,6 +234,9 @@ def main(unused_argv):
           image_pyramid=FLAGS.image_pyramid)
     else:
       tf.logging.info('Performing multi-scale test.')
+      if FLAGS.quantize_delay_step >= 0:
+        raise ValueError(
+            'Quantize mode is not supported with multi-scale test.')
       predictions = model.predict_labels_multi_scale(
           samples[common.IMAGE],
           model_options=model_options,
@@ -244,7 +251,7 @@ def main(unused_argv):
 
       # Reverse the resizing and padding operations performed in preprocessing.
       # First, we slice the valid regions (i.e., remove padded region) and then
-      # we reisze the predictions back.
+      # we resize the predictions back.
       original_image = tf.squeeze(samples[common.ORIGINAL_IMAGE])
       original_image_shape = tf.shape(original_image)
       predictions = tf.slice(
@@ -260,39 +267,33 @@ def main(unused_argv):
                                  align_corners=True), 3)
 
     tf.train.get_or_create_global_step()
-    saver = tf.train.Saver(slim.get_variables_to_restore())
-    sv = tf.train.Supervisor(graph=g,
-                             logdir=FLAGS.vis_logdir,
-                             init_op=tf.global_variables_initializer(),
-                             summary_op=None,
-                             summary_writer=None,
-                             global_step=None,
-                             saver=saver)
-    num_batches = int(math.ceil(
-        dataset.num_samples / float(FLAGS.vis_batch_size)))
-    last_checkpoint = None
+    if FLAGS.quantize_delay_step >= 0:
+      tf.contrib.quantize.create_eval_graph()
 
-    # Loop to visualize the results when new checkpoint is created.
-    num_iters = 0
-    while (FLAGS.max_number_of_iterations <= 0 or
-           num_iters < FLAGS.max_number_of_iterations):
-      num_iters += 1
-      last_checkpoint = slim.evaluation.wait_for_new_checkpoint(
-          FLAGS.checkpoint_dir, last_checkpoint)
-      start = time.time()
+    num_iteration = 0
+    max_num_iteration = FLAGS.max_number_of_iterations
+
+    checkpoints_iterator = tf.contrib.training.checkpoints_iterator(
+        FLAGS.checkpoint_dir, min_interval_secs=FLAGS.eval_interval_secs)
+    for checkpoint_path in checkpoints_iterator:
+      num_iteration += 1
       tf.logging.info(
           'Starting visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                        time.gmtime()))
-      tf.logging.info('Visualizing with model %s', last_checkpoint)
+      tf.logging.info('Visualizing with model %s', checkpoint_path)
 
-      with sv.managed_session(FLAGS.master,
-                              start_standard_services=False) as sess:
-        sv.start_queue_runners(sess)
-        sv.saver.restore(sess, last_checkpoint)
-
+      scaffold = tf.train.Scaffold(init_op=tf.global_variables_initializer())
+      session_creator = tf.train.ChiefSessionCreator(
+          scaffold=scaffold,
+          master=FLAGS.master,
+          checkpoint_filename_with_path=checkpoint_path)
+      with tf.train.MonitoredSession(
+          session_creator=session_creator, hooks=None) as sess:
+        batch = 0
         image_id_offset = 0
-        for batch in range(num_batches):
-          tf.logging.info('Visualizing batch %d / %d', batch + 1, num_batches)
+
+        while not sess.should_stop():
+          tf.logging.info('Visualizing batch %d', batch + 1)
           _process_batch(sess=sess,
                          original_images=samples[common.ORIGINAL_IMAGE],
                          semantic_predictions=predictions,
@@ -304,14 +305,13 @@ def main(unused_argv):
                          raw_save_dir=raw_save_dir,
                          train_id_to_eval_id=train_id_to_eval_id)
           image_id_offset += FLAGS.vis_batch_size
+          batch += 1
 
       tf.logging.info(
           'Finished visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                        time.gmtime()))
-      time_to_next_eval = start + FLAGS.eval_interval_secs - time.time()
-      if time_to_next_eval > 0:
-        time.sleep(time_to_next_eval)
-
+      if max_num_iteration > 0 and num_iteration >= max_num_iteration:
+        break
 
 if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')

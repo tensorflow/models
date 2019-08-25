@@ -19,6 +19,7 @@ Contains Class prediction head classes for different meta architectures.
 All the class prediction heads have a predict function that receives the
 `features` as the first argument and returns class predictions with background.
 """
+import functools
 import tensorflow as tf
 
 from object_detection.predictors.heads import head
@@ -33,16 +34,19 @@ class MaskRCNNClassHead(head.Head):
   https://arxiv.org/abs/1703.06870
   """
 
-  def __init__(self, is_training, num_classes, fc_hyperparams_fn,
-               use_dropout, dropout_keep_prob):
+  def __init__(self,
+               is_training,
+               num_class_slots,
+               fc_hyperparams_fn,
+               use_dropout,
+               dropout_keep_prob,
+               scope='ClassPredictor'):
     """Constructor.
 
     Args:
       is_training: Indicates whether the BoxPredictor is in training mode.
-      num_classes: number of classes.  Note that num_classes *does not*
-        include the background category, so if groundtruth labels take values
-        in {0, 1, .., K-1}, num_classes=K (and not K+1, even though the
-        assigned classification targets can range from {0,... K}).
+      num_class_slots: number of class slots. Note that num_class_slots may or
+        may not include an implicit background category.
       fc_hyperparams_fn: A function to generate tf-slim arg_scope with
         hyperparameters for fully connected ops.
       use_dropout: Option to use dropout or not.  Note that a single dropout
@@ -50,13 +54,15 @@ class MaskRCNNClassHead(head.Head):
         in contrast to the ConvolutionalBoxPredictor below.
       dropout_keep_prob: Keep probability for dropout.
         This is only used if use_dropout is True.
+      scope: Scope name for the convolution operation.
     """
     super(MaskRCNNClassHead, self).__init__()
     self._is_training = is_training
-    self._num_classes = num_classes
+    self._num_class_slots = num_class_slots
     self._fc_hyperparams_fn = fc_hyperparams_fn
     self._use_dropout = use_dropout
     self._dropout_keep_prob = dropout_keep_prob
+    self._scope = scope
 
   def predict(self, features, num_predictions_per_location=1):
     """Predicts boxes and class scores.
@@ -69,7 +75,7 @@ class MaskRCNNClassHead(head.Head):
 
     Returns:
       class_predictions_with_background: A float tensor of shape
-        [batch_size, 1, num_classes + 1] representing the class predictions for
+        [batch_size, 1, num_class_slots] representing the class predictions for
         the proposals.
 
     Raises:
@@ -90,11 +96,12 @@ class MaskRCNNClassHead(head.Head):
     with slim.arg_scope(self._fc_hyperparams_fn()):
       class_predictions_with_background = slim.fully_connected(
           flattened_roi_pooled_features,
-          self._num_classes + 1,
+          self._num_class_slots,
           activation_fn=None,
-          scope='ClassPredictor')
+          scope=self._scope)
     class_predictions_with_background = tf.reshape(
-        class_predictions_with_background, [-1, 1, self._num_classes + 1])
+        class_predictions_with_background,
+        [-1, 1, self._num_class_slots])
     return class_predictions_with_background
 
 
@@ -103,18 +110,20 @@ class ConvolutionalClassHead(head.Head):
 
   def __init__(self,
                is_training,
-               num_classes,
+               num_class_slots,
                use_dropout,
                dropout_keep_prob,
                kernel_size,
                apply_sigmoid_to_scores=False,
                class_prediction_bias_init=0.0,
-               use_depthwise=False):
+               use_depthwise=False,
+               scope='ClassPredictor'):
     """Constructor.
 
     Args:
       is_training: Indicates whether the BoxPredictor is in training mode.
-      num_classes: Number of classes.
+      num_class_slots: number of class slots. Note that num_class_slots may or
+        may not include an implicit background category.
       use_dropout: Option to use dropout or not.  Note that a single dropout
         op is applied here prior to both box and class predictions, which stands
         in contrast to the ConvolutionalBoxPredictor below.
@@ -130,19 +139,21 @@ class ConvolutionalClassHead(head.Head):
         conv2d layer before class prediction.
       use_depthwise: Whether to use depthwise convolutions for prediction
         steps. Default is False.
+      scope: Scope name for the convolution operation.
 
     Raises:
       ValueError: if min_depth > max_depth.
     """
     super(ConvolutionalClassHead, self).__init__()
     self._is_training = is_training
-    self._num_classes = num_classes
+    self._num_class_slots = num_class_slots
     self._use_dropout = use_dropout
     self._dropout_keep_prob = dropout_keep_prob
     self._kernel_size = kernel_size
     self._apply_sigmoid_to_scores = apply_sigmoid_to_scores
     self._class_prediction_bias_init = class_prediction_bias_init
     self._use_depthwise = use_depthwise
+    self._scope = scope
 
   def predict(self, features, num_predictions_per_location):
     """Predicts boxes.
@@ -155,35 +166,34 @@ class ConvolutionalClassHead(head.Head):
 
     Returns:
       class_predictions_with_background: A float tensors of shape
-        [batch_size, num_anchors, num_classes + 1] representing the class
+        [batch_size, num_anchors, num_class_slots] representing the class
         predictions for the proposals.
     """
     net = features
-    # Add a slot for the background class.
-    num_class_slots = self._num_classes + 1
     if self._use_dropout:
       net = slim.dropout(net, keep_prob=self._dropout_keep_prob)
     if self._use_depthwise:
+      depthwise_scope = self._scope + '_depthwise'
       class_predictions_with_background = slim.separable_conv2d(
           net, None, [self._kernel_size, self._kernel_size],
           padding='SAME', depth_multiplier=1, stride=1,
-          rate=1, scope='ClassPredictor_depthwise')
+          rate=1, scope=depthwise_scope)
       class_predictions_with_background = slim.conv2d(
           class_predictions_with_background,
-          num_predictions_per_location * num_class_slots, [1, 1],
+          num_predictions_per_location * self._num_class_slots, [1, 1],
           activation_fn=None,
           normalizer_fn=None,
           normalizer_params=None,
-          scope='ClassPredictor')
+          scope=self._scope)
     else:
       class_predictions_with_background = slim.conv2d(
           net,
-          num_predictions_per_location * num_class_slots,
+          num_predictions_per_location * self._num_class_slots,
           [self._kernel_size, self._kernel_size],
           activation_fn=None,
           normalizer_fn=None,
           normalizer_params=None,
-          scope='ClassPredictor',
+          scope=self._scope,
           biases_initializer=tf.constant_initializer(
               self._class_prediction_bias_init))
     if self._apply_sigmoid_to_scores:
@@ -193,7 +203,8 @@ class ConvolutionalClassHead(head.Head):
     if batch_size is None:
       batch_size = tf.shape(features)[0]
     class_predictions_with_background = tf.reshape(
-        class_predictions_with_background, [batch_size, -1, num_class_slots])
+        class_predictions_with_background,
+        [batch_size, -1, self._num_class_slots])
     return class_predictions_with_background
 
 
@@ -207,30 +218,46 @@ class WeightSharedConvolutionalClassHead(head.Head):
   """
 
   def __init__(self,
-               num_classes,
+               num_class_slots,
                kernel_size=3,
                class_prediction_bias_init=0.0,
                use_dropout=False,
-               dropout_keep_prob=0.8):
+               dropout_keep_prob=0.8,
+               use_depthwise=False,
+               score_converter_fn=tf.identity,
+               return_flat_predictions=True,
+               scope='ClassPredictor'):
     """Constructor.
 
     Args:
-      num_classes: number of classes.  Note that num_classes *does not*
-        include the background category, so if groundtruth labels take values
-        in {0, 1, .., K-1}, num_classes=K (and not K+1, even though the
-        assigned classification targets can range from {0,... K}).
+      num_class_slots: number of class slots. Note that num_class_slots may or
+        may not include an implicit background category.
       kernel_size: Size of final convolution kernel.
       class_prediction_bias_init: constant value to initialize bias of the last
         conv2d layer before class prediction.
       use_dropout: Whether to apply dropout to class prediction head.
       dropout_keep_prob: Probability of keeping activiations.
+      use_depthwise: Whether to use depthwise convolutions for prediction
+        steps. Default is False.
+      score_converter_fn: Callable elementwise nonlinearity (that takes tensors
+        as inputs and returns tensors).
+      return_flat_predictions: If true, returns flattened prediction tensor
+        of shape [batch, height * width * num_predictions_per_location,
+        box_coder]. Otherwise returns the prediction tensor before reshaping,
+        whose shape is [batch, height, width, num_predictions_per_location *
+        num_class_slots].
+      scope: Scope name for the convolution operation.
     """
     super(WeightSharedConvolutionalClassHead, self).__init__()
-    self._num_classes = num_classes
+    self._num_class_slots = num_class_slots
     self._kernel_size = kernel_size
     self._class_prediction_bias_init = class_prediction_bias_init
     self._use_dropout = use_dropout
     self._dropout_keep_prob = dropout_keep_prob
+    self._use_depthwise = use_depthwise
+    self._score_converter_fn = score_converter_fn
+    self._return_flat_predictions = return_flat_predictions
+    self._scope = scope
 
   def predict(self, features, num_predictions_per_location):
     """Predicts boxes.
@@ -243,27 +270,37 @@ class WeightSharedConvolutionalClassHead(head.Head):
 
     Returns:
       class_predictions_with_background: A tensor of shape
-        [batch_size, num_anchors, num_classes + 1] representing the class
-        predictions for the proposals.
+        [batch_size, num_anchors, num_class_slots] representing the class
+        predictions for the proposals, or a tensor of shape [batch, height,
+        width, num_predictions_per_location * num_class_slots] representing
+        class predictions before reshaping if self._return_flat_predictions is
+        False.
     """
     class_predictions_net = features
-    num_class_slots = self._num_classes + 1
-    # Add a slot for the background class.
     if self._use_dropout:
       class_predictions_net = slim.dropout(
           class_predictions_net, keep_prob=self._dropout_keep_prob)
-    class_predictions_with_background = slim.conv2d(
+    if self._use_depthwise:
+      conv_op = functools.partial(slim.separable_conv2d, depth_multiplier=1)
+    else:
+      conv_op = slim.conv2d
+    class_predictions_with_background = conv_op(
         class_predictions_net,
-        num_predictions_per_location * num_class_slots,
+        num_predictions_per_location * self._num_class_slots,
         [self._kernel_size, self._kernel_size],
         activation_fn=None, stride=1, padding='SAME',
         normalizer_fn=None,
         biases_initializer=tf.constant_initializer(
             self._class_prediction_bias_init),
-        scope='ClassPredictor')
+        scope=self._scope)
     batch_size = features.get_shape().as_list()[0]
     if batch_size is None:
       batch_size = tf.shape(features)[0]
-    class_predictions_with_background = tf.reshape(
-        class_predictions_with_background, [batch_size, -1, num_class_slots])
+    class_predictions_with_background = self._score_converter_fn(
+        class_predictions_with_background)
+    if self._return_flat_predictions:
+      class_predictions_with_background = tf.reshape(
+          class_predictions_with_background,
+          [batch_size, -1, self._num_class_slots])
     return class_predictions_with_background
+

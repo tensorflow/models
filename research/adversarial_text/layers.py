@@ -67,7 +67,8 @@ class Embedding(K.layers.Layer):
       self.var = self.add_weight(
           shape=(self.vocab_size, self.embedding_dim),
           initializer=tf.random_uniform_initializer(-1., 1.),
-          name='embedding')
+          name='embedding',
+          dtype=tf.float32)
 
     if self.normalized:
       self.var = self._normalize(self.var)
@@ -152,7 +153,7 @@ class SoftmaxLoss(K.layers.Layer):
     self.multiclass_dense_layer = K.layers.Dense(self.vocab_size)
 
   def build(self, input_shape):
-    input_shape = input_shape[0]
+    input_shape = input_shape[0].as_list()
     with tf.device('/cpu:0'):
       self.lin_w = self.add_weight(
           shape=(input_shape[-1], self.vocab_size),
@@ -317,7 +318,7 @@ def optimize(loss,
     ne_grads, _ = tf.clip_by_global_norm(ne_grads, max_grad_norm)
     non_embedding_grads_and_vars = zip(ne_grads, ne_vars)
 
-    grads_and_vars = embedding_grads_and_vars + non_embedding_grads_and_vars
+    grads_and_vars = embedding_grads_and_vars + list(non_embedding_grads_and_vars)
 
     # Summarize
     _summarize_vars_and_grads(grads_and_vars)

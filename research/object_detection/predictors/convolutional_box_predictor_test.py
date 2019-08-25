@@ -14,6 +14,8 @@
 # ==============================================================================
 
 """Tests for object_detection.predictors.convolutional_box_predictor."""
+
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -21,6 +23,9 @@ from google.protobuf import text_format
 from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
 from object_detection.predictors import convolutional_box_predictor as box_predictor
+from object_detection.predictors.heads import box_head
+from object_detection.predictors.heads import class_head
+from object_detection.predictors.heads import mask_head
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import test_case
 
@@ -233,6 +238,40 @@ class ConvolutionalBoxPredictorTest(test_case.TestCase):
         'BoxPredictor/ClassPredictor/biases',
         'BoxPredictor/ClassPredictor/weights'])
     self.assertEqual(expected_variable_set, actual_variable_set)
+
+  def test_no_dangling_outputs(self):
+    image_features = tf.placeholder(dtype=tf.float32, shape=[4, None, None, 64])
+    conv_box_predictor = (
+        box_predictor_builder.build_convolutional_box_predictor(
+            is_training=False,
+            num_classes=0,
+            conv_hyperparams_fn=self._build_arg_scope_with_conv_hyperparams(),
+            min_depth=0,
+            max_depth=32,
+            num_layers_before_predictor=1,
+            dropout_keep_prob=0.8,
+            kernel_size=1,
+            box_code_size=4,
+            use_dropout=True,
+            use_depthwise=True))
+    box_predictions = conv_box_predictor.predict(
+        [image_features], num_predictions_per_location=[5],
+        scope='BoxPredictor')
+    tf.concat(
+        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+    tf.concat(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1)
+
+    bad_dangling_ops = []
+    types_safe_to_dangle = set(['Assign', 'Mul', 'Const'])
+    for op in tf.get_default_graph().get_operations():
+      if (not op.outputs) or (not op.outputs[0].consumers()):
+        if 'BoxPredictor' in op.name:
+          if op.type not in types_safe_to_dangle:
+            bad_dangling_ops.append(op)
+
+    self.assertEqual(bad_dangling_ops, [])
 
 
 class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
@@ -545,6 +584,79 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
          'ClassPredictor/biases')])
     self.assertEqual(expected_variable_set, actual_variable_set)
 
+  def test_predictions_multiple_feature_maps_share_weights_with_depthwise(
+      self):
+    num_classes_without_background = 6
+    def graph_fn(image_features1, image_features2):
+      conv_box_predictor = (
+          box_predictor_builder.build_weight_shared_convolutional_box_predictor(
+              is_training=False,
+              num_classes=num_classes_without_background,
+              conv_hyperparams_fn=self._build_arg_scope_with_conv_hyperparams(),
+              depth=32,
+              num_layers_before_predictor=2,
+              box_code_size=4,
+              apply_batch_norm=False,
+              use_depthwise=True))
+      box_predictions = conv_box_predictor.predict(
+          [image_features1, image_features2],
+          num_predictions_per_location=[5, 5],
+          scope='BoxPredictor')
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      class_predictions_with_background = tf.concat(
+          box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+          axis=1)
+      return (box_encodings, class_predictions_with_background)
+
+    with self.test_session(graph=tf.Graph()):
+      graph_fn(tf.random_uniform([4, 32, 32, 3], dtype=tf.float32),
+               tf.random_uniform([4, 16, 16, 3], dtype=tf.float32))
+      actual_variable_set = set(
+          [var.op.name for var in tf.trainable_variables()])
+    expected_variable_set = set([
+        # Box prediction tower
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictionTower/conv2d_0/depthwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictionTower/conv2d_0/pointwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictionTower/conv2d_0/biases'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictionTower/conv2d_1/depthwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictionTower/conv2d_1/pointwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictionTower/conv2d_1/biases'),
+        # Box prediction head
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictor/depthwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictor/pointwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictor/biases'),
+        # Class prediction tower
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictionTower/conv2d_0/depthwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictionTower/conv2d_0/pointwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictionTower/conv2d_0/biases'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictionTower/conv2d_1/depthwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictionTower/conv2d_1/pointwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictionTower/conv2d_1/biases'),
+        # Class prediction head
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictor/depthwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictor/pointwise_weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictor/biases')])
+    self.assertEqual(expected_variable_set, actual_variable_set)
+
   def test_no_batchnorm_params_when_batchnorm_is_not_configured(self):
     num_classes_without_background = 6
     def graph_fn(image_features1, image_features2):
@@ -744,6 +856,67 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
       self.assertAllEqual(box_encodings_shape, [4, expected_num_anchors, 4])
       self.assertAllEqual(objectness_predictions_shape,
                           [4, expected_num_anchors, 1])
+
+  def test_other_heads_predictions(self):
+    box_code_size = 4
+    num_classes_without_background = 3
+    other_head_name = 'Mask'
+    mask_height = 5
+    mask_width = 5
+    num_predictions_per_location = 5
+
+    def graph_fn(image_features):
+      box_prediction_head = box_head.WeightSharedConvolutionalBoxHead(
+          box_code_size)
+      class_prediction_head = class_head.WeightSharedConvolutionalClassHead(
+          num_classes_without_background + 1)
+      other_heads = {
+          other_head_name:
+              mask_head.WeightSharedConvolutionalMaskHead(
+                  num_classes_without_background,
+                  mask_height=mask_height,
+                  mask_width=mask_width)
+      }
+      conv_box_predictor = box_predictor.WeightSharedConvolutionalBoxPredictor(
+          is_training=False,
+          num_classes=num_classes_without_background,
+          box_prediction_head=box_prediction_head,
+          class_prediction_head=class_prediction_head,
+          other_heads=other_heads,
+          conv_hyperparams_fn=self._build_arg_scope_with_conv_hyperparams(),
+          depth=32,
+          num_layers_before_predictor=2)
+      box_predictions = conv_box_predictor.predict(
+          [image_features],
+          num_predictions_per_location=[num_predictions_per_location],
+          scope='BoxPredictor')
+      for key, value in box_predictions.items():
+        box_predictions[key] = tf.concat(value, axis=1)
+      assert len(box_predictions) == 3
+      return (box_predictions[box_predictor.BOX_ENCODINGS],
+              box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+              box_predictions[other_head_name])
+
+    batch_size = 4
+    feature_ht = 8
+    feature_wt = 8
+    image_features = np.random.rand(batch_size, feature_ht, feature_wt,
+                                    64).astype(np.float32)
+    (box_encodings, class_predictions, other_head_predictions) = self.execute(
+        graph_fn, [image_features])
+    num_anchors = feature_ht * feature_wt * num_predictions_per_location
+    self.assertAllEqual(box_encodings.shape,
+                        [batch_size, num_anchors, box_code_size])
+    self.assertAllEqual(
+        class_predictions.shape,
+        [batch_size, num_anchors, num_classes_without_background + 1])
+    self.assertAllEqual(other_head_predictions.shape, [
+        batch_size, num_anchors, num_classes_without_background, mask_height,
+        mask_width
+    ])
+
+
+
 
 if __name__ == '__main__':
   tf.test.main()

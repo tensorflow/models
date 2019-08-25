@@ -138,7 +138,7 @@ class KerasBoxPredictor(tf.keras.Model):
   """Keras-based BoxPredictor."""
 
   def __init__(self, is_training, num_classes, freeze_batchnorm,
-               inplace_batchnorm_update):
+               inplace_batchnorm_update, name=None):
     """Constructor.
 
     Args:
@@ -155,8 +155,10 @@ class KerasBoxPredictor(tf.keras.Model):
         values inplace. When this is false train op must add a control
         dependency on tf.graphkeys.UPDATE_OPS collection in order to update
         batch norm statistics.
+      name: A string name scope to assign to the model. If `None`, Keras
+        will auto-generate one from the class name.
     """
-    super(KerasBoxPredictor, self).__init__()
+    super(KerasBoxPredictor, self).__init__(name=name)
 
     self._is_training = is_training
     self._num_classes = num_classes
@@ -171,7 +173,7 @@ class KerasBoxPredictor(tf.keras.Model):
   def num_classes(self):
     return self._num_classes
 
-  def call(self, image_features, scope=None, **kwargs):
+  def call(self, image_features, **kwargs):
     """Computes encoded object locations and corresponding confidences.
 
     Takes a list of high level image feature maps as input and produces a list
@@ -181,9 +183,8 @@ class KerasBoxPredictor(tf.keras.Model):
     Args:
       image_features: A list of float tensors of shape [batch_size, height_i,
       width_i, channels_i] containing features for a batch of images.
-      scope: Variable and Op scope name.
       **kwargs: Additional keyword arguments for specific implementations of
-              BoxPredictor.
+            BoxPredictor.
 
     Returns:
       A dictionary containing at least the following tensors.

@@ -15,6 +15,7 @@
 """Tests for ssd resnet v1 feature extractors."""
 import abc
 import numpy as np
+import tensorflow as tf
 
 from object_detection.models import ssd_feature_extractor_test
 
@@ -64,12 +65,15 @@ class SSDResnetPpnFeatureExtractorTestBase(
     image_width = 128
     depth_multiplier = 1
     pad_to_multiple = 1
-    test_image = np.random.rand(4, image_height, image_width, 3)
+    test_image = tf.constant(np.random.rand(4, image_height, image_width, 3))
     feature_extractor = self._create_feature_extractor(depth_multiplier,
                                                        pad_to_multiple)
     preprocessed_image = feature_extractor.preprocess(test_image)
-    self.assertAllClose(preprocessed_image,
-                        test_image - [[123.68, 116.779, 103.939]])
+    with self.test_session() as sess:
+      test_image_out, preprocessed_image_out = sess.run(
+          [test_image, preprocessed_image])
+      self.assertAllClose(preprocessed_image_out,
+                          test_image_out - [[123.68, 116.779, 103.939]])
 
   def test_variables_only_created_in_scope(self):
     depth_multiplier = 1

@@ -1,0 +1,122 @@
+/* Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+==============================================================================*/
+
+syntax = "proto2";
+
+package lstm_object_detection.tflite.protos;
+
+import "protos/anchor_generation_options.proto";
+import "protos/box_encodings.proto";
+
+// Next ID: 17
+message ClientOptions {
+  // The name of the Mobile SSD Client.
+  optional string mobile_ssd_client_name = 1;
+
+  // The maximum number of detections to return.
+  optional uint32 max_detections = 2 [default = 10];
+
+  // The maximum number of categories to return per detection.
+  optional uint32 max_categories = 3 [default = 1];
+
+  // The global score threshold below which detections are rejected.
+  optional float score_threshold = 4 [default = 0.0];
+
+  // The threshold on intersection-over-union used by non-maxima suppression.
+  optional float iou_threshold = 5 [default = 0.3];
+
+  // Optional whitelist of class names. If non-empty, detections whose class
+  // name is not in this set will be filtered out. Duplicate or unknown class
+  // names are ignored.
+  repeated string class_name_whitelist = 6;
+
+  // SSD in single class agnostic model.
+  optional bool agnostic_mode = 7 [default = false];
+
+  // Fully convolutional mode, which requires on-the-fly anchor generation.
+  optional bool fully_conv = 8 [default = false];
+
+  // Quantized model.
+  optional bool quantize = 9 [default = false];
+
+  // Number of keypoints.
+  optional uint32 num_keypoints = 10 [default = 0];
+
+  // Optional anchor generations options. This can be used to generate
+  // anchors for an SSD model. It is utilized in
+  // MobileSSDTfLiteClient::LoadAnchors()
+  optional AnchorGenerationOptions anchor_generation_options = 12;
+
+  // Optional box coder specifications. This can be used for models trained
+  // with a customized box coder. If unspecified, it will use
+  // CenterSizeOffsetCoder and its default parameters.
+  optional BoxCoder box_coder = 13;
+
+  // The external model files used to create the detector.
+  // This is an alternative to registered models, where you specify external
+  // model via the following:
+  // - model using model_file_name or model_file_content
+  // - labelmap using label_map_file_content
+  // - anchors using anchor_generation_options,proto (TODO: add support for
+  //   filename as well)
+  optional ExternalFiles external_files = 16;
+
+  message ExternalFiles {
+    // Path to the model file in FlatBuffer format.
+    optional string model_file_name = 1;
+
+    // Content of the model file. If provided, this takes precedence over the
+    // model_file_name field.
+    optional bytes model_file_content = 2;
+
+    // Path to the label map file.
+    optional string label_map_file_name = 4;
+
+    // Content of the label map file. If provided, this takes precedence over
+    // the label_map_file_name field.
+    optional bytes label_map_file_content = 3;
+
+    // Path to the anchor file.
+    optional string anchor_file_name = 5;
+
+    // Content of the anchor file. If provided, this takes precedence over
+    // the anchor_file_name field.
+    optional bytes anchor_file_content = 6;
+  }
+
+  // Whether to use NNAPI delegate for hardware acceleration.
+  // If it fails, it will fall back to the normal CPU execution.
+  optional bool prefer_nnapi_delegate = 14;
+
+  // Number of threads to be used by TFlite interpreter for SSD inference. Does
+  // single-threaded inference by default.
+  optional int32 num_threads = 15 [default = 1];
+
+  extensions 1000 to max;
+}
+
+message BoxCoder {
+  oneof box_coder_oneof {
+    CenterSizeOffsetCoder center_size_offset_coder = 1;
+    BoxCornerOffsetCoder box_corner_offset_coder = 2;
+  }
+}
+
+message ModelData {
+  oneof source {
+    string model_file = 1;
+    bytes embedded_model = 2;
+  }
+}

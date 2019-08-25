@@ -31,7 +31,16 @@ flags.DEFINE_string(
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                     'file.')
 flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
-flags.DEFINE_integer('num_eval_steps', None, 'Number of train steps.')
+flags.DEFINE_boolean('eval_training_data', False,
+                     'If training data should be evaluated for this job. Note '
+                     'that one call only use this in eval-only mode, and '
+                     '`checkpoint_dir` must be supplied.')
+flags.DEFINE_integer('sample_1_of_n_eval_examples', 1, 'Will sample one of '
+                     'every n eval input examples, where n is provided.')
+flags.DEFINE_integer('sample_1_of_n_eval_on_train_examples', 5, 'Will sample '
+                     'one of every n train input examples for evaluation, '
+                     'where n is provided. This is only used if '
+                     '`eval_training_data` is True.')
 flags.DEFINE_string(
     'hparams_overrides', None, 'Hyperparameter overrides, '
     'represented as a string containing comma-separated '
@@ -44,8 +53,6 @@ flags.DEFINE_boolean(
     'run_once', False, 'If running in eval-only mode, whether to run just '
     'one round of eval vs running continuously (default).'
 )
-flags.DEFINE_boolean('eval_training_data', False,
-                     'If training data should be evaluated for this job.')
 FLAGS = flags.FLAGS
 
 
@@ -59,14 +66,15 @@ def main(unused_argv):
       hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
       pipeline_config_path=FLAGS.pipeline_config_path,
       train_steps=FLAGS.num_train_steps,
-      eval_steps=FLAGS.num_eval_steps)
+      sample_1_of_n_eval_examples=FLAGS.sample_1_of_n_eval_examples,
+      sample_1_of_n_eval_on_train_examples=(
+          FLAGS.sample_1_of_n_eval_on_train_examples))
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
-  eval_input_fn = train_and_eval_dict['eval_input_fn']
+  eval_input_fns = train_and_eval_dict['eval_input_fns']
   eval_on_train_input_fn = train_and_eval_dict['eval_on_train_input_fn']
   predict_input_fn = train_and_eval_dict['predict_input_fn']
   train_steps = train_and_eval_dict['train_steps']
-  eval_steps = train_and_eval_dict['eval_steps']
 
   if FLAGS.checkpoint_dir:
     if FLAGS.eval_training_data:
@@ -74,23 +82,23 @@ def main(unused_argv):
       input_fn = eval_on_train_input_fn
     else:
       name = 'validation_data'
-      input_fn = eval_input_fn
+      # The first eval input will be evaluated.
+      input_fn = eval_input_fns[0]
     if FLAGS.run_once:
       estimator.evaluate(input_fn,
-                         eval_steps,
+                         steps=None,
                          checkpoint_path=tf.train.latest_checkpoint(
                              FLAGS.checkpoint_dir))
     else:
-      model_lib.continuous_eval(estimator, FLAGS.model_dir, input_fn,
-                                eval_steps, train_steps, name)
+      model_lib.continuous_eval(estimator, FLAGS.checkpoint_dir, input_fn,
+                                train_steps, name)
   else:
     train_spec, eval_specs = model_lib.create_train_and_eval_specs(
         train_input_fn,
-        eval_input_fn,
+        eval_input_fns,
         eval_on_train_input_fn,
         predict_input_fn,
         train_steps,
-        eval_steps,
         eval_on_train_data=False)
 
     # Currently only a single Eval Spec is allowed.

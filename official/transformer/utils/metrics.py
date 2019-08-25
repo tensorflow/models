@@ -61,11 +61,11 @@ def padded_cross_entropy_loss(logits, labels, smoothing, vocab_size):
     Returns the cross entropy loss and weight tensors: float32 tensors with
       shape [batch_size, max(length_logits, length_labels)]
   """
-  with tf.name_scope("loss", [logits, labels]):
+  with tf.name_scope("loss", values=[logits, labels]):
     logits, labels = _pad_tensors_to_same_length(logits, labels)
 
     # Calculate smoothing cross entropy
-    with tf.name_scope("smoothing_cross_entropy", [logits, labels]):
+    with tf.name_scope("smoothing_cross_entropy", values=[logits, labels]):
       confidence = 1.0 - smoothing
       low_confidence = (1.0 - confidence) / tf.to_float(vocab_size - 1)
       soft_targets = tf.one_hot(

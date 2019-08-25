@@ -27,10 +27,16 @@ Note1: groundtruth should be inserted before evaluation.
 Note2: This module operates on numpy boxes and box lists.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from abc import abstractmethod
 import collections
 import logging
 import numpy as np
+import six
+from six.moves import range
 
 from object_detection.core import standard_fields
 from object_detection.utils import metrics
@@ -179,7 +185,7 @@ class VRDDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
           datatype label_data_type above).
     """
     if image_id not in self._image_ids:
-      logging.warn('No groundtruth for the image with id %s.', image_id)
+      logging.warning('No groundtruth for the image with id %s.', image_id)
       # Since for the correct work of evaluator it is assumed that groundtruth
       # is inserted first we make sure to break the code if is it not the case.
       self._image_ids.update([image_id])
@@ -252,12 +258,12 @@ class VRDDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
             recall_100,
     }
     if relationships:
-      for key, average_precision in average_precisions.iteritems():
+      for key, average_precision in six.iteritems(average_precisions):
         vrd_metrics[self._metric_prefix + 'AP@{}IOU/{}'.format(
             self._matching_iou_threshold,
             relationships[key])] = average_precision
     else:
-      for key, average_precision in average_precisions.iteritems():
+      for key, average_precision in six.iteritems(average_precisions):
         vrd_metrics[self._metric_prefix + 'AP@{}IOU/{}'.format(
             self._matching_iou_threshold, key)] = average_precision
 
@@ -352,7 +358,7 @@ class VRDPhraseDetectionEvaluator(VRDDetectionEvaluator):
         where the named bounding box is computed as an enclosing bounding box
         of all bounding boxes of the i-th input structure.
     """
-    first_box_key = groundtruth_box_tuples.dtype.fields.keys()[0]
+    first_box_key = next(six.iterkeys(groundtruth_box_tuples.dtype.fields))
     miny = groundtruth_box_tuples[first_box_key][:, 0]
     minx = groundtruth_box_tuples[first_box_key][:, 1]
     maxy = groundtruth_box_tuples[first_box_key][:, 2]
@@ -388,7 +394,7 @@ class VRDPhraseDetectionEvaluator(VRDDetectionEvaluator):
         where the named bounding box is computed as an enclosing bounding box
         of all bounding boxes of the i-th input structure.
     """
-    first_box_key = detections_box_tuples.dtype.fields.keys()[0]
+    first_box_key = next(six.iterkeys(detections_box_tuples.dtype.fields))
     miny = detections_box_tuples[first_box_key][:, 0]
     minx = detections_box_tuples[first_box_key][:, 1]
     maxy = detections_box_tuples[first_box_key][:, 2]
@@ -459,7 +465,7 @@ class _VRDDetectionEvaluation(object):
           possibly additional classes.
     """
     if image_key in self._groundtruth_box_tuples:
-      logging.warn(
+      logging.warning(
           'image %s has already been added to the ground truth database.',
           image_key)
       return
@@ -536,7 +542,7 @@ class _VRDDetectionEvaluation(object):
         median_rank@100: median rank computed on 100 top-scoring samples.
     """
     if self._num_gt_instances == 0:
-      logging.warn('No ground truth instances')
+      logging.warning('No ground truth instances')
 
     if not self._scores:
       scores = np.array([], dtype=float)
@@ -546,8 +552,8 @@ class _VRDDetectionEvaluation(object):
       tp_fp_labels = np.concatenate(self._tp_fp_labels)
       relation_field_values = np.concatenate(self._relation_field_values)
 
-    for relation_field_value, _ in (
-        self._num_gt_instances_per_relationship.iteritems()):
+    for relation_field_value, _ in (six.iteritems(
+        self._num_gt_instances_per_relationship)):
       precisions, recalls = metrics.compute_precision_recall(
           scores[relation_field_values == relation_field_value],
           tp_fp_labels[relation_field_values == relation_field_value],
@@ -556,7 +562,8 @@ class _VRDDetectionEvaluation(object):
           relation_field_value] = metrics.compute_average_precision(
               precisions, recalls)
 
-    self._mean_average_precision = np.mean(self._average_precisions.values())
+    self._mean_average_precision = np.mean(
+        list(self._average_precisions.values()))
 
     self._precisions, self._recalls = metrics.compute_precision_recall(
         scores, tp_fp_labels, self._num_gt_instances)

@@ -52,6 +52,12 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
                      "human consumption, and does not have any impact within "
                      "the system."))
 
+  flags.DEFINE_integer(
+      name='log_steps', default=100,
+      help='For every log_steps, we log the timing information such as '
+      'examples per second. Besides, for every log_steps, we store the '
+      'timestamp of a batch end.')
+
   if benchmark_log_dir:
     flags.DEFINE_string(
         name="benchmark_log_dir", short_name="bld", default=None,

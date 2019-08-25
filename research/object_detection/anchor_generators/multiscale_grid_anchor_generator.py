@@ -108,9 +108,6 @@ class MultiscaleGridAnchorGenerator(anchor_generator.AnchorGenerator):
       ValueError: if im_height and im_width are 1, but normalized coordinates
         were requested.
     """
-    if not isinstance(im_height, int) or not isinstance(im_width, int):
-      raise ValueError('MultiscaleGridAnchorGenerator currently requires '
-                       'input image shape to be statically defined.')
     anchor_grid_list = []
     for feat_shape, grid_info in zip(feature_map_shape_list,
                                      self._anchor_grid_info):
@@ -122,10 +119,11 @@ class MultiscaleGridAnchorGenerator(anchor_generator.AnchorGenerator):
       feat_h = feat_shape[0]
       feat_w = feat_shape[1]
       anchor_offset = [0, 0]
-      if im_height % 2.0**level == 0 or im_height == 1:
-        anchor_offset[0] = stride / 2.0
-      if im_width % 2.0**level == 0 or im_width == 1:
-        anchor_offset[1] = stride / 2.0
+      if isinstance(im_height, int) and isinstance(im_width, int):
+        if im_height % 2.0**level == 0 or im_height == 1:
+          anchor_offset[0] = stride / 2.0
+        if im_width % 2.0**level == 0 or im_width == 1:
+          anchor_offset[1] = stride / 2.0
       ag = grid_anchor_generator.GridAnchorGenerator(
           scales,
           aspect_ratios,

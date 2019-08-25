@@ -62,7 +62,7 @@ def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
       tensor_dict[fields.InputDataFields.image], 0)
 
   images = tensor_dict[fields.InputDataFields.image]
-  float_images = tf.to_float(images)
+  float_images = tf.cast(images, dtype=tf.float32)
   tensor_dict[fields.InputDataFields.image] = float_images
 
   include_instance_masks = (fields.InputDataFields.groundtruth_instance_masks
@@ -75,6 +75,7 @@ def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
     tensor_dict = preprocessor.preprocess(
         tensor_dict, data_augmentation_options,
         func_arg_map=preprocessor.get_default_func_arg_map(
+            include_label_weights=True,
             include_multiclass_scores=include_multiclass_scores,
             include_instance_masks=include_instance_masks,
             include_keypoints=include_keypoints))

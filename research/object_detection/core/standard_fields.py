@@ -36,12 +36,16 @@ class InputDataFields(object):
     image: image.
     image_additional_channels: additional channels.
     original_image: image in the original input size.
+    original_image_spatial_shape: image in the original input size.
     key: unique key corresponding to image.
     source_id: source of the original image.
     filename: original filename of the dataset (without common path).
     groundtruth_image_classes: image-level class labels.
+    groundtruth_image_confidences: image-level class confidences.
     groundtruth_boxes: coordinates of the ground truth boxes in the image.
     groundtruth_classes: box-level class labels.
+    groundtruth_confidences: box-level class confidences. The shape should be
+      the same as the shape of groundtruth_classes.
     groundtruth_label_types: box-level label types (e.g. explicit negative).
     groundtruth_is_crowd: [DEPRECATED, use groundtruth_group_of instead]
       is the groundtruth a single object or a crowd.
@@ -57,9 +61,10 @@ class InputDataFields(object):
     groundtruth_instance_classes: instance mask-level class labels.
     groundtruth_keypoints: ground truth keypoints.
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
-    groundtruth_label_scores: groundtruth label scores.
+    groundtruth_label_weights: groundtruth label weights.
     groundtruth_weights: groundtruth weight factor for bounding boxes.
     num_groundtruth_boxes: number of groundtruth boxes.
+    is_annotated: whether an image has been labeled or not.
     true_image_shapes: true shapes of images in the resized images, as resized
       images can be padded with zeros.
     multiclass_scores: the label score per class for each box.
@@ -67,12 +72,15 @@ class InputDataFields(object):
   image = 'image'
   image_additional_channels = 'image_additional_channels'
   original_image = 'original_image'
+  original_image_spatial_shape = 'original_image_spatial_shape'
   key = 'key'
   source_id = 'source_id'
   filename = 'filename'
   groundtruth_image_classes = 'groundtruth_image_classes'
+  groundtruth_image_confidences = 'groundtruth_image_confidences'
   groundtruth_boxes = 'groundtruth_boxes'
   groundtruth_classes = 'groundtruth_classes'
+  groundtruth_confidences = 'groundtruth_confidences'
   groundtruth_label_types = 'groundtruth_label_types'
   groundtruth_is_crowd = 'groundtruth_is_crowd'
   groundtruth_area = 'groundtruth_area'
@@ -85,9 +93,10 @@ class InputDataFields(object):
   groundtruth_instance_classes = 'groundtruth_instance_classes'
   groundtruth_keypoints = 'groundtruth_keypoints'
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
-  groundtruth_label_scores = 'groundtruth_label_scores'
+  groundtruth_label_weights = 'groundtruth_label_weights'
   groundtruth_weights = 'groundtruth_weights'
   num_groundtruth_boxes = 'num_groundtruth_boxes'
+  is_annotated = 'is_annotated'
   true_image_shape = 'true_image_shape'
   multiclass_scores = 'multiclass_scores'
 
@@ -100,22 +109,35 @@ class DetectionResultFields(object):
     key: unique key corresponding to image.
     detection_boxes: coordinates of the detection boxes in the image.
     detection_scores: detection scores for the detection boxes in the image.
+    detection_multiclass_scores: class score distribution (including background)
+      for detection boxes in the image including background class.
     detection_classes: detection-level class labels.
     detection_masks: contains a segmentation mask for each detection box.
     detection_boundaries: contains an object boundary for each detection box.
     detection_keypoints: contains detection keypoints for each detection box.
     num_detections: number of detections in the batch.
+    raw_detection_boxes: contains decoded detection boxes without Non-Max
+      suppression.
+    raw_detection_scores: contains class score logits for raw detection boxes.
+    detection_anchor_indices: The anchor indices of the detections after NMS.
+    detection_features: contains extracted features for each detected box
+      after NMS.
   """
 
   source_id = 'source_id'
   key = 'key'
   detection_boxes = 'detection_boxes'
   detection_scores = 'detection_scores'
+  detection_multiclass_scores = 'detection_multiclass_scores'
+  detection_features = 'detection_features'
   detection_classes = 'detection_classes'
   detection_masks = 'detection_masks'
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   num_detections = 'num_detections'
+  raw_detection_boxes = 'raw_detection_boxes'
+  raw_detection_scores = 'raw_detection_scores'
+  detection_anchor_indices = 'detection_anchor_indices'
 
 
 class BoxListFields(object):
@@ -137,6 +159,7 @@ class BoxListFields(object):
   classes = 'classes'
   scores = 'scores'
   weights = 'weights'
+  confidences = 'confidences'
   objectness = 'objectness'
   masks = 'masks'
   boundaries = 'boundaries'

@@ -19,12 +19,16 @@ import numpy as np
 import six
 import tensorflow as tf
 from google.protobuf import text_format
+from tensorflow.python.framework import dtypes
+from tensorflow.python.ops import array_ops
 from object_detection import exporter
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
 from object_detection.core import model
 from object_detection.protos import graph_rewriter_pb2
 from object_detection.protos import pipeline_pb2
+from object_detection.utils import ops
+from object_detection.utils import variables_helper
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
@@ -36,9 +40,11 @@ slim = tf.contrib.slim
 
 class FakeModel(model.DetectionModel):
 
-  def __init__(self, add_detection_keypoints=False, add_detection_masks=False):
+  def __init__(self, add_detection_keypoints=False, add_detection_masks=False,
+               add_detection_features=False):
     self._add_detection_keypoints = add_detection_keypoints
     self._add_detection_masks = add_detection_masks
+    self._add_detection_features = add_detection_features
 
   def preprocess(self, inputs):
     true_image_shapes = []  # Doesn't matter for the fake model.
@@ -56,9 +62,19 @@ class FakeModel(model.DetectionModel):
                                            [0.0, 0.0, 0.0, 0.0]]], tf.float32),
           'detection_scores': tf.constant([[0.7, 0.6],
                                            [0.9, 0.0]], tf.float32),
+          'detection_multiclass_scores': tf.constant([[[0.3, 0.7], [0.4, 0.6]],
+                                                      [[0.1, 0.9], [0.0, 0.0]]],
+                                                     tf.float32),
           'detection_classes': tf.constant([[0, 1],
                                             [1, 0]], tf.float32),
-          'num_detections': tf.constant([2, 1], tf.float32)
+          'num_detections': tf.constant([2, 1], tf.float32),
+          'raw_detection_boxes': tf.constant([[[0.0, 0.0, 0.5, 0.5],
+                                               [0.5, 0.5, 0.8, 0.8]],
+                                              [[0.5, 0.5, 1.0, 1.0],
+                                               [0.0, 0.5, 0.0, 0.5]]],
+                                             tf.float32),
+          'raw_detection_scores': tf.constant([[0.7, 0.6],
+                                               [0.9, 0.5]], tf.float32),
       }
       if self._add_detection_keypoints:
         postprocessed_tensors['detection_keypoints'] = tf.constant(
@@ -66,12 +82,23 @@ class FakeModel(model.DetectionModel):
       if self._add_detection_masks:
         postprocessed_tensors['detection_masks'] = tf.constant(
             np.arange(64).reshape([2, 2, 4, 4]), tf.float32)
+      if self._add_detection_features:
+        # let fake detection features have shape [4, 4, 10]
+        postprocessed_tensors['detection_features'] = tf.constant(
+            np.ones((2, 2, 4, 4, 10)), tf.float32)
+
     return postprocessed_tensors
 
   def restore_map(self, checkpoint_path, fine_tune_checkpoint_type):
     pass
 
   def loss(self, prediction_dict, true_image_shapes):
+    pass
+
+  def regularization_losses(self):
+    pass
+
+  def updates(self):
     pass
 
 
@@ -326,7 +353,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           write_inference_graph=True)
     self._load_inference_graph(inference_graph_path, is_binary=False)
     has_quant_nodes = False
-    for v in tf.global_variables():
+    for v in variables_helper.get_global_variables_safely():
       if v.op.name.endswith('act_quant/min'):
         has_quant_nodes = True
         break
@@ -343,7 +370,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel(
-          add_detection_keypoints=True, add_detection_masks=True)
+          add_detection_keypoints=True, add_detection_masks=True,
+          add_detection_features=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter.export_inference_graph(
           input_type='image_tensor',
@@ -355,10 +383,12 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       inference_graph.get_tensor_by_name('image_tensor:0')
       inference_graph.get_tensor_by_name('detection_boxes:0')
       inference_graph.get_tensor_by_name('detection_scores:0')
+      inference_graph.get_tensor_by_name('detection_multiclass_scores:0')
       inference_graph.get_tensor_by_name('detection_classes:0')
       inference_graph.get_tensor_by_name('detection_keypoints:0')
       inference_graph.get_tensor_by_name('detection_masks:0')
       inference_graph.get_tensor_by_name('num_detections:0')
+      inference_graph.get_tensor_by_name('detection_features:0')
 
   def test_export_model_with_detection_only_nodes(self):
     tmp_dir = self.get_temp_dir()
@@ -382,8 +412,39 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       inference_graph.get_tensor_by_name('image_tensor:0')
       inference_graph.get_tensor_by_name('detection_boxes:0')
       inference_graph.get_tensor_by_name('detection_scores:0')
+      inference_graph.get_tensor_by_name('detection_multiclass_scores:0')
       inference_graph.get_tensor_by_name('detection_classes:0')
       inference_graph.get_tensor_by_name('num_detections:0')
+      with self.assertRaises(KeyError):
+        inference_graph.get_tensor_by_name('detection_keypoints:0')
+        inference_graph.get_tensor_by_name('detection_masks:0')
+
+  def test_export_model_with_detection_only_nodes_and_detection_features(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=True)
+    output_directory = os.path.join(tmp_dir, 'output')
+    inference_graph_path = os.path.join(output_directory,
+                                        'frozen_inference_graph.pb')
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel(add_detection_features=True)
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      exporter.export_inference_graph(
+          input_type='image_tensor',
+          pipeline_config=pipeline_config,
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
+    inference_graph = self._load_inference_graph(inference_graph_path)
+    with self.test_session(graph=inference_graph):
+      inference_graph.get_tensor_by_name('image_tensor:0')
+      inference_graph.get_tensor_by_name('detection_boxes:0')
+      inference_graph.get_tensor_by_name('detection_scores:0')
+      inference_graph.get_tensor_by_name('detection_multiclass_scores:0')
+      inference_graph.get_tensor_by_name('detection_classes:0')
+      inference_graph.get_tensor_by_name('num_detections:0')
+      inference_graph.get_tensor_by_name('detection_features:0')
       with self.assertRaises(KeyError):
         inference_graph.get_tensor_by_name('detection_keypoints:0')
         inference_graph.get_tensor_by_name('detection_masks:0')
@@ -475,15 +536,20 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           'encoded_image_string_tensor:0')
       boxes = inference_graph.get_tensor_by_name('detection_boxes:0')
       scores = inference_graph.get_tensor_by_name('detection_scores:0')
+      multiclass_scores = inference_graph.get_tensor_by_name(
+          'detection_multiclass_scores:0')
       classes = inference_graph.get_tensor_by_name('detection_classes:0')
       keypoints = inference_graph.get_tensor_by_name('detection_keypoints:0')
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
       for image_str in [jpg_image_str, png_image_str]:
         image_str_batch_np = np.hstack([image_str]* 2)
-        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
-         num_detections_np) = sess.run(
-             [boxes, scores, classes, keypoints, masks, num_detections],
+        (boxes_np, scores_np, multiclass_scores_np, classes_np, keypoints_np,
+         masks_np, num_detections_np) = sess.run(
+             [
+                 boxes, scores, multiclass_scores, classes, keypoints, masks,
+                 num_detections
+             ],
              feed_dict={image_str_tensor: image_str_batch_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -491,6 +557,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.0, 0.0, 0.0, 0.0]]])
         self.assertAllClose(scores_np, [[0.7, 0.6],
                                         [0.9, 0.0]])
+        self.assertAllClose(multiclass_scores_np, [[[0.3, 0.7], [0.4, 0.6]],
+                                                   [[0.1, 0.9], [0.0, 0.0]]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
         self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
@@ -603,7 +671,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       detection_model = model_builder.build(pipeline_config.model,
                                             is_training=False)
-      outputs, _ = exporter._build_detection_graph(
+      outputs, _ = exporter.build_detection_graph(
           input_type='tf_example',
           detection_model=detection_model,
           input_shape=None,
@@ -710,6 +778,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
             signature.outputs['detection_boxes'].name)
         scores = od_graph.get_tensor_by_name(
             signature.outputs['detection_scores'].name)
+        multiclass_scores = od_graph.get_tensor_by_name(
+            signature.outputs['detection_multiclass_scores'].name)
         classes = od_graph.get_tensor_by_name(
             signature.outputs['detection_classes'].name)
         keypoints = od_graph.get_tensor_by_name(
@@ -719,9 +789,10 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         num_detections = od_graph.get_tensor_by_name(
             signature.outputs['num_detections'].name)
 
-        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
-         num_detections_np) = sess.run(
-             [boxes, scores, classes, keypoints, masks, num_detections],
+        (boxes_np, scores_np, multiclass_scores_np, classes_np, keypoints_np,
+         masks_np, num_detections_np) = sess.run(
+             [boxes, scores, multiclass_scores, classes, keypoints, masks,
+              num_detections],
              feed_dict={tf_example: tf_example_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -729,6 +800,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.0, 0.0, 0.0, 0.0]]])
         self.assertAllClose(scores_np, [[0.7, 0.6],
                                         [0.9, 0.0]])
+        self.assertAllClose(multiclass_scores_np, [[[0.3, 0.7], [0.4, 0.6]],
+                                                   [[0.1, 0.9], [0.0, 0.0]]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
         self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
@@ -751,7 +824,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       detection_model = model_builder.build(pipeline_config.model,
                                             is_training=False)
-      outputs, placeholder_tensor = exporter._build_detection_graph(
+      outputs, placeholder_tensor = exporter.build_detection_graph(
           input_type='tf_example',
           detection_model=detection_model,
           input_shape=None,
@@ -884,7 +957,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       detection_model = model_builder.build(pipeline_config.model,
                                             is_training=False)
-      exporter._build_detection_graph(
+      exporter.build_detection_graph(
           input_type='tf_example',
           detection_model=detection_model,
           input_shape=None,
@@ -908,13 +981,16 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         tf_example = od_graph.get_tensor_by_name('tf_example:0')
         boxes = od_graph.get_tensor_by_name('detection_boxes:0')
         scores = od_graph.get_tensor_by_name('detection_scores:0')
+        raw_boxes = od_graph.get_tensor_by_name('raw_detection_boxes:0')
+        raw_scores = od_graph.get_tensor_by_name('raw_detection_scores:0')
         classes = od_graph.get_tensor_by_name('detection_classes:0')
         keypoints = od_graph.get_tensor_by_name('detection_keypoints:0')
         masks = od_graph.get_tensor_by_name('detection_masks:0')
         num_detections = od_graph.get_tensor_by_name('num_detections:0')
-        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
-         num_detections_np) = sess.run(
-             [boxes, scores, classes, keypoints, masks, num_detections],
+        (boxes_np, scores_np, raw_boxes_np, raw_scores_np, classes_np,
+         keypoints_np, masks_np, num_detections_np) = sess.run(
+             [boxes, scores, raw_boxes, raw_scores, classes, keypoints, masks,
+              num_detections],
              feed_dict={tf_example: tf_example_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -922,11 +998,63 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.0, 0.0, 0.0, 0.0]]])
         self.assertAllClose(scores_np, [[0.7, 0.6],
                                         [0.9, 0.0]])
+        self.assertAllClose(raw_boxes_np, [[[0.0, 0.0, 0.5, 0.5],
+                                            [0.5, 0.5, 0.8, 0.8]],
+                                           [[0.5, 0.5, 1.0, 1.0],
+                                            [0.0, 0.5, 0.0, 0.5]]])
+        self.assertAllClose(raw_scores_np, [[0.7, 0.6],
+                                            [0.9, 0.5]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
         self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
         self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
         self.assertAllClose(num_detections_np, [2, 1])
+
+  def test_rewrite_nn_resize_op(self):
+    g = tf.Graph()
+    with g.as_default():
+      x = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
+      y = array_ops.placeholder(dtypes.float32, shape=(8, 20, 20, 8))
+      s = ops.nearest_neighbor_upsampling(x, 2)
+      t = s + y
+      exporter.rewrite_nn_resize_op()
+
+    resize_op_found = False
+    for op in g.get_operations():
+      if op.type == 'ResizeNearestNeighbor':
+        resize_op_found = True
+        self.assertEqual(op.inputs[0], x)
+        self.assertEqual(op.outputs[0].consumers()[0], t.op)
+        break
+
+    self.assertTrue(resize_op_found)
+
+  def test_rewrite_nn_resize_op_quantized(self):
+    g = tf.Graph()
+    with g.as_default():
+      x = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
+      x_conv = tf.contrib.slim.conv2d(x, 8, 1)
+      y = array_ops.placeholder(dtypes.float32, shape=(8, 20, 20, 8))
+      s = ops.nearest_neighbor_upsampling(x_conv, 2)
+      t = s + y
+
+      graph_rewriter_config = graph_rewriter_pb2.GraphRewriter()
+      graph_rewriter_config.quantization.delay = 500000
+      graph_rewriter_fn = graph_rewriter_builder.build(
+          graph_rewriter_config, is_training=False)
+      graph_rewriter_fn()
+
+      exporter.rewrite_nn_resize_op(is_quantized=True)
+
+    resize_op_found = False
+    for op in g.get_operations():
+      if op.type == 'ResizeNearestNeighbor':
+        resize_op_found = True
+        self.assertEqual(op.inputs[0].op.type, 'FakeQuantWithMinMaxVars')
+        self.assertEqual(op.outputs[0].consumers()[0], t.op)
+        break
+
+    self.assertTrue(resize_op_found)
 
 
 if __name__ == '__main__':

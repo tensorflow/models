@@ -61,7 +61,7 @@ class BigQueryUploaderTest(tf.test.TestCase):
       json.dump({"model_name": "value"}, f)
 
   def tearDown(self):
-    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    tf.io.gfile.rmtree(self.get_temp_dir())
 
   def test_upload_benchmark_run_json(self):
     self.benchmark_uploader.upload_benchmark_run_json(

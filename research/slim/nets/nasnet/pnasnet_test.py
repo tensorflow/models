@@ -236,6 +236,21 @@ class PNASNetTest(tf.test.TestCase):
     self.assertListEqual(end_points['Stem'].shape.as_list(),
                          [batch_size, 135, 28, 28])
 
+  def testUseBoundedAcitvationMobileModel(self):
+    batch_size = 1
+    height, width = 224, 224
+    num_classes = 1000
+    for use_bounded_activation in (True, False):
+      tf.reset_default_graph()
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      config = pnasnet.mobile_imagenet_config()
+      config.set_hparam('use_bounded_activation', use_bounded_activation)
+      with slim.arg_scope(pnasnet.pnasnet_mobile_arg_scope()):
+        _, _ = pnasnet.build_pnasnet_mobile(
+            inputs, num_classes, config=config)
+      for node in tf.get_default_graph().as_graph_def().node:
+        if node.op.startswith('Relu'):
+          self.assertEqual(node.op == 'Relu6', use_bounded_activation)
 
 if __name__ == '__main__':
   tf.test.main()

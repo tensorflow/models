@@ -89,7 +89,8 @@ def create_model(data_format):
 
 def define_mnist_flags():
   flags_core.define_base()
-  flags_core.define_performance(num_parallel_calls=False)
+  flags_core.define_performance(inter_op=True, intra_op=True,
+                                num_parallel_calls=False)
   flags_core.define_image()
   flags.adopt_module_key_flags(flags_core)
   flags_core.set_defaults(data_dir='/tmp/mnist_data',
@@ -165,7 +166,9 @@ def run_mnist(flags_obj):
       allow_soft_placement=True)
 
   distribution_strategy = distribution_utils.get_distribution_strategy(
-      flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
+      distribution_strategy=flags_obj.distribution_strategy,
+      num_gpus=flags_core.get_num_gpus(flags_obj),
+      all_reduce_alg=flags_obj.all_reduce_alg)
 
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy, session_config=session_config)
@@ -222,7 +225,8 @@ def run_mnist(flags_obj):
     input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
         'image': image,
     })
-    mnist_classifier.export_savedmodel(flags_obj.export_dir, input_fn)
+    mnist_classifier.export_savedmodel(flags_obj.export_dir, input_fn,
+                                       strip_default_attrs=True)
 
 
 def main(_):

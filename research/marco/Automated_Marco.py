@@ -22,9 +22,7 @@ import argparse
 
 """ 
 usage: 
-
 Processes all .jpg, .png, .bmp and .gif files found in the specified directory and its subdirectories.
-
  --PATH ( Path to directory of images or path to directory with subdirectory of images). e.g Path/To/Directory/
  --Model_PATH path to the tensorflow model
 """
@@ -45,8 +43,8 @@ size = len(crystal_images)
 
 def load_images(file_list):
     for i in file_list:
-        file = open(i)
-        yield {"image_bytes":[file.read()]},i
+        files = open(i,'rb')
+        yield {"image_bytes":[files.read()]},i
 
 
 
@@ -66,7 +64,9 @@ with open(PATH +'results.csv', 'w') as csvfile:
                 results = predicter(data)
            
                 vals =results['scores'][0]
-                vals = vals*100 
-                print('Image path: '+ name,'Crystal: '+str(vals[0]),'Other: '+ str(vals[1]),'Precipitate: '+ str(vals[2]),'Clear '+ str(vals[3]))
-                Writer.writerow(['Image path: '+ name,'Crystal: '+str(vals[0]),'Other: '+ str(vals[1]),'Precipitate: '+ str(vals[2]),'Clear: '+ str(vals[3])])
+                classes = results['classes'][0]
+                dictionary = dict(zip(classes,vals))
+    
+                print('Image path: '+ name+' Crystal: '+str(dictionary[b'Crystals'])+' Other: '+ str(dictionary[b'Other'])+' Precipitate: '+ str(dictionary[b'Precipitate'])+' Clear: '+ str(dictionary[b'Clear']))
+                Writer.writerow(['Image path: '+ name,'Crystal: '+str(dictionary[b'Crystals']),'Other: '+ str(dictionary[b'Other']),'Precipitate: '+ str(dictionary[b'Precipitate']),'Clear: '+ str(dictionary[b'Clear'])])
   

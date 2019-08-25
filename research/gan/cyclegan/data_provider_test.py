@@ -62,41 +62,67 @@ class DataProviderTest(tf.test.TestCase):
     file_pattern = os.path.join(self.testdata_dir, '*.jpg')
     batch_size = 3
     patch_size = 8
-    images = data_provider._provide_custom_dataset(
+    images_ds = data_provider._provide_custom_dataset(
         file_pattern, batch_size=batch_size, patch_size=patch_size)
-    self.assertListEqual([batch_size, patch_size, patch_size, 3],
-                         images.shape.as_list())
-    self.assertEqual(tf.float32, images.dtype)
+    self.assertListEqual([None, patch_size, patch_size, 3],
+                         images_ds.output_shapes.as_list())
+    self.assertEqual(tf.float32, images_ds.output_types)
 
+    iterator = images_ds.make_initializable_iterator()
     with self.test_session(use_gpu=True) as sess:
       sess.run(tf.local_variables_initializer())
-      with tf.contrib.slim.queues.QueueRunners(sess):
-        images_out = sess.run(images)
-        self.assertTupleEqual((batch_size, patch_size, patch_size, 3),
-                              images_out.shape)
-        self.assertTrue(np.all(np.abs(images_out) <= 1.0))
+      sess.run(iterator.initializer)
+      images_out = sess.run(iterator.get_next())
+      self.assertTupleEqual((batch_size, patch_size, patch_size, 3),
+                            images_out.shape)
+      self.assertTrue(np.all(np.abs(images_out) <= 1.0))
 
   def test_custom_datasets_provider(self):
     file_pattern = os.path.join(self.testdata_dir, '*.jpg')
     batch_size = 3
     patch_size = 8
-    images_list = data_provider.provide_custom_datasets(
+    images_ds_list = data_provider.provide_custom_datasets(
+        [file_pattern, file_pattern],
+        batch_size=batch_size,
+        patch_size=patch_size)
+    for images_ds in images_ds_list:
+      self.assertListEqual([None, patch_size, patch_size, 3],
+                           images_ds.output_shapes.as_list())
+      self.assertEqual(tf.float32, images_ds.output_types)
+
+    iterators = [x.make_initializable_iterator() for x in images_ds_list]
+    initialiers = [x.initializer for x in iterators]
+    img_tensors = [x.get_next() for x in iterators]
+    with self.test_session(use_gpu=True) as sess:
+      sess.run(tf.local_variables_initializer())
+      sess.run(initialiers)
+      images_out_list = sess.run(img_tensors)
+      for images_out in images_out_list:
+        self.assertTupleEqual((batch_size, patch_size, patch_size, 3),
+                              images_out.shape)
+        self.assertTrue(np.all(np.abs(images_out) <= 1.0))
+
+  def test_custom_data_provider(self):
+    file_pattern = os.path.join(self.testdata_dir, '*.jpg')
+    batch_size = 3
+    patch_size = 8
+    images_list = data_provider.provide_custom_data(
         [file_pattern, file_pattern],
         batch_size=batch_size,
         patch_size=patch_size)
     for images in images_list:
-      self.assertListEqual([batch_size, patch_size, patch_size, 3],
+      self.assertListEqual([None, patch_size, patch_size, 3],
                            images.shape.as_list())
       self.assertEqual(tf.float32, images.dtype)
 
     with self.test_session(use_gpu=True) as sess:
       sess.run(tf.local_variables_initializer())
-      with tf.contrib.slim.queues.QueueRunners(sess):
-        images_out_list = sess.run(images_list)
-        for images_out in images_out_list:
-          self.assertTupleEqual((batch_size, patch_size, patch_size, 3),
-                                images_out.shape)
-          self.assertTrue(np.all(np.abs(images_out) <= 1.0))
+      sess.run(tf.tables_initializer())
+      images_out_list = sess.run(images_list)
+      for images_out in images_out_list:
+        self.assertTupleEqual((batch_size, patch_size, patch_size, 3),
+                              images_out.shape)
+        self.assertTrue(np.all(np.abs(images_out) <= 1.0))
 
 
 if __name__ == '__main__':

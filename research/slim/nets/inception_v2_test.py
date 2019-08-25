@@ -253,6 +253,33 @@ class InceptionV2Test(tf.test.TestCase):
     self.assertListEqual(pre_pool.get_shape().as_list(),
                          [batch_size, 4, 4, 1024])
 
+  def testBuildBaseNetworkWithoutRootBlock(self):
+    batch_size = 5
+    height, width = 28, 28
+    channels = 192
+
+    inputs = tf.random_uniform((batch_size, height, width, channels))
+    _, end_points = inception.inception_v2_base(
+        inputs, include_root_block=False)
+    endpoints_shapes = {
+        'Mixed_3b': [batch_size, 28, 28, 256],
+        'Mixed_3c': [batch_size, 28, 28, 320],
+        'Mixed_4a': [batch_size, 14, 14, 576],
+        'Mixed_4b': [batch_size, 14, 14, 576],
+        'Mixed_4c': [batch_size, 14, 14, 576],
+        'Mixed_4d': [batch_size, 14, 14, 576],
+        'Mixed_4e': [batch_size, 14, 14, 576],
+        'Mixed_5a': [batch_size, 7, 7, 1024],
+        'Mixed_5b': [batch_size, 7, 7, 1024],
+        'Mixed_5c': [batch_size, 7, 7, 1024]
+    }
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    for endpoint_name in endpoints_shapes:
+      expected_shape = endpoints_shapes[endpoint_name]
+      self.assertTrue(endpoint_name in end_points)
+      self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
+                           expected_shape)
+
   def testUnknownImageShape(self):
     tf.reset_default_graph()
     batch_size = 2
@@ -350,6 +377,29 @@ class InceptionV2Test(tf.test.TestCase):
       tf.global_variables_initializer().run()
       logits_out = sess.run(logits)
       self.assertListEqual(list(logits_out.shape), [1, 1, 1, num_classes])
+
+  def testNoBatchNormScaleByDefault(self):
+    height, width = 224, 224
+    num_classes = 1000
+    inputs = tf.placeholder(tf.float32, (1, height, width, 3))
+    with slim.arg_scope(inception.inception_v2_arg_scope()):
+      inception.inception_v2(inputs, num_classes, is_training=False)
+
+    self.assertEqual(tf.global_variables('.*/BatchNorm/gamma:0$'), [])
+
+  def testBatchNormScale(self):
+    height, width = 224, 224
+    num_classes = 1000
+    inputs = tf.placeholder(tf.float32, (1, height, width, 3))
+    with slim.arg_scope(
+        inception.inception_v2_arg_scope(batch_norm_scale=True)):
+      inception.inception_v2(inputs, num_classes, is_training=False)
+
+    gamma_names = set(
+        v.op.name for v in tf.global_variables('.*/BatchNorm/gamma:0$'))
+    self.assertGreater(len(gamma_names), 0)
+    for v in tf.global_variables('.*/BatchNorm/moving_mean:0$'):
+      self.assertIn(v.op.name[:-len('moving_mean')] + 'gamma', gamma_names)
 
 
 if __name__ == '__main__':

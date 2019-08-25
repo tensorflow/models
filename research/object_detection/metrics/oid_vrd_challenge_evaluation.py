@@ -17,7 +17,7 @@ r"""Runs evaluation using OpenImages groundtruth and predictions.
 Example usage:
 python \
 models/research/object_detection/metrics/oid_vrd_challenge_evaluation.py \
-    --input_annotations_boxes=/path/to/input/annotations-human-bbox.csv \
+    --input_annotations_vrd=/path/to/input/annotations-human-bbox.csv \
     --input_annotations_labels=/path/to/input/annotations-label.csv \
     --input_class_labelmap=/path/to/input/class_labelmap.pbtxt \
     --input_relationship_labelmap=/path/to/input/relationship_labelmap.pbtxt \
@@ -126,7 +126,7 @@ if __name__ == '__main__':
       description=
       'Evaluate Open Images Visual Relationship Detection predictions.')
   parser.add_argument(
-      '--input_annotations_boxes',
+      '--input_annotations_vrd',
       required=True,
       help='File with groundtruth vrd annotations.')
   parser.add_argument(

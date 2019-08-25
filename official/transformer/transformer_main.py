@@ -32,6 +32,7 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
+from official.r1.utils import export
 from official.transformer import compute_bleu
 from official.transformer import translate
 from official.transformer.model import model_params
@@ -41,7 +42,6 @@ from official.transformer.utils import metrics
 from official.transformer.utils import schedule
 from official.transformer.utils import tokenizer
 from official.utils.accelerator import tpu as tpu_util
-from official.utils.export import export
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -56,7 +56,7 @@ PARAMS_MAP = {
 
 
 DEFAULT_TRAIN_EPOCHS = 10
-INF = int(1e9)
+INF = 1000000000  # 1e9
 BLEU_DIR = "bleu"
 
 # Dictionary containing tensors that are logged by the logging hooks. Each item
@@ -182,6 +182,11 @@ def get_train_op_and_metrics(loss, params):
     if params["use_tpu"] and params["tpu"] != tpu_util.LOCAL:
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
+    # Uses automatic mixed precision FP16 training if on GPU.
+    if params["dtype"] == "fp16":
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+          optimizer)
+
     # Calculate and apply gradients using LazyAdamOptimizer.
     global_step = tf.train.get_global_step()
     tvars = tf.trainable_variables()
@@ -232,14 +237,14 @@ def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file):
   uncased_score, cased_score = translate_and_compute_bleu(
       estimator, subtokenizer, bleu_source, bleu_ref)
 
-  tf.logging.info("Bleu score (uncased):", uncased_score)
-  tf.logging.info("Bleu score (cased):", cased_score)
+  tf.logging.info("Bleu score (uncased): %f", uncased_score)
+  tf.logging.info("Bleu score (cased): %f", cased_score)
   return uncased_score, cased_score
 
 
 def _validate_file(filepath):
   """Make sure that file exists."""
-  if not tf.gfile.Exists(filepath):
+  if not tf.io.gfile.exists(filepath):
     raise tf.errors.NotFoundError(None, None, "File %s not found." % filepath)
 
 
@@ -278,6 +283,11 @@ def run_loop(
     bleu_ref: File containing reference translations for BLEU calculation.
     bleu_threshold: minimum BLEU score before training is stopped.
     vocab_file: Path to vocab file that will be used to subtokenize bleu_source.
+
+  Returns:
+    Dict of results of the run.  Contains the keys `eval_results`,
+    `train_hooks`, `bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the
+    instances of hooks used during training.
 
   Raises:
     ValueError: if both or none of single_iteration_train_steps and
@@ -321,6 +331,7 @@ def run_loop(
       schedule_manager.train_eval_iterations = INF
 
   # Loop training/evaluation/bleu cycles
+  stats = {}
   for i in xrange(schedule_manager.train_eval_iterations):
     tf.logging.info("Starting iteration %d" % (i + 1))
 
@@ -349,6 +360,9 @@ def run_loop(
       uncased_score, cased_score = evaluate_and_log_bleu(
           estimator, bleu_source, bleu_ref, vocab_file)
 
+      stats["bleu_uncased"] = uncased_score
+      stats["bleu_cased"] = cased_score
+
       # Write actual bleu scores using summary writer and benchmark logger
       global_step = get_global_step(estimator)
       summary = tf.Summary(value=[
@@ -367,10 +381,19 @@ def run_loop(
         bleu_writer.close()
         break
 
+  stats["eval_results"] = eval_results
+  stats["train_hooks"] = train_hooks
+
+  return stats
+
 
 def define_transformer_flags():
   """Add flags and flag validators for running transformer_main."""
   # Add common flags (data_dir, model_dir, train_epochs, etc.).
+  flags.DEFINE_integer(
+      name="max_length", short_name="ml", default=None,
+      help=flags_core.help_wrap("Max length."))
+
   flags_core.define_base()
   flags_core.define_performance(
       num_parallel_calls=True,
@@ -378,7 +401,7 @@ def define_transformer_flags():
       intra_op=False,
       synthetic_data=True,
       max_train_steps=False,
-      dtype=False,
+      dtype=True,
       all_reduce_alg=True
   )
   flags_core.define_benchmark()
@@ -495,7 +518,9 @@ def construct_estimator(flags_obj, params, schedule_manager):
   """
   if not params["use_tpu"]:
     distribution_strategy = distribution_utils.get_distribution_strategy(
-        flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
+        distribution_strategy=flags_obj.distribution_strategy,
+        num_gpus=flags_core.get_num_gpus(flags_obj),
+        all_reduce_alg=flags_obj.all_reduce_alg)
     return tf.estimator.Estimator(
         model_fn=model_fn, model_dir=flags_obj.model_dir, params=params,
         config=tf.estimator.RunConfig(train_distribute=distribution_strategy))
@@ -533,6 +558,11 @@ def run_transformer(flags_obj):
 
   Args:
     flags_obj: Object containing parsed flag values.
+
+  Returns:
+    Dict of results of the run.  Contains the keys `eval_results`,
+    `train_hooks`, `bleu_cased`, and `bleu_uncased`. `train_hooks` is a list the
+    instances of hooks used during training.
   """
   num_gpus = flags_core.get_num_gpus(flags_obj)
 
@@ -553,6 +583,8 @@ def run_transformer(flags_obj):
   params["static_batch"] = flags_obj.static_batch or params["use_tpu"]
   params["allow_ffn_pad"] = not params["use_tpu"]
 
+  params["max_length"] = flags_obj.max_length or params["max_length"]
+
   params["use_synthetic_data"] = flags_obj.use_synthetic_data
 
   # Set batch size parameter, which depends on the availability of
@@ -561,8 +593,9 @@ def run_transformer(flags_obj):
       params["default_batch_size_tpu"] if params["use_tpu"]
       else params["default_batch_size"]))
 
+  total_batch_size = params["batch_size"]
   if not params["use_tpu"]:
-    params["batch_size"] = distribution_utils.per_device_batch_size(
+    params["batch_size"] = distribution_utils.per_replica_batch_size(
         params["batch_size"], num_gpus)
 
   schedule_manager = schedule.Manager(
@@ -586,7 +619,7 @@ def run_transformer(flags_obj):
       flags_obj.hooks,
       model_dir=flags_obj.model_dir,
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
-      batch_size=schedule_manager.batch_size,  # for ExamplesPerSecondHook
+      batch_size=total_batch_size,  # for ExamplesPerSecondHook
       use_tpu=params["use_tpu"]  # Not all hooks can run with TPUs
   )
   benchmark_logger = logger.get_benchmark_logger()
@@ -598,7 +631,7 @@ def run_transformer(flags_obj):
 
   # Train and evaluate transformer model
   estimator = construct_estimator(flags_obj, params, schedule_manager)
-  run_loop(
+  stats = run_loop(
       estimator=estimator,
       # Training arguments
       schedule_manager=schedule_manager,
@@ -621,7 +654,9 @@ def run_transformer(flags_obj):
     # an extra asset rather than a core asset.
     estimator.export_savedmodel(
         flags_obj.export_dir, serving_input_fn,
-        assets_extra={"vocab.txt": flags_obj.vocab_file})
+        assets_extra={"vocab.txt": flags_obj.vocab_file},
+        strip_default_attrs=True)
+  return stats
 
 
 def main(_):

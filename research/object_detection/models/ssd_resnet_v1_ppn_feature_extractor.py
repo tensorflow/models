@@ -98,6 +98,8 @@ class _SSDResnetPpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
 
     VGG style channel mean subtraction as described here:
     https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-mdnge.
+    Note that if the number of channels is not equal to 3, the mean subtraction
+    will be skipped and the original resized_inputs will be returned.
 
     Args:
       resized_inputs: a [batch, height, width, channels] float tensor
@@ -107,8 +109,11 @@ class _SSDResnetPpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       preprocessed_inputs: a [batch, height, width, channels] float tensor
         representing a batch of images.
     """
-    channel_means = [123.68, 116.779, 103.939]
-    return resized_inputs - [[channel_means]]
+    if resized_inputs.shape.as_list()[3] == 3:
+      channel_means = [123.68, 116.779, 103.939]
+      return resized_inputs - [[channel_means]]
+    else:
+      return resized_inputs
 
   def extract_features(self, preprocessed_inputs):
     """Extract features from preprocessed inputs.

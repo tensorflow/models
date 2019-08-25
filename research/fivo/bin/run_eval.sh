@@ -18,7 +18,7 @@
 
 PIANOROLL_DIR=$HOME/pianorolls
 
-python fivo.py \
+python run_fivo.py \
   --mode=eval \
   --logdir=/tmp/fivo \
   --model=vrnn \

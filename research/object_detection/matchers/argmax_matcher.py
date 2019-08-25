@@ -99,17 +99,19 @@ class ArgMaxMatcher(matcher.Matcher):
       if self._unmatched_threshold == self._matched_threshold:
         raise ValueError('When negatives are in between matched and '
                          'unmatched thresholds, these cannot be of equal '
-                         'value. matched: %s, unmatched: %s',
-                         self._matched_threshold, self._unmatched_threshold)
+                         'value. matched: {}, unmatched: {}'.format(
+                             self._matched_threshold,
+                             self._unmatched_threshold))
     self._force_match_for_each_row = force_match_for_each_row
     self._negatives_lower_than_unmatched = negatives_lower_than_unmatched
 
-  def _match(self, similarity_matrix):
+  def _match(self, similarity_matrix, valid_rows):
     """Tries to match each column of the similarity matrix to a row.
 
     Args:
       similarity_matrix: tensor of shape [N, M] representing any similarity
         metric.
+      valid_rows: a boolean tensor of shape [N] indicating valid rows.
 
     Returns:
       Match object with corresponding matches for each of M columns.
@@ -167,8 +169,10 @@ class ArgMaxMatcher(matcher.Matcher):
             similarity_matrix)
         force_match_column_ids = tf.argmax(similarity_matrix, 1,
                                            output_type=tf.int32)
-        force_match_column_indicators = tf.one_hot(
-            force_match_column_ids, depth=similarity_matrix_shape[1])
+        force_match_column_indicators = (
+            tf.one_hot(
+                force_match_column_ids, depth=similarity_matrix_shape[1]) *
+            tf.cast(tf.expand_dims(valid_rows, axis=-1), dtype=tf.float32))
         force_match_row_ids = tf.argmax(force_match_column_indicators, 0,
                                         output_type=tf.int32)
         force_match_column_mask = tf.cast(
@@ -180,7 +184,7 @@ class ArgMaxMatcher(matcher.Matcher):
         return matches
 
     if similarity_matrix.shape.is_fully_defined():
-      if similarity_matrix.shape[0].value == 0:
+      if shape_utils.get_dim_as_int(similarity_matrix.shape[0]) == 0:
         return _match_when_rows_are_empty()
       else:
         return _match_when_rows_are_non_empty()

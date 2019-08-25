@@ -23,6 +23,7 @@ import six
 import tensorflow as tf
 from tensorflow.core.framework import types_pb2
 from object_detection import export_tflite_ssd_graph_lib
+from object_detection import exporter
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
 from object_detection.core import model
@@ -68,6 +69,12 @@ class FakeModel(model.DetectionModel):
     pass
 
   def loss(self, prediction_dict, true_image_shapes):
+    pass
+
+  def regularization_losses(self):
+    pass
+
+  def updates(self):
     pass
 
 
@@ -334,6 +341,28 @@ class ExportTfliteGraphTest(tf.test.TestCase):
                   t == types_pb2.DT_FLOAT
                   for t in node.attr['_output_types'].list.type
               ]))
+
+  @mock.patch.object(exporter, 'rewrite_nn_resize_op')
+  def test_export_with_nn_resize_op_not_called_without_fpn(self, mock_get):
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.height = 10
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.width = 10
+    tflite_graph_file = self._export_graph_with_postprocessing_op(
+        pipeline_config)
+    self.assertTrue(os.path.exists(tflite_graph_file))
+    mock_get.assert_not_called()
+
+  @mock.patch.object(exporter, 'rewrite_nn_resize_op')
+  def test_export_with_nn_resize_op_called_with_fpn(self, mock_get):
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.height = 10
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.width = 10
+    pipeline_config.model.ssd.feature_extractor.fpn.min_level = 3
+    pipeline_config.model.ssd.feature_extractor.fpn.max_level = 7
+    tflite_graph_file = self._export_graph_with_postprocessing_op(
+        pipeline_config)
+    self.assertTrue(os.path.exists(tflite_graph_file))
+    mock_get.assert_called_once()
 
 
 if __name__ == '__main__':

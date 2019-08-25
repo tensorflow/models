@@ -36,6 +36,8 @@ Mask RCNN box predictor.
 """
 from abc import abstractmethod
 
+import tensorflow as tf
+
 
 class Head(object):
   """Mask RCNN head base class."""
@@ -52,6 +54,26 @@ class Head(object):
       features: A float tensor of features.
       num_predictions_per_location: Int containing number of predictions per
         location.
+
+    Returns:
+      A tf.float32 tensor.
+    """
+    pass
+
+
+class KerasHead(tf.keras.Model):
+  """Keras head base class."""
+
+  def call(self, features):
+    """The Keras model call will delegate to the `_predict` method."""
+    return self._predict(features)
+
+  @abstractmethod
+  def _predict(self, features):
+    """Returns the head's predictions.
+
+    Args:
+      features: A float tensor of features.
 
     Returns:
       A tf.float32 tensor.

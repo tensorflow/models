@@ -20,9 +20,13 @@ from __future__ import print_function
 
 import math
 
+import numpy as np
 import tensorflow as tf
 
-_NEG_INF = -1e9
+# Very low numbers to represent -infinity. We do not actually use -Inf, since we
+# want to be able to multiply these values by zero to get zero. (-Inf * 0 = NaN)
+_NEG_INF_FP32 = -1e9
+_NEG_INF_FP16 = np.finfo(np.float16).min
 
 
 def get_position_encoding(
@@ -42,19 +46,22 @@ def get_position_encoding(
   Returns:
     Tensor with shape [length, hidden_size]
   """
-  position = tf.to_float(tf.range(length))
+  # We compute the positional encoding in float32 even if the model uses
+  # float16, as many of the ops used, like log and exp, are numerically unstable
+  # in float16.
+  position = tf.cast(tf.range(length), tf.float32)
   num_timescales = hidden_size // 2
   log_timescale_increment = (
       math.log(float(max_timescale) / float(min_timescale)) /
-      (tf.to_float(num_timescales) - 1))
+      (tf.cast(num_timescales, tf.float32) - 1))
   inv_timescales = min_timescale * tf.exp(
-      tf.to_float(tf.range(num_timescales)) * -log_timescale_increment)
+      tf.cast(tf.range(num_timescales), tf.float32) * -log_timescale_increment)
   scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
   signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
   return signal
 
 
-def get_decoder_self_attention_bias(length):
+def get_decoder_self_attention_bias(length, dtype=tf.float32):
   """Calculate bias for decoder that maintains model's autoregressive property.
 
   Creates a tensor that masks out locations that correspond to illegal
@@ -63,30 +70,34 @@ def get_decoder_self_attention_bias(length):
 
   Args:
     length: int length of sequences in batch.
+    dtype: The dtype of the return value.
 
   Returns:
     float tensor of shape [1, 1, length, length]
   """
+  neg_inf = _NEG_INF_FP16 if dtype == tf.float16 else _NEG_INF_FP32
   with tf.name_scope("decoder_self_attention_bias"):
-    valid_locs = tf.matrix_band_part(tf.ones([length, length]), -1, 0)
+    valid_locs = tf.linalg.band_part(tf.ones([length, length], dtype=dtype),
+                                     -1, 0)
     valid_locs = tf.reshape(valid_locs, [1, 1, length, length])
-    decoder_bias = _NEG_INF * (1.0 - valid_locs)
+    decoder_bias = neg_inf * (1.0 - valid_locs)
   return decoder_bias
 
 
-def get_padding(x, padding_value=0):
+def get_padding(x, padding_value=0, dtype=tf.float32):
   """Return float tensor representing the padding values in x.
 
   Args:
     x: int tensor with any shape
     padding_value: int value that
+    dtype: The dtype of the return value.
 
   Returns:
-    flaot tensor with same shape as x containing values 0 or 1.
+    float tensor with same shape as x containing values 0 or 1.
       0 -> non-padding, 1 -> padding
   """
   with tf.name_scope("padding"):
-    return tf.to_float(tf.equal(x, padding_value))
+    return tf.cast(tf.equal(x, padding_value), dtype)
 
 
 def get_padding_bias(x):
@@ -104,7 +115,7 @@ def get_padding_bias(x):
   """
   with tf.name_scope("attention_bias"):
     padding = get_padding(x)
-    attention_bias = padding * _NEG_INF
+    attention_bias = padding * _NEG_INF_FP32
     attention_bias = tf.expand_dims(
         tf.expand_dims(attention_bias, axis=1), axis=1)
   return attention_bias

@@ -116,7 +116,7 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
         normalize_coordinates=False)
     self.assertEqual(anchor_generator.num_anchors_per_location(), [6, 6])
 
-  def test_construct_single_anchor_fails_with_tensor_image_size(self):
+  def test_construct_single_anchor_dynamic_size(self):
     min_level = 5
     max_level = 5
     anchor_scale = 4.0
@@ -125,12 +125,22 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
     im_height = tf.constant(64)
     im_width = tf.constant(64)
     feature_map_shape_list = [(2, 2)]
+    # Zero offsets are used.
+    exp_anchor_corners = [[-64, -64, 64, 64],
+                          [-64, -32, 64, 96],
+                          [-32, -64, 96, 64],
+                          [-32, -32, 96, 96]]
+
     anchor_generator = mg.MultiscaleGridAnchorGenerator(
         min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
         normalize_coordinates=False)
-    with self.assertRaisesRegexp(ValueError, 'statically defined'):
-      anchor_generator.generate(
-          feature_map_shape_list, im_height=im_height, im_width=im_width)
+    anchors_list = anchor_generator.generate(
+        feature_map_shape_list, im_height=im_height, im_width=im_width)
+    anchor_corners = anchors_list[0].get()
+
+    with self.test_session():
+      anchor_corners_out = anchor_corners.eval()
+      self.assertAllClose(anchor_corners_out, exp_anchor_corners)
 
   def test_construct_single_anchor_with_odd_input_dimension(self):
 

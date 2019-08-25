@@ -23,11 +23,6 @@ from deeplab import model
 
 class DeeplabModelTest(tf.test.TestCase):
 
-  def testScaleDimensionOutput(self):
-    self.assertEqual(161, model.scale_dimension(321, 0.5))
-    self.assertEqual(193, model.scale_dimension(321, 0.6))
-    self.assertEqual(241, model.scale_dimension(321, 0.75))
-
   def testWrongDeepLabVariant(self):
     model_options = common.ModelOptions([])._replace(
         model_variant='no_such_variant')
@@ -92,6 +87,7 @@ class DeeplabModelTest(tf.test.TestCase):
         add_image_level_feature=True,
         aspp_with_batch_norm=True,
         logits_kernel_size=1,
+        decoder_output_stride=[4],
         model_variant='mobilenet_v2')  # Employ MobileNetv2 for fast test.
 
     g = tf.Graph()
@@ -114,6 +110,37 @@ class DeeplabModelTest(tf.test.TestCase):
           self.assertEqual(len(scales_to_logits), 1)
           for logits in scales_to_logits.values():
             self.assertTrue(logits.any())
+
+  def testBuildDeepLabWithDensePredictionCell(self):
+    batch_size = 1
+    crop_size = [33, 33]
+    outputs_to_num_classes = {'semantic': 2}
+    expected_endpoints = ['merged_logits']
+    dense_prediction_cell_config = [
+        {'kernel': 3, 'rate': [1, 6], 'op': 'conv', 'input': -1},
+        {'kernel': 3, 'rate': [18, 15], 'op': 'conv', 'input': 0},
+    ]
+    model_options = common.ModelOptions(
+        outputs_to_num_classes,
+        crop_size,
+        output_stride=16)._replace(
+            aspp_with_batch_norm=True,
+            model_variant='mobilenet_v2',
+            dense_prediction_cell_config=dense_prediction_cell_config)
+    g = tf.Graph()
+    with g.as_default():
+      with self.test_session(graph=g):
+        inputs = tf.random_uniform(
+            (batch_size, crop_size[0], crop_size[1], 3))
+        outputs_to_scales_to_model_results = model.multi_scale_logits(
+            inputs,
+            model_options,
+            image_pyramid=[1.0])
+        for output in outputs_to_num_classes:
+          scales_to_model_results = outputs_to_scales_to_model_results[output]
+          self.assertListEqual(
+              list(scales_to_model_results), expected_endpoints)
+          self.assertEqual(len(scales_to_model_results), 1)
 
 
 if __name__ == '__main__':

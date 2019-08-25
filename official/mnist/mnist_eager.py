@@ -33,6 +33,7 @@ import time
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
+from tensorflow.python import eager as tfe
 # pylint: enable=g-bad-import-order
 
 from official.mnist import dataset as mnist_dataset
@@ -40,8 +41,6 @@ from official.mnist import mnist
 from official.utils.flags import core as flags_core
 from official.utils.misc import model_helpers
 
-
-tfe = tf.contrib.eager
 
 def loss(logits, labels):
   return tf.reduce_mean(
@@ -83,13 +82,13 @@ def train(model, optimizer, dataset, step_counter, log_interval=None):
 
 def test(model, dataset):
   """Perform an evaluation of `model` on the examples from `dataset`."""
-  avg_loss = tfe.metrics.Mean('loss', dtype=tf.float32)
-  accuracy = tfe.metrics.Accuracy('accuracy', dtype=tf.float32)
+  avg_loss = tf.keras.metrics.Mean('loss', dtype=tf.float32)
+  accuracy = tf.keras.metrics.Accuracy('accuracy', dtype=tf.float32)
 
   for (images, labels) in dataset:
     logits = model(images, training=False)
-    avg_loss(loss(logits, labels))
-    accuracy(
+    avg_loss.update_state(loss(logits, labels))
+    accuracy.update_state(
         tf.argmax(logits, axis=1, output_type=tf.int64),
         tf.cast(labels, tf.int64))
   print('Test set: Average loss: %.4f, Accuracy: %4f%%\n' %

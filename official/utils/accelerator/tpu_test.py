@@ -36,14 +36,14 @@ class TPUBaseTester(tf.test.TestCase):
     np.random.seed(seed)
 
     embeddings = np.random.random(size=(vocab_size, embedding_dim))
-    embedding_table = tf.convert_to_tensor(embeddings, dtype=tf.float32)
+    embedding_table = tf.convert_to_tensor(value=embeddings, dtype=tf.float32)
 
     tokens = np.random.randint(low=1, high=vocab_size-1,
                                size=(batch_size, sequence_length))
     for i in range(batch_size):
       tokens[i, np.random.randint(low=0, high=sequence_length-1):] = 0
-    values = tf.convert_to_tensor(tokens, dtype=tf.int32)
-    mask = tf.to_float(tf.not_equal(values, 0))
+    values = tf.convert_to_tensor(value=tokens, dtype=tf.int32)
+    mask = tf.cast(tf.not_equal(values, 0), dtype=tf.float32)
     return embedding_table, values, mask
 
   def _test_embedding(self, embedding_dim, vocab_size,
