@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 import re
+import sys
 import unittest
 
 from absl import flags
@@ -178,6 +179,8 @@ class TransformerTaskTest(tf.test.TestCase):
   def test_eval(self):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
+    if 'test_xla' in sys.argv[0]:
+      self.skipTest('TODO(xla): Make this test faster under XLA.')
     self._prepare_files_and_flags()
     t = tm.TransformerTask(FLAGS)
     t.eval()
