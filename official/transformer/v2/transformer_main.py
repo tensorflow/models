@@ -168,8 +168,10 @@ class TransformerTask(object):
       # like this. What if multiple instances of TransformerTask are created?
       # We should have a better way in the tf.keras.mixed_precision API of doing
       # this.
+      loss_scale = flags_core.get_loss_scale(flags_obj,
+                                             default_for_fp16="dynamic")
       policy = tf.keras.mixed_precision.experimental.Policy(
-          "infer_float32_vars")
+          "mixed_float16", loss_scale=loss_scale)
       tf.keras.mixed_precision.experimental.set_policy(policy)
 
     self.distribution_strategy = distribution_utils.get_distribution_strategy(
@@ -417,10 +419,6 @@ class TransformerTask(object):
         params["optimizer_adam_beta1"],
         params["optimizer_adam_beta2"],
         epsilon=params["optimizer_adam_epsilon"])
-    if params["dtype"] == tf.float16:
-      opt = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          opt, loss_scale=flags_core.get_loss_scale(self.flags_obj,
-                                                    default_for_fp16="dynamic"))
     return opt
 
 

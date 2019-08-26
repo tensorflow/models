@@ -76,10 +76,6 @@ class MobileSSDTfLiteClient : public MobileSSDClient {
   std::unique_ptr<::tflite::MutableOpResolver> resolver_;
   std::unique_ptr<::tflite::Interpreter> interpreter_;
 
-#ifdef ENABLE_EDGETPU
-  std::unique_ptr<edgetpu::EdgeTpuContext> edge_tpu_context_;
-#endif
-
  private:
   // MobileSSDTfLiteClient is neither copyable nor movable.
   MobileSSDTfLiteClient(const MobileSSDTfLiteClient&) = delete;
@@ -107,6 +103,10 @@ class MobileSSDTfLiteClient : public MobileSSDClient {
   bool FloatInference(const uint8_t* input_data);
   bool QuantizedInference(const uint8_t* input_data);
   void GetOutputBoxesAndScoreTensorsFromUInt8();
+
+#ifdef ENABLE_EDGETPU
+  std::unique_ptr<edgetpu::EdgeTpuContext> edge_tpu_context_;
+#endif
 };
 
 }  // namespace tflite
