@@ -27,6 +27,10 @@ def define_common_bert_flags():
   flags.DEFINE_string('model_dir', None, (
       'The directory where the model weights and training/evaluation summaries '
       'are stored. If not specified, save to /tmp/bert20/.'))
+  flags.DEFINE_string(
+      'model_export_path', None,
+      'Path to the directory, where trainined model will be '
+      'exported.')
   flags.DEFINE_string('tpu', '', 'TPU address to connect to.')
   flags.DEFINE_string(
       'init_checkpoint', None,

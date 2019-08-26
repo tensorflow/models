@@ -48,10 +48,6 @@ flags.DEFINE_string('train_data_path', None,
                     'Path to training data for BERT classifier.')
 flags.DEFINE_string('eval_data_path', None,
                     'Path to evaluation data for BERT classifier.')
-flags.DEFINE_string(
-    'model_export_path', None,
-    'Path to the directory, where trainined model will be '
-    'exported.')
 # Model training specific flags.
 flags.DEFINE_string(
     'input_meta_data_path', None,
