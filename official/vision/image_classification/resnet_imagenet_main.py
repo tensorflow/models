@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import app as absl_app
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -282,4 +282,4 @@ def main(_):
 if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
   define_imagenet_keras_flags()
-  absl_app.run(main)
+  app.run(main)

@@ -25,7 +25,7 @@ from __future__ import print_function
 import os
 import tempfile
 
-from absl import app as absl_app  # pylint: disable=unused-import
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -454,4 +454,4 @@ def main(_):
 if __name__ == "__main__":
   logging.set_verbosity(logging.INFO)
   misc.define_transformer_flags()
-  absl_app.run(main)
+  app.run(main)
