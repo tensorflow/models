@@ -27,7 +27,7 @@ import pandas as pd
 import tensorflow as tf
 # pylint: enable=wrong-import-order
 
-from official.utils.data import file_io
+from official.r1.utils.data import file_io
 from official.utils.misc import keras_utils
 
 

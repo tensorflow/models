@@ -249,6 +249,10 @@ def define_keras_flags(dynamic_loss_scale=True):
   """Define flags for Keras models."""
   flags_core.define_base(run_eagerly=True)
   flags_core.define_performance(num_parallel_calls=False,
+                                synthetic_data=True,
+                                dtype=True,
+                                all_reduce_alg=True,
+                                num_packs=True,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
                                 dynamic_loss_scale=dynamic_loss_scale,

@@ -31,7 +31,7 @@ from official.utils.misc import model_helpers
 from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import resnet_model
-from official.vision.image_classification import trivial_model
+from official.benchmark.models import trivial_model
 
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
@@ -184,6 +184,7 @@ def run(flags_obj):
       optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
           optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
                                                           default_for_fp16=128))
+
     if flags_obj.fp16_implementation == "graph_rewrite":
       # Note: when flags_obj.fp16_implementation == "graph_rewrite", 
       # dtype as determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
@@ -191,6 +192,7 @@ def run(flags_obj):
       # do not double up.
       optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
             
+    # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
           imagenet_preprocessing.NUM_CLASSES, dtype)

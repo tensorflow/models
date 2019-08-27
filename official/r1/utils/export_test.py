@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.export import export
+from official.r1.utils import export
 
 
 class ExportUtilsTest(tf.test.TestCase):

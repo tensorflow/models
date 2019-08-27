@@ -117,7 +117,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     """
     self._run_and_report_benchmark(hr_at_10_min=0.61)
 
-  def _run_and_report_benchmark(self, hr_at_10_min=0.630, hr_at_10_max=0.640):
+  def _run_and_report_benchmark(self, hr_at_10_min=0.630, hr_at_10_max=0.645):
     """Run test and report results.
 
     Note: Target is 0.635, but some runs are below that level. Until we have
@@ -263,6 +263,15 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark_mlperf_like()
 
+  def benchmark_1_gpu_ctl_fp16_mlperf_like(self):
+    """1 GPU using CTL."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
   def benchmark_1_gpu_ctl_run_eagerly_mlperf_like(self):
     """1 GPU using CTL with eager and distribution strategy."""
     self._setup()
@@ -277,6 +286,16 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.keras_use_ctl = True
     FLAGS.enable_xla = True
     FLAGS.train_epochs = 7
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_xla_1_gpu_ctl_fp16_mlperf_like(self):
+    """1 GPU using CTL with XLA."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.enable_xla = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
     self._run_and_report_benchmark_mlperf_like()
 
   def benchmark_8_gpu_mlperf_like(self):

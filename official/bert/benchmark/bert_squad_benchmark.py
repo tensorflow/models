@@ -43,6 +43,7 @@ SQUAD_FULL_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_full_m
 MODEL_CONFIG_FILE_PATH = 'gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16/bert_config'
 # pylint: enable=line-too-long
 
+TMP_DIR = os.getenv('TMPDIR')
 FLAGS = flags.FLAGS
 
 
@@ -116,7 +117,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
   `benchmark_(number of gpus)_gpu` format.
   """
 
-  def __init__(self, output_dir=None, **kwargs):
+  def __init__(self, output_dir=TMP_DIR, **kwargs):
     super(BertSquadBenchmarkReal, self).__init__(output_dir=output_dir)
 
   def _setup(self):

@@ -192,6 +192,29 @@ def define_transformer_flags():
       help=flags_core.help_wrap(
           'Whether the model runs in 2VM mode, Headless server and unit test '
           'all use 1VM config.'))
+  flags.DEFINE_integer(
+      name='decode_batch_size',
+      default=32,
+      help=flags_core.help_wrap(
+          'Global batch size used for Transformer autoregressive decoding on '
+          'TPU.'))
+  flags.DEFINE_integer(
+      name='decode_max_length',
+      default=97,
+      help=flags_core.help_wrap(
+          'Max sequence length of the decode/eval data. This is used by '
+          'Transformer autoregressive decoding on TPU to have minimum '
+          'paddings.'))
+  flags.DEFINE_bool(
+      name='padded_decode',
+      default=False,
+      help=flags_core.help_wrap(
+          'Whether the autoregressive decoding runs with input data padded to '
+          'the decode_max_length. For TPU/XLA-GPU runs, this flag has to be '
+          'set due the static shape requirement. Although CPU/GPU could also '
+          'use padded_decode, it has not been tested. In addition, this method '
+          'will introduce unnecessary overheads which grow quadratically with '
+          'the max sequence length.'))
 
   flags_core.set_defaults(data_dir='/tmp/translate_ende',
                           model_dir='/tmp/transformer_model',

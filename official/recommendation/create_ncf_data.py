@@ -65,8 +65,8 @@ def prepare_raw_data(flag_obj):
 
   data_processing_params = {
       "train_epochs": flag_obj.num_train_epochs,
-      "batch_size": flag_obj.prebatch_size,
-      "eval_batch_size": flag_obj.prebatch_size,
+      "batch_size": flag_obj.train_prebatch_size,
+      "eval_batch_size": flag_obj.eval_prebatch_size,
       "batches_per_step": 1,
       "stream_files": True,
       "num_neg": flag_obj.num_negative_samples,
