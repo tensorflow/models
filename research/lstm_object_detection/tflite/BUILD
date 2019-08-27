@@ -59,12 +59,19 @@ cc_library(
     name = "mobile_lstd_tflite_client",
     srcs = ["mobile_lstd_tflite_client.cc"],
     hdrs = ["mobile_lstd_tflite_client.h"],
+    defines = select({
+        "//conditions:default": [],
+        "enable_edgetpu": ["ENABLE_EDGETPU"],
+    }),
     deps = [
         ":mobile_ssd_client",
         ":mobile_ssd_tflite_client",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_glog//:glog",
+        "@com_google_absl//absl/base:core_headers",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
-    ],
+    ] + select({
+        "//conditions:default": [],
+        "enable_edgetpu": ["@libedgetpu//libedgetpu:header"],
+    }),
     alwayslink = 1,
 )
