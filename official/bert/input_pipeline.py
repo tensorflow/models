@@ -94,8 +94,12 @@ def create_pretrain_dataset(file_paths,
   dataset = dataset.shuffle(len(file_paths))
 
   # In parallel, create tf record dataset for each train files.
+  # cycle_length = 8 means that up to 8 files will be read and deserialized in
+  # parallel. You may want to increase this number if you have a large number of
+  # CPU cores.
   dataset = dataset.interleave(
-      tf.data.TFRecordDataset, cycle_length=tf.data.experimental.AUTOTUNE)
+      tf.data.TFRecordDataset, cycle_length=8,
+      num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
   decode_fn = lambda record: decode_record(record, name_to_features)
   dataset = dataset.map(
