@@ -419,6 +419,18 @@ class TransformerTask(object):
         params["optimizer_adam_beta1"],
         params["optimizer_adam_beta2"],
         epsilon=params["optimizer_adam_epsilon"])
+
+    if params["dtype"] == tf.float16:
+      opt = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+          opt, loss_scale=flags_core.get_loss_scale(self.flags_obj,
+                                                    default_for_fp16="dynamic"))
+    if self.flags_obj.fp16_implementation == "graph_rewrite":
+      # Note: when flags_obj.fp16_implementation == "graph_rewrite",
+      # dtype as determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
+      # which will ensure tf.keras.mixed_precision and tf.train.experimental.enable_mixed_precision_graph_rewrite
+      # do not double up.
+      opt = tf.train.experimental.enable_mixed_precision_graph_rewrite(opt)
+    
     return opt
 
 

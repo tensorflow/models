@@ -257,6 +257,7 @@ def define_keras_flags(dynamic_loss_scale=True):
                                 datasets_num_private_threads=True,
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 loss_scale=True,
+                                fp16_implementation=True,
                                 tf_data_experimental_slack=True,
                                 enable_xla=True,
                                 force_v2_in_keras_compile=True)
