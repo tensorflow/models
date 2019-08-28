@@ -376,3 +376,7 @@ class NCFKerasSynth(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
+
+
+if __name__ == '__main__':
+  tf.test.main()
