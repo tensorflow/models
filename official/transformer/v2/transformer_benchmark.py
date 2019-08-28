@@ -43,6 +43,7 @@ class TransformerBenchmark(PerfZeroBenchmark):
 
   def __init__(self, output_dir=None, default_flags=None, root_data_dir=None,
                flag_methods=None):
+    assert tf.version.VERSION.startswith('2.')
     self.train_data_dir = os.path.join(root_data_dir,
                                        TRANSFORMER_EN2DE_DATA_DIR_NAME)
 
@@ -628,7 +629,7 @@ class TransformerBaseKerasBenchmarkReal(TransformerKerasBenchmark):
   def __init__(self, output_dir=TMP_DIR, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['param_set'] = 'base'
-    def_flags['train_steps'] = 200
+    def_flags['train_steps'] = 50
     def_flags['log_steps'] = 10
 
     super(TransformerBaseKerasBenchmarkReal, self).__init__(
@@ -642,7 +643,7 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
   def __init__(self, output_dir=TMP_DIR, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['param_set'] = 'big'
-    def_flags['train_steps'] = 200
+    def_flags['train_steps'] = 50
     def_flags['log_steps'] = 10
 
     super(TransformerBigKerasBenchmarkReal, self).__init__(
