@@ -455,7 +455,7 @@ def main(_):
       else:
         raise ValueError("Invalid mode {}".format(flags_obj.mode))
 
-    if not flags_obj.distribution_strategy != "tpu":
+    if flags_obj.distribution_strategy != "tpu":
       _run_task(task)
     else:
       primary_cpu_task = "/job:worker" if flags_obj.use_tpu_2vm_config else ""
