@@ -184,20 +184,13 @@ def _build_ssd_feature_extractor(feature_extractor_config,
   else:
     feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
   kwargs = {
-      'is_training':
-          is_training,
-      'depth_multiplier':
-          depth_multiplier,
-      'min_depth':
-          min_depth,
-      'pad_to_multiple':
-          pad_to_multiple,
-      'use_explicit_padding':
-          use_explicit_padding,
-      'use_depthwise':
-          use_depthwise,
-      'override_base_feature_extractor_hyperparams':
-          override_base_feature_extractor_hyperparams
+      'is_training': is_training,
+      'depth_multiplier': depth_multiplier,
+      'min_depth': min_depth,
+      'pad_to_multiple': pad_to_multiple,
+      'use_explicit_padding': use_explicit_padding,
+      'use_depthwise': use_depthwise,
+      'override_base_feature_extractor_hyperparams': override_base_feature_extractor_hyperparams
   }
 
   if feature_extractor_config.HasField('replace_preprocessor_with_placeholder'):
@@ -206,9 +199,12 @@ def _build_ssd_feature_extractor(feature_extractor_config,
             feature_extractor_config.replace_preprocessor_with_placeholder
     })
 
-  if feature_extractor_config.HasField('num_layers'):
-    kwargs.update({'num_layers': feature_extractor_config.num_layers})
-
+  try:
+      if feature_extractor_config.HasField('num_layers'):
+        kwargs.update({'num_layers': feature_extractor_config.num_layers})
+  except:
+    pass
+        
   if is_keras_extractor:
     kwargs.update({
         'conv_hyperparams': conv_hyperparams,
