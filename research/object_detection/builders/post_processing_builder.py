@@ -83,11 +83,11 @@ def _build_non_max_suppressor(nms_config):
   """
   if nms_config.iou_threshold < 0 or nms_config.iou_threshold > 1.0:
     raise ValueError('iou_threshold not in [0, 1.0].')
+    
   if nms_config.max_detections_per_class > nms_config.max_total_detections:
     raise ValueError('max_detections_per_class should be no greater than '
                      'max_total_detections.')
-  if nms_config.soft_nms_sigma < 0.0:
-    raise ValueError('soft_nms_sigma should be non-negative.')
+    
   non_max_suppressor_fn = functools.partial(
       post_processing.batch_multiclass_non_max_suppression,
       score_thresh=nms_config.score_threshold,
@@ -96,8 +96,8 @@ def _build_non_max_suppressor(nms_config):
       max_total_size=nms_config.max_total_detections,
       use_static_shapes=nms_config.use_static_shapes,
       use_class_agnostic_nms=nms_config.use_class_agnostic_nms,
-      max_classes_per_detection=nms_config.max_classes_per_detection,
-      soft_nms_sigma=nms_config.soft_nms_sigma)
+      max_classes_per_detection=nms_config.max_classes_per_detection)
+  
   return non_max_suppressor_fn
 
 
@@ -106,8 +106,8 @@ def _score_converter_fn_with_logit_scale(tf_score_converter_fn, logit_scale):
   def score_converter_fn(logits):
     scaled_logits = tf.divide(logits, logit_scale, name='scale_logits')
     return tf_score_converter_fn(scaled_logits, name='convert_scores')
-  score_converter_fn.__name__ = '%s_with_logit_scale' % (
-      tf_score_converter_fn.__name__)
+  
+  score_converter_fn.__name__ = '%s_with_logit_scale' % (tf_score_converter_fn.__name__)
   return score_converter_fn
 
 
