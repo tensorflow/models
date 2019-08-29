@@ -141,8 +141,6 @@ def run(flags_obj):
       enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
 
-  dtype = flags_core.get_tf_dtype(flags_obj)
-
   # TODO(anj-s): Set data_format without using Keras.
   data_format = flags_obj.data_format
   if data_format is None:
@@ -167,7 +165,7 @@ def run(flags_obj):
   with strategy_scope:
     model = resnet_model.resnet50(
         num_classes=imagenet_preprocessing.NUM_CLASSES,
-        dtype=dtype, batch_size=flags_obj.batch_size,
+        batch_size=flags_obj.batch_size,
         use_l2_regularizer=not flags_obj.single_l2_loss_op)
 
     optimizer = tf.keras.optimizers.SGD(

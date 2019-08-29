@@ -116,6 +116,31 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
+  def test_end_to_end_1_gpu_fp16(self):
+    """Test Keras model with 1 GPU and fp16."""
+    config = keras_utils.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
+    if context.num_gpus() < 1:
+      self.skipTest(
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(1, context.num_gpus()))
+
+    extra_flags = [
+        "-num_gpus", "1",
+        "-dtype", "fp16",
+        "-distribution_strategy", "default",
+        "-model_dir", "keras_imagenet_1_gpu",
+        "-data_format", "channels_last",
+    ]
+    extra_flags = extra_flags + self._extra_flags
+
+    integration.run_synthetic(
+        main=resnet_imagenet_main.run,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags
+    )
+
   def test_end_to_end_graph_1_gpu(self):
     """Test Keras model in legacy graph mode with 1 GPU."""
     if context.num_gpus() < 1:
@@ -279,4 +304,5 @@ class KerasImagenetTest(googletest.TestCase):
 
 
 if __name__ == "__main__":
+  tf.compat.v1.enable_v2_behavior()
   googletest.main()

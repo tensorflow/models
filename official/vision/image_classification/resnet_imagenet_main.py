@@ -95,8 +95,12 @@ def run(flags_obj):
 
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'float16':
-    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
+    loss_scale = flags_core.get_loss_scale(flags_obj, default_for_fp16=128)
+    policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16',
+                                                          loss_scale=loss_scale)
     tf.keras.mixed_precision.experimental.set_policy(policy)
+    if not keras_utils.is_v2_0():
+      raise ValueError('--dtype=fp16 is not supported in TensorFlow 1.')
 
   data_format = flags_obj.data_format
   if data_format is None:
@@ -178,13 +182,6 @@ def run(flags_obj):
 
   with strategy_scope:
     optimizer = common.get_optimizer(lr_schedule)
-    if dtype == 'float16':
-      # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
-      # can be enabled with a single line of code.
-      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
-                                                          default_for_fp16=128))
-
     if flags_obj.fp16_implementation == "graph_rewrite":
       # Note: when flags_obj.fp16_implementation == "graph_rewrite", 
       # dtype as determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
@@ -195,10 +192,10 @@ def run(flags_obj):
     # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
-          imagenet_preprocessing.NUM_CLASSES, dtype)
+          imagenet_preprocessing.NUM_CLASSES)
     else:
       model = resnet_model.resnet50(
-          num_classes=imagenet_preprocessing.NUM_CLASSES, dtype=dtype)
+          num_classes=imagenet_preprocessing.NUM_CLASSES)
 
     # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
     # a valid arg for this model. Also remove as a valid flag.

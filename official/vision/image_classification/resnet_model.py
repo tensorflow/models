@@ -222,14 +222,12 @@ def conv_block(input_tensor,
 
 
 def resnet50(num_classes,
-             dtype='float32',
              batch_size=None,
              use_l2_regularizer=True):
   """Instantiates the ResNet50 architecture.
 
   Args:
     num_classes: `int` number of classes for image classification.
-    dtype: dtype to use float32 or float16 are most common.
     batch_size: Size of the batches for each step.
     use_l2_regularizer: whether to use L2 regularizer on Conv/Dense layer.
 
@@ -237,8 +235,7 @@ def resnet50(num_classes,
       A Keras model instance.
   """
   input_shape = (224, 224, 3)
-  img_input = layers.Input(
-      shape=input_shape, dtype=dtype, batch_size=batch_size)
+  img_input = layers.Input(shape=input_shape, batch_size=batch_size)
 
   if backend.image_data_format() == 'channels_first':
     x = layers.Lambda(
@@ -380,10 +377,9 @@ def resnet50(num_classes,
       name='fc1000')(
           x)
 
-  # TODO(reedwm): Remove manual casts once mixed precision can be enabled with a
-  # single line of code.
-  x = backend.cast(x, 'float32')
-  x = layers.Activation('softmax')(x)
+  # A softmax that is followed by the model loss must be done cannot be done
+  # in float16 due to numeric issues. So we pass dtype=float32.
+  x = layers.Activation('softmax', dtype='float32')(x)
 
   # Create model.
   return models.Model(img_input, x, name='resnet50')
