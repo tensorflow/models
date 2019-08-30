@@ -96,9 +96,9 @@ def run(flags_obj):
   dtype = flags_core.get_tf_dtype(flags_obj)
   if dtype == 'float16':
     loss_scale = flags_core.get_loss_scale(flags_obj, default_for_fp16=128)
-    policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16',
-                                                          loss_scale=loss_scale)
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
+        'mixed_float16', loss_scale=loss_scale)
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
     if not keras_utils.is_v2_0():
       raise ValueError('--dtype=fp16 is not supported in TensorFlow 1.')
 
@@ -183,11 +183,13 @@ def run(flags_obj):
   with strategy_scope:
     optimizer = common.get_optimizer(lr_schedule)
     if flags_obj.fp16_implementation == "graph_rewrite":
-      # Note: when flags_obj.fp16_implementation == "graph_rewrite", 
-      # dtype as determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
-      # which will ensure tf.keras.mixed_precision and tf.train.experimental.enable_mixed_precision_graph_rewrite
-      # do not double up.
-      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+      # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
+      # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
+      # which will ensure tf.compat.v2.keras.mixed_precision and
+      # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
+      # up.
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+          optimizer)
             
     # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
     if flags_obj.use_trivial_model:

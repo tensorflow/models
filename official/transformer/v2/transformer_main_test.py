@@ -72,10 +72,11 @@ class TransformerTaskTest(tf.test.TestCase):
     self.vocab_size = misc.get_model_params(FLAGS.param_set, 0)['vocab_size']
     self.bleu_source = os.path.join(temp_dir, 'bleu_source')
     self.bleu_ref = os.path.join(temp_dir, 'bleu_ref')
-    self.orig_policy = tf.keras.mixed_precision.experimental.global_policy()
+    self.orig_policy = (
+        tf.compat.v2.keras.mixed_precision.experimental.global_policy())
 
   def tearDown(self):
-    tf.keras.mixed_precision.experimental.set_policy(self.orig_policy)
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(self.orig_policy)
 
   def _assert_exists(self, filepath):
     self.assertTrue(os.path.exists(filepath))

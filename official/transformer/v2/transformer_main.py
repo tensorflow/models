@@ -169,9 +169,9 @@ class TransformerTask(object):
       # this.
       loss_scale = flags_core.get_loss_scale(flags_obj,
                                              default_for_fp16="dynamic")
-      policy = tf.keras.mixed_precision.experimental.Policy(
+      policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
           "mixed_float16", loss_scale=loss_scale)
-      tf.keras.mixed_precision.experimental.set_policy(policy)
+      tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
 
     self.distribution_strategy = distribution_utils.get_distribution_strategy(
         distribution_strategy=flags_obj.distribution_strategy,
@@ -425,10 +425,11 @@ class TransformerTask(object):
           opt, loss_scale=flags_core.get_loss_scale(self.flags_obj,
                                                     default_for_fp16="dynamic"))
     if self.flags_obj.fp16_implementation == "graph_rewrite":
-      # Note: when flags_obj.fp16_implementation == "graph_rewrite",
-      # dtype as determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
-      # which will ensure tf.keras.mixed_precision and tf.train.experimental.enable_mixed_precision_graph_rewrite
-      # do not double up.
+      # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
+      # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
+      # which will ensure tf.compat.v2.keras.mixed_precision and
+      # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
+      # up.
       opt = tf.train.experimental.enable_mixed_precision_graph_rewrite(opt)
 
     return opt
