@@ -209,11 +209,6 @@ def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
             flags_dict["dtype"] != "fp16"):
           raise flags.ValidationError("--fp16_implementation should not be "
                                       "specified unless --dtype=fp16")
-        if (flags_dict["fp16_implementation"] != "graph_rewrite" and
-            flags_dict["loss_scale"] == "dynamic"):
-          raise flags.ValidationError("--loss_scale=dynamic is only supported "
-                                      "when "
-                                      "--fp16_implementation=graph_rewrite")
         return True
 
   if all_reduce_alg:
