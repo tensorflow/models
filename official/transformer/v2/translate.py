@@ -128,8 +128,10 @@ def translate_file(model,
 
     def _step_fn(inputs):
       """Per replica step function."""
-      val_outputs, _ = model([inputs], training=False)
-      return val_outputs
+      tag = inputs[0]
+      val_inputs = inputs[1]
+      val_outputs, _ = model([val_inputs], training=False)
+      return tag, val_outputs
 
     return distribution_strategy.experimental_run_v2(_step_fn, args=(inputs,))
 
@@ -140,17 +142,25 @@ def translate_file(model,
   for i, text in enumerate(input_generator()):
     if distribution_strategy:
       text = np.reshape(text, [num_replicas, local_batch_size, -1])
+      # Add tag to the input of each replica with the reordering logic after
+      # outputs, to ensure the output order matches the input order.
       text = [
-          tf.convert_to_tensor(per_replica_text) for per_replica_text in text
+          [tf.convert_to_tensor(tag), tf.convert_to_tensor(per_replica_text)]
+          for tag, per_replica_text in enumerate(text)
       ]
       # pylint: disable=protected-access
       text = values.PerReplica(distribution_strategy.extended._device_map, text)
-      # pylint: enable=protected-access
-      val_outputs = distribution_strategy.experimental_local_results(
+      outputs = distribution_strategy.experimental_local_results(
           predict_step(text))
-      val_outputs = np.reshape(
-          [val_output.numpy() for val_output in val_outputs],
-          [params["decode_batch_size"], -1])
+      tags, unordered_val_outputs = outputs[0]
+      tags = [tag.numpy() for tag in tags._values]
+      unordered_val_outputs = [
+          val_output.numpy() for val_output in unordered_val_outputs._values]
+      # pylint: enable=protected-access
+      val_outputs = [None] * len(tags)
+      for k in range(len(tags)):
+        val_outputs[tags[k]] = unordered_val_outputs[k]
+      val_outputs = np.reshape(val_outputs, [params["decode_batch_size"], -1])
     else:
       val_outputs, _ = model.predict(text)
 

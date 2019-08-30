@@ -402,7 +402,7 @@ class SequenceBeamSearch(object):
     topk_ids = topk_indices % self.vocab_size
     if self.padded_decode:
       topk_seq = tf.transpose(topk_seq, perm=[2, 0, 1])
-      topk_seq = tf.tensor_scatter_update(topk_seq, [i + 1], topk_ids)
+      topk_seq = tf.tensor_scatter_nd_update(topk_seq, [i + 1], topk_ids)
       topk_seq = tf.transpose(topk_seq, perm=[1, 2, 0])
     else:
       topk_ids = tf.expand_dims(topk_ids, axis=2)
