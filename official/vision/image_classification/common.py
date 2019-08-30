@@ -38,7 +38,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
 
   N.B. Only support Keras optimizers, not TF optimizers.
 
-  Args:
+  Attributes:
       schedule: a function that takes an epoch index and a batch index as input
           (both integer, indexed from 0) and returns a new learning rate as
           output (float).
@@ -312,6 +312,7 @@ def define_keras_flags(dynamic_loss_scale=True):
   flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
+
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32, drop_remainder=True):

@@ -16,6 +16,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+# pylint: disable=g-bad-import-order
 from mock import Mock
 import numpy as np
 import tensorflow as tf

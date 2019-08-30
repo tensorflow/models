@@ -23,6 +23,7 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
+from official.benchmark.models import trivial_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -31,7 +32,6 @@ from official.utils.misc import model_helpers
 from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import resnet_model
-from official.benchmark.models import trivial_model
 
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
@@ -182,7 +182,7 @@ def run(flags_obj):
 
   with strategy_scope:
     optimizer = common.get_optimizer(lr_schedule)
-    if flags_obj.fp16_implementation == "graph_rewrite":
+    if flags_obj.fp16_implementation == 'graph_rewrite':
       # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
       # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
       # which will ensure tf.compat.v2.keras.mixed_precision and
@@ -190,7 +190,7 @@ def run(flags_obj):
       # up.
       optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
           optimizer)
-            
+
     # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
