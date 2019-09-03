@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -32,42 +34,6 @@ from official.utils.misc import model_helpers
 from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import resnet_model
-
-LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
-]
-
-
-def learning_rate_schedule(current_epoch,
-                           current_batch,
-                           batches_per_epoch,
-                           batch_size):
-  """Handles linear scaling rule, gradual warmup, and LR decay.
-
-  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
-  provided scaling factor.
-
-  Args:
-    current_epoch: integer, current epoch indexed from 0.
-    current_batch: integer, current batch in the current epoch, indexed from 0.
-    batches_per_epoch: integer, number of steps in an epoch.
-    batch_size: integer, total batch sized.
-
-  Returns:
-    Adjusted learning rate.
-  """
-  initial_lr = common.BASE_LEARNING_RATE * batch_size / 256
-  epoch = current_epoch + float(current_batch) / batches_per_epoch
-  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
-  if epoch < warmup_end_epoch:
-    # Learning rate increases linearly per step.
-    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
-  for mult, start_epoch in LR_SCHEDULE:
-    if epoch >= start_epoch:
-      learning_rate = initial_lr * mult
-    else:
-      break
-  return learning_rate
 
 
 def run(flags_obj):
@@ -94,7 +60,7 @@ def run(flags_obj):
   common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
-  if dtype == 'float16':
+  if dtype == tf.float16:
     loss_scale = flags_core.get_loss_scale(flags_obj, default_for_fp16=128)
     policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
         'mixed_float16', loss_scale=loss_scale)
@@ -175,9 +141,9 @@ def run(flags_obj):
     lr_schedule = common.PiecewiseConstantDecayWithWarmup(
         batch_size=flags_obj.batch_size,
         epoch_size=imagenet_preprocessing.NUM_IMAGES['train'],
-        warmup_epochs=LR_SCHEDULE[0][1],
-        boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
-        multipliers=list(p[0] for p in LR_SCHEDULE),
+        warmup_epochs=common.LR_SCHEDULE[0][1],
+        boundaries=list(p[1] for p in common.LR_SCHEDULE[1:]),
+        multipliers=list(p[0] for p in common.LR_SCHEDULE),
         compute_lr_on_cpu=True)
 
   with strategy_scope:
@@ -218,8 +184,11 @@ def run(flags_obj):
           run_eagerly=flags_obj.run_eagerly)
 
   callbacks = common.get_callbacks(
-      learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])
-
+      common.learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])
+  if flags_obj.enable_checkpoint_and_export:
+    ckpt_full_path = os.path.join(flags_obj.model_dir, 'model.ckpt-{epoch:04d}')
+    callbacks.append(tf.keras.callbacks.ModelCheckpoint(ckpt_full_path,
+                                                        save_weights_only=True))
   train_steps = (
       imagenet_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
   train_epochs = flags_obj.train_epochs
@@ -257,6 +226,10 @@ def run(flags_obj):
                       validation_data=validation_data,
                       validation_freq=flags_obj.epochs_between_evals,
                       verbose=2)
+  if flags_obj.enable_checkpoint_and_export:
+    # Keras model.save assumes a float32 input designature.
+    export_path = os.path.join(flags_obj.model_dir, 'saved_model')
+    model.save(export_path, include_optimizer=False)
 
   eval_output = None
   if not flags_obj.skip_eval:

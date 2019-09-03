@@ -26,7 +26,6 @@ import tensorflow as tf
 from official.resnet.ctl import ctl_common
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import common
-from official.vision.image_classification import resnet_imagenet_main
 from official.vision.image_classification import resnet_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
@@ -246,7 +245,7 @@ def run(flags_obj):
       training_accuracy.reset_states()
 
       for step in range(train_steps):
-        optimizer.lr = resnet_imagenet_main.learning_rate_schedule(
+        optimizer.lr = common.learning_rate_schedule(
             epoch, step, train_steps, flags_obj.batch_size)
 
         time_callback.on_batch_begin(step+epoch*train_steps)
