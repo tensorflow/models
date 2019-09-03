@@ -1158,7 +1158,7 @@ def combined_non_max_suppression(boxes,
 
   if change_coordinate_frame:
     raise ValueError('change_coordinate_frame (normalizing coordinates relative'
-                     'to clip_window) is not supported by combined_nms')
+                     ' to clip_window) is not supported by combined_nms')
   if num_valid_boxes is not None:
     raise ValueError('num_valid_boxes is not supported by combined_nms')
   if masks is not None:
@@ -1170,15 +1170,17 @@ def combined_non_max_suppression(boxes,
 
   if clip_window is not None:
     tf.compat.v1.logging.warning('clip_window is not supported by combined_nms'
-                       'unless it is [0. 0. 1. 1.] for each image')
+                                 ' unless it is [0. 0. 1. 1.] for each image')
   if additional_fields is not None:
-    tf.compat.v1.logging.warning('additional_fields is not supported by combined_nms')
+    tf.compat.v1.logging.warning(
+        'additional_fields is not supported by combined_nms')
   if parallel_iterations != 32:
-    tf.compat.v1.logging.warning('Number of batch items to be processed in parallel'
-                       'is not configurable by combined_nms')
+    tf.compat.v1.logging.warning(
+        'Number of batch items to be processed in parallel is'
+        ' not configurable by combined_nms')
   if max_classes_per_detection > 1:
     tf.compat.v1.logging.warning('max_classes_per_detection is not configurable'
-                       'by combined_nms')
+                                 ' by combined_nms')
   with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
     nmsed_boxes, nmsed_scores, nmsed_classes, num_detections = \
         tf.image.combined_non_max_suppression(
