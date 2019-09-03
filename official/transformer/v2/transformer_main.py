@@ -30,8 +30,6 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from tensorflow.python.util import object_identity
-
 # pylint: disable=g-bad-import-order
 from official.transformer import compute_bleu
 from official.transformer.utils import tokenizer
@@ -271,8 +269,7 @@ class TransformerTask(object):
           scaled_loss = loss / self.distribution_strategy.num_replicas_in_sync
 
         # De-dupes variables due to keras tracking issues.
-        tvars = list(
-            object_identity.ObjectIdentitySet(model.trainable_variables))
+        tvars = list({id(v): v for v in model.trainable_variables}.values())
         grads = tape.gradient(scaled_loss, tvars)
         opt.apply_gradients(zip(grads, tvars))
         # For reporting, the metric takes the mean of losses.
