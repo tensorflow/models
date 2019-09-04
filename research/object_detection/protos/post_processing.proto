@@ -39,6 +39,9 @@ message BatchNonMaxSuppression {
 
   // Soft NMS sigma parameter; Bodla et al, https://arxiv.org/abs/1704.04503)
   optional float soft_nms_sigma = 9 [default = 0.0];
+
+  // Whether to use the Combined NMS op
+  optional bool combined_nms = 7 [default = false];
 }
 
 // Configuration proto for post-processing predicted boxes and
