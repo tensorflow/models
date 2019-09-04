@@ -695,10 +695,11 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase,
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
      nmsed_additional_fields, num_detections
-    ) = post_processing.combined_non_max_suppression(
+    ) = post_processing.batch_multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh,
         max_size_per_class=max_output_size, max_total_size=max_output_size,
-        use_static_shapes=True)
+        use_static_shapes=True,
+        use_combined_nms=True)
 
     self.assertIsNone(nmsed_masks)
     self.assertIsNone(nmsed_additional_fields)
