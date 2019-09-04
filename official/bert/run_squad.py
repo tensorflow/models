@@ -232,7 +232,9 @@ def train_squad(strategy,
   # 1/num_replicas_in_sync. It could be an accident. So, in order to use
   # the same hyper parameter, we do the same thing here by keeping each
   # replica loss as it is.
-  loss_fn = get_loss_fn(loss_factor=1.0)
+  loss_fn = get_loss_fn(
+      loss_factor=1.0 /
+      strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0)
   use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
 
   model_training_utils.run_customized_training_loop(

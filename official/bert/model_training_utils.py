@@ -231,6 +231,10 @@ def run_customized_training_loop(
       else:
         train_summary_writer = None
 
+      # De-dupes variables due to keras tracking issues.
+      training_vars = list({id(v): v for v in model.trainable_variables
+                           }.values())
+
       def _replicated_step(inputs):
         """Replicated training step."""
 
@@ -241,14 +245,12 @@ def run_customized_training_loop(
           if use_float16:
             scaled_loss = optimizer.get_scaled_loss(loss)
 
-        # De-dupes variables due to keras tracking issues.
-        tvars = list({id(v): v for v in model.trainable_variables}.values())
         if use_float16:
-          scaled_grads = tape.gradient(scaled_loss, tvars)
+          scaled_grads = tape.gradient(scaled_loss, training_vars)
           grads = optimizer.get_unscaled_gradients(scaled_grads)
         else:
-          grads = tape.gradient(loss, tvars)
-        optimizer.apply_gradients(zip(grads, tvars))
+          grads = tape.gradient(loss, training_vars)
+        optimizer.apply_gradients(zip(grads, training_vars))
         # For reporting, the metric takes the mean of losses.
         train_loss_metric.update_state(loss)
         for metric in train_metrics:

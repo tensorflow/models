@@ -52,6 +52,10 @@ def define_common_bert_flags():
   flags.DEFINE_boolean(
       'run_eagerly', False,
       'Run the model op by op without building a model function.')
+  flags.DEFINE_boolean(
+      'scale_loss', False,
+      'Whether to divide the loss by number of replica inside the per-replica '
+      'loss function.')
 
   # Adds flags for mixed precision training.
   flags_core.define_performance(
