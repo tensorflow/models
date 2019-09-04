@@ -26,7 +26,7 @@ import json
 import os
 
 # pylint: disable=g-bad-import-order
-from absl import app as absl_app
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -517,4 +517,4 @@ def main(_):
 
 if __name__ == "__main__":
   ncf_common.define_ncf_flags()
-  absl_app.run(main)
+  app.run(main)
