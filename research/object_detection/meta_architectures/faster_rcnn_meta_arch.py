@@ -1621,7 +1621,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         normalize_boxes,
         elems=[raw_proposal_boxes, image_shapes],
         dtype=tf.float32)
-    proposal_multiclass_scores = nmsed_additional_fields['multiclass_scores']
+    proposal_multiclass_scores = nmsed_additional_fields.get(
+        'multiclass_scores') if nmsed_additional_fields else None,
     return (normalized_proposal_boxes, proposal_scores,
             proposal_multiclass_scores, num_proposals,
             raw_normalized_proposal_boxes, rpn_objectness_softmax)
