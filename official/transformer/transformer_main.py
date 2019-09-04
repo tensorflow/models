@@ -394,7 +394,8 @@ def define_transformer_flags():
       name="max_length", short_name="ml", default=None,
       help=flags_core.help_wrap("Max length."))
 
-  flags_core.define_base()
+  flags_core.define_base(clean=True, train_epochs=True,
+                         epochs_between_evals=True)
   flags_core.define_performance(
       num_parallel_calls=True,
       inter_op=False,

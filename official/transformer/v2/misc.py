@@ -60,7 +60,7 @@ def get_model_params(param_set, num_gpus):
 
 def define_transformer_flags():
   """Add flags and flag validators for running transformer_main."""
-  # Add common flags (data_dir, model_dir, train_epochs, etc.).
+  # Add common flags (data_dir, model_dir, etc.).
   flags_core.define_base()
   flags_core.define_performance(
       num_parallel_calls=True,
@@ -214,18 +214,9 @@ def define_transformer_flags():
 
   flags_core.set_defaults(data_dir='/tmp/translate_ende',
                           model_dir='/tmp/transformer_model',
-                          batch_size=None,
-                          train_epochs=10)
+                          batch_size=None)
 
   # pylint: disable=unused-variable
-  @flags.multi_flags_validator(
-      ['mode', 'train_epochs'],
-      message='--train_epochs must be defined in train mode')
-  def _check_train_limits(flag_dict):
-    if flag_dict['mode'] == 'train':
-      return flag_dict['train_epochs'] is not None
-    return True
-
   @flags.multi_flags_validator(
       ['bleu_source', 'bleu_ref'],
       message='Both or neither --bleu_source and --bleu_ref must be defined.')

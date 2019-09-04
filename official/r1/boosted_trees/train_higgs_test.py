@@ -133,7 +133,7 @@ class BaseTest(tf.test.TestCase):
             "--eval_start", "12",
             "--eval_count", "8",
         ],
-        synth=False)
+        synth=False, train_epochs=None, epochs_between_evals=None)
     self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, "checkpoint")))
 
   @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
@@ -152,7 +152,7 @@ class BaseTest(tf.test.TestCase):
             "--eval_start", "12",
             "--eval_count", "8",
         ],
-        synth=False)
+        synth=False, train_epochs=None, epochs_between_evals=None)
     self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, "checkpoint")))
     self.assertTrue(tf.gfile.Exists(os.path.join(export_dir)))
 

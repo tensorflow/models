@@ -169,7 +169,7 @@ def run_mnist_eager(flags_obj):
 
 def define_mnist_eager_flags():
   """Defined flags and defaults for MNIST in eager mode."""
-  flags_core.define_base_eager()
+  flags_core.define_base_eager(clean=True, train_epochs=True)
   flags_core.define_image()
   flags.adopt_module_key_flags(flags_core)
 

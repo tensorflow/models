@@ -147,7 +147,9 @@ def get_v1_distribution_strategy(params):
 def define_ncf_flags():
   """Add flags for running ncf_main."""
   # Add common flags
-  flags_core.define_base(export_dir=False, run_eagerly=True)
+  flags_core.define_base(clean=True, train_epochs=True,
+                         epochs_between_evals=True, export_dir=False,
+                         run_eagerly=True)
   flags_core.define_performance(
       num_parallel_calls=False,
       inter_op=False,
