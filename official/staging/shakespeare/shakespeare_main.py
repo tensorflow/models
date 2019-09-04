@@ -94,7 +94,7 @@ def get_dataset(path_to_file, batch_size=None, seq_length=SEQ_LENGTH):
     A tuple, consisting of the Dataset and the class to character mapping
     and character to class mapping.
   """
-  with open(path_to_file, 'rb') as train_data:
+  with tf.io.gfile.GFile(path_to_file, 'rb') as train_data:
     text = train_data.read().decode(encoding='utf-8')
 
   # Create vocab
