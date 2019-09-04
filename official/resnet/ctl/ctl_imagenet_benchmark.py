@@ -139,6 +139,24 @@ class Resnet50CtlAccuracy(CtlBenchmark):
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_amp(self):
+    """Test Keras model with eager, dist_strat and 8 GPUs with automatic mixed
+    precision.
+    """
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 128 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.use_tf_function = True 
+    # Add some thread tunings to improve performance.
+    FLAGS.datasets_num_private_threads = 14
+    self._run_and_report_benchmark()
+
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
     stats = ctl_imagenet_main.run(flags.FLAGS)
@@ -206,6 +224,33 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
+  def benchmark_1_gpu_amp(self):
+    """Test Keras model with 1 GPU with automatic mixed precision."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_amp')
+    FLAGS.batch_size = 128
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.use_tf_function = True 
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_amp(self):
+    """Test Keras model with XLA and 1 GPU with automatic mixed precision."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_amp')
+    FLAGS.batch_size = 128
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.use_tf_function = True 
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_eager(self):
     """Test Keras model with 1 GPU in pure eager mode."""
     self._setup()
@@ -226,6 +271,33 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_amp(self):
+    """Test Keras model with 8 GPUs with automatic mixed precision."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.use_tf_function = True 
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_8_gpu_amp(self):
+    """Test Keras model with XLA and 8 GPUs with automatic mixed precision."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.distribution_strategy = 'default'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_amp')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.use_tf_function = True 
+    FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):

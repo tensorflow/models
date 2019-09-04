@@ -171,6 +171,14 @@ def run(flags_obj):
         learning_rate=common.BASE_LEARNING_RATE, momentum=0.9,
         nesterov=True)
 
+    if flags_obj.fp16_implementation == "graph_rewrite":
+      if not flags_obj.use_tf_function:
+        raise ValueError("--fp16_implementation=graph_rewrite requires "
+                         "use_tf_function to be true")
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+                      optimizer)
+      loss_scale = flags_core.get_loss_scale(flags_obj, default_for_fp16=128)
+
     training_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'training_accuracy', dtype=tf.float32)
     test_loss = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
@@ -203,7 +211,19 @@ def run(flags_obj):
             loss += (l2_loss / num_replicas)
           else:
             loss += (tf.reduce_sum(model.losses) / num_replicas)
+
+          # Scale the loss
+          if flags_obj.fp16_implementation == "graph_rewrite":
+            loss = loss * tf.cast(loss_scale, loss.dtype)
+
         grads = tape.gradient(loss, trainable_variables)
+
+        # Unscale the grads
+        if flags_obj.fp16_implementation == "graph_rewrite":
+          loss_scale_reciprocal = 1. / loss_scale
+          grads = [g * tf.cast(loss_scale_reciprocal, g.dtype) if g is not None
+                   else None for g in grads]
+
         optimizer.apply_gradients(zip(grads, trainable_variables))
 
         training_accuracy.update_state(labels, logits)
@@ -296,6 +316,5 @@ if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
   common.define_keras_flags()
   ctl_common.define_ctl_flags()
-  flags.adopt_module_key_flags(keras_common)
   flags.adopt_module_key_flags(ctl_common)
   absl_app.run(main)
