@@ -172,8 +172,17 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.early_stopping = True
     FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
     self._run_and_report_benchmark()
-    
+
+  def benchmark_xla_1_gpu_early_stop_amp(self):
+    self._setup()
+    FLAGS.early_stopping = True
+    FLAGS.enable_xla = True
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    self._run_and_report_benchmark()
+
   def benchmark_xla_1_gpu_force_v1_path_early_stop(self):
     self._setup()
     FLAGS.early_stopping = True
@@ -296,6 +305,21 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
     FLAGS.epsilon = 1e-8
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_amp_8_gpu_mlperf_like(self):
+    """8 GPU using keras fit/compile."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 160000
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
     self._run_and_report_benchmark_mlperf_like()
 
   def benchmark_8_gpu_force_v1_path_mlperf_like(self):

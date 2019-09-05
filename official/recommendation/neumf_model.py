@@ -118,6 +118,9 @@ def neumf_model_fn(features, labels, mode, params):
       # TODO(seemuch): remove this contrib import
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
+    if params['fp16_implementation'] == "graph_rewrite":
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
 
