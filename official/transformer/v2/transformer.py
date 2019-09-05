@@ -200,7 +200,7 @@ class Transformer(tf.keras.Model):
       # Prepare inputs to decoder layers by shifting targets, adding positional
       # encoding and applying dropout.
       decoder_inputs = self.embedding_softmax_layer(targets)
-      decoder_inputs = tf.cast(decoder_inputs, self.params['dtype'])
+      decoder_inputs = tf.cast(decoder_inputs, self.params["dtype"])
       attention_bias = tf.cast(attention_bias, self.params["dtype"])
       with tf.name_scope("shift_targets"):
         # Shift targets to the right, and remove the last element
@@ -218,7 +218,7 @@ class Transformer(tf.keras.Model):
 
       # Run values
       decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
-          length, dtype=self.params['dtype'])
+          length, dtype=self.params["dtype"])
       outputs = self.decoder_stack(
           decoder_inputs,
           encoder_outputs,
@@ -310,16 +310,18 @@ class Transformer(tf.keras.Model):
     # pylint: disable=g-complex-comprehension
     init_decode_length = (
         max_decode_length if self.params["padded_decode"] else 0)
+    num_heads = self.params["num_heads"]
+    dim_per_head = self.params["hidden_size"] // num_heads
     cache = {
         "layer_%d" % layer: {
             "k":
                 tf.zeros([
-                    batch_size, init_decode_length, self.params["hidden_size"]
+                    batch_size, init_decode_length, num_heads, dim_per_head
                 ],
                          dtype=self.params["dtype"]),
             "v":
                 tf.zeros([
-                    batch_size, init_decode_length, self.params["hidden_size"]
+                    batch_size, init_decode_length, num_heads, dim_per_head
                 ],
                          dtype=self.params["dtype"])
         } for layer in range(self.params["num_hidden_layers"])

@@ -495,7 +495,23 @@ class Attention(tf.keras.layers.Layer):
 
 
 class Dense3D(tf.keras.layers.Layer):
-  """A Dense Layer using 3D kernel with tf.einsum implementation."""
+  """A Dense Layer using 3D kernel with tf.einsum implementation.
+
+  Attributes:
+    num_attention_heads: An integer, number of attention heads for each
+      multihead attention layer.
+    size_per_head: An integer, hidden size per attention head.
+    hidden_size: An integer, dimension of the hidden layer.
+    kernel_initializer: An initializer for the kernel weight.
+    bias_initializer: An initializer for the bias.
+    activation: An activation function to use. If nothing is specified, no
+      activation is applied.
+    use_bias: A bool, whether the layer uses a bias.
+    output_projection: A bool, whether the Dense3D layer is used for output
+      linear projection.
+    backward_compatible: A bool, whether the variables shape are compatible
+      with checkpoints converted from TF 1.x.
+  """
 
   def __init__(self,
                num_attention_heads=12,
@@ -503,9 +519,11 @@ class Dense3D(tf.keras.layers.Layer):
                kernel_initializer=None,
                bias_initializer="zeros",
                activation=None,
+               use_bias=True,
                output_projection=False,
                backward_compatible=False,
                **kwargs):
+    """Inits Dense3D."""
     super(Dense3D, self).__init__(**kwargs)
     self.num_attention_heads = num_attention_heads
     self.size_per_head = size_per_head
@@ -513,6 +531,7 @@ class Dense3D(tf.keras.layers.Layer):
     self.kernel_initializer = kernel_initializer
     self.bias_initializer = bias_initializer
     self.activation = activation
+    self.use_bias = use_bias
     self.output_projection = output_projection
     self.backward_compatible = backward_compatible
 
@@ -565,12 +584,15 @@ class Dense3D(tf.keras.layers.Layer):
         initializer=self.kernel_initializer,
         dtype=self.dtype,
         trainable=True)
-    self.bias = self.add_weight(
-        "bias",
-        shape=bias_shape,
-        initializer=self.bias_initializer,
-        dtype=self.dtype,
-        trainable=True)
+    if self.use_bias:
+      self.bias = self.add_weight(
+          "bias",
+          shape=bias_shape,
+          initializer=self.bias_initializer,
+          dtype=self.dtype,
+          trainable=True)
+    else:
+      self.bias = None
     super(Dense3D, self).build(input_shape)
 
   def call(self, inputs):
@@ -588,7 +610,8 @@ class Dense3D(tf.keras.layers.Layer):
     """
     if self.backward_compatible:
       kernel = tf.keras.backend.reshape(self.kernel, self.kernel_shape)
-      bias = tf.keras.backend.reshape(self.bias, self.bias_shape)
+      bias = (tf.keras.backend.reshape(self.bias, self.bias_shape)
+              if self.use_bias else None)
     else:
       kernel = self.kernel
       bias = self.bias
@@ -597,7 +620,8 @@ class Dense3D(tf.keras.layers.Layer):
       ret = tf.einsum("abcd,cde->abe", inputs, kernel)
     else:
       ret = tf.einsum("abc,cde->abde", inputs, kernel)
-    ret += bias
+    if self.use_bias:
+      ret += bias
     if self.activation is not None:
       return self.activation(ret)
     return ret
