@@ -254,7 +254,10 @@ def run_ncf(_):
         "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
-  with tf.device(tpu_lib.get_primary_cpu_task(params["use_tpu"])):
+  use_remote_tpu = params["use_tpu"] and FLAGS.tpu
+  primary_cpu_task = tpu_lib.get_primary_cpu_task(use_remote_tpu)
+
+  with tf.device(primary_cpu_task):
     (train_input_dataset, eval_input_dataset,
      num_train_steps, num_eval_steps) = \
       (ncf_input_pipeline.create_ncf_input_data(
