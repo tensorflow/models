@@ -267,7 +267,12 @@ def run_ncf(_):
           beta_1=params["beta1"],
           beta_2=params["beta2"],
           epsilon=params["epsilon"])
-
+      if FLAGS.dtype=="fp16":
+        if params["keras_use_ctl"]:
+            raise RuntimeError("Mixed precision training (via graph rewrite) does not support "
+                               "custom training loop.")
+        optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+        
       if params["keras_use_ctl"]:
         train_loss, eval_results = run_ncf_custom_training(
             params,

@@ -168,6 +168,12 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
+  def benchmark_amp_1_gpu_early_stop(self):
+    self._setup()
+    FLAGS.early_stopping = True
+    FLAGS.dtype = 'fp16'
+    self._run_and_report_benchmark()
+    
   def benchmark_xla_1_gpu_force_v1_path_early_stop(self):
     self._setup()
     FLAGS.early_stopping = True
