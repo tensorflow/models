@@ -413,7 +413,7 @@ def run_customized_training_loop(
         # TODO(hongkuny): Cleans up summary reporting in text.
         training_summary['last_train_metrics'] = _float_metric_value(
             train_metrics[0])
-        training_summary['eval_metricss'] = _float_metric_value(eval_metrics[0])
+        training_summary['eval_metrics'] = _float_metric_value(eval_metrics[0])
 
       _write_txt_summary(training_summary, model_dir)
 
