@@ -25,9 +25,9 @@ from official.utils.flags._conventions import help_wrap
 from official.utils.logs import hooks_helper
 
 
-def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
-                epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                num_gpu=True, hooks=True, export_dir=True,
+def define_base(data_dir=True, model_dir=True, clean=False, train_epochs=False,
+                epochs_between_evals=False, stop_threshold=True,
+                batch_size=True, num_gpu=True, hooks=True, export_dir=True,
                 distribution_strategy=True, run_eagerly=False):
   """Register base flags.
 

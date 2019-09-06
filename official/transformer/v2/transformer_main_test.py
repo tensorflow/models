@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 import re
+import sys
 import unittest
 
 from absl import flags
@@ -71,10 +72,11 @@ class TransformerTaskTest(tf.test.TestCase):
     self.vocab_size = misc.get_model_params(FLAGS.param_set, 0)['vocab_size']
     self.bleu_source = os.path.join(temp_dir, 'bleu_source')
     self.bleu_ref = os.path.join(temp_dir, 'bleu_ref')
-    self.orig_policy = tf.keras.mixed_precision.experimental.global_policy()
+    self.orig_policy = (
+        tf.compat.v2.keras.mixed_precision.experimental.global_policy())
 
   def tearDown(self):
-    tf.keras.mixed_precision.experimental.set_policy(self.orig_policy)
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(self.orig_policy)
 
   def _assert_exists(self, filepath):
     self.assertTrue(os.path.exists(filepath))
@@ -178,10 +180,13 @@ class TransformerTaskTest(tf.test.TestCase):
   def test_eval(self):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
+    if 'test_xla' in sys.argv[0]:
+      self.skipTest('TODO(xla): Make this test faster under XLA.')
     self._prepare_files_and_flags()
     t = tm.TransformerTask(FLAGS)
     t.eval()
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

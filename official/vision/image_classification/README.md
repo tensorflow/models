@@ -18,20 +18,20 @@ official.resnet`.
 
 Download and extract the CIFAR-10 data. You can use the following script:
 ```bash
-python cifar10_download_and_extract.py
+python ../../r1/resnet/cifar10_download_and_extract.py
 ```
 
 After you download the data, you can run the program by:
 
 ```bash
-python keras_cifar_main.py
+python resnet_cifar_main.py
 ```
 
-If you did not use the default directory to download the data, specify the 
+If you did not use the default directory to download the data, specify the
 location with the `--data_dir` flag, like:
 
 ```bash
-python keras_cifar_main.py --data_dir=/path/to/cifar
+python resnet_cifar_main.py --data_dir=/path/to/cifar
 ```
 
 ## ImageNet
@@ -44,14 +44,14 @@ provide a few options.
 Once your dataset is ready, you can begin training the model as follows:
 
 ```bash
-python keras_imagenet_main.py 
+python resnet_imagenet_main.py
 ```
 
 Again, if you did not download the data to the default directory, specify the
 location with the `--data_dir` flag:
 
 ```bash
-python keras_imagenet_main.py --data_dir=/path/to/imagenet
+python resnet_imagenet_main.py --data_dir=/path/to/imagenet
 ```
 
 There are more flag options you can specify. Here are some examples:
@@ -70,16 +70,16 @@ For example, this is a typical command line to run with ImageNet data with
 batch size 128 per GPU:
 
 ```bash
-python -m keras_imagenet_main \
---model_dir=/tmp/model_dir/something \
---num_gpus=2 \
---batch_size=128 \
---train_epochs=90 \
---train_steps=10 \
---use_synthetic_data=false
+python -m resnet_imagenet_main \
+    --model_dir=/tmp/model_dir/something \
+    --num_gpus=2 \
+    --batch_size=128 \
+    --train_epochs=90 \
+    --train_steps=10 \
+    --use_synthetic_data=false
 ```
 
-See [`keras_common.py`](keras_common.py) for full list of options.
+See [`common.py`](common.py) for full list of options.
 
 ## Using multiple GPUs
 You can train these models on multiple GPUs using `tf.distribute.Strategy` API.

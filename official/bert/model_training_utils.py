@@ -23,7 +23,6 @@ import os
 
 from absl import logging
 import tensorflow as tf
-from tensorflow.python.util import object_identity
 from official.utils.misc import distribution_utils
 from official.utils.misc import tpu_lib
 
@@ -232,6 +231,9 @@ def run_customized_training_loop(
       else:
         train_summary_writer = None
 
+      # Collects training variables.
+      training_vars = model.trainable_variables
+
       def _replicated_step(inputs):
         """Replicated training step."""
 
@@ -242,15 +244,12 @@ def run_customized_training_loop(
           if use_float16:
             scaled_loss = optimizer.get_scaled_loss(loss)
 
-        # De-dupes variables due to keras tracking issues.
-        tvars = list(
-            object_identity.ObjectIdentitySet(model.trainable_variables))
         if use_float16:
-          scaled_grads = tape.gradient(scaled_loss, tvars)
+          scaled_grads = tape.gradient(scaled_loss, training_vars)
           grads = optimizer.get_unscaled_gradients(scaled_grads)
         else:
-          grads = tape.gradient(loss, tvars)
-        optimizer.apply_gradients(zip(grads, tvars))
+          grads = tape.gradient(loss, training_vars)
+        optimizer.apply_gradients(zip(grads, training_vars))
         # For reporting, the metric takes the mean of losses.
         train_loss_metric.update_state(loss)
         for metric in train_metrics:
@@ -414,7 +413,7 @@ def run_customized_training_loop(
         # TODO(hongkuny): Cleans up summary reporting in text.
         training_summary['last_train_metrics'] = _float_metric_value(
             train_metrics[0])
-        training_summary['eval_metricss'] = _float_metric_value(eval_metrics[0])
+        training_summary['eval_metrics'] = _float_metric_value(eval_metrics[0])
 
       _write_txt_summary(training_summary, model_dir)
 

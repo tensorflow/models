@@ -18,19 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tempfile
-
 import tensorflow as tf
 
 from tensorflow.python.eager import context
-from tensorflow.python.platform import googletest
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import resnet_imagenet_main
 
 
-class KerasImagenetTest(googletest.TestCase):
+class KerasImagenetTest(tf.test.TestCase):
   """Unit tests for Keras ResNet with ImageNet."""
 
   _extra_flags = [
@@ -39,11 +36,6 @@ class KerasImagenetTest(googletest.TestCase):
       "-use_synthetic_data", "true"
   ]
   _tempdir = None
-
-  def get_temp_dir(self):
-    if not self._tempdir:
-      self._tempdir = tempfile.mkdtemp(dir=googletest.GetTempDir())
-    return self._tempdir
 
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
@@ -65,7 +57,6 @@ class KerasImagenetTest(googletest.TestCase):
 
     extra_flags = [
         "-distribution_strategy", "off",
-        "-model_dir", "keras_imagenet_no_dist_strat",
         "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
@@ -81,7 +72,6 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = [
         "-enable_eager", "false",
         "-distribution_strategy", "off",
-        "-model_dir", "keras_imagenet_graph_no_dist_strat",
         "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
@@ -105,8 +95,8 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = [
         "-num_gpus", "1",
         "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_1_gpu",
         "-data_format", "channels_last",
+        "-enable_checkpoint_and_export", "1",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -116,18 +106,20 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_graph_1_gpu(self):
-    """Test Keras model in legacy graph mode with 1 GPU."""
+  def test_end_to_end_1_gpu_fp16(self):
+    """Test Keras model with 1 GPU and fp16."""
+    config = keras_utils.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
     if context.num_gpus() < 1:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(1, context.num_gpus()))
 
     extra_flags = [
         "-num_gpus", "1",
-        "-enable_eager", "false",
+        "-dtype", "fp16",
         "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_graph_1_gpu",
         "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
@@ -137,6 +129,7 @@ class KerasImagenetTest(googletest.TestCase):
         tmp_root=self.get_temp_dir(),
         extra_flags=extra_flags
     )
+
 
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
@@ -151,7 +144,6 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = [
         "-num_gpus", "2",
         "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_2_gpu",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -175,7 +167,6 @@ class KerasImagenetTest(googletest.TestCase):
         "-num_gpus", "2",
         "-enable_xla", "true",
         "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_xla_2_gpu",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -199,7 +190,6 @@ class KerasImagenetTest(googletest.TestCase):
         "-num_gpus", "2",
         "-dtype", "fp16",
         "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_2_gpu_fp16",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -224,50 +214,6 @@ class KerasImagenetTest(googletest.TestCase):
         "-dtype", "fp16",
         "-enable_xla", "true",
         "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_xla_2_gpu_fp16",
-    ]
-    extra_flags = extra_flags + self._extra_flags
-
-    integration.run_synthetic(
-        main=resnet_imagenet_main.run,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
-
-  def test_end_to_end_graph_2_gpu(self):
-    """Test Keras model in legacy graph mode with 2 GPUs."""
-    if context.num_gpus() < 2:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
-
-    extra_flags = [
-        "-num_gpus", "2",
-        "-enable_eager", "false",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_graph_2_gpu",
-    ]
-    extra_flags = extra_flags + self._extra_flags
-
-    integration.run_synthetic(
-        main=resnet_imagenet_main.run,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
-
-  def test_end_to_end_graph_xla_2_gpu(self):
-    """Test Keras model in legacy graph mode with XLA and 2 GPUs."""
-    if context.num_gpus() < 2:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
-
-    extra_flags = [
-        "-num_gpus", "2",
-        "-enable_eager", "false",
-        "-enable_xla", "true",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_graph_xla_2_gpu",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -279,4 +225,5 @@ class KerasImagenetTest(googletest.TestCase):
 
 
 if __name__ == "__main__":
-  googletest.main()
+  tf.compat.v1.enable_v2_behavior()
+  tf.test.main()

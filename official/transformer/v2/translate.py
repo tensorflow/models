@@ -18,11 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
+from tensorflow.python.distribute import values
 from official.transformer.utils import tokenizer
 
-_DECODE_BATCH_SIZE = 32
 _EXTRA_DECODE_LENGTH = 100
 _BEAM_SIZE = 4
 _ALPHA = 0.6
@@ -68,23 +69,31 @@ def _trim_and_decode(ids, subtokenizer):
     return subtokenizer.decode(ids)
 
 
-def translate_file(
-    model, subtokenizer, input_file, output_file=None,
-    print_all_translations=True):
+def translate_file(model,
+                   params,
+                   subtokenizer,
+                   input_file,
+                   output_file=None,
+                   print_all_translations=True,
+                   distribution_strategy=None):
   """Translate lines in file, and save to output file if specified.
 
   Args:
-    model: Keras model used to generate the translations.
-    subtokenizer: Subtokenizer object for encoding and decoding source and
-       translated lines.
-    input_file: file containing lines to translate
-    output_file: file that stores the generated translations.
-    print_all_translations: If true, all translations are printed to stdout.
+    model: A Keras model, used to generate the translations.
+    params: A dictionary, containing the translation related parameters.
+    subtokenizer: A subtokenizer object, used for encoding and decoding source
+      and translated lines.
+    input_file: A file containing lines to translate.
+    output_file: A file that stores the generated translations.
+    print_all_translations: A bool. If true, all translations are printed to
+      stdout.
+    distribution_strategy: A distribution strategy, used to perform inference
+      directly with tf.function instead of Keras model.predict().
 
   Raises:
     ValueError: if output file is invalid.
   """
-  batch_size = _DECODE_BATCH_SIZE
+  batch_size = params["decode_batch_size"]
 
   # Read and sort inputs by length. Keep dictionary (original index-->new index
   # in sorted list) to write translations in the original order.
@@ -101,24 +110,69 @@ def translate_file(
           if j + i * batch_size < total_samples
       ]
       lines = [_encode_and_add_eos(l, subtokenizer) for l in lines]
+      if distribution_strategy:
+        for j in range(batch_size - len(lines)):
+          lines.append([tokenizer.EOS_ID])
       batch = tf.keras.preprocessing.sequence.pad_sequences(
-          lines, dtype="int64", padding="post")
+          lines,
+          maxlen=params["decode_max_length"],
+          dtype="int32",
+          padding="post")
       tf.compat.v1.logging.info("Decoding batch %d out of %d.", i,
                                 num_decode_batches)
       yield batch
 
+  @tf.function
+  def predict_step(inputs):
+    """Decoding step function for TPU runs."""
+
+    def _step_fn(inputs):
+      """Per replica step function."""
+      tag = inputs[0]
+      val_inputs = inputs[1]
+      val_outputs, _ = model([val_inputs], training=False)
+      return tag, val_outputs
+
+    return distribution_strategy.experimental_run_v2(_step_fn, args=(inputs,))
+
   translations = []
+  if distribution_strategy:
+    num_replicas = distribution_strategy.num_replicas_in_sync
+    local_batch_size = params["decode_batch_size"] // num_replicas
   for i, text in enumerate(input_generator()):
-    val_outputs, _ = model.predict(text)
+    if distribution_strategy:
+      text = np.reshape(text, [num_replicas, local_batch_size, -1])
+      # Add tag to the input of each replica with the reordering logic after
+      # outputs, to ensure the output order matches the input order.
+      text = [
+          [tf.convert_to_tensor(tag), tf.convert_to_tensor(per_replica_text)]
+          for tag, per_replica_text in enumerate(text)
+      ]
+      # pylint: disable=protected-access
+      text = values.PerReplica(distribution_strategy.extended._device_map, text)
+      outputs = distribution_strategy.experimental_local_results(
+          predict_step(text))
+      tags, unordered_val_outputs = outputs[0]
+      tags = [tag.numpy() for tag in tags._values]
+      unordered_val_outputs = [
+          val_output.numpy() for val_output in unordered_val_outputs._values]
+      # pylint: enable=protected-access
+      val_outputs = [None] * len(tags)
+      for k in range(len(tags)):
+        val_outputs[tags[k]] = unordered_val_outputs[k]
+      val_outputs = np.reshape(val_outputs, [params["decode_batch_size"], -1])
+    else:
+      val_outputs, _ = model.predict(text)
 
     length = len(val_outputs)
     for j in range(length):
-      translation = _trim_and_decode(val_outputs[j], subtokenizer)
-      translations.append(translation)
-      if print_all_translations:
-        tf.compat.v1.logging.info(
-            "Translating:\n\tInput: %s\n\tOutput: %s" %
-            (sorted_inputs[j + i * batch_size], translation))
+      if j + i * batch_size < total_samples:
+        translation = _trim_and_decode(val_outputs[j], subtokenizer)
+        translations.append(translation)
+        if print_all_translations:
+          tf.compat.v1.logging.info(
+              "Translating:\n\tInput: %s\n\tOutput: %s" %
+              (sorted_inputs[j + i * batch_size], translation))
 
   # Write translations in the order they appeared in the original file.
   if output_file is not None:

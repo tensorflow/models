@@ -33,7 +33,7 @@ import tensorflow as tf
 
 from official.r1.resnet import imagenet_preprocessing
 from official.r1.resnet import resnet_model
-from official.utils.export import export
+from official.r1.utils import export
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -723,8 +723,15 @@ def resnet_main(
 def define_resnet_flags(resnet_size_choices=None, dynamic_loss_scale=False,
                         fp16_implementation=False):
   """Add flags and validators for ResNet."""
-  flags_core.define_base()
+  flags_core.define_base(clean=True, train_epochs=True,
+                         epochs_between_evals=True)
   flags_core.define_performance(num_parallel_calls=False,
+                                inter_op=True,
+                                intra_op=True,
+                                synthetic_data=True,
+                                dtype=True,
+                                all_reduce_alg=True,
+                                num_packs=True,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
                                 dynamic_loss_scale=dynamic_loss_scale,

@@ -88,8 +88,11 @@ def create_model(data_format):
 
 
 def define_mnist_flags():
-  flags_core.define_base()
-  flags_core.define_performance(num_parallel_calls=False)
+  flags_core.define_base(clean=True, train_epochs=True,
+                         epochs_between_evals=True)
+  flags_core.define_performance(inter_op=True, intra_op=True,
+                                num_parallel_calls=False,
+                                all_reduce_alg=True)
   flags_core.define_image()
   flags.adopt_module_key_flags(flags_core)
   flags_core.set_defaults(data_dir='/tmp/mnist_data',

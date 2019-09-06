@@ -55,9 +55,13 @@ Note the ml-20m dataset is large (the rating file is ~500 MB), and it may take s
 Both the ml-1m and ml-20m datasets will be coerced into a common format when downloaded.
 
 ### Train and evaluate model
+
+[ncf_keras_main.py](ncf_keras_main.py) is the Keras trainer that supports
+features in TF 2.x. Users can train the model on both GPU and TPU.
+
 To train and evaluate the model, issue the following command:
 ```
-python ncf_main.py
+python ncf_keras_main.py
 ```
 Arguments:
   * `--model_dir`: Directory to save model training checkpoints. By default, it is `/tmp/ncf/`.
@@ -65,7 +69,3 @@ Arguments:
   * `--dataset`: The dataset name to be downloaded and preprocessed. By default, it is `ml-1m`.
 
 There are other arguments about models and training process. Use the `--help` or `-h` flag to get a full list of possible arguments with detailed descriptions.
-
-## Benchmarks (TODO)
-### Training times
-### Evaluation results

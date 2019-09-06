@@ -31,6 +31,41 @@ from official.utils.misc import keras_utils
 FLAGS = flags.FLAGS
 BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 TRAIN_TOP_1 = 'training_accuracy_top_1'
+LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
+    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
+]
+
+
+def learning_rate_schedule(current_epoch,
+                           current_batch,
+                           batches_per_epoch,
+                           batch_size):
+  """Handles linear scaling rule, gradual warmup, and LR decay.
+
+  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
+  provided scaling factor.
+
+  Args:
+    current_epoch: integer, current epoch indexed from 0.
+    current_batch: integer, current batch in the current epoch, indexed from 0.
+    batches_per_epoch: integer, number of steps in an epoch.
+    batch_size: integer, total batch sized.
+
+  Returns:
+    Adjusted learning rate.
+  """
+  initial_lr = BASE_LEARNING_RATE * batch_size / 256
+  epoch = current_epoch + float(current_batch) / batches_per_epoch
+  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
+  if epoch < warmup_end_epoch:
+    # Learning rate increases linearly per step.
+    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
+  for mult, start_epoch in LR_SCHEDULE:
+    if epoch >= start_epoch:
+      learning_rate = initial_lr * mult
+    else:
+      break
+  return learning_rate
 
 
 class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
@@ -38,7 +73,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
 
   N.B. Only support Keras optimizers, not TF optimizers.
 
-  Args:
+  Attributes:
       schedule: a function that takes an epoch index and a batch index as input
           (both integer, indexed from 0) and returns a new learning rate as
           output (float).
@@ -172,12 +207,13 @@ def get_optimizer(learning_rate=0.1):
   return gradient_descent_v2.SGD(learning_rate=learning_rate, momentum=0.9)
 
 
-def get_callbacks(learning_rate_schedule_fn, num_images):
+# TODO(hongkuny,haoyuzhang): make cifar model use_tensor_lr to clean up code.
+def get_callbacks(learning_rate_schedule_fn=None, num_images=None):
   """Returns common callbacks."""
   time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
   callbacks = [time_callback]
 
-  if not FLAGS.use_tensor_lr:
+  if not FLAGS.use_tensor_lr and learning_rate_schedule_fn:
     lr_callback = LearningRateBatchScheduler(
         learning_rate_schedule_fn,
         batch_size=FLAGS.batch_size,
@@ -247,8 +283,13 @@ def build_stats(history, eval_output, callbacks):
 
 def define_keras_flags(dynamic_loss_scale=True):
   """Define flags for Keras models."""
-  flags_core.define_base(run_eagerly=True)
+  flags_core.define_base(clean=True, run_eagerly=True, train_epochs=True,
+                         epochs_between_evals=True)
   flags_core.define_performance(num_parallel_calls=False,
+                                synthetic_data=True,
+                                dtype=True,
+                                all_reduce_alg=True,
+                                num_packs=True,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
                                 dynamic_loss_scale=dynamic_loss_scale,
@@ -308,6 +349,10 @@ def define_keras_flags(dynamic_loss_scale=True):
   flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
+  flags.DEFINE_boolean(
+      name='enable_checkpoint_and_export', default=False,
+      help='Whether to enable a checkpoint callback and export the savedmodel.')
+
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32, drop_remainder=True):
@@ -341,7 +386,6 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
                                         mean=127,
                                         stddev=60,
                                         name='synthetic_inputs')
-
     labels = tf.random.uniform([1],
                                minval=0,
                                maxval=num_classes - 1,

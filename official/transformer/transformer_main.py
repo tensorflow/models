@@ -32,6 +32,7 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
+from official.r1.utils import export
 from official.transformer import compute_bleu
 from official.transformer import translate
 from official.transformer.model import model_params
@@ -41,7 +42,6 @@ from official.transformer.utils import metrics
 from official.transformer.utils import schedule
 from official.transformer.utils import tokenizer
 from official.utils.accelerator import tpu as tpu_util
-from official.utils.export import export
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -56,7 +56,7 @@ PARAMS_MAP = {
 
 
 DEFAULT_TRAIN_EPOCHS = 10
-INF = int(1e9)
+INF = 1000000000  # 1e9
 BLEU_DIR = "bleu"
 
 # Dictionary containing tensors that are logged by the logging hooks. Each item
@@ -394,7 +394,8 @@ def define_transformer_flags():
       name="max_length", short_name="ml", default=None,
       help=flags_core.help_wrap("Max length."))
 
-  flags_core.define_base()
+  flags_core.define_base(clean=True, train_epochs=True,
+                         epochs_between_evals=True)
   flags_core.define_performance(
       num_parallel_calls=True,
       inter_op=False,

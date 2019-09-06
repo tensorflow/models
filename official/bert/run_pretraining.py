@@ -94,11 +94,11 @@ def get_pretrain_input_data(input_file_pattern, seq_length,
   return _dataset_fn if use_dataset_fn else _dataset_fn()
 
 
-def get_loss_fn(loss_scale=1.0):
+def get_loss_fn(loss_factor=1.0):
   """Returns loss function for BERT pretraining."""
 
   def _bert_pretrain_loss_fn(unused_labels, losses, **unused_args):
-    return tf.keras.backend.mean(losses) * loss_scale
+    return tf.keras.backend.mean(losses) * loss_factor
 
   return _bert_pretrain_loss_fn
 
@@ -132,7 +132,9 @@ def run_customized_training(strategy,
   trained_model = model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_pretrain_model,
-      loss_fn=get_loss_fn(),
+      loss_fn=get_loss_fn(
+          loss_factor=1.0 /
+          strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0),
       model_dir=model_dir,
       train_input_fn=train_input_fn,
       steps_per_epoch=steps_per_epoch,

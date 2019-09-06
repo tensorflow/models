@@ -165,6 +165,7 @@ class BertModel(tf.keras.layers.Layer):
         max_position_embeddings=self.config.max_position_embeddings,
         dropout_prob=self.config.hidden_dropout_prob,
         initializer_range=self.config.initializer_range,
+        dtype=tf.float32,
         name="embedding_postprocessor")
     self.encoder = Transformer(
         num_hidden_layers=self.config.num_hidden_layers,
@@ -316,8 +317,9 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
           dtype=self.dtype)
 
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="layer_norm", axis=-1, epsilon=1e-12)
-    self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_prob)
+        name="layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
+    self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_prob,
+                                                  dtype=tf.float32)
     super(EmbeddingPostprocessor, self).build(input_shapes)
 
   def __call__(self, word_embeddings, token_type_ids=None, **kwargs):
@@ -493,7 +495,23 @@ class Attention(tf.keras.layers.Layer):
 
 
 class Dense3D(tf.keras.layers.Layer):
-  """A Dense Layer using 3D kernel with tf.einsum implementation."""
+  """A Dense Layer using 3D kernel with tf.einsum implementation.
+
+  Attributes:
+    num_attention_heads: An integer, number of attention heads for each
+      multihead attention layer.
+    size_per_head: An integer, hidden size per attention head.
+    hidden_size: An integer, dimension of the hidden layer.
+    kernel_initializer: An initializer for the kernel weight.
+    bias_initializer: An initializer for the bias.
+    activation: An activation function to use. If nothing is specified, no
+      activation is applied.
+    use_bias: A bool, whether the layer uses a bias.
+    output_projection: A bool, whether the Dense3D layer is used for output
+      linear projection.
+    backward_compatible: A bool, whether the variables shape are compatible
+      with checkpoints converted from TF 1.x.
+  """
 
   def __init__(self,
                num_attention_heads=12,
@@ -501,9 +519,11 @@ class Dense3D(tf.keras.layers.Layer):
                kernel_initializer=None,
                bias_initializer="zeros",
                activation=None,
+               use_bias=True,
                output_projection=False,
                backward_compatible=False,
                **kwargs):
+    """Inits Dense3D."""
     super(Dense3D, self).__init__(**kwargs)
     self.num_attention_heads = num_attention_heads
     self.size_per_head = size_per_head
@@ -511,6 +531,7 @@ class Dense3D(tf.keras.layers.Layer):
     self.kernel_initializer = kernel_initializer
     self.bias_initializer = bias_initializer
     self.activation = activation
+    self.use_bias = use_bias
     self.output_projection = output_projection
     self.backward_compatible = backward_compatible
 
@@ -563,12 +584,15 @@ class Dense3D(tf.keras.layers.Layer):
         initializer=self.kernel_initializer,
         dtype=self.dtype,
         trainable=True)
-    self.bias = self.add_weight(
-        "bias",
-        shape=bias_shape,
-        initializer=self.bias_initializer,
-        dtype=self.dtype,
-        trainable=True)
+    if self.use_bias:
+      self.bias = self.add_weight(
+          "bias",
+          shape=bias_shape,
+          initializer=self.bias_initializer,
+          dtype=self.dtype,
+          trainable=True)
+    else:
+      self.bias = None
     super(Dense3D, self).build(input_shape)
 
   def call(self, inputs):
@@ -586,7 +610,8 @@ class Dense3D(tf.keras.layers.Layer):
     """
     if self.backward_compatible:
       kernel = tf.keras.backend.reshape(self.kernel, self.kernel_shape)
-      bias = tf.keras.backend.reshape(self.bias, self.bias_shape)
+      bias = (tf.keras.backend.reshape(self.bias, self.bias_shape)
+              if self.use_bias else None)
     else:
       kernel = self.kernel
       bias = self.bias
@@ -595,7 +620,8 @@ class Dense3D(tf.keras.layers.Layer):
       ret = tf.einsum("abcd,cde->abe", inputs, kernel)
     else:
       ret = tf.einsum("abc,cde->abde", inputs, kernel)
-    ret += bias
+    if self.use_bias:
+      ret += bias
     if self.activation is not None:
       return self.activation(ret)
     return ret
@@ -714,11 +740,15 @@ class TransformerBlock(tf.keras.layers.Layer):
         rate=self.hidden_dropout_prob)
     self.attention_layer_norm = (
         tf.keras.layers.LayerNormalization(
-            name="self_attention_layer_norm", axis=-1, epsilon=1e-12))
+            name="self_attention_layer_norm", axis=-1, epsilon=1e-12,
+            # We do layer norm in float32 for numeric stability.
+            dtype=tf.float32))
     self.intermediate_dense = Dense2DProjection(
         output_size=self.intermediate_size,
         kernel_initializer=get_initializer(self.initializer_range),
         activation=self.intermediate_activation,
+        # Uses float32 so that gelu activation is done in float32.
+        dtype=tf.float32,
         name="intermediate")
     self.output_dense = Dense2DProjection(
         output_size=self.hidden_size,
@@ -726,7 +756,7 @@ class TransformerBlock(tf.keras.layers.Layer):
         name="output")
     self.output_dropout = tf.keras.layers.Dropout(rate=self.hidden_dropout_prob)
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="output_layer_norm", axis=-1, epsilon=1e-12)
+        name="output_layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
     super(TransformerBlock, self).build(unused_input_shapes)
 
   def common_layers(self):
@@ -753,6 +783,10 @@ class TransformerBlock(tf.keras.layers.Layer):
     attention_output = self.attention_dropout(attention_output)
     # Use float32 in keras layer norm and the gelu activation in the
     # intermediate dense layer for numeric stability
+    # TODO(reedwm): These casts are probably unnecessary, as we passed
+    # dtype=tf.float32 to the layer norm constructor, so it will cast its inputs
+    # to float32 automatically. These manual casts additionally do the "+"
+    # operator in float32, but "+" is numerically stable in float16.
     if self.float_type == tf.float16:
       input_tensor = tf.cast(input_tensor, tf.float32)
       attention_output = tf.cast(attention_output, tf.float32)

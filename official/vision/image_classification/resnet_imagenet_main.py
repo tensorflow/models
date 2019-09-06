@@ -18,11 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import app as absl_app
+import os
+
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
 
+from official.benchmark.models import trivial_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -31,43 +34,6 @@ from official.utils.misc import model_helpers
 from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import resnet_model
-from official.vision.image_classification import trivial_model
-
-LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
-]
-
-
-def learning_rate_schedule(current_epoch,
-                           current_batch,
-                           batches_per_epoch,
-                           batch_size):
-  """Handles linear scaling rule, gradual warmup, and LR decay.
-
-  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
-  provided scaling factor.
-
-  Args:
-    current_epoch: integer, current epoch indexed from 0.
-    current_batch: integer, current batch in the current epoch, indexed from 0.
-    batches_per_epoch: integer, number of steps in an epoch.
-    batch_size: integer, total batch sized.
-
-  Returns:
-    Adjusted learning rate.
-  """
-  initial_lr = common.BASE_LEARNING_RATE * batch_size / 256
-  epoch = current_epoch + float(current_batch) / batches_per_epoch
-  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
-  if epoch < warmup_end_epoch:
-    # Learning rate increases linearly per step.
-    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
-  for mult, start_epoch in LR_SCHEDULE:
-    if epoch >= start_epoch:
-      learning_rate = initial_lr * mult
-    else:
-      break
-  return learning_rate
 
 
 def run(flags_obj):
@@ -94,9 +60,13 @@ def run(flags_obj):
   common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
-  if dtype == 'float16':
-    policy = tf.keras.mixed_precision.experimental.Policy('infer_float32_vars')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+  if dtype == tf.float16:
+    loss_scale = flags_core.get_loss_scale(flags_obj, default_for_fp16=128)
+    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
+        'mixed_float16', loss_scale=loss_scale)
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+    if not keras_utils.is_v2_0():
+      raise ValueError('--dtype=fp16 is not supported in TensorFlow 1.')
 
   data_format = flags_obj.data_format
   if data_format is None:
@@ -171,32 +141,29 @@ def run(flags_obj):
     lr_schedule = common.PiecewiseConstantDecayWithWarmup(
         batch_size=flags_obj.batch_size,
         epoch_size=imagenet_preprocessing.NUM_IMAGES['train'],
-        warmup_epochs=LR_SCHEDULE[0][1],
-        boundaries=list(p[1] for p in LR_SCHEDULE[1:]),
-        multipliers=list(p[0] for p in LR_SCHEDULE),
+        warmup_epochs=common.LR_SCHEDULE[0][1],
+        boundaries=list(p[1] for p in common.LR_SCHEDULE[1:]),
+        multipliers=list(p[0] for p in common.LR_SCHEDULE),
         compute_lr_on_cpu=True)
 
   with strategy_scope:
     optimizer = common.get_optimizer(lr_schedule)
-    if dtype == 'float16':
-      # TODO(reedwm): Remove manually wrapping optimizer once mixed precision
-      # can be enabled with a single line of code.
-      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          optimizer, loss_scale=flags_core.get_loss_scale(flags_obj,
-                                                          default_for_fp16=128))
-    if flags_obj.fp16_implementation == "graph_rewrite":
-      # Note: when flags_obj.fp16_implementation == "graph_rewrite", 
-      # dtype as determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
-      # which will ensure tf.keras.mixed_precision and tf.train.experimental.enable_mixed_precision_graph_rewrite
-      # do not double up.
-      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
-            
+    if flags_obj.fp16_implementation == 'graph_rewrite':
+      # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
+      # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
+      # which will ensure tf.compat.v2.keras.mixed_precision and
+      # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
+      # up.
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+          optimizer)
+
+    # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
     if flags_obj.use_trivial_model:
       model = trivial_model.trivial_model(
-          imagenet_preprocessing.NUM_CLASSES, dtype)
+          imagenet_preprocessing.NUM_CLASSES)
     else:
       model = resnet_model.resnet50(
-          num_classes=imagenet_preprocessing.NUM_CLASSES, dtype=dtype)
+          num_classes=imagenet_preprocessing.NUM_CLASSES)
 
     # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
     # a valid arg for this model. Also remove as a valid flag.
@@ -217,8 +184,11 @@ def run(flags_obj):
           run_eagerly=flags_obj.run_eagerly)
 
   callbacks = common.get_callbacks(
-      learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])
-
+      common.learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])
+  if flags_obj.enable_checkpoint_and_export:
+    ckpt_full_path = os.path.join(flags_obj.model_dir, 'model.ckpt-{epoch:04d}')
+    callbacks.append(tf.keras.callbacks.ModelCheckpoint(ckpt_full_path,
+                                                        save_weights_only=True))
   train_steps = (
       imagenet_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
   train_epochs = flags_obj.train_epochs
@@ -256,6 +226,10 @@ def run(flags_obj):
                       validation_data=validation_data,
                       validation_freq=flags_obj.epochs_between_evals,
                       verbose=2)
+  if flags_obj.enable_checkpoint_and_export:
+    # Keras model.save assumes a float32 input designature.
+    export_path = os.path.join(flags_obj.model_dir, 'saved_model')
+    model.save(export_path, include_optimizer=False)
 
   eval_output = None
   if not flags_obj.skip_eval:
@@ -286,4 +260,4 @@ def main(_):
 if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
   define_imagenet_keras_flags()
-  absl_app.run(main)
+  app.run(main)

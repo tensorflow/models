@@ -48,10 +48,6 @@ flags.DEFINE_string('train_data_path', None,
                     'Path to training data for BERT classifier.')
 flags.DEFINE_string('eval_data_path', None,
                     'Path to evaluation data for BERT classifier.')
-flags.DEFINE_string(
-    'model_export_path', None,
-    'Path to the directory, where trainined model will be '
-    'exported.')
 # Model training specific flags.
 flags.DEFINE_string(
     'input_meta_data_path', None,
@@ -65,7 +61,7 @@ common_flags.define_common_bert_flags()
 FLAGS = flags.FLAGS
 
 
-def get_loss_fn(num_classes, loss_scale=1.0):
+def get_loss_fn(num_classes, loss_factor=1.0):
   """Gets the classification loss function."""
 
   def classification_loss_fn(labels, logits):
@@ -77,7 +73,7 @@ def get_loss_fn(num_classes, loss_scale=1.0):
     per_example_loss = -tf.reduce_sum(
         tf.cast(one_hot_labels, dtype=tf.float32) * log_probs, axis=-1)
     loss = tf.reduce_mean(per_example_loss)
-    loss *= loss_scale
+    loss *= loss_factor
     return loss
 
   return classification_loss_fn
@@ -122,7 +118,10 @@ def run_customized_training(strategy,
         initial_lr, steps_per_epoch * epochs, warmup_steps)
     return classifier_model, core_model
 
-  loss_fn = get_loss_fn(num_classes, loss_scale=1.0)
+  loss_fn = get_loss_fn(
+      num_classes,
+      loss_factor=1.0 /
+      strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0)
 
   # Defines evaluation metrics function, which will create metrics in the
   # correct device and strategy scope.
