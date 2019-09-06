@@ -177,7 +177,7 @@ def run(flags_obj):
                          "--use_tf_function to be true")
       loss_scale = flags_core.get_loss_scale(flags_obj, default_for_fp16=128)
       optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
-                      optimizer, loss_scale)
+          optimizer, loss_scale)
 
     training_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'training_accuracy', dtype=tf.float32)
