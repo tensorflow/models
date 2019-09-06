@@ -174,10 +174,10 @@ def run(flags_obj):
     if flags_obj.fp16_implementation == "graph_rewrite":
       if not flags_obj.use_tf_function:
         raise ValueError("--fp16_implementation=graph_rewrite requires "
-                         "use_tf_function to be true")
-      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
-                      optimizer)
+                         "--use_tf_function to be true")
       loss_scale = flags_core.get_loss_scale(flags_obj, default_for_fp16=128)
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+                      optimizer, loss_scale)
 
     training_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
         'training_accuracy', dtype=tf.float32)
@@ -213,16 +213,14 @@ def run(flags_obj):
             loss += (tf.reduce_sum(model.losses) / num_replicas)
 
           # Scale the loss
-          if flags_obj.fp16_implementation == "graph_rewrite":
-            loss = loss * tf.cast(loss_scale, loss.dtype)
+          if flags_obj.dtype == "fp16":
+            loss = optimizer.get_scaled_loss(loss)
 
         grads = tape.gradient(loss, trainable_variables)
 
         # Unscale the grads
-        if flags_obj.fp16_implementation == "graph_rewrite":
-          loss_scale_reciprocal = 1. / loss_scale
-          grads = [g * tf.cast(loss_scale_reciprocal, g.dtype) if g is not None
-                   else None for g in grads]
+        if flags_obj.dtype == "fp16":
+          grads = optimizer.get_unscaled_gradients(grads)
 
         optimizer.apply_gradients(zip(grads, trainable_variables))
 
