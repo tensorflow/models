@@ -231,9 +231,8 @@ def run_customized_training_loop(
       else:
         train_summary_writer = None
 
-      # De-dupes variables due to keras tracking issues.
-      training_vars = list({id(v): v for v in model.trainable_variables
-                           }.values())
+      # Collects training variables.
+      training_vars = model.trainable_variables
 
       def _replicated_step(inputs):
         """Replicated training step."""
