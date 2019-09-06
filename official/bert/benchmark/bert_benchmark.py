@@ -227,6 +227,43 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
+  def benchmark_1_gpu_amp_mrpc_no_dist_strat(self):
+    """Performance for 1 GPU no DS with automatic mixed precision."""
+    self._setup()
+    self.num_gpus = 1
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_amp_mrpc_no_dist_strat')
+    FLAGS.train_data_path = self.train_data_path
+    FLAGS.eval_data_path = self.eval_data_path
+    FLAGS.input_meta_data_path = self.input_meta_data_path
+    FLAGS.bert_config_file = self.bert_config_file
+    FLAGS.train_batch_size = 4
+    FLAGS.eval_batch_size = 4
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+
+    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    self._run_and_report_benchmark(summary_path, use_ds=False)
+
+  def benchmark_8_gpu_amp_mrpc(self):
+    """Test BERT model performance with 8 GPUs with automatic mixed precision.
+    """
+
+    self._setup()
+    self.num_gpus = 8
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp_mrpc')
+    FLAGS.train_data_path = self.train_data_path
+    FLAGS.eval_data_path = self.eval_data_path
+    FLAGS.input_meta_data_path = self.input_meta_data_path
+    FLAGS.bert_config_file = self.bert_config_file
+    FLAGS.train_batch_size = 32
+    FLAGS.eval_batch_size = 32
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+
+    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    self._run_and_report_benchmark(summary_path, use_ds=False)
+
 
 class BertClassifyAccuracy(BertClassifyBenchmarkBase):
   """Short accuracy test for BERT model.

@@ -111,11 +111,20 @@ def run_customized_training(strategy,
       drop_remainder=False)
 
   def _get_classifier_model():
+    """Gets a classifier model."""
     classifier_model, core_model = (
         bert_models.classifier_model(bert_config, tf.float32, num_classes,
                                      max_seq_length))
     classifier_model.optimizer = optimization.create_optimizer(
         initial_lr, steps_per_epoch * epochs, warmup_steps)
+    if FLAGS.fp16_implementation == 'graph_rewrite':
+      # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
+      # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
+      # which will ensure tf.compat.v2.keras.mixed_precision and
+      # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
+      # up.
+      classifier_model.optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
+          classifier_model.optimizer)
     return classifier_model, core_model
 
   loss_fn = get_loss_fn(
