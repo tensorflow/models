@@ -22,7 +22,8 @@ from official.utils.flags import core as flags_core  # pylint: disable=g-bad-imp
 
 
 def define_flags():
-  flags_core.define_base(clean=True, num_gpu=False, train_epochs=True,
+  flags_core.define_base(clean=True, num_gpu=False, stop_threshold=True,
+                         hooks=True, train_epochs=True,
                          epochs_between_evals=True)
   flags_core.define_performance(
       num_parallel_calls=True, inter_op=True,  intra_op=True,

@@ -149,7 +149,8 @@ def define_ncf_flags():
   # Add common flags
   flags_core.define_base(clean=True, train_epochs=True,
                          epochs_between_evals=True, export_dir=False,
-                         run_eagerly=True)
+                         run_eagerly=True, stop_threshold=True, num_gpu=True,
+                         hooks=True, distribution_strategy=True)
   flags_core.define_performance(
       num_parallel_calls=False,
       inter_op=False,

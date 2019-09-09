@@ -46,9 +46,11 @@ def define_flags():
                          train_epochs=True,
                          epochs_between_evals=False,
                          stop_threshold=False,
+                         num_gpu=True,
                          hooks=False,
                          export_dir=False,
-                         run_eagerly=True)
+                         run_eagerly=True,
+                         distribution_strategy=True)
 
   flags_core.define_performance(num_parallel_calls=False,
                                 inter_op=False,

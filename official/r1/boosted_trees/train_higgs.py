@@ -260,7 +260,7 @@ def main(_):
 def define_train_higgs_flags():
   """Add tree related flags as well as training/eval configuration."""
   flags_core.define_base(clean=False, stop_threshold=False, batch_size=False,
-                         num_gpu=False)
+                         num_gpu=False, export_dir=True)
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
 

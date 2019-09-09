@@ -61,7 +61,7 @@ def get_model_params(param_set, num_gpus):
 def define_transformer_flags():
   """Add flags and flag validators for running transformer_main."""
   # Add common flags (data_dir, model_dir, etc.).
-  flags_core.define_base()
+  flags_core.define_base(num_gpu=True, distribution_strategy=True)
   flags_core.define_performance(
       num_parallel_calls=True,
       inter_op=False,
@@ -159,15 +159,13 @@ def define_transformer_flags():
       help=flags_core.help_wrap(
           'Path to source file containing text translate when calculating the '
           'official BLEU score. Both --bleu_source and --bleu_ref must be set. '
-          'Use the flag --stop_threshold to stop the script based on the '
-          'uncased BLEU score.'))
+          ))
   flags.DEFINE_string(
       name='bleu_ref', short_name='blr', default=None,
       help=flags_core.help_wrap(
           'Path to source file containing text translate when calculating the '
           'official BLEU score. Both --bleu_source and --bleu_ref must be set. '
-          'Use the flag --stop_threshold to stop the script based on the '
-          'uncased BLEU score.'))
+          ))
   flags.DEFINE_string(
       name='vocab_file', short_name='vf', default=None,
       help=flags_core.help_wrap(
@@ -230,14 +228,6 @@ def define_transformer_flags():
               'are defined.')
   def _check_bleu_vocab_file(flags_dict):
     if flags_dict['bleu_source'] and flags_dict['bleu_ref']:
-      return flags_dict['vocab_file'] is not None
-    return True
-
-  @flags.multi_flags_validator(
-      ['export_dir', 'vocab_file'],
-      message='--vocab_file must be defined if --export_dir is set.')
-  def _check_export_vocab_file(flags_dict):
-    if flags_dict['export_dir']:
       return flags_dict['vocab_file'] is not None
     return True
   # pylint: enable=unused-variable

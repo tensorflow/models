@@ -283,8 +283,9 @@ def build_stats(history, eval_output, callbacks):
 
 def define_keras_flags(dynamic_loss_scale=True):
   """Define flags for Keras models."""
-  flags_core.define_base(clean=True, run_eagerly=True, train_epochs=True,
-                         epochs_between_evals=True)
+  flags_core.define_base(clean=True, num_gpu=True, run_eagerly=True,
+                         train_epochs=True, epochs_between_evals=True,
+                         distribution_strategy=True)
   flags_core.define_performance(num_parallel_calls=False,
                                 synthetic_data=True,
                                 dtype=True,

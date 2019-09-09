@@ -37,7 +37,8 @@ LOSS_PREFIX = {'wide': 'linear/', 'deep': 'dnn/'}
 def define_wide_deep_flags():
   """Add supervised learning flags, as well as wide-deep model type."""
   flags_core.define_base(clean=True, train_epochs=True,
-                         epochs_between_evals=True)
+                         epochs_between_evals=True, stop_threshold=True,
+                         hooks=True, export_dir=True)
   flags_core.define_benchmark()
   flags_core.define_performance(
       num_parallel_calls=False, inter_op=True, intra_op=True,
