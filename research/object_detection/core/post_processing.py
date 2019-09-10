@@ -875,7 +875,17 @@ def batch_multiclass_non_max_suppression(boxes,
       suppression
     max_classes_per_detection: Maximum number of retained classes per detection
       box in class-agnostic NMS.
-    use_combined_nms: If true, it uses tf.image.combined_non_max_suppression.
+    use_combined_nms: If true, it uses tf.image.combined_non_max_suppression (
+      multi-class version of NMS that operates on a batch).
+      It greedily selects a subset of detection bounding boxes, pruning away
+      boxes that have high IOU (intersection over union) overlap (> thresh) with
+      already selected boxes. It operates independently for each batch.
+      Within each batch, it operates independently for each class for which
+      scores are provided (via the scores field of the input box_list),
+      pruning boxes with score less than a provided threshold prior to applying NMS.
+      This operation is performed on *all* batches and *all* classes in the batch,
+      therefore any background classes should be removed prior to calling this function.
+      Masks and additional fields are not supported.
       See argument checks in the code below for unsupported arguments.
 
   Returns:
@@ -930,15 +940,23 @@ def batch_multiclass_non_max_suppression(boxes,
       tf.compat.v1.logging.warning(
           'max_classes_per_detection is not configurable by combined_nms')
 
-    (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
-     batch_nmsed_masks, batch_nmsed_additional_fields,
-     batch_num_detections) = combined_non_max_suppression(
-         boxes, scores, score_thresh, iou_thresh, max_size_per_class,
-         max_total_size, scope, use_static_shapes)
-
-    return (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
-            batch_nmsed_masks, batch_nmsed_additional_fields,
-            batch_num_detections)
+    with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
+      (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
+       batch_num_detections) = tf.image.combined_non_max_suppression(
+              boxes=boxes,
+              scores=scores,
+              max_output_size_per_class=max_size_per_class,
+              max_total_size=max_total_size,
+              iou_threshold=iou_thresh,
+              score_threshold=score_thresh,
+              pad_per_class=use_static_shapes)
+      # Not supported by combined_non_max_suppression
+      batch_nmsed_masks = None
+      # Not supported by combined_non_max_suppression
+      batch_nmsed_additional_fields = None
+      return (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
+              batch_nmsed_masks, batch_nmsed_additional_fields,
+              batch_num_detections)
 
   q = shape_utils.get_dim_as_int(boxes.shape[2])
   num_classes = shape_utils.get_dim_as_int(scores.shape[2])
@@ -1160,42 +1178,3 @@ def batch_multiclass_non_max_suppression(boxes,
     return (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
             batch_nmsed_masks, batch_nmsed_additional_fields,
             batch_num_detections)
-
-def combined_non_max_suppression(boxes,
-                                 scores,
-                                 score_thresh,
-                                 iou_thresh,
-                                 max_size_per_class,
-                                 max_total_size=0,
-                                 scope=None,
-                                 use_static_shapes=False):
-  """Multi-class version of non maximum suppression that operates on a batch.
-
-  This function uses TensorFlow operator "CombinedNonMaxSuppression".
-  It greedily selects a subset of detection bounding boxes, pruning away
-  boxes that have high IOU (intersection over union) overlap (> thresh) with
-  already selected boxes. It operates independently for each batch.
-  Within each batch, it operates independently for each class for which
-  scores are provided (via the scores field of the input box_list),
-  pruning boxes with score less than a provided threshold prior to applying NMS.
-
-  Please note that this operation is performed on *all* batches and
-  *all* classes in the batch, therefore any background classes
-  should be removed prior to calling this function.
-
-  This op is similar to `batch_multiclass_non_max_suppression` but operates on
-  a batch of boxes and scores. See documentation for
-  `batch_multiclass_non_max_suppression` for additional details.
-  """
-
-  with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
-    nmsed_boxes, nmsed_scores, nmsed_classes, num_detections = \
-        tf.image.combined_non_max_suppression(
-            boxes, scores, max_size_per_class, max_total_size, iou_thresh,
-            score_thresh, use_static_shapes)
-
-    batch_nmsed_masks = None
-    batch_nmsed_additional_fields = None
-    #TODO supriyar: Set static shapes here?
-    return (nmsed_boxes, nmsed_scores, nmsed_classes, batch_nmsed_masks,
-            batch_nmsed_additional_fields, num_detections)
