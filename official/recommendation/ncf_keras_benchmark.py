@@ -266,9 +266,17 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._run_and_report_benchmark_mlperf_like()
 
   def benchmark_1_gpu_ctl_fp16_mlperf_like(self):
-    """1 GPU using CTL."""
+    """1 GPU using CTL and FP16."""
     self._setup()
     FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_1_gpu_fp16_mlperf_like(self):
+    """1 GPU using FP16."""
+    self._setup()
     FLAGS.train_epochs = 7
     FLAGS.dtype = 'fp16'
     FLAGS.loss_scale = 8192
@@ -290,8 +298,17 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark_mlperf_like()
 
+  def benchmark_xla_1_gpu_fp16_mlperf_like(self):
+    """1 GPU using with XLA and FP16."""
+    self._setup()
+    FLAGS.enable_xla = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
   def benchmark_xla_1_gpu_ctl_fp16_mlperf_like(self):
-    """1 GPU using CTL with XLA."""
+    """1 GPU using CTL with XLA and FP16."""
     self._setup()
     FLAGS.keras_use_ctl = True
     FLAGS.enable_xla = True
@@ -358,8 +375,26 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.input_meta_data_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "meta_data.json")
     self._run_and_report_benchmark_mlperf_like()
 
+  def benchmark_8_gpu_tf_data_fp16_mlperf_like(self):
+    """8 GPU FP16"""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 1048000
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    FLAGS.train_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "training_cycle_*/*")
+    FLAGS.eval_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "eval_data/*")
+    FLAGS.input_meta_data_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "meta_data.json")
+    self._run_and_report_benchmark_mlperf_like()
+
   def benchmark_8_gpu_tf_data_ctl_fp16_mlperf_like(self):
-    """8 GPU using CTL."""
+    """8 GPU FP16 using CTL"""
     self._setup()
     FLAGS.keras_use_ctl = True
     FLAGS.num_gpus = 8
