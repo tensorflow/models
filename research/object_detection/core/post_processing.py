@@ -867,7 +867,8 @@ def batch_multiclass_non_max_suppression(boxes,
       False.
     scope: tf scope name.
     use_static_shapes: If true, the output nmsed boxes are padded to be of
-      length `max_size_per_class` and it doesn't clip boxes to max_total_size.
+      length `minimum(max_total_size, max_size_per_class*num_classes)`.
+      If false, they are padded to be of length `max_total_size`.
       Defaults to false.
     parallel_iterations: (optional) number of batch items to process in
       parallel.
