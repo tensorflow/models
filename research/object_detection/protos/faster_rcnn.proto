@@ -170,7 +170,7 @@ message FasterRcnn {
   optional bool use_static_shapes_for_eval = 37 [default = false];
 
   // Whether to use tf.image.combined_non_max_suppression
-  optional bool use_first_stage_combined_nms = 38 [default=false];
+  optional bool use_combined_nms_in_first_stage = 38 [default=false];
 }
 
 
