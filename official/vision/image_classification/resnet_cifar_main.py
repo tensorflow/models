@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import flags
+from absl import app as absl_app
 import tensorflow as tf
 
 from official.utils.flags import core as flags_core
