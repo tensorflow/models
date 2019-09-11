@@ -127,7 +127,7 @@ class BaseTest(tf.test.TestCase):
     # type: (tf.data.Dataset, tf.Graph) -> list
     with self.session(graph=g) as sess:
       with g.as_default():
-        batch = dataset.make_one_shot_iterator().get_next()
+        batch = tf.compat.v1.data.make_one_shot_iterator(dataset).get_next()
       output = []
       while True:
         try:
