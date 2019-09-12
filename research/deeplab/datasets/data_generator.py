@@ -51,6 +51,7 @@ References:
 import collections
 import os
 import tensorflow as tf
+import numpy as np
 from deeplab import common
 from deeplab import input_preprocess
 
@@ -96,10 +97,21 @@ _ADE20K_INFORMATION = DatasetDescriptor(
     ignore_label=0,
 )
 
+_PQR_INFORMATION = DatasetDescriptor(
+    splits_to_sizes={
+        'train': 594,  # num of samples in images/training
+	'trainval': 654,
+        'val': 60,  # num of samples in images/validation
+    },
+    num_classes=2,
+    ignore_label=255,
+)
+
 _DATASETS_INFORMATION = {
     'cityscapes': _CITYSCAPES_INFORMATION,
     'pascal_voc_seg': _PASCAL_VOC_SEG_INFORMATION,
     'ade20k': _ADE20K_INFORMATION,
+    'pqr': _PQR_INFORMATION,
 }
 
 # Default file pattern of TFRecord of TensorFlow Example.
@@ -109,6 +121,25 @@ _FILE_PATTERN = '%s-*'
 def get_cityscapes_dataset_name():
   return 'cityscapes'
 
+# sample = {
+#         common.IMAGE: image,
+#         common.IMAGE_NAME: image_name,
+#         common.HEIGHT: parsed_features['image/height'],
+#         common.WIDTH: parsed_features['image/width'],
+#     }
+
+def flip(sample):
+  prob = np.random.rand(1)
+  print(sample)
+  print(common.IMAGE.shape)
+  print(common.IMAGE.dtype)
+  if 0 <= prob <= 0.5:
+    print("FLIPPED")
+    sample[common.IMAGE] = tf.image.flip_left_right(sample[common.IMAGE])
+    sample[common.LABELS_CLASS] = tf.image.flip_left_right(sample[common.LABELS_CLASS])
+  return sample
+  # def resize(self, dataset):
+  #   return tf.image.resize_images(image, tf.constant([RESIZE_TO, RESIZE_TO])), label
 
 class Dataset(object):
   """Represents input dataset for deeplab model."""
@@ -322,7 +353,8 @@ class Dataset(object):
     dataset = (
         tf.data.TFRecordDataset(files, num_parallel_reads=self.num_readers)
         .map(self._parse_function, num_parallel_calls=self.num_readers)
-        .map(self._preprocess_image, num_parallel_calls=self.num_readers))
+        .map(self._preprocess_image, num_parallel_calls=self.num_readers)
+	  )
 
     if self.should_shuffle:
       dataset = dataset.shuffle(buffer_size=100)
