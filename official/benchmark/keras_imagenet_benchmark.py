@@ -966,6 +966,89 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
         log_steps=FLAGS.log_steps)
 
 
+class Resnet50MultiWorkerKerasAccuracy(keras_benchmark.KerasBenchmark):
+  """Resnet50 distributed accuracy tests with multiple workers."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
+    self.data_dir = os.path.join(root_data_dir, 'imagenet')
+    super(Resnet50MultiWorkerKerasAccuracy, self).__init__(
+        output_dir=output_dir, flag_methods=flag_methods)
+
+  def _benchmark_common(self, eager, num_workers, all_reduce_alg):
+    """Common to all benchmarks in this class."""
+    self._setup()
+
+    num_gpus = 8
+    FLAGS.num_gpus = num_gpus
+    FLAGS.data_dir = self.data_dir
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = eager
+    FLAGS.enable_xla = False
+    FLAGS.distribution_strategy = 'multi_worker_mirrored'
+    FLAGS.use_tensor_lr = True
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_{}_8_gpu_{}_worker_fp16_{}_tweaked'.format(
+            'eager' if eager else 'graph', num_workers, all_reduce_alg))
+    FLAGS.batch_size = 256 * num_gpus * num_workers
+    FLAGS.all_reduce_alg = all_reduce_alg
+
+    self._run_and_report_benchmark()
+
+  def _run_and_report_benchmark(self,
+                                top_1_min=MIN_TOP_1_ACCURACY,
+                                top_1_max=MAX_TOP_1_ACCURACY):
+    start_time_sec = time.time()
+    stats = resnet_imagenet_main.run(flags.FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+
+    super(Resnet50MultiWorkerKerasAccuracy, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        top_1_min=top_1_min,
+        top_1_max=top_1_max,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=100)
+
+  def _get_model_dir(self, folder_name):
+    return os.path.join(self.output_dir, folder_name)
+
+  def benchmark_graph_8_gpu_2_workers_fp16_ring_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
+    self._benchmark_common(eager=False, num_workers=2, all_reduce_alg='ring')
+
+  def benchmark_graph_8_gpu_2_workers_fp16_nccl_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 2 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=False, num_workers=2, all_reduce_alg='nccl')
+
+  def benchmark_graph_8_gpu_8_workers_fp16_ring_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 8 workers, fp16, ring all-reduce."""
+    self._benchmark_common(eager=False, num_workers=8, all_reduce_alg='ring')
+
+  def benchmark_graph_8_gpu_8_workers_fp16_nccl_tweaked(self):
+    """Legacy graph, 8 GPUs per worker, 8 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=False, num_workers=8, all_reduce_alg='nccl')
+
+  def benchmark_eager_8_gpu_2_workers_fp16_ring_tweaked(self):
+    """Eager, 8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
+    self._benchmark_common(eager=True, num_workers=2, all_reduce_alg='ring')
+
+  def benchmark_eager_8_gpu_2_workers_fp16_nccl_tweaked(self):
+    """Eager, 8 GPUs per worker, 2 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=True, num_workers=2, all_reduce_alg='nccl')
+
+  def benchmark_eager_8_gpu_8_workers_fp16_ring_tweaked(self):
+    """Eager, 8 GPUs per worker, 8 workers, fp16, ring all-reduce."""
+    self._benchmark_common(eager=True, num_workers=8, all_reduce_alg='ring')
+
+  def benchmark_eager_8_gpu_8_workers_fp16_nccl_tweaked(self):
+    """Eager, 8 GPUs per worker, 8 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(eager=True, num_workers=8, all_reduce_alg='nccl')
+
+
 class Resnet50MultiWorkerKerasBenchmark(Resnet50KerasBenchmarkBase):
   """Resnet50 distributed benchmark tests with multiple workers."""
 
@@ -986,8 +1069,8 @@ class Resnet50MultiWorkerKerasBenchmark(Resnet50KerasBenchmarkBase):
     FLAGS.use_tensor_lr = True
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.model_dir = self._get_model_dir(
-        'benchmark_graph_8_gpu_{}_worker_fp16_{}_tweaked'.format(
-            num_workers, all_reduce_alg))
+        'benchmark_{}_8_gpu_{}_worker_fp16_{}_tweaked'.format(
+            'eager' if eager else 'graph', num_workers, all_reduce_alg))
     FLAGS.batch_size = 256 * num_gpus * num_workers
     FLAGS.all_reduce_alg = all_reduce_alg
 
