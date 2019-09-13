@@ -30,7 +30,6 @@ from absl import logging
 
 import tensorflow as tf
 # pylint: disable=unused-import
-# Initialize TPU System.
 from official.nlp import xlnet_config
 from official.nlp import xlnet_modeling as modeling
 from official.nlp.xlnet import common_flags
@@ -38,6 +37,7 @@ from official.nlp.xlnet import data_utils
 from official.nlp.xlnet import optimization
 from official.nlp.xlnet import squad_utils
 from official.nlp.xlnet import training_utils
+from official.utils.misc import tpu_lib
 
 flags.DEFINE_string(
     "test_feature_path", default=None, help="Path to feature of test set.")
@@ -227,7 +227,7 @@ def main(unused_argv):
   if FLAGS.strategy_type == "mirror":
     strategy = tf.distribute.MirroredStrategy()
   elif FLAGS.strategy_type == "tpu":
-
+    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
     use_remote_tpu = True

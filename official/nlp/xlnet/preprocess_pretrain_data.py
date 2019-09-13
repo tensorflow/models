@@ -23,6 +23,7 @@ import json
 import os
 import random
 
+from absl import app
 from absl import flags
 import absl.logging as _logging  # pylint: disable=unused-import
 
@@ -994,4 +995,4 @@ if __name__ == "__main__":
                        "using multiple workers to identify each worker.")
 
   tf.logging.set_verbosity(tf.logging.INFO)
-  absl_app.run(create_data)
+  app.run(create_data)
