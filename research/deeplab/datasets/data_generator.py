@@ -99,11 +99,11 @@ _ADE20K_INFORMATION = DatasetDescriptor(
 
 _PQR_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train': 594,  # num of samples in images/training
-	'trainval': 654,
-        'val': 60,  # num of samples in images/validation
+        'train': 1783,  # num of samples in images/training
+	'trainval': 1963,
+        'val': 180,  # num of samples in images/validation
     },
-    num_classes=2,
+    num_classes=3,
     ignore_label=255,
 )
 
