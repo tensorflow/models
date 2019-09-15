@@ -78,9 +78,9 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
             max_y = tf.cast(tf.shape(im)[1] - 1, 'int32')
             max_x = tf.cast(tf.shape(im)[2] - 1, 'int32')
 
-            # scale indices from [-1, 1] to [0, width/height]
-            x = (x + 1.0)*(width_f) / 2.0
-            y = (y + 1.0)*(height_f) / 2.0
+            # scale indices from [-1, 1] to [0, (width - 1) or (height - 1)]
+            x = (x + 1.0)*(width_f - 1.0) / 2.0
+            y = (y + 1.0)*(height_f - 1.0) / 2.0
 
             # do sampling
             x0 = tf.cast(tf.floor(x), 'int32')
@@ -88,9 +88,13 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
             y0 = tf.cast(tf.floor(y), 'int32')
             y1 = y0 + 1
 
+            x0_border = tf.clip_by_value(x0, zero, max_x + 1)
             x0 = tf.clip_by_value(x0, zero, max_x)
+            x1_border = tf.clip_by_value(x1, zero, max_x + 1)
             x1 = tf.clip_by_value(x1, zero, max_x)
+            y0_border = tf.clip_by_value(y0, zero, max_y + 1)
             y0 = tf.clip_by_value(y0, zero, max_y)
+            y1_border = tf.clip_by_value(y1, zero, max_y + 1)
             y1 = tf.clip_by_value(y1, zero, max_y)
             dim2 = width
             dim1 = width*height
@@ -112,10 +116,10 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
             Id = tf.gather(im_flat, idx_d)
 
             # and finally calculate interpolated values
-            x0_f = tf.cast(x0, 'float32')
-            x1_f = tf.cast(x1, 'float32')
-            y0_f = tf.cast(y0, 'float32')
-            y1_f = tf.cast(y1, 'float32')
+            x0_f = tf.cast(x0_border, 'float32')
+            x1_f = tf.cast(x1_border, 'float32')
+            y0_f = tf.cast(y0_border, 'float32')
+            y1_f = tf.cast(y1_border, 'float32')
             wa = tf.expand_dims(((x1_f-x) * (y1_f-y)), 1)
             wb = tf.expand_dims(((x1_f-x) * (y-y0_f)), 1)
             wc = tf.expand_dims(((x-x0_f) * (y1_f-y)), 1)
