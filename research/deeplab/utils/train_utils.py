@@ -156,7 +156,7 @@ def get_model_init_fn(train_logdir,
   tf.logging.info('Initializing model from path: %s', tf_initial_checkpoint)
 
   # Variables that will not be restored.
-  exclude_list = ['global_step']
+  exclude_list = ['global_step', 'logits']
   if not initialize_last_layer:
     exclude_list.extend(last_layers)
 
