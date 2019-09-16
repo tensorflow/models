@@ -96,6 +96,11 @@ tensorboard --logdir=$MODEL_DIR
    Users need to adjust `batch_size` and `num_gpus` to get good performance
    running multiple GPUs.
 
+   **Note that:**
+   when using multiple GPUs or TPUs, this is the global batch size for all
+   devices. For example, if the batch size is `4096*4` and there are 4 devices,
+   each device will take 4096 tokens as a batch budget.
+
    Command to run:
    ```
    python3 transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
