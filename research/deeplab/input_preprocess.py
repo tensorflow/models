@@ -124,6 +124,11 @@ def preprocess_image_and_label(image,
   if is_training and label is not None:
     processed_image, label = preprocess_utils.random_crop(
         [processed_image, label], crop_height, crop_width)
+    
+  if is_training and label is not None:
+    processed_image, label = preprocess_utils.randomly_rotate(
+      processed_image, label
+    )
 
   processed_image.set_shape([crop_height, crop_width, 3])
 

@@ -15,7 +15,7 @@
 
 """Utility functions related to preprocessing inputs."""
 import tensorflow as tf
-
+import numpy as np
 
 def flip_dim(tensor_list, prob=0.5, dim=1):
   """Randomly flips a dimension of the given tensor.
@@ -57,7 +57,6 @@ def flip_dim(tensor_list, prob=0.5, dim=1):
   outputs.append(is_flipped)
 
   return outputs
-
 
 def _image_dimensions(image, rank):
   """Returns the dimensions of an image tensor.
@@ -325,6 +324,14 @@ def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   shuffled_scale_factors = tf.random_shuffle(scale_factors)
   return shuffled_scale_factors[0]
 
+def randomly_rotate(processed_image, label):  
+  angle = np.random.randint(low=-90, high=270, size=1)
+  processed_image, label = tf.contrib.image.rotate(
+    [processed_image, label],
+    angle,
+    interpolation='NEAREST',
+  )
+  return processed_image, label
 
 def randomly_scale_image_and_label(image, label=None, scale=1.0):
   """Randomly scales image and label.
