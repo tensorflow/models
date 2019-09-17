@@ -258,8 +258,6 @@ export MODEL_DIR=gs://some_bucket/my_output_dir
 export SQUAD_VERSION=v1.1
 
 python run_squad.py \
-  --do_train=true \
-  --do_predict=true \
   --input_meta_data_path=${SQUAD_DIR}/squad_${SQUAD_VERSION}_meta_data \
   --train_data_path=${SQUAD_DIR}/squad_${SQUAD_VERSION}_train.tf_record \
   --predict_file=${SQUAD_DIR}/dev-v1.1.json \
@@ -285,8 +283,6 @@ export SQUAD_DIR=gs://some_bucket/datasets
 export SQUAD_VERSION=v1.1
 
 python run_squad.py \
-  --do_train=true \
-  --do_predict=true \
   --input_meta_data_path=${SQUAD_DIR}/squad_${SQUAD_VERSION}_meta_data \
   --train_data_path=${SQUAD_DIR}/squad_${SQUAD_VERSION}_train.tf_record \
   --predict_file=${SQUAD_DIR}/dev-v1.1.json \

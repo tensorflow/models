@@ -41,9 +41,11 @@ from official.utils.misc import keras_utils
 from official.utils.misc import tpu_lib
 
 flags.DEFINE_enum(
-    'mode', 'train', ['train', 'predict', 'export_only'],
-    'One of {"train", "predict", "export_only"}. `train`: '
-    'trains the model and evaluates in the meantime. '
+    'mode', 'train_and_predict',
+    ['train_and_predict', 'train', 'predict', 'export_only'],
+    'One of {"train_and_predict", "train", "predict", "export_only"}. '
+    '`train_and_predict`: both train and predict to a json file. '
+    '`train`: only trains the model. '
     '`predict`: predict answers from the squad json file. '
     '`export_only`: will take the latest checkpoint inside '
     'model_dir and export a `SavedModel`.')
@@ -370,9 +372,9 @@ def main(_):
   else:
     raise ValueError('The distribution strategy type is not supported: %s' %
                      FLAGS.strategy_type)
-  if FLAGS.mode == 'train':
+  if FLAGS.mode in ('train', 'train_and_predict'):
     train_squad(strategy, input_meta_data)
-  if FLAGS.mode == 'predict':
+  if FLAGS.mode in ('predict', 'train_and_predict'):
     predict_squad(strategy, input_meta_data)
 
 
