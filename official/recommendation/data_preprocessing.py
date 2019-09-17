@@ -31,9 +31,9 @@ import tensorflow as tf
 from absl import logging
 # pylint: enable=wrong-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
+from official.recommendation import movielens
 from official.utils.logs import mlperf_helper
 
 

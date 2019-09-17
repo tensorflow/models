@@ -26,7 +26,7 @@ from absl import flags
 import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
+from official.recommendation import movielens
 from official.recommendation import data_preprocessing
 
 flags.DEFINE_string(

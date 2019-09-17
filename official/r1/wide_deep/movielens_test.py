@@ -23,7 +23,7 @@ import unittest
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.datasets import movielens
+from official.recommendation import movielens
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.r1.wide_deep import movielens_dataset

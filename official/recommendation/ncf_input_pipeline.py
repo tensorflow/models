@@ -24,8 +24,8 @@ import functools
 import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
+from official.recommendation import movielens
 from official.recommendation import data_pipeline
 
 NUM_SHARDS = 16

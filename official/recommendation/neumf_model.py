@@ -38,8 +38,8 @@ import sys
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-from official.datasets import movielens  # pylint: disable=g-bad-import-order
 from official.recommendation import constants as rconst
+from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import stat_utils
 from official.utils.logs import mlperf_helper
