@@ -78,7 +78,7 @@ tf.app.flags.DEFINE_string(
     'Path to save converted SSTable of TensorFlow examples.')
 
 
-_NUM_SHARDS = 4
+_NUM_SHARDS = 10
 
 
 def _convert_dataset(dataset_split):
