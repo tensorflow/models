@@ -28,8 +28,7 @@ import six
 from absl import logging
 import tensorflow as tf
 
-from official.bert import tokenization
-# pylint: enable=g-bad-import-order
+from official.nlp.bert import tokenization
 
 
 class SquadExample(object):

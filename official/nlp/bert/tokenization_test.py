@@ -22,7 +22,7 @@ import tempfile
 import six
 import tensorflow as tf
 
-from official.bert import tokenization
+from official.nlp.bert import tokenization
 
 
 class TokenizationTest(tf.test.TestCase):

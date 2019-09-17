@@ -24,6 +24,8 @@ import math
 import six
 import tensorflow as tf
 
+from official.modeling import tf_utils
+
 
 class BertConfig(object):
   """Configuration for `BertModel`."""
@@ -191,7 +193,7 @@ class BertModel(tf.keras.layers.Layer):
                input_mask=None,
                input_type_ids=None,
                **kwargs):
-    inputs = pack_inputs([input_word_ids, input_mask, input_type_ids])
+    inputs = tf_utils.pack_inputs([input_word_ids, input_mask, input_type_ids])
     return super(BertModel, self).__call__(inputs, **kwargs)
 
   def call(self, inputs, mode="bert"):
@@ -205,7 +207,7 @@ class BertModel(tf.keras.layers.Layer):
       is a float Tensor of shape [batch_size, seq_length, hidden_size] or
       a list of output tensors for encoder usage (mode=`encoder`).
     """
-    unpacked_inputs = unpack_inputs(inputs)
+    unpacked_inputs = tf_utils.unpack_inputs(inputs)
     input_word_ids = unpacked_inputs[0]
     input_mask = unpacked_inputs[1]
     input_type_ids = unpacked_inputs[2]
@@ -260,7 +262,7 @@ class EmbeddingLookup(tf.keras.layers.Layer):
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    input_shape = get_shape_list(inputs)
+    input_shape = tf_utils.get_shape_list(inputs)
     flat_input = tf.reshape(inputs, [-1])
     output = tf.gather(self.embeddings, flat_input)
     output = tf.reshape(output, input_shape + [self.embedding_size])
@@ -323,15 +325,15 @@ class EmbeddingPostprocessor(tf.keras.layers.Layer):
     super(EmbeddingPostprocessor, self).build(input_shapes)
 
   def __call__(self, word_embeddings, token_type_ids=None, **kwargs):
-    inputs = pack_inputs([word_embeddings, token_type_ids])
+    inputs = tf_utils.pack_inputs([word_embeddings, token_type_ids])
     return super(EmbeddingPostprocessor, self).__call__(inputs, **kwargs)
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    unpacked_inputs = unpack_inputs(inputs)
+    unpacked_inputs = tf_utils.unpack_inputs(inputs)
     word_embeddings = unpacked_inputs[0]
     token_type_ids = unpacked_inputs[1]
-    input_shape = get_shape_list(word_embeddings, expected_rank=3)
+    input_shape = tf_utils.get_shape_list(word_embeddings, expected_rank=3)
     batch_size = input_shape[0]
     seq_length = input_shape[1]
     width = input_shape[2]
@@ -429,12 +431,12 @@ class Attention(tf.keras.layers.Layer):
     return output_tensor
 
   def __call__(self, from_tensor, to_tensor, attention_mask=None, **kwargs):
-    inputs = pack_inputs([from_tensor, to_tensor, attention_mask])
+    inputs = tf_utils.pack_inputs([from_tensor, to_tensor, attention_mask])
     return super(Attention, self).__call__(inputs, **kwargs)
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    (from_tensor, to_tensor, attention_mask) = unpack_inputs(inputs)
+    (from_tensor, to_tensor, attention_mask) = tf_utils.unpack_inputs(inputs)
 
     # Scalar dimensions referenced here:
     #   B = batch size (number of sequences)
@@ -707,7 +709,8 @@ class TransformerBlock(tf.keras.layers.Layer):
     self.hidden_size = hidden_size
     self.num_attention_heads = num_attention_heads
     self.intermediate_size = intermediate_size
-    self.intermediate_activation = get_activation(intermediate_activation)
+    self.intermediate_activation = tf_utils.get_activation(
+        intermediate_activation)
     self.hidden_dropout_prob = hidden_dropout_prob
     self.attention_probs_dropout_prob = attention_probs_dropout_prob
     self.initializer_range = initializer_range
@@ -769,12 +772,12 @@ class TransformerBlock(tf.keras.layers.Layer):
     ]
 
   def __call__(self, input_tensor, attention_mask=None):
-    inputs = pack_inputs([input_tensor, attention_mask])
+    inputs = tf_utils.pack_inputs([input_tensor, attention_mask])
     return super(TransformerBlock, self).__call__(inputs)
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    (input_tensor, attention_mask) = unpack_inputs(inputs)
+    (input_tensor, attention_mask) = tf_utils.unpack_inputs(inputs)
     attention_output = self.attention_layer(
         from_tensor=input_tensor,
         to_tensor=input_tensor,
@@ -835,7 +838,8 @@ class Transformer(tf.keras.layers.Layer):
     self.hidden_size = hidden_size
     self.num_attention_heads = num_attention_heads
     self.intermediate_size = intermediate_size
-    self.intermediate_activation = get_activation(intermediate_activation)
+    self.intermediate_activation = tf_utils.get_activation(
+        intermediate_activation)
     self.hidden_dropout_prob = hidden_dropout_prob
     self.attention_probs_dropout_prob = attention_probs_dropout_prob
     self.initializer_range = initializer_range
@@ -861,7 +865,7 @@ class Transformer(tf.keras.layers.Layer):
     super(Transformer, self).build(unused_input_shapes)
 
   def __call__(self, input_tensor, attention_mask=None, **kwargs):
-    inputs = pack_inputs([input_tensor, attention_mask])
+    inputs = tf_utils.pack_inputs([input_tensor, attention_mask])
     return super(Transformer, self).__call__(inputs=inputs, **kwargs)
 
   def call(self, inputs, return_all_layers=False):
@@ -874,7 +878,7 @@ class Transformer(tf.keras.layers.Layer):
     Returns:
       Output tensor of the last layer or a list of output tensors.
     """
-    unpacked_inputs = unpack_inputs(inputs)
+    unpacked_inputs = tf_utils.unpack_inputs(inputs)
     input_tensor = unpacked_inputs[0]
     attention_mask = unpacked_inputs[1]
     output_tensor = input_tensor
@@ -890,108 +894,6 @@ class Transformer(tf.keras.layers.Layer):
     return all_layer_outputs[-1]
 
 
-def pack_inputs(inputs):
-  """Pack a list of `inputs` tensors to a tuple.
-
-  Args:
-    inputs: a list of tensors.
-
-  Returns:
-    a tuple of tensors. if any input is None, replace it with a special constant
-    tensor.
-  """
-  inputs = tf.nest.flatten(inputs)
-  outputs = []
-  for x in inputs:
-    if x is None:
-      outputs.append(tf.constant(0, shape=[], dtype=tf.int32))
-    else:
-      outputs.append(x)
-  return tuple(outputs)
-
-
-def unpack_inputs(inputs):
-  """unpack a tuple of `inputs` tensors to a tuple.
-
-  Args:
-    inputs: a list of tensors.
-
-  Returns:
-    a tuple of tensors. if any input is a special constant tensor, replace it
-    with None.
-  """
-  inputs = tf.nest.flatten(inputs)
-  outputs = []
-  for x in inputs:
-    if is_special_none_tensor(x):
-      outputs.append(None)
-    else:
-      outputs.append(x)
-  x = tuple(outputs)
-
-  # To trick the very pointless 'unbalanced-tuple-unpacking' pylint check
-  # from triggering.
-  if len(x) == 1:
-    return x[0]
-  return tuple(outputs)
-
-
-def is_special_none_tensor(tensor):
-  """Checks if a tensor is a special None Tensor."""
-  return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
-
-
-def gelu(x):
-  """Gaussian Error Linear Unit.
-
-  This is a smoother version of the RELU.
-  Original paper: https://arxiv.org/abs/1606.08415
-  Args:
-    x: float Tensor to perform activation.
-
-  Returns:
-    `x` with the GELU activation applied.
-  """
-  cdf = 0.5 * (1.0 + tf.tanh(
-      (math.sqrt(2 / math.pi) * (x + 0.044715 * tf.pow(x, 3)))))
-  return x * cdf
-
-
-def get_activation(identifier):
-  """Maps a string to a Python function, e.g., "relu" => `tf.nn.relu`.
-
-  Args:
-    identifier: String name of the activation function.
-
-  Returns:
-    A Python function corresponding to the activation function. If
-    `identifier` is None, empty, or "linear", this will return None.
-    If `identifier` is not a string, it will return `identifier`.
-
-  Raises:
-    ValueError: The `identifier` does not correspond to a known
-      activation.
-  """
-  if identifier is None:
-    return None
-  elif isinstance(identifier, six.string_types):
-    name_to_fn = {
-        "linear": None,
-        "relu": tf.nn.relu,
-        "gelu": gelu,
-        "tanh": tf.nn.tanh,
-    }
-    identifier = str(identifier).lower()
-    if identifier not in name_to_fn:
-      raise ValueError("Unsupported activation function: %s" % (identifier))
-    return name_to_fn[identifier]
-  elif callable(identifier):
-    return identifier
-  else:
-    raise ValueError("Could not interpret activation "
-                     "function identifier: %s" % (identifier))
-
-
 def get_initializer(initializer_range=0.02):
   """Creates a `tf.initializers.truncated_normal` with the given range.
 
@@ -1004,66 +906,6 @@ def get_initializer(initializer_range=0.02):
   return tf.keras.initializers.TruncatedNormal(stddev=initializer_range)
 
 
-def get_shape_list(tensor, expected_rank=None, name=None):
-  """Returns a list of the shape of tensor, preferring static dimensions.
-
-  Args:
-    tensor: A tf.Tensor object to find the shape of.
-    expected_rank: (optional) int. The expected rank of `tensor`. If this is
-      specified and the `tensor` has a different rank, and exception will be
-      thrown.
-    name: Optional name of the tensor for the error message.
-
-  Returns:
-    A list of dimensions of the shape of tensor. All static dimensions will
-    be returned as python integers, and dynamic dimensions will be returned
-    as tf.Tensor scalars.
-  """
-  if expected_rank is not None:
-    assert_rank(tensor, expected_rank, name)
-
-  shape = tensor.shape.as_list()
-
-  non_static_indexes = []
-  for (index, dim) in enumerate(shape):
-    if dim is None:
-      non_static_indexes.append(index)
-
-  if not non_static_indexes:
-    return shape
-
-  dyn_shape = tf.shape(tensor)
-  for index in non_static_indexes:
-    shape[index] = dyn_shape[index]
-  return shape
-
-
-def assert_rank(tensor, expected_rank, name=None):
-  """Raises an exception if the tensor rank is not of the expected rank.
-
-  Args:
-    tensor: A tf.Tensor to check the rank of.
-    expected_rank: Python integer or list of integers, expected rank.
-    name: Optional name of the tensor for the error message.
-
-  Raises:
-    ValueError: If the expected shape doesn't match the actual shape.
-  """
-  expected_rank_dict = {}
-  if isinstance(expected_rank, six.integer_types):
-    expected_rank_dict[expected_rank] = True
-  else:
-    for x in expected_rank:
-      expected_rank_dict[x] = True
-
-  actual_rank = tensor.shape.ndims
-  if actual_rank not in expected_rank_dict:
-    raise ValueError(
-        "For the tensor `%s`, the actual tensor rank `%d` (shape = %s) is not "
-        "equal to the expected tensor rank `%s`" %
-        (name, actual_rank, str(tensor.shape), str(expected_rank)))
-
-
 def create_attention_mask_from_input_mask(from_tensor, to_mask):
   """Create 3D attention mask from a 2D tensor mask.
 
@@ -1074,11 +916,11 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
   Returns:
     float Tensor of shape [batch_size, from_seq_length, to_seq_length].
   """
-  from_shape = get_shape_list(from_tensor, expected_rank=[2, 3])
+  from_shape = tf_utils.get_shape_list(from_tensor, expected_rank=[2, 3])
   batch_size = from_shape[0]
   from_seq_length = from_shape[1]
 
-  to_shape = get_shape_list(to_mask, expected_rank=2)
+  to_shape = tf_utils.get_shape_list(to_mask, expected_rank=2)
   to_seq_length = to_shape[1]
 
   to_mask = tf.cast(

@@ -27,14 +27,14 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-# Import BERT model libraries.
-from official.bert import bert_models
-from official.bert import common_flags
-from official.bert import input_pipeline
-from official.bert import model_saving_utils
-from official.bert import model_training_utils
-from official.bert import modeling
-from official.bert import optimization
+# pylint: disable=g-import-not-at-top,redefined-outer-name,reimported
+from official.modeling import model_training_utils
+from official.nlp import bert_modeling as modeling
+from official.nlp import bert_models
+from official.nlp import optimization
+from official.nlp.bert import common_flags
+from official.nlp.bert import input_pipeline
+from official.nlp.bert import model_saving_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import tpu_lib
 

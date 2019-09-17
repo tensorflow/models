@@ -26,8 +26,8 @@ from __future__ import print_function
 from absl import app
 from absl import flags
 
-import tensorflow as tf
-from official.bert import modeling
+import tensorflow as tf  # TF 1.x
+from official.nlp import bert_modeling as modeling
 
 FLAGS = flags.FLAGS
 

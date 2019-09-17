@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from official.bert import modeling as common_layer
+from official.nlp import bert_modeling as common_layer
 
 
 class Attention(tf.keras.layers.Layer):

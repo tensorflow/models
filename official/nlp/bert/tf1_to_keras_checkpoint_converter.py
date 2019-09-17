@@ -16,7 +16,7 @@ r"""Convert checkpoints created by Estimator (tf1) to be Keras compatible.
 
 Keras manages variable names internally, which results in subtly different names
 for variables between the Estimator and Keras version.
-The script should be ran with TF 1.x.
+The script should be used with TF 1.x.
 
 Usage:
 
@@ -29,7 +29,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import app
-import tensorflow as tf
+import tensorflow as tf  # TF 1.x
 
 flags = tf.flags
 

@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from absl import logging
 import tensorflow as tf
-from official.bert.optimization import AdamWeightDecay
+from official.nlp import optimization
 
 
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -86,7 +86,7 @@ def create_optimizer(init_lr,
     logging.info(
         "Using AdamWeightDecay with adam_epsilon=%.9f weight_decay_rate=%.3f",
         adam_epsilon, weight_decay_rate)
-    optimizer = AdamWeightDecay(
+    optimizer = optimization.AdamWeightDecay(
         learning_rate=learning_rate_fn,
         weight_decay_rate=weight_decay_rate,
         beta_1=0.9,

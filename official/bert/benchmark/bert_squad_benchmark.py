@@ -28,9 +28,9 @@ from absl.testing import flagsaver
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.bert import run_squad
 from official.bert.benchmark import benchmark_utils
 from official.bert.benchmark import squad_evaluate_v1_1
+from official.nlp.bert import run_squad
 from official.utils.misc import distribution_utils
 
 # pylint: disable=line-too-long

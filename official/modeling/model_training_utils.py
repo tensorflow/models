@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utilities to train BERT models."""
+"""A light weight utilities to train NLP models."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +22,7 @@ import json
 import os
 
 from absl import logging
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 from official.utils.misc import distribution_utils
 from official.utils.misc import tpu_lib
 

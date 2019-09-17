@@ -21,7 +21,8 @@ from __future__ import print_function
 import copy
 import tensorflow as tf
 
-from official.bert import modeling
+from official.modeling import tf_utils
+from official.nlp import bert_modeling as modeling
 
 
 def gather_indexes(sequence_tensor, positions):
@@ -40,7 +41,7 @@ def gather_indexes(sequence_tensor, positions):
       Masked out sequence tensor of shape (batch_size * max_predictions_per_seq,
       num_hidden).
   """
-  sequence_shape = modeling.get_shape_list(
+  sequence_shape = tf_utils.get_shape_list(
       sequence_tensor, name='sequence_output_tensor')
   batch_size = sequence_shape[0]
   seq_length = sequence_shape[1]
@@ -92,7 +93,7 @@ class BertPretrainLayer(tf.keras.layers.Layer):
         initializer=tf.keras.initializers.Zeros())
     self.lm_dense = tf.keras.layers.Dense(
         self.config.hidden_size,
-        activation=modeling.get_activation(self.config.hidden_act),
+        activation=tf_utils.get_activation(self.config.hidden_act),
         kernel_initializer=self.initializer,
         name='predictions/transform/dense')
     self.lm_layer_norm = tf.keras.layers.LayerNormalization(
@@ -115,13 +116,13 @@ class BertPretrainLayer(tf.keras.layers.Layer):
                pooled_output,
                sequence_output=None,
                masked_lm_positions=None):
-    inputs = modeling.pack_inputs(
+    inputs = tf_utils.pack_inputs(
         [pooled_output, sequence_output, masked_lm_positions])
     return super(BertPretrainLayer, self).__call__(inputs)
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    unpacked_inputs = modeling.unpack_inputs(inputs)
+    unpacked_inputs = tf_utils.unpack_inputs(inputs)
     pooled_output = unpacked_inputs[0]
     sequence_output = unpacked_inputs[1]
     masked_lm_positions = unpacked_inputs[2]
@@ -153,7 +154,7 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
                lm_label_ids=None,
                lm_label_weights=None,
                sentence_labels=None):
-    inputs = modeling.pack_inputs([
+    inputs = tf_utils.pack_inputs([
         lm_output, sentence_output, lm_label_ids, lm_label_weights,
         sentence_labels
     ])
@@ -186,7 +187,7 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    unpacked_inputs = modeling.unpack_inputs(inputs)
+    unpacked_inputs = tf_utils.unpack_inputs(inputs)
     lm_output = unpacked_inputs[0]
     sentence_output = unpacked_inputs[1]
     lm_label_ids = unpacked_inputs[2]
