@@ -28,7 +28,6 @@ from official.resnet.ctl import ctl_common
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 from official.utils.flags import core as flags_core
 
-
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77
 
@@ -69,17 +68,19 @@ class CtlBenchmark(PerfZeroBenchmark):
 
     metrics = []
     if 'eval_acc' in stats:
-      metrics.append({'name': 'accuracy_top_1',
-                      'value': stats['eval_acc'],
-                      'min_value': top_1_min,
-                      'max_value': top_1_max})
-      metrics.append({'name': 'eval_loss',
-                      'value': stats['eval_loss']})
+      metrics.append({
+          'name': 'accuracy_top_1',
+          'value': stats['eval_acc'],
+          'min_value': top_1_min,
+          'max_value': top_1_max
+      })
+      metrics.append({'name': 'eval_loss', 'value': stats['eval_loss']})
 
-      metrics.append({'name': 'top_1_train_accuracy',
-                      'value': stats['train_acc']})
-      metrics.append({'name': 'train_loss',
-                      'value': stats['train_loss']})
+      metrics.append({
+          'name': 'top_1_train_accuracy',
+          'value': stats['train_acc']
+      })
+      metrics.append({'name': 'train_loss', 'value': stats['train_loss']})
 
     if (warmup and 'step_timestamp_log' in stats and
         len(stats['step_timestamp_log']) > warmup):
@@ -90,16 +91,20 @@ class CtlBenchmark(PerfZeroBenchmark):
       num_examples = (
           total_batch_size * log_steps * (len(time_log) - warmup - 1))
       examples_per_sec = num_examples / elapsed
-      metrics.append({'name': 'exp_per_second',
-                      'value': examples_per_sec})
+      metrics.append({'name': 'exp_per_second', 'value': examples_per_sec})
 
     if 'avg_exp_per_second' in stats:
-      metrics.append({'name': 'avg_exp_per_second',
-                      'value': stats['avg_exp_per_second']})
+      metrics.append({
+          'name': 'avg_exp_per_second',
+          'value': stats['avg_exp_per_second']
+      })
 
     flags_str = flags_core.get_nondefault_flags_as_str()
-    self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics,
-                          extras={'flags': flags_str})
+    self.report_benchmark(
+        iters=-1,
+        wall_time=wall_time_sec,
+        metrics=metrics,
+        extras={'flags': flags_str})
 
 
 class Resnet50CtlAccuracy(CtlBenchmark):
@@ -112,16 +117,14 @@ class Resnet50CtlAccuracy(CtlBenchmark):
       output_dir: directory where to output e.g. log files
       root_data_dir: directory under which to look for dataset
       **kwargs: arbitrary named arguments. This is needed to make the
-                constructor forward compatible in case PerfZero provides more
-                named arguments before updating the constructor.
+        constructor forward compatible in case PerfZero provides more named
+        arguments before updating the constructor.
     """
 
-    flag_methods = [
-        ctl_common.define_ctl_flags,
-        common.define_keras_flags
-    ]
+    flag_methods = [ctl_common.define_ctl_flags, common.define_keras_flags]
 
-    self.data_dir = os.path.join(root_data_dir, 'imagenet')
+    self.data_dir = ('/readahead/200M/placer/prod/home/distbelief/'
+                     'imagenet-tensorflow/imagenet-2012-tfrecord')
     super(Resnet50CtlAccuracy, self).__init__(
         output_dir=output_dir, flag_methods=flag_methods)
 
@@ -175,10 +178,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
   """Resnet50 benchmarks."""
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [
-        ctl_common.define_ctl_flags,
-        common.define_keras_flags
-    ]
+    flag_methods = [ctl_common.define_ctl_flags, common.define_keras_flags]
 
     super(Resnet50CtlBenchmarkBase, self).__init__(
         output_dir=output_dir,
@@ -228,7 +228,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_amp')
-    FLAGS.batch_size = 256 
+    FLAGS.batch_size = 256
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
     self._run_and_report_benchmark()
@@ -240,7 +240,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = 'default'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_amp')
-    FLAGS.batch_size = 256 
+    FLAGS.batch_size = 256
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.enable_xla = True
@@ -295,9 +295,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
 
   def fill_report_object(self, stats):
     super(Resnet50CtlBenchmarkBase, self).fill_report_object(
-        stats,
-        total_batch_size=FLAGS.batch_size,
-        log_steps=FLAGS.log_steps)
+        stats, total_batch_size=FLAGS.batch_size, log_steps=FLAGS.log_steps)
 
 
 class Resnet50CtlBenchmarkSynth(Resnet50CtlBenchmarkBase):
@@ -320,12 +318,14 @@ class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
-    def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
+    def_flags['data_dir'] = ('/readahead/200M/placer/prod/home/distbelief/'
+                             'imagenet-tensorflow/imagenet-2012-tfrecord')
     def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
+
 
 if __name__ == '__main__':
   tf.test.main()
