@@ -9,7 +9,8 @@ a variety of algorithms (many of them based on approximate Bayesian Neural
 Networks and Thompson sampling), and a number of real and syntethic data
 problems exhibiting a diverse set of properties.
 
-It is a Python library that uses [TensorFlow](https://www.tensorflow.org/).
+It is a [Python](https://www.python.org/)
+library that uses [TensorFlow](https://www.tensorflow.org/).
 
 We encourage contributors to add new approximate Bayesian Neural Networks or,
 more generally, contextual bandits algorithms to the library. Also, we would
@@ -18,11 +19,13 @@ in this front too!
 
 Please, use the following when citing the code or the paper:
 
-```
-@article{riquelme2018deep, title={Deep Bayesian Bandits Showdown: An Empirical
-Comparison of Bayesian Deep Networks for Thompson Sampling},
-author={Riquelme, Carlos and Tucker, George and Snoek, Jasper},
-journal={International Conference on Learning Representations, ICLR.}, year={2018}}
+```latex
+@article{riquelme2018deep,
+    title={{Deep Bayesian Bandits Showdown: An Empirical Comparison of Bayesian Deep Networks for Thompson Sampling}},
+    author={Riquelme, Carlos and Tucker, George and Snoek, Jasper},
+    journal={International Conference on Learning Representations, ICLR.},
+    year={2018}
+}
 ```
 
 **Contact**. This repository is maintained by [Carlos Riquelme](http://rikel.me) ([rikel](https://github.com/rikel)). Feel free to reach out directly at [rikel@google.com](mailto:rikel@google.com) with any questions or comments.
@@ -92,8 +95,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     with epsilon-greedy exploration). The algorithm is implemented in
     *linear_full_posterior_sampling.py*, and it is instantiated as follows:
 
-    ```
-        linear_full = LinearFullPosteriorSampling('MyLinearTS', my_hparams)
+    ```python
+    linear_full = LinearFullPosteriorSampling('MyLinearTS', my_hparams)
     ```
 
 2.  **Neural Linear**. We introduce an algorithm we call Neural Linear, which
@@ -107,8 +110,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     in *neural_linear_sampling.py*, and we create an algorithm instance like
     this:
 
-    ```
-        neural_linear = NeuralLinearPosteriorSampling('MyNLinear', my_hparams)
+    ```python
+    neural_linear = NeuralLinearPosteriorSampling('MyNLinear', my_hparams)
     ```
 
 3.  **Neural Greedy**. Another standard benchmark is to train a neural network
@@ -121,8 +124,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     implemented in *neural_bandit_model.py*, and it is used together with
     *PosteriorBNNSampling* (defined in *posterior_bnn_sampling.py*) by calling:
 
-    ```
-      neural_greedy = PosteriorBNNSampling('MyNGreedy', my_hparams, 'RMSProp')
+    ```python
+    neural_greedy = PosteriorBNNSampling('MyNGreedy', my_hparams, 'RMSProp')
     ```
 
 4.  **Stochastic Variational Inference**, Bayes by Backpropagation. We implement
@@ -141,8 +144,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     and it is used together with *PosteriorBNNSampling* (defined in
     *posterior_bnn_sampling.py*) by calling:
 
-    ```
-        bbb = PosteriorBNNSampling('myBBB', my_hparams, 'Variational')
+    ```python
+    bbb = PosteriorBNNSampling('myBBB', my_hparams, 'Variational')
     ```
 
 5.  **Expectation-Propagation**, Black-box alpha-divergence minimization.
@@ -158,8 +161,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
 
     We create an instance of the algorithm like this:
 
-    ```
-        bb_adiv = PosteriorBNNSampling('MyEP', my_hparams, 'AlphaDiv')
+    ```python
+    bb_adiv = PosteriorBNNSampling('MyEP', my_hparams, 'AlphaDiv')
     ```
 
 6.  **Dropout**. Dropout is a training technique where the output of each neuron
@@ -172,8 +175,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     *use_dropout=True* and *keep_prob=p* where *p* takes the desired value in
     (0, 1). Then:
 
-    ```
-        dropout = PosteriorBNNSampling('MyDropout', my_hparams, 'RMSProp')
+    ```python
+    dropout = PosteriorBNNSampling('MyDropout', my_hparams, 'RMSProp')
     ```
 
 7.  **Monte Carlo Methods**. To be added soon.
@@ -193,8 +196,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     The algorithm is implemented in *bootstrapped_bnn_sampling.py*, and we
     instantiate it as (where *my_hparams* contains both **q** and **p**):
 
-    ```
-        bootstrap = BootstrappedBNNSampling('MyBoot', my_hparams)
+    ```python
+    bootstrap = BootstrappedBNNSampling('MyBoot', my_hparams)
     ```
 
 9.  **Parameter-Noise**. Another approach to approximate a distribution over
@@ -214,8 +217,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     The algorithm is implemented in *parameter_noise_sampling.py*, and we create
     an instance by calling:
 
-    ```
-        parameter_noise = ParameterNoiseSampling('MyParamNoise', my_hparams)
+    ```python
+    parameter_noise = ParameterNoiseSampling('MyParamNoise', my_hparams)
     ```
 
 10. **Gaussian Processes**. Another standard benchmark are Gaussian Processes,
@@ -229,8 +232,8 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     Our implementation is provided in *multitask_gp.py*, and it is instantiated
     as follows:
 
-    ```
-        gp = PosteriorBNNSampling('MyMultitaskGP', my_hparams, 'GP')
+    ```python
+    gp = PosteriorBNNSampling('MyMultitaskGP', my_hparams, 'GP')
     ```
 
 In the code snippet at the bottom, we show how to instantiate some of these
@@ -343,8 +346,8 @@ This library requires Tensorflow, Numpy, and Pandas.
 The file *example_main.py* provides a complete example on how to use the
 library. We run the code:
 
-```
-    python example_main.py
+```bash
+python example_main.py
 ```
 
 **Do not forget to** configure the routes to the data files at the top of *example_main.py*.
@@ -352,69 +355,68 @@ library. We run the code:
 For example, we can run the Mushroom bandit for 2000 contexts on a few
 algorithms as follows:
 
-```
-  # Problem parameters
-  num_contexts = 2000
+```python
+# Problem parameters
+num_contexts = 2000
 
-  # Choose data source among:
-  # {linear, sparse_linear, mushroom, financial, jester,
-  #  statlog, adult, covertype, census, wheel}
-  data_type = 'mushroom'
+# Choose data source among:
+# {linear, sparse_linear, mushroom, financial, jester,
+#  statlog, adult, covertype, census, wheel}
+data_type = 'mushroom'
 
-  # Create dataset
-  sampled_vals = sample_data(data_type, num_contexts)
-  dataset, opt_rewards, opt_actions, num_actions, context_dim = sampled_vals
+# Create dataset
+sampled_vals = sample_data(data_type, num_contexts)
+dataset, opt_rewards, opt_actions, num_actions, context_dim = sampled_vals
 
-  # Define hyperparameters and algorithms
-  hparams_linear = tf.contrib.training.HParams(num_actions=num_actions,
-                                               context_dim=context_dim,
-                                               a0=6,
-                                               b0=6,
-                                               lambda_prior=0.25,
-                                               initial_pulls=2)
+# Define hyperparameters and algorithms
+hparams_linear = tf.contrib.training.HParams(num_actions=num_actions,
+                                             context_dim=context_dim,
+                                             a0=6,
+                                             b0=6,
+                                             lambda_prior=0.25,
+                                             initial_pulls=2)
 
-  hparams_dropout = tf.contrib.training.HParams(num_actions=num_actions,
-                                                context_dim=context_dim,
-                                                init_scale=0.3,
-                                                activation=tf.nn.relu,
-                                                layer_sizes=[50],
-                                                batch_size=512,
-                                                activate_decay=True,
-                                                initial_lr=0.1,
-                                                max_grad_norm=5.0,
-                                                show_training=False,
-                                                freq_summary=1000,
-                                                buffer_s=-1,
-                                                initial_pulls=2,
-                                                optimizer='RMS',
-                                                reset_lr=True,
-                                                lr_decay_rate=0.5,
-                                                training_freq=50,
-                                                training_epochs=100,
-                                                keep_prob=0.80,
-                                                use_dropout=True)
+hparams_dropout = tf.contrib.training.HParams(num_actions=num_actions,
+                                              context_dim=context_dim,
+                                              init_scale=0.3,
+                                              activation=tf.nn.relu,
+                                              layer_sizes=[50],
+                                              batch_size=512,
+                                              activate_decay=True,
+                                              initial_lr=0.1,
+                                              max_grad_norm=5.0,
+                                              show_training=False,
+                                              freq_summary=1000,
+                                              buffer_s=-1,
+                                              initial_pulls=2,
+                                              optimizer='RMS',
+                                              reset_lr=True,
+                                              lr_decay_rate=0.5,
+                                              training_freq=50,
+                                              training_epochs=100,
+                                              keep_prob=0.80,
+                                              use_dropout=True)
 
-  ### Create hyper-parameter configurations for other algorithms
-    [...]
+### Create hyper-parameter configurations for other algorithms
+  [...]
 
-  algos = [
-      UniformSampling('Uniform Sampling', hparams),
-      PosteriorBNNSampling('Dropout', hparams_dropout, 'RMSProp'),
-      PosteriorBNNSampling('BBB', hparams_bbb, 'Variational'),
-      NeuralLinearPosteriorSampling('NeuralLinear', hparams_nlinear),
-      LinearFullPosteriorSampling('LinFullPost', hparams_linear),
-      BootstrappedBNNSampling('BootRMS', hparams_boot),
-      ParameterNoiseSampling('ParamNoise', hparams_pnoise),
-  ]
+algos = [
+    UniformSampling('Uniform Sampling', hparams),
+    PosteriorBNNSampling('Dropout', hparams_dropout, 'RMSProp'),
+    PosteriorBNNSampling('BBB', hparams_bbb, 'Variational'),
+    NeuralLinearPosteriorSampling('NeuralLinear', hparams_nlinear),
+    LinearFullPosteriorSampling('LinFullPost', hparams_linear),
+    BootstrappedBNNSampling('BootRMS', hparams_boot),
+    ParameterNoiseSampling('ParamNoise', hparams_pnoise),
+]
 
-  # Run contextual bandit problem
-  t_init = time.time()
-  results = run_contextual_bandit(context_dim, num_actions, dataset, algos)
-  _, h_rewards = results
+# Run contextual bandit problem
+t_init = time.time()
+results = run_contextual_bandit(context_dim, num_actions, dataset, algos)
+_, h_rewards = results
 
-  # Display results
-  display_results(algos, opt_rewards, opt_actions, h_rewards, t_init, data_type)
-
+# Display results
+display_results(algos, opt_rewards, opt_actions, h_rewards, t_init, data_type)
 ```
 
 The previous code leads to final results that look like:
