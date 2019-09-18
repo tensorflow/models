@@ -180,10 +180,10 @@ class TransformerTask(object):
       if not params["static_batch"]:
         raise ValueError("TPU requires static batch for input data.")
     else:
-      logging.info("Running transformer with num_gpus =", num_gpus)
+      logging.info("Running transformer with num_gpus = %d", num_gpus)
 
     if self.distribution_strategy:
-      logging.info("For training, using distribution strategy: ",
+      logging.info("For training, using distribution strategy: %s",
                    self.distribution_strategy)
     else:
       logging.info("Not using any distribution strategy.")
