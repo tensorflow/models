@@ -98,12 +98,21 @@ supported by Google Cloud TPU team yet.
 
 ## Process Datasets
 
-* Pre-training
+### Pre-training
 
 There is no change to generate pre-training data. Please use the script
 [`create_pretraining_data.py`](https://github.com/google-research/bert/blob/master/create_pretraining_data.py)
 inside [BERT research repo](https://github.com/google-research/bert) to get
 processed pre-training data.
+
+
+### Fine-tuning
+
+To prepare the fine-tuning data for final model training, use the
+[`create_finetuning_data.py`](./create_finetuning_data.py) script.  Resulting
+datasets in `tf_record` format and training meta data should be later passed to
+training or evaluation scripts. The task-specific arguments are described in
+following sections:
 
 * GLUE
 
@@ -112,16 +121,14 @@ Users can download the
 [this script](https://gist.github.com/W4ngatang/60c2bdb54d156a41194446737ce03e2e)
 and unpack it to some directory `$GLUE_DIR`.
 
-To prepare the fine-tuning data for final model training, use the
-`create_finetuning_data.py` script as shown below:
-
 ```shell
 export GLUE_DIR=~/glue
 export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16
 
 export TASK_NAME=MNLI
 export OUTPUT_DIR=gs://some_bucket/datasets
-python create_finetuning_data.py --input_data_dir=${GLUE_DIR}/${TASK_NAME}/ \
+python create_finetuning_data.py \
+ --input_data_dir=${GLUE_DIR}/${TASK_NAME}/ \
  --vocab_file=${BERT_BASE_DIR}/vocab.txt \
  --train_data_output_path=${OUTPUT_DIR}/${TASK_NAME}_train.tf_record \
  --eval_data_output_path=${OUTPUT_DIR}/${TASK_NAME}_eval.tf_record \
@@ -150,7 +157,8 @@ export SQUAD_VERSION=v1.1
 export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16
 export OUTPUT_DIR=gs://some_bucket/datasets
 
-python create_finetuning_data.py --squad_data_file=${SQUAD_DIR}/train-${SQUAD_VERSION}.json \
+python create_finetuning_data.py \
+ --squad_data_file=${SQUAD_DIR}/train-${SQUAD_VERSION}.json \
  --vocab_file=${BERT_BASE_DIR}/vocab.txt \
  --train_data_output_path=${OUTPUT_DIR}/squad_${SQUAD_VERSION}_train.tf_record \
  --meta_data_file_path=${OUTPUT_DIR}/squad_${SQUAD_VERSION}_meta_data \
