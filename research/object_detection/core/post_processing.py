@@ -883,9 +883,10 @@ def batch_multiclass_non_max_suppression(boxes,
       already selected boxes. It operates independently for each batch.
       Within each batch, it operates independently for each class for which
       scores are provided (via the scores field of the input box_list),
-      pruning boxes with score less than a provided threshold prior to applying NMS.
-      This operation is performed on *all* batches and *all* classes in the batch,
-      therefore any background classes should be removed prior to calling this function.
+      pruning boxes with score less than a provided threshold prior to applying
+      NMS. This operation is performed on *all* batches and *all* classes
+      in the batch, therefore any background classes should be removed prior to
+      calling this function.
       Masks and additional fields are not supported.
       See argument checks in the code below for unsupported arguments.
 
@@ -944,13 +945,13 @@ def batch_multiclass_non_max_suppression(boxes,
     with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
       (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
        batch_num_detections) = tf.image.combined_non_max_suppression(
-              boxes=boxes,
-              scores=scores,
-              max_output_size_per_class=max_size_per_class,
-              max_total_size=max_total_size,
-              iou_threshold=iou_thresh,
-              score_threshold=score_thresh,
-              pad_per_class=use_static_shapes)
+           boxes=boxes,
+           scores=scores,
+           max_output_size_per_class=max_size_per_class,
+           max_total_size=max_total_size,
+           iou_threshold=iou_thresh,
+           score_threshold=score_thresh,
+           pad_per_class=use_static_shapes)
       # Not supported by combined_non_max_suppression
       batch_nmsed_masks = None
       # Not supported by combined_non_max_suppression
