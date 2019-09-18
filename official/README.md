@@ -57,7 +57,7 @@ installable Official Models package. This is being tracked in
 **NOTE:** Please make sure to follow the steps in the
 [Requirements](#requirements) section.
 
-### Natural Language Processing:
+### Natural Language Processing
 
 *   [bert](nlp/bert): A powerful pre-trained language representation model:
     BERT, which stands for Bidirectional Encoder Representations from

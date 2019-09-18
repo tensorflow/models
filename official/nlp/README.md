@@ -6,8 +6,10 @@ Natural Language Processing (NLP).
 The library currently contains TensorFlow 2.x implementations, pre-trained
 model weights, usage scripts and conversion utilities for the following models:
 
-* Bert
+* [Bert](bert)
 
 * [XLNet](xlnet)
 
-* Transformer for translation
+* GPT2 (comming soon)
+
+* [Transformer for translation](../transformer)
