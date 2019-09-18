@@ -25,11 +25,11 @@ import time
 # pylint: disable=g-bad-import-order
 from absl import flags
 from absl.testing import flagsaver
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
-from official.bert.benchmark import benchmark_utils
-from official.bert.benchmark import squad_evaluate_v1_1
+from official.benchmark import bert_benchmark_utils as benchmark_utils
+from official.benchmark import squad_evaluate_v1_1
 from official.nlp.bert import run_squad
 from official.utils.misc import distribution_utils
 
@@ -82,7 +82,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _train_squad(self, use_ds=True, run_eagerly=False):
     """Runs BERT SQuAD training."""
-    assert tf.version.VERSION.startswith('2.')
+    tf.enable_v2_behavior()
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(use_ds)
 
@@ -95,7 +95,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _evaluate_squad(self, use_ds=True):
     """Runs BERT SQuAD evaluation."""
-    assert tf.version.VERSION.startswith('2.')
+    tf.enable_v2_behavior()
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(use_ds)
 

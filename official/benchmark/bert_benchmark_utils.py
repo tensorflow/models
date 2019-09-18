@@ -25,7 +25,7 @@ import time
 import numpy as np
 from absl import flags
 from absl.testing import flagsaver
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
