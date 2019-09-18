@@ -711,7 +711,7 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase,
       self.assertAllClose(nmsed_boxes, exp_nms_corners)
       self.assertAllClose(nmsed_scores, exp_nms_scores)
       self.assertAllClose(nmsed_classes, exp_nms_classes)
-      self.assertAllClose(num_detections, [3, 3])
+      self.assertListEqual(num_detections.tolist(), [3, 3])
 
 if __name__ == '__main__':
   tf.test.main()
