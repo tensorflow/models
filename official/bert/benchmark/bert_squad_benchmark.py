@@ -356,7 +356,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
         stats=summary,
         wall_time_sec=wall_time_sec,
         min_accuracy=0.900,
-        max_accuracy=0.908)
+        max_accuracy=0.920)
 
   def benchmark_1_gpu_eager(self):
     """Tests BERT SQuAD model accuracy with 1 GPU with eager execution."""
