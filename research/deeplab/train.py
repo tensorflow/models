@@ -463,6 +463,8 @@ def main(unused_argv):
           dataset.get_one_shot_iterator(), dataset.num_of_classes,
           dataset.ignore_label)
 
+      tf.Print(train_tensor)
+
       # Soft placement allows placing on CPU ops without GPU implementation.
       session_config = tf.ConfigProto(
           allow_soft_placement=True, log_device_placement=False)
