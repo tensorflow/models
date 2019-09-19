@@ -162,7 +162,7 @@ def main(unused_argv):
     tf.Print("DEBUG VALUE:", [mean_accuracy])
     # tf.Print("DEBUG VALUE EVAL:", [mean_accuracy.eval()])
     for num_class in range(dataset.num_of_classes):
-      tf.summary.scalar('mean_for_class_{}'.format(num_class), mean_accuracy[0][num_class])
+      tf.summary.scalar('mean_for_class_{}'.format(num_class), mean_accuracy[0])
 
     summary_op = tf.summary.merge_all()
     summary_hook = tf.contrib.training.SummaryAtEndHook(
