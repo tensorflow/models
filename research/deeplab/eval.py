@@ -153,11 +153,6 @@ def main(unused_argv):
         predictions, labels, dataset.num_of_classes, weights=weights)
     tf.summary.scalar(predictions_tag, miou)
 
-    summary_op = tf.summary.merge_all()
-    summary_hook = tf.contrib.training.SummaryAtEndHook(
-        log_dir=FLAGS.eval_logdir, summary_op=summary_op)
-    hooks = [summary_hook]
-
     total_loss = tf.losses.get_total_loss(add_regularization_losses=True)
     should_log = (0 == 0)
     total_loss = tf.cond(
@@ -165,6 +160,11 @@ def main(unused_argv):
         lambda: tf.Print(total_loss, [total_loss], 'Total loss is :'),
         lambda: total_loss)
     tf.summary.scalar('validation_total_loss', total_loss)
+
+    summary_op = tf.summary.merge_all()
+    summary_hook = tf.contrib.training.SummaryAtEndHook(
+        log_dir=FLAGS.eval_logdir, summary_op=summary_op)
+    hooks = [summary_hook]
 
     num_eval_iters = None
     if FLAGS.max_number_of_evaluations > 0:
