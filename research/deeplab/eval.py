@@ -153,17 +153,6 @@ def main(unused_argv):
         predictions, labels, dataset.num_of_classes, weights=weights)
     tf.summary.scalar(predictions_tag, miou)
 
-    mean_accuracy, update_up = tf.metrics.mean_per_class_accuracy(
-      labels,
-      predictions,
-      dataset.num_of_classes,
-      weights=weights
-    )
-    tf.Print("DEBUG VALUE:", [mean_accuracy])
-    tf.Print("DEBUG VALUE EVAL:", [mean_accuracy.eval()])
-    for num_class in range(dataset.num_of_classes):
-      tf.summary.scalar('mean_for_class_{}'.format(num_class), mean_accuracy.eval()[num_class])
-
     summary_op = tf.summary.merge_all()
     summary_hook = tf.contrib.training.SummaryAtEndHook(
         log_dir=FLAGS.eval_logdir, summary_op=summary_op)
