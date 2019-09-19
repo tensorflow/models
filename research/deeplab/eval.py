@@ -163,12 +163,14 @@ def main(unused_argv):
     # for num_class in range(dataset.num_of_classes):
     #   tf.summary.scalar('mean_for_class_{}'.format(num_class), mean_accuracy)
 
-    root_mean_squared_error, update_op = tf.summary.root_mean_squared_error(
+    root_mean_squared_error, update_op = tf.metrics.root_mean_squared_error(
       labels,
       predictions,
       weights=weights
     )
     tf.summary.scalar('root square error', root_mean_squared_error)
+
+
     
     summary_op = tf.summary.merge_all()
     summary_hook = tf.contrib.training.SummaryAtEndHook(
