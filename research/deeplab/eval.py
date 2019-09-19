@@ -153,13 +153,13 @@ def main(unused_argv):
         predictions, labels, dataset.num_of_classes, weights=weights)
     tf.summary.scalar(predictions_tag, miou)
 
-    total_loss = tf.losses.get_total_loss(add_regularization_losses=True)
-    should_log = (0 == 0)
-    total_loss = tf.cond(
-        should_log,
-        lambda: tf.Print(total_loss, [total_loss], 'Total loss is :'),
-        lambda: total_loss)
-    tf.summary.scalar('validation_total_loss', total_loss)
+    mean_accuracy, update_up = tf.metrics.mean_per_class_accuracy(
+      labels,
+      predictions,
+      dataset.num_of_classes,
+      weights=weights
+    )
+    tf.summary.scalar('validation_total_loss', mean_accuracy)
 
     summary_op = tf.summary.merge_all()
     summary_hook = tf.contrib.training.SummaryAtEndHook(
