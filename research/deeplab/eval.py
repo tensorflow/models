@@ -158,6 +158,13 @@ def main(unused_argv):
         log_dir=FLAGS.eval_logdir, summary_op=summary_op)
     hooks = [summary_hook]
 
+    total_loss = tf.losses.get_total_loss(add_regularization_losses=True)
+    total_loss = tf.cond(
+        True,
+        lambda: tf.Print(total_loss, [total_loss], 'Total loss is :'),
+        lambda: total_loss)
+    tf.summary.scalar('validation_total_loss', total_loss)
+
     num_eval_iters = None
     if FLAGS.max_number_of_evaluations > 0:
       num_eval_iters = FLAGS.max_number_of_evaluations
