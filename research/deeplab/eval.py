@@ -159,8 +159,9 @@ def main(unused_argv):
     hooks = [summary_hook]
 
     total_loss = tf.losses.get_total_loss(add_regularization_losses=True)
+    should_log = math_ops.equal(0, 0)
     total_loss = tf.cond(
-        True,
+        should_log,
         lambda: tf.Print(total_loss, [total_loss], 'Total loss is :'),
         lambda: total_loss)
     tf.summary.scalar('validation_total_loss', total_loss)
