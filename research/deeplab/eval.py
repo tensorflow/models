@@ -153,22 +153,22 @@ def main(unused_argv):
         predictions, labels, dataset.num_of_classes, weights=weights)
     tf.summary.scalar(predictions_tag, miou)
 
-    mean_accuracy, update_up = tf.metrics.mean_per_class_accuracy(
+    # mean_accuracy, update_up = tf.metrics.mean_per_class_accuracy(
+    #   labels,
+    #   predictions,
+    #   dataset.num_of_classes,
+    #   weights=weights
+    # )
+    # tf.Print("DEBUG VALUE:", [mean_accuracy])
+    # for num_class in range(dataset.num_of_classes):
+    #   tf.summary.scalar('mean_for_class_{}'.format(num_class), mean_accuracy)
+
+    root_mean_squared_error, update_op = tf.summary.root_mean_squared_error(
       labels,
       predictions,
-      dataset.num_of_classes,
       weights=weights
     )
-    tf.Print("DEBUG VALUE:", [mean_accuracy])
-    # tf.Print("DEBUG VALUE EVAL:", [mean_accuracy.eval()])
-    total_loss = tf.cond(
-        True,
-        lambda: tf.Print(mean_accuracy, [mean_accuracy], 'mean_accuracy :'),
-        lambda: mean_accuracy)
-    # for num_class in range(dataset.num_of_classes):
-    #   tf.summary.scalar('mean_for_class_{}'.format(num_class), mean_accuracy[0])
-
-    tf.summary.scalar(total_loss)
+    tf.summary.scalar('root square error', root_mean_squared_error)
     
     summary_op = tf.summary.merge_all()
     summary_hook = tf.contrib.training.SummaryAtEndHook(
