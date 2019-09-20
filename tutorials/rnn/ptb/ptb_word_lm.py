@@ -280,7 +280,7 @@ class PTBModel(object):
             base_variable_scope="Model/RNN")
         tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, params_saveable)
     self._cost = tf.get_collection_ref(util.with_prefix(self._name, "cost"))[0]
-    num_replicas = FLAGS.num_gpus if self._name == "Train" else 1
+    num_replicas = max(1, FLAGS.num_gpus) if self._name == "Train" else 1
     self._initial_state = util.import_state_tuples(
         self._initial_state, self._initial_state_name, num_replicas)
     self._final_state = util.import_state_tuples(
