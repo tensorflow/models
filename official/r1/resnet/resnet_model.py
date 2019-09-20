@@ -480,6 +480,65 @@ class Model(object):
     return tf.compat.v1.variable_scope('resnet_model',
                                        custom_getter=self._custom_dtype_getter)
 
+  def _mixup(self,x,t):
+
+      if self.mixup_alpha is not None:
+          nbatch = self.batch_size
+          tt = tf.one_hot(t,self.num_classes)
+          alpha = self.mixup_alpha
+          sub_tt = tf.subtract(self.prior_tt,self.tt_first)
+          is_first = tf.equal(tf.norm(sub_tt),0)
+
+          mixup_x, mixup_tt, x_update, t_update = tf.cond(is_first,lambda : self.is_first_time(x,tt,nbatch,alpha),lambda: self.not_first_time(x,tt,nbatch,alpha))
+        
+  def split_and_gather(self,x, top,left,bottom,right):
+
+      x1 = tf.slice(x,[0,0,0],[top,224,3])
+      x2 = tf.slice(x,[top,0,0],[bottom-top,224,3])
+      x3 = tf.slice(x,[bottom,0,0],[224-bottom,224,3])
+
+      x4 = tf.slice(x2,[0,0,0],[bottom-top,left,3])
+      x5 = tf.slice(x2,[0,left,0],[bottom-top,right-left,3])
+      x6 = tf.slice(x2,[0,right,0],[bottom-top,224-right,3])
+
+      x5 = tf.constant(0,shape=[bottom-top,right-left,3],dtype=tf.float32)
+      new_x2 = tf.concat([x4,x5,x6],axis = 1)
+      new_x = tf.concat([x1,new_x2,x3],axis = 0)
+
+      return new_x
+
+  def _random_erase(self, x, area_rl, area_rh, aspect_rl, rate):
+      n, h, w, _ = x.shape
+      n = self.batch_size
+      area_size = int(h * w)
+      new_x_slice = []
+      for i in range(n):
+          if random.uniform(0, 1) > rate:
+              new_x_slice.append(x[i])
+              continue
+          erase_area_size = random.uniform(area_rl, area_rh) * area_size
+          aspect_ratio = random.uniform(aspect_rl, 1.0)
+          erase_h = int(math.sqrt(erase_area_size * aspect_ratio) + .5)
+          erase_w = int(math.sqrt(erase_area_size / aspect_ratio) + .5)
+          if random.randint(0, 1):
+              erase_h, erase_w = erase_w, erase_h
+          erase_h = min(erase_h, h)
+          erase_w = min(erase_w, w)
+          top = random.randint(0, max(h - erase_h - 1, 0))
+          left = random.randint(0, max(w - erase_w - 1, 0))
+          bottom = top + erase_h
+          right = left + erase_w
+          bottom = min(bottom, h)
+          right = min(right, w)
+          new_x_slice.append(self.split_and_gather(x[i],top,left,bottom,right))
+      new_x = new_x_slice[0]
+      new_x = tf.reshape(new_x,shape=[1,224,224,3])
+      for xi in new_x_slice[1:]:
+          xi = tf.reshape(xi,shape=[1,224,224,3])
+          new_x = tf.concat([new_x,xi],axis=0)
+
+      return new_x
+
   def __call__(self, inputs, training):
     """Add operations to classify a batch of input images.
 
