@@ -22,7 +22,7 @@ import os
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow.google.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
