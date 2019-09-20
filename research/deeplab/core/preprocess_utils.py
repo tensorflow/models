@@ -16,6 +16,11 @@
 """Utility functions related to preprocessing inputs."""
 import tensorflow as tf
 import numpy as np
+import PIL.Image as Image
+import PIL.ImageColor as ImageColor
+import PIL.ImageDraw as ImageDraw
+import PIL.ImageFont as ImageFont
+import cv2 as cv2
 
 def flip_dim(tensor_list, prob=0.5, dim=1):
   """Randomly flips a dimension of the given tensor.
@@ -281,16 +286,65 @@ def random_crop(image_list, crop_height, crop_width):
   # generate random numbers at graph eval time, unlike the latter which
   # generates random numbers at graph definition time.
   with tf.control_dependencies(asserts):
-    max_offset_height = tf.reshape(image_height - crop_height + 1, [])
-    max_offset_width = tf.reshape(image_width - crop_width + 1, [])
+    max_offset_height = tf.reshape(int(image_height/2) - crop_height + 1, [])
+    max_offset_width = tf.reshape(int(image_width/2) - crop_width + 1, [])
   offset_height = tf.random_uniform(
-      [], maxval=max_offset_height, dtype=tf.int32)
+      [], minval=int(image_height*0.2), maxval=max_offset_height, dtype=tf.int32)
   offset_width = tf.random_uniform(
-      [], maxval=max_offset_width, dtype=tf.int32)
+      [], minval=int(image_width*0.2), maxval=max_offset_width, dtype=tf.int32)
 
   return [_crop(image, offset_height, offset_width,
                 crop_height, crop_width) for image in image_list]
 
+def get_random_number(shape = [1], minval=0, maxval=1):
+  return np.random.uniform(minval, maxval, shape)
+
+def add_transparent_rectangle(image, label, color='white'):
+  rec_offset_x = int(get_random_number([1], 0, int(image.shape[0] / 2)))
+  rec_offset_y = int(get_random_number([1], 0, int(image.shape[1] / 2)))
+  rec_width = int(get_random_number([1], 130, image.shape[0] - rec_offset_x))
+  rec_height = int(get_random_number([1], 130, image.shape[1] - rec_offset_y))
+  alpha = get_random_number([1], 0.01, 0.99)  
+  rectangle_overlay = image.copy()
+  output = image.copy()
+  cv2.rectangle(rectangle_overlay, (rec_offset_x, rec_offset_y), (rec_offset_x + rec_width, rec_offset_y + rec_height), (255, 255, 255), -1)
+  cv2.addWeighted(rectangle_overlay, alpha, output, 1 - alpha, 0, output)
+  image = output
+  return image, label
+
+def add_perlin_noise(image, label):
+  shape = image.shape
+  scale = 100.0
+  octaves = 6
+  persistence = 0.5
+  lacunarity = 2
+
+  alpha = get_random_number([1], 0.1, 0.5)
+
+  output = image.copy()
+  world = np.zeros(image.shape)
+  for i in range(shape[0]):
+      for j in range(shape[1]):
+          world[i][j] = noise.pnoise2(i/scale, 
+                                      j/scale, 
+                                      octaves=octaves, 
+                                      persistence=persistence, 
+                                      lacunarity=lacunarity, 
+                                      repeatx=shape[0], 
+                                      repeaty=shape[1], 
+                                      base=0)
+  world = np.array(sc.misc.toimage(world))
+  cv2.addWeighted(world, alpha, output, 1 - alpha, 0, output)
+  image = output
+  return image, label
+
+def adjust_brightness(image_list):
+  delta = get_random_number([1], 0, 1)
+  image_list = [tf.image.adjust_brightness(image, delta)
+          for image in image_list]
+  delta = get_random_number([1], 0, 1)
+  return [tf.image.adjust_contrast(image, delta)
+          for image in image_list]
 
 def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   """Gets a random scale value.

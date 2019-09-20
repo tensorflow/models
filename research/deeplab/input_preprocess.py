@@ -22,6 +22,7 @@ from deeplab.core import preprocess_utils
 # The probability of flipping the images and labels
 # left-right during training
 _PROB_OF_FLIP = 0.5
+_AUG_PROB = 0.25
 
 
 def preprocess_image_and_label(image,
@@ -124,13 +125,20 @@ def preprocess_image_and_label(image,
   if label is not None:
     processed_image, label = preprocess_utils.random_crop(
         [processed_image, label], crop_height, crop_width)
-    
-  # if is_training and label is not None:
-  #   processed_image, label = preprocess_utils.randomly_rotate(
-  #     processed_image, label
-  #   )
 
-  processed_image.set_shape([crop_height, crop_width, 3])
+  processed_image.set_shape([crop_height, crop_width, 3])  
+
+  if is_training and tf.random.uniform([1], maxval=1) < _AUG_PROB:
+    processed_image, label = preprocess_utils.adjust_brightness(
+      [processed_image, label])
+    
+  if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
+    processed_image, label = preprocess_utils.add_transparent_rectangle(
+      processed_image, label)
+
+  if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
+    processed_image, label = preprocess_utils.add_perlin_noise(
+      processed_image, label)
 
   if label is not None:
     label.set_shape([crop_height, crop_width, 1])
