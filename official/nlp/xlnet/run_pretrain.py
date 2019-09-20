@@ -111,12 +111,6 @@ def main(unused_argv):
   model_fn = functools.partial(get_pretrainxlnet_model, model_config,
                                run_config)
 
-  def logits_init_fn():
-    return tf.zeros(
-        shape=(FLAGS.num_predict, input_meta_data["batch_size_per_core"],
-               FLAGS.d_model),
-        dtype=tf.float32)
-
   with tf.device(get_primary_cpu_task(use_remote_tpu)):
     training_utils.train(
         strategy=strategy,
@@ -124,7 +118,6 @@ def main(unused_argv):
         input_meta_data=input_meta_data,
         eval_fn=None,
         metric_fn=None,
-        logits_init_fn=logits_init_fn,
         train_input_fn=train_input_fn,
         test_input_fn=None,
         init_checkpoint=FLAGS.init_checkpoint,

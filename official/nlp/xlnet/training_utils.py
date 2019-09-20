@@ -66,7 +66,6 @@ def train(
     strategy: tf.distribute.Strategy,
     model_fn: Callable,
     input_meta_data: Dict,
-    logits_init_fn: Callable[[], tf.Tensor],
     train_input_fn: Callable,
     total_training_steps: int,
     steps_per_epoch: int,
@@ -79,7 +78,8 @@ def train(
     test_input_fn: Optional[Callable] = None,
     init_checkpoint: Optional[Text] = None,
     model_dir: Optional[Text] = None,
-    save_steps: Optional[int] = None):
+    save_steps: Optional[int] = None,
+    run_eagerly: Optional[bool] = False):
   """Runs customized training.
 
   Args:
@@ -87,7 +87,6 @@ def train(
       model_fn: The function returns a keras.Model.
       input_meta_data: A dictionary of params: `mem_len`, `lr_layer_decay_rate`,
         `n_layer`, `batch_size_per_core` and `d_model`.
-      logits_init_fn: Function creates a dummy logits tensor.
       train_input_fn: Function returns a tf.data.Dataset used for training.
       total_training_steps: Number of steps to train in total.
       steps_per_epoch: Number of steps to run per epoch. At the end of each
@@ -110,6 +109,7 @@ def train(
       model_dir: The directory of model (checkpoints, summaries).
       save_steps: The frequency to save checkpoints. Every save_steps, we save a
         model checkpoint.
+      run_eagerly: Whether to run training eagerly.
 
   Returns:
       Last training step logits if training happens, otherwise returns None.
@@ -117,14 +117,13 @@ def train(
     TypeError: if model directory is not specified.
   """
   required_arguments = [
-      logits_init_fn, train_input_fn, total_training_steps, steps_per_epoch,
-      steps_per_loop, optimizer, learning_rate_fn
+      train_input_fn, total_training_steps, steps_per_epoch, steps_per_loop,
+      optimizer, learning_rate_fn
   ]
   if [arg for arg in required_arguments if arg is None]:
-    raise ValueError(
-        "`logits_init_fn`, `train_input_fn`, `total_training_steps`, "
-        "`steps_per_epoch`, `steps_per_loop`, `optimizer` and "
-        "`learning_rate_fn` are required parameters.")
+    raise ValueError("`train_input_fn`, `total_training_steps`, "
+                     "`steps_per_epoch`, `steps_per_loop`, `optimizer` and "
+                     "`learning_rate_fn` are required parameters.")
   if not model_dir:
     raise TypeError("Model directory must be specified.")
   # pylint: disable=protected-access
@@ -198,11 +197,8 @@ def train(
 
       optimizer.apply_gradients(zip(clipped, tvars))
       if input_meta_data["mem_len"] > 0:
-        return mem, logits
-      else:
-        return logits
+        return mem
 
-    @tf.function
     def train_steps(iterator, steps):
       """Performs distributed training steps in a loop.
 
@@ -235,20 +231,20 @@ def train(
             mems.append(zeros)
         return mems
 
-      logits = strategy.experimental_run_v2(logits_init_fn)
       if input_meta_data["mem_len"] > 0:
         mem = strategy.experimental_run_v2(cache_fn)
         for _ in tf.range(steps):
-          mem, logits = strategy.experimental_run_v2(
+          mem = strategy.experimental_run_v2(
               _replicated_step, args=(
                   next(iterator),
                   mem,
               ))
       else:
         for _ in tf.range(steps):
-          logits = strategy.experimental_run_v2(
-              _replicated_step, args=(next(iterator),))
-      return logits
+          strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+
+    if not run_eagerly:
+      train_steps = tf.function(train_steps)
 
     logging.info("Start training...")
     checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
@@ -261,15 +257,14 @@ def train(
 
     current_step = optimizer.iterations.numpy()
     checkpoint_name = "xlnet_step_{step}.ckpt"
-    logits = None
+
     while current_step < total_training_steps:
       train_loss_metric.reset_states()
       if train_metric:
         train_metric.reset_states()
 
       steps = _steps_to_run(current_step, steps_per_epoch, steps_per_loop)
-      logits = train_steps(train_iterator,
-                           tf.convert_to_tensor(steps, dtype=tf.int32))
+      train_steps(train_iterator, tf.convert_to_tensor(steps, dtype=tf.int32))
       current_step += steps
       train_loss = _float_metric_value(train_loss_metric)
       log_stream = "Train step: %d/%d  /  lr = %.9f  /  loss = %.7f" % (
@@ -311,4 +306,4 @@ def train(
       logging.info("Running final evaluation after training is complete.")
       eval_fn(model, current_step, eval_summary_writer)
 
-    return logits
+    return model

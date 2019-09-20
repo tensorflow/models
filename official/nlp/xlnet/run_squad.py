@@ -275,10 +275,6 @@ def main(unused_argv):
   model_fn = functools.partial(get_qaxlnet_model, model_config, run_config,
                                FLAGS.start_n_top, FLAGS.end_n_top)
 
-  def logits_init_fn():
-    return tf.zeros(
-        shape=(input_meta_data["batch_size_per_core"]), dtype=tf.float32)
-
   logging.info("start reading pickle file...")
   with tf.io.gfile.GFile(input_meta_data["test_feature_path"], "rb") as f:
     eval_features = pickle.load(f)
@@ -295,7 +291,6 @@ def main(unused_argv):
         input_meta_data=input_meta_data,
         eval_fn=eval_fn,
         metric_fn=None,
-        logits_init_fn=logits_init_fn,
         train_input_fn=train_input_fn,
         test_input_fn=test_input_fn,
         init_checkpoint=FLAGS.init_checkpoint,

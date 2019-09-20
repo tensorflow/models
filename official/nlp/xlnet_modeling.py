@@ -1028,7 +1028,6 @@ class PretrainingXLNetModel(tf.keras.Model):
 
     seg_ids = tf.transpose(features['seg_id'], [1, 0])
 
-    input_mask = None
     perm_mask = tf.transpose(features['perm_mask'], [1, 2, 0])
 
     target_mapping = tf.transpose(features['target_mapping'], [1, 2, 0])
@@ -1038,23 +1037,24 @@ class PretrainingXLNetModel(tf.keras.Model):
 
     # target mask for LM loss
     tgt_mask = tf.transpose(features['target_mask'], [1, 0])
-    mems = features['mems']
 
-    self.transformerxl_output, self.new_mems, self.lookup_table = self.transformerxl_model(
+    mems = features.get('mems', None)
+
+    transformerxl_output, self.new_mems, self.lookup_table = self.transformerxl_model(
         inp_k=input_ids,
         seg_id=seg_ids,
-        input_mask=input_mask,
+        input_mask=None,
         mems=mems,
         perm_mask=perm_mask,
         target_mapping=target_mapping,
         inp_q=inp_q)
     lm_loss = self.lmloss_layer(
-        hidden=self.transformerxl_output,
+        hidden=transformerxl_output,
         target=target,
         lookup_table=self.transformerxl_model.embedding_lookup.lookup_table,
         target_mask=tgt_mask)
     self.add_loss(lm_loss)
-    return self.new_mems, self.transformerxl_output
+    return self.new_mems, transformerxl_output
 
 
 class ClassificationXLNetModel(tf.keras.Model):
@@ -1117,17 +1117,17 @@ class ClassificationXLNetModel(tf.keras.Model):
 
     label = tf.reshape(features['label_ids'], [bsz_per_core])
 
-    mems = features['mems']
+    mems = features.get('mems', None)
 
-    self.transformerxl_output, self.new_mems, self.lookup_table = (
+    transformerxl_output, new_mems, self.lookup_table = (
         self.transformerxl_model(
             inp_k=input_ids, seg_id=seg_ids, input_mask=input_mask, mems=mems))
 
-    self.summary = self.summarization_layer(self.transformerxl_output)
+    self.summary = self.summarization_layer(transformerxl_output)
     per_example_loss, logits = self.cl_loss_layer(
         hidden=self.summary, labels=label)
     self.add_loss(tf.keras.backend.mean(per_example_loss))
-    return self.new_mems, logits
+    return new_mems, logits
 
 
 class LMLossLayer(tf.keras.layers.Layer):
@@ -1349,23 +1349,23 @@ class QAXLNetModel(tf.keras.Model):
     cls_index = tf.reshape(features['cls_index'], [-1])
     p_mask = features['p_mask']
 
-    self.transformerxl_output, self.new_mems, self.lookup_table = (
+    transformerxl_output, new_mems, self.lookup_table = (
         self.transformerxl_model(
             inp_k=input_ids, seg_id=seg_ids, input_mask=input_mask))
 
     if training:
       loss, logits = self.qa_loss_layer(
-          hidden=self.transformerxl_output,
+          hidden=transformerxl_output,
           p_mask=p_mask,
           cls_index=cls_index,
           start_positions=features['start_positions'],
           end_positions=features['end_positions'],
           is_impossible=features['is_impossible'])
       self.add_loss(loss)
-      return self.new_mems, logits
+      return new_mems, logits
     else:
       results = self.qa_loss_layer(
-          hidden=self.transformerxl_output, p_mask=p_mask, cls_index=cls_index)
+          hidden=transformerxl_output, p_mask=p_mask, cls_index=cls_index)
       return results
 
 

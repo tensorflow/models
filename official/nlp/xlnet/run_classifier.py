@@ -175,13 +175,6 @@ def main(unused_argv):
   input_meta_data["n_layer"] = FLAGS.n_layer
   input_meta_data["lr_layer_decay_rate"] = FLAGS.lr_layer_decay_rate
   input_meta_data["n_class"] = FLAGS.n_class
-  print("DEBUG: ", str(input_meta_data))
-
-  def logits_init_fn():
-    return tf.zeros(
-        shape=(input_meta_data["batch_size_per_core"],
-               input_meta_data["n_class"]),
-        dtype=tf.float32)
 
   with tf.device(get_primary_cpu_task(use_remote_tpu)):
     training_utils.train(
@@ -190,7 +183,6 @@ def main(unused_argv):
         input_meta_data=input_meta_data,
         eval_fn=eval_fn,
         metric_fn=get_metric_fn,
-        logits_init_fn=logits_init_fn,
         train_input_fn=train_input_fn,
         test_input_fn=test_input_fn,
         init_checkpoint=FLAGS.init_checkpoint,
