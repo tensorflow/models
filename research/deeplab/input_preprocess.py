@@ -128,7 +128,7 @@ def preprocess_image_and_label(image,
 
   processed_image.set_shape([crop_height, crop_width, 3])  
 
-  if is_training and tf.random.uniform([1], maxval=1) < _AUG_PROB:
+  if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
     processed_image, label = preprocess_utils.adjust_brightness(
       [processed_image, label])
     
