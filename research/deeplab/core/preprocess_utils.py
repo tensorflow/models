@@ -302,8 +302,8 @@ def get_random_number(shape = [1], minval=0, maxval=1):
 def add_transparent_rectangle(image, label, color='white'):
   rec_offset_x = int(get_random_number([1], 0, int(image.shape[0] / 2)))
   rec_offset_y = int(get_random_number([1], 0, int(image.shape[1] / 2)))
-  rec_width = int(get_random_number([1], 10.0, float(image.shape[0] - rec_offset_x)))
-  rec_height = int(get_random_number([1], 10.0, float(image.shape[1] - rec_offset_y)))
+  rec_width = int(get_random_number([1], maxval=float(image.shape[0] - rec_offset_x)))
+  rec_height = int(get_random_number([1], maxval=float(image.shape[1] - rec_offset_y)))
   alpha = get_random_number([1], 0.01, 0.99)  
   rectangle_overlay = tf.identify(image)
   output = tf.identify(image)
@@ -338,10 +338,7 @@ def add_perlin_noise(image, label):
 
 def adjust_brightness(image_list):
   delta = get_random_number([1], 0, 1)
-  image_list = [tf.image.adjust_brightness(image, delta)
-          for image in image_list]
-  delta = get_random_number([1], 0, 1)
-  return [tf.image.adjust_contrast(image, delta)
+  return [tf.image.adjust_brightness(image, delta)
           for image in image_list]
 
 def get_random_scale(min_scale_factor, max_scale_factor, step_size):
