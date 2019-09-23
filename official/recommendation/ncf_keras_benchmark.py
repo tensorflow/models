@@ -23,7 +23,7 @@ import time
 
 from absl import flags
 from absl.testing import flagsaver
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main

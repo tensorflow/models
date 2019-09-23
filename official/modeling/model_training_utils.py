@@ -22,7 +22,7 @@ import json
 import os
 
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from official.utils.misc import distribution_utils
 from official.utils.misc import tpu_lib
 

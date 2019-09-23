@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import math
 import six
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def pack_inputs(inputs):
