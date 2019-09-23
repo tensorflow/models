@@ -286,8 +286,8 @@ def random_crop(image_list, crop_height, crop_width):
   # generate random numbers at graph eval time, unlike the latter which
   # generates random numbers at graph definition time.
   with tf.control_dependencies(asserts):
-    max_offset_height = tf.reshape(int(image_height/2) - crop_height + 1, [])
-    max_offset_width = tf.reshape(int(image_width/2) - crop_width + 1, [])
+    max_offset_height = tf.reshape(image_height - crop_height + 1, [])
+    max_offset_width = tf.reshape(image_width - crop_width + 1, [])
   offset_height = tf.random_uniform(
       [], minval=int(image_height*0.2), maxval=max_offset_height, dtype=tf.int32)
   offset_width = tf.random_uniform(
