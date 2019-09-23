@@ -305,36 +305,31 @@ def add_transparent_rectangle(image, label, color='white'):
   rec_width = int(get_random_number([1], maxval=float(image.shape[0] - rec_offset_x)))
   rec_height = int(get_random_number([1], maxval=float(image.shape[1] - rec_offset_y)))
   alpha = get_random_number([1], 0.01, 0.99)  
-  rectangle_overlay = tf.identify(image)
-  output = tf.identify(image)
+  rectangle_overlay = np.zeros(int(image.shape[0]), int(image.shape[1]))
   cv2.rectangle(rectangle_overlay, (rec_offset_x, rec_offset_y), (rec_offset_x + rec_width, rec_offset_y + rec_height), (255, 255, 255), -1)
-  cv2.addWeighted(rectangle_overlay, alpha, output, 1 - alpha, 0, output)
-  image = output
+  rec_tensor = tf.convert_to_tensor(rectangle_overlay)
+  image = overlay_patch(image, rec_tensor, alpha=alpha)
   return image, label
 
-def add_perlin_noise(image, label):
-  shape = image.shape
-  scale = 100.0
-  octaves = 6
-  persistence = 0.5
-  lacunarity = 2
-
+def add_perlin_noise(perlin_noise, image, label):
   alpha = get_random_number([1], 0.1, 0.5)
-
-  world = np.zeros(image.shape)
-  for i in range(shape[0]):
-      for j in range(shape[1]):
-          world[i][j] = noise.pnoise2(i/scale, 
-                                      j/scale, 
-                                      octaves=octaves, 
-                                      persistence=persistence, 
-                                      lacunarity=lacunarity, 
-                                      repeatx=shape[0], 
-                                      repeaty=shape[1], 
-                                      base=0)
-  world = np.array(sc.misc.toimage(world))
-  cv2.addWeighted(world, alpha, image, 1 - alpha, 0, image)
+  image = overlay_patch(image, overlay_patch, alpha=alpha)
   return image, label
+
+def overlay_patch(img, patch, i=0, j=0, alpha=0.5):
+    img_shape = tf.shape(img)
+    img_rows, img_cols = img_shape[0], img_shape[1]
+    patch_shape = tf.shape(patch)
+    patch_rows, patch_cols = patch_shape[0], patch_shape[1]
+    i_end = i + patch_rows
+    j_end = j + patch_cols
+    # Mix patch: alpha from patch, minus alpha from image
+    overlay = alpha * (patch - img[i:i_end, j:j_end])
+    # Pad patch
+    overlay_pad = tf.pad(overlay, [[i, img_rows - i_end], [j, img_cols - j_end], [0, 0]])
+    # Make final image
+    img_overlay = img + overlay_pad
+    return img_overlay
 
 def adjust_brightness(image_list):
   delta = get_random_number([1], 0, 1)

@@ -24,6 +24,12 @@ from deeplab.core import preprocess_utils
 _PROB_OF_FLIP = 0.5
 _AUG_PROB = 0.25
 
+PERLIN_NOISE_IMAGE_TENSOR = tf.io.decode_png(
+  tf.read_file("/home/anton/image.png"),
+  channels=None,
+  dtype=tf.dtypes.uint8,
+  name=None
+)
 
 def preprocess_image_and_label(image,
                                label,
@@ -138,7 +144,7 @@ def preprocess_image_and_label(image,
 
   if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
     processed_image, label = preprocess_utils.add_perlin_noise(
-      processed_image, label)
+      preprocess_utils.random_crop(PERLIN_NOISE_IMAGE_TENSOR, crop_height, crop_width), processed_image, label)
 
   if label is not None:
     label.set_shape([crop_height, crop_width, 1])
