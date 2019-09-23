@@ -305,8 +305,8 @@ def add_transparent_rectangle(image, label, color='white'):
   rec_width = int(get_random_number([1], 130, image.shape[0] - rec_offset_x))
   rec_height = int(get_random_number([1], 130, image.shape[1] - rec_offset_y))
   alpha = get_random_number([1], 0.01, 0.99)  
-  rectangle_overlay = image.copy()
-  output = image.copy()
+  rectangle_overlay = tf.identify(image)
+  output = tf.identify(image)
   cv2.rectangle(rectangle_overlay, (rec_offset_x, rec_offset_y), (rec_offset_x + rec_width, rec_offset_y + rec_height), (255, 255, 255), -1)
   cv2.addWeighted(rectangle_overlay, alpha, output, 1 - alpha, 0, output)
   image = output
@@ -321,7 +321,6 @@ def add_perlin_noise(image, label):
 
   alpha = get_random_number([1], 0.1, 0.5)
 
-  output = image.copy()
   world = np.zeros(image.shape)
   for i in range(shape[0]):
       for j in range(shape[1]):
@@ -334,8 +333,7 @@ def add_perlin_noise(image, label):
                                       repeaty=shape[1], 
                                       base=0)
   world = np.array(sc.misc.toimage(world))
-  cv2.addWeighted(world, alpha, output, 1 - alpha, 0, output)
-  image = output
+  cv2.addWeighted(world, alpha, image, 1 - alpha, 0, image)
   return image, label
 
 def adjust_brightness(image_list):
