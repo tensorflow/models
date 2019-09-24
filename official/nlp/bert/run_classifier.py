@@ -90,7 +90,6 @@ def run_customized_training(strategy,
                             warmup_steps,
                             initial_lr,
                             init_checkpoint,
-                            use_remote_tpu=False,
                             custom_callbacks=None,
                             run_eagerly=False):
   """Run BERT classifier training using low-level API."""
@@ -151,7 +150,6 @@ def run_customized_training(strategy,
       eval_steps=eval_steps,
       init_checkpoint=init_checkpoint,
       metric_fn=metric_fn,
-      use_remote_tpu=use_remote_tpu,
       custom_callbacks=custom_callbacks,
       run_eagerly=run_eagerly)
 
@@ -201,7 +199,6 @@ def run_bert(strategy, input_meta_data):
   # Runs customized training loop.
   logging.info('Training using customized training loop TF 2.0 with distrubuted'
                'strategy.')
-  use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
   trained_model = run_customized_training(
       strategy,
       bert_config,
@@ -214,13 +211,11 @@ def run_bert(strategy, input_meta_data):
       warmup_steps,
       FLAGS.learning_rate,
       FLAGS.init_checkpoint,
-      use_remote_tpu=use_remote_tpu,
       run_eagerly=FLAGS.run_eagerly)
 
   if FLAGS.model_export_path:
-    with tf.device(tpu_lib.get_primary_cpu_task(use_remote_tpu)):
-      model_saving_utils.export_bert_model(
-          FLAGS.model_export_path, model=trained_model)
+    model_saving_utils.export_bert_model(
+        FLAGS.model_export_path, model=trained_model)
   return trained_model
 
 
@@ -238,7 +233,6 @@ def main(_):
   if FLAGS.strategy_type == 'mirror':
     strategy = tf.distribute.MirroredStrategy()
   elif FLAGS.strategy_type == 'tpu':
-    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
   else:

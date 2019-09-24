@@ -52,24 +52,14 @@ def get_pretrainxlnet_model(model_config, run_config):
   return model
 
 
-def get_primary_cpu_task(use_remote_tpu=False):
-  """Returns primary CPU task to which input pipeline Ops are put."""
-
-  # Remote Eager Borg job configures the TPU worker with job name 'worker'.
-  return "/job:worker" if use_remote_tpu else ""
-
-
 def main(unused_argv):
   del unused_argv
-  use_remote_tpu = False
   num_hosts = 1
   if FLAGS.strategy_type == "mirror":
     strategy = tf.distribute.MirroredStrategy()
   elif FLAGS.strategy_type == "tpu":
-    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
-    use_remote_tpu = True
     topology = FLAGS.tpu_topology.split("x")
     total_num_core = 2 * int(topology[0]) * int(topology[1])
     num_hosts = total_num_core // FLAGS.num_core_per_host
@@ -111,23 +101,22 @@ def main(unused_argv):
   model_fn = functools.partial(get_pretrainxlnet_model, model_config,
                                run_config)
 
-  with tf.device(get_primary_cpu_task(use_remote_tpu)):
-    training_utils.train(
-        strategy=strategy,
-        model_fn=model_fn,
-        input_meta_data=input_meta_data,
-        eval_fn=None,
-        metric_fn=None,
-        train_input_fn=train_input_fn,
-        test_input_fn=None,
-        init_checkpoint=FLAGS.init_checkpoint,
-        total_training_steps=total_training_steps,
-        steps_per_epoch=steps_per_epoch,
-        steps_per_loop=steps_per_loop,
-        optimizer=optimizer,
-        learning_rate_fn=learning_rate_fn,
-        model_dir=FLAGS.model_dir,
-        save_steps=FLAGS.save_steps)
+  training_utils.train(
+      strategy=strategy,
+      model_fn=model_fn,
+      input_meta_data=input_meta_data,
+      eval_fn=None,
+      metric_fn=None,
+      train_input_fn=train_input_fn,
+      test_input_fn=None,
+      init_checkpoint=FLAGS.init_checkpoint,
+      total_training_steps=total_training_steps,
+      steps_per_epoch=steps_per_epoch,
+      steps_per_loop=steps_per_loop,
+      optimizer=optimizer,
+      learning_rate_fn=learning_rate_fn,
+      model_dir=FLAGS.model_dir,
+      save_steps=FLAGS.save_steps)
 
 
 if __name__ == "__main__":

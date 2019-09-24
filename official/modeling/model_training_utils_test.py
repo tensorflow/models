@@ -152,7 +152,6 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
         eval_steps=10,
         init_checkpoint=None,
         metric_fn=metric_fn,
-        use_remote_tpu=False,
         custom_callbacks=None,
         run_eagerly=run_eagerly)
 

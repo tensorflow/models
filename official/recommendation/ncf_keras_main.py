@@ -43,7 +43,6 @@ from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 from official.utils.flags import core as flags_core
-from official.utils.misc import tpu_lib
 
 FLAGS = flags.FLAGS
 
@@ -254,84 +253,80 @@ def run_ncf(_):
         "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
-  use_remote_tpu = params["use_tpu"] and FLAGS.tpu
-  primary_cpu_task = tpu_lib.get_primary_cpu_task(use_remote_tpu)
+  (train_input_dataset, eval_input_dataset,
+   num_train_steps, num_eval_steps) = \
+    (ncf_input_pipeline.create_ncf_input_data(
+        params, producer, input_meta_data, strategy))
+  steps_per_epoch = None if generate_input_online else num_train_steps
 
-  with tf.device(primary_cpu_task):
-    (train_input_dataset, eval_input_dataset,
-     num_train_steps, num_eval_steps) = \
-      (ncf_input_pipeline.create_ncf_input_data(
-          params, producer, input_meta_data, strategy))
-    steps_per_epoch = None if generate_input_online else num_train_steps
-
-    with distribution_utils.get_strategy_scope(strategy):
-      keras_model = _get_keras_model(params)
-      optimizer = tf.keras.optimizers.Adam(
-          learning_rate=params["learning_rate"],
-          beta_1=params["beta1"],
-          beta_2=params["beta2"],
-          epsilon=params["epsilon"])
-      if FLAGS.dtype == "fp16":
-        optimizer = \
-          tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
-              optimizer,
-              loss_scale=flags_core.get_loss_scale(FLAGS,
-                                                   default_for_fp16="dynamic"))
-
-      if params["keras_use_ctl"]:
-        train_loss, eval_results = run_ncf_custom_training(
-            params,
-            strategy,
-            keras_model,
+  with distribution_utils.get_strategy_scope(strategy):
+    keras_model = _get_keras_model(params)
+    optimizer = tf.keras.optimizers.Adam(
+        learning_rate=params["learning_rate"],
+        beta_1=params["beta1"],
+        beta_2=params["beta2"],
+        epsilon=params["epsilon"])
+    if FLAGS.dtype == "fp16":
+      optimizer = \
+        tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
             optimizer,
-            callbacks,
-            train_input_dataset,
-            eval_input_dataset,
-            num_train_steps,
-            num_eval_steps,
-            generate_input_online=generate_input_online)
+            loss_scale=flags_core.get_loss_scale(FLAGS,
+                                                 default_for_fp16="dynamic"))
+
+    if params["keras_use_ctl"]:
+      train_loss, eval_results = run_ncf_custom_training(
+          params,
+          strategy,
+          keras_model,
+          optimizer,
+          callbacks,
+          train_input_dataset,
+          eval_input_dataset,
+          num_train_steps,
+          num_eval_steps,
+          generate_input_online=generate_input_online)
+    else:
+      # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
+      # a valid arg for this model. Also remove as a valid flag.
+      if FLAGS.force_v2_in_keras_compile is not None:
+        keras_model.compile(
+            optimizer=optimizer,
+            run_eagerly=FLAGS.run_eagerly,
+            experimental_run_tf_function=FLAGS.force_v2_in_keras_compile)
       else:
-        # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
-        # a valid arg for this model. Also remove as a valid flag.
-        if FLAGS.force_v2_in_keras_compile is not None:
-          keras_model.compile(
-              optimizer=optimizer,
-              run_eagerly=FLAGS.run_eagerly,
-              experimental_run_tf_function=FLAGS.force_v2_in_keras_compile)
-        else:
-          keras_model.compile(
-              optimizer=optimizer, run_eagerly=FLAGS.run_eagerly)
+        keras_model.compile(
+            optimizer=optimizer, run_eagerly=FLAGS.run_eagerly)
 
-        history = keras_model.fit(
-            train_input_dataset,
-            epochs=FLAGS.train_epochs,
-            steps_per_epoch=steps_per_epoch,
-            callbacks=callbacks,
-            validation_data=eval_input_dataset,
-            validation_steps=num_eval_steps,
-            verbose=2)
+      history = keras_model.fit(
+          train_input_dataset,
+          epochs=FLAGS.train_epochs,
+          steps_per_epoch=steps_per_epoch,
+          callbacks=callbacks,
+          validation_data=eval_input_dataset,
+          validation_steps=num_eval_steps,
+          verbose=2)
 
-        logging.info("Training done. Start evaluating")
+      logging.info("Training done. Start evaluating")
 
-        eval_loss_and_metrics = keras_model.evaluate(
-            eval_input_dataset, steps=num_eval_steps, verbose=2)
+      eval_loss_and_metrics = keras_model.evaluate(
+          eval_input_dataset, steps=num_eval_steps, verbose=2)
 
-        logging.info("Keras evaluation is done.")
+      logging.info("Keras evaluation is done.")
 
-        # Keras evaluate() API returns scalar loss and metric values from
-        # evaluation as a list. Here, the returned list would contain
-        # [evaluation loss, hr sum, hr count].
-        eval_hit_rate = eval_loss_and_metrics[1] / eval_loss_and_metrics[2]
+      # Keras evaluate() API returns scalar loss and metric values from
+      # evaluation as a list. Here, the returned list would contain
+      # [evaluation loss, hr sum, hr count].
+      eval_hit_rate = eval_loss_and_metrics[1] / eval_loss_and_metrics[2]
 
-        # Format evaluation result into [eval loss, eval hit accuracy].
-        eval_results = [eval_loss_and_metrics[0], eval_hit_rate]
+      # Format evaluation result into [eval loss, eval hit accuracy].
+      eval_results = [eval_loss_and_metrics[0], eval_hit_rate]
 
-        if history and history.history:
-          train_history = history.history
-          train_loss = train_history["loss"][-1]
+      if history and history.history:
+        train_history = history.history
+        train_loss = train_history["loss"][-1]
 
-    stats = build_stats(train_loss, eval_results, time_callback)
-    return stats
+  stats = build_stats(train_loss, eval_results, time_callback)
+  return stats
 
 
 def run_ncf_custom_training(params,
