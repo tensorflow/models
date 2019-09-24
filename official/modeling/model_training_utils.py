@@ -72,7 +72,7 @@ def _steps_to_run(current_step, steps_per_epoch, steps_per_loop):
     return steps_per_loop
 
 
-def _write_txt_summary(training_summary, model_dir):
+def write_txt_summary(training_summary, model_dir):
   """Writes a summary text file to record stats."""
   summary_path = os.path.join(model_dir, _SUMMARY_TXT)
   with tf.io.gfile.GFile(summary_path, 'wb') as f:
@@ -415,6 +415,6 @@ def run_customized_training_loop(
             train_metrics[0])
         training_summary['eval_metrics'] = _float_metric_value(eval_metrics[0])
 
-      _write_txt_summary(training_summary, model_dir)
+      write_txt_summary(training_summary, model_dir)
 
       return model

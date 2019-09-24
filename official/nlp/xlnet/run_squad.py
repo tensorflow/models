@@ -116,7 +116,8 @@ def run_evaluation(strategy,
     model: keras model object.
     step: current training step.
     eval_summary_writer: summary writer used to record evaluation metrics.
-
+  Returns:
+    A float metric, F1 score.
   """
 
   def _test_step_fn(inputs):
@@ -192,23 +193,23 @@ def run_evaluation(strategy,
   output_null_log_odds_file = os.path.join(input_meta_data["predict_dir"],
                                            "null_odds.json")
 
-  ret = squad_utils.write_predictions(
+  results = squad_utils.write_predictions(
       eval_examples, input_meta_data["eval_features"], cur_results,
       input_meta_data["n_best_size"], input_meta_data["max_answer_length"],
       output_prediction_file, output_nbest_file, output_null_log_odds_file,
       orig_data, input_meta_data["start_n_top"], input_meta_data["end_n_top"])
 
-  # Log current result
-
+  # Log current results.
   log_str = "Result | "
-  for key, val in ret.items():
+  for key, val in results.items():
     log_str += "{} {} | ".format(key, val)
   logging.info(log_str)
   if eval_summary_writer:
     with eval_summary_writer.as_default():
-      tf.summary.scalar("best_f1", ret["best_f1"], step=step)
-      tf.summary.scalar("best_exact", ret["best_exact"], step=step)
+      tf.summary.scalar("best_f1", results["best_f1"], step=step)
+      tf.summary.scalar("best_exact", results["best_exact"], step=step)
       eval_summary_writer.flush()
+  return results["best_f1"]
 
 
 def get_qaxlnet_model(model_config, run_config, start_n_top, end_n_top):
