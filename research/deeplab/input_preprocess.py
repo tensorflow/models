@@ -17,7 +17,7 @@
 import tensorflow as tf
 from deeplab.core import feature_extractor
 from deeplab.core import preprocess_utils
-
+import os 
 
 # The probability of flipping the images and labels
 # left-right during training
@@ -25,7 +25,7 @@ _PROB_OF_FLIP = 0.5
 _AUG_PROB = 0.25
 
 PERLIN_NOISE_IMAGE_TENSOR = tf.io.decode_image(
-  tf.read_file("/home/anton/image.png"),
+  tf.read_file(os.path.expanduser("~/satelite_seg/perlin_image.png")),
   channels=3,
   dtype=tf.dtypes.float32,
   expand_animations=False
@@ -142,11 +142,11 @@ def preprocess_image_and_label(image,
       processed_image, label
       )
 
-  # if is_training:
-  #   perlin_image = preprocess_utils.random_crop([PERLIN_NOISE_IMAGE_TENSOR], crop_height, crop_width)[0]
-  #   processed_image, label = preprocess_utils.add_perlin_noise(
-  #     perlin_image, processed_image, label
-  #     )
+  if is_training:
+    perlin_image = preprocess_utils.random_crop([PERLIN_NOISE_IMAGE_TENSOR], crop_height, crop_width)[0]
+    processed_image, label = preprocess_utils.add_perlin_noise(
+      perlin_image, processed_image, label
+      )
 
   processed_image.set_shape([crop_height, crop_width, 3])  
   if label is not None:
