@@ -836,7 +836,7 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
     return tf.image.crop_and_resize(
         image=box_masks_expanded,
         boxes=reverse_boxes,
-        box_ind=tf.range(num_boxes),
+        box_indices=tf.range(num_boxes),
         crop_size=[image_height, image_width],
         extrapolation_value=0.0)
   image_masks = tf.cond(
@@ -1092,5 +1092,3 @@ def gather_with_padding_values(input_tensor, indices, padding_value):
 
 EqualizationLossConfig = collections.namedtuple('EqualizationLossConfig',
                                                 ['weight', 'exclude_prefixes'])
-
-
