@@ -88,8 +88,7 @@ def _build_non_max_suppressor(nms_config):
                      'max_total_detections.')
   if nms_config.soft_nms_sigma < 0.0:
     raise ValueError('soft_nms_sigma should be non-negative.')
-  if nms_config.use_combined_nms:
-    if nms_config.use_class_agnostic_nms:
+  if nms_config.use_combined_nms and nms_config.use_class_agnostic_nms:
       raise ValueError('combined_nms does not support class_agnostic_nms')
 
   non_max_suppressor_fn = functools.partial(

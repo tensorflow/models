@@ -664,7 +664,7 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase,
       self.assertAllClose(num_detections, [1, 1])
 
   def test_combined_nms_with_batch_size_2(self):
-    """Test use_combined_nms"""
+    """Test use_combined_nms."""
     boxes = tf.constant([[[[0, 0, 0.1, 0.1], [0, 0, 0.1, 0.1]],
                           [[0, 0.01, 1, 0.11], [0, 0.6, 0.1, 0.7]],
                           [[0, -0.01, 0.1, 0.09], [0, -0.1, 0.1, 0.09]],

@@ -918,29 +918,29 @@ def batch_multiclass_non_max_suppression(boxes,
     if change_coordinate_frame:
       raise ValueError(
           'change_coordinate_frame (normalizing coordinates'
-          ' relative to clip_window) is not supported by combined_nms')
+          ' relative to clip_window) is not supported by combined_nms.')
     if num_valid_boxes is not None:
-      raise ValueError('num_valid_boxes is not supported by combined_nms')
+      raise ValueError('num_valid_boxes is not supported by combined_nms.')
     if masks is not None:
-      raise ValueError('masks is not supported by combined_nms')
+      raise ValueError('masks is not supported by combined_nms.')
     if soft_nms_sigma != 0.0:
-      raise ValueError('Soft NMS is not supported by combined_nms')
+      raise ValueError('Soft NMS is not supported by combined_nms.')
     if use_class_agnostic_nms:
-      raise ValueError('class-agnostic NMS is not supported by combined_nms')
+      raise ValueError('class-agnostic NMS is not supported by combined_nms.')
     if clip_window is not None:
       tf.compat.v1.logging.warning(
           'clip_window is not supported by combined_nms unless it is'
-          ' [0. 0. 1. 1.] for each image')
+          ' [0. 0. 1. 1.] for each image.')
     if additional_fields is not None:
       tf.compat.v1.logging.warning(
-          'additional_fields is not supported by combined_nms')
+          'additional_fields is not supported by combined_nms.')
     if parallel_iterations != 32:
       tf.compat.v1.logging.warning(
           'Number of batch items to be processed in parallel is'
-          ' not configurable by combined_nms')
+          ' not configurable by combined_nms.')
     if max_classes_per_detection > 1:
       tf.compat.v1.logging.warning(
-          'max_classes_per_detection is not configurable by combined_nms')
+          'max_classes_per_detection is not configurable by combined_nms.')
 
     with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
       (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
@@ -952,9 +952,9 @@ def batch_multiclass_non_max_suppression(boxes,
            iou_threshold=iou_thresh,
            score_threshold=score_thresh,
            pad_per_class=use_static_shapes)
-      # Not supported by combined_non_max_suppression
+      # Not supported by combined_non_max_suppression.
       batch_nmsed_masks = None
-      # Not supported by combined_non_max_suppression
+      # Not supported by combined_non_max_suppression.
       batch_nmsed_additional_fields = None
       return (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
               batch_nmsed_masks, batch_nmsed_additional_fields,
@@ -964,7 +964,7 @@ def batch_multiclass_non_max_suppression(boxes,
   num_classes = shape_utils.get_dim_as_int(scores.shape[2])
   if q != 1 and q != num_classes:
     raise ValueError('third dimension of boxes must be either 1 or equal '
-                     'to the third dimension of scores')
+                     'to the third dimension of scores.')
   if change_coordinate_frame and clip_window is None:
     raise ValueError('if change_coordinate_frame is True, then a clip_window'
                      'must be specified.')
