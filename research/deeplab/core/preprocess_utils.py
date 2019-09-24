@@ -21,6 +21,7 @@ import PIL.ImageColor as ImageColor
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import cv2 as cv2
+import scipy as sc
 
 def flip_dim(tensor_list, prob=0.5, dim=1):
   """Randomly flips a dimension of the given tensor.
@@ -300,20 +301,27 @@ def get_random_number(shape = [1], minval=0, maxval=1):
   return np.random.uniform(minval, maxval, shape)
 
 def add_transparent_rectangle(image, label, color='white'):
-  rec_offset_x = int(get_random_number([1], 0, int(image.shape[0] / 2)))
-  rec_offset_y = int(get_random_number([1], 0, int(image.shape[1] / 2)))
-  rec_width = int(get_random_number([1], maxval=float(image.shape[0] - rec_offset_x)))
-  rec_height = int(get_random_number([1], maxval=float(image.shape[1] - rec_offset_y)))
-  alpha = get_random_number([1], 0.01, 0.99)  
-  rectangle_overlay = np.zeros(int(image.shape[0]), int(image.shape[1]))
+  image_rows = int(image.shape[0])
+  image_cols = int(image.shape[1])
+  rec_offset_x = int(get_random_number([1], maxval=image_rows/2))
+  rec_offset_y = int(get_random_number([1], maxval=image_cols/2))
+  rec_width = int(get_random_number([1], maxval=image_rows - rec_offset_x))
+  rec_height = int(get_random_number([1], maxval=image_cols - rec_offset_y))
+  alpha = get_random_number([1], 0.01, 0.99) 
+  shape = (image_rows, image_cols, 3) 
+  rectangle_overlay = np.zeros(
+    shape
+  )
+  # patch = tf.placeholder_with_default(np.full(shape, 0, dtype='int32'), image.shape)
   cv2.rectangle(rectangle_overlay, (rec_offset_x, rec_offset_y), (rec_offset_x + rec_width, rec_offset_y + rec_height), (255, 255, 255), -1)
-  rec_tensor = tf.convert_to_tensor(rectangle_overlay)
-  image = overlay_patch(image, rec_tensor, alpha=alpha)
+  patch = tf.convert_to_tensor(rectangle_overlay, dtype='int32')
+
+  image = overlay_patch(image, rectangle_overlay, alpha=alpha)
   return image, label
 
 def add_perlin_noise(perlin_noise, image, label):
   alpha = get_random_number([1], 0.1, 0.5)
-  image = overlay_patch(image, overlay_patch, alpha=alpha)
+  image = overlay_patch(image, perlin_noise, alpha=alpha)
   return image, label
 
 def overlay_patch(img, patch, i=0, j=0, alpha=0.5):
@@ -329,6 +337,7 @@ def overlay_patch(img, patch, i=0, j=0, alpha=0.5):
     overlay_pad = tf.pad(overlay, [[i, img_rows - i_end], [j, img_cols - j_end], [0, 0]])
     # Make final image
     img_overlay = img + overlay_pad
+
     return img_overlay
 
 def adjust_brightness(image_list):

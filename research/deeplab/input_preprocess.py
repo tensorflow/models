@@ -24,11 +24,11 @@ from deeplab.core import preprocess_utils
 _PROB_OF_FLIP = 0.5
 _AUG_PROB = 0.25
 
-PERLIN_NOISE_IMAGE_TENSOR = tf.io.decode_png(
+PERLIN_NOISE_IMAGE_TENSOR = tf.io.decode_image(
   tf.read_file("/home/anton/image.png"),
-  channels=None,
-  dtype=tf.dtypes.uint8,
-  name=None
+  channels=3,
+  dtype=tf.dtypes.float32,
+  expand_animations=False
 )
 
 def preprocess_image_and_label(image,
@@ -132,20 +132,23 @@ def preprocess_image_and_label(image,
     processed_image, label = preprocess_utils.random_crop(
         [processed_image, label], crop_height, crop_width)
 
-  processed_image.set_shape([crop_height, crop_width, 3])  
 
-  if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
+  if is_training:
     processed_image, label = preprocess_utils.adjust_brightness(
       [processed_image, label])
-    
+
   if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
     processed_image, label = preprocess_utils.add_transparent_rectangle(
-      processed_image, label)
+      processed_image, label
+      )
 
-  if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
-    processed_image, label = preprocess_utils.add_perlin_noise(
-      preprocess_utils.random_crop(PERLIN_NOISE_IMAGE_TENSOR, crop_height, crop_width), processed_image, label)
+  # if is_training:
+  #   perlin_image = preprocess_utils.random_crop([PERLIN_NOISE_IMAGE_TENSOR], crop_height, crop_width)[0]
+  #   processed_image, label = preprocess_utils.add_perlin_noise(
+  #     perlin_image, processed_image, label
+  #     )
 
+  processed_image.set_shape([crop_height, crop_width, 3])  
   if label is not None:
     label.set_shape([crop_height, crop_width, 1])
 
