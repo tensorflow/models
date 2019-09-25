@@ -301,26 +301,22 @@ def get_random_number(shape = [1], minval=0, maxval=1):
   return np.random.uniform(minval, maxval, shape)
 
 def add_transparent_rectangle(image, label, color='white'):
+  image = tf.dtypes.cast(image,dtype='float32')
   image_rows = int(image.shape[0])
   image_cols = int(image.shape[1])
-  rec_offset_x = int(get_random_number([1], maxval=image_rows/2))
-  rec_offset_y = int(get_random_number([1], maxval=image_cols/2))
-  rec_width = int(get_random_number([1], maxval=image_rows - rec_offset_x))
-  rec_height = int(get_random_number([1], maxval=image_cols - rec_offset_y))
-  alpha = get_random_number([1], 0.01, 0.99) 
-  shape = (image_rows, image_cols, 3) 
-  rectangle_overlay = np.zeros(
-    shape
-  )
-  # patch = tf.placeholder_with_default(np.full(shape, 0, dtype='int32'), image.shape)
-  cv2.rectangle(rectangle_overlay, (rec_offset_x, rec_offset_y), (rec_offset_x + rec_width, rec_offset_y + rec_height), (255, 255, 255), -1)
-  patch = tf.convert_to_tensor(rectangle_overlay, dtype='int32')
-
-  image = overlay_patch(image, rectangle_overlay, alpha=alpha)
+  image_channels = int(image.shape[2])
+  rec_offset_rows = int(get_random_number([1], minval=image_rows/4, maxval=image_cols/2))
+  rec_offset_cols = int(get_random_number([1], minval=image_cols/4, maxval=image_cols/2))
+  rec_width = int(get_random_number([1], minval=20, maxval=image_rows - rec_offset_rows))
+  rec_height = int(get_random_number([1], minval=20, maxval=image_cols - rec_offset_cols))
+  alpha = get_random_number([1], 0, 0.3)
+  rectangle_overlay = np.full((rec_width, rec_height, image_channels), (255), dtype='float32')
+  patch = tf.convert_to_tensor(rectangle_overlay, dtype='float32')
+  image = overlay_patch(image, rectangle_overlay, rec_offset_rows, rec_offset_cols, alpha=alpha)
   return image, label
 
 def add_perlin_noise(perlin_noise, image, label):
-  alpha = get_random_number([1], 0.1, 0.5)
+  alpha = get_random_number([1], 0, 0.1)
   image = overlay_patch(image, perlin_noise, alpha=alpha)
   return image, label
 
