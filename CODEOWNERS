@@ -1,5 +1,5 @@
 * @tensorflow/tf-garden-team
-/official/ @tfboyd @guptapriya @rachellj218 @saberkun
+/official/ @guptapriya @rachellj218 @saberkun
 /official/bert @saberkun @hongjunChoi @rachellj218
 /research/adversarial_crypto/ @dave-andersen
 /research/adversarial_logit_pairing/ @AlexeyKurakin
@@ -64,5 +64,5 @@
 /samples/languages/java/ @asimshankar
 /tutorials/embedding/ @zffchen78 @a-dai
 /tutorials/image/ @sherrym @shlens
-/tutorials/image/cifar10_estimator/ @tfboyd @protoget
+/tutorials/image/cifar10_estimator/ @protoget
 /tutorials/rnn/ @lukaszkaiser @ebrevdo
