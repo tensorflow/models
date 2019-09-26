@@ -121,7 +121,7 @@ def preprocess_image_and_label(image,
         label, 0, 0, target_height, target_width, ignore_label)
 
   # Randomly crop the image and label.
-  if label is not None:
+  if is_training and label is not None:
     processed_image, label = preprocess_utils.random_crop(
         [processed_image, label], crop_height, crop_width)
 
