@@ -82,7 +82,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _train_squad(self, use_ds=True, run_eagerly=False):
     """Runs BERT SQuAD training."""
-    tf.enable_v2_behavior()
+    assert tf.version.VERSION.startswith('2.')
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(use_ds)
 
@@ -95,7 +95,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _evaluate_squad(self, use_ds=True):
     """Runs BERT SQuAD evaluation."""
-    tf.enable_v2_behavior()
+    assert tf.version.VERSION.startswith('2.')
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(use_ds)
 
