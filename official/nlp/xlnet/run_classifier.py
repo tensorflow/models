@@ -65,6 +65,8 @@ def run_evaluation(strategy,
       them when calculating the accuracy. For the reason that there will be
       dynamic-shape tensor, we first collect logits, labels and masks from TPU
       and calculate the accuracy via numpy locally.
+  Returns:
+    A float metric, accuracy.
   """
 
   def _test_step_fn(inputs):
@@ -108,12 +110,14 @@ def run_evaluation(strategy,
             np.argmax(merged_logits[real_index], axis=-1),
             merged_labels[real_index]))
     total += np.shape(real_index)[-1]
+  accuracy = float(correct) / float(total)
   logging.info("Train step: %d  /  acc = %d/%d = %f", step, correct, total,
-               float(correct) / float(total))
+               accuracy)
   if eval_summary_writer:
     with eval_summary_writer.as_default():
       tf.summary.scalar("eval_acc", float(correct) / float(total), step=step)
       eval_summary_writer.flush()
+  return accuracy
 
 
 def get_metric_fn():
@@ -122,23 +126,13 @@ def get_metric_fn():
   return train_acc_metric
 
 
-def get_primary_cpu_task(use_remote_tpu=False):
-  """Returns primary CPU task to which input pipeline Ops are put."""
-
-  # Remote Eager Borg job configures the TPU worker with job name 'worker'.
-  return "/job:worker" if use_remote_tpu else ""
-
-
 def main(unused_argv):
   del unused_argv
-  use_remote_tpu = False
   if FLAGS.strategy_type == "mirror":
     strategy = tf.distribute.MirroredStrategy()
   elif FLAGS.strategy_type == "tpu":
-    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
-    use_remote_tpu = True
   else:
     raise ValueError("The distribution strategy type is not supported: %s" %
                      FLAGS.strategy_type)
@@ -176,22 +170,22 @@ def main(unused_argv):
   input_meta_data["lr_layer_decay_rate"] = FLAGS.lr_layer_decay_rate
   input_meta_data["n_class"] = FLAGS.n_class
 
-  with tf.device(get_primary_cpu_task(use_remote_tpu)):
-    training_utils.train(
-        strategy=strategy,
-        model_fn=model_fn,
-        input_meta_data=input_meta_data,
-        eval_fn=eval_fn,
-        metric_fn=get_metric_fn,
-        train_input_fn=train_input_fn,
-        test_input_fn=test_input_fn,
-        init_checkpoint=FLAGS.init_checkpoint,
-        total_training_steps=total_training_steps,
-        steps_per_epoch=steps_per_epoch,
-        steps_per_loop=steps_per_loop,
-        optimizer=optimizer,
-        learning_rate_fn=learning_rate_fn,
-        model_dir=FLAGS.model_dir)
+  training_utils.train(
+      strategy=strategy,
+      model_fn=model_fn,
+      input_meta_data=input_meta_data,
+      eval_fn=eval_fn,
+      metric_fn=get_metric_fn,
+      train_input_fn=train_input_fn,
+      test_input_fn=test_input_fn,
+      init_checkpoint=FLAGS.init_checkpoint,
+      total_training_steps=total_training_steps,
+      steps_per_epoch=steps_per_epoch,
+      steps_per_loop=steps_per_loop,
+      optimizer=optimizer,
+      learning_rate_fn=learning_rate_fn,
+      model_dir=FLAGS.model_dir,
+      save_steps=1000)
 
 
 if __name__ == "__main__":

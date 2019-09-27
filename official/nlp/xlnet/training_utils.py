@@ -27,7 +27,7 @@ from absl import logging
 # pytype: disable=attribute-error
 # pylint: disable=g-bare-generic,unused-import
 import tensorflow as tf
-# Initialize TPU System.
+from official.modeling import model_training_utils
 from official.nlp.xlnet import data_utils
 from official.nlp import xlnet_modeling as modeling
 from typing import Any, Callable, Dict, Text, Optional
@@ -304,6 +304,18 @@ def train(
                        checkpoint_name.format(step=current_step))
     if test_input_fn:
       logging.info("Running final evaluation after training is complete.")
-      eval_fn(model, current_step, eval_summary_writer)
+      eval_metric = eval_fn(model, current_step, eval_summary_writer)
+
+    training_summary = {
+        "total_training_steps": total_training_steps,
+        "train_loss": _float_metric_value(train_loss_metric),
+    }
+    if train_metric:
+      training_summary["last_train_metrics"] = _float_metric_value(train_metric)
+    if test_input_fn:
+      # eval_metric is supposed to be a float.
+      training_summary["eval_metrics"] = eval_metric
+
+    model_training_utils.write_txt_summary(training_summary, model_dir)
 
     return model

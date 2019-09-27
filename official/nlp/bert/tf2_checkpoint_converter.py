@@ -73,9 +73,6 @@ def create_bert_model(bert_config):
 def convert_checkpoint():
   """Converts a name-based matched TF V1 checkpoint to TF V2 checkpoint."""
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
-
-  # Sets backward_compatible to true to convert TF1 BERT checkpoints.
-  bert_config.backward_compatible = True
   core_model = create_bert_model(bert_config)
 
   # Uses streaming-restore in eager model to read V1 name-based checkpoints.

@@ -114,8 +114,7 @@ def run_customized_training(strategy,
                             initial_lr,
                             warmup_steps,
                             input_files,
-                            train_batch_size,
-                            use_remote_tpu=False):
+                            train_batch_size):
   """Run BERT pretrain model training using low-level API."""
 
   train_input_fn = functools.partial(get_pretrain_input_data, input_files,
@@ -148,8 +147,7 @@ def run_customized_training(strategy,
       train_input_fn=train_input_fn,
       steps_per_epoch=steps_per_epoch,
       steps_per_loop=steps_per_loop,
-      epochs=epochs,
-      use_remote_tpu=use_remote_tpu)
+      epochs=epochs)
 
   # Creates the BERT core model outside distribution strategy scope.
   _, core_model = bert_models.pretrain_model(bert_config, max_seq_length,
@@ -173,7 +171,6 @@ def run_bert_pretrain(strategy):
   logging.info('Training using customized training loop TF 2.0 with distrubuted'
                'strategy.')
 
-  use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
   return run_customized_training(
       strategy,
       bert_config,
@@ -186,8 +183,7 @@ def run_bert_pretrain(strategy):
       FLAGS.learning_rate,
       FLAGS.warmup_steps,
       FLAGS.input_files,
-      FLAGS.train_batch_size,
-      use_remote_tpu=use_remote_tpu)
+      FLAGS.train_batch_size)
 
 
 def main(_):
@@ -200,7 +196,6 @@ def main(_):
   if FLAGS.strategy_type == 'mirror':
     strategy = tf.distribute.MirroredStrategy()
   elif FLAGS.strategy_type == 'tpu':
-    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
   else:

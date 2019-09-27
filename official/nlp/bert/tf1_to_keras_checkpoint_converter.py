@@ -29,6 +29,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import app
+import numpy as np
 import tensorflow as tf  # TF 1.x
 
 flags = tf.flags
@@ -44,6 +45,11 @@ flags.DEFINE_string(
     "exclude_patterns", None,
     "Comma-delimited string of a list of patterns to exclude"
     " variables from source checkpoint.")
+flags.DEFINE_integer(
+    "num_heads", -1,
+    "The number of attention heads, used to reshape variables. If it is -1, "
+    "we do not reshape variables."
+)
 
 # Mapping between old <=> new names. The source pattern in original variable
 # name will be replaced by destination pattern.
@@ -82,6 +88,25 @@ def _has_exclude_patterns(name, exclude_patterns):
   return False
 
 
+def _get_new_shape(name, shape, num_heads):
+  """Checks whether a variable requires reshape by pattern matching."""
+  if "attention/output/dense/kernel" in name:
+    return tuple([num_heads, shape[0] // num_heads, shape[1]])
+  if "attention/output/dense/bias" in name:
+    return shape
+
+  patterns = [
+      "attention/self/query", "attention/self/value", "attention/self/key"
+  ]
+  for pattern in patterns:
+    if pattern in name:
+      if "kernel" in name:
+        return tuple([shape[0], num_heads, shape[1] // num_heads])
+      if "bias" in name:
+        return tuple([num_heads, shape[0] // num_heads])
+  return None
+
+
 def convert_names(checkpoint_from_path,
                   checkpoint_to_path,
                   exclude_patterns=None):
@@ -108,6 +133,14 @@ def convert_names(checkpoint_from_path,
         continue
       new_var_name = _bert_name_replacement(var_name)
       tensor = reader.get_tensor(var_name)
+      new_shape = None
+      if FLAGS.num_heads > 0:
+        new_shape = _get_new_shape(var_name, tensor.shape, FLAGS.num_heads)
+      if new_shape:
+        tf.logging.info("Veriable %s has a shape change from %s to %s",
+
+                        var_name, tensor.shape, new_shape)
+        tensor = np.reshape(tensor, new_shape)
       var = tf.Variable(tensor, name=var_name)
       new_variable_map[new_var_name] = var
       if new_var_name != var_name:

@@ -245,7 +245,6 @@ def train_squad(strategy,
   loss_fn = get_loss_fn(
       loss_factor=1.0 /
       strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0)
-  use_remote_tpu = (FLAGS.strategy_type == 'tpu' and FLAGS.tpu)
 
   model_training_utils.run_customized_training_loop(
       strategy=strategy,
@@ -257,7 +256,6 @@ def train_squad(strategy,
       epochs=epochs,
       train_input_fn=train_input_fn,
       init_checkpoint=FLAGS.init_checkpoint,
-      use_remote_tpu=use_remote_tpu,
       run_eagerly=run_eagerly,
       custom_callbacks=custom_callbacks)
 
@@ -366,7 +364,6 @@ def main(_):
   elif FLAGS.strategy_type == 'multi_worker_mirror':
     strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
   elif FLAGS.strategy_type == 'tpu':
-    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
   else:

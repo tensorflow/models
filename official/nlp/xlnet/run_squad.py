@@ -91,13 +91,6 @@ class InputFeatures(object):
     self.is_impossible = is_impossible
 
 
-def get_primary_cpu_task(use_remote_tpu=False):
-  """Returns primary CPU task to which input pipeline Ops are put."""
-
-  # Remote Eager Borg job configures the TPU worker with job name 'worker'.
-  return "/job:worker" if use_remote_tpu else ""
-
-
 # pylint: disable=unused-argument
 def run_evaluation(strategy,
                    test_input_fn,
@@ -116,7 +109,8 @@ def run_evaluation(strategy,
     model: keras model object.
     step: current training step.
     eval_summary_writer: summary writer used to record evaluation metrics.
-
+  Returns:
+    A float metric, F1 score.
   """
 
   def _test_step_fn(inputs):
@@ -192,23 +186,23 @@ def run_evaluation(strategy,
   output_null_log_odds_file = os.path.join(input_meta_data["predict_dir"],
                                            "null_odds.json")
 
-  ret = squad_utils.write_predictions(
+  results = squad_utils.write_predictions(
       eval_examples, input_meta_data["eval_features"], cur_results,
       input_meta_data["n_best_size"], input_meta_data["max_answer_length"],
       output_prediction_file, output_nbest_file, output_null_log_odds_file,
       orig_data, input_meta_data["start_n_top"], input_meta_data["end_n_top"])
 
-  # Log current result
-
+  # Log current results.
   log_str = "Result | "
-  for key, val in ret.items():
+  for key, val in results.items():
     log_str += "{} {} | ".format(key, val)
   logging.info(log_str)
   if eval_summary_writer:
     with eval_summary_writer.as_default():
-      tf.summary.scalar("best_f1", ret["best_f1"], step=step)
-      tf.summary.scalar("best_exact", ret["best_exact"], step=step)
+      tf.summary.scalar("best_f1", results["best_f1"], step=step)
+      tf.summary.scalar("best_exact", results["best_exact"], step=step)
       eval_summary_writer.flush()
+  return results["best_f1"]
 
 
 def get_qaxlnet_model(model_config, run_config, start_n_top, end_n_top):
@@ -223,14 +217,11 @@ def get_qaxlnet_model(model_config, run_config, start_n_top, end_n_top):
 
 def main(unused_argv):
   del unused_argv
-  use_remote_tpu = False
   if FLAGS.strategy_type == "mirror":
     strategy = tf.distribute.MirroredStrategy()
   elif FLAGS.strategy_type == "tpu":
-    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
     strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
-    use_remote_tpu = True
   else:
     raise ValueError("The distribution strategy type is not supported: %s" %
                      FLAGS.strategy_type)
@@ -284,22 +275,21 @@ def main(unused_argv):
   eval_fn = functools.partial(run_evaluation, strategy, test_input_fn,
                               eval_steps, input_meta_data)
 
-  with tf.device(get_primary_cpu_task(use_remote_tpu)):
-    training_utils.train(
-        strategy=strategy,
-        model_fn=model_fn,
-        input_meta_data=input_meta_data,
-        eval_fn=eval_fn,
-        metric_fn=None,
-        train_input_fn=train_input_fn,
-        test_input_fn=test_input_fn,
-        init_checkpoint=FLAGS.init_checkpoint,
-        total_training_steps=total_training_steps,
-        steps_per_epoch=steps_per_epoch,
-        steps_per_loop=steps_per_loop,
-        optimizer=optimizer,
-        learning_rate_fn=learning_rate_fn,
-        model_dir=FLAGS.model_dir)
+  training_utils.train(
+      strategy=strategy,
+      model_fn=model_fn,
+      input_meta_data=input_meta_data,
+      eval_fn=eval_fn,
+      metric_fn=None,
+      train_input_fn=train_input_fn,
+      test_input_fn=test_input_fn,
+      init_checkpoint=FLAGS.init_checkpoint,
+      total_training_steps=total_training_steps,
+      steps_per_epoch=steps_per_epoch,
+      steps_per_loop=steps_per_loop,
+      optimizer=optimizer,
+      learning_rate_fn=learning_rate_fn,
+      model_dir=FLAGS.model_dir)
 
 
 if __name__ == "__main__":

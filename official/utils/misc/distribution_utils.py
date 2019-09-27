@@ -128,7 +128,6 @@ def get_distribution_strategy(distribution_strategy="default",
 
   if distribution_strategy == "tpu":
     # When tpu_address is an empty string, we communicate with local TPUs.
-    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(tpu_address)
     return tf.distribute.experimental.TPUStrategy(cluster_resolver)
 

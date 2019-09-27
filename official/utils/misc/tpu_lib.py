@@ -21,18 +21,14 @@ def tpu_initialize(tpu_address):
   """Initializes TPU for TF 2.0 training.
 
   Args:
-    tpu_address: string, bns address of TPU workers.
+    tpu_address: string, bns address of master TPU worker.
 
   Returns:
     A TPUClusterResolver.
   """
   cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
       tpu=tpu_address)
-  tf.config.experimental_connect_to_host(cluster_resolver.master())
+  if tpu_address not in ('', 'local'):
+    tf.config.experimental_connect_to_cluster(cluster_resolver)
   tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
   return cluster_resolver
-
-
-def get_primary_cpu_task(use_remote_tpu=False):
-  """Returns remote TPU worker address. No-op for GPU/CPU training."""
-  return "/job:worker" if use_remote_tpu else ""
