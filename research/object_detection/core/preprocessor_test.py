@@ -15,9 +15,15 @@
 
 """Tests for object_detection.core.preprocessor."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
 import six
 
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import preprocessor
@@ -109,6 +115,10 @@ class PreprocessorTest(tf.test.TestCase):
 
   def createTestLabels(self):
     labels = tf.constant([1, 2], dtype=tf.int32)
+    return labels
+
+  def createTestLabelsLong(self):
+    labels = tf.constant([1, 2, 4], dtype=tf.int32)
     return labels
 
   def createTestBoxesOutOfImage(self):
@@ -294,6 +304,30 @@ class PreprocessorTest(tf.test.TestCase):
   def expectedLabelsAfterThresholdingWithMissingScore(self):
     return tf.constant([2], dtype=tf.float32)
 
+  def expectedLabelScoresAfterDropping(self):
+    return tf.constant([0.5], dtype=tf.float32)
+
+  def expectedBoxesAfterDropping(self):
+    return tf.constant([[0.25, 0.5, 0.75, 1.0]], dtype=tf.float32)
+
+  def expectedLabelsAfterDropping(self):
+    return tf.constant([2], dtype=tf.float32)
+
+  def expectedMultiClassScoresAfterDropping(self):
+    return tf.constant([[0.5, 0.5]], dtype=tf.float32)
+
+  def expectedMasksAfterDropping(self):
+    masks = np.array([[[255.0, 255.0, 0.0], [255.0, 255.0, 0.0],
+                       [255.0, 255.0, 0.0]]])
+    return tf.constant(masks, dtype=tf.float32)
+
+  def expectedKeypointsAfterDropping(self):
+    keypoints = np.array([[[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]]])
+    return tf.constant(keypoints, dtype=tf.float32)
+
+  def expectedLabelsAfterRemapping(self):
+    return tf.constant([3, 3, 4], dtype=tf.float32)
+
   def testRgbToGrayscale(self):
     images = self.createTestImages()
     grayscale_images = preprocessor._rgb_to_grayscale(images)
@@ -399,6 +433,110 @@ class PreprocessorTest(tf.test.TestCase):
 
       self.assertAllClose(
           retained_keypoints_, expected_retained_keypoints_)
+
+  def testDropLabelProbabilistically(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    (retained_boxes, retained_labels,
+     retained_weights) = preprocessor.drop_label_probabilistically(
+         boxes, labels, weights, dropped_label=1, drop_probability=1.0)
+    with self.test_session() as sess:
+      (retained_boxes_, retained_labels_, retained_weights_,
+       expected_retained_boxes_, expected_retained_labels_,
+       expected_retained_weights_) = sess.run([
+           retained_boxes, retained_labels, retained_weights,
+           self.expectedBoxesAfterDropping(),
+           self.expectedLabelsAfterDropping(),
+           self.expectedLabelScoresAfterDropping()
+       ])
+      self.assertAllClose(retained_boxes_, expected_retained_boxes_)
+      self.assertAllClose(retained_labels_, expected_retained_labels_)
+      self.assertAllClose(retained_weights_, expected_retained_weights_)
+
+  def testDropLabelProbabilisticallyWithProbabilityHalf(self):
+    # Boxes contain one box of label 2 and one box of label 1 which should be
+    # dropped ~50% of the time.
+    num_tests = 100
+    total = 0
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    (_, retained_labels, _) = preprocessor.drop_label_probabilistically(
+        boxes, labels, weights, dropped_label=1, drop_probability=0.5)
+    for _ in range(num_tests):
+      with self.test_session() as sess:
+        retained_labels_ = sess.run(retained_labels)
+        total += len(retained_labels_)
+        self.assertIn(2, retained_labels_)
+    av = total * 1.0 / num_tests
+    self.assertGreater(av, 1.40)
+    self.assertLess(av, 1.50)
+
+  def testDropLabelProbabilisticallyWithMultiClassScores(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    multiclass_scores = self.createTestMultiClassScores()
+    (_, _, _,
+     retained_multiclass_scores) = preprocessor.drop_label_probabilistically(
+         boxes,
+         labels,
+         weights,
+         multiclass_scores=multiclass_scores,
+         dropped_label=1,
+         drop_probability=1.0)
+    with self.test_session() as sess:
+      (retained_multiclass_scores_,
+       expected_retained_multiclass_scores_) = sess.run([
+           retained_multiclass_scores,
+           self.expectedMultiClassScoresAfterDropping()
+       ])
+      self.assertAllClose(retained_multiclass_scores_,
+                          expected_retained_multiclass_scores_)
+
+  def testDropLabelProbabilisticallyWithMasks(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    masks = self.createTestMasks()
+    (_, _, _, retained_masks) = preprocessor.drop_label_probabilistically(
+        boxes,
+        labels,
+        weights,
+        masks=masks,
+        dropped_label=1,
+        drop_probability=1.0)
+    with self.test_session() as sess:
+      (retained_masks_, expected_retained_masks_) = sess.run(
+          [retained_masks, self.expectedMasksAfterDropping()])
+      self.assertAllClose(retained_masks_, expected_retained_masks_)
+
+  def testDropLabelProbabilisticallyWithKeypoints(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    keypoints = self.createTestKeypoints()
+    (_, _, _, retained_keypoints) = preprocessor.drop_label_probabilistically(
+        boxes,
+        labels,
+        weights,
+        keypoints=keypoints,
+        dropped_label=1,
+        drop_probability=1.0)
+    with self.test_session() as sess:
+      (retained_keypoints_, expected_retained_keypoints_) = sess.run(
+          [retained_keypoints,
+           self.expectedKeypointsAfterDropping()])
+      self.assertAllClose(retained_keypoints_, expected_retained_keypoints_)
+
+  def testRemapLabels(self):
+    labels = self.createTestLabelsLong()
+    remapped_labels = preprocessor.remap_labels(labels, [1, 2], 3)
+    with self.test_session() as sess:
+      (remapped_labels_, expected_remapped_labels_) = sess.run(
+          [remapped_labels, self.expectedLabelsAfterRemapping()])
+      self.assertAllClose(remapped_labels_, expected_remapped_labels_)
 
   def testFlipBoxesLeftRight(self):
     boxes = self.createTestBoxes()
@@ -795,8 +933,8 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     tensor_dict = {fields.InputDataFields.image: images}
     tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
-    images_min = tf.to_float(images) * 0.9 / 255.0
-    images_max = tf.to_float(images) * 1.1 / 255.0
+    images_min = tf.cast(images, dtype=tf.float32) * 0.9 / 255.0
+    images_max = tf.cast(images, dtype=tf.float32) * 1.1 / 255.0
     images = tensor_dict[fields.InputDataFields.image]
     values_greater = tf.greater_equal(images, images_min)
     values_less = tf.less_equal(images, images_max)
@@ -858,20 +996,26 @@ class PreprocessorTest(tf.test.TestCase):
         value=images_gray, num_or_size_splits=3, axis=3)
     images_r, images_g, images_b = tf.split(
         value=images_original, num_or_size_splits=3, axis=3)
-    images_r_diff1 = tf.squared_difference(tf.to_float(images_r),
-                                           tf.to_float(images_gray_r))
-    images_r_diff2 = tf.squared_difference(tf.to_float(images_gray_r),
-                                           tf.to_float(images_gray_g))
+    images_r_diff1 = tf.squared_difference(
+        tf.cast(images_r, dtype=tf.float32),
+        tf.cast(images_gray_r, dtype=tf.float32))
+    images_r_diff2 = tf.squared_difference(
+        tf.cast(images_gray_r, dtype=tf.float32),
+        tf.cast(images_gray_g, dtype=tf.float32))
     images_r_diff = tf.multiply(images_r_diff1, images_r_diff2)
-    images_g_diff1 = tf.squared_difference(tf.to_float(images_g),
-                                           tf.to_float(images_gray_g))
-    images_g_diff2 = tf.squared_difference(tf.to_float(images_gray_g),
-                                           tf.to_float(images_gray_b))
+    images_g_diff1 = tf.squared_difference(
+        tf.cast(images_g, dtype=tf.float32),
+        tf.cast(images_gray_g, dtype=tf.float32))
+    images_g_diff2 = tf.squared_difference(
+        tf.cast(images_gray_g, dtype=tf.float32),
+        tf.cast(images_gray_b, dtype=tf.float32))
     images_g_diff = tf.multiply(images_g_diff1, images_g_diff2)
-    images_b_diff1 = tf.squared_difference(tf.to_float(images_b),
-                                           tf.to_float(images_gray_b))
-    images_b_diff2 = tf.squared_difference(tf.to_float(images_gray_b),
-                                           tf.to_float(images_gray_r))
+    images_b_diff1 = tf.squared_difference(
+        tf.cast(images_b, dtype=tf.float32),
+        tf.cast(images_gray_b, dtype=tf.float32))
+    images_b_diff2 = tf.squared_difference(
+        tf.cast(images_gray_b, dtype=tf.float32),
+        tf.cast(images_gray_r, dtype=tf.float32))
     images_b_diff = tf.multiply(images_b_diff1, images_b_diff2)
     image_zero1 = tf.constant(0, dtype=tf.float32, shape=[1, 4, 4, 1])
     with self.test_session() as sess:
@@ -2135,7 +2279,7 @@ class PreprocessorTest(tf.test.TestCase):
     boxes = self.createTestBoxes()
     labels = self.createTestLabels()
     tensor_dict = {
-        fields.InputDataFields.image: tf.to_float(images),
+        fields.InputDataFields.image: tf.cast(images, dtype=tf.float32),
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
     }
@@ -2333,6 +2477,33 @@ class PreprocessorTest(tf.test.TestCase):
       (images_shape_, blacked_images_shape_) = sess.run(
           [images_shape, blacked_images_shape])
       self.assertAllEqual(images_shape_, blacked_images_shape_)
+
+  def testAutoAugmentImage(self):
+    preprocessing_options = []
+    preprocessing_options.append((preprocessor.autoaugment_image, {
+        'policy_name': 'v1'
+    }))
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    tensor_dict = {fields.InputDataFields.image: images,
+                   fields.InputDataFields.groundtruth_boxes: boxes}
+    autoaugment_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options)
+    augmented_images = autoaugment_tensor_dict[fields.InputDataFields.image]
+    augmented_boxes = autoaugment_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes]
+    images_shape = tf.shape(images)
+    boxes_shape = tf.shape(boxes)
+    augmented_images_shape = tf.shape(augmented_images)
+    augmented_boxes_shape = tf.shape(augmented_boxes)
+
+    with self.test_session() as sess:
+      (images_shape_, boxes_shape_,
+       augmented_images_shape_, augmented_boxes_shape_) = sess.run(
+           [images_shape, boxes_shape,
+            augmented_images_shape, augmented_boxes_shape])
+      self.assertAllEqual(images_shape_, augmented_images_shape_)
+      self.assertAllEqual(boxes_shape_, augmented_boxes_shape_)
 
   def testRandomResizeMethodWithCache(self):
     preprocess_options = []
@@ -2663,6 +2834,68 @@ class PreprocessorTest(tf.test.TestCase):
         out_image_shape = sess.run(out_image_shape)
         self.assertAllEqual(out_image_shape, expected_shape)
 
+  def testResizeToMaxDimensionTensorShapes(self):
+    """Tests both cases where image should and shouldn't be resized."""
+    in_image_shape_list = [[100, 50, 3], [15, 30, 3]]
+    in_masks_shape_list = [[15, 100, 50], [10, 15, 30]]
+    max_dim = 50
+    expected_image_shape_list = [[50, 25, 3], [15, 30, 3]]
+    expected_masks_shape_list = [[15, 50, 25], [10, 15, 30]]
+
+    for (in_image_shape, expected_image_shape, in_masks_shape,
+         expected_mask_shape) in zip(in_image_shape_list,
+                                     expected_image_shape_list,
+                                     in_masks_shape_list,
+                                     expected_masks_shape_list):
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      in_masks = tf.placeholder(tf.float32, shape=(None, None, None))
+      in_masks = tf.random_uniform(in_masks_shape)
+      out_image, out_masks, _ = preprocessor.resize_to_max_dimension(
+          in_image, in_masks, max_dimension=max_dim)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape],
+            feed_dict={
+                in_image: np.random.randn(*in_image_shape),
+                in_masks: np.random.randn(*in_masks_shape)
+            })
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
+
+  def testResizeToMaxDimensionWithInstanceMasksTensorOfSizeZero(self):
+    """Tests both cases where image should and shouldn't be resized."""
+    in_image_shape_list = [[100, 50, 3], [15, 30, 3]]
+    in_masks_shape_list = [[0, 100, 50], [0, 15, 30]]
+    max_dim = 50
+    expected_image_shape_list = [[50, 25, 3], [15, 30, 3]]
+    expected_masks_shape_list = [[0, 50, 25], [0, 15, 30]]
+
+    for (in_image_shape, expected_image_shape, in_masks_shape,
+         expected_mask_shape) in zip(in_image_shape_list,
+                                     expected_image_shape_list,
+                                     in_masks_shape_list,
+                                     expected_masks_shape_list):
+      in_image = tf.random_uniform(in_image_shape)
+      in_masks = tf.random_uniform(in_masks_shape)
+      out_image, out_masks, _ = preprocessor.resize_to_max_dimension(
+          in_image, in_masks, max_dimension=max_dim)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape])
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
+
+  def testResizeToMaxDimensionRaisesErrorOn4DImage(self):
+    image = tf.random_uniform([1, 200, 300, 3])
+    with self.assertRaises(ValueError):
+      preprocessor.resize_to_max_dimension(image, 500)
+
   def testResizeToMinDimensionTensorShapes(self):
     in_image_shape_list = [[60, 55, 3], [15, 30, 3]]
     in_masks_shape_list = [[15, 60, 55], [10, 15, 30]]
@@ -2794,7 +3027,7 @@ class PreprocessorTest(tf.test.TestCase):
     scores = self.createTestMultiClassScores()
 
     tensor_dict = {
-        fields.InputDataFields.image: tf.to_float(images),
+        fields.InputDataFields.image: tf.cast(images, dtype=tf.float32),
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_classes: labels,
         fields.InputDataFields.groundtruth_weights: weights,

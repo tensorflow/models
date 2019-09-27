@@ -581,8 +581,8 @@ class BoxListOpsTest(test_case.TestCase):
                            [0, 0, 3, 2]], tf.float32)
     boxes = box_list.BoxList(corners)
     image_and_boxes = box_list_ops.visualize_boxes_in_image(image, boxes)
-    image_and_boxes_bw = tf.to_float(
-        tf.greater(tf.reduce_sum(image_and_boxes, 2), 0.0))
+    image_and_boxes_bw = tf.cast(
+        tf.greater(tf.reduce_sum(image_and_boxes, 2), 0.0), dtype=tf.float32)
     exp_result = [[1, 1, 1, 0],
                   [1, 1, 1, 0],
                   [1, 1, 1, 0],

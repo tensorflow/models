@@ -43,8 +43,8 @@ flags.DEFINE_string('checkpoint_dir', None, 'Directory of model checkpoints.')
 flags.DEFINE_integer('vis_batch_size', 1,
                      'The number of images in each batch during evaluation.')
 
-flags.DEFINE_multi_integer('vis_crop_size', [513, 513],
-                           'Crop size [height, width] for visualization.')
+flags.DEFINE_list('vis_crop_size', '513,513',
+                  'Crop size [height, width] for visualization.')
 
 flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                      'How often (in seconds) to run evaluation.')
@@ -65,6 +65,10 @@ flags.DEFINE_multi_float('eval_scales', [1.0],
 # Change to True for adding flipped images during test.
 flags.DEFINE_bool('add_flipped_images', False,
                   'Add flipped images for evaluation or not.')
+
+flags.DEFINE_integer(
+    'quantize_delay_step', -1,
+    'Steps to start quantized training. If < 0, will not quantize model.')
 
 # Dataset settings.
 
@@ -189,7 +193,7 @@ def main(unused_argv):
       split_name=FLAGS.vis_split,
       dataset_dir=FLAGS.dataset_dir,
       batch_size=FLAGS.vis_batch_size,
-      crop_size=FLAGS.vis_crop_size,
+      crop_size=[int(sz) for sz in FLAGS.vis_crop_size],
       min_resize_value=FLAGS.min_resize_value,
       max_resize_value=FLAGS.max_resize_value,
       resize_factor=FLAGS.resize_factor,
@@ -218,7 +222,7 @@ def main(unused_argv):
 
     model_options = common.ModelOptions(
         outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_of_classes},
-        crop_size=FLAGS.vis_crop_size,
+        crop_size=[int(sz) for sz in FLAGS.vis_crop_size],
         atrous_rates=FLAGS.atrous_rates,
         output_stride=FLAGS.output_stride)
 
@@ -230,6 +234,9 @@ def main(unused_argv):
           image_pyramid=FLAGS.image_pyramid)
     else:
       tf.logging.info('Performing multi-scale test.')
+      if FLAGS.quantize_delay_step >= 0:
+        raise ValueError(
+            'Quantize mode is not supported with multi-scale test.')
       predictions = model.predict_labels_multi_scale(
           samples[common.IMAGE],
           model_options=model_options,
@@ -259,22 +266,21 @@ def main(unused_argv):
                                  method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
                                  align_corners=True), 3)
 
+    tf.train.get_or_create_global_step()
+    if FLAGS.quantize_delay_step >= 0:
+      tf.contrib.quantize.create_eval_graph()
+
     num_iteration = 0
     max_num_iteration = FLAGS.max_number_of_iterations
 
     checkpoints_iterator = tf.contrib.training.checkpoints_iterator(
         FLAGS.checkpoint_dir, min_interval_secs=FLAGS.eval_interval_secs)
     for checkpoint_path in checkpoints_iterator:
-      if max_num_iteration > 0 and num_iteration > max_num_iteration:
-        break
       num_iteration += 1
-
       tf.logging.info(
           'Starting visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                        time.gmtime()))
       tf.logging.info('Visualizing with model %s', checkpoint_path)
-
-      tf.train.get_or_create_global_step()
 
       scaffold = tf.train.Scaffold(init_op=tf.global_variables_initializer())
       session_creator = tf.train.ChiefSessionCreator(
@@ -304,6 +310,8 @@ def main(unused_argv):
       tf.logging.info(
           'Finished visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                        time.gmtime()))
+      if max_num_iteration > 0 and num_iteration >= max_num_iteration:
+        break
 
 if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')

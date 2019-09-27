@@ -21,6 +21,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from object_detection.core import freezable_batch_norm
+from object_detection.models.keras_models import model_utils
 from object_detection.utils import ops
 
 
@@ -45,7 +46,8 @@ class _LayersOverride(object):
                conv_hyperparams=None,
                use_explicit_padding=False,
                alpha=1.0,
-               min_depth=None):
+               min_depth=None,
+               conv_defs=None):
     """Alternative tf.keras.layers interface, for use by the Keras MobileNetV2.
 
     It is used by the Keras applications kwargs injection API to
@@ -75,6 +77,8 @@ class _LayersOverride(object):
       alpha: The width multiplier referenced in the MobileNetV2 paper. It
         modifies the number of filters in each convolutional layer.
       min_depth: Minimum number of filters in the convolutional layers.
+      conv_defs: Network layout to specify the mobilenet_v2 body. Default is
+        `None` to use the default mobilenet_v2 network layout.
     """
     self._alpha = alpha
     self._batchnorm_training = batchnorm_training
@@ -82,6 +86,7 @@ class _LayersOverride(object):
     self._conv_hyperparams = conv_hyperparams
     self._use_explicit_padding = use_explicit_padding
     self._min_depth = min_depth
+    self._conv_defs = conv_defs
     self.regularizer = tf.keras.regularizers.l2(0.00004 * 0.5)
     self.initializer = tf.truncated_normal_initializer(stddev=0.09)
 
@@ -106,8 +111,14 @@ class _LayersOverride(object):
     """
     # Make sure 'alpha' is always applied to the last convolution block's size
     # (This overrides the Keras application's functionality)
-    if kwargs.get('name') == 'Conv_1' and self._alpha < 1.0:
-      filters = _make_divisible(1280 * self._alpha, 8)
+    layer_name = kwargs.get('name')
+    if layer_name == 'Conv_1':
+      if self._conv_defs:
+        filters = model_utils.get_conv_def(self._conv_defs, 'Conv_1')
+      else:
+        filters = 1280
+      if self._alpha < 1.0:
+        filters = _make_divisible(filters * self._alpha, 8)
 
     # Apply the minimum depth to the convolution layers
     if (self._min_depth and (filters < self._min_depth)
@@ -149,7 +160,12 @@ class _LayersOverride(object):
     """
     if self._conv_hyperparams:
       kwargs = self._conv_hyperparams.params(**kwargs)
+      # Both the regularizer and initializer apply to the depthwise layer in
+      # MobilenetV1, so we remap the kernel_* to depthwise_* here.
+      kwargs['depthwise_regularizer'] = kwargs['kernel_regularizer']
+      kwargs['depthwise_initializer'] = kwargs['kernel_initializer']
     else:
+      kwargs['depthwise_regularizer'] = self.regularizer
       kwargs['depthwise_initializer'] = self.initializer
 
     kwargs['padding'] = 'same'
@@ -214,7 +230,10 @@ class _LayersOverride(object):
 
     placeholder_with_default = tf.placeholder_with_default(
         input=input_tensor, shape=[None] + shape)
-    return tf.keras.layers.Input(tensor=placeholder_with_default)
+    if tf.executing_eagerly():
+      return tf.keras.layers.Input(shape=shape)
+    else:
+      return tf.keras.layers.Input(tensor=placeholder_with_default)
 
   # pylint: disable=unused-argument
   def ReLU(self, *args, **kwargs):
@@ -263,6 +282,7 @@ def mobilenet_v2(batchnorm_training,
                  use_explicit_padding=False,
                  alpha=1.0,
                  min_depth=None,
+                 conv_defs=None,
                  **kwargs):
   """Instantiates the MobileNetV2 architecture, modified for object detection.
 
@@ -294,6 +314,8 @@ def mobilenet_v2(batchnorm_training,
       alpha: The width multiplier referenced in the MobileNetV2 paper. It
         modifies the number of filters in each convolutional layer.
       min_depth: Minimum number of filters in the convolutional layers.
+      conv_defs: Network layout to specify the mobilenet_v2 body. Default is
+        `None` to use the default mobilenet_v2 network layout.
       **kwargs: Keyword arguments forwarded directly to the
         `tf.keras.applications.MobilenetV2` method that constructs the Keras
         model.
@@ -307,7 +329,8 @@ def mobilenet_v2(batchnorm_training,
       conv_hyperparams=conv_hyperparams,
       use_explicit_padding=use_explicit_padding,
       min_depth=min_depth,
-      alpha=alpha)
+      alpha=alpha,
+      conv_defs=conv_defs)
   return tf.keras.applications.MobileNetV2(alpha=alpha,
                                            layers=layers_override,
                                            **kwargs)

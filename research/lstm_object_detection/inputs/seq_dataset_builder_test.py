@@ -20,7 +20,6 @@ import numpy as np
 import tensorflow as tf
 
 from google.protobuf import text_format
-from google3.testing.pybase import parameterized
 from tensorflow.core.example import example_pb2
 from tensorflow.core.example import feature_pb2
 from lstm_object_detection.inputs import seq_dataset_builder
@@ -32,69 +31,7 @@ from object_detection.protos import pipeline_pb2
 from object_detection.protos import preprocessor_pb2
 
 
-class DatasetBuilderTest(parameterized.TestCase):
-
-  def _create_tf_record(self):
-    path = os.path.join(self.get_temp_dir(), 'tfrecord')
-    writer = tf.python_io.TFRecordWriter(path)
-
-    image_tensor = np.random.randint(255, size=(16, 16, 3)).astype(np.uint8)
-    with self.test_session():
-      encoded_jpeg = tf.image.encode_jpeg(tf.constant(image_tensor)).eval()
-
-    sequence_example = example_pb2.SequenceExample(
-        context=feature_pb2.Features(
-            feature={
-                'image/format':
-                    feature_pb2.Feature(
-                        bytes_list=feature_pb2.BytesList(
-                            value=['jpeg'.encode('utf-8')])),
-                'image/height':
-                    feature_pb2.Feature(
-                        int64_list=feature_pb2.Int64List(value=[16])),
-                'image/width':
-                    feature_pb2.Feature(
-                        int64_list=feature_pb2.Int64List(value=[16])),
-            }),
-        feature_lists=feature_pb2.FeatureLists(
-            feature_list={
-                'image/encoded':
-                    feature_pb2.FeatureList(feature=[
-                        feature_pb2.Feature(
-                            bytes_list=feature_pb2.BytesList(
-                                value=[encoded_jpeg])),
-                    ]),
-                'image/object/bbox/xmin':
-                    feature_pb2.FeatureList(feature=[
-                        feature_pb2.Feature(
-                            float_list=feature_pb2.FloatList(value=[0.0])),
-                    ]),
-                'image/object/bbox/xmax':
-                    feature_pb2.FeatureList(feature=[
-                        feature_pb2.Feature(
-                            float_list=feature_pb2.FloatList(value=[1.0]))
-                    ]),
-                'image/object/bbox/ymin':
-                    feature_pb2.FeatureList(feature=[
-                        feature_pb2.Feature(
-                            float_list=feature_pb2.FloatList(value=[0.0])),
-                    ]),
-                'image/object/bbox/ymax':
-                    feature_pb2.FeatureList(feature=[
-                        feature_pb2.Feature(
-                            float_list=feature_pb2.FloatList(value=[1.0]))
-                    ]),
-                'image/object/class/label':
-                    feature_pb2.FeatureList(feature=[
-                        feature_pb2.Feature(
-                            int64_list=feature_pb2.Int64List(value=[2]))
-                    ]),
-            }))
-
-    writer.write(sequence_example.SerializeToString())
-    writer.close()
-
-    return path
+class DatasetBuilderTest(tf.test.TestCase):
 
   def _get_model_configs_from_proto(self):
     """Creates a model text proto for testing.
@@ -104,7 +41,7 @@ class DatasetBuilderTest(parameterized.TestCase):
     """
 
     model_text_proto = """
-    [object_detection.protos.lstm_model] {
+    [lstm_object_detection.protos.lstm_model] {
       train_unroll_length: 4
       eval_unroll_length: 4
     }
@@ -211,7 +148,7 @@ class DatasetBuilderTest(parameterized.TestCase):
   def _get_input_proto(self, input_reader):
     return """
         external_input_reader {
-          [lstm_object_detection.input_readers.GoogleInputReader.google_input_reader] {
+          [lstm_object_detection.protos.GoogleInputReader.google_input_reader] {
             %s: {
               input_path: '{0}'
               data_type: TF_SEQUENCE_EXAMPLE
@@ -221,11 +158,11 @@ class DatasetBuilderTest(parameterized.TestCase):
         }
       """ % input_reader
 
-  @parameterized.named_parameters(('tf_record', 'tf_record_video_input_reader'))
-  def test_video_input_reader(self, video_input_type):
+  def test_video_input_reader(self):
     input_reader_proto = input_reader_pb2.InputReader()
     text_format.Merge(
-        self._get_input_proto(video_input_type), input_reader_proto)
+        self._get_input_proto('tf_record_video_input_reader'),
+        input_reader_proto)
 
     configs = self._get_model_configs_from_proto()
     tensor_dict = seq_dataset_builder.build(

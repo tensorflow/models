@@ -109,6 +109,8 @@ class DetectionResultFields(object):
     key: unique key corresponding to image.
     detection_boxes: coordinates of the detection boxes in the image.
     detection_scores: detection scores for the detection boxes in the image.
+    detection_multiclass_scores: class score distribution (including background)
+      for detection boxes in the image including background class.
     detection_classes: detection-level class labels.
     detection_masks: contains a segmentation mask for each detection box.
     detection_boundaries: contains an object boundary for each detection box.
@@ -117,12 +119,17 @@ class DetectionResultFields(object):
     raw_detection_boxes: contains decoded detection boxes without Non-Max
       suppression.
     raw_detection_scores: contains class score logits for raw detection boxes.
+    detection_anchor_indices: The anchor indices of the detections after NMS.
+    detection_features: contains extracted features for each detected box
+      after NMS.
   """
 
   source_id = 'source_id'
   key = 'key'
   detection_boxes = 'detection_boxes'
   detection_scores = 'detection_scores'
+  detection_multiclass_scores = 'detection_multiclass_scores'
+  detection_features = 'detection_features'
   detection_classes = 'detection_classes'
   detection_masks = 'detection_masks'
   detection_boundaries = 'detection_boundaries'
@@ -130,6 +137,7 @@ class DetectionResultFields(object):
   num_detections = 'num_detections'
   raw_detection_boxes = 'raw_detection_boxes'
   raw_detection_scores = 'raw_detection_scores'
+  detection_anchor_indices = 'detection_anchor_indices'
 
 
 class BoxListFields(object):

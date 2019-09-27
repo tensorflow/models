@@ -353,6 +353,8 @@ class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertEqual(box_predictor._apply_batch_norm, True)
 
 
+
+
 class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
 
   def test_box_predictor_builder_calls_fc_argscope_fn(self):

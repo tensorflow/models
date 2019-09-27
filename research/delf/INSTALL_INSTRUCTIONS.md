@@ -32,10 +32,7 @@ PATH_TO_PROTOC=`pwd`
 Install python library dependencies:
 
 ```bash
-sudo pip install matplotlib
-sudo pip install numpy
-sudo pip install scikit-image
-sudo pip install scipy
+pip install matplotlib numpy scikit-image scipy
 ```
 
 ### `tensorflow/models`
@@ -50,7 +47,7 @@ git clone https://github.com/tensorflow/models
 
 # First, install slim's "nets" package.
 cd models/research/slim/
-sudo pip install -e .
+pip install -e .
 
 # Second, setup the object_detection module by editing PYTHONPATH.
 cd ..
@@ -70,7 +67,7 @@ Finally, install the DELF package.
 
 ```bash
 # From tensorflow/models/research/delf/
-sudo pip install -e . # Install "delf" package.
+pip install -e . # Install "delf" package.
 ```
 
 At this point, running
@@ -94,5 +91,5 @@ to use `pip3` instead of `pip`, and all should work.
 
 Issues might be observed if using `pip install` with `-e` option (editable
 mode). You may try out to simply remove the `-e` from the commands above. Also,
-depending on your machine setup, you might need to run the `pip install` command
-without `sudo` at the beginning.
+depending on your machine setup, you might need to run the `sudo pip install` command,
+that is with a `sudo` at the beginning.

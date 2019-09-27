@@ -34,6 +34,7 @@ try:
 except ImportError:
   bigquery = None
 
+from official.utils.misc import keras_utils
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 
@@ -46,12 +47,12 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     flags_core.define_benchmark()
 
   def test_get_default_benchmark_logger(self):
-    with flagsaver.flagsaver(benchmark_logger_type='foo'):
+    with flagsaver.flagsaver(benchmark_logger_type="foo"):
       self.assertIsInstance(logger.get_benchmark_logger(),
                             logger.BaseBenchmarkLogger)
 
   def test_config_base_benchmark_logger(self):
-    with flagsaver.flagsaver(benchmark_logger_type='BaseBenchmarkLogger'):
+    with flagsaver.flagsaver(benchmark_logger_type="BaseBenchmarkLogger"):
       logger.config_benchmark_logger()
       self.assertIsInstance(logger.get_benchmark_logger(),
                             logger.BaseBenchmarkLogger)
@@ -59,16 +60,16 @@ class BenchmarkLoggerTest(tf.test.TestCase):
   def test_config_benchmark_file_logger(self):
     # Set the benchmark_log_dir first since the benchmark_logger_type will need
     # the value to be set when it does the validation.
-    with flagsaver.flagsaver(benchmark_log_dir='/tmp'):
-      with flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger'):
+    with flagsaver.flagsaver(benchmark_log_dir="/tmp"):
+      with flagsaver.flagsaver(benchmark_logger_type="BenchmarkFileLogger"):
         logger.config_benchmark_logger()
         self.assertIsInstance(logger.get_benchmark_logger(),
                               logger.BenchmarkFileLogger)
 
-  @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
+  @unittest.skipIf(bigquery is None, "Bigquery dependency is not installed.")
   @mock.patch.object(bigquery, "Client")
   def test_config_benchmark_bigquery_logger(self, mock_bigquery_client):
-    with flagsaver.flagsaver(benchmark_logger_type='BenchmarkBigQueryLogger'):
+    with flagsaver.flagsaver(benchmark_logger_type="BenchmarkBigQueryLogger"):
       logger.config_benchmark_logger()
       self.assertIsInstance(logger.get_benchmark_logger(),
                             logger.BenchmarkBigQueryLogger)
@@ -261,9 +262,13 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
                      {"name": "batch_size", "long_value": 32})
     self.assertEqual(run_info["run_parameters"][1],
                      {"name": "dtype", "string_value": "fp16"})
-    self.assertEqual(run_info["run_parameters"][2],
-                     {"name": "random_tensor", "string_value":
-                          "Tensor(\"Const:0\", shape=(), dtype=float32)"})
+    v1_tensor = {"name": "random_tensor", "string_value":
+                     "Tensor(\"Const:0\", shape=(), dtype=float32)"}
+    v2_tensor = {"name": "random_tensor", "string_value":
+                     "tf.Tensor(2.0, shape=(), dtype=float32)"}
+    self.assertIn(run_info["run_parameters"][2], [v1_tensor, v2_tensor])
+
+
     self.assertEqual(run_info["run_parameters"][3],
                      {"name": "resnet_size", "long_value": 50})
     self.assertEqual(run_info["run_parameters"][4],
@@ -286,12 +291,6 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     self.assertEqual(run_info["tensorflow_environment_variables"],
                      expected_tf_envs)
 
-  @unittest.skipUnless(tf.test.is_built_with_cuda(), "requires GPU")
-  def test_collect_gpu_info(self):
-    run_info = {"machine_config": {}}
-    logger._collect_gpu_info(run_info)
-    self.assertNotEqual(run_info["machine_config"]["gpu_info"], {})
-
   def test_collect_memory_info(self):
     run_info = {"machine_config": {}}
     logger._collect_memory_info(run_info)
@@ -299,7 +298,7 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     self.assertIsNotNone(run_info["machine_config"]["memory_available"])
 
 
-@unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
+@unittest.skipIf(bigquery is None, "Bigquery dependency is not installed.")
 class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
 
   def setUp(self):

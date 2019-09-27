@@ -33,6 +33,7 @@ from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
+from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils as vis_utils
@@ -185,6 +186,46 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   return unbatched_tensor_dict
 
 
+def provide_groundtruth(model, labels):
+  """Provides the labels to a model as groundtruth.
+
+  This helper function extracts the corresponding boxes, classes,
+  keypoints, weights, masks, etc. from the labels, and provides it
+  as groundtruth to the models.
+
+  Args:
+    model: The detection model to provide groundtruth to.
+    labels: The labels for the training or evaluation inputs.
+  """
+  gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
+  gt_classes_list = labels[fields.InputDataFields.groundtruth_classes]
+  gt_masks_list = None
+  if fields.InputDataFields.groundtruth_instance_masks in labels:
+    gt_masks_list = labels[
+        fields.InputDataFields.groundtruth_instance_masks]
+  gt_keypoints_list = None
+  if fields.InputDataFields.groundtruth_keypoints in labels:
+    gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
+  gt_weights_list = None
+  if fields.InputDataFields.groundtruth_weights in labels:
+    gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
+  gt_confidences_list = None
+  if fields.InputDataFields.groundtruth_confidences in labels:
+    gt_confidences_list = labels[
+        fields.InputDataFields.groundtruth_confidences]
+  gt_is_crowd_list = None
+  if fields.InputDataFields.groundtruth_is_crowd in labels:
+    gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
+  model.provide_groundtruth(
+      groundtruth_boxes_list=gt_boxes_list,
+      groundtruth_classes_list=gt_classes_list,
+      groundtruth_confidences_list=gt_confidences_list,
+      groundtruth_masks_list=gt_masks_list,
+      groundtruth_keypoints_list=gt_keypoints_list,
+      groundtruth_weights_list=gt_weights_list,
+      groundtruth_is_crowd_list=gt_is_crowd_list)
+
+
 def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
                     postprocess_on_cpu=False):
   """Creates a model function for `Estimator`.
@@ -245,33 +286,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
           labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
-      gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
-      gt_classes_list = labels[fields.InputDataFields.groundtruth_classes]
-      gt_masks_list = None
-      if fields.InputDataFields.groundtruth_instance_masks in labels:
-        gt_masks_list = labels[
-            fields.InputDataFields.groundtruth_instance_masks]
-      gt_keypoints_list = None
-      if fields.InputDataFields.groundtruth_keypoints in labels:
-        gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
-      gt_weights_list = None
-      if fields.InputDataFields.groundtruth_weights in labels:
-        gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
-      gt_confidences_list = None
-      if fields.InputDataFields.groundtruth_confidences in labels:
-        gt_confidences_list = labels[
-            fields.InputDataFields.groundtruth_confidences]
-      gt_is_crowd_list = None
-      if fields.InputDataFields.groundtruth_is_crowd in labels:
-        gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
-      detection_model.provide_groundtruth(
-          groundtruth_boxes_list=gt_boxes_list,
-          groundtruth_classes_list=gt_classes_list,
-          groundtruth_confidences_list=gt_confidences_list,
-          groundtruth_masks_list=gt_masks_list,
-          groundtruth_keypoints_list=gt_keypoints_list,
-          groundtruth_weights_list=gt_weights_list,
-          groundtruth_is_crowd_list=gt_is_crowd_list)
+      provide_groundtruth(detection_model, labels)
 
     preprocessed_images = features[fields.InputDataFields.image]
     if use_tpu and train_config.use_bfloat16:
@@ -279,9 +294,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
         prediction_dict = detection_model.predict(
             preprocessed_images,
             features[fields.InputDataFields.true_image_shape])
-        for k, v in prediction_dict.items():
-          if v.dtype == tf.bfloat16:
-            prediction_dict[k] = tf.cast(v, tf.float32)
+        prediction_dict = ops.bfloat16_to_float32_nested(prediction_dict)
     else:
       prediction_dict = detection_model.predict(
           preprocessed_images,
@@ -338,6 +351,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
       losses = [loss_tensor for loss_tensor in losses_dict.values()]
       if train_config.add_regularization_loss:
         regularization_losses = detection_model.regularization_losses()
+        if use_tpu and train_config.use_bfloat16:
+          regularization_losses = ops.bfloat16_to_float32_nested(
+              regularization_losses)
         if regularization_losses:
           regularization_loss = tf.add_n(
               regularization_losses, name='regularization_loss')
@@ -507,7 +523,7 @@ def create_estimator_and_inputs(run_config,
                                 pipeline_config_path,
                                 config_override=None,
                                 train_steps=None,
-                                sample_1_of_n_eval_examples=1,
+                                sample_1_of_n_eval_examples=None,
                                 sample_1_of_n_eval_on_train_examples=1,
                                 model_fn_creator=create_model_fn,
                                 use_tpu_estimator=False,
@@ -589,9 +605,12 @@ def create_estimator_and_inputs(run_config,
       pipeline_config_path, config_override=config_override)
   kwargs.update({
       'train_steps': train_steps,
-      'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples,
       'use_bfloat16': configs['train_config'].use_bfloat16 and use_tpu
   })
+  if sample_1_of_n_eval_examples >= 1:
+    kwargs.update({
+        'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples
+    })
   if override_eval_num_epochs:
     kwargs.update({'eval_num_epochs': 1})
     tf.logging.warning(

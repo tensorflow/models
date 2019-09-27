@@ -76,4 +76,8 @@ message EvalConfig {
 
   // If True, additionally include per-category metrics.
   optional bool include_metrics_per_category = 24 [default=false];
+
+  // Recall range within which precision should be computed.
+  optional float recall_lower_bound = 26 [default = 0.0];
+  optional float recall_upper_bound = 27 [default = 1.0];
 }

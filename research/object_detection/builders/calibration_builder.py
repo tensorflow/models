@@ -79,6 +79,27 @@ def _function_approximation_proto_to_tf_tensors(x_y_pairs_message):
   return tf_x, tf_y
 
 
+def _get_class_id_function_dict(calibration_config):
+  """Create a dictionary mapping class id to function approximations.
+
+  Args:
+    calibration_config: calibration_pb2 proto containing
+      id_function_approximations.
+  Returns:
+    Dictionary mapping a class id to a tuple of TF tensors to be used for
+    function approximation.
+  """
+  class_id_function_dict = {}
+  class_id_xy_pairs_map = (
+      calibration_config.class_id_function_approximations.class_id_xy_pairs_map)
+  for class_id in class_id_xy_pairs_map:
+    class_id_function_dict[class_id] = (
+        _function_approximation_proto_to_tf_tensors(
+            class_id_xy_pairs_map[class_id]))
+
+  return class_id_function_dict
+
+
 def build(calibration_config):
   """Returns a function that calibrates Tensorflow model scores.
 
@@ -107,9 +128,9 @@ def build(calibration_config):
     def calibration_fn(class_predictions_with_background):
       """Calibrate predictions via 1-d linear interpolation.
 
-      Predictions scores are linearly interpolated based on class-agnostic
-      function approximations. Note that the 0-indexed background class may
-      also transformed.
+      Predictions scores are linearly interpolated based on a class-agnostic
+      function approximation. Note that the 0-indexed background class is also
+      transformed.
 
       Args:
         class_predictions_with_background: tf.float32 tensor of shape
@@ -118,9 +139,8 @@ def build(calibration_config):
           and the result of calling the `predict` method of a detection model.
 
       Returns:
-        tf.float32 tensor of shape [batch_size, num_anchors, num_classes] if
-        background class is not present (else shape is
-        [batch_size, num_anchors, num_classes + 1]) on the interval [0, 1].
+        tf.float32 tensor of the same shape as the input with values on the
+        interval [0, 1].
       """
       # Flattening Tensors and then reshaping at the end.
       flat_class_predictions_with_background = tf.reshape(
@@ -139,7 +159,61 @@ def build(calibration_config):
           name='calibrate_scores')
       return calibrated_class_predictions_with_background
 
-  # TODO(zbeaver): Add sigmoid calibration and per-class isotonic regression.
+  elif (calibration_config.WhichOneof('calibrator') ==
+        'class_id_function_approximations'):
+
+    def calibration_fn(class_predictions_with_background):
+      """Calibrate predictions per class via 1-d linear interpolation.
+
+      Prediction scores are linearly interpolated with class-specific function
+      approximations. Note that after calibration, an anchor's class scores will
+      not necessarily sum to 1, and score ordering may change, depending on each
+      class' calibration parameters.
+
+      Args:
+        class_predictions_with_background: tf.float32 tensor of shape
+          [batch_size, num_anchors, num_classes + 1] containing scores on the
+          interval [0,1]. This is usually produced by a sigmoid or softmax layer
+          and the result of calling the `predict` method of a detection model.
+
+      Returns:
+        tf.float32 tensor of the same shape as the input with values on the
+        interval [0, 1].
+
+      Raises:
+        KeyError: Calibration parameters are not present for a class.
+      """
+      class_id_function_dict = _get_class_id_function_dict(calibration_config)
+
+      # Tensors are split by class and then recombined at the end to recover
+      # the input's original shape. If a class id does not have calibration
+      # parameters, it is left unchanged.
+      class_tensors = tf.unstack(class_predictions_with_background, axis=-1)
+      calibrated_class_tensors = []
+      for class_id, class_tensor in enumerate(class_tensors):
+        flat_class_tensor = tf.reshape(class_tensor, shape=[-1])
+        if class_id in class_id_function_dict:
+          output_tensor = _tf_linear_interp1d(
+              x_to_interpolate=flat_class_tensor,
+              fn_x=class_id_function_dict[class_id][0],
+              fn_y=class_id_function_dict[class_id][1])
+        else:
+          tf.logging.info(
+              'Calibration parameters for class id `%d` not not found',
+              class_id)
+          output_tensor = flat_class_tensor
+        calibrated_class_tensors.append(output_tensor)
+
+      combined_calibrated_tensor = tf.stack(calibrated_class_tensors, axis=1)
+      input_shape = shape_utils.combined_static_and_dynamic_shape(
+          class_predictions_with_background)
+      calibrated_class_predictions_with_background = tf.reshape(
+          combined_calibrated_tensor,
+          shape=input_shape,
+          name='calibrate_scores')
+      return calibrated_class_predictions_with_background
+
+  # TODO(zbeaver): Add sigmoid calibration.
   else:
     raise ValueError('No calibration builder defined for "Oneof" in '
                      'calibration_config.')

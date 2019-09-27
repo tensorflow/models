@@ -32,8 +32,8 @@ import tensorflow as tf
 from google.protobuf import text_format
 from tensorflow.python.platform import app
 from delf import delf_config_pb2
-from delf import feature_extractor
 from delf import feature_io
+from delf import extractor
 
 cmd_args = None
 
@@ -74,8 +74,8 @@ def main(unused_argv):
     text_format.Merge(f.read(), config)
 
   # Create output directory if necessary.
-  if not os.path.exists(cmd_args.output_dir):
-    os.makedirs(cmd_args.output_dir)
+  if not tf.gfile.Exists(cmd_args.output_dir):
+    tf.gfile.MakeDirs(cmd_args.output_dir)
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
@@ -86,28 +86,10 @@ def main(unused_argv):
     image_tf = tf.image.decode_jpeg(value, channels=3)
 
     with tf.Session() as sess:
-      # Initialize variables.
       init_op = tf.global_variables_initializer()
       sess.run(init_op)
 
-      # Loading model that will be used.
-      tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
-                                 config.model_path)
-      graph = tf.get_default_graph()
-      input_image = graph.get_tensor_by_name('input_image:0')
-      input_score_threshold = graph.get_tensor_by_name('input_abs_thres:0')
-      input_image_scales = graph.get_tensor_by_name('input_scales:0')
-      input_max_feature_num = graph.get_tensor_by_name(
-          'input_max_feature_num:0')
-      boxes = graph.get_tensor_by_name('boxes:0')
-      raw_descriptors = graph.get_tensor_by_name('features:0')
-      feature_scales = graph.get_tensor_by_name('scales:0')
-      attention_with_extra_dim = graph.get_tensor_by_name('scores:0')
-      attention = tf.reshape(attention_with_extra_dim,
-                             [tf.shape(attention_with_extra_dim)[0]])
-
-      locations, descriptors = feature_extractor.DelfFeaturePostProcessing(
-          boxes, raw_descriptors, config)
+      extractor_fn = extractor.MakeExtractor(sess, config)
 
       # Start input enqueue threads.
       coord = tf.train.Coordinator()
@@ -119,9 +101,10 @@ def main(unused_argv):
           tf.logging.info('Starting to extract DELF features from images...')
         elif i % _STATUS_CHECK_ITERATIONS == 0:
           elapsed = (time.clock() - start)
-          tf.logging.info('Processing image %d out of %d, last %d '
-                          'images took %f seconds', i, num_images,
-                          _STATUS_CHECK_ITERATIONS, elapsed)
+          tf.logging.info(
+              'Processing image %d out of %d, last %d '
+              'images took %f seconds', i, num_images, _STATUS_CHECK_ITERATIONS,
+              elapsed)
           start = time.clock()
 
         # # Get next image.
@@ -137,18 +120,7 @@ def main(unused_argv):
 
         # Extract and save features.
         (locations_out, descriptors_out, feature_scales_out,
-         attention_out) = sess.run(
-             [locations, descriptors, feature_scales, attention],
-             feed_dict={
-                 input_image:
-                     im,
-                 input_score_threshold:
-                     config.delf_local_config.score_threshold,
-                 input_image_scales:
-                     list(config.image_scales),
-                 input_max_feature_num:
-                     config.delf_local_config.max_feature_num
-             })
+         attention_out) = extractor_fn(im)
 
         feature_io.WriteToFile(out_desc_fullpath, locations_out,
                                feature_scales_out, descriptors_out,

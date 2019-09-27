@@ -14,8 +14,13 @@
 # ==============================================================================
 """Tests for object_detection.utils.config_util."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 
+from six.moves import range
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -609,6 +614,12 @@ class ConfigUtilTest(tf.test.TestCase):
     image_resizer_config = image_resizer_pb2.ImageResizer()
     image_resizer_config.keep_aspect_ratio_resizer.min_dimension = 100
     image_resizer_config.keep_aspect_ratio_resizer.max_dimension = 600
+    image_shape = config_util.get_spatial_image_size(image_resizer_config)
+    self.assertAllEqual(image_shape, [-1, -1])
+
+  def testGetSpatialImageSizeFromConditionalShapeResizer(self):
+    image_resizer_config = image_resizer_pb2.ImageResizer()
+    image_resizer_config.conditional_shape_resizer.size_threshold = 100
     image_shape = config_util.get_spatial_image_size(image_resizer_config)
     self.assertAllEqual(image_shape, [-1, -1])
 

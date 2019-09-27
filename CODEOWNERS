@@ -1,5 +1,6 @@
 * @tensorflow/tf-garden-team
-/official/ @tensorflow/tf-garden-team @karmel
+/official/ @guptapriya @rachellj218 @saberkun
+/official/bert @saberkun @hongjunChoi @rachellj218
 /research/adversarial_crypto/ @dave-andersen
 /research/adversarial_logit_pairing/ @AlexeyKurakin
 /research/adversarial_text/ @rsepassi @a-dai
@@ -30,7 +31,7 @@
 /research/lfads/ @jazcollins @susillo
 /research/lm_1b/ @oriolvinyals @panyx0718
 /research/lm_commonsense/ @thtrieu
-/research/lstm_object_detection/ @dreamdragon @masonliuw @yinxiaoli
+/research/lstm_object_detection/ @dreamdragon @masonliuw @yinxiaoli @yongzhe2160
 /research/marco/ @vincentvanhoucke
 /research/maskgan/ @a-dai
 /research/morph_net/ @gariel-google
@@ -63,5 +64,5 @@
 /samples/languages/java/ @asimshankar
 /tutorials/embedding/ @zffchen78 @a-dai
 /tutorials/image/ @sherrym @shlens
-/tutorials/image/cifar10_estimator/ @tfboyd @protoget
+/tutorials/image/cifar10_estimator/ @protoget
 /tutorials/rnn/ @lukaszkaiser @ebrevdo

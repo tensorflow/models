@@ -38,8 +38,8 @@ flags.DEFINE_string('checkpoint_dir', None, 'Directory of model checkpoints.')
 flags.DEFINE_integer('eval_batch_size', 1,
                      'The number of images in each batch during evaluation.')
 
-flags.DEFINE_multi_integer('eval_crop_size', [513, 513],
-                           'Image crop size [height, width] for evaluation.')
+flags.DEFINE_list('eval_crop_size', '513,513',
+                  'Image crop size [height, width] for evaluation.')
 
 flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                      'How often (in seconds) to run evaluation.')
@@ -60,6 +60,10 @@ flags.DEFINE_multi_float('eval_scales', [1.0],
 # Change to True for adding flipped images during test.
 flags.DEFINE_bool('add_flipped_images', False,
                   'Add flipped images for evaluation or not.')
+
+flags.DEFINE_integer(
+    'quantize_delay_step', -1,
+    'Steps to start quantized training. If < 0, will not quantize model.')
 
 # Dataset settings.
 
@@ -84,7 +88,7 @@ def main(unused_argv):
       split_name=FLAGS.eval_split,
       dataset_dir=FLAGS.dataset_dir,
       batch_size=FLAGS.eval_batch_size,
-      crop_size=FLAGS.eval_crop_size,
+      crop_size=[int(sz) for sz in FLAGS.eval_crop_size],
       min_resize_value=FLAGS.min_resize_value,
       max_resize_value=FLAGS.max_resize_value,
       resize_factor=FLAGS.resize_factor,
@@ -102,15 +106,15 @@ def main(unused_argv):
 
     model_options = common.ModelOptions(
         outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_of_classes},
-        crop_size=FLAGS.eval_crop_size,
+        crop_size=[int(sz) for sz in FLAGS.eval_crop_size],
         atrous_rates=FLAGS.atrous_rates,
         output_stride=FLAGS.output_stride)
 
     # Set shape in order for tf.contrib.tfprof.model_analyzer to work properly.
     samples[common.IMAGE].set_shape(
         [FLAGS.eval_batch_size,
-         FLAGS.eval_crop_size[0],
-         FLAGS.eval_crop_size[1],
+         int(FLAGS.eval_crop_size[0]),
+         int(FLAGS.eval_crop_size[1]),
          3])
     if tuple(FLAGS.eval_scales) == (1.0,):
       tf.logging.info('Performing single-scale test.')
@@ -118,6 +122,10 @@ def main(unused_argv):
                                          image_pyramid=FLAGS.image_pyramid)
     else:
       tf.logging.info('Performing multi-scale test.')
+      if FLAGS.quantize_delay_step >= 0:
+        raise ValueError(
+            'Quantize mode is not supported with multi-scale test.')
+
       predictions = model.predict_labels_multi_scale(
           samples[common.IMAGE],
           model_options=model_options,
@@ -153,6 +161,9 @@ def main(unused_argv):
     num_eval_iters = None
     if FLAGS.max_number_of_evaluations > 0:
       num_eval_iters = FLAGS.max_number_of_evaluations
+
+    if FLAGS.quantize_delay_step >= 0:
+      tf.contrib.quantize.create_eval_graph()
 
     tf.contrib.tfprof.model_analyzer.print_model_analysis(
         tf.get_default_graph(),

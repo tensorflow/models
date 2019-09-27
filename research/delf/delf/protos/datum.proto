@@ -39,15 +39,28 @@ message DatumShape {
   repeated int64 dim = 1 [packed = true];
 }
 
-// FloatList is the container of tensor values. The tensor values are saved as
-// a list of floating point values.
+// FloatList is a container of tensor values, which are saved as a list of
+// floating point values.
 message FloatList {
   repeated float value = 1 [packed = true];
+}
+
+// Uint32List is a container of tensor values, which are saved as a list of
+// uint32 values.
+message Uint32List {
+  repeated uint32 value = 1 [packed = true];
 }
 
 message DatumProto {
   optional DatumShape shape = 1;
   oneof kind_oneof {
     FloatList float_list = 2;
+    Uint32List uint32_list = 3;
   }
+}
+
+// Groups two DatumProto's.
+message DatumPairProto {
+  optional DatumProto first = 1;
+  optional DatumProto second = 2;
 }

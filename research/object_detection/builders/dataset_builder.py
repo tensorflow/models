@@ -56,9 +56,15 @@ def read_dataset(file_read_func, input_files, config):
 
   Returns:
     A tf.data.Dataset of (undecoded) tf-records based on config.
+
+  Raises:
+    RuntimeError: If no files are found at the supplied path(s).
   """
   # Shard, shuffle, and read files.
   filenames = tf.gfile.Glob(input_files)
+  if not filenames:
+    raise RuntimeError('Did not find any input files matching the glob pattern '
+                       '{}'.format(input_files))
   num_readers = config.num_readers
   if num_readers > len(filenames):
     num_readers = len(filenames)

@@ -13,21 +13,50 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for ssd_mobilenet_v2_fpn_feature_extractor."""
+"""Tests for ssd_mobilenet_v2_fpn_feature_extractor.
+
+By using parameterized test decorator, this test serves for both Slim-based and
+Keras-based Mobilenet V2 FPN feature extractors in SSD.
+"""
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from object_detection.models import ssd_feature_extractor_test
 from object_detection.models import ssd_mobilenet_v2_fpn_feature_extractor
+from object_detection.models import ssd_mobilenet_v2_fpn_keras_feature_extractor
 
 slim = tf.contrib.slim
 
 
+@parameterized.parameters(
+    {
+        'use_depthwise': False,
+        'use_keras': True
+    },
+    {
+        'use_depthwise': True,
+        'use_keras': True
+    },
+    {
+        'use_depthwise': False,
+        'use_keras': False
+    },
+    {
+        'use_depthwise': True,
+        'use_keras': False
+    },
+)
 class SsdMobilenetV2FpnFeatureExtractorTest(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
-  def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                is_training=True, use_explicit_padding=False):
+  def _create_feature_extractor(self,
+                                depth_multiplier,
+                                pad_to_multiple,
+                                is_training=True,
+                                use_explicit_padding=False,
+                                use_keras=False,
+                                use_depthwise=False):
     """Constructs a new feature extractor.
 
     Args:
@@ -38,20 +67,40 @@ class SsdMobilenetV2FpnFeatureExtractorTest(
       use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
+      use_keras: if True builds a keras-based feature extractor, if False builds
+        a slim-based one.
+      use_depthwise: Whether to use depthwise convolutions.
     Returns:
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
     min_depth = 32
-    return (ssd_mobilenet_v2_fpn_feature_extractor.
-            SSDMobileNetV2FpnFeatureExtractor(
-                is_training,
-                depth_multiplier,
-                min_depth,
-                pad_to_multiple,
-                self.conv_hyperparams_fn,
-                use_explicit_padding=use_explicit_padding))
+    if use_keras:
+      return (ssd_mobilenet_v2_fpn_keras_feature_extractor
+              .SSDMobileNetV2FpnKerasFeatureExtractor(
+                  is_training=is_training,
+                  depth_multiplier=depth_multiplier,
+                  min_depth=min_depth,
+                  pad_to_multiple=pad_to_multiple,
+                  conv_hyperparams=self._build_conv_hyperparams(
+                      add_batch_norm=False),
+                  freeze_batchnorm=False,
+                  inplace_batchnorm_update=False,
+                  use_explicit_padding=use_explicit_padding,
+                  use_depthwise=use_depthwise,
+                  name='MobilenetV2_FPN'))
+    else:
+      return (ssd_mobilenet_v2_fpn_feature_extractor
+              .SSDMobileNetV2FpnFeatureExtractor(
+                  is_training,
+                  depth_multiplier,
+                  min_depth,
+                  pad_to_multiple,
+                  self.conv_hyperparams_fn,
+                  use_depthwise=use_depthwise,
+                  use_explicit_padding=use_explicit_padding))
 
-  def test_extract_features_returns_correct_shapes_256(self):
+  def test_extract_features_returns_correct_shapes_256(self, use_keras,
+                                                       use_depthwise):
     image_height = 256
     image_width = 256
     depth_multiplier = 1.0
@@ -60,13 +109,28 @@ class SsdMobilenetV2FpnFeatureExtractorTest(
                                   (2, 8, 8, 256), (2, 4, 4, 256),
                                   (2, 2, 2, 256)]
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
 
-  def test_extract_features_returns_correct_shapes_384(self):
+  def test_extract_features_returns_correct_shapes_384(self, use_keras,
+                                                       use_depthwise):
     image_height = 320
     image_width = 320
     depth_multiplier = 1.0
@@ -75,13 +139,28 @@ class SsdMobilenetV2FpnFeatureExtractorTest(
                                   (2, 10, 10, 256), (2, 5, 5, 256),
                                   (2, 3, 3, 256)]
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
 
-  def test_extract_features_with_dynamic_image_shape(self):
+  def test_extract_features_with_dynamic_image_shape(self, use_keras,
+                                                     use_depthwise):
     image_height = 256
     image_width = 256
     depth_multiplier = 1.0
@@ -90,13 +169,28 @@ class SsdMobilenetV2FpnFeatureExtractorTest(
                                   (2, 8, 8, 256), (2, 4, 4, 256),
                                   (2, 2, 2, 256)]
     self.check_extract_features_returns_correct_shapes_with_dynamic_inputs(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
     self.check_extract_features_returns_correct_shapes_with_dynamic_inputs(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
 
-  def test_extract_features_returns_correct_shapes_with_pad_to_multiple(self):
+  def test_extract_features_returns_correct_shapes_with_pad_to_multiple(
+      self, use_keras, use_depthwise):
     image_height = 299
     image_width = 299
     depth_multiplier = 1.0
@@ -105,13 +199,28 @@ class SsdMobilenetV2FpnFeatureExtractorTest(
                                   (2, 10, 10, 256), (2, 5, 5, 256),
                                   (2, 3, 3, 256)]
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
 
-  def test_extract_features_returns_correct_shapes_enforcing_min_depth(self):
+  def test_extract_features_returns_correct_shapes_enforcing_min_depth(
+      self, use_keras, use_depthwise):
     image_height = 256
     image_width = 256
     depth_multiplier = 0.5**12
@@ -120,59 +229,107 @@ class SsdMobilenetV2FpnFeatureExtractorTest(
                                   (2, 8, 8, 32), (2, 4, 4, 32),
                                   (2, 2, 2, 32)]
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=False)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=False,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
     self.check_extract_features_returns_correct_shape(
-        2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape, use_explicit_padding=True)
+        2,
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        expected_feature_map_shape,
+        use_explicit_padding=True,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
 
-  def test_extract_features_raises_error_with_invalid_image_size(self):
+  def test_extract_features_raises_error_with_invalid_image_size(
+      self, use_keras, use_depthwise):
     image_height = 32
     image_width = 32
     depth_multiplier = 1.0
     pad_to_multiple = 1
     self.check_extract_features_raises_error_with_invalid_image_size(
-        image_height, image_width, depth_multiplier, pad_to_multiple)
+        image_height,
+        image_width,
+        depth_multiplier,
+        pad_to_multiple,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
 
-  def test_preprocess_returns_correct_value_range(self):
+  def test_preprocess_returns_correct_value_range(self, use_keras,
+                                                  use_depthwise):
     image_height = 256
     image_width = 256
     depth_multiplier = 1
     pad_to_multiple = 1
     test_image = np.random.rand(2, image_height, image_width, 3)
-    feature_extractor = self._create_feature_extractor(depth_multiplier,
-                                                       pad_to_multiple)
+    feature_extractor = self._create_feature_extractor(
+        depth_multiplier,
+        pad_to_multiple,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
     preprocessed_image = feature_extractor.preprocess(test_image)
     self.assertTrue(np.all(np.less_equal(np.abs(preprocessed_image), 1.0)))
 
-  def test_variables_only_created_in_scope(self):
+  def test_variables_only_created_in_scope(self, use_keras, use_depthwise):
     depth_multiplier = 1
     pad_to_multiple = 1
     scope_name = 'MobilenetV2'
     self.check_feature_extractor_variables_under_scope(
-        depth_multiplier, pad_to_multiple, scope_name)
+        depth_multiplier,
+        pad_to_multiple,
+        scope_name,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
 
-  def test_fused_batchnorm(self):
+  def test_fused_batchnorm(self, use_keras, use_depthwise):
     image_height = 256
     image_width = 256
     depth_multiplier = 1
     pad_to_multiple = 1
     image_placeholder = tf.placeholder(tf.float32,
                                        [1, image_height, image_width, 3])
-    feature_extractor = self._create_feature_extractor(depth_multiplier,
-                                                       pad_to_multiple)
+    feature_extractor = self._create_feature_extractor(
+        depth_multiplier,
+        pad_to_multiple,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
     preprocessed_image = feature_extractor.preprocess(image_placeholder)
-    _ = feature_extractor.extract_features(preprocessed_image)
+    if use_keras:
+      _ = feature_extractor(preprocessed_image)
+    else:
+      _ = feature_extractor.extract_features(preprocessed_image)
     self.assertTrue(
-        any(op.type == 'FusedBatchNorm'
+        any('FusedBatchNorm' in op.type
             for op in tf.get_default_graph().get_operations()))
 
-  def test_get_expected_feature_map_variable_names(self):
+  def test_variable_count(self, use_keras, use_depthwise):
+    depth_multiplier = 1
+    pad_to_multiple = 1
+    variables = self.get_feature_extractor_variables(
+        depth_multiplier,
+        pad_to_multiple,
+        use_keras=use_keras,
+        use_depthwise=use_depthwise)
+    expected_variables_len = 274
+    if use_depthwise:
+      expected_variables_len = 278
+    self.assertEqual(len(variables), expected_variables_len)
+
+  def test_get_expected_feature_map_variable_names(self, use_keras,
+                                                   use_depthwise):
     depth_multiplier = 1.0
     pad_to_multiple = 1
 
-    expected_feature_maps_variables = set([
-        # Mobilenet V2 feature maps
+    slim_expected_feature_maps_variables = set([
+        # Slim Mobilenet V2 feature maps
         'MobilenetV2/expanded_conv_4/depthwise/depthwise_weights',
         'MobilenetV2/expanded_conv_7/depthwise/depthwise_weights',
         'MobilenetV2/expanded_conv_14/depthwise/depthwise_weights',
@@ -186,13 +343,84 @@ class SsdMobilenetV2FpnFeatureExtractorTest(
         'MobilenetV2/fpn/projection_2/weights',
         'MobilenetV2/fpn/projection_3/weights',
     ])
+    slim_expected_feature_maps_variables_with_depthwise = set([
+        # Slim Mobilenet V2 feature maps
+        'MobilenetV2/expanded_conv_4/depthwise/depthwise_weights',
+        'MobilenetV2/expanded_conv_7/depthwise/depthwise_weights',
+        'MobilenetV2/expanded_conv_14/depthwise/depthwise_weights',
+        'MobilenetV2/Conv_1/weights',
+        # FPN layers
+        'MobilenetV2/fpn/bottom_up_Conv2d_20/pointwise_weights',
+        'MobilenetV2/fpn/bottom_up_Conv2d_20/depthwise_weights',
+        'MobilenetV2/fpn/bottom_up_Conv2d_21/pointwise_weights',
+        'MobilenetV2/fpn/bottom_up_Conv2d_21/depthwise_weights',
+        'MobilenetV2/fpn/smoothing_1/depthwise_weights',
+        'MobilenetV2/fpn/smoothing_1/pointwise_weights',
+        'MobilenetV2/fpn/smoothing_2/depthwise_weights',
+        'MobilenetV2/fpn/smoothing_2/pointwise_weights',
+        'MobilenetV2/fpn/projection_1/weights',
+        'MobilenetV2/fpn/projection_2/weights',
+        'MobilenetV2/fpn/projection_3/weights',
+    ])
+    keras_expected_feature_maps_variables = set([
+        # Keras Mobilenet V2 feature maps
+        'MobilenetV2_FPN/block_4_depthwise/depthwise_kernel',
+        'MobilenetV2_FPN/block_7_depthwise/depthwise_kernel',
+        'MobilenetV2_FPN/block_14_depthwise/depthwise_kernel',
+        'MobilenetV2_FPN/Conv_1/kernel',
+        # FPN layers
+        'MobilenetV2_FPN/bottom_up_Conv2d_20_conv/kernel',
+        'MobilenetV2_FPN/bottom_up_Conv2d_21_conv/kernel',
+        'MobilenetV2_FPN/FeatureMaps/top_down/smoothing_1_conv/kernel',
+        'MobilenetV2_FPN/FeatureMaps/top_down/smoothing_2_conv/kernel',
+        'MobilenetV2_FPN/FeatureMaps/top_down/projection_1/kernel',
+        'MobilenetV2_FPN/FeatureMaps/top_down/projection_2/kernel',
+        'MobilenetV2_FPN/FeatureMaps/top_down/projection_3/kernel'
+    ])
+    keras_expected_feature_maps_variables_with_depthwise = set([
+        # Keras Mobilenet V2 feature maps
+        'MobilenetV2_FPN/block_4_depthwise/depthwise_kernel',
+        'MobilenetV2_FPN/block_7_depthwise/depthwise_kernel',
+        'MobilenetV2_FPN/block_14_depthwise/depthwise_kernel',
+        'MobilenetV2_FPN/Conv_1/kernel',
+        # FPN layers
+        'MobilenetV2_FPN/bottom_up_Conv2d_20_depthwise_conv/depthwise_kernel',
+        'MobilenetV2_FPN/bottom_up_Conv2d_20_depthwise_conv/pointwise_kernel',
+        'MobilenetV2_FPN/bottom_up_Conv2d_21_depthwise_conv/depthwise_kernel',
+        'MobilenetV2_FPN/bottom_up_Conv2d_21_depthwise_conv/pointwise_kernel',
+        ('MobilenetV2_FPN/FeatureMaps/top_down/smoothing_1_depthwise_conv/'
+         'depthwise_kernel'),
+        ('MobilenetV2_FPN/FeatureMaps/top_down/smoothing_1_depthwise_conv/'
+         'pointwise_kernel'),
+        ('MobilenetV2_FPN/FeatureMaps/top_down/smoothing_2_depthwise_conv/'
+         'depthwise_kernel'),
+        ('MobilenetV2_FPN/FeatureMaps/top_down/smoothing_2_depthwise_conv/'
+         'pointwise_kernel'),
+        'MobilenetV2_FPN/FeatureMaps/top_down/projection_1/kernel',
+        'MobilenetV2_FPN/FeatureMaps/top_down/projection_2/kernel',
+        'MobilenetV2_FPN/FeatureMaps/top_down/projection_3/kernel'
+    ])
 
     g = tf.Graph()
     with g.as_default():
       preprocessed_inputs = tf.placeholder(tf.float32, (4, None, None, 3))
       feature_extractor = self._create_feature_extractor(
-          depth_multiplier, pad_to_multiple)
-      feature_extractor.extract_features(preprocessed_inputs)
+          depth_multiplier,
+          pad_to_multiple,
+          use_keras=use_keras,
+          use_depthwise=use_depthwise)
+      if use_keras:
+        _ = feature_extractor(preprocessed_inputs)
+        expected_feature_maps_variables = keras_expected_feature_maps_variables
+        if use_depthwise:
+          expected_feature_maps_variables = (
+              keras_expected_feature_maps_variables_with_depthwise)
+      else:
+        _ = feature_extractor.extract_features(preprocessed_inputs)
+        expected_feature_maps_variables = slim_expected_feature_maps_variables
+        if use_depthwise:
+          expected_feature_maps_variables = (
+              slim_expected_feature_maps_variables_with_depthwise)
       actual_variable_set = set([
           var.op.name for var in g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
       ])

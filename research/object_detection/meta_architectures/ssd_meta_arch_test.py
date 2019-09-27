@@ -176,6 +176,9 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         ]
     ]  # padding
     expected_scores = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
+    expected_multiclass_scores = [[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+                                  [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]]
+
     expected_classes = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
     expected_num_detections = np.array([3, 3])
 
@@ -185,6 +188,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                             [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]]]
     raw_detection_scores = [[[0, 0], [0, 0], [0, 0], [0, 0]],
                             [[0, 0], [0, 0], [0, 0], [0, 0]]]
+    detection_anchor_indices = [[0, 2, 1, 0, 0], [0, 2, 1, 0, 0]]
 
     for input_shape in input_shapes:
       tf_graph = tf.Graph()
@@ -198,6 +202,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         detections = model.postprocess(prediction_dict, true_image_shapes)
         self.assertIn('detection_boxes', detections)
         self.assertIn('detection_scores', detections)
+        self.assertIn('detection_multiclass_scores', detections)
         self.assertIn('detection_classes', detections)
         self.assertIn('num_detections', detections)
         self.assertIn('raw_detection_boxes', detections)
@@ -217,12 +222,16 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                 expected_boxes[image_idx]))
       self.assertAllClose(detections_out['detection_scores'], expected_scores)
       self.assertAllClose(detections_out['detection_classes'], expected_classes)
+      self.assertAllClose(detections_out['detection_multiclass_scores'],
+                          expected_multiclass_scores)
       self.assertAllClose(detections_out['num_detections'],
                           expected_num_detections)
       self.assertAllEqual(detections_out['raw_detection_boxes'],
                           raw_detection_boxes)
       self.assertAllEqual(detections_out['raw_detection_scores'],
                           raw_detection_scores)
+      self.assertAllEqual(detections_out['detection_anchor_indices'],
+                          detection_anchor_indices)
 
   def test_postprocess_results_are_correct_static(self, use_keras):
     with tf.Graph().as_default():
@@ -235,7 +244,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                                       true_image_shapes)
       detections = model.postprocess(prediction_dict, true_image_shapes)
       return (detections['detection_boxes'], detections['detection_scores'],
-              detections['detection_classes'], detections['num_detections'])
+              detections['detection_classes'], detections['num_detections'],
+              detections['detection_multiclass_scores'])
 
     batch_size = 2
     image_size = 2
@@ -257,11 +267,14 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         ]
     ]  # padding
     expected_scores = [[0, 0, 0, 0], [0, 0, 0, 0]]
+    expected_multiclass_scores = [[[0, 0], [0, 0], [0, 0], [0, 0]],
+                                  [[0, 0], [0, 0], [0, 0], [0, 0]]]
     expected_classes = [[0, 0, 0, 0], [0, 0, 0, 0]]
     expected_num_detections = np.array([3, 3])
 
     (detection_boxes, detection_scores, detection_classes,
-     num_detections) = self.execute(graph_fn, [input_image])
+     num_detections, detection_multiclass_scores) = self.execute(graph_fn,
+                                                                 [input_image])
     for image_idx in range(batch_size):
       self.assertTrue(test_utils.first_rows_close_as_set(
           detection_boxes[image_idx][
@@ -270,6 +283,11 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
       self.assertAllClose(
           detection_scores[image_idx][0:expected_num_detections[image_idx]],
           expected_scores[image_idx][0:expected_num_detections[image_idx]])
+      self.assertAllClose(
+          detection_multiclass_scores[image_idx]
+          [0:expected_num_detections[image_idx]],
+          expected_multiclass_scores[image_idx]
+          [0:expected_num_detections[image_idx]])
       self.assertAllClose(
           detection_classes[image_idx][0:expected_num_detections[image_idx]],
           expected_classes[image_idx][0:expected_num_detections[image_idx]])
@@ -311,8 +329,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                             [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]],
                            [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
                             [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]]]
-    raw_detection_scores = [[[0, 0], [0, 0], [0, 0], [0, 0]],
-                            [[0, 0], [0, 0], [0, 0], [0, 0]]]
+    raw_detection_scores = [[[0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5]],
+                            [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]]
 
     for input_shape in input_shapes:
       tf_graph = tf.Graph()
@@ -600,8 +618,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
     with test_graph_detection.as_default():
       model, _, _, _ = self._create_model(use_keras=use_keras)
       inputs_shape = [2, 2, 2, 3]
-      inputs = tf.to_float(tf.random_uniform(
-          inputs_shape, minval=0, maxval=255, dtype=tf.int32))
+      inputs = tf.cast(tf.random_uniform(
+          inputs_shape, minval=0, maxval=255, dtype=tf.int32), dtype=tf.float32)
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
@@ -620,8 +638,9 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
     with test_graph_detection.as_default():
       model, _, _, _ = self._create_model(use_keras=use_keras)
       inputs_shape = [2, 2, 2, 3]
-      inputs = tf.to_float(
-          tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32))
+      inputs = tf.cast(
+          tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32),
+          dtype=tf.float32)
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)

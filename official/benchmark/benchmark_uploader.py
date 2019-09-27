@@ -98,7 +98,7 @@ class BigQueryUploader(object):
         this is a UUID4 format.
       run_json_file: string, the file path that contains the run JSON data.
     """
-    with tf.gfile.GFile(run_json_file) as f:
+    with tf.io.gfile.GFile(run_json_file) as f:
       benchmark_json = json.load(f)
       self.upload_benchmark_run_json(
           dataset_name, table_name, run_id, benchmark_json)
@@ -118,7 +118,7 @@ class BigQueryUploader(object):
       metric_json_file: string, the file path that contains the metric JSON
         data.
     """
-    with tf.gfile.GFile(metric_json_file) as f:
+    with tf.io.gfile.GFile(metric_json_file) as f:
       metrics = []
       for line in f:
         metrics.append(json.loads(line.strip()))

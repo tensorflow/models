@@ -28,7 +28,7 @@ CONFIGS_PATH = './configs'
 CONTEXT_CONFIGS_PATH = './context/configs'
 
 def main():
-  bb = './'
+  bb = '.'
   base_num_args = 6
   if len(sys.argv) < base_num_args:
     print(

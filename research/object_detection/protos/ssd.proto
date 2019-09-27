@@ -1,4 +1,5 @@
 syntax = "proto2";
+
 package object_detection.protos;
 
 import "object_detection/protos/anchor_generator.proto";
@@ -6,15 +7,14 @@ import "object_detection/protos/box_coder.proto";
 import "object_detection/protos/box_predictor.proto";
 import "object_detection/protos/hyperparams.proto";
 import "object_detection/protos/image_resizer.proto";
-import "object_detection/protos/matcher.proto";
 import "object_detection/protos/losses.proto";
+import "object_detection/protos/matcher.proto";
 import "object_detection/protos/post_processing.proto";
 import "object_detection/protos/region_similarity_calculator.proto";
 
 // Configuration for Single Shot Detection (SSD) models.
 // Next id: 26
 message Ssd {
-
   // Number of classes to predict.
   optional int32 num_classes = 1;
 
@@ -114,8 +114,8 @@ message Ssd {
     // features and the number of classes.
     optional int32 mask_prediction_conv_depth = 4 [default = 256];
 
-    // The number of convolutions applied to image_features in the mask prediction
-    // branch.
+    // The number of convolutions applied to image_features in the mask
+    // prediction branch.
     optional int32 mask_prediction_num_conv_layers = 5 [default = 2];
 
     // Whether to apply convolutions on mask features before upsampling using
@@ -125,10 +125,10 @@ message Ssd {
     optional bool convolve_then_upsample_masks = 6 [default = false];
 
     // Mask loss weight.
-    optional float mask_loss_weight = 7 [default=5.0];
+    optional float mask_loss_weight = 7 [default = 5.0];
 
     // Number of boxes to be generated at training time for computing mask loss.
-    optional int32 mask_loss_sample_size = 8 [default=16];
+    optional int32 mask_loss_sample_size = 8 [default = 16];
 
     // Hyperparameters for convolution ops used in the box predictor.
     optional Hyperparams conv_hyperparams = 9;
@@ -189,6 +189,9 @@ message SsdFeatureExtractor {
   // placeholder. This should only be used if all the image preprocessing steps
   // happen outside the graph.
   optional bool replace_preprocessor_with_placeholder = 11 [default = false];
+
+  // The number of SSD layers.
+  optional int32 num_layers = 12 [default = 6];
 }
 
 // Configuration for Feature Pyramid Networks.

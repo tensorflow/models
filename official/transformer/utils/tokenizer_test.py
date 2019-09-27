@@ -26,7 +26,7 @@ class SubtokenizerTest(tf.test.TestCase):
 
   def _init_subtokenizer(self, vocab_list):
     temp_file = tempfile.NamedTemporaryFile(delete=False)
-    with tf.gfile.Open(temp_file.name, 'w') as w:
+    with tf.io.gfile.GFile(temp_file.name, "w") as w:
       for subtoken in vocab_list:
         w.write("'%s'" % subtoken)
         w.write("\n")
