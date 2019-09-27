@@ -40,6 +40,7 @@ import tensorflow as tf
 from official.utils.flags import core as flags_core
 
 
+
 ML_1M = "ml-1m"
 ML_20M = "ml-20m"
 DATASETS = [ML_1M, ML_20M]
@@ -151,7 +152,7 @@ def _transform_csv(input_path, output_path, names, skip_first, separator=","):
     separator: Character used to separate fields in the raw csv.
   """
   if six.PY2:
-    names = [n.decode("utf-8") for n in names]
+    names = [six.ensure_text(n, "utf-8") for n in names]
 
   with tf.io.gfile.GFile(output_path, "wb") as f_out, \
       tf.io.gfile.GFile(input_path, "rb") as f_in:
@@ -163,7 +164,7 @@ def _transform_csv(input_path, output_path, names, skip_first, separator=","):
       if i == 0 and skip_first:
         continue  # ignore existing labels in the csv
 
-      line = line.decode("utf-8", errors="ignore")
+      line = six.ensure_text(line, "utf-8", errors="ignore")
       fields = line.split(separator)
       if separator != ",":
         fields = ['"{}"'.format(field) if "," in field else field
