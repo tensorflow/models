@@ -123,12 +123,14 @@ def get_network_fn(name, num_classes, weight_decay=0.0, is_training=False):
     weight_decay: The l2 coefficient for the model weights.
     is_training: `True` if the model is being used for training and `False`
       otherwise.
+    is_grayscale: 'True' if the model is used for grayscale instead of RGB
+      images.
 
   Returns:
     network_fn: A function that applies the model to a batch of images. It has
       the following signature:
           net, end_points = network_fn(images)
-      The `images` input is a tensor of shape [batch_size, height, width, 3]
+      The `images` input is a tensor of shape [batch_size, height, width, 1]
       with height = width = network_fn.default_image_size. (The permissibility
       and treatment of other sizes depends on the network_fn.)
       The returned `end_points` are a dictionary of intermediate activations.
