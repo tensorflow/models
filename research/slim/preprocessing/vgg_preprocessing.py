@@ -348,7 +348,7 @@ def preprocess_for_eval(image, output_height, output_width, resize_side,
 def preprocess_image(image, output_height, output_width, is_training=False,
                      resize_side_min=_RESIZE_SIDE_MIN,
                      resize_side_max=_RESIZE_SIDE_MAX,
-                     input_grayscale=False:
+                     input_grayscale=False):
   """Preprocesses the given image.
 
   Args:
