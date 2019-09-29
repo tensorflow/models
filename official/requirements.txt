@@ -9,3 +9,4 @@ psutil>=5.4.3
 py-cpuinfo>=3.3.0
 scipy>=0.19.1
 typing
+tensorflow-hub
