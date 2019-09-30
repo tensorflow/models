@@ -18,9 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import math
 import six
 import tensorflow as tf
+
+from official.modeling import activations
 
 
 def pack_inputs(inputs):
@@ -74,55 +75,29 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-def gelu(x):
-  """Gaussian Error Linear Unit.
-
-  This is a smoother version of the RELU.
-  Original paper: https://arxiv.org/abs/1606.08415
-  Args:
-    x: float Tensor to perform activation.
-
-  Returns:
-    `x` with the GELU activation applied.
-  """
-  cdf = 0.5 * (1.0 + tf.tanh(
-      (math.sqrt(2 / math.pi) * (x + 0.044715 * tf.pow(x, 3)))))
-  return x * cdf
-
-
+# TODO(hongkuny): consider moving custom string-map lookup to keras api.
 def get_activation(identifier):
-  """Maps a string to a Python function, e.g., "relu" => `tf.nn.relu`.
+  """Maps a identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
+
+  It checks string first and if it is one of customized activation not in TF,
+  the corresponding activation will be returned. For non-customized activation
+  names and callable identifiers, always fallback to tf.keras.activations.get.
 
   Args:
-    identifier: String name of the activation function.
+    identifier: String name of the activation function or callable.
 
   Returns:
-    A Python function corresponding to the activation function. If
-    `identifier` is None, empty, or "linear", this will return None.
-    If `identifier` is not a string, it will return `identifier`.
-
-  Raises:
-    ValueError: The `identifier` does not correspond to a known
-      activation.
+    A Python function corresponding to the activation function.
   """
-  if identifier is None:
-    return None
-  elif isinstance(identifier, six.string_types):
+  if isinstance(identifier, six.string_types):
     name_to_fn = {
-        "linear": None,
-        "relu": tf.nn.relu,
-        "gelu": gelu,
-        "tanh": tf.nn.tanh,
+        "gelu": activations.gelu,
+        "custom_swish": activations.swish,
     }
     identifier = str(identifier).lower()
-    if identifier not in name_to_fn:
-      raise ValueError("Unsupported activation function: %s" % (identifier))
-    return name_to_fn[identifier]
-  elif callable(identifier):
-    return identifier
-  else:
-    raise ValueError("Could not interpret activation "
-                     "function identifier: %s" % (identifier))
+    if identifier in name_to_fn:
+      return tf.keras.activations.get(name_to_fn[identifier])
+  return tf.keras.activations.get(identifier)
 
 
 def get_shape_list(tensor, expected_rank=None, name=None):
