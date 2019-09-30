@@ -21,14 +21,14 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from official.modeling.activations import swish
+from official.modeling import activations
 
 
 @keras_parameterized.run_all_keras_modes
 class CustomizedSwishTest(keras_parameterized.TestCase):
 
   def test_gelu(self):
-    customized_swish_data = swish.swish([[.25, 0, -.25], [-1, -2, 3]])
+    customized_swish_data = activations.swish([[.25, 0, -.25], [-1, -2, 3]])
     swish_data = tf.nn.swish([[.25, 0, -.25], [-1, -2, 3]])
     self.assertAllClose(customized_swish_data, swish_data)
 
