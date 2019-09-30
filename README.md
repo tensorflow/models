@@ -10,10 +10,6 @@ The [samples folder](samples) contains code snippets and smaller models that dem
 
 The [tutorials folder](tutorials) is a collection of models described in the [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
 
-## Contribution guidelines
-
-If you want to contribute to models, be sure to review the [contribution guidelines](CONTRIBUTING.md).
-
 ## License
 
 [Apache License 2.0](LICENSE)
