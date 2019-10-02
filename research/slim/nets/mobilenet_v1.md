@@ -1,5 +1,5 @@
 # Mobilenet_v2
-For Mobilenet V2 see this file [mobilenet/README.md]
+For Mobilenet V2 see this file [mobilenet/README.md](mobilenet/README.md).
 
 # MobileNet_v1
 
