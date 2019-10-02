@@ -2284,10 +2284,10 @@ def random_black_patches(image,
     return image
 
 
-# TODO(barretzoph): Put in AutoAugment Paper link when paper is live.
 def autoaugment_image(image, boxes, policy_name='v0'):
   """Apply an autoaugment policy to the image and boxes.
-
+  
+  Cubuk et al., AutoAugment: Learning Augmentation Strategies from Data.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
