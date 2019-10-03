@@ -55,6 +55,9 @@ flags.DEFINE_string(
     'to be used for training and evaluation.')
 flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
 flags.DEFINE_integer('eval_batch_size', 32, 'Batch size for evaluation.')
+flags.DEFINE_string(
+    'hub_module_url', None, 'TF-Hub path/url to Bert module. '
+    'If specified, init_checkpoint flag should not be used.')
 
 common_flags.define_common_bert_flags()
 
@@ -112,8 +115,12 @@ def run_customized_training(strategy,
   def _get_classifier_model():
     """Gets a classifier model."""
     classifier_model, core_model = (
-        bert_models.classifier_model(bert_config, tf.float32, num_classes,
-                                     max_seq_length))
+        bert_models.classifier_model(
+            bert_config,
+            tf.float32,
+            num_classes,
+            max_seq_length,
+            hub_module_url=FLAGS.hub_module_url))
     classifier_model.optimizer = optimization.create_optimizer(
         initial_lr, steps_per_epoch * epochs, warmup_steps)
     if FLAGS.fp16_implementation == 'graph_rewrite':

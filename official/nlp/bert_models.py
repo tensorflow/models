@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import copy
 import tensorflow as tf
+import tensorflow_hub as hub
 
 from official.modeling import tf_utils
 from official.nlp import bert_modeling as modeling
@@ -380,7 +381,8 @@ def classifier_model(bert_config,
                      float_type,
                      num_labels,
                      max_seq_length,
-                     final_layer_initializer=None):
+                     final_layer_initializer=None,
+                     hub_module_url=None):
   """BERT classifier model in functional API style.
 
   Construct a Keras model for predicting `num_labels` outputs from an input with
@@ -393,6 +395,7 @@ def classifier_model(bert_config,
     max_seq_length: integer, the maximum input sequence length.
     final_layer_initializer: Initializer for final dense layer. Defaulted
       TruncatedNormal initializer.
+    hub_module_url: (Experimental) TF-Hub path/url to Bert module.
 
   Returns:
     Combined prediction model (words, mask, type) -> (one-hot labels)
@@ -404,13 +407,18 @@ def classifier_model(bert_config,
       shape=(max_seq_length,), dtype=tf.int32, name='input_mask')
   input_type_ids = tf.keras.layers.Input(
       shape=(max_seq_length,), dtype=tf.int32, name='input_type_ids')
-  bert_model = modeling.get_bert_model(
-      input_word_ids,
-      input_mask,
-      input_type_ids,
-      config=bert_config,
-      float_type=float_type)
-  pooled_output = bert_model.outputs[0]
+  if hub_module_url:
+    bert_model = hub.KerasLayer(hub_module_url, trainable=True)
+    pooled_output, _ = bert_model([input_word_ids, input_mask, input_type_ids])
+  else:
+    bert_model = modeling.get_bert_model(
+        input_word_ids,
+        input_mask,
+        input_type_ids,
+        config=bert_config,
+        float_type=float_type)
+    pooled_output = bert_model.outputs[0]
+
   if final_layer_initializer is not None:
     initializer = final_layer_initializer
   else:
