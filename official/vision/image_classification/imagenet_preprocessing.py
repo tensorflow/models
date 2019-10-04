@@ -115,9 +115,9 @@ def process_record_dataset(dataset,
   if is_training:
     # Shuffles records before repeating to respect epoch boundaries.
     dataset = dataset.shuffle(buffer_size=shuffle_buffer)
+    # Repeats the dataset for the number of epochs to train.
+    dataset = dataset.repeat()
 
-  # Repeats the dataset for the number of epochs to train.
-  dataset = dataset.repeat(num_epochs)
 
   # Parses the raw records into images and labels.
   dataset = dataset.map(
@@ -133,10 +133,10 @@ def process_record_dataset(dataset,
   # on how many devices are present.
   dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-  if tf_data_experimental_slack:
-    options = tf.data.Options()
-    options.experimental_slack = True
-    dataset = dataset.with_options(options)
+  options = tf.data.Options()
+  options.experimental_slack = tf_data_experimental_slack
+  options.experimental_allow_stateful = True
+  dataset = dataset.with_options(options)
 
   return dataset
 

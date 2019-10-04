@@ -353,6 +353,13 @@ def define_keras_flags(dynamic_loss_scale=True):
   flags.DEFINE_boolean(
       name='enable_checkpoint_and_export', default=False,
       help='Whether to enable a checkpoint callback and export the savedmodel.')
+  flags.DEFINE_string(
+      name='tpu', default='', help='TPU address to connect to.')
+  flags.DEFINE_integer(
+      name='steps_per_loop', default=1,
+      help='Number of steps per graph-mode loop. Only training step happens '
+      'inside the loop. Callbacks will not be called inside. Will be capped at '
+      'steps per epoch.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
