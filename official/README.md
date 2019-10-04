@@ -15,10 +15,10 @@ they target the
 [nightly binaries](https://github.com/tensorflow/tensorflow#installation) built
 from the
 [master branch of TensorFlow](https://github.com/tensorflow/tensorflow/tree/master).
-or install with pip:
+You may start from installing with pip:
 
 ```shell
-pip install tf-nightly-2.0-preview
+pip install tf-nightly
 ```
 
 **Stable versions** of the official models targeting releases of TensorFlow are
