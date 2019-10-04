@@ -48,8 +48,11 @@ FLAGS = flags.FLAGS
 
 
 def get_pretrainxlnet_model(model_config, run_config):
-  model = modeling.PretrainingXLNetModel(model_config, run_config, name="model")
-  return model
+  return modeling.PretrainingXLNetModel(
+      use_proj=True,
+      xlnet_config=model_config,
+      run_config=run_config,
+      name="model")
 
 
 def main(unused_argv):
@@ -69,8 +72,7 @@ def main(unused_argv):
   if strategy:
     logging.info("***** Number of cores used : %d",
                  strategy.num_replicas_in_sync)
-    logging.info("***** Number of hosts used : %d",
-                 num_hosts)
+    logging.info("***** Number of hosts used : %d", num_hosts)
   train_input_fn = functools.partial(
       data_utils.get_pretrain_input_data, FLAGS.train_batch_size, FLAGS.seq_len,
       strategy, FLAGS.train_tfrecord_path, FLAGS.reuse_len, FLAGS.perm_size,

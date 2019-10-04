@@ -36,11 +36,6 @@ from official.nlp.xlnet import preprocess_utils
 
 SPIECE_UNDERLINE = u"▁"
 
-SEG_ID_P = 0
-SEG_ID_Q = 1
-SEG_ID_CLS = 2
-SEG_ID_PAD = 3
-
 
 class InputFeatures(object):
   """A single set of features of data."""
@@ -705,28 +700,28 @@ def convert_examples_to_features(examples, sp_model, max_seq_length, doc_stride,
                                                split_token_index)
         token_is_max_context[len(tokens)] = is_max_context
         tokens.append(all_doc_tokens[split_token_index])
-        segment_ids.append(SEG_ID_P)
+        segment_ids.append(data_utils.SEG_ID_P)
         p_mask.append(0)
 
       paragraph_len = len(tokens)
 
       tokens.append(data_utils.SEP_ID)
-      segment_ids.append(SEG_ID_P)
+      segment_ids.append(data_utils.SEG_ID_P)
       p_mask.append(1)
 
       # note(zhiliny): we put P before Q
       # because during pretraining, B is always shorter than A
       for token in query_tokens:
         tokens.append(token)
-        segment_ids.append(SEG_ID_Q)
+        segment_ids.append(data_utils.SEG_ID_Q)
         p_mask.append(1)
       tokens.append(data_utils.SEP_ID)
-      segment_ids.append(SEG_ID_Q)
+      segment_ids.append(data_utils.SEG_ID_Q)
       p_mask.append(1)
 
       cls_index = len(segment_ids)
       tokens.append(data_utils.CLS_ID)
-      segment_ids.append(SEG_ID_CLS)
+      segment_ids.append(data_utils.SEG_ID_CLS)
       p_mask.append(0)
 
       input_ids = tokens
@@ -739,7 +734,7 @@ def convert_examples_to_features(examples, sp_model, max_seq_length, doc_stride,
       while len(input_ids) < max_seq_length:
         input_ids.append(0)
         input_mask.append(1)
-        segment_ids.append(SEG_ID_PAD)
+        segment_ids.append(data_utils.SEG_ID_PAD)
         p_mask.append(1)
 
       assert len(input_ids) == max_seq_length

@@ -43,6 +43,10 @@ CLS_ID = special_symbols["<cls>"]
 SEP_ID = special_symbols["<sep>"]
 MASK_ID = special_symbols["<mask>"]
 EOD_ID = special_symbols["<eod>"]
+SEG_ID_P = 0
+SEG_ID_Q = 1
+SEG_ID_CLS = 2
+SEG_ID_PAD = 3
 
 
 def file_based_input_fn_builder(input_file, name_to_features, batch_size,

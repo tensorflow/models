@@ -30,7 +30,6 @@ def create_run_config(is_training, is_finetune, flags):
   kwargs = dict(
       is_training=is_training,
       use_tpu=flags.use_tpu,
-      use_bfloat16=flags.use_bfloat16,
       dropout=flags.dropout,
       dropout_att=flags.dropout_att,
       init_method=flags.init_method,
@@ -49,6 +48,7 @@ def create_run_config(is_training, is_finetune, flags):
   return RunConfig(**kwargs)
 
 
+# TODO(hongkuny): refactor XLNetConfig and RunConfig.
 class XLNetConfig(object):
   """Configs for XLNet model.
 
@@ -131,7 +131,6 @@ class RunConfig(object):
   def __init__(self,
                is_training,
                use_tpu,
-               use_bfloat16,
                dropout,
                dropout_att,
                init_method='normal',
@@ -141,13 +140,13 @@ class RunConfig(object):
                reuse_len=None,
                bi_data=False,
                clamp_len=-1,
-               same_length=False):
+               same_length=False,
+               use_cls_mask=True):
     """Initializes RunConfig.
 
     Args:
       is_training: bool, whether in training mode.
       use_tpu: bool, whether TPUs are used.
-      use_bfloat16: bool, use bfloat16 instead of float32.
       dropout: float, dropout rate.
       dropout_att: float, dropout rate on attention probabilities.
       init_method: str, the initialization scheme, either "normal" or "uniform".
@@ -164,6 +163,7 @@ class RunConfig(object):
         -1 means no clamping.
       same_length: bool, whether to use the same attention length
                    for each token.
+      use_cls_mask: bool, whether to introduce cls mask.
     """
 
     self.init_method = init_method
@@ -173,9 +173,9 @@ class RunConfig(object):
     self.dropout = dropout
     self.dropout_att = dropout_att
     self.use_tpu = use_tpu
-    self.use_bfloat16 = use_bfloat16
     self.mem_len = mem_len
     self.reuse_len = reuse_len
     self.bi_data = bi_data
     self.clamp_len = clamp_len
     self.same_length = same_length
+    self.use_cls_mask = use_cls_mask
