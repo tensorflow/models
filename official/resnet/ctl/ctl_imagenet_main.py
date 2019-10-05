@@ -128,13 +128,14 @@ def get_input_dataset(flags_obj, strategy):
           input_context=ctx)
       return test_ds
 
-  if strategy:
-    if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
-      test_ds = strategy.experimental_distribute_datasets_from_function(_test_data_fn)
+    if strategy:
+      if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
+        test_ds = strategy.experimental_distribute_datasets_from_function(
+            _test_data_fn)
+      else:
+        test_ds = strategy.experimental_distribute_dataset(_test_data_fn())
     else:
-      test_ds = strategy.experimental_distribute_dataset(_test_data_fn())
-  else:
-    test_ds = _test_data_fn()
+      test_ds = _test_data_fn()
 
   return train_ds, test_ds
 
