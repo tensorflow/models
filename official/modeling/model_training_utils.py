@@ -207,7 +207,7 @@ def run_customized_training_loop(
           'Checkpoint file %s found and restoring from '
           'initial checkpoint for core model.', init_checkpoint)
       checkpoint = tf.train.Checkpoint(model=sub_model)
-      checkpoint.restore(init_checkpoint).assert_consumed()
+      checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
       logging.info('Loading from checkpoint file completed')
 
     train_loss_metric = tf.keras.metrics.Mean(
