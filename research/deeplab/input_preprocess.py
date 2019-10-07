@@ -125,14 +125,14 @@ def preprocess_image_and_label(image,
     processed_image, label = preprocess_utils.random_crop(
         [processed_image, label], crop_height, crop_width)
 
-  # if is_training:
-  #   processed_image, label = preprocess_utils.adjust_brightness(
-  #     [processed_image, label])
+  if is_training:
+    processed_image = preprocess_utils.adjust_brightness(processed_image)
+    processed_image, label = randomly_rotate(processed_image, label)
 
-  if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
-    processed_image, label = preprocess_utils.add_transparent_rectangle(
-      processed_image, label
-      )
+  # if is_training and preprocess_utils.get_random_number() < _AUG_PROB:
+  #   processed_image, label = preprocess_utils.add_transparent_rectangle(
+  #     processed_image, label
+  #     )
 
   # PERLIN_NOISE_IMAGE_TENSOR = tf.io.decode_image(
   #   tf.read_file(os.path.expanduser("~/satelite_seg/perlin_image.png")),

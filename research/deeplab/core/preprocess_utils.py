@@ -22,6 +22,7 @@ import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import cv2 as cv2
 import scipy as sc
+import math 
 
 def flip_dim(tensor_list, prob=0.5, dim=1):
   """Randomly flips a dimension of the given tensor.
@@ -336,9 +337,16 @@ def overlay_patch(img, patch, i=0, j=0, alpha=0.5):
 
     return img_overlay
 
+
+def color(image):
+    image = tf.image.random_hue(image, 0.08)
+    image = tf.image.random_saturation(image, 0.6, 1.6)
+    image = tf.image.random_brightness(image, 0.05)
+    image = tf.image.random_contrast(image, 0.7, 1.3)
+    return tf.clip_by_value(image, 0, 1)
+
 def adjust_brightness(image_list):
-  delta = get_random_number([1], 0, 1)
-  return [tf.image.adjust_brightness(image, delta)
+  return [color(image)
           for image in image_list]
 
 def get_random_scale(min_scale_factor, max_scale_factor, step_size):
@@ -373,14 +381,9 @@ def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   shuffled_scale_factors = tf.random_shuffle(scale_factors)
   return shuffled_scale_factors[0]
 
-def randomly_rotate(processed_image, label):  
-  angle = np.random.randint(low=-90, high=270, size=1)
-  processed_image, label = tf.contrib.image.rotate(
-    [processed_image, label],
-    angle,
-    interpolation='NEAREST',
-  )
-  return processed_image, label
+def randomly_rotate(image, label):  
+  angle = math.radians(np.random.randint(low=30, high=330, size=1))
+  return tf.contrib.image.rotate(image,angle,interpolation='BILINEAR'), tf.contrib.image.rotate(label,angle,interpolation='BILINEAR')
 
 def randomly_scale_image_and_label(image, label=None, scale=1.0):
   """Randomly scales image and label.
