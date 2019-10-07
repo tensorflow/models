@@ -345,9 +345,8 @@ def color(image):
     image = tf.image.random_contrast(image, 0.7, 1.3)
     return tf.clip_by_value(image, 0, 1)
 
-def adjust_brightness(image_list):
-  return [color(image)
-          for image in image_list]
+def adjust_brightness(processed_image):
+  return color(processed_image)
 
 def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   """Gets a random scale value.
