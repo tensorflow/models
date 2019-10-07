@@ -67,6 +67,10 @@ def run(flags_obj):
     tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
     if not keras_utils.is_v2_0():
       raise ValueError('--dtype=fp16 is not supported in TensorFlow 1.')
+  elif dtype == tf.bfloat16:
+    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
+        'mixed_bfloat16')
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
 
   data_format = flags_obj.data_format
   if data_format is None:

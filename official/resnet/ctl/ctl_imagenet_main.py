@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import app as absl_app
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -180,6 +180,12 @@ def run(flags_obj):
   keras_utils.set_session_config(
       enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
+
+  dtype = flags_core.get_tf_dtype(flags_obj)
+  if dtype == tf.bfloat16:
+    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
+        'mixed_bfloat16')
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
 
   # TODO(anj-s): Set data_format without using Keras.
   data_format = flags_obj.data_format
@@ -375,4 +381,4 @@ if __name__ == '__main__':
   common.define_keras_flags()
   ctl_common.define_ctl_flags()
   flags.adopt_module_key_flags(ctl_common)
-  absl_app.run(main)
+  app.run(main)

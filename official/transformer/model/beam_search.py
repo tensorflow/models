@@ -35,7 +35,7 @@ def inf(dtype):
   Returns:
     A very large value.
   """
-  if dtype == "float32":
+  if dtype == "float32" or dtype == "bfloat16":
     return 1e7
   elif dtype == "float16":
     # Disable no-member lint error, as the linter thinks np.float16 does not

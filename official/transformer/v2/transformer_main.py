@@ -171,6 +171,11 @@ class TransformerTask(object):
           "mixed_float16", loss_scale=loss_scale)
       tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
 
+    if params["dtype"] == tf.bfloat16:
+      policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
+          "mixed_bfloat16")
+      tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+
     self.distribution_strategy = distribution_utils.get_distribution_strategy(
         distribution_strategy=flags_obj.distribution_strategy,
         num_gpus=num_gpus,

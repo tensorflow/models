@@ -386,7 +386,7 @@ class LayerNormalization(tf.keras.layers.Layer):
 
   def call(self, x, epsilon=1e-6):
     input_dtype = x.dtype
-    if input_dtype == tf.float16:
+    if input_dtype == tf.float16 or input_dtype == tf.bfloat16:
       x = tf.cast(x, tf.float32)
     mean = tf.reduce_mean(x, axis=[-1], keepdims=True)
     variance = tf.reduce_mean(tf.square(x - mean), axis=[-1], keepdims=True)

@@ -29,6 +29,7 @@ from official.utils.flags._conventions import help_wrap
 # Map string to TensorFlow dtype
 DTYPE_MAP = {
     "fp16": tf.float16,
+    "bf16": tf.bfloat16,
     "fp32": tf.float32,
 }
 
