@@ -204,6 +204,6 @@ which can then be used in the config file as below.
 
 ```bash
 tf_record_input_reader {
-  input_path: "/path/to/train_dataset.record-?????-of-00010"
+  input_path: "/path/to/train_dataset.record-?????-00010"
 }
 ```
