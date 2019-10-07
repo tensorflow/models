@@ -83,7 +83,8 @@ def run(flags_obj):
       num_gpus=flags_obj.num_gpus,
       num_workers=num_workers,
       all_reduce_alg=flags_obj.all_reduce_alg,
-      num_packs=flags_obj.num_packs)
+      num_packs=flags_obj.num_packs,
+      tpu_address=flags_obj.tpu)
 
   if strategy:
     # flags_obj.enable_get_next_as_optional controls whether enabling
