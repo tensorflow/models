@@ -22,7 +22,7 @@ import functools
 import os
 
 # pylint: disable=wrong-import-order
-from absl import app as absl_app
+from absl import app
 from absl import flags
 import numpy as np
 import tensorflow as tf
@@ -298,4 +298,4 @@ def main(_):
 
 if __name__ == '__main__':
   define_flags()
-  absl_app.run(main)
+  app.run(main)
