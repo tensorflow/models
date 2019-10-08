@@ -232,9 +232,12 @@ def run(flags_obj):
                       validation_freq=flags_obj.epochs_between_evals,
                       verbose=2)
   if flags_obj.enable_checkpoint_and_export:
-    # Keras model.save assumes a float32 input designature.
-    export_path = os.path.join(flags_obj.model_dir, 'saved_model')
-    model.save(export_path, include_optimizer=False)
+    if dtype == tf.bfloat16:
+      logging.warning("Keras model.save does not support bfloat16 dtype.")
+    else:
+      # Keras model.save assumes a float32 input designature.
+      export_path = os.path.join(flags_obj.model_dir, 'saved_model')
+      model.save(export_path, include_optimizer=False)
 
   eval_output = None
   if not flags_obj.skip_eval:
