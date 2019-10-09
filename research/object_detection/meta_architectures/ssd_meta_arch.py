@@ -746,7 +746,8 @@ class SSDMetaArch(model.DetectionModel):
           fields.DetectionResultFields.detection_classes:
               nmsed_classes,
           fields.DetectionResultFields.detection_multiclass_scores:
-              nmsed_additional_fields['multiclass_scores'],
+              nmsed_additional_fields.get(
+                  'multiclass_scores') if nmsed_additional_fields else None,
           fields.DetectionResultFields.num_detections:
               tf.cast(num_detections, dtype=tf.float32),
           fields.DetectionResultFields.raw_detection_boxes:

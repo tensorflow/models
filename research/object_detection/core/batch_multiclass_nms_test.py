@@ -663,7 +663,55 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase,
                             exp_nms_additional_fields[key])
       self.assertAllClose(num_detections, [1, 1])
 
-  # TODO(bhattad): Remove conditional after CMLE moves to TF 1.9
+  def test_combined_nms_with_batch_size_2(self):
+    """Test use_combined_nms."""
+    boxes = tf.constant([[[[0, 0, 0.1, 0.1], [0, 0, 0.1, 0.1]],
+                          [[0, 0.01, 1, 0.11], [0, 0.6, 0.1, 0.7]],
+                          [[0, -0.01, 0.1, 0.09], [0, -0.1, 0.1, 0.09]],
+                          [[0, 0.11, 0.1, 0.2], [0, 0.11, 0.1, 0.2]]],
+                         [[[0, 0, 0.2, 0.2], [0, 0, 0.2, 0.2]],
+                          [[0, 0.02, 0.2, 0.22], [0, 0.02, 0.2, 0.22]],
+                          [[0, -0.02, 0.2, 0.19], [0, -0.02, 0.2, 0.19]],
+                          [[0, 0.21, 0.2, 0.3], [0, 0.21, 0.2, 0.3]]]],
+                        tf.float32)
+    scores = tf.constant([[[.1, 0.9], [.75, 0.8],
+                           [.6, 0.3], [0.95, 0.1]],
+                          [[.1, 0.9], [.75, 0.8],
+                           [.6, .3], [.95, .1]]])
+    score_thresh = 0.1
+    iou_thresh = .5
+    max_output_size = 3
+
+    exp_nms_corners = np.array([[[0, 0.11, 0.1, 0.2],
+                                 [0, 0, 0.1, 0.1],
+                                 [0, 0.6, 0.1, 0.7]],
+                                [[0, 0.21, 0.2, 0.3],
+                                 [0, 0, 0.2, 0.2],
+                                 [0, 0.02, 0.2, 0.22]]])
+    exp_nms_scores = np.array([[.95, .9, 0.8],
+                               [.95, .9, .75]])
+    exp_nms_classes = np.array([[0, 1, 1],
+                                [0, 1, 0]])
+
+    (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
+     nmsed_additional_fields, num_detections
+    ) = post_processing.batch_multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size,
+        use_static_shapes=True,
+        use_combined_nms=True)
+
+    self.assertIsNone(nmsed_masks)
+    self.assertIsNone(nmsed_additional_fields)
+
+    with self.test_session() as sess:
+      (nmsed_boxes, nmsed_scores, nmsed_classes,
+       num_detections) = sess.run([nmsed_boxes, nmsed_scores, nmsed_classes,
+                                   num_detections])
+      self.assertAllClose(nmsed_boxes, exp_nms_corners)
+      self.assertAllClose(nmsed_scores, exp_nms_scores)
+      self.assertAllClose(nmsed_classes, exp_nms_classes)
+      self.assertListEqual(num_detections.tolist(), [3, 3])
 
 if __name__ == '__main__':
   tf.test.main()

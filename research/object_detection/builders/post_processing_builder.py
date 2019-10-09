@@ -88,6 +88,9 @@ def _build_non_max_suppressor(nms_config):
                      'max_total_detections.')
   if nms_config.soft_nms_sigma < 0.0:
     raise ValueError('soft_nms_sigma should be non-negative.')
+  if nms_config.use_combined_nms and nms_config.use_class_agnostic_nms:
+      raise ValueError('combined_nms does not support class_agnostic_nms')
+
   non_max_suppressor_fn = functools.partial(
       post_processing.batch_multiclass_non_max_suppression,
       score_thresh=nms_config.score_threshold,
@@ -97,7 +100,8 @@ def _build_non_max_suppressor(nms_config):
       use_static_shapes=nms_config.use_static_shapes,
       use_class_agnostic_nms=nms_config.use_class_agnostic_nms,
       max_classes_per_detection=nms_config.max_classes_per_detection,
-      soft_nms_sigma=nms_config.soft_nms_sigma)
+      soft_nms_sigma=nms_config.soft_nms_sigma,
+      use_combined_nms=nms_config.use_combined_nms)
   return non_max_suppressor_fn
 
 
