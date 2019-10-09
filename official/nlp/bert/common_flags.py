@@ -56,6 +56,10 @@ def define_common_bert_flags():
       'scale_loss', False,
       'Whether to divide the loss by number of replica inside the per-replica '
       'loss function.')
+  flags.DEFINE_boolean(
+      'use_keras_compile_fit', False,
+      'If True, uses Keras compile/fit() API for training logic. Otherwise '
+      'use custom training loop.')
 
   # Adds flags for mixed precision training.
   flags_core.define_performance(
