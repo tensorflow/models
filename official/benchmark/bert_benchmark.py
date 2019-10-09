@@ -76,7 +76,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
 
     steps_per_loop = 1
 
-    run_classifier.run_customized_training(
+    run_classifier.run_bert_classifier(
         strategy,
         bert_config,
         input_meta_data,
