@@ -290,6 +290,7 @@ class Transformer(tf.keras.Model):
 
   def predict(self, encoder_outputs, encoder_decoder_attention_bias, training):
     """Return predicted sequence."""
+    encoder_outputs = tf.cast(encoder_outputs, self.params["dtype"])
     if self.params["padded_decode"]:
       batch_size = encoder_outputs.shape.as_list()[0]
       input_length = encoder_outputs.shape.as_list()[1]
@@ -356,27 +357,21 @@ class LayerNormalization(tf.keras.layers.Layer):
   """Applies layer normalization."""
 
   def __init__(self, hidden_size):
-    super(LayerNormalization, self).__init__()
+    # Pass dtype=float32, as we have not yet tested if layer norm is numerically
+    # stable in float16 and bfloat16.
+    super(LayerNormalization, self).__init__(dtype="float32")
     self.hidden_size = hidden_size
 
   def build(self, input_shape):
     """Builds the layer."""
-    # Passing experimental_autocast=False causes these variables to not be
-    # automatically casted to fp16 when mixed precision is used. Since we use
-    # float32 in call() for numeric stability, we do not want variables to be
-    # casted to fp16.
     self.scale = self.add_weight(
         "layer_norm_scale",
         shape=[self.hidden_size],
-        dtype="float32",
-        initializer=tf.ones_initializer(),
-        experimental_autocast=False)
+        initializer=tf.ones_initializer())
     self.bias = self.add_weight(
         "layer_norm_bias",
         shape=[self.hidden_size],
-        dtype="float32",
-        initializer=tf.zeros_initializer(),
-        experimental_autocast=False)
+        initializer=tf.zeros_initializer())
     super(LayerNormalization, self).build(input_shape)
 
   def get_config(self):
@@ -385,13 +380,10 @@ class LayerNormalization(tf.keras.layers.Layer):
     }
 
   def call(self, x, epsilon=1e-6):
-    input_dtype = x.dtype
-    if input_dtype == tf.float16 or input_dtype == tf.bfloat16:
-      x = tf.cast(x, tf.float32)
     mean = tf.reduce_mean(x, axis=[-1], keepdims=True)
     variance = tf.reduce_mean(tf.square(x - mean), axis=[-1], keepdims=True)
     norm_x = (x - mean) * tf.math.rsqrt(variance + epsilon)
-    return tf.cast(norm_x * self.scale + self.bias, input_dtype)
+    return norm_x * self.scale + self.bias
 
 
 class PrePostProcessingWrapper(tf.keras.layers.Layer):
