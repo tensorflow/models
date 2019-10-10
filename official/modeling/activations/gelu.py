@@ -23,7 +23,6 @@ import math
 import tensorflow as tf
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
 def gelu(x):
   """Gaussian Error Linear Unit.
 
