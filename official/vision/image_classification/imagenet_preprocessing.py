@@ -135,6 +135,7 @@ def process_record_dataset(dataset,
 
   options = tf.data.Options()
   options.experimental_slack = tf_data_experimental_slack
+  options.experimental_allow_stateful = True
   dataset = dataset.with_options(options)
 
   return dataset
