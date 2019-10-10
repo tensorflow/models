@@ -121,7 +121,7 @@ def run_executor(params, train_input_fn=None, eval_input_fn=None):
       logging.info('Final eval metric %s: %f', k, v)
     return results
   else:
-    tf.logging.info('Mode not found: %s.' % FLAGS.mode)
+    raise ValueError('Mode not found: %s.' % FLAGS.mode)
 
 
 def main(argv):
@@ -170,7 +170,7 @@ def main(argv):
         mode=input_reader.ModeKeys.PREDICT_WITH_GT,
         batch_size=params.eval.batch_size,
         num_examples=params.eval.eval_samples)
-  run_executor(
+  return run_executor(
       params, train_input_fn=train_input_fn, eval_input_fn=eval_input_fn)
 
 

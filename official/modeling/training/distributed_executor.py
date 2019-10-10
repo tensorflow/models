@@ -387,7 +387,7 @@ class DistributedExecutor(object):
       save_config: bool. Whether to save params to model_dir.
 
     Returns:
-      The trained keras model.
+      The training loss and eval metrics.
     """
     assert train_input_fn is not None
     if train_metric_fn and not callable(train_metric_fn):
@@ -407,6 +407,8 @@ class DistributedExecutor(object):
     # To reduce unnecessary send/receive input pipeline operation, we place
     # input pipeline ops in worker task.
     train_iterator = self._get_input_iterator(train_input_fn, strategy)
+    train_loss = None
+    eval_metric_result = None
     with strategy.scope():
       # To correctly place the model weights on accelerators,
       # model and optimizer should be created in scope.
@@ -520,7 +522,7 @@ class DistributedExecutor(object):
       test_summary_writer(
           metrics=eval_metric_result, step=optimizer.iterations)
 
-    return model
+    return train_loss, eval_metric_result
 
   def _run_evaluation(self, test_step, current_training_step, metric,
                       test_iterator):
