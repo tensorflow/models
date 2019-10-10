@@ -88,7 +88,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
                root_data_dir=None,
                default_flags=None,
                **kwargs):
-
+    root_data_dir = root_data_dir if root_data_dir else ''
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1

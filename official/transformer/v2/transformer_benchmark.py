@@ -44,6 +44,8 @@ class TransformerBenchmark(PerfZeroBenchmark):
   def __init__(self, output_dir=None, default_flags=None, root_data_dir=None,
                flag_methods=None):
     assert tf.version.VERSION.startswith('2.')
+    root_data_dir = root_data_dir if root_data_dir else ''
+
     self.train_data_dir = os.path.join(root_data_dir,
                                        TRANSFORMER_EN2DE_DATA_DIR_NAME)
 
@@ -368,7 +370,7 @@ class TransformerBigKerasAccuracy(TransformerBenchmark):
                                    log_steps=FLAGS.log_steps,
                                    bleu_min=28,
                                    bleu_max=29)
-    
+
   def benchmark_8_gpu_static_batch_fp16(self):
     """Benchmark 8 gpu with static batch and fp16.
 
@@ -650,7 +652,7 @@ class TransformerKerasBenchmark(TransformerBenchmark):
 class TransformerBaseKerasBenchmarkReal(TransformerKerasBenchmark):
   """Transformer based version real data benchmark tests."""
 
-  def __init__(self, output_dir=TMP_DIR, root_data_dir=None, **kwargs):
+  def __init__(self, output_dir=TMP_DIR, root_data_dir=TMP_DIR, **kwargs):
     def_flags = {}
     def_flags['param_set'] = 'base'
     def_flags['train_steps'] = 50
@@ -664,7 +666,7 @@ class TransformerBaseKerasBenchmarkReal(TransformerKerasBenchmark):
 class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
   """Transformer based version real data benchmark tests."""
 
-  def __init__(self, output_dir=TMP_DIR, root_data_dir=None, **kwargs):
+  def __init__(self, output_dir=TMP_DIR, root_data_dir=TMP_DIR, **kwargs):
     def_flags = {}
     def_flags['param_set'] = 'big'
     def_flags['train_steps'] = 50
