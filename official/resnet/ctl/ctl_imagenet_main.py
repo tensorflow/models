@@ -336,7 +336,7 @@ def run(flags_obj):
             steps_in_current_epoch+epoch*per_epoch_steps)
         steps_in_current_epoch += steps
 
-      logging.info('Training loss: %s, accuracy: %s%% at epoch %d',
+      logging.info('Training loss: %s, accuracy: %s at epoch %d',
                    train_loss.result().numpy(),
                    training_accuracy.result().numpy(),
                    epoch + 1)
