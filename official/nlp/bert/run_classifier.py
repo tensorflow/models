@@ -56,9 +56,6 @@ flags.DEFINE_string(
     'to be used for training and evaluation.')
 flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
 flags.DEFINE_integer('eval_batch_size', 32, 'Batch size for evaluation.')
-flags.DEFINE_string(
-    'hub_module_url', None, 'TF-Hub path/url to Bert module. '
-    'If specified, init_checkpoint flag should not be used.')
 
 common_flags.define_common_bert_flags()
 

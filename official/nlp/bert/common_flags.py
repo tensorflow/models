@@ -60,6 +60,9 @@ def define_common_bert_flags():
       'use_keras_compile_fit', False,
       'If True, uses Keras compile/fit() API for training logic. Otherwise '
       'use custom training loop.')
+  flags.DEFINE_string(
+      'hub_module_url', None, 'TF-Hub path/url to Bert module. '
+      'If specified, init_checkpoint flag should not be used.')
 
   # Adds flags for mixed precision training.
   flags_core.define_performance(
