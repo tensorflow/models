@@ -254,7 +254,7 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
 
 
 class COCOGroundtruthGenerator(object):
-  """Generates the groundtruth annotations from a single example sequentially."""
+  """Generates the groundtruth annotations from a single example."""
 
   def __init__(self, file_pattern, num_examples, include_mask):
     self._file_pattern = file_pattern
