@@ -185,7 +185,8 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     # Two checkpoints should be saved after two epochs.
     self.assertNotEmpty(tf.io.gfile.glob(os.path.join(model_dir, 'ctl_step_*')))
     self.assertNotEmpty(
-        tf.io.gfile.glob(os.path.join(model_dir, 'training_summary*')))
+        tf.io.gfile.glob(
+            os.path.join(model_dir, 'summaries/training_summary*')))
 
     # Loss and accuracy values should be written into summaries.
     self.assertTrue(

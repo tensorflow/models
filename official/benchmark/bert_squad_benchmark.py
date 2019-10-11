@@ -52,7 +52,8 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
 
   def _read_training_summary_from_file(self):
     """Reads the training summary from a file."""
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     with tf.io.gfile.GFile(summary_path, 'rb') as reader:
       return json.loads(reader.read().decode('utf-8'))
 

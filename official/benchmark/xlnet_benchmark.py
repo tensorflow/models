@@ -122,7 +122,8 @@ class XLNetClassifyAccuracy(XLNetClassifyBenchmarkBase):
     # Sets timer_callback to None as we do not use it now.
     self.timer_callback = None
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
 

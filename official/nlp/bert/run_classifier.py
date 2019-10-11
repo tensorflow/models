@@ -92,7 +92,8 @@ def run_bert_classifier(strategy,
                         initial_lr,
                         init_checkpoint,
                         custom_callbacks=None,
-                        run_eagerly=False):
+                        run_eagerly=False,
+                        use_keras_compile_fit=False):
   """Run BERT classifier training using low-level API."""
   max_seq_length = input_meta_data['max_seq_length']
   num_classes = input_meta_data['num_labels']
@@ -142,7 +143,7 @@ def run_bert_classifier(strategy,
     return tf.keras.metrics.SparseCategoricalAccuracy(
         'test_accuracy', dtype=tf.float32)
 
-  if FLAGS.use_keras_compile_fit:
+  if use_keras_compile_fit:
     # Start training using Keras compile/fit API.
     logging.info('Training using TF 2.0 Keras compile/fit API with '
                  'distrubuted strategy.')
@@ -206,9 +207,11 @@ def run_keras_compile_fit(model_dir,
 
     bert_model.compile(optimizer=optimizer, loss=loss_fn, metrics=[metric_fn()])
 
-    summary_callback = tf.keras.callbacks.TensorBoard(model_dir)
-    checkpoint_dir = os.path.join(model_dir, 'model_checkpoint.{epoch:02d}')
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(checkpoint_dir)
+    summary_dir = os.path.join(model_dir, 'summaries')
+    summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)
+    checkpoint_path = os.path.join(model_dir, 'checkpoint')
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        checkpoint_path, save_weights_only=True)
 
     if custom_callbacks is not None:
       custom_callbacks += [summary_callback, checkpoint_callback]
@@ -226,12 +229,21 @@ def run_keras_compile_fit(model_dir,
     return bert_model
 
 
-def export_classifier(model_export_path, input_meta_data):
+def export_classifier(model_export_path, input_meta_data,
+                      restore_model_using_load_weights):
   """Exports a trained model as a `SavedModel` for inference.
 
   Args:
     model_export_path: a string specifying the path to the SavedModel directory.
     input_meta_data: dictionary containing meta data about input and model.
+    restore_model_using_load_weights: Whether to use checkpoint.restore() API
+      for custom checkpoint or to use model.load_weights() API.
+      There are 2 different ways to save checkpoints. One is using
+      tf.train.Checkpoint and another is using Keras model.save_weights().
+      Custom training loop implementation uses tf.train.Checkpoint API
+      and Keras ModelCheckpoint callback internally uses model.save_weights()
+      API. Since these two API's cannot be used toghether, model loading logic
+      must be take into account how model checkpoint was saved.
 
   Raises:
     Export path is not specified, got an empty string or None.
@@ -243,14 +255,22 @@ def export_classifier(model_export_path, input_meta_data):
   classifier_model = bert_models.classifier_model(
       bert_config, tf.float32, input_meta_data['num_labels'],
       input_meta_data['max_seq_length'])[0]
+
   model_saving_utils.export_bert_model(
-      model_export_path, model=classifier_model, checkpoint_dir=FLAGS.model_dir)
+      model_export_path,
+      model=classifier_model,
+      checkpoint_dir=FLAGS.model_dir,
+      restore_model_using_load_weights=restore_model_using_load_weights)
 
 
 def run_bert(strategy, input_meta_data):
   """Run BERT training."""
   if FLAGS.mode == 'export_only':
-    export_classifier(FLAGS.model_export_path, input_meta_data)
+    # As Keras ModelCheckpoint callback used with Keras compile/fit() API
+    # internally uses model.save_weights() to save checkpoints, we must
+    # use model.load_weights() when Keras compile/fit() is used.
+    export_classifier(FLAGS.model_export_path, input_meta_data,
+                      FLAGS.use_keras_compile_fit)
     return
 
   if FLAGS.mode != 'train_and_eval':
@@ -281,11 +301,17 @@ def run_bert(strategy, input_meta_data):
       warmup_steps,
       FLAGS.learning_rate,
       FLAGS.init_checkpoint,
-      run_eagerly=FLAGS.run_eagerly)
+      run_eagerly=FLAGS.run_eagerly,
+      use_keras_compile_fit=FLAGS.use_keras_compile_fit)
 
   if FLAGS.model_export_path:
+    # As Keras ModelCheckpoint callback used with Keras compile/fit() API
+    # internally uses model.save_weights() to save checkpoints, we must
+    # use model.load_weights() when Keras compile/fit() is used.
     model_saving_utils.export_bert_model(
-        FLAGS.model_export_path, model=trained_model)
+        FLAGS.model_export_path,
+        model=trained_model,
+        restore_model_using_load_weights=FLAGS.use_keras_compile_fit)
   return trained_model
 
 

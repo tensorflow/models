@@ -148,7 +148,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.train_batch_size = 4
     FLAGS.eval_batch_size = 4
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
   def benchmark_1_gpu_mrpc_xla(self):
@@ -165,7 +166,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.eval_batch_size = 4
     FLAGS.enable_xla = True
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
   def benchmark_1_gpu_mrpc_no_dist_strat(self):
@@ -181,7 +183,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.train_batch_size = 4
     FLAGS.eval_batch_size = 4
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path, use_ds=False)
 
   def benchmark_2_gpu_mrpc(self):
@@ -197,7 +200,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.train_batch_size = 8
     FLAGS.eval_batch_size = 8
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
   def benchmark_4_gpu_mrpc(self):
@@ -212,7 +216,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.bert_config_file = self.bert_config_file
     FLAGS.train_batch_size = 16
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
   def benchmark_8_gpu_mrpc(self):
@@ -225,7 +230,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.input_meta_data_path = self.input_meta_data_path
     FLAGS.bert_config_file = self.bert_config_file
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
   def benchmark_1_gpu_amp_mrpc_no_dist_strat(self):
@@ -243,7 +249,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path, use_ds=False)
 
   def benchmark_8_gpu_amp_mrpc(self):
@@ -262,7 +269,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path, use_ds=False)
 
 
@@ -320,7 +328,8 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mrpc')
 
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
   def benchmark_8_gpu_mrpc_xla(self):
@@ -328,7 +337,8 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mrpc_xla')
     FLAGS.enable_xla = True
-    summary_path = os.path.join(FLAGS.model_dir, 'training_summary.txt')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path)
 
 

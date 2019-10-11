@@ -72,9 +72,9 @@ def _steps_to_run(current_step, steps_per_epoch, steps_per_loop):
     return steps_per_loop
 
 
-def write_txt_summary(training_summary, model_dir):
+def write_txt_summary(training_summary, summary_dir):
   """Writes a summary text file to record stats."""
-  summary_path = os.path.join(model_dir, _SUMMARY_TXT)
+  summary_path = os.path.join(summary_dir, _SUMMARY_TXT)
   with tf.io.gfile.GFile(summary_path, 'wb') as f:
     logging.info('Training Summary: \n%s', str(training_summary))
     f.write(json.dumps(training_summary, indent=4))
@@ -221,13 +221,14 @@ def run_customized_training_loop(
     ]
 
     # Create summary writers
+    summary_dir = os.path.join(model_dir, 'summaries')
     eval_summary_writer = tf.summary.create_file_writer(
-        os.path.join(model_dir, 'summaries/eval'))
+        os.path.join(summary_dir, 'eval'))
     if steps_per_loop >= _MIN_SUMMARY_STEPS:
       # Only writes summary when the stats are collected sufficiently over
       # enough steps.
       train_summary_writer = tf.summary.create_file_writer(
-          os.path.join(model_dir, 'summaries/train'))
+          os.path.join(summary_dir, 'train'))
     else:
       train_summary_writer = None
 
@@ -415,6 +416,6 @@ def run_customized_training_loop(
           train_metrics[0])
       training_summary['eval_metrics'] = _float_metric_value(eval_metrics[0])
 
-    write_txt_summary(training_summary, model_dir)
+    write_txt_summary(training_summary, summary_dir)
 
     return model
