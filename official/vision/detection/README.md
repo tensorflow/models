@@ -71,3 +71,5 @@ python ~/models/official/vision/detection/main.py \
 ## Train RetinaNet on GPU
 
 Note: Instructions are comming soon.
+
+<!--It runs on GPU via tf.distribute.MirroredStrategy. -->
