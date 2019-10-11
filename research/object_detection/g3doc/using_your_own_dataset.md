@@ -194,16 +194,16 @@ with contextlib2.ExitStack() as tf_record_close_stack:
 This will produce the following output files
 
 ```bash
-/path/to/train_dataset.record-00000-00010
-/path/to/train_dataset.record-00001-00010
+/path/to/train_dataset.record-00000-of-00010
+/path/to/train_dataset.record-00001-of-00010
 ...
-/path/to/train_dataset.record-00009-00010
+/path/to/train_dataset.record-00009-of-00010
 ```
 
 which can then be used in the config file as below.
 
 ```bash
 tf_record_input_reader {
-  input_path: "/path/to/train_dataset.record-?????-00010"
+  input_path: "/path/to/train_dataset.record-?????-of-00010"
 }
 ```
