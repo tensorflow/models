@@ -115,7 +115,7 @@ def tiny_imagenet_input(split, batch_size, image_size, is_training):
     dataset = dataset.repeat()
 
   dataset = dataset.apply(
-      tf.contrib.data.map_and_batch(
+      tf.data.experimental.map_and_batch(
           lambda value: tiny_imagenet_parser(value, image_size, is_training),
           batch_size=batch_size,
           num_parallel_batches=4,
@@ -132,7 +132,7 @@ def tiny_imagenet_input(split, batch_size, image_size, is_training):
   # Assign static batch size dimension
   dataset = dataset.map(set_shapes)
 
-  dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
+  dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
   return dataset
 
