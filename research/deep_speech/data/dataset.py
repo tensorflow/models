@@ -270,5 +270,6 @@ def input_fn(batch_size, deep_speech_dataset, repeat=1):
   )
 
   # Prefetch to improve speed of input pipeline.
-  dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
   return dataset
+

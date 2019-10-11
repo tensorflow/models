@@ -318,7 +318,7 @@ class COCOGroundtruthGenerator(object):
             cycle_length=32,
             sloppy=False))
     dataset = dataset.map(self._parse_single_example, num_parallel_calls=64)
-    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
     dataset = dataset.batch(1, drop_remainder=False)
     return dataset
 
