@@ -338,7 +338,7 @@ def overlay_patch(img, patch, i=0, j=0, alpha=0.5):
     return img_overlay
 
 def adjust_color(image):
-  return tf.image.random_contrast(processed_image, 0.15, 0.8)
+  return tf.image.random_contrast(image, 0.15, 0.8)
 
 def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   """Gets a random scale value.
