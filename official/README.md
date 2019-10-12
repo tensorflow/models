@@ -6,7 +6,7 @@ and kept up to date with the latest TensorFlow API. They should also be
 reasonably optimized for fast performance while still being easy to read.
 
 These models are used as end-to-end tests, ensuring that the models run with the
-same speed and performance with each new TensorFlow build.
+same or improved speed and performance with each new TensorFlow build.
 
 ## Tensorflow releases
 
@@ -105,11 +105,13 @@ The team is actively working to add new models to the repository. Every model
 should follow the following guidelines, to uphold the our objectives of
 readable, usable, and maintainable code.
 
-**General guidelines** * Code should be well documented and tested. * Runnable
-from a blank environment with relative ease. * Trainable on: single GPU/CPU
-(baseline), multiple GPUs, TPU * Compatible with Python 2 and 3 (using
-[six](https://pythonhosted.org/six/) when necessary) * Conform to
-[Google Python Style Guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md)
+**General guidelines**
+
+* Code should be well documented and tested.
+* Runnable from a blank environment with relative ease.
+* Trainable on: single GPU/CPU (baseline), multiple GPUs, TPU
+* Compatible with Python 2 and 3 (using [six](https://pythonhosted.org/six/) when necessary)
+* Conform to [Google Python Style Guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md)
 
 **Implementation guidelines**
 
