@@ -22,7 +22,7 @@ import os
 # The probability of flipping the images and labels
 # left-right during training
 _PROB_OF_FLIP = 0.5
-_AUG_PROB = 0.25
+_AUG_PROB = 0.5
 
 def preprocess_image_and_label(image,
                                label,
@@ -128,7 +128,8 @@ def preprocess_image_and_label(image,
   if is_training:
     if preprocess_utils.get_random_number() < _AUG_PROB:
       processed_image = preprocess_utils.adjust_color(processed_image)
-    processed_image, label = preprocess_utils.randomly_rotate(processed_image, label)
+    if preprocess_utils.get_random_number() < _AUG_PROB:    
+      processed_image, label = preprocess_utils.randomly_rotate(processed_image, label)
 
   processed_image.set_shape([crop_height, crop_width, 3])  
   if label is not None:
