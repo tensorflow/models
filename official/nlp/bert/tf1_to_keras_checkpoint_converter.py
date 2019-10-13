@@ -86,6 +86,10 @@ BERT_V2_NAME_REPLACEMENTS = [
     ("output/dense", "output"),
     ("output/LayerNorm", "output_layer_norm"),
     ("pooler/dense", "pooler_transform"),
+    ("cls/predictions/output_bias", "cls/predictions/output_bias/bias"),
+    ("cls/seq_relationship/output_bias", "predictions/transform/logits/bias"),
+    ("cls/seq_relationship/output_weights",
+     "predictions/transform/logits/kernel"),
 ]
 
 
@@ -109,6 +113,17 @@ def _has_exclude_patterns(name, exclude_patterns):
     if p in name:
       return True
   return False
+
+
+def _get_permutation(name):
+  """Checks whether a variable requires transposition by pattern matching."""
+  if not FLAGS.use_v2_names:
+    return None
+
+  if "cls/seq_relationship/output_weights" in name:
+    return (1, 0)
+
+  return None
 
 
 def _get_new_shape(name, shape, num_heads):
@@ -154,8 +169,13 @@ def convert_names(checkpoint_from_path,
     for var_name in name_shape_map:
       if exclude_patterns and _has_exclude_patterns(var_name, exclude_patterns):
         continue
-      new_var_name = _bert_name_replacement(var_name)
+      # Get the original tensor data.
       tensor = reader.get_tensor(var_name)
+
+      # Look up the new variable name, if any.
+      new_var_name = _bert_name_replacement(var_name)
+
+      # See if we need to reshape the underlying tensor.
       new_shape = None
       if FLAGS.num_heads > 0:
         new_shape = _get_new_shape(var_name, tensor.shape, FLAGS.num_heads)
@@ -164,8 +184,19 @@ def convert_names(checkpoint_from_path,
 
                         var_name, tensor.shape, new_shape)
         tensor = np.reshape(tensor, new_shape)
+
+      # See if we need to permute the underlying tensor.
+      permutation = _get_permutation(var_name)
+      if permutation:
+        tensor = np.transpose(tensor, permutation)
+
+      # Create a new variable with the possibly-reshaped or transposed tensor.
       var = tf.Variable(tensor, name=var_name)
+
+      # Save the variable into the new variable map.
       new_variable_map[new_var_name] = var
+
+      # Keep a list of converter variables for sanity checking.
       if new_var_name != var_name:
         conversion_map[var_name] = new_var_name
 
