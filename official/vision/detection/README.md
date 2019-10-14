@@ -71,3 +71,9 @@ python ~/models/official/vision/detection/main.py \
 ## Train RetinaNet on GPU
 
 Note: Instructions are comming soon.
+
+## References
+
+1.  [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002).
+    Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Dollár. IEEE
+    International Conference on Computer Vision (ICCV), 2017.
