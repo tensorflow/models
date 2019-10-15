@@ -45,13 +45,23 @@ class ExportTfhubTest(tf.test.TestCase):
     checkpoint.save(os.path.join(model_checkpoint_dir, "test"))
     model_checkpoint_path = tf.train.latest_checkpoint(model_checkpoint_dir)
 
+    vocab_file = os.path.join(self.get_temp_dir(), "uncased_vocab.txt")
+    with tf.io.gfile.GFile(vocab_file, "w") as f:
+      f.write("dummy content")
+
     hub_destination = os.path.join(self.get_temp_dir(), "hub")
     export_tfhub.export_bert_tfhub(bert_config, model_checkpoint_path,
-                                   hub_destination)
+                                   hub_destination, vocab_file)
 
     # Restores a hub KerasLayer.
     hub_layer = hub.KerasLayer(hub_destination, trainable=True)
 
+    if hasattr(hub_layer, "resolved_object"):
+      # Checks meta attributes.
+      self.assertTrue(hub_layer.resolved_object.do_lower_case.numpy())
+      with tf.io.gfile.GFile(
+          hub_layer.resolved_object.vocab_file.asset_path.numpy()) as f:
+        self.assertEqual("dummy content", f.read())
     # Checks the hub KerasLayer.
     for source_weight, hub_weight in zip(bert_model.trainable_weights,
                                          hub_layer.trainable_weights):

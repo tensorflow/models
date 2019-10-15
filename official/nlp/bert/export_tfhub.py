@@ -33,6 +33,8 @@ flags.DEFINE_string("model_checkpoint_path", None,
                     "File path to TF model checkpoint.")
 flags.DEFINE_string("export_path", None,
                     "TF-Hub SavedModel destination path.")
+flags.DEFINE_string("vocab_file", None,
+                    "The vocabulary file that the BERT model was trained on.")
 
 
 def create_bert_model(bert_config: bert_modeling.BertConfig):
@@ -61,11 +63,14 @@ def create_bert_model(bert_config: bert_modeling.BertConfig):
 
 
 def export_bert_tfhub(bert_config: bert_modeling.BertConfig,
-                      model_checkpoint_path: Text, hub_destination: Text):
+                      model_checkpoint_path: Text, hub_destination: Text,
+                      vocab_file: Text):
   """Restores a tf.keras.Model and saves for TF-Hub."""
   core_model = create_bert_model(bert_config)
   checkpoint = tf.train.Checkpoint(model=core_model)
   checkpoint.restore(model_checkpoint_path).assert_consumed()
+  core_model.vocab_file = tf.saved_model.Asset(vocab_file)
+  core_model.do_lower_case = tf.Variable("uncased" in vocab_file)
   core_model.save(hub_destination, include_optimizer=False, save_format="tf")
 
 
@@ -74,7 +79,7 @@ def main(_):
 
   bert_config = bert_modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   export_bert_tfhub(bert_config, FLAGS.model_checkpoint_path,
-                    FLAGS.export_path)
+                    FLAGS.export_path, FLAGS.vocab_file)
 
 
 if __name__ == "__main__":
