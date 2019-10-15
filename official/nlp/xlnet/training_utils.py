@@ -77,6 +77,7 @@ def train(
     metric_fn: Optional[Callable[[], tf.keras.metrics.Metric]] = None,
     test_input_fn: Optional[Callable] = None,
     init_checkpoint: Optional[Text] = None,
+    init_from_transformerxl: Optional[bool] = False,
     model_dir: Optional[Text] = None,
     save_steps: Optional[int] = None,
     run_eagerly: Optional[bool] = False):
@@ -105,6 +106,8 @@ def train(
       test_input_fn:  Function returns a evaluation dataset. If none, evaluation
         is skipped.
       init_checkpoint: Optional checkpoint to load to `sub_model` returned by
+        `model_fn`.
+      init_from_transformerxl: Whether to load to `transformerxl_model` of
         `model_fn`.
       model_dir: The directory of model (checkpoints, summaries).
       save_steps: The frequency to save checkpoints. Every save_steps, we save a
@@ -151,7 +154,11 @@ def train(
 
     if init_checkpoint:
       logging.info("restore from %s", init_checkpoint)
-      checkpoint = tf.train.Checkpoint(model=model)
+      if init_from_transformerxl:
+        checkpoint = tf.train.Checkpoint(
+            transformer_xl=model.transformerxl_model)
+      else:
+        checkpoint = tf.train.Checkpoint(model=model)
       checkpoint.restore(init_checkpoint)
 
     model.optimizer = optimizer

@@ -179,6 +179,7 @@ def main(unused_argv):
       train_input_fn=train_input_fn,
       test_input_fn=test_input_fn,
       init_checkpoint=FLAGS.init_checkpoint,
+      init_from_transformerxl=FLAGS.init_from_transformerxl,
       total_training_steps=total_training_steps,
       steps_per_epoch=steps_per_epoch,
       steps_per_loop=steps_per_loop,

@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+import os
 
 from absl import app
 from absl import flags
@@ -103,7 +104,7 @@ def main(unused_argv):
   model_fn = functools.partial(get_pretrainxlnet_model, model_config,
                                run_config)
 
-  training_utils.train(
+  model = training_utils.train(
       strategy=strategy,
       model_fn=model_fn,
       input_meta_data=input_meta_data,
@@ -112,6 +113,7 @@ def main(unused_argv):
       train_input_fn=train_input_fn,
       test_input_fn=None,
       init_checkpoint=FLAGS.init_checkpoint,
+      init_from_transformerxl=FLAGS.init_from_transformerxl,
       total_training_steps=total_training_steps,
       steps_per_epoch=steps_per_epoch,
       steps_per_loop=steps_per_loop,
@@ -119,6 +121,13 @@ def main(unused_argv):
       learning_rate_fn=learning_rate_fn,
       model_dir=FLAGS.model_dir,
       save_steps=FLAGS.save_steps)
+
+  # Export transformer-xl model checkpoint to be used in finetuning.
+  checkpoint = tf.train.Checkpoint(transformer_xl=model.transformerxl_model)
+  saved_path = checkpoint.save(
+      os.path.join(FLAGS.model_dir, "pretrained/transformer_xl.ckpt"))
+  logging.info("Exporting the transformer-xl model as a new TF checkpoint: %s",
+               saved_path)
 
 
 if __name__ == "__main__":

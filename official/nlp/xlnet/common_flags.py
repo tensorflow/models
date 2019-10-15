@@ -38,6 +38,11 @@ flags.DEFINE_string(
     "init_checkpoint",
     default=None,
     help="Checkpoint path for initializing the model.")
+flags.DEFINE_bool(
+    "init_from_transformerxl",
+    default=False,
+    help="Init from a transformerxl model checkpoint. Otherwise, init from the "
+    "entire model checkpoint.")
 
 # Optimization config
 flags.DEFINE_float("learning_rate", default=1e-4, help="Maximum learning rate.")
