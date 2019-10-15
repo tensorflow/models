@@ -212,11 +212,11 @@ def mobilenet_base(input_tensor, depth_multiplier=1.0, **kwargs):
 def mobilenet_base_group_norm(input_tensor, depth_multiplier=1.0, **kwargs):
   """Creates base of the mobilenet (no pooling and no logits) ."""
   kwargs['conv_defs'] = V2_DEF_GROUP_NORM
-  kwargs['conv_defs']['defaults'] = {
+  kwargs['conv_defs']['defaults'].update({
       (tf.contrib.layers.group_norm,): {
           'groups': kwargs.pop('groups', 8)
       }
-  }
+  })
   return mobilenet(
       input_tensor, depth_multiplier=depth_multiplier, base_only=True, **kwargs)
 
