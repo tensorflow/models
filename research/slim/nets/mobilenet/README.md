@@ -48,7 +48,7 @@ on CPU, we find that they are much more performant on GPU/DSP/EdgeTpu.
 | Imagenet Checkpoint | MACs (M) | Params (M) | Top1 | Pixel 1 | Pixel 2 | Pixel 3 |
 | ------------------ | -------- | ---------- | ---- | ------- | ------- | ------- |
 | [Large dm=1 (float)]   | 217      | 5.4        | 75.2 | 51.2    | 61      | 44      |
-| [Large dm=1 (8-bit)] | 217      | 5.4        | 73.3 | 44      | 42.5    | 32      |
+| [Large dm=1 (8-bit)] | 217      | 5.4        | 73.9 | 44      | 42.5    | 32      |
 | [Large dm=0.75 (float)] | 155      | 4.0        | 73.3 | 39.8    | 48      | 34      |
 | [Small dm=1 (float)]   | 66       | 2.9        | 67.5 | 15.8    | 19.4    | 14.4    |
 | [Small dm=1 (8-bit)]   | 66       | 2.9        | 64.9 | 15.5    | 15      | 10.7    |
