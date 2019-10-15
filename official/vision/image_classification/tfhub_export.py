@@ -19,6 +19,8 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
+import os
+
 from absl import app
 from absl import flags
 
@@ -39,14 +41,17 @@ def export_tfhub(model_path, hub_destination):
   """Restores a tf.keras.Model and saves for TF-Hub."""
   model = resnet_model.resnet50(num_classes=imagenet_preprocessing.NUM_CLASSES)
   model.load_weights(model_path)
+  model.save(os.path.join(hub_destination, "classification"), include_optimizer=False)
 
   # Extracts a sub-model to use pooling feature vector as model output.
   image_input = model.get_layer(index=0).get_output_at(0)
-  feature_vector_output = model.get_layer(name='reduce_mean').get_output_at(0)
+  feature_vector_output = model.get_layer(name="reduce_mean").get_output_at(0)
   hub_model = tf.keras.Model(image_input, feature_vector_output)
 
   # Exports a SavedModel.
-  hub_model.save(hub_destination, include_optimizer=False)
+  hub_model.save(
+      os.path.join(hub_destination, "feature-vector"),
+      include_optimizer=False)
 
 
 def main(argv):
