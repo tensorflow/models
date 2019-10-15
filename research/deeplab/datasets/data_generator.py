@@ -103,8 +103,8 @@ _PQR_INFORMATION = DatasetDescriptor(
 	'trainval': 2763,
         'val': 825,  # num of samples in images/validation
     },
-    num_classes=2,
-    ignore_label=255,
+    num_classes=1,
+    ignore_label=0,
 )
 
 _DATASETS_INFORMATION = {

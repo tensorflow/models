@@ -126,10 +126,11 @@ def preprocess_image_and_label(image,
         [processed_image, label], crop_height, crop_width)
 
   if is_training:
-    if preprocess_utils.get_random_number() < _AUG_PROB:
+    if preprocess_utils.get_random_number() < 0.95:
       processed_image = preprocess_utils.adjust_color(processed_image)
-    if preprocess_utils.get_random_number() < _AUG_PROB:    
-      processed_image, label = preprocess_utils.randomly_rotate(processed_image, label)
+      processed_image, label = preprocess_utils.add_transparent_rectangle(processed_image, label)
+    processed_image, label = preprocess_utils.randomly_rotate(processed_image, label)
+    # if preprocess_utils.get_random_number() < _AUG_PROB:    
 
   processed_image.set_shape([crop_height, crop_width, 3])  
   if label is not None:

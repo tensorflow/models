@@ -308,8 +308,8 @@ def add_transparent_rectangle(image, label, color='white'):
   image_channels = int(image.shape[2])
   rec_offset_rows = int(get_random_number([1], minval=image_rows/4, maxval=image_cols/2))
   rec_offset_cols = int(get_random_number([1], minval=image_cols/4, maxval=image_cols/2))
-  rec_width = int(get_random_number([1], minval=10, maxval=image_rows - rec_offset_rows))
-  rec_height = int(get_random_number([1], minval=10, maxval=image_cols - rec_offset_cols))
+  rec_width = int(get_random_number([1], minval=40, maxval=image_rows - rec_offset_rows))
+  rec_height = int(get_random_number([1], minval=40, maxval=image_cols - rec_offset_cols))
   alpha = get_random_number([1], 0, 0.3)
   rectangle_overlay = np.full((rec_width, rec_height, image_channels), (255), dtype='float32')
   patch = tf.convert_to_tensor(rectangle_overlay, dtype='float32')
@@ -338,7 +338,7 @@ def overlay_patch(img, patch, i=0, j=0, alpha=0.5):
     return img_overlay
 
 def adjust_color(image):
-  return tf.image.random_contrast(image, 0.15, 0.8)
+  return tf.image.random_contrast(image, 0.15, 1.3)
 
 def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   """Gets a random scale value.
