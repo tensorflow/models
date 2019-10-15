@@ -31,6 +31,7 @@ class BatchNormRelu(tf.keras.layers.Layer):
                trainable=True,
                relu=True,
                init_zero=False,
+               fused=True,
                name=None):
     """A class to construct layers for a batch normalization followed by a ReLU.
 
@@ -43,6 +44,7 @@ class BatchNormRelu(tf.keras.layers.Layer):
       relu: `bool` if False, omits the ReLU operation.
       init_zero: `bool` if True, initializes scale parameter of batch
           normalization with 0. If False, initialize it with 1.
+      fused: `bool` fused option in batch normalziation.
       name: `str` name for the operation.
     """
     self._use_relu = relu
@@ -51,14 +53,13 @@ class BatchNormRelu(tf.keras.layers.Layer):
       gamma_initializer = tf.keras.initializers.Zeros()
     else:
       gamma_initializer = tf.keras.initializers.Ones()
-    # TODO(yeqing): Check if we can change the fused=True again.
     self._batch_norm_op = tf.keras.layers.BatchNormalization(
         momentum=momentum,
         epsilon=epsilon,
         center=True,
         scale=True,
         trainable=trainable,
-        fused=False,
+        fused=fused,
         gamma_initializer=gamma_initializer,
         name=name)
 
