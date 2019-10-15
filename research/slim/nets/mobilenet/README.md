@@ -45,36 +45,23 @@ however, they don't utilize any of the advanced blocks (squeeze-and-excite
 units, hard-swish, and 5x5 convolutions). While these models are less efficient
 on CPU, we find that they are much more performant on GPU/DSP/EdgeTpu.
 
-| Classification | MACs (M) | Params (M) | Top1 | Pixel 1 | Pixel 2 | Pixel 3 |
-: Checkpoint     :          :            :      :         :         :         :
-| -------------- | -------- | ---------- | ---- | ------- | ------- | ------- |
-| [Large dm=1    | 217      | 5.4        | 75.2 | 51.2    | 61      | 44      |
-: (float)]       :          :            :      :         :         :         :
-| [Large dm=1    | 217      | 5.4        | 73.3 | 44      | 42.5    | 32      |
-: (8-bit)]       :          :            :      :         :         :         :
-| [Large dm=0.75 | 155      | 4.0        | 73.3 | 39.8    | 48      | 34      |
-: (float)]       :          :            :      :         :         :         :
-| [Small dm=1    | 66       | 2.9        | 67.5 | 15.8    | 19.4    | 14.4    |
-: (float)]       :          :            :      :         :         :         :
-| [Small dm=1    | 66       | 2.9        | 64.9 | 15.5    | 15      | 10.7    |
-: (8-bit)]       :          :            :      :         :         :         :
-| [Small dm=0.75 | 44       | 2.4        | 65.4 | 12.8    | 15.9    | 11.6    |
-: (float)]       :          :            :      :         :         :         :
+| Imagenet Checkpoint | MACs (M) | Params (M) | Top1 | Pixel 1 | Pixel 2 | Pixel 3 |
+| ------------------ | -------- | ---------- | ---- | ------- | ------- | ------- |
+| [Large dm=1 (float)]   | 217      | 5.4        | 75.2 | 51.2    | 61      | 44      |
+| [Large dm=1 (8-bit)] | 217      | 5.4        | 73.3 | 44      | 42.5    | 32      |
+| [Large dm=0.75 (float)] | 155      | 4.0        | 73.3 | 39.8    | 48      | 34      |
+| [Small dm=1 (float)]   | 66       | 2.9        | 67.5 | 15.8    | 19.4    | 14.4    |
+| [Small dm=1 (8-bit)]   | 66       | 2.9        | 64.9 | 15.5    | 15      | 10.7    |
+| [Small dm=0.75 (float)] | 44       | 2.4        | 65.4 | 12.8    | 15.9    | 11.6    |
 
 #### Minimalistic checkpoints:
 
-| Classification | MACs (M) | Params (M) | Top1 | Pixel 1 | Pixel 2 | Pixel 3 |
-: Checkpoint     :          :            :      :         :         :         :
+| Imagenet Checkpoint | MACs (M) | Params (M) | Top1 | Pixel 1 | Pixel 2 | Pixel 3 |
 | -------------- | -------- | ---------- | ---- | ------- | ------- | ------- |
-| [Large         | 209      | 3.9        | 72.3 | 44.1    | 51      | 35      |
-: minimalistic   :          :            :      :         :         :         :
-: (float)]       :          :            :      :         :         :         :
-| [Large         | 209      | 3.9        | 71.3 | 37      | 35      | 27      |
-: minimalistic   :          :            :      :         :         :         :
-: (8-bit)][lm8]  :          :            :      :         :         :         :
-| [Small         | 65       | 2.0        | 61.9 | 12.2    | 15.1    | 11      |
-: minimalistic   :          :            :      :         :         :         :
-: (float)]       :          :            :      :         :         :         :
+| [Large minimalistic (float)]   | 209      | 3.9        | 72.3 | 44.1    | 51      | 35      |
+| [Large minimalistic (8-bit)][lm8]   | 209      | 3.9        | 71.3 | 37      | 35      | 27      |
+| [Small minimalistic (float)]   | 65       | 2.0        | 61.9 | 12.2    | 15.1    | 11      |
+
 
 [Small minimalistic (float)]: https://storage.googleapis.com/mobilenet_v3/checkpoints/v3-small-minimalistic_224_1.0_float.tgz
 [Large minimalistic (float)]: https://storage.googleapis.com/mobilenet_v3/checkpoints/v3-large-minimalistic_224_1.0_float.tgz
