@@ -46,68 +46,42 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
     self._predict_post_process_fn = predict_post_process_fn
     self._trainable_variables_filter = trainable_variables_filter
 
-  def _create_train_step(self,
-                         strategy,
-                         model,
-                         loss_fn,
-                         optimizer,
-                         metric=None):
-    """Creates a distributed training step."""
+  def _create_replicated_step(self,
+                              strategy,
+                              model,
+                              loss_fn,
+                              optimizer,
+                              metric=None):
+    trainable_variables = model.trainable_variables
+    if self._trainable_variables_filter:
+      trainable_variables = self._trainable_variables_filter(
+          trainable_variables)
+    logging.info('Filter trainable variables from %d to %d',
+                 len(model.trainable_variables), len(trainable_variables))
 
-    @tf.function
-    def train_step(iterator):
-      """Performs a distributed training step.
+    def _replicated_step(inputs):
+      """Replicated training step."""
+      inputs, labels = inputs
 
-      Args:
-        strategy: an instance of tf.distribute.Strategy.
-        model: (Tensor, bool) -> Tensor. model function.
-        loss_fn: (y_true: Tensor, y_pred: Tensor) -> Tensor.
-        optimizer: tf.keras.optimizers.Optimizer.
-        iterator: an iterator that yields input tensors.
-        metric: eval metrics to be run outside the graph.
+      with tf.GradientTape() as tape:
+        outputs = model(inputs, training=True)
+        all_losses = loss_fn(labels, outputs)
+        losses = {}
+        for k, v in all_losses.items():
+          v = tf.reduce_mean(v) / strategy.num_replicas_in_sync
+          losses[k] = v
+        loss = losses['total_loss']
+        if isinstance(metric, tf.keras.metrics.Metric):
+          metric.update_state(labels, outputs)
+        else:
+          logging.error('train metric is not an instance of '
+                        'tf.keras.metrics.Metric.')
 
-      Returns:
-        The loss tensor.
-      """
-
-      def _replicated_step(inputs):
-        """Replicated training step."""
-        inputs, labels = inputs
-
-        with tf.GradientTape() as tape:
-          outputs = model(inputs, training=True)
-          all_losses = loss_fn(labels, outputs)
-          losses = {}
-          for k, v in all_losses.items():
-            v = tf.reduce_mean(v) / strategy.num_replicas_in_sync
-            losses[k] = v
-          loss = losses['total_loss']
-          if isinstance(metric, tf.keras.metrics.Metric):
-            metric.update_state(labels, outputs)
-          else:
-            logging.error('train metric is not an instance of '
-                          'tf.keras.metrics.Metric.')
-
-        trainable_variables = model.trainable_variables
-        if self._trainable_variables_filter:
-          trainable_variables = self._trainable_variables_filter(
-              trainable_variables)
-        logging.info('Filter trainable variables from %d to %d',
-                     len(model.trainable_variables), len(trainable_variables))
-        grads = tape.gradient(loss, trainable_variables)
-        optimizer.apply_gradients(zip(grads, trainable_variables))
-        # return losses, labels
-        return loss
-
-      per_replica_losses = strategy.experimental_run_v2(
-          _replicated_step, args=(next(iterator),))
-
-      # For reporting, we returns the mean of losses.
-      loss = strategy.reduce(
-          tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None)
+      grads = tape.gradient(loss, trainable_variables)
+      optimizer.apply_gradients(zip(grads, trainable_variables))
       return loss
 
-    return train_step
+    return _replicated_step
 
   def _create_test_step(self, strategy, model, metric):
     """Creates a distributed test step."""
