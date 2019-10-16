@@ -545,6 +545,7 @@ def inception_v2(inputs,
           return net, end_points
         # 1 x 1 x 1024
         net = slim.dropout(net, keep_prob=dropout_keep_prob, scope='Dropout_1b')
+        end_points['PreLogits'] = net
         logits = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
                              normalizer_fn=None, scope='Conv2d_1c_1x1')
         if spatial_squeeze:
