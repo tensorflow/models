@@ -103,6 +103,8 @@ def initialize_common_flags():
   flags.DEFINE_integer(
       'task_index', 0,
       'If multi-worker training, the task_index of this worker.')
+  flags.DEFINE_integer('save_checkpoint_freq', None,
+                       'Number of steps to save checkpoint.')
 
 
 def strategy_flags_dict():
@@ -447,6 +449,12 @@ class DistributedExecutor(object):
     if save_config:
       self._save_config(model_dir)
 
+    if FLAGS.save_checkpoint_freq:
+      save_freq = FLAGS.save_checkpoint_freq
+    else:
+      save_freq = iterations_per_loop
+    last_save_checkpoint_step = 0
+
     params = self._params
     strategy = self._strategy
     # To reduce unnecessary send/receive input pipeline operation, we place
@@ -540,9 +548,11 @@ class DistributedExecutor(object):
       # iterations_per_loop steps.
       # To avoid repeated model saving, we do not save after the last
       # step of training.
-      if current_step < total_steps:
+      if save_freq > 0 and current_step < total_steps and (
+          current_step - last_save_checkpoint_step) >= save_freq:
         _save_checkpoint(checkpoint, model_dir,
                          checkpoint_name.format(step=current_step))
+        last_save_checkpoint_step = current_step
 
       if test_step:
         eval_iterator = self._get_input_iterator(eval_input_fn, strategy)

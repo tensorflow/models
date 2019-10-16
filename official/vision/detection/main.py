@@ -55,7 +55,10 @@ flags.DEFINE_string('eval_file_pattern', None, 'Location of ther eval data')
 FLAGS = flags.FLAGS
 
 
-def run_executor(params, train_input_fn=None, eval_input_fn=None):
+def run_executor(params,
+                 train_input_fn=None,
+                 eval_input_fn=None,
+                 callbacks=None):
   """Runs Retinanet model on distribution strategy defined by the user."""
 
   model_builder = model_factory.model_generator(params)
@@ -92,6 +95,7 @@ def run_executor(params, train_input_fn=None, eval_input_fn=None):
         iterations_per_loop=params.train.iterations_per_loop,
         total_steps=params.train.total_steps,
         init_checkpoint=model_builder.make_restore_checkpoint_fn(),
+        custom_callbacks=callbacks,
         save_config=True)
   elif FLAGS.mode == 'eval':
 
@@ -124,9 +128,7 @@ def run_executor(params, train_input_fn=None, eval_input_fn=None):
     raise ValueError('Mode not found: %s.' % FLAGS.mode)
 
 
-def main(argv):
-  del argv  # Unused.
-
+def run(callbacks=None):
   params = config_factory.config_generator(FLAGS.model)
 
   params = params_dict.override_params_dict(
@@ -171,7 +173,16 @@ def main(argv):
         batch_size=params.eval.batch_size,
         num_examples=params.eval.eval_samples)
   return run_executor(
-      params, train_input_fn=train_input_fn, eval_input_fn=eval_input_fn)
+      params,
+      train_input_fn=train_input_fn,
+      eval_input_fn=eval_input_fn,
+      callbacks=callbacks)
+
+
+def main(argv):
+  del argv  # Unused.
+
+  return run()
 
 
 if __name__ == '__main__':

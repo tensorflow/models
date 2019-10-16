@@ -95,10 +95,8 @@ class DetectionBenchmarkBase(tf.test.Benchmark):
     }]
     if self.timer_callback:
       metrics.append({
-          'name':
-              'exp_per_second',
-          'value':
-              self.timer_callback.get_examples_per_sec(FLAGS.train_batch_size)
+          'name': 'exp_per_second',
+          'value': self.timer_callback.get_examples_per_sec(train_batch_size)
       })
     else:
       metrics.append({
@@ -134,7 +132,7 @@ class RetinanetBenchmarkBase(DetectionBenchmarkBase):
 
   def _run_detection_main(self):
     """Starts detection job."""
-    return detection.main('unused_argv')
+    return detection.run(callbacks=[self.timer_callback])
 
 
 class RetinanetAccuracy(RetinanetBenchmarkBase):
@@ -166,7 +164,8 @@ class RetinanetAccuracy(RetinanetBenchmarkBase):
         stats=summary,
         wall_time_sec=wall_time_sec,
         min_ap=min_ap,
-        max_ap=max_ap)
+        max_ap=max_ap,
+        train_batch_size=self.params_override['train']['batch_size'])
 
   def _setup(self):
     super(RetinanetAccuracy, self)._setup()
@@ -228,6 +227,8 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     params['eval']['eval_samples'] = 8
     FLAGS.params_override = json.dumps(params)
     FLAGS.model_dir = self._get_model_dir('real_benchmark_8_gpu_coco')
+    # Use negative value to avoid saving checkpoints.
+    FLAGS.save_checkpoint_freq = -1
     if self.timer_callback is None:
       logging.error('Cannot measure performance without timer callback')
     else:
