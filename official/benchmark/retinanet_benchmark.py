@@ -218,14 +218,21 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     self._setup()
     params = copy.deepcopy(self.params_override)
     params['train']['total_steps'] = 1875 # One epoch.
-    params['train']['iterations_per_loop'] = 125
+    # The iterations_per_loop must be one, otherwise the number of examples per
+    # second would be wrong. Currently only support calling callback per batch
+    # when each loop only runs on one batch, i.e. host loop for one step. The
+    # performance of this situation might be lower than the case of
+    # iterations_per_loop > 1.
+    # Related bug: b/135933080
+    params['train']['iterations_per_loop'] = 1
     params['eval']['eval_samples'] = 8
     FLAGS.params_override = json.dumps(params)
     FLAGS.model_dir = self._get_model_dir('real_benchmark_8_gpu_coco')
-    # Sets timer_callback to None as we do not use it now.
-    self.timer_callback = None
+    if self.timer_callback is None:
+      logging.error('Cannot measure performance without timer callback')
+    else:
+      self._run_and_report_benchmark()
 
-    self._run_and_report_benchmark()
 
 if __name__ == '__main__':
   tf.test.main()
