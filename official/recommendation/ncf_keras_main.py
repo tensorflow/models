@@ -85,7 +85,8 @@ class LossLayer(tf.keras.layers.Layer):
   """Pass-through loss layer for NCF model."""
 
   def __init__(self, loss_normalization_factor):
-    super(LossLayer, self).__init__()
+    # The loss may overflow in float16, so we use float32 instead.
+    super(LossLayer, self).__init__(dtype="float32")
     self.loss_normalization_factor = loss_normalization_factor
     self.loss = tf.keras.losses.SparseCategoricalCrossentropy(
         from_logits=True, reduction="sum")
@@ -208,6 +209,12 @@ def run_ncf(_):
   params = ncf_common.parse_flags(FLAGS)
   model_helpers.apply_clean(flags.FLAGS)
 
+  if FLAGS.dtype == "fp16" and FLAGS.fp16_implementation == "keras":
+    policy = tf.keras.mixed_precision.experimental.Policy(
+        "mixed_float16",
+        loss_scale=flags_core.get_loss_scale(FLAGS, default_for_fp16="dynamic"))
+    tf.keras.mixed_precision.experimental.set_policy(policy)
+
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
@@ -266,12 +273,18 @@ def run_ncf(_):
         beta_1=params["beta1"],
         beta_2=params["beta2"],
         epsilon=params["epsilon"])
-    if FLAGS.dtype == "fp16":
+    if FLAGS.fp16_implementation == "graph_rewrite":
       optimizer = \
         tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
             optimizer,
             loss_scale=flags_core.get_loss_scale(FLAGS,
                                                  default_for_fp16="dynamic"))
+    elif FLAGS.dtype == "fp16" and params["keras_use_ctl"]:
+      # When keras_use_ctl is False, instead Model.fit() automatically applies
+      # loss scaling so we don't need to create a LossScaleOptimizer.
+      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+          optimizer,
+          tf.keras.mixed_precision.experimental.global_policy().loss_scale)
 
     if params["keras_use_ctl"]:
       train_loss, eval_results = run_ncf_custom_training(
@@ -370,6 +383,8 @@ def run_ncf_custom_training(params,
       """Computes loss and applied gradient per replica."""
       with tf.GradientTape() as tape:
         softmax_logits = keras_model(features)
+        # The loss can overflow in float16, so we cast to float32.
+        softmax_logits = tf.cast(softmax_logits, "float32")
         labels = features[rconst.TRAIN_LABEL_KEY]
         loss = loss_object(
             labels,

@@ -152,13 +152,9 @@ def define_ncf_flags():
                          run_eagerly=True, stop_threshold=True, num_gpu=True,
                          hooks=True, distribution_strategy=True)
   flags_core.define_performance(
-      num_parallel_calls=False,
-      inter_op=False,
-      intra_op=False,
       synthetic_data=True,
-      max_train_steps=False,
       dtype=True,
-      all_reduce_alg=False,
+      fp16_implementation=True,
       loss_scale=True,
       dynamic_loss_scale=True,
       enable_xla=True,
