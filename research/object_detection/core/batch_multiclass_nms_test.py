@@ -87,7 +87,8 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase,
       iou = sess.run(iou)
       self.assertAllClose(iou, expected_iou)
 
-  def test_batch_multiclass_nms_with_batch_size_2(self):
+  @parameterized.parameters(False, True)
+  def test_batch_multiclass_nms_with_batch_size_2(self, use_dynamic_map_fn):
     boxes = tf.constant([[[[0, 0, 1, 1], [0, 0, 4, 5]],
                           [[0, 0.1, 1, 1.1], [0, 0.1, 2, 1.1]],
                           [[0, -0.1, 1, 0.9], [0, -0.1, 1, 0.9]],
@@ -122,7 +123,8 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase,
      nmsed_additional_fields, num_detections
     ) = post_processing.batch_multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh,
-        max_size_per_class=max_output_size, max_total_size=max_output_size)
+        max_size_per_class=max_output_size, max_total_size=max_output_size,
+        use_dynamic_map_fn=use_dynamic_map_fn)
 
     self.assertIsNone(nmsed_masks)
     self.assertIsNone(nmsed_additional_fields)
@@ -712,6 +714,8 @@ class BatchMulticlassNonMaxSuppressionTest(test_case.TestCase,
       self.assertAllClose(nmsed_scores, exp_nms_scores)
       self.assertAllClose(nmsed_classes, exp_nms_classes)
       self.assertListEqual(num_detections.tolist(), [3, 3])
+
+  # TODO(bhattad): Remove conditional after CMLE moves to TF 1.9
 
 if __name__ == '__main__':
   tf.test.main()

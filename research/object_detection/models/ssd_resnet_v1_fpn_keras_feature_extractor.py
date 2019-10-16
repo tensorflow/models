@@ -52,6 +52,7 @@ class SSDResNetV1FpnKerasFeatureExtractor(
                additional_layer_depth=256,
                reuse_weights=None,
                use_explicit_padding=None,
+               use_depthwise=None,
                override_base_feature_extractor_hyperparams=False,
                name=None):
     """SSD Keras based FPN feature extractor Resnet v1 architecture.
@@ -90,6 +91,7 @@ class SSDResNetV1FpnKerasFeatureExtractor(
       use_explicit_padding: whether to use explicit padding when extracting
         features. Default is None, as it's an invalid option and not implemented
         in this feature extractor.
+      use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams`.
@@ -105,11 +107,14 @@ class SSDResNetV1FpnKerasFeatureExtractor(
         freeze_batchnorm=freeze_batchnorm,
         inplace_batchnorm_update=inplace_batchnorm_update,
         use_explicit_padding=None,
+        use_depthwise=None,
         override_base_feature_extractor_hyperparams=
         override_base_feature_extractor_hyperparams,
         name=name)
     if self._use_explicit_padding:
       raise ValueError('Explicit padding is not a valid option.')
+    if self._use_depthwise:
+      raise ValueError('Depthwise is not a valid option.')
     self._fpn_min_level = fpn_min_level
     self._fpn_max_level = fpn_max_level
     self._additional_layer_depth = additional_layer_depth
@@ -251,6 +256,7 @@ class SSDResNet50V1FpnKerasFeatureExtractor(
                additional_layer_depth=256,
                reuse_weights=None,
                use_explicit_padding=None,
+               use_depthwise=None,
                override_base_feature_extractor_hyperparams=False,
                name='ResNet50V1_FPN'):
     """SSD Keras based FPN feature extractor ResnetV1-50 architecture.
@@ -278,7 +284,8 @@ class SSDResNet50V1FpnKerasFeatureExtractor(
       reuse_weights: whether to reuse variables. Default is None.
       use_explicit_padding: whether to use explicit padding when extracting
         features. Default is None, as it's an invalid option and not implemented
-        in this feature extractor
+        in this feature extractor.
+      use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams`.
@@ -296,6 +303,7 @@ class SSDResNet50V1FpnKerasFeatureExtractor(
         resnet_v1_base_model=resnet_v1.resnet_v1_50,
         resnet_v1_base_model_name='resnet_v1_50',
         use_explicit_padding=use_explicit_padding,
+        use_depthwise=use_depthwise,
         override_base_feature_extractor_hyperparams=
         override_base_feature_extractor_hyperparams,
         name=name)
@@ -318,6 +326,7 @@ class SSDResNet101V1FpnKerasFeatureExtractor(
                additional_layer_depth=256,
                reuse_weights=None,
                use_explicit_padding=None,
+               use_depthwise=None,
                override_base_feature_extractor_hyperparams=False,
                name='ResNet101V1_FPN'):
     """SSD Keras based FPN feature extractor ResnetV1-101 architecture.
@@ -345,7 +354,8 @@ class SSDResNet101V1FpnKerasFeatureExtractor(
       reuse_weights: whether to reuse variables. Default is None.
       use_explicit_padding: whether to use explicit padding when extracting
         features. Default is None, as it's an invalid option and not implemented
-        in this feature extractor
+        in this feature extractor.
+      use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams`.
@@ -363,6 +373,7 @@ class SSDResNet101V1FpnKerasFeatureExtractor(
         resnet_v1_base_model=resnet_v1.resnet_v1_101,
         resnet_v1_base_model_name='resnet_v1_101',
         use_explicit_padding=use_explicit_padding,
+        use_depthwise=use_depthwise,
         override_base_feature_extractor_hyperparams=
         override_base_feature_extractor_hyperparams,
         name=name)
@@ -385,6 +396,7 @@ class SSDResNet152V1FpnKerasFeatureExtractor(
                additional_layer_depth=256,
                reuse_weights=None,
                use_explicit_padding=False,
+               use_depthwise=None,
                override_base_feature_extractor_hyperparams=False,
                name='ResNet152V1_FPN'):
     """SSD Keras based FPN feature extractor ResnetV1-152 architecture.
@@ -412,7 +424,8 @@ class SSDResNet152V1FpnKerasFeatureExtractor(
       reuse_weights: whether to reuse variables. Default is None.
       use_explicit_padding: whether to use explicit padding when extracting
         features. Default is None, as it's an invalid option and not implemented
-        in this feature extractor
+        in this feature extractor.
+      use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams`.
@@ -430,6 +443,7 @@ class SSDResNet152V1FpnKerasFeatureExtractor(
         resnet_v1_base_model=resnet_v1.resnet_v1_152,
         resnet_v1_base_model_name='resnet_v1_152',
         use_explicit_padding=use_explicit_padding,
+        use_depthwise=use_depthwise,
         override_base_feature_extractor_hyperparams=
         override_base_feature_extractor_hyperparams,
         name=name)

@@ -52,6 +52,7 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                reuse_weights=None,
                use_explicit_padding=False,
                use_depthwise=False,
+               use_native_resize_op=False,
                override_base_feature_extractor_hyperparams=False):
     """SSD FPN feature extractor based on Mobilenet v1 architecture.
 
@@ -79,6 +80,8 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      use_native_resize_op: Whether to use tf.image.nearest_neighbor_resize
+        to do upsampling in FPN. Default is false.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams_fn`.
@@ -100,6 +103,7 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     self._conv_defs = None
     if self._use_depthwise:
       self._conv_defs = _create_modified_mobilenet_config()
+    self._use_native_resize_op = use_native_resize_op
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -162,7 +166,8 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
               [(key, image_features[key]) for key in feature_block_list],
               depth=depth_fn(self._additional_layer_depth),
               use_depthwise=self._use_depthwise,
-              use_explicit_padding=self._use_explicit_padding)
+              use_explicit_padding=self._use_explicit_padding,
+              use_native_resize_op=self._use_native_resize_op)
           feature_maps = []
           for level in range(self._fpn_min_level, base_fpn_max_level + 1):
             feature_maps.append(fpn_features['top_down_{}'.format(

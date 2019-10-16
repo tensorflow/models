@@ -97,7 +97,12 @@ def get_prediction_tensor_shapes(pipeline_config):
   prediction_dict = detection_model.predict(preprocessed_inputs,
                                             true_image_shapes)
 
-  shapes_info = {k: v.shape.as_list() for k, v in prediction_dict.items()}
+  shapes_info = {}
+  for k, v in prediction_dict.items():
+    if isinstance(v, list):
+      shapes_info[k] = [item.shape.as_list() for item in v]
+    else:
+      shapes_info[k] = v.shape.as_list()
   return shapes_info
 
 
@@ -200,7 +205,12 @@ def build_graph(pipeline_config,
   }
 
   for k in prediction_dict:
-    prediction_dict[k].set_shape(shapes_info[k])
+    if isinstance(prediction_dict[k], list):
+      prediction_dict[k] = [
+          prediction_dict[k][idx].set_shape(shapes_info[k][idx])
+          for idx in len(prediction_dict[k])]
+    else:
+      prediction_dict[k].set_shape(shapes_info[k])
 
   if use_bfloat16:
     prediction_dict = utils.bfloat16_to_float32_nested(prediction_dict)

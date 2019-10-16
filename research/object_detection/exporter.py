@@ -40,50 +40,54 @@ def rewrite_nn_resize_op(is_quantized=False):
   Args:
     is_quantized: True if the default graph is quantized.
   """
-  input_pattern = graph_matcher.OpTypePattern(
-      'FakeQuantWithMinMaxVars' if is_quantized else '*')
-  reshape_1_pattern = graph_matcher.OpTypePattern(
-      'Reshape', inputs=[input_pattern, 'Const'], ordered_inputs=False)
-  mul_pattern = graph_matcher.OpTypePattern(
-      'Mul', inputs=[reshape_1_pattern, 'Const'], ordered_inputs=False)
-  # The quantization script may or may not insert a fake quant op after the
-  # Mul. In either case, these min/max vars are not needed once replaced with
-  # the TF version of NN resize.
-  fake_quant_pattern = graph_matcher.OpTypePattern(
-      'FakeQuantWithMinMaxVars',
-      inputs=[mul_pattern, 'Identity', 'Identity'],
-      ordered_inputs=False)
-  reshape_2_pattern = graph_matcher.OpTypePattern(
-      'Reshape',
-      inputs=[graph_matcher.OneofPattern([fake_quant_pattern, mul_pattern]),
-              'Const'],
-      ordered_inputs=False)
-  add_type_name = 'Add'
-  if tf.compat.forward_compatible(2019, 6, 26):
-    add_type_name = 'AddV2'
-  add_pattern = graph_matcher.OpTypePattern(
-      add_type_name, inputs=[reshape_2_pattern, '*'], ordered_inputs=False)
+  def remove_nn():
+    """Remove nearest neighbor upsampling structure and replace with TF op."""
+    input_pattern = graph_matcher.OpTypePattern(
+        'FakeQuantWithMinMaxVars' if is_quantized else '*')
+    stack_1_pattern = graph_matcher.OpTypePattern(
+        'Pack', inputs=[input_pattern, input_pattern], ordered_inputs=False)
+    stack_2_pattern = graph_matcher.OpTypePattern(
+        'Pack', inputs=[stack_1_pattern, stack_1_pattern], ordered_inputs=False)
+    reshape_pattern = graph_matcher.OpTypePattern(
+        'Reshape', inputs=[stack_2_pattern, 'Const'], ordered_inputs=False)
+    consumer_pattern = graph_matcher.OpTypePattern(
+        'Add|AddV2|Max|Mul', inputs=[reshape_pattern, '*'],
+        ordered_inputs=False)
 
-  matcher = graph_matcher.GraphMatcher(add_pattern)
-  for match in matcher.match_graph(tf.get_default_graph()):
-    projection_op = match.get_op(input_pattern)
-    reshape_2_op = match.get_op(reshape_2_pattern)
-    add_op = match.get_op(add_pattern)
-    nn_resize = tf.image.resize_nearest_neighbor(
-        projection_op.outputs[0],
-        add_op.outputs[0].shape.dims[1:3],
-        align_corners=False,
-        name=os.path.split(reshape_2_op.name)[0] + '/resize_nearest_neighbor')
+    match_counter = 0
+    matcher = graph_matcher.GraphMatcher(consumer_pattern)
+    for match in matcher.match_graph(tf.get_default_graph()):
+      match_counter += 1
+      projection_op = match.get_op(input_pattern)
+      reshape_op = match.get_op(reshape_pattern)
+      consumer_op = match.get_op(consumer_pattern)
+      nn_resize = tf.image.resize_nearest_neighbor(
+          projection_op.outputs[0],
+          reshape_op.outputs[0].shape.dims[1:3],
+          align_corners=False,
+          name=os.path.split(reshape_op.name)[0] + '/resize_nearest_neighbor')
 
-    for index, op_input in enumerate(add_op.inputs):
-      if op_input == reshape_2_op.outputs[0]:
-        add_op._update_input(index, nn_resize)  # pylint: disable=protected-access
-        break
+      for index, op_input in enumerate(consumer_op.inputs):
+        if op_input == reshape_op.outputs[0]:
+          consumer_op._update_input(index, nn_resize)  # pylint: disable=protected-access
+          break
+
+    tf.logging.info('Found and fixed {} matches'.format(match_counter))
+    return match_counter
+
+  # Applying twice because both inputs to Add could be NN pattern
+  total_removals = 0
+  while remove_nn():
+    total_removals += 1
+    # This number is chosen based on the nas-fpn architecture.
+    if total_removals > 4:
+      raise ValueError('Graph removal encountered a infinite loop.')
 
 
 def replace_variable_values_with_moving_averages(graph,
                                                  current_checkpoint_file,
-                                                 new_checkpoint_file):
+                                                 new_checkpoint_file,
+                                                 no_ema_collection=None):
   """Replaces variable values in the checkpoint with their moving averages.
 
   If the current checkpoint has shadow variables maintaining moving averages of
@@ -95,10 +99,14 @@ def replace_variable_values_with_moving_averages(graph,
     current_checkpoint_file: a checkpoint containing both original variables and
       their moving averages.
     new_checkpoint_file: file path to write a new checkpoint.
+    no_ema_collection: A list of namescope substrings to match the variables
+      to eliminate EMA.
   """
   with graph.as_default():
     variable_averages = tf.train.ExponentialMovingAverage(0.0)
     ema_variables_to_restore = variable_averages.variables_to_restore()
+    ema_variables_to_restore = config_util.remove_unecessary_ema(
+        ema_variables_to_restore, no_ema_collection)
     with tf.Session() as sess:
       read_saver = tf.train.Saver(ema_variables_to_restore)
       read_saver.restore(sess, current_checkpoint_file)

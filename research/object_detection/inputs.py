@@ -71,7 +71,8 @@ def transform_input_data(tensor_dict,
                          merge_multiple_boxes=False,
                          retain_original_image=False,
                          use_multiclass_scores=False,
-                         use_bfloat16=False):
+                         use_bfloat16=False,
+                         retain_original_image_additional_channels=False):
   """A single function that is responsible for all input data transformations.
 
   Data transformation functions are applied in the following order.
@@ -110,6 +111,8 @@ def transform_input_data(tensor_dict,
       this is True and multiclass_scores is empty, one-hot encoding of
       `groundtruth_classes` is used as a fallback.
     use_bfloat16: (optional) a bool, whether to use bfloat16 in training.
+    retain_original_image_additional_channels: (optional) Whether to retain
+      original image additional channels in the output dictionary.
 
   Returns:
     A dictionary keyed by fields.InputDataFields containing the tensors obtained
@@ -139,6 +142,10 @@ def transform_input_data(tensor_dict,
     channels = out_tensor_dict[fields.InputDataFields.image_additional_channels]
     out_tensor_dict[fields.InputDataFields.image] = tf.concat(
         [out_tensor_dict[fields.InputDataFields.image], channels], axis=2)
+    if retain_original_image_additional_channels:
+      out_tensor_dict[
+          fields.InputDataFields.image_additional_channels] = tf.cast(
+              image_resizer_fn(channels, None)[0], tf.uint8)
 
   # Apply data augmentation ops.
   if data_augmentation_fn is not None:
@@ -445,6 +452,9 @@ def _get_features_dict(input_dict):
   if fields.InputDataFields.original_image in input_dict:
     features[fields.InputDataFields.original_image] = input_dict[
         fields.InputDataFields.original_image]
+  if fields.InputDataFields.image_additional_channels in input_dict:
+    features[fields.InputDataFields.image_additional_channels] = input_dict[
+        fields.InputDataFields.image_additional_channels]
   return features
 
 
@@ -663,7 +673,9 @@ def eval_input(eval_config, eval_input_config, model_config,
         image_resizer_fn=image_resizer_fn,
         num_classes=num_classes,
         data_augmentation_fn=None,
-        retain_original_image=eval_config.retain_original_images)
+        retain_original_image=eval_config.retain_original_images,
+        retain_original_image_additional_channels=
+        eval_config.retain_original_image_additional_channels)
     tensor_dict = pad_input_data_to_static_shapes(
         tensor_dict=transform_data_fn(tensor_dict),
         max_num_boxes=eval_input_config.max_number_of_boxes,

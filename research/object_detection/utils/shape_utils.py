@@ -383,7 +383,7 @@ def flatten_dimensions(inputs, first, last):
 
   Example:
   `inputs` is a tensor with initial shape [10, 5, 20, 20, 3].
-  new_tensor = flatten_dimensions(inputs, last=4, first=2)
+  new_tensor = flatten_dimensions(inputs, first=1, last=3)
   new_tensor.shape -> [10, 100, 20, 3].
 
   Args:
@@ -465,3 +465,34 @@ def expand_first_dimension(inputs, dims):
     inputs_reshaped = tf.reshape(inputs, expanded_shape)
 
   return inputs_reshaped
+
+
+def resize_images_and_return_shapes(inputs, image_resizer_fn):
+  """Resizes images using the given function and returns their true shapes.
+
+  Args:
+    inputs: a float32 Tensor representing a batch of inputs of shape
+      [batch_size, height, width, channels].
+    image_resizer_fn: a function which takes in a single image and outputs
+      a resized image and its original shape.
+
+  Returns:
+    resized_inputs: The inputs resized according to image_resizer_fn.
+    true_image_shapes: A integer tensor of shape [batch_size, 3]
+      representing the height, width and number of channels in inputs.
+  """
+
+  if inputs.dtype is not tf.float32:
+    raise ValueError('`resize_images_and_return_shapes` expects a'
+                     ' tf.float32 tensor')
+
+  # TODO(jonathanhuang): revisit whether to always use batch size as
+  # the number of parallel iterations vs allow for dynamic batching.
+  outputs = static_or_dynamic_map_fn(
+      image_resizer_fn,
+      elems=inputs,
+      dtype=[tf.float32, tf.int32])
+  resized_inputs = outputs[0]
+  true_image_shapes = outputs[1]
+
+  return resized_inputs, true_image_shapes
