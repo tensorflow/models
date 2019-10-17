@@ -41,7 +41,7 @@ Please follow the below steps before running models in this repo:
     [nightly binaries](https://github.com/tensorflow/tensorflow#installation)
 
 2.  Add the top-level ***/models*** folder to the Python path with the command:
-    `export PYTHONPATH="$PYTHONPATH:/path/to/models"`
+    `export PYTHONPATH=$PYTHONPATH:/path/to/models`
 
     Using Colab: `import os os.environ['PYTHONPATH'] += ":/path/to/models"`
 
