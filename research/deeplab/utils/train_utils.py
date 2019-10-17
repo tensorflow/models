@@ -262,22 +262,28 @@ def get_model_learning_rate(learning_policy,
   if slow_start_burnin_type != 'none':
     adjusted_global_step -= slow_start_step
 
-  if learning_policy == 'step':
-    learning_rate = tf.train.exponential_decay(
-        base_learning_rate,
-        adjusted_global_step,
-        learning_rate_decay_step,
-        learning_rate_decay_factor,
-        staircase=True)
-  elif learning_policy == 'poly':
-    learning_rate = tf.train.polynomial_decay(
-        base_learning_rate,
-        adjusted_global_step,
-        training_number_of_steps,
-        end_learning_rate=0,
-        power=learning_power)
-  else:
-    raise ValueError('Unknown learning policy.')
+  # if learning_policy == 'step':
+  #   learning_rate = tf.train.exponential_decay(
+  #       base_learning_rate,
+  #       adjusted_global_step,
+  #       learning_rate_decay_step,
+  #       learning_rate_decay_factor,
+  #       staircase=True)
+  # elif learning_policy == 'poly':
+  #   # learning_rate = tf.train.polynomial_decay(
+  #   #     base_learning_rate,
+  #   #     adjusted_global_step,
+  #   #     training_number_of_steps,
+  #   #     end_learning_rate=0,
+  #   #     power=learning_power)
+    
+  # else:
+  #   raise ValueError('Unknown learning policy.')
+  learning_rate = 0.000009
+  if adjusted_global_step < 20000:
+    learning_rate = 0.0007
+  elif adjusted_global_step < 50000:
+    learning_rate = 0.00007
 
   adjusted_slow_start_learning_rate = slow_start_learning_rate
   if slow_start_burnin_type == 'linear':
