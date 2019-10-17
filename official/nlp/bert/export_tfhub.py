@@ -70,7 +70,8 @@ def export_bert_tfhub(bert_config: bert_modeling.BertConfig,
   checkpoint = tf.train.Checkpoint(model=core_model)
   checkpoint.restore(model_checkpoint_path).assert_consumed()
   core_model.vocab_file = tf.saved_model.Asset(vocab_file)
-  core_model.do_lower_case = tf.Variable("uncased" in vocab_file)
+  core_model.do_lower_case = tf.Variable(
+      "uncased" in vocab_file, trainable=False)
   core_model.save(hub_destination, include_optimizer=False, save_format="tf")
 
 
