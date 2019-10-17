@@ -49,7 +49,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
       predict_mask=False,
       use_static_shapes=False,
       nms_max_size_per_class=5,
-      calibration_mapping_value=None):
+      calibration_mapping_value=None,
+      return_raw_detections_during_predict=False):
     return super(SsdMetaArchTest, self)._create_model(
         model_fn=ssd_meta_arch.SSDMetaArch,
         apply_hard_mining=apply_hard_mining,
@@ -63,7 +64,9 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         predict_mask=predict_mask,
         use_static_shapes=use_static_shapes,
         nms_max_size_per_class=nms_max_size_per_class,
-        calibration_mapping_value=calibration_mapping_value)
+        calibration_mapping_value=calibration_mapping_value,
+        return_raw_detections_during_predict=(
+            return_raw_detections_during_predict))
 
   def test_preprocess_preserves_shapes_with_dynamic_input_image(
       self, use_keras):
@@ -105,6 +108,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         self.assertIn('class_predictions_with_background', prediction_dict)
         self.assertIn('feature_maps', prediction_dict)
         self.assertIn('anchors', prediction_dict)
+        self.assertIn('final_anchors', prediction_dict)
 
         init_op = tf.global_variables_initializer()
       with self.test_session(graph=tf_graph) as sess:
@@ -121,6 +125,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
 
       self.assertAllEqual(prediction_out['box_encodings'].shape,
                           expected_box_encodings_shape_out)
+      self.assertAllEqual(prediction_out['final_anchors'].shape,
+                          (batch_size, num_anchors, 4))
       self.assertAllEqual(
           prediction_out['class_predictions_with_background'].shape,
           expected_class_predictions_with_background_shape_out)
@@ -137,7 +143,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
       return (predictions['box_encodings'],
               predictions['class_predictions_with_background'],
               predictions['feature_maps'],
-              predictions['anchors'])
+              predictions['anchors'], predictions['final_anchors'])
     batch_size = 3
     image_size = 2
     channels = 3
@@ -145,11 +151,83 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                                  channels).astype(np.float32)
     expected_box_encodings_shape = (batch_size, num_anchors, code_size)
     expected_class_predictions_shape = (batch_size, num_anchors, num_classes+1)
-    (box_encodings, class_predictions, _, _) = self.execute(graph_fn,
-                                                            [input_image])
+    final_anchors_shape = (batch_size, num_anchors, 4)
+    (box_encodings, class_predictions, _, _, final_anchors) = self.execute(
+        graph_fn, [input_image])
     self.assertAllEqual(box_encodings.shape, expected_box_encodings_shape)
     self.assertAllEqual(class_predictions.shape,
                         expected_class_predictions_shape)
+    self.assertAllEqual(final_anchors.shape, final_anchors_shape)
+
+  def test_predict_with_raw_output_fields(self, use_keras):
+    with tf.Graph().as_default():
+      _, num_classes, num_anchors, code_size = self._create_model(
+          use_keras=use_keras)
+
+    def graph_fn(input_image):
+      model, _, _, _ = self._create_model(
+          return_raw_detections_during_predict=True)
+      predictions = model.predict(input_image, true_image_shapes=None)
+      return (predictions['box_encodings'],
+              predictions['class_predictions_with_background'],
+              predictions['feature_maps'],
+              predictions['anchors'], predictions['final_anchors'],
+              predictions['raw_detection_boxes'],
+              predictions['raw_detection_feature_map_indices'])
+    batch_size = 3
+    image_size = 2
+    channels = 3
+    input_image = np.random.rand(batch_size, image_size, image_size,
+                                 channels).astype(np.float32)
+    expected_box_encodings_shape = (batch_size, num_anchors, code_size)
+    expected_class_predictions_shape = (batch_size, num_anchors, num_classes+1)
+    final_anchors_shape = (batch_size, num_anchors, 4)
+    expected_raw_detection_boxes_shape = (batch_size, num_anchors, 4)
+    (box_encodings, class_predictions, _, _, final_anchors, raw_detection_boxes,
+     raw_detection_feature_map_indices) = self.execute(
+         graph_fn, [input_image])
+    self.assertAllEqual(box_encodings.shape, expected_box_encodings_shape)
+    self.assertAllEqual(class_predictions.shape,
+                        expected_class_predictions_shape)
+    self.assertAllEqual(final_anchors.shape, final_anchors_shape)
+    self.assertAllEqual(raw_detection_boxes.shape,
+                        expected_raw_detection_boxes_shape)
+    self.assertAllEqual(raw_detection_feature_map_indices,
+                        np.zeros((batch_size, num_anchors)))
+
+  def test_raw_detection_boxes_agree_predict_postprocess(self, use_keras):
+    batch_size = 2
+    image_size = 2
+    input_shapes = [(batch_size, image_size, image_size, 3),
+                    (None, image_size, image_size, 3),
+                    (batch_size, None, None, 3),
+                    (None, None, None, 3)]
+
+    for input_shape in input_shapes:
+      tf_graph = tf.Graph()
+      with tf_graph.as_default():
+        model, _, _, _ = self._create_model(
+            use_keras=use_keras, return_raw_detections_during_predict=True)
+        input_placeholder = tf.placeholder(tf.float32, shape=input_shape)
+        preprocessed_inputs, true_image_shapes = model.preprocess(
+            input_placeholder)
+        prediction_dict = model.predict(preprocessed_inputs,
+                                        true_image_shapes)
+        raw_detection_boxes_predict = prediction_dict['raw_detection_boxes']
+        detections = model.postprocess(prediction_dict, true_image_shapes)
+        raw_detection_boxes_postprocess = detections['raw_detection_boxes']
+        init_op = tf.global_variables_initializer()
+      with self.test_session(graph=tf_graph) as sess:
+        sess.run(init_op)
+        raw_detection_boxes_predict_out, raw_detection_boxes_postprocess_out = (
+            sess.run(
+                [raw_detection_boxes_predict, raw_detection_boxes_postprocess],
+                feed_dict={
+                    input_placeholder:
+                        np.random.uniform(size=(batch_size, 2, 2, 3))}))
+
+      self.assertAllEqual(raw_detection_boxes_predict_out,
+                          raw_detection_boxes_postprocess_out)
 
   def test_postprocess_results_are_correct(self, use_keras):
     batch_size = 2
@@ -188,7 +266,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                             [0.5, 0., 1., 0.5], [1., 1., 1.5, 1.5]]]
     raw_detection_scores = [[[0, 0], [0, 0], [0, 0], [0, 0]],
                             [[0, 0], [0, 0], [0, 0], [0, 0]]]
-    detection_anchor_indices = [[0, 2, 1, 0, 0], [0, 2, 1, 0, 0]]
+    detection_anchor_indices_sets = [[0, 1, 2], [0, 1, 2]]
 
     for input_shape in input_shapes:
       tf_graph = tf.Graph()
@@ -230,8 +308,9 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
                           raw_detection_boxes)
       self.assertAllEqual(detections_out['raw_detection_scores'],
                           raw_detection_scores)
-      self.assertAllEqual(detections_out['detection_anchor_indices'],
-                          detection_anchor_indices)
+      for idx in range(batch_size):
+        self.assertSameElements(detections_out['detection_anchor_indices'][idx],
+                                detection_anchor_indices_sets[idx])
 
   def test_postprocess_results_are_correct_static(self, use_keras):
     with tf.Graph().as_default():

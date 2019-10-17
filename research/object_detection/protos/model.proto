@@ -10,5 +10,15 @@ message DetectionModel {
   oneof model {
     FasterRcnn faster_rcnn = 1;
     Ssd ssd = 2;
+
+    // This can be used to define experimental models. To define your own
+    // experimental meta architecture, populate a key in the
+    // model_builder.EXPERIMENTAL_META_ARCHITECURE_BUILDER_MAP dict and set its
+    // value to a function that builds your model.
+    ExperimentalModel experimental_model = 3;
   }
+}
+
+message ExperimentalModel {
+  optional string name = 1;
 }

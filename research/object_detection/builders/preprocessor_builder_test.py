@@ -363,6 +363,62 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                                         'probability': 0.95,
                                         'size_to_image_ratio': 0.12})
 
+  def test_build_random_jpeg_quality(self):
+    preprocessor_text_proto = """
+    random_jpeg_quality {
+      random_coef: 0.5
+      min_jpeg_quality: 40
+      max_jpeg_quality: 90
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Parse(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.random_jpeg_quality)
+    self.assert_dictionary_close(args, {'random_coef': 0.5,
+                                        'min_jpeg_quality': 40,
+                                        'max_jpeg_quality': 90})
+
+  def test_build_random_downscale_to_target_pixels(self):
+    preprocessor_text_proto = """
+    random_downscale_to_target_pixels {
+      random_coef: 0.5
+      min_target_pixels: 200
+      max_target_pixels: 900
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Parse(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.random_downscale_to_target_pixels)
+    self.assert_dictionary_close(args, {
+        'random_coef': 0.5,
+        'min_target_pixels': 200,
+        'max_target_pixels': 900
+    })
+
+  def test_build_random_patch_gaussian(self):
+    preprocessor_text_proto = """
+    random_patch_gaussian {
+      random_coef: 0.5
+      min_patch_size: 10
+      max_patch_size: 300
+      min_gaussian_stddev: 0.2
+      max_gaussian_stddev: 1.5
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Parse(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.random_patch_gaussian)
+    self.assert_dictionary_close(args, {
+        'random_coef': 0.5,
+        'min_patch_size': 10,
+        'max_patch_size': 300,
+        'min_gaussian_stddev': 0.2,
+        'max_gaussian_stddev': 1.5
+    })
+
   def test_auto_augment_image(self):
     preprocessor_text_proto = """
     autoaugment_image {

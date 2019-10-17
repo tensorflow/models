@@ -941,6 +941,34 @@ class ObjectDetectionEvaluationTest(tf.test.TestCase):
     self.assertAlmostEqual(expected_mean_ap, mean_ap)
     self.assertAlmostEqual(expected_mean_corloc, mean_corloc)
 
+  def test_merge_internal_state(self):
+    # Test that if initial state is merged, the results of the evaluation are
+    # the same.
+    od_eval_state = self.od_eval.get_internal_state()
+    copy_od_eval = object_detection_evaluation.ObjectDetectionEvaluation(
+        self.od_eval.num_class)
+    copy_od_eval.merge_internal_state(od_eval_state)
+
+    (average_precision_per_class, mean_ap, precisions_per_class,
+     recalls_per_class, corloc_per_class,
+     mean_corloc) = self.od_eval.evaluate()
+
+    (copy_average_precision_per_class, copy_mean_ap, copy_precisions_per_class,
+     copy_recalls_per_class, copy_corloc_per_class,
+     copy_mean_corloc) = copy_od_eval.evaluate()
+
+    for i in range(self.od_eval.num_class):
+      self.assertTrue(
+          np.allclose(copy_precisions_per_class[i], precisions_per_class[i]))
+      self.assertTrue(
+          np.allclose(copy_recalls_per_class[i], recalls_per_class[i]))
+    self.assertTrue(
+        np.allclose(copy_average_precision_per_class,
+                    average_precision_per_class))
+    self.assertTrue(np.allclose(copy_corloc_per_class, corloc_per_class))
+    self.assertAlmostEqual(copy_mean_ap, mean_ap)
+    self.assertAlmostEqual(copy_mean_corloc, mean_corloc)
+
 
 class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
 

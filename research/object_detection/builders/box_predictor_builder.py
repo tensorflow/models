@@ -245,7 +245,8 @@ def build_weight_shared_convolutional_box_predictor(
     apply_batch_norm=True,
     use_depthwise=False,
     score_converter_fn=tf.identity,
-    box_encodings_clip_range=None):
+    box_encodings_clip_range=None,
+    keyword_args=None):
   """Builds and returns a WeightSharedConvolutionalBoxPredictor class.
 
   Args:
@@ -274,6 +275,7 @@ def build_weight_shared_convolutional_box_predictor(
     score_converter_fn: Callable score converter to perform elementwise op on
       class scores.
     box_encodings_clip_range: Min and max values for clipping the box_encodings.
+    keyword_args: A dictionary with additional args.
 
   Returns:
     A WeightSharedConvolutionalBoxPredictor class.
@@ -329,7 +331,8 @@ def build_weight_shared_convolutional_keras_box_predictor(
     use_depthwise=False,
     score_converter_fn=tf.identity,
     box_encodings_clip_range=None,
-    name='WeightSharedConvolutionalBoxPredictor'):
+    name='WeightSharedConvolutionalBoxPredictor',
+    keyword_args=None):
   """Builds the Keras WeightSharedConvolutionalBoxPredictor from the arguments.
 
   Args:
@@ -371,6 +374,7 @@ def build_weight_shared_convolutional_keras_box_predictor(
     box_encodings_clip_range: Min and max values for clipping the box_encodings.
     name: A string name scope to assign to the box predictor. If `None`, Keras
       will auto-generate one from the class name.
+    keyword_args: A dictionary with additional args.
 
   Returns:
     A Keras WeightSharedConvolutionalBoxPredictor class.
@@ -728,6 +732,8 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
       box_encodings_clip_range = BoxEncodingsClipRange(
           min=config_box_predictor.box_encodings_clip_range.min,
           max=config_box_predictor.box_encodings_clip_range.max)
+    keyword_args = None
+
     return build_weight_shared_convolutional_box_predictor(
         is_training=is_training,
         num_classes=num_classes,
@@ -746,7 +752,8 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
         apply_batch_norm=apply_batch_norm,
         use_depthwise=config_box_predictor.use_depthwise,
         score_converter_fn=score_converter_fn,
-        box_encodings_clip_range=box_encodings_clip_range)
+        box_encodings_clip_range=box_encodings_clip_range,
+        keyword_args=keyword_args)
 
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':
@@ -891,6 +898,7 @@ def build_keras(hyperparams_fn, freeze_batchnorm, inplace_batchnorm_update,
       box_encodings_clip_range = BoxEncodingsClipRange(
           min=config_box_predictor.box_encodings_clip_range.min,
           max=config_box_predictor.box_encodings_clip_range.max)
+    keyword_args = None
 
     return build_weight_shared_convolutional_keras_box_predictor(
         is_training=is_training,
@@ -913,7 +921,8 @@ def build_keras(hyperparams_fn, freeze_batchnorm, inplace_batchnorm_update,
         apply_batch_norm=apply_batch_norm,
         use_depthwise=config_box_predictor.use_depthwise,
         score_converter_fn=score_converter_fn,
-        box_encodings_clip_range=box_encodings_clip_range)
+        box_encodings_clip_range=box_encodings_clip_range,
+        keyword_args=keyword_args)
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':
     config_box_predictor = box_predictor_config.mask_rcnn_box_predictor

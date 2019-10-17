@@ -81,6 +81,25 @@ V2_DEF = dict(
 )
 # pyformat: enable
 
+# Mobilenet v2 Definition with group normalization.
+V2_DEF_GROUP_NORM = copy.deepcopy(V2_DEF)
+V2_DEF_GROUP_NORM['defaults'] = {
+    (tf.contrib.slim.conv2d, tf.contrib.slim.fully_connected,
+     tf.contrib.slim.separable_conv2d): {
+        'normalizer_fn': tf.contrib.layers.group_norm,  # pylint: disable=C0330
+        'activation_fn': tf.nn.relu6,  # pylint: disable=C0330
+    },  # pylint: disable=C0330
+    (ops.expanded_conv,): {
+        'expansion_size': ops.expand_input_by_factor(6),
+        'split_expansion': 1,
+        'normalizer_fn': tf.contrib.layers.group_norm,
+        'residual': True
+    },
+    (tf.contrib.slim.conv2d, tf.contrib.slim.separable_conv2d): {
+        'padding': 'SAME'
+    }
+}
+
 
 @slim.add_arg_scope
 def mobilenet(input_tensor,
@@ -187,6 +206,19 @@ def mobilenet_base(input_tensor, depth_multiplier=1.0, **kwargs):
   return mobilenet(input_tensor,
                    depth_multiplier=depth_multiplier,
                    base_only=True, **kwargs)
+
+
+@slim.add_arg_scope
+def mobilenet_base_group_norm(input_tensor, depth_multiplier=1.0, **kwargs):
+  """Creates base of the mobilenet (no pooling and no logits) ."""
+  kwargs['conv_defs'] = V2_DEF_GROUP_NORM
+  kwargs['conv_defs']['defaults'].update({
+      (tf.contrib.layers.group_norm,): {
+          'groups': kwargs.pop('groups', 8)
+      }
+  })
+  return mobilenet(
+      input_tensor, depth_multiplier=depth_multiplier, base_only=True, **kwargs)
 
 
 def training_scope(**kwargs):

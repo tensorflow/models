@@ -70,19 +70,20 @@ from __future__ import print_function
 import functools
 import inspect
 import sys
+
 import six
 from six.moves import range
 from six.moves import zip
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
-
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import preprocessor_cache
 from object_detection.core import standard_fields as fields
 from object_detection.utils import autoaugment_utils
+from object_detection.utils import patch_ops
 from object_detection.utils import shape_utils
 
 
@@ -2284,6 +2285,282 @@ def random_black_patches(image,
     return image
 
 
+def random_jpeg_quality(image,
+                        min_jpeg_quality=0,
+                        max_jpeg_quality=100,
+                        random_coef=0.0,
+                        seed=None,
+                        preprocess_vars_cache=None):
+  """Randomly encode the image to a random JPEG quality level.
+
+  Args:
+    image: rank 3 float32 tensor with shape [height, width, channels] and
+      values in the range [0, 255].
+    min_jpeg_quality: An int for the lower bound for selecting a random jpeg
+      quality level.
+    max_jpeg_quality: An int for the upper bound for selecting a random jpeg
+      quality level.
+    random_coef: a random coefficient that defines the chance of getting the
+      original image. If random_coef is 0, we will always get the encoded image,
+      and if it is 1.0, we will always get the original image.
+    seed: random seed.
+    preprocess_vars_cache: PreprocessorCache object that records previously
+      performed augmentations. Updated in-place. If this function is called
+      multiple times with the same non-null cache, it will perform
+      deterministically.
+
+  Returns:
+    image: image which is the same shape as input image.
+  """
+  def _adjust_jpeg_quality():
+    """Encodes the image as jpeg with a random quality and then decodes."""
+    generator_func = functools.partial(
+        tf.random_uniform, [],
+        minval=min_jpeg_quality,
+        maxval=max_jpeg_quality,
+        dtype=tf.int32,
+        seed=seed)
+    quality = _get_or_create_preprocess_rand_vars(
+        generator_func, preprocessor_cache.PreprocessorCache.JPEG_QUALITY,
+        preprocess_vars_cache, key='quality')
+
+    # Need to convert to uint8 before calling adjust_jpeg_quality since it
+    # assumes that float features are in the range [0, 1], where herein the
+    # range is [0, 255].
+    image_uint8 = tf.cast(image, tf.uint8)
+    adjusted_image = tf.image.adjust_jpeg_quality(image_uint8, quality)
+    return tf.cast(adjusted_image, tf.float32)
+
+  with tf.name_scope('RandomJpegQuality', values=[image]):
+    generator_func = functools.partial(tf.random_uniform, [], seed=seed)
+    do_encoding_random = _get_or_create_preprocess_rand_vars(
+        generator_func, preprocessor_cache.PreprocessorCache.JPEG_QUALITY,
+        preprocess_vars_cache)
+    do_encoding_random = tf.greater_equal(do_encoding_random, random_coef)
+    image = tf.cond(do_encoding_random, _adjust_jpeg_quality,
+                    lambda: tf.cast(image, tf.float32))
+
+  return image
+
+
+def random_downscale_to_target_pixels(image,
+                                      masks=None,
+                                      min_target_pixels=300000,
+                                      max_target_pixels=800000,
+                                      random_coef=0.0,
+                                      seed=None,
+                                      preprocess_vars_cache=None):
+  """Randomly downscales the image to a target number of pixels.
+
+  If the image contains less than the chosen target number of pixels, it will
+  not be downscaled.
+
+  Args:
+    image: Rank 3 float32 tensor with shape [height, width, channels] and
+      values in the range [0, 255].
+    masks: (optional) Rank 3 float32 tensor with shape
+      [num_instances, height, width] containing instance masks. The masks are of
+      the same height, width as the input `image`.
+    min_target_pixels: Integer. An inclusive lower bound for for the target
+      number of pixels.
+    max_target_pixels: Integer. An exclusive upper bound for for the target
+      number of pixels.
+    random_coef: Float. Random coefficient that defines the chance of getting
+      the original image. If random_coef is 0, we will always apply downscaling,
+      and if it is 1.0, we will always get the original image.
+    seed: (optional) Integer. Random seed.
+    preprocess_vars_cache: (optional) PreprocessorCache object that records
+      previously performed augmentations. Updated in-place. If this function is
+      called multiple times with the same non-null cache, it will perform
+      deterministically.
+
+  Returns:
+    Tuple with elements:
+      image: Resized image which is the same rank as input image.
+      masks: If masks is not None, resized masks which are the same rank as
+        the input masks.
+
+  Raises:
+    ValueError: If min_target_pixels or max_target_pixels are not positive.
+  """
+  if min_target_pixels <= 0:
+    raise ValueError('Minimum target pixels must be positive')
+  if max_target_pixels <= 0:
+    raise ValueError('Maximum target pixels must be positive')
+
+  def _resize_image_to_target(target_height, target_width):
+    # pylint: disable=unbalanced-tuple-unpacking
+    new_image, _ = resize_image(image, None, target_height, target_width)
+    return (new_image,)
+
+  def _resize_image_and_masks_to_target(target_height, target_width):
+    # pylint: disable=unbalanced-tuple-unpacking
+    new_image, new_masks, _ = resize_image(image, masks, target_height,
+                                           target_width)
+    return new_image, new_masks
+
+  with tf.name_scope('RandomDownscaleToTargetPixels', values=[image]):
+    generator_fn = functools.partial(tf.random_uniform, [], seed=seed)
+    do_downscale_random = _get_or_create_preprocess_rand_vars(
+        generator_fn,
+        preprocessor_cache.PreprocessorCache.DOWNSCALE_TO_TARGET_PIXELS,
+        preprocess_vars_cache)
+    do_downscale_random = tf.greater_equal(do_downscale_random, random_coef)
+
+    generator_fn = functools.partial(
+        tf.random_uniform, [],
+        minval=min_target_pixels,
+        maxval=max_target_pixels,
+        dtype=tf.int32,
+        seed=seed)
+    target_pixels = _get_or_create_preprocess_rand_vars(
+        generator_fn,
+        preprocessor_cache.PreprocessorCache.DOWNSCALE_TO_TARGET_PIXELS,
+        preprocess_vars_cache,
+        key='target_pixels')
+
+    image_shape = tf.shape(image)
+    image_height = image_shape[0]
+    image_width = image_shape[1]
+    image_pixels = image_height * image_width
+    scale_factor = tf.sqrt(
+        tf.cast(target_pixels, dtype=tf.float32) /
+        tf.cast(image_pixels, dtype=tf.float32))
+    target_height = tf.cast(
+        scale_factor * tf.cast(image_height, dtype=tf.float32), dtype=tf.int32)
+    target_width = tf.cast(
+        scale_factor * tf.cast(image_width, dtype=tf.float32), dtype=tf.int32)
+    image_larger_than_target = tf.greater(image_pixels, target_pixels)
+
+    should_apply_resize = tf.logical_and(do_downscale_random,
+                                         image_larger_than_target)
+    if masks is not None:
+      resize_fn = functools.partial(_resize_image_and_masks_to_target,
+                                    target_height, target_width)
+      return tf.cond(should_apply_resize, resize_fn,
+                     lambda: (tf.cast(image, dtype=tf.float32), masks))
+    else:
+      resize_fn = lambda: _resize_image_to_target(target_height, target_width)
+      return tf.cond(should_apply_resize, resize_fn,
+                     lambda: (tf.cast(image, dtype=tf.float32),))
+
+
+def random_patch_gaussian(image,
+                          min_patch_size=1,
+                          max_patch_size=250,
+                          min_gaussian_stddev=0.0,
+                          max_gaussian_stddev=1.0,
+                          random_coef=0.0,
+                          seed=None,
+                          preprocess_vars_cache=None):
+  """Randomly applies gaussian noise to a random patch on the image.
+
+  The gaussian noise is applied to the image with values scaled to the range
+  [0.0, 1.0]. The result of applying gaussian noise to the scaled image is
+  clipped to be within the range [0.0, 1.0], equivalent to the range
+  [0.0, 255.0] after rescaling the image back.
+
+  See "Improving Robustness Without Sacrificing Accuracy with Patch Gaussian
+  Augmentation " by Lopes et al., 2019, for further details.
+  https://arxiv.org/abs/1906.02611
+
+  Args:
+    image: Rank 3 float32 tensor with shape [height, width, channels] and
+      values in the range [0.0, 255.0].
+    min_patch_size: Integer. An inclusive lower bound for the patch size.
+    max_patch_size:  Integer. An exclusive upper bound for the patch size.
+    min_gaussian_stddev: Float. An inclusive lower bound for the standard
+      deviation of the gaussian noise.
+    max_gaussian_stddev: Float. An exclusive upper bound for the standard
+      deviation of the gaussian noise.
+    random_coef: Float. Random coefficient that defines the chance of getting
+      the original image. If random_coef is 0.0, we will always apply
+      downscaling, and if it is 1.0, we will always get the original image.
+    seed: (optional) Integer. Random seed.
+    preprocess_vars_cache: (optional) PreprocessorCache object that records
+      previously performed augmentations. Updated in-place. If this function is
+      called multiple times with the same non-null cache, it will perform
+      deterministically.
+
+  Returns:
+    Rank 3 float32 tensor with same shape as the input image and with gaussian
+    noise applied within a random patch.
+
+  Raises:
+    ValueError: If min_patch_size is < 1.
+  """
+  if min_patch_size < 1:
+    raise ValueError('Minimum patch size must be >= 1.')
+
+  get_or_create_rand_vars_fn = functools.partial(
+      _get_or_create_preprocess_rand_vars,
+      function_id=preprocessor_cache.PreprocessorCache.PATCH_GAUSSIAN,
+      preprocess_vars_cache=preprocess_vars_cache)
+
+  def _apply_patch_gaussian(image):
+    """Applies a patch gaussian with random size, location, and stddev."""
+    patch_size = get_or_create_rand_vars_fn(
+        functools.partial(
+            tf.random_uniform, [],
+            minval=min_patch_size,
+            maxval=max_patch_size,
+            dtype=tf.int32,
+            seed=seed),
+        key='patch_size')
+    gaussian_stddev = get_or_create_rand_vars_fn(
+        functools.partial(
+            tf.random_uniform, [],
+            minval=min_gaussian_stddev,
+            maxval=max_gaussian_stddev,
+            dtype=tf.float32,
+            seed=seed),
+        key='gaussian_stddev')
+
+    image_shape = tf.shape(image)
+    y = get_or_create_rand_vars_fn(
+        functools.partial(
+            tf.random_uniform, [],
+            minval=0,
+            maxval=image_shape[0],
+            dtype=tf.int32,
+            seed=seed),
+        key='y')
+    x = get_or_create_rand_vars_fn(
+        functools.partial(
+            tf.random_uniform, [],
+            minval=0,
+            maxval=image_shape[1],
+            dtype=tf.int32,
+            seed=seed),
+        key='x')
+    gaussian = get_or_create_rand_vars_fn(
+        functools.partial(
+            tf.random.normal,
+            image_shape,
+            stddev=gaussian_stddev,
+            dtype=tf.float32,
+            seed=seed),
+        key='gaussian')
+
+    scaled_image = image / 255.0
+    image_plus_gaussian = tf.clip_by_value(scaled_image + gaussian, 0.0, 1.0)
+    patch_mask = patch_ops.get_patch_mask(y, x, patch_size, image_shape)
+    patch_mask = tf.expand_dims(patch_mask, -1)
+    patch_mask = tf.tile(patch_mask, [1, 1, image_shape[2]])
+    patched_image = tf.where(patch_mask, image_plus_gaussian, scaled_image)
+    return patched_image * 255.0
+
+  with tf.name_scope('RandomPatchGaussian', values=[image]):
+    image = tf.cast(image, tf.float32)
+    patch_gaussian_random = get_or_create_rand_vars_fn(
+        functools.partial(tf.random_uniform, [], seed=seed))
+    do_patch_gaussian = tf.greater_equal(patch_gaussian_random, random_coef)
+    image = tf.cond(do_patch_gaussian,
+                    lambda: _apply_patch_gaussian(image),
+                    lambda: image)
+  return image
+
+
 # TODO(barretzoph): Put in AutoAugment Paper link when paper is live.
 def autoaugment_image(image, boxes, policy_name='v0'):
   """Apply an autoaugment policy to the image and boxes.
@@ -3538,6 +3815,12 @@ def get_default_func_arg_map(include_label_weights=True,
           groundtruth_keypoints,
       ),
       random_black_patches: (fields.InputDataFields.image,),
+      random_jpeg_quality: (fields.InputDataFields.image,),
+      random_downscale_to_target_pixels: (
+          fields.InputDataFields.image,
+          groundtruth_instance_masks,
+      ),
+      random_patch_gaussian: (fields.InputDataFields.image,),
       autoaugment_image: (fields.InputDataFields.image,
                           fields.InputDataFields.groundtruth_boxes,),
       retain_boxes_above_threshold: (

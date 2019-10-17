@@ -101,6 +101,21 @@ reporting an issue.
 
 ## Release information
 
+### Oct 15th, 2019
+We have released two MobileNet V3 SSDLite models (presented in
+[Searching for MobileNetV3](https://arxiv.org/abs/1905.02244)).
+
+* SSDLite with MobileNet-V3-Large backbone, which is 27% faster than Mobilenet
+V2 SSDLite (119ms vs 162ms) on a Google Pixel phone CPU at the same mAP.
+* SSDLite with MobileNet-V3-Small backbone, which is 37% faster than MnasNet
+SSDLite reduced with depth-multiplier (43ms vs 68ms) at the same mAP.
+
+Along with the model definition, we are also releasing model checkpoints
+trained on the COCO dataset.
+
+<b>Thanks to contributors</b>: Bo Chen, Zhichao Lu, Vivek Rathod, Jonathan Huang
+
+
 ### July 1st, 2019
 
 We have released an updated set of utils and an updated
@@ -265,8 +280,7 @@ release includes:
   distributed training and evaluation pipelines via
   [Google Cloud](g3doc/running_on_cloud.md).
 
-
-<b>Thanks to contributors</b>: Jonathan Huang, Vivek Rathod, Derek Chow,
-Chen Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings,
-Viacheslav Kovalevskyi, Kevin Murphy
-
+<b>Thanks to contributors</b>: Jonathan Huang, Vivek Rathod, Derek Chow, Chen
+Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer,
+Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings, Viacheslav
+Kovalevskyi, Kevin Murphy

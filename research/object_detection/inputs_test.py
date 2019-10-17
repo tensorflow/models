@@ -301,6 +301,70 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(
         tf.int32, labels[fields.InputDataFields.groundtruth_difficult].dtype)
 
+  def test_ssd_inceptionV2_eval_input_with_additional_channels(
+      self, eval_batch_size=1):
+    """Tests the eval input function for SSDInceptionV2 with additional channels.
+
+    Args:
+      eval_batch_size: Batch size for eval set.
+    """
+    configs = _get_configs_for_model('ssd_inception_v2_pets')
+    model_config = configs['model']
+    model_config.ssd.num_classes = 37
+    configs['eval_input_configs'][0].num_additional_channels = 1
+    eval_config = configs['eval_config']
+    eval_config.batch_size = eval_batch_size
+    eval_config.retain_original_image_additional_channels = True
+    eval_input_fn = inputs.create_eval_input_fn(
+        eval_config, configs['eval_input_configs'][0], model_config)
+    features, labels = _make_initializable_iterator(eval_input_fn()).get_next()
+    self.assertAllEqual([eval_batch_size, 300, 300, 4],
+                        features[fields.InputDataFields.image].shape.as_list())
+    self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 300, 300, 3],
+        features[fields.InputDataFields.original_image].shape.as_list())
+    self.assertEqual(tf.uint8,
+                     features[fields.InputDataFields.original_image].dtype)
+    self.assertAllEqual([eval_batch_size, 300, 300, 1], features[
+        fields.InputDataFields.image_additional_channels].shape.as_list())
+    self.assertEqual(
+        tf.uint8,
+        features[fields.InputDataFields.image_additional_channels].dtype)
+    self.assertAllEqual([eval_batch_size],
+                        features[inputs.HASH_KEY].shape.as_list())
+    self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100, 4],
+        labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_boxes].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100, model_config.ssd.num_classes],
+        labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_classes].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_weights].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_area].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_area].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_is_crowd].shape.as_list())
+    self.assertEqual(tf.bool,
+                     labels[fields.InputDataFields.groundtruth_is_crowd].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_difficult].shape.as_list())
+    self.assertEqual(tf.int32,
+                     labels[fields.InputDataFields.groundtruth_difficult].dtype)
+
   def test_predict_input(self):
     """Tests the predict input function."""
     configs = _get_configs_for_model('ssd_inception_v2_pets')

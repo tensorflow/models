@@ -21,6 +21,7 @@ import tensorflow as tf
 from google.protobuf import text_format
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import array_ops
+from tensorflow.python.tools import strip_unused_lib
 from object_detection import exporter
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
@@ -1055,6 +1056,42 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         break
 
     self.assertTrue(resize_op_found)
+
+  def test_rewrite_nn_resize_op_multiple_path(self):
+    g = tf.Graph()
+    with g.as_default():
+      with tf.name_scope('nearest_upsampling'):
+        x = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
+        x_stack = tf.stack([tf.stack([x] * 2, axis=3)] * 2, axis=2)
+        x_reshape = tf.reshape(x_stack, [8, 20, 20, 8])
+
+      with tf.name_scope('nearest_upsampling'):
+        x_2 = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
+        x_stack_2 = tf.stack([tf.stack([x_2] * 2, axis=3)] * 2, axis=2)
+        x_reshape_2 = tf.reshape(x_stack_2, [8, 20, 20, 8])
+
+      t = x_reshape + x_reshape_2
+
+      exporter.rewrite_nn_resize_op()
+
+    graph_def = g.as_graph_def()
+    graph_def = strip_unused_lib.strip_unused(
+        graph_def,
+        input_node_names=[
+            'nearest_upsampling/Placeholder', 'nearest_upsampling_1/Placeholder'
+        ],
+        output_node_names=['add'],
+        placeholder_type_enum=dtypes.float32.as_datatype_enum)
+
+    counter_resize_op = 0
+    t_input_ops = [op.name for op in t.op.inputs]
+    for node in graph_def.node:
+      # Make sure Stacks are replaced.
+      self.assertNotEqual(node.op, 'Pack')
+      if node.op == 'ResizeNearestNeighbor':
+        counter_resize_op += 1
+        self.assertIn(node.name + ':0', t_input_ops)
+    self.assertEqual(counter_resize_op, 2)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 # Description:
 #   Contains files for loading, training and evaluating TF-Slim-based models.
+# load("//devtools/python/blaze:python3.bzl", "py2and3_test")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -91,6 +92,7 @@ sh_binary(
 py_binary(
     name = "build_visualwakewords_data",
     srcs = ["datasets/build_visualwakewords_data.py"],
+    python_version = "PY2",
     deps = [
         ":build_visualwakewords_data_lib",
         # "//tensorflow",
@@ -513,10 +515,33 @@ py_library(
 )
 
 py_library(
-    name = "mobilenet_v2",
-    srcs = glob(["nets/mobilenet/*.py"]),
+    name = "mobilenet_common",
+    srcs = [
+        "nets/mobilenet/conv_blocks.py",
+        "nets/mobilenet/mobilenet.py",
+    ],
     srcs_version = "PY2AND3",
     deps = [
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "mobilenet_v2",
+    srcs = ["nets/mobilenet/mobilenet_v2.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":mobilenet_common",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "mobilenet_v3",
+    srcs = ["nets/mobilenet/mobilenet_v3.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":mobilenet_common",
         # "//tensorflow",
     ],
 )
@@ -532,11 +557,22 @@ py_test(
     ],
 )
 
+py_test(  # py2and3_test
+    name = "mobilenet_v3_test",
+    srcs = ["nets/mobilenet/mobilenet_v3_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":mobilenet",
+        # "//tensorflow",
+    ],
+)
+
 py_library(
     name = "mobilenet",
     deps = [
         ":mobilenet_v1",
         ":mobilenet_v2",
+        ":mobilenet_v3",
     ],
 )
 
@@ -709,6 +745,7 @@ py_library(
 py_test(
     name = "resnet_v1_test",
     size = "medium",
+    timeout = "long",
     srcs = ["nets/resnet_v1_test.py"],
     python_version = "PY2",
     shard_count = 2,

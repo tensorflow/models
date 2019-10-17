@@ -39,6 +39,7 @@ from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_n
 from object_detection.models import faster_rcnn_pnas_feature_extractor as frcnn_pnas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
 from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
+from object_detection.models import ssd_resnet_v1_fpn_keras_feature_extractor as ssd_resnet_v1_fpn_keras
 from object_detection.models import ssd_resnet_v1_ppn_feature_extractor as ssd_resnet_v1_ppn
 from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
 from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
@@ -52,6 +53,8 @@ from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobile
 from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_fpn_keras_feature_extractor import SSDMobileNetV2FpnKerasFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_keras_feature_extractor import SSDMobileNetV2KerasFeatureExtractor
+from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3LargeFeatureExtractor
+from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3SmallFeatureExtractor
 from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
 from object_detection.predictors import rfcn_box_predictor
 from object_detection.predictors import rfcn_keras_box_predictor
@@ -68,6 +71,8 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_mobilenet_v1_ppn': SSDMobileNetV1PpnFeatureExtractor,
     'ssd_mobilenet_v2': SSDMobileNetV2FeatureExtractor,
     'ssd_mobilenet_v2_fpn': SSDMobileNetV2FpnFeatureExtractor,
+    'ssd_mobilenet_v3_large': SSDMobileNetV3LargeFeatureExtractor,
+    'ssd_mobilenet_v3_small': SSDMobileNetV3SmallFeatureExtractor,
     'ssd_resnet50_v1_fpn': ssd_resnet_v1_fpn.SSDResnet50V1FpnFeatureExtractor,
     'ssd_resnet101_v1_fpn': ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
     'ssd_resnet152_v1_fpn': ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
@@ -85,6 +90,12 @@ SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_mobilenet_v1_fpn_keras': SSDMobileNetV1FpnKerasFeatureExtractor,
     'ssd_mobilenet_v2_keras': SSDMobileNetV2KerasFeatureExtractor,
     'ssd_mobilenet_v2_fpn_keras': SSDMobileNetV2FpnKerasFeatureExtractor,
+    'ssd_resnet50_v1_fpn_keras':
+        ssd_resnet_v1_fpn_keras.SSDResNet50V1FpnKerasFeatureExtractor,
+    'ssd_resnet101_v1_fpn_keras':
+        ssd_resnet_v1_fpn_keras.SSDResNet101V1FpnKerasFeatureExtractor,
+    'ssd_resnet152_v1_fpn_keras':
+        ssd_resnet_v1_fpn_keras.SSDResNet152V1FpnKerasFeatureExtractor,
 }
 
 # A map of names to Faster R-CNN feature extractors.
@@ -109,31 +120,6 @@ FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
     'faster_rcnn_inception_resnet_v2_keras':
     frcnn_inc_res_keras.FasterRCNNInceptionResnetV2KerasFeatureExtractor,
 }
-
-
-def build(model_config, is_training, add_summaries=True):
-  """Builds a DetectionModel based on the model config.
-
-  Args:
-    model_config: A model.proto object containing the config for the desired
-      DetectionModel.
-    is_training: True if this model is being built for training purposes.
-    add_summaries: Whether to add tensorflow summaries in the model graph.
-  Returns:
-    DetectionModel based on the config.
-
-  Raises:
-    ValueError: On invalid meta architecture or model.
-  """
-  if not isinstance(model_config, model_pb2.DetectionModel):
-    raise ValueError('model_config not of type model_pb2.DetectionModel.')
-  meta_architecture = model_config.WhichOneof('model')
-  if meta_architecture == 'ssd':
-    return _build_ssd_model(model_config.ssd, is_training, add_summaries)
-  if meta_architecture == 'faster_rcnn':
-    return _build_faster_rcnn_model(model_config.faster_rcnn, is_training,
-                                    add_summaries)
-  raise ValueError('Unknown meta architecture: {}'.format(meta_architecture))
 
 
 def _build_ssd_feature_extractor(feature_extractor_config,
@@ -230,6 +216,7 @@ def _build_ssd_feature_extractor(feature_extractor_config,
         'additional_layer_depth':
             feature_extractor_config.fpn.additional_layer_depth,
     })
+
 
   return feature_extractor_class(**kwargs)
 
@@ -330,6 +317,8 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       use_confidences_as_targets=ssd_config.use_confidences_as_targets,
       implicit_example_weight=ssd_config.implicit_example_weight,
       equalization_loss_config=equalization_loss_config,
+      return_raw_detections_during_predict=(
+          ssd_config.return_raw_detections_during_predict),
       **kwargs)
 
 
@@ -485,6 +474,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       max_size_per_class=frcnn_config.first_stage_max_proposals,
       max_total_size=frcnn_config.first_stage_max_proposals,
       use_static_shapes=use_static_shapes,
+      use_partitioned_nms=frcnn_config.use_partitioned_nms_in_first_stage,
       use_combined_nms=frcnn_config.use_combined_nms_in_first_stage)
   first_stage_loc_loss_weight = (
       frcnn_config.first_stage_localization_loss_weight)
@@ -580,7 +570,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       'crop_and_resize_fn': crop_and_resize_fn,
       'clip_anchors_to_image': clip_anchors_to_image,
       'use_static_shapes': use_static_shapes,
-      'resize_masks': frcnn_config.resize_masks
+      'resize_masks': frcnn_config.resize_masks,
+      'return_raw_detections_during_predict': (
+          frcnn_config.return_raw_detections_during_predict)
   }
 
   if (isinstance(second_stage_box_predictor,
@@ -599,3 +591,44 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_mask_prediction_loss_weight=(
             second_stage_mask_prediction_loss_weight),
         **common_kwargs)
+
+EXPERIMENTAL_META_ARCH_BUILDER_MAP = {
+}
+
+
+def _build_experimental_model(config, is_training, add_summaries=True):
+  return EXPERIMENTAL_META_ARCH_BUILDER_MAP[config.name](
+      is_training, add_summaries)
+
+META_ARCHITECURE_BUILDER_MAP = {
+    'ssd': _build_ssd_model,
+    'faster_rcnn': _build_faster_rcnn_model,
+    'experimental_model': _build_experimental_model
+}
+
+
+def build(model_config, is_training, add_summaries=True):
+  """Builds a DetectionModel based on the model config.
+
+  Args:
+    model_config: A model.proto object containing the config for the desired
+      DetectionModel.
+    is_training: True if this model is being built for training purposes.
+    add_summaries: Whether to add tensorflow summaries in the model graph.
+  Returns:
+    DetectionModel based on the config.
+
+  Raises:
+    ValueError: On invalid meta architecture or model.
+  """
+  if not isinstance(model_config, model_pb2.DetectionModel):
+    raise ValueError('model_config not of type model_pb2.DetectionModel.')
+
+  meta_architecture = model_config.WhichOneof('model')
+
+  if meta_architecture not in META_ARCHITECURE_BUILDER_MAP:
+    raise ValueError('Unknown meta architecture: {}'.format(meta_architecture))
+  else:
+    build_func = META_ARCHITECURE_BUILDER_MAP[meta_architecture]
+    return build_func(getattr(model_config, meta_architecture), is_training,
+                      add_summaries)

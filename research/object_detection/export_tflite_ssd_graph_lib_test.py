@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for object_detection.export_tflite_ssd_graph."""
 from __future__ import absolute_import
 from __future__ import division
@@ -30,7 +29,6 @@ from object_detection.core import model
 from object_detection.protos import graph_rewriter_pb2
 from object_detection.protos import pipeline_pb2
 from object_detection.protos import post_processing_pb2
-
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
@@ -130,7 +128,10 @@ class ExportTfliteGraphTest(tf.test.TestCase):
             feed_dict={input_tensor: np.random.rand(1, 10, 10, num_channels)})
     return box_encodings_np, class_predictions_np
 
-  def _export_graph(self, pipeline_config, num_channels=3):
+  def _export_graph(self,
+                    pipeline_config,
+                    num_channels=3,
+                    additional_output_tensors=()):
     """Exports a tflite graph."""
     output_dir = self.get_temp_dir()
     trained_checkpoint_prefix = os.path.join(output_dir, 'model.ckpt')
@@ -147,18 +148,22 @@ class ExportTfliteGraphTest(tf.test.TestCase):
       mock_builder.return_value = FakeModel()
 
       with tf.Graph().as_default():
+        tf.identity(
+            tf.constant([[1, 2], [3, 4]], tf.uint8), name='UnattachedTensor')
         export_tflite_ssd_graph_lib.export_tflite_graph(
             pipeline_config=pipeline_config,
             trained_checkpoint_prefix=trained_checkpoint_prefix,
             output_dir=output_dir,
             add_postprocessing_op=False,
             max_detections=10,
-            max_classes_per_detection=1)
+            max_classes_per_detection=1,
+            additional_output_tensors=additional_output_tensors)
     return tflite_graph_file
 
   def _export_graph_with_postprocessing_op(self,
                                            pipeline_config,
-                                           num_channels=3):
+                                           num_channels=3,
+                                           additional_output_tensors=()):
     """Exports a tflite graph with custom postprocessing op."""
     output_dir = self.get_temp_dir()
     trained_checkpoint_prefix = os.path.join(output_dir, 'model.ckpt')
@@ -175,13 +180,16 @@ class ExportTfliteGraphTest(tf.test.TestCase):
       mock_builder.return_value = FakeModel()
 
       with tf.Graph().as_default():
+        tf.identity(
+            tf.constant([[1, 2], [3, 4]], tf.uint8), name='UnattachedTensor')
         export_tflite_ssd_graph_lib.export_tflite_graph(
             pipeline_config=pipeline_config,
             trained_checkpoint_prefix=trained_checkpoint_prefix,
             output_dir=output_dir,
             add_postprocessing_op=True,
             max_detections=10,
-            max_classes_per_detection=1)
+            max_classes_per_detection=1,
+            additional_output_tensors=additional_output_tensors)
     return tflite_graph_file
 
   def test_export_tflite_graph_with_moving_averages(self):
@@ -325,7 +333,8 @@ class ExportTfliteGraphTest(tf.test.TestCase):
       with tf.gfile.Open(tflite_graph_file) as f:
         graph_def.ParseFromString(f.read())
       all_op_names = [node.name for node in graph_def.node]
-      self.assertTrue('TFLite_Detection_PostProcess' in all_op_names)
+      self.assertIn('TFLite_Detection_PostProcess', all_op_names)
+      self.assertNotIn('UnattachedTensor', all_op_names)
       for node in graph_def.node:
         if node.name == 'TFLite_Detection_PostProcess':
           self.assertTrue(node.attr['_output_quantized'].b is True)
@@ -341,6 +350,42 @@ class ExportTfliteGraphTest(tf.test.TestCase):
                   t == types_pb2.DT_FLOAT
                   for t in node.attr['_output_types'].list.type
               ]))
+
+  def test_export_tflite_graph_with_additional_tensors(self):
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_config.use_moving_averages = False
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.height = 10
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.width = 10
+    tflite_graph_file = self._export_graph(
+        pipeline_config, additional_output_tensors=['UnattachedTensor'])
+    self.assertTrue(os.path.exists(tflite_graph_file))
+    graph = tf.Graph()
+    with graph.as_default():
+      graph_def = tf.GraphDef()
+      with tf.gfile.Open(tflite_graph_file) as f:
+        graph_def.ParseFromString(f.read())
+      all_op_names = [node.name for node in graph_def.node]
+      self.assertIn('UnattachedTensor', all_op_names)
+
+  def test_export_tflite_graph_with_postprocess_op_and_additional_tensors(self):
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_config.use_moving_averages = False
+    pipeline_config.model.ssd.post_processing.score_converter = (
+        post_processing_pb2.PostProcessing.SIGMOID)
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.height = 10
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.width = 10
+    pipeline_config.model.ssd.num_classes = 2
+    tflite_graph_file = self._export_graph_with_postprocessing_op(
+        pipeline_config, additional_output_tensors=['UnattachedTensor'])
+    self.assertTrue(os.path.exists(tflite_graph_file))
+    graph = tf.Graph()
+    with graph.as_default():
+      graph_def = tf.GraphDef()
+      with tf.gfile.Open(tflite_graph_file) as f:
+        graph_def.ParseFromString(f.read())
+      all_op_names = [node.name for node in graph_def.node]
+      self.assertIn('TFLite_Detection_PostProcess', all_op_names)
+      self.assertIn('UnattachedTensor', all_op_names)
 
   @mock.patch.object(exporter, 'rewrite_nn_resize_op')
   def test_export_with_nn_resize_op_not_called_without_fpn(self, mock_get):

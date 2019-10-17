@@ -47,9 +47,7 @@ MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 
 def _compute_losses_and_predictions_dicts(
     model, features, labels,
-    add_regularization_loss=True,
-    use_tpu=False,
-    use_bfloat16=False):
+    add_regularization_loss=True):
   """Computes the losses dict and predictions dict for a model on inputs.
 
   Args:
@@ -88,8 +86,6 @@ def _compute_losses_and_predictions_dicts(
           float32 tensor containing keypoints for each box.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
-    use_tpu: Whether computation should happen on a TPU.
-    use_bfloat16: Whether computation on a TPU should use bfloat16.
 
   Returns:
     A tuple containing the losses dictionary (with the total loss under
@@ -100,18 +96,10 @@ def _compute_losses_and_predictions_dicts(
   model_lib.provide_groundtruth(model, labels)
   preprocessed_images = features[fields.InputDataFields.image]
 
-  # TODO(kaftan): Check how we're supposed to do this mixed precision stuff
-  ## in TF2 TPUStrategy + Keras
-  if use_tpu and use_bfloat16:
-    with tf.contrib.tpu.bfloat16_scope():
-      prediction_dict = model.predict(
-          preprocessed_images,
-          features[fields.InputDataFields.true_image_shape])
-      prediction_dict = ops.bfloat16_to_float32_nested(prediction_dict)
-  else:
-    prediction_dict = model.predict(
-        preprocessed_images,
-        features[fields.InputDataFields.true_image_shape])
+  prediction_dict = model.predict(
+      preprocessed_images,
+      features[fields.InputDataFields.true_image_shape])
+  prediction_dict = ops.bfloat16_to_float32_nested(prediction_dict)
 
   losses_dict = model.loss(
       prediction_dict, features[fields.InputDataFields.true_image_shape])
@@ -122,6 +110,8 @@ def _compute_losses_and_predictions_dicts(
     ## as well.
     regularization_losses = model.regularization_losses()
     if regularization_losses:
+      regularization_losses = ops.bfloat16_to_float32_nested(
+          regularization_losses)
       regularization_loss = tf.add_n(
           regularization_losses, name='regularization_loss')
       losses.append(regularization_loss)
@@ -146,7 +136,6 @@ def eager_train_step(detection_model,
                      add_regularization_loss=True,
                      clip_gradients_value=None,
                      use_tpu=False,
-                     use_bfloat16=False,
                      global_step=None,
                      num_replicas=1.0):
   """Process a single training batch.
@@ -204,7 +193,6 @@ def eager_train_step(detection_model,
     clip_gradients_value: If this is present, clip the gradients global norm
       at this value using `tf.clip_by_global_norm`.
     use_tpu: Whether computation should happen on a TPU.
-    use_bfloat16: Whether computation on a TPU should use bfloat16.
     global_step: The current training step. Used for TensorBoard logging
       purposes. This step is not updated by this function and must be
       incremented separately.
@@ -226,8 +214,7 @@ def eager_train_step(detection_model,
 
   with tf.GradientTape() as tape:
     losses_dict, _ = _compute_losses_and_predictions_dicts(
-        detection_model, features, labels, add_regularization_loss, use_tpu,
-        use_bfloat16)
+        detection_model, features, labels, add_regularization_loss)
 
     total_loss = losses_dict['Loss/total_loss']
 
@@ -236,9 +223,10 @@ def eager_train_step(detection_model,
                                 tf.constant(num_replicas, dtype=tf.float32))
     losses_dict['Loss/normalized_total_loss'] = total_loss
 
-  for loss_type in losses_dict:
-    tf.compat.v2.summary.scalar(
-        loss_type, losses_dict[loss_type], step=global_step)
+  if not use_tpu:
+    for loss_type in losses_dict:
+      tf.compat.v2.summary.scalar(
+          loss_type, losses_dict[loss_type], step=global_step)
 
   trainable_variables = detection_model.trainable_variables
 
@@ -258,7 +246,7 @@ def eager_train_step(detection_model,
 def load_fine_tune_checkpoint(
     model, checkpoint_path, checkpoint_type,
     load_all_detection_checkpoint_vars, input_dataset,
-    unpad_groundtruth_tensors, use_tpu, use_bfloat16):
+    unpad_groundtruth_tensors):
   """Load a fine tuning classification or detection checkpoint.
 
   To make sure the model variables are all built, this method first executes
@@ -284,8 +272,6 @@ def load_fine_tune_checkpoint(
     input_dataset: The tf.data Dataset the model is being trained on. Needed
       to get the shapes for the dummy loss computation.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
-    use_tpu: Whether computation should happen on a TPU.
-    use_bfloat16: Whether computation on a TPU should use bfloat16.
   """
   features, labels = iter(input_dataset).next()
 
@@ -299,9 +285,7 @@ def load_fine_tune_checkpoint(
     return _compute_losses_and_predictions_dicts(
         model,
         features,
-        labels,
-        use_tpu=use_tpu,
-        use_bfloat16=use_bfloat16)
+        labels)
 
   strategy = tf.compat.v2.distribute.get_strategy()
   strategy.experimental_run_v2(
@@ -313,11 +297,10 @@ def load_fine_tune_checkpoint(
       fine_tune_checkpoint_type=checkpoint_type,
       load_all_detection_checkpoint_vars=(
           load_all_detection_checkpoint_vars))
-  available_var_map = (
-      variables_helper.get_variables_available_in_checkpoint(
-          var_map,
-          checkpoint_path,
-          include_global_step=False))
+  available_var_map = variables_helper.get_variables_available_in_checkpoint(
+      var_map,
+      checkpoint_path,
+      include_global_step=False)
   tf.train.init_from_checkpoint(checkpoint_path,
                                 available_var_map)
 
@@ -386,7 +369,6 @@ def train_loop(
   train_input_config = configs['train_input_config']
 
   unpad_groundtruth_tensors = train_config.unpad_groundtruth_tensors
-  use_bfloat16 = train_config.use_bfloat16
   add_regularization_loss = train_config.add_regularization_loss
   clip_gradients_value = None
   if train_config.gradient_clipping_by_norm > 0:
@@ -402,6 +384,9 @@ def train_loop(
   tf.logging.info(
       'train_loop: use_tpu %s, export_to_tpu %s', use_tpu,
       export_to_tpu)
+
+  if kwargs['use_bfloat16']:
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
   # Parse the checkpoint fine tuning configs
   if hparams.load_pretrained:
@@ -427,10 +412,8 @@ def train_loop(
     pipeline_config_final = create_pipeline_proto_from_configs(configs)
     config_util.save_pipeline_config(pipeline_config_final, model_dir)
 
-  # TODO(kaftan): Either make strategy a parameter of this method, or
-  ## grab it w/  Distribution strategy's get_scope
   # Build the model, optimizer, and training input
-  strategy = tf.compat.v2.distribute.MirroredStrategy()
+  strategy = tf.compat.v2.distribute.get_strategy()
   with strategy.scope():
     detection_model = model_builder.build(
         model_config=model_config, is_training=True)
@@ -446,7 +429,7 @@ def train_loop(
         train_input.repeat())
 
     global_step = tf.compat.v2.Variable(
-        0, trainable=False, dtype=tf.compat.v2.dtypes.int64)
+        0, trainable=False, dtype=tf.compat.v2.dtypes.int64, name='global_step')
     optimizer, (learning_rate,) = optimizer_builder.build(
         train_config.optimizer, global_step=global_step)
 
@@ -465,8 +448,7 @@ def train_loop(
                                   fine_tune_checkpoint_type,
                                   load_all_detection_checkpoint_vars,
                                   train_input,
-                                  unpad_groundtruth_tensors, use_tpu,
-                                  use_bfloat16)
+                                  unpad_groundtruth_tensors)
 
       ckpt = tf.compat.v2.train.Checkpoint(
           step=global_step, model=detection_model)
@@ -483,7 +465,6 @@ def train_loop(
             unpad_groundtruth_tensors,
             optimizer,
             learning_rate=learning_rate_fn(),
-            use_bfloat16=use_bfloat16,
             add_regularization_loss=add_regularization_loss,
             clip_gradients_value=clip_gradients_value,
             use_tpu=use_tpu,
@@ -512,11 +493,12 @@ def train_loop(
         loss = _dist_train_step(train_input_iter)
         global_step.assign_add(1)
         end_time = time.time()
-        tf.compat.v2.summary.scalar(
-            'steps_per_sec', 1.0 / (end_time - start_time), step=global_step)
+        if not use_tpu:
+          tf.compat.v2.summary.scalar(
+              'steps_per_sec', 1.0 / (end_time - start_time), step=global_step)
         # TODO(kaftan): Remove this print after it is no longer helpful for
         ## debugging.
-        tf.print('Finished step', global_step, end_time, loss)
+        print('Finished step', global_step, end_time, loss)
         if int(global_step.value().numpy()) % checkpoint_every_n == 0:
           manager.save()
 
@@ -552,7 +534,6 @@ def eager_eval_loop(
   train_config = configs['train_config']
   eval_input_config = configs['eval_input_config']
   eval_config = configs['eval_config']
-  use_bfloat16 = train_config.use_bfloat16
   add_regularization_loss = train_config.add_regularization_loss
 
   is_training = False
@@ -594,8 +575,7 @@ def eager_eval_loop(
         labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     losses_dict, prediction_dict = _compute_losses_and_predictions_dicts(
-        detection_model, features, labels, add_regularization_loss, use_tpu,
-        use_bfloat16)
+        detection_model, features, labels, add_regularization_loss)
 
     def postprocess_wrapper(args):
       return detection_model.postprocess(args[0], args[1])
@@ -761,6 +741,9 @@ def eval_continuously(
                        '{}. Overwriting `num_epochs` to 1.'.format(
                            eval_on_train_input_config.num_epochs))
     eval_on_train_input_config.num_epochs = 1
+
+  if kwargs['use_bfloat16']:
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
   detection_model = model_builder.build(
       model_config=model_config, is_training=True)

@@ -49,8 +49,8 @@ def read_dataset(file_read_func, input_files, config):
   """Reads a dataset, and handles repetition and shuffling.
 
   Args:
-    file_read_func: Function to use in tf.data.experimental.parallel_interleave,
-      to read every individual file into a tf.data.Dataset.
+    file_read_func: Function to use in tf.contrib.data.parallel_interleave, to
+      read every individual file into a tf.data.Dataset.
     input_files: A list of file paths to read.
     config: A input_reader_builder.InputReader object.
 
@@ -79,7 +79,7 @@ def read_dataset(file_read_func, input_files, config):
                        'still slightly shuffled since `num_readers` > 1.')
   filename_dataset = filename_dataset.repeat(config.num_epochs or None)
   records_dataset = filename_dataset.apply(
-      tf.data.experimental.parallel_interleave(
+      tf.contrib.data.parallel_interleave(
           file_read_func,
           cycle_length=num_readers,
           block_length=config.read_block_length,
@@ -154,7 +154,8 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None):
       data_map_fn = dataset.map
     dataset = data_map_fn(process_fn, num_parallel_calls=num_parallel_calls)
     if batch_size:
-      dataset = dataset.batch(batch_size, drop_remainder=True)
+      dataset = dataset.apply(
+          tf.contrib.data.batch_and_drop_remainder(batch_size))
     dataset = dataset.prefetch(input_reader_config.num_prefetch_batches)
     return dataset
 
