@@ -29,8 +29,8 @@ BATCH_SIZE = 100
 
 
 def dummy_input_fn():
-  image = tf.random_uniform([BATCH_SIZE, 784])
-  labels = tf.random_uniform([BATCH_SIZE, 1], maxval=9, dtype=tf.int32)
+  image = tf.random.uniform([BATCH_SIZE, 784])
+  labels = tf.random.uniform([BATCH_SIZE, 1], maxval=9, dtype=tf.int32)
   return image, labels
 
 
@@ -64,7 +64,7 @@ class Tests(tf.test.TestCase):
     self.assertEqual(2, global_step)
     self.assertEqual(accuracy.shape, ())
 
-    input_fn = lambda: tf.random_uniform([3, 784])
+    input_fn = lambda: tf.random.uniform([3, 784])
     predictions_generator = classifier.predict(input_fn)
     for _ in range(3):
       predictions = next(predictions_generator)
