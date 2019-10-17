@@ -144,7 +144,8 @@ def model_fn(features, labels, mode, params):
     return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.TRAIN,
         loss=loss,
-        train_op=optimizer.minimize(loss,
+        train_op=optimizer.minimize(
+            loss,
             tf.compat.v1.train.get_or_create_global_step()))
   if mode == tf.estimator.ModeKeys.EVAL:
     logits = model(image, training=False)
