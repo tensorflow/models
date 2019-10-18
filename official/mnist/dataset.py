@@ -65,7 +65,7 @@ def download(directory, filename):
   if tf.io.gfile.exists(filepath):
     return filepath
   if not tf.io.gfile.exists(directory):
-    tf.io.gfile.mkdir(directory)
+    tf.io.gfile.makedirs(directory)
   # CVDF mirror of http://yann.lecun.com/exdb/mnist/
   url = 'https://storage.googleapis.com/cvdf-datasets/mnist/' + filename + '.gz'
   _, zipped_filepath = tempfile.mkstemp(suffix='.gz')
