@@ -49,26 +49,12 @@ def _float_metric_value(metric):
   return metric.result().numpy().astype(float)
 
 
-def _steps_to_run(current_step, steps_per_epoch, steps_per_loop):
-  """Calculates steps to run on device."""
-  if steps_per_loop <= 0:
-    raise ValueError("steps_per_loop should be positive integer.")
-  if steps_per_loop == 1:
-    return steps_per_loop
-  remainder_in_epoch = current_step % steps_per_epoch
-  if remainder_in_epoch != 0:
-    return min(steps_per_epoch - remainder_in_epoch, steps_per_loop)
-  else:
-    return steps_per_loop
-
-
 def train(
     strategy: tf.distribute.Strategy,
     model_fn: Callable,
     input_meta_data: Dict,
     train_input_fn: Callable,
     total_training_steps: int,
-    steps_per_epoch: int,
     steps_per_loop: int,
     optimizer: tf.keras.optimizers.Optimizer,
     learning_rate_fn: tf.keras.optimizers.schedules.LearningRateSchedule,
@@ -90,9 +76,6 @@ def train(
         `n_layer`, `batch_size_per_core` and `d_model`.
       train_input_fn: Function returns a tf.data.Dataset used for training.
       total_training_steps: Number of steps to train in total.
-      steps_per_epoch: Number of steps to run per epoch. At the end of each
-        epoch, model checkpoint will be saved and evaluation will be conducted
-        if evaluation dataset is provided.
       steps_per_loop: Number of steps per graph-mode loop. In order to reduce
         communication in eager context, training logs are printed every
         steps_per_loop.
@@ -111,7 +94,8 @@ def train(
         `model_fn`.
       model_dir: The directory of model (checkpoints, summaries).
       save_steps: The frequency to save checkpoints. Every save_steps, we save a
-        model checkpoint.
+        model checkpoint. Model checkpoint will be saved and evaluation will be
+        conducted if evaluation dataset is provided.
       run_eagerly: Whether to run training eagerly.
 
   Returns:
@@ -120,12 +104,12 @@ def train(
     TypeError: if model directory is not specified.
   """
   required_arguments = [
-      train_input_fn, total_training_steps, steps_per_epoch, steps_per_loop,
-      optimizer, learning_rate_fn
+      train_input_fn, total_training_steps, steps_per_loop, optimizer,
+      learning_rate_fn, save_steps
   ]
   if [arg for arg in required_arguments if arg is None]:
     raise ValueError("`train_input_fn`, `total_training_steps`, "
-                     "`steps_per_epoch`, `steps_per_loop`, `optimizer` and "
+                     "`steps_per_loop`, `optimizer`, `save_steps` and "
                      "`learning_rate_fn` are required parameters.")
   if not model_dir:
     raise TypeError("Model directory must be specified.")
@@ -159,7 +143,7 @@ def train(
             transformer_xl=model.transformerxl_model)
       else:
         checkpoint = tf.train.Checkpoint(model=model)
-      checkpoint.restore(init_checkpoint)
+      checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
 
     model.optimizer = optimizer
 
@@ -274,7 +258,8 @@ def train(
       if train_metric:
         train_metric.reset_states()
 
-      steps = _steps_to_run(current_step, steps_per_epoch, steps_per_loop)
+      steps = model_training_utils.steps_to_run(current_step, save_steps,
+                                                steps_per_loop)
       train_steps(train_iterator, tf.convert_to_tensor(steps, dtype=tf.int32))
       current_step += steps
       train_loss = _float_metric_value(train_loss_metric)
@@ -299,13 +284,11 @@ def train(
                 _float_metric_value(train_metric),
                 step=current_step)
           train_summary_writer.flush()
-      if model_dir:
-        if (save_steps is None) or (save_steps and
-                                    current_step % save_steps == 0):
-          _save_checkpoint(checkpoint, model_dir,
-                           checkpoint_name.format(step=current_step))
+      if model_dir and current_step % save_steps == 0:
+        _save_checkpoint(checkpoint, model_dir,
+                         checkpoint_name.format(step=current_step))
 
-      if test_input_fn and current_step % steps_per_epoch == 0:
+      if test_input_fn and current_step % save_steps == 0:
 
         logging.info("Running evaluation after step: %s.", current_step)
 

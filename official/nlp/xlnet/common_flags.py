@@ -128,8 +128,6 @@ flags.DEFINE_float(
     "init_range", default=0.1, help="Initialization std when init is uniform.")
 
 flags.DEFINE_integer(
-    "train_data_size", default=130738, help="Number of training data samples.")
-flags.DEFINE_integer(
     "test_data_size", default=12048, help="Number of test data samples.")
 flags.DEFINE_string(
     "train_tfrecord_path",

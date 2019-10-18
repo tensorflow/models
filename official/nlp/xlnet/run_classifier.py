@@ -147,7 +147,6 @@ def main(unused_argv):
                                     strategy, False, FLAGS.test_tfrecord_path)
 
   total_training_steps = FLAGS.train_steps
-  steps_per_epoch = int(FLAGS.train_data_size / FLAGS.train_batch_size)
   steps_per_loop = FLAGS.iterations
   eval_steps = int(FLAGS.test_data_size / FLAGS.test_batch_size)
   eval_fn = functools.partial(run_evaluation, strategy, test_input_fn,
@@ -181,7 +180,6 @@ def main(unused_argv):
       init_checkpoint=FLAGS.init_checkpoint,
       init_from_transformerxl=FLAGS.init_from_transformerxl,
       total_training_steps=total_training_steps,
-      steps_per_epoch=steps_per_epoch,
       steps_per_loop=steps_per_loop,
       optimizer=optimizer,
       learning_rate_fn=learning_rate_fn,
