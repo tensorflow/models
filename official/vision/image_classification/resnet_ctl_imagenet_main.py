@@ -23,7 +23,6 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from official.resnet.ctl import ctl_common
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import common
 from official.vision.image_classification import resnet_model
@@ -32,6 +31,13 @@ from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
+
+flags.DEFINE_boolean(name='use_tf_function', default=True,
+                     help='Wrap the train and test step inside a '
+                     'tf.function.')
+flags.DEFINE_boolean(name='single_l2_loss_op', default=False,
+                     help='Calculate L2_loss on concatenated weights, '
+                     'instead of using Keras per-layer L2 loss.')
 
 
 def build_stats(train_result, eval_result, time_callback):
@@ -379,6 +385,4 @@ def main(_):
 if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
   common.define_keras_flags()
-  ctl_common.define_ctl_flags()
-  flags.adopt_module_key_flags(ctl_common)
   app.run(main)

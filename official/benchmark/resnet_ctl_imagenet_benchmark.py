@@ -23,8 +23,7 @@ from absl import flags
 import tensorflow as tf
 
 from official.vision.image_classification import common
-from official.resnet.ctl import ctl_imagenet_main
-from official.resnet.ctl import ctl_common
+from official.vision.image_classification import resnet_ctl_imagenet_main
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 from official.utils.flags import core as flags_core
 
@@ -121,7 +120,7 @@ class Resnet50CtlAccuracy(CtlBenchmark):
         arguments before updating the constructor.
     """
 
-    flag_methods = [ctl_common.define_ctl_flags, common.define_keras_flags]
+    flag_methods = [common.define_keras_flags]
 
     self.data_dir = os.path.join(root_data_dir, 'imagenet')
     super(Resnet50CtlAccuracy, self).__init__(
@@ -158,7 +157,7 @@ class Resnet50CtlAccuracy(CtlBenchmark):
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
-    stats = ctl_imagenet_main.run(flags.FLAGS)
+    stats = resnet_ctl_imagenet_main.run(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     super(Resnet50CtlAccuracy, self)._report_benchmark(
@@ -177,7 +176,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
   """Resnet50 benchmarks."""
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [ctl_common.define_ctl_flags, common.define_keras_flags]
+    flag_methods = [common.define_keras_flags]
 
     super(Resnet50CtlBenchmarkBase, self).__init__(
         output_dir=output_dir,
@@ -186,7 +185,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
 
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
-    stats = ctl_imagenet_main.run(FLAGS)
+    stats = resnet_ctl_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     # Number of logged step time entries that are excluded in performance
