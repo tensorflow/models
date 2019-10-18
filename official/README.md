@@ -25,10 +25,9 @@ pip install tf-nightly
 available as tagged branches or
 [downloadable releases](https://github.com/tensorflow/models/releases). Model
 repository version numbers match the target TensorFlow release, such that
-[branch r1.4.0](https://github.com/tensorflow/models/tree/r1.4.0) and
-[release v1.4.0](https://github.com/tensorflow/models/releases/tag/v1.4.0) are
+[release v2.0](https://github.com/tensorflow/models/releases/tag/v2.0) are
 compatible with
-[TensorFlow v1.4.0](https://github.com/tensorflow/tensorflow/releases/tag/v1.4.0).
+[TensorFlow v2.0.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.0.0).
 
 If you are on a version of TensorFlow earlier than 1.4, please
 [update your installation](https://www.tensorflow.org/install/).
@@ -65,12 +64,13 @@ installable Official Models package. This is being tracked in
 *   [transformer](transformer): A transformer model to translate the WMT English
     to German dataset.
 *   [xlnet](nlp/xlnet): XLNet: Generalized Autoregressive Pretraining for
-    Language Understanding
+    Language Understanding.
 
 ### Computer Vision
 
 *   [resnet](vision/image_classification): A deep residual network that can be
     used to classify both CIFAR-10 and ImageNet's dataset of 1000 classes.
+*   [retinanet](vision/detection): A fast and power detector.
 
 ### Others
 
@@ -110,7 +110,8 @@ readable, usable, and maintainable code.
 * Code should be well documented and tested.
 * Runnable from a blank environment with relative ease.
 * Trainable on: single GPU/CPU (baseline), multiple GPUs, TPU
-* Compatible with Python 2 and 3 (using [six](https://pythonhosted.org/six/) when necessary)
+* Compatible with Python 3 (using [six](https://pythonhosted.org/six/) when
+  being compatible with Python 2 is necessary)
 * Conform to [Google Python Style Guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md)
 
 **Implementation guidelines**
