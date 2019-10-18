@@ -287,7 +287,8 @@ def preprocess_for_train(image,
                          output_height,
                          output_width,
                          resize_side_min=_RESIZE_SIDE_MIN,
-                         resize_side_max=_RESIZE_SIDE_MAX):
+                         resize_side_max=_RESIZE_SIDE_MAX,
+                         use_grayscale=False):
   """Preprocesses the given image for training.
 
   Note that the actual resizing scale is sampled from
@@ -301,6 +302,7 @@ def preprocess_for_train(image,
       aspect-preserving resizing.
     resize_side_max: The upper bound for the smallest side of the image for
       aspect-preserving resizing.
+    use_grayscale: Whether to convert the image from RGB to grayscale.
 
   Returns:
     A preprocessed image.
@@ -312,11 +314,17 @@ def preprocess_for_train(image,
   image = _random_crop([image], output_height, output_width)[0]
   image.set_shape([output_height, output_width, 3])
   image = tf.to_float(image)
+  if use_grayscale:
+    image = tf.image.rgb_to_grayscale(image)
   image = tf.image.random_flip_left_right(image)
   return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN])
 
 
-def preprocess_for_eval(image, output_height, output_width, resize_side):
+def preprocess_for_eval(image,
+                        output_height,
+                        output_width,
+                        resize_side,
+                        use_grayscale=False):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -324,6 +332,7 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
     output_height: The height of the image after preprocessing.
     output_width: The width of the image after preprocessing.
     resize_side: The smallest side of the image for aspect-preserving resizing.
+    use_grayscale: Whether to convert the image from RGB to grayscale.
 
   Returns:
     A preprocessed image.
@@ -332,12 +341,18 @@ def preprocess_for_eval(image, output_height, output_width, resize_side):
   image = _central_crop([image], output_height, output_width)[0]
   image.set_shape([output_height, output_width, 3])
   image = tf.to_float(image)
+  if use_grayscale:
+    image = tf.image.rgb_to_grayscale(image)
   return _mean_image_subtraction(image, [_R_MEAN, _G_MEAN, _B_MEAN])
 
 
-def preprocess_image(image, output_height, output_width, is_training=False,
+def preprocess_image(image,
+                     output_height,
+                     output_width,
+                     is_training=False,
                      resize_side_min=_RESIZE_SIDE_MIN,
-                     resize_side_max=_RESIZE_SIDE_MAX):
+                     resize_side_max=_RESIZE_SIDE_MAX,
+                     use_grayscale=False):
   """Preprocesses the given image.
 
   Args:
@@ -353,13 +368,15 @@ def preprocess_image(image, output_height, output_width, is_training=False,
       aspect-preserving resizing. If `is_training` is `False`, this value is
       ignored. Otherwise, the resize side is sampled from
         [resize_size_min, resize_size_max].
+    use_grayscale: Whether to convert the image from RGB to grayscale.
 
   Returns:
     A preprocessed image.
   """
   if is_training:
     return preprocess_for_train(image, output_height, output_width,
-                                resize_side_min, resize_side_max)
+                                resize_side_min, resize_side_max,
+                                use_grayscale)
   else:
     return preprocess_for_eval(image, output_height, output_width,
-                               resize_side_min)
+                               resize_side_min, use_grayscale)
