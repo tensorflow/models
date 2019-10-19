@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tempfile
+
 import tensorflow.compat.v2 as tf
 
 from tensorflow.python.eager import context
@@ -37,8 +39,14 @@ class CtlImagenetTest(tf.test.TestCase):
   ]
   _tempdir = None
 
+  def get_temp_dir(self):
+    if not self._tempdir:
+      self._tempdir = tempfile.mkdtemp(
+          dir=super(CtlImagenetTest, self).get_temp_dir())
+    return self._tempdir
+
   @classmethod
-  def setUpClass(cls):  # pylint: disable=invalid-name
+  def setUpClass(cls):
     super(CtlImagenetTest, cls).setUpClass()
     common.define_keras_flags()
 
