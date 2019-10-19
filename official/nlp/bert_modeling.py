@@ -777,9 +777,9 @@ class TransformerBlock(tf.keras.layers.Layer):
         self.output_layer_norm
     ]
 
-  def __call__(self, input_tensor, attention_mask=None):
+  def __call__(self, input_tensor, attention_mask=None, **kwargs):
     inputs = tf_utils.pack_inputs([input_tensor, attention_mask])
-    return super(TransformerBlock, self).__call__(inputs)
+    return super(TransformerBlock, self).__call__(inputs, **kwargs)
 
   def call(self, inputs):
     """Implements call() for the layer."""

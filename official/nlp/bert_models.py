@@ -116,10 +116,11 @@ class BertPretrainLayer(tf.keras.layers.Layer):
   def __call__(self,
                pooled_output,
                sequence_output=None,
-               masked_lm_positions=None):
+               masked_lm_positions=None,
+               **kwargs):
     inputs = tf_utils.pack_inputs(
         [pooled_output, sequence_output, masked_lm_positions])
-    return super(BertPretrainLayer, self).__call__(inputs)
+    return super(BertPretrainLayer, self).__call__(inputs, **kwargs)
 
   def call(self, inputs):
     """Implements call() for the layer."""
@@ -153,12 +154,14 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
                sentence_output=None,
                lm_label_ids=None,
                lm_label_weights=None,
-               sentence_labels=None):
+               sentence_labels=None,
+               **kwargs):
     inputs = tf_utils.pack_inputs([
         lm_output, sentence_output, lm_label_ids, lm_label_weights,
         sentence_labels
     ])
-    return super(BertPretrainLossAndMetricLayer, self).__call__(inputs)
+    return super(BertPretrainLossAndMetricLayer, self).__call__(
+        inputs, **kwargs)
 
   def _add_metrics(self, lm_output, lm_labels, lm_label_weights,
                    lm_per_example_loss, sentence_output, sentence_labels,
