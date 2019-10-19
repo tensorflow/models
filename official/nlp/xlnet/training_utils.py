@@ -143,7 +143,7 @@ def train(
             transformer_xl=model.transformerxl_model)
       else:
         checkpoint = tf.train.Checkpoint(model=model)
-      checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
+      checkpoint.restore(init_checkpoint)
 
     model.optimizer = optimizer
 
