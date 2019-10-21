@@ -58,16 +58,12 @@ class InputFn(object):
     self._parser_fn = factory.parser_generator(params, mode)
     self._dataset_fn = tf.data.TFRecordDataset
 
-  def __call__(self,
-               params: params_dict.ParamsDict = None,
-               batch_size=None,
-               ctx=None):
+  def __call__(self, ctx=None, batch_size: int = None):
     """Provides tf.data.Dataset object.
 
     Args:
-      params: placeholder for model parameters.
-      batch_size: expected batch size input data.
       ctx: context object.
+      batch_size: expected batch size input data.
 
     Returns:
       tf.data.Dataset object.
@@ -96,6 +92,6 @@ class InputFn(object):
 
     # Parses the fetched records to input tensors for model function.
     dataset = dataset.map(self._parser_fn, num_parallel_calls=64)
-    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size, drop_remainder=True)
+    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     return dataset

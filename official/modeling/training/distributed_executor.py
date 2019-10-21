@@ -253,8 +253,7 @@ class DistributedExecutor(object):
       logging.warning('model_dir is empty, so skip the save config.')
 
   def _get_input_iterator(
-      self, input_fn: Callable[[Optional[params_dict.ParamsDict]],
-                               tf.data.Dataset],
+      self, input_fn: Callable[..., tf.data.Dataset],
       strategy: tf.distribute.Strategy) -> Optional[Iterator[Any]]:
     """Returns distributed dataset iterator.
 
@@ -275,7 +274,7 @@ class DistributedExecutor(object):
       return iter(
           strategy.experimental_distribute_datasets_from_function(input_fn))
     else:
-      input_data = input_fn(self._params)
+      input_data = input_fn()
       return iter(strategy.experimental_distribute_dataset(input_data))
 
   def _create_replicated_step(self,

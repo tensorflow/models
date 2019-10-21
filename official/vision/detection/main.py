@@ -51,6 +51,9 @@ flags.DEFINE_string('training_file_pattern', None,
 
 flags.DEFINE_string('eval_file_pattern', None, 'Location of ther eval data')
 
+flags.DEFINE_string(
+    'checkpoint_path', None,
+    'The checkpoint path to eval. Only used in eval_once mode.')
 
 FLAGS = flags.FLAGS
 
@@ -71,8 +74,11 @@ def run_executor(params,
     builder = executor.ExecutorBuilder(
         strategy_type=params.strategy_type,
         strategy_config=params.strategy_config)
-    num_workers = (builder.strategy.num_replicas_in_sync + 7) / 8
-    is_multi_host = (num_workers > 1)
+    num_workers = int(builder.strategy.num_replicas_in_sync + 7) // 8
+    is_multi_host = (int(num_workers) >= 2)
+    logging.info(
+        'Train num_replicas_in_sync %d num_workers %d is_multi_host %s',
+        builder.strategy.num_replicas_in_sync, num_workers, is_multi_host)
     if is_multi_host:
       train_input_fn = functools.partial(
           train_input_fn,
@@ -97,7 +103,7 @@ def run_executor(params,
         init_checkpoint=model_builder.make_restore_checkpoint_fn(),
         custom_callbacks=callbacks,
         save_config=True)
-  elif FLAGS.mode == 'eval':
+  elif FLAGS.mode == 'eval' or FLAGS.mode == 'eval_once':
 
     def _model_fn(params):
       return model_builder.build_model(params, mode=ModeKeys.PREDICT_WITH_GT)
@@ -105,22 +111,47 @@ def run_executor(params,
     builder = executor.ExecutorBuilder(
         strategy_type=params.strategy_type,
         strategy_config=params.strategy_config)
+    num_workers = int(builder.strategy.num_replicas_in_sync + 7) // 8
+    is_multi_host = (int(num_workers) >= 2)
+    if is_multi_host:
+      eval_input_fn = functools.partial(
+          eval_input_fn,
+          batch_size=params.eval.batch_size //
+          builder.strategy.num_replicas_in_sync)
+    logging.info('Eval num_replicas_in_sync %d num_workers %d is_multi_host %s',
+                 builder.strategy.num_replicas_in_sync, num_workers,
+                 is_multi_host)
     dist_executor = builder.build_executor(
         class_ctor=DetectionDistributedExecutor,
         params=params,
+        is_multi_host=is_multi_host,
         model_fn=_model_fn,
         loss_fn=model_builder.build_loss_fn,
         predict_post_process_fn=model_builder.post_processing,
         trainable_variables_filter=model_builder
         .make_filter_trainable_variables_fn())
 
-    results = dist_executor.evaluate_from_model_dir(
-        model_dir=params.model_dir,
-        eval_input_fn=eval_input_fn,
-        eval_metric_fn=model_builder.eval_metrics,
-        eval_timeout=params.eval.eval_timeout,
-        min_eval_interval=params.eval.min_eval_interval,
-        total_steps=params.train.total_steps)
+    if FLAGS.mode == 'eval':
+      results = dist_executor.evaluate_from_model_dir(
+          model_dir=params.model_dir,
+          eval_input_fn=eval_input_fn,
+          eval_metric_fn=model_builder.eval_metrics,
+          eval_timeout=params.eval.eval_timeout,
+          min_eval_interval=params.eval.min_eval_interval,
+          total_steps=params.train.total_steps)
+    else:
+      # Run evaluation once for a single checkpoint.
+      if not FLAGS.checkpoint_path:
+        raise ValueError('FLAGS.checkpoint_path cannot be empty.')
+      checkpoint_path = FLAGS.checkpoint_path
+      if tf.io.gfile.isdir(checkpoint_path):
+        checkpoint_path = tf.train.latest_checkpoint(checkpoint_path)
+      summary_writer = executor.SummaryWriter(params.model_dir, 'eval')
+      results, _ = dist_executor.evaluate_checkpoint(
+          checkpoint_path=checkpoint_path,
+          eval_input_fn=eval_input_fn,
+          eval_metric_fn=model_builder.eval_metrics,
+          summary_writer=summary_writer)
     for k, v in results.items():
       logging.info('Final eval metric %s: %f', k, v)
     return results
@@ -182,7 +213,7 @@ def run(callbacks=None):
 def main(argv):
   del argv  # Unused.
 
-  return run()
+  run()
 
 
 if __name__ == '__main__':

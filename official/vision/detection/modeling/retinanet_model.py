@@ -60,8 +60,7 @@ class COCOMetrics(object):
     return self._evaluator.evaluate()
 
   def reset_states(self):
-    logging.info('State is reset on calling metric.result().')
-    pass
+    return self._evaluator.reset()
 
 
 class RetinanetModel(base_model.Model):
