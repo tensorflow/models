@@ -59,7 +59,7 @@ def file_based_input_fn_builder(input_file, name_to_features):
   return input_fn
 
 
-def create_pretrain_dataset(file_paths,
+def create_pretrain_dataset(input_patterns,
                             seq_length,
                             max_predictions_per_seq,
                             batch_size,
@@ -83,16 +83,20 @@ def create_pretrain_dataset(file_paths,
           tf.io.FixedLenFeature([1], tf.int64),
   }
 
-  dataset = tf.data.Dataset.list_files(file_paths, shuffle=is_training)
+  dataset = tf.data.Dataset.list_files(input_patterns, shuffle=is_training)
 
   if input_pipeline_context and input_pipeline_context.num_input_pipelines > 1:
     dataset = dataset.shard(input_pipeline_context.num_input_pipelines,
                             input_pipeline_context.input_pipeline_id)
 
   dataset = dataset.repeat()
+
   # We set shuffle buffer to exactly match total number of
   # training files to ensure that training data is well shuffled.
-  dataset = dataset.shuffle(len(file_paths))
+  input_files = []
+  for input_pattern in input_patterns:
+    input_files.extend(tf.io.gfile.glob(input_pattern))
+  dataset = dataset.shuffle(len(input_files))
 
   # In parallel, create tf record dataset for each train files.
   # cycle_length = 8 means that up to 8 files will be read and deserialized in
