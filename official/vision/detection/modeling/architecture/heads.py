@@ -25,7 +25,7 @@ import numpy as np
 import tensorflow.compat.v2 as tf
 from tensorflow.python.keras import backend
 from official.vision.detection.modeling.architecture import nn_ops
-from official.vision.detection.utils import spatial_transform
+from official.vision.detection.ops import spatial_transform_ops
 
 
 class RpnHead(object):
@@ -542,7 +542,7 @@ class ShapemaskPriorHead(object):
       level_outer_boxes = outer_boxes / tf.pow(
           2., tf.expand_dims(detection_prior_levels, -1))
       detection_prior_levels = tf.cast(detection_prior_levels, tf.int32)
-      uniform_priors = spatial_transform.crop_mask_in_target_box(
+      uniform_priors = spatial_transform_ops.crop_mask_in_target_box(
           tf.ones([
               batch_size, self._num_of_instances, self._mask_crop_size,
               self._mask_crop_size
@@ -550,7 +550,7 @@ class ShapemaskPriorHead(object):
 
       # Prepare crop features.
       multi_level_features = self._get_multilevel_features(fpn_features)
-      crop_features = spatial_transform.single_level_feature_crop(
+      crop_features = spatial_transform_ops.single_level_feature_crop(
           multi_level_features, level_outer_boxes, detection_prior_levels,
           self._min_mask_level, self._mask_crop_size)
 
@@ -562,7 +562,7 @@ class ShapemaskPriorHead(object):
           batch_size, self._num_of_instances, self._mask_crop_size,
           self._mask_crop_size
       ])
-      predicted_detection_priors = spatial_transform.crop_mask_in_target_box(
+      predicted_detection_priors = spatial_transform_ops.crop_mask_in_target_box(
           fused_shape_priors, boxes, outer_boxes, self._mask_crop_size)
       predicted_detection_priors = tf.reshape(
           predicted_detection_priors,
