@@ -128,9 +128,9 @@ def get_network_fn(name, num_classes, weight_decay=0.0, is_training=False):
     network_fn: A function that applies the model to a batch of images. It has
       the following signature:
           net, end_points = network_fn(images)
-      The `images` input is a tensor of shape [batch_size, height, width, 3]
-      with height = width = network_fn.default_image_size. (The permissibility
-      and treatment of other sizes depends on the network_fn.)
+      The `images` input is a tensor of shape [batch_size, height, width, 3 or
+       1] with height = width = network_fn.default_image_size. (The
+      permissibility and treatment of other sizes depends on the network_fn.)
       The returned `end_points` are a dictionary of intermediate activations.
       The returned `net` is the topmost layer, depending on `num_classes`:
       If `num_classes` was a non-zero integer, `net` is a logits tensor

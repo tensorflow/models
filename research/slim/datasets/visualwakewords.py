@@ -39,7 +39,7 @@ _FILE_PATTERN = '%s.record-*'
 
 _SPLITS_TO_SIZES = {
     'train': 82783,
-    'validation': 40504,
+    'val': 40504,
 }
 
 

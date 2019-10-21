@@ -206,6 +206,9 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_integer('max_number_of_steps', None,
                             'The maximum number of training steps.')
 
+tf.app.flags.DEFINE_bool('use_grayscale', False,
+                         'Whether to convert input images to grayscale.')
+
 #####################
 # Fine-Tuning Flags #
 #####################
@@ -433,7 +436,8 @@ def main(_):
     preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
         preprocessing_name,
-        is_training=True)
+        is_training=True,
+        use_grayscale=FLAGS.use_grayscale)
 
     ##############################################################
     # Create a dataset provider that loads data from the dataset #
