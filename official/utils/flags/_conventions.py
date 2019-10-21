@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Central location for shared arparse convention definitions."""
+"""Central location for shared argparse convention definitions."""
 
 from __future__ import absolute_import
 from __future__ import division
