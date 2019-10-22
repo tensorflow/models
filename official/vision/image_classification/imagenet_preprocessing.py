@@ -104,20 +104,11 @@ def process_record_dataset(dataset,
     logging.info(
         'datasets_num_private_threads: %s', datasets_num_private_threads)
 
-  # Disable intra-op parallelism to optimize for throughput instead of latency.
-  options = tf.data.Options()
-  options.experimental_threading.max_intra_op_parallelism = 1
-  dataset = dataset.with_options(options)
-
-  # Prefetches a batch at a time to smooth out the time taken to load input
-  # files for shuffling and processing.
-  dataset = dataset.prefetch(buffer_size=batch_size)
   if is_training:
     # Shuffles records before repeating to respect epoch boundaries.
     dataset = dataset.shuffle(buffer_size=shuffle_buffer)
     # Repeats the dataset for the number of epochs to train.
     dataset = dataset.repeat()
-
 
   # Parses the raw records into images and labels.
   dataset = dataset.map(
