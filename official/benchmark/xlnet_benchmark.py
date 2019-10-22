@@ -90,7 +90,6 @@ class XLNetClassifyAccuracy(XLNetClassifyBenchmarkBase):
 
   def _setup(self):
     super(XLNetClassifyAccuracy, self)._setup()
-    FLAGS.train_data_size = 25000
     FLAGS.test_data_size = 25024
     FLAGS.train_batch_size = 16
     FLAGS.seq_len = 512
