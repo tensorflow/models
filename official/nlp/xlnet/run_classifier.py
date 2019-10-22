@@ -184,7 +184,7 @@ def main(unused_argv):
       optimizer=optimizer,
       learning_rate_fn=learning_rate_fn,
       model_dir=FLAGS.model_dir,
-      save_steps=1000)
+      save_steps=FLAGS.save_steps)
 
 
 if __name__ == "__main__":

@@ -288,7 +288,8 @@ def main(unused_argv):
       steps_per_loop=steps_per_loop,
       optimizer=optimizer,
       learning_rate_fn=learning_rate_fn,
-      model_dir=FLAGS.model_dir)
+      model_dir=FLAGS.model_dir,
+      save_steps=FLAGS.save_steps)
 
 
 if __name__ == "__main__":

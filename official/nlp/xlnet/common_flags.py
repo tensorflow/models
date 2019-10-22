@@ -142,5 +142,5 @@ flags.DEFINE_integer(
     default=16,
     help="Size of the test batch across all hosts.")
 flags.DEFINE_integer(
-    "save_steps", default=None, help="Number of steps for saving checkpoint.")
+    "save_steps", default=1000, help="Number of steps for saving checkpoint.")
 FLAGS = flags.FLAGS
