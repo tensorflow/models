@@ -13,18 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 """Utilities for pre-processing classification data."""
-from absl import flags
 from absl import logging
 
 from official.nlp.xlnet import data_utils
 
-FLAGS = flags.FLAGS
-
 SEG_ID_A = 0
 SEG_ID_B = 1
-SEG_ID_CLS = 2
-SEG_ID_SEP = 3
-SEG_ID_PAD = 4
 
 
 class PaddingInputExample(object):
@@ -72,8 +66,8 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
       tokens_b.pop()
 
 
-def convert_single_example(ex_index, example, label_list, max_seq_length,
-                           tokenize_fn):
+def convert_single_example(example_index, example, label_list, max_seq_length,
+                           tokenize_fn, use_bert_format):
   """Converts a single `InputExample` into a single `InputFeatures`."""
 
   if isinstance(example, PaddingInputExample):
@@ -119,8 +113,12 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     tokens.append(data_utils.SEP_ID)
     segment_ids.append(SEG_ID_B)
 
-  tokens.append(data_utils.CLS_ID)
-  segment_ids.append(SEG_ID_CLS)
+  if use_bert_format:
+    tokens.insert(0, data_utils.CLS_ID)
+    segment_ids.insert(0, data_utils.SEG_ID_CLS)
+  else:
+    tokens.append(data_utils.CLS_ID)
+    segment_ids.append(data_utils.SEG_ID_CLS)
 
   input_ids = tokens
 
@@ -131,9 +129,14 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   # Zero-pad up to the sequence length.
   if len(input_ids) < max_seq_length:
     delta_len = max_seq_length - len(input_ids)
-    input_ids = [0] * delta_len + input_ids
-    input_mask = [1] * delta_len + input_mask
-    segment_ids = [SEG_ID_PAD] * delta_len + segment_ids
+    if use_bert_format:
+      input_ids = input_ids + [0] * delta_len
+      input_mask = input_mask + [1] * delta_len
+      segment_ids = segment_ids + [data_utils.SEG_ID_PAD] * delta_len
+    else:
+      input_ids = [0] * delta_len + input_ids
+      input_mask = [1] * delta_len + input_mask
+      segment_ids = [data_utils.SEG_ID_PAD] * delta_len + segment_ids
 
   assert len(input_ids) == max_seq_length
   assert len(input_mask) == max_seq_length
@@ -143,7 +146,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     label_id = label_map[example.label]
   else:
     label_id = example.label
-  if ex_index < 5:
+  if example_index < 5:
     logging.info("*** Example ***")
     logging.info("guid: %s", (example.guid))
     logging.info("input_ids: %s", " ".join([str(x) for x in input_ids]))

@@ -888,7 +888,7 @@ class ClassificationXLNetModel(tf.keras.Model):
 
   """
 
-  def __init__(self, xlnet_config, run_config, n_class, **kwargs):
+  def __init__(self, xlnet_config, run_config, n_class, summary_type, **kwargs):
     super(ClassificationXLNetModel, self).__init__(**kwargs)
     self.run_config = run_config
     self.initializer = _get_initializer(run_config)
@@ -924,7 +924,7 @@ class ClassificationXLNetModel(tf.keras.Model):
         dropout_att=self.run_config.dropout_att,
         initializer=self.initializer,
         use_proj=True,
-        summary_type='last',
+        summary_type=summary_type,
         name='sequence_summary')
 
     self.cl_loss_layer = ClassificationLossLayer(
@@ -946,9 +946,9 @@ class ClassificationXLNetModel(tf.keras.Model):
         self.transformerxl_model(
             inp_k=input_ids, seg_id=seg_ids, input_mask=input_mask, mems=mems))
 
-    self.summary = self.summarization_layer(transformerxl_output)
+    summary = self.summarization_layer(transformerxl_output)
     per_example_loss, logits = self.cl_loss_layer(
-        hidden=self.summary, labels=label)
+        hidden=summary, labels=label)
     self.add_loss(tf.keras.backend.mean(per_example_loss))
     return new_mems, logits
 
@@ -1087,7 +1087,12 @@ class Summarization(tf.keras.layers.Layer):
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    summary = inputs[-1]
+    if self.summary_type == 'last':
+      summary = inputs[-1]
+    elif self.summary_type == 'first':
+      summary = inputs[0]
+    else:
+      raise ValueError('Invalid summary type provided: %s' % self.summary_type)
     summary = self.proj_layer(summary)
     summary = self.dropout_layer(summary)
     return summary

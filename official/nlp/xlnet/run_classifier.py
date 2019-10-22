@@ -36,13 +36,20 @@ from official.nlp.xlnet import training_utils
 from official.utils.misc import tpu_lib
 
 flags.DEFINE_integer("n_class", default=2, help="Number of classes.")
+flags.DEFINE_string(
+    "summary_type",
+    default="last",
+    help="Method used to summarize a sequence into a vector.")
 
 FLAGS = flags.FLAGS
 
 
-def get_classificationxlnet_model(model_config, run_config, n_class):
+def get_classificationxlnet_model(model_config,
+                                  run_config,
+                                  n_class,
+                                  summary_type="last"):
   model = modeling.ClassificationXLNetModel(
-      model_config, run_config, n_class, name="model")
+      model_config, run_config, n_class, summary_type, name="model")
   return model
 
 
@@ -65,6 +72,7 @@ def run_evaluation(strategy,
       them when calculating the accuracy. For the reason that there will be
       dynamic-shape tensor, we first collect logits, labels and masks from TPU
       and calculate the accuracy via numpy locally.
+
   Returns:
     A float metric, accuracy.
   """
@@ -159,7 +167,7 @@ def main(unused_argv):
   model_config = xlnet_config.XLNetConfig(FLAGS)
   run_config = xlnet_config.create_run_config(True, False, FLAGS)
   model_fn = functools.partial(get_classificationxlnet_model, model_config,
-                               run_config, FLAGS.n_class)
+                               run_config, FLAGS.n_class, FLAGS.summary_type)
   input_meta_data = {}
   input_meta_data["d_model"] = FLAGS.d_model
   input_meta_data["mem_len"] = FLAGS.mem_len

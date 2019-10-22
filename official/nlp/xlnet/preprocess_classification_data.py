@@ -55,6 +55,10 @@ flags.DEFINE_integer(
 flags.DEFINE_bool("uncased", default=False, help="Use uncased.")
 flags.DEFINE_bool(
     "is_regression", default=False, help="Whether it's a regression task.")
+flags.DEFINE_bool(
+    "use_bert_format",
+    default=False,
+    help="Whether to use BERT format to arrange input data.")
 
 FLAGS = flags.FLAGS
 
@@ -356,7 +360,8 @@ def file_based_convert_examples_to_features(examples,
     feature = classifier_utils.convert_single_example(ex_index, example,
                                                       label_list,
                                                       max_seq_length,
-                                                      tokenize_fn)
+                                                      tokenize_fn,
+                                                      FLAGS.use_bert_format)
 
     def create_int_feature(values):
       f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
