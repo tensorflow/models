@@ -149,7 +149,7 @@ def _process_batch(sess, original_images, truth_segmentation, semantic_predictio
     train_id_to_eval_id: A list mapping from train id to eval id.
   """
   (original_images,
-   truth_segmentation
+   truth_segmentation,
    semantic_predictions,
    image_names,
    image_heights,
