@@ -102,6 +102,8 @@ _IMAGE_FORMAT = '%06d_image'
 # The format to save prediction
 _PREDICTION_FORMAT = '%06d_prediction'
 
+_TRUTH_FORMAT = '%06d_truth'
+
 # To evaluate Cityscapes results on the evaluation server, the labels used
 # during training should be mapped to the labels for evaluation.
 _CITYSCAPES_TRAIN_ID_TO_EVAL_ID = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22,
@@ -129,7 +131,7 @@ def _convert_train_id_to_eval_id(prediction, train_id_to_eval_id):
   return converted_prediction
 
 
-def _process_batch(sess, original_images, semantic_predictions, image_names,
+def _process_batch(sess, original_images, truth_segmentation, semantic_predictions, image_names,
                    image_heights, image_widths, image_id_offset, save_dir,
                    raw_save_dir, train_id_to_eval_id=None):
   """Evaluates one single batch qualitatively.
@@ -147,10 +149,11 @@ def _process_batch(sess, original_images, semantic_predictions, image_names,
     train_id_to_eval_id: A list mapping from train id to eval id.
   """
   (original_images,
+   truth_segmentation
    semantic_predictions,
    image_names,
    image_heights,
-   image_widths) = sess.run([original_images, semantic_predictions,
+   image_widths) = sess.run([original_images, truth_segmentation, semantic_predictions,
                              image_names, image_heights, image_widths])
 
   num_image = semantic_predictions.shape[0]
@@ -165,6 +168,12 @@ def _process_batch(sess, original_images, semantic_predictions, image_names,
     save_annotation.save_annotation(
         original_image, save_dir, _IMAGE_FORMAT % (image_id_offset + i),
         add_colormap=False)
+
+    # Save truth.
+    save_annotation.save_annotation(
+        crop_semantic_prediction, save_dir,
+        _TRUTH_FORMAT % (image_id_offset + i), add_colormap=True,
+        colormap_type=FLAGS.colormap_type)
 
     # Save prediction.
     save_annotation.save_annotation(
@@ -296,6 +305,7 @@ def main(unused_argv):
           tf.logging.info('Visualizing batch %d', batch + 1)
           _process_batch(sess=sess,
                          original_images=samples[common.ORIGINAL_IMAGE],
+                         truth_segmentation=samples[common.LABEL]
                          semantic_predictions=predictions,
                          image_names=samples[common.IMAGE_NAME],
                          image_heights=samples[common.HEIGHT],
