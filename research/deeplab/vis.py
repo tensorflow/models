@@ -163,7 +163,8 @@ def _process_batch(sess, original_images, truth_segmentation, semantic_predictio
     original_image = np.squeeze(original_images[i])
     semantic_prediction = np.squeeze(semantic_predictions[i])
     crop_semantic_prediction = semantic_prediction[:image_height, :image_width]
-    truth_seg = np.squeeze(truth_segmentation[i]
+    truth_seg = np.squeeze(truth_segmentation[i])
+    truth_seg = truth_seg[:image_height, :image_width]
 
     # Save image.
     save_annotation.save_annotation(
