@@ -54,7 +54,7 @@ _SHUFFLE_BUFFER = 10000
 _R_MEAN = 123.68
 _G_MEAN = 116.78
 _B_MEAN = 103.94
-_CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
+CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 
 # The lower bound for the smallest side of the image for aspect-preserving
 # resizing. For example, if an image is 500 x 1000, it will be resized to
@@ -524,4 +524,4 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
 
   image.set_shape([output_height, output_width, num_channels])
 
-  return _mean_image_subtraction(image, _CHANNEL_MEANS, num_channels)
+  return _mean_image_subtraction(image, CHANNEL_MEANS, num_channels)

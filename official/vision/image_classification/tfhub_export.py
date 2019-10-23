@@ -26,8 +26,8 @@ from absl import flags
 
 import tensorflow as tf
 
-from official.vision.image_classification import resnet_model
 from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification import resnet_model
 
 FLAGS = flags.FLAGS
 
@@ -39,9 +39,11 @@ flags.DEFINE_string("export_path", None,
 
 def export_tfhub(model_path, hub_destination):
   """Restores a tf.keras.Model and saves for TF-Hub."""
-  model = resnet_model.resnet50(num_classes=imagenet_preprocessing.NUM_CLASSES)
+  model = resnet_model.resnet50(
+      num_classes=imagenet_preprocessing.NUM_CLASSES, rescale_inputs=True)
   model.load_weights(model_path)
-  model.save(os.path.join(hub_destination, "classification"), include_optimizer=False)
+  model.save(
+      os.path.join(hub_destination, "classification"), include_optimizer=False)
 
   # Extracts a sub-model to use pooling feature vector as model output.
   image_input = model.get_layer(index=0).get_output_at(0)
@@ -50,8 +52,7 @@ def export_tfhub(model_path, hub_destination):
 
   # Exports a SavedModel.
   hub_model.save(
-      os.path.join(hub_destination, "feature-vector"),
-      include_optimizer=False)
+      os.path.join(hub_destination, "feature-vector"), include_optimizer=False)
 
 
 def main(argv):

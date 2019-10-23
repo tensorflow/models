@@ -32,7 +32,7 @@ from tensorflow.python.keras import initializers
 from tensorflow.python.keras import layers
 from tensorflow.python.keras import models
 from tensorflow.python.keras import regularizers
-
+from official.vision.image_classification import imagenet_preprocessing
 
 L2_WEIGHT_DECAY = 1e-4
 BATCH_NORM_DECAY = 0.9
@@ -223,28 +223,40 @@ def conv_block(input_tensor,
 
 def resnet50(num_classes,
              batch_size=None,
-             use_l2_regularizer=True):
+             use_l2_regularizer=True,
+             rescale_inputs=False):
   """Instantiates the ResNet50 architecture.
 
   Args:
     num_classes: `int` number of classes for image classification.
     batch_size: Size of the batches for each step.
     use_l2_regularizer: whether to use L2 regularizer on Conv/Dense layer.
+    rescale_inputs: whether to rescale inputs from 0 to 1.
 
   Returns:
       A Keras model instance.
   """
   input_shape = (224, 224, 3)
   img_input = layers.Input(shape=input_shape, batch_size=batch_size)
+  if rescale_inputs:
+    # Hub image modules expect inputs in the range [0, 1]. This rescales these
+    # inputs to the range expected by the trained model.
+    x = layers.Lambda(
+        lambda x: x * 255.0 - backend.constant(
+            imagenet_preprocessing.CHANNEL_MEANS,
+            shape=[1, 1, 3],
+            dtype=x.dtype),
+        name='rescale')(
+            img_input)
+  else:
+    x = img_input
 
   if backend.image_data_format() == 'channels_first':
     x = layers.Lambda(
         lambda x: backend.permute_dimensions(x, (0, 3, 1, 2)),
-        name='transpose')(
-            img_input)
+        name='transpose')(x)
     bn_axis = 1
   else:  # channels_last
-    x = img_input
     bn_axis = 3
 
   x = layers.ZeroPadding2D(padding=(3, 3), name='conv1_pad')(x)
