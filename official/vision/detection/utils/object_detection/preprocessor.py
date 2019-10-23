@@ -100,13 +100,79 @@ def keypoint_flip_horizontal(keypoints, flip_point, flip_permutation,
   Returns:
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
-  with tf.name_scope(scope, 'FlipHorizontal'):
+  if not scope:
+    scope = 'FlipHorizontal'
+  with tf.name_scope(scope):
     keypoints = tf.transpose(a=keypoints, perm=[1, 0, 2])
     keypoints = tf.gather(keypoints, flip_permutation)
     v, u = tf.split(value=keypoints, num_or_size_splits=2, axis=2)
     u = flip_point * 2.0 - u
     new_keypoints = tf.concat([v, u], 2)
     new_keypoints = tf.transpose(a=new_keypoints, perm=[1, 0, 2])
+    return new_keypoints
+
+
+def keypoint_change_coordinate_frame(keypoints, window, scope=None):
+  """Changes coordinate frame of the keypoints to be relative to window's frame.
+
+  Given a window of the form [y_min, x_min, y_max, x_max], changes keypoint
+  coordinates from keypoints of shape [num_instances, num_keypoints, 2]
+  to be relative to this window.
+
+  An example use case is data augmentation: where we are given groundtruth
+  keypoints and would like to randomly crop the image to some window. In this
+  case we need to change the coordinate frame of each groundtruth keypoint to be
+  relative to this new window.
+
+  Args:
+    keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+    window: a tensor of shape [4] representing the [y_min, x_min, y_max, x_max]
+      window we should change the coordinate frame to.
+    scope: name scope.
+
+  Returns:
+    new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+  """
+  if not scope:
+    scope = 'ChangeCoordinateFrame'
+  with tf.name_scope(scope):
+    win_height = window[2] - window[0]
+    win_width = window[3] - window[1]
+    new_keypoints = box_list_ops.scale(keypoints - [window[0], window[1]],
+                                       1.0 / win_height, 1.0 / win_width)
+    return new_keypoints
+
+
+def keypoint_prune_outside_window(keypoints, window, scope=None):
+  """Prunes keypoints that fall outside a given window.
+
+  This function replaces keypoints that fall outside the given window with nan.
+  See also clip_to_window which clips any keypoints that fall outside the given
+  window.
+
+  Args:
+    keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+    window: a tensor of shape [4] representing the [y_min, x_min, y_max, x_max]
+      window outside of which the op should prune the keypoints.
+    scope: name scope.
+
+  Returns:
+    new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+  """
+  if not scope:
+    scope = 'PruneOutsideWindow'
+  with tf.name_scope(scope):
+    y, x = tf.split(value=keypoints, num_or_size_splits=2, axis=2)
+    win_y_min, win_x_min, win_y_max, win_x_max = tf.unstack(window)
+
+    valid_indices = tf.logical_and(
+        tf.logical_and(y >= win_y_min, y <= win_y_max),
+        tf.logical_and(x >= win_x_min, x <= win_x_max))
+
+    new_y = tf.where(valid_indices, y, np.nan * tf.ones_like(y))
+    new_x = tf.where(valid_indices, x, np.nan * tf.ones_like(x))
+    new_keypoints = tf.concat([new_y, new_x], 2)
+
     return new_keypoints
 
 
@@ -334,7 +400,7 @@ def resize_to_range(image,
   if len(image.get_shape()) != 3:
     raise ValueError('Image should be 3D tensor')
 
-  with tf.name_scope('ResizeToRange', values=[image, min_dimension]):
+  with tf.name_scope('ResizeToRange'):
     if image.get_shape().is_fully_defined():
       new_size = _compute_new_static_size(image, min_dimension, max_dimension)
     else:
@@ -389,7 +455,9 @@ def box_list_scale(boxlist, y_scale, x_scale, scope=None):
   Returns:
     boxlist: BoxList holding N boxes
   """
-  with tf.name_scope(scope, 'Scale'):
+  if not scope:
+    scope = 'Scale'
+  with tf.name_scope(scope):
     y_scale = tf.cast(y_scale, tf.float32)
     x_scale = tf.cast(x_scale, tf.float32)
     y_min, x_min, y_max, x_max = tf.split(
@@ -415,7 +483,9 @@ def keypoint_scale(keypoints, y_scale, x_scale, scope=None):
   Returns:
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
-  with tf.name_scope(scope, 'Scale'):
+  if not scope:
+    scope = 'Scale'
+  with tf.name_scope(scope):
     y_scale = tf.cast(y_scale, tf.float32)
     x_scale = tf.cast(x_scale, tf.float32)
     new_keypoints = keypoints * [[[y_scale, x_scale]]]
