@@ -305,7 +305,7 @@ def main(unused_argv):
           tf.logging.info('Visualizing batch %d', batch + 1)
           _process_batch(sess=sess,
                          original_images=samples[common.ORIGINAL_IMAGE],
-                         truth_segmentation=samples[common.LABEL]
+                         truth_segmentation=samples[common.LABEL],
                          semantic_predictions=predictions,
                          image_names=samples[common.IMAGE_NAME],
                          image_heights=samples[common.HEIGHT],
