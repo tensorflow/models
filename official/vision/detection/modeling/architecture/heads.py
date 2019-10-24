@@ -508,7 +508,9 @@ class ShapemaskPriorHead(object):
       if self._shape_prior_path:
         if self._use_category_for_mask:
           fid = tf.io.gfile.GFile(self._shape_prior_path, 'rb')
-          class_tups = pickle.load(fid)
+          # The encoding='bytes' options is for incompatibility between python2
+          # and python3 pickle.
+          class_tups = pickle.load(fid, encoding='bytes')
           max_class_id = class_tups[-1][0] + 1
           class_masks = np.zeros((max_class_id, self._num_clusters,
                                   self._mask_crop_size, self._mask_crop_size),

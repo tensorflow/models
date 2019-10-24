@@ -36,14 +36,19 @@ def batch_norm_relu_generator(params):
   return _batch_norm_op
 
 
+def dropblock_generator(params):
+  return nn_ops.Dropblock(
+      dropblock_keep_prob=params.dropblock_keep_prob,
+      dropblock_size=params.dropblock_size)
+
+
 def backbone_generator(params):
   """Generator function for various backbone models."""
   if params.architecture.backbone == 'resnet':
     resnet_params = params.resnet
     backbone_fn = resnet.Resnet(
         resnet_depth=resnet_params.resnet_depth,
-        dropblock_keep_prob=resnet_params.dropblock.dropblock_keep_prob,
-        dropblock_size=resnet_params.dropblock.dropblock_size,
+        dropblock=dropblock_generator(resnet_params.dropblock),
         batch_norm_relu=batch_norm_relu_generator(resnet_params.batch_norm))
   else:
     raise ValueError('Backbone model %s is not supported.' %

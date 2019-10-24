@@ -34,17 +34,14 @@ class Resnet(object):
 
   def __init__(self,
                resnet_depth,
-               dropblock_keep_prob=None,
-               dropblock_size=None,
+               dropblock=nn_ops.Dropblock(),
                batch_norm_relu=nn_ops.BatchNormRelu,
                data_format='channels_last'):
     """ResNet initialization function.
 
     Args:
       resnet_depth: `int` depth of ResNet backbone model.
-      dropblock_keep_prob: `float` or `Tensor` keep_prob parameter of DropBlock.
-        "None" means no DropBlock.
-      dropblock_size: `int` size parameter of DropBlock.
+      dropblock: a dropblock layer.
       batch_norm_relu: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
       data_format: `str` either "channels_first" for `[batch, channels, height,
@@ -52,20 +49,40 @@ class Resnet(object):
     """
     self._resnet_depth = resnet_depth
 
-    self._dropblock_keep_prob = dropblock_keep_prob
-    self._dropblock_size = dropblock_size
-
+    self._dropblock = dropblock
     self._batch_norm_relu = batch_norm_relu
 
     self._data_format = data_format
 
     model_params = {
-        18: {'block': self.residual_block, 'layers': [2, 2, 2, 2]},
-        34: {'block': self.residual_block, 'layers': [3, 4, 6, 3]},
-        50: {'block': self.bottleneck_block, 'layers': [3, 4, 6, 3]},
-        101: {'block': self.bottleneck_block, 'layers': [3, 4, 23, 3]},
-        152: {'block': self.bottleneck_block, 'layers': [3, 8, 36, 3]},
-        200: {'block': self.bottleneck_block, 'layers': [3, 24, 36, 3]}
+        10: {
+            'block': self.residual_block,
+            'layers': [1, 1, 1, 1]
+        },
+        18: {
+            'block': self.residual_block,
+            'layers': [2, 2, 2, 2]
+        },
+        34: {
+            'block': self.residual_block,
+            'layers': [3, 4, 6, 3]
+        },
+        50: {
+            'block': self.bottleneck_block,
+            'layers': [3, 4, 6, 3]
+        },
+        101: {
+            'block': self.bottleneck_block,
+            'layers': [3, 4, 23, 3]
+        },
+        152: {
+            'block': self.bottleneck_block,
+            'layers': [3, 8, 36, 3]
+        },
+        200: {
+            'block': self.bottleneck_block,
+            'layers': [3, 24, 36, 3]
+        }
     }
 
     if resnet_depth not in model_params:
@@ -94,83 +111,6 @@ class Resnet(object):
     with backend.get_graph().as_default():
       with tf.name_scope('resnet%s' % self._resnet_depth):
         return self._resnet_fn(inputs, is_training)
-
-  def dropblock(self, net, is_training=None):
-    """DropBlock: a regularization method for convolutional neural networks.
-
-    DropBlock is a form of structured dropout, where units in a contiguous
-    region of a feature map are dropped together. DropBlock works better than
-    dropout on convolutional layers due to the fact that activation units in
-    convolutional layers are spatially correlated.
-    See https://arxiv.org/pdf/1810.12890.pdf for details.
-
-    Args:
-      net: `Tensor` input tensor.
-      is_training: `bool` if True, the model is in training mode.
-
-    Returns:
-        A version of input tensor with DropBlock applied.
-    Raises:
-        if width and height of the input tensor are not equal.
-    """
-
-    if not is_training or self._dropblock_keep_prob is None:
-      return net
-
-    logging.info('Applying DropBlock: dropblock_size {}, net.shape {}'.format(
-        self._dropblock_size, net.shape))
-
-    if self._data_format == 'channels_last':
-      _, width, height, _ = net.get_shape().as_list()
-    else:
-      _, _, width, height = net.get_shape().as_list()
-
-    total_size = width * height
-    dropblock_size = min(self._dropblock_size, min(width, height))
-    # Seed_drop_rate is the gamma parameter of DropBlcok.
-    seed_drop_rate = (
-        1.0 - self._dropblock_keep_prob) * total_size / dropblock_size**2 / (
-            (width - self._dropblock_size + 1) *
-            (height - self._dropblock_size + 1))
-
-    # Forces the block to be inside the feature map.
-    w_i, h_i = tf.meshgrid(tf.range(width), tf.range(height))
-    valid_block = tf.logical_and(
-        tf.logical_and(w_i >= int(dropblock_size // 2),
-                       w_i < width - (dropblock_size - 1) // 2),
-        tf.logical_and(h_i >= int(dropblock_size // 2),
-                       h_i < width - (dropblock_size - 1) // 2))
-
-    if self._data_format == 'channels_last':
-      valid_block = tf.reshape(valid_block, [1, height, width, 1])
-    else:
-      valid_block = tf.reshape(valid_block, [1, 1, height, width])
-
-    randnoise = tf.random.uniform(net.shape, dtype=tf.float32)
-    valid_block = tf.cast(valid_block, dtype=tf.float32)
-    seed_keep_rate = tf.cast(1 - seed_drop_rate, dtype=tf.float32)
-    block_pattern = (1 - valid_block + seed_keep_rate + randnoise) >= 1
-    block_pattern = tf.cast(block_pattern, dtype=tf.float32)
-
-    if dropblock_size == min(width, height):
-      block_pattern = tf.reduce_min(
-          input_tensor=block_pattern,
-          axis=[1, 2] if self._data_format == 'channels_last' else [2, 3],
-          keepdims=True)
-    else:
-      block_pattern = -tf.keras.layers.MaxPool2D(
-          pool_size=self._dropblock_size,
-          strides=1,
-          padding='SAME',
-          data_format=self._data_format)(-block_pattern)
-
-    percent_ones = tf.cast(
-        tf.reduce_sum(input_tensor=block_pattern), tf.float32) / tf.cast(
-            tf.size(input=block_pattern), tf.float32)
-
-    net = net / tf.cast(percent_ones, net.dtype) * tf.cast(
-        block_pattern, net.dtype)
-    return net
 
   def fixed_padding(self, inputs, kernel_size):
     """Pads the input along the spatial dimensions independently of input size.
@@ -300,24 +240,24 @@ class Resnet(object):
           inputs=inputs, filters=filters_out, kernel_size=1, strides=strides)
       shortcut = self._batch_norm_relu(relu=False)(
           shortcut, is_training=is_training)
-    shortcut = self.dropblock(shortcut, is_training=is_training)
+    shortcut = self._dropblock(shortcut, is_training=is_training)
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=filters, kernel_size=1, strides=1)
     inputs = self._batch_norm_relu()(inputs, is_training=is_training)
-    inputs = self.dropblock(inputs, is_training=is_training)
+    inputs = self._dropblock(inputs, is_training=is_training)
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=filters, kernel_size=3, strides=strides)
     inputs = self._batch_norm_relu()(inputs, is_training=is_training)
-    inputs = self.dropblock(inputs, is_training=is_training)
+    inputs = self._dropblock(inputs, is_training=is_training)
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=4 * filters, kernel_size=1, strides=1)
     inputs = self._batch_norm_relu(
         relu=False, init_zero=True)(
             inputs, is_training=is_training)
-    inputs = self.dropblock(inputs, is_training=is_training)
+    inputs = self._dropblock(inputs, is_training=is_training)
 
     return tf.nn.relu(inputs + shortcut)
 
