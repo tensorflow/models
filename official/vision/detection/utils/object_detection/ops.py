@@ -71,7 +71,8 @@ def matmul_gather_on_zeroth_axis(params, indices, scope=None):
     A Tensor. Has the same type as params. Values from params gathered
     from indices given by indices, with shape indices.shape + params.shape[1:].
   """
-  with tf.name_scope(scope, 'MatMulGather'):
+  scope = scope or 'MatMulGather'
+  with tf.name_scope(scope):
     params_shape = shape_utils.combined_static_and_dynamic_shape(params)
     indices_shape = shape_utils.combined_static_and_dynamic_shape(indices)
     params2d = tf.reshape(params, [params_shape[0], -1])
