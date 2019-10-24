@@ -95,9 +95,9 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
         inputs, labels = inputs
         model_outputs = model(inputs, training=False)
         if self._predict_post_process_fn:
-          labels, model_outputs = self._predict_post_process_fn(
+          labels, prediction_outputs = self._predict_post_process_fn(
               labels, model_outputs)
-        return labels, model_outputs
+        return labels, prediction_outputs
 
       labels, outputs = strategy.experimental_run_v2(
           _test_step_fn, args=(next(iterator),))
