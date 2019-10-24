@@ -180,12 +180,6 @@ def define_transformer_flags():
       default=False,
       help=flags_core.help_wrap(
           'Whether the model runs with custom training loop.'))
-  flags.DEFINE_bool(
-      name='use_tpu_2vm_config',
-      default=False,
-      help=flags_core.help_wrap(
-          'Whether the model runs in 2VM mode, Headless server and unit test '
-          'all use 1VM config.'))
   flags.DEFINE_integer(
       name='decode_batch_size',
       default=32,

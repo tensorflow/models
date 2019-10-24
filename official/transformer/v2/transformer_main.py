@@ -449,22 +449,14 @@ def main(_):
   with logger.benchmark_context(flags_obj):
     task = TransformerTask(flags_obj)
 
-    def _run_task(task):
-      if flags_obj.mode == "train":
-        task.train()
-      elif flags_obj.mode == "predict":
-        task.predict()
-      elif flags_obj.mode == "eval":
-        task.eval()
-      else:
-        raise ValueError("Invalid mode {}".format(flags_obj.mode))
-
-    if flags_obj.distribution_strategy != "tpu":
-      _run_task(task)
+    if flags_obj.mode == "train":
+      task.train()
+    elif flags_obj.mode == "predict":
+      task.predict()
+    elif flags_obj.mode == "eval":
+      task.eval()
     else:
-      primary_cpu_task = "/job:worker" if flags_obj.use_tpu_2vm_config else ""
-      with tf.device(primary_cpu_task):
-        _run_task(task)
+      raise ValueError("Invalid mode {}".format(flags_obj.mode))
 
 
 if __name__ == "__main__":
