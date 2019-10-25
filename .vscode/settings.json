@@ -1,0 +1,4 @@
+{
+    "python.formatting.provider": "yapf",
+    "python.pythonPath": "/bin/python"
+}
