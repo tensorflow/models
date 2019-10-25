@@ -55,6 +55,7 @@ import numpy as np
 from deeplab import common
 from deeplab import input_preprocess
 import tfAugmentor as tfa
+import cv2
 
 # Named tuple to describe the dataset properties.
 DatasetDescriptor = collections.namedtuple(
@@ -298,7 +299,10 @@ class Dataset(object):
     a = tfa.Augmentor(sample, label=[common.LABELS_CLASS])
 	  a.elastic_deform(probability=0.2, strength=2.5, scale=5) # apply elastic deformation
   	# return tensors in a form you need
-	  return a.out
+    augmented = a.out
+    cv2.imwrite('/home/antonkhlebka/image.png', tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3]))
+    cv2.imwrite('/home/antonkhlebka/label.png', tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1]))
+	  return augmented
 
   def _preprocess_image(self, sample):
     """Preprocesses the image and label.
