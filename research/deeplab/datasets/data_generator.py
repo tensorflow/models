@@ -266,7 +266,7 @@ class Dataset(object):
 
     parsed_features = tf.parse_single_example(example_proto, features)
 
-    image = _decode_image(parsed_features['image/encoded'], channels=3)
+    image = _decode_image(parsed_features['image/encoded'], channels=1)
 
     label = None
     if self.split_name != common.TEST_SET:
@@ -285,17 +285,16 @@ class Dataset(object):
     }
 
     if label is not None:
-      if label.get_shape().ndims == 2:
-        label = tf.expand_dims(label, 2)
-      elif label.get_shape().ndims == 3 and label.shape.dims[2] == 1:
-        pass
-      else:
-        raise ValueError('Input label shape must be [height, width], or '
-                         '[height, width, 1].')
+      sample[common.LABELS_CLASS] = label
+      # if label.get_shape().ndims == 2:
+      #   label = tf.expand_dims(label, 2)
+      # elif label.get_shape().ndims == 3 and label.shape.dims[2] == 1:
+      #   pass
+      # else:
+      #   raise ValueError('Input label shape must be [height, width], or '
+      #                    '[height, width, 1].')
 
       # label.set_shape([None, None, 1])
-
-      sample[common.LABELS_CLASS] = label
 
     sample[common.IMAGE] = array_ops.expand_dims(sample[common.IMAGE], axis=0)
     sample[common.LABELS_CLASS] = array_ops.expand_dims(sample[common.LABELS_CLASS], axis=0)
