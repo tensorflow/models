@@ -304,7 +304,7 @@ class Dataset(object):
     cv2.imwrite('/home/antonkhlebka/image.png', augmented[common.IMAGE].eval())
     cv2.imwrite('/home/antonkhlebka/label.png', augmented[commod.LABELS_CLASS].eval())
     augmented[common.HEIGHT]= parsed_features['image/height']
-    augmented[common.WIDTH]= parsed_features['image/width']]
+    augmented[common.WIDTH]= parsed_features['image/width']
     augmented[common.IMAGE_NAME] = image_name
     return augmented
 
