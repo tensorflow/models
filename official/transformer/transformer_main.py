@@ -140,7 +140,7 @@ def model_fn(features, labels, mode, params):
 
 def record_scalars(metric_dict):
   for key, value in metric_dict.items():
-    tf.contrib.summary.scalar(name=key, tensor=value)
+    tf.summary.scalar(name=key, tensor=value)
 
 
 def get_learning_rate(learning_rate, hidden_size, learning_rate_warmup_steps):
