@@ -56,6 +56,7 @@ from deeplab import common
 from deeplab import input_preprocess
 import tfAugmentor as tfa
 import cv2
+from tensorflow.python.ops import array_ops
 
 # Named tuple to describe the dataset properties.
 DatasetDescriptor = collections.namedtuple(
@@ -295,12 +296,15 @@ class Dataset(object):
       label.set_shape([None, None, 1])
 
       sample[common.LABELS_CLASS] = label
-    
+    sample[common.IMAGE] = array_ops.expand_dims(sample[common.IMAGE], axis=0)
+    sample[common.LABELS_CLASS] = array_ops.expand_dims(sample[common.LABELS_CLASS], axis=0)
     a = tfa.Augmentor(sample, label=[common.LABELS_CLASS])
     a.elastic_deform(probability=1, strength=2.5, scale=5)
     augmented = a.out
-    cv2.imwrite('/home/antonkhlebka/image.png', tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3]))
-    cv2.imwrite('/home/antonkhlebka/label.png', tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1]))
+    augmented[common.IMAGE] = tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3])
+    augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1])
+    cv2.imwrite('/home/antonkhlebka/image.png', augmented[common.IMAGE])
+    cv2.imwrite('/home/antonkhlebka/label.png', augmented[commod.LABELS_CLASS])
     return augmented
 
   def _preprocess_image(self, sample):
