@@ -266,7 +266,7 @@ class Dataset(object):
 
     parsed_features = tf.parse_single_example(example_proto, features)
 
-    image = _decode_image(parsed_features['image/encoded'], channels=1)
+    image = _decode_image(parsed_features['image/encoded'], channels=3)
 
     label = None
     if self.split_name != common.TEST_SET:
@@ -279,9 +279,7 @@ class Dataset(object):
 
     sample = {
         common.IMAGE: image,
-        common.IMAGE_NAME: image_name,
-        common.HEIGHT: parsed_features['image/height'],
-        common.WIDTH: parsed_features['image/width'],
+        common.IMAGE_NAME: image_name
     }
 
     if label is not None:
@@ -306,6 +304,8 @@ class Dataset(object):
     augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1])
     cv2.imwrite('/home/antonkhlebka/image.png', augmented[common.IMAGE].eval())
     cv2.imwrite('/home/antonkhlebka/label.png', augmented[commod.LABELS_CLASS].eval())
+    augmented[common.HEIGHT]= parsed_features['image/height']
+    augmented[common.WIDTH]= parsed_features['image/width']
     return augmented
 
   def _preprocess_image(self, sample):
