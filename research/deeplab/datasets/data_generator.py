@@ -297,11 +297,11 @@ class Dataset(object):
       sample[common.LABELS_CLASS] = label
     
     a = tfa.Augmentor(sample, label=[common.LABELS_CLASS])
-	  a.elastic_deform(probability=1, strength=2.5, scale=5)
+    a.elastic_deform(probability=1, strength=2.5, scale=5)
     augmented = a.out
     cv2.imwrite('/home/antonkhlebka/image.png', tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3]))
     cv2.imwrite('/home/antonkhlebka/label.png', tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1]))
-	  return augmented
+    return augmented
 
   def _preprocess_image(self, sample):
     """Preprocesses the image and label.
