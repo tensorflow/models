@@ -15,12 +15,14 @@ import tensorflow as tf
 
 from data import dataset
 import sentiment_model
+import os
+
 
 _DROPOUT_RATE = 0.95
 
 
 def run_model(dataset_name, emb_dim, voc_size, sen_len,
-              hid_dim, batch_size, epochs):
+              hid_dim, batch_size, epochs,model_save_dir):
   """Run training loop and an evaluation at the end.
 
   Args:
@@ -48,9 +50,23 @@ def run_model(dataset_name, emb_dim, voc_size, sen_len,
   x_train, y_train, x_test, y_test = dataset.load(
       dataset_name, voc_size, sen_len)
 
+  if not os.path.exists(model_save_dir):
+    os.makedirs(model_save_dir)
+    
+  filepath=model_save_dir+"/model-{epoch:02d}.hdf5"
+  
+  checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath, monitor='val_accuracy',
+                                            verbose=1,save_best_only=True, 
+                                            save_weights_only=True,mode='auto')
+
+
   model.fit(x_train, y_train, batch_size=batch_size,
-            validation_split=0.4, epochs=epochs)
+            validation_split=0.4, epochs=epochs,callbacks=[checkpoint_callback])
+
   score = model.evaluate(x_test, y_test, batch_size=batch_size)
+  
+  model.save(model_save_dir+"/full-model.h5")
+
   tf.logging.info("Score: {}".format(score))
 
 if __name__ == "__main__":
@@ -85,8 +101,11 @@ if __name__ == "__main__":
                       help="The number of epochs for training.",
                       type=int, default=55)
 
+  parser.add_argument("-f", "--folder",
+                      help="folder/dir to save trained model",
+                      type=str, default=os.getcwd())
   args = parser.parse_args()
 
   run_model(args.dataset, args.embedding_dim, args.vocabulary_size,
             args.sentence_length, args.hidden_dim,
-            args.batch_size, args.epochs)
+            args.batch_size, args.epochs,args.folder)
