@@ -459,8 +459,9 @@ def main(unused_argv):
           should_shuffle=True,
           should_repeat=True)
 
+      iterator = dataset.get_one_shot_iterator()
       train_tensor, summary_op = _train_deeplab_model(
-          dataset.get_one_shot_iterator(), dataset.num_of_classes,
+          iterator, dataset.num_of_classes,
           dataset.ignore_label)
 
       # Soft placement allows placing on CPU ops without GPU implementation.
@@ -503,6 +504,10 @@ def main(unused_argv):
             save_summaries_steps=FLAGS.save_summaries_secs,
             save_checkpoint_secs=FLAGS.save_interval_secs,
             hooks=[stop_hook]) as sess:
+          image, label = iterator.get_next()
+          cv2.imwrite('/home/antonkhlebka/image.png', augmented[common.IMAGE].eval(session=sess))
+          cv2.imwrite('/home/antonkhlebka/label.png', augmented[commod.LABELS_CLASS].eval(session=sess))
+          return
           while not sess.should_stop():
             sess.run([train_tensor])
 

@@ -301,8 +301,6 @@ class Dataset(object):
     augmented = a.out
     augmented[common.IMAGE] = tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3])
     augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1])
-    cv2.imwrite('/home/antonkhlebka/image.png', augmented[common.IMAGE].eval())
-    cv2.imwrite('/home/antonkhlebka/label.png', augmented[commod.LABELS_CLASS].eval())
     augmented[common.HEIGHT]= parsed_features['image/height']
     augmented[common.WIDTH]= parsed_features['image/width']
     augmented[common.IMAGE_NAME] = image_name
