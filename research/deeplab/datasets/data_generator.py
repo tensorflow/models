@@ -293,18 +293,20 @@ class Dataset(object):
         raise ValueError('Input label shape must be [height, width], or '
                          '[height, width, 1].')
 
-      label.set_shape([None, None, 1])
+      # label.set_shape([None, None, 1])
 
       sample[common.LABELS_CLASS] = label
+
     sample[common.IMAGE] = array_ops.expand_dims(sample[common.IMAGE], axis=0)
     sample[common.LABELS_CLASS] = array_ops.expand_dims(sample[common.LABELS_CLASS], axis=0)
+
     a = tfa.Augmentor(sample, label=[common.LABELS_CLASS])
     a.elastic_deform(probability=1, strength=2.5, scale=5)
     augmented = a.out
     augmented[common.IMAGE] = tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3])
     augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1])
-    cv2.imwrite('/home/antonkhlebka/image.png', augmented[common.IMAGE])
-    cv2.imwrite('/home/antonkhlebka/label.png', augmented[commod.LABELS_CLASS])
+    cv2.imwrite('/home/antonkhlebka/image.png', augmented[common.IMAGE].eval())
+    cv2.imwrite('/home/antonkhlebka/label.png', augmented[commod.LABELS_CLASS].eval())
     return augmented
 
   def _preprocess_image(self, sample):
