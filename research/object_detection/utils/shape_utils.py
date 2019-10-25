@@ -15,9 +15,17 @@
 
 """Utils used to manipulate tensor shapes."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.utils import static_shape
+
+
+get_dim_as_int = static_shape.get_dim_as_int
 
 
 def _is_tensor(t):
@@ -106,13 +114,49 @@ def pad_or_clip_tensor(t, length):
       length is an integer, the first dimension of the processed tensor is set
       to length statically.
   """
-  processed_t = tf.cond(
-      tf.greater(tf.shape(t)[0], length),
-      lambda: clip_tensor(t, length),
-      lambda: pad_tensor(t, length))
-  if not _is_tensor(length):
-    processed_t = _set_dim_0(processed_t, length)
-  return processed_t
+  return pad_or_clip_nd(t, [length] + t.shape.as_list()[1:])
+
+
+def pad_or_clip_nd(tensor, output_shape):
+  """Pad or Clip given tensor to the output shape.
+
+  Args:
+    tensor: Input tensor to pad or clip.
+    output_shape: A list of integers / scalar tensors (or None for dynamic dim)
+      representing the size to pad or clip each dimension of the input tensor.
+
+  Returns:
+    Input tensor padded and clipped to the output shape.
+  """
+  tensor_shape = tf.shape(tensor)
+  clip_size = [
+      tf.where(tensor_shape[i] - shape > 0, shape, -1)
+      if shape is not None else -1 for i, shape in enumerate(output_shape)
+  ]
+  clipped_tensor = tf.slice(
+      tensor,
+      begin=tf.zeros(len(clip_size), dtype=tf.int32),
+      size=clip_size)
+
+  # Pad tensor if the shape of clipped tensor is smaller than the expected
+  # shape.
+  clipped_tensor_shape = tf.shape(clipped_tensor)
+  trailing_paddings = [
+      shape - clipped_tensor_shape[i] if shape is not None else 0
+      for i, shape in enumerate(output_shape)
+  ]
+  paddings = tf.stack(
+      [
+          tf.zeros(len(trailing_paddings), dtype=tf.int32),
+          trailing_paddings
+      ],
+      axis=1)
+  padded_tensor = tf.pad(clipped_tensor, paddings=paddings)
+  output_static_shape = [
+      dim if not isinstance(dim, tf.Tensor) else None for dim in output_shape
+  ]
+  padded_tensor.set_shape(output_static_shape)
+  return padded_tensor
 
 
 def combined_static_and_dynamic_shape(tensor):
@@ -307,3 +351,117 @@ def assert_shape_equal_along_first_dimension(shape_a, shape_b):
   else:
     return tf.assert_equal(shape_a[0], shape_b[0])
 
+
+def assert_box_normalized(boxes, maximum_normalized_coordinate=1.1):
+  """Asserts the input box tensor is normalized.
+
+  Args:
+    boxes: a tensor of shape [N, 4] where N is the number of boxes.
+    maximum_normalized_coordinate: Maximum coordinate value to be considered
+      as normalized, default to 1.1.
+
+  Returns:
+    a tf.Assert op which fails when the input box tensor is not normalized.
+
+  Raises:
+    ValueError: When the input box tensor is not normalized.
+  """
+  box_minimum = tf.reduce_min(boxes)
+  box_maximum = tf.reduce_max(boxes)
+  return tf.Assert(
+      tf.logical_and(
+          tf.less_equal(box_maximum, maximum_normalized_coordinate),
+          tf.greater_equal(box_minimum, 0)),
+      [boxes])
+
+
+def flatten_dimensions(inputs, first, last):
+  """Flattens `K-d` tensor along [first, last) dimensions.
+
+  Converts `inputs` with shape [D0, D1, ..., D(K-1)] into a tensor of shape
+  [D0, D1, ..., D(first) * D(first+1) * ... * D(last-1), D(last), ..., D(K-1)].
+
+  Example:
+  `inputs` is a tensor with initial shape [10, 5, 20, 20, 3].
+  new_tensor = flatten_dimensions(inputs, last=4, first=2)
+  new_tensor.shape -> [10, 100, 20, 3].
+
+  Args:
+    inputs: a tensor with shape [D0, D1, ..., D(K-1)].
+    first: first value for the range of dimensions to flatten.
+    last: last value for the range of dimensions to flatten. Note that the last
+      dimension itself is excluded.
+
+  Returns:
+    a tensor with shape
+    [D0, D1, ..., D(first) * D(first + 1) * ... * D(last - 1), D(last), ...,
+     D(K-1)].
+
+  Raises:
+    ValueError: if first and last arguments are incorrect.
+  """
+  if first >= inputs.shape.ndims or last > inputs.shape.ndims:
+    raise ValueError('`first` and `last` must be less than inputs.shape.ndims. '
+                     'found {} and {} respectively while ndims is {}'.format(
+                         first, last, inputs.shape.ndims))
+  shape = combined_static_and_dynamic_shape(inputs)
+  flattened_dim_prod = tf.reduce_prod(shape[first:last],
+                                      keepdims=True)
+  new_shape = tf.concat([shape[:first], flattened_dim_prod,
+                         shape[last:]], axis=0)
+  return tf.reshape(inputs, new_shape)
+
+
+def flatten_first_n_dimensions(inputs, n):
+  """Flattens `K-d` tensor along first n dimension to be a `(K-n+1)-d` tensor.
+
+  Converts `inputs` with shape [D0, D1, ..., D(K-1)] into a tensor of shape
+  [D0 * D1 * ... * D(n-1), D(n), ... D(K-1)].
+
+  Example:
+  `inputs` is a tensor with initial shape [10, 5, 20, 20, 3].
+  new_tensor = flatten_first_n_dimensions(inputs, 2)
+  new_tensor.shape -> [50, 20, 20, 3].
+
+  Args:
+    inputs: a tensor with shape [D0, D1, ..., D(K-1)].
+    n: The number of dimensions to flatten.
+
+  Returns:
+    a tensor with shape [D0 * D1 * ... * D(n-1), D(n), ... D(K-1)].
+  """
+  return flatten_dimensions(inputs, first=0, last=n)
+
+
+def expand_first_dimension(inputs, dims):
+  """Expands `K-d` tensor along first dimension to be a `(K+n-1)-d` tensor.
+
+  Converts `inputs` with shape [D0, D1, ..., D(K-1)] into a tensor of shape
+  [dims[0], dims[1], ..., dims[-1], D1, ..., D(k-1)].
+
+  Example:
+  `inputs` is a tensor with shape [50, 20, 20, 3].
+  new_tensor = expand_first_dimension(inputs, [10, 5]).
+  new_tensor.shape -> [10, 5, 20, 20, 3].
+
+  Args:
+    inputs: a tensor with shape [D0, D1, ..., D(K-1)].
+    dims: List with new dimensions to expand first axis into. The length of
+      `dims` is typically 2 or larger.
+
+  Returns:
+    a tensor with shape [dims[0], dims[1], ..., dims[-1], D1, ..., D(k-1)].
+  """
+  inputs_shape = combined_static_and_dynamic_shape(inputs)
+  expanded_shape = tf.stack(dims + inputs_shape[1:])
+
+  # Verify that it is possible to expand the first axis of inputs.
+  assert_op = tf.assert_equal(
+      inputs_shape[0], tf.reduce_prod(tf.stack(dims)),
+      message=('First dimension of `inputs` cannot be expanded into provided '
+               '`dims`'))
+
+  with tf.control_dependencies([assert_op]):
+    inputs_reshaped = tf.reshape(inputs, expanded_shape)
+
+  return inputs_reshaped

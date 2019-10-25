@@ -21,6 +21,7 @@ Based on PNASNet model: https://arxiv.org/abs/1712.00559
 import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
+from object_detection.utils import variables_helper
 from nets.nasnet import nasnet_utils
 from nets.nasnet import pnasnet
 
@@ -302,7 +303,7 @@ class FasterRCNNPNASFeatureExtractor(
       the model graph.
     """
     variables_to_restore = {}
-    for variable in tf.global_variables():
+    for variable in variables_helper.get_global_variables_safely():
       if variable.op.name.startswith(
           first_stage_feature_extractor_scope):
         var_name = variable.op.name.replace(

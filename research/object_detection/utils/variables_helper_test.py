@@ -14,6 +14,11 @@
 # ==============================================================================
 
 """Tests for object_detection.utils.variables_helper."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 
 import tensorflow as tf
@@ -144,6 +149,24 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
           variables, checkpoint_path)
     self.assertItemsEqual(out_variables, variables)
 
+  def test_return_all_variables_from_checkpoint_with_partition(self):
+    with tf.Graph().as_default():
+      partitioner = tf.fixed_size_partitioner(2)
+      variables = [
+          tf.get_variable(
+              name='weights', shape=(2, 2), partitioner=partitioner),
+          tf.Variable([1.0, 2.0], name='biases')
+      ]
+      checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
+      init_op = tf.global_variables_initializer()
+      saver = tf.train.Saver(variables)
+      with self.test_session() as sess:
+        sess.run(init_op)
+        saver.save(sess, checkpoint_path)
+      out_variables = variables_helper.get_variables_available_in_checkpoint(
+          variables, checkpoint_path)
+    self.assertItemsEqual(out_variables, variables)
+
   def test_return_variables_available_in_checkpoint(self):
     checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
     with tf.Graph().as_default():
@@ -186,7 +209,7 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
           graph2_variables_dict, checkpoint_path)
 
     self.assertTrue(isinstance(out_variables, dict))
-    self.assertItemsEqual(out_variables.keys(), ['ckpt_weights'])
+    self.assertItemsEqual(list(out_variables.keys()), ['ckpt_weights'])
     self.assertTrue(out_variables['ckpt_weights'].op.name == 'weights')
 
   def test_return_variables_with_correct_sizes(self):

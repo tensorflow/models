@@ -39,10 +39,22 @@ and the following output nodes returned by the model.postprocess(..):
       [batch, num_boxes] containing class scores for the detections.
   * `detection_classes`: Outputs float32 tensors of the form
       [batch, num_boxes] containing classes for the detections.
-  * `detection_masks`: Outputs float32 tensors of the form
+  * `raw_detection_boxes`: Outputs float32 tensors of the form
+      [batch, raw_num_boxes, 4] containing detection boxes without
+      post-processing.
+  * `raw_detection_scores`: Outputs float32 tensors of the form
+      [batch, raw_num_boxes, num_classes_with_background] containing class score
+      logits for raw detection boxes.
+  * `detection_masks`: (Optional) Outputs float32 tensors of the form
       [batch, num_boxes, mask_height, mask_width] containing predicted instance
       masks for each box if its present in the dictionary of postprocessed
       tensors returned by the model.
+  * detection_multiclass_scores: (Optional) Outputs float32 tensor of shape
+      [batch, num_boxes, num_classes_with_background] for containing class
+      score distribution for detected boxes including background if any.
+  * detection_features: (Optional) float32 tensor of shape
+      [batch, num_boxes, roi_height, roi_width, depth]
+  containing classifier features
 
 Notes:
  * This tool uses `use_moving_averages` from eval_config to decide which
@@ -140,10 +152,10 @@ def main(_):
     ]
   else:
     input_shape = None
-  exporter.export_inference_graph(FLAGS.input_type, pipeline_config,
-                                  FLAGS.trained_checkpoint_prefix,
-                                  FLAGS.output_directory, input_shape,
-                                  FLAGS.write_inference_graph)
+  exporter.export_inference_graph(
+      FLAGS.input_type, pipeline_config, FLAGS.trained_checkpoint_prefix,
+      FLAGS.output_directory, input_shape=input_shape,
+      write_inference_graph=FLAGS.write_inference_graph)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # A Simple Method for Commonsense Reasoning
 
-This repository contains code to reproduce results from [*A Simple Method for Commonsense Reasoning*](TBD).
+This repository contains code to reproduce results from [*A Simple Method for Commonsense Reasoning*](https://arxiv.org/abs/1806.02847).
 
 Authors and contact:
 

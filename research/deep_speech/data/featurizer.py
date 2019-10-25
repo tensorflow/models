@@ -19,20 +19,51 @@ from __future__ import print_function
 
 import codecs
 import numpy as np
-from scipy import signal
 
 
-def compute_spectrogram_feature(waveform, frame_length, frame_step, fft_length):
-  """Compute the spectrograms for the input waveform."""
-  _, _, stft = signal.stft(
-      waveform,
-      nperseg=frame_length,
-      noverlap=frame_step,
-      nfft=fft_length)
+def compute_spectrogram_feature(samples, sample_rate, stride_ms=10.0,
+                                window_ms=20.0, max_freq=None, eps=1e-14):
+  """Compute the spectrograms for the input samples(waveforms).
 
-  # Perform transpose to set its shape as [time_steps, feature_num_bins]
-  spectrogram = np.transpose(np.absolute(stft), (1, 0))
-  return spectrogram
+  More about spectrogram computation, please refer to:
+  https://en.wikipedia.org/wiki/Short-time_Fourier_transform.
+  """
+  if max_freq is None:
+    max_freq = sample_rate / 2
+  if max_freq > sample_rate / 2:
+    raise ValueError("max_freq must not be greater than half of sample rate.")
+
+  if stride_ms > window_ms:
+    raise ValueError("Stride size must not be greater than window size.")
+
+  stride_size = int(0.001 * sample_rate * stride_ms)
+  window_size = int(0.001 * sample_rate * window_ms)
+
+  # Extract strided windows
+  truncate_size = (len(samples) - window_size) % stride_size
+  samples = samples[:len(samples) - truncate_size]
+  nshape = (window_size, (len(samples) - window_size) // stride_size + 1)
+  nstrides = (samples.strides[0], samples.strides[0] * stride_size)
+  windows = np.lib.stride_tricks.as_strided(
+      samples, shape=nshape, strides=nstrides)
+  assert np.all(
+      windows[:, 1] == samples[stride_size:(stride_size + window_size)])
+
+  # Window weighting, squared Fast Fourier Transform (fft), scaling
+  weighting = np.hanning(window_size)[:, None]
+  fft = np.fft.rfft(windows * weighting, axis=0)
+  fft = np.absolute(fft)
+  fft = fft**2
+  scale = np.sum(weighting**2) * sample_rate
+  fft[1:-1, :] *= (2.0 / scale)
+  fft[(0, -1), :] /= scale
+  # Prepare fft frequency list
+  freqs = float(sample_rate) / window_size * np.arange(fft.shape[0])
+
+  # Compute spectrogram feature
+  ind = np.where(freqs <= max_freq)[0][-1] + 1
+  specgram = np.log(fft[:ind, :] + eps)
+  return np.transpose(specgram, (1, 0))
 
 
 class AudioFeaturizer(object):
@@ -40,21 +71,18 @@ class AudioFeaturizer(object):
 
   def __init__(self,
                sample_rate=16000,
-               frame_length=25,
-               frame_step=10,
-               fft_length=None):
+               window_ms=20.0,
+               stride_ms=10.0):
     """Initialize the audio featurizer class according to the configs.
 
     Args:
       sample_rate: an integer specifying the sample rate of the input waveform.
-      frame_length: an integer for the length of a spectrogram frame, in ms.
-      frame_step: an integer for the frame stride, in ms.
-      fft_length: an integer for the number of fft bins.
+      window_ms: an integer for the length of a spectrogram frame, in ms.
+      stride_ms: an integer for the frame stride, in ms.
     """
-    self.frame_length = int(sample_rate * frame_length / 1e3)
-    self.frame_step = int(sample_rate * frame_step / 1e3)
-    self.fft_length = fft_length if fft_length else int(2**(np.ceil(
-        np.log2(self.frame_length))))
+    self.sample_rate = sample_rate
+    self.window_ms = window_ms
+    self.stride_ms = stride_ms
 
 
 def compute_label_feature(text, token_to_idx):
@@ -75,16 +103,16 @@ class TextFeaturizer(object):
     lines = []
     with codecs.open(vocab_file, "r", "utf-8") as fin:
       lines.extend(fin.readlines())
-    self.token_to_idx = {}
-    self.idx_to_token = {}
+    self.token_to_index = {}
+    self.index_to_token = {}
     self.speech_labels = ""
-    idx = 0
+    index = 0
     for line in lines:
       line = line[:-1]  # Strip the '\n' char.
       if line.startswith("#"):
         # Skip from reading comment line.
         continue
-      self.token_to_idx[line] = idx
-      self.idx_to_token[idx] = line
+      self.token_to_index[line] = index
+      self.index_to_token[index] = line
       self.speech_labels += line
-      idx += 1
+      index += 1

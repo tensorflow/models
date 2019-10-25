@@ -309,8 +309,7 @@ class InputDataset(object):
     if self._ensure_constant_batch_size:
       # Only take batches of *exactly* size batch_size; then we get a
       # statically knowable batch shape.
-      dataset = dataset.apply(
-          tf.contrib.data.batch_and_drop_remainder(batch_size))
+      dataset = dataset.batch(batch_size, drop_remainder=True)
     else:
       dataset = dataset.batch(batch_size)
 

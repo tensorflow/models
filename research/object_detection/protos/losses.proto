@@ -23,6 +23,44 @@ message Loss {
 
   // If not left to default, applies random example sampling.
   optional RandomExampleSampler random_example_sampler = 6;
+
+  // Equalization loss.
+  message EqualizationLoss {
+    // Weight equalization loss strength.
+    optional float weight = 1 [default=0.0];
+
+    // When computing equalization loss, ops that start with
+    // equalization_exclude_prefixes will be ignored. Only used when
+    // equalization_weight > 0.
+    repeated string exclude_prefixes = 2;
+  }
+
+  optional EqualizationLoss equalization_loss = 7;
+
+  enum ExpectedLossWeights {
+    NONE = 0;
+    // Use expected_classification_loss_by_expected_sampling
+    // from third_party/tensorflow_models/object_detection/utils/ops.py
+    EXPECTED_SAMPLING = 1;
+    // Use expected_classification_loss_by_reweighting_unmatched_anchors
+    // from third_party/tensorflow_models/object_detection/utils/ops.py
+    REWEIGHTING_UNMATCHED_ANCHORS = 2;
+  }
+
+  // Method to compute expected loss weights with respect to balanced
+  // positive/negative sampling scheme. If NONE, use explicit sampling.
+  // TODO(birdbrain): Move under ExpectedLossWeights.
+  optional ExpectedLossWeights expected_loss_weights = 18 [default = NONE];
+
+  // Minimum number of effective negative samples.
+  // Only applies if expected_loss_weights is not NONE.
+  // TODO(birdbrain): Move under ExpectedLossWeights.
+  optional float min_num_negative_samples = 19 [default=0];
+
+  // Desired number of effective negative samples per positive sample.
+  // Only applies if expected_loss_weights is not NONE.
+  // TODO(birdbrain): Move under ExpectedLossWeights.
+  optional float desired_negative_sampling_ratio = 20 [default=3];
 }
 
 // Configuration for bounding box localization loss function.

@@ -38,6 +38,7 @@ message AdamOptimizer {
   optional LearningRate learning_rate = 1;
 }
 
+
 // Configuration message for optimizer learning rate.
 message LearningRate {
   oneof learning_rate {
@@ -61,6 +62,9 @@ message ExponentialDecayLearningRate {
   optional uint32 decay_steps = 2 [default = 4000000];
   optional float decay_factor = 3 [default = 0.95];
   optional bool staircase = 4 [default = true];
+  optional float burnin_learning_rate = 5 [default = 0.0];
+  optional uint32 burnin_steps =  6 [default = 0];
+  optional float min_learning_rate =  7 [default = 0.0];
 }
 
 // Configuration message for a manually defined learning rate schedule.

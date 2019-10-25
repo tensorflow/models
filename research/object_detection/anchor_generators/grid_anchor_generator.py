@@ -56,13 +56,10 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
     # Handle argument defaults
     if base_anchor_size is None:
       base_anchor_size = [256, 256]
-    base_anchor_size = tf.to_float(tf.convert_to_tensor(base_anchor_size))
     if anchor_stride is None:
       anchor_stride = [16, 16]
-    anchor_stride = tf.to_float(tf.convert_to_tensor(anchor_stride))
     if anchor_offset is None:
       anchor_offset = [0, 0]
-    anchor_offset = tf.to_float(tf.convert_to_tensor(anchor_offset))
 
     self._scales = scales
     self._aspect_ratios = aspect_ratios
@@ -108,6 +105,17 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
     if not all([isinstance(list_item, tuple) and len(list_item) == 2
                 for list_item in feature_map_shape_list]):
       raise ValueError('feature_map_shape_list must be a list of pairs.')
+
+    # Create constants in init_scope so they can be created in tf.functions
+    # and accessed from outside of the function.
+    with tf.init_scope():
+      self._base_anchor_size = tf.cast(tf.convert_to_tensor(
+          self._base_anchor_size), dtype=tf.float32)
+      self._anchor_stride = tf.cast(tf.convert_to_tensor(
+          self._anchor_stride), dtype=tf.float32)
+      self._anchor_offset = tf.cast(tf.convert_to_tensor(
+          self._anchor_offset), dtype=tf.float32)
+
     grid_height, grid_width = feature_map_shape_list[0]
     scales_grid, aspect_ratios_grid = ops.meshgrid(self._scales,
                                                    self._aspect_ratios)
@@ -175,9 +183,9 @@ def tile_anchors(grid_height,
   widths = scales * ratio_sqrts * base_anchor_size[1]
 
   # Get a grid of box centers
-  y_centers = tf.to_float(tf.range(grid_height))
+  y_centers = tf.cast(tf.range(grid_height), dtype=tf.float32)
   y_centers = y_centers * anchor_stride[0] + anchor_offset[0]
-  x_centers = tf.to_float(tf.range(grid_width))
+  x_centers = tf.cast(tf.range(grid_width), dtype=tf.float32)
   x_centers = x_centers * anchor_stride[1] + anchor_offset[1]
   x_centers, y_centers = ops.meshgrid(x_centers, y_centers)
 

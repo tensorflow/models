@@ -75,6 +75,34 @@ def get_total_num_stages(**kwargs):
   return 2 * kwargs['num_resolutions'] - 1
 
 
+def get_batch_size(stage_id, **kwargs):
+  """Returns batch size for each stage.
+
+  It is expected that `len(batch_size_schedule) == num_resolutions`. Each stage
+  corresponds to a resolution and hence a batch size. However if
+  `len(batch_size_schedule) < num_resolutions`, pad `batch_size_schedule` in the
+  beginning with the first batch size.
+
+  Args:
+    stage_id: An integer of training stage index.
+    **kwargs: A dictionary of
+        'batch_size_schedule': A list of integer, each element is the batch size
+            for the current training image resolution.
+        'num_resolutions': An integer of number of progressive resolutions.
+
+  Returns:
+    An integer batch size for the `stage_id`.
+  """
+  batch_size_schedule = kwargs['batch_size_schedule']
+  num_resolutions = kwargs['num_resolutions']
+  if len(batch_size_schedule) < num_resolutions:
+    batch_size_schedule = (
+        [batch_size_schedule[0]] * (num_resolutions - len(batch_size_schedule))
+        + batch_size_schedule)
+
+  return int(batch_size_schedule[(stage_id + 1) // 2])
+
+
 def get_stage_info(stage_id, **kwargs):
   """Returns information for a training stage.
 
@@ -228,14 +256,14 @@ def add_generator_smoothing_ops(generator_ema, gan_model, gan_train_ops):
   return gan_train_ops, generator_vars_to_restore
 
 
-def build_model(stage_id, real_images, **kwargs):
+def build_model(stage_id, batch_size, real_images, **kwargs):
   """Builds progressive GAN model.
 
   Args:
     stage_id: An integer of training stage index.
+    batch_size: Number of training images in each minibatch.
     real_images: A 4D `Tensor` of NHWC format.
     **kwargs: A dictionary of
-        'batch_size': Number of training images in each minibatch.
         'start_height': An integer of start image height.
         'start_width': An integer of start image width.
         'scale_base': An integer of resolution multiplier.
@@ -267,15 +295,14 @@ def build_model(stage_id, real_images, **kwargs):
   Returns:
     An inernal object that wraps all information about the model.
   """
-  batch_size = kwargs['batch_size']
   kernel_size = kwargs['kernel_size']
   colors = kwargs['colors']
   resolution_schedule = make_resolution_schedule(**kwargs)
 
   num_blocks, num_images = get_stage_info(stage_id, **kwargs)
 
-  global_step = tf.train.get_or_create_global_step()
-  current_image_id = global_step * batch_size
+  current_image_id = tf.train.get_or_create_global_step()
+  current_image_id_inc_op = current_image_id.assign_add(batch_size)
   tf.summary.scalar('current_image_id', current_image_id)
 
   progress = networks.compute_progress(
@@ -329,6 +356,8 @@ def build_model(stage_id, real_images, **kwargs):
   ########## Define train ops.
   gan_train_ops, optimizer_var_list = define_train_ops(gan_model, gan_loss,
                                                        **kwargs)
+  gan_train_ops = gan_train_ops._replace(
+      global_step_inc_op=current_image_id_inc_op)
 
   ########## Generator smoothing.
   generator_ema = tf.train.ExponentialMovingAverage(decay=0.999)
@@ -339,11 +368,11 @@ def build_model(stage_id, real_images, **kwargs):
     pass
 
   model = Model()
-  model.resolution_schedule = resolution_schedule
   model.stage_id = stage_id
+  model.batch_size = batch_size
+  model.resolution_schedule = resolution_schedule
   model.num_images = num_images
   model.num_blocks = num_blocks
-  model.global_step = global_step
   model.current_image_id = current_image_id
   model.progress = progress
   model.num_filters_fn = _num_filters_fn
@@ -380,7 +409,6 @@ def add_model_summaries(model, **kwargs):
     model: An model object having all information of progressive GAN model,
         e.g. the return of build_model().
     **kwargs: A dictionary of
-      'batch_size': Number of training images in each minibatch.
       'fake_grid_size': The fake image grid size for summaries.
       'interp_grid_size': The latent space interpolated image grid size for
           summaries.
@@ -431,7 +459,7 @@ def add_model_summaries(model, **kwargs):
           num_channels=colors),
       max_outputs=1)
 
-  real_grid_size = int(np.sqrt(kwargs['batch_size']))
+  real_grid_size = int(np.sqrt(model.batch_size))
   tf.summary.image(
       'real_images_blend',
       tfgan.eval.eval_utils.image_grid(
@@ -517,11 +545,10 @@ def make_status_message(model):
   """Makes a string `Tensor` of training status."""
   return tf.string_join(
       [
-          'Starting train step: ',
-          tf.as_string(model.global_step), ', current_image_id: ',
+          'Starting train step: current_image_id: ',
           tf.as_string(model.current_image_id), ', progress: ',
           tf.as_string(model.progress), ', num_blocks: {}'.format(
-              model.num_blocks)
+              model.num_blocks), ', batch_size: {}'.format(model.batch_size)
       ],
       name='status_message')
 
@@ -541,8 +568,6 @@ def train(model, **kwargs):
   Returns:
     None.
   """
-  batch_size = kwargs['batch_size']
-
   logging.info('stage_id=%d, num_blocks=%d, num_images=%d', model.stage_id,
                model.num_blocks, model.num_images)
 
@@ -553,7 +578,7 @@ def train(model, **kwargs):
       logdir=make_train_sub_dir(model.stage_id, **kwargs),
       get_hooks_fn=tfgan.get_sequential_train_hooks(tfgan.GANTrainSteps(1, 1)),
       hooks=[
-          tf.train.StopAtStepHook(last_step=model.num_images // batch_size),
+          tf.train.StopAtStepHook(last_step=model.num_images),
           tf.train.LoggingTensorHook(
               [make_status_message(model)], every_n_iter=10)
       ],
@@ -561,4 +586,4 @@ def train(model, **kwargs):
       is_chief=(kwargs['task'] == 0),
       scaffold=scaffold,
       save_checkpoint_secs=600,
-      save_summaries_steps=(kwargs['save_summaries_num_images'] // batch_size))
+      save_summaries_steps=(kwargs['save_summaries_num_images']))

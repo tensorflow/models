@@ -252,25 +252,27 @@ class PreprocessUtilsTest(tf.test.TestCase):
                                    [255, 3, 5, 255, 255],
                                    [255, 255, 255, 255, 255]]]).astype(dtype)
 
-      with self.test_session():
-        image_placeholder = tf.placeholder(tf.float32)
+      with self.session() as sess:
         padded_image = preprocess_utils.pad_to_bounding_box(
-            image_placeholder, 2, 1, 5, 5, 255)
-        self.assertAllClose(padded_image.eval(
-            feed_dict={image_placeholder: image}), expected_image)
+            image, 2, 1, 5, 5, 255)
+        padded_image = sess.run(padded_image)
+        self.assertAllClose(padded_image, expected_image)
+        # Add batch size = 1 to image.
+        padded_image = preprocess_utils.pad_to_bounding_box(
+            np.expand_dims(image, 0), 2, 1, 5, 5, 255)
+        padded_image = sess.run(padded_image)
+        self.assertAllClose(padded_image, np.expand_dims(expected_image, 0))
 
   def testReturnOriginalImageWhenTargetSizeIsEqualToImageSize(self):
     image = np.dstack([[[5, 6],
                         [9, 0]],
                        [[4, 3],
                         [3, 5]]])
-
-    with self.test_session():
-      image_placeholder = tf.placeholder(tf.float32)
+    with self.session() as sess:
       padded_image = preprocess_utils.pad_to_bounding_box(
-          image_placeholder, 0, 0, 2, 2, 255)
-      self.assertAllClose(padded_image.eval(
-          feed_dict={image_placeholder: image}), image)
+          image, 0, 0, 2, 2, 255)
+      padded_image = sess.run(padded_image)
+      self.assertAllClose(padded_image, image)
 
   def testDieOnTargetSizeGreaterThanImageSize(self):
     image = np.dstack([[[5, 6],
@@ -306,7 +308,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
           'target size not possible with the given target offsets'):
         padded_image.eval(feed_dict={image_placeholder: image})
 
-  def testDieIfImageTensorRankIsNotThree(self):
+  def testDieIfImageTensorRankIsTwo(self):
     image = np.vstack([[5, 6],
                        [9, 0]])
     with self.test_session():

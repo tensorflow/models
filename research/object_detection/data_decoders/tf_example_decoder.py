@@ -17,11 +17,13 @@
 A decoder to decode string tensors containing serialized tensorflow.Example
 protos for object detection.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import zip
 import tensorflow as tf
 
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import control_flow_ops
-from tensorflow.python.ops import math_ops
 from object_detection.core import data_decoder
 from object_detection.core import standard_fields as fields
 from object_detection.protos import input_reader_pb2
@@ -30,14 +32,12 @@ from object_detection.utils import label_map_util
 slim_example_decoder = tf.contrib.slim.tfexample_decoder
 
 
-# TODO(lzc): keep LookupTensor and BackupHandler in sync with
-# tf.contrib.slim.tfexample_decoder version.
-class LookupTensor(slim_example_decoder.Tensor):
-  """An ItemHandler that returns a parsed Tensor, the result of a lookup."""
+class _ClassTensorHandler(slim_example_decoder.Tensor):
+  """An ItemHandler to fetch class ids from class text."""
 
   def __init__(self,
                tensor_key,
-               table,
+               label_map_proto_file,
                shape_keys=None,
                shape=None,
                default_value=''):
@@ -47,7 +47,8 @@ class LookupTensor(slim_example_decoder.Tensor):
 
     Args:
       tensor_key: the name of the `TFExample` feature to read the tensor from.
-      table: A tf.lookup table.
+      label_map_proto_file: File path to a text format LabelMapProto message
+        mapping class text to id.
       shape_keys: Optional name or list of names of the TF-Example feature in
         which the tensor shape is stored. If a list, then each corresponds to
         one dimension of the shape.
@@ -59,16 +60,46 @@ class LookupTensor(slim_example_decoder.Tensor):
     Raises:
       ValueError: if both `shape_keys` and `shape` are specified.
     """
-    self._table = table
-    super(LookupTensor, self).__init__(tensor_key, shape_keys, shape,
-                                       default_value)
+    name_to_id = label_map_util.get_label_map_dict(
+        label_map_proto_file, use_display_name=False)
+    # We use a default_value of -1, but we expect all labels to be contained
+    # in the label map.
+    try:
+      # Dynamically try to load the tf v2 lookup, falling back to contrib
+      lookup = tf.compat.v2.lookup
+      hash_table_class = tf.compat.v2.lookup.StaticHashTable
+    except AttributeError:
+      lookup = tf.contrib.lookup
+      hash_table_class = tf.contrib.lookup.HashTable
+    name_to_id_table = hash_table_class(
+        initializer=lookup.KeyValueTensorInitializer(
+            keys=tf.constant(list(name_to_id.keys())),
+            values=tf.constant(list(name_to_id.values()), dtype=tf.int64)),
+        default_value=-1)
+    display_name_to_id = label_map_util.get_label_map_dict(
+        label_map_proto_file, use_display_name=True)
+    # We use a default_value of -1, but we expect all labels to be contained
+    # in the label map.
+    display_name_to_id_table = hash_table_class(
+        initializer=lookup.KeyValueTensorInitializer(
+            keys=tf.constant(list(display_name_to_id.keys())),
+            values=tf.constant(
+                list(display_name_to_id.values()), dtype=tf.int64)),
+        default_value=-1)
+
+    self._name_to_id_table = name_to_id_table
+    self._display_name_to_id_table = display_name_to_id_table
+    super(_ClassTensorHandler, self).__init__(tensor_key, shape_keys, shape,
+                                              default_value)
 
   def tensors_to_item(self, keys_to_tensors):
-    unmapped_tensor = super(LookupTensor, self).tensors_to_item(keys_to_tensors)
-    return self._table.lookup(unmapped_tensor)
+    unmapped_tensor = super(_ClassTensorHandler,
+                            self).tensors_to_item(keys_to_tensors)
+    return tf.maximum(self._name_to_id_table.lookup(unmapped_tensor),
+                      self._display_name_to_id_table.lookup(unmapped_tensor))
 
 
-class BackupHandler(slim_example_decoder.ItemHandler):
+class _BackupHandler(slim_example_decoder.ItemHandler):
   """An ItemHandler that tries two ItemHandlers in order."""
 
   def __init__(self, handler, backup):
@@ -92,12 +123,12 @@ class BackupHandler(slim_example_decoder.ItemHandler):
           'Backup handler is of type %s instead of ItemHandler' % type(backup))
     self._handler = handler
     self._backup = backup
-    super(BackupHandler, self).__init__(handler.keys + backup.keys)
+    super(_BackupHandler, self).__init__(handler.keys + backup.keys)
 
   def tensors_to_item(self, keys_to_tensors):
     item = self._handler.tensors_to_item(keys_to_tensors)
-    return control_flow_ops.cond(
-        pred=math_ops.equal(math_ops.reduce_prod(array_ops.shape(item)), 0),
+    return tf.cond(
+        pred=tf.equal(tf.reduce_prod(tf.shape(item)), 0),
         true_fn=lambda: self._backup.tensors_to_item(keys_to_tensors),
         false_fn=lambda: item)
 
@@ -112,7 +143,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                use_display_name=False,
                dct_method='',
                num_keypoints=0,
-               num_additional_channels=0):
+               num_additional_channels=0,
+               load_multiclass_scores=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -134,12 +166,17 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         example, the jpeg library does not have that specific option.
       num_keypoints: the number of keypoints per object.
       num_additional_channels: how many additional channels to use.
+      load_multiclass_scores: Whether to load multiclass scores associated with
+        boxes.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
         input_reader_pb2.DEFAULT, input_reader_pb2.NUMERICAL, or
         input_reader_pb2.PNG_MASKS.
     """
+    # TODO(rathodv): delete unused `use_display_name` argument once we change
+    # other decoders to handle label maps similarly.
+    del use_display_name
     self.keys_to_features = {
         'image/encoded':
             tf.FixedLenFeature((), tf.string, default_value=''),
@@ -183,6 +220,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.VarLenFeature(tf.int64),
         'image/object/weight':
             tf.VarLenFeature(tf.float32),
+
     }
     # We are checking `dct_method` instead of passing it directly in order to
     # ensure TF version 1.6 compatibility.
@@ -229,7 +267,13 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Tensor('image/object/group_of')),
         fields.InputDataFields.groundtruth_weights: (
             slim_example_decoder.Tensor('image/object/weight')),
+
     }
+    if load_multiclass_scores:
+      self.keys_to_features[
+          'image/object/class/multiclass_scores'] = tf.VarLenFeature(tf.float32)
+      self.items_to_handlers[fields.InputDataFields.multiclass_scores] = (
+          slim_example_decoder.Tensor('image/object/class/multiclass_scores'))
     if num_additional_channels > 0:
       self.keys_to_features[
           'image/additional_channels/encoded'] = tf.FixedLenFeature(
@@ -267,27 +311,18 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       else:
         raise ValueError('Did not recognize the `instance_mask_type` option.')
     if label_map_proto_file:
-      label_map = label_map_util.get_label_map_dict(label_map_proto_file,
-                                                    use_display_name)
-      # We use a default_value of -1, but we expect all labels to be contained
-      # in the label map.
-      table = tf.contrib.lookup.HashTable(
-          initializer=tf.contrib.lookup.KeyValueTensorInitializer(
-              keys=tf.constant(list(label_map.keys())),
-              values=tf.constant(list(label_map.values()), dtype=tf.int64)),
-          default_value=-1)
       # If the label_map_proto is provided, try to use it in conjunction with
       # the class text, and fall back to a materialized ID.
-      # TODO(lzc): note that here we are using BackupHandler defined in this
-      # file(which is branching slim_example_decoder.BackupHandler). Need to
-      # switch back to slim_example_decoder.BackupHandler once tf 1.5 becomes
-      # more popular.
-      label_handler = BackupHandler(
-          LookupTensor('image/object/class/text', table, default_value=''),
+      label_handler = _BackupHandler(
+          _ClassTensorHandler(
+              'image/object/class/text', label_map_proto_file,
+              default_value=''),
           slim_example_decoder.Tensor('image/object/class/label'))
-      image_label_handler = BackupHandler(
-          LookupTensor(
-              fields.TfExampleFields.image_class_text, table, default_value=''),
+      image_label_handler = _BackupHandler(
+          _ClassTensorHandler(
+              fields.TfExampleFields.image_class_text,
+              label_map_proto_file,
+              default_value=''),
           slim_example_decoder.Tensor(fields.TfExampleFields.image_class_label))
     else:
       label_handler = slim_example_decoder.Tensor('image/object/class/label')
@@ -309,6 +344,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       A dictionary of the following tensors.
       fields.InputDataFields.image - 3D uint8 tensor of shape [None, None, 3]
         containing image.
+      fields.InputDataFields.original_image_spatial_shape - 1D int32 tensor of
+        shape [2] containing shape of the image.
       fields.InputDataFields.source_id - string tensor containing original
         image id.
       fields.InputDataFields.key - string tensor with unique sha256 hash key.
@@ -320,8 +357,6 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         [None] containing classes for the boxes.
       fields.InputDataFields.groundtruth_weights - 1D float32 tensor of
         shape [None] indicating the weights of groundtruth boxes.
-      fields.InputDataFields.num_groundtruth_boxes - int32 scalar indicating
-        the number of groundtruth_boxes.
       fields.InputDataFields.groundtruth_area - 1D float32 tensor of shape
         [None] containing containing object mask area in pixel squared.
       fields.InputDataFields.groundtruth_is_crowd - 1D bool tensor of shape
@@ -342,6 +377,9 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         shape [None, None, None] containing instance masks.
       fields.InputDataFields.groundtruth_image_classes - 1D uint64 of shape
         [None] containing classes for the boxes.
+      fields.InputDataFields.multiclass_scores - 1D float32 tensor of shape
+        [None * num_classes] containing flattened multiclass scores for
+        groundtruth boxes.
     """
     serialized_example = tf.reshape(tf_example_string_tensor, shape=[])
     decoder = slim_example_decoder.TFExampleDecoder(self.keys_to_features,
@@ -352,8 +390,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     is_crowd = fields.InputDataFields.groundtruth_is_crowd
     tensor_dict[is_crowd] = tf.cast(tensor_dict[is_crowd], dtype=tf.bool)
     tensor_dict[fields.InputDataFields.image].set_shape([None, None, 3])
-    tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
-        tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
+    tensor_dict[fields.InputDataFields.original_image_spatial_shape] = tf.shape(
+        tensor_dict[fields.InputDataFields.image])[:2]
 
     if fields.InputDataFields.image_additional_channels in tensor_dict:
       channels = tensor_dict[fields.InputDataFields.image_additional_channels]
@@ -418,7 +456,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     masks = keys_to_tensors['image/object/mask']
     if isinstance(masks, tf.SparseTensor):
       masks = tf.sparse_tensor_to_dense(masks)
-    masks = tf.reshape(tf.to_float(tf.greater(masks, 0.0)), to_shape)
+    masks = tf.reshape(
+        tf.cast(tf.greater(masks, 0.0), dtype=tf.float32), to_shape)
     return tf.cast(masks, tf.float32)
 
   def _decode_png_instance_masks(self, keys_to_tensors):
@@ -439,7 +478,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       image = tf.squeeze(
           tf.image.decode_image(image_buffer, channels=1), axis=2)
       image.set_shape([None, None])
-      image = tf.to_float(tf.greater(image, 0))
+      image = tf.cast(tf.greater(image, 0), dtype=tf.float32)
       return image
 
     png_masks = keys_to_tensors['image/object/mask']
@@ -450,4 +489,4 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     return tf.cond(
         tf.greater(tf.size(png_masks), 0),
         lambda: tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32),
-        lambda: tf.zeros(tf.to_int32(tf.stack([0, height, width]))))
+        lambda: tf.zeros(tf.cast(tf.stack([0, height, width]), dtype=tf.int32)))

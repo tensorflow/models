@@ -1,24 +1,32 @@
-from data.util import pad_sentence, to_dataset, START_CHAR, OOV_CHAR
-import tensorflow as tf, numpy as np
+"""IMDB Dataset module for sentiment analysis."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import numpy as np
+import tensorflow as tf
+
+from data.util import OOV_CHAR
+from data.util import pad_sentence
+from data.util import START_CHAR
 
 NUM_CLASS = 2
 
 
-def construct_input_fns(vocabulary_size, sentence_length,
-                        batch_size, repeat=1):
-  """Returns training and evaluation input functions.
+def load(vocabulary_size, sentence_length):
+  """Returns training and evaluation input for imdb dataset.
 
   Args:
     vocabulary_size: The number of the most frequent tokens
       to be used from the corpus.
     sentence_length: The number of words in each sentence.
       Longer sentences get cut, shorter ones padded.
-    batch_size: Number of data in each batch.
-    repeat: The number of epoch.
   Raises:
     ValueError: if the dataset value is not valid.
   Returns:
-    A tuple of training and evaluation input function.
+    A tuple of length 4, for training and evaluation data,
+    each being an numpy array.
   """
   (x_train, y_train), (x_test, y_test) = tf.keras.datasets.imdb.load_data(
       path="imdb.npz",
@@ -28,19 +36,19 @@ def construct_input_fns(vocabulary_size, sentence_length,
       seed=113,
       start_char=START_CHAR,
       oov_char=OOV_CHAR,
-      index_from=OOV_CHAR + 1)
+      index_from=OOV_CHAR+1)
 
-  def train_input_fn():
-    dataset = to_dataset(
-        np.array([pad_sentence(s, sentence_length) for s in x_train]),
-        np.eye(NUM_CLASS)[y_train], batch_size, repeat)
-    dataset = dataset.shuffle(len(x_train), reshuffle_each_iteration=True)
-    return dataset
+  x_train_processed = []
+  for sen in x_train:
+    sen = pad_sentence(sen, sentence_length)
+    x_train_processed.append(np.array(sen))
+  x_train_processed = np.array(x_train_processed)
 
-  def eval_input_fn():
-    dataset = to_dataset(
-        np.array([pad_sentence(s, sentence_length) for s in x_test]),
-        np.eye(NUM_CLASS)[y_test], batch_size, repeat)
-    return dataset
+  x_test_processed = []
+  for sen in x_test:
+    sen = pad_sentence(sen, sentence_length)
+    x_test_processed.append(np.array(sen))
+  x_test_processed = np.array(x_test_processed)
 
-  return train_input_fn, eval_input_fn
+  return x_train_processed, np.eye(NUM_CLASS)[y_train], \
+         x_test_processed, np.eye(NUM_CLASS)[y_test]

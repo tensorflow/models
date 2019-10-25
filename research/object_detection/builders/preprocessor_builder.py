@@ -39,7 +39,7 @@ def _get_step_config_from_proto(preprocessor_step_config, step_name):
     if field.name == step_name:
       return value
 
-  raise ValueError('Could not get field %s from proto!', step_name)
+  raise ValueError('Could not get field %s from proto!' % step_name)
 
 
 def _get_dict_from_proto(config):
@@ -71,22 +71,38 @@ def _get_dict_from_proto(config):
 # function that should be used. The PreprocessingStep proto should be parsable
 # with _get_dict_from_proto.
 PREPROCESSING_FUNCTION_MAP = {
-    'normalize_image': preprocessor.normalize_image,
-    'random_pixel_value_scale': preprocessor.random_pixel_value_scale,
-    'random_image_scale': preprocessor.random_image_scale,
-    'random_rgb_to_gray': preprocessor.random_rgb_to_gray,
-    'random_adjust_brightness': preprocessor.random_adjust_brightness,
-    'random_adjust_contrast': preprocessor.random_adjust_contrast,
-    'random_adjust_hue': preprocessor.random_adjust_hue,
-    'random_adjust_saturation': preprocessor.random_adjust_saturation,
-    'random_distort_color': preprocessor.random_distort_color,
-    'random_jitter_boxes': preprocessor.random_jitter_boxes,
-    'random_crop_to_aspect_ratio': preprocessor.random_crop_to_aspect_ratio,
-    'random_black_patches': preprocessor.random_black_patches,
-    'rgb_to_gray': preprocessor.rgb_to_gray,
+    'normalize_image':
+        preprocessor.normalize_image,
+    'random_pixel_value_scale':
+        preprocessor.random_pixel_value_scale,
+    'random_image_scale':
+        preprocessor.random_image_scale,
+    'random_rgb_to_gray':
+        preprocessor.random_rgb_to_gray,
+    'random_adjust_brightness':
+        preprocessor.random_adjust_brightness,
+    'random_adjust_contrast':
+        preprocessor.random_adjust_contrast,
+    'random_adjust_hue':
+        preprocessor.random_adjust_hue,
+    'random_adjust_saturation':
+        preprocessor.random_adjust_saturation,
+    'random_distort_color':
+        preprocessor.random_distort_color,
+    'random_jitter_boxes':
+        preprocessor.random_jitter_boxes,
+    'random_crop_to_aspect_ratio':
+        preprocessor.random_crop_to_aspect_ratio,
+    'random_black_patches':
+        preprocessor.random_black_patches,
+    'rgb_to_gray':
+        preprocessor.rgb_to_gray,
     'scale_boxes_to_pixel_coordinates': (
         preprocessor.scale_boxes_to_pixel_coordinates),
-    'subtract_channel_mean': preprocessor.subtract_channel_mean,
+    'subtract_channel_mean':
+        preprocessor.subtract_channel_mean,
+    'convert_class_logits_to_softmax':
+        preprocessor.convert_class_logits_to_softmax,
 }
 
 
@@ -151,6 +167,7 @@ def build(preprocessor_step_config):
                                        config.max_aspect_ratio),
                 'area_range': (config.min_area, config.max_area),
                 'overlap_thresh': config.overlap_thresh,
+                'clip_boxes': config.clip_boxes,
                 'random_coef': config.random_coef,
             })
 
@@ -172,11 +189,12 @@ def build(preprocessor_step_config):
     if config.HasField('max_image_height'):
       max_image_size = (config.max_image_height, config.max_image_width)
 
-    pad_color = config.pad_color
-    if pad_color and len(pad_color) != 3:
-      raise ValueError('pad_color should have 3 elements (RGB) if set!')
-    if not pad_color:
-      pad_color = None
+    pad_color = config.pad_color or None
+    if pad_color:
+      if len(pad_color) != 3:
+        tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
+
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
     return (preprocessor.random_pad_image,
             {
                 'min_image_size': min_image_size,
@@ -184,6 +202,25 @@ def build(preprocessor_step_config):
                 'pad_color': pad_color,
             })
 
+  if step_type == 'random_absolute_pad_image':
+    config = preprocessor_step_config.random_absolute_pad_image
+
+    max_height_padding = config.max_height_padding or 1
+    max_width_padding = config.max_width_padding or 1
+
+    pad_color = config.pad_color or None
+    if pad_color:
+      if len(pad_color) != 3:
+        tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
+
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
+
+    return (preprocessor.random_absolute_pad_image,
+            {
+                'max_height_padding': max_height_padding,
+                'max_width_padding': max_width_padding,
+                'pad_color': pad_color,
+            })
   if step_type == 'random_crop_pad_image':
     config = preprocessor_step_config.random_crop_pad_image
     min_padded_size_ratio = config.min_padded_size_ratio
@@ -192,23 +229,27 @@ def build(preprocessor_step_config):
     max_padded_size_ratio = config.max_padded_size_ratio
     if max_padded_size_ratio and len(max_padded_size_ratio) != 2:
       raise ValueError('max_padded_size_ratio should have 2 elements if set!')
-    pad_color = config.pad_color
-    if pad_color and len(pad_color) != 3:
-      raise ValueError('pad_color should have 3 elements if set!')
+    pad_color = config.pad_color or None
+    if pad_color:
+      if len(pad_color) != 3:
+        tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
+
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
+
     kwargs = {
         'min_object_covered': config.min_object_covered,
         'aspect_ratio_range': (config.min_aspect_ratio,
                                config.max_aspect_ratio),
         'area_range': (config.min_area, config.max_area),
         'overlap_thresh': config.overlap_thresh,
+        'clip_boxes': config.clip_boxes,
         'random_coef': config.random_coef,
+        'pad_color': pad_color,
     }
     if min_padded_size_ratio:
       kwargs['min_padded_size_ratio'] = tuple(min_padded_size_ratio)
     if max_padded_size_ratio:
       kwargs['max_padded_size_ratio'] = tuple(max_padded_size_ratio)
-    if pad_color:
-      kwargs['pad_color'] = tuple(pad_color)
     return (preprocessor.random_crop_pad_image, kwargs)
 
   if step_type == 'random_resize_method':
@@ -228,6 +269,13 @@ def build(preprocessor_step_config):
                 'method': method
             })
 
+  if step_type == 'random_self_concat_image':
+    config = preprocessor_step_config.random_self_concat_image
+    return (preprocessor.random_self_concat_image, {
+        'concat_vertical_probability': config.concat_vertical_probability,
+        'concat_horizontal_probability': config.concat_horizontal_probability
+    })
+
   if step_type == 'ssd_random_crop':
     config = preprocessor_step_config.ssd_random_crop
     if config.operations:
@@ -236,6 +284,7 @@ def build(preprocessor_step_config):
                             for op in config.operations]
       area_range = [(op.min_area, op.max_area) for op in config.operations]
       overlap_thresh = [op.overlap_thresh for op in config.operations]
+      clip_boxes = [op.clip_boxes for op in config.operations]
       random_coef = [op.random_coef for op in config.operations]
       return (preprocessor.ssd_random_crop,
               {
@@ -243,9 +292,30 @@ def build(preprocessor_step_config):
                   'aspect_ratio_range': aspect_ratio_range,
                   'area_range': area_range,
                   'overlap_thresh': overlap_thresh,
+                  'clip_boxes': clip_boxes,
                   'random_coef': random_coef,
               })
     return (preprocessor.ssd_random_crop, {})
+
+  if step_type == 'autoaugment_image':
+    config = preprocessor_step_config.autoaugment_image
+    return (preprocessor.autoaugment_image, {
+        'policy_name': config.policy_name,
+    })
+
+  if step_type == 'drop_label_probabilistically':
+    config = preprocessor_step_config.drop_label_probabilistically
+    return (preprocessor.drop_label_probabilistically, {
+        'dropped_label': config.label,
+        'drop_probability': config.drop_probability,
+    })
+
+  if step_type == 'remap_labels':
+    config = preprocessor_step_config.remap_labels
+    return (preprocessor.remap_labels, {
+        'original_labels': config.original_labels,
+        'new_label': config.new_label
+    })
 
   if step_type == 'ssd_random_crop_pad':
     config = preprocessor_step_config.ssd_random_crop_pad
@@ -255,6 +325,7 @@ def build(preprocessor_step_config):
                             for op in config.operations]
       area_range = [(op.min_area, op.max_area) for op in config.operations]
       overlap_thresh = [op.overlap_thresh for op in config.operations]
+      clip_boxes = [op.clip_boxes for op in config.operations]
       random_coef = [op.random_coef for op in config.operations]
       min_padded_size_ratio = [tuple(op.min_padded_size_ratio)
                                for op in config.operations]
@@ -268,6 +339,7 @@ def build(preprocessor_step_config):
                   'aspect_ratio_range': aspect_ratio_range,
                   'area_range': area_range,
                   'overlap_thresh': overlap_thresh,
+                  'clip_boxes': clip_boxes,
                   'random_coef': random_coef,
                   'min_padded_size_ratio': min_padded_size_ratio,
                   'max_padded_size_ratio': max_padded_size_ratio,
@@ -281,6 +353,7 @@ def build(preprocessor_step_config):
       min_object_covered = [op.min_object_covered for op in config.operations]
       area_range = [(op.min_area, op.max_area) for op in config.operations]
       overlap_thresh = [op.overlap_thresh for op in config.operations]
+      clip_boxes = [op.clip_boxes for op in config.operations]
       random_coef = [op.random_coef for op in config.operations]
       return (preprocessor.ssd_random_crop_fixed_aspect_ratio,
               {
@@ -288,6 +361,7 @@ def build(preprocessor_step_config):
                   'aspect_ratio': config.aspect_ratio,
                   'area_range': area_range,
                   'overlap_thresh': overlap_thresh,
+                  'clip_boxes': clip_boxes,
                   'random_coef': random_coef,
               })
     return (preprocessor.ssd_random_crop_fixed_aspect_ratio, {})
@@ -316,6 +390,7 @@ def build(preprocessor_step_config):
       kwargs['area_range'] = [(op.min_area, op.max_area)
                               for op in config.operations]
       kwargs['overlap_thresh'] = [op.overlap_thresh for op in config.operations]
+      kwargs['clip_boxes'] = [op.clip_boxes for op in config.operations]
       kwargs['random_coef'] = [op.random_coef for op in config.operations]
     return (preprocessor.ssd_random_crop_pad_fixed_aspect_ratio, kwargs)
 

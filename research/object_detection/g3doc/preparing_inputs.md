@@ -50,8 +50,10 @@ python object_detection/dataset_tools/create_pet_tf_record.py \
     --output_dir=`pwd`
 ```
 
-You should end up with two TFRecord files named `pet_train.record` and
-`pet_val.record` in the `tensorflow/models/research/` directory.
+You should end up with two 10-sharded TFRecord files named
+`pet_faces_train.record-?????-of-00010` and
+`pet_faces_val.record-?????-of-00010` in the `tensorflow/models/research/`
+directory.
 
 The label map for the Pet dataset can be found at
 `object_detection/data/pet_label_map.pbtxt`.

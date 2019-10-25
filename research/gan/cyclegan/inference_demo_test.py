@@ -35,7 +35,10 @@ class InferenceDemoTest(tf.test.TestCase):
     self._geny_dir = os.path.join(FLAGS.test_tmpdir, 'geny')
 
   @mock.patch.object(tfgan, 'gan_train', autospec=True)
-  def testTrainingAndInferenceGraphsAreCompatible(self, unused_mock_gan_train):
+  @mock.patch.object(
+      train.data_provider, 'provide_custom_data', autospec=True)
+  def testTrainingAndInferenceGraphsAreCompatible(
+      self, mock_provide_custom_data, unused_mock_gan_train):
     # Training and inference graphs can get out of sync if changes are made
     # to one but not the other. This test will keep them in sync.
 
@@ -52,6 +55,8 @@ class InferenceDemoTest(tf.test.TestCase):
     FLAGS.task = 0
     FLAGS.cycle_consistency_loss_weight = 2.0
     FLAGS.max_number_of_steps = 1
+    mock_provide_custom_data.return_value = (
+        tf.zeros([3, 4, 4, 3,]), tf.zeros([3, 4, 4, 3]))
     train.main(None)
     init_op = tf.global_variables_initializer()
     train_sess.run(init_op)

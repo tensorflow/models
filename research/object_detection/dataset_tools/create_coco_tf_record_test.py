@@ -15,6 +15,7 @@
 """Test for create_coco_tf_record.py."""
 
 import io
+import json
 import os
 
 import numpy as np
@@ -105,6 +106,9 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/ymax'].float_list.value,
         [0.75])
+    self._assertProtoEqual(
+        example.features.feature['image/object/class/text'].bytes_list.value,
+        ['cat'])
 
   def test_create_tf_example_with_instance_masks(self):
     image_file_name = 'tmp_image.jpg'
@@ -168,6 +172,9 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/ymax'].float_list.value,
         [1])
+    self._assertProtoEqual(
+        example.features.feature['image/object/class/text'].bytes_list.value,
+        ['dog'])
     encoded_mask_pngs = [
         io.BytesIO(encoded_masks) for encoded_masks in example.features.feature[
             'image/object/mask'].bytes_list.value
@@ -182,6 +189,62 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
                          [1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
                          [0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 1, 1],
                          [0, 0, 0, 0, 0, 1, 1, 1], [0, 0, 0, 0, 1, 1, 1, 1]])
+
+  def test_create_sharded_tf_record(self):
+    tmp_dir = self.get_temp_dir()
+    image_paths = ['tmp1_image.jpg', 'tmp2_image.jpg']
+    for image_path in image_paths:
+      image_data = np.random.rand(256, 256, 3)
+      save_path = os.path.join(tmp_dir, image_path)
+      image = PIL.Image.fromarray(image_data, 'RGB')
+      image.save(save_path)
+
+    images = [{
+        'file_name': image_paths[0],
+        'height': 256,
+        'width': 256,
+        'id': 11,
+    }, {
+        'file_name': image_paths[1],
+        'height': 256,
+        'width': 256,
+        'id': 12,
+    }]
+
+    annotations = [{
+        'area': .5,
+        'iscrowd': False,
+        'image_id': 11,
+        'bbox': [64, 64, 128, 128],
+        'category_id': 2,
+        'id': 1000,
+    }]
+
+    category_index = [{
+        'name': 'dog',
+        'id': 1
+    }, {
+        'name': 'cat',
+        'id': 2
+    }, {
+        'name': 'human',
+        'id': 3
+    }]
+    groundtruth_data = {'images': images, 'annotations': annotations,
+                        'categories': category_index}
+    annotation_file = os.path.join(tmp_dir, 'annotation.json')
+    with open(annotation_file, 'w') as annotation_fid:
+      json.dump(groundtruth_data, annotation_fid)
+
+    output_path = os.path.join(tmp_dir, 'out.record')
+    create_coco_tf_record._create_tf_record_from_coco_annotations(
+        annotation_file,
+        tmp_dir,
+        output_path,
+        False,
+        2)
+    self.assertTrue(os.path.exists(output_path + '-00000-of-00002'))
+    self.assertTrue(os.path.exists(output_path + '-00001-of-00002'))
 
 
 if __name__ == '__main__':

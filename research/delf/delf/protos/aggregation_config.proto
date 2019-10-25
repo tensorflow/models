@@ -1,0 +1,63 @@
+// Protocol buffer for feature aggregation configuration.
+//
+// Used for both extraction and comparison of aggregated representations. Note
+// that some options are only relevant for the former or the latter.
+//
+// For more details, please refer to the paper:
+// "Detect-to-Retrieve: Efficient Regional Aggregation for Image Search",
+// Proc. CVPR'19 (https://arxiv.org/abs/1812.01584).
+
+syntax = "proto2";
+
+package delf.protos;
+
+message AggregationConfig {
+  // Number of codewords (ie, visual words) in the codebook.
+  optional int32 codebook_size = 1 [default = 65536];
+
+  // Dimensionality of local features (eg, 128 for DELF used in
+  // Detect-to-Retrieve paper).
+  optional int32 feature_dimensionality = 2 [default = 128];
+
+  // Type of aggregation to use.
+  // For example, to use R-ASMK*, `aggregation_type` should be set to ASMK_STAR
+  // and `use_regional_aggregation` should be set to true.
+  enum AggregationType {
+    INVALID = 0;
+    VLAD = 1;
+    ASMK = 2;
+    ASMK_STAR = 3;
+  }
+  optional AggregationType aggregation_type = 3 [default = ASMK_STAR];
+
+  // L2 normalization option.
+  // - For vanilla aggregated kernels (eg, VLAD/ASMK/ASMK*), this should be
+  //   set to true.
+  // - For regional aggregated kernels (ie, if `use_regional_aggregation` is
+  //   true, leading to R-VLAD/R-ASMK/R-ASMK*), this should be set to false.
+  // Note that it is used differently depending on the `aggregation_type`:
+  // - For VLAD, this option is only used for extraction.
+  // - For ASMK/ASMK*, this option is only used for comparisons.
+  optional bool use_l2_normalization = 4 [default = true];
+
+  // Additional options used only for extraction.
+  // - Path to codebook checkpoint for aggregation.
+  optional string codebook_path = 5;
+  // - Number of visual words to assign each feature.
+  optional int32 num_assignments = 6 [default = 1];
+  // - Whether to use regional aggregation.
+  optional bool use_regional_aggregation = 7 [default = false];
+  // - Batch size to use for local features when computing aggregated
+  //   representations. Particularly useful if `codebook_size` and
+  //   `feature_dimensionality` are large, to avoid OOM. A value of zero or
+  //   lower indicates that no batching is used.
+  optional int32 feature_batch_size = 10 [default = 100];
+
+  // Additional options used only for comparison.
+  // Only relevant if `aggregation_type` is ASMK or ASMK_STAR.
+  // - Power-law exponent for similarity of visual word descriptors.
+  optional float alpha = 8 [default = 3.0];
+  // - Threshold above which similarity of visual word descriptors are
+  //   considered; below this, similarity is set to zero.
+  optional float tau = 9 [default = 0.0];
+}

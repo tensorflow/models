@@ -51,12 +51,12 @@ tf.app.flags.DEFINE_string('eval_data', 'test',
                            """Either 'test' or 'train_eval'.""")
 tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
                            """Directory where to read model checkpoints.""")
-tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
+tf.app.flags.DEFINE_integer('eval_interval_secs', 5,
                             """How often to run the eval.""")
-tf.app.flags.DEFINE_integer('num_examples', 10000,
+tf.app.flags.DEFINE_integer('num_examples', 1000,
                             """Number of examples to run.""")
 tf.app.flags.DEFINE_boolean('run_once', False,
-                         """Whether to run eval only once.""")
+                            """Whether to run eval only once.""")
 
 
 def eval_once(saver, summary_writer, top_k_op, summary_op):
@@ -89,7 +89,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
         threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
                                          start=True))
 
-      num_iter = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
+      num_iter = int(math.ceil(float(FLAGS.num_examples) / FLAGS.batch_size))
       true_count = 0  # Counts the number of correct predictions.
       total_sample_count = num_iter * FLAGS.batch_size
       step = 0
@@ -117,12 +117,14 @@ def evaluate():
   """Eval CIFAR-10 for a number of steps."""
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
-    eval_data = FLAGS.eval_data == 'test'
-    images, labels = cifar10.inputs(eval_data=eval_data)
+    images, labels = cifar10.inputs(eval_data=FLAGS.eval_data)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
     logits = cifar10.inference(images)
+
+    logits = tf.cast(logits, "float32")
+    labels = tf.cast(labels, "int32")
 
     # Calculate predictions.
     top_k_op = tf.nn.in_top_k(logits, labels, 1)
@@ -146,7 +148,6 @@ def evaluate():
 
 
 def main(argv=None):  # pylint: disable=unused-argument
-  cifar10.maybe_download_and_extract()
   if tf.gfile.Exists(FLAGS.eval_dir):
     tf.gfile.DeleteRecursively(FLAGS.eval_dir)
   tf.gfile.MakeDirs(FLAGS.eval_dir)

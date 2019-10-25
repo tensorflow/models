@@ -36,8 +36,8 @@ import os
 import re
 import tensorflow as tf
 
-from object_detection import evaluator
 from object_detection.core import standard_fields
+from object_detection.legacy import evaluator
 from object_detection.metrics import tf_example_parser
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
@@ -91,10 +91,8 @@ def read_data_and_evaluate(input_config, eval_config):
   if input_config.WhichOneof('input_reader') == 'tf_record_input_reader':
     input_paths = input_config.tf_record_input_reader.input_path
 
-    label_map = label_map_util.load_labelmap(input_config.label_map_path)
-    max_num_classes = max([item.id for item in label_map.item])
-    categories = label_map_util.convert_label_map_to_categories(
-        label_map, max_num_classes)
+    categories = label_map_util.create_categories_from_labelmap(
+        input_config.label_map_path)
 
     object_detection_evaluators = evaluator.get_evaluators(
         eval_config, categories)

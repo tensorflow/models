@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from object_detection.core import box_list
 from object_detection.core import region_similarity_calculator
+from object_detection.core import standard_fields as fields
 
 
 class RegionSimilarityCalculatorTest(tf.test.TestCase):
@@ -69,6 +70,25 @@ class RegionSimilarityCalculatorTest(tf.test.TestCase):
           [ioa_similarity_1, ioa_similarity_2])
       self.assertAllClose(iou_output_1, exp_output_1)
       self.assertAllClose(iou_output_2, exp_output_2)
+
+  def test_get_correct_pairwise_similarity_based_on_thresholded_iou(self):
+    corners1 = tf.constant([[4.0, 3.0, 7.0, 5.0], [5.0, 6.0, 10.0, 7.0]])
+    corners2 = tf.constant([[3.0, 4.0, 6.0, 8.0], [14.0, 14.0, 15.0, 15.0],
+                            [0.0, 0.0, 20.0, 20.0]])
+    scores = tf.constant([.3, .6])
+    iou_threshold = .013
+
+    exp_output = tf.constant([[0.3, 0., 0.3], [0.6, 0., 0.]])
+    boxes1 = box_list.BoxList(corners1)
+    boxes1.add_field(fields.BoxListFields.scores, scores)
+    boxes2 = box_list.BoxList(corners2)
+    iou_similarity_calculator = (
+        region_similarity_calculator.ThresholdedIouSimilarity(
+            iou_threshold=iou_threshold))
+    iou_similarity = iou_similarity_calculator.compare(boxes1, boxes2)
+    with self.test_session() as sess:
+      iou_output = sess.run(iou_similarity)
+      self.assertAllClose(iou_output, exp_output)
 
 
 if __name__ == '__main__':

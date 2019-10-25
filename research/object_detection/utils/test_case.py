@@ -14,6 +14,11 @@
 # ==============================================================================
 """A convenience wrapper around tf.test.TestCase to enable TPU tests."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+import os
+from six.moves import zip
 import tensorflow as tf
 from tensorflow.contrib import tpu
 
@@ -21,6 +26,8 @@ flags = tf.app.flags
 
 flags.DEFINE_bool('tpu_test', False, 'Whether to configure test for TPU.')
 FLAGS = flags.FLAGS
+
+
 
 
 class TestCase(tf.test.TestCase):
@@ -47,9 +54,10 @@ class TestCase(tf.test.TestCase):
       materialized_results = sess.run(tpu_computation,
                                       feed_dict=dict(zip(placeholders, inputs)))
       sess.run(tpu.shutdown_system())
-      if (len(materialized_results) == 1
-          and (isinstance(materialized_results, list)
-               or isinstance(materialized_results, tuple))):
+      if (hasattr(materialized_results, '__len__') and
+          len(materialized_results) == 1 and
+          (isinstance(materialized_results, list) or
+           isinstance(materialized_results, tuple))):
         materialized_results = materialized_results[0]
     return materialized_results
 
@@ -72,9 +80,11 @@ class TestCase(tf.test.TestCase):
                 tf.local_variables_initializer()])
       materialized_results = sess.run(results, feed_dict=dict(zip(placeholders,
                                                                   inputs)))
-      if (len(materialized_results) == 1
-          and (isinstance(materialized_results, list)
-               or isinstance(materialized_results, tuple))):
+
+      if (hasattr(materialized_results, '__len__') and
+          len(materialized_results) == 1 and
+          (isinstance(materialized_results, list) or
+           isinstance(materialized_results, tuple))):
         materialized_results = materialized_results[0]
     return materialized_results
 

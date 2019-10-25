@@ -19,7 +19,12 @@ a predefined IOU ratio. Multi-class detection is supported by default.
 Based on the settings, per image evaluation is performed either on phrase
 detection subtask or on relation detection subtask.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import range
 
 from object_detection.utils import np_box_list
 from object_detection.utils import np_box_list_ops
@@ -137,9 +142,14 @@ class PerImageVRDEvaluation(object):
       result_tp_fp_labels.append(tp_fp_labels)
       result_mapping.append(selector_mapping[sorted_indices])
 
-    result_scores = np.concatenate(result_scores)
-    result_tp_fp_labels = np.concatenate(result_tp_fp_labels)
-    result_mapping = np.concatenate(result_mapping)
+    if result_scores:
+      result_scores = np.concatenate(result_scores)
+      result_tp_fp_labels = np.concatenate(result_tp_fp_labels)
+      result_mapping = np.concatenate(result_mapping)
+    else:
+      result_scores = np.array([], dtype=float)
+      result_tp_fp_labels = np.array([], dtype=bool)
+      result_mapping = np.array([], dtype=int)
 
     sorted_indices = np.argsort(result_scores)
     sorted_indices = sorted_indices[::-1]

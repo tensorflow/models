@@ -14,7 +14,12 @@
 # ==============================================================================
 
 """Tests for object_detection.utils.learning_schedules."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.utils import learning_schedules
@@ -30,17 +35,19 @@ class LearningSchedulesTest(test_case.TestCase):
       learning_rate_decay_factor = .1
       burnin_learning_rate = .5
       burnin_steps = 2
+      min_learning_rate = .05
       learning_rate = learning_schedules.exponential_decay_with_burnin(
           global_step, learning_rate_base, learning_rate_decay_steps,
-          learning_rate_decay_factor, burnin_learning_rate, burnin_steps)
+          learning_rate_decay_factor, burnin_learning_rate, burnin_steps,
+          min_learning_rate)
       assert learning_rate.op.name.endswith('learning_rate')
       return (learning_rate,)
 
     output_rates = [
-        self.execute(graph_fn, [np.array(i).astype(np.int64)]) for i in range(8)
+        self.execute(graph_fn, [np.array(i).astype(np.int64)]) for i in range(9)
     ]
 
-    exp_rates = [.5, .5, 1, .1, .1, .1, .01, .01]
+    exp_rates = [.5, .5, 1, 1, 1, .1, .1, .1, .05]
     self.assertAllClose(output_rates, exp_rates, rtol=1e-4)
 
   def testCosineDecayWithWarmup(self):

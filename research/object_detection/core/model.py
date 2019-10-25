@@ -54,15 +54,30 @@ By default, DetectionModels produce bounding box detections; However, we support
 a handful of auxiliary annotations associated with each bounding box, namely,
 instance masks and keypoints.
 """
-from abc import ABCMeta
-from abc import abstractmethod
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import abc
+import six
+import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
 
 
-class DetectionModel(object):
-  """Abstract base class for detection models."""
-  __metaclass__ = ABCMeta
+# If using a new enough version of TensorFlow, detection models should be a
+# tf module or keras model for tracking.
+try:
+  _BaseClass = tf.Module
+except AttributeError:
+  _BaseClass = object
+
+
+class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
+  """Abstract base class for detection models.
+
+  Extends tf.Module to guarantee variable tracking.
+  """
 
   def __init__(self, num_classes):
     """Constructor.
@@ -84,7 +99,8 @@ class DetectionModel(object):
 
     Args:
       field: a string key, options are
-        fields.BoxListFields.{boxes,classes,masks,keypoints}
+        fields.BoxListFields.{boxes,classes,masks,keypoints} or
+        fields.InputDataFields.is_annotated.
 
     Returns:
       a list of tensors holding groundtruth information (see also
@@ -94,7 +110,8 @@ class DetectionModel(object):
       RuntimeError: if the field has not been provided via provide_groundtruth.
     """
     if field not in self._groundtruth_lists:
-      raise RuntimeError('Groundtruth tensor %s has not been provided', field)
+      raise RuntimeError('Groundtruth tensor {} has not been provided'.format(
+          field))
     return self._groundtruth_lists[field]
 
   def groundtruth_has_field(self, field):
@@ -102,14 +119,15 @@ class DetectionModel(object):
 
     Args:
       field: a string key, options are
-        fields.BoxListFields.{boxes,classes,masks,keypoints}
+        fields.BoxListFields.{boxes,classes,masks,keypoints} or
+        fields.InputDataFields.is_annotated.
 
     Returns:
       True if the groundtruth includes the given field, False otherwise.
     """
     return field in self._groundtruth_lists
 
-  @abstractmethod
+  @abc.abstractmethod
   def preprocess(self, inputs):
     """Input preprocessing.
 
@@ -152,7 +170,7 @@ class DetectionModel(object):
     """
     pass
 
-  @abstractmethod
+  @abc.abstractmethod
   def predict(self, preprocessed_inputs, true_image_shapes):
     """Predict prediction tensors from inputs tensor.
 
@@ -172,9 +190,13 @@ class DetectionModel(object):
     """
     pass
 
-  @abstractmethod
+  @abc.abstractmethod
   def postprocess(self, prediction_dict, true_image_shapes, **params):
     """Convert predicted output tensors to final detections.
+
+    This stage typically performs a few things such as
+    * Non-Max Suppression to remove overlapping detection boxes.
+    * Score conversion and background class removal.
 
     Outputs adhere to the following conventions:
     * Classes are integers in [0, num_classes); background classes are removed
@@ -209,10 +231,20 @@ class DetectionModel(object):
           (optional)
         keypoints: [batch, max_detections, num_keypoints, 2] (optional)
         num_detections: [batch]
+
+        In addition to the above fields this stage also outputs the following
+        raw tensors:
+
+        raw_detection_boxes: [batch, total_detections, 4] tensor containing
+          all detection boxes from `prediction_dict` in the format
+          [ymin, xmin, ymax, xmax] and normalized co-ordinates.
+        raw_detection_scores: [batch, total_detections,
+          num_classes_with_background] tensor of class score logits for
+          raw detection boxes.
     """
     pass
 
-  @abstractmethod
+  @abc.abstractmethod
   def loss(self, prediction_dict, true_image_shapes):
     """Compute scalar loss tensors with respect to provided groundtruth.
 
@@ -238,7 +270,9 @@ class DetectionModel(object):
                           groundtruth_masks_list=None,
                           groundtruth_keypoints_list=None,
                           groundtruth_weights_list=None,
-                          groundtruth_is_crowd_list=None):
+                          groundtruth_confidences_list=None,
+                          groundtruth_is_crowd_list=None,
+                          is_annotated_list=None):
     """Provide groundtruth tensors.
 
     Args:
@@ -261,8 +295,13 @@ class DetectionModel(object):
         missing keypoints should be encoded as NaN.
       groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
         [num_boxes] containing weights for groundtruth boxes.
+      groundtruth_confidences_list: A list of 2-D tf.float32 tensors of shape
+        [num_boxes, num_classes] containing class confidences for groundtruth
+        boxes.
       groundtruth_is_crowd_list: A list of 1-D tf.bool tensors of shape
         [num_boxes] containing is_crowd annotations
+      is_annotated_list: A list of scalar tf.bool tensors indicating whether
+        images have been labeled or not.
     """
     self._groundtruth_lists[fields.BoxListFields.boxes] = groundtruth_boxes_list
     self._groundtruth_lists[
@@ -270,6 +309,9 @@ class DetectionModel(object):
     if groundtruth_weights_list:
       self._groundtruth_lists[fields.BoxListFields.
                               weights] = groundtruth_weights_list
+    if groundtruth_confidences_list:
+      self._groundtruth_lists[fields.BoxListFields.
+                              confidences] = groundtruth_confidences_list
     if groundtruth_masks_list:
       self._groundtruth_lists[
           fields.BoxListFields.masks] = groundtruth_masks_list
@@ -279,8 +321,23 @@ class DetectionModel(object):
     if groundtruth_is_crowd_list:
       self._groundtruth_lists[
           fields.BoxListFields.is_crowd] = groundtruth_is_crowd_list
+    if is_annotated_list:
+      self._groundtruth_lists[
+          fields.InputDataFields.is_annotated] = is_annotated_list
 
-  @abstractmethod
+  @abc.abstractmethod
+  def regularization_losses(self):
+    """Returns a list of regularization losses for this model.
+
+    Returns a list of regularization losses for this model that the estimator
+    needs to use during training/optimization.
+
+    Returns:
+      A list of regularization loss tensors.
+    """
+    pass
+
+  @abc.abstractmethod
   def restore_map(self, fine_tune_checkpoint_type='detection'):
     """Returns a map of variables to load from a foreign checkpoint.
 
@@ -301,5 +358,18 @@ class DetectionModel(object):
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    """
+    pass
+
+  @abc.abstractmethod
+  def updates(self):
+    """Returns a list of update operators for this model.
+
+    Returns a list of update operators for this model that must be executed at
+    each training step. The estimator's train op needs to have a control
+    dependency on these updates.
+
+    Returns:
+      A list of update operators.
     """
     pass

@@ -35,9 +35,16 @@ message Hyperparams {
   }
   optional Activation activation = 4 [default = RELU];
 
-  // BatchNorm hyperparameters. If this parameter is NOT set then BatchNorm is
-  // not applied!
-  optional BatchNorm batch_norm = 5;
+  oneof normalizer_oneof {
+    // Note that if nothing below is selected, then no normalization is applied
+    // BatchNorm hyperparameters.
+    BatchNorm batch_norm = 5;
+    // GroupNorm hyperparameters. This is only supported on a subset of models.
+    // Note that the current implementation of group norm instantiated in
+    // tf.contrib.group.layers.group_norm() only supports fixed_size_resizer
+    // for image preprocessing.
+    GroupNorm group_norm = 7;
+  }
 
   // Whether depthwise convolutions should be regularized. If this parameter is
   // NOT set then the conv hyperparams will default to the parent scope.
@@ -112,4 +119,9 @@ message BatchNorm {
   // training, the current value of the batch_norm variables are used for
   // forward pass but they are never updated.
   optional bool train = 5 [default = true];
+}
+
+// Configuration proto for group normalization to apply after convolution op.
+// https://arxiv.org/abs/1803.08494
+message GroupNorm {
 }

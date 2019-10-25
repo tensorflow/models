@@ -9,8 +9,7 @@ keeping a model's architecture transparent and its hyperparameters explicit.
 ## Teaser
 
 As a demonstration of the simplicity of using TF-Slim, compare the simplicity of
-the code necessary for defining the entire [VGG]
-(http://www.robots.ox.ac.uk/~vgg/research/very_deep/) network using TF-Slim to
+the code necessary for defining the entire [VGG](http://www.robots.ox.ac.uk/~vgg/research/very_deep/) network using TF-Slim to
 the lengthy and verbose nature of defining just the first three layers (out of
 16) using native tensorflow:
 
@@ -61,14 +60,12 @@ def vgg16(inputs):
 TF-Slim offers several advantages over just the built-in tensorflow libraries:
 
 *   Allows one to define models much more compactly by eliminating boilerplate
-    code. This is accomplished through the use of [argument scoping](scopes.py)
-    and numerous high level [operations](ops.py). These tools increase
+    code. This is accomplished through the use of [argument scoping](./scopes.py)
+    and numerous high level [operations](./ops.py). These tools increase
     readability and maintainability, reduce the likelihood of an error from
     copy-and-pasting hyperparameter values and simplifies hyperparameter tuning.
-*   Makes developing models simple by providing commonly used [loss functions]
-    (losses.py)
-*   Provides a concise [definition](inception_model.py) of [Inception v3]
-    (http://arxiv.org/abs/1512.00567) network architecture ready to be used
+*   Makes developing models simple by providing commonly used [loss functions](./losses.py)
+*   Provides a concise [definition](./inception_model.py) of [Inception v3](http://arxiv.org/abs/1512.00567) network architecture ready to be used
     out-of-the-box or subsumed into new models.
 
 Additionally TF-Slim was designed with several principles in mind:
@@ -192,19 +189,19 @@ roughly correspond to such layers. These include:
 
 Layer                 | TF-Slim Op
 --------------------- | ------------------------
-Convolutional Layer   | [ops.conv2d](ops.py)
-Fully Connected Layer | [ops.fc](ops.py)
-BatchNorm layer       | [ops.batch_norm](ops.py)
-Max Pooling Layer     | [ops.max_pool](ops.py)
-Avg Pooling Layer     | [ops.avg_pool](ops.py)
-Dropout Layer         | [ops.dropout](ops.py)
+Convolutional Layer   | [ops.conv2d](./ops.py)
+Fully Connected Layer | [ops.fc](./ops.py)
+BatchNorm layer       | [ops.batch_norm](./ops.py)
+Max Pooling Layer     | [ops.max_pool](./ops.py)
+Avg Pooling Layer     | [ops.avg_pool](./ops.py)
+Dropout Layer         | [ops.dropout](./ops.py)
 
 [ops.py](./ops.py) also includes operations that are not really "layers" per se,
 but are often used to manipulate hidden unit representations during inference:
 
 Operation | TF-Slim Op
 --------- | ---------------------
-Flatten   | [ops.flatten](ops.py)
+Flatten   | [ops.flatten](./ops.py)
 
 TF-Slim also provides a meta-operation called `repeat_op` that allows one to
 repeatedly perform the same operation. Consider the following snippet from the
@@ -244,12 +241,9 @@ number. More concretely, the scopes in the example above would be 'conv3_1',
 
 ### Scopes
 
-In addition to the types of scope mechanisms in TensorFlow ([name_scope]
-(https://www.tensorflow.org/api_docs/python/framework.html#name_scope),
-[variable_scope]
-(https://www.tensorflow.org/api_docs/python/state_ops.html#variable_scope),
-TF-Slim adds a new scoping mechanism called "argument scope" or [arg_scope]
-(scopes.py). This new scope allows a user to specify one or more operations and
+In addition to the types of scope mechanisms in TensorFlow ([name_scope](https://www.tensorflow.org/api_docs/python/framework.html#name_scope),
+[variable_scope](https://www.tensorflow.org/api_docs/python/state_ops.html#variable_scope),
+TF-Slim adds a new scoping mechanism called "argument scope" or [arg_scope](./scopes.py). This new scope allows a user to specify one or more operations and
 a set of arguments which will be passed to each of the operations defined in the
 `arg_scope`. This functionality is best illustrated by example. Consider the
 following code snippet:
@@ -439,8 +433,7 @@ let TF-Slim know about the additional loss and let TF-Slim handle the losses.
 ## Putting the Pieces Together
 
 By combining TF-Slim Variables, Operations and scopes, we can write a normally
-very complex network with very few lines of code. For example, the entire [VGG]
-(https://www.robots.ox.ac.uk/~vgg/research/very_deep/) architecture can be
+very complex network with very few lines of code. For example, the entire [VGG](https://www.robots.ox.ac.uk/~vgg/research/very_deep/) architecture can be
 defined with just the following snippet:
 
 ```python
@@ -494,12 +487,9 @@ with tf.Session() as sess:
   ...
 ```
 
-See [Restoring Variables]
-(https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html#restoring-variables)
-and [Choosing which Variables to Save and Restore]
-(https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html#choosing-which-variables-to-save-and-restore)
-sections of the [Variables]
-(https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html) page for
+See [Restoring Variables](https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html#restoring-variables)
+and [Choosing which Variables to Save and Restore](https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html#choosing-which-variables-to-save-and-restore)
+sections of the [Variables](https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html) page for
 more details.
 
 ### Using slim.variables to Track which Variables need to be Restored

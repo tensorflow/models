@@ -14,17 +14,27 @@
 # ==============================================================================
 
 """A module for helper tensorflow ops."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import collections
 import math
-import numpy as np
 import six
 
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
-from object_detection.core import box_list
-from object_detection.core import box_list_ops
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import static_shape
+
+
+matmul_crop_and_resize = spatial_ops.matmul_crop_and_resize
+multilevel_roi_align = spatial_ops.multilevel_roi_align
+native_crop_and_resize = spatial_ops.native_crop_and_resize
 
 
 def expanded_shape(orig_shape, start_dim, num_dims):
@@ -54,24 +64,33 @@ def normalized_to_image_coordinates(normalized_boxes, image_shape,
   """Converts a batch of boxes from normal to image coordinates.
 
   Args:
-    normalized_boxes: a float32 tensor of shape [None, num_boxes, 4] in
-      normalized coordinates.
-    image_shape: a float32 tensor of shape [4] containing the image shape.
+    normalized_boxes: a tensor of shape [None, num_boxes, 4] in
+      normalized coordinates. The dtype of this tensor must support tf.mul.
+    image_shape: a tensor of shape [4] containing the image shape, with same
+      dtype as `normalized_boxes`.
     parallel_iterations: parallelism for the map_fn op.
 
   Returns:
-    absolute_boxes: a float32 tensor of shape [None, num_boxes, 4] containg the
-      boxes in image coordinates.
+    absolute_boxes: a tensor of shape [None, num_boxes, 4] containing
+      the boxes in image coordinates, with same
+      dtype as `normalized_boxes`.
   """
+  x_scale = tf.cast(image_shape[2], normalized_boxes.dtype)
+  y_scale = tf.cast(image_shape[1], normalized_boxes.dtype)
   def _to_absolute_coordinates(normalized_boxes):
-    return box_list_ops.to_absolute_coordinates(
-        box_list.BoxList(normalized_boxes),
-        image_shape[1], image_shape[2], check_range=False).get()
+    y_min, x_min, y_max, x_max = tf.split(
+        value=normalized_boxes, num_or_size_splits=4, axis=1)
+    y_min = y_scale * y_min
+    y_max = y_scale * y_max
+    x_min = x_scale * x_min
+    x_max = x_scale * x_max
+    scaled_boxes = tf.concat([y_min, x_min, y_max, x_max], 1)
+    return scaled_boxes
 
   absolute_boxes = shape_utils.static_or_dynamic_map_fn(
       _to_absolute_coordinates,
       elems=(normalized_boxes),
-      dtype=tf.float32,
+      dtype=normalized_boxes.dtype,
       parallel_iterations=parallel_iterations,
       back_prop=True)
   return absolute_boxes
@@ -155,6 +174,9 @@ def pad_to_multiple(tensor, multiple):
   Returns:
     padded_tensor: the tensor zero padded to the specified multiple.
   """
+  if multiple == 1:
+    return tensor
+
   tensor_shape = tensor.get_shape()
   batch_size = static_shape.get_batch_size(tensor_shape)
   tensor_height = static_shape.get_height(tensor_shape)
@@ -166,16 +188,22 @@ def pad_to_multiple(tensor, multiple):
 
   if tensor_height is None:
     tensor_height = tf.shape(tensor)[1]
-    padded_tensor_height = tf.to_int32(
-        tf.ceil(tf.to_float(tensor_height) / tf.to_float(multiple))) * multiple
+    padded_tensor_height = tf.cast(
+        tf.ceil(
+            tf.cast(tensor_height, dtype=tf.float32) /
+            tf.cast(multiple, dtype=tf.float32)),
+        dtype=tf.int32) * multiple
   else:
     padded_tensor_height = int(
         math.ceil(float(tensor_height) / multiple) * multiple)
 
   if tensor_width is None:
     tensor_width = tf.shape(tensor)[2]
-    padded_tensor_width = tf.to_int32(
-        tf.ceil(tf.to_float(tensor_width) / tf.to_float(multiple))) * multiple
+    padded_tensor_width = tf.cast(
+        tf.ceil(
+            tf.cast(tensor_width, dtype=tf.float32) /
+            tf.cast(multiple, dtype=tf.float32)),
+        dtype=tf.int32) * multiple
   else:
     padded_tensor_width = int(
         math.ceil(float(tensor_width) / multiple) * multiple)
@@ -299,11 +327,11 @@ def indices_to_dense_vector(indices,
     dense 1D Tensor of shape [size] with indices set to indices_values and the
         rest set to default_value.
   """
-  size = tf.to_int32(size)
+  size = tf.cast(size, dtype=tf.int32)
   zeros = tf.ones([size], dtype=dtype) * default_value
   values = tf.ones_like(indices, dtype=dtype) * indices_value
 
-  return tf.dynamic_stitch([tf.range(size), tf.to_int32(indices)],
+  return tf.dynamic_stitch([tf.range(size), tf.cast(indices, dtype=tf.int32)],
                            [zeros, values])
 
 
@@ -319,6 +347,7 @@ def retain_groundtruth(tensor_dict, valid_indices):
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
       fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_confidences
       fields.InputDataFields.groundtruth_keypoints
       fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_is_crowd
@@ -348,7 +377,9 @@ def retain_groundtruth(tensor_dict, valid_indices):
     for key in tensor_dict:
       if key in [fields.InputDataFields.groundtruth_boxes,
                  fields.InputDataFields.groundtruth_classes,
+                 fields.InputDataFields.groundtruth_confidences,
                  fields.InputDataFields.groundtruth_keypoints,
+                 fields.InputDataFields.groundtruth_keypoint_visibilities,
                  fields.InputDataFields.groundtruth_instance_masks]:
         valid_dict[key] = tf.gather(tensor_dict[key], valid_indices)
       # Input decoder returns empty tensor when these fields are not provided.
@@ -376,6 +407,7 @@ def retain_groundtruth_with_positive_classes(tensor_dict):
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
       fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_confidences
       fields.InputDataFields.groundtruth_keypoints
       fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_is_crowd
@@ -417,6 +449,7 @@ def filter_groundtruth_with_crowd_boxes(tensor_dict):
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
       fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_confidences
       fields.InputDataFields.groundtruth_keypoints
       fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_is_crowd
@@ -442,6 +475,7 @@ def filter_groundtruth_with_nan_box_coordinates(tensor_dict):
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
       fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_confidences
       fields.InputDataFields.groundtruth_keypoints
       fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_is_crowd
@@ -453,12 +487,42 @@ def filter_groundtruth_with_nan_box_coordinates(tensor_dict):
     boxes.
   """
   groundtruth_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
-  nan_indicator_vector = tf.greater(tf.reduce_sum(tf.to_int32(
-      tf.is_nan(groundtruth_boxes)), reduction_indices=[1]), 0)
+  nan_indicator_vector = tf.greater(tf.reduce_sum(tf.cast(
+      tf.is_nan(groundtruth_boxes), dtype=tf.int32), reduction_indices=[1]), 0)
   valid_indicator_vector = tf.logical_not(nan_indicator_vector)
   valid_indices = tf.where(valid_indicator_vector)
 
   return retain_groundtruth(tensor_dict, valid_indices)
+
+
+def filter_unrecognized_classes(tensor_dict):
+  """Filters out class labels that are not unrecognized by the labelmap.
+
+  Decoder would parse unrecognized classes (not included in the labelmap) to
+  a label of value -1. Such targets are unecessary for training, and causes
+  issue for evaluation, due to labeling mapping logic. This function filters
+  those labels out for both training and evaluation.
+
+  Args:
+    tensor_dict: dictionary containing input tensors keyed by
+      fields.InputDataFields.
+
+  Returns:
+    A dictionary keyed by fields.InputDataFields containing the tensors
+    obtained after applying the filtering.
+
+  Raises:
+    ValueError: If groundtruth_classes tensor is not in tensor_dict.
+  """
+  if fields.InputDataFields.groundtruth_classes not in tensor_dict:
+    raise ValueError('`groundtruth classes` not in tensor_dict.')
+  # Refer to tf_example_decoder for how unrecognized labels are handled.
+  unrecognized_label = -1
+  recognized_indices = tf.where(
+      tf.greater(tensor_dict[fields.InputDataFields.groundtruth_classes],
+                 unrecognized_label))
+
+  return retain_groundtruth(tensor_dict, recognized_indices)
 
 
 def normalize_to_target(inputs,
@@ -530,7 +594,6 @@ def normalize_to_target(inputs,
         trainable=trainable)
     if summarize:
       mean = tf.reduce_mean(target_norm)
-      mean = tf.Print(mean, ['NormalizeToTarget:', mean])
       tf.summary.scalar(tf.get_variable_scope().name, mean)
     lengths = epsilon + tf.sqrt(tf.reduce_sum(tf.square(inputs), dim, True))
     mult_shape = input_rank*[1]
@@ -538,13 +601,59 @@ def normalize_to_target(inputs,
     return tf.reshape(target_norm, mult_shape) * tf.truediv(inputs, lengths)
 
 
+def batch_position_sensitive_crop_regions(images,
+                                          boxes,
+                                          crop_size,
+                                          num_spatial_bins,
+                                          global_pool,
+                                          parallel_iterations=64):
+  """Position sensitive crop with batches of images and boxes.
+
+  This op is exactly like `position_sensitive_crop_regions` below but operates
+  on batches of images and boxes. See `position_sensitive_crop_regions` function
+  below for the operation applied per batch element.
+
+  Args:
+    images: A `Tensor`. Must be one of the following types: `uint8`, `int8`,
+      `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+      A 4-D tensor of shape `[batch, image_height, image_width, depth]`.
+      Both `image_height` and `image_width` need to be positive.
+    boxes: A `Tensor` of type `float32`.
+      A 3-D tensor of shape `[batch, num_boxes, 4]`. Each box is specified in
+      normalized coordinates `[y1, x1, y2, x2]`. A normalized coordinate value
+      of `y` is mapped to the image coordinate at `y * (image_height - 1)`, so
+      as the `[0, 1]` interval of normalized image height is mapped to
+      `[0, image_height - 1] in image height coordinates. We do allow y1 > y2,
+      in which case the sampled crop is an up-down flipped version of the
+      original image. The width dimension is treated similarly.
+    crop_size: See `position_sensitive_crop_regions` below.
+    num_spatial_bins: See `position_sensitive_crop_regions` below.
+    global_pool: See `position_sensitive_crop_regions` below.
+    parallel_iterations: Number of batch items to process in parallel.
+
+  Returns:
+  """
+  def _position_sensitive_crop_fn(inputs):
+    images, boxes = inputs
+    return position_sensitive_crop_regions(
+        images,
+        boxes,
+        crop_size=crop_size,
+        num_spatial_bins=num_spatial_bins,
+        global_pool=global_pool)
+
+  return shape_utils.static_or_dynamic_map_fn(
+      _position_sensitive_crop_fn,
+      elems=[images, boxes],
+      dtype=tf.float32,
+      parallel_iterations=parallel_iterations)
+
+
 def position_sensitive_crop_regions(image,
                                     boxes,
-                                    box_ind,
                                     crop_size,
                                     num_spatial_bins,
-                                    global_pool,
-                                    extrapolation_value=None):
+                                    global_pool):
   """Position-sensitive crop and pool rectangular regions from a feature grid.
 
   The output crops are split into `spatial_bins_y` vertical bins
@@ -565,23 +674,16 @@ def position_sensitive_crop_regions(image,
   Args:
     image: A `Tensor`. Must be one of the following types: `uint8`, `int8`,
       `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
-      A 4-D tensor of shape `[batch, image_height, image_width, depth]`.
+      A 3-D tensor of shape `[image_height, image_width, depth]`.
       Both `image_height` and `image_width` need to be positive.
     boxes: A `Tensor` of type `float32`.
-      A 2-D tensor of shape `[num_boxes, 4]`. The `i`-th row of the tensor
-      specifies the coordinates of a box in the `box_ind[i]` image and is
-      specified in normalized coordinates `[y1, x1, y2, x2]`. A normalized
-      coordinate value of `y` is mapped to the image coordinate at
-      `y * (image_height - 1)`, so as the `[0, 1]` interval of normalized image
-      height is mapped to `[0, image_height - 1] in image height coordinates.
-      We do allow y1 > y2, in which case the sampled crop is an up-down flipped
-      version of the original image. The width dimension is treated similarly.
-      Normalized coordinates outside the `[0, 1]` range are allowed, in which
-      case we use `extrapolation_value` to extrapolate the input image values.
-    box_ind:  A `Tensor` of type `int32`.
-      A 1-D tensor of shape `[num_boxes]` with int32 values in `[0, batch)`.
-      The value of `box_ind[i]` specifies the image that the `i`-th box refers
-      to.
+      A 2-D tensor of shape `[num_boxes, 4]`. Each box is specified in
+      normalized coordinates `[y1, x1, y2, x2]`. A normalized coordinate value
+      of `y` is mapped to the image coordinate at `y * (image_height - 1)`, so
+      as the `[0, 1]` interval of normalized image height is mapped to
+      `[0, image_height - 1] in image height coordinates. We do allow y1 > y2,
+      in which case the sampled crop is an up-down flipped version of the
+      original image. The width dimension is treated similarly.
     crop_size: A list of two integers `[crop_height, crop_width]`. All
       cropped image patches are resized to this size. The aspect ratio of the
       image content is not preserved. Both `crop_height` and `crop_width` need
@@ -601,8 +703,7 @@ def position_sensitive_crop_regions(image,
       Note that using global_pool=True is equivalent to but more efficient than
         running the function with global_pool=False and then performing global
         average pooling.
-    extrapolation_value: An optional `float`. Defaults to `0`.
-      Value used for extrapolation, when applicable.
+
   Returns:
     position_sensitive_features: A 4-D tensor of shape
       `[num_boxes, K, K, crop_channels]`,
@@ -649,12 +750,20 @@ def position_sensitive_crop_regions(image,
                         ]
       position_sensitive_boxes.append(tf.stack(box_coordinates, axis=1))
 
-  image_splits = tf.split(value=image, num_or_size_splits=total_bins, axis=3)
+  image_splits = tf.split(value=image, num_or_size_splits=total_bins, axis=2)
 
   image_crops = []
   for (split, box) in zip(image_splits, position_sensitive_boxes):
-    crop = tf.image.crop_and_resize(split, box, box_ind, bin_crop_size,
-                                    extrapolation_value=extrapolation_value)
+    if split.shape.is_fully_defined() and box.shape.is_fully_defined():
+      crop = tf.squeeze(
+          matmul_crop_and_resize(
+              tf.expand_dims(split, axis=0), tf.expand_dims(box, axis=0),
+              bin_crop_size),
+          axis=0)
+    else:
+      crop = tf.image.crop_and_resize(
+          tf.expand_dims(split, 0), box,
+          tf.zeros(tf.shape(boxes)[0], dtype=tf.int32), bin_crop_size)
     image_crops.append(crop)
 
   if global_pool:
@@ -662,7 +771,7 @@ def position_sensitive_crop_regions(image,
     position_sensitive_features = tf.add_n(image_crops) / len(image_crops)
     # Then average over spatial positions within the bins.
     position_sensitive_features = tf.reduce_mean(
-        position_sensitive_features, [1, 2], keep_dims=True)
+        position_sensitive_features, [1, 2], keepdims=True)
   else:
     # Reorder height/width to depth channel.
     block_size = bin_crop_size[0]
@@ -678,7 +787,7 @@ def position_sensitive_crop_regions(image,
         tf.batch_to_space_nd(position_sensitive_features,
                              block_shape=[1] + num_spatial_bins,
                              crops=tf.zeros((3, 2), dtype=tf.int32)),
-        squeeze_dims=[0])
+        axis=[0])
 
     # Reorder back the depth channel.
     if block_size >= 2:
@@ -737,53 +846,95 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
   return tf.squeeze(image_masks, axis=3)
 
 
-def merge_boxes_with_multiple_labels(boxes, classes, num_classes):
+def merge_boxes_with_multiple_labels(boxes,
+                                     classes,
+                                     confidences,
+                                     num_classes,
+                                     quantization_bins=10000):
   """Merges boxes with same coordinates and returns K-hot encoded classes.
 
   Args:
-    boxes: A tf.float32 tensor with shape [N, 4] holding N boxes.
+    boxes: A tf.float32 tensor with shape [N, 4] holding N boxes. Only
+      normalized coordinates are allowed.
     classes: A tf.int32 tensor with shape [N] holding class indices.
       The class index starts at 0.
+    confidences: A tf.float32 tensor with shape [N] holding class confidences.
     num_classes: total number of classes to use for K-hot encoding.
+    quantization_bins: the number of bins used to quantize the box coordinate.
 
   Returns:
     merged_boxes: A tf.float32 tensor with shape [N', 4] holding boxes,
       where N' <= N.
     class_encodings: A tf.int32 tensor with shape [N', num_classes] holding
-      k-hot encodings for the merged boxes.
+      K-hot encodings for the merged boxes.
+    confidence_encodings: A tf.float32 tensor with shape [N', num_classes]
+      holding encodings of confidences for the merged boxes.
     merged_box_indices: A tf.int32 tensor with shape [N'] holding original
       indices of the boxes.
   """
-  def merge_numpy_boxes(boxes, classes, num_classes):
-    """Python function to merge numpy boxes."""
-    if boxes.size < 1:
-      return (np.zeros([0, 4], dtype=np.float32),
-              np.zeros([0, num_classes], dtype=np.int32),
-              np.zeros([0], dtype=np.int32))
-    box_to_class_indices = {}
-    for box_index in range(boxes.shape[0]):
-      box = tuple(boxes[box_index, :].tolist())
-      class_index = classes[box_index]
-      if box not in box_to_class_indices:
-        box_to_class_indices[box] = [box_index, np.zeros([num_classes])]
-      box_to_class_indices[box][1][class_index] = 1
-    merged_boxes = np.vstack(box_to_class_indices.keys()).astype(np.float32)
-    class_encodings = [item[1] for item in box_to_class_indices.values()]
-    class_encodings = np.vstack(class_encodings).astype(np.int32)
-    merged_box_indices = [item[0] for item in box_to_class_indices.values()]
-    merged_box_indices = np.array(merged_box_indices).astype(np.int32)
-    return merged_boxes, class_encodings, merged_box_indices
+  boxes_shape = tf.shape(boxes)
+  classes_shape = tf.shape(classes)
+  confidences_shape = tf.shape(confidences)
+  box_class_shape_assert = shape_utils.assert_shape_equal_along_first_dimension(
+      boxes_shape, classes_shape)
+  box_confidence_shape_assert = (
+      shape_utils.assert_shape_equal_along_first_dimension(
+          boxes_shape, confidences_shape))
+  box_dimension_assert = tf.assert_equal(boxes_shape[1], 4)
+  box_normalized_assert = shape_utils.assert_box_normalized(boxes)
 
-  merged_boxes, class_encodings, merged_box_indices = tf.py_func(
-      merge_numpy_boxes, [boxes, classes, num_classes],
-      [tf.float32, tf.int32, tf.int32])
-  merged_boxes = tf.reshape(merged_boxes, [-1, 4])
-  class_encodings = tf.reshape(class_encodings, [-1, num_classes])
-  merged_box_indices = tf.reshape(merged_box_indices, [-1])
-  return merged_boxes, class_encodings, merged_box_indices
+  with tf.control_dependencies(
+      [box_class_shape_assert, box_confidence_shape_assert,
+       box_dimension_assert, box_normalized_assert]):
+    quantized_boxes = tf.to_int64(boxes * (quantization_bins - 1))
+    ymin, xmin, ymax, xmax = tf.unstack(quantized_boxes, axis=1)
+    hashcodes = (
+        ymin +
+        xmin * quantization_bins +
+        ymax * quantization_bins * quantization_bins +
+        xmax * quantization_bins * quantization_bins * quantization_bins)
+    unique_hashcodes, unique_indices = tf.unique(hashcodes)
+    num_boxes = tf.shape(boxes)[0]
+    num_unique_boxes = tf.shape(unique_hashcodes)[0]
+    merged_box_indices = tf.unsorted_segment_min(
+        tf.range(num_boxes), unique_indices, num_unique_boxes)
+    merged_boxes = tf.gather(boxes, merged_box_indices)
+    unique_indices = tf.to_int64(unique_indices)
+    classes = tf.to_int64(classes)
+
+    def map_box_encodings(i):
+      """Produces box K-hot and score encodings for each class index."""
+      box_mask = tf.equal(
+          unique_indices, i * tf.ones(num_boxes, dtype=tf.int64))
+      box_mask = tf.reshape(box_mask, [-1])
+      box_indices = tf.boolean_mask(classes, box_mask)
+      box_confidences = tf.boolean_mask(confidences, box_mask)
+      box_class_encodings = tf.sparse_to_dense(
+          box_indices, [num_classes], tf.constant(1, dtype=tf.int64),
+          validate_indices=False)
+      box_confidence_encodings = tf.sparse_to_dense(
+          box_indices, [num_classes], box_confidences, validate_indices=False)
+      return box_class_encodings, box_confidence_encodings
+
+    # Important to avoid int32 here since there is no GPU kernel for int32.
+    # int64 and float32 are fine.
+    class_encodings, confidence_encodings = tf.map_fn(
+        map_box_encodings,
+        tf.range(tf.to_int64(num_unique_boxes)),
+        back_prop=False,
+        dtype=(tf.int64, tf.float32))
+
+    merged_boxes = tf.reshape(merged_boxes, [-1, 4])
+    class_encodings = tf.cast(class_encodings, dtype=tf.int32)
+    class_encodings = tf.reshape(class_encodings, [-1, num_classes])
+    confidence_encodings = tf.reshape(confidence_encodings, [-1, num_classes])
+    merged_box_indices = tf.reshape(merged_box_indices, [-1])
+    return (merged_boxes, class_encodings, confidence_encodings,
+            merged_box_indices)
 
 
-def nearest_neighbor_upsampling(input_tensor, scale):
+def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
+                                width_scale=None):
   """Nearest neighbor upsampling implementation.
 
   Nearest neighbor upsampling function that maps input tensor with shape
@@ -794,19 +945,33 @@ def nearest_neighbor_upsampling(input_tensor, scale):
   Args:
     input_tensor: A float32 tensor of size [batch, height_in, width_in,
       channels].
-    scale: An integer multiple to scale resolution of input data.
+    scale: An integer multiple to scale resolution of input data in both height
+      and width dimensions.
+    height_scale: An integer multiple to scale the height of input image. This
+      option when provided overrides `scale` option.
+    width_scale: An integer multiple to scale the width of input image. This
+      option when provided overrides `scale` option.
   Returns:
     data_up: A float32 tensor of size
       [batch, height_in*scale, width_in*scale, channels].
+
+  Raises:
+    ValueError: If both scale and height_scale or if both scale and width_scale
+      are None.
   """
+  if not scale and (height_scale is None or width_scale is None):
+    raise ValueError('Provide either `scale` or `height_scale` and'
+                     ' `width_scale`.')
   with tf.name_scope('nearest_neighbor_upsampling'):
+    h_scale = scale if height_scale is None else height_scale
+    w_scale = scale if width_scale is None else width_scale
     (batch_size, height, width,
      channels) = shape_utils.combined_static_and_dynamic_shape(input_tensor)
     output_tensor = tf.reshape(
         input_tensor, [batch_size, height, 1, width, 1, channels]) * tf.ones(
-            [1, 1, scale, 1, scale, 1], dtype=input_tensor.dtype)
+            [1, 1, h_scale, 1, w_scale, 1], dtype=input_tensor.dtype)
     return tf.reshape(output_tensor,
-                      [batch_size, height * scale, width * scale, channels])
+                      [batch_size, height * h_scale, width * w_scale, channels])
 
 
 def matmul_gather_on_zeroth_axis(params, indices, scope=None):
@@ -835,125 +1000,97 @@ def matmul_gather_on_zeroth_axis(params, indices, scope=None):
                       tf.stack(indices_shape + params_shape[1:]))
 
 
-def matmul_crop_and_resize(image, boxes, crop_size, scope=None):
-  """Matrix multiplication based implementation of the crop and resize op.
+def fpn_feature_levels(num_levels, unit_scale_index, image_ratio, boxes):
+  """Returns fpn feature level for each box based on its area.
 
-  Extracts crops from the input image tensor and bilinearly resizes them
-  (possibly with aspect ratio change) to a common output size specified by
-  crop_size. This is more general than the crop_to_bounding_box op which
-  extracts a fixed size slice from the input image and does not allow
-  resizing or aspect ratio change.
-
-  Returns a tensor with crops from the input image at positions defined at
-  the bounding box locations in boxes. The cropped boxes are all resized
-  (with bilinear interpolation) to a fixed size = `[crop_height, crop_width]`.
-  The result is a 4-D tensor `[num_boxes, crop_height, crop_width, depth]`.
-
-  Running time complexity:
-    O((# channels) * (# boxes) * (crop_size)^2 * M), where M is the number
-  of pixels of the longer edge of the image.
-
-  Note that this operation is meant to replicate the behavior of the standard
-  tf.image.crop_and_resize operation but there are a few differences.
-  Specifically:
-    1) The extrapolation value (the values that are interpolated from outside
-      the bounds of the image window) is always zero
-    2) Only XLA supported operations are used (e.g., matrix multiplication).
-    3) There is no `box_indices` argument --- to run this op on multiple images,
-      one must currently call this op independently on each image.
-    4) All shapes and the `crop_size` parameter are assumed to be statically
-      defined.  Moreover, the number of boxes must be strictly nonzero.
+  See section 4.2 of https://arxiv.org/pdf/1612.03144.pdf for details.
 
   Args:
-    image: A `Tensor`. Must be one of the following types: `uint8`, `int8`,
-      `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
-      A 4-D tensor of shape `[batch, image_height, image_width, depth]`.
-      Both `image_height` and `image_width` need to be positive.
-    boxes: A `Tensor` of type `float32`.
-      A 2-D tensor of shape `[num_boxes, 4]`. The `i`-th row of the tensor
-      specifies the coordinates of a box in the `box_ind[i]` image and is
-      specified in normalized coordinates `[y1, x1, y2, x2]`. A normalized
-      coordinate value of `y` is mapped to the image coordinate at
-      `y * (image_height - 1)`, so as the `[0, 1]` interval of normalized image
-      height is mapped to `[0, image_height - 1] in image height coordinates.
-      We do allow y1 > y2, in which case the sampled crop is an up-down flipped
-      version of the original image. The width dimension is treated similarly.
-      Normalized coordinates outside the `[0, 1]` range are allowed, in which
-      case we use `extrapolation_value` to extrapolate the input image values.
-    crop_size: A list of two integers `[crop_height, crop_width]`. All
-      cropped image patches are resized to this size. The aspect ratio of the
-      image content is not preserved. Both `crop_height` and `crop_width` need
-      to be positive.
-    scope: A name for the operation (optional).
+    num_levels: An integer indicating the number of feature levels to crop boxes
+      from.
+    unit_scale_index: An 0-based integer indicating the index of feature map
+      which most closely matches the resolution of the pretrained model.
+    image_ratio: A float indicating the ratio of input image area to pretraining
+      image area.
+    boxes: A float tensor of shape [batch, num_boxes, 4] containing boxes of the
+      form [ymin, xmin, ymax, xmax] in normalized coordinates.
 
   Returns:
-    A 4-D tensor of shape `[num_boxes, crop_height, crop_width, depth]`
-
-  Raises:
-    ValueError: if image tensor does not have shape
-      `[1, image_height, image_width, depth]` and all dimensions statically
-      defined.
-    ValueError: if boxes tensor does not have shape `[num_boxes, 4]` where
-      num_boxes > 0.
-    ValueError: if crop_size is not a list of two positive integers
+    An int32 tensor of shape [batch_size, num_boxes] containing feature indices.
   """
-  img_shape = image.shape.as_list()
-  boxes_shape = boxes.shape.as_list()
-  _, img_height, img_width, _ = img_shape
-  if not isinstance(crop_size, list) or len(crop_size) != 2:
-    raise ValueError('`crop_size` must be a list of length 2')
-  dimensions = img_shape + crop_size + boxes_shape
-  if not all([isinstance(dim, int) for dim in dimensions]):
-    raise ValueError('all input shapes must be statically defined')
-  if len(crop_size) != 2:
-    raise ValueError('`crop_size` must be a list of length 2')
-  if len(boxes_shape) != 2 or boxes_shape[1] != 4:
-    raise ValueError('`boxes` should have shape `[num_boxes, 4]`')
-  if len(img_shape) != 4 and img_shape[0] != 1:
-    raise ValueError('image should have shape '
-                     '`[1, image_height, image_width, depth]`')
-  num_crops = boxes_shape[0]
-  if not num_crops > 0:
-    raise ValueError('number of boxes must be > 0')
-  if not (crop_size[0] > 0 and crop_size[1] > 0):
-    raise ValueError('`crop_size` must be a list of two positive integers.')
+  assert num_levels > 0, (
+      '`num_levels` must be > 0. Found {}'.format(num_levels))
+  assert unit_scale_index < num_levels and unit_scale_index >= 0, (
+      '`unit_scale_index` must be in [0, {}). Found {}.'.format(
+          num_levels, unit_scale_index))
+  box_height_width = boxes[:, :, 2:4] - boxes[:, :, 0:2]
+  areas_sqrt = tf.sqrt(tf.reduce_prod(box_height_width, axis=2))
+  log_2 = tf.cast(tf.log(2.0), dtype=boxes.dtype)
+  levels = tf.cast(
+      tf.floordiv(tf.log(areas_sqrt * image_ratio), log_2)
+      +
+      unit_scale_index,
+      dtype=tf.int32)
+  levels = tf.maximum(0, tf.minimum(num_levels - 1, levels))
+  return levels
 
-  def _lin_space_weights(num, img_size):
-    if num > 1:
-      alpha = (img_size - 1) / float(num - 1)
-      indices = np.reshape(np.arange(num), (1, num))
-      start_weights = alpha * (num - 1 - indices)
-      stop_weights = alpha * indices
+
+def bfloat16_to_float32_nested(tensor_nested):
+  """Convert float32 tensors in a nested structure to bfloat16.
+
+  Args:
+    tensor_nested: A Python dict, values being Tensor or Python list/tuple of
+      Tensor.
+
+  Returns:
+    A Python dict with the same structure as `tensor_dict`,
+    with all bfloat16 tensors converted to float32.
+  """
+  if isinstance(tensor_nested, tf.Tensor):
+    if tensor_nested.dtype == tf.bfloat16:
+      return tf.cast(tensor_nested, dtype=tf.float32)
     else:
-      start_weights = num * [.5 * (img_size - 1)]
-      stop_weights = num * [.5 * (img_size - 1)]
-    return (tf.constant(start_weights, dtype=tf.float32),
-            tf.constant(stop_weights, dtype=tf.float32))
+      return tensor_nested
+  elif isinstance(tensor_nested, (list, tuple)):
+    out_tensor_dict = [bfloat16_to_float32_nested(t) for t in tensor_nested]
+  elif isinstance(tensor_nested, dict):
+    out_tensor_dict = {
+        k: bfloat16_to_float32_nested(v) for k, v in tensor_nested.items()
+    }
+  return out_tensor_dict
 
-  with tf.name_scope(scope, 'MatMulCropAndResize'):
-    y1_weights, y2_weights = _lin_space_weights(crop_size[0], img_height)
-    x1_weights, x2_weights = _lin_space_weights(crop_size[1], img_width)
-    [y1, x1, y2, x2] = tf.split(value=boxes, num_or_size_splits=4, axis=1)
 
-    # Pixel centers of input image and grid points along height and width
-    image_idx_h = tf.constant(
-        np.reshape(np.arange(img_height), (1, 1, img_height)), dtype=tf.float32)
-    image_idx_w = tf.constant(
-        np.reshape(np.arange(img_width), (1, 1, img_width)), dtype=tf.float32)
-    grid_pos_h = tf.expand_dims(y1 * y1_weights + y2 * y2_weights, 2)
-    grid_pos_w = tf.expand_dims(x1 * x1_weights + x2 * x2_weights, 2)
+def gather_with_padding_values(input_tensor, indices, padding_value):
+  """Gathers elements from tensor and pads `padding_value` for ignore indices.
 
-    # Create kernel matrices of pairwise kernel evaluations between pixel
-    # centers of image and grid points.
-    kernel_h = tf.nn.relu(1 - tf.abs(image_idx_h - grid_pos_h))
-    kernel_w = tf.nn.relu(1 - tf.abs(image_idx_w - grid_pos_w))
+  Gathers elements from `input_tensor` based on `indices`. If there are ignore
+  indices (which are "-1"s) in `indices`, `padding_value` will be gathered for
+  those positions.
 
-    # TODO(jonathanhuang): investigate whether all channels can be processed
-    # without the explicit unstack --- possibly with a permute and map_fn call.
-    result_channels = []
-    for channel in tf.unstack(image, axis=3):
-      result_channels.append(
-          tf.matmul(
-              tf.matmul(kernel_h, tf.tile(channel, [num_crops, 1, 1])),
-              kernel_w, transpose_b=True))
-    return tf.stack(result_channels, axis=3)
+  Args:
+    input_tensor: A N-D tensor of shape [M, d_1, d_2 .. d_(N-1)] to gather
+      values from.
+    indices: A 1-D tensor in which each element is either an index in the
+      first dimension of input_tensor or -1.
+    padding_value: A (N-1)-D tensor of shape [d_1, d_2 .. d_(N-1)] which will be
+      used as gathered value for each ignore index in `indices`.
+
+  Returns:
+    gathered_tensor: A tensor of shape [L, d_1, d_2 .. d_(N-1)] containing
+      values gathered from input_tensor. The first dimension L is equal to the
+      length of `indices`.
+  """
+  padding_value = tf.expand_dims(padding_value, axis=0)
+  input_tensor = tf.concat([padding_value, input_tensor], axis=0)
+  gather_indices = indices + 1
+  gathered_tensor = tf.gather(input_tensor, gather_indices)
+  return gathered_tensor
+
+
+
+
+
+EqualizationLossConfig = collections.namedtuple('EqualizationLossConfig',
+                                                ['weight', 'exclude_prefixes'])
+
+

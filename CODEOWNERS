@@ -1,14 +1,19 @@
 * @tensorflow/tf-garden-team
-/official/ @tensorflow/tf-garden-team @karmel
+/official/ @guptapriya @rachellj218 @saberkun
+/official/bert @saberkun @hongjunChoi @rachellj218
 /research/adversarial_crypto/ @dave-andersen
+/research/adversarial_logit_pairing/ @AlexeyKurakin
 /research/adversarial_text/ @rsepassi @a-dai
 /research/adv_imagenet_models/ @AlexeyKurakin
 /research/attention_ocr/ @alexgorban
 /research/audioset/ @plakal @dpwe
+/research/autoaugment/* @barretzoph
 /research/autoencoders/ @snurkabill
 /research/brain_coder/ @danabo
 /research/cognitive_mapping_and_planning/ @s-gupta
 /research/compression/ @nmjohn
+/research/cvt_text/ @clarkkev @lmthang
+/research/deep_contextual_bandits/ @rikel
 /research/deeplab/ @aquariusjay @yknzhu @gpapan
 /research/delf/ @andrefaraujo
 /research/differential_privacy/ @ilyamironov @ananthr
@@ -18,6 +23,7 @@
 /research/global_objectives/ @mackeya-google
 /research/im2txt/ @cshallue
 /research/inception/ @shlens @vincentvanhoucke
+/research/keypointnet/ @mnorouzi
 /research/learned_optimizer/ @olganw @nirum
 /research/learning_to_remember_rare_events/ @lukaszkaiser @ofirnachum
 /research/learning_unsupervised_learning/ @lukemetz @nirum
@@ -25,6 +31,7 @@
 /research/lfads/ @jazcollins @susillo
 /research/lm_1b/ @oriolvinyals @panyx0718
 /research/lm_commonsense/ @thtrieu
+/research/lstm_object_detection/ @dreamdragon @masonliuw @yinxiaoli @yongzhe2160
 /research/marco/ @vincentvanhoucke
 /research/maskgan/ @a-dai
 /research/morph_net/ @gariel-google
@@ -43,6 +50,7 @@
 /research/slim/ @sguada @nathansilberman
 /research/steve/ @buckman-google
 /research/street/ @theraysmith
+/research/struct2depth/ @aneliaangelova
 /research/swivel/ @waterson
 /research/syntaxnet/ @calberti @andorardo @bogatyy @markomernick
 /research/tcn/ @coreylynch @sermanet
@@ -56,5 +64,5 @@
 /samples/languages/java/ @asimshankar
 /tutorials/embedding/ @zffchen78 @a-dai
 /tutorials/image/ @sherrym @shlens
-/tutorials/image/cifar10_estimator/ @tfboyd @protoget
+/tutorials/image/cifar10_estimator/ @protoget
 /tutorials/rnn/ @lukaszkaiser @ebrevdo

@@ -28,6 +28,7 @@ trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
 
 def inception_v1_base(inputs,
                       final_endpoint='Mixed_5c',
+                      include_root_block=True,
                       scope='InceptionV1'):
   """Defines the Inception V1 base architecture.
 
@@ -43,7 +44,11 @@ def inception_v1_base(inputs,
       can be one of ['Conv2d_1a_7x7', 'MaxPool_2a_3x3', 'Conv2d_2b_1x1',
       'Conv2d_2c_3x3', 'MaxPool_3a_3x3', 'Mixed_3b', 'Mixed_3c',
       'MaxPool_4a_3x3', 'Mixed_4b', 'Mixed_4c', 'Mixed_4d', 'Mixed_4e',
-      'Mixed_4f', 'MaxPool_5a_2x2', 'Mixed_5b', 'Mixed_5c']
+      'Mixed_4f', 'MaxPool_5a_2x2', 'Mixed_5b', 'Mixed_5c']. If
+      include_root_block is False, ['Conv2d_1a_7x7', 'MaxPool_2a_3x3',
+      'Conv2d_2b_1x1', 'Conv2d_2c_3x3', 'MaxPool_3a_3x3'] will not be available.
+    include_root_block: If True, include the convolution and max-pooling layers
+      before the inception modules. If False, excludes those layers.
     scope: Optional variable_scope.
 
   Returns:
@@ -59,26 +64,33 @@ def inception_v1_base(inputs,
         weights_initializer=trunc_normal(0.01)):
       with slim.arg_scope([slim.conv2d, slim.max_pool2d],
                           stride=1, padding='SAME'):
-        end_point = 'Conv2d_1a_7x7'
-        net = slim.conv2d(inputs, 64, [7, 7], stride=2, scope=end_point)
-        end_points[end_point] = net
-        if final_endpoint == end_point: return net, end_points
-        end_point = 'MaxPool_2a_3x3'
-        net = slim.max_pool2d(net, [3, 3], stride=2, scope=end_point)
-        end_points[end_point] = net
-        if final_endpoint == end_point: return net, end_points
-        end_point = 'Conv2d_2b_1x1'
-        net = slim.conv2d(net, 64, [1, 1], scope=end_point)
-        end_points[end_point] = net
-        if final_endpoint == end_point: return net, end_points
-        end_point = 'Conv2d_2c_3x3'
-        net = slim.conv2d(net, 192, [3, 3], scope=end_point)
-        end_points[end_point] = net
-        if final_endpoint == end_point: return net, end_points
-        end_point = 'MaxPool_3a_3x3'
-        net = slim.max_pool2d(net, [3, 3], stride=2, scope=end_point)
-        end_points[end_point] = net
-        if final_endpoint == end_point: return net, end_points
+        net = inputs
+        if include_root_block:
+          end_point = 'Conv2d_1a_7x7'
+          net = slim.conv2d(inputs, 64, [7, 7], stride=2, scope=end_point)
+          end_points[end_point] = net
+          if final_endpoint == end_point:
+            return net, end_points
+          end_point = 'MaxPool_2a_3x3'
+          net = slim.max_pool2d(net, [3, 3], stride=2, scope=end_point)
+          end_points[end_point] = net
+          if final_endpoint == end_point:
+            return net, end_points
+          end_point = 'Conv2d_2b_1x1'
+          net = slim.conv2d(net, 64, [1, 1], scope=end_point)
+          end_points[end_point] = net
+          if final_endpoint == end_point:
+            return net, end_points
+          end_point = 'Conv2d_2c_3x3'
+          net = slim.conv2d(net, 192, [3, 3], scope=end_point)
+          end_points[end_point] = net
+          if final_endpoint == end_point:
+            return net, end_points
+          end_point = 'MaxPool_3a_3x3'
+          net = slim.max_pool2d(net, [3, 3], stride=2, scope=end_point)
+          end_points[end_point] = net
+          if final_endpoint == end_point:
+            return net, end_points
 
         end_point = 'Mixed_3b'
         with tf.variable_scope(end_point):

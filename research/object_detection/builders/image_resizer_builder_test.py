@@ -27,8 +27,9 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     image_resizer_config = image_resizer_pb2.ImageResizer()
     text_format.Merge(text_proto, image_resizer_config)
     image_resizer_fn = image_resizer_builder.build(image_resizer_config)
-    images = tf.to_float(
-        tf.random_uniform(input_shape, minval=0, maxval=255, dtype=tf.int32))
+    images = tf.cast(
+        tf.random_uniform(input_shape, minval=0, maxval=255, dtype=tf.int32),
+        dtype=tf.float32)
     resized_images, _ = image_resizer_fn(images)
     with self.test_session() as sess:
       return sess.run(resized_images).shape
@@ -42,6 +43,20 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     """
     input_shape = (50, 25, 3)
     expected_output_shape = (20, 10, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_keep_aspect_ratio_resizer_grayscale(self):
+    image_resizer_text_proto = """
+      keep_aspect_ratio_resizer {
+        min_dimension: 10
+        max_dimension: 20
+        convert_to_grayscale: true
+      }
+    """
+    input_shape = (50, 25, 3)
+    expected_output_shape = (20, 10, 1)
     output_shape = self._shape_of_resized_random_image_given_text_proto(
         input_shape, image_resizer_text_proto)
     self.assertEqual(output_shape, expected_output_shape)
@@ -71,6 +86,31 @@ class ImageResizerBuilderTest(tf.test.TestCase):
       }
     """
     input_shape = (50, 25, 3)
+    expected_output_shape = (10, 20, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_built_fixed_shape_resizer_grayscale(self):
+    image_resizer_text_proto = """
+      fixed_shape_resizer {
+        height: 10
+        width: 20
+        convert_to_grayscale: true
+      }
+    """
+    input_shape = (50, 25, 3)
+    expected_output_shape = (10, 20, 1)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_identity_resizer_returns_expected_shape(self):
+    image_resizer_text_proto = """
+      identity_resizer {
+      }
+    """
+    input_shape = (10, 20, 3)
     expected_output_shape = (10, 20, 3)
     output_shape = self._shape_of_resized_random_image_given_text_proto(
         input_shape, image_resizer_text_proto)
@@ -107,6 +147,69 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     vals = np.unique(resized_image).tolist()
     self.assertEqual(len(vals), 1)
     self.assertEqual(vals[0], 1)
+
+  def test_build_conditional_shape_resizer_greater_returns_expected_shape(self):
+    image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: GREATER
+        size_threshold: 30
+      }
+    """
+    input_shape = (60, 30, 3)
+    expected_output_shape = (30, 15, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_conditional_shape_resizer_same_shape_with_no_resize(self):
+    image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: GREATER
+        size_threshold: 30
+      }
+    """
+    input_shape = (15, 15, 3)
+    expected_output_shape = (15, 15, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_conditional_shape_resizer_smaller_returns_expected_shape(self):
+    image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: SMALLER
+        size_threshold: 30
+      }
+    """
+    input_shape = (30, 15, 3)
+    expected_output_shape = (60, 30, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_conditional_shape_resizer_grayscale(self):
+    image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: GREATER
+        size_threshold: 30
+        convert_to_grayscale: true
+      }
+    """
+    input_shape = (60, 30, 3)
+    expected_output_shape = (30, 15, 1)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_conditional_shape_resizer_error_on_invalid_condition(self):
+    invalid_image_resizer_text_proto = """
+      conditional_shape_resizer {
+        condition: INVALID
+        size_threshold: 30
+      }
+    """
+    with self.assertRaises(ValueError):
+      image_resizer_builder.build(invalid_image_resizer_text_proto)
 
 
 if __name__ == '__main__':

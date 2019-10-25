@@ -82,7 +82,7 @@ def preprocess_image_and_label(image,
     label = tf.cast(label, tf.int32)
 
   # Resize image and label to the desired range.
-  if min_resize_value is not None or max_resize_value is not None:
+  if min_resize_value or max_resize_value:
     [processed_image, label] = (
         preprocess_utils.resize_to_range(
             image=processed_image,
@@ -95,11 +95,12 @@ def preprocess_image_and_label(image,
     original_image = tf.identity(processed_image)
 
   # Data augmentation by randomly scaling the inputs.
-  scale = preprocess_utils.get_random_scale(
-      min_scale_factor, max_scale_factor, scale_factor_step_size)
-  processed_image, label = preprocess_utils.randomly_scale_image_and_label(
-      processed_image, label, scale)
-  processed_image.set_shape([None, None, 3])
+  if is_training:
+    scale = preprocess_utils.get_random_scale(
+        min_scale_factor, max_scale_factor, scale_factor_step_size)
+    processed_image, label = preprocess_utils.randomly_scale_image_and_label(
+        processed_image, label, scale)
+    processed_image.set_shape([None, None, 3])
 
   # Pad image and label to have dimensions >= [crop_height, crop_width]
   image_shape = tf.shape(processed_image)

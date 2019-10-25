@@ -49,16 +49,22 @@ def read_dataset(file_read_func, input_files, config):
   """Reads a dataset, and handles repetition and shuffling.
 
   Args:
-    file_read_func: Function to use in tf.contrib.data.parallel_interleave, to
-      read every individual file into a tf.data.Dataset.
+    file_read_func: Function to use in tf.data.experimental.parallel_interleave,
+      to read every individual file into a tf.data.Dataset.
     input_files: A list of file paths to read.
     config: A input_reader_builder.InputReader object.
 
   Returns:
     A tf.data.Dataset of (undecoded) tf-records based on config.
+
+  Raises:
+    RuntimeError: If no files are found at the supplied path(s).
   """
   # Shard, shuffle, and read files.
   filenames = tf.gfile.Glob(input_files)
+  if not filenames:
+    raise RuntimeError('Did not find any input files matching the glob pattern '
+                       '{}'.format(input_files))
   num_readers = config.num_readers
   if num_readers > len(filenames):
     num_readers = len(filenames)
@@ -73,7 +79,7 @@ def read_dataset(file_read_func, input_files, config):
                        'still slightly shuffled since `num_readers` > 1.')
   filename_dataset = filename_dataset.repeat(config.num_epochs or None)
   records_dataset = filename_dataset.apply(
-      tf.contrib.data.parallel_interleave(
+      tf.data.experimental.parallel_interleave(
           file_read_func,
           cycle_length=num_readers,
           block_length=config.read_block_length,
@@ -117,6 +123,7 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None):
       label_map_proto_file = input_reader_config.label_map_path
     decoder = tf_example_decoder.TfExampleDecoder(
         load_instance_masks=input_reader_config.load_instance_masks,
+        load_multiclass_scores=input_reader_config.load_multiclass_scores,
         instance_mask_type=input_reader_config.mask_type,
         label_map_proto_file=label_map_proto_file,
         use_display_name=input_reader_config.use_display_name,
@@ -132,18 +139,22 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None):
     dataset = read_dataset(
         functools.partial(tf.data.TFRecordDataset, buffer_size=8 * 1000 * 1000),
         config.input_path[:], input_reader_config)
+    if input_reader_config.sample_1_of_n_examples > 1:
+      dataset = dataset.shard(input_reader_config.sample_1_of_n_examples, 0)
     # TODO(rathodv): make batch size a required argument once the old binaries
     # are deleted.
     if batch_size:
       num_parallel_calls = batch_size * input_reader_config.num_parallel_batches
     else:
       num_parallel_calls = input_reader_config.num_parallel_map_calls
-    dataset = dataset.map(
-        process_fn,
-        num_parallel_calls=num_parallel_calls)
+    # TODO(b/123952794): Migrate to V2 function.
+    if hasattr(dataset, 'map_with_legacy_function'):
+      data_map_fn = dataset.map_with_legacy_function
+    else:
+      data_map_fn = dataset.map
+    dataset = data_map_fn(process_fn, num_parallel_calls=num_parallel_calls)
     if batch_size:
-      dataset = dataset.apply(
-          tf.contrib.data.batch_and_drop_remainder(batch_size))
+      dataset = dataset.batch(batch_size, drop_remainder=True)
     dataset = dataset.prefetch(input_reader_config.num_prefetch_batches)
     return dataset
 

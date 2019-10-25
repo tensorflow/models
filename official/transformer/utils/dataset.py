@@ -58,8 +58,6 @@ import tensorflow as tf
 
 from official.utils.misc import model_helpers
 
-# Use the number of training files as the shuffle buffer.
-_FILE_SHUFFLE_BUFFER = 100
 # Buffer size for reading records from a TFRecord file. Each training file is
 # 7.2 MB, so 8 MB allows an entire file to be kept in memory.
 _READ_RECORD_BUFFER = 8 * 1000 * 1000
@@ -185,7 +183,7 @@ def _batch_examples(dataset, batch_size, max_length):
     # lengths as well. Resulting lengths of inputs and targets can differ.
     return grouped_dataset.padded_batch(bucket_batch_size, ([None], [None]))
 
-  return dataset.apply(tf.contrib.data.group_by_window(
+  return dataset.apply(tf.data.experimental.group_by_window(
       key_func=example_to_bucket_id,
       reduce_func=batching_fn,
       window_size=None,
@@ -220,16 +218,12 @@ def _read_and_batch_from_files(
   Returns:
     tf.data.Dataset object containing examples loaded from the files.
   """
-  dataset = tf.data.Dataset.list_files(file_pattern)
-
-  if shuffle:
-    # Shuffle filenames
-    dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
+  dataset = tf.data.Dataset.list_files(file_pattern, shuffle=shuffle)
 
   # Read files and interleave results. When training, the order of the examples
   # will be non-deterministic.
   dataset = dataset.apply(
-      tf.contrib.data.parallel_interleave(
+      tf.data.experimental.parallel_interleave(
           _load_records, sloppy=shuffle, cycle_length=num_parallel_calls))
 
   # Parse each tf.Example into a dictionary
@@ -241,8 +235,9 @@ def _read_and_batch_from_files(
   dataset = dataset.filter(lambda x, y: _filter_max_length((x, y), max_length))
 
   if static_batch:
-    dataset = dataset.apply(tf.contrib.data.padded_batch_and_drop_remainder(
-        batch_size // max_length, ([max_length], [max_length])))
+    dataset = dataset.padded_batch(
+        batch_size // max_length, ([max_length], [max_length]),
+        drop_remainder=True)
   else:
     # Group and batch such that each batch has examples of similar length.
     dataset = _batch_examples(dataset, batch_size, max_length)
@@ -250,7 +245,7 @@ def _read_and_batch_from_files(
   dataset = dataset.repeat(repeat)
 
   # Prefetch the next element to improve speed of input pipeline.
-  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
   return dataset
 
 
