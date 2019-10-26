@@ -459,9 +459,8 @@ def main(unused_argv):
           should_shuffle=True,
           should_repeat=True)
 
-      iterator = dataset.get_one_shot_iterator()
       train_tensor, summary_op = _train_deeplab_model(
-          iterator, dataset.num_of_classes,
+          dataset.get_one_shot_iterator(), dataset.num_of_classes,
           dataset.ignore_label)
 
       # Soft placement allows placing on CPU ops without GPU implementation.

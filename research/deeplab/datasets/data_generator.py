@@ -267,7 +267,6 @@ class Dataset(object):
     parsed_features = tf.parse_single_example(example_proto, features)
 
     image = _decode_image(parsed_features['image/encoded'], channels=3)
-    shape = image.get_shape()
     label = None
     if self.split_name != common.TEST_SET:
       label = _decode_image(
@@ -281,7 +280,6 @@ class Dataset(object):
         common.IMAGE: image
     }
 
-    label_shape = label.get_shape()
     if label is not None:
       sample[common.LABELS_CLASS] = label
       # if label.get_shape().ndims == 2:
@@ -300,8 +298,8 @@ class Dataset(object):
     a = tfa.Augmentor(sample, label=[common.LABELS_CLASS])
     a.elastic_deform(probability=1, strength=2.5, scale=5)
     augmented = a.out
-    augmented[common.IMAGE] = tf.reshape(augmented[common.IMAGE], shape)
-    augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], label_shape)
+    augmented[common.IMAGE] = tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3])
+    augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1])
     augmented[common.HEIGHT]= parsed_features['image/height']
     augmented[common.WIDTH]= parsed_features['image/width']
     augmented[common.IMAGE_NAME] = image_name
