@@ -460,7 +460,6 @@ def main(unused_argv):
           should_repeat=True)
 
       iterator = dataset.get_one_shot_iterator()
-      sample = iterator.get_next()
       train_tensor, summary_op = _train_deeplab_model(
           iterator, dataset.num_of_classes,
           dataset.ignore_label)
@@ -505,9 +504,6 @@ def main(unused_argv):
             save_summaries_steps=FLAGS.save_summaries_secs,
             save_checkpoint_secs=FLAGS.save_interval_secs,
             hooks=[stop_hook]) as sess:
-          cv2.imwrite('/home/antonkhlebka/image.png', sample[common.IMAGE].eval(session=sess))
-          cv2.imwrite('/home/antonkhlebka/label.png', sample[common.LABELS_CLASS].eval(session=sess))
-          return
           while not sess.should_stop():
             sess.run([train_tensor])
 
