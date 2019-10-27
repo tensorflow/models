@@ -134,7 +134,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
   def _load_inference_graph(self, inference_graph_path, is_binary=True):
     od_graph = tf.Graph()
     with od_graph.as_default():
-      od_graph_def = tf.GraphDef()
+      od_graph_def = tf.compat.v1.GraphDef()
       with tf.io.gfile.GFile(inference_graph_path) as fid:
         if is_binary:
           od_graph_def.ParseFromString(fid.read())

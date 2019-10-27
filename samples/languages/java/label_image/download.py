@@ -64,7 +64,7 @@ def patch_graph():
   """Create graph.pb that applies the model in URL to raw image bytes."""
   with tf.Graph().as_default() as g:
     input_image, image_normalized = create_graph_to_decode_and_normalize_image()
-    original_graph_def = tf.GraphDef()
+    original_graph_def = tf.compat.v1.GraphDef()
     with open(os.path.join(LOCAL_DIR, 'graph.pb')) as f:
       original_graph_def.ParseFromString(f.read())
     softmax = tf.import_graph_def(

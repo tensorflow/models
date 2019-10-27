@@ -93,7 +93,7 @@ def main(_):
   with tf.Graph().as_default() as graph:
     # Load the inference model for decoding.
     with tf.gfile.FastGFile(FLAGS.model, 'rb') as model_file:
-      graph_def = tf.GraphDef()
+      graph_def = tf.compat.v1.GraphDef()
       graph_def.ParseFromString(model_file.read())
     _ = tf.import_graph_def(graph_def, name='')
 

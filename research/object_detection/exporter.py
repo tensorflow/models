@@ -284,7 +284,7 @@ def write_saved_model(saved_model_path,
 
   Args:
     saved_model_path: Path to write SavedModel.
-    frozen_graph_def: tf.GraphDef holding frozen graph.
+    frozen_graph_def: tf.compat.v1.GraphDef holding frozen graph.
     inputs: The input placeholder tensor.
     outputs: A tensor dictionary containing the outputs of a DetectionModel.
   """

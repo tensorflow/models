@@ -133,7 +133,7 @@ class InferenceWrapperBase(object):
     """
     # Load the Graph.
     tf.logging.info("Loading GraphDef from file: %s", graph_def_file)
-    graph_def = tf.GraphDef()
+    graph_def = tf.compat.v1.GraphDef()
     with tf.gfile.FastGFile(graph_def_file, "rb") as f:
       graph_def.ParseFromString(f.read())
     tf.import_graph_def(graph_def, name="")

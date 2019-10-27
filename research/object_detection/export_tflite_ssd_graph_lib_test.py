@@ -114,7 +114,7 @@ class ExportTfliteGraphTest(tf.test.TestCase):
     """Imports a tflite graph, runs single inference and returns outputs."""
     graph = tf.Graph()
     with graph.as_default():
-      graph_def = tf.GraphDef()
+      graph_def = tf.compat.v1.GraphDef()
       with tf.gfile.Open(tflite_graph_file) as f:
         graph_def.ParseFromString(f.read())
       tf.import_graph_def(graph_def, name='')
@@ -329,7 +329,7 @@ class ExportTfliteGraphTest(tf.test.TestCase):
     self.assertTrue(os.path.exists(tflite_graph_file))
     graph = tf.Graph()
     with graph.as_default():
-      graph_def = tf.GraphDef()
+      graph_def = tf.compat.v1.GraphDef()
       with tf.gfile.Open(tflite_graph_file) as f:
         graph_def.ParseFromString(f.read())
       all_op_names = [node.name for node in graph_def.node]
@@ -361,7 +361,7 @@ class ExportTfliteGraphTest(tf.test.TestCase):
     self.assertTrue(os.path.exists(tflite_graph_file))
     graph = tf.Graph()
     with graph.as_default():
-      graph_def = tf.GraphDef()
+      graph_def = tf.compat.v1.GraphDef()
       with tf.gfile.Open(tflite_graph_file) as f:
         graph_def.ParseFromString(f.read())
       all_op_names = [node.name for node in graph_def.node]
@@ -380,7 +380,7 @@ class ExportTfliteGraphTest(tf.test.TestCase):
     self.assertTrue(os.path.exists(tflite_graph_file))
     graph = tf.Graph()
     with graph.as_default():
-      graph_def = tf.GraphDef()
+      graph_def = tf.compat.v1.GraphDef()
       with tf.gfile.Open(tflite_graph_file) as f:
         graph_def.ParseFromString(f.read())
       all_op_names = [node.name for node in graph_def.node]
