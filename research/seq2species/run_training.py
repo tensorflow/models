@@ -218,7 +218,7 @@ def write_message(message, filename):
     Outputs a text proto file to the given filename.
   """
   message_string = text_format.MessageToString(message)
-  with tf.gfile.GFile(filename, 'w') as f:
+  with tf.io.gfile.GFile(filename, 'w') as f:
     f.write(message_string)
 
 

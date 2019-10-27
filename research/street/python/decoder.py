@@ -187,7 +187,7 @@ class Decoder(object):
       ValueError: if the input file is not parsed correctly.
     """
     line_re = re.compile(r'(?P<codes>\d+(,\d+)*)\t(?P<utf8>.+)')
-    with tf.gfile.GFile(filename) as f:
+    with tf.io.gfile.GFile(filename) as f:
       for line in f:
         m = line_re.match(line)
         if m is None:

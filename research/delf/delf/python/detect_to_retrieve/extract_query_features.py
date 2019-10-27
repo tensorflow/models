@@ -61,7 +61,7 @@ def _PilLoader(path):
   Returns:
     PIL image in RGB format.
   """
-  with tf.gfile.GFile(path, 'rb') as f:
+  with tf.io.gfile.GFile(path, 'rb') as f:
     img = Image.open(f)
     return img.convert('RGB')
 
@@ -81,7 +81,7 @@ def main(argv):
 
   # Parse DelfConfig proto.
   config = delf_config_pb2.DelfConfig()
-  with tf.gfile.GFile(cmd_args.delf_config_path, 'r') as f:
+  with tf.io.gfile.GFile(cmd_args.delf_config_path, 'r') as f:
     text_format.Merge(f.read(), config)
 
   # Create output directory if necessary.

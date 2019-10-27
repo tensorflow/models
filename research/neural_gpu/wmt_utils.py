@@ -214,7 +214,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
       chars[c] = 1
 
     # Read French file.
-    with tf.gfile.GFile(data_path + ".fr", mode="rb") as f:
+    with tf.io.gfile.GFile(data_path + ".fr", mode="rb") as f:
       counter = 0
       for line_in in f:
         line = " ".join(line_in.split())
@@ -236,7 +236,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
             vocab[word] = 1000000000
 
     # Read English file.
-    with tf.gfile.GFile(data_path + ".en", mode="rb") as f:
+    with tf.io.gfile.GFile(data_path + ".en", mode="rb") as f:
       counter = 0
       for line_in in f:
         line = " ".join(line_in.split())
@@ -265,7 +265,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
         vocab_list = _START_VOCAB + sorted_vocab
       if len(vocab_list) > max_vocabulary_size:
         vocab_list = vocab_list[:max_vocabulary_size]
-      with tf.gfile.GFile(vocabulary_path, mode="wb") as vocab_file:
+      with tf.io.gfile.GFile(vocabulary_path, mode="wb") as vocab_file:
         for w in vocab_list:
           vocab_file.write(w + b"\n")
 
@@ -291,7 +291,7 @@ def initialize_vocabulary(vocabulary_path):
   """
   if tf.gfile.Exists(vocabulary_path):
     rev_vocab = []
-    with tf.gfile.GFile(vocabulary_path, mode="rb") as f:
+    with tf.io.gfile.GFile(vocabulary_path, mode="rb") as f:
       rev_vocab.extend(f.readlines())
     rev_vocab = [line.strip() for line in rev_vocab]
     vocab = dict([(x, y) for (y, x) in enumerate(rev_vocab)])
@@ -375,8 +375,8 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
   if not tf.gfile.Exists(target_path):
     print("Tokenizing data in %s" % data_path)
     vocab, _ = initialize_vocabulary(vocabulary_path)
-    with tf.gfile.GFile(data_path, mode="rb") as data_file:
-      with tf.gfile.GFile(target_path, mode="w") as tokens_file:
+    with tf.io.gfile.GFile(data_path, mode="rb") as data_file:
+      with tf.io.gfile.GFile(target_path, mode="w") as tokens_file:
         counter = 0
         for line in data_file:
           counter += 1

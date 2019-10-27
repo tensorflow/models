@@ -135,7 +135,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     od_graph = tf.Graph()
     with od_graph.as_default():
       od_graph_def = tf.GraphDef()
-      with tf.gfile.GFile(inference_graph_path) as fid:
+      with tf.io.gfile.GFile(inference_graph_path) as fid:
         if is_binary:
           od_graph_def.ParseFromString(fid.read())
         else:
@@ -739,7 +739,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       self.assertTrue(os.path.exists(expected_pipeline_path))
 
       written_pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-      with tf.gfile.GFile(expected_pipeline_path, 'r') as f:
+      with tf.io.gfile.GFile(expected_pipeline_path, 'r') as f:
         proto_str = f.read()
         text_format.Merge(proto_str, written_pipeline_config)
         self.assertProtoEquals(pipeline_config, written_pipeline_config)

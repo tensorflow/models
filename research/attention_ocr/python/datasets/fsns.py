@@ -72,7 +72,7 @@ def read_charset(filename, null_character=u'\u2591'):
   """
   pattern = re.compile(r'(\d+)\t(.+)')
   charset = {}
-  with tf.gfile.GFile(filename) as f:
+  with tf.io.gfile.GFile(filename) as f:
     for i, line in enumerate(f):
       m = pattern.match(line)
       if m is None:

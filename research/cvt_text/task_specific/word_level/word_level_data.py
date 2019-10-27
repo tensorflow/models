@@ -63,7 +63,7 @@ class TaggedDataLoader(object):
       else:
         raise ValueError('Unable to load data from', path)
 
-    with tf.gfile.GFile(path, 'r') as f:
+    with tf.io.gfile.GFile(path, 'r') as f:
       sentence = []
       for line in f:
         line = line.strip().split()

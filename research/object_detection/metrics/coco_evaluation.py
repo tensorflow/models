@@ -162,7 +162,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         None. In that case nothing will be written to the output file.
     """
     if json_output_path and json_output_path is not None:
-      with tf.gfile.GFile(json_output_path, 'w') as fid:
+      with tf.io.gfile.GFile(json_output_path, 'w') as fid:
         tf.logging.info('Dumping detections to output json file.')
         json_utils.Dump(
             obj=self._detection_boxes_list, fid=fid, float_digits=4, indent=2)
@@ -552,7 +552,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     """
     if json_output_path and json_output_path is not None:
       tf.logging.info('Dumping detections to output json file.')
-      with tf.gfile.GFile(json_output_path, 'w') as fid:
+      with tf.io.gfile.GFile(json_output_path, 'w') as fid:
         json_utils.Dump(
             obj=self._detection_masks_list, fid=fid, float_digits=4, indent=2)
 

@@ -147,7 +147,7 @@ def prepare_example(image_path, annotations, label_map_dict):
   Returns:
     example: The converted tf.Example.
   """
-  with tf.gfile.GFile(image_path, 'rb') as fid:
+  with tf.io.gfile.GFile(image_path, 'rb') as fid:
     encoded_png = fid.read()
   encoded_png_io = io.BytesIO(encoded_png)
   image = pil.open(encoded_png_io)

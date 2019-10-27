@@ -101,6 +101,6 @@ def create_tmp_metadata(num_examples, read_len):
         name=target, values=[str(i) for i in xrange(num_examples)])
 
   tmp_path = os.path.join(FLAGS.test_tmpdir, 'test.pbtxt')
-  with tf.gfile.GFile(tmp_path, 'w') as f:
+  with tf.io.gfile.GFile(tmp_path, 'w') as f:
     f.write(text_format.MessageToString(dataset_info))
   return tmp_path

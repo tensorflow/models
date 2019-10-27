@@ -98,7 +98,7 @@ def _build_vocabulary(input_files):
   if FLAGS.vocab_file:
     tf.logging.info("Loading existing vocab file.")
     vocab = collections.OrderedDict()
-    with tf.gfile.GFile(FLAGS.vocab_file, mode="r") as f:
+    with tf.io.gfile.GFile(FLAGS.vocab_file, mode="r") as f:
       for i, line in enumerate(f):
         word = line.decode("utf-8").strip()
         assert word not in vocab, "Attempting to add word twice: %s" % word

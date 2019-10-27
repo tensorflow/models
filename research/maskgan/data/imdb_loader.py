@@ -56,7 +56,7 @@ def _read_words(filename, use_prefix=True):
 def build_vocab(vocab_file):
   word_to_id = {}
 
-  with tf.gfile.GFile(vocab_file, 'r') as f:
+  with tf.io.gfile.GFile(vocab_file, 'r') as f:
     index = 0
     for word in f:
       word_to_id[word.strip()] = index

@@ -320,8 +320,8 @@ def export_tflite_graph(pipeline_config,
     transformed_graph_def = frozen_graph_def
 
   binary_graph = os.path.join(output_dir, binary_graph_name)
-  with tf.gfile.GFile(binary_graph, 'wb') as f:
+  with tf.io.gfile.GFile(binary_graph, 'wb') as f:
     f.write(transformed_graph_def.SerializeToString())
   txt_graph = os.path.join(output_dir, txt_graph_name)
-  with tf.gfile.GFile(txt_graph, 'w') as f:
+  with tf.io.gfile.GFile(txt_graph, 'w') as f:
     f.write(str(transformed_graph_def))

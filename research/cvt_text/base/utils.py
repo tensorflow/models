@@ -40,7 +40,7 @@ def load_cpickle(path, memoized=True):
 
 
 def _load_cpickle(path):
-  with tf.gfile.GFile(path, 'r') as f:
+  with tf.io.gfile.GFile(path, 'r') as f:
     return cPickle.load(f)
 
 
@@ -51,7 +51,7 @@ def _load_cpickle_memoize(path):
 
 def write_cpickle(o, path):
   tf.gfile.MakeDirs(path.rsplit('/', 1)[0])
-  with tf.gfile.GFile(path, 'w') as f:
+  with tf.io.gfile.GFile(path, 'w') as f:
     cPickle.dump(o, f, -1)
 
 

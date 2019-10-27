@@ -136,7 +136,7 @@ def _write_to_disk(summary_image, filename):
   buf = io.BytesIO()
   scipy.misc.imsave(buf, summary_image, format='png')
   buf.seek(0)
-  with tf.gfile.GFile(filename, 'w') as f:
+  with tf.io.gfile.GFile(filename, 'w') as f:
     f.write(buf.getvalue())
 
 

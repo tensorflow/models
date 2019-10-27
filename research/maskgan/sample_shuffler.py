@@ -69,7 +69,7 @@ def shuffle_samples(input_file_1, input_file_2):
 
 
 def generate_output(shuffled_tuples, output_file_name):
-  output_file = tf.gfile.GFile(output_file_name, mode='w')
+  output_file = tf.io.gfile.GFile(output_file_name, mode='w')
 
   for tup in shuffled_tuples:
     formatted_tuple = ('\n{:<1}, {:<1}, {:<1}').format(tup[0], tup[1].rstrip(),
@@ -79,9 +79,9 @@ def generate_output(shuffled_tuples, output_file_name):
 
 
 def main(_):
-  ml_samples_file = tf.gfile.GFile(
+  ml_samples_file = tf.io.gfile.GFile(
       os.path.join(FLAGS.input_ml_path, 'reviews.txt'), mode='r')
-  gan_samples_file = tf.gfile.GFile(
+  gan_samples_file = tf.io.gfile.GFile(
       os.path.join(FLAGS.input_gan_path, 'reviews.txt'), mode='r')
 
   # Generate shuffled tuples.

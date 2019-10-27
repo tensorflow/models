@@ -99,7 +99,7 @@ def get_configs_from_pipeline_file(pipeline_config_path, config_override=None):
       corresponding config objects.
   """
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-  with tf.gfile.GFile(pipeline_config_path, "r") as f:
+  with tf.io.gfile.GFile(pipeline_config_path, "r") as f:
     proto_str = f.read()
     text_format.Merge(proto_str, pipeline_config)
   if config_override:
@@ -145,7 +145,7 @@ def get_graph_rewriter_config_from_file(graph_rewriter_config_file):
     graph_rewriter_pb2.GraphRewriter proto
   """
   graph_rewriter_config = graph_rewriter_pb2.GraphRewriter()
-  with tf.gfile.GFile(graph_rewriter_config_file, "r") as f:
+  with tf.io.gfile.GFile(graph_rewriter_config_file, "r") as f:
     text_format.Merge(f.read(), graph_rewriter_config)
   return graph_rewriter_config
 
@@ -215,31 +215,31 @@ def get_configs_from_multiple_files(model_config_path="",
   configs = {}
   if model_config_path:
     model_config = model_pb2.DetectionModel()
-    with tf.gfile.GFile(model_config_path, "r") as f:
+    with tf.io.gfile.GFile(model_config_path, "r") as f:
       text_format.Merge(f.read(), model_config)
       configs["model"] = model_config
 
   if train_config_path:
     train_config = train_pb2.TrainConfig()
-    with tf.gfile.GFile(train_config_path, "r") as f:
+    with tf.io.gfile.GFile(train_config_path, "r") as f:
       text_format.Merge(f.read(), train_config)
       configs["train_config"] = train_config
 
   if train_input_config_path:
     train_input_config = input_reader_pb2.InputReader()
-    with tf.gfile.GFile(train_input_config_path, "r") as f:
+    with tf.io.gfile.GFile(train_input_config_path, "r") as f:
       text_format.Merge(f.read(), train_input_config)
       configs["train_input_config"] = train_input_config
 
   if eval_config_path:
     eval_config = eval_pb2.EvalConfig()
-    with tf.gfile.GFile(eval_config_path, "r") as f:
+    with tf.io.gfile.GFile(eval_config_path, "r") as f:
       text_format.Merge(f.read(), eval_config)
       configs["eval_config"] = eval_config
 
   if eval_input_config_path:
     eval_input_config = input_reader_pb2.InputReader()
-    with tf.gfile.GFile(eval_input_config_path, "r") as f:
+    with tf.io.gfile.GFile(eval_input_config_path, "r") as f:
       text_format.Merge(f.read(), eval_input_config)
       configs["eval_input_configs"] = [eval_input_config]
 

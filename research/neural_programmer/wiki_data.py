@@ -172,7 +172,7 @@ class WikiQuestionLoader(object):
 
   def load_qa(self):
     data_source = os.path.join(self.data_folder, self.data_name)
-    f = tf.gfile.GFile(data_source, "r")
+    f = tf.io.gfile.GFile(data_source, "r")
     id_regex = re.compile("\(id ([^\)]*)\)")
     for line in f:
       id_match = id_regex.search(line)
@@ -287,7 +287,7 @@ class WikiQuestionGenerator(object):
   def load_annotated_data(self, in_file):
     self.annotated_examples = {}
     self.annotated_tables = {}
-    f = tf.gfile.GFile(in_file, "r")
+    f = tf.io.gfile.GFile(in_file, "r")
     counter = 0
     for line in f:
       if (counter > 0):
@@ -325,7 +325,7 @@ class WikiQuestionGenerator(object):
       annotated_table = table.replace("csv", "annotated")
       orig_columns = []
       processed_columns = []
-      f = tf.gfile.GFile(os.path.join(self.root_folder, annotated_table), "r")
+      f = tf.io.gfile.GFile(os.path.join(self.root_folder, annotated_table), "r")
       counter = 0
       for line in f:
         if (counter > 0):
@@ -344,7 +344,7 @@ class WikiQuestionGenerator(object):
           orig_columns[i].append(bad_number)
           processed_columns[i].append(bad_number)
       #print orig_columns
-      f = tf.gfile.GFile(os.path.join(self.root_folder, annotated_table), "r")
+      f = tf.io.gfile.GFile(os.path.join(self.root_folder, annotated_table), "r")
       counter = 0
       column_names = []
       for line in f:
@@ -420,7 +420,7 @@ class WikiQuestionGenerator(object):
     tot = 0
     got = 0
     ice = {}
-    with tf.gfile.GFile(
+    with tf.io.gfile.GFile(
         self.root_folder + "/arvind-with-norms-2.tsv", mode="r") as f:
       lines = f.readlines()
       for line in lines:

@@ -164,7 +164,7 @@ def _download_dataset(dataset_dir):
                                                filepath,
                                                _progress)
       print()
-      with tf.gfile.GFile(filepath) as f:
+      with tf.io.gfile.GFile(filepath) as f:
         size = f.size()
       print('Successfully downloaded', filename, size, 'bytes.')
 

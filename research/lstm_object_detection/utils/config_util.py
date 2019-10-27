@@ -41,7 +41,7 @@ def get_configs_from_pipeline_file(pipeline_config_path):
       Value are the corresponding config objects.
   """
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-  with tf.gfile.GFile(pipeline_config_path, "r") as f:
+  with tf.io.gfile.GFile(pipeline_config_path, "r") as f:
     proto_str = f.read()
     text_format.Merge(proto_str, pipeline_config)
   configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
@@ -100,7 +100,7 @@ def get_configs_from_multiple_files(model_config_path="",
       eval_input_config_path=eval_input_config_path)
   if lstm_config_path:
     lstm_config = internal_pipeline_pb2.LstmModel()
-    with tf.gfile.GFile(lstm_config_path, "r") as f:
+    with tf.io.gfile.GFile(lstm_config_path, "r") as f:
       text_format.Merge(f.read(), lstm_config)
       configs["lstm_model"] = lstm_config
   return configs

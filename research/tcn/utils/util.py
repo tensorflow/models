@@ -68,7 +68,7 @@ def WriteConfigAsYaml(config, logdir, filename):
   if not tf.gfile.Exists(logdir):
     tf.gfile.MakeDirs(logdir)
   config_filename = os.path.join(logdir, filename)
-  with tf.gfile.GFile(config_filename, 'w') as f:
+  with tf.io.gfile.GFile(config_filename, 'w') as f:
     f.write(yaml.dump(config))
   tf.logging.info('wrote config to %s', config_filename)
 
@@ -93,7 +93,7 @@ def LoadConfigDict(config_paths, model_params):
         continue
       config_path = os.path.abspath(config_path)
       tf.logging.info('Loading config from %s', config_path)
-      with tf.gfile.GFile(config_path.strip()) as config_file:
+      with tf.io.gfile.GFile(config_path.strip()) as config_file:
         config_flags = yaml.load(config_file)
         final_config = DeepMergeDict(final_config, config_flags)
   if model_params:

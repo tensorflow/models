@@ -117,7 +117,7 @@ class PretrainedEmbeddingLoader(object):
       self._add_vector(special)
     for extra in _EXTRA_WORDS:
       self._add_vector(extra)
-    with tf.gfile.GFile(
+    with tf.io.gfile.GFile(
         self.config.pretrained_embeddings_file, 'r') as f:
       for i, line in enumerate(f):
         if i % 10000 == 0:

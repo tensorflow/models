@@ -55,7 +55,7 @@ def _PilLoader(path):
   Returns:
     PIL image in RGB format.
   """
-  with tf.gfile.GFile(path, 'rb') as f:
+  with tf.io.gfile.GFile(path, 'rb') as f:
     img = Image.open(f)
     return img.convert('RGB')
 
@@ -68,7 +68,7 @@ def _WriteMappingBasenameToIds(index_names_ids_and_boxes, output_path):
       ID and box ID.
     output_path: Output CSV path.
   """
-  with tf.gfile.GFile(output_path, 'w') as f:
+  with tf.io.gfile.GFile(output_path, 'w') as f:
     csv_writer = csv.DictWriter(
         f, fieldnames=['name', 'index_image_id', 'box_id'])
     csv_writer.writeheader()
@@ -118,7 +118,7 @@ def ExtractBoxesAndFeaturesToFiles(image_names, image_paths, delf_config_path,
 
   # Parse DelfConfig proto.
   config = delf_config_pb2.DelfConfig()
-  with tf.gfile.GFile(delf_config_path, 'r') as f:
+  with tf.io.gfile.GFile(delf_config_path, 'r') as f:
     text_format.Merge(f.read(), config)
 
   # Create output directories if necessary.

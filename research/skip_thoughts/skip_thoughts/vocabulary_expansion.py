@@ -107,7 +107,7 @@ def _load_vocabulary(filename):
   """
   tf.logging.info("Reading vocabulary from %s", filename)
   vocab = collections.OrderedDict()
-  with tf.gfile.GFile(filename, mode="r") as f:
+  with tf.io.gfile.GFile(filename, mode="r") as f:
     for i, line in enumerate(f):
       word = line.decode("utf-8").strip()
       assert word not in vocab, "Attempting to add word twice: %s" % word
@@ -189,7 +189,7 @@ def main(unused_argv):
   # Save the output.
   vocab = embedding_map.keys()
   vocab_file = os.path.join(FLAGS.output_dir, "vocab.txt")
-  with tf.gfile.GFile(vocab_file, "w") as f:
+  with tf.io.gfile.GFile(vocab_file, "w") as f:
     f.write("\n".join(vocab))
   tf.logging.info("Wrote vocabulary file to %s", vocab_file)
 

@@ -38,7 +38,7 @@ class PtbReaderTest(tf.test.TestCase):
     tmpdir = tf.test.get_temp_dir()
     for suffix in "train", "valid", "test":
       filename = os.path.join(tmpdir, "ptb.%s.txt" % suffix)
-      with tf.gfile.GFile(filename, "w") as fh:
+      with tf.io.gfile.GFile(filename, "w") as fh:
         fh.write(self._string_data)
     # Smoke test
     output = reader.ptb_raw_data(tmpdir)

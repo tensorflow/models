@@ -430,7 +430,7 @@ def _export_inference_graph(input_type,
                                         'inference_graph.pbtxt')
     for node in inference_graph_def.node:
       node.device = ''
-    with tf.gfile.GFile(inference_graph_path, 'wb') as f:
+    with tf.io.gfile.GFile(inference_graph_path, 'wb') as f:
       f.write(str(inference_graph_def))
 
   if additional_output_tensor_names is not None:

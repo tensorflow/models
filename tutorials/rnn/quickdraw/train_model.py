@@ -39,7 +39,7 @@ import tensorflow as tf
 
 def get_num_classes():
   classes = []
-  with tf.gfile.GFile(FLAGS.classes_file, "r") as f:
+  with tf.io.gfile.GFile(FLAGS.classes_file, "r") as f:
     classes = [x for x in f]
   num_classes = len(classes)
   return num_classes

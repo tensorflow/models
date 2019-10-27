@@ -289,7 +289,7 @@ def _SaveMetricsFile(mean_average_precision, mean_precisions, mean_recalls,
     pr_ranks: List of integers.
     output_path: Full file path.
   """
-  with tf.gfile.GFile(output_path, 'w') as f:
+  with tf.io.gfile.GFile(output_path, 'w') as f:
     for k in sorted(mean_average_precision.keys()):
       f.write('{}\n  mAP={}\n  mP@k{} {}\n  mR@k{} {}\n'.format(
           k, np.around(mean_average_precision[k] * 100, decimals=2),
@@ -314,10 +314,10 @@ def main(argv):
 
   # Parse AggregationConfig protos.
   query_config = aggregation_config_pb2.AggregationConfig()
-  with tf.gfile.GFile(cmd_args.query_aggregation_config_path, 'r') as f:
+  with tf.io.gfile.GFile(cmd_args.query_aggregation_config_path, 'r') as f:
     text_format.Merge(f.read(), query_config)
   index_config = aggregation_config_pb2.AggregationConfig()
-  with tf.gfile.GFile(cmd_args.index_aggregation_config_path, 'r') as f:
+  with tf.io.gfile.GFile(cmd_args.index_aggregation_config_path, 'r') as f:
     text_format.Merge(f.read(), index_config)
 
   # Read aggregated descriptors.

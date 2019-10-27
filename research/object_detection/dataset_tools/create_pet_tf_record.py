@@ -106,7 +106,7 @@ def dict_to_tf_example(data,
     ValueError: if the image pointed to by data['filename'] is not a valid JPEG
   """
   img_path = os.path.join(image_subdirectory, data['filename'])
-  with tf.gfile.GFile(img_path, 'rb') as fid:
+  with tf.io.gfile.GFile(img_path, 'rb') as fid:
     encoded_jpg = fid.read()
   encoded_jpg_io = io.BytesIO(encoded_jpg)
   image = PIL.Image.open(encoded_jpg_io)
@@ -114,7 +114,7 @@ def dict_to_tf_example(data,
     raise ValueError('Image format not JPEG')
   key = hashlib.sha256(encoded_jpg).hexdigest()
 
-  with tf.gfile.GFile(mask_path, 'rb') as fid:
+  with tf.io.gfile.GFile(mask_path, 'rb') as fid:
     encoded_mask_png = fid.read()
   encoded_png_io = io.BytesIO(encoded_mask_png)
   mask = PIL.Image.open(encoded_png_io)
@@ -245,7 +245,7 @@ def create_tf_record(output_filename,
       if not os.path.exists(xml_path):
         logging.warning('Could not find %s, ignoring example.', xml_path)
         continue
-      with tf.gfile.GFile(xml_path, 'r') as fid:
+      with tf.io.gfile.GFile(xml_path, 'r') as fid:
         xml_str = fid.read()
       xml = etree.fromstring(xml_str)
       data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']

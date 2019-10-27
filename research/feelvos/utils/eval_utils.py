@@ -63,12 +63,12 @@ def save_segmentation_with_colormap(filename, img):
   colormap_image.putpalette(colormap)
   pil_image = PIL.Image.fromarray(img.astype('uint8'))
   pil_image_with_colormap = pil_image.quantize(palette=colormap_image)
-  with tf.gfile.GFile(filename, 'w') as f:
+  with tf.io.gfile.GFile(filename, 'w') as f:
     pil_image_with_colormap.save(f)
 
 
 def save_embeddings(filename, embeddings):
-  with tf.gfile.GFile(filename, 'w') as f:
+  with tf.io.gfile.GFile(filename, 'w') as f:
     np.save(f, embeddings)
 
 

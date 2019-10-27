@@ -28,7 +28,7 @@ import tensorflow as tf
 Py3 = sys.version_info[0] == 3
 
 def _read_words(filename):
-  with tf.gfile.GFile(filename, "r") as f:
+  with tf.io.gfile.GFile(filename, "r") as f:
     if Py3:
       return f.read().replace("\n", "<eos>").split()
     else:

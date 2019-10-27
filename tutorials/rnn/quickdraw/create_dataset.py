@@ -111,7 +111,7 @@ def convert_data(trainingdata_dir,
       print("Skipping", filename)
       continue
     file_handles.append(
-        tf.gfile.GFile(os.path.join(trainingdata_dir, filename), "r"))
+        tf.io.gfile.GFile(os.path.join(trainingdata_dir, filename), "r"))
     if offset:  # Fast forward all files to skip the offset.
       count = 0
       for _ in file_handles[-1]:
@@ -154,7 +154,7 @@ def convert_data(trainingdata_dir,
   for f in file_handles:
     f.close()
   # Write the class list.
-  with tf.gfile.GFile(output_file + ".classes", "w") as f:
+  with tf.io.gfile.GFile(output_file + ".classes", "w") as f:
     for class_name in classnames:
       f.write(class_name + "\n")
   return classnames

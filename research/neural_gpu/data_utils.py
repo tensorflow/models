@@ -73,7 +73,7 @@ def read_tmp_file(name):
     return None
   print_out("== found file: " + fname)
   res = []
-  with tf.gfile.GFile(fname, mode="r") as f:
+  with tf.io.gfile.GFile(fname, mode="r") as f:
     for line in f:
       res.append(line.strip())
   return res
@@ -82,7 +82,7 @@ def read_tmp_file(name):
 def write_tmp_file(name, lines):
   dirname = os.path.dirname(log_filename)
   fname = os.path.join(dirname, name + ".txt")
-  with tf.gfile.GFile(fname, mode="w") as f:
+  with tf.io.gfile.GFile(fname, mode="w") as f:
     for line in lines:
       f.write(line + "\n")
 
@@ -382,7 +382,7 @@ def print_out(s, newline=True):
   """Print a message out and log it to file."""
   if log_filename:
     try:
-      with tf.gfile.GFile(log_filename, mode="a") as f:
+      with tf.io.gfile.GFile(log_filename, mode="a") as f:
         f.write(s + ("\n" if newline else ""))
     # pylint: disable=bare-except
     except:

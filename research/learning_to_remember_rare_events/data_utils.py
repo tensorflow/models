@@ -54,9 +54,9 @@ def get_data():
     Train and test data as dictionaries mapping
     label to list of examples.
   """
-  with tf.gfile.GFile(DATA_FILE_FORMAT % 'train', 'rb') as f:
+  with tf.io.gfile.GFile(DATA_FILE_FORMAT % 'train', 'rb') as f:
     processed_train_data = pickle.load(f)
-  with tf.gfile.GFile(DATA_FILE_FORMAT % 'test', 'rb') as f:
+  with tf.io.gfile.GFile(DATA_FILE_FORMAT % 'test', 'rb') as f:
     processed_test_data = pickle.load(f)
 
   train_data = {}
@@ -169,14 +169,14 @@ def write_datafiles(directory, write_file,
     data = {'images': resized_images,
             'labels': labels_np,
             'info': info}
-    with tf.gfile.GFile(write_file, 'w') as f:
+    with tf.io.gfile.GFile(write_file, 'w') as f:
       pickle.dump(data, f)
   else:
     logging.info('Writing original sized data in boolean format.')
     data = {'images': images_np,
             'labels': labels_np,
             'info': info}
-    with tf.gfile.GFile(write_file, 'w') as f:
+    with tf.io.gfile.GFile(write_file, 'w') as f:
       pickle.dump(data, f)
 
   return len(np.unique(labels_np))

@@ -485,7 +485,7 @@ def ExportGroundtruthToCOCO(image_ids,
       'categories': categories
   }
   if output_path:
-    with tf.gfile.GFile(output_path, 'w') as fid:
+    with tf.io.gfile.GFile(output_path, 'w') as fid:
       json_utils.Dump(groundtruth_dict, fid, float_digits=4, indent=2)
   return groundtruth_dict
 
@@ -672,7 +672,7 @@ def ExportDetectionsToCOCO(image_ids,
         scores,
         classes))
   if output_path:
-    with tf.gfile.GFile(output_path, 'w') as fid:
+    with tf.io.gfile.GFile(output_path, 'w') as fid:
       json_utils.Dump(detections_export_list, fid, float_digits=4, indent=2)
   return detections_export_list
 
@@ -752,7 +752,7 @@ def ExportSegmentsToCOCO(image_ids,
         image_id, category_id_set, np.squeeze(masks, axis=3), scores, classes))
 
   if output_path:
-    with tf.gfile.GFile(output_path, 'w') as fid:
+    with tf.io.gfile.GFile(output_path, 'w') as fid:
       json_utils.Dump(segment_export_list, fid, float_digits=4, indent=2)
   return segment_export_list
 
@@ -851,6 +851,6 @@ def ExportKeypointsToCOCO(image_ids,
         })
 
   if output_path:
-    with tf.gfile.GFile(output_path, 'w') as fid:
+    with tf.io.gfile.GFile(output_path, 'w') as fid:
       json_utils.Dump(keypoints_export_list, fid, float_digits=4, indent=2)
   return keypoints_export_list

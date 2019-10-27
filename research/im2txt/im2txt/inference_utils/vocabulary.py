@@ -44,7 +44,7 @@ class Vocabulary(object):
       tf.logging.fatal("Vocab file %s not found.", vocab_file)
     tf.logging.info("Initializing vocabulary from file: %s", vocab_file)
 
-    with tf.gfile.GFile(vocab_file, mode="r") as f:
+    with tf.io.gfile.GFile(vocab_file, mode="r") as f:
       reverse_vocab = list(f.readlines())
     reverse_vocab = [line.split()[0] for line in reverse_vocab]
     assert start_word in reverse_vocab

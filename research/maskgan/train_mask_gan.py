@@ -1132,16 +1132,16 @@ def main(_):
   tf.gfile.MakeDirs(FLAGS.base_directory)
 
   if FLAGS.mode == MODE_TRAIN:
-    log = tf.gfile.GFile(
+    log = tf.io.gfile.GFile(
         os.path.join(FLAGS.base_directory, 'train-log.txt'), mode='w')
   elif FLAGS.mode == MODE_VALIDATION:
-    log = tf.gfile.GFile(
+    log = tf.io.gfile.GFile(
         os.path.join(FLAGS.base_directory, 'validation-log.txt'), mode='w')
   elif FLAGS.mode == MODE_TRAIN_EVAL:
-    log = tf.gfile.GFile(
+    log = tf.io.gfile.GFile(
         os.path.join(FLAGS.base_directory, 'train_eval-log.txt'), mode='w')
   else:
-    log = tf.gfile.GFile(
+    log = tf.io.gfile.GFile(
         os.path.join(FLAGS.base_directory, 'test-log.txt'), mode='w')
 
   if FLAGS.mode == MODE_TRAIN:

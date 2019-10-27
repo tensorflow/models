@@ -49,7 +49,7 @@ def load_images(file_pattern, batch_size, dataset_name):
   for i in range(batch_size):
     path = file_pattern % i
     print("Reading %s" % path)
-    pil_image = PIL.Image.open(tf.gfile.GFile(path))
+    pil_image = PIL.Image.open(tf.io.gfile.GFile(path))
     images_actual_data[i, ...] = np.asarray(pil_image)
   return images_actual_data
 

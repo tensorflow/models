@@ -484,7 +484,7 @@ def main(unused_argv):
                                                        time.gmtime()))
       result_dir = FLAGS.vis_logdir + '/results/'
       tf.gfile.MakeDirs(result_dir)
-      with tf.gfile.GFile(result_dir + seq_name_val + '.txt', 'w') as f:
+      with tf.io.gfile.GFile(result_dir + seq_name_val + '.txt', 'w') as f:
         f.write(str(all_ious))
       if FLAGS.first_frame_finetuning or FLAGS.eval_once_and_quit:
         break

@@ -141,8 +141,8 @@ def read_data(source_path, target_path, buckets, max_size=None, print_out=True):
   data_set = [[] for _ in buckets]
   counter = 0
   if max_size != 1:
-    with tf.gfile.GFile(source_path, mode="r") as source_file:
-      with tf.gfile.GFile(target_path, mode="r") as target_file:
+    with tf.io.gfile.GFile(source_path, mode="r") as source_file:
+      with tf.io.gfile.GFile(target_path, mode="r") as target_file:
         source, target = source_file.readline(), target_file.readline()
         while source and target and (not max_size or counter < max_size):
           counter += 1
@@ -458,7 +458,7 @@ def assign_vectors(word_vector_file, embedding_key, vocab_path, sess):
   vectors_variable = vectors_variable[0]
   vectors = vectors_variable.eval()
   data.print_out("Pre-setting word vectors from %s" % word_vector_file)
-  with tf.gfile.GFile(word_vector_file, mode="r") as f:
+  with tf.io.gfile.GFile(word_vector_file, mode="r") as f:
     # Lines have format: dog 0.045123 -0.61323 0.413667 ...
     for line in f:
       line_parts = line.split()
@@ -491,7 +491,7 @@ def print_vectors(embedding_key, vocab_path, word_vector_file):
   l, s = vectors.shape[0], vectors.shape[1]
   data.print_out("Printing %d word vectors from %s to %s."
                  % (l, embedding_key, word_vector_file))
-  with tf.gfile.GFile(word_vector_file, mode="w") as f:
+  with tf.io.gfile.GFile(word_vector_file, mode="w") as f:
     # Lines have format: dog 0.045123 -0.61323 0.413667 ...
     for i in xrange(l):
       f.write(rev_vocab[i])
@@ -858,10 +858,10 @@ def evaluate():
       data.print_out("Translating test set %s" % en_path)
       # Read lines.
       en_lines, fr_lines = [], []
-      with tf.gfile.GFile(en_path, mode="r") as f:
+      with tf.io.gfile.GFile(en_path, mode="r") as f:
         for line in f:
           en_lines.append(line.strip())
-      with tf.gfile.GFile(fr_path, mode="r") as f:
+      with tf.io.gfile.GFile(fr_path, mode="r") as f:
         for line in f:
           fr_lines.append(line.strip())
       # Tokenize and convert to ids.
@@ -918,7 +918,7 @@ def evaluate():
       if xid:
         decode_suffix = "beam%dln%dn" % (FLAGS.beam_size,
                                          int(100 * FLAGS.length_norm))
-        with tf.gfile.GFile(path + ".res" + decode_suffix + xid, mode="w") as f:
+        with tf.io.gfile.GFile(path + ".res" + decode_suffix + xid, mode="w") as f:
           for line in results:
             f.write(line)
 

@@ -37,7 +37,7 @@ model_map = {
 
 def parse_pipeline_config(pipeline_config_file):
   """Returns pipeline config and meta architecture name."""
-  with tf.gfile.GFile(pipeline_config_file, 'r') as config_file:
+  with tf.io.gfile.GFile(pipeline_config_file, 'r') as config_file:
     config_str = config_file.read()
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
   text_format.Merge(config_str, pipeline_config)
