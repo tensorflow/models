@@ -153,7 +153,7 @@ def main(argv):
     image_tf = tf.image.decode_jpeg(value, channels=3)
     image_tf = tf.expand_dims(image_tf, 0)
 
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       init_op = tf.global_variables_initializer()
       sess.run(init_op)
 

@@ -200,7 +200,7 @@ def export_to_graph(master_spec,
       intra_op_parallelism_threads=10,
       inter_op_parallelism_threads=10)
 
-  with tf.Session(graph=external_graph, config=session_config) as session:
+  with tf.compat.v1.Session(graph=external_graph, config=session_config) as session:
     tf.logging.info('Initializing variables...')
     session.run(tf.global_variables_initializer())
 

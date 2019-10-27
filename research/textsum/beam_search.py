@@ -88,7 +88,7 @@ class BeamSearch(object):
     """Performs beam search for decoding.
 
     Args:
-      sess: tf.Session, session
+      sess: tf.compat.v1.Session, session
       enc_inputs: ndarray of shape (enc_length, 1), the document ids to encode
       enc_seqlen: ndarray of shape (1), the length of the sequnce
 

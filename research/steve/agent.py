@@ -64,7 +64,7 @@ class AgentManager(object):
     self.total_rewards = [0. for _ in self.agent_pipes]
     self.loaded_policy = False
 
-    self.sess = tf.Session()
+    self.sess = tf.compat.v1.Session()
     self.sess.run(tf.global_variables_initializer())
 
     self.rollout_i = 0

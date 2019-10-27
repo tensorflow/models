@@ -101,7 +101,7 @@ class AgentTest(tf.test.TestCase):
         config, task_id=0, ps_tasks=0, num_workers=1)
     global_init_op = tf.variables_initializer(
         tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'global'))
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(global_init_op)  # Initialize global copy.
       trainer.initialize(sess)
       model = trainer.model
@@ -207,7 +207,7 @@ class AgentTest(tf.test.TestCase):
 
     global_init_op = tf.variables_initializer(
         tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'global'))
-    with tf.Session() as sess, sess.graph.as_default():
+    with tf.compat.v1.Session() as sess, sess.graph.as_default():
       sess.run(global_init_op)  # Initialize global copy.
       trainer.initialize(sess)
 
@@ -356,7 +356,7 @@ class AgentTest(tf.test.TestCase):
       assign_add_ops[i] = param.assign_add(
           tf.reshape(assign_add_placeholders[i], param_shapes[i]))
 
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(global_init_op)  # Initialize global copy.
       trainer.initialize(sess)
 

@@ -65,7 +65,7 @@ np.testing.assert_equal(
 
 # Define VGGish, load the checkpoint, and run the batch through the model to
 # produce embeddings.
-with tf.Graph().as_default(), tf.Session() as sess:
+with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
   vggish_slim.define_vggish_slim()
   vggish_slim.load_vggish_slim_checkpoint(sess, checkpoint_path)
 

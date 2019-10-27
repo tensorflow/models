@@ -91,7 +91,7 @@ def _read_text_proto(path, proto_type):
 
 def _convert_to_char_corpus(corpus):
   """Converts the word-based |corpus| into a char-based corpus."""
-  with tf.Session(graph=tf.Graph()) as tmp_session:
+  with tf.compat.v1.Session(graph=tf.Graph()) as tmp_session:
     conversion_op = gen_parser_ops.segmenter_training_data_constructor(corpus)
     return tmp_session.run(conversion_op)
 
@@ -179,7 +179,7 @@ def main(unused_argv):
     tf.gfile.Remove(checkpoint_dir)
   tf.gfile.MakeDirs(checkpoint_dir)
 
-  with tf.Session(FLAGS.tf_master, graph=graph) as sess:
+  with tf.compat.v1.Session(FLAGS.tf_master, graph=graph) as sess:
     # Make sure to re-initialize all underlying state.
     sess.run(tf.global_variables_initializer())
     trainer_lib.run_training(sess, trainers, annotator,

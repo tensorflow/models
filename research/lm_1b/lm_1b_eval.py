@@ -111,7 +111,7 @@ def _LoadModel(gd_file, ckpt_file):
                                      'global_step:0'], name='')
 
     sys.stderr.write('Recovering checkpoint %s\n' % ckpt_file)
-    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+    sess = tf.compat.v1.Session(config=tf.ConfigProto(allow_soft_placement=True))
     sess.run('save/restore_all', {'save/Const:0': ckpt_file})
     sess.run(t['states_init'])
 

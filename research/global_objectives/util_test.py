@@ -147,7 +147,7 @@ class WeightedSigmoidCrossEntropyTest(parameterized.TestCase, tf.test.TestCase):
         tf.reduce_sum(negatives_loss))
     expected_gradients = tf.gradients(expected_loss, dummy_tensor)
 
-    with tf.Session() as session:
+    with tf.compat.v1.Session() as session:
       tf.global_variables_initializer().run()
       grad, expected_grad = session.run(
           [weighted_gradients, expected_gradients])

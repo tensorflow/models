@@ -54,7 +54,7 @@ with tf.variable_scope('spatial_transformer_0'):
     h_trans = transformer(x, h_fc1, out_size)
 
 # %% Run session
-sess = tf.Session()
+sess = tf.compat.v1.Session()
 sess.run(tf.global_variables_initializer())
 y = sess.run(h_trans, feed_dict={x: batch})
 

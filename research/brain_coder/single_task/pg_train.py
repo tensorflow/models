@@ -315,7 +315,7 @@ class AsyncTrainer(object):
     3) Write tensorboard summaries to disk.
 
     Args:
-      session: tf.Session instance.
+      session: tf.compat.v1.Session instance.
     """
     session.run(self.sync_op)  # Copy weights from global to local.
 
@@ -763,7 +763,7 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,
     if is_chief:
       # Destroy current container immediately (clears current graph).
       logging.info('Clearing shared variables.')
-      tf.Session.reset(FLAGS.master, containers=[rep_container_name])
+      tf.compat.v1.Session.reset(FLAGS.master, containers=[rep_container_name])
       logging.info('Shared variables cleared.')
 
       # Delete replay buffer on disk.

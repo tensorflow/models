@@ -107,7 +107,7 @@ def replace_variable_values_with_moving_averages(graph,
     ema_variables_to_restore = variable_averages.variables_to_restore()
     ema_variables_to_restore = config_util.remove_unecessary_ema(
         ema_variables_to_restore, no_ema_collection)
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       read_saver = tf.train.Saver(ema_variables_to_restore)
       read_saver.restore(sess, current_checkpoint_file)
       write_saver = tf.train.Saver()
@@ -289,7 +289,7 @@ def write_saved_model(saved_model_path,
     outputs: A tensor dictionary containing the outputs of a DetectionModel.
   """
   with tf.Graph().as_default():
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
 
       tf.import_graph_def(frozen_graph_def, name='')
 
@@ -329,7 +329,7 @@ def write_graph_and_checkpoint(inference_graph_def,
     node.device = ''
   with tf.Graph().as_default():
     tf.import_graph_def(inference_graph_def, name='')
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       saver = tf.train.Saver(
           saver_def=input_saver_def, save_relative_paths=True)
       saver.restore(sess, trained_checkpoint_prefix)

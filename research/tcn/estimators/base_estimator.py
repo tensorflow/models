@@ -696,5 +696,5 @@ class BaseEstimator(object):
     }
 
     # Create a session and restore model variables.
-    self._sess = tf.Session()
+    self._sess = tf.compat.v1.Session()
     saver.restore(self._sess, checkpoint_path)

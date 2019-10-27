@@ -23,7 +23,7 @@ class AdditiveGaussianNoiseAutoencoder(object):
         self.optimizer = optimizer.minimize(self.cost)
 
         init = tf.global_variables_initializer()
-        self.sess = tf.Session()
+        self.sess = tf.compat.v1.Session()
         self.sess.run(init)
 
     def _initialize_weights(self):
@@ -91,7 +91,7 @@ class MaskingNoiseAutoencoder(object):
         self.optimizer = optimizer.minimize(self.cost)
 
         init = tf.global_variables_initializer()
-        self.sess = tf.Session()
+        self.sess = tf.compat.v1.Session()
         self.sess.run(init)
 
     def _initialize_weights(self):

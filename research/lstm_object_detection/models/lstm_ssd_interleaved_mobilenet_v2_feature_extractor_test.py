@@ -250,7 +250,7 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractorTest(
     with tf.variable_scope('random_state'):
       feature_maps2 = feature_extractor.extract_features(
           image, stateful_reader2.next_batch, unroll_length=1)
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(tf.global_variables_initializer())
       sess.run(tf.local_variables_initializer())
       sess.run(tf.get_collection(tf.GraphKeys.TABLE_INITIALIZERS))

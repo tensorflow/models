@@ -791,7 +791,7 @@ def main(_):
                           log_device_placement=False)
   if FLAGS.allow_gpu_growth:
     config.gpu_options.allow_growth = True
-  sess = tf.Session(config=config)
+  sess = tf.compat.v1.Session(config=config)
   with sess.as_default():
     with tf.device(hps.device):
       if kind == "train":

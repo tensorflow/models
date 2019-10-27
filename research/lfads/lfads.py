@@ -1038,7 +1038,7 @@ class LFADS(object):
 
     Returns:
       The feed dictionary with TF tensors as keys and data as values, for use
-      with tf.Session.run()
+      with tf.compat.v1.Session.run()
 
     """
     feed_dict = {}

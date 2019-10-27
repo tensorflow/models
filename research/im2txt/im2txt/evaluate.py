@@ -119,7 +119,7 @@ def run_once(model, saver, summary_writer, summary_op):
                     FLAGS.checkpoint_dir)
     return
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     # Load model from checkpoint.
     tf.logging.info("Loading model from checkpoint: %s", model_path)
     saver.restore(sess, model_path)

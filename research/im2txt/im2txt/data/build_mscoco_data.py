@@ -166,7 +166,7 @@ class ImageDecoder(object):
 
   def __init__(self):
     # Create a single TensorFlow Session for all image decoding calls.
-    self._sess = tf.Session()
+    self._sess = tf.compat.v1.Session()
 
     # TensorFlow ops for JPEG decoding.
     self._encoded_jpeg = tf.placeholder(dtype=tf.string)

@@ -94,7 +94,7 @@ def main(_):
       model = path_model.PathBasedModel(
           hparams, lemma_embeddings, instance)
 
-    with tf.Session() as session:
+    with tf.compat.v1.Session() as session:
       model_dir = '{logdir}/results/{dataset}/path/{corpus}'.format(
           logdir=FLAGS.logdir,
           dataset=FLAGS.dataset,

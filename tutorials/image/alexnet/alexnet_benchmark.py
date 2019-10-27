@@ -223,7 +223,7 @@ def run_benchmark():
     # Start running operations on the Graph.
     config = tf.ConfigProto()
     config.gpu_options.allocator_type = 'BFC'
-    sess = tf.Session(config=config)
+    sess = tf.compat.v1.Session(config=config)
     sess.run(init)
 
     # Run the forward benchmark.

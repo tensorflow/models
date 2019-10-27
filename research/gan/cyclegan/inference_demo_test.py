@@ -43,7 +43,7 @@ class InferenceDemoTest(tf.test.TestCase):
     # to one but not the other. This test will keep them in sync.
 
     # Save the training graph
-    train_sess = tf.Session()
+    train_sess = tf.compat.v1.Session()
     FLAGS.image_set_x_file_pattern = '/tmp/x/*.jpg'
     FLAGS.image_set_y_file_pattern = '/tmp/y/*.jpg'
     FLAGS.batch_size = 3

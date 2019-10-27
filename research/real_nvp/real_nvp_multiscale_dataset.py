@@ -1463,7 +1463,7 @@ def train_model(hps, logdir):
             # Start running operations on the Graph. allow_soft_placement must be set to
             # True to build towers on GPU, as some of the ops do not have GPU
             # implementations.
-            sess = tf.Session(config=tf.ConfigProto(
+            sess = tf.compat.v1.Session(config=tf.ConfigProto(
                 allow_soft_placement=True,
                 log_device_placement=True))
             sess.run(init)
@@ -1534,7 +1534,7 @@ def evaluate(hps, logdir, traindir, subset="valid", return_val=False):
                 var_scope.reuse_variables()
 
             saver = tf.train.Saver()
-            sess = tf.Session(config=tf.ConfigProto(
+            sess = tf.compat.v1.Session(config=tf.ConfigProto(
                 allow_soft_placement=True,
                 log_device_placement=True))
             tf.train.start_queue_runners(sess)
@@ -1586,7 +1586,7 @@ def sample_from_model(hps, logdir, traindir):
 
                 summary_op = tf.summary.merge_all()
             saver = tf.train.Saver()
-            sess = tf.Session(config=tf.ConfigProto(
+            sess = tf.compat.v1.Session(config=tf.ConfigProto(
                 allow_soft_placement=True,
                 log_device_placement=True))
             coord = tf.train.Coordinator()

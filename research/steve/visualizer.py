@@ -63,7 +63,7 @@ if __name__ == '__main__':
         worldmodel = worldmodel.DeterministicWorldModel(MODEL_NAME, OBS_DIM, ACTION_DIM, HIDDEN_DIM, REWARD_SCALE, DISCOUNT, MODEL_BAYESIAN_CONFIG)
         _, _, _, _, _, confidence, _ = oprl.build_Q_expansion_graph(next_obs_loader, reward_loader, done_loader, worldmodel, rollout_len=3, model_ensembling=True)
 
-    sess = tf.Session()
+    sess = tf.compat.v1.Session()
     sess.run(tf.global_variables_initializer())
 
     oprl.load(sess, FILENAME)

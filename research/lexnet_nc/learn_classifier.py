@@ -117,7 +117,7 @@ def main(_):
         nc_embeddings, path_to_index)
 
     # Initialize a session and start training
-    session = tf.Session()
+    session = tf.compat.v1.Session()
     session.run(tf.global_variables_initializer())
 
     # Initalize the path mapping

@@ -62,7 +62,7 @@ class Learner(object):
 
         # build the TF graph for the actual model to train
         self.core, self.train_losses, self.train_ops, self.inspect_losses = self.make_core_model()
-        self.sess = tf.Session()
+        self.sess = tf.compat.v1.Session()
         self.sess.run(tf.global_variables_initializer())
 
     ## Mandatory functions to override

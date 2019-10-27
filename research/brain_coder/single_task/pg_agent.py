@@ -610,7 +610,7 @@ class LMAgent(object):
     """Logs summary about a single episode and creates a text_summary for TB.
 
     Args:
-      session: tf.Session instance.
+      session: tf.compat.v1.Session instance.
       step: Global training step.
       npe: Number of programs executed so far.
       tot_r: Total reward.
@@ -676,7 +676,7 @@ class LMAgent(object):
     """Compute summaries for importance weights at a given batch.
 
     Args:
-      session: tf.Session instance.
+      session: tf.compat.v1.Session instance.
       replay_iw: Importance weights for episodes from replay buffer.
       replay_log_probs: Total log probabilities of the replay episodes under the
           current policy.
@@ -738,7 +738,7 @@ class LMAgent(object):
     """Perform gradient update on the model.
 
     Args:
-      session: tf.Session instance.
+      session: tf.compat.v1.Session instance.
       rl_batch: RLBatch instance from data.py. Use DataManager to create a
           RLBatch for each call to update_step. RLBatch contains a batch of
           tasks.

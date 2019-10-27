@@ -120,7 +120,7 @@ def _Eval(model, data_batcher, vocab=None):
   model.build_graph()
   saver = tf.train.Saver()
   summary_writer = tf.summary.FileWriter(FLAGS.eval_dir)
-  sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+  sess = tf.compat.v1.Session(config=tf.ConfigProto(allow_soft_placement=True))
   running_avg_loss = 0
   step = 0
   while True:

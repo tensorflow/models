@@ -65,7 +65,7 @@ class MultitaskGP(BayesianNN):
     self.graph = tf.Graph()
     with self.graph.as_default():
       # store a new session for the graph
-      self.sess = tf.Session()
+      self.sess = tf.compat.v1.Session()
 
       with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
         self.n = tf.placeholder(shape=[], dtype=tf.float64)

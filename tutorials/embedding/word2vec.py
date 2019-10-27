@@ -512,7 +512,7 @@ def main(_):
     print("--train_data --eval_data and --save_path must be specified.")
     sys.exit(1)
   opts = Options()
-  with tf.Graph().as_default(), tf.Session() as session:
+  with tf.Graph().as_default(), tf.compat.v1.Session() as session:
     with tf.device("/cpu:0"):
       model = Word2Vec(opts, session)
       model.read_analogies() # Read analogy questions

@@ -162,7 +162,7 @@ class DragnnModelSaverLibTest(test_util.TensorFlowTestCase):
         intra_op_parallelism_threads=10,
         inter_op_parallelism_threads=10)
 
-    with tf.Session(graph=restored_graph, config=restoration_config) as sess:
+    with tf.compat.v1.Session(graph=restored_graph, config=restoration_config) as sess:
       tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
                                  export_path)
 
@@ -223,7 +223,7 @@ class DragnnModelSaverLibTest(test_util.TensorFlowTestCase):
         intra_op_parallelism_threads=10,
         inter_op_parallelism_threads=10)
 
-    with tf.Session(graph=restored_graph, config=restoration_config) as sess:
+    with tf.compat.v1.Session(graph=restored_graph, config=restoration_config) as sess:
       tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
                                  export_path)
 
@@ -309,7 +309,7 @@ class DragnnModelSaverLibTest(test_util.TensorFlowTestCase):
         intra_op_parallelism_threads=10,
         inter_op_parallelism_threads=10)
 
-    with tf.Session(graph=restored_graph, config=restoration_config) as sess:
+    with tf.compat.v1.Session(graph=restored_graph, config=restoration_config) as sess:
       tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
                                  export_path)
 

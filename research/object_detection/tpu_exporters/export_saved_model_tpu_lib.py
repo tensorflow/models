@@ -70,7 +70,7 @@ def export(pipeline_config_file,
   shapes_info = model_map[meta_arch].get_prediction_tensor_shapes(
       pipeline_config)
 
-  with tf.Graph().as_default(), tf.Session() as sess:
+  with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     placeholder_tensor, result_tensor_dict = model_map[meta_arch].build_graph(
         pipeline_config, shapes_info, input_type, use_bfloat16)
 
@@ -153,7 +153,7 @@ def run_inference(inputs,
   shapes_info = model_map[meta_arch].get_prediction_tensor_shapes(
       pipeline_config)
 
-  with tf.Graph().as_default(), tf.Session() as sess:
+  with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     placeholder_tensor, result_tensor_dict = model_map[meta_arch].build_graph(
         pipeline_config, shapes_info, input_type, use_bfloat16)
 
@@ -190,7 +190,7 @@ def run_inference_from_saved_model(inputs,
   Returns:
     A dict of resulting tensors.
   """
-  with tf.Graph().as_default(), tf.Session() as sess:
+  with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     meta_graph = loader.load(sess, [tag_constants.SERVING, tag_constants.TPU],
                              saved_model_dir)
 

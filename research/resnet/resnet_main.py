@@ -123,7 +123,7 @@ def evaluate(hps):
   saver = tf.train.Saver()
   summary_writer = tf.summary.FileWriter(FLAGS.eval_dir)
 
-  sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+  sess = tf.compat.v1.Session(config=tf.ConfigProto(allow_soft_placement=True))
   tf.train.start_queue_runners(sess)
 
   best_precision = 0.0

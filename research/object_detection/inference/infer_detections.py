@@ -62,7 +62,7 @@ def main(_):
     if not getattr(FLAGS, flag_name):
       raise ValueError('Flag --{} is required'.format(flag_name))
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     input_tfrecord_paths = [
         v for v in FLAGS.input_tfrecord_paths.split(',') if v]
     tf.logging.info('Reading input from %d files', len(input_tfrecord_paths))

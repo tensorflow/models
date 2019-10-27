@@ -111,7 +111,7 @@ def main(unused_argv):
           FLAGS.input_file, 'untokenized-text').corpus()
     else:
       input_corpus = sentence_io.ConllSentenceReader(FLAGS.input_file).corpus()
-      with tf.Session(graph=tf.Graph()) as tmp_session:
+      with tf.compat.v1.Session(graph=tf.Graph()) as tmp_session:
         char_input = gen_parser_ops.char_token_generator(input_corpus)
         char_corpus = tmp_session.run(char_input)
       check.Eq(len(input_corpus), len(char_corpus))
@@ -121,7 +121,7 @@ def main(unused_argv):
         intra_op_parallelism_threads=FLAGS.threads,
         inter_op_parallelism_threads=FLAGS.threads)
 
-    with tf.Session(graph=g, config=session_config) as sess:
+    with tf.compat.v1.Session(graph=g, config=session_config) as sess:
       tf.logging.info('Initializing variables...')
       sess.run(tf.global_variables_initializer())
       tf.logging.info('Loading from checkpoint...')
@@ -184,7 +184,7 @@ def main(unused_argv):
       intra_op_parallelism_threads=FLAGS.threads,
       inter_op_parallelism_threads=FLAGS.threads)
 
-  with tf.Session(graph=g, config=session_config) as sess:
+  with tf.compat.v1.Session(graph=g, config=session_config) as sess:
     tf.logging.info('Initializing variables...')
     sess.run(tf.global_variables_initializer())
 

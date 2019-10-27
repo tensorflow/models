@@ -151,7 +151,7 @@ def set_session_config(enable_eager=False,
     if enable_eager:
       tf.compat.v1.enable_eager_execution(config=config)
     else:
-      sess = tf.Session(config=config)
+      sess = tf.compat.v1.Session(config=config)
       tf.keras.backend.set_session(sess)
 
 

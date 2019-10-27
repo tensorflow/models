@@ -98,7 +98,7 @@ class NeuralBanditModel(BayesianNN):
     with self.graph.as_default():
 
       # create and store a new session for the graph
-      self.sess = tf.Session()
+      self.sess = tf.compat.v1.Session()
 
       with tf.name_scope(self.name):
 

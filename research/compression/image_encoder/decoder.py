@@ -109,7 +109,7 @@ def main(_):
   feed_dict = {key: value for (key, value) in zip(input_tensors,
                                                   numpy_codes)}
 
-  with tf.Session(graph=graph) as sess:
+  with tf.compat.v1.Session(graph=graph) as sess:
     results = sess.run(outputs, feed_dict=feed_dict)
 
     for index, result in enumerate(results):

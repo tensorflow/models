@@ -125,7 +125,7 @@ class LstmSsdMobilenetV1FeatureExtractorTest(
     with tf.variable_scope('zero_state'):
       feature_map = feature_extractor.extract_features(
           image, stateful_reader.next_batch)
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(tf.global_variables_initializer())
       sess.run([stateful_reader.prefetch_op])
       _ = sess.run([feature_map])

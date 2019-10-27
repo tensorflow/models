@@ -284,7 +284,7 @@ class CifarModelTrainer(object):
     # Create a new session for this model, initialize
     # variables, and save / restore from
     # checkpoint.
-    self._session = tf.Session(
+    self._session = tf.compat.v1.Session(
         '',
         config=tf.ConfigProto(
             allow_soft_placement=True, log_device_placement=False))
@@ -295,7 +295,7 @@ class CifarModelTrainer(object):
     try:
       yield
     finally:
-      tf.Session.reset('')
+      tf.compat.v1.Session.reset('')
       self._session = None
 
   def _build_models(self):

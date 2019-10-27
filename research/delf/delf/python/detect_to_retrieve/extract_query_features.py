@@ -89,7 +89,7 @@ def main(argv):
     tf.gfile.MakeDirs(cmd_args.output_features_dir)
 
   with tf.Graph().as_default():
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       # Initialize variables, construct DELF extractor.
       init_op = tf.global_variables_initializer()
       sess.run(init_op)

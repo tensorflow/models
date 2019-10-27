@@ -162,7 +162,7 @@ def train_model(data, use_global_objectives):
         loss, global_step=global_step, var_list=[lambdas])
 
   # Training loop:
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     checkpoint_step = TRAIN_ITERATIONS // NUM_CHECKPOINTS
     sess.run(tf.global_variables_initializer())
     step = sess.run(global_step)

@@ -431,7 +431,7 @@ class COCOGroundtruthGenerator(object):
       dataset = self._build_pipeline()
       groundtruth = dataset.make_one_shot_iterator().get_next()
 
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         for _ in range(self._num_examples):
           groundtruth_result = sess.run(groundtruth)
           yield groundtruth_result

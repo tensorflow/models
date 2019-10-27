@@ -60,7 +60,7 @@ def main(_):
   tf.logging.info("Running caption generation on %d files matching %s",
                   len(filenames), FLAGS.input_files)
 
-  with tf.Session(graph=g) as sess:
+  with tf.compat.v1.Session(graph=g) as sess:
     # Load the model from checkpoint.
     restore_fn(sess)
 

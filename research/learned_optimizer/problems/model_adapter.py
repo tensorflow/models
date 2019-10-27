@@ -44,7 +44,7 @@ class ModelAdapter(pg.Problem):
 
     The second will return construct the model initialization graph given a list
     of parameters and return a callable that is passed an instance of
-    tf.Session, and should initialize the models' parameters.
+    tf.compat.v1.Session, and should initialize the models' parameters.
 
     An argument value function would look like this:
 

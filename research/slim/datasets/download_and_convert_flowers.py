@@ -121,7 +121,7 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
   with tf.Graph().as_default():
     image_reader = ImageReader()
 
-    with tf.Session('') as sess:
+    with tf.compat.v1.Session('') as sess:
 
       for shard_id in range(_NUM_SHARDS):
         output_filename = _get_dataset_filename(

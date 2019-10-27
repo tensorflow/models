@@ -29,7 +29,7 @@ class FormatSentenceReader(object):
                projectivize=False,
                morph_to_pos=False):
     self._graph = tf.Graph()
-    self._session = tf.Session(graph=self._graph)
+    self._session = tf.compat.v1.Session(graph=self._graph)
     task_context_str = """
           input {
             name: 'documents'

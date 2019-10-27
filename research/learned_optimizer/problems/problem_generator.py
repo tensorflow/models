@@ -63,7 +63,7 @@ class Problem(object):
       random_seed: Either an integer (or None, in which case the seed is
         randomly drawn)
       noise_stdev: Strength (standard deviation) of added gradient noise
-      init_fn: A function taking a tf.Session object that is used to
+      init_fn: A function taking a tf.compat.v1.Session object that is used to
         initialize the problem's variables.
 
     Raises:
@@ -468,7 +468,7 @@ class Problem2D(Problem):
     # Create a mesh over the given coordinate ranges.
     xm, ym = _mesh(xlim, ylim, n)
 
-    with tf.Graph().as_default(), tf.Session() as sess:
+    with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
       # Ops to compute the objective at every (x, y) point.
       x = tf.placeholder(tf.float32, shape=xm.shape)

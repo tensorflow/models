@@ -464,7 +464,7 @@ def test_optimizer(optimizer,
 
     vars_to_preinitialize = params
 
-  with tf.Session(graph=graph) as sess:
+  with tf.compat.v1.Session(graph=graph) as sess:
     # initialize the parameter scope variables; necessary for apply_gradients
     sess.run(tf.variables_initializer(vars_to_preinitialize))
     coord = tf.train.Coordinator()
@@ -598,7 +598,7 @@ def run_wall_clock_test(optimizer,
   gradients = problem.gradients(obj, params)
   vars_to_preinitialize = params
 
-  with tf.Session(graph=tf.get_default_graph()) as sess:
+  with tf.compat.v1.Session(graph=tf.get_default_graph()) as sess:
     # initialize the parameter scope variables; necessary for apply_gradients
     sess.run(tf.variables_initializer(vars_to_preinitialize))
     train_op = optimizer.apply_gradients(zip(gradients, params))

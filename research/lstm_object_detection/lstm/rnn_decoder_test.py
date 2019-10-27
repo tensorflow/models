@@ -76,7 +76,7 @@ class RnnDecoderTest(tf.test.TestCase):
 
     self.assertEqual(len(outputs), num_unroll)
     self.assertEqual(len(states), num_unroll)
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(tf.global_variables_initializer())
       results = sess.run((outputs, states, inputs, initial_state))
       outputs_results = results[0]
@@ -115,7 +115,7 @@ class RnnDecoderTest(tf.test.TestCase):
 
     self.assertEqual(len(outputs), num_unroll)
     self.assertEqual(len(states), num_unroll)
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(tf.global_variables_initializer())
       results = sess.run((outputs, states, inputs, initial_state))
       outputs_results = results[0]
@@ -171,7 +171,7 @@ class MultiInputRnnDecoderTest(tf.test.TestCase):
 
     self.assertEqual(len(outputs), num_unroll)
     self.assertEqual(len(states), num_unroll)
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(tf.global_variables_initializer())
       results = sess.run(
           (outputs, states, inputs_large, inputs_small, initial_state))
@@ -221,7 +221,7 @@ class MultiInputRnnDecoderTest(tf.test.TestCase):
 
     self.assertEqual(len(outputs), num_unroll)
     self.assertEqual(len(states), num_unroll)
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(tf.global_variables_initializer())
       results = sess.run(
           (outputs, states, inputs_large, inputs_small, initial_state))
@@ -275,7 +275,7 @@ class MultiInputRnnDecoderTest(tf.test.TestCase):
 
     self.assertEqual(len(outputs), num_unroll)
     self.assertEqual(len(states), num_unroll)
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(tf.global_variables_initializer())
       results = sess.run(
           (outputs, states, inputs_large, inputs_small, initial_state))

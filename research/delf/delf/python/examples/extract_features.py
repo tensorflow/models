@@ -85,7 +85,7 @@ def main(unused_argv):
     _, value = reader.read(filename_queue)
     image_tf = tf.image.decode_jpeg(value, channels=3)
 
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       init_op = tf.global_variables_initializer()
       sess.run(init_op)
 

@@ -70,7 +70,7 @@ v2 = slim.variables.variable(name="v2", ...) # By default restore=True
 # The list of variables to restore should only contain 'v2'.
 variables_to_restore = slim.variables.get_variables_to_restore()
 restorer = tf.train.Saver(variables_to_restore)
-with tf.Session() as sess:
+with tf.compat.v1.Session() as sess:
   # Restore variables from disk.
   restorer.restore(sess, "/tmp/model.ckpt")
   print("Model restored.")

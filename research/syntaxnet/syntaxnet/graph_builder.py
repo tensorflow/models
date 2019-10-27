@@ -100,7 +100,7 @@ class GreedyParser(object):
                                       num_feature_ids, embedding_sizes,
                                       hidden_layer_sizes)
   parser.AddTraining(task_context, batch_size=5)
-  with tf.Session('local') as sess:
+  with tf.compat.v1.Session('local') as sess:
     # This works because the session uses the same default graph as the
     # GraphBuilder did.
     sess.run(parser.inits.values())

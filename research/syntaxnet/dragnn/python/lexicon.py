@@ -68,7 +68,7 @@ def build_lexicon(output_path,
   part.file_pattern = training_corpus_path
 
   # Run the lexicon builder op.
-  with tf.Session(tf_master) as sess:
+  with tf.compat.v1.Session(tf_master) as sess:
     sess.run(
         gen_parser_ops.lexicon_builder(
             task_context_str=str(context), corpus_name='corpus', **kwargs))

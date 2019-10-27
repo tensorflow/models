@@ -153,7 +153,7 @@ def train(data_dir, checkpoint_path, config):
     print("Reading Name data in %s" % data_dir)
     names, counts = data_utils.read_names(data_dir)
 
-    with tf.Graph().as_default(), tf.Session() as session:
+    with tf.Graph().as_default(), tf.compat.v1.Session() as session:
         initializer = tf.random_uniform_initializer(-config.init_scale,
                                                     config.init_scale)
         with tf.variable_scope("model", reuse=None, initializer=initializer):
@@ -187,7 +187,7 @@ def namignize(names, checkpoint_path, config):
     Returns:
         None
     """
-    with tf.Graph().as_default(), tf.Session() as session:
+    with tf.Graph().as_default(), tf.compat.v1.Session() as session:
 
         with tf.variable_scope("model"):
             m = NamignizerModel(is_training=False, config=config)
@@ -222,7 +222,7 @@ def namignator(checkpoint_path, config):
     config.num_steps = 1
     config.batch_size = 1
 
-    with tf.Graph().as_default(), tf.Session() as session:
+    with tf.Graph().as_default(), tf.compat.v1.Session() as session:
 
         with tf.variable_scope("model"):
             m = NamignizerModel(is_training=False, config=config)

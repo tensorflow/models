@@ -143,7 +143,7 @@ def run_inference_on_image(image):
   # Creates graph from saved GraphDef.
   create_graph()
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     # Some useful tensors:
     # 'softmax:0': A tensor containing the normalized prediction across
     #   1000 labels.

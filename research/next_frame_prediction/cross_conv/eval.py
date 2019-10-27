@@ -71,7 +71,7 @@ def _Eval():
 
   summary_writer = tf.summary.FileWriter(eval_dir)
   saver = tf.train.Saver()
-  sess = tf.Session('', config=tf.ConfigProto(allow_soft_placement=True))
+  sess = tf.compat.v1.Session('', config=tf.ConfigProto(allow_soft_placement=True))
   tf.train.start_queue_runners(sess)
 
   while True:

@@ -68,7 +68,7 @@ def main(_):
   compiler = model.compiler
   scores = model.scores
 
-  sess = tf.Session()
+  sess = tf.compat.v1.Session()
   sess.run(tf.global_variables_initializer())
   snapshot_file = os.path.join(config.model_dir, FLAGS.snapshot_name)
   tf.logging.info('Snapshot file: %s' % snapshot_file)

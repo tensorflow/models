@@ -144,7 +144,7 @@ class SingleRecurrentLanguageModel(object):
         probs = pkl.load(f)
     else:
       tf.reset_default_graph()
-      self.sess = tf.Session()
+      self.sess = tf.compat.v1.Session()
       # Build the graph.
       saver = tf.train.import_meta_graph(
           os.path.join(self.log_dir, 'ckpt-best.meta'))

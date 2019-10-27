@@ -75,7 +75,7 @@ def setUpModule():
     with tf.variable_scope(tf.get_variable_scope(), reuse=True):
       conv_gamma = tf.get_variable('conv1/BatchNorm/gamma')
       sep_gamma = tf.get_variable('sep_conv/BatchNorm/gamma')
-    s = tf.Session()
+    s = tf.compat.v1.Session()
     s.run(tf.global_variables_initializer())
     s.run([conv_gamma.assign(CONV1_GAMMA), sep_gamma.assign(SEP_CONV_GAMMA)])
     saver = tf.train.Saver()
@@ -111,7 +111,7 @@ class ConvGammaMapperTest(parameterized.TestCase, tf.test.TestCase):
           [layers.conv2d, layers.separable_conv2d], **params):
         build_model()
 
-    sess = tf.Session()
+    sess = tf.compat.v1.Session()
     saver = tf.train.Saver()
     saver.restore(sess, os.path.join(FLAGS.test_tmpdir, CKPT_FILE_NAME))
     mapper = self.createMapper(connectivity)

@@ -317,7 +317,7 @@ def unroll_policy_for_eval(
   """unrolls the policy for testing.
 
   Args:
-    sess: tf.Session
+    sess: tf.compat.v1.Session
     env: The environment.
     inputs_feed: dictionary of placeholder for the input modalities.
     prev_state_feed: placeholder for the input to the prev_state of the model.

@@ -126,7 +126,7 @@ def _get_examples_batch():
 
 
 def main(_):
-  with tf.Graph().as_default(), tf.Session() as sess:
+  with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     # Define VGGish.
     embeddings = vggish_slim.define_vggish_slim(FLAGS.train_vggish)
 

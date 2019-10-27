@@ -77,7 +77,7 @@ def to_dict(sentence):
 
 def main(unused_argv):
   logging.set_verbosity(logging.INFO)
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     src = gen_parser_ops.document_source(batch_size=32,
                                          corpus_name=FLAGS.corpus_name,
                                          task_context=FLAGS.task_context)

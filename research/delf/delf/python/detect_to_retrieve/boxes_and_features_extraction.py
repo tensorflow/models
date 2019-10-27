@@ -131,7 +131,7 @@ def ExtractBoxesAndFeaturesToFiles(image_names, image_paths, delf_config_path,
 
   names_ids_and_boxes = []
   with tf.Graph().as_default():
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       # Initialize variables, construct detector and DELF extractor.
       init_op = tf.global_variables_initializer()
       sess.run(init_op)

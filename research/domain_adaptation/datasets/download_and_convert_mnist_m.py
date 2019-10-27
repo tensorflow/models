@@ -113,7 +113,7 @@ def _convert_dataset(split_name, filenames, filename_to_class_id, dataset_dir):
   with tf.Graph().as_default():
     image_reader = ImageReader()
 
-    with tf.Session('') as sess:
+    with tf.compat.v1.Session('') as sess:
       output_filename = _get_output_filename(dataset_dir, split_name)
 
       with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:

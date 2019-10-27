@@ -45,7 +45,7 @@ def main():
     best_model_saver = tf.train.Saver(max_to_keep=1)
     init_op = tf.global_variables_initializer()
     graph.finalize()
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(init_op)
       progress = training_progress.TrainingProgress(
           config, sess, checkpoints_saver, best_model_saver,

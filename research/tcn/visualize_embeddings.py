@@ -175,7 +175,7 @@ def main(_):
   # Note this must a Variable not a Tensor!
   embedding_var = tf.Variable(viz_embs, name='viz_embs')
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     sess.run(embedding_var.initializer)
     summary_writer = tf.summary.FileWriter(outdir)
     config = projector.ProjectorConfig()

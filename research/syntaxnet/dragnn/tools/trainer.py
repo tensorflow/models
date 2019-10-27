@@ -175,7 +175,7 @@ def main(unused_argv):
   tagger_steps = 100000
   train_steps = [tagger_steps, 8 * tagger_steps]
 
-  with tf.Session(FLAGS.tf_master, graph=g) as sess:
+  with tf.compat.v1.Session(FLAGS.tf_master, graph=g) as sess:
     # Make sure to re-initialize all underlying state.
     sess.run(tf.global_variables_initializer())
 

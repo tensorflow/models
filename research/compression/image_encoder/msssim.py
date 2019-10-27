@@ -206,7 +206,7 @@ def main(_):
   input_img = tf.placeholder(tf.string)
   decoded_image = tf.expand_dims(tf.image.decode_png(input_img, channels=3), 0)
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     img1 = sess.run(decoded_image, feed_dict={input_img: img1_str})
     img2 = sess.run(decoded_image, feed_dict={input_img: img2_str})
 

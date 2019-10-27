@@ -282,7 +282,7 @@ def main(_):
 
   # Create a local session to run the training.
   start_time = time.time()
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     # Run all the initializers to prepare the trainable parameters.
     tf.global_variables_initializer().run()
     print('Initialized!')

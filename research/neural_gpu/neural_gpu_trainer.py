@@ -840,7 +840,7 @@ def linearize(output, rev_fr_vocab, simple_tokenizer=None, eos_id=wmt.EOS_ID):
 def evaluate():
   """Evaluate an existing model."""
   batch_size = FLAGS.batch_size * FLAGS.num_gpus
-  with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+  with tf.compat.v1.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
     (model, beam_model, _, _, _,
      (_, dev_set, en_vocab_path, fr_vocab_path), _, sess) = initialize(sess)
     for p in FLAGS.problem.split("-"):
@@ -932,7 +932,7 @@ def mul(l):
 
 def interactive():
   """Interactively probe an existing model."""
-  with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+  with tf.compat.v1.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
     # Initialize model.
     (model, _, _, _, _, (_, _, en_path, fr_path), _, _) = initialize(sess)
     # Load vocabularies.

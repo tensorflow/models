@@ -96,7 +96,7 @@ class BBAlphaDivergence(BayesianNN):
 
     with self.graph.as_default():
 
-      self.sess = tf.Session()
+      self.sess = tf.compat.v1.Session()
       self.x = tf.placeholder(shape=[None, self.n_in],
                               dtype=tf.float32, name='x')
       self.y = tf.placeholder(shape=[None, self.n_out],

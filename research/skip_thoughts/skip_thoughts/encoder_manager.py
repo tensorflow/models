@@ -82,7 +82,7 @@ class EncoderManager(object):
       restore_model = encoder.build_graph_from_config(model_config,
                                                       checkpoint_path)
 
-    sess = tf.Session(graph=g)
+    sess = tf.compat.v1.Session(graph=g)
     restore_model(sess)
 
     self.encoders.append(encoder)

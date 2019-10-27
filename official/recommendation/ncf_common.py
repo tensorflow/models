@@ -121,7 +121,7 @@ def get_v1_distribution_strategy(params):
     )
 
     logging.info("Issuing reset command to TPU to ensure a clean state.")
-    tf.Session.reset(tpu_cluster_resolver.get_master())
+    tf.compat.v1.Session.reset(tpu_cluster_resolver.get_master())
 
     # Estimator looks at the master it connects to for MonitoredTrainingSession
     # by reading the `TF_CONFIG` environment variable, and the coordinator

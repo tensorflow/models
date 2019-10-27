@@ -185,7 +185,7 @@ def convert(checkpoint_from_path,
 
     saver = tf.train.Saver(new_variable_map)
 
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       sess.run(tf.global_variables_initializer())
       tf.logging.info("Writing checkpoint_to_path %s", checkpoint_to_path)
       saver.save(sess, checkpoint_to_path)

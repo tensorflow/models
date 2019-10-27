@@ -114,7 +114,7 @@ def main(_):
   log_step_train = tf.summary.merge(summary_train)
 
   # Training
-  sess = tf.Session()
+  sess = tf.compat.v1.Session()
   sess.run(tf.global_variables_initializer())
   snapshot_saver = tf.train.Saver(max_to_keep=None)  # keep all snapshots
   show_all_variables()

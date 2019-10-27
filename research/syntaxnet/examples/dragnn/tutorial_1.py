@@ -63,7 +63,7 @@ def main(argv):
   text_format.Merge(open(training_sentence).read(), sentence)
   training_set = [sentence.SerializeToString()]
 
-  with tf.Session(graph=graph) as sess:
+  with tf.compat.v1.Session(graph=graph) as sess:
     # Make sure to re-initialize all underlying state.
     sess.run(tf.initialize_all_variables())
     traces = sess.run(

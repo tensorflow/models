@@ -117,7 +117,7 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
     image = tf.placeholder(dtype=tf.uint8, shape=shape)
     encoded_png = tf.image.encode_png(image)
 
-    with tf.Session('') as sess:
+    with tf.compat.v1.Session('') as sess:
       for j in range(num_images):
         sys.stdout.write('\r>> Converting image %d/%d' % (j + 1, num_images))
         sys.stdout.flush()

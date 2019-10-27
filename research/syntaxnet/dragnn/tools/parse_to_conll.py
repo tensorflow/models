@@ -72,7 +72,7 @@ def get_segmenter_corpus(input_data_path, use_text_format):
                                                    'untokenized-text').corpus()
   else:
     input_corpus = sentence_io.ConllSentenceReader(input_data_path).corpus()
-    with tf.Session(graph=tf.Graph()) as tmp_session:
+    with tf.compat.v1.Session(graph=tf.Graph()) as tmp_session:
       char_input = gen_parser_ops.char_token_generator(input_corpus)
       char_corpus = tmp_session.run(char_input)
     check.Eq(len(input_corpus), len(char_corpus))
@@ -96,7 +96,7 @@ def run_segmenter(input_data, segmenter_model, session_config, max_batch_size,
   """
   # Create the session and graph, and load the SavedModel.
   g = tf.Graph()
-  with tf.Session(graph=g, config=session_config) as sess:
+  with tf.compat.v1.Session(graph=g, config=session_config) as sess:
     tf.logging.info('Initializing segmentation model...')
     tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
                                segmenter_model)
@@ -158,7 +158,7 @@ def run_parser(input_data, parser_model, session_config, beam_sizes,
     A list of parsed sentences.
   """
   parser_graph = tf.Graph()
-  with tf.Session(graph=parser_graph, config=session_config) as sess:
+  with tf.compat.v1.Session(graph=parser_graph, config=session_config) as sess:
     tf.logging.info('Initializing parser model...')
     tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING],
                                parser_model)

@@ -164,7 +164,7 @@ def master(train_data, dev_data, utility):
   final_loss = 0.0
   final_accuracy = 0.0
   #start session
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     sess.run(init.name)
     sess.run(graph.init_op.name)
     to_save = params.copy()

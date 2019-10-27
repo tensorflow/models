@@ -244,7 +244,7 @@ class ComponentSpecBuilder(object):
 
     # Propagate information from SyntaxNet C++ backends into the DRAGNN
     # self.spec.
-    with tf.Session(tf_master) as sess:
+    with tf.compat.v1.Session(tf_master) as sess:
       feature_sizes, domain_sizes, _, num_actions = sess.run(
           gen_parser_ops.feature_size(task_context_str=str(context)))
       self.spec.num_actions = int(num_actions)

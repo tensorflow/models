@@ -271,7 +271,7 @@ class BfVariationalNeuralBanditModel(BayesianNN):
     self.graph = tf.Graph()
     with self.graph.as_default():
 
-      self.sess = tf.Session()
+      self.sess = tf.compat.v1.Session()
 
       self.n = tf.placeholder(shape=[], dtype=tf.float32)
 

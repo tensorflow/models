@@ -62,7 +62,7 @@ class ImageReader(object):
     with tf.Graph().as_default():
       self._decode_data = tf.placeholder(dtype=tf.string)
       self._image_format = image_format
-      self._session = tf.Session()
+      self._session = tf.compat.v1.Session()
       if self._image_format in ('jpeg', 'jpg'):
         self._decode = tf.image.decode_jpeg(self._decode_data,
                                             channels=channels)

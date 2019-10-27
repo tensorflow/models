@@ -152,7 +152,7 @@ def Eval(train_dir,
     sw = tf.summary.FileWriter(eval_dir)
 
     while True:
-      sess = tf.Session('')
+      sess = tf.compat.v1.Session('')
       if graph_def_file is not None:
         # Write the eval version of the graph to a file for freezing.
         if not tf.gfile.Exists(graph_def_file):

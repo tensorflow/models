@@ -97,7 +97,7 @@ def export(sess, input_pl, output_tensor, input_file_pattern, output_dir):
   """Exports inference outputs to an output directory.
 
   Args:
-    sess: tf.Session with variables already loaded.
+    sess: tf.compat.v1.Session with variables already loaded.
     input_pl: tf.Placeholder for input (HWC format).
     output_tensor: Tensor for generated outut images.
     input_file_pattern: Glob file pattern for input images.
@@ -138,7 +138,7 @@ def main(_):
 
   # Restore all the variables that were saved in the checkpoint.
   saver = tf.train.Saver()
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     saver.restore(sess, FLAGS.checkpoint_path)
 
     export(sess, images_x_hwc_pl, generated_y, FLAGS.image_set_x_glob,

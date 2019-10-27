@@ -154,7 +154,7 @@ def Eval(sess):
 
 def main(unused_argv):
   logging.set_verbosity(logging.INFO)
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     Eval(sess)
 
 

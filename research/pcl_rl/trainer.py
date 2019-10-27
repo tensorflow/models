@@ -403,7 +403,7 @@ class Trainer(object):
         self.eval_controller.setup(train=False)
 
       saver = tf.train.Saver(max_to_keep=10)
-      sess = tf.Session()
+      sess = tf.compat.v1.Session()
       sess.run(tf.initialize_all_variables())
       init_fn(sess, saver)
 

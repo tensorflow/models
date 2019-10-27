@@ -55,7 +55,7 @@ def generate():
       encoded0 = tf.image.encode_png(im0)
       encoded1 = tf.image.encode_png(im1)
 
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         count = 0
         indir = FLAGS.input + "/"
         while tf.gfile.Exists(indir + "%06d.txt" % count):

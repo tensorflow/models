@@ -49,7 +49,7 @@ def get_const_center_size_encoded_anchors(anchors):
   y, x, h, w = anchor_boxlist.get_center_coordinates_and_sizes()
   num_anchors = y.get_shape().as_list()
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     y_out, x_out, h_out, w_out = sess.run([y, x, h, w])
   encoded_anchors = tf.constant(
       np.transpose(np.stack((y_out, x_out, h_out, w_out))),

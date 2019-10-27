@@ -134,7 +134,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, 'float'))
 
 # %% We now create a new session to actually perform the initialization the
 # variables:
-sess = tf.Session()
+sess = tf.compat.v1.Session()
 sess.run(tf.global_variables_initializer())
 
 

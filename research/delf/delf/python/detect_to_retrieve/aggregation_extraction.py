@@ -124,7 +124,7 @@ def ExtractAggregatedRepresentationsToFiles(image_names, features_dir,
   if not tf.gfile.Exists(output_aggregation_dir):
     tf.gfile.MakeDirs(output_aggregation_dir)
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
         sess, config)
 

@@ -137,7 +137,7 @@ def run_training():
     summary_op = tf.summary.merge_all()
     init = tf.global_variables_initializer()
 
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
       sess.run(init)
       # Start the training loop.

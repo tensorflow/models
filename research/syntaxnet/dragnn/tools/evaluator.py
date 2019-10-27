@@ -114,7 +114,7 @@ def main(unused_argv):
       intra_op_parallelism_threads=FLAGS.threads,
       inter_op_parallelism_threads=FLAGS.threads)
 
-  with tf.Session(graph=g, config=session_config) as sess:
+  with tf.compat.v1.Session(graph=g, config=session_config) as sess:
     tf.logging.info('Initializing variables...')
     sess.run(tf.global_variables_initializer())
 

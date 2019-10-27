@@ -257,7 +257,7 @@ def sequence_ngram_evaluation(sess, sequence, log, feed, data_ngram_count, n):
   data_ngram_count.
 
   Args:
-    sess: tf.Session.
+    sess: tf.compat.v1.Session.
     sequence: Sequence Tensor from the MaskGAN model.
     log:  gFile log.
     feed: Feed to evaluate.

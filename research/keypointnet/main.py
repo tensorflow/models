@@ -618,7 +618,7 @@ def predict(input_folder, hparams):
   z = tf.reshape(ret[1], [-1, hparams.num_kp, 1])
   uvz = tf.concat([uv, z], axis=2)
 
-  sess = tf.Session()
+  sess = tf.compat.v1.Session()
   saver = tf.train.Saver()
   ckpt = tf.train.get_checkpoint_state(FLAGS.model_dir)
 

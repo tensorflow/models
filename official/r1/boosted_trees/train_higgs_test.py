@@ -101,7 +101,7 @@ class BaseTest(tf.test.TestCase):
 
     # Check features.
     features, labels = input_fn().make_one_shot_iterator().get_next()
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       features, labels = sess.run((features, labels))
     self.assertIsInstance(features, dict)
     self.assertAllEqual(feature_names, sorted(features.keys()))

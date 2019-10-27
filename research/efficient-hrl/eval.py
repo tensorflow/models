@@ -72,7 +72,7 @@ def get_evaluate_checkpoint_fn(master, output_dir, eval_step_fns,
   Returns:
     A function that evaluates a checkpoint.
   """
-  sess = tf.Session(master, graph=tf.get_default_graph())
+  sess = tf.compat.v1.Session(master, graph=tf.get_default_graph())
   sess.run(tf.global_variables_initializer())
   sess.run(tf.local_variables_initializer())
   summary_writer = tf.summary.FileWriter(output_dir)

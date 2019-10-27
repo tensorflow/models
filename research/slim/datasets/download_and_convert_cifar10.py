@@ -88,7 +88,7 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
     image_placeholder = tf.placeholder(dtype=tf.uint8)
     encoded_image = tf.image.encode_png(image_placeholder)
 
-    with tf.Session('') as sess:
+    with tf.compat.v1.Session('') as sess:
 
       for j in range(num_images):
         sys.stdout.write('\r>> Reading file [%s] image %d/%d' % (

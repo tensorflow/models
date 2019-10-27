@@ -168,7 +168,7 @@ class Trainer(object):
     self.model = self.get_model()
     self.model.setup()
 
-    sess = tf.Session()
+    sess = tf.compat.v1.Session()
     sess.run(tf.global_variables_initializer())
 
     saver = tf.train.Saver(max_to_keep=10)

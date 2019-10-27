@@ -113,7 +113,7 @@ for inp in inputs_ph_t:
   outputs_t.append(output)
   states_t.append(state)
 
-with tf.Session() as sess:
+with tf.compat.v1.Session() as sess:
   # restore the latest model ckpt
   if FLAGS.checkpoint_path == "SAMPLE_CHECKPOINT":
     dir_path = os.path.dirname(os.path.realpath(__file__))

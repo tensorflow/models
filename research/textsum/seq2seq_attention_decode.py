@@ -95,7 +95,7 @@ class BSDecoder(object):
 
   def DecodeLoop(self):
     """Decoding loop for long running process."""
-    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+    sess = tf.compat.v1.Session(config=tf.ConfigProto(allow_soft_placement=True))
     step = 0
     while step < FLAGS.max_decode_steps:
       time.sleep(DECODE_LOOP_DELAY_SECS)

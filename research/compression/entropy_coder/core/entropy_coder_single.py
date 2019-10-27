@@ -95,7 +95,7 @@ def main(_):
 
     saver = tf.train.Saver(sharded=True, keep_checkpoint_every_n_hours=12.0)
 
-    with tf.Session(graph=graph) as sess:
+    with tf.compat.v1.Session(graph=graph) as sess:
       # Initialize local variables.
       sess.run(tf.local_variables_initializer())
 

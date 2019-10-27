@@ -62,7 +62,7 @@ def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
     top_5_op: Top 5 op.
     summary_op: Summary op.
   """
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
     if ckpt and ckpt.model_checkpoint_path:
       if os.path.isabs(ckpt.model_checkpoint_path):

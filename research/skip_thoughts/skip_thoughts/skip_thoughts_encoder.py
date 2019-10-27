@@ -20,7 +20,7 @@ Example usage:
     encoder = SkipThoughtsEncoder(embeddings)
     restore_fn = encoder.build_graph_from_config(model_config, checkpoint_path)
 
-  with tf.Session(graph=g) as sess:
+  with tf.compat.v1.Session(graph=g) as sess:
     restore_fn(sess)
     skip_thought_vectors = encoder.encode(sess, data)
 """

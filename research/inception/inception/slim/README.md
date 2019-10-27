@@ -479,7 +479,7 @@ restorer = tf.train.Saver([v1, v2])
 
 # Later, launch the model, use the saver to restore variables from disk, and
 # do some work with the model.
-with tf.Session() as sess:
+with tf.compat.v1.Session() as sess:
   # Restore variables from disk.
   restorer.restore(sess, "/tmp/model.ckpt")
   print("Model restored.")
@@ -513,7 +513,7 @@ v2 = slim.variables.variable(name="v2", ...) # By default restore=True
 # Get list of variables to restore (which contains only 'v2')
 variables_to_restore = tf.get_collection(slim.variables.VARIABLES_TO_RESTORE)
 restorer = tf.train.Saver(variables_to_restore)
-with tf.Session() as sess:
+with tf.compat.v1.Session() as sess:
   # Restore variables from disk.
   restorer.restore(sess, "/tmp/model.ckpt")
   print("Model restored.")
@@ -545,7 +545,7 @@ restorer = tf.train.Saver(variables_to_restore)
 
 # Create a saver that would save all the variables (including 'logits').
 saver = tf.train.Saver()
-with tf.Session() as sess:
+with tf.compat.v1.Session() as sess:
   # Restore variables from disk.
   restorer.restore(sess, "/tmp/model.ckpt")
   print("Model restored.")
@@ -583,7 +583,7 @@ def name_in_checkpoint(var):
 variables_to_restore = tf.get_collection(slim.variables.VARIABLES_TO_RESTORE)
 variables_to_restore = {name_in_checkpoint(var):var for var in variables_to_restore}
 restorer = tf.train.Saver(variables_to_restore)
-with tf.Session() as sess:
+with tf.compat.v1.Session() as sess:
   # Restore variables from disk.
   restorer.restore(sess, "/tmp/model.ckpt")
 ```

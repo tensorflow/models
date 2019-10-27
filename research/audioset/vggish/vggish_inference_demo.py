@@ -105,7 +105,7 @@ def main(_):
   writer = tf.python_io.TFRecordWriter(
       FLAGS.tfrecord_file) if FLAGS.tfrecord_file else None
 
-  with tf.Graph().as_default(), tf.Session() as sess:
+  with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     # Define the model in inference mode, load the checkpoint, and
     # locate input and output tensors.
     vggish_slim.define_vggish_slim(training=False)

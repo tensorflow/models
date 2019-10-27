@@ -83,7 +83,7 @@ def main(_):
       assert False, 'Unsupported file format {}'.format(ext)
     decoded_image = tf.expand_dims(decoded_image, 0)
 
-  with tf.Session(graph=graph) as sess:
+  with tf.compat.v1.Session(graph=graph) as sess:
     img_array = sess.run(decoded_image, feed_dict={input_image:
                                                    input_image_str})
     results = sess.run(outputs, feed_dict={input_tensor: img_array})

@@ -179,7 +179,7 @@ def main(unused_argv):
   gfile.MakeDirs(os.path.dirname(FLAGS.checkpoint_filename))
   summary_writer = trainer_lib.get_summary_writer(FLAGS.tensorboard_dir)
 
-  with tf.Session(FLAGS.tf_master, graph=graph) as sess:
+  with tf.compat.v1.Session(FLAGS.tf_master, graph=graph) as sess:
     # Make sure to re-initialize all underlying state.
     sess.run(tf.global_variables_initializer())
     trainer_lib.run_training(

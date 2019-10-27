@@ -141,7 +141,7 @@ def main(unused_argv):
 
   # Convert word-based docs to char-based documents for segmentation training
   # and evaluation.
-  with tf.Session(graph=tf.Graph()) as tmp_session:
+  with tf.compat.v1.Session(graph=tf.Graph()) as tmp_session:
     char_training_set_op = gen_parser_ops.segmenter_training_data_constructor(
         training_set)
     char_dev_set_op = gen_parser_ops.char_token_generator(dev_set)
@@ -159,7 +159,7 @@ def main(unused_argv):
   gfile.MakeDirs(os.path.dirname(FLAGS.checkpoint_filename))
   summary_writer = trainer_lib.get_summary_writer(FLAGS.tensorboard_dir)
 
-  with tf.Session(FLAGS.tf_master, graph=graph) as sess:
+  with tf.compat.v1.Session(FLAGS.tf_master, graph=graph) as sess:
     # Make sure to re-initialize all underlying state.
     sess.run(tf.global_variables_initializer())
     trainer_lib.run_training(

@@ -58,7 +58,7 @@ def assign_percent_real(session, percent_real_update, new_rate, current_rate):
   real into a Tensorflow variable.
 
   Args:
-    session:  Current tf.Session.
+    session:  Current tf.compat.v1.Session.
     percent_real_update: tf.assign operation.
     new_rate: tf.placeholder for the new rate.
     current_rate: Percent of tokens that are currently real.  Fake tokens
@@ -72,7 +72,7 @@ def assign_learning_rate(session, lr_update, lr_placeholder, new_lr):
   real into a Tensorflow variable.
 
   Args:
-    session:  Current tf.Session.
+    session:  Current tf.compat.v1.Session.
     lr_update: tf.assign operation.
     lr_placeholder: tf.placeholder for the new learning rate.
     new_lr: New learning rate to use.
@@ -211,7 +211,7 @@ def init_fn(init_savers, sess):
 
   Args:
     init_savers:  Dictionary of init_savers.  'init_saver_name': init_saver.
-    sess:  tf.Session.
+    sess:  tf.compat.v1.Session.
   """
   ## Load Generator weights from MaskGAN checkpoint.
   if FLAGS.maskgan_ckpt:
