@@ -346,7 +346,8 @@ def resize_and_crop_masks(masks,
     masks: `Tensor` of shape [N, H, W, 1] representing the scaled masks.
   """
   mask_size = tf.shape(input=masks)[1:3]
-  scaled_size = tf.cast(image_scale * mask_size, tf.int32)
+  scaled_size = tf.cast(image_scale * tf.cast(mask_size, image_scale.dtype),
+                        tf.int32)
   scaled_masks = tf.image.resize(
       masks, scaled_size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
   offset = tf.cast(offset, tf.int32)
