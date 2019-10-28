@@ -98,3 +98,58 @@ distributed training across the GPUs.
 If you wish to run without `tf.distribute.Strategy`, you can do so by setting
 `--distribution_strategy=off`.
 
+## Running on Cloud TPUs
+
+Note: This model will **not** work with TPUs on Colab.
+
+You can train the ResNet CTL model on Cloud TPUs using
+`tf.distribute.TPUStrategy`. If you are not familiar with Cloud TPUs, it is
+strongly recommended that you go through the
+[quickstart](https://cloud.google.com/tpu/docs/quickstart) to learn how to
+create a TPU and GCE VM.
+
+To run ResNet model on a TPU, you must set `--distribution_strategy=tpu` and
+`--tpu=$TPU_NAME`, where `$TPU_NAME` the name of your TPU in the Cloud Console.
+From a GCE VM, you can run the following command to train ResNet for one epoch
+on a v2-8 or v3-8 TPU:
+
+```bash
+python resnet_ctl_imagenet_main.py \
+  --tpu=$TPU_NAME \
+  --model_dir=$MODEL_DIR \
+  --data_dir=$DATA_DIR \
+  --batch_size=1024 \
+  --steps_per_loop=500 \
+  --train_epochs=1 \
+  --use_synthetic_data=false \
+  --dtype=fp32 \
+  --enable_eager=true \
+  --enable_tensorboard=false \
+  --distribution_strategy=tpu \
+  --log_steps=50 \
+  --single_l2_loss_op=true \
+  --use_tf_function=true
+```
+
+To train the ResNet to convergence, run it for 90 epochs:
+
+```bash
+python resnet_ctl_imagenet_main.py \
+  --tpu=$TPU_NAME \
+  --model_dir=$MODEL_DIR \
+  --data_dir=$DATA_DIR \
+  --batch_size=1024 \
+  --steps_per_loop=500 \
+  --train_epochs=90 \
+  --use_synthetic_data=false \
+  --dtype=fp32 \
+  --enable_eager=true \
+  --enable_tensorboard=false \
+  --distribution_strategy=tpu \
+  --log_steps=50 \
+  --single_l2_loss_op=true \
+  --use_tf_function=true
+```
+
+Note: `$MODEL_DIR` and `$DATA_DIR` must be GCS paths.
+
