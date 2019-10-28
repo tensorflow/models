@@ -63,7 +63,8 @@ def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
                        dynamic_loss_scale=False, fp16_implementation=False,
                        loss_scale=False,
                        tf_data_experimental_slack=False, enable_xla=False,
-                       force_v2_in_keras_compile=False):
+                       force_v2_in_keras_compile=False,
+                       training_dataset_cache=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -92,6 +93,9 @@ def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
     force_v2_in_keras_compile: Forces the use of run_distribued path even if not
       using a `strategy`. This is not the same as
       `tf.distribute.OneDeviceStrategy`
+    training_dataset_cache: Whether to cache the training dataset on workers.
+       Typically used to improve training performance when training data is in
+       remote storage and can fit into worker memory.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -260,6 +264,16 @@ def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
         help=help_wrap(
             "Determines how many batches to process in parallel when using "
             "map and batch from tf.data.")
+    )
+
+  if training_dataset_cache:
+    flags.DEFINE_boolean(
+        name="training_dataset_cache",
+        default=False,
+        help=help_wrap(
+            "Determines whether to cache the training dataset on workers. "
+            "Typically used to improve training performance when training "
+            "data is in remote storage and can fit into worker memory.")
     )
 
   if tf_data_experimental_slack:

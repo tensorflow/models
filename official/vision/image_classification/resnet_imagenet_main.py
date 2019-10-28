@@ -128,6 +128,7 @@ def run(flags_obj):
       dtype=dtype,
       drop_remainder=drop_remainder,
       tf_data_experimental_slack=flags_obj.tf_data_experimental_slack,
+      training_dataset_cache=flags_obj.training_dataset_cache,
   )
 
   eval_input_dataset = None
@@ -198,7 +199,8 @@ def run(flags_obj):
       imagenet_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
   train_epochs = flags_obj.train_epochs
 
-  if flags_obj.train_steps:
+  # if mutliple epochs, ignore the train_steps flag.
+  if train_epochs <= 1 and flags_obj.train_steps:
     train_steps = min(flags_obj.train_steps, train_steps)
     train_epochs = 1
 
@@ -254,7 +256,7 @@ def run(flags_obj):
 
 def define_imagenet_keras_flags():
   common.define_keras_flags()
-  flags_core.set_defaults(train_epochs=90)
+  flags_core.set_defaults()
   flags.adopt_module_key_flags(common)
 
 

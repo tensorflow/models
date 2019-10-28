@@ -255,7 +255,8 @@ def input_fn(is_training,
              parse_record_fn=parse_record,
              input_context=None,
              drop_remainder=False,
-             tf_data_experimental_slack=False):
+             tf_data_experimental_slack=False,
+             training_dataset_cache=False):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -272,6 +273,9 @@ def input_fn(is_training,
       batches. If True, the batch dimension will be static.
     tf_data_experimental_slack: Whether to enable tf.data's
       `experimental_slack` option.
+    training_dataset_cache: Whether to cache the training dataset on workers.
+       Typically used to improve training performance when training data is in
+       remote storage and can fit into worker memory.
 
   Returns:
     A dataset that can be used for iteration.
@@ -298,6 +302,11 @@ def input_fn(is_training,
       tf.data.TFRecordDataset,
       cycle_length=10,
       num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+  if is_training and training_dataset_cache:
+    # Improve training performance when training data is in remote storage and
+    # can fit into worker memory.
+    dataset = dataset.cache()
 
   return process_record_dataset(
       dataset=dataset,

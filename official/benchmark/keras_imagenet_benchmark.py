@@ -78,7 +78,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.datasets_num_private_threads = 14
     FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
-    
+
   def benchmark_8_gpu_amp(self):
     """Test Keras model with eager, dist_strat and 8 GPUs with automatic mixed precision."""
     self._setup()
@@ -95,7 +95,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.datasets_num_private_threads = 14
     FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark()
-    
+
   def benchmark_8_gpu_fp16(self):
     """Test Keras model with eager, dist_strat, 8 GPUs, and fp16."""
     self._setup()
@@ -201,13 +201,14 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         flag_methods=flag_methods,
         default_flags=default_flags)
 
-  def _run_and_report_benchmark(self):
+  def _run_and_report_benchmark(self, skip_steps=None):
     start_time_sec = time.time()
     stats = resnet_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
     # Number of logged step time entries that are excluded in performance
-    # report. We keep results from last 100 batches in this case.
-    warmup = (FLAGS.train_steps - 100) // FLAGS.log_steps
+    # report. We keep results from last 100 batches, or skip the steps based on
+    # input skip_steps.
+    warmup = (skip_steps or (FLAGS.train_steps - 100)) // FLAGS.log_steps
 
     super(Resnet50KerasBenchmarkBase, self)._report_benchmark(
         stats,
@@ -513,7 +514,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
-    
+
   def benchmark_8_gpu_tweaked(self):
     """Test Keras model with manual config tuning and 8 GPUs."""
     self._setup()
@@ -552,7 +553,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_amp')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
-    
+
   def benchmark_xla_8_gpu_tweaked(self):
     """Test Keras model with manual config tuning, 8 GPUs, and XLA."""
     self._setup()
@@ -843,6 +844,29 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
 
     super(Resnet50KerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
+
+
+class Resnet50KerasBenchmarkRemoteData(Resnet50KerasBenchmarkBase):
+  """Resnet50 real data (stored in remote storage) benchmark tests."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    def_flags = {}
+    def_flags['skip_eval'] = True
+    def_flags['report_accuracy_metrics'] = False
+    def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
+    # Defining multiple epochs overrides the train_steps setting in benchmarks.
+    def_flags['train_epochs'] = 2
+    # Cache dataset so performance is stable after the first epoch.
+    def_flags['training_dataset_cache'] = True
+    def_flags['log_steps'] = 100
+
+    super(Resnet50KerasBenchmarkRemoteData, self).__init__(
+        output_dir=output_dir, default_flags=def_flags)
+
+  def _run_and_report_benchmark(self):
+    # skip the first epoch for performance measurement.
+    super(Resnet50KerasBenchmarkRemoteData,
+          self)._run_and_report_benchmark(skip_steps=600)
 
 
 class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
