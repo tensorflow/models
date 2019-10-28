@@ -31,7 +31,7 @@ from __future__ import print_function
 from absl import app
 
 import tensorflow as tf  # TF 1.x
-from third_party.tensorflow_models.official.nlp.bert import tf1_checkpoint_converter_lib
+from official.nlp.bert import tf1_checkpoint_converter_lib
 
 
 flags = tf.flags
