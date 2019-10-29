@@ -92,7 +92,9 @@ def get_activation(identifier):
   if isinstance(identifier, six.string_types):
     name_to_fn = {
         "gelu": activations.gelu,
-        "custom_swish": activations.swish,
+        "simple_swish": activations.simple_swish,
+        "hard_swish": activations.hard_swish,
+        "identity": activations.identity,
     }
     identifier = str(identifier).lower()
     if identifier in name_to_fn:

@@ -14,4 +14,6 @@
 # ==============================================================================
 """Activations package definition."""
 from official.modeling.activations.gelu import gelu
-from official.modeling.activations.swish import swish
+from official.modeling.activations.swish import hard_swish
+from official.modeling.activations.swish import identity
+from official.modeling.activations.swish import simple_swish

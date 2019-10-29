@@ -22,7 +22,7 @@ import tensorflow as tf
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-def swish(features):
+def simple_swish(features):
   """Computes the Swish activation function.
 
   The tf.nn.swish operation uses a custom gradient to reduce memory usage.
@@ -40,3 +40,36 @@ def swish(features):
   """
   features = tf.convert_to_tensor(features)
   return features * tf.nn.sigmoid(features)
+
+
+@tf.keras.utils.register_keras_serializable(package='Text')
+def hard_swish(features):
+  """Computes a hard version of the swish function.
+
+  This operation can be used to reduce computational cost and improve
+  quantization for edge devices.
+
+  Args:
+    features: A `Tensor` representing preactivation values.
+
+  Returns:
+    The activation value.
+  """
+  features = tf.convert_to_tensor(features)
+  return features * tf.nn.relu6(features + tf.constant(3.)) * (1. / 6.)
+
+
+@tf.keras.utils.register_keras_serializable(package='Text')
+def identity(features):
+  """Computes the identity function.
+
+  Useful for helping in quantization.
+
+  Args:
+    features: A `Tensor` representing preactivation values.
+
+  Returns:
+    The activation value.
+  """
+  features = tf.convert_to_tensor(features)
+  return tf.identity(features)
