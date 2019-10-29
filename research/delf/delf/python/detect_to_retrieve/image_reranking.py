@@ -41,8 +41,11 @@ _MIN_RANSAC_SAMPLES = 3
 _RANSAC_RESIDUAL_THRESHOLD = 10
 
 
-def _MatchFeatures(query_locations, query_descriptors, index_image_locations,
-                   index_image_descriptors):
+def MatchFeatures(query_locations,
+                  query_descriptors,
+                  index_image_locations,
+                  index_image_descriptors,
+                  ransac_seed=None):
   """Matches local features using geometric verification.
 
   First, finds putative local feature matches by matching `query_descriptors`
@@ -59,6 +62,7 @@ def _MatchFeatures(query_locations, query_descriptors, index_image_locations,
       array of shape [#index_image_features, 2].
     index_image_descriptors: Descriptors of local features for index image.
       NumPy array of shape [#index_image_features, depth].
+    ransac_seed: Seed used by RANSAC. If None (default), no seed is provided.
 
   Returns:
     score: Number of inliers of match. If no match is found, returns 0.
@@ -95,7 +99,8 @@ def _MatchFeatures(query_locations, query_descriptors, index_image_locations,
       transform.AffineTransform,
       min_samples=_MIN_RANSAC_SAMPLES,
       residual_threshold=_RANSAC_RESIDUAL_THRESHOLD,
-      max_trials=_NUM_RANSAC_TRIALS)
+      max_trials=_NUM_RANSAC_TRIALS,
+      random_state=ransac_seed)
   if inliers is None:
     inliers = []
 
@@ -172,7 +177,7 @@ def RerankByGeometricVerification(input_ranks, initial_scores, query_name,
     (index_image_locations, _, index_image_descriptors, _,
      _) = feature_io.ReadFromFile(index_image_features_path)
 
-    inliers_and_initial_scores[index_image_id][0] = _MatchFeatures(
+    inliers_and_initial_scores[index_image_id][0] = MatchFeatures(
         query_locations, query_descriptors, index_image_locations,
         index_image_descriptors)
 
