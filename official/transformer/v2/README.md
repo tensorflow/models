@@ -131,6 +131,43 @@ tensorboard --logdir=$MODEL_DIR
     - --num_gpus=2+: Uses tf.distribute.MirroredStrategy to run synchronous
     distributed training across the GPUs.
 
+   #### Using TPUs
+
+   Note: This model will **not** work with TPUs on Colab.
+
+   You can train the Transformer model on Cloud TPUs using
+   `tf.distribute.TPUStrategy`. If you are not familiar with Cloud TPUs, it is
+   strongly recommended that you go through the
+   [quickstart](https://cloud.google.com/tpu/docs/quickstart) to learn how to
+   create a TPU and GCE VM.
+
+   To run the Transformer model on a TPU, you must set
+   `--distribution_strategy=tpu`, `--tpu=$TPU_NAME`, and `--use_ctl=True` where
+   `$TPU_NAME` the name of your TPU in the Cloud Console.
+
+   An example command to run Transformer on a v2-8 or v3-8 TPU would be:
+
+   ```bash
+   python transformer_main.py \
+     --tpu=$TPU_NAME \
+     --model_dir=$MODEL_DIR \
+     --data_dir=$DATA_DIR \
+     --vocab_file=$DATA_DIR/vocab.ende.32768 \
+     --bleu_source=$DATA_DIR/newstest2014.en \
+     --bleu_ref=$DATA_DIR/newstest2014.end \
+     --batch_size=6144 \
+     --train_steps=2000 \
+     --static_batch=true \
+     --use_ctl=true \
+     --param_set=big \
+     --max_length=64 \
+     --decode_batch_size=32 \
+     --decode_max_length=97 \
+     --padded_decode=true \
+     --distribution_strategy=tpu
+   ```
+   Note: `$MODEL_DIR` and `$DATA_DIR` must be GCS paths.
+
    #### Customizing training schedule
 
    By default, the model will train for 10 epochs, and evaluate after every epoch. The training schedule may be defined through the flags:
