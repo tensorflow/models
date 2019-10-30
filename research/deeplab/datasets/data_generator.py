@@ -291,24 +291,18 @@ class Dataset(object):
       #                    '[height, width, 1].')
 
       # label.set_shape([None, None, 1])
-    if (np.random.uniform(0, 1, [1]) < 0.5):
-      sample[common.IMAGE] = array_ops.expand_dims(sample[common.IMAGE], axis=0)
-      sample[common.LABELS_CLASS] = array_ops.expand_dims(sample[common.LABELS_CLASS], axis=0)
+    sample[common.IMAGE] = array_ops.expand_dims(sample[common.IMAGE], axis=0)
+    sample[common.LABELS_CLASS] = array_ops.expand_dims(sample[common.LABELS_CLASS], axis=0)
 
-      a = tfa.Augmentor(sample, label=[common.LABELS_CLASS])
-      a.elastic_deform(probability=1, strength=2.5, scale=5)
-      augmented = a.out
-      augmented[common.IMAGE] = tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3])
-      augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1])
-      augmented[common.HEIGHT]= parsed_features['image/height']
-      augmented[common.WIDTH]= parsed_features['image/width']
-      augmented[common.IMAGE_NAME] = image_name
-      return augmented
-    else:
-      sample[common.HEIGHT]= parsed_features['image/height']
-      sample[common.WIDTH]= parsed_features['image/width']
-      sample[common.IMAGE_NAME] = image_name
-      return sample
+    a = tfa.Augmentor(sample, label=[common.LABELS_CLASS])
+    a.elastic_deform(probability=0.5, strength=2.5, scale=5)
+    augmented = a.out
+    augmented[common.IMAGE] = tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3])
+    augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1])
+    augmented[common.HEIGHT]= parsed_features['image/height']
+    augmented[common.WIDTH]= parsed_features['image/width']
+    augmented[common.IMAGE_NAME] = image_name
+    return augmented
       
   def _preprocess_image(self, sample):
     """Preprocesses the image and label.
