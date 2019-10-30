@@ -173,7 +173,11 @@ def main(unused_argv):
     tf.contrib.tfprof.model_analyzer.print_model_analysis(
         tf.get_default_graph(),
         tfprof_options=tf.contrib.tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
+    session_config = tf.ConfigProto(
+          allow_soft_placement=True, log_device_placement=False)
+    session_config.graph_options.rewrite_options.layout_optimizer = 2
     tf.contrib.training.evaluate_repeatedly(
+        config=session_config,
         master=FLAGS.master,
         checkpoint_dir=FLAGS.checkpoint_dir,
         eval_ops=[update_op],
