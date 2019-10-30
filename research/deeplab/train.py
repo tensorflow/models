@@ -466,6 +466,7 @@ def main(unused_argv):
       # Soft placement allows placing on CPU ops without GPU implementation.
       session_config = tf.ConfigProto(
           allow_soft_placement=True, log_device_placement=False)
+      session_config.graph_options.rewrite_options.layout_optimizer = 2
 
       last_layers = model.get_extra_layer_scopes(
           FLAGS.last_layers_contain_logits_only)
