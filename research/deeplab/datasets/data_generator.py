@@ -295,7 +295,7 @@ class Dataset(object):
     sample[common.LABELS_CLASS] = array_ops.expand_dims(sample[common.LABELS_CLASS], axis=0)
 
     a = tfa.Augmentor(sample, label=[common.LABELS_CLASS])
-    a.elastic_deform(probability=0.5, strength=2.5, scale=5)
+    a.elastic_deform(probability=0.5, strength=1.5, scale=5)
     augmented = a.out
     augmented[common.IMAGE] = tf.reshape(augmented[common.IMAGE], [parsed_features['image/height'], parsed_features['image/width'], 3])
     augmented[common.LABELS_CLASS] = tf.reshape(augmented[common.LABELS_CLASS], [parsed_features['image/height'], parsed_features['image/width'], 1])
