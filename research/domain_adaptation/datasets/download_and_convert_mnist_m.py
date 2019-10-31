@@ -119,7 +119,7 @@ def _convert_dataset(split_name, filenames, filename_to_class_id, dataset_dir):
       with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
         for filename in filenames:
           # Read the filename:
-          image_data = tf.gfile.FastGFile(
+          image_data = tf.gfile.GFile(
               os.path.join(png_directory, filename), 'r').read()
           height, width = image_reader.read_image_dims(sess, image_data)
 
@@ -142,7 +142,7 @@ def _extract_labels(label_filename):
     A dictionary of filenames to int labels.
   """
   print('Extracting labels from: ', label_filename)
-  label_file = tf.gfile.FastGFile(label_filename, 'r').readlines()
+  label_file = tf.gfile.GFile(label_filename, 'r').readlines()
   label_lines = [line.rstrip('\n').split() for line in label_file]
   labels = {}
   for line in label_lines:

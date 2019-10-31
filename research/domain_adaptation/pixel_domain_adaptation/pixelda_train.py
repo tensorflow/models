@@ -233,7 +233,7 @@ def run_training(run_dir, checkpoint_dir, hparams):
 
   # Serialize hparams to log dir
   hparams_filename = os.path.join(checkpoint_dir, 'hparams.json')
-  with tf.gfile.FastGFile(hparams_filename, 'w') as f:
+  with tf.gfile.GFile(hparams_filename, 'w') as f:
     f.write(hparams.to_json())
 
   with tf.Graph().as_default():

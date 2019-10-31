@@ -63,13 +63,13 @@ def export(master_spec_path, params_path, resource_path, export_path,
   # Old CoNLL checkpoints did not need a known-word-map. Create a temporary if
   # that file is missing.
   if not tf.gfile.Exists(os.path.join(resource_path, 'known-word-map')):
-    with tf.gfile.FastGFile(os.path.join(resource_path, 'known-word-map'),
+    with tf.gfile.GFile(os.path.join(resource_path, 'known-word-map'),
                             'w') as out_file:
       out_file.write('This file intentionally left blank.')
 
   graph = tf.Graph()
   master_spec = spec_pb2.MasterSpec()
-  with tf.gfile.FastGFile(master_spec_path) as fin:
+  with tf.gfile.GFile(master_spec_path) as fin:
     text_format.Parse(fin.read(), master_spec)
 
   # This is a workaround for an issue where the segmenter master-spec had a

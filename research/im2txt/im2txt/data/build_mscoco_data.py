@@ -211,7 +211,7 @@ def _to_sequence_example(image, decoder, vocab):
   Returns:
     A SequenceExample proto.
   """
-  with tf.gfile.FastGFile(image.filename, "r") as f:
+  with tf.gfile.GFile(image.filename, "r") as f:
     encoded_image = f.read()
 
   try:
@@ -367,7 +367,7 @@ def _create_vocab(captions):
   print("Words in vocabulary:", len(word_counts))
 
   # Write out the word counts file.
-  with tf.gfile.FastGFile(FLAGS.word_counts_output_file, "w") as f:
+  with tf.gfile.GFile(FLAGS.word_counts_output_file, "w") as f:
     f.write("\n".join(["%s %d" % (w, c) for w, c in word_counts]))
   print("Wrote vocabulary file:", FLAGS.word_counts_output_file)
 
@@ -405,7 +405,7 @@ def _load_and_process_metadata(captions_file, image_dir):
   Returns:
     A list of ImageMetadata.
   """
-  with tf.gfile.FastGFile(captions_file, "r") as f:
+  with tf.gfile.GFile(captions_file, "r") as f:
     caption_data = json.load(f)
 
   # Extract the filenames.

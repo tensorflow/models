@@ -40,7 +40,7 @@ def main(argv):
     tuning_results_file = os.path.join(
         FLAGS.tuning_dir, trial_dir, 'tuning_results.txt')
     if tf.gfile.Exists(tuning_results_file):
-      with tf.gfile.FastGFile(tuning_results_file, 'r') as reader:
+      with tf.gfile.GFile(tuning_results_file, 'r') as reader:
         for line in reader:
           metrics.append(ast.literal_eval(line.replace(': nan,', ': 0.0,')))
 

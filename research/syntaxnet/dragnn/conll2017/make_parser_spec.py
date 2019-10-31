@@ -98,7 +98,7 @@ def main(unused_argv):
   master_spec.component.extend(
       [char2word.spec, lookahead.spec, tagger.spec, parser.spec])
 
-  with gfile.FastGFile(FLAGS.spec_file, 'w') as f:
+  with gfile.GFile(FLAGS.spec_file, 'w') as f:
     f.write(str(master_spec).encode('utf-8'))
 
 if __name__ == '__main__':

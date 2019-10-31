@@ -71,7 +71,7 @@ class CheckpointWriter(object):
       halloffame: Hall-of-fame buffer. Typically a priority queue.
     """
     raw = cPickle.dumps((gen, population, halloffame))
-    with tf.gfile.FastGFile(self.checkpoint_file, 'w') as f:
+    with tf.gfile.GFile(self.checkpoint_file, 'w') as f:
       f.write(raw)
 
   def load(self):
@@ -85,7 +85,7 @@ class CheckpointWriter(object):
       population: List of Individual objects.
       halloffame: Hall-of-fame buffer. Typically a priority queue.
     """
-    with tf.gfile.FastGFile(self.checkpoint_file, 'r') as f:
+    with tf.gfile.GFile(self.checkpoint_file, 'r') as f:
       raw = f.read()
     objs = cPickle.loads(raw)
     # Validate data.
@@ -282,7 +282,7 @@ def run_random_search(max_num_programs, checkpoint_dir, task_eval_fn,
   best_reward = 0.0
   if tf.gfile.Exists(checkpoint_file):
     try:
-      with tf.gfile.FastGFile(checkpoint_file, 'r') as f:
+      with tf.gfile.GFile(checkpoint_file, 'r') as f:
         lines = list(f)
         num_programs_seen = int(lines[0])
         found_solution = bool(int(lines[1]))
@@ -295,7 +295,7 @@ def run_random_search(max_num_programs, checkpoint_dir, task_eval_fn,
   while not found_solution and num_programs_seen < max_num_programs:
     if num_programs_seen % 1000 == 0:
       logging.info('num_programs_seen = %d', num_programs_seen)
-      with tf.gfile.FastGFile(checkpoint_file, 'w') as f:
+      with tf.gfile.GFile(checkpoint_file, 'w') as f:
         f.write(str(num_programs_seen) + '\n')
         f.write(str(int(found_solution)) + '\n')
 
@@ -310,7 +310,7 @@ def run_random_search(max_num_programs, checkpoint_dir, task_eval_fn,
 
   logging.info('num_programs_seen = %d', num_programs_seen)
   logging.info('found solution: %s', found_solution)
-  with tf.gfile.FastGFile(checkpoint_file, 'w') as f:
+  with tf.gfile.GFile(checkpoint_file, 'w') as f:
     f.write(str(num_programs_seen) + '\n')
     f.write(str(int(found_solution)) + '\n')
     if found_solution:

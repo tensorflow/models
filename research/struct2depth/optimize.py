@@ -181,13 +181,13 @@ def main(_):
   unique_file_name = (str(datetime.datetime.now().date()) + '_' +
                       str(datetime.datetime.now().time()).replace(':', '_'))
   unique_file = os.path.join(FLAGS.data_dir, unique_file_name + '.txt')
-  with gfile.FastGFile(FLAGS.triplet_list_file, 'r') as f:
+  with gfile.GFile(FLAGS.triplet_list_file, 'r') as f:
     files_to_process = f.readlines()
     files_to_process = [line.rstrip() for line in files_to_process]
     files_to_process = [line for line in files_to_process if len(line)]
   logging.info('Creating unique file list %s with %s entries.', unique_file,
                len(files_to_process))
-  with gfile.FastGFile(unique_file, 'w') as f_out:
+  with gfile.GFile(unique_file, 'w') as f_out:
     fetches_network = FLAGS.num_steps * FLAGS.batch_size
     fetches_saves = FLAGS.batch_size * int(np.floor(FLAGS.num_steps/SAVE_EVERY))
     repetitions = fetches_network + 3 * fetches_saves
@@ -198,7 +198,7 @@ def main(_):
   # Read remaining files.
   remaining = []
   if gfile.Exists(FLAGS.triplet_list_file_remains):
-    with gfile.FastGFile(FLAGS.triplet_list_file_remains, 'r') as f:
+    with gfile.GFile(FLAGS.triplet_list_file_remains, 'r') as f:
       remaining = f.readlines()
       remaining = [line.rstrip() for line in remaining]
       remaining = [line for line in remaining if len(line)]

@@ -112,7 +112,7 @@ def _build_vocabulary(input_files):
   wordcount = collections.Counter()
   for input_file in input_files:
     tf.logging.info("Processing file: %s", input_file)
-    for sentence in tf.gfile.FastGFile(input_file):
+    for sentence in tf.gfile.GFile(input_file):
       wordcount.update(sentence.split())
 
       num += 1
@@ -134,12 +134,12 @@ def _build_vocabulary(input_files):
   tf.logging.info("Created vocab with %d words", len(vocab))
 
   vocab_file = os.path.join(FLAGS.output_dir, "vocab.txt")
-  with tf.gfile.FastGFile(vocab_file, "w") as f:
+  with tf.gfile.GFile(vocab_file, "w") as f:
     f.write("\n".join(vocab.keys()))
   tf.logging.info("Wrote vocab file to %s", vocab_file)
 
   word_counts_file = os.path.join(FLAGS.output_dir, "word_counts.txt")
-  with tf.gfile.FastGFile(word_counts_file, "w") as f:
+  with tf.gfile.GFile(word_counts_file, "w") as f:
     for i in sorted_indices:
       f.write("%s %d\n" % (words[i], freqs[i]))
   tf.logging.info("Wrote word counts file to %s", word_counts_file)
@@ -190,7 +190,7 @@ def _process_input_file(filename, vocab, stats):
   current = None  # Current sentence (list of words).
   successor = None  # Successor sentence (list of words).
 
-  for successor_str in tf.gfile.FastGFile(filename):
+  for successor_str in tf.gfile.GFile(filename):
     stats.update(["sentences_seen"])
     successor = successor_str.split()
 

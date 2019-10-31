@@ -103,7 +103,7 @@ def export_master_spec(master_spec, external_graph):
   # Write the new spec to a temp file and export it.  The basename will be
   # exported in the SavedModel, so use mkdtemp() with a fixed basename.
   master_spec_path = os.path.join(tempfile.mkdtemp(), 'master_spec')
-  with tf.gfile.FastGFile(master_spec_path, 'w') as fout:
+  with tf.gfile.GFile(master_spec_path, 'w') as fout:
     fout.write(text_format.MessageToString(master_spec))
   with external_graph.as_default():
     asset_file_tensor = tf.constant(
@@ -135,7 +135,7 @@ def export_assets(master_spec, shortened_to_original, saved_model_path):
 
   # First, write the MasterSpec that will be used to export the data.
   tf.gfile.MakeDirs(asset_dir)
-  with tf.gfile.FastGFile(os.path.join(asset_dir, 'master_spec'),
+  with tf.gfile.GFile(os.path.join(asset_dir, 'master_spec'),
                           'w') as out_file:
     out_file.write(text_format.MessageToString(master_spec))
 

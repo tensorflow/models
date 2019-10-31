@@ -63,7 +63,7 @@ def export(master_spec_path, params_path, export_path, export_moving_averages,
 
   graph = tf.Graph()
   master_spec = spec_pb2.MasterSpec()
-  with tf.gfile.FastGFile(master_spec_path) as fin:
+  with tf.gfile.GFile(master_spec_path) as fin:
     text_format.Parse(fin.read(), master_spec)
 
   # Remove '/' if it exists at the end of the export path, ensuring that

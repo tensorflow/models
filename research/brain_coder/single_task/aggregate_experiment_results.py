@@ -221,7 +221,7 @@ def get_best_code_for_experiment(
   npe = 0
   best_code = None
   for fname in solution_files:
-    with tf.gfile.FastGFile(os.path.join(log_dir, fname), 'r') as reader:
+    with tf.gfile.GFile(os.path.join(log_dir, fname), 'r') as reader:
       results = [ast.literal_eval(entry) for entry in reader]
     for res in results:
       if res['reward'] > max_reward:
@@ -233,7 +233,7 @@ def get_best_code_for_experiment(
       else BestCodeResultError.no_solution_found)
   try:
     # If there is a status.txt file, check if it contains the status of the job.
-    with tf.gfile.FastGFile(os.path.join(log_dir, 'status.txt'), 'r') as f:
+    with tf.gfile.GFile(os.path.join(log_dir, 'status.txt'), 'r') as f:
       # Job is done, so mark this experiment as finished.
       finished = f.read().lower().strip() == 'done'
   except tf.errors.NotFoundError:
@@ -344,7 +344,7 @@ def main(argv):
         models=model_types, tasks=FLAGS.task_list, max_npe=FLAGS.max_npe,
         models_dir=FLAGS.models_dir,
         name_prefix=name_prefix, extra_desc='')
-    with tf.gfile.FastGFile(FLAGS.csv_file, 'w') as f:
+    with tf.gfile.GFile(FLAGS.csv_file, 'w') as f:
       f.write(make_csv_string(results_table))
 
     print_results_table(results_table)

@@ -1102,7 +1102,7 @@ class LMAgent(object):
         if solutions:
           if self.assign_code_solution_fn:
             self.assign_code_solution_fn(session, solutions[0]['code'])
-          with tf.gfile.FastGFile(self.logging_file, 'a') as writer:
+          with tf.gfile.GFile(self.logging_file, 'a') as writer:
             for solution_dict in solutions:
               writer.write(str(solution_dict) + '\n')
 

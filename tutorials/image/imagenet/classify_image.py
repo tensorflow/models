@@ -120,7 +120,7 @@ class NodeLookup(object):
 def create_graph():
   """Creates a graph from saved GraphDef file and returns a saver."""
   # Creates graph from saved graph_def.pb.
-  with tf.gfile.FastGFile(os.path.join(
+  with tf.gfile.GFile(os.path.join(
       FLAGS.model_dir, 'classify_image_graph_def.pb'), 'rb') as f:
     graph_def = tf.GraphDef()
     graph_def.ParseFromString(f.read())
@@ -138,7 +138,7 @@ def run_inference_on_image(image):
   """
   if not tf.gfile.Exists(image):
     tf.logging.fatal('File does not exist %s', image)
-  image_data = tf.gfile.FastGFile(image, 'rb').read()
+  image_data = tf.gfile.GFile(image, 'rb').read()
 
   # Creates graph from saved GraphDef.
   create_graph()

@@ -129,7 +129,7 @@ def main(unused_argv):
 
   tf.logging.info('Loading MasterSpec...')
   master_spec = spec_pb2.MasterSpec()
-  with gfile.FastGFile(FLAGS.dragnn_spec, 'r') as fin:
+  with gfile.GFile(FLAGS.dragnn_spec, 'r') as fin:
     text_format.Parse(fin.read(), master_spec)
   spec_builder.complete_master_spec(master_spec, None, FLAGS.resource_path)
   logging.info('Constructed master spec: %s', str(master_spec))

@@ -55,7 +55,7 @@ def GenerateSample(filename, code_shape, layer_depth):
 
   output = io.BytesIO()
   np.savez_compressed(output, shape=int_codes.shape, codes=exported_codes)
-  with tf.gfile.FastGFile(filename, 'wb') as code_file:
+  with tf.gfile.GFile(filename, 'wb') as code_file:
     code_file.write(output.getvalue())
 
 

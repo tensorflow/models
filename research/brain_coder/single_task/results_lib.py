@@ -56,7 +56,7 @@ class Results(object):
 
   def append(self, metrics):
     """Append results to results list on disk."""
-    with tf.gfile.FastGFile(self.results_file, 'a') as writer:
+    with tf.gfile.GFile(self.results_file, 'a') as writer:
       writer.write(str(metrics) + '\n')
 
   def read_this_shard(self):
@@ -66,7 +66,7 @@ class Results(object):
   def _read_shard(self, results_file):
     """Read only from the given shard file."""
     try:
-      with tf.gfile.FastGFile(results_file, 'r') as reader:
+      with tf.gfile.GFile(results_file, 'r') as reader:
         results = [ast.literal_eval(entry) for entry in reader]
     except tf.errors.NotFoundError:
       # No results written to disk yet. Return empty list.

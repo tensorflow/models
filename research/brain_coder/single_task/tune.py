@@ -138,7 +138,7 @@ def run_tuner_loop(ns):
                  FLAGS.success_rate_objective_weight)
 
     tuning_results_file = os.path.join(trial_dir, 'tuning_results.txt')
-    with tf.gfile.FastGFile(tuning_results_file, 'a') as writer:
+    with tf.gfile.GFile(tuning_results_file, 'a') as writer:
       writer.write(str(metrics) + '\n')
 
     logging.info('Trial %s complete.', trial_name)

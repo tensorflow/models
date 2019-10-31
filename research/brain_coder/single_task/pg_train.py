@@ -286,7 +286,7 @@ class AsyncTrainer(object):
     # Load top-k buffer.
     if self.model.top_episodes is not None and tf.gfile.Exists(self.topk_file):
       try:
-        with tf.gfile.FastGFile(self.topk_file, 'r') as f:
+        with tf.gfile.GFile(self.topk_file, 'r') as f:
           self.model.top_episodes = cPickle.loads(f.read())
         logging.info(
             'Loaded top-k buffer from disk with %d items. Location: "%s"',
@@ -408,7 +408,7 @@ class AsyncTrainer(object):
     if self.model.top_episodes is not None:
       logging.info('Saving top-k buffer to "%s".', self.topk_file)
       # Overwrite previous data each time.
-      with tf.gfile.FastGFile(self.topk_file, 'w') as f:
+      with tf.gfile.GFile(self.topk_file, 'w') as f:
         f.write(cPickle.dumps(self.model.top_episodes))
 
 
@@ -622,7 +622,7 @@ def train(config, is_chief, tuner=None, run_dir=None, run_number=0,
         # Exited training loop. Write results to disk.
         if is_chief and results_writer:
           assert not should_retry
-          with tf.gfile.FastGFile(status_file, 'w') as f:
+          with tf.gfile.GFile(status_file, 'w') as f:
             f.write('done')
           (program_count,
            found_solution,

@@ -134,14 +134,14 @@ class InferenceWrapperBase(object):
     # Load the Graph.
     tf.logging.info("Loading GraphDef from file: %s", graph_def_file)
     graph_def = tf.GraphDef()
-    with tf.gfile.FastGFile(graph_def_file, "rb") as f:
+    with tf.gfile.GFile(graph_def_file, "rb") as f:
       graph_def.ParseFromString(f.read())
     tf.import_graph_def(graph_def, name="")
 
     # Load the Saver.
     tf.logging.info("Loading SaverDef from file: %s", saver_def_file)
     saver_def = tf.train.SaverDef()
-    with tf.gfile.FastGFile(saver_def_file, "rb") as f:
+    with tf.gfile.GFile(saver_def_file, "rb") as f:
       saver_def.ParseFromString(f.read())
     saver = tf.train.Saver(saver_def=saver_def)
 

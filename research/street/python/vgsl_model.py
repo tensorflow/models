@@ -156,7 +156,7 @@ def Eval(train_dir,
       if graph_def_file is not None:
         # Write the eval version of the graph to a file for freezing.
         if not tf.gfile.Exists(graph_def_file):
-          with tf.gfile.FastGFile(graph_def_file, 'w') as f:
+          with tf.gfile.GFile(graph_def_file, 'w') as f:
             f.write(
                 sess.graph.as_graph_def(add_shapes=True).SerializeToString())
       ckpt = tf.train.get_checkpoint_state(train_dir)

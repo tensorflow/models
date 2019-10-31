@@ -94,14 +94,14 @@ def OutputPath(path):
 
 def RewriteContext():
   context = task_spec_pb2.TaskSpec()
-  with gfile.FastGFile(FLAGS.task_context, 'rb') as fin:
+  with gfile.GFile(FLAGS.task_context, 'rb') as fin:
     text_format.Merge(fin.read(), context)
   for resource in context.input:
     if resource.creator == StageName():
       del resource.part[:]
       part = resource.part.add()
       part.file_pattern = os.path.join(OutputPath(resource.name))
-  with gfile.FastGFile(OutputPath('context'), 'w') as fout:
+  with gfile.GFile(OutputPath('context'), 'w') as fout:
     fout.write(str(context))
 
 
@@ -110,9 +110,9 @@ def WriteStatus(num_steps, eval_metric, best_eval_metric):
   message = ('Parameters: %s | Steps: %d | Tuning score: %.2f%% | '
              'Best tuning score: %.2f%%' % (FLAGS.params, num_steps,
                                             eval_metric, best_eval_metric))
-  with gfile.FastGFile(status, 'w') as fout:
+  with gfile.GFile(status, 'w') as fout:
     fout.write(message)
-  with gfile.FastGFile(OutputPath('status'), 'a') as fout:
+  with gfile.GFile(OutputPath('status'), 'a') as fout:
     fout.write(message + '\n')
 
 
@@ -217,7 +217,7 @@ def Train(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
 
   # Save graph.
   if FLAGS.output_path:
-    with gfile.FastGFile(OutputPath('graph'), 'w') as f:
+    with gfile.GFile(OutputPath('graph'), 'w') as f:
       f.write(sess.graph_def.SerializeToString())
 
   logging.info('Initializing...')

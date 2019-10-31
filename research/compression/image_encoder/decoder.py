@@ -71,7 +71,7 @@ def main(_):
     return
 
   contents = ''
-  with tf.gfile.FastGFile(FLAGS.input_codes, 'rb') as code_file:
+  with tf.gfile.GFile(FLAGS.input_codes, 'rb') as code_file:
     contents = code_file.read()
     loaded_codes = np.load(io.BytesIO(contents))
     assert ['codes', 'shape'] not in loaded_codes.files
@@ -92,7 +92,7 @@ def main(_):
 
   with tf.Graph().as_default() as graph:
     # Load the inference model for decoding.
-    with tf.gfile.FastGFile(FLAGS.model, 'rb') as model_file:
+    with tf.gfile.GFile(FLAGS.model, 'rb') as model_file:
       graph_def = tf.GraphDef()
       graph_def.ParseFromString(model_file.read())
     _ = tf.import_graph_def(graph_def, name='')
@@ -117,7 +117,7 @@ def main(_):
       img = img.squeeze()
       png_img = sess.run(encoded_image, feed_dict={input_image: img})
 
-      with tf.gfile.FastGFile(os.path.join(FLAGS.output_directory,
+      with tf.gfile.GFile(os.path.join(FLAGS.output_directory,
                                            'image_{0:02d}.png'.format(index)),
                               'w') as output_image:
         output_image.write(png_img)

@@ -61,7 +61,7 @@ def main(_):
     print('\nInput codes not found.\n')
     return
 
-  with tf.gfile.FastGFile(FLAGS.input_codes, 'rb') as code_file:
+  with tf.gfile.GFile(FLAGS.input_codes, 'rb') as code_file:
     contents = code_file.read()
     loaded_codes = np.load(io.BytesIO(contents))
     assert ['codes', 'shape'] not in loaded_codes.files

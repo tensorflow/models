@@ -66,7 +66,7 @@ class UnlabeledDataReader(object):
           continue
         self.current_file = fid
         self.current_line = 0
-        with tf.gfile.FastGFile(os.path.join(self.config.unsupervised_data,
+        with tf.gfile.GFile(os.path.join(self.config.unsupervised_data,
                                              fname), 'r') as f:
           for i, line in enumerate(f):
             if i < self.current_line:

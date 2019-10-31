@@ -59,12 +59,12 @@ def main(_):
     print('\n--iteration must be between 0 and 15 inclusive.\n')
     return
 
-  with tf.gfile.FastGFile(FLAGS.input_image, 'rb') as input_image:
+  with tf.gfile.GFile(FLAGS.input_image, 'rb') as input_image:
     input_image_str = input_image.read()
 
   with tf.Graph().as_default() as graph:
     # Load the inference model for encoding.
-    with tf.gfile.FastGFile(FLAGS.model, 'rb') as model_file:
+    with tf.gfile.GFile(FLAGS.model, 'rb') as model_file:
       graph_def = tf.GraphDef()
       graph_def.ParseFromString(model_file.read())
     _ = tf.import_graph_def(graph_def, name='')
@@ -97,7 +97,7 @@ def main(_):
 
   output = io.BytesIO()
   np.savez_compressed(output, shape=int_codes.shape, codes=export)
-  with tf.gfile.FastGFile(FLAGS.output_codes, 'w') as code_file:
+  with tf.gfile.GFile(FLAGS.output_codes, 'w') as code_file:
     code_file.write(output.getvalue())
 
 

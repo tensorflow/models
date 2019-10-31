@@ -88,7 +88,7 @@ def main(unused_argv):
 
     # Reads master spec.
     master_spec = spec_pb2.MasterSpec()
-    with gfile.FastGFile(FLAGS.segmenter_master_spec) as fin:
+    with gfile.GFile(FLAGS.segmenter_master_spec) as fin:
       text_format.Parse(fin.read(), master_spec)
 
     if FLAGS.complete_master_spec:
@@ -160,7 +160,7 @@ def main(unused_argv):
 
   # Reads master spec.
   master_spec = spec_pb2.MasterSpec()
-  with gfile.FastGFile(FLAGS.parser_master_spec) as fin:
+  with gfile.GFile(FLAGS.parser_master_spec) as fin:
     text_format.Parse(fin.read(), master_spec)
 
   if FLAGS.complete_master_spec:

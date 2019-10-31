@@ -70,7 +70,7 @@ def main(unused_argv):
 
   # Parse DelfConfig proto.
   config = delf_config_pb2.DelfConfig()
-  with tf.gfile.FastGFile(cmd_args.config_path, 'r') as f:
+  with tf.gfile.GFile(cmd_args.config_path, 'r') as f:
     text_format.Merge(f.read(), config)
 
   # Create output directory if necessary.

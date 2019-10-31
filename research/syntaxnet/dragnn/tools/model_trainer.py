@@ -84,7 +84,7 @@ flags.DEFINE_integer('report_every', 200,
 def _read_text_proto(path, proto_type):
   """Reads a text-format instance of |proto_type| from the |path|."""
   proto = proto_type()
-  with tf.gfile.FastGFile(path) as proto_file:
+  with tf.gfile.GFile(path) as proto_file:
     text_format.Parse(proto_file.read(), proto)
   return proto
 
@@ -119,7 +119,7 @@ def main(unused_argv):
   checkpoint_path = os.path.join(FLAGS.model_dir, 'checkpoints/best')
   tensorboard_dir = os.path.join(FLAGS.model_dir, 'tensorboard')
 
-  with tf.gfile.FastGFile(config_path) as config_file:
+  with tf.gfile.GFile(config_path) as config_file:
     config = collections.defaultdict(bool, ast.literal_eval(config_file.read()))
   train_corpus_path = config['train_corpus_path']
   tune_corpus_path = config['tune_corpus_path']

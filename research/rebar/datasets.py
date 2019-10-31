@@ -51,11 +51,11 @@ def read_MNIST(binarize=False):
     x_test: 10k test images
 
   """
-  with gfile.FastGFile(os.path.join(config.DATA_DIR, config.MNIST_BINARIZED), 'r') as f:
+  with gfile.GFile(os.path.join(config.DATA_DIR, config.MNIST_BINARIZED), 'r') as f:
     (x_train, _), (x_valid, _), (x_test, _) = pickle.load(f)
 
   if not binarize:
-    with gfile.FastGFile(os.path.join(config.DATA_DIR, config.MNIST_FLOAT), 'r') as f:
+    with gfile.GFile(os.path.join(config.DATA_DIR, config.MNIST_FLOAT), 'r') as f:
       x_train = np.load(f).reshape(-1, 784)
 
   return x_train, x_valid, x_test

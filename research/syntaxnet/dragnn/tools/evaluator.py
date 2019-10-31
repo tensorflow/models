@@ -82,7 +82,7 @@ def main(unused_argv):
 
   # Reads master spec.
   master_spec = spec_pb2.MasterSpec()
-  with gfile.FastGFile(FLAGS.master_spec) as fin:
+  with gfile.GFile(FLAGS.master_spec) as fin:
     text_format.Parse(fin.read(), master_spec)
 
   # Rewrite resource locations.
