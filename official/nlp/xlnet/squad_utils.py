@@ -23,6 +23,8 @@ import collections
 import gc
 import json
 import math
+import os
+import pickle
 import re
 import string
 
@@ -922,3 +924,50 @@ class FeatureWriter(object):
 
   def close(self):
     self._writer.close()
+
+
+def create_eval_data(spm_basename,
+                     sp_model,
+                     eval_examples,
+                     max_seq_length,
+                     max_query_length,
+                     doc_stride,
+                     uncased,
+                     output_dir=None):
+  """Creates evaluation tfrecords."""
+  eval_features = []
+  eval_writer = None
+  if output_dir:
+    eval_rec_file = os.path.join(
+        output_dir,
+        "{}.slen-{}.qlen-{}.eval.tf_record".format(spm_basename, max_seq_length,
+                                                   max_query_length))
+    eval_feature_file = os.path.join(
+        output_dir,
+        "{}.slen-{}.qlen-{}.eval.features.pkl".format(spm_basename,
+                                                      max_seq_length,
+                                                      max_query_length))
+
+    eval_writer = FeatureWriter(filename=eval_rec_file, is_training=False)
+
+  def append_feature(feature):
+    eval_features.append(feature)
+    if eval_writer:
+      eval_writer.process_feature(feature)
+
+  convert_examples_to_features(
+      examples=eval_examples,
+      sp_model=sp_model,
+      max_seq_length=max_seq_length,
+      doc_stride=doc_stride,
+      max_query_length=max_query_length,
+      is_training=False,
+      output_fn=append_feature,
+      uncased=uncased)
+
+  if eval_writer:
+    eval_writer.close()
+    with tf.io.gfile.GFile(eval_feature_file, "wb") as fout:
+      pickle.dump(eval_features, fout)
+
+  return eval_features

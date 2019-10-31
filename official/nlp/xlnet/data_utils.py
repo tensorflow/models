@@ -168,7 +168,7 @@ def create_squad_dataset(file_path, seq_length, batch_size, is_training):
   return dataset
 
 
-def _get_input_iterator(input_fn, strategy):
+def get_input_iterator(input_fn, strategy):
   """Returns distributed dataset iterator."""
 
   # When training with TPU pods, datasets needs to be cloned across

@@ -110,9 +110,7 @@ def train(
                      "`learning_rate_fn` are required parameters.")
   if not model_dir:
     raise TypeError("Model directory must be specified.")
-  # pylint: disable=protected-access
-  train_iterator = data_utils._get_input_iterator(train_input_fn, strategy)
-  # pylint: enable=protected-access
+  train_iterator = data_utils.get_input_iterator(train_input_fn, strategy)
   if not tf.io.gfile.exists(model_dir):
     tf.io.gfile.mkdir(model_dir)
   # Create summary writers

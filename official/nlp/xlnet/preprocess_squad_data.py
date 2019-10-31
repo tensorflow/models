@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import pickle
 import random
 
 from absl import app
@@ -54,16 +53,11 @@ flags.DEFINE_bool(
 FLAGS = flags.FLAGS
 
 
-def _get_spm_basename():
-  spm_basename = os.path.basename(FLAGS.spiece_model_file)
-  return spm_basename
-
-
 def preprocess():
   """Preprocesses SQUAD data."""
   sp_model = spm.SentencePieceProcessor()
   sp_model.Load(FLAGS.spiece_model_file)
-  spm_basename = _get_spm_basename()
+  spm_basename = os.path.basename(FLAGS.spiece_model_file)
   if FLAGS.create_train_data:
     train_rec_file = os.path.join(
         FLAGS.output_dir,
@@ -97,39 +91,10 @@ def preprocess():
   if FLAGS.create_eval_data:
     eval_examples = squad_utils.read_squad_examples(
         FLAGS.predict_file, is_training=False)
-
-    eval_rec_file = os.path.join(
-        FLAGS.output_dir,
-        "{}.slen-{}.qlen-{}.eval.tf_record".format(spm_basename,
-                                                   FLAGS.max_seq_length,
-                                                   FLAGS.max_query_length))
-    eval_feature_file = os.path.join(
-        FLAGS.output_dir,
-        "{}.slen-{}.qlen-{}.eval.features.pkl".format(spm_basename,
-                                                      FLAGS.max_seq_length,
-                                                      FLAGS.max_query_length))
-
-    eval_writer = squad_utils.FeatureWriter(
-        filename=eval_rec_file, is_training=False)
-    eval_features = []
-
-    def append_feature(feature):
-      eval_features.append(feature)
-      eval_writer.process_feature(feature)
-
-    squad_utils.convert_examples_to_features(
-        examples=eval_examples,
-        sp_model=sp_model,
-        max_seq_length=FLAGS.max_seq_length,
-        doc_stride=FLAGS.doc_stride,
-        max_query_length=FLAGS.max_query_length,
-        is_training=False,
-        output_fn=append_feature,
-        uncased=FLAGS.uncased)
-    eval_writer.close()
-
-    with tf.io.gfile.GFile(eval_feature_file, "wb") as fout:
-      pickle.dump(eval_features, fout)
+    squad_utils.create_eval_data(spm_basename, sp_model, eval_examples,
+                                 FLAGS.max_seq_length, FLAGS.max_query_length,
+                                 FLAGS.doc_stride, FLAGS.uncased,
+                                 FLAGS.output_dir)
 
 
 def main(_):
