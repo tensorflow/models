@@ -140,8 +140,22 @@ class Resnet50CtlAccuracy(CtlBenchmark):
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_fp16(self):
+    """Test Keras model with eager, 8 GPUs with tf.keras mixed precision."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 256 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
+    FLAGS.dtype = 'fp16'
+    # Add some thread tunings to improve performance.
+    FLAGS.datasets_num_private_threads = 14
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu_amp(self):
-    """Test Keras model with eager, 8 GPUs with automatic mixed precision."""
+    """Test Keras model with 8 GPUs and mixed precision via graph rewrite."""
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.data_dir = self.data_dir
