@@ -293,12 +293,8 @@ def main(unused_argv):
                                                        time.gmtime()))
       tf.logging.info('Visualizing with model %s', checkpoint_path)
 
-      scaffold = tf.train.Scaffold(init_op=tf.global_variables_initializer())
-      session_config = tf.ConfigProto(
-          allow_soft_placement=True, log_device_placement=False)
-      session_config.graph_options.rewrite_options.layout_optimizer = 2
+      caffold = tf.train.Scaffold(init_op=tf.global_variables_initializer())
       session_creator = tf.train.ChiefSessionCreator(
-	  config=session_config,
           scaffold=scaffold,
           master=FLAGS.master,
           checkpoint_filename_with_path=checkpoint_path)
