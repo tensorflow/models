@@ -270,7 +270,8 @@ def main(unused_argv):
     logging.info("finishing reading pickle file...")
   else:
     sp_model = spm.SentencePieceProcessor()
-    sp_model.Load(FLAGS.spiece_model_file)
+    sp_model.LoadFromSerializedProto(
+        tf.io.gfile.GFile(FLAGS.spiece_model_file, "rb").read())
     spm_basename = os.path.basename(FLAGS.spiece_model_file)
     eval_features = squad_utils.create_eval_data(
         spm_basename, sp_model, eval_examples, FLAGS.max_seq_length,
