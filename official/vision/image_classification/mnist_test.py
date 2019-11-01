@@ -67,21 +67,24 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
         "--data_dir="
     ]
 
-    def _mock_dataset(self, *args, **kwargs):  # pylint: disable=unused-argument
-      """Generate mock dataset with TPU-compatible dtype (instead of uint8)."""
-      return tf.data.Dataset.from_tensor_slices({
-          "image": tf.ones(shape=(10, 28, 28, 1), dtype=tf.int32),
-          "label": tf.range(10),
-      })
+    dummy_data = (
+        tf.ones(shape=(10, 28, 28, 1), dtype=tf.int32),
+        tf.range(10),
+    )
+    datasets = (
+        tf.data.Dataset.from_tensor_slices(dummy_data),
+        tf.data.Dataset.from_tensor_slices(dummy_data),
+    )
 
-    run = functools.partial(mnist_main.run, strategy_override=distribution)
+    run = functools.partial(mnist_main.run,
+                            datasets_override=datasets,
+                            strategy_override=distribution)
 
-    with tfds.testing.mock_data(as_dataset_fn=_mock_dataset):
-      integration.run_synthetic(
-          main=run,
-          synth=False,
-          tmp_root=self.get_temp_dir(),
-          extra_flags=extra_flags)
+    integration.run_synthetic(
+        main=run,
+        synth=False,
+        tmp_root=self.get_temp_dir(),
+        extra_flags=extra_flags)
 
 
 if __name__ == "__main__":

@@ -69,11 +69,13 @@ def decode_image(example, feature):
   return tf.cast(feature.decode_example(example), dtype=tf.float32) / 255
 
 
-def run(flags_obj, strategy_override=None):
+def run(flags_obj, datasets_override=None, strategy_override=None):
   """Run MNIST model training and eval loop using native Keras APIs.
 
   Args:
     flags_obj: An object containing parsed flag values.
+    datasets_override: A pair of `tf.data.Dataset` objects to train the model,
+                       representing the train and test sets.
     strategy_override: A `tf.distribute.Strategy` object to use for model.
 
   Returns:
@@ -90,7 +92,7 @@ def run(flags_obj, strategy_override=None):
   if flags_obj.download:
     mnist.download_and_prepare()
 
-  mnist_train, mnist_test = mnist.as_dataset(
+  mnist_train, mnist_test = datasets_override or mnist.as_dataset(
       split=['train', 'test'],
       decoders={'image': decode_image()},  # pylint: disable=no-value-for-parameter
       as_supervised=True)
