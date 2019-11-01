@@ -79,11 +79,9 @@ class InputFn(object):
     if self._is_training:
       dataset = dataset.repeat()
 
-    dataset = dataset.apply(
-        tf.data.experimental.parallel_interleave(
-            lambda file_name: self._dataset_fn(file_name).prefetch(1),
-            cycle_length=32,
-            sloppy=self._is_training))
+    dataset = dataset.interleave(
+        map_func=lambda file_name: self._dataset_fn(file_name), cycle_length=32,
+        num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     if self._is_training:
       dataset = dataset.shuffle(64)
@@ -91,7 +89,8 @@ class InputFn(object):
       dataset = dataset.take(self._num_examples)
 
     # Parses the fetched records to input tensors for model function.
-    dataset = dataset.map(self._parser_fn, num_parallel_calls=64)
+    dataset = dataset.map(
+        self._parser_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size, drop_remainder=True)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     return dataset
