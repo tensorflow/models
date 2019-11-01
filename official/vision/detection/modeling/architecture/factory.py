@@ -104,7 +104,7 @@ def fast_rcnn_head_generator(params):
 def mask_rcnn_head_generator(params):
   """Generator function for Mask R-CNN head architecture."""
   return heads.MaskrcnnHead(params.num_classes,
-                            params.mrcnn_resolution,
+                            params.mask_target_size,
                             batch_norm_relu=batch_norm_relu_generator(
                                 params.batch_norm))
 

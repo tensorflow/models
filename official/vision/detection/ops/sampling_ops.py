@@ -220,8 +220,8 @@ def sample_and_crop_foreground_masks(candidate_rois,
                                      candidate_gt_classes,
                                      candidate_gt_indices,
                                      gt_masks,
-                                     num_mask_samples_per_image=28,
-                                     cropped_mask_size=28):
+                                     num_mask_samples_per_image=128,
+                                     mask_target_size=28):
   """Samples and creates cropped foreground masks for training.
 
   Args:
@@ -243,7 +243,7 @@ def sample_and_crop_foreground_masks(candidate_rois,
       containing all the groundtruth masks which sample masks are drawn from.
     num_mask_samples_per_image: an integer which specifies the number of masks
       to sample.
-    cropped_mask_size: an integer which specifies the final cropped mask size
+    mask_target_size: an integer which specifies the final cropped mask size
       after sampling. The output masks are resized w.r.t the sampled RoIs.
 
   Returns:
@@ -253,7 +253,7 @@ def sample_and_crop_foreground_masks(candidate_rois,
     foreground_classes: a tensor of shape of [batch_size, K] storing the classes
       corresponding to the sampled foreground masks.
     cropoped_foreground_masks: a tensor of shape of
-      [batch_size, K, cropped_mask_size, cropped_mask_size] storing the cropped
+      [batch_size, K, mask_target_size, mask_target_size] storing the cropped
       foreground masks used for training.
   """
   with tf.name_scope('sample_and_crop_foreground_masks'):
@@ -268,23 +268,25 @@ def sample_and_crop_foreground_masks(candidate_rois,
 
     gather_nd_instance_indices = tf.stack(
         [batch_indices, fg_instance_indices], axis=-1)
-    foreground_rois = tf.gather_nd(candidate_rois, gather_nd_instance_indices)
+    foreground_rois = tf.gather_nd(
+        candidate_rois, gather_nd_instance_indices)
     foreground_boxes = tf.gather_nd(
         candidate_gt_boxes, gather_nd_instance_indices)
     foreground_classes = tf.gather_nd(
         candidate_gt_classes, gather_nd_instance_indices)
-    fg_gt_indices = tf.gather_nd(
+    foreground_gt_indices = tf.gather_nd(
         candidate_gt_indices, gather_nd_instance_indices)
 
-    fg_gt_indices_shape = tf.shape(fg_gt_indices)
+    foreground_gt_indices_shape = tf.shape(foreground_gt_indices)
     batch_indices = (
-        tf.expand_dims(tf.range(fg_gt_indices_shape[0]), axis=-1) *
-        tf.ones([1, fg_gt_indices_shape[-1]], dtype=tf.int32))
-    gather_nd_gt_indices = tf.stack([batch_indices, fg_gt_indices], axis=-1)
+        tf.expand_dims(tf.range(foreground_gt_indices_shape[0]), axis=-1) *
+        tf.ones([1, foreground_gt_indices_shape[-1]], dtype=tf.int32))
+    gather_nd_gt_indices = tf.stack(
+        [batch_indices, foreground_gt_indices], axis=-1)
     foreground_masks = tf.gather_nd(gt_masks, gather_nd_gt_indices)
 
     cropped_foreground_masks = spatial_transform_ops.crop_mask_in_target_box(
-        foreground_masks, foreground_boxes, foreground_rois, cropped_mask_size)
+        foreground_masks, foreground_boxes, foreground_rois, mask_target_size)
 
     return foreground_rois, foreground_classes, cropped_foreground_masks
 
@@ -345,7 +347,7 @@ class MaskSampler(object):
 
   def __init__(self, params):
     self._num_mask_samples_per_image = params.num_mask_samples_per_image
-    self._cropped_mask_size = params.cropped_mask_size
+    self._mask_target_size = params.mask_target_size
 
   def __call__(self,
                candidate_rois,
@@ -381,7 +383,7 @@ class MaskSampler(object):
       foreground_classes: a tensor of shape of [batch_size, K] storing the
         classes corresponding to the sampled foreground masks.
       cropoped_foreground_masks: a tensor of shape of
-        [batch_size, K, cropped_mask_size, cropped_mask_size] storing the
+        [batch_size, K, mask_target_size, mask_target_size] storing the
         cropped foreground masks used for training.
     """
     foreground_rois, foreground_classes, cropped_foreground_masks = (
@@ -392,5 +394,5 @@ class MaskSampler(object):
             candidate_gt_indices,
             gt_masks,
             self._num_mask_samples_per_image,
-            self._cropped_mask_size))
+            self._mask_target_size))
     return foreground_rois, foreground_classes, cropped_foreground_masks

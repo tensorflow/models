@@ -177,18 +177,18 @@ class MaskrcnnHead(object):
 
   def __init__(self,
                num_classes,
-               mrcnn_resolution,
+               mask_target_size,
                batch_norm_relu=nn_ops.BatchNormRelu):
     """Initialize params to build Fast R-CNN head.
 
     Args:
       num_classes: a integer for the number of classes.
-      mrcnn_resolution: a integer that is the resolution of masks.
+      mask_target_size: a integer that is the resolution of masks.
       batch_norm_relu: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     """
     self._num_classes = num_classes
-    self._mrcnn_resolution = mrcnn_resolution
+    self._mask_target_size = mask_target_size
     self._batch_norm_relu = batch_norm_relu
 
   def __call__(self, roi_features, class_indices, is_training=None):
@@ -272,7 +272,7 @@ class MaskrcnnHead(object):
             name='mask_fcn_logits')(
                 net)
         mask_outputs = tf.reshape(mask_outputs, [
-            -1, num_rois, self._mrcnn_resolution, self._mrcnn_resolution,
+            -1, num_rois, self._mask_target_size, self._mask_target_size,
             self._num_classes
         ])
 
