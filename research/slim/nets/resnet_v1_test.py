@@ -20,11 +20,12 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from nets import resnet_utils
 from nets import resnet_v1
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 def create_test_input(batch_size, height, width, channels):
