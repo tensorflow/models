@@ -151,8 +151,8 @@ class XLNetSquadAccuracy(XLNetBenchmarkBase):
 
   def _run_and_report_benchmark(self,
                                 training_summary_path,
-                                min_accuracy=0.87,
-                                max_accuracy=0.89):
+                                min_accuracy=87.0,
+                                max_accuracy=89.0):
     """Starts XLNet accuracy benchmark test."""
 
     start_time_sec = time.time()
