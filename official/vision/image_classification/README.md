@@ -1,5 +1,14 @@
-This folder contains the Keras implementation of the ResNet models. For more
-information about the models, please refer to this [README file](../../README.md).
+# Image Classification
+
+This folder contains the TF 2.0 model examples for image classification:
+
+* [ResNet](#resnet)
+* [MNIST](#mnist)
+
+For more information about other types of models, please refer to this
+[README file](../../README.md).
+
+## ResNet
 
 Similar to the [estimator implementation](../../r1/resnet), the Keras
 implementation has code for both CIFAR-10 data and ImageNet data. The CIFAR-10
@@ -14,7 +23,7 @@ installed and
 otherwise you may encounter an error like `ImportError: No module named
 official.resnet`.
 
-## CIFAR-10
+### CIFAR-10
 
 Download and extract the CIFAR-10 data. You can use the following script:
 ```bash
@@ -34,7 +43,7 @@ location with the `--data_dir` flag, like:
 python resnet_cifar_main.py --data_dir=/path/to/cifar
 ```
 
-## ImageNet
+### ImageNet
 
 Download the ImageNet dataset and convert it to TFRecord format.
 The following [script](https://github.com/tensorflow/tpu/blob/master/tools/datasets/imagenet_to_gcs.py)
@@ -81,7 +90,8 @@ python -m resnet_imagenet_main \
 
 See [`common.py`](common.py) for full list of options.
 
-## Using multiple GPUs
+### Using multiple GPUs
+
 You can train these models on multiple GPUs using `tf.distribute.Strategy` API.
 You can read more about them in this
 [guide](https://www.tensorflow.org/guide/distribute_strategy).
@@ -98,7 +108,7 @@ distributed training across the GPUs.
 If you wish to run without `tf.distribute.Strategy`, you can do so by setting
 `--distribution_strategy=off`.
 
-## Running on Cloud TPUs
+### Running on Cloud TPUs
 
 Note: This model will **not** work with TPUs on Colab.
 
@@ -153,3 +163,32 @@ python resnet_ctl_imagenet_main.py \
 
 Note: `$MODEL_DIR` and `$DATA_DIR` must be GCS paths.
 
+
+## MNIST
+
+To download the data and run the MNIST sample model locally for the first time,
+run one of the following command:
+
+```bash
+python mnist_main.py \
+  --model_dir=$MODEL_DIR \
+  --data_dir=$DATA_DIR \
+  --train_epochs=10 \
+  --distribution_strategy=one_device \
+  --num_gpus=$NUM_GPUS \
+  --download
+```
+
+To train the model on a Cloud TPU, run the following command:
+
+```bash
+python mnist_main.py \
+  --tpu=$TPU_NAME \
+  --model_dir=$MODEL_DIR \
+  --data_dir=$DATA_DIR \
+  --train_epochs=10 \
+  --distribution_strategy=tpu \
+  --download
+```
+
+Note: the `--download` flag is only required the first time you run the model.
