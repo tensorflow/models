@@ -21,7 +21,7 @@ from official.utils.flags import core as flags_core
 
 
 def define_common_bert_flags():
-  """Define the flags related to TPU's."""
+  """Define common flags for BERT tasks."""
   flags.DEFINE_string('bert_config_file', None,
                       'Bert configuration file to define core bert layers.')
   flags.DEFINE_string('model_dir', None, (
