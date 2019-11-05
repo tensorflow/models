@@ -84,13 +84,14 @@ installable Official Models package. This is being tracked in
 
 ### Computer Vision
 
+*   [mnist](vision/image_classification): A basic model to classify digits from
+    the MNIST dataset.
 *   [resnet](vision/image_classification): A deep residual network that can be
     used to classify both CIFAR-10 and ImageNet's dataset of 1000 classes.
 *   [retinanet](vision/detection): A fast and power detector.
 
 ### Others
 
-*   [mnist](mnist): A basic model to classify digits from the MNIST dataset.
 *   [ncf](recommendation): Neural Collaborative Filtering model for
     recommendation tasks.
 
