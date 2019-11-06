@@ -374,7 +374,7 @@ def get_random_scale(min_scale_factor, max_scale_factor, step_size):
 
 def randomly_rotate(image, label):  
   angle = math.radians(np.random.randint(low=0, high=350, size=1))
-  return tf.contrib.image.rotate(image,angle,interpolation='BILINEAR'), tf.contrib.image.rotate(label,angle,interpolation='BILINEAR')
+  return tf.contrib.image.rotate(image,angle,interpolation='BILINEAR'), tf.contrib.image.rotate(label,angle,interpolation='NEAREST')
 
 def randomly_scale_image_and_label(image, label=None, scale=1.0):
   """Randomly scales image and label.
