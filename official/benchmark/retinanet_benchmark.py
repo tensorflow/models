@@ -134,7 +134,10 @@ class RetinanetBenchmarkBase(DetectionBenchmarkBase):
 
   def _run_detection_main(self):
     """Starts detection job."""
-    return detection.run(callbacks=[self.timer_callback])
+    if self.timer_callback:
+      return detection.run(callbacks=[self.timer_callback])
+    else:
+      return detection.run()
 
 
 class RetinanetAccuracy(RetinanetBenchmarkBase):
@@ -180,6 +183,10 @@ class RetinanetAccuracy(RetinanetBenchmarkBase):
             'iterations_per_loop': 100,
             'total_steps': 22500,
             'train_file_pattern': self.train_data_path,
+            'checkpoint': {
+                'path': self.resnet_checkpoint_path,
+                'prefix': 'resnet50/'
+            },
         },
         'eval': {
             'batch_size': 8,

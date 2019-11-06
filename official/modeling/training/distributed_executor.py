@@ -426,14 +426,16 @@ class DistributedExecutor(object):
       if not custom_callbacks:
         return
       for callback in custom_callbacks:
-        callback.on_batch_begin(batch)
+        if callback:
+          callback.on_batch_begin(batch)
 
     def _run_callbacks_on_batch_end(batch):
       """Runs custom callbacks at the end of every step."""
       if not custom_callbacks:
         return
       for callback in custom_callbacks:
-        callback.on_batch_end(batch)
+        if callback:
+          callback.on_batch_end(batch)
 
     if save_config:
       self._save_config(model_dir)
