@@ -1,4 +1,4 @@
-# MobilenNet
+# MobileNet
 
 This folder contains building code for
 [MobileNetV2](https://arxiv.org/abs/1801.04381) and
