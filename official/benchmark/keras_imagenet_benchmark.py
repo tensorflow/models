@@ -1041,22 +1041,6 @@ class Resnet50MultiWorkerKerasAccuracy(keras_benchmark.KerasBenchmark):
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)
 
-  def benchmark_graph_8_gpu_2_workers_fp16_ring_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
-    self._benchmark_common(eager=False, num_workers=2, all_reduce_alg='ring')
-
-  def benchmark_graph_8_gpu_2_workers_fp16_nccl_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 2 workers, fp16, nccl all-reduce."""
-    self._benchmark_common(eager=False, num_workers=2, all_reduce_alg='nccl')
-
-  def benchmark_graph_8_gpu_8_workers_fp16_ring_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 8 workers, fp16, ring all-reduce."""
-    self._benchmark_common(eager=False, num_workers=8, all_reduce_alg='ring')
-
-  def benchmark_graph_8_gpu_8_workers_fp16_nccl_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 8 workers, fp16, nccl all-reduce."""
-    self._benchmark_common(eager=False, num_workers=8, all_reduce_alg='nccl')
-
   def benchmark_eager_8_gpu_2_workers_fp16_ring_tweaked(self):
     """Eager, 8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
     self._benchmark_common(eager=True, num_workers=2, all_reduce_alg='ring')
@@ -1101,30 +1085,6 @@ class Resnet50MultiWorkerKerasBenchmark(Resnet50KerasBenchmarkBase):
     FLAGS.all_reduce_alg = all_reduce_alg
 
     self._run_and_report_benchmark()
-
-  def benchmark_graph_8_gpu_1_worker_fp16_ring_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 1 worker, fp16, ring all-reduce."""
-    self._benchmark_common(eager=False, num_workers=1, all_reduce_alg='ring')
-
-  def benchmark_graph_8_gpu_1_worker_fp16_nccl_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 1 worker, fp16, nccl all-reduce."""
-    self._benchmark_common(eager=False, num_workers=1, all_reduce_alg='nccl')
-
-  def benchmark_graph_8_gpu_2_workers_fp16_ring_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
-    self._benchmark_common(eager=False, num_workers=2, all_reduce_alg='ring')
-
-  def benchmark_graph_8_gpu_2_workers_fp16_nccl_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 2 workers, fp16, nccl all-reduce."""
-    self._benchmark_common(eager=False, num_workers=2, all_reduce_alg='nccl')
-
-  def benchmark_graph_8_gpu_8_workers_fp16_ring_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 8 workers, fp16, ring all-reduce."""
-    self._benchmark_common(eager=False, num_workers=8, all_reduce_alg='ring')
-
-  def benchmark_graph_8_gpu_8_workers_fp16_nccl_tweaked(self):
-    """Legacy graph, 8 GPUs per worker, 8 workers, fp16, nccl all-reduce."""
-    self._benchmark_common(eager=False, num_workers=8, all_reduce_alg='nccl')
 
   def benchmark_eager_8_gpu_1_worker_fp16_ring_tweaked(self):
     """Eager, 8 GPUs per worker, 1 worker, fp16, ring all-reduce."""
