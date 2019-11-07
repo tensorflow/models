@@ -376,13 +376,13 @@ def squad_model(bert_config, max_seq_length, float_type, initializer=None):
       name='squad_model')
   return squad, core_model
 
-
 def classifier_model(bert_config,
                      float_type,
                      num_labels,
                      max_seq_length,
                      final_layer_initializer=None,
-                     hub_module_url=None):
+                     hub_module_url=None,
+                     custom_bert_model=None):
   """BERT classifier model in functional API style.
 
   Construct a Keras model for predicting `num_labels` outputs from an input with
@@ -396,11 +396,15 @@ def classifier_model(bert_config,
     final_layer_initializer: Initializer for final dense layer. Defaulted
       TruncatedNormal initializer.
     hub_module_url: (Experimental) TF-Hub path/url to Bert module.
+    custom_bert_model: (Experimental) Bert model constructor, defaulting to
+      modeling.get_bert_model
 
   Returns:
     Combined prediction model (words, mask, type) -> (one-hot labels)
     BERT sub-model (words, mask, type) -> (bert_outputs)
   """
+  if custom_bert_model is not None and hub_module_url is not None:
+    raise ValueError('Either `custom_bert_model` or `hub_module_url` should be None')
   input_word_ids = tf.keras.layers.Input(
       shape=(max_seq_length,), dtype=tf.int32, name='input_word_ids')
   input_mask = tf.keras.layers.Input(
@@ -411,7 +415,7 @@ def classifier_model(bert_config,
     bert_model = hub.KerasLayer(hub_module_url, trainable=True)
     pooled_output, _ = bert_model([input_word_ids, input_mask, input_type_ids])
   else:
-    bert_model = modeling.get_bert_model(
+    bert_model = (custom_bert_model or modeling.get_bert_model)(
         input_word_ids,
         input_mask,
         input_type_ids,
