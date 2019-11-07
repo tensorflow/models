@@ -302,6 +302,7 @@ class RetinanetHead(object):
                anchors_per_location,
                num_convs=4,
                num_filters=256,
+               use_separable_conv=False,
                batch_norm_relu=nn_ops.BatchNormRelu):
     """Initialize params to build RetinaNet head.
 
@@ -313,6 +314,8 @@ class RetinanetHead(object):
       num_convs: `int` number of stacked convolution before the last prediction
         layer.
       num_filters: `int` number of filters used in the head architecture.
+      use_separable_conv: `bool` to indicate whether to use separable
+        convoluation.
       batch_norm_relu: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     """
@@ -324,6 +327,7 @@ class RetinanetHead(object):
 
     self._num_convs = num_convs
     self._num_filters = num_filters
+    self._use_separable_conv = use_separable_conv
 
     with tf.name_scope('class_net') as scope_name:
       self._class_name_scope = tf.name_scope(scope_name)
@@ -340,52 +344,88 @@ class RetinanetHead(object):
 
   def _build_class_net_layers(self, batch_norm_relu):
     """Build re-usable layers for class prediction network."""
-    self._class_predict = tf.keras.layers.Conv2D(
-        self._num_classes * self._anchors_per_location,
-        kernel_size=(3, 3),
-        bias_initializer=tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
-        padding='same',
-        name='class-predict')
+    if self._use_separable_conv:
+      self._class_predict = tf.keras.layers.SeparableConv2D(
+          self._num_classes * self._anchors_per_location,
+          kernel_size=(3, 3),
+          bias_initializer=tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
+          padding='same',
+          name='class-predict')
+    else:
+      self._class_predict = tf.keras.layers.Conv2D(
+          self._num_classes * self._anchors_per_location,
+          kernel_size=(3, 3),
+          bias_initializer=tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
+          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
+          padding='same',
+          name='class-predict')
     self._class_conv = []
     self._class_batch_norm_relu = {}
     for i in range(self._num_convs):
-      self._class_conv.append(
-          tf.keras.layers.Conv2D(
-              self._num_filters,
-              kernel_size=(3, 3),
-              bias_initializer=tf.zeros_initializer(),
-              kernel_initializer=tf.keras.initializers.RandomNormal(
-                  stddev=0.01),
-              activation=None,
-              padding='same',
-              name='class-' + str(i)))
+      if self._use_separable_conv:
+        self._class_conv.append(
+            tf.keras.layers.SeparableConv2D(
+                self._num_filters,
+                kernel_size=(3, 3),
+                bias_initializer=tf.zeros_initializer(),
+                activation=None,
+                padding='same',
+                name='class-' + str(i)))
+      else:
+        self._class_conv.append(
+            tf.keras.layers.Conv2D(
+                self._num_filters,
+                kernel_size=(3, 3),
+                bias_initializer=tf.zeros_initializer(),
+                kernel_initializer=tf.keras.initializers.RandomNormal(
+                    stddev=0.01),
+                activation=None,
+                padding='same',
+                name='class-' + str(i)))
       for level in range(self._min_level, self._max_level + 1):
         name = self._class_net_batch_norm_name(i, level)
         self._class_batch_norm_relu[name] = batch_norm_relu(name=name)
 
   def _build_box_net_layers(self, batch_norm_relu):
     """Build re-usable layers for box prediction network."""
-    self._box_predict = tf.keras.layers.Conv2D(
-        4 * self._anchors_per_location,
-        kernel_size=(3, 3),
-        bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
-        padding='same',
-        name='box-predict')
+    if self._use_separable_conv:
+      self._box_predict = tf.keras.layers.SeparableConv2D(
+          4 * self._anchors_per_location,
+          kernel_size=(3, 3),
+          bias_initializer=tf.zeros_initializer(),
+          padding='same',
+          name='box-predict')
+    else:
+      self._box_predict = tf.keras.layers.Conv2D(
+          4 * self._anchors_per_location,
+          kernel_size=(3, 3),
+          bias_initializer=tf.zeros_initializer(),
+          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=1e-5),
+          padding='same',
+          name='box-predict')
     self._box_conv = []
     self._box_batch_norm_relu = {}
     for i in range(self._num_convs):
-      self._box_conv.append(
-          tf.keras.layers.Conv2D(
-              self._num_filters,
-              kernel_size=(3, 3),
-              activation=None,
-              bias_initializer=tf.zeros_initializer(),
-              kernel_initializer=tf.keras.initializers.RandomNormal(
-                  stddev=0.01),
-              padding='same',
-              name='box-' + str(i)))
+      if self._use_separable_conv:
+        self._box_conv.append(
+            tf.keras.layers.SeparableConv2D(
+                self._num_filters,
+                kernel_size=(3, 3),
+                activation=None,
+                bias_initializer=tf.zeros_initializer(),
+                padding='same',
+                name='box-' + str(i)))
+      else:
+        self._box_conv.append(
+            tf.keras.layers.Conv2D(
+                self._num_filters,
+                kernel_size=(3, 3),
+                activation=None,
+                bias_initializer=tf.zeros_initializer(),
+                kernel_initializer=tf.keras.initializers.RandomNormal(
+                    stddev=0.01),
+                padding='same',
+                name='box-' + str(i)))
       for level in range(self._min_level, self._max_level + 1):
         name = self._box_net_batch_norm_name(i, level)
         self._box_batch_norm_relu[name] = batch_norm_relu(name=name)

@@ -138,7 +138,7 @@ class Model(object):
     return l2_weight_decay * tf.add_n([
         tf.nn.l2_loss(v)
         for v in self._keras_model.trainable_variables
-        if 'batch_normalization' not in v.name
+        if 'batch_normalization' not in v.name and 'bias' not in v.name
     ])
 
   def make_restore_checkpoint_fn(self):

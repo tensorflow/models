@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from official.vision.detection.modeling.architecture import fpn
 from official.vision.detection.modeling.architecture import heads
+from official.vision.detection.modeling.architecture import identity
 from official.vision.detection.modeling.architecture import nn_ops
 from official.vision.detection.modeling.architecture import resnet
 
@@ -65,7 +66,10 @@ def multilevel_features_generator(params):
         min_level=fpn_params.min_level,
         max_level=fpn_params.max_level,
         fpn_feat_dims=fpn_params.fpn_feat_dims,
+        use_separable_conv=fpn_params.use_separable_conv,
         batch_norm_relu=batch_norm_relu_generator(fpn_params.batch_norm))
+  elif params.architecture.multilevel_features == 'identity':
+    fpn_fn = identity.Identity()
   else:
     raise ValueError('The multi-level feature model %s is not supported.'
                      % params.architecture.multilevel_features)
@@ -81,6 +85,7 @@ def retinanet_head_generator(params):
       params.anchors_per_location,
       params.retinanet_head_num_convs,
       params.retinanet_head_num_filters,
+      params.use_separable_conv,
       batch_norm_relu=batch_norm_relu_generator(params.batch_norm))
 
 
@@ -110,36 +115,15 @@ def mask_rcnn_head_generator(params):
 
 
 def shapeprior_head_generator(params):
-  """Generator function for RetinaNet head architecture."""
-  return heads.ShapemaskPriorHead(
-      params.num_classes,
-      params.num_downsample_channels,
-      params.mask_crop_size,
-      params.use_category_for_mask,
-      params.num_of_instances,
-      params.min_mask_level,
-      params.max_mask_level,
-      params.num_clusters,
-      params.temperature,
-      params.shape_prior_path)
+  """Generator function for Shapemask head architecture."""
+  raise NotImplementedError('Unimplemented')
 
 
 def coarsemask_head_generator(params):
-  """Generator function for RetinaNet head architecture."""
-  return heads.ShapemaskCoarsemaskHead(
-      params.num_classes,
-      params.num_downsample_channels,
-      params.mask_crop_size,
-      params.use_category_for_mask,
-      params.num_convs)
+  """Generator function for Shapemask head architecture."""
+  raise NotImplementedError('Unimplemented')
 
 
 def finemask_head_generator(params):
-  """Generator function for RetinaNet head architecture."""
-  return heads.ShapemaskFinemaskHead(
-      params.num_classes,
-      params.num_downsample_channels,
-      params.mask_crop_size,
-      params.num_convs,
-      params.coarse_mask_thr,
-      params.gt_upsample_scale)
+  """Generator function for Shapemask head architecture."""
+  raise NotImplementedError('Unimplemented')

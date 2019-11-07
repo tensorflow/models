@@ -38,6 +38,7 @@ class Fpn(object):
                min_level=3,
                max_level=7,
                fpn_feat_dims=256,
+               use_separable_conv=False,
                batch_norm_relu=nn_ops.BatchNormRelu):
     """FPN initialization function.
 
@@ -45,17 +46,62 @@ class Fpn(object):
       min_level: `int` minimum level in FPN output feature maps.
       max_level: `int` maximum level in FPN output feature maps.
       fpn_feat_dims: `int` number of filters in FPN layers.
+      use_separable_conv: `bool`, if True use separable convolution for
+        convolution in FPN layers.
       batch_norm_relu: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     """
     self._min_level = min_level
     self._max_level = max_level
     self._fpn_feat_dims = fpn_feat_dims
+    self._batch_norm_relu = batch_norm_relu
 
     self._batch_norm_relus = {}
+    self._lateral_conv2d_op = {}
+    self._post_hoc_conv2d_op = {}
+    self._coarse_conv2d_op = {}
     for level in range(self._min_level, self._max_level + 1):
       self._batch_norm_relus[level] = batch_norm_relu(
           relu=False, name='p%d-bn' % level)
+      if use_separable_conv:
+        self._lateral_conv2d_op[level] = tf.keras.layers.SeparableConv2D(
+            filters=self._fpn_feat_dims,
+            kernel_size=(1, 1),
+            padding='same',
+            depth_multiplier=1,
+            name='l%d' % level)
+        self._post_hoc_conv2d_op[level] = tf.keras.layers.SeparableConv2D(
+            filters=self._fpn_feat_dims,
+            strides=(1, 1),
+            kernel_size=(3, 3),
+            padding='same',
+            depth_multiplier=1,
+            name='post_hoc_d%d' % level)
+        self._coarse_conv2d_op[level] = tf.keras.layers.SeparableConv2D(
+            filters=self._fpn_feat_dims,
+            strides=(2, 2),
+            kernel_size=(3, 3),
+            padding='same',
+            depth_multiplier=1,
+            name='p%d' % level)
+      else:
+        self._lateral_conv2d_op[level] = tf.keras.layers.Conv2D(
+            filters=self._fpn_feat_dims,
+            kernel_size=(1, 1),
+            padding='same',
+            name='l%d' % level)
+        self._post_hoc_conv2d_op[level] = tf.keras.layers.Conv2D(
+            filters=self._fpn_feat_dims,
+            strides=(1, 1),
+            kernel_size=(3, 3),
+            padding='same',
+            name='post_hoc_d%d' % level)
+        self._coarse_conv2d_op[level] = tf.keras.layers.Conv2D(
+            filters=self._fpn_feat_dims,
+            strides=(2, 2),
+            kernel_size=(3, 3),
+            padding='same',
+            name='p%d' % level)
 
   def __call__(self, multilevel_features, is_training=None):
     """Returns the FPN features for a given multilevel features.
@@ -81,12 +127,8 @@ class Fpn(object):
       # Adds lateral connections.
       feats_lateral = {}
       for level in range(self._min_level, backbone_max_level + 1):
-        feats_lateral[level] = tf.keras.layers.Conv2D(
-            filters=self._fpn_feat_dims,
-            kernel_size=(1, 1),
-            padding='same',
-            name='l%d' % level)(
-                multilevel_features[level])
+        feats_lateral[level] = self._lateral_conv2d_op[level](
+            multilevel_features[level])
 
       # Adds top-down path.
       feats = {backbone_max_level: feats_lateral[backbone_max_level]}
@@ -96,26 +138,14 @@ class Fpn(object):
 
       # Adds post-hoc 3x3 convolution kernel.
       for level in range(self._min_level, backbone_max_level + 1):
-        feats[level] = tf.keras.layers.Conv2D(
-            filters=self._fpn_feat_dims,
-            strides=(1, 1),
-            kernel_size=(3, 3),
-            padding='same',
-            name='post_hoc_d%d' % level)(
-                feats[level])
+        feats[level] = self._post_hoc_conv2d_op[level](feats[level])
 
       # Adds coarser FPN levels introduced for RetinaNet.
       for level in range(backbone_max_level + 1, self._max_level + 1):
         feats_in = feats[level - 1]
         if level > backbone_max_level + 1:
           feats_in = tf.nn.relu(feats_in)
-        feats[level] = tf.keras.layers.Conv2D(
-            filters=self._fpn_feat_dims,
-            strides=(2, 2),
-            kernel_size=(3, 3),
-            padding='same',
-            name='p%d' % level)(
-                feats_in)
+        feats[level] = self._coarse_conv2d_op[level](feats_in)
       # Adds batch_norm layer.
       for level in range(self._min_level, self._max_level + 1):
         feats[level] = self._batch_norm_relus[level](
