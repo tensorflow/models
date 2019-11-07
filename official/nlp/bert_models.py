@@ -376,6 +376,7 @@ def squad_model(bert_config, max_seq_length, float_type, initializer=None):
       name='squad_model')
   return squad, core_model
 
+
 def classifier_model(bert_config,
                      float_type,
                      num_labels,

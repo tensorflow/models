@@ -151,6 +151,7 @@ class BertModel(tf.keras.layers.Layer):
         BertConfig.from_dict(config)
         if isinstance(config, dict) else copy.deepcopy(config))
     self.float_type = float_type
+    self.build(unused_input_shapes=[])
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
@@ -250,6 +251,7 @@ class EmbeddingLookup(tf.keras.layers.Layer):
     self.vocab_size = vocab_size
     self.embedding_size = embedding_size
     self.initializer_range = initializer_range
+    self.build(unused_input_shapes=[])
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
@@ -407,6 +409,7 @@ class Attention(tf.keras.layers.Layer):
     self.attention_probs_dropout_prob = attention_probs_dropout_prob
     self.initializer_range = initializer_range
     self.backward_compatible = backward_compatible
+    self.build(unused_input_shapes=[])
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
@@ -728,6 +731,7 @@ class TransformerBlock(tf.keras.layers.Layer):
           "The hidden size (%d) is not a multiple of the number of attention "
           "heads (%d)" % (self.hidden_size, self.num_attention_heads))
     self.attention_head_size = int(self.hidden_size / self.num_attention_heads)
+    self.build(unused_input_shapes=[])
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
@@ -844,6 +848,7 @@ class Transformer(tf.keras.layers.Layer):
     self.initializer_range = initializer_range
     self.backward_compatible = backward_compatible
     self.float_type = float_type
+    self.build(unused_input_shapes=[])
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
