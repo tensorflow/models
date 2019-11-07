@@ -85,7 +85,6 @@ class Model(object):
 
   def __init__(self, params):
     self._use_bfloat16 = params.architecture.use_bfloat16
-    assert not self._use_bfloat16, 'bfloat16 is not supported in Keras yet.'
 
     # Optimization.
     self._optimizer_fn = OptimizerFactory(params.train.optimizer)

@@ -318,7 +318,8 @@ class GenerateOneStageDetections(tf.keras.layers.Layer):
     boxes = tf.expand_dims(boxes, axis=2)
 
     (nmsed_boxes, nmsed_scores, nmsed_classes,
-     valid_detections) = self._generate_detections(boxes, scores)
+     valid_detections) = self._generate_detections(
+         tf.cast(boxes, tf.float32), tf.cast(scores, tf.float32))
     # Adds 1 to offset the background class which has index 0.
     nmsed_classes += 1
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections

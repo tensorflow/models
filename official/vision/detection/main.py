@@ -64,6 +64,11 @@ def run_executor(params,
                  callbacks=None):
   """Runs Retinanet model on distribution strategy defined by the user."""
 
+  if params.architecture.use_bfloat16:
+    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
+        'mixed_bfloat16')
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+
   model_builder = model_factory.model_generator(params)
 
   if FLAGS.mode == 'train':

@@ -92,7 +92,9 @@ class RetinanetModel(base_model.Model):
     input_shape = (
         params.retinanet_parser.output_size +
         [params.retinanet_parser.num_channels])
-    self._input_layer = tf.keras.layers.Input(shape=input_shape, name='')
+    self._input_layer = tf.keras.layers.Input(
+        shape=input_shape, name='',
+        dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32)
 
   def build_outputs(self, inputs, mode):
     backbone_features = self._backbone_fn(
@@ -101,6 +103,13 @@ class RetinanetModel(base_model.Model):
         backbone_features, is_training=(mode == mode_keys.TRAIN))
     cls_outputs, box_outputs = self._head_fn(
         fpn_features, is_training=(mode == mode_keys.TRAIN))
+
+    if self._use_bfloat16:
+      levels = cls_outputs.keys()
+      for level in levels:
+        cls_outputs[level] = tf.cast(cls_outputs[level], tf.float32)
+        box_outputs[level] = tf.cast(box_outputs[level], tf.float32)
+
     model_outputs = {
         'cls_outputs': cls_outputs,
         'box_outputs': box_outputs,
