@@ -22,6 +22,7 @@ from __future__ import print_function
 import json
 import os
 
+import numpy as np
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -512,6 +513,8 @@ class DistributedExecutor(object):
                                          train_loss)
       if not isinstance(train_loss, dict):
         train_loss = {'total_loss': train_loss}
+      if np.isnan(train_loss['total_loss']):
+        raise ValueError('total loss is NaN.')
 
       if train_metric:
         train_metric_result = train_metric.result()
