@@ -781,7 +781,7 @@ class ExecutorBuilder(object):
     """Builds tf.distribute.Strategy instance.
 
     Args:
-      strategy_type: string. One of 'tpu', 'mirrored', 'multi_worker_mirrored'.
+      strategy_type: string. One of 'tpu', 'one_device_gpu', 'mirrored', 'multi_worker_mirrored'.
 
     Returns:
       An tf.distribute.Strategy object. Returns None if strategy_type is None.
@@ -791,6 +791,8 @@ class ExecutorBuilder(object):
 
     if strategy_type == 'tpu':
       return self._build_tpu_strategy()
+    elif strategy_type == 'one_device_gpu':
+      return tf.distribute.OneDeviceStrategy("device:GPU:0")
     elif strategy_type == 'mirrored':
       return self._build_mirrored_strategy()
     elif strategy_type == 'multi_worker_mirrored':
