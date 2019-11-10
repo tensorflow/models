@@ -1,3 +1,4 @@
+# EEG
 ## Table of contents
 * [EEG](#EEG)
 * [Brain-lobe](#brain-lobe)
