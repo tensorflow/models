@@ -35,5 +35,3 @@ Tensor Flow model is used to analyse the eeg signal and predict the future value
 ###### Linkedin-https://www.linkedin.com/in/abhishek-parashar-3a9218150
 ###### Email- abhishekparashar@ieee.org
 
-
-
