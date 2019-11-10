@@ -31,8 +31,8 @@ notebook for I.C.A , P.C.A-https://github.com/abhishek-parashar/ica-eeg
 ## deep learning analysis
 Tensor Flow model is used to analyse the eeg signal and predict the future values. Windowing method was used to divide in small window of contents and then used convolution to stride through the window. Lstm layers and fully conected layers were used for training and testing of the model. The overall time and space complexity was reduced to a great extent as earlier the models required 64 gb ram and now the model used only 8 gb of Ram.
 ### Abhishek Parashar- Reseacrh, Machine learning, Data science, Deep learning enthusiast.
-###### linkedin-https://www.linkedin.com/in/abhishek-parashar-3a9218150
-###### email-abhishekparashar@ieee.org
+###### Linkedin-https://www.linkedin.com/in/abhishek-parashar-3a9218150
+###### Email- abhishekparashar@ieee.org
 
 
 
