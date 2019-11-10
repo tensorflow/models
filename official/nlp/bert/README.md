@@ -3,7 +3,7 @@
 The academic paper which describes BERT in detail and provides full results on a
 number of tasks can be found here: https://arxiv.org/abs/1810.04805.
 
-This repository contains TensorFlow 2.0 implementation for BERT.
+This repository contains TensorFlow 2 implementation for BERT.
 
 N.B. This repository is under active development. Though we intend
 to keep the top-level BERT Keras model interface stable, expect continued
@@ -54,7 +54,7 @@ export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A
 
 ### Restoring from Checkpoints
 
-`tf.train.Checkpoint` is used to manage model checkpoints in TF 2.0. To restore
+`tf.train.Checkpoint` is used to manage model checkpoints in TF 2. To restore
 weights from provided pre-trained checkpoints, you can use the following code:
 
 ```python
@@ -76,7 +76,7 @@ export PYTHONPATH="$PYTHONPATH:/path/to/models"
 Install `tf-nightly` to get latest updates:
 
 ```shell
-pip install tf-nightly-gpu-2.0-preview
+pip install tf-nightly-gpu
 ```
 
 With TPU, GPU support is not necessary. First, you need to create a `tf-nigthly`
@@ -86,10 +86,10 @@ TPU with [cptu tool](https://github.com/tensorflow/tpu/tree/master/tools/ctpu):
 ctpu up -name <instance name> --tf-version=”nightly”
 ```
 
-Second, you need to install TF 2.0 `tf-night` on your VM:
+Second, you need to install TF 2 `tf-night` on your VM:
 
 ```shell
-pip install tf-nightly-2.0-preview
+pip install tf-nightly
 ```
 
 Warning: More details TPU-specific set-up instructions and tutorial should come
