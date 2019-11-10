@@ -31,6 +31,7 @@ request.
 -   [differential_privacy](differential_privacy): differential privacy for training
     data.
 -   [domain_adaptation](domain_adaptation): domain separation networks.
+-   [EEG](EEG): Electroencephalography analysis
 -   [fivo](fivo): filtering variational objectives for training generative
     sequence models.
 -   [gan](gan): generative adversarial networks.
@@ -86,3 +87,4 @@ request.
     raw monocular video.
 -   [video_prediction](video_prediction): predicting future video frames with
     neural advection.
+
