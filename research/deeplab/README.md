@@ -157,6 +157,17 @@ under tensorflow/models. Please refer to the LICENSE for details.
 
 ## Change Logs
 
+### March 27, 2019
+
+* Supported using different loss weights on different classes during training.
+**Contributor**: Yuwei Yang.
+
+
+### March 26, 2019
+
+* Supported ResNet-v1-18. **Contributor**: Michalis Raptis.
+
+
 ### March 6, 2019
 
 * Released the evaluation code (under the `evaluation` folder) for image
