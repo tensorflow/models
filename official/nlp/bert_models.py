@@ -24,6 +24,8 @@ import tensorflow_hub as hub
 
 from official.modeling import tf_utils
 from official.nlp import bert_modeling as modeling
+from official.nlp.modeling import networks
+from official.nlp.modeling.networks import bert_classifier
 
 
 def gather_indexes(sequence_tensor, positions):
@@ -160,8 +162,8 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
         lm_output, sentence_output, lm_label_ids, lm_label_weights,
         sentence_labels
     ])
-    return super(BertPretrainLossAndMetricLayer, self).__call__(
-        inputs, **kwargs)
+    return super(BertPretrainLossAndMetricLayer,
+                 self).__call__(inputs, **kwargs)
 
   def _add_metrics(self, lm_output, lm_labels, lm_label_weights,
                    lm_per_example_loss, sentence_output, sentence_labels,
@@ -354,9 +356,7 @@ def squad_model(bert_config,
       shape=(max_seq_length,), dtype=tf.int32, name='segment_ids')
 
   if hub_module_url:
-    core_model = hub.KerasLayer(
-        hub_module_url,
-        trainable=True)
+    core_model = hub.KerasLayer(hub_module_url, trainable=True)
     _, sequence_output = core_model(
         [input_word_ids, input_mask, input_type_ids])
     # Sets the shape manually due to a bug in TF shape inference.
@@ -417,32 +417,44 @@ def classifier_model(bert_config,
     Combined prediction model (words, mask, type) -> (one-hot labels)
     BERT sub-model (words, mask, type) -> (bert_outputs)
   """
-  input_word_ids = tf.keras.layers.Input(
-      shape=(max_seq_length,), dtype=tf.int32, name='input_word_ids')
-  input_mask = tf.keras.layers.Input(
-      shape=(max_seq_length,), dtype=tf.int32, name='input_mask')
-  input_type_ids = tf.keras.layers.Input(
-      shape=(max_seq_length,), dtype=tf.int32, name='input_type_ids')
-  if hub_module_url:
-    bert_model = hub.KerasLayer(hub_module_url, trainable=True)
-    pooled_output, _ = bert_model([input_word_ids, input_mask, input_type_ids])
-  else:
-    bert_model = modeling.get_bert_model(
-        input_word_ids,
-        input_mask,
-        input_type_ids,
-        config=bert_config,
-        float_type=float_type)
-    pooled_output = bert_model.outputs[0]
-
   if final_layer_initializer is not None:
     initializer = final_layer_initializer
   else:
     initializer = tf.keras.initializers.TruncatedNormal(
         stddev=bert_config.initializer_range)
 
+  if not hub_module_url:
+    bert_encoder = networks.TransformerEncoder(
+        vocab_size=bert_config.vocab_size,
+        hidden_size=bert_config.hidden_size,
+        num_layers=bert_config.num_hidden_layers,
+        num_attention_heads=bert_config.num_attention_heads,
+        intermediate_size=bert_config.intermediate_size,
+        activation=tf_utils.get_activation('gelu'),
+        dropout_rate=bert_config.hidden_dropout_prob,
+        attention_dropout_rate=bert_config.attention_probs_dropout_prob,
+        sequence_length=max_seq_length,
+        max_sequence_length=bert_config.max_position_embeddings,
+        type_vocab_size=bert_config.type_vocab_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=bert_config.initializer_range))
+    return bert_classifier.BertClassifier(
+        bert_encoder,
+        num_classes=num_labels,
+        dropout_rate=bert_config.hidden_dropout_prob,
+        initializer=initializer), bert_encoder
+
+  input_word_ids = tf.keras.layers.Input(
+      shape=(max_seq_length,), dtype=tf.int32, name='input_word_ids')
+  input_mask = tf.keras.layers.Input(
+      shape=(max_seq_length,), dtype=tf.int32, name='input_mask')
+  input_type_ids = tf.keras.layers.Input(
+      shape=(max_seq_length,), dtype=tf.int32, name='input_type_ids')
+  bert_model = hub.KerasLayer(hub_module_url, trainable=True)
+  pooled_output, _ = bert_model([input_word_ids, input_mask, input_type_ids])
   output = tf.keras.layers.Dropout(rate=bert_config.hidden_dropout_prob)(
       pooled_output)
+
   output = tf.keras.layers.Dense(
       num_labels,
       kernel_initializer=initializer,

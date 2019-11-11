@@ -34,7 +34,7 @@ from official.nlp.bert import run_squad
 from official.utils.misc import distribution_utils
 
 # pylint: disable=line-too-long
-PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16/bert_model.ckpt'
+PRETRAINED_CHECKPOINT_PATH = '/placer/prod/home/tensorflow-performance-data/datasets/bert/tf_20/uncased_L-24_H-1024_A-16/bert_model.ckpt'
 SQUAD_TRAIN_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_train.tf_record'
 SQUAD_PREDICT_FILE = 'gs://tf-perfzero-data/bert/squad/dev-v1.1.json'
 SQUAD_VOCAB_FILE = 'gs://tf-perfzero-data/bert/squad/vocab.txt'

@@ -35,7 +35,7 @@ from official.nlp.bert import run_classifier
 from official.utils.misc import distribution_utils
 
 # pylint: disable=line-too-long
-PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16/bert_model.ckpt'
+PRETRAINED_CHECKPOINT_PATH = 'placer/prod/home/tensorflow-performance-data/datasets/bert/keras_bert/bert_model.ckpt'
 CLASSIFIER_TRAIN_DATA_PATH = 'gs://tf-perfzero-data/bert/classification/mrpc_train.tf_record'
 CLASSIFIER_EVAL_DATA_PATH = 'gs://tf-perfzero-data/bert/classification/mrpc_eval.tf_record'
 CLASSIFIER_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/classification/mrpc_meta_data'

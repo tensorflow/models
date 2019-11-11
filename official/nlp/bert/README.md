@@ -32,6 +32,11 @@ are going to release new pre-trained checkpoints soon.
 We provide checkpoints that are converted from [google-research/bert](https://github.com/google-research/bert),
 in order to keep consistent with BERT paper.
 
+The stable model checkpoints work with [v2.0 release](https://github.com/tensorflow/models/releases/tag/v2.0).
+
+**Note: these checkpoints are not compatible with the current master
+[run_classifier.py](run_classifier.py) example.**
+
 *   **[`BERT-Large, Uncased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/wwm_uncased_L-24_H-1024_A-16.tar.gz)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
 *   **[`BERT-Large, Cased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/wwm_cased_L-24_H-1024_A-16.tar.gz)**:
@@ -45,12 +50,28 @@ in order to keep consistent with BERT paper.
 *   **[`BERT-Large, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/cased_L-24_H-1024_A-16.tar.gz)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
 
-We recommend to host checkpoints on Google Cloud storage buckets when you use
-Cloud GPU/TPU. For example, in the following tutorial, we use:
+**Note: We are in the middle of a transition stage to switch BERT implementation
+to use Keras functional-style networks in [nlp/modeling](../modeling).
+The checkpoint above will be deleted once transition is done.**
 
-```shell
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16
-```
+The new checkpoints work with [run_classifier.py](run_classifier.py) example
+are:
+
+*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/wwm_uncased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Large, Cased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/wwm_cased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Uncased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/uncased_L-12_H-768_A-12.tar.gz)**:
+    12-layer, 768-hidden, 12-heads, 110M parameters
+*   **[`BERT-Large, Uncased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/cased_L-12_H-768_A-12.tar.gz)**:
+    12-layer, 768-hidden, 12-heads , 110M parameters
+*   **[`BERT-Large, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/cased_L-24_H-1024_A-16.tar.gz)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+
+We recommend to host checkpoints on Google Cloud storage buckets when you use
+Cloud GPU/TPU.
 
 ### Restoring from Checkpoints
 
@@ -175,7 +196,7 @@ The unzipped pre-trained model files can also be found in the Google Cloud
 Storage folder `gs://cloud-tpu-checkpoints/bert/tf_20`. For example:
 
 ```shell
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16
+export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 export MODEL_DIR=gs://some_bucket/my_output_dir
 ```
 
