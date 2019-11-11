@@ -122,9 +122,10 @@ supported by Google Cloud TPU team yet.
 ### Pre-training
 
 There is no change to generate pre-training data. Please use the script
-[`create_pretraining_data.py`](https://github.com/google-research/bert/blob/master/create_pretraining_data.py)
-inside [BERT research repo](https://github.com/google-research/bert) to get
-processed pre-training data.
+[`create_pretraining_data.py`](create_pretraining_data.py)
+which is essentially branched from [BERT research repo](https://github.com/google-research/bert)
+to get processed pre-training data and it adapts to TF2 symbols and python3
+compatibility.
 
 
 ### Fine-tuning
