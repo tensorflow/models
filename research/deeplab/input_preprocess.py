@@ -123,14 +123,16 @@ def preprocess_image_and_label(image,
   # Randomly crop the image and label.
   if is_training and label is not None:
     processed_image, label = preprocess_utils.random_crop(
-        [processed_image, label], crop_height, crop_width)
+        [processed_image, label], crop_height, crop_width)  
 
   if is_training:
-    if preprocess_utils.get_random_number() < 0.95:
-      processed_image = preprocess_utils.adjust_color(processed_image)
-      processed_image, label = preprocess_utils.add_transparent_rectangle(processed_image, label)
+    processed_image = tf.cond(tf.greater(tf.random_uniform([], 0, 1), tf.constant(0.3)), 
+      lambda: preprocess_utils.adjust_color(processed_image),
+      lambda: processed_image)
     processed_image, label = preprocess_utils.randomly_rotate(processed_image, label)
-    # if preprocess_utils.get_random_number() < _AUG_PROB:    
+    processed_image, label = tf.cond(tf.greater(tf.random_uniform([], 0, 1), tf.constant(0.05)), 
+      lambda: preprocess_utils.add_transparent_rectangle(processed_image, label),
+      lambda: (processed_image, label))
 
   processed_image.set_shape([crop_height, crop_width, 3])  
   if label is not None:
