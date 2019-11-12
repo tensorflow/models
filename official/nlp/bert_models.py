@@ -172,7 +172,9 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
     """Adds metrics."""
     masked_lm_accuracy = tf.keras.metrics.sparse_categorical_accuracy(
         lm_labels, lm_output)
-    masked_lm_accuracy = tf.reduce_mean(masked_lm_accuracy * lm_label_weights)
+    numerator = tf.reduce_sum(masked_lm_accuracy * lm_label_weights)
+    denominator = tf.reduce_sum(lm_label_weights) + 1e-5
+    masked_lm_accuracy = numerator / denominator
     self.add_metric(
         masked_lm_accuracy, name='masked_lm_accuracy', aggregation='mean')
 
