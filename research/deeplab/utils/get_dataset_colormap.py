@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +27,11 @@ defined by the different datasets. Supported colormaps are:
 * PASCAL VOC 2012 (http://host.robots.ox.ac.uk/pascal/VOC/).
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import numpy as np
+from six.moves import range
 
 # Dataset names.
 _ADE20K = 'ade20k'
@@ -39,7 +44,7 @@ _DATASET_MAX_ENTRIES = {
     _ADE20K: 151,
     _CITYSCAPES: 256,
     _MAPILLARY_VISTAS: 66,
-    _PASCAL: 256,
+    _PASCAL: 512,
 }
 
 
@@ -318,7 +323,7 @@ def create_pascal_label_colormap():
   colormap = np.zeros((_DATASET_MAX_ENTRIES[_PASCAL], 3), dtype=int)
   ind = np.arange(_DATASET_MAX_ENTRIES[_PASCAL], dtype=int)
 
-  for shift in reversed(range(8)):
+  for shift in reversed(list(range(8))):
     for channel in range(3):
       colormap[:, channel] |= bit_get(ind, channel) << shift
     ind >>= 3
