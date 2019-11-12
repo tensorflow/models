@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +22,15 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import framework as contrib_framework
+from tensorflow.contrib import slim as contrib_slim
+from tensorflow.contrib import training as contrib_training
 
 from deeplab.core import nas_genotypes
 from deeplab.core import nas_network
 
-arg_scope = tf.contrib.framework.arg_scope
-slim = tf.contrib.slim
+arg_scope = contrib_framework.arg_scope
+slim = contrib_slim
 
 
 def create_test_input(batch, height, width, channels):
@@ -54,7 +58,7 @@ class NASNetworkTest(tf.test.TestCase):
                output_stride=16,
                final_endpoint=None):
     """Build PNASNet model backbone."""
-    hparams = tf.contrib.training.HParams(
+    hparams = contrib_training.HParams(
         filter_scaling_rate=2.0,
         num_conv_filters=10,
         drop_path_keep_prob=1.0,
