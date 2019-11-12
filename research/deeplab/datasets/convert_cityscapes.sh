@@ -21,7 +21,7 @@
 # Cityscapes at https://github.com/mcordts/cityscapesScripts.
 #
 # Usage:
-#   bash ./preprocess_cityscapes.sh
+#   bash ./convert_cityscapes.sh
 #
 # The folder structure is assumed to be:
 #  + datasets
