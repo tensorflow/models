@@ -20,10 +20,11 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from nets import mobilenet_v1
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class MobilenetV1Test(tf.test.TestCase):

@@ -19,13 +19,15 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
 from preprocessing import preprocessing_factory
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
@@ -521,8 +523,7 @@ def main(_):
       moving_average_variables, variable_averages = None, None
 
     if FLAGS.quantize_delay >= 0:
-      tf.contrib.quantize.create_training_graph(
-          quant_delay=FLAGS.quantize_delay)
+      contrib_quantize.create_training_graph(quant_delay=FLAGS.quantize_delay)
 
     #########################################
     # Configure the optimization procedure. #

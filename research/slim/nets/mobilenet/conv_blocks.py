@@ -17,8 +17,9 @@ import contextlib
 import functools
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 def _fixed_padding(inputs, kernel_size, rate=1):
@@ -463,4 +464,3 @@ def squeeze_excite(input_tensor,
           align_corners=True)
     result = input_tensor * excite
   return result
-

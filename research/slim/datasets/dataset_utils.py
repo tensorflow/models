@@ -20,6 +20,7 @@ from __future__ import print_function
 import os
 import sys
 import tarfile
+import zipfile
 
 from six.moves import urllib
 import tensorflow as tf
@@ -101,6 +102,31 @@ def image_to_tfexample(image_data, image_format, height, width, class_id):
   }))
 
 
+def download_url(url, dataset_dir):
+  """Downloads the tarball or zip file from url into filepath.
+
+  Args:
+    url: The URL of a tarball or zip file.
+    dataset_dir: The directory where the temporary files are stored.
+
+  Returns:
+    filepath: path where the file is downloaded.
+  """
+  filename = url.split('/')[-1]
+  filepath = os.path.join(dataset_dir, filename)
+
+  def _progress(count, block_size, total_size):
+    sys.stdout.write('\r>> Downloading %s %.1f%%' % (
+        filename, float(count * block_size) / float(total_size) * 100.0))
+    sys.stdout.flush()
+
+  filepath, _ = urllib.request.urlretrieve(url, filepath, _progress)
+  print()
+  statinfo = os.stat(filepath)
+  print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
+  return filepath
+
+
 def download_and_uncompress_tarball(tarball_url, dataset_dir):
   """Downloads the `tarball_url` and uncompresses it locally.
 
@@ -108,21 +134,36 @@ def download_and_uncompress_tarball(tarball_url, dataset_dir):
     tarball_url: The URL of a tarball file.
     dataset_dir: The directory where the temporary files are stored.
   """
-  filename = tarball_url.split('/')[-1]
-  filepath = os.path.join(dataset_dir, filename)
-
-  def _progress(count, block_size, total_size):
-    sys.stdout.write('\r>> Downloading %s %.1f%%' % (
-        filename, float(count * block_size) / float(total_size) * 100.0))
-    sys.stdout.flush()
-  filepath, _ = urllib.request.urlretrieve(tarball_url, filepath, _progress)
-  print()
-  statinfo = os.stat(filepath)
-  print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
+  filepath = download_url(tarball_url, dataset_dir)
   tarfile.open(filepath, 'r:gz').extractall(dataset_dir)
 
 
-def write_label_file(labels_to_class_names, dataset_dir,
+def download_and_uncompress_zipfile(zip_url, dataset_dir):
+  """Downloads the `zip_url` and uncompresses it locally.
+
+  Args:
+    zip_url: The URL of a zip file.
+    dataset_dir: The directory where the temporary files are stored.
+  """
+  filename = zip_url.split('/')[-1]
+  filepath = os.path.join(dataset_dir, filename)
+
+  if tf.gfile.Exists(filepath):
+    print('File {filename} has been already downloaded at {filepath}. '
+          'Unzipping it....'.format(filename=filename, filepath=filepath))
+  else:
+    filepath = download_url(zip_url, dataset_dir)
+
+  with zipfile.ZipFile(filepath, 'r') as zip_file:
+    for member in zip_file.namelist():
+      memberpath = os.path.join(dataset_dir, member)
+      # extract only if file doesn't exist
+      if not (os.path.exists(memberpath) or os.path.isfile(memberpath)):
+        zip_file.extract(member, dataset_dir)
+
+
+def write_label_file(labels_to_class_names,
+                     dataset_dir,
                      filename=LABELS_FILENAME):
   """Writes a file with the list of class names.
 

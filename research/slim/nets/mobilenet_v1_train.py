@@ -19,12 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from nets import mobilenet_v1
 from preprocessing import preprocessing_factory
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 flags = tf.app.flags
 
@@ -136,7 +138,7 @@ def build_model():
     # quant_delay delays start of quantization till quant_delay steps, allowing
     # for better model accuracy.
     if FLAGS.quantize:
-      tf.contrib.quantize.create_training_graph(quant_delay=get_quant_delay())
+      contrib_quantize.create_training_graph(quant_delay=get_quant_delay())
 
     total_loss = tf.losses.get_total_loss(name='total_loss')
     # Configure the learning rate using an exponential decay.

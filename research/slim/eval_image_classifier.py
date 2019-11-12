@@ -20,12 +20,14 @@ from __future__ import print_function
 
 import math
 import tensorflow as tf
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from nets import nets_factory
 from preprocessing import preprocessing_factory
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 tf.app.flags.DEFINE_integer(
     'batch_size', 100, 'The number of samples in each batch.')
@@ -146,7 +148,7 @@ def main(_):
     logits, _ = network_fn(images)
 
     if FLAGS.quantize:
-      tf.contrib.quantize.create_eval_graph()
+      contrib_quantize.create_eval_graph()
 
     if FLAGS.moving_average_decay:
       variable_averages = tf.train.ExponentialMovingAverage(
