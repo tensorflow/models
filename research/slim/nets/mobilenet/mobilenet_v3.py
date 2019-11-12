@@ -23,11 +23,12 @@ import functools
 import numpy as np
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from nets.mobilenet import conv_blocks as ops
 from nets.mobilenet import mobilenet as lib
 
-slim = tf.contrib.slim
+slim = contrib_slim
 op = lib.op
 expand_input = ops.expand_input_by_factor
 
@@ -57,7 +58,7 @@ def reduce_to_1x1(input_tensor, default_size=7, **kwargs):
   return slim.avg_pool2d(input_tensor, kernel_size=k, **kwargs)
 
 
-def mbv3_op(ef, n, k, s=1, act=tf.nn.relu, se=None):
+def mbv3_op(ef, n, k, s=1, act=tf.nn.relu, se=None, **kwargs):
   """Defines a single Mobilenet V3 convolution block.
 
   Args:
@@ -67,14 +68,44 @@ def mbv3_op(ef, n, k, s=1, act=tf.nn.relu, se=None):
     s: stride
     act: activation function in inner layers
     se: squeeze excite function.
+    **kwargs: passed to expanded_conv
 
   Returns:
     An object (lib._Op) for inserting in conv_def, representing this operation.
   """
-  return op(ops.expanded_conv, expansion_size=expand_input(ef),
-            kernel_size=(k, k), stride=s, num_outputs=n,
-            inner_activation_fn=act,
-            expansion_transform=se)
+  return op(
+      ops.expanded_conv,
+      expansion_size=expand_input(ef),
+      kernel_size=(k, k),
+      stride=s,
+      num_outputs=n,
+      inner_activation_fn=act,
+      expansion_transform=se,
+      **kwargs)
+
+
+def mbv3_fused(ef, n, k, s=1, **kwargs):
+  """Defines a single Mobilenet V3 convolution block.
+
+  Args:
+    ef: expansion factor
+    n: number of output channels
+    k: stride of depthwise
+    s: stride
+    **kwargs: will be passed to mbv3_op
+
+  Returns:
+    An object (lib._Op) for inserting in conv_def, representing this operation.
+  """
+  expansion_fn = functools.partial(slim.conv2d, kernel_size=k, stride=s)
+  return mbv3_op(
+      ef,
+      n,
+      k=1,
+      s=s,
+      depthwise_location=None,
+      expansion_fn=expansion_fn,
+      **kwargs)
 
 
 mbv3_op_se = functools.partial(mbv3_op, se=_se4)
@@ -206,6 +237,38 @@ V3_SMALL_MINIMALISTIC = dict(
     ]))
 
 
+# EdgeTPU friendly variant of MobilenetV3 that uses fused convolutions
+# instead of depthwise in the early layers.
+V3_EDGETPU = dict(
+    defaults=dict(DEFAULTS),
+    spec=[
+        op(slim.conv2d, stride=2, num_outputs=32, kernel_size=(3, 3)),
+        mbv3_fused(k=3, s=1, ef=1, n=16),
+        mbv3_fused(k=3, s=2, ef=8, n=32),
+        mbv3_fused(k=3, s=1, ef=4, n=32),
+        mbv3_fused(k=3, s=1, ef=4, n=32),
+        mbv3_fused(k=3, s=1, ef=4, n=32),
+        mbv3_fused(k=3, s=2, ef=8, n=48),
+        mbv3_fused(k=3, s=1, ef=4, n=48),
+        mbv3_fused(k=3, s=1, ef=4, n=48),
+        mbv3_fused(k=3, s=1, ef=4, n=48),
+        mbv3_op(k=3, s=2, ef=8, n=96),
+        mbv3_op(k=3, s=1, ef=4, n=96),
+        mbv3_op(k=3, s=1, ef=4, n=96),
+        mbv3_op(k=3, s=1, ef=4, n=96),
+        mbv3_op(k=3, s=1, ef=8, n=96, residual=False),
+        mbv3_op(k=3, s=1, ef=4, n=96),
+        mbv3_op(k=3, s=1, ef=4, n=96),
+        mbv3_op(k=3, s=1, ef=4, n=96),
+        mbv3_op(k=5, s=2, ef=8, n=160),
+        mbv3_op(k=5, s=1, ef=4, n=160),
+        mbv3_op(k=5, s=1, ef=4, n=160),
+        mbv3_op(k=5, s=1, ef=4, n=160),
+        mbv3_op(k=3, s=1, ef=8, n=192),
+        op(slim.conv2d, stride=1, num_outputs=1280, kernel_size=(1, 1)),
+    ])
+
+
 @slim.add_arg_scope
 def mobilenet(input_tensor,
               num_classes=1001,
@@ -275,15 +338,26 @@ def mobilenet_base(input_tensor, depth_multiplier=1.0, **kwargs):
       input_tensor, depth_multiplier=depth_multiplier, base_only=True, **kwargs)
 
 
-def wrapped_partial(func, *args, **kwargs):
-  partial_func = functools.partial(func, *args, **kwargs)
+def wrapped_partial(func, new_defaults=None,
+                    **kwargs):
+  """Partial function with new default parameters and updated docstring."""
+  if not new_defaults:
+    new_defaults = {}
+  def func_wrapper(*f_args, **f_kwargs):
+    new_kwargs = dict(new_defaults)
+    new_kwargs.update(f_kwargs)
+    return func(*f_args, **new_kwargs)
+  functools.update_wrapper(func_wrapper, func)
+  partial_func = functools.partial(func_wrapper, **kwargs)
   functools.update_wrapper(partial_func, func)
   return partial_func
 
 
 large = wrapped_partial(mobilenet, conv_defs=V3_LARGE)
 small = wrapped_partial(mobilenet, conv_defs=V3_SMALL)
-
+edge_tpu = wrapped_partial(mobilenet,
+                           new_defaults={'scope': 'MobilenetEdgeTPU'},
+                           conv_defs=V3_EDGETPU)
 
 # Minimalistic model that does not have Squeeze Excite blocks,
 # Hardswish, or 5x5 depthwise convolution.

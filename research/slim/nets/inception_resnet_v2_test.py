@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from nets import inception
 
@@ -310,7 +311,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     inputs = tf.placeholder(tf.float32, (1, height, width, 3))
-    with tf.contrib.slim.arg_scope(inception.inception_resnet_v2_arg_scope()):
+    with contrib_slim.arg_scope(inception.inception_resnet_v2_arg_scope()):
       inception.inception_resnet_v2(inputs, num_classes, is_training=False)
 
     self.assertEqual(tf.global_variables('.*/BatchNorm/gamma:0$'), [])
@@ -319,7 +320,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     inputs = tf.placeholder(tf.float32, (1, height, width, 3))
-    with tf.contrib.slim.arg_scope(
+    with contrib_slim.arg_scope(
         inception.inception_resnet_v2_arg_scope(batch_norm_scale=True)):
       inception.inception_resnet_v2(inputs, num_classes, is_training=False)
 

@@ -19,12 +19,13 @@ from __future__ import division
 from __future__ import print_function
 import copy
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 from nets.mobilenet import conv_blocks as ops
 from nets.mobilenet import mobilenet
 from nets.mobilenet import mobilenet_v2
 
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 def find_ops(optype):
