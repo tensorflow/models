@@ -450,7 +450,7 @@ def xception(inputs,
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
     sync_batch_norm_method: String, sync batchnorm method. Currently only
-      support `None` or `tpu`.
+      support `None`.
 
   Returns:
     net: A rank-4 tensor of size [batch, height_out, width_out, channels_out].
@@ -909,7 +909,7 @@ def xception_arg_scope(weight_decay=0.00004,
     use_bounded_activation: Whether or not to use bounded activations. Bounded
       activations better lend themselves to quantized inference.
     sync_batch_norm_method: String, sync batchnorm method. Currently only
-      support `None` or `tpu`. Also, it is only effective for Xception.
+      support `None`. Also, it is only effective for Xception.
 
   Returns:
     An `arg_scope` to use for the Xception models.

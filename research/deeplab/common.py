@@ -149,10 +149,6 @@ flags.DEFINE_multi_float(
     'for label 0 is 0.1 and the weight for label 1 is 0.5. If set as None, all '
     'the labels have the same weight 1.0.')
 
-flags.DEFINE_string(
-    'sync_batch_norm_method', 'None',
-    'Method to sync batch norm. Currently support "None", and "tpu".')
-
 flags.DEFINE_float('batch_norm_decay', 0.9997, 'Batchnorm decay.')
 
 FLAGS = flags.FLAGS
@@ -288,7 +284,7 @@ class ModelOptions(
         FLAGS.decoder_output_is_logits,
         FLAGS.image_se_uses_qsigmoid,
         label_weights,
-        FLAGS.sync_batch_norm_method,
+        'None',
         FLAGS.batch_norm_decay)
 
   def __deepcopy__(self, memo):

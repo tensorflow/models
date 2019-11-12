@@ -16,7 +16,6 @@
 
 """This script contains utility functions."""
 import tensorflow as tf
-from google3.third_party.cloud_tpu.models.mask_rcnn import tpu_normalization
 from tensorflow.contrib import framework as contrib_framework
 from tensorflow.contrib import slim as contrib_slim
 
@@ -151,36 +150,11 @@ def get_label_weight_mask(labels, ignore_label, num_classes, label_weights=1.0):
   return tf.multiply(not_ignore_mask, weight_mask)
 
 
-@contrib_framework.add_arg_scope
-def tpu_sync_batch_norm(inputs,
-                        decay=0.9997,
-                        center=True,
-                        scale=True,
-                        epsilon=1e-5,
-                        gamma_initializer=tf.ones_initializer(),
-                        is_training=True,
-                        scope=None):
-  return tpu_normalization.cross_replica_batch_normalization(
-      inputs=inputs,
-      axis=3,
-      momentum=decay,
-      epsilon=epsilon,
-      center=center,
-      scale=scale,
-      training=is_training,
-      gamma_initializer=gamma_initializer,
-      num_distributed_groups=1,
-      fused=False,
-      name=scope)
-
-
 def get_batch_norm_fn(sync_batch_norm_method):
   """Gets batch norm function.
 
   Currently we only support the following methods:
     - `None` (no sync batch norm). We use slim.batch_norm in this case.
-    - `tpu` (use TPU code to sync batch norm). We use tpu_sync_batch_norm
-      which wraps the tpu_normalization function.
 
   Args:
     sync_batch_norm_method: String, method used to sync batch norm.
@@ -193,8 +167,6 @@ def get_batch_norm_fn(sync_batch_norm_method):
   """
   if sync_batch_norm_method == 'None':
     return slim.batch_norm
-  elif sync_batch_norm_method == 'tpu':
-    return tpu_sync_batch_norm
   else:
     raise ValueError('Unsupported sync_batch_norm_method.')
 
@@ -232,9 +204,7 @@ def get_batch_norm_params(decay=0.9997,
       'center': center,
   }
   if initialize_gamma_as_zeros:
-    if sync_batch_norm_method == 'tpu':
-      batch_norm_params['gamma_initializer'] = tf.zeros_initializer()
-    elif sync_batch_norm_method == 'None':
+    if sync_batch_norm_method == 'None':
       # Slim-type gamma_initialier.
       batch_norm_params['param_initializers'] = {
           'gamma': tf.zeros_initializer(),

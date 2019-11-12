@@ -293,7 +293,6 @@ def mobilenet_v2_arg_scope(is_training=True,
 
 # A map from network name to network arg scope.
 arg_scopes_map = {
-    # TODO(yukun): change to mobilenet_v2_arg_scope after verify performance.
     'mobilenet_v2': mobilenet_v2.training_scope,
     'mobilenet_v3_large_seg': mobilenet_v2_arg_scope,
     'mobilenet_v3_small_seg': mobilenet_v2_arg_scope,
