@@ -26,6 +26,7 @@ from official.modeling import tf_utils
 from official.nlp import bert_modeling as modeling
 from official.nlp.modeling import networks
 from official.nlp.modeling.networks import bert_classifier
+from official.nlp.modeling.networks import bert_span_labeler
 
 
 def gather_indexes(sequence_tensor, positions):
@@ -224,6 +225,32 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
     return final_loss
 
 
+def _get_transformer_encoder(bert_config, sequence_length):
+  """Gets a 'TransformerEncoder' object.
+
+  Args:
+    bert_config: A 'modeling.BertConfig' object.
+    sequence_length: Maximum sequence length of the training data.
+
+  Returns:
+    A networks.TransformerEncoder object.
+  """
+  return networks.TransformerEncoder(
+      vocab_size=bert_config.vocab_size,
+      hidden_size=bert_config.hidden_size,
+      num_layers=bert_config.num_hidden_layers,
+      num_attention_heads=bert_config.num_attention_heads,
+      intermediate_size=bert_config.intermediate_size,
+      activation=tf_utils.get_activation('gelu'),
+      dropout_rate=bert_config.hidden_dropout_prob,
+      attention_dropout_rate=bert_config.attention_probs_dropout_prob,
+      sequence_length=sequence_length,
+      max_sequence_length=bert_config.max_position_embeddings,
+      type_vocab_size=bert_config.type_vocab_size,
+      initializer=tf.keras.initializers.TruncatedNormal(
+          stddev=bert_config.initializer_range))
+
+
 def pretrain_model(bert_config,
                    seq_length,
                    max_predictions_per_seq,
@@ -333,7 +360,8 @@ def squad_model(bert_config,
                 max_seq_length,
                 float_type,
                 initializer=None,
-                hub_module_url=None):
+                hub_module_url=None,
+                use_keras_bert=False):
   """Returns BERT Squad model along with core BERT model to import weights.
 
   Args:
@@ -342,19 +370,31 @@ def squad_model(bert_config,
     float_type: tf.dtype, tf.float32 or tf.bfloat16.
     initializer: Initializer for weights in BertSquadLogitsLayer.
     hub_module_url: TF-Hub path/url to Bert module.
+    use_keras_bert: Whether to use keras BERT. Note that when the above
+      'hub_module_url' is specified, 'use_keras_bert' cannot be True.
 
   Returns:
-    Two tensors, start logits and end logits, [batch x sequence length].
+    A tuple of (1) keras model that outputs start logits and end logits and
+    (2) the core BERT transformer encoder.
+
+  Raises:
+    ValueError: When 'hub_module_url' is specified and 'use_keras_bert' is True.
   """
-  unique_ids = tf.keras.layers.Input(
-      shape=(1,), dtype=tf.int32, name='unique_ids')
+  if hub_module_url and use_keras_bert:
+    raise ValueError(
+        'Cannot use hub_module_url and keras BERT at the same time.')
+
+  if use_keras_bert:
+    bert_encoder = _get_transformer_encoder(bert_config, max_seq_length)
+    return bert_span_labeler.BertSpanLabeler(
+        network=bert_encoder), bert_encoder
+
   input_word_ids = tf.keras.layers.Input(
-      shape=(max_seq_length,), dtype=tf.int32, name='input_ids')
+      shape=(max_seq_length,), dtype=tf.int32, name='input_word_ids')
   input_mask = tf.keras.layers.Input(
       shape=(max_seq_length,), dtype=tf.int32, name='input_mask')
   input_type_ids = tf.keras.layers.Input(
-      shape=(max_seq_length,), dtype=tf.int32, name='segment_ids')
-
+      shape=(max_seq_length,), dtype=tf.int32, name='input_type_ids')
   if hub_module_url:
     core_model = hub.KerasLayer(hub_module_url, trainable=True)
     _, sequence_output = core_model(
@@ -383,12 +423,11 @@ def squad_model(bert_config,
 
   squad = tf.keras.Model(
       inputs={
-          'unique_ids': unique_ids,
-          'input_ids': input_word_ids,
+          'input_word_ids': input_word_ids,
           'input_mask': input_mask,
-          'segment_ids': input_type_ids,
+          'input_type_ids': input_type_ids,
       },
-      outputs=[unique_ids, start_logits, end_logits],
+      outputs=[start_logits, end_logits],
       name='squad_model')
   return squad, core_model
 
@@ -424,20 +463,7 @@ def classifier_model(bert_config,
         stddev=bert_config.initializer_range)
 
   if not hub_module_url:
-    bert_encoder = networks.TransformerEncoder(
-        vocab_size=bert_config.vocab_size,
-        hidden_size=bert_config.hidden_size,
-        num_layers=bert_config.num_hidden_layers,
-        num_attention_heads=bert_config.num_attention_heads,
-        intermediate_size=bert_config.intermediate_size,
-        activation=tf_utils.get_activation('gelu'),
-        dropout_rate=bert_config.hidden_dropout_prob,
-        attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-        sequence_length=max_seq_length,
-        max_sequence_length=bert_config.max_position_embeddings,
-        type_vocab_size=bert_config.type_vocab_size,
-        initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=bert_config.initializer_range))
+    bert_encoder = _get_transformer_encoder(bert_config, max_seq_length)
     return bert_classifier.BertClassifier(
         bert_encoder,
         num_classes=num_labels,

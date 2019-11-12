@@ -80,6 +80,10 @@ flags.DEFINE_integer(
     'max_answer_length', 30,
     'The maximum length of an answer that can be generated. This is needed '
     'because the start and end predictions are not conditioned on one another.')
+flags.DEFINE_bool(
+    'use_keras_bert_for_squad', False, 'Whether to use keras BERT for squad '
+    'task. Note that when the FLAG "hub_module_url" is specified, '
+    '"use_keras_bert_for_squad" cannot be True.')
 
 common_flags.define_common_bert_flags()
 
@@ -108,7 +112,7 @@ def get_loss_fn(loss_factor=1.0):
   def _loss_fn(labels, model_outputs):
     start_positions = labels['start_positions']
     end_positions = labels['end_positions']
-    _, start_logits, end_logits = model_outputs
+    start_logits, end_logits = model_outputs
     return squad_loss_fn(
         start_positions,
         end_positions,
@@ -147,7 +151,8 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     # Prediction always uses float32, even if training uses mixed precision.
     tf.keras.mixed_precision.experimental.set_policy('float32')
     squad_model, _ = bert_models.squad_model(
-        bert_config, input_meta_data['max_seq_length'], float_type=tf.float32)
+        bert_config, input_meta_data['max_seq_length'], float_type=tf.float32,
+        use_keras_bert=FLAGS.use_keras_bert_for_squad)
 
   checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
   logging.info('Restoring checkpoints from %s', checkpoint_path)
@@ -161,7 +166,8 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     def _replicated_step(inputs):
       """Replicated prediction calculation."""
       x, _ = inputs
-      unique_ids, start_logits, end_logits = squad_model(x, training=False)
+      unique_ids = x.pop('unique_ids')
+      start_logits, end_logits = squad_model(x, training=False)
       return dict(
           unique_ids=unique_ids,
           start_logits=start_logits,
@@ -216,7 +222,8 @@ def train_squad(strategy,
         bert_config,
         max_seq_length,
         float_type=tf.float16 if use_float16 else tf.float32,
-        hub_module_url=FLAGS.hub_module_url)
+        hub_module_url=FLAGS.hub_module_url,
+        use_keras_bert=FLAGS.use_keras_bert_for_squad)
     squad_model.optimizer = optimization.create_optimizer(
         FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
     if use_float16:
@@ -340,7 +347,8 @@ def export_squad(model_export_path, input_meta_data):
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
 
   squad_model, _ = bert_models.squad_model(
-      bert_config, input_meta_data['max_seq_length'], float_type=tf.float32)
+      bert_config, input_meta_data['max_seq_length'], float_type=tf.float32,
+      use_keras_bert=FLAGS.use_keras_bert_for_squad)
   model_saving_utils.export_bert_model(
       model_export_path, model=squad_model, checkpoint_dir=FLAGS.model_dir)
 
