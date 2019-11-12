@@ -17,15 +17,14 @@
 
 import os
 import tensorflow as tf
-from google3.learning.brain.contrib import quantize as contrib_quantize
-from google3.learning.brain.contrib import slim as contrib_slim
 
+from tensorflow.contrib import quantize as contrib_quantize
 from tensorflow.python.tools import freeze_graph
 from deeplab import common
 from deeplab import input_preprocess
 from deeplab import model
 
-slim = contrib_slim
+slim = tf.contrib.slim
 flags = tf.app.flags
 
 FLAGS = flags.FLAGS
