@@ -221,7 +221,7 @@ def get_model_init_fn(train_logdir,
         ignore_missing_vars=ignore_missing_vars)
     global_step = tf.train.get_or_create_global_step()
 
-    def restore_fn(unused_scaffold, sess):
+    def restore_fn(sess):
       sess.run(init_op, init_feed_dict)
       sess.run([global_step])
 
