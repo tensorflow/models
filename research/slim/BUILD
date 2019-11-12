@@ -779,10 +779,9 @@ py_library(
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "pix2pix_test",
     srcs = ["nets/pix2pix_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":pix2pix",
