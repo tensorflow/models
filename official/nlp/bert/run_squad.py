@@ -81,7 +81,7 @@ flags.DEFINE_integer(
     'The maximum length of an answer that can be generated. This is needed '
     'because the start and end predictions are not conditioned on one another.')
 flags.DEFINE_bool(
-    'use_keras_bert_for_squad', False, 'Whether to use keras BERT for squad '
+    'use_keras_bert_for_squad', True, 'Whether to use keras BERT for squad '
     'task. Note that when the FLAG "hub_module_url" is specified, '
     '"use_keras_bert_for_squad" cannot be True.')
 
@@ -200,8 +200,7 @@ def train_squad(strategy,
 
   use_float16 = common_flags.use_float16()
   if use_float16:
-    policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
 
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   epochs = FLAGS.num_train_epochs
@@ -223,7 +222,8 @@ def train_squad(strategy,
         max_seq_length,
         float_type=tf.float16 if use_float16 else tf.float32,
         hub_module_url=FLAGS.hub_module_url,
-        use_keras_bert=FLAGS.use_keras_bert_for_squad)
+        use_keras_bert=False
+        if FLAGS.hub_module_url else FLAGS.use_keras_bert_for_squad)
     squad_model.optimizer = optimization.create_optimizer(
         FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
     if use_float16:

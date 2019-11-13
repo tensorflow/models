@@ -90,7 +90,6 @@ class Attention(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
         name="query")
 
     self._key_dense = dense_einsum.DenseEinsum(
@@ -102,7 +101,6 @@ class Attention(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
         name="key")
 
     self._value_dense = dense_einsum.DenseEinsum(
@@ -114,13 +112,11 @@ class Attention(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
         name="value")
 
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[1])
 
-    self._dropout = tf.keras.layers.Dropout(
-        rate=self._dropout_rate, dtype=self.dtype)
+    self._dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
 
   def compute_output_shape(self, input_shape):
     # TODO(momernick): validate tensor dimensioos

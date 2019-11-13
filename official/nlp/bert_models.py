@@ -227,12 +227,15 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
     return final_loss
 
 
-def _get_transformer_encoder(bert_config, sequence_length):
+def _get_transformer_encoder(bert_config,
+                             sequence_length,
+                             float_dtype=tf.float32):
   """Gets a 'TransformerEncoder' object.
 
   Args:
     bert_config: A 'modeling.BertConfig' object.
     sequence_length: Maximum sequence length of the training data.
+    float_dtype: tf.dtype, tf.float32 or tf.float16.
 
   Returns:
     A networks.TransformerEncoder object.
@@ -250,7 +253,8 @@ def _get_transformer_encoder(bert_config, sequence_length):
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=bert_config.initializer_range))
+          stddev=bert_config.initializer_range),
+      float_dtype=float_dtype.name)
 
 
 def pretrain_model(bert_config,
@@ -387,7 +391,8 @@ def squad_model(bert_config,
         'Cannot use hub_module_url and keras BERT at the same time.')
 
   if use_keras_bert:
-    bert_encoder = _get_transformer_encoder(bert_config, max_seq_length)
+    bert_encoder = _get_transformer_encoder(
+        bert_config, max_seq_length, float_type)
     return bert_span_labeler.BertSpanLabeler(
         network=bert_encoder), bert_encoder
 
