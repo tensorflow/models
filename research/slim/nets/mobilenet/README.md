@@ -78,13 +78,11 @@ on CPU, we find that they are much more performant on GPU/DSP.
 
 #### Edge TPU checkpoints:
 
-| Imagenet          | MACs (M) | Params (M) | Top1 | Pixel 4 | Pixel 4 CPU |
-: Checkpoint        :          :            :      : EdgeTPU :             :
+| Imagenet Checkpoint | MACs (M) | Params (M) | Top1 | Pixel 4 Edge TPU | Pixel 4 CPU |
 | ----------------- | -------- | ---------- | ---- | ------- | ----------- |
-| [MobilenetEdgeTPU | 624      | 2.9        | 73.5 | 3.1     | 13.8        |
-: dm=0.75 (8-bit)]  :          :            :      :         :             :
-| [MobilenetEdgeTPU | 990      | 4.0        | 75.6 | 3.6     | 20.6        |
-: dm=1 (8-bit)]     :          :            :      :         :             :
+| [MobilenetEdgeTPU dm=0.75 (8-bit)]| 624      | 2.9        | 73.5 | 3.1     | 13.8        |
+| [MobilenetEdgeTPU dm=1 (8-bit)] | 990      | 4.0        | 75.6 | 3.6     | 20.6        |
+
 
 Note: 8-bit quantized versions of the MobilenetEdgeTPU models were obtained
 using Tensorflow Lite's
