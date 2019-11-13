@@ -135,7 +135,6 @@ def eager_train_step(detection_model,
                      learning_rate,
                      add_regularization_loss=True,
                      clip_gradients_value=None,
-                     use_tpu=False,
                      global_step=None,
                      num_replicas=1.0):
   """Process a single training batch.
@@ -192,7 +191,6 @@ def eager_train_step(detection_model,
       regularization loss in the losses dictionary.
     clip_gradients_value: If this is present, clip the gradients global norm
       at this value using `tf.clip_by_global_norm`.
-    use_tpu: Whether computation should happen on a TPU.
     global_step: The current training step. Used for TensorBoard logging
       purposes. This step is not updated by this function and must be
       incremented separately.
@@ -223,10 +221,9 @@ def eager_train_step(detection_model,
                                 tf.constant(num_replicas, dtype=tf.float32))
     losses_dict['Loss/normalized_total_loss'] = total_loss
 
-  if not use_tpu:
-    for loss_type in losses_dict:
-      tf.compat.v2.summary.scalar(
-          loss_type, losses_dict[loss_type], step=global_step)
+  for loss_type in losses_dict:
+    tf.compat.v2.summary.scalar(
+        loss_type, losses_dict[loss_type], step=global_step)
 
   trainable_variables = detection_model.trainable_variables
 
@@ -235,10 +232,7 @@ def eager_train_step(detection_model,
   if clip_gradients_value:
     gradients, _ = tf.clip_by_global_norm(gradients, clip_gradients_value)
   optimizer.apply_gradients(zip(gradients, trainable_variables))
-
-  if not use_tpu:
-    tf.compat.v2.summary.scalar('learning_rate', learning_rate,
-                                step=global_step)
+  tf.compat.v2.summary.scalar('learning_rate', learning_rate, step=global_step)
 
   return total_loss
 
@@ -451,11 +445,10 @@ def train_loop(
                                   unpad_groundtruth_tensors)
 
       ckpt = tf.compat.v2.train.Checkpoint(
-          step=global_step, model=detection_model)
+          step=global_step, model=detection_model, optimizer=optimizer)
       manager = tf.compat.v2.train.CheckpointManager(
           ckpt, model_dir, max_to_keep=7)
-      ## Maybe re-enable checkpoint restoration depending on how it works:
-      # ckpt.restore(manager.latest_checkpoint)
+      ckpt.restore(manager.latest_checkpoint)
 
       def train_step_fn(features, labels):
         return eager_train_step(
@@ -467,7 +460,6 @@ def train_loop(
             learning_rate=learning_rate_fn(),
             add_regularization_loss=add_regularization_loss,
             clip_gradients_value=clip_gradients_value,
-            use_tpu=use_tpu,
             global_step=global_step,
             num_replicas=strategy.num_replicas_in_sync)
 
@@ -487,19 +479,22 @@ def train_loop(
         return mean_loss
 
       train_input_iter = iter(train_input)
-      for _ in range(train_steps):
+      for _ in range(train_steps - global_step.value()):
         start_time = time.time()
 
         loss = _dist_train_step(train_input_iter)
         global_step.assign_add(1)
         end_time = time.time()
-        if not use_tpu:
-          tf.compat.v2.summary.scalar(
-              'steps_per_sec', 1.0 / (end_time - start_time), step=global_step)
-        # TODO(kaftan): Remove this print after it is no longer helpful for
-        ## debugging.
-        print('Finished step', global_step, end_time, loss)
-        if int(global_step.value().numpy()) % checkpoint_every_n == 0:
+
+        tf.compat.v2.summary.scalar(
+            'steps_per_sec', 1.0 / (end_time - start_time),
+            step=global_step)
+        if (int(global_step.value()) % 100) == 0:
+          tf.logging.info(
+              'Step {} time taken {:.3f}s loss={:.3f}'.format(
+                  global_step.value(), end_time - start_time, loss))
+
+        if int(global_step.value()) % checkpoint_every_n == 0:
           manager.save()
 
 
@@ -620,14 +615,11 @@ def eager_eval_loop(
 
     return eval_dict, losses_dict, class_agnostic
 
-  i = 0
-  for features, labels in eval_dataset:
+  for i, (features, labels) in enumerate(eval_dataset):
     eval_dict, losses_dict, class_agnostic = compute_eval_dict(features, labels)
-    end_time = time.time()
-    # TODO(kaftan): Remove this print after it is no longer helpful for
-    ## debugging.
-    tf.print('Finished eval dict computation', i, end_time)
-    i += 1
+
+    if i % 100 == 0:
+      tf.logging.info('Finished eval step %d', i)
 
     if evaluators is None:
       if class_agnostic:

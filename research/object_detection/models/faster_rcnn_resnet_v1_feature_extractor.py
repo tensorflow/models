@@ -25,12 +25,13 @@ the MSRA provided checkpoints
 same preprocessing, batch norm scaling, etc.
 """
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from nets import resnet_utils
 from nets import resnet_v1
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class FasterRCNNResnetV1FeatureExtractor(

@@ -3,6 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 // Message for configuring DetectionModel evaluation jobs (eval.py).
+// Next id - 30
 message EvalConfig {
   optional uint32 batch_size = 25 [default = 1];
   // Number of visualization images to generate.
@@ -85,4 +86,9 @@ message EvalConfig {
   // tensor dictionary, so that they can be displayed in Tensorboard.
   optional bool retain_original_image_additional_channels = 28
       [default = false];
+
+  // When this flag is set, images are not resized during evaluation.
+  // When this flag is not set (default case), image are resized according
+  // to the image_resizer config in the model during evaluation.
+  optional bool force_no_resize = 29 [default=false];
 }

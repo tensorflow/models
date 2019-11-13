@@ -198,7 +198,7 @@ class ConvolutionalBoxPredictorTest(test_case.TestCase):
             max_depth=32,
             num_layers_before_predictor=1,
             dropout_keep_prob=0.8,
-            kernel_size=1,
+            kernel_size=3,
             box_code_size=4,
             use_dropout=True,
             use_depthwise=True))
@@ -250,7 +250,7 @@ class ConvolutionalBoxPredictorTest(test_case.TestCase):
             max_depth=32,
             num_layers_before_predictor=1,
             dropout_keep_prob=0.8,
-            kernel_size=1,
+            kernel_size=3,
             box_code_size=4,
             use_dropout=True,
             use_depthwise=True))

@@ -15,6 +15,7 @@
 """SSDFeatureExtractor for MobileNetV3 features."""
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
@@ -24,10 +25,10 @@ from object_detection.utils import shape_utils
 from nets.mobilenet import mobilenet
 from nets.mobilenet import mobilenet_v3
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
-class _SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
+class SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
   """Base class of SSD feature extractor using MobilenetV3 features."""
 
   def __init__(self,
@@ -41,7 +42,8 @@ class _SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
                reuse_weights=None,
                use_explicit_padding=False,
                use_depthwise=False,
-               override_base_feature_extractor_hyperparams=False):
+               override_base_feature_extractor_hyperparams=False,
+               scope_name='MobilenetV3'):
     """MobileNetV3 Feature Extractor for SSD Models.
 
     MobileNet v3. Details found in:
@@ -66,8 +68,9 @@ class _SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams_fn`.
+      scope_name: scope name (string) of network variables.
     """
-    super(_SSDMobileNetV3FeatureExtractorBase, self).__init__(
+    super(SSDMobileNetV3FeatureExtractorBase, self).__init__(
         is_training=is_training,
         depth_multiplier=depth_multiplier,
         min_depth=min_depth,
@@ -80,6 +83,7 @@ class _SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
     )
     self._conv_defs = conv_defs
     self._from_layer = from_layer
+    self._scope_name = scope_name
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -129,7 +133,8 @@ class _SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
         'use_explicit_padding': self._use_explicit_padding,
     }
 
-    with tf.variable_scope('MobilenetV3', reuse=self._reuse_weights) as scope:
+    with tf.variable_scope(
+        self._scope_name, reuse=self._reuse_weights) as scope:
       with slim.arg_scope(
           mobilenet_v3.training_scope(is_training=None, bn_decay=0.9997)), \
           slim.arg_scope(
@@ -137,7 +142,6 @@ class _SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
         with (slim.arg_scope(self._conv_hyperparams_fn())
               if self._override_base_feature_extractor_hyperparams else
               context_manager.IdentityContextManager()):
-          # TODO(bochen): switch to v3 modules once v3 is properly refactored.
           _, image_features = mobilenet_v3.mobilenet_base(
               ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
               conv_defs=self._conv_defs,
@@ -156,7 +160,7 @@ class _SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
     return feature_maps.values()
 
 
-class SSDMobileNetV3LargeFeatureExtractor(_SSDMobileNetV3FeatureExtractorBase):
+class SSDMobileNetV3LargeFeatureExtractor(SSDMobileNetV3FeatureExtractorBase):
   """Mobilenet V3-Large feature extractor."""
 
   def __init__(self,
@@ -168,7 +172,8 @@ class SSDMobileNetV3LargeFeatureExtractor(_SSDMobileNetV3FeatureExtractorBase):
                reuse_weights=None,
                use_explicit_padding=False,
                use_depthwise=False,
-               override_base_feature_extractor_hyperparams=False):
+               override_base_feature_extractor_hyperparams=False,
+               scope_name='MobilenetV3'):
     super(SSDMobileNetV3LargeFeatureExtractor, self).__init__(
         conv_defs=mobilenet_v3.V3_LARGE_DETECTION,
         from_layer=['layer_14/expansion_output', 'layer_17'],
@@ -180,11 +185,12 @@ class SSDMobileNetV3LargeFeatureExtractor(_SSDMobileNetV3FeatureExtractorBase):
         reuse_weights=reuse_weights,
         use_explicit_padding=use_explicit_padding,
         use_depthwise=use_depthwise,
-        override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams
+        override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams,
+        scope_name=scope_name
     )
 
 
-class SSDMobileNetV3SmallFeatureExtractor(_SSDMobileNetV3FeatureExtractorBase):
+class SSDMobileNetV3SmallFeatureExtractor(SSDMobileNetV3FeatureExtractorBase):
   """Mobilenet V3-Small feature extractor."""
 
   def __init__(self,
@@ -196,7 +202,8 @@ class SSDMobileNetV3SmallFeatureExtractor(_SSDMobileNetV3FeatureExtractorBase):
                reuse_weights=None,
                use_explicit_padding=False,
                use_depthwise=False,
-               override_base_feature_extractor_hyperparams=False):
+               override_base_feature_extractor_hyperparams=False,
+               scope_name='MobilenetV3'):
     super(SSDMobileNetV3SmallFeatureExtractor, self).__init__(
         conv_defs=mobilenet_v3.V3_SMALL_DETECTION,
         from_layer=['layer_10/expansion_output', 'layer_13'],
@@ -208,5 +215,6 @@ class SSDMobileNetV3SmallFeatureExtractor(_SSDMobileNetV3FeatureExtractorBase):
         reuse_weights=reuse_weights,
         use_explicit_padding=use_explicit_padding,
         use_depthwise=use_depthwise,
-        override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams
+        override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams,
+        scope_name=scope_name
     )

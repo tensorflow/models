@@ -95,6 +95,8 @@ configured in the meta architecture:
 import abc
 import functools
 import tensorflow as tf
+from tensorflow.contrib import framework as contrib_framework
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.builders import box_predictor_builder
@@ -110,7 +112,7 @@ from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from object_detection.utils import variables_helper
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 _UNINITIALIZED_FEATURE_EXTRACTOR = '__uninitialized__'
 
@@ -2772,7 +2774,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
           self.first_stage_feature_extractor_scope,
           self.second_stage_feature_extractor_scope
       ]
-    feature_extractor_variables = tf.contrib.framework.filter_variables(
+    feature_extractor_variables = contrib_framework.filter_variables(
         variables_to_restore, include_patterns=include_patterns)
     return {var.op.name: var for var in feature_extractor_variables}
 
