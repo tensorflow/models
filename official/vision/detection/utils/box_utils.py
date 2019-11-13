@@ -191,24 +191,14 @@ def clip_boxes(boxes, image_shape):
   with tf.name_scope('clip_boxes'):
     if isinstance(image_shape, list) or isinstance(image_shape, tuple):
       height, width = image_shape
+      max_length = [height - 1.0, width - 1.0, height - 1.0, width - 1.0]
     else:
       image_shape = tf.cast(image_shape, dtype=boxes.dtype)
-      height = image_shape[..., 0:1]
-      width = image_shape[..., 1:2]
+      height, width = tf.unstack(image_shape, axis=-1)
+      max_length = tf.stack(
+          [height - 1.0, width - 1.0, height - 1.0, width - 1.0], axis=-1)
 
-    ymin = boxes[..., 0:1]
-    xmin = boxes[..., 1:2]
-    ymax = boxes[..., 2:3]
-    xmax = boxes[..., 3:4]
-
-    clipped_ymin = tf.math.maximum(tf.math.minimum(ymin, height - 1.0), 0.0)
-    clipped_ymax = tf.math.maximum(tf.math.minimum(ymax, height - 1.0), 0.0)
-    clipped_xmin = tf.math.maximum(tf.math.minimum(xmin, width - 1.0), 0.0)
-    clipped_xmax = tf.math.maximum(tf.math.minimum(xmax, width - 1.0), 0.0)
-
-    clipped_boxes = tf.concat(
-        [clipped_ymin, clipped_xmin, clipped_ymax, clipped_xmax],
-        axis=-1)
+    clipped_boxes = tf.math.maximum(tf.math.minimum(boxes, max_length), 0.0)
     return clipped_boxes
 
 
@@ -434,7 +424,7 @@ def filter_boxes_by_scores(boxes, scores, min_score_threshold):
 
   Returns:
     filtered_boxes: a tensor whose shape is the same as `boxes` but with
-      the position of the filtered boxes are filled with 0.
+      the position of the filtered boxes are filled with -1.
     filtered_scores: a tensor whose shape is the same as 'scores' but with
       the
   """
@@ -444,7 +434,7 @@ def filter_boxes_by_scores(boxes, scores, min_score_threshold):
 
   with tf.name_scope('filter_boxes_by_scores'):
     filtered_mask = tf.math.greater(scores, min_score_threshold)
-    filtered_scores = tf.where(filtered_mask, scores, tf.zeros_like(scores))
+    filtered_scores = tf.where(filtered_mask, scores, -tf.ones_like(scores))
     filtered_boxes = tf.cast(
         tf.expand_dims(filtered_mask, axis=-1), dtype=boxes.dtype) * boxes
 
