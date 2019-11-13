@@ -18,6 +18,7 @@
 import copy
 import functools
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
@@ -26,7 +27,7 @@ from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from nets import mobilenet_v1
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 # A modified config of mobilenet v1 that makes it more detection friendly,

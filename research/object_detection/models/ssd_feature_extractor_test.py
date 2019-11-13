@@ -17,11 +17,12 @@
 
 from abc import abstractmethod
 
-import itertools
 import numpy as np
+from six.moves import zip
 import tensorflow as tf
 
 from google.protobuf import text_format
+from tensorflow.contrib import slim as contrib_slim
 from object_detection.builders import hyperparams_builder
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import test_case
@@ -53,7 +54,7 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
     return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
 
   def conv_hyperparams_fn(self):
-    with tf.contrib.slim.arg_scope([]) as sc:
+    with contrib_slim.arg_scope([]) as sc:
       return sc
 
   @abstractmethod
@@ -135,7 +136,7 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
     image_tensor = np.random.rand(batch_size, image_height, image_width,
                                   3).astype(np.float32)
     feature_maps = self.execute(graph_fn, [image_tensor])
-    for feature_map, expected_shape in itertools.izip(
+    for feature_map, expected_shape in zip(
         feature_maps, expected_feature_map_shapes):
       self.assertAllEqual(feature_map.shape, expected_shape)
 
@@ -168,7 +169,7 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
         np.array(image_height, dtype=np.int32),
         np.array(image_width, dtype=np.int32)
     ])
-    for feature_map, expected_shape in itertools.izip(
+    for feature_map, expected_shape in zip(
         feature_maps, expected_feature_map_shapes):
       self.assertAllEqual(feature_map.shape, expected_shape)
 

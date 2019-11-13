@@ -21,10 +21,11 @@ All the class prediction heads have a predict function that receives the
 """
 import functools
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.predictors.heads import head
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class MaskRCNNClassHead(head.Head):
@@ -143,7 +144,11 @@ class ConvolutionalClassHead(head.Head):
 
     Raises:
       ValueError: if min_depth > max_depth.
+      ValueError: if use_depthwise is True and kernel_size is 1.
     """
+    if use_depthwise and (kernel_size == 1):
+      raise ValueError('Should not use 1x1 kernel when using depthwise conv')
+
     super(ConvolutionalClassHead, self).__init__()
     self._is_training = is_training
     self._num_class_slots = num_class_slots
@@ -247,7 +252,13 @@ class WeightSharedConvolutionalClassHead(head.Head):
         whose shape is [batch, height, width, num_predictions_per_location *
         num_class_slots].
       scope: Scope name for the convolution operation.
+
+    Raises:
+      ValueError: if use_depthwise is True and kernel_size is 1.
     """
+    if use_depthwise and (kernel_size == 1):
+      raise ValueError('Should not use 1x1 kernel when using depthwise conv')
+
     super(WeightSharedConvolutionalClassHead, self).__init__()
     self._num_class_slots = num_class_slots
     self._kernel_size = kernel_size
@@ -303,4 +314,3 @@ class WeightSharedConvolutionalClassHead(head.Head):
           class_predictions_with_background,
           [batch_size, -1, self._num_class_slots])
     return class_predictions_with_background
-

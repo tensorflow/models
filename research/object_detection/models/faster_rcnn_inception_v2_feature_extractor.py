@@ -19,11 +19,12 @@ See "Rethinking the Inception Architecture for Computer Vision"
 https://arxiv.org/abs/1512.00567
 """
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from nets import inception_v2
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 def _batch_norm_arg_scope(list_ops,

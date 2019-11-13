@@ -103,12 +103,18 @@ Note: The asterisk (☆) at the end of model name indicates that this model supp
 
 Note: If you download the tar.gz file of quantized models and un-tar, you will get different set of files - a checkpoint, a config file and tflite frozen graphs (txt/binary).
 
+
 ### Mobile models
 
 Model name                                                                                                                          | Pixel 1 Latency (ms) | COCO mAP | Outputs
 ----------------------------------------------------------------------------------------------------------------------------------- | :------------------: | :------: | :-----:
 [ssd_mobilenet_v3_large_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v3_large_coco_2019_08_14.tar.gz) | 119                  | 22.3     | Boxes
 [ssd_mobilenet_v3_small_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v3_small_coco_2019_08_14.tar.gz) | 43                   | 15.6     | Boxes
+
+### Pixel4 Edge TPU models
+Model name                                                                                                                          | Pixel 4  Edge TPU Latency (ms) | COCO mAP | Outputs
+----------------------------------------------------------------------------------------------------------------------------------- | :------------------: | :------: | :-----:
+[ssd_mobilenet_edgetpu_coco](https://storage.cloud.google.com/mobilenet_edgetpu/checkpoints/ssdlite_mobilenet_edgetpu_coco_quant.tar.gz) | 6.6                  | 24.3     | Boxes
 
 ## Kitti-trained models
 

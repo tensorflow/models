@@ -19,6 +19,8 @@ models.
 """
 import abc
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
+from tensorflow.contrib import tpu as contrib_tpu
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
@@ -31,7 +33,7 @@ from object_detection.utils import shape_utils
 from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class SSDFeatureExtractor(object):
@@ -778,14 +780,21 @@ class SSDMetaArch(model.DetectionModel):
             detection_keypoints, 'raw_keypoint_locations')
         additional_fields[fields.BoxListFields.keypoints] = detection_keypoints
 
-      def _non_max_suppression_wrapper(kwargs):
-        if self._nms_on_host:
-          # Note: NMS is not memory efficient on TPU. This force the NMS to run
-          # outside of TPU.
-          return tf.contrib.tpu.outside_compilation(
-              lambda x: self._non_max_suppression_fn(**x), kwargs)
+      with tf.init_scope():
+        if tf.executing_eagerly():
+          # soft device placement in eager mode will automatically handle
+          # outside compilation.
+          def _non_max_suppression_wrapper(kwargs):
+            return self._non_max_suppression_fn(**kwargs)
         else:
-          return self._non_max_suppression_fn(**kwargs)
+          def _non_max_suppression_wrapper(kwargs):
+            if self._nms_on_host:
+              # Note: NMS is not memory efficient on TPU. This force the NMS
+              # to run outside of TPU.
+              return contrib_tpu.outside_compilation(
+                  lambda x: self._non_max_suppression_fn(**x), kwargs)
+            else:
+              return self._non_max_suppression_fn(**kwargs)
 
       (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
        nmsed_additional_fields,

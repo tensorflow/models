@@ -101,7 +101,9 @@ def _build_non_max_suppressor(nms_config):
       max_classes_per_detection=nms_config.max_classes_per_detection,
       soft_nms_sigma=nms_config.soft_nms_sigma,
       use_partitioned_nms=nms_config.use_partitioned_nms,
-      use_combined_nms=nms_config.use_combined_nms)
+      use_combined_nms=nms_config.use_combined_nms,
+      change_coordinate_frame=True)
+
   return non_max_suppressor_fn
 
 
