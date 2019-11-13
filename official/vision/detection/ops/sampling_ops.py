@@ -286,7 +286,8 @@ def sample_and_crop_foreground_masks(candidate_rois,
     foreground_masks = tf.gather_nd(gt_masks, gather_nd_gt_indices)
 
     cropped_foreground_masks = spatial_transform_ops.crop_mask_in_target_box(
-        foreground_masks, foreground_boxes, foreground_rois, mask_target_size)
+        foreground_masks, foreground_boxes, foreground_rois, mask_target_size,
+        sample_offset=0.5)
 
     return foreground_rois, foreground_classes, cropped_foreground_masks
 
