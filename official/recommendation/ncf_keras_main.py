@@ -26,14 +26,14 @@ import json
 import os
 
 # pylint: disable=g-bad-import-order
-from absl import app as absl_app
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
+from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import ncf_input_pipeline
 from official.recommendation import neumf_model
@@ -42,7 +42,7 @@ from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
-from official.utils.misc import tpu_lib
+from official.utils.flags import core as flags_core
 
 FLAGS = flags.FLAGS
 
@@ -64,12 +64,20 @@ class MetricLayer(tf.keras.layers.Layer):
   def __init__(self, params):
     super(MetricLayer, self).__init__()
     self.params = params
-    self.metric = tf.keras.metrics.Mean(name=rconst.HR_METRIC_NAME)
 
-  def call(self, inputs):
+  def call(self, inputs, training=False):
     logits, dup_mask = inputs
-    in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
-    self.add_metric(self.metric(in_top_k, sample_weight=metric_weights))
+
+    if training:
+      hr_sum = 0.0
+      hr_count = 0.0
+    else:
+      metric, metric_weights = metric_fn(logits, dup_mask, self.params)
+      hr_sum = tf.reduce_sum(metric * metric_weights)
+      hr_count = tf.reduce_sum(metric_weights)
+
+    self.add_metric(hr_sum, name="hr_sum", aggregation="mean")
+    self.add_metric(hr_count, name="hr_count", aggregation="mean")
     return logits
 
 
@@ -77,7 +85,8 @@ class LossLayer(tf.keras.layers.Layer):
   """Pass-through loss layer for NCF model."""
 
   def __init__(self, loss_normalization_factor):
-    super(LossLayer, self).__init__()
+    # The loss may overflow in float16, so we use float32 instead.
+    super(LossLayer, self).__init__(dtype="float32")
     self.loss_normalization_factor = loss_normalization_factor
     self.loss = tf.keras.losses.SparseCategoricalCrossentropy(
         from_logits=True, reduction="sum")
@@ -200,6 +209,12 @@ def run_ncf(_):
   params = ncf_common.parse_flags(FLAGS)
   model_helpers.apply_clean(flags.FLAGS)
 
+  if FLAGS.dtype == "fp16" and FLAGS.fp16_implementation == "keras":
+    policy = tf.keras.mixed_precision.experimental.Policy(
+        "mixed_float16",
+        loss_scale=flags_core.get_loss_scale(FLAGS, default_for_fp16="dynamic"))
+    tf.keras.mixed_precision.experimental.set_policy(policy)
+
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
@@ -245,67 +260,86 @@ def run_ncf(_):
         "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
-  with tf.device(tpu_lib.get_primary_cpu_task(params["use_tpu"])):
-    (train_input_dataset, eval_input_dataset,
-     num_train_steps, num_eval_steps) = \
-      (ncf_input_pipeline.create_ncf_input_data(
-          params, producer, input_meta_data))
-    steps_per_epoch = None if generate_input_online else num_train_steps
+  (train_input_dataset, eval_input_dataset,
+   num_train_steps, num_eval_steps) = \
+    (ncf_input_pipeline.create_ncf_input_data(
+        params, producer, input_meta_data, strategy))
+  steps_per_epoch = None if generate_input_online else num_train_steps
 
-    with distribution_utils.get_strategy_scope(strategy):
-      keras_model = _get_keras_model(params)
-      optimizer = tf.keras.optimizers.Adam(
-          learning_rate=params["learning_rate"],
-          beta_1=params["beta1"],
-          beta_2=params["beta2"],
-          epsilon=params["epsilon"])
-
-      if params["keras_use_ctl"]:
-        train_loss, eval_results = run_ncf_custom_training(
-            params,
-            strategy,
-            keras_model,
+  with distribution_utils.get_strategy_scope(strategy):
+    keras_model = _get_keras_model(params)
+    optimizer = tf.keras.optimizers.Adam(
+        learning_rate=params["learning_rate"],
+        beta_1=params["beta1"],
+        beta_2=params["beta2"],
+        epsilon=params["epsilon"])
+    if FLAGS.fp16_implementation == "graph_rewrite":
+      optimizer = \
+        tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
             optimizer,
-            callbacks,
-            train_input_dataset,
-            eval_input_dataset,
-            num_train_steps,
-            num_eval_steps,
-            generate_input_online=generate_input_online)
+            loss_scale=flags_core.get_loss_scale(FLAGS,
+                                                 default_for_fp16="dynamic"))
+    elif FLAGS.dtype == "fp16" and params["keras_use_ctl"]:
+      # When keras_use_ctl is False, instead Model.fit() automatically applies
+      # loss scaling so we don't need to create a LossScaleOptimizer.
+      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+          optimizer,
+          tf.keras.mixed_precision.experimental.global_policy().loss_scale)
+
+    if params["keras_use_ctl"]:
+      train_loss, eval_results = run_ncf_custom_training(
+          params,
+          strategy,
+          keras_model,
+          optimizer,
+          callbacks,
+          train_input_dataset,
+          eval_input_dataset,
+          num_train_steps,
+          num_eval_steps,
+          generate_input_online=generate_input_online)
+    else:
+      # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
+      # a valid arg for this model. Also remove as a valid flag.
+      if FLAGS.force_v2_in_keras_compile is not None:
+        keras_model.compile(
+            optimizer=optimizer,
+            run_eagerly=FLAGS.run_eagerly,
+            experimental_run_tf_function=FLAGS.force_v2_in_keras_compile)
       else:
-        # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
-        # a valid arg for this model. Also remove as a valid flag.
-        if FLAGS.force_v2_in_keras_compile is not None:
-          keras_model.compile(
-              optimizer=optimizer,
-              run_eagerly=FLAGS.run_eagerly,
-              experimental_run_tf_function=FLAGS.force_v2_in_keras_compile)
-        else:
-          keras_model.compile(
-              optimizer=optimizer, run_eagerly=FLAGS.run_eagerly)
+        keras_model.compile(
+            optimizer=optimizer, run_eagerly=FLAGS.run_eagerly)
 
-        history = keras_model.fit(
-            train_input_dataset,
-            epochs=FLAGS.train_epochs,
-            steps_per_epoch=steps_per_epoch,
-            callbacks=callbacks,
-            validation_data=eval_input_dataset,
-            validation_steps=num_eval_steps,
-            verbose=2)
+      history = keras_model.fit(
+          train_input_dataset,
+          epochs=FLAGS.train_epochs,
+          steps_per_epoch=steps_per_epoch,
+          callbacks=callbacks,
+          validation_data=eval_input_dataset,
+          validation_steps=num_eval_steps,
+          verbose=2)
 
-        logging.info("Training done. Start evaluating")
+      logging.info("Training done. Start evaluating")
 
-        eval_results = keras_model.evaluate(
-            eval_input_dataset, steps=num_eval_steps, verbose=2)
+      eval_loss_and_metrics = keras_model.evaluate(
+          eval_input_dataset, steps=num_eval_steps, verbose=2)
 
-        logging.info("Keras evaluation is done.")
+      logging.info("Keras evaluation is done.")
 
-        if history and history.history:
-          train_history = history.history
-          train_loss = train_history["loss"][-1]
+      # Keras evaluate() API returns scalar loss and metric values from
+      # evaluation as a list. Here, the returned list would contain
+      # [evaluation loss, hr sum, hr count].
+      eval_hit_rate = eval_loss_and_metrics[1] / eval_loss_and_metrics[2]
 
-    stats = build_stats(train_loss, eval_results, time_callback)
-    return stats
+      # Format evaluation result into [eval loss, eval hit accuracy].
+      eval_results = [eval_loss_and_metrics[0], eval_hit_rate]
+
+      if history and history.history:
+        train_history = history.history
+        train_loss = train_history["loss"][-1]
+
+  stats = build_stats(train_loss, eval_results, time_callback)
+  return stats
 
 
 def run_ncf_custom_training(params,
@@ -349,14 +383,20 @@ def run_ncf_custom_training(params,
       """Computes loss and applied gradient per replica."""
       with tf.GradientTape() as tape:
         softmax_logits = keras_model(features)
+        # The loss can overflow in float16, so we cast to float32.
+        softmax_logits = tf.cast(softmax_logits, "float32")
         labels = features[rconst.TRAIN_LABEL_KEY]
         loss = loss_object(
             labels,
             softmax_logits,
             sample_weight=features[rconst.VALID_POINT_MASK])
         loss *= (1.0 / params["batch_size"])
+        if FLAGS.dtype == "fp16":
+          loss = optimizer.get_scaled_loss(loss)
 
       grads = tape.gradient(loss, keras_model.trainable_variables)
+      if FLAGS.dtype == "fp16":
+        grads = optimizer.get_unscaled_gradients(grads)
       # Converting gradients to dense form helps in perf on GPU for NCF
       grads = neumf_model.sparse_to_dense_grads(
           list(zip(grads, keras_model.trainable_variables)))
@@ -490,4 +530,4 @@ def main(_):
 
 if __name__ == "__main__":
   ncf_common.define_ncf_flags()
-  absl_app.run(main)
+  app.run(main)

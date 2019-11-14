@@ -29,6 +29,7 @@ from official.utils.flags._conventions import help_wrap
 # Map string to TensorFlow dtype
 DTYPE_MAP = {
     "fp16": tf.float16,
+    "bf16": tf.bfloat16,
     "fp32": tf.float32,
 }
 
@@ -53,16 +54,17 @@ def get_loss_scale(flags_obj, default_for_fp16):
     return default_for_fp16
 
 
-def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
-                       synthetic_data=True, max_train_steps=True, dtype=True,
-                       all_reduce_alg=True, num_packs=True,
+def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
+                       synthetic_data=False, max_train_steps=False, dtype=False,
+                       all_reduce_alg=False, num_packs=False,
                        tf_gpu_thread_mode=False,
                        datasets_num_private_threads=False,
                        datasets_num_parallel_batches=False,
                        dynamic_loss_scale=False, fp16_implementation=False,
                        loss_scale=False,
                        tf_data_experimental_slack=False, enable_xla=False,
-                       force_v2_in_keras_compile=False):
+                       force_v2_in_keras_compile=False,
+                       training_dataset_cache=False):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -91,6 +93,9 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     force_v2_in_keras_compile: Forces the use of run_distribued path even if not
       using a `strategy`. This is not the same as
       `tf.distribute.OneDeviceStrategy`
+    training_dataset_cache: Whether to cache the training dataset on workers.
+       Typically used to improve training performance when training data is in
+       remote storage and can fit into worker memory.
 
   Returns:
     A list of flags for core.py to marks as key flags.
@@ -190,16 +195,15 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         return loss_scale > 0
 
     if fp16_implementation:
-      # Currently, this flag is only defined for the estimator resnet model.
       flags.DEFINE_enum(
-          name="fp16_implementation", default="casting",
-          enum_values=("casting', 'graph_rewrite"),
+          name="fp16_implementation", default="keras",
+          enum_values=("keras', 'graph_rewrite"),
           help=help_wrap(
               "When --dtype=fp16, how fp16 should be implemented. This has no "
-              "impact on correctness. 'casting' will cause manual tf.casts to "
-              "be inserted in the model. 'graph_rewrite' means "
-              "tf.train.experimental.enable_mixed_precision_graph_rewrite will "
-              "be used to automatically use fp16 without any manual casts."))
+              "impact on correctness. 'keras' uses the "
+              "tf.keras.mixed_precision API. 'graph_rewrite' uses the "
+              "tf.train.experimental.enable_mixed_precision_graph_rewrite "
+              "API."))
 
       @flags.multi_flags_validator(["fp16_implementation", "dtype",
                                     "loss_scale"])
@@ -209,11 +213,6 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
             flags_dict["dtype"] != "fp16"):
           raise flags.ValidationError("--fp16_implementation should not be "
                                       "specified unless --dtype=fp16")
-        if (flags_dict["fp16_implementation"] != "graph_rewrite" and
-            flags_dict["loss_scale"] == "dynamic"):
-          raise flags.ValidationError("--loss_scale=dynamic is only supported "
-                                      "when "
-                                      "--fp16_implementation=graph_rewrite")
         return True
 
   if all_reduce_alg:
@@ -265,6 +264,16 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         help=help_wrap(
             "Determines how many batches to process in parallel when using "
             "map and batch from tf.data.")
+    )
+
+  if training_dataset_cache:
+    flags.DEFINE_boolean(
+        name="training_dataset_cache",
+        default=False,
+        help=help_wrap(
+            "Determines whether to cache the training dataset on workers. "
+            "Typically used to improve training performance when training "
+            "data is in remote storage and can fit into worker memory.")
     )
 
   if tf_data_experimental_slack:

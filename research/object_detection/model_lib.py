@@ -267,6 +267,13 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
     # Make sure to set the Keras learning phase. True during training,
     # False for inference.
     tf.keras.backend.set_learning_phase(is_training)
+    # Set policy for mixed-precision training with Keras-based models.
+    if use_tpu and train_config.use_bfloat16:
+      from tensorflow.python.keras.engine import base_layer_utils  # pylint: disable=g-import-not-at-top
+      # Enable v2 behavior, as `mixed_bfloat16` is only supported in TF 2.0.
+      base_layer_utils.enable_v2_dtype_behavior()
+      tf.compat.v2.keras.mixed_precision.experimental.set_policy(
+          'mixed_bfloat16')
     detection_model = detection_model_fn(
         is_training=is_training, add_summaries=(not use_tpu))
     scaffold_fn = None
@@ -315,7 +322,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
             features[fields.InputDataFields.true_image_shape]))
 
     if mode == tf.estimator.ModeKeys.TRAIN:
-      if train_config.fine_tune_checkpoint and hparams.load_pretrained:
+      load_pretrained = hparams.load_pretrained if hparams else False
+      if train_config.fine_tune_checkpoint and load_pretrained:
         if not train_config.fine_tune_checkpoint_type:
           # train_config.from_detection_checkpoint field is deprecated. For
           # backward compatibility, set train_config.fine_tune_checkpoint_type
@@ -448,6 +456,10 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
           scale_to_absolute=True,
           original_image_spatial_shapes=original_image_spatial_shapes,
           true_image_shapes=true_image_shapes)
+
+      if fields.InputDataFields.image_additional_channels in features:
+        eval_dict[fields.InputDataFields.image_additional_channels] = features[
+            fields.InputDataFields.image_additional_channels]
 
       if class_agnostic:
         category_index = label_map_util.create_class_agnostic_category_index()

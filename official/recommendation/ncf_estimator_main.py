@@ -39,10 +39,10 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
+from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core

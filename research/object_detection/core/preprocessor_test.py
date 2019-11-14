@@ -19,9 +19,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import numpy as np
 import six
-
 from six.moves import range
 from six.moves import zip
 import tensorflow as tf
@@ -36,7 +36,7 @@ else:
   from unittest import mock  # pylint: disable=g-import-not-at-top
 
 
-class PreprocessorTest(tf.test.TestCase):
+class PreprocessorTest(tf.test.TestCase, parameterized.TestCase):
 
   def createColorfulTestImage(self):
     ch255 = tf.fill([1, 100, 200, 1], tf.constant(255, dtype=tf.uint8))
@@ -2477,6 +2477,233 @@ class PreprocessorTest(tf.test.TestCase):
       (images_shape_, blacked_images_shape_) = sess.run(
           [images_shape, blacked_images_shape])
       self.assertAllEqual(images_shape_, blacked_images_shape_)
+
+  def testRandomJpegQuality(self):
+    preprocessing_options = [(preprocessor.random_jpeg_quality, {
+        'min_jpeg_quality': 0,
+        'max_jpeg_quality': 100
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    encoded_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    encoded_images_shape = tf.shape(encoded_images)
+
+    with self.test_session() as sess:
+      images_shape_out, encoded_images_shape_out = sess.run(
+          [images_shape, encoded_images_shape])
+      self.assertAllEqual(images_shape_out, encoded_images_shape_out)
+
+  def testRandomJpegQualityKeepsStaticChannelShape(self):
+    # Set at least three weeks past the forward compatibility horizon for
+    # tf 1.14 of 2019/11/01.
+    # https://github.com/tensorflow/tensorflow/blob/v1.14.0/tensorflow/python/compat/compat.py#L30
+    if not tf.compat.forward_compatible(year=2019, month=12, day=1):
+      self.skipTest('Skipping test for future functionality.')
+
+    preprocessing_options = [(preprocessor.random_jpeg_quality, {
+        'min_jpeg_quality': 0,
+        'max_jpeg_quality': 100
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    encoded_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_static_channels = images.shape[-1]
+    encoded_images_static_channels = encoded_images.shape[-1]
+    self.assertEqual(images_static_channels, encoded_images_static_channels)
+
+  def testRandomJpegQualityWithCache(self):
+    preprocessing_options = [(preprocessor.random_jpeg_quality, {
+        'min_jpeg_quality': 0,
+        'max_jpeg_quality': 100
+    })]
+    self._testPreprocessorCache(preprocessing_options)
+
+  def testRandomJpegQualityWithRandomCoefOne(self):
+    preprocessing_options = [(preprocessor.random_jpeg_quality, {
+        'random_coef': 1.0
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    encoded_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    encoded_images_shape = tf.shape(encoded_images)
+
+    with self.test_session() as sess:
+      (images_out, encoded_images_out, images_shape_out,
+       encoded_images_shape_out) = sess.run(
+           [images, encoded_images, images_shape, encoded_images_shape])
+      self.assertAllEqual(images_shape_out, encoded_images_shape_out)
+      self.assertAllEqual(images_out, encoded_images_out)
+
+  def testRandomDownscaleToTargetPixels(self):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'min_target_pixels': 100,
+        'max_target_pixels': 101
+    })]
+    images = tf.random_uniform([1, 25, 100, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    downscaled_images = processed_tensor_dict[fields.InputDataFields.image]
+    downscaled_shape = tf.shape(downscaled_images)
+    expected_shape = [1, 5, 20, 3]
+    with self.test_session() as sess:
+      downscaled_shape_out = sess.run(downscaled_shape)
+      self.assertAllEqual(downscaled_shape_out, expected_shape)
+
+  def testRandomDownscaleToTargetPixelsWithMasks(self):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'min_target_pixels': 100,
+        'max_target_pixels': 101
+    })]
+    images = tf.random_uniform([1, 25, 100, 3])
+    masks = tf.random_uniform([10, 25, 100])
+    tensor_dict = {
+        fields.InputDataFields.image: images,
+        fields.InputDataFields.groundtruth_instance_masks: masks
+    }
+    preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+        include_instance_masks=True)
+    processed_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options, func_arg_map=preprocessor_arg_map)
+    downscaled_images = processed_tensor_dict[fields.InputDataFields.image]
+    downscaled_masks = processed_tensor_dict[
+        fields.InputDataFields.groundtruth_instance_masks]
+    downscaled_images_shape = tf.shape(downscaled_images)
+    downscaled_masks_shape = tf.shape(downscaled_masks)
+    expected_images_shape = [1, 5, 20, 3]
+    expected_masks_shape = [10, 5, 20]
+    with self.test_session() as sess:
+      downscaled_images_shape_out, downscaled_masks_shape_out = sess.run(
+          [downscaled_images_shape, downscaled_masks_shape])
+      self.assertAllEqual(downscaled_images_shape_out, expected_images_shape)
+      self.assertAllEqual(downscaled_masks_shape_out, expected_masks_shape)
+
+  @parameterized.parameters(
+      {'test_masks': False},
+      {'test_masks': True}
+  )
+  def testRandomDownscaleToTargetPixelsWithCache(self, test_masks):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'min_target_pixels': 100,
+        'max_target_pixels': 999
+    })]
+    self._testPreprocessorCache(preprocessing_options, test_masks=test_masks)
+
+  def testRandomDownscaleToTargetPixelsWithRandomCoefOne(self):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'random_coef': 1.0,
+        'min_target_pixels': 10,
+        'max_target_pixels': 20,
+    })]
+    images = tf.random_uniform([1, 25, 100, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    downscaled_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    downscaled_images_shape = tf.shape(downscaled_images)
+
+    with self.test_session() as sess:
+      (images_out, downscaled_images_out, images_shape_out,
+       downscaled_images_shape_out) = sess.run(
+           [images, downscaled_images, images_shape, downscaled_images_shape])
+      self.assertAllEqual(images_shape_out, downscaled_images_shape_out)
+      self.assertAllEqual(images_out, downscaled_images_out)
+
+  def testRandomDownscaleToTargetPixelsIgnoresSmallImages(self):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'min_target_pixels': 1000,
+        'max_target_pixels': 1001
+    })]
+    images = tf.random_uniform([1, 10, 10, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    downscaled_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    downscaled_images_shape = tf.shape(downscaled_images)
+    with self.test_session() as sess:
+      (images_out, downscaled_images_out, images_shape_out,
+       downscaled_images_shape_out) = sess.run(
+           [images, downscaled_images, images_shape, downscaled_images_shape])
+      self.assertAllEqual(images_shape_out, downscaled_images_shape_out)
+      self.assertAllEqual(images_out, downscaled_images_out)
+
+  def testRandomPatchGaussianShape(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'min_patch_size': 1,
+        'max_patch_size': 200,
+        'min_gaussian_stddev': 0.0,
+        'max_gaussian_stddev': 2.0
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    patched_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    patched_images_shape = tf.shape(patched_images)
+    self.assertAllEqual(images_shape, patched_images_shape)
+
+  def testRandomPatchGaussianClippedToLowerBound(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'min_patch_size': 20,
+        'max_patch_size': 40,
+        'min_gaussian_stddev': 50,
+        'max_gaussian_stddev': 100
+    })]
+    images = tf.zeros([1, 5, 4, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    patched_images = processed_tensor_dict[fields.InputDataFields.image]
+    self.assertAllGreaterEqual(patched_images, 0.0)
+
+  def testRandomPatchGaussianClippedToUpperBound(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'min_patch_size': 20,
+        'max_patch_size': 40,
+        'min_gaussian_stddev': 50,
+        'max_gaussian_stddev': 100
+    })]
+    images = tf.constant(255.0, shape=[1, 5, 4, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    patched_images = processed_tensor_dict[fields.InputDataFields.image]
+    self.assertAllLessEqual(patched_images, 255.0)
+
+  def testRandomPatchGaussianWithCache(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'min_patch_size': 1,
+        'max_patch_size': 200,
+        'min_gaussian_stddev': 0.0,
+        'max_gaussian_stddev': 2.0
+    })]
+    self._testPreprocessorCache(preprocessing_options)
+
+  def testRandomPatchGaussianWithRandomCoefOne(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'random_coef': 1.0
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    patched_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    patched_images_shape = tf.shape(patched_images)
+
+    self.assertAllEqual(images_shape, patched_images_shape)
+    self.assertAllEqual(images, patched_images)
 
   def testAutoAugmentImage(self):
     preprocessing_options = []

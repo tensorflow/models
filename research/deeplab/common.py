@@ -34,6 +34,9 @@ flags.DEFINE_integer('max_resize_value', None,
 flags.DEFINE_integer('resize_factor', None,
                      'Resized dimensions are multiple of factor plus one.')
 
+flags.DEFINE_boolean('keep_aspect_ratio', True,
+                     'Keep aspect ratio after resizing or not.')
+
 # Model dependent flags.
 
 flags.DEFINE_integer('logits_kernel_size', 1,
@@ -99,11 +102,8 @@ flags.DEFINE_enum('merge_method', 'max', ['max', 'avg'],
 flags.DEFINE_boolean(
     'prediction_with_upsampled_logits', True,
     'When performing prediction, there are two options: (1) bilinear '
-    'upsampling the logits followed by argmax, or (2) armax followed by '
-    'nearest upsampling the predicted labels. The second option may introduce '
-    'some "blocking effect", but it is more computationally efficient. '
-    'Currently, prediction_with_upsampled_logits=False is only supported for '
-    'single-scale inference.')
+    'upsampling the logits followed by softmax, or (2) softmax followed by '
+    'bilinear upsampling.')
 
 flags.DEFINE_string(
     'dense_prediction_cell_json',
@@ -114,9 +114,42 @@ flags.DEFINE_integer(
     'nas_stem_output_num_conv_filters', 20,
     'Number of filters of the stem output tensor in NAS models.')
 
+flags.DEFINE_bool('nas_use_classification_head', False,
+                  'Use image classification head for NAS model variants.')
+
+flags.DEFINE_bool('nas_remove_os32_stride', False,
+                  'Remove the stride in the output stride 32 branch.')
+
 flags.DEFINE_bool('use_bounded_activation', False,
                   'Whether or not to use bounded activations. Bounded '
                   'activations better lend themselves to quantized inference.')
+
+flags.DEFINE_boolean('aspp_with_concat_projection', True,
+                     'ASPP with concat projection.')
+
+flags.DEFINE_boolean('aspp_with_squeeze_and_excitation', False,
+                     'ASPP with squeeze and excitation.')
+
+flags.DEFINE_integer('aspp_convs_filters', 256, 'ASPP convolution filters.')
+
+flags.DEFINE_boolean('decoder_use_sum_merge', False,
+                     'Decoder uses simply sum merge.')
+
+flags.DEFINE_integer('decoder_filters', 256, 'Decoder filters.')
+
+flags.DEFINE_boolean('decoder_output_is_logits', False,
+                     'Use decoder output as logits or not.')
+
+flags.DEFINE_boolean('image_se_uses_qsigmoid', False, 'Use q-sigmoid.')
+
+flags.DEFINE_multi_float(
+    'label_weights', None,
+    'A list of label weights, each element represents the weight for the label '
+    'of its index, for example, label_weights = [0.1, 0.5] means the weight '
+    'for label 0 is 0.1 and the weight for label 1 is 0.5. If set as None, all '
+    'the labels have the same weight 1.0.')
+
+flags.DEFINE_float('batch_norm_decay', 0.9997, 'Batchnorm decay.')
 
 FLAGS = flags.FLAGS
 
@@ -160,8 +193,18 @@ class ModelOptions(
         'divisible_by',
         'prediction_with_upsampled_logits',
         'dense_prediction_cell_config',
-        'nas_stem_output_num_conv_filters',
-        'use_bounded_activation'
+        'nas_architecture_options',
+        'use_bounded_activation',
+        'aspp_with_concat_projection',
+        'aspp_with_squeeze_and_excitation',
+        'aspp_convs_filters',
+        'decoder_use_sum_merge',
+        'decoder_filters',
+        'decoder_output_is_logits',
+        'image_se_uses_qsigmoid',
+        'label_weights',
+        'sync_batch_norm_method',
+        'batch_norm_decay',
     ])):
   """Immutable class to hold model options."""
 
@@ -204,18 +247,45 @@ class ModelOptions(
     image_pooling_stride = [1, 1]
     if FLAGS.image_pooling_stride:
       image_pooling_stride = [int(x) for x in FLAGS.image_pooling_stride]
+    label_weights = FLAGS.label_weights
+    if label_weights is None:
+      label_weights = 1.0
+    nas_architecture_options = {
+        'nas_stem_output_num_conv_filters': (
+            FLAGS.nas_stem_output_num_conv_filters),
+        'nas_use_classification_head': FLAGS.nas_use_classification_head,
+        'nas_remove_os32_stride': FLAGS.nas_remove_os32_stride,
+    }
     return super(ModelOptions, cls).__new__(
         cls, outputs_to_num_classes, crop_size, atrous_rates, output_stride,
-        preprocessed_images_dtype, FLAGS.merge_method,
+        preprocessed_images_dtype,
+        FLAGS.merge_method,
         FLAGS.add_image_level_feature,
         image_pooling_crop_size,
         image_pooling_stride,
         FLAGS.aspp_with_batch_norm,
-        FLAGS.aspp_with_separable_conv, FLAGS.multi_grid, decoder_output_stride,
-        FLAGS.decoder_use_separable_conv, FLAGS.logits_kernel_size,
-        FLAGS.model_variant, FLAGS.depth_multiplier, FLAGS.divisible_by,
-        FLAGS.prediction_with_upsampled_logits, dense_prediction_cell_config,
-        FLAGS.nas_stem_output_num_conv_filters, FLAGS.use_bounded_activation)
+        FLAGS.aspp_with_separable_conv,
+        FLAGS.multi_grid,
+        decoder_output_stride,
+        FLAGS.decoder_use_separable_conv,
+        FLAGS.logits_kernel_size,
+        FLAGS.model_variant,
+        FLAGS.depth_multiplier,
+        FLAGS.divisible_by,
+        FLAGS.prediction_with_upsampled_logits,
+        dense_prediction_cell_config,
+        nas_architecture_options,
+        FLAGS.use_bounded_activation,
+        FLAGS.aspp_with_concat_projection,
+        FLAGS.aspp_with_squeeze_and_excitation,
+        FLAGS.aspp_convs_filters,
+        FLAGS.decoder_use_sum_merge,
+        FLAGS.decoder_filters,
+        FLAGS.decoder_output_is_logits,
+        FLAGS.image_se_uses_qsigmoid,
+        label_weights,
+        'None',
+        FLAGS.batch_norm_decay)
 
   def __deepcopy__(self, memo):
     return ModelOptions(copy.deepcopy(self.outputs_to_num_classes),

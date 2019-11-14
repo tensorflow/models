@@ -25,6 +25,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.contrib import framework as contrib_framework
+from tensorflow.contrib import layers as contrib_layers
 
 from nets import i3d_utils
 
@@ -34,8 +36,8 @@ inception_block_v1_3d = i3d_utils.inception_block_v1_3d
 
 # Orignaly, arg_scope = slim.arg_scope and layers = slim, now switch to more
 # update-to-date tf.contrib.* API.
-arg_scope = tf.contrib.framework.arg_scope
-layers = tf.contrib.layers
+arg_scope = contrib_framework.arg_scope
+layers = contrib_layers
 
 
 def s3dg_arg_scope(weight_decay=1e-7,

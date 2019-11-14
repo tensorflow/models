@@ -168,13 +168,15 @@ class BaseTest(tf.test.TestCase):
   def test_cifar10_end_to_end_synthetic_v1(self):
     integration.run_synthetic(
         main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '1', '-batch_size', '4']
+        extra_flags=['-resnet_version', '1', '-batch_size', '4',
+                     '--max_train_steps', '1']
     )
 
   def test_cifar10_end_to_end_synthetic_v2(self):
     integration.run_synthetic(
         main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
-        extra_flags=['-resnet_version', '2', '-batch_size', '4']
+        extra_flags=['-resnet_version', '2', '-batch_size', '4',
+                     '--max_train_steps', '1']
     )
 
 

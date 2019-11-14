@@ -393,6 +393,7 @@ def multiclass_non_max_suppression(boxes,
                                    masks=None,
                                    boundaries=None,
                                    pad_to_max_output_size=False,
+                                   use_partitioned_nms=False,
                                    additional_fields=None,
                                    soft_nms_sigma=0.0,
                                    scope=None):
@@ -438,6 +439,8 @@ def multiclass_non_max_suppression(boxes,
       depending on whether a separate boundary is predicted per class.
     pad_to_max_output_size: If true, the output nmsed boxes are padded to be of
       length `max_size_per_class`. Defaults to false.
+    use_partitioned_nms: If true, use partitioned version of
+      non_max_suppression.
     additional_fields: (optional) If not None, a dictionary that maps keys to
       tensors whose first dimensions are all of size `k`. After non-maximum
       suppression, all tensors corresponding to the selected boxes will be
@@ -506,15 +509,26 @@ def multiclass_non_max_suppression(boxes,
       selected_scores = None
       if pad_to_max_output_size:
         max_selection_size = max_size_per_class
-        (selected_indices, num_valid_nms_boxes,
-         boxlist_and_class_scores.data['boxes'],
-         boxlist_and_class_scores.data['scores'],
-         _) = partitioned_non_max_suppression_padded(
-             boxlist_and_class_scores.get(),
-             boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
-             max_selection_size,
-             iou_threshold=iou_thresh,
-             score_threshold=score_thresh)
+        if use_partitioned_nms:
+          (selected_indices, num_valid_nms_boxes,
+           boxlist_and_class_scores.data['boxes'],
+           boxlist_and_class_scores.data['scores'],
+           _) = partitioned_non_max_suppression_padded(
+               boxlist_and_class_scores.get(),
+               boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+               max_selection_size,
+               iou_threshold=iou_thresh,
+               score_threshold=score_thresh)
+        else:
+          selected_indices, num_valid_nms_boxes = (
+              tf.image.non_max_suppression_padded(
+                  boxlist_and_class_scores.get(),
+                  boxlist_and_class_scores.get_field(
+                      fields.BoxListFields.scores),
+                  max_selection_size,
+                  iou_threshold=iou_thresh,
+                  score_threshold=score_thresh,
+                  pad_to_max_output_size=True))
         nms_result = box_list_ops.gather(boxlist_and_class_scores,
                                          selected_indices)
         selected_scores = nms_result.get_field(fields.BoxListFields.scores)
@@ -606,6 +620,7 @@ def class_agnostic_non_max_suppression(boxes,
                                        masks=None,
                                        boundaries=None,
                                        pad_to_max_output_size=False,
+                                       use_partitioned_nms=False,
                                        additional_fields=None,
                                        soft_nms_sigma=0.0,
                                        scope=None):
@@ -653,6 +668,8 @@ def class_agnostic_non_max_suppression(boxes,
       depending on whether a separate boundary is predicted per class.
     pad_to_max_output_size: If true, the output nmsed boxes are padded to be of
       length `max_size_per_class`. Defaults to false.
+    use_partitioned_nms: If true, use partitioned version of
+      non_max_suppression.
     additional_fields: (optional) If not None, a dictionary that maps keys to
       tensors whose first dimensions are all of size `k`. After non-maximum
       suppression, all tensors corresponding to the selected boxes will be added
@@ -719,19 +736,30 @@ def class_agnostic_non_max_suppression(boxes,
     selected_scores = None
     if pad_to_max_output_size:
       max_selection_size = max_total_size
-      (selected_indices, num_valid_nms_boxes,
-       boxlist_and_class_scores.data['boxes'],
-       boxlist_and_class_scores.data['scores'],
-       argsort_ids) = partitioned_non_max_suppression_padded(
-           boxlist_and_class_scores.get(),
-           boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
-           max_selection_size,
-           iou_threshold=iou_thresh,
-           score_threshold=score_thresh)
+      if use_partitioned_nms:
+        (selected_indices, num_valid_nms_boxes,
+         boxlist_and_class_scores.data['boxes'],
+         boxlist_and_class_scores.data['scores'],
+         argsort_ids) = partitioned_non_max_suppression_padded(
+             boxlist_and_class_scores.get(),
+             boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+             max_selection_size,
+             iou_threshold=iou_thresh,
+             score_threshold=score_thresh)
+        classes_with_max_scores = tf.gather(classes_with_max_scores,
+                                            argsort_ids)
+      else:
+        selected_indices, num_valid_nms_boxes = (
+            tf.image.non_max_suppression_padded(
+                boxlist_and_class_scores.get(),
+                boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
+                max_selection_size,
+                iou_threshold=iou_thresh,
+                score_threshold=score_thresh,
+                pad_to_max_output_size=True))
       nms_result = box_list_ops.gather(boxlist_and_class_scores,
                                        selected_indices)
       selected_scores = nms_result.get_field(fields.BoxListFields.scores)
-      classes_with_max_scores = tf.gather(classes_with_max_scores, argsort_ids)
     else:
       max_selection_size = tf.minimum(max_total_size,
                                       boxlist_and_class_scores.num_boxes())
@@ -779,6 +807,7 @@ def class_agnostic_non_max_suppression(boxes,
                  selected_scores, -1*tf.ones(max_selection_size)))
 
     selected_classes = tf.gather(classes_with_max_scores, selected_indices)
+    selected_classes = tf.cast(selected_classes, tf.float32)
     nms_result.add_field(fields.BoxListFields.classes, selected_classes)
     selected_boxes = nms_result
     sorted_boxes = box_list_ops.sort_by_field(selected_boxes,
@@ -818,9 +847,12 @@ def batch_multiclass_non_max_suppression(boxes,
                                          soft_nms_sigma=0.0,
                                          scope=None,
                                          use_static_shapes=False,
+                                         use_partitioned_nms=False,
                                          parallel_iterations=32,
                                          use_class_agnostic_nms=False,
-                                         max_classes_per_detection=1):
+                                         max_classes_per_detection=1,
+                                         use_dynamic_map_fn=False,
+                                         use_combined_nms=False):
   """Multi-class version of non maximum suppression that operates on a batch.
 
   This op is similar to `multiclass_non_max_suppression` but operates on a batch
@@ -868,12 +900,29 @@ def batch_multiclass_non_max_suppression(boxes,
     use_static_shapes: If true, the output nmsed boxes are padded to be of
       length `max_size_per_class` and it doesn't clip boxes to max_total_size.
       Defaults to false.
+    use_partitioned_nms: If true, use partitioned version of
+      non_max_suppression.
     parallel_iterations: (optional) number of batch items to process in
       parallel.
     use_class_agnostic_nms: If true, this uses class-agnostic non max
       suppression
     max_classes_per_detection: Maximum number of retained classes per detection
       box in class-agnostic NMS.
+    use_dynamic_map_fn: If true, images in the batch will be processed within a
+      dynamic loop. Otherwise, a static loop will be used if possible.
+    use_combined_nms: If true, it uses tf.image.combined_non_max_suppression (
+      multi-class version of NMS that operates on a batch).
+      It greedily selects a subset of detection bounding boxes, pruning away
+      boxes that have high IOU (intersection over union) overlap (> thresh) with
+      already selected boxes. It operates independently for each batch.
+      Within each batch, it operates independently for each class for which
+      scores are provided (via the scores field of the input box_list),
+      pruning boxes with score less than a provided threshold prior to applying
+      NMS. This operation is performed on *all* batches and *all* classes
+      in the batch, therefore any background classes should be removed prior to
+      calling this function.
+      Masks and additional fields are not supported.
+      See argument checks in the code below for unsupported arguments.
 
   Returns:
     'nmsed_boxes': A [batch_size, max_detections, 4] float32 tensor
@@ -899,11 +948,57 @@ def batch_multiclass_non_max_suppression(boxes,
     ValueError: if `q` in boxes.shape is not 1 or not equal to number of
       classes as inferred from scores.shape.
   """
+  if use_combined_nms:
+    if change_coordinate_frame:
+      raise ValueError(
+          'change_coordinate_frame (normalizing coordinates'
+          ' relative to clip_window) is not supported by combined_nms.')
+    if num_valid_boxes is not None:
+      raise ValueError('num_valid_boxes is not supported by combined_nms.')
+    if masks is not None:
+      raise ValueError('masks is not supported by combined_nms.')
+    if soft_nms_sigma != 0.0:
+      raise ValueError('Soft NMS is not supported by combined_nms.')
+    if use_class_agnostic_nms:
+      raise ValueError('class-agnostic NMS is not supported by combined_nms.')
+    if clip_window is not None:
+      tf.compat.v1.logging.warning(
+          'clip_window is not supported by combined_nms unless it is'
+          ' [0. 0. 1. 1.] for each image.')
+    if additional_fields is not None:
+      tf.compat.v1.logging.warning(
+          'additional_fields is not supported by combined_nms.')
+    if parallel_iterations != 32:
+      tf.compat.v1.logging.warning(
+          'Number of batch items to be processed in parallel is'
+          ' not configurable by combined_nms.')
+    if max_classes_per_detection > 1:
+      tf.compat.v1.logging.warning(
+          'max_classes_per_detection is not configurable by combined_nms.')
+
+    with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
+      (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
+       batch_num_detections) = tf.image.combined_non_max_suppression(
+           boxes=boxes,
+           scores=scores,
+           max_output_size_per_class=max_size_per_class,
+           max_total_size=max_total_size,
+           iou_threshold=iou_thresh,
+           score_threshold=score_thresh,
+           pad_per_class=use_static_shapes)
+      # Not supported by combined_non_max_suppression.
+      batch_nmsed_masks = None
+      # Not supported by combined_non_max_suppression.
+      batch_nmsed_additional_fields = None
+      return (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
+              batch_nmsed_masks, batch_nmsed_additional_fields,
+              batch_num_detections)
+
   q = shape_utils.get_dim_as_int(boxes.shape[2])
   num_classes = shape_utils.get_dim_as_int(scores.shape[2])
   if q != 1 and q != num_classes:
     raise ValueError('third dimension of boxes must be either 1 or equal '
-                     'to the third dimension of scores')
+                     'to the third dimension of scores.')
   if change_coordinate_frame and clip_window is None:
     raise ValueError('if change_coordinate_frame is True, then a clip_window'
                      'must be specified.')
@@ -1047,6 +1142,7 @@ def batch_multiclass_non_max_suppression(boxes,
             change_coordinate_frame=change_coordinate_frame,
             masks=per_image_masks,
             pad_to_max_output_size=use_static_shapes,
+            use_partitioned_nms=use_partitioned_nms,
             additional_fields=per_image_additional_fields,
             soft_nms_sigma=soft_nms_sigma)
       else:
@@ -1061,6 +1157,7 @@ def batch_multiclass_non_max_suppression(boxes,
             change_coordinate_frame=change_coordinate_frame,
             masks=per_image_masks,
             pad_to_max_output_size=use_static_shapes,
+            use_partitioned_nms=use_partitioned_nms,
             additional_fields=per_image_additional_fields,
             soft_nms_sigma=soft_nms_sigma)
 
@@ -1086,7 +1183,12 @@ def batch_multiclass_non_max_suppression(boxes,
       num_additional_fields = len(ordered_additional_fields)
     num_nmsed_outputs = 4 + num_additional_fields
 
-    batch_outputs = shape_utils.static_or_dynamic_map_fn(
+    if use_dynamic_map_fn:
+      map_fn = tf.map_fn
+    else:
+      map_fn = shape_utils.static_or_dynamic_map_fn
+
+    batch_outputs = map_fn(
         _single_image_nms_fn,
         elems=([boxes, scores, masks, clip_window] +
                list(ordered_additional_fields.values()) + [num_valid_boxes]),

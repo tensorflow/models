@@ -195,20 +195,20 @@ class NcfTest(tf.test.TestCase):
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator(self):
     integration.run_synthetic(
-        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS)
 
   @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_estimator_mlperf(self):
     integration.run_synthetic(
-        ncf_estimator_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_estimator_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS + ['-ml_perf', 'True'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras_no_dist_strat(self):
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS +
         ['-distribution_strategy', 'off'])
 
@@ -216,7 +216,7 @@ class NcfTest(tf.test.TestCase):
   @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
   def test_end_to_end_keras_dist_strat(self):
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '0'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
@@ -226,32 +226,48 @@ class NcfTest(tf.test.TestCase):
              ['-num_gpus', '0'] +
              ['-keras_use_ctl', 'True'])
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=flags)
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
-  def test_end_to_end_keras_1_gpu_dist_strat(self):
+  def test_end_to_end_keras_1_gpu_dist_strat_fp16(self):
     if context.num_gpus() < 1:
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
           format(1, context.num_gpus()))
 
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '1'])
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '1',
+                                                   '--dtype', 'fp16'])
 
   @mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
-  def test_end_to_end_keras_2_gpu(self):
+  def test_end_to_end_keras_1_gpu_dist_strat_ctl_fp16(self):
+    if context.num_gpus() < 1:
+      self.skipTest(
+          '{} GPUs are not available for this test. {} GPUs are available'.
+          format(1, context.num_gpus()))
+
+    integration.run_synthetic(
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '1',
+                                                   '--dtype', 'fp16',
+                                                   '--keras_use_ctl'])
+
+  @mock.patch.object(rconst, 'SYNTHETIC_BATCHES_PER_EPOCH', 100)
+  @unittest.skipUnless(keras_utils.is_v2_0(), 'TF 2.0 only test.')
+  def test_end_to_end_keras_2_gpu_fp16(self):
     if context.num_gpus() < 2:
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".
           format(2, context.num_gpus()))
 
     integration.run_synthetic(
-        ncf_keras_main.main, tmp_root=self.get_temp_dir(), max_train=None,
-        extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '2'])
+        ncf_keras_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=self._BASE_END_TO_END_FLAGS + ['-num_gpus', '2',
+                                                   '--dtype', 'fp16'])
 
 if __name__ == "__main__":
   tf.test.main()

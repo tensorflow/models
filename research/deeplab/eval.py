@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +18,13 @@
 See model.py for more details and usage.
 """
 
+import numpy as np
+import six
 import tensorflow as tf
+from tensorflow.contrib import metrics as contrib_metrics
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import tfprof as contrib_tfprof
+from tensorflow.contrib import training as contrib_training
 from deeplab import common
 from deeplab import model
 from deeplab.datasets import data_generator
@@ -149,12 +156,44 @@ def main(unused_argv):
       predictions_tag += '_flipped'
 
     # Define the evaluation metric.
-    miou, update_op = tf.metrics.mean_iou(
-        predictions, labels, dataset.num_of_classes, weights=weights)
-    tf.summary.scalar(predictions_tag, miou)
+    metric_map = {}
+    num_classes = dataset.num_of_classes
+    metric_map['eval/%s_overall' % predictions_tag] = tf.metrics.mean_iou(
+        labels=labels, predictions=predictions, num_classes=num_classes,
+        weights=weights)
+    # IoU for each class.
+    one_hot_predictions = tf.one_hot(predictions, num_classes)
+    one_hot_predictions = tf.reshape(one_hot_predictions, [-1, num_classes])
+    one_hot_labels = tf.one_hot(labels, num_classes)
+    one_hot_labels = tf.reshape(one_hot_labels, [-1, num_classes])
+    for c in range(num_classes):
+      predictions_tag_c = '%s_class_%d' % (predictions_tag, c)
+      tp, tp_op = tf.metrics.true_positives(
+          labels=one_hot_labels[:, c], predictions=one_hot_predictions[:, c],
+          weights=weights)
+      fp, fp_op = tf.metrics.false_positives(
+          labels=one_hot_labels[:, c], predictions=one_hot_predictions[:, c],
+          weights=weights)
+      fn, fn_op = tf.metrics.false_negatives(
+          labels=one_hot_labels[:, c], predictions=one_hot_predictions[:, c],
+          weights=weights)
+      tp_fp_fn_op = tf.group(tp_op, fp_op, fn_op)
+      iou = tf.where(tf.greater(tp + fn, 0.0),
+                     tp / (tp + fn + fp),
+                     tf.constant(np.NaN))
+      metric_map['eval/%s' % predictions_tag_c] = (iou, tp_fp_fn_op)
 
-    summary_op = tf.summary.merge_all()
-    summary_hook = tf.contrib.training.SummaryAtEndHook(
+    (metrics_to_values,
+     metrics_to_updates) = contrib_metrics.aggregate_metric_map(metric_map)
+
+    summary_ops = []
+    for metric_name, metric_value in six.iteritems(metrics_to_values):
+      op = tf.summary.scalar(metric_name, metric_value)
+      op = tf.Print(op, [metric_value], metric_name)
+      summary_ops.append(op)
+
+    summary_op = tf.summary.merge(summary_ops)
+    summary_hook = contrib_training.SummaryAtEndHook(
         log_dir=FLAGS.eval_logdir, summary_op=summary_op)
     hooks = [summary_hook]
 
@@ -163,19 +202,19 @@ def main(unused_argv):
       num_eval_iters = FLAGS.max_number_of_evaluations
 
     if FLAGS.quantize_delay_step >= 0:
-      tf.contrib.quantize.create_eval_graph()
+      contrib_quantize.create_eval_graph()
 
-    tf.contrib.tfprof.model_analyzer.print_model_analysis(
+    contrib_tfprof.model_analyzer.print_model_analysis(
         tf.get_default_graph(),
-        tfprof_options=tf.contrib.tfprof.model_analyzer.
-        TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
-    tf.contrib.tfprof.model_analyzer.print_model_analysis(
+        tfprof_options=contrib_tfprof.model_analyzer
+        .TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+    contrib_tfprof.model_analyzer.print_model_analysis(
         tf.get_default_graph(),
-        tfprof_options=tf.contrib.tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
-    tf.contrib.training.evaluate_repeatedly(
-        master=FLAGS.master,
+        tfprof_options=contrib_tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
+    contrib_training.evaluate_repeatedly(
         checkpoint_dir=FLAGS.checkpoint_dir,
-        eval_ops=[update_op],
+        master=FLAGS.master,
+        eval_ops=list(metrics_to_updates.values()),
         max_number_of_evaluations=num_eval_iters,
         hooks=hooks,
         eval_interval_secs=FLAGS.eval_interval_secs)

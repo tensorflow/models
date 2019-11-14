@@ -19,12 +19,13 @@ from __future__ import division
 from __future__ import print_function
 import copy
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 from nets.mobilenet import conv_blocks as ops
 from nets.mobilenet import mobilenet
 from nets.mobilenet import mobilenet_v2
 
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 def find_ops(optype):
@@ -157,7 +158,8 @@ class MobilenetV2Test(tf.test.TestCase):
     new_def = copy.deepcopy(mobilenet_v2.V2_DEF)
 
     def inverse_multiplier(output_params, multiplier):
-      output_params['num_outputs'] /= multiplier
+      output_params['num_outputs'] = int(
+          output_params['num_outputs'] / multiplier)
 
     new_def['spec'][0] = op(
         slim.conv2d,

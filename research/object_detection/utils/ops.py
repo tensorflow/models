@@ -967,9 +967,8 @@ def nearest_neighbor_upsampling(input_tensor, scale=None, height_scale=None,
     w_scale = scale if width_scale is None else width_scale
     (batch_size, height, width,
      channels) = shape_utils.combined_static_and_dynamic_shape(input_tensor)
-    output_tensor = tf.reshape(
-        input_tensor, [batch_size, height, 1, width, 1, channels]) * tf.ones(
-            [1, 1, h_scale, 1, w_scale, 1], dtype=input_tensor.dtype)
+    output_tensor = tf.stack([input_tensor] * w_scale, axis=3)
+    output_tensor = tf.stack([output_tensor] * h_scale, axis=2)
     return tf.reshape(output_tensor,
                       [batch_size, height * h_scale, width * w_scale, channels])
 

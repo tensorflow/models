@@ -19,6 +19,8 @@ models.
 """
 import abc
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
+from tensorflow.contrib import tpu as contrib_tpu
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
@@ -31,7 +33,7 @@ from object_detection.utils import shape_utils
 from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class SSDFeatureExtractor(object):
@@ -254,13 +256,21 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
       the model graph.
     """
     variables_to_restore = {}
-    for variable in self.variables:
-      # variable.name includes ":0" at the end, but the names in the checkpoint
-      # do not have the suffix ":0". So, we strip it here.
-      var_name = variable.name[:-2]
-      if var_name.startswith(feature_extractor_scope + '/'):
-        var_name = var_name.replace(feature_extractor_scope + '/', '')
-      variables_to_restore[var_name] = variable
+    if tf.executing_eagerly():
+      for variable in self.variables:
+        # variable.name includes ":0" at the end, but the names in the
+        # checkpoint do not have the suffix ":0". So, we strip it here.
+        var_name = variable.name[:-2]
+        if var_name.startswith(feature_extractor_scope + '/'):
+          var_name = var_name.replace(feature_extractor_scope + '/', '')
+        variables_to_restore[var_name] = variable
+    else:
+      # b/137854499: use global_variables.
+      for variable in variables_helper.get_global_variables_safely():
+        var_name = variable.op.name
+        if var_name.startswith(feature_extractor_scope + '/'):
+          var_name = var_name.replace(feature_extractor_scope + '/', '')
+          variables_to_restore[var_name] = variable
 
     return variables_to_restore
 
@@ -295,7 +305,9 @@ class SSDMetaArch(model.DetectionModel):
                expected_loss_weights_fn=None,
                use_confidences_as_targets=False,
                implicit_example_weight=0.5,
-               equalization_loss_config=None):
+               equalization_loss_config=None,
+               return_raw_detections_during_predict=False,
+               nms_on_host=True):
     """SSDMetaArch Constructor.
 
     TODO(rathodv,jonathanhuang): group NMS parameters + score converter into
@@ -371,6 +383,11 @@ class SSDMetaArch(model.DetectionModel):
         for the implicit negative examples.
       equalization_loss_config: a namedtuple that specifies configs for
         computing equalization loss.
+      return_raw_detections_during_predict: Whether to return raw detection
+        boxes in the predict() method. These are decoded boxes that have not
+        been through postprocessing (i.e. NMS). Default False.
+      nms_on_host: boolean (default: True) controlling whether NMS should be
+        carried out on the host (outside of TPU).
     """
     super(SSDMetaArch, self).__init__(num_classes=box_predictor.num_classes)
     self._is_training = is_training
@@ -438,6 +455,10 @@ class SSDMetaArch(model.DetectionModel):
 
     self._equalization_loss_config = equalization_loss_config
 
+    self._return_raw_detections_during_predict = (
+        return_raw_detections_during_predict)
+    self._nms_on_host = nms_on_host
+
   @property
   def anchors(self):
     if not self._anchors:
@@ -475,17 +496,10 @@ class SSDMetaArch(model.DetectionModel):
     Raises:
       ValueError: if inputs tensor does not have type tf.float32
     """
-    if inputs.dtype is not tf.float32:
-      raise ValueError('`preprocess` expects a tf.float32 tensor')
     with tf.name_scope('Preprocessor'):
-      # TODO(jonathanhuang): revisit whether to always use batch size as
-      # the number of parallel iterations vs allow for dynamic batching.
-      outputs = shape_utils.static_or_dynamic_map_fn(
-          self._image_resizer_fn,
-          elems=inputs,
-          dtype=[tf.float32, tf.int32])
-      resized_inputs = outputs[0]
-      true_image_shapes = outputs[1]
+      (resized_inputs,
+       true_image_shapes) = shape_utils.resize_images_and_return_shapes(
+           inputs, self._image_resizer_fn)
 
       return (self._feature_extractor.preprocess(resized_inputs),
               true_image_shapes)
@@ -560,6 +574,14 @@ class SSDMetaArch(model.DetectionModel):
           [batch, height_i, width_i, depth_i].
         5) anchors: 2-D float tensor of shape [num_anchors, 4] containing
           the generated anchors in normalized coordinates.
+        6) final_anchors: 3-D float tensor of shape [batch_size, num_anchors, 4]
+          containing the generated anchors in normalized coordinates.
+        If self._return_raw_detections_during_predict is True, the dictionary
+        will also contain:
+        7) raw_detection_boxes: a 4-D float32 tensor with shape
+          [batch_size, self.max_num_proposals, 4] in normalized coordinates.
+        8) raw_detection_feature_map_indices: a 3-D int32 tensor with shape
+          [batch_size, self.max_num_proposals].
     """
     if self._inplace_batchnorm_update:
       batchnorm_updates_collections = None
@@ -581,11 +603,11 @@ class SSDMetaArch(model.DetectionModel):
         feature_maps)
     image_shape = shape_utils.combined_static_and_dynamic_shape(
         preprocessed_inputs)
-    self._anchors = box_list_ops.concatenate(
-        self._anchor_generator.generate(
-            feature_map_spatial_dims,
-            im_height=image_shape[1],
-            im_width=image_shape[2]))
+    boxlist_list = self._anchor_generator.generate(
+        feature_map_spatial_dims,
+        im_height=image_shape[1],
+        im_width=image_shape[2])
+    self._anchors = box_list_ops.concatenate(boxlist_list)
     if self._box_predictor.is_keras_model:
       predictor_results_dict = self._box_predictor(feature_maps)
     else:
@@ -596,9 +618,15 @@ class SSDMetaArch(model.DetectionModel):
         predictor_results_dict = self._box_predictor.predict(
             feature_maps, self._anchor_generator.num_anchors_per_location())
     predictions_dict = {
-        'preprocessed_inputs': preprocessed_inputs,
-        'feature_maps': feature_maps,
-        'anchors': self._anchors.get()
+        'preprocessed_inputs':
+            preprocessed_inputs,
+        'feature_maps':
+            feature_maps,
+        'anchors':
+            self._anchors.get(),
+        'final_anchors':
+            tf.tile(
+                tf.expand_dims(self._anchors.get(), 0), [image_shape[0], 1, 1])
     }
     for prediction_key, prediction_list in iter(predictor_results_dict.items()):
       prediction = tf.concat(prediction_list, axis=1)
@@ -606,9 +634,28 @@ class SSDMetaArch(model.DetectionModel):
           prediction.shape[2] == 1):
         prediction = tf.squeeze(prediction, axis=2)
       predictions_dict[prediction_key] = prediction
+    if self._return_raw_detections_during_predict:
+      predictions_dict.update(self._raw_detections_and_feature_map_inds(
+          predictions_dict['box_encodings'], boxlist_list))
     self._batched_prediction_tensor_names = [x for x in predictions_dict
                                              if x != 'anchors']
     return predictions_dict
+
+  def _raw_detections_and_feature_map_inds(self, box_encodings, boxlist_list):
+    anchors = self._anchors.get()
+    raw_detection_boxes, _ = self._batch_decode(box_encodings, anchors)
+    batch_size, _, _ = shape_utils.combined_static_and_dynamic_shape(
+        raw_detection_boxes)
+    feature_map_indices = (
+        self._anchor_generator.anchor_index_to_feature_map_index(boxlist_list))
+    feature_map_indices_batched = tf.tile(
+        tf.expand_dims(feature_map_indices, 0),
+        multiples=[batch_size, 1])
+    return {
+        fields.PredictionFields.raw_detection_boxes: raw_detection_boxes,
+        fields.PredictionFields.raw_detection_feature_map_indices:
+            feature_map_indices_batched
+    }
 
   def _get_feature_map_spatial_dims(self, feature_maps):
     """Return list of spatial dimensions for each feature map in a list.
@@ -719,7 +766,9 @@ class SSDMetaArch(model.DetectionModel):
           'multiclass_scores': detection_scores_with_background
       }
       if self._anchors is not None:
-        anchor_indices = tf.range(self._anchors.num_boxes_static())
+        num_boxes = (self._anchors.num_boxes_static() or
+                     self._anchors.num_boxes())
+        anchor_indices = tf.range(num_boxes)
         batch_anchor_indices = tf.tile(
             tf.expand_dims(anchor_indices, 0), [batch_size, 1])
         # All additional fields need to be float.
@@ -730,14 +779,37 @@ class SSDMetaArch(model.DetectionModel):
         detection_keypoints = tf.identity(
             detection_keypoints, 'raw_keypoint_locations')
         additional_fields[fields.BoxListFields.keypoints] = detection_keypoints
+
+      with tf.init_scope():
+        if tf.executing_eagerly():
+          # soft device placement in eager mode will automatically handle
+          # outside compilation.
+          def _non_max_suppression_wrapper(kwargs):
+            return self._non_max_suppression_fn(**kwargs)
+        else:
+          def _non_max_suppression_wrapper(kwargs):
+            if self._nms_on_host:
+              # Note: NMS is not memory efficient on TPU. This force the NMS
+              # to run outside of TPU.
+              return contrib_tpu.outside_compilation(
+                  lambda x: self._non_max_suppression_fn(**x), kwargs)
+            else:
+              return self._non_max_suppression_fn(**kwargs)
+
       (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
-       nmsed_additional_fields, num_detections) = self._non_max_suppression_fn(
+       nmsed_additional_fields,
+       num_detections) = _non_max_suppression_wrapper({
+           'boxes':
            detection_boxes,
+           'scores':
            detection_scores,
-           clip_window=self._compute_clip_window(preprocessed_images,
-                                                 true_image_shapes),
-           additional_fields=additional_fields,
-           masks=prediction_dict.get('mask_predictions'))
+           'clip_window':
+           self._compute_clip_window(preprocessed_images, true_image_shapes),
+           'additional_fields':
+           additional_fields,
+           'masks':
+           prediction_dict.get('mask_predictions')
+       })
       detection_dict = {
           fields.DetectionResultFields.detection_boxes:
               nmsed_boxes,
@@ -746,7 +818,8 @@ class SSDMetaArch(model.DetectionModel):
           fields.DetectionResultFields.detection_classes:
               nmsed_classes,
           fields.DetectionResultFields.detection_multiclass_scores:
-              nmsed_additional_fields['multiclass_scores'],
+              nmsed_additional_fields.get(
+                  'multiclass_scores') if nmsed_additional_fields else None,
           fields.DetectionResultFields.num_detections:
               tf.cast(num_detections, dtype=tf.float32),
           fields.DetectionResultFields.raw_detection_boxes:
@@ -1057,6 +1130,15 @@ class SSDMetaArch(model.DetectionModel):
         with rows of the Match objects corresponding to groundtruth boxes
         and columns corresponding to anchors.
     """
+    # TODO(rathodv): Add a test for these summaries.
+    try:
+      # TODO(kaftan): Integrate these summaries into the v2 style loops
+      with tf.compat.v2.init_scope():
+        if tf.compat.v2.executing_eagerly():
+          return
+    except AttributeError:
+      pass
+
     avg_num_gt_boxes = tf.reduce_mean(
         tf.cast(
             tf.stack([tf.shape(x)[0] for x in groundtruth_boxes_list]),
@@ -1077,14 +1159,6 @@ class SSDMetaArch(model.DetectionModel):
         tf.cast(
             tf.stack([match.num_ignored_columns() for match in match_list]),
             dtype=tf.float32))
-    # TODO(rathodv): Add a test for these summaries.
-    try:
-      # TODO(kaftan): Integrate these summaries into the v2 style loops
-      with tf.compat.v2.init_scope():
-        if tf.compat.v2.executing_eagerly():
-          return
-    except AttributeError:
-      pass
 
     tf.summary.scalar('AvgNumGroundtruthBoxesPerImage',
                       avg_num_gt_boxes,
@@ -1231,26 +1305,27 @@ class SSDMetaArch(model.DetectionModel):
       ValueError: if fine_tune_checkpoint_type is neither `classification`
         nor `detection`.
     """
-    if fine_tune_checkpoint_type not in ['detection', 'classification']:
-      raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
-          fine_tune_checkpoint_type))
-
     if fine_tune_checkpoint_type == 'classification':
       return self._feature_extractor.restore_from_classification_checkpoint_fn(
           self._extract_features_scope)
 
-    if fine_tune_checkpoint_type == 'detection':
+    elif fine_tune_checkpoint_type == 'detection':
       variables_to_restore = {}
       if tf.executing_eagerly():
-        for variable in self.variables:
-          # variable.name includes ":0" at the end, but the names in the
-          # checkpoint do not have the suffix ":0". So, we strip it here.
-          var_name = variable.name[:-2]
-          if load_all_detection_checkpoint_vars:
+        if load_all_detection_checkpoint_vars:
+          # Grab all detection vars by name
+          for variable in self.variables:
+            # variable.name includes ":0" at the end, but the names in the
+            # checkpoint do not have the suffix ":0". So, we strip it here.
+            var_name = variable.name[:-2]
             variables_to_restore[var_name] = variable
-          else:
-            if var_name.startswith(self._extract_features_scope):
-              variables_to_restore[var_name] = variable
+        else:
+          # Grab just the feature extractor vars by name
+          for variable in self._feature_extractor.variables:
+            # variable.name includes ":0" at the end, but the names in the
+            # checkpoint do not have the suffix ":0". So, we strip it here.
+            var_name = variable.name[:-2]
+            variables_to_restore[var_name] = variable
       else:
         for variable in variables_helper.get_global_variables_safely():
           var_name = variable.op.name
@@ -1260,7 +1335,11 @@ class SSDMetaArch(model.DetectionModel):
             if var_name.startswith(self._extract_features_scope):
               variables_to_restore[var_name] = variable
 
-    return variables_to_restore
+      return variables_to_restore
+
+    else:
+      raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
+          fine_tune_checkpoint_type))
 
   def updates(self):
     """Returns a list of update operators for this model.

@@ -21,12 +21,11 @@ from __future__ import print_function
 import functools
 
 # pylint: disable=g-bad-import-order
-import numpy as np
 import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
+from official.recommendation import movielens
 from official.recommendation import data_pipeline
 
 NUM_SHARDS = 16
@@ -42,6 +41,9 @@ def create_dataset_from_tf_record_files(input_file_pattern,
 
   def make_dataset(files_dataset, shard_index):
     """Returns dataset for sharded tf record files."""
+    if pre_batch_size != batch_size:
+      raise ValueError("Pre-batch ({}) size is not equal to batch "
+                       "size ({})".format(pre_batch_size, batch_size))
     files_dataset = files_dataset.shard(NUM_SHARDS, shard_index)
     dataset = files_dataset.interleave(tf.data.TFRecordDataset)
     decode_fn = functools.partial(
@@ -50,8 +52,6 @@ def create_dataset_from_tf_record_files(input_file_pattern,
         is_training=is_training)
     dataset = dataset.map(
         decode_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    dataset = dataset.apply(tf.data.experimental.unbatch())
-    dataset = dataset.batch(batch_size, drop_remainder=True)
     return dataset
 
   dataset = tf.data.Dataset.range(NUM_SHARDS)
@@ -117,7 +117,10 @@ def create_dataset_from_data_producer(producer, params):
   return train_input_dataset, eval_input_dataset
 
 
-def create_ncf_input_data(params, producer=None, input_meta_data=None):
+def create_ncf_input_data(params,
+                          producer=None,
+                          input_meta_data=None,
+                          strategy=None):
   """Creates NCF training/evaluation dataset.
 
   Args:
@@ -128,6 +131,9 @@ def create_ncf_input_data(params, producer=None, input_meta_data=None):
     input_meta_data: A dictionary of input metadata to be used when reading data
       from tf record files. Must be specified when params["train_input_dataset"]
       is specified.
+    strategy: Distribution strategy used for distributed training. If specified,
+      used to assert that evaluation batch size is correctly a multiple of
+      total number of devices used.
 
   Returns:
     (training dataset, evaluation dataset, train steps per epoch,
@@ -136,6 +142,17 @@ def create_ncf_input_data(params, producer=None, input_meta_data=None):
   Raises:
     ValueError: If data is being generated online for when using TPU's.
   """
+  # NCF evaluation metric calculation logic assumes that evaluation data
+  # sample size are in multiples of (1 + number of negative samples in
+  # evaluation) for each device. As so, evaluation batch size must be a
+  # multiple of (number of replicas * (1 + number of negative samples)).
+  num_devices = strategy.num_replicas_in_sync if strategy else 1
+  if (params["eval_batch_size"] % (num_devices *
+                                   (1 + rconst.NUM_EVAL_NEGATIVES))):
+    raise ValueError("Evaluation batch size must be divisible by {} "
+                     "times {}".format(num_devices,
+                                       (1 + rconst.NUM_EVAL_NEGATIVES)))
+
   if params["train_dataset_path"]:
     assert params["eval_dataset_path"]
 

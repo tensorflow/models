@@ -1,5 +1,5 @@
 [MESSAGES CONTROL]
-disable=R,W,bad-option-value,trailing-newlines
+disable=R,W,bad-option-value,trailing-newlines,no-name-in-module
 
 [REPORTS]
 # Tells whether to display a full report or only the messages

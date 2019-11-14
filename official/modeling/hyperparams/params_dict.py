@@ -117,6 +117,14 @@ class ParamsDict(object):
       raise KeyError('The key `{}` does not exist. '.format(k))
     return self.__dict__[k]
 
+  def __contains__(self, key):
+    """Implements the membership test operator."""
+    return key in self.__dict__
+
+  def get(self, key, value=None):
+    """Accesses through built-in dictionary get method."""
+    return self.__dict__.get(key, value)
+
   def override(self, override_params, is_strict=True):
     """Override the ParamsDict with a set of given params.
 

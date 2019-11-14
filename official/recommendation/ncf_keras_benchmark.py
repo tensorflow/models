@@ -23,7 +23,7 @@ import time
 
 from absl import flags
 from absl.testing import flagsaver
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main
@@ -31,6 +31,7 @@ from official.utils.flags import core
 
 FLAGS = flags.FLAGS
 NCF_DATA_DIR_NAME = 'movielens_data'
+NCF_TF_DATA_1M_BATCH_DIR_NAME = 'gs://tf-perfzero-data/movielens_data/ncf_8gpu_1M_batch'
 
 
 class NCFKerasBenchmarkBase(tf.test.Benchmark):
@@ -46,7 +47,8 @@ class NCFKerasBenchmarkBase(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+    assert tf.version.VERSION.startswith('2.')
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
     if NCFKerasBenchmarkBase.local_flags is None:
       ncf_common.define_ncf_flags()
       # Loads flags to get defaults to then override. List cannot be empty.
@@ -86,7 +88,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
                root_data_dir=None,
                default_flags=None,
                **kwargs):
-
+    root_data_dir = root_data_dir if root_data_dir else ''
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
     default_flags['num_gpus'] = 1
@@ -117,7 +119,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     """
     self._run_and_report_benchmark(hr_at_10_min=0.61)
 
-  def _run_and_report_benchmark(self, hr_at_10_min=0.630, hr_at_10_max=0.640):
+  def _run_and_report_benchmark(self, hr_at_10_min=0.630, hr_at_10_max=0.645):
     """Run test and report results.
 
     Note: Target is 0.635, but some runs are below that level. Until we have
@@ -199,6 +201,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
+    FLAGS.eval_batch_size = 160000
     self._run_and_report_benchmark()
 
   def benchmark_2_gpus_ctl_early_stop(self):
@@ -207,6 +210,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.keras_use_ctl = True
     FLAGS.early_stopping = True
     FLAGS.num_gpus = 2
+    FLAGS.eval_batch_size = 160000
     self._run_and_report_benchmark()
 
 #############################################
@@ -261,6 +265,42 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark_mlperf_like()
 
+  def benchmark_1_gpu_ctl_fp16_mlperf_like(self):
+    """1 GPU using CTL and FP16."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_1_gpu_fp16_mlperf_like(self):
+    """1 GPU using FP16."""
+    self._setup()
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_1_gpu_ctl_fp16_graph_rewrite_mlperf_like(self):
+    """1 GPU using CTL and FP16 graph rewrite."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_1_gpu_fp16_graph_rewrite_mlperf_like(self):
+    """1 GPU using FP16 graph rewrite."""
+    self._setup()
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
   def benchmark_1_gpu_ctl_run_eagerly_mlperf_like(self):
     """1 GPU using CTL with eager and distribution strategy."""
     self._setup()
@@ -277,12 +317,32 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark_mlperf_like()
 
+  def benchmark_xla_1_gpu_fp16_mlperf_like(self):
+    """1 GPU using with XLA and FP16."""
+    self._setup()
+    FLAGS.enable_xla = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_xla_1_gpu_ctl_fp16_mlperf_like(self):
+    """1 GPU using CTL with XLA and FP16."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.enable_xla = True
+    FLAGS.train_epochs = 7
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    self._run_and_report_benchmark_mlperf_like()
+
   def benchmark_8_gpu_mlperf_like(self):
     """8 GPU using keras fit/compile."""
     self._setup()
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 160000
     FLAGS.learning_rate = 0.0045
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
@@ -295,6 +355,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 160000
     FLAGS.learning_rate = 0.0045
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
@@ -309,10 +370,88 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 8
     FLAGS.train_epochs = 17
     FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 160000
     FLAGS.learning_rate = 0.0045
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
     FLAGS.epsilon = 1e-8
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_8_gpu_tf_data_ctl_mlperf_like(self):
+    """8 GPU using CTL."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 1048000
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    FLAGS.train_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "training_cycle_*/*")
+    FLAGS.eval_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "eval_data/*")
+    FLAGS.input_meta_data_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "meta_data.json")
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_8_gpu_tf_data_fp16_mlperf_like(self):
+    """8 GPU FP16"""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 1048000
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    FLAGS.train_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "training_cycle_*/*")
+    FLAGS.eval_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "eval_data/*")
+    FLAGS.input_meta_data_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "meta_data.json")
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_8_gpu_tf_data_ctl_fp16_mlperf_like(self):
+    """8 GPU FP16 using CTL"""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 1048000
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 8192
+    FLAGS.train_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "training_cycle_*/*")
+    FLAGS.eval_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "eval_data/*")
+    FLAGS.input_meta_data_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME, "meta_data.json")
+    self._run_and_report_benchmark_mlperf_like()
+
+  def benchmark_8_gpu_tf_data_ctl_fp16_graph_rewrite_mlperf_like(self):
+    """8 GPU FP16 graph rewrite using CTL."""
+    self._setup()
+    FLAGS.keras_use_ctl = True
+    FLAGS.num_gpus = 8
+    FLAGS.train_epochs = 17
+    FLAGS.batch_size = 1048576
+    FLAGS.eval_batch_size = 1048000
+    FLAGS.learning_rate = 0.0045
+    FLAGS.beta1 = 0.25
+    FLAGS.beta2 = 0.5
+    FLAGS.epsilon = 1e-8
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.loss_scale = 8192
+    FLAGS.train_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME,
+                                            'training_cycle_*/*')
+    FLAGS.eval_dataset_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME,
+                                           'eval_data/*')
+    FLAGS.input_meta_data_path = os.path.join(NCF_TF_DATA_1M_BATCH_DIR_NAME,
+                                              'meta_data.json')
     self._run_and_report_benchmark_mlperf_like()
 
 
@@ -329,6 +468,7 @@ class NCFKerasSynth(NCFKerasBenchmarkBase):
     default_flags['num_gpus'] = 1
     default_flags['train_epochs'] = 8
     default_flags['batch_size'] = 99000
+    default_flags['eval_batch_size'] = 160000
     default_flags['learning_rate'] = 0.00382059
     default_flags['beta1'] = 0.783529
     default_flags['beta2'] = 0.909003
@@ -351,3 +491,7 @@ class NCFKerasSynth(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.num_gpus = 2
     self._run_and_report_benchmark()
+
+
+if __name__ == '__main__':
+  tf.test.main()

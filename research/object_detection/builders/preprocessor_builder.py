@@ -95,6 +95,12 @@ PREPROCESSING_FUNCTION_MAP = {
         preprocessor.random_crop_to_aspect_ratio,
     'random_black_patches':
         preprocessor.random_black_patches,
+    'random_jpeg_quality':
+        preprocessor.random_jpeg_quality,
+    'random_downscale_to_target_pixels':
+        preprocessor.random_downscale_to_target_pixels,
+    'random_patch_gaussian':
+        preprocessor.random_patch_gaussian,
     'rgb_to_gray':
         preprocessor.rgb_to_gray,
     'scale_boxes_to_pixel_coordinates': (

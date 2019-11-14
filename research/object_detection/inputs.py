@@ -25,10 +25,14 @@ from object_detection.builders import dataset_builder
 from object_detection.builders import image_resizer_builder
 from object_detection.builders import model_builder
 from object_detection.builders import preprocessor_builder
+from object_detection.core import box_list
+from object_detection.core import box_list_ops
+from object_detection.core import keypoint_ops
 from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.protos import eval_pb2
+from object_detection.protos import image_resizer_pb2
 from object_detection.protos import input_reader_pb2
 from object_detection.protos import model_pb2
 from object_detection.protos import train_pb2
@@ -71,7 +75,8 @@ def transform_input_data(tensor_dict,
                          merge_multiple_boxes=False,
                          retain_original_image=False,
                          use_multiclass_scores=False,
-                         use_bfloat16=False):
+                         use_bfloat16=False,
+                         retain_original_image_additional_channels=False):
   """A single function that is responsible for all input data transformations.
 
   Data transformation functions are applied in the following order.
@@ -110,6 +115,8 @@ def transform_input_data(tensor_dict,
       this is True and multiclass_scores is empty, one-hot encoding of
       `groundtruth_classes` is used as a fallback.
     use_bfloat16: (optional) a bool, whether to use bfloat16 in training.
+    retain_original_image_additional_channels: (optional) Whether to retain
+      original image additional channels in the output dictionary.
 
   Returns:
     A dictionary keyed by fields.InputDataFields containing the tensors obtained
@@ -139,6 +146,10 @@ def transform_input_data(tensor_dict,
     channels = out_tensor_dict[fields.InputDataFields.image_additional_channels]
     out_tensor_dict[fields.InputDataFields.image] = tf.concat(
         [out_tensor_dict[fields.InputDataFields.image], channels], axis=2)
+    if retain_original_image_additional_channels:
+      out_tensor_dict[
+          fields.InputDataFields.image_additional_channels] = tf.cast(
+              image_resizer_fn(channels, None)[0], tf.uint8)
 
   # Apply data augmentation ops.
   if data_augmentation_fn is not None:
@@ -148,6 +159,30 @@ def transform_input_data(tensor_dict,
   image = out_tensor_dict[fields.InputDataFields.image]
   preprocessed_resized_image, true_image_shape = model_preprocess_fn(
       tf.expand_dims(tf.cast(image, dtype=tf.float32), axis=0))
+
+  preprocessed_shape = tf.shape(preprocessed_resized_image)
+  new_height, new_width = preprocessed_shape[1], preprocessed_shape[2]
+
+  im_box = tf.stack([
+      0.0, 0.0,
+      tf.to_float(new_height) / tf.to_float(true_image_shape[0, 0]),
+      tf.to_float(new_width) / tf.to_float(true_image_shape[0, 1])
+  ])
+
+  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
+    bboxes = out_tensor_dict[fields.InputDataFields.groundtruth_boxes]
+    boxlist = box_list.BoxList(bboxes)
+    realigned_bboxes = box_list_ops.change_coordinate_frame(boxlist, im_box)
+    out_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes] = realigned_bboxes.get()
+
+  if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
+    keypoints = out_tensor_dict[fields.InputDataFields.groundtruth_keypoints]
+    realigned_keypoints = keypoint_ops.change_coordinate_frame(keypoints,
+                                                               im_box)
+    out_tensor_dict[
+        fields.InputDataFields.groundtruth_keypoints] = realigned_keypoints
+
   if use_bfloat16:
     preprocessed_resized_image = tf.cast(
         preprocessed_resized_image, tf.bfloat16)
@@ -445,6 +480,9 @@ def _get_features_dict(input_dict):
   if fields.InputDataFields.original_image in input_dict:
     features[fields.InputDataFields.original_image] = input_dict[
         fields.InputDataFields.original_image]
+  if fields.InputDataFields.image_additional_channels in input_dict:
+    features[fields.InputDataFields.image_additional_channels] = input_dict[
+        fields.InputDataFields.image_additional_channels]
   return features
 
 
@@ -645,6 +683,14 @@ def eval_input(eval_config, eval_input_config, model_config,
     raise TypeError('The `model_config` must be a '
                     'model_pb2.DetectionModel.')
 
+  if eval_config.force_no_resize:
+    arch = model_config.WhichOneof('model')
+    arch_config = getattr(model_config, arch)
+    image_resizer_proto = image_resizer_pb2.ImageResizer()
+    image_resizer_proto.identity_resizer.CopyFrom(
+        image_resizer_pb2.IdentityResizer())
+    arch_config.image_resizer.CopyFrom(image_resizer_proto)
+
   if model is None:
     model_preprocess_fn = INPUT_BUILDER_UTIL_MAP['model_build'](
         model_config, is_training=False).preprocess
@@ -663,7 +709,9 @@ def eval_input(eval_config, eval_input_config, model_config,
         image_resizer_fn=image_resizer_fn,
         num_classes=num_classes,
         data_augmentation_fn=None,
-        retain_original_image=eval_config.retain_original_images)
+        retain_original_image=eval_config.retain_original_images,
+        retain_original_image_additional_channels=
+        eval_config.retain_original_image_additional_channels)
     tensor_dict = pad_input_data_to_static_shapes(
         tensor_dict=transform_data_fn(tensor_dict),
         max_num_boxes=eval_input_config.max_number_of_boxes,

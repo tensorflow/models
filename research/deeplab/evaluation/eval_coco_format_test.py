@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +53,8 @@ class EvalCocoFormatTest(absltest.TestCase):
         ignored_label=0,
         max_instances_per_category=256,
         intersection_offset=(256 * 256))
-    self.assertCountEqual(deeplab_results.keys(), ['All', 'Things', 'Stuff'])
+    self.assertCountEqual(
+        list(deeplab_results.keys()), ['All', 'Things', 'Stuff'])
     for cat_group in ['All', 'Things', 'Stuff']:
       self.assertCountEqual(deeplab_results[cat_group], ['pq', 'sq', 'rq', 'n'])
       for metric in ['pq', 'sq', 'rq', 'n']:
@@ -77,7 +79,8 @@ class EvalCocoFormatTest(absltest.TestCase):
         max_instances_per_category=256,
         intersection_offset=(256 * 256),
         normalize_by_image_size=False)
-    self.assertCountEqual(deeplab_results.keys(), ['All', 'Things', 'Stuff'])
+    self.assertCountEqual(
+        list(deeplab_results.keys()), ['All', 'Things', 'Stuff'])
     for cat_group in ['All', 'Things', 'Stuff']:
       self.assertCountEqual(deeplab_results[cat_group], ['pc', 'n'])
     self.assertAlmostEqual(deeplab_results['All']['pc'], 0.68210561)
@@ -105,7 +108,8 @@ class EvalCocoFormatTest(absltest.TestCase):
         max_instances_per_category=256,
         intersection_offset=(256 * 256),
         normalize_by_image_size=True)
-    self.assertCountEqual(deeplab_results.keys(), ['All', 'Things', 'Stuff'])
+    self.assertCountEqual(
+        list(deeplab_results.keys()), ['All', 'Things', 'Stuff'])
     self.assertAlmostEqual(deeplab_results['All']['pc'], 0.68214908840)
 
   def test_pc_with_multiple_workers(self):
@@ -127,7 +131,8 @@ class EvalCocoFormatTest(absltest.TestCase):
         intersection_offset=(256 * 256),
         num_workers=3,
         normalize_by_image_size=False)
-    self.assertCountEqual(deeplab_results.keys(), ['All', 'Things', 'Stuff'])
+    self.assertCountEqual(
+        list(deeplab_results.keys()), ['All', 'Things', 'Stuff'])
     self.assertAlmostEqual(deeplab_results['All']['pc'], 0.68210561668)
 
 

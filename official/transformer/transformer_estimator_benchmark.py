@@ -54,7 +54,7 @@ class EstimatorBenchmark(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
     if EstimatorBenchmark.local_flags is None:
       for flag_method in self.flag_methods:
         flag_method()

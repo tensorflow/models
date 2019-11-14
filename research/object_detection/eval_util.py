@@ -846,8 +846,28 @@ def result_dict_for_batched_example(images,
               dtype=tf.uint8))
 
     output_dict.update(groundtruth)
+
+    image_shape = tf.cast(tf.shape(images), tf.float32)
+    image_height, image_width = image_shape[1], image_shape[2]
+
+    def _scale_box_to_normalized_true_image(args):
+      """Scale the box coordinates to be relative to the true image shape."""
+      boxes, true_image_shape = args
+      true_image_shape = tf.cast(true_image_shape, tf.float32)
+      true_height, true_width = true_image_shape[0], true_image_shape[1]
+      normalized_window = tf.stack([0.0, 0.0, true_height / image_height,
+                                    true_width / image_width])
+      return box_list_ops.change_coordinate_frame(
+          box_list.BoxList(boxes), normalized_window).get()
+
+    groundtruth_boxes = groundtruth[input_data_fields.groundtruth_boxes]
+    groundtruth_boxes = shape_utils.static_or_dynamic_map_fn(
+        _scale_box_to_normalized_true_image,
+        elems=[groundtruth_boxes, true_image_shapes], dtype=tf.float32)
+    output_dict[input_data_fields.groundtruth_boxes] = groundtruth_boxes
+
     if scale_to_absolute:
-      groundtruth_boxes = groundtruth[input_data_fields.groundtruth_boxes]
+      groundtruth_boxes = output_dict[input_data_fields.groundtruth_boxes]
       output_dict[input_data_fields.groundtruth_boxes] = (
           shape_utils.static_or_dynamic_map_fn(
               _scale_box_to_absolute,

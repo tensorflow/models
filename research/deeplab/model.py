@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,11 +53,12 @@ Alan L. Yuille (* equal contribution)
 (https://arxiv.org/abs/1412.7062)
 """
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 from deeplab.core import dense_prediction_cell
 from deeplab.core import feature_extractor
 from deeplab.core import utils
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 LOGITS_SCOPE_NAME = 'logits'
 MERGED_LOGITS_SCOPE = 'merged_logits'
@@ -65,6 +67,8 @@ ASPP_SCOPE = 'aspp'
 CONCAT_PROJECTION_SCOPE = 'concat_projection'
 DECODER_SCOPE = 'decoder'
 META_ARCHITECTURE_SCOPE = 'meta_architecture'
+
+PROB_SUFFIX = '_prob'
 
 _resize_bilinear = utils.resize_bilinear
 scale_dimension = utils.scale_dimension
@@ -158,6 +162,7 @@ def predict_labels_multi_scale(images,
     # Compute average prediction across different scales and flipped images.
     predictions = tf.reduce_mean(tf.concat(predictions, 4), axis=4)
     outputs_to_predictions[output] = tf.argmax(predictions, 3)
+    predictions[output + PROB_SUFFIX] = tf.nn.softmax(predictions)
 
   return outputs_to_predictions
 
@@ -195,6 +200,7 @@ def predict_labels(images, model_options, image_pyramid=None):
                                 tf.shape(images)[1:3],
                                 scales_to_logits[MERGED_LOGITS_SCOPE].dtype)
       predictions[output] = tf.argmax(logits, 3)
+      predictions[output + PROB_SUFFIX] = tf.nn.softmax(logits)
     else:
       argmax_results = tf.argmax(logits, 3)
       argmax_results = tf.image.resize_nearest_neighbor(
@@ -203,7 +209,11 @@ def predict_labels(images, model_options, image_pyramid=None):
           align_corners=True,
           name='resize_prediction')
       predictions[output] = tf.squeeze(argmax_results, 3)
-
+      predictions[output + PROB_SUFFIX] = tf.image.resize_bilinear(
+          tf.nn.softmax(logits),
+          tf.shape(images)[1:3],
+          align_corners=True,
+          name='resize_prob')
   return predictions
 
 
@@ -389,8 +399,7 @@ def extract_features(images,
       is_training=is_training,
       preprocessed_images_dtype=model_options.preprocessed_images_dtype,
       fine_tune_batch_norm=fine_tune_batch_norm,
-      nas_stem_output_num_conv_filters=(
-          model_options.nas_stem_output_num_conv_filters),
+      nas_architecture_options=model_options.nas_architecture_options,
       nas_training_hyper_parameters=nas_training_hyper_parameters,
       use_bounded_activation=model_options.use_bounded_activation)
 
@@ -419,26 +428,26 @@ def extract_features(images,
       # could express the ASPP module as one particular dense prediction
       # cell architecture. We do not do so but leave the following codes
       # for backward compatibility.
-      batch_norm_params = {
-          'is_training': is_training and fine_tune_batch_norm,
-          'decay': 0.9997,
-          'epsilon': 1e-5,
-          'scale': True,
-      }
-
+      batch_norm_params = utils.get_batch_norm_params(
+          decay=0.9997,
+          epsilon=1e-5,
+          scale=True,
+          is_training=(is_training and fine_tune_batch_norm),
+          sync_batch_norm_method=model_options.sync_batch_norm_method)
+      batch_norm = utils.get_batch_norm_fn(
+          model_options.sync_batch_norm_method)
       activation_fn = (
           tf.nn.relu6 if model_options.use_bounded_activation else tf.nn.relu)
-
       with slim.arg_scope(
           [slim.conv2d, slim.separable_conv2d],
           weights_regularizer=slim.l2_regularizer(weight_decay),
           activation_fn=activation_fn,
-          normalizer_fn=slim.batch_norm,
+          normalizer_fn=batch_norm,
           padding='SAME',
           stride=1,
           reuse=reuse):
-        with slim.arg_scope([slim.batch_norm], **batch_norm_params):
-          depth = 256
+        with slim.arg_scope([batch_norm], **batch_norm_params):
+          depth = model_options.aspp_convs_filters
           branch_logits = []
 
           if model_options.add_image_level_feature:
@@ -470,8 +479,18 @@ def extract_features(images,
                   features, axis=[1, 2], keepdims=True)
               resize_height = pool_height
               resize_width = pool_width
+            image_feature_activation_fn = tf.nn.relu
+            image_feature_normalizer_fn = batch_norm
+            if model_options.aspp_with_squeeze_and_excitation:
+              image_feature_activation_fn = tf.nn.sigmoid
+              if model_options.image_se_uses_qsigmoid:
+                image_feature_activation_fn = utils.q_sigmoid
+              image_feature_normalizer_fn = None
             image_feature = slim.conv2d(
-                image_feature, depth, 1, scope=IMAGE_POOLING_SCOPE)
+                image_feature, depth, 1,
+                activation_fn=image_feature_activation_fn,
+                normalizer_fn=image_feature_normalizer_fn,
+                scope=IMAGE_POOLING_SCOPE)
             image_feature = _resize_bilinear(
                 image_feature,
                 [resize_height, resize_width],
@@ -482,7 +501,8 @@ def extract_features(images,
             if isinstance(resize_width, tf.Tensor):
               resize_width = None
             image_feature.set_shape([None, resize_height, resize_width, depth])
-            branch_logits.append(image_feature)
+            if not model_options.aspp_with_squeeze_and_excitation:
+              branch_logits.append(image_feature)
 
           # Employ a 1x1 convolution.
           branch_logits.append(slim.conv2d(features, depth, 1,
@@ -506,13 +526,17 @@ def extract_features(images,
 
           # Merge branch logits.
           concat_logits = tf.concat(branch_logits, 3)
-          concat_logits = slim.conv2d(
-              concat_logits, depth, 1, scope=CONCAT_PROJECTION_SCOPE)
-          concat_logits = slim.dropout(
-              concat_logits,
-              keep_prob=0.9,
-              is_training=is_training,
-              scope=CONCAT_PROJECTION_SCOPE + '_dropout')
+          if model_options.aspp_with_concat_projection:
+            concat_logits = slim.conv2d(
+                concat_logits, depth, 1, scope=CONCAT_PROJECTION_SCOPE)
+            concat_logits = slim.dropout(
+                concat_logits,
+                keep_prob=0.9,
+                is_training=is_training,
+                scope=CONCAT_PROJECTION_SCOPE + '_dropout')
+          if (model_options.add_image_level_feature and
+              model_options.aspp_with_squeeze_and_excitation):
+            concat_logits *= image_feature
 
           return concat_logits, end_points
 
@@ -552,13 +576,19 @@ def _get_logits(images,
       fine_tune_batch_norm=fine_tune_batch_norm,
       nas_training_hyper_parameters=nas_training_hyper_parameters)
 
-  if model_options.decoder_output_stride is not None:
+  if model_options.decoder_output_stride:
+    crop_size = model_options.crop_size
+    if crop_size is None:
+      crop_size = [tf.shape(images)[1], tf.shape(images)[2]]
     features = refine_by_decoder(
         features,
         end_points,
-        crop_size=model_options.crop_size,
+        crop_size=crop_size,
         decoder_output_stride=model_options.decoder_output_stride,
         decoder_use_separable_conv=model_options.decoder_use_separable_conv,
+        decoder_use_sum_merge=model_options.decoder_use_sum_merge,
+        decoder_filters=model_options.decoder_filters,
+        decoder_output_is_logits=model_options.decoder_output_is_logits,
         model_variant=model_options.model_variant,
         weight_decay=weight_decay,
         reuse=reuse,
@@ -568,15 +598,19 @@ def _get_logits(images,
 
   outputs_to_logits = {}
   for output in sorted(model_options.outputs_to_num_classes):
-    outputs_to_logits[output] = get_branch_logits(
-        features,
-        model_options.outputs_to_num_classes[output],
-        model_options.atrous_rates,
-        aspp_with_batch_norm=model_options.aspp_with_batch_norm,
-        kernel_size=model_options.logits_kernel_size,
-        weight_decay=weight_decay,
-        reuse=reuse,
-        scope_suffix=output)
+    if model_options.decoder_output_is_logits:
+      outputs_to_logits[output] = tf.identity(features,
+                                              name=output)
+    else:
+      outputs_to_logits[output] = get_branch_logits(
+          features,
+          model_options.outputs_to_num_classes[output],
+          model_options.atrous_rates,
+          aspp_with_batch_norm=model_options.aspp_with_batch_norm,
+          kernel_size=model_options.logits_kernel_size,
+          weight_decay=weight_decay,
+          reuse=reuse,
+          scope_suffix=output)
 
   return outputs_to_logits
 
@@ -586,12 +620,16 @@ def refine_by_decoder(features,
                       crop_size=None,
                       decoder_output_stride=None,
                       decoder_use_separable_conv=False,
+                      decoder_use_sum_merge=False,
+                      decoder_filters=256,
+                      decoder_output_is_logits=False,
                       model_variant=None,
                       weight_decay=0.0001,
                       reuse=None,
                       is_training=False,
                       fine_tune_batch_norm=False,
-                      use_bounded_activation=False):
+                      use_bounded_activation=False,
+                      sync_batch_norm_method='None'):
   """Adds the decoder to obtain sharper segmentation results.
 
   Args:
@@ -604,6 +642,9 @@ def refine_by_decoder(features,
     decoder_output_stride: A list of integers specifying the output stride of
       low-level features used in the decoder module.
     decoder_use_separable_conv: Employ separable convolution for decoder or not.
+    decoder_use_sum_merge: Boolean, decoder uses simple sum merge or not.
+    decoder_filters: Integer, decoder filter size.
+    decoder_output_is_logits: Boolean, using decoder output as logits or not.
     model_variant: Model variant for feature extraction.
     weight_decay: The weight decay for model variables.
     reuse: Reuse the model variables or not.
@@ -611,6 +652,9 @@ def refine_by_decoder(features,
     fine_tune_batch_norm: Fine-tune the batch norm parameters or not.
     use_bounded_activation: Whether or not to use bounded activations. Bounded
       activations better lend themselves to quantized inference.
+    sync_batch_norm_method: String, method used to sync batch norm. Currently
+     only support `None` (no sync batch norm) and `tpu` (use tpu code to
+     sync batch norm).
 
   Returns:
     Decoder output with size [batch, decoder_height, decoder_width,
@@ -621,22 +665,40 @@ def refine_by_decoder(features,
   """
   if crop_size is None:
     raise ValueError('crop_size must be provided when using decoder.')
-  batch_norm_params = {
-      'is_training': is_training and fine_tune_batch_norm,
-      'decay': 0.9997,
-      'epsilon': 1e-5,
-      'scale': True,
-  }
-
+  batch_norm_params = utils.get_batch_norm_params(
+      decay=0.9997,
+      epsilon=1e-5,
+      scale=True,
+      is_training=(is_training and fine_tune_batch_norm),
+      sync_batch_norm_method=sync_batch_norm_method)
+  batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
+  decoder_depth = decoder_filters
+  projected_filters = 48
+  if decoder_use_sum_merge:
+    # When using sum merge, the projected filters must be equal to decoder
+    # filters.
+    projected_filters = decoder_filters
+  if decoder_output_is_logits:
+    # Overwrite the setting when decoder output is logits.
+    activation_fn = None
+    normalizer_fn = None
+    conv2d_kernel = 1
+    # Use original conv instead of separable conv.
+    decoder_use_separable_conv = False
+  else:
+    # Default setting when decoder output is not logits.
+    activation_fn = tf.nn.relu6 if use_bounded_activation else tf.nn.relu
+    normalizer_fn = batch_norm
+    conv2d_kernel = 3
   with slim.arg_scope(
       [slim.conv2d, slim.separable_conv2d],
       weights_regularizer=slim.l2_regularizer(weight_decay),
-      activation_fn=tf.nn.relu6 if use_bounded_activation else tf.nn.relu,
-      normalizer_fn=slim.batch_norm,
+      activation_fn=activation_fn,
+      normalizer_fn=normalizer_fn,
       padding='SAME',
       stride=1,
       reuse=reuse):
-    with slim.arg_scope([slim.batch_norm], **batch_norm_params):
+    with slim.arg_scope([batch_norm], **batch_norm_params):
       with tf.variable_scope(DECODER_SCOPE, DECODER_SCOPE, [features]):
         decoder_features = features
         decoder_stage = 0
@@ -652,7 +714,9 @@ def refine_by_decoder(features,
           for i, name in enumerate(feature_list):
             decoder_features_list = [decoder_features]
             # MobileNet and NAS variants use different naming convention.
-            if 'mobilenet' in model_variant or model_variant.startswith('nas'):
+            if ('mobilenet' in model_variant or
+                model_variant.startswith('mnas') or
+                model_variant.startswith('nas')):
               feature_name = name
             else:
               feature_name = '{}/{}'.format(
@@ -660,7 +724,7 @@ def refine_by_decoder(features,
             decoder_features_list.append(
                 slim.conv2d(
                     end_points[feature_name],
-                    48,
+                    projected_filters,
                     1,
                     scope='feature_projection' + str(i) + scope_suffix))
             # Determine the output size.
@@ -675,31 +739,113 @@ def refine_by_decoder(features,
               w = (None if isinstance(decoder_width, tf.Tensor)
                    else decoder_width)
               decoder_features_list[j].set_shape([None, h, w, None])
-            decoder_depth = 256
-            if decoder_use_separable_conv:
-              decoder_features = split_separable_conv2d(
-                  tf.concat(decoder_features_list, 3),
-                  filters=decoder_depth,
-                  rate=1,
-                  weight_decay=weight_decay,
-                  scope='decoder_conv0' + scope_suffix)
-              decoder_features = split_separable_conv2d(
-                  decoder_features,
-                  filters=decoder_depth,
-                  rate=1,
-                  weight_decay=weight_decay,
-                  scope='decoder_conv1' + scope_suffix)
-            else:
-              num_convs = 2
-              decoder_features = slim.repeat(
-                  tf.concat(decoder_features_list, 3),
-                  num_convs,
-                  slim.conv2d,
+            if decoder_use_sum_merge:
+              decoder_features = _decoder_with_sum_merge(
+                  decoder_features_list,
                   decoder_depth,
-                  3,
-                  scope='decoder_conv' + str(i) + scope_suffix)
+                  conv2d_kernel=conv2d_kernel,
+                  decoder_use_separable_conv=decoder_use_separable_conv,
+                  weight_decay=weight_decay,
+                  scope_suffix=scope_suffix)
+            else:
+              if not decoder_use_separable_conv:
+                scope_suffix = str(i) + scope_suffix
+              decoder_features = _decoder_with_concat_merge(
+                  decoder_features_list,
+                  decoder_depth,
+                  decoder_use_separable_conv=decoder_use_separable_conv,
+                  weight_decay=weight_decay,
+                  scope_suffix=scope_suffix)
           decoder_stage += 1
         return decoder_features
+
+
+def _decoder_with_sum_merge(decoder_features_list,
+                            decoder_depth,
+                            conv2d_kernel=3,
+                            decoder_use_separable_conv=True,
+                            weight_decay=0.0001,
+                            scope_suffix=''):
+  """Decoder with sum to merge features.
+
+  Args:
+    decoder_features_list: A list of decoder features.
+    decoder_depth: Integer, the filters used in the convolution.
+    conv2d_kernel: Integer, the convolution kernel size.
+    decoder_use_separable_conv: Boolean, use separable conv or not.
+    weight_decay: Weight decay for the model variables.
+    scope_suffix: String, used in the scope suffix.
+
+  Returns:
+    decoder features merged with sum.
+
+  Raises:
+    RuntimeError: If decoder_features_list have length not equal to 2.
+  """
+  if len(decoder_features_list) != 2:
+    raise RuntimeError('Expect decoder_features has length 2.')
+  # Only apply one convolution when decoder use sum merge.
+  if decoder_use_separable_conv:
+    decoder_features = split_separable_conv2d(
+        decoder_features_list[0],
+        filters=decoder_depth,
+        rate=1,
+        weight_decay=weight_decay,
+        scope='decoder_split_sep_conv0'+scope_suffix) + decoder_features_list[1]
+  else:
+    decoder_features = slim.conv2d(
+        decoder_features_list[0],
+        decoder_depth,
+        conv2d_kernel,
+        scope='decoder_conv0'+scope_suffix) + decoder_features_list[1]
+  return decoder_features
+
+
+def _decoder_with_concat_merge(decoder_features_list,
+                               decoder_depth,
+                               decoder_use_separable_conv=True,
+                               weight_decay=0.0001,
+                               scope_suffix=''):
+  """Decoder with concatenation to merge features.
+
+  This decoder method applies two convolutions to smooth the features obtained
+  by concatenating the input decoder_features_list.
+
+  This decoder module is proposed in the DeepLabv3+ paper.
+
+  Args:
+    decoder_features_list: A list of decoder features.
+    decoder_depth: Integer, the filters used in the convolution.
+    decoder_use_separable_conv: Boolean, use separable conv or not.
+    weight_decay: Weight decay for the model variables.
+    scope_suffix: String, used in the scope suffix.
+
+  Returns:
+    decoder features merged with concatenation.
+  """
+  if decoder_use_separable_conv:
+    decoder_features = split_separable_conv2d(
+        tf.concat(decoder_features_list, 3),
+        filters=decoder_depth,
+        rate=1,
+        weight_decay=weight_decay,
+        scope='decoder_conv0'+scope_suffix)
+    decoder_features = split_separable_conv2d(
+        decoder_features,
+        filters=decoder_depth,
+        rate=1,
+        weight_decay=weight_decay,
+        scope='decoder_conv1'+scope_suffix)
+  else:
+    num_convs = 2
+    decoder_features = slim.repeat(
+        tf.concat(decoder_features_list, 3),
+        num_convs,
+        slim.conv2d,
+        decoder_depth,
+        3,
+        scope='decoder_conv'+scope_suffix)
+  return decoder_features
 
 
 def get_branch_logits(features,

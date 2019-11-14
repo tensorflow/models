@@ -57,6 +57,23 @@ class LabelMapUtilTest(tf.test.TestCase):
     self.assertEqual(label_map_dict['dog'], 1)
     self.assertEqual(label_map_dict['cat'], 2)
 
+  def test_get_label_map_dict_from_proto(self):
+    label_map_string = """
+      item {
+        id:2
+        name:'cat'
+      }
+      item {
+        id:1
+        name:'dog'
+      }
+    """
+    label_map_proto = text_format.Parse(
+        label_map_string, string_int_label_map_pb2.StringIntLabelMap())
+    label_map_dict = label_map_util.get_label_map_dict(label_map_proto)
+    self.assertEqual(label_map_dict['dog'], 1)
+    self.assertEqual(label_map_dict['cat'], 2)
+
   def test_get_label_map_dict_display(self):
     label_map_string = """
       item {

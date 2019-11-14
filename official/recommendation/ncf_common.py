@@ -29,10 +29,10 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
+from official.recommendation import movielens
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
@@ -147,15 +147,16 @@ def get_v1_distribution_strategy(params):
 def define_ncf_flags():
   """Add flags for running ncf_main."""
   # Add common flags
-  flags_core.define_base(export_dir=False, run_eagerly=True)
+  flags_core.define_base(clean=True, train_epochs=True,
+                         epochs_between_evals=True, export_dir=False,
+                         run_eagerly=True, stop_threshold=True, num_gpu=True,
+                         hooks=True, distribution_strategy=True)
   flags_core.define_performance(
-      num_parallel_calls=False,
-      inter_op=False,
-      intra_op=False,
       synthetic_data=True,
-      max_train_steps=False,
-      dtype=False,
-      all_reduce_alg=False,
+      dtype=True,
+      fp16_implementation=True,
+      loss_scale=True,
+      dynamic_loss_scale=True,
       enable_xla=True,
       force_v2_in_keras_compile=True
   )

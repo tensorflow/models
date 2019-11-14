@@ -60,8 +60,8 @@ def get_model_params(param_set, num_gpus):
 
 def define_transformer_flags():
   """Add flags and flag validators for running transformer_main."""
-  # Add common flags (data_dir, model_dir, train_epochs, etc.).
-  flags_core.define_base()
+  # Add common flags (data_dir, model_dir, etc.).
+  flags_core.define_base(num_gpu=True, distribution_strategy=True)
   flags_core.define_performance(
       num_parallel_calls=True,
       inter_op=False,
@@ -72,7 +72,8 @@ def define_transformer_flags():
       loss_scale=True,
       all_reduce_alg=True,
       enable_xla=True,
-      force_v2_in_keras_compile=True
+      force_v2_in_keras_compile=True,
+      fp16_implementation=True
   )
 
   # Additional performance flags
@@ -85,7 +86,7 @@ def define_transformer_flags():
            'convolutions and batch normalizations, and this flag allows to '
            'disable it.'
   )
-
+    
   flags_core.define_benchmark()
   flags_core.define_device(tpu=True)
 
@@ -158,15 +159,13 @@ def define_transformer_flags():
       help=flags_core.help_wrap(
           'Path to source file containing text translate when calculating the '
           'official BLEU score. Both --bleu_source and --bleu_ref must be set. '
-          'Use the flag --stop_threshold to stop the script based on the '
-          'uncased BLEU score.'))
+          ))
   flags.DEFINE_string(
       name='bleu_ref', short_name='blr', default=None,
       help=flags_core.help_wrap(
           'Path to source file containing text translate when calculating the '
           'official BLEU score. Both --bleu_source and --bleu_ref must be set. '
-          'Use the flag --stop_threshold to stop the script based on the '
-          'uncased BLEU score.'))
+          ))
   flags.DEFINE_string(
       name='vocab_file', short_name='vf', default=None,
       help=flags_core.help_wrap(
@@ -176,21 +175,40 @@ def define_transformer_flags():
   flags.DEFINE_string(
       name='mode', default='train',
       help=flags_core.help_wrap('mode: train, eval, or predict'))
+  flags.DEFINE_bool(
+      name='use_ctl',
+      default=False,
+      help=flags_core.help_wrap(
+          'Whether the model runs with custom training loop.'))
+  flags.DEFINE_integer(
+      name='decode_batch_size',
+      default=32,
+      help=flags_core.help_wrap(
+          'Global batch size used for Transformer autoregressive decoding on '
+          'TPU.'))
+  flags.DEFINE_integer(
+      name='decode_max_length',
+      default=97,
+      help=flags_core.help_wrap(
+          'Max sequence length of the decode/eval data. This is used by '
+          'Transformer autoregressive decoding on TPU to have minimum '
+          'paddings.'))
+  flags.DEFINE_bool(
+      name='padded_decode',
+      default=False,
+      help=flags_core.help_wrap(
+          'Whether the autoregressive decoding runs with input data padded to '
+          'the decode_max_length. For TPU/XLA-GPU runs, this flag has to be '
+          'set due the static shape requirement. Although CPU/GPU could also '
+          'use padded_decode, it has not been tested. In addition, this method '
+          'will introduce unnecessary overheads which grow quadratically with '
+          'the max sequence length.'))
 
   flags_core.set_defaults(data_dir='/tmp/translate_ende',
                           model_dir='/tmp/transformer_model',
-                          batch_size=None,
-                          train_epochs=10)
+                          batch_size=None)
 
   # pylint: disable=unused-variable
-  @flags.multi_flags_validator(
-      ['mode', 'train_epochs'],
-      message='--train_epochs must be defined in train mode')
-  def _check_train_limits(flag_dict):
-    if flag_dict['mode'] == 'train':
-      return flag_dict['train_epochs'] is not None
-    return True
-
   @flags.multi_flags_validator(
       ['bleu_source', 'bleu_ref'],
       message='Both or neither --bleu_source and --bleu_ref must be defined.')
@@ -206,17 +224,7 @@ def define_transformer_flags():
     if flags_dict['bleu_source'] and flags_dict['bleu_ref']:
       return flags_dict['vocab_file'] is not None
     return True
-
-  @flags.multi_flags_validator(
-      ['export_dir', 'vocab_file'],
-      message='--vocab_file must be defined if --export_dir is set.')
-  def _check_export_vocab_file(flags_dict):
-    if flags_dict['export_dir']:
-      return flags_dict['vocab_file'] is not None
-    return True
   # pylint: enable=unused-variable
-
-  flags_core.require_cloud_storage(['data_dir', 'model_dir', 'export_dir'])
 
 
 def get_callbacks():

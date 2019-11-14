@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,12 +44,20 @@ Andrew G. Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang,
 Tobias Weyand, Marco Andreetto, Hartwig Adam
 https://arxiv.org/abs/1704.04861
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import collections
+from six.moves import range
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
+from deeplab.core import utils
 from tensorflow.contrib.slim.nets import resnet_utils
+from nets.mobilenet import conv_blocks as mobilenet_v3_ops
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 _DEFAULT_MULTI_GRID = [1, 1, 1]
@@ -197,6 +206,7 @@ def xception_module(inputs,
                     depth_list,
                     skip_connection_type,
                     stride,
+                    kernel_size=3,
                     unit_rate_list=None,
                     rate=1,
                     activation_fn_in_separable_conv=False,
@@ -204,7 +214,9 @@ def xception_module(inputs,
                     outputs_collections=None,
                     scope=None,
                     use_bounded_activation=False,
-                    use_explicit_padding=True):
+                    use_explicit_padding=True,
+                    use_squeeze_excite=False,
+                    se_pool_size=None):
   """An Xception module.
 
   The output of one Xception module is equal to the sum of `residual` and
@@ -225,6 +237,7 @@ def xception_module(inputs,
       supports 'conv', 'sum', or 'none'.
     stride: The block unit's stride. Determines the amount of downsampling of
       the units output compared to its input.
+    kernel_size: Integer, convolution kernel size.
     unit_rate_list: A list of three integers, determining the unit rate for
       each separable convolution in the xception module.
     rate: An integer, rate for atrous convolution.
@@ -239,6 +252,8 @@ def xception_module(inputs,
     use_explicit_padding: If True, use explicit padding to make the model fully
       compatible with the open source version, otherwise use the native
       Tensorflow 'SAME' padding.
+    use_squeeze_excite: Boolean, use squeeze-and-excitation or not.
+    se_pool_size: None or integer specifying the pooling size used in SE module.
 
   Returns:
     The Xception module's output.
@@ -285,12 +300,20 @@ def xception_module(inputs,
     for i in range(3):
       residual = _separable_conv(residual,
                                  depth_list[i],
-                                 kernel_size=3,
+                                 kernel_size=kernel_size,
                                  depth_multiplier=1,
                                  regularize_depthwise=regularize_depthwise,
                                  rate=rate*unit_rate_list[i],
                                  stride=stride if i == 2 else 1,
                                  scope='separable_conv' + str(i+1))
+    if use_squeeze_excite:
+      residual = mobilenet_v3_ops.squeeze_excite(
+          input_tensor=residual,
+          squeeze_factor=16,
+          inner_activation_fn=tf.nn.relu,
+          gating_fn=lambda x: tf.nn.relu6(x+3)*0.16667,
+          pool=se_pool_size)
+
     if skip_connection_type == 'conv':
       shortcut = slim.conv2d(inputs,
                              depth_list[-1],
@@ -399,7 +422,8 @@ def xception(inputs,
              keep_prob=0.5,
              output_stride=None,
              reuse=None,
-             scope=None):
+             scope=None,
+             sync_batch_norm_method='None'):
   """Generator for Xception models.
 
   This function generates a family of Xception models. See the xception_*()
@@ -425,6 +449,8 @@ def xception(inputs,
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
+    sync_batch_norm_method: String, sync batchnorm method. Currently only
+      support `None`.
 
   Returns:
     net: A rank-4 tensor of size [batch, height_out, width_out, channels_out].
@@ -443,17 +469,18 @@ def xception(inputs,
   with tf.variable_scope(
       scope, 'xception', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + 'end_points'
+    batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
     with slim.arg_scope([slim.conv2d,
                          slim.separable_conv2d,
                          xception_module,
                          stack_blocks_dense],
                         outputs_collections=end_points_collection):
-      with slim.arg_scope([slim.batch_norm], is_training=is_training):
+      with slim.arg_scope([batch_norm], is_training=is_training):
         net = inputs
         if output_stride is not None:
           if output_stride % 2 != 0:
             raise ValueError('The output_stride needs to be a multiple of 2.')
-          output_stride /= 2
+          output_stride //= 2
         # Root block function operated on inputs.
         net = resnet_utils.conv2d_same(net, 32, 3, stride=2,
                                        scope='entry_flow/conv1_1')
@@ -488,7 +515,10 @@ def xception_block(scope,
                    regularize_depthwise,
                    num_units,
                    stride,
-                   unit_rate_list=None):
+                   kernel_size=3,
+                   unit_rate_list=None,
+                   use_squeeze_excite=False,
+                   se_pool_size=None):
   """Helper function for creating a Xception block.
 
   Args:
@@ -503,8 +533,11 @@ def xception_block(scope,
     num_units: The number of units in the block.
     stride: The stride of the block, implemented as a stride in the last unit.
       All other units have stride=1.
+    kernel_size: Integer, convolution kernel size.
     unit_rate_list: A list of three integers, determining the unit rate in the
       corresponding xception block.
+    use_squeeze_excite: Boolean, use squeeze-and-excitation or not.
+    se_pool_size: None or integer specifying the pooling size used in SE module.
 
   Returns:
     An Xception block.
@@ -517,7 +550,10 @@ def xception_block(scope,
       'activation_fn_in_separable_conv': activation_fn_in_separable_conv,
       'regularize_depthwise': regularize_depthwise,
       'stride': stride,
+      'kernel_size': kernel_size,
       'unit_rate_list': unit_rate_list,
+      'use_squeeze_excite': use_squeeze_excite,
+      'se_pool_size': se_pool_size,
   }] * num_units)
 
 
@@ -530,7 +566,8 @@ def xception_41(inputs,
                 regularize_depthwise=False,
                 multi_grid=None,
                 reuse=None,
-                scope='xception_41'):
+                scope='xception_41',
+                sync_batch_norm_method='None'):
   """Xception-41 model."""
   blocks = [
       xception_block('entry_flow/block1',
@@ -585,7 +622,98 @@ def xception_41(inputs,
                   keep_prob=keep_prob,
                   output_stride=output_stride,
                   reuse=reuse,
-                  scope=scope)
+                  scope=scope,
+                  sync_batch_norm_method=sync_batch_norm_method)
+
+
+def xception_65_factory(inputs,
+                        num_classes=None,
+                        is_training=True,
+                        global_pool=True,
+                        keep_prob=0.5,
+                        output_stride=None,
+                        regularize_depthwise=False,
+                        kernel_size=3,
+                        multi_grid=None,
+                        reuse=None,
+                        use_squeeze_excite=False,
+                        se_pool_size=None,
+                        scope='xception_65',
+                        sync_batch_norm_method='None'):
+  """Xception-65 model factory."""
+  blocks = [
+      xception_block('entry_flow/block1',
+                     depth_list=[128, 128, 128],
+                     skip_connection_type='conv',
+                     activation_fn_in_separable_conv=False,
+                     regularize_depthwise=regularize_depthwise,
+                     num_units=1,
+                     stride=2,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=False,
+                     se_pool_size=se_pool_size),
+      xception_block('entry_flow/block2',
+                     depth_list=[256, 256, 256],
+                     skip_connection_type='conv',
+                     activation_fn_in_separable_conv=False,
+                     regularize_depthwise=regularize_depthwise,
+                     num_units=1,
+                     stride=2,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=False,
+                     se_pool_size=se_pool_size),
+      xception_block('entry_flow/block3',
+                     depth_list=[728, 728, 728],
+                     skip_connection_type='conv',
+                     activation_fn_in_separable_conv=False,
+                     regularize_depthwise=regularize_depthwise,
+                     num_units=1,
+                     stride=2,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=use_squeeze_excite,
+                     se_pool_size=se_pool_size),
+      xception_block('middle_flow/block1',
+                     depth_list=[728, 728, 728],
+                     skip_connection_type='sum',
+                     activation_fn_in_separable_conv=False,
+                     regularize_depthwise=regularize_depthwise,
+                     num_units=16,
+                     stride=1,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=use_squeeze_excite,
+                     se_pool_size=se_pool_size),
+      xception_block('exit_flow/block1',
+                     depth_list=[728, 1024, 1024],
+                     skip_connection_type='conv',
+                     activation_fn_in_separable_conv=False,
+                     regularize_depthwise=regularize_depthwise,
+                     num_units=1,
+                     stride=2,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=use_squeeze_excite,
+                     se_pool_size=se_pool_size),
+      xception_block('exit_flow/block2',
+                     depth_list=[1536, 1536, 2048],
+                     skip_connection_type='none',
+                     activation_fn_in_separable_conv=True,
+                     regularize_depthwise=regularize_depthwise,
+                     num_units=1,
+                     stride=1,
+                     kernel_size=kernel_size,
+                     unit_rate_list=multi_grid,
+                     use_squeeze_excite=False,
+                     se_pool_size=se_pool_size),
+  ]
+  return xception(inputs,
+                  blocks=blocks,
+                  num_classes=num_classes,
+                  is_training=is_training,
+                  global_pool=global_pool,
+                  keep_prob=keep_prob,
+                  output_stride=output_stride,
+                  reuse=reuse,
+                  scope=scope,
+                  sync_batch_norm_method=sync_batch_norm_method)
 
 
 def xception_65(inputs,
@@ -597,8 +725,40 @@ def xception_65(inputs,
                 regularize_depthwise=False,
                 multi_grid=None,
                 reuse=None,
-                scope='xception_65'):
+                scope='xception_65',
+                sync_batch_norm_method='None'):
   """Xception-65 model."""
+  return xception_65_factory(
+      inputs=inputs,
+      num_classes=num_classes,
+      is_training=is_training,
+      global_pool=global_pool,
+      keep_prob=keep_prob,
+      output_stride=output_stride,
+      regularize_depthwise=regularize_depthwise,
+      multi_grid=multi_grid,
+      reuse=reuse,
+      scope=scope,
+      use_squeeze_excite=False,
+      se_pool_size=None,
+      sync_batch_norm_method=sync_batch_norm_method)
+
+
+def xception_71_factory(inputs,
+                        num_classes=None,
+                        is_training=True,
+                        global_pool=True,
+                        keep_prob=0.5,
+                        output_stride=None,
+                        regularize_depthwise=False,
+                        kernel_size=3,
+                        multi_grid=None,
+                        reuse=None,
+                        scope='xception_71',
+                        use_squeeze_excite=False,
+                        se_pool_size=None,
+                        sync_batch_norm_method='None'):
+  """Xception-71 model factory."""
   blocks = [
       xception_block('entry_flow/block1',
                      depth_list=[128, 128, 128],
@@ -606,35 +766,70 @@ def xception_65(inputs,
                      activation_fn_in_separable_conv=False,
                      regularize_depthwise=regularize_depthwise,
                      num_units=1,
-                     stride=2),
+                     stride=2,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=False,
+                     se_pool_size=se_pool_size),
       xception_block('entry_flow/block2',
                      depth_list=[256, 256, 256],
                      skip_connection_type='conv',
                      activation_fn_in_separable_conv=False,
                      regularize_depthwise=regularize_depthwise,
                      num_units=1,
-                     stride=2),
+                     stride=1,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=False,
+                     se_pool_size=se_pool_size),
       xception_block('entry_flow/block3',
+                     depth_list=[256, 256, 256],
+                     skip_connection_type='conv',
+                     activation_fn_in_separable_conv=False,
+                     regularize_depthwise=regularize_depthwise,
+                     num_units=1,
+                     stride=2,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=False,
+                     se_pool_size=se_pool_size),
+      xception_block('entry_flow/block4',
                      depth_list=[728, 728, 728],
                      skip_connection_type='conv',
                      activation_fn_in_separable_conv=False,
                      regularize_depthwise=regularize_depthwise,
                      num_units=1,
-                     stride=2),
+                     stride=1,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=use_squeeze_excite,
+                     se_pool_size=se_pool_size),
+      xception_block('entry_flow/block5',
+                     depth_list=[728, 728, 728],
+                     skip_connection_type='conv',
+                     activation_fn_in_separable_conv=False,
+                     regularize_depthwise=regularize_depthwise,
+                     num_units=1,
+                     stride=2,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=use_squeeze_excite,
+                     se_pool_size=se_pool_size),
       xception_block('middle_flow/block1',
                      depth_list=[728, 728, 728],
                      skip_connection_type='sum',
                      activation_fn_in_separable_conv=False,
                      regularize_depthwise=regularize_depthwise,
                      num_units=16,
-                     stride=1),
+                     stride=1,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=use_squeeze_excite,
+                     se_pool_size=se_pool_size),
       xception_block('exit_flow/block1',
                      depth_list=[728, 1024, 1024],
                      skip_connection_type='conv',
                      activation_fn_in_separable_conv=False,
                      regularize_depthwise=regularize_depthwise,
                      num_units=1,
-                     stride=2),
+                     stride=2,
+                     kernel_size=kernel_size,
+                     use_squeeze_excite=use_squeeze_excite,
+                     se_pool_size=se_pool_size),
       xception_block('exit_flow/block2',
                      depth_list=[1536, 1536, 2048],
                      skip_connection_type='none',
@@ -642,7 +837,10 @@ def xception_65(inputs,
                      regularize_depthwise=regularize_depthwise,
                      num_units=1,
                      stride=1,
-                     unit_rate_list=multi_grid),
+                     kernel_size=kernel_size,
+                     unit_rate_list=multi_grid,
+                     use_squeeze_excite=False,
+                     se_pool_size=se_pool_size),
   ]
   return xception(inputs,
                   blocks=blocks,
@@ -652,7 +850,8 @@ def xception_65(inputs,
                   keep_prob=keep_prob,
                   output_stride=output_stride,
                   reuse=reuse,
-                  scope=scope)
+                  scope=scope,
+                  sync_batch_norm_method=sync_batch_norm_method)
 
 
 def xception_71(inputs,
@@ -664,76 +863,23 @@ def xception_71(inputs,
                 regularize_depthwise=False,
                 multi_grid=None,
                 reuse=None,
-                scope='xception_71'):
+                scope='xception_71',
+                sync_batch_norm_method='None'):
   """Xception-71 model."""
-  blocks = [
-      xception_block('entry_flow/block1',
-                     depth_list=[128, 128, 128],
-                     skip_connection_type='conv',
-                     activation_fn_in_separable_conv=False,
-                     regularize_depthwise=regularize_depthwise,
-                     num_units=1,
-                     stride=2),
-      xception_block('entry_flow/block2',
-                     depth_list=[256, 256, 256],
-                     skip_connection_type='conv',
-                     activation_fn_in_separable_conv=False,
-                     regularize_depthwise=regularize_depthwise,
-                     num_units=1,
-                     stride=1),
-      xception_block('entry_flow/block3',
-                     depth_list=[256, 256, 256],
-                     skip_connection_type='conv',
-                     activation_fn_in_separable_conv=False,
-                     regularize_depthwise=regularize_depthwise,
-                     num_units=1,
-                     stride=2),
-      xception_block('entry_flow/block4',
-                     depth_list=[728, 728, 728],
-                     skip_connection_type='conv',
-                     activation_fn_in_separable_conv=False,
-                     regularize_depthwise=regularize_depthwise,
-                     num_units=1,
-                     stride=1),
-      xception_block('entry_flow/block5',
-                     depth_list=[728, 728, 728],
-                     skip_connection_type='conv',
-                     activation_fn_in_separable_conv=False,
-                     regularize_depthwise=regularize_depthwise,
-                     num_units=1,
-                     stride=2),
-      xception_block('middle_flow/block1',
-                     depth_list=[728, 728, 728],
-                     skip_connection_type='sum',
-                     activation_fn_in_separable_conv=False,
-                     regularize_depthwise=regularize_depthwise,
-                     num_units=16,
-                     stride=1),
-      xception_block('exit_flow/block1',
-                     depth_list=[728, 1024, 1024],
-                     skip_connection_type='conv',
-                     activation_fn_in_separable_conv=False,
-                     regularize_depthwise=regularize_depthwise,
-                     num_units=1,
-                     stride=2),
-      xception_block('exit_flow/block2',
-                     depth_list=[1536, 1536, 2048],
-                     skip_connection_type='none',
-                     activation_fn_in_separable_conv=True,
-                     regularize_depthwise=regularize_depthwise,
-                     num_units=1,
-                     stride=1,
-                     unit_rate_list=multi_grid),
-  ]
-  return xception(inputs,
-                  blocks=blocks,
-                  num_classes=num_classes,
-                  is_training=is_training,
-                  global_pool=global_pool,
-                  keep_prob=keep_prob,
-                  output_stride=output_stride,
-                  reuse=reuse,
-                  scope=scope)
+  return xception_71_factory(
+      inputs=inputs,
+      num_classes=num_classes,
+      is_training=is_training,
+      global_pool=global_pool,
+      keep_prob=keep_prob,
+      output_stride=output_stride,
+      regularize_depthwise=regularize_depthwise,
+      multi_grid=multi_grid,
+      reuse=reuse,
+      scope=scope,
+      use_squeeze_excite=False,
+      se_pool_size=None,
+      sync_batch_norm_method=sync_batch_norm_method)
 
 
 def xception_arg_scope(weight_decay=0.00004,
@@ -743,7 +889,8 @@ def xception_arg_scope(weight_decay=0.00004,
                        weights_initializer_stddev=0.09,
                        regularize_depthwise=False,
                        use_batch_norm=True,
-                       use_bounded_activation=False):
+                       use_bounded_activation=False,
+                       sync_batch_norm_method='None'):
   """Defines the default Xception arg scope.
 
   Args:
@@ -761,6 +908,8 @@ def xception_arg_scope(weight_decay=0.00004,
     use_batch_norm: Whether or not to use batch normalization.
     use_bounded_activation: Whether or not to use bounded activations. Bounded
       activations better lend themselves to quantized inference.
+    sync_batch_norm_method: String, sync batchnorm method. Currently only
+      support `None`. Also, it is only effective for Xception.
 
   Returns:
     An `arg_scope` to use for the Xception models.
@@ -775,13 +924,14 @@ def xception_arg_scope(weight_decay=0.00004,
   else:
     depthwise_regularizer = None
   activation_fn = tf.nn.relu6 if use_bounded_activation else tf.nn.relu
+  batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
   with slim.arg_scope(
       [slim.conv2d, slim.separable_conv2d],
       weights_initializer=tf.truncated_normal_initializer(
           stddev=weights_initializer_stddev),
       activation_fn=activation_fn,
-      normalizer_fn=slim.batch_norm if use_batch_norm else None):
-    with slim.arg_scope([slim.batch_norm], **batch_norm_params):
+      normalizer_fn=batch_norm if use_batch_norm else None):
+    with slim.arg_scope([batch_norm], **batch_norm_params):
       with slim.arg_scope(
           [slim.conv2d],
           weights_regularizer=slim.l2_regularizer(weight_decay)):

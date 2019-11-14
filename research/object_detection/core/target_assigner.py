@@ -41,8 +41,9 @@ import tensorflow as tf
 
 from object_detection.box_coders import faster_rcnn_box_coder
 from object_detection.box_coders import mean_stddev_box_coder
-from object_detection.core import box_coder as bcoder
+from object_detection.core import box_coder
 from object_detection.core import box_list
+from object_detection.core import box_list_ops
 from object_detection.core import matcher as mat
 from object_detection.core import region_similarity_calculator as sim_calc
 from object_detection.core import standard_fields as fields
@@ -57,7 +58,7 @@ class TargetAssigner(object):
   def __init__(self,
                similarity_calc,
                matcher,
-               box_coder,
+               box_coder_instance,
                negative_class_weight=1.0):
     """Construct Object Detection Target Assigner.
 
@@ -65,8 +66,8 @@ class TargetAssigner(object):
       similarity_calc: a RegionSimilarityCalculator
       matcher: an object_detection.core.Matcher used to match groundtruth to
         anchors.
-      box_coder: an object_detection.core.BoxCoder used to encode matching
-        groundtruth boxes with respect to anchors.
+      box_coder_instance: an object_detection.core.BoxCoder used to encode
+        matching groundtruth boxes with respect to anchors.
       negative_class_weight: classification weight to be associated to negative
         anchors (default: 1.0). The weight must be in [0., 1.].
 
@@ -78,11 +79,11 @@ class TargetAssigner(object):
       raise ValueError('similarity_calc must be a RegionSimilarityCalculator')
     if not isinstance(matcher, mat.Matcher):
       raise ValueError('matcher must be a Matcher')
-    if not isinstance(box_coder, bcoder.BoxCoder):
+    if not isinstance(box_coder_instance, box_coder.BoxCoder):
       raise ValueError('box_coder must be a BoxCoder')
     self._similarity_calc = similarity_calc
     self._matcher = matcher
-    self._box_coder = box_coder
+    self._box_coder = box_coder_instance
     self._negative_class_weight = negative_class_weight
 
   @property
@@ -391,7 +392,7 @@ def create_target_assigner(reference, stage=None,
   if reference == 'Multibox' and stage == 'proposal':
     similarity_calc = sim_calc.NegSqDistSimilarity()
     matcher = bipartite_matcher.GreedyBipartiteMatcher()
-    box_coder = mean_stddev_box_coder.MeanStddevBoxCoder()
+    box_coder_instance = mean_stddev_box_coder.MeanStddevBoxCoder()
 
   elif reference == 'FasterRCNN' and stage == 'proposal':
     similarity_calc = sim_calc.IouSimilarity()
@@ -399,7 +400,7 @@ def create_target_assigner(reference, stage=None,
                                            unmatched_threshold=0.3,
                                            force_match_for_each_row=True,
                                            use_matmul_gather=use_matmul_gather)
-    box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder(
+    box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder(
         scale_factors=[10.0, 10.0, 5.0, 5.0])
 
   elif reference == 'FasterRCNN' and stage == 'detection':
@@ -408,7 +409,7 @@ def create_target_assigner(reference, stage=None,
     matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
                                            negatives_lower_than_unmatched=True,
                                            use_matmul_gather=use_matmul_gather)
-    box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder(
+    box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder(
         scale_factors=[10.0, 10.0, 5.0, 5.0])
 
   elif reference == 'FastRCNN':
@@ -418,12 +419,12 @@ def create_target_assigner(reference, stage=None,
                                            force_match_for_each_row=False,
                                            negatives_lower_than_unmatched=False,
                                            use_matmul_gather=use_matmul_gather)
-    box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder()
+    box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder()
 
   else:
     raise ValueError('No valid combination of reference and stage.')
 
-  return TargetAssigner(similarity_calc, matcher, box_coder,
+  return TargetAssigner(similarity_calc, matcher, box_coder_instance,
                         negative_class_weight=negative_class_weight)
 
 
@@ -702,3 +703,5 @@ def batch_assign_confidences(target_assigner,
   batch_match = tf.stack(match_list)
   return (batch_cls_targets, batch_cls_weights, batch_reg_targets,
           batch_reg_weights, batch_match)
+
+

@@ -18,7 +18,7 @@ import sys
 
 import numpy as np
 
-from official.datasets import movielens
+from official.recommendation import movielens
 
 # ==============================================================================
 # == Main Thread Data Processing ===============================================
