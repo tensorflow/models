@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
 import json
 import math
 import os
@@ -31,6 +32,7 @@ import tensorflow as tf
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.nlp import bert_modeling as modeling
+from official.nlp.bert import input_pipeline
 from official.nlp.bert import run_classifier
 from official.utils.misc import distribution_utils
 
@@ -76,6 +78,19 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
 
     steps_per_loop = 1
 
+    max_seq_length = input_meta_data['max_seq_length']
+    train_input_fn = functools.partial(
+        input_pipeline.create_classifier_dataset,
+        FLAGS.train_data_path,
+        seq_length=max_seq_length,
+        batch_size=FLAGS.train_batch_size)
+    eval_input_fn = functools.partial(
+        input_pipeline.create_classifier_dataset,
+        FLAGS.eval_data_path,
+        seq_length=max_seq_length,
+        batch_size=FLAGS.eval_batch_size,
+        is_training=False,
+        drop_remainder=False)
     run_classifier.run_bert_classifier(
         strategy,
         bert_config,
@@ -88,6 +103,8 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
         warmup_steps,
         FLAGS.learning_rate,
         FLAGS.init_checkpoint,
+        train_input_fn,
+        eval_input_fn,
         custom_callbacks=callbacks)
 
 

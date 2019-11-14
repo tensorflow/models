@@ -58,6 +58,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
   def test_network_creation_with_float16_dtype(self):
     hidden_size = 32
     sequence_length = 21
+    tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
     # Create a small TransformerEncoder for testing.
     test_network = transformer_encoder.TransformerEncoder(
         vocab_size=100,
@@ -86,6 +87,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     sequence_length = 21
     vocab_size = 57
     num_types = 7
+    tf.keras.mixed_precision.experimental.set_policy("float32")
     # Create a small TransformerEncoder for testing.
     test_network = transformer_encoder.TransformerEncoder(
         vocab_size=vocab_size,
@@ -166,4 +168,5 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
 
 
 if __name__ == "__main__":
+  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

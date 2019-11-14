@@ -167,7 +167,8 @@ def sorted_non_max_suppression_padded(scores,
       tf.math.ceil(tf.cast(num_boxes, tf.float32) / NMS_TILE_SIZE),
       tf.int32) * NMS_TILE_SIZE - num_boxes
   boxes = tf.pad(tf.cast(boxes, tf.float32), [[0, 0], [0, pad], [0, 0]])
-  scores = tf.pad(tf.cast(scores, tf.float32), [[0, 0], [0, pad]])
+  scores = tf.pad(
+      tf.cast(scores, tf.float32), [[0, 0], [0, pad]], constant_values=-1)
   num_boxes += pad
 
   def _loop_cond(unused_boxes, unused_threshold, output_size, idx):

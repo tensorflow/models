@@ -246,6 +246,29 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       self.assertTrue(os.path.exists(os.path.join(
           output_directory, 'saved_model', 'saved_model.pb')))
 
+  def test_export_graph_with_fixed_size_tf_example_input(self):
+    input_shape = [1, 320, 320, 3]
+
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(
+        trained_checkpoint_prefix, use_moving_averages=False)
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      output_directory = os.path.join(tmp_dir, 'output')
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      pipeline_config.eval_config.use_moving_averages = False
+      exporter.export_inference_graph(
+          input_type='tf_example',
+          pipeline_config=pipeline_config,
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory,
+          input_shape=input_shape)
+      saved_model_path = os.path.join(output_directory, 'saved_model')
+      self.assertTrue(
+          os.path.exists(os.path.join(saved_model_path, 'saved_model.pb')))
+
   def test_export_graph_with_encoded_image_string_input(self):
     tmp_dir = self.get_temp_dir()
     trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
@@ -264,6 +287,29 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           output_directory=output_directory)
       self.assertTrue(os.path.exists(os.path.join(
           output_directory, 'saved_model', 'saved_model.pb')))
+
+  def test_export_graph_with_fixed_size_encoded_image_string_input(self):
+    input_shape = [1, 320, 320, 3]
+
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(
+        trained_checkpoint_prefix, use_moving_averages=False)
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      output_directory = os.path.join(tmp_dir, 'output')
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      pipeline_config.eval_config.use_moving_averages = False
+      exporter.export_inference_graph(
+          input_type='encoded_image_string_tensor',
+          pipeline_config=pipeline_config,
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory,
+          input_shape=input_shape)
+      saved_model_path = os.path.join(output_directory, 'saved_model')
+      self.assertTrue(
+          os.path.exists(os.path.join(saved_model_path, 'saved_model.pb')))
 
   def _get_variables_in_checkpoint(self, checkpoint_file):
     return set([

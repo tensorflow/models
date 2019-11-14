@@ -17,6 +17,7 @@
 import functools
 import tensorflow as tf
 from google.protobuf import text_format
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.builders import post_processing_builder
 from object_detection.core import anchor_generator
@@ -33,7 +34,7 @@ from object_detection.utils import ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 
-slim = tf.contrib.slim
+slim = contrib_slim
 keras = tf.keras.layers
 
 

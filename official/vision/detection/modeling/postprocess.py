@@ -23,6 +23,7 @@ import functools
 
 import tensorflow.compat.v2 as tf
 
+from official.vision.detection.ops import nms
 from official.vision.detection.utils import box_utils
 
 
@@ -51,16 +52,16 @@ def _generate_detections(boxes,
                          pre_nms_num_boxes=5000):
   """Generate the final detections given the model outputs.
 
-  This uses batch unrolling, which is TPU compatible.
+  This uses classes unrolling with while loop based NMS, could be parralled at batch dimension.
 
   Args:
-    boxes: a tensor with shape [batch_size, N, num_classes, 4] or
-      [batch_size, N, 1, 4], which box predictions on all feature levels. The N
-      is the number of total anchors on all levels.
-    scores: a tensor with shape [batch_size, N, num_classes], which
-      stacks class probability on all feature levels. The N is the number of
-      total anchors on all levels. The num_classes is the number of classes
-      predicted by the model. Note that the class_outputs here is the raw score.
+    boxes: a tensor with shape [batch_size, N, num_classes, 4] or [batch_size,
+      N, 1, 4], which box predictions on all feature levels. The N is the number
+      of total anchors on all levels.
+    scores: a tensor with shape [batch_size, N, num_classes], which stacks class
+      probability on all feature levels. The N is the number of total anchors on
+      all levels. The num_classes is the number of classes predicted by the
+      model. Note that the class_outputs here is the raw score.
     max_total_size: a scalar representing maximum number of boxes retained over
       all classes.
     nms_iou_threshold: a float representing the threshold for deciding whether
@@ -82,28 +83,43 @@ def _generate_detections(boxes,
       `valid_detections` boxes are valid detections.
   """
   with tf.name_scope('generate_detections'):
-    batch_size = scores.get_shape().as_list()[0]
     nmsed_boxes = []
     nmsed_classes = []
     nmsed_scores = []
     valid_detections = []
-    for i in range(batch_size):
-      (nmsed_boxes_i, nmsed_scores_i, nmsed_classes_i,
-       valid_detections_i) = _generate_detections_per_image(
-           boxes[i],
-           scores[i],
-           max_total_size,
-           nms_iou_threshold,
-           score_threshold,
-           pre_nms_num_boxes)
+    batch_size, _, num_classes_for_box, _ = boxes.get_shape().as_list()
+    num_classes = scores.get_shape().as_list()[2]
+    for i in range(num_classes):
+      boxes_i = boxes[:, :, min(num_classes_for_box - 1, i), :]
+      scores_i = scores[:, :, i]
+      # Obtains pre_nms_num_boxes before running NMS.
+      scores_i, indices = tf.nn.top_k(
+          scores_i,
+          k=tf.minimum(tf.shape(input=scores_i)[-1], pre_nms_num_boxes))
+      boxes_i = tf.gather(boxes_i, indices, batch_dims=1, axis=1)
+
+      # Filter out scores.
+      boxes_i, scores_i = box_utils.filter_boxes_by_scores(
+          boxes_i, scores_i, min_score_threshold=score_threshold)
+
+      (nmsed_scores_i, nmsed_boxes_i) = nms.sorted_non_max_suppression_padded(
+          tf.cast(scores_i, tf.float32),
+          tf.cast(boxes_i, tf.float32),
+          max_total_size,
+          iou_threshold=nms_iou_threshold)
+      nmsed_classes_i = tf.fill([batch_size, max_total_size], i)
       nmsed_boxes.append(nmsed_boxes_i)
       nmsed_scores.append(nmsed_scores_i)
       nmsed_classes.append(nmsed_classes_i)
-      valid_detections.append(valid_detections_i)
-  nmsed_boxes = tf.stack(nmsed_boxes, axis=0)
-  nmsed_scores = tf.stack(nmsed_scores, axis=0)
-  nmsed_classes = tf.stack(nmsed_classes, axis=0)
-  valid_detections = tf.stack(valid_detections, axis=0)
+  nmsed_boxes = tf.concat(nmsed_boxes, axis=1)
+  nmsed_scores = tf.concat(nmsed_scores, axis=1)
+  nmsed_classes = tf.concat(nmsed_classes, axis=1)
+  nmsed_scores, indices = tf.nn.top_k(
+      nmsed_scores, k=max_total_size, sorted=True)
+  nmsed_boxes = tf.gather(nmsed_boxes, indices, batch_dims=1, axis=1)
+  nmsed_classes = tf.gather(nmsed_classes, indices, batch_dims=1)
+  valid_detections = tf.reduce_sum(
+      input_tensor=tf.cast(tf.greater(nmsed_scores, -1), tf.int32), axis=1)
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 

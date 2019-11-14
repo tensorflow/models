@@ -91,25 +91,14 @@ def run_bert_classifier(strategy,
                         warmup_steps,
                         initial_lr,
                         init_checkpoint,
+                        train_input_fn,
+                        eval_input_fn,
                         custom_callbacks=None,
                         run_eagerly=False,
                         use_keras_compile_fit=False):
   """Run BERT classifier training using low-level API."""
   max_seq_length = input_meta_data['max_seq_length']
   num_classes = input_meta_data['num_labels']
-
-  train_input_fn = functools.partial(
-      input_pipeline.create_classifier_dataset,
-      FLAGS.train_data_path,
-      seq_length=max_seq_length,
-      batch_size=FLAGS.train_batch_size)
-  eval_input_fn = functools.partial(
-      input_pipeline.create_classifier_dataset,
-      FLAGS.eval_data_path,
-      seq_length=max_seq_length,
-      batch_size=FLAGS.eval_batch_size,
-      is_training=False,
-      drop_remainder=False)
 
   def _get_classifier_model():
     """Gets a classifier model."""
@@ -153,7 +142,7 @@ def run_bert_classifier(strategy,
   if use_keras_compile_fit:
     # Start training using Keras compile/fit API.
     logging.info('Training using TF 2.0 Keras compile/fit API with '
-                 'distrubuted strategy.')
+                 'distribution strategy.')
     return run_keras_compile_fit(
         model_dir,
         strategy,
@@ -170,7 +159,7 @@ def run_bert_classifier(strategy,
 
   # Use user-defined loop to start training.
   logging.info('Training using customized training loop TF 2.0 with '
-               'distrubuted strategy.')
+               'distribution strategy.')
   return model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_classifier_model,
@@ -237,7 +226,8 @@ def run_keras_compile_fit(model_dir,
 
 
 def export_classifier(model_export_path, input_meta_data,
-                      restore_model_using_load_weights):
+                      restore_model_using_load_weights,
+                      bert_config, model_dir):
   """Exports a trained model as a `SavedModel` for inference.
 
   Args:
@@ -249,15 +239,19 @@ def export_classifier(model_export_path, input_meta_data,
       tf.train.Checkpoint and another is using Keras model.save_weights().
       Custom training loop implementation uses tf.train.Checkpoint API
       and Keras ModelCheckpoint callback internally uses model.save_weights()
-      API. Since these two API's cannot be used toghether, model loading logic
+      API. Since these two API's cannot be used together, model loading logic
       must be take into account how model checkpoint was saved.
+    bert_config: Bert configuration file to define core bert layers.
+    model_dir: The directory where the model weights and training/evaluation
+      summaries are stored.
 
   Raises:
     Export path is not specified, got an empty string or None.
   """
   if not model_export_path:
     raise ValueError('Export path is not specified: %s' % model_export_path)
-  bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+  if not model_dir:
+    raise ValueError('Export path is not specified: %s' % model_dir)
 
   classifier_model = bert_models.classifier_model(
       bert_config, tf.float32, input_meta_data['num_labels'],
@@ -266,18 +260,20 @@ def export_classifier(model_export_path, input_meta_data,
   model_saving_utils.export_bert_model(
       model_export_path,
       model=classifier_model,
-      checkpoint_dir=FLAGS.model_dir,
+      checkpoint_dir=model_dir,
       restore_model_using_load_weights=restore_model_using_load_weights)
 
 
-def run_bert(strategy, input_meta_data):
+def run_bert(strategy, input_meta_data, train_input_fn, eval_input_fn):
   """Run BERT training."""
+  bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   if FLAGS.mode == 'export_only':
     # As Keras ModelCheckpoint callback used with Keras compile/fit() API
     # internally uses model.save_weights() to save checkpoints, we must
     # use model.load_weights() when Keras compile/fit() is used.
     export_classifier(FLAGS.model_export_path, input_meta_data,
-                      FLAGS.use_keras_compile_fit)
+                      FLAGS.use_keras_compile_fit,
+                      bert_config, FLAGS.model_dir)
     return
 
   if FLAGS.mode != 'train_and_eval':
@@ -285,7 +281,6 @@ def run_bert(strategy, input_meta_data):
   # Enables XLA in Session Config. Should not be set for TPU.
   keras_utils.set_config_v2(FLAGS.enable_xla)
 
-  bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   epochs = FLAGS.num_train_epochs
   train_data_size = input_meta_data['train_data_size']
   steps_per_epoch = int(train_data_size / FLAGS.train_batch_size)
@@ -308,6 +303,8 @@ def run_bert(strategy, input_meta_data):
       warmup_steps,
       FLAGS.learning_rate,
       FLAGS.init_checkpoint,
+      train_input_fn,
+      eval_input_fn,
       run_eagerly=FLAGS.run_eagerly,
       use_keras_compile_fit=FLAGS.use_keras_compile_fit)
 
@@ -341,7 +338,21 @@ def main(_):
   else:
     raise ValueError('The distribution strategy type is not supported: %s' %
                      FLAGS.strategy_type)
-  run_bert(strategy, input_meta_data)
+
+  max_seq_length = input_meta_data['max_seq_length']
+  train_input_fn = functools.partial(
+      input_pipeline.create_classifier_dataset,
+      FLAGS.train_data_path,
+      seq_length=max_seq_length,
+      batch_size=FLAGS.train_batch_size)
+  eval_input_fn = functools.partial(
+      input_pipeline.create_classifier_dataset,
+      FLAGS.eval_data_path,
+      seq_length=max_seq_length,
+      batch_size=FLAGS.eval_batch_size,
+      is_training=False,
+      drop_remainder=False)
+  run_bert(strategy, input_meta_data, train_input_fn, eval_input_fn)
 
 
 if __name__ == '__main__':

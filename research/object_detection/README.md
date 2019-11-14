@@ -101,6 +101,19 @@ reporting an issue.
 
 ## Release information
 
+### Nov 13th, 2019
+We have released MobileNetEdgeTPU SSDLite model.
+
+* SSDLite with MobileNetEdgeTPU backbone, which achieves 10% mAP higher than
+MobileNetV2 SSDLite (24.3 mAP vs 22 mAP) on a Google Pixel4 at comparable
+latency (6.6ms vs 6.8ms).
+
+Along with the model definition, we are also releasing model checkpoints
+trained on the COCO dataset.
+
+<b>Thanks to contributors</b>: Yunyang Xiong, Bo Chen, Suyog Gupta, Hanxiao Liu,
+Gabriel Bender, Mingxing Tan, Berkin Akin, Zhichao Lu, Quoc Le
+
 ### Oct 15th, 2019
 We have released two MobileNet V3 SSDLite models (presented in
 [Searching for MobileNetV3](https://arxiv.org/abs/1905.02244)).

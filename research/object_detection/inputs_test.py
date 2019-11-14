@@ -468,7 +468,7 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
     replaced_string = inputs._replace_empty_string_with_random_number(
         string_placeholder)
 
-    test_string = 'hello world'
+    test_string = b'hello world'
     feed_dict = {string_placeholder: test_string}
 
     with self.test_session() as sess:
@@ -493,7 +493,34 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
     # Test whether out_string is a string which represents an integer.
     int(out_string)  # throws an error if out_string is not castable to int.
 
-    self.assertEqual(out_string, '2798129067578209328')
+    self.assertEqual(out_string, b'2798129067578209328')
+
+  def test_force_no_resize(self):
+    """Tests the functionality of force_no_reisze option."""
+    configs = _get_configs_for_model('ssd_inception_v2_pets')
+    configs['eval_config'].force_no_resize = True
+
+    eval_input_fn = inputs.create_eval_input_fn(
+        eval_config=configs['eval_config'],
+        eval_input_config=configs['eval_input_configs'][0],
+        model_config=configs['model']
+    )
+    train_input_fn = inputs.create_train_input_fn(
+        train_config=configs['train_config'],
+        train_input_config=configs['train_input_config'],
+        model_config=configs['model']
+    )
+
+    features_train, _ = _make_initializable_iterator(
+        train_input_fn()).get_next()
+
+    features_eval, _ = _make_initializable_iterator(
+        eval_input_fn()).get_next()
+
+    images_train, images_eval = features_train['image'], features_eval['image']
+
+    self.assertEqual([1, None, None, 3], images_eval.shape.as_list())
+    self.assertEqual([24, 300, 300, 3], images_train.shape.as_list())
 
 
 class DataAugmentationFnTest(test_case.TestCase):
@@ -644,6 +671,14 @@ def _fake_model_preprocessor_fn(image):
 
 def _fake_image_resizer_fn(image, mask):
   return (image, mask, tf.shape(image))
+
+
+def _fake_resize50_preprocess_fn(image):
+  image = image[0]
+  image, shape = preprocessor.resize_to_range(
+      image, min_dimension=50, max_dimension=50, pad_to_max_dimension=True)
+
+  return tf.expand_dims(image, 0), tf.expand_dims(shape, axis=0)
 
 
 class DataTransformationFnTest(test_case.TestCase):
@@ -1013,6 +1048,37 @@ class DataTransformationFnTest(test_case.TestCase):
 
     self.assertAllEqual(augmented_tensor_dict[fields.InputDataFields.image],
                         (np_image + 5) * 2)
+
+  def test_resize_with_padding(self):
+
+    tensor_dict = {
+        fields.InputDataFields.image:
+            tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+        fields.InputDataFields.groundtruth_boxes:
+            tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                 np.float32)),
+        fields.InputDataFields.groundtruth_classes:
+            tf.constant(np.array([1, 2], np.int32)),
+        fields.InputDataFields.groundtruth_keypoints:
+            tf.constant([[0.1, 0.2], [0.3, 0.4]]),
+    }
+
+    num_classes = 3
+    input_transformation_fn = functools.partial(
+        inputs.transform_input_data,
+        model_preprocess_fn=_fake_resize50_preprocess_fn,
+        image_resizer_fn=_fake_image_resizer_fn,
+        num_classes=num_classes,)
+
+    with self.test_session() as sess:
+      transformed_inputs = sess.run(
+          input_transformation_fn(tensor_dict=tensor_dict))
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.groundtruth_boxes],
+        [[.5, .25, 1., .5], [.0, .0, .5, .25]])
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
+        [[[.1, .1], [.3, .2]]])
 
 
 class PadInputDataToStaticShapesFnTest(test_case.TestCase):

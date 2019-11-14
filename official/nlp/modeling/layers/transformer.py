@@ -110,7 +110,6 @@ class Transformer(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
         name="self_attention")
     self._attention_output_dense = dense_einsum.DenseEinsum(
         output_shape=hidden_size,
@@ -122,12 +121,12 @@ class Transformer(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
         name="self_attention_output")
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     self._attention_layer_norm = (
         tf.keras.layers.LayerNormalization(
-            name="self_attention_layer_norm", axis=-1, epsilon=1e-12))
+            name="self_attention_layer_norm", axis=-1, epsilon=1e-12,
+            dtype=tf.float32))
     self._intermediate_dense = dense_einsum.DenseEinsum(
         output_shape=self._intermediate_size,
         activation=self._intermediate_activation,
@@ -149,11 +148,10 @@ class Transformer(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
         name="output")
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="output_layer_norm", axis=-1, epsilon=1e-12)
+        name="output_layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
 
     super(Transformer, self).build(input_shape)
 

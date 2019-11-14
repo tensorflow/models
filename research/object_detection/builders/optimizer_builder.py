@@ -21,8 +21,8 @@ import tensorflow as tf
 from object_detection.utils import learning_schedules
 
 
-def build(optimizer_config, global_step=None):
-  """Create optimizer based on config.
+def build_optimizers_tf_v1(optimizer_config, global_step=None):
+  """Create a TF v1 compatible optimizer based on config.
 
   Args:
     optimizer_config: A Optimizer proto message.
@@ -75,6 +75,68 @@ def build(optimizer_config, global_step=None):
         optimizer, average_decay=optimizer_config.moving_average_decay)
 
   return optimizer, summary_vars
+
+
+def build_optimizers_tf_v2(optimizer_config, global_step=None):
+  """Create a TF v2 compatible optimizer based on config.
+
+  Args:
+    optimizer_config: A Optimizer proto message.
+    global_step: A variable representing the current step.
+      If None, defaults to tf.train.get_or_create_global_step()
+
+  Returns:
+    An optimizer and a list of variables for summary.
+
+  Raises:
+    ValueError: when using an unsupported input data type.
+  """
+  optimizer_type = optimizer_config.WhichOneof('optimizer')
+  optimizer = None
+
+  summary_vars = []
+  if optimizer_type == 'rms_prop_optimizer':
+    config = optimizer_config.rms_prop_optimizer
+    learning_rate = _create_learning_rate(config.learning_rate,
+                                          global_step=global_step)
+    summary_vars.append(learning_rate)
+    optimizer = tf.keras.optimizers.RMSprop(
+        learning_rate,
+        decay=config.decay,
+        momentum=config.momentum_optimizer_value,
+        epsilon=config.epsilon)
+
+  if optimizer_type == 'momentum_optimizer':
+    config = optimizer_config.momentum_optimizer
+    learning_rate = _create_learning_rate(config.learning_rate,
+                                          global_step=global_step)
+    summary_vars.append(learning_rate)
+    optimizer = tf.keras.optimizers.SGD(
+        learning_rate,
+        momentum=config.momentum_optimizer_value)
+
+  if optimizer_type == 'adam_optimizer':
+    config = optimizer_config.adam_optimizer
+    learning_rate = _create_learning_rate(config.learning_rate,
+                                          global_step=global_step)
+    summary_vars.append(learning_rate)
+    optimizer = tf.keras.optimizers.Adam(learning_rate)
+
+  if optimizer is None:
+    raise ValueError('Optimizer %s not supported.' % optimizer_type)
+
+  if optimizer_config.use_moving_average:
+    raise ValueError('Moving average not supported in eager mode.')
+
+  return optimizer, summary_vars
+
+
+def build(config, global_step=None):
+
+  if tf.executing_eagerly():
+    return build_optimizers_tf_v2(config, global_step)
+  else:
+    return build_optimizers_tf_v1(config, global_step)
 
 
 def _create_learning_rate(learning_rate_config, global_step=None):

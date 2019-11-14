@@ -42,6 +42,21 @@ class MobilenetV3Test(absltest.TestCase):
         conv_defs=mobilenet_v3.V3_SMALL)
     self.assertEqual(endpoints['layer_15'].shape, [1, 1, 1, 1024])
 
+  def testMobilenetEdgeTpu(self):
+    _, endpoints = mobilenet_v3.edge_tpu(
+        tf.placeholder(tf.float32, (1, 224, 224, 3)))
+    self.assertIn('Inference mode is created by default',
+                  mobilenet_v3.edge_tpu.__doc__)
+    self.assertEqual(endpoints['layer_24'].shape, [1, 7, 7, 1280])
+    self.assertStartsWith(
+        endpoints['layer_24'].name, 'MobilenetEdgeTPU')
+
+  def testMobilenetEdgeTpuChangeScope(self):
+    _, endpoints = mobilenet_v3.edge_tpu(
+        tf.placeholder(tf.float32, (1, 224, 224, 3)), scope='Scope')
+    self.assertStartsWith(
+        endpoints['layer_24'].name, 'Scope')
+
   def testMobilenetV3BaseOnly(self):
     result, endpoints = mobilenet_v3.mobilenet(
         tf.placeholder(tf.float32, (1, 224, 224, 3)),

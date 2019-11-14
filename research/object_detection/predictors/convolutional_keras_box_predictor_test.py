@@ -209,7 +209,7 @@ class ConvolutionalKerasBoxPredictorTest(test_case.TestCase):
             num_layers_before_predictor=1,
             use_dropout=True,
             dropout_keep_prob=0.8,
-            kernel_size=1,
+            kernel_size=3,
             box_code_size=4,
             use_depthwise=True
         ))

@@ -123,8 +123,11 @@ def _image_tensor_input_placeholder(input_shape=None):
   return input_tensor, input_tensor
 
 
-def _tf_example_input_placeholder():
+def _tf_example_input_placeholder(input_shape=None):
   """Returns input that accepts a batch of strings with tf examples.
+
+  Args:
+    input_shape: the shape to resize the output decoded images to (optional).
 
   Returns:
     a tuple of input placeholder and the output decoded images.
@@ -135,6 +138,8 @@ def _tf_example_input_placeholder():
     tensor_dict = tf_example_decoder.TfExampleDecoder().decode(
         tf_example_string_tensor)
     image_tensor = tensor_dict[fields.InputDataFields.image]
+    if input_shape is not None:
+      image_tensor = tf.image.resize(image_tensor, input_shape[1:3])
     return image_tensor
   return (batch_tf_example_placeholder,
           shape_utils.static_or_dynamic_map_fn(
@@ -145,8 +150,11 @@ def _tf_example_input_placeholder():
               back_prop=False))
 
 
-def _encoded_image_string_tensor_input_placeholder():
+def _encoded_image_string_tensor_input_placeholder(input_shape=None):
   """Returns input that accepts a batch of PNG or JPEG strings.
+
+  Args:
+    input_shape: the shape to resize the output decoded images to (optional).
 
   Returns:
     a tuple of input placeholder and the output decoded images.
@@ -159,6 +167,8 @@ def _encoded_image_string_tensor_input_placeholder():
     image_tensor = tf.image.decode_image(encoded_image_string_tensor,
                                          channels=3)
     image_tensor.set_shape((None, None, 3))
+    if input_shape is not None:
+      image_tensor = tf.image.resize(image_tensor, input_shape[1:3])
     return image_tensor
   return (batch_image_str_placeholder,
           tf.map_fn(
@@ -355,8 +365,11 @@ def build_detection_graph(input_type, detection_model, input_shape,
     raise ValueError('Unknown input type: {}'.format(input_type))
   placeholder_args = {}
   if input_shape is not None:
-    if input_type != 'image_tensor':
-      raise ValueError('Can only specify input shape for `image_tensor` '
+    if (input_type != 'image_tensor' and
+        input_type != 'encoded_image_string_tensor' and
+        input_type != 'tf_example'):
+      raise ValueError('Can only specify input shape for `image_tensor`, '
+                       '`encoded_image_string_tensor`, or `tf_example` '
                        'inputs.')
     placeholder_args['input_shape'] = input_shape
   placeholder_tensor, input_tensors = input_placeholder_fn_map[input_type](

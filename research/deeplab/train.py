@@ -342,7 +342,7 @@ def main(unused_argv):
       first_clone_label = graph.get_tensor_by_name(
           ('%s/%s:0' % (first_clone_scope, common.LABEL)).strip('/'))
       # Scale up summary image pixel values for better visualization.
-      pixel_scaling = max(1, 255 // dataset.num_classes)
+      pixel_scaling = max(1, 255 // dataset.num_of_classes)
       summary_label = tf.cast(first_clone_label * pixel_scaling, tf.uint8)
       summaries.add(
           tf.summary.image('samples/%s' % common.LABEL, summary_label))

@@ -111,7 +111,6 @@ class TransformerEncoder(network.Network):
         vocab_size=vocab_size,
         embedding_width=hidden_size,
         initializer=initializer,
-        dtype=float_dtype,
         name='word_embeddings')
     word_embeddings = self._embedding_layer(word_ids)
 
@@ -119,8 +118,7 @@ class TransformerEncoder(network.Network):
     self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length,
-        dtype=float_dtype)
+        max_sequence_length=max_sequence_length)
     position_embeddings = self._position_embedding_layer(word_embeddings)
 
     type_embeddings = (
@@ -129,7 +127,6 @@ class TransformerEncoder(network.Network):
             embedding_width=hidden_size,
             initializer=initializer,
             use_one_hot=True,
-            dtype=float_dtype,
             name='type_embeddings')(type_ids))
 
     embeddings = tf.keras.layers.Add()(
@@ -139,7 +136,7 @@ class TransformerEncoder(network.Network):
             name='embeddings/layer_norm',
             axis=-1,
             epsilon=1e-12,
-            dtype=float_dtype)(embeddings))
+            dtype=tf.float32)(embeddings))
     embeddings = (
         tf.keras.layers.Dropout(rate=dropout_rate,
                                 dtype=tf.float32)(embeddings))
@@ -168,7 +165,6 @@ class TransformerEncoder(network.Network):
         units=hidden_size,
         activation='tanh',
         kernel_initializer=initializer,
-        dtype=float_dtype,
         name='pooler_transform')(
             first_token_tensor)
 

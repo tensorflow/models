@@ -12,23 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Base test class for ssd_mobilenet_v3_feature_extractor."""
+"""Base test class for ssd_mobilenet_edgetpu_feature_extractor."""
 
 import abc
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.models import ssd_feature_extractor_test
 
 
-slim = contrib_slim
+slim = tf.contrib.slim
 
 
-class _SsdMobilenetV3FeatureExtractorTestBase(
+class _SsdMobilenetEdgeTPUFeatureExtractorTestBase(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
-  """Base class for MobilenetV3 tests."""
+  """Base class for MobilenetEdgeTPU tests."""
 
   @abc.abstractmethod
   def _get_input_sizes(self):
@@ -102,8 +101,8 @@ class _SsdMobilenetV3FeatureExtractorTestBase(
     self.assertTrue(np.all(np.less_equal(np.abs(preprocessed_image), 1.0)))
 
   def test_has_fused_batchnorm(self):
-    image_height = 40
-    image_width = 40
+    image_height = 128
+    image_width = 128
     depth_multiplier = 1
     pad_to_multiple = 1
     image_placeholder = tf.placeholder(tf.float32,

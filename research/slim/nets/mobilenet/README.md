@@ -1,4 +1,4 @@
-# MobilenNet
+# MobileNet
 
 This folder contains building code for
 [MobileNetV2](https://arxiv.org/abs/1801.04381) and
@@ -7,6 +7,12 @@ definition for each model is located in [mobilenet_v2.py](mobilenet_v2.py) and
 [mobilenet_v3.py](mobilenet_v3.py) respectively.
 
 For MobilenetV1 please refer to this [page](../mobilenet_v1.md)
+
+We have also introduced a family of MobileNets customized for the Edge TPU
+accelerator found in
+[Google Pixel4](https://blog.google/products/pixel/pixel-4/) devices. The
+architectural definition for MobileNetEdgeTPU is located in
+[mobilenet_v3.py](mobilenet_v3.py)
 
 ## Performance
 
@@ -33,6 +39,14 @@ numbers. We estimate it to be comparable to MobileNetV2 numbers.
 
 ![madds_top1_accuracy](g3doc/madds_top1_accuracy.png)
 
+### Mobilenet EdgeTPU latency
+
+The figure below shows the Pixel 4 Edge TPU latency of int8-quantized Mobilenet
+EdgeTPU compared with MobilenetV2 and the minimalistic variants of MobilenetV3
+(see below).
+
+![Mobilenet Edge TPU latency for Pixel 4 Edge TPU.png](g3doc/edgetpu_latency.png)
+
 ## Pretrained models
 
 ### Mobilenet V3 Imagenet Checkpoints
@@ -43,7 +57,7 @@ large and small models this page also contains so-called minimalistic models,
 these models have the same per-layer dimensions characteristic as MobilenetV3
 however, they don't utilize any of the advanced blocks (squeeze-and-excite
 units, hard-swish, and 5x5 convolutions). While these models are less efficient
-on CPU, we find that they are much more performant on GPU/DSP/EdgeTpu.
+on CPU, we find that they are much more performant on GPU/DSP.
 
 | Imagenet Checkpoint | MACs (M) | Params (M) | Top1 | Pixel 1 | Pixel 2 | Pixel 3 |
 | ------------------ | -------- | ---------- | ---- | ------- | ------- | ------- |
@@ -62,6 +76,18 @@ on CPU, we find that they are much more performant on GPU/DSP/EdgeTpu.
 | [Large minimalistic (8-bit)][lm8]   | 209      | 3.9        | 71.3 | 37      | 35      | 27      |
 | [Small minimalistic (float)]   | 65       | 2.0        | 61.9 | 12.2    | 15.1    | 11      |
 
+#### Edge TPU checkpoints:
+
+| Imagenet Checkpoint | MACs (M) | Params (M) | Top1 | Pixel 4 Edge TPU | Pixel 4 CPU |
+| ----------------- | -------- | ---------- | ---- | ------- | ----------- |
+| [MobilenetEdgeTPU dm=0.75 (8-bit)]| 624      | 2.9        | 73.5 | 3.1     | 13.8        |
+| [MobilenetEdgeTPU dm=1 (8-bit)] | 990      | 4.0        | 75.6 | 3.6     | 20.6        |
+
+
+Note: 8-bit quantized versions of the MobilenetEdgeTPU models were obtained
+using Tensorflow Lite's
+[post training quantization](https://www.tensorflow.org/lite/performance/post_training_quantization)
+tool.
 
 [Small minimalistic (float)]: https://storage.googleapis.com/mobilenet_v3/checkpoints/v3-small-minimalistic_224_1.0_float.tgz
 [Large minimalistic (float)]: https://storage.googleapis.com/mobilenet_v3/checkpoints/v3-large-minimalistic_224_1.0_float.tgz
@@ -72,6 +98,8 @@ on CPU, we find that they are much more performant on GPU/DSP/EdgeTpu.
 [Small dm=1 (8-bit)]: https://storage.googleapis.com/mobilenet_v3/checkpoints/v3-small_224_1.0_uint8.tgz
 [Large dm=0.75 (float)]: https://storage.googleapis.com/mobilenet_v3/checkpoints/v3-large_224_0.75_float.tgz
 [Small dm=0.75 (float)]: https://storage.googleapis.com/mobilenet_v3/checkpoints/v3-small_224_0.75_float.tgz
+[MobilenetEdgeTPU dm=0.75 (8-bit)]: https://storage.cloud.google.com/mobilenet_edgetpu/checkpoints/mobilenet_edgetpu_224_0.75.tgz
+[MobilenetEdgeTPU dm=1 (8-bit)]: https://storage.cloud.google.com/mobilenet_edgetpu/checkpoints/mobilenet_edgetpu_224_1.0.tgz
 
 ### Mobilenet V2 Imagenet Checkpoints
 
