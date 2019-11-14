@@ -91,9 +91,7 @@ def run_evaluation(strategy,
         _test_step_fn, args=(next(test_iterator),))
     return logits, labels, masks
 
-  # pylint: disable=protected-access
-  test_iterator = data_utils._get_input_iterator(test_input_fn, strategy)
-  # pylint: enable=protected-access
+  test_iterator = data_utils.get_input_iterator(test_input_fn, strategy)
   correct = 0
   total = 0
   for _ in range(eval_steps):
