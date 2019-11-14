@@ -72,13 +72,13 @@ class MobileSSDTfLiteClient : public MobileSSDClient {
 
   virtual bool IsQuantizedModel() const;
 
-  std::unique_ptr<::tflite::FlatBufferModel> model_;
-  std::unique_ptr<::tflite::MutableOpResolver> resolver_;
-  std::unique_ptr<::tflite::Interpreter> interpreter_;
-
 #ifdef ENABLE_EDGETPU
   std::unique_ptr<edgetpu::EdgeTpuContext> edge_tpu_context_;
 #endif
+
+  std::unique_ptr<::tflite::FlatBufferModel> model_;
+  std::unique_ptr<::tflite::MutableOpResolver> resolver_;
+  std::unique_ptr<::tflite::Interpreter> interpreter_;
 
  private:
   // MobileSSDTfLiteClient is neither copyable nor movable.
