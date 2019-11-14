@@ -139,7 +139,7 @@ python resnet_ctl_imagenet_main.py \
   --use_synthetic_data=false \
   --dtype=fp32 \
   --enable_eager=true \
-  --enable_tensorboard=false \
+  --enable_tensorboard=true \
   --distribution_strategy=tpu \
   --log_steps=50 \
   --single_l2_loss_op=true \
@@ -159,7 +159,7 @@ python resnet_ctl_imagenet_main.py \
   --use_synthetic_data=false \
   --dtype=fp32 \
   --enable_eager=true \
-  --enable_tensorboard=false \
+  --enable_tensorboard=true \
   --distribution_strategy=tpu \
   --log_steps=50 \
   --single_l2_loss_op=true \

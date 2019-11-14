@@ -331,6 +331,11 @@ def run(flags_obj):
       train_single_step = tf.function(train_single_step)
       test_step = tf.function(test_step)
 
+    if flags_obj.enable_tensorboard:
+      summary_writer = tf.summary.create_file_writer(flags_obj.model_dir)
+    else:
+      summary_writer = None
+
     train_iter = iter(train_ds)
     time_callback.on_train_begin()
     for epoch in range(train_epochs):
@@ -371,7 +376,19 @@ def run(flags_obj):
                      test_accuracy.result().numpy(),
                      epoch + 1)
 
+      if summary_writer:
+        current_steps = steps_in_current_epoch + (epoch * per_epoch_steps)
+        with summary_writer.as_default():
+          tf.summary.scalar('train_loss', train_loss.result(), current_steps)
+          tf.summary.scalar(
+              'train_accuracy', training_accuracy.result(), current_steps)
+          tf.summary.scalar('eval_loss', test_loss.result(), current_steps)
+          tf.summary.scalar(
+              'eval_accuracy', test_accuracy.result(), current_steps)
+
     time_callback.on_train_end()
+    if summary_writer:
+      summary_writer.close()
 
     eval_result = None
     train_result = None
