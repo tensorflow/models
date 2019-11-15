@@ -24,6 +24,8 @@ import cv2 as cv2
 import scipy as sc
 import math 
 
+MAX_ALPHA=0.2
+
 def flip_dim(tensor_list, prob=0.5, dim=1):
   """Randomly flips a dimension of the given tensor.
 
@@ -298,21 +300,22 @@ def random_crop(image_list, crop_height, crop_width):
   return [_crop(image, offset_height, offset_width,
                 crop_height, crop_width) for image in image_list]
 
-def get_random_number(shape = [1], minval=0, maxval=1):
-  return np.random.uniform(minval, maxval, shape)
+def get_random_number(shape = [], minval=0, maxval=1):
+  return tf.random_uniform(shape, minval, maxval)
 
 def add_transparent_rectangle(image, label, color='white'):
   image = tf.dtypes.cast(image,dtype='float32')
   image_rows = int(image.shape[0])
   image_cols = int(image.shape[1])
   image_channels = int(image.shape[2])
-  rec_offset_rows = int(get_random_number([1], minval=image_rows/4, maxval=image_cols/2))
-  rec_offset_cols = int(get_random_number([1], minval=image_cols/4, maxval=image_cols/2))
-  rec_width = int(get_random_number([1], minval=40, maxval=image_rows - rec_offset_rows))
-  rec_height = int(get_random_number([1], minval=40, maxval=image_cols - rec_offset_cols))
-  alpha = get_random_number([1], 0, 0.3)
-  rectangle_overlay = np.full((rec_width, rec_height, image_channels), (255), dtype='float32')
-  patch = tf.convert_to_tensor(rectangle_overlay, dtype='float32')
+  rec_offset_rows = tf.dtypes.cast(get_random_number([], minval=0, maxval=tf.math.divide(image_cols, 2)), dtype='float32')
+  rec_offset_cols = tf.dtypes.cast(get_random_number([], minval=0, maxval=tf.math.divide(image_cols, 2)), dtype='float32')
+  rec_width = get_random_number([], minval=40, maxval=image_rows - rec_offset_rows)
+  rec_height = get_random_number([], minval=40, maxval=image_cols - rec_offset_cols)
+  alpha = get_random_number([], 0, MAX_ALPHA)
+  rectangle_overlay = tf.ones((rec_width, rec_height, image_channels), dtype='float32') * tf.constant(255, dtype=tf.dtypes.float32)
+  # rectangle_overlay = np.full((rec_width, rec_height, image_channels), 255, dtype='float32')
+  # patch = tf.convert_to_tensor(rectangle_overlay, dtype='float32')
   image = overlay_patch(image, rectangle_overlay, rec_offset_rows, rec_offset_cols, alpha=alpha)
   return image, label
 
@@ -321,21 +324,23 @@ def add_perlin_noise(perlin_noise, image, label):
   image = overlay_patch(image, perlin_noise, alpha=alpha)
   return image, label
 
-def overlay_patch(img, patch, i=0, j=0, alpha=0.5):
-    img_shape = tf.shape(img)
-    img_rows, img_cols = img_shape[0], img_shape[1]
-    patch_shape = tf.shape(patch)
-    patch_rows, patch_cols = patch_shape[0], patch_shape[1]
-    i_end = i + patch_rows
-    j_end = j + patch_cols
-    # Mix patch: alpha from patch, minus alpha from image
-    overlay = alpha * (patch - img[i:i_end, j:j_end])
-    # Pad patch
-    overlay_pad = tf.pad(overlay, [[i, img_rows - i_end], [j, img_cols - j_end], [0, 0]])
-    # Make final image
-    img_overlay = img + overlay_pad
+def overlay_patch(img, patch, i, j, alpha):
+  i = tf.dtypes.cast(i, dtype='int32')
+  j = tf.dtypes.cast(j, dtype='int32')
+  img_shape = tf.shape(img)
+  img_rows, img_cols = img_shape[0], img_shape[1]
+  patch_shape = tf.shape(patch)
+  patch_rows, patch_cols = patch_shape[0], patch_shape[1]
+  i_end = i + tf.dtypes.cast(patch_rows, dtype='int32')
+  j_end = j + tf.dtypes.cast(patch_cols, dtype='int32')
+  # Mix patch: alpha from patch, minus alpha from image
+  overlay =(img[i:i_end, j:j_end])
+  # Pad patch
+  overlay_pad = tf.pad(overlay, [[i, img_rows - i_end], [j, img_cols - j_end], [0, 0]])
+  # Make final image
+  img_overlay = img + overlay_pad
 
-    return img_overlay
+  return img_overlay
 
 def adjust_color(image):
   return tf.image.random_contrast(image, 0.15, 1.3)
@@ -373,7 +378,7 @@ def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   return shuffled_scale_factors[0]
 
 def randomly_rotate(image, label):  
-  angle = math.radians(np.random.randint(low=0, high=350, size=1))
+  angle = tf.random_uniform([], 0, np.pi * 2)
   return tf.contrib.image.rotate(image,angle,interpolation='BILINEAR'), tf.contrib.image.rotate(label,angle,interpolation='NEAREST')
 
 def randomly_scale_image_and_label(image, label=None, scale=1.0):

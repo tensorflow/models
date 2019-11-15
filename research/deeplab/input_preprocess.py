@@ -126,9 +126,9 @@ def preprocess_image_and_label(image,
         [processed_image, label], crop_height, crop_width)  
 
   if is_training:
-    processed_image = tf.cond(tf.greater(tf.random_uniform([], 0, 1), tf.constant(0.3)), 
-      lambda: preprocess_utils.adjust_color(processed_image),
-      lambda: processed_image)
+    # processed_image = tf.cond(tf.greater(tf.random_uniform([], 0, 1), tf.constant(0.3)), 
+    #   lambda: preprocess_utils.adjust_color(processed_image),
+    #   lambda: processed_image)
     processed_image, label = preprocess_utils.randomly_rotate(processed_image, label)
     processed_image, label = tf.cond(tf.greater(tf.random_uniform([], 0, 1), tf.constant(0.05)), 
       lambda: preprocess_utils.add_transparent_rectangle(processed_image, label),
