@@ -20,7 +20,7 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
-from official.nlp import xlnet_modeling
+from official.nlp.xlnet import xlnet_modeling
 
 
 class PositionalEmbeddingLayerTest(tf.test.TestCase):

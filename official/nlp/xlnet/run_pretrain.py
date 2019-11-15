@@ -27,12 +27,12 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 # pylint: disable=unused-import
-from official.nlp import xlnet_config
-from official.nlp import xlnet_modeling as modeling
 from official.nlp.xlnet import common_flags
 from official.nlp.xlnet import data_utils
 from official.nlp.xlnet import optimization
 from official.nlp.xlnet import training_utils
+from official.nlp.xlnet import xlnet_config
+from official.nlp.xlnet import xlnet_modeling as modeling
 from official.utils.misc import tpu_lib
 
 flags.DEFINE_integer(
