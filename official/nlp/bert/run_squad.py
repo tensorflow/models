@@ -81,7 +81,7 @@ flags.DEFINE_integer(
     'The maximum length of an answer that can be generated. This is needed '
     'because the start and end predictions are not conditioned on one another.')
 flags.DEFINE_bool(
-    'use_keras_bert_for_squad', True, 'Whether to use keras BERT for squad '
+    'use_keras_bert_for_squad', False, 'Whether to use keras BERT for squad '
     'task. Note that when the FLAG "hub_module_url" is specified, '
     '"use_keras_bert_for_squad" cannot be True.')
 
