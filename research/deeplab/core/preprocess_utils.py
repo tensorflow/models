@@ -298,8 +298,8 @@ def random_crop(image_list, crop_height, crop_width):
   return [_crop(image, offset_height, offset_width,
                 crop_height, crop_width) for image in image_list]
 
-def get_random_number(shape = [1], minval=0, maxval=1):
-  return np.random.uniform(minval, maxval, shape)
+def get_random_number(shape = [], minval=0, maxval=1):
+  return tf.random_uniform(shape, minval, maxval)
 
 def add_transparent_rectangle(image, label, color='white'):
   image = tf.dtypes.cast(image,dtype='float32')
@@ -310,7 +310,7 @@ def add_transparent_rectangle(image, label, color='white'):
   rec_offset_cols = int(get_random_number([1], minval=image_cols/4, maxval=image_cols/2))
   rec_width = int(get_random_number([1], minval=40, maxval=image_rows - rec_offset_rows))
   rec_height = int(get_random_number([1], minval=40, maxval=image_cols - rec_offset_cols))
-  alpha = get_random_number([1], 0, 0.3)
+  alpha = get_random_number([], 0, 0.2)
   rectangle_overlay = np.full((rec_width, rec_height, image_channels), (255), dtype='float32')
   patch = tf.convert_to_tensor(rectangle_overlay, dtype='float32')
   image = overlay_patch(image, rectangle_overlay, rec_offset_rows, rec_offset_cols, alpha=alpha)
@@ -373,7 +373,7 @@ def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   return shuffled_scale_factors[0]
 
 def randomly_rotate(image, label):  
-  angle = math.radians(np.random.randint(low=0, high=350, size=1))
+  angle = math.radians(get_random_number([], 0, 350)
   return tf.contrib.image.rotate(image,angle,interpolation='BILINEAR'), tf.contrib.image.rotate(label,angle,interpolation='NEAREST')
 
 def randomly_scale_image_and_label(image, label=None, scale=1.0):
