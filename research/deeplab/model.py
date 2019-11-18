@@ -162,6 +162,43 @@ def predict_labels_multi_scale(images,
   return outputs_to_predictions
 
 
+def predict_labels_from_logits(images, outputs_to_scales_to_logits, model_options):
+  """Predicts segmentation labels.
+
+  Args:
+    images: A tensor of size [batch, height, width, channels].
+    outputs_to_scales_to_logits: the logits for multi-scale inputs.
+
+  Returns:
+    A dictionary with keys specifying the output_type (e.g., semantic
+      prediction) and values storing Tensors representing predictions (argmax
+      over channels). Each prediction has size [batch, height, width].
+  """
+  predictions = {}
+  for output in sorted(outputs_to_scales_to_logits):
+    scales_to_logits = outputs_to_scales_to_logits[output]
+    logits = scales_to_logits[MERGED_LOGITS_SCOPE]
+    # There are two ways to obtain the final prediction results: (1) bilinear
+    # upsampling the logits followed by argmax, or (2) argmax followed by
+    # nearest neighbor upsampling. The second option may introduce the "blocking
+    # effect" but is computationally efficient.
+    if model_options.prediction_with_upsampled_logits:
+      logits = _resize_bilinear(logits,
+                                tf.shape(images)[1:3],
+                                scales_to_logits[MERGED_LOGITS_SCOPE].dtype)
+      predictions[output] = tf.argmax(logits, 3)
+    else:
+      argmax_results = tf.argmax(logits, 3)
+      argmax_results = tf.image.resize_nearest_neighbor(
+          tf.expand_dims(argmax_results, 3),
+          tf.shape(images)[1:3],
+          align_corners=True,
+          name='resize_prediction')
+      predictions[output] = tf.squeeze(argmax_results, 3)
+
+  return predictions
+
+
 def predict_labels(images, model_options, image_pyramid=None):
   """Predicts segmentation labels.
 

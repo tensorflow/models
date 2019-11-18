@@ -226,6 +226,8 @@ class Dataset(object):
     self.num_of_classes = _DATASETS_INFORMATION[self.dataset_name].num_classes
     self.ignore_label = _DATASETS_INFORMATION[self.dataset_name].ignore_label
 
+    self.steps_in_epoch = int(splits_to_sizes['train'] / self.batch_size)
+
   def _parse_function(self, example_proto):
     """Function to parse the example proto.
 
@@ -351,13 +353,11 @@ class Dataset(object):
 
     return sample
 
-  def get_one_shot_iterator(self):
-    """Gets an iterator that iterates across the dataset once.
-
-    Returns:
-      An iterator of type tf.data.Iterator.
+  def get_native_dataset(self):
     """
-
+    Returns:
+      native tf.data.Dataset
+    """
     files = self._get_all_files()
 
     dataset = (
@@ -375,7 +375,15 @@ class Dataset(object):
       dataset = dataset.repeat(1)
 
     dataset = dataset.batch(self.batch_size).prefetch(self.batch_size)
-    return dataset.make_one_shot_iterator()
+    return dataset
+
+  def get_one_shot_iterator(self):
+    """Gets an iterator that iterates across the dataset once.
+
+    Returns:
+      An iterator of type tf.data.Iterator.
+    """
+    return self.get_native_dataset().make_one_shot_iterator()
 
   def _get_all_files(self):
     """Gets all the files to read data from.

@@ -192,10 +192,19 @@ flags.DEFINE_string('dataset', 'pascal_voc_seg',
 flags.DEFINE_string('train_split', 'train',
                     'Which split of the dataset to be used for training')
 
+flags.DEFINE_string('eval_split', 'val',
+                    'Which split of the dataset used for evaluation')
+
 flags.DEFINE_string('dataset_dir', None, 'Where the dataset reside.')
 
+flags.DEFINE_integer('epoch_count', None, 'The maximum number of epochs.')
 
-def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
+# Evaluation settings
+flags.DEFINE_integer('eval_after_n_epochs', 0,
+                     'Do not run evalution before training reaches specified epoch.')
+
+
+def _build_deeplab(samples, outputs_to_num_classes, ignore_label):
   """Builds a clone of DeepLab.
 
   Args:
@@ -205,12 +214,10 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
       we would have outputs_to_num_classes['semantic'] = 21.
     ignore_label: Ignore label.
   """
-  samples = iterator.get_next()
-
   # Add name to input and label nodes so we can add to summary.
   samples[common.IMAGE] = tf.identity(samples[common.IMAGE], name=common.IMAGE)
   samples[common.LABEL] = tf.identity(samples[common.LABEL], name=common.LABEL)
-
+  
   model_options = common.ModelOptions(
       outputs_to_num_classes=outputs_to_num_classes,
       crop_size=[int(sz) for sz in FLAGS.train_crop_size],
@@ -228,6 +235,25 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
           'drop_path_keep_prob': FLAGS.drop_path_keep_prob,
           'total_training_steps': FLAGS.training_number_of_steps,
       })
+
+  tf.logging.info('Performing single-scale test.')
+  predictions = model.predict_labels_from_logits(
+    samples[common.IMAGE], 
+    outputs_to_scales_to_logits, 
+    model_options=model_options)
+  predictions = tf.reshape(predictions[common.OUTPUT_TYPE], shape=[-1])
+  labels = tf.reshape(samples[common.LABEL], shape=[-1])
+  weights = tf.to_float(tf.not_equal(labels, ignore_label))
+  labels = tf.where(tf.equal(labels, ignore_label), tf.zeros_like(labels), labels)
+  
+  # Define the evaluation metric.
+  with tf.name_scope('eval') as scope:
+    indices = tf.squeeze(tf.where(tf.less_equal(labels, outputs_to_num_classes['semantic'] - 1)), 1)
+    labels = tf.cast(tf.gather(labels, indices), tf.int32)
+    predictions = tf.gather(predictions, indices)
+
+    miou, update_op = tf.metrics.mean_iou(predictions, labels, outputs_to_num_classes['semantic'], weights=weights)
+    tf.summary.scalar('miou', miou)
 
   # Add name to graph node so we can add to summary.
   output_type_dict = outputs_to_scales_to_logits[common.OUTPUT_TYPE]
@@ -249,9 +275,9 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
     # Log the summary
     _log_summaries(samples[common.IMAGE], samples[common.LABEL], num_classes,
                    output_type_dict[model.MERGED_LOGITS_SCOPE])
+  return update_op
 
-
-def _tower_loss(iterator, num_of_classes, ignore_label, scope, reuse_variable):
+def _tower_loss(num_of_classes, ignore_label, scope, reuse_variable):
   """Calculates the total loss on a single tower running the deeplab model.
 
   Args:
@@ -264,10 +290,6 @@ def _tower_loss(iterator, num_of_classes, ignore_label, scope, reuse_variable):
   Returns:
      The total loss for a batch of data.
   """
-  with tf.variable_scope(
-      tf.get_variable_scope(), reuse=True if reuse_variable else None):
-    _build_deeplab(iterator, {common.OUTPUT_TYPE: num_of_classes}, ignore_label)
-
   losses = tf.losses.get_losses(scope=scope)
   for loss in losses:
     tf.summary.scalar('Losses/%s' % loss.op.name, loss)
@@ -335,7 +357,7 @@ def _log_summaries(input_image, label, num_of_classes, output):
     tf.summary.image('samples/%s' % common.OUTPUT_TYPE, summary_predictions)
 
 
-def _train_deeplab_model(iterator, num_of_classes, ignore_label):
+def _train_deeplab_model(samples, num_of_classes, ignore_label):
   """Trains the deeplab model.
 
   Args:
@@ -365,8 +387,12 @@ def _train_deeplab_model(iterator, num_of_classes, ignore_label):
       # First tower has default name scope.
       name_scope = ('clone_%d' % i) if i else ''
       with tf.name_scope(name_scope) as scope:
+        with tf.variable_scope(
+            tf.get_variable_scope(), 
+            reuse=True if (i != 0) else None):
+          eval_update_op = _build_deeplab(samples, {common.OUTPUT_TYPE: num_of_classes}, ignore_label)
+
         loss = _tower_loss(
-            iterator=iterator,
             num_of_classes=num_of_classes,
             ignore_label=ignore_label,
             scope=scope,
@@ -425,7 +451,7 @@ def _train_deeplab_model(iterator, num_of_classes, ignore_label):
     # Excludes summaries from towers other than the first one.
     summary_op = tf.summary.merge_all(scope='(?!clone_)')
 
-  return train_tensor, summary_op
+  return train_tensor, summary_op, eval_update_op
 
 
 def main(unused_argv):
@@ -457,11 +483,37 @@ def main(unused_argv):
           num_readers=2,
           is_training=True,
           should_shuffle=True,
-          should_repeat=True)
+          should_repeat=False)
 
-      train_tensor, summary_op = _train_deeplab_model(
-          dataset.get_one_shot_iterator(), dataset.num_of_classes,
-          dataset.ignore_label)
+      eval_dataset = data_generator.Dataset(
+          dataset_name=FLAGS.dataset,
+          split_name=FLAGS.eval_split,
+          dataset_dir=FLAGS.dataset_dir,
+          batch_size=clone_batch_size,
+          crop_size=[int(sz) for sz in FLAGS.train_crop_size],
+          min_resize_value=FLAGS.min_resize_value,
+          max_resize_value=FLAGS.max_resize_value,
+          resize_factor=FLAGS.resize_factor,
+          model_variant=FLAGS.model_variant,
+          num_readers=2,
+          is_training=True,
+          should_shuffle=False,
+          should_repeat=False
+      )
+
+      train_iterator = tf.data.Iterator.from_structure(
+        dataset.get_native_dataset().output_types, 
+        dataset.get_native_dataset().output_shapes)
+
+      train_iterator_init_op = train_iterator.make_initializer(dataset.get_native_dataset())
+      eval_iterator_init_op = train_iterator.make_initializer(eval_dataset.get_native_dataset())
+      tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, train_iterator_init_op)
+      next_sample = train_iterator.get_next()
+
+      train_tensor, summary_op, eval_update_op = _train_deeplab_model(
+        next_sample,
+        dataset.num_of_classes,
+        dataset.ignore_label)
 
       # Soft placement allows placing on CPU ops without GPU implementation.
       session_config = tf.ConfigProto(
@@ -491,6 +543,11 @@ def main(unused_argv):
       if profile_dir is not None:
         tf.gfile.MakeDirs(profile_dir)
 
+      tf.gfile.MakeDirs(FLAGS.train_logdir)
+      train_writer = tf.summary.FileWriter(FLAGS.train_logdir)
+
+      eval_metrics_reset_op = tf.variables_initializer([v for v in tf.local_variables() if 'eval/' in v.name])
+
       with tf.contrib.tfprof.ProfileContext(
           enabled=profile_dir is not None, profile_dir=profile_dir):
         with tf.train.MonitoredTrainingSession(
@@ -504,11 +561,42 @@ def main(unused_argv):
             save_summaries_steps=FLAGS.save_summaries_secs,
             save_checkpoint_secs=FLAGS.save_interval_secs,
             hooks=[stop_hook]) as sess:
-          while not sess.should_stop():
-            sess.run([train_tensor])
+          sess.run(train_iterator_init_op, feed_dict={})
+            
+          for v in tf.trainable_variables():
+            print(v.name)
+
+          epoch = 0
+          while epoch < FLAGS.epoch_count:
+            try:
+              epoch = epoch + 1
+              
+              sess.run(train_iterator_init_op, feed_dict={})
+              try:
+                while True:
+                  sess.run([train_tensor])
+              except tf.errors.OutOfRangeError:
+                print('No more data for training on epoch #{}'.format(epoch))
+
+              if epoch >= FLAGS.eval_after_n_epochs:
+                sess.run(eval_iterator_init_op, feed_dict={})
+                sess.run([eval_metrics_reset_op])
+                try:
+                  while True:
+                    sess.run([eval_update_op])
+                except tf.errors.OutOfRangeError:
+                  print('No more data for evalution on epoch #{}'.format(epoch))
+
+              sess.run(train_iterator_init_op, feed_dict={})
+              summaries = sess.run([summary_op])
+              for s in summaries:
+                train_writer.add_summary(s, epoch)
+            except Exception as error:
+              print(error)
 
 
 if __name__ == '__main__':
   flags.mark_flag_as_required('train_logdir')
   flags.mark_flag_as_required('dataset_dir')
+  flags.mark_flag_as_required('epoch_count')
   tf.app.run()
