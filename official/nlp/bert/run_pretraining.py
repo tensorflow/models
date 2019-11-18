@@ -13,12 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 """Run masked LM/next sentence masked_lm pre-training for BERT in tf2.0."""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-import functools
 
 from absl import app
 from absl import flags
@@ -56,31 +53,17 @@ common_flags.define_common_bert_flags()
 FLAGS = flags.FLAGS
 
 
-def get_pretrain_input_data(input_file_pattern, seq_length,
-                            max_predictions_per_seq, batch_size, strategy):
+def get_pretrain_dataset_fn(input_file_pattern, seq_length,
+                            max_predictions_per_seq, global_batch_size):
   """Returns input dataset from input file string."""
-
-  # When using TPU pods, we need to clone dataset across
-  # workers and need to pass in function that returns the dataset rather
-  # than passing dataset instance itself.
-  use_dataset_fn = isinstance(strategy, tf.distribute.experimental.TPUStrategy)
-  if use_dataset_fn:
-    if batch_size % strategy.num_replicas_in_sync != 0:
-      raise ValueError(
-          'Batch size must be divisible by number of replicas : {}'.format(
-              strategy.num_replicas_in_sync))
-
-    # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
-    # required when cloning dataset to multiple workers in eager mode,
-    # we use per-replica batch size.
-    batch_size = int(batch_size / strategy.num_replicas_in_sync)
-
   def _dataset_fn(ctx=None):
     """Returns tf.data.Dataset for distributed BERT pretraining."""
-    input_patterns = input_file_pattern.split(',')
+    input_files = []
+    for input_pattern in input_file_pattern.split(','):
+      input_files.extend(tf.io.gfile.glob(input_pattern))
+    batch_size = ctx.get_per_replica_batch_size(global_batch_size)
     train_dataset = input_pipeline.create_pretrain_dataset(
-        input_patterns,
+        input_files,
         seq_length,
         max_predictions_per_seq,
         batch_size,
@@ -88,7 +71,7 @@ def get_pretrain_input_data(input_file_pattern, seq_length,
         input_pipeline_context=ctx)
     return train_dataset
 
-  return _dataset_fn if use_dataset_fn else _dataset_fn()
+  return _dataset_fn
 
 
 def get_loss_fn(loss_factor=1.0):
@@ -114,9 +97,9 @@ def run_customized_training(strategy,
                             train_batch_size):
   """Run BERT pretrain model training using low-level API."""
 
-  train_input_fn = functools.partial(get_pretrain_input_data, input_files,
-                                     max_seq_length, max_predictions_per_seq,
-                                     train_batch_size, strategy)
+  train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
+                                           max_predictions_per_seq,
+                                           train_batch_size)
 
   def _get_pretrain_model():
     """Gets a pretraining model."""

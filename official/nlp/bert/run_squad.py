@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import functools
 import json
 import os
 
@@ -136,22 +135,44 @@ def get_raw_results(predictions):
           end_logits=values[2].tolist())
 
 
+def get_dataset_fn(input_file_pattern, max_seq_length, global_batch_size,
+                   is_training):
+  """Gets a closure to create a dataset.."""
+
+  def _dataset_fn(ctx=None):
+    """Returns tf.data.Dataset for distributed BERT pretraining."""
+    batch_size = ctx.get_per_replica_batch_size(
+        global_batch_size) if ctx else global_batch_size
+    dataset = input_pipeline.create_squad_dataset(
+        input_file_pattern,
+        max_seq_length,
+        batch_size,
+        is_training=is_training,
+        input_pipeline_context=ctx)
+    return dataset
+
+  return _dataset_fn
+
+
 def predict_squad_customized(strategy, input_meta_data, bert_config,
                              predict_tfrecord_path, num_steps):
   """Make predictions using a Bert-based squad model."""
-  predict_dataset = input_pipeline.create_squad_dataset(
+  predict_dataset_fn = get_dataset_fn(
       predict_tfrecord_path,
       input_meta_data['max_seq_length'],
       FLAGS.predict_batch_size,
       is_training=False)
   predict_iterator = iter(
-      strategy.experimental_distribute_dataset(predict_dataset))
+      strategy.experimental_distribute_datasets_from_function(
+          predict_dataset_fn))
 
   with strategy.scope():
     # Prediction always uses float32, even if training uses mixed precision.
     tf.keras.mixed_precision.experimental.set_policy('float32')
     squad_model, _ = bert_models.squad_model(
-        bert_config, input_meta_data['max_seq_length'], float_type=tf.float32,
+        bert_config,
+        input_meta_data['max_seq_length'],
+        float_type=tf.float32,
         use_keras_bert=FLAGS.use_keras_bert_for_squad)
 
   checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
@@ -208,8 +229,7 @@ def train_squad(strategy,
   max_seq_length = input_meta_data['max_seq_length']
   steps_per_epoch = int(num_train_examples / FLAGS.train_batch_size)
   warmup_steps = int(epochs * num_train_examples * 0.1 / FLAGS.train_batch_size)
-  train_input_fn = functools.partial(
-      input_pipeline.create_squad_dataset,
+  train_input_fn = get_dataset_fn(
       FLAGS.train_data_path,
       max_seq_length,
       FLAGS.train_batch_size,
@@ -347,7 +367,9 @@ def export_squad(model_export_path, input_meta_data):
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
 
   squad_model, _ = bert_models.squad_model(
-      bert_config, input_meta_data['max_seq_length'], float_type=tf.float32,
+      bert_config,
+      input_meta_data['max_seq_length'],
+      float_type=tf.float32,
       use_keras_bert=FLAGS.use_keras_bert_for_squad)
   model_saving_utils.export_bert_model(
       model_export_path, model=squad_model, checkpoint_dir=FLAGS.model_dir)

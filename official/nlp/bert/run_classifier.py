@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import functools
 import json
 import math
 import os
@@ -78,6 +77,25 @@ def get_loss_fn(num_classes, loss_factor=1.0):
     return loss
 
   return classification_loss_fn
+
+
+def get_dataset_fn(input_file_pattern, max_seq_length, global_batch_size,
+                   is_training):
+  """Gets a closure to create a dataset."""
+
+  def _dataset_fn(ctx=None):
+    """Returns tf.data.Dataset for distributed BERT pretraining."""
+    batch_size = ctx.get_per_replica_batch_size(
+        global_batch_size) if ctx else global_batch_size
+    dataset = input_pipeline.create_classifier_dataset(
+        input_file_pattern,
+        max_seq_length,
+        batch_size,
+        is_training=is_training,
+        input_pipeline_context=ctx)
+    return dataset
+
+  return _dataset_fn
 
 
 def run_bert_classifier(strategy,
@@ -264,7 +282,10 @@ def export_classifier(model_export_path, input_meta_data,
       restore_model_using_load_weights=restore_model_using_load_weights)
 
 
-def run_bert(strategy, input_meta_data, train_input_fn, eval_input_fn):
+def run_bert(strategy,
+             input_meta_data,
+             train_input_fn=None,
+             eval_input_fn=None):
   """Run BERT training."""
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   if FLAGS.mode == 'export_only':
@@ -340,18 +361,17 @@ def main(_):
                      FLAGS.strategy_type)
 
   max_seq_length = input_meta_data['max_seq_length']
-  train_input_fn = functools.partial(
-      input_pipeline.create_classifier_dataset,
+  train_input_fn = get_dataset_fn(
       FLAGS.train_data_path,
-      seq_length=max_seq_length,
-      batch_size=FLAGS.train_batch_size)
-  eval_input_fn = functools.partial(
-      input_pipeline.create_classifier_dataset,
+      max_seq_length,
+      FLAGS.train_batch_size,
+      is_training=True)
+  eval_input_fn = get_dataset_fn(
       FLAGS.eval_data_path,
-      seq_length=max_seq_length,
-      batch_size=FLAGS.eval_batch_size,
-      is_training=False,
-      drop_remainder=False)
+      max_seq_length,
+      FLAGS.eval_batch_size,
+      is_training=False)
+
   run_bert(strategy, input_meta_data, train_input_fn, eval_input_fn)
 
 

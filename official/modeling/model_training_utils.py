@@ -41,16 +41,13 @@ def _save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
 
 def _get_input_iterator(input_fn, strategy):
   """Returns distributed dataset iterator."""
-
   # When training with TPU pods, datasets needs to be cloned across
   # workers. Since Dataset instance cannot be cloned in eager mode, we instead
   # pass callable that returns a dataset.
-  input_data = input_fn()
-  if callable(input_data):
-    iterator = iter(
-        strategy.experimental_distribute_datasets_from_function(input_data))
-  else:
-    iterator = iter(strategy.experimental_distribute_dataset(input_data))
+  if not callable(input_fn):
+    raise ValueError('`input_fn` should be a closure that returns a dataset.')
+  iterator = iter(
+      strategy.experimental_distribute_datasets_from_function(input_fn))
   return iterator
 
 

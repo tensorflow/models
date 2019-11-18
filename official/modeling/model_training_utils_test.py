@@ -66,12 +66,15 @@ def create_fake_data_input_fn(batch_size, features_shape, num_classes):
     An input function that is usable in the executor.
   """
 
-  def _input_fn():
+  def _dataset_fn(input_context=None):
     """An input function for generating fake data."""
+    local_batch_size = input_context.get_per_replica_batch_size(batch_size)
     features = np.random.rand(64, *features_shape)
     labels = np.random.randint(2, size=[64, num_classes])
     # Convert the inputs to a Dataset.
     dataset = tf.data.Dataset.from_tensor_slices((features, labels))
+    dataset = dataset.shard(input_context.num_input_pipelines,
+                            input_context.input_pipeline_id)
 
     def _assign_dtype(features, labels):
       features = tf.cast(features, tf.float32)
@@ -81,11 +84,11 @@ def create_fake_data_input_fn(batch_size, features_shape, num_classes):
     # Shuffle, repeat, and batch the examples.
     dataset = dataset.map(_assign_dtype)
     dataset = dataset.shuffle(64).repeat()
-    dataset = dataset.batch(batch_size, drop_remainder=True)
+    dataset = dataset.batch(local_batch_size, drop_remainder=True)
     dataset = dataset.prefetch(buffer_size=64)
     return dataset
 
-  return _input_fn
+  return _dataset_fn
 
 
 def create_model_fn(input_shape, num_classes, use_float16=False):
@@ -134,21 +137,21 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(ModelTrainingUtilsTest, self).setUp()
-    self._input_fn = create_fake_data_input_fn(
-        batch_size=8, features_shape=[128], num_classes=3)
     self._model_fn = create_model_fn(input_shape=[128], num_classes=3)
 
-  def run_training(self, distribution, model_dir, steps_per_loop, run_eagerly):
+  def run_training(self, strategy, model_dir, steps_per_loop, run_eagerly):
+    input_fn = create_fake_data_input_fn(
+        batch_size=8, features_shape=[128], num_classes=3)
     model_training_utils.run_customized_training_loop(
-        strategy=distribution,
+        strategy=strategy,
         model_fn=self._model_fn,
         loss_fn=tf.keras.losses.categorical_crossentropy,
         model_dir=model_dir,
         steps_per_epoch=20,
         steps_per_loop=steps_per_loop,
         epochs=2,
-        train_input_fn=self._input_fn,
-        eval_input_fn=self._input_fn,
+        train_input_fn=input_fn,
+        eval_input_fn=input_fn,
         eval_steps=10,
         init_checkpoint=None,
         metric_fn=metric_fn,
