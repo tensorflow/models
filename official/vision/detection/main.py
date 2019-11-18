@@ -29,13 +29,14 @@ import tensorflow.compat.v2 as tf
 
 from official.modeling.hyperparams import params_dict
 from official.modeling.training import distributed_executor as executor
+from official.utils import hyperparams_flags
 from official.vision.detection.configs import factory as config_factory
 from official.vision.detection.dataloader import input_reader
 from official.vision.detection.dataloader import mode_keys as ModeKeys
 from official.vision.detection.executor.detection_executor import DetectionDistributedExecutor
 from official.vision.detection.modeling import factory as model_factory
 
-executor.initialize_common_flags()
+hyperparams_flags.initialize_common_flags()
 
 flags.DEFINE_string(
     'mode',
