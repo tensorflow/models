@@ -25,10 +25,12 @@ import sys
 import tempfile
 
 from absl import flags
+from absl.testing import flagsaver
 
 from official.utils.flags import core as flags_core
 
 
+@flagsaver.flagsaver
 def run_synthetic(main, tmp_root, extra_flags=None, synth=True, train_epochs=1,
                   epochs_between_evals=1):
   """Performs a minimal run of a model.
