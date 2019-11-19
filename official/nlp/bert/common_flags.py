@@ -22,11 +22,21 @@ from official.utils.flags import core as flags_core
 
 def define_common_bert_flags():
   """Define common flags for BERT tasks."""
+  flags_core.define_base(
+      data_dir=False,
+      model_dir=True,
+      clean=False,
+      train_epochs=False,
+      epochs_between_evals=False,
+      stop_threshold=False,
+      batch_size=False,
+      num_gpu=True,
+      hooks=False,
+      export_dir=False,
+      distribution_strategy=True,
+      run_eagerly=True)
   flags.DEFINE_string('bert_config_file', None,
                       'Bert configuration file to define core bert layers.')
-  flags.DEFINE_string('model_dir', None, (
-      'The directory where the model weights and training/evaluation summaries '
-      'are stored. If not specified, save to /tmp/bert20/.'))
   flags.DEFINE_string(
       'model_export_path', None,
       'Path to the directory, where trainined model will be '
@@ -35,11 +45,6 @@ def define_common_bert_flags():
   flags.DEFINE_string(
       'init_checkpoint', None,
       'Initial checkpoint (usually from a pre-trained BERT model).')
-  flags.DEFINE_enum(
-      'strategy_type', 'mirror', ['tpu', 'mirror', 'multi_worker_mirror'],
-      'Distribution Strategy type to use for training. `tpu` uses '
-      'TPUStrategy for running on TPUs, `mirror` uses GPUs with single host, '
-      '`multi_worker_mirror` uses CPUs or GPUs with multiple hosts.')
   flags.DEFINE_integer('num_train_epochs', 3,
                        'Total number of training epochs to perform.')
   flags.DEFINE_integer(
@@ -49,9 +54,6 @@ def define_common_bert_flags():
       'inside.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
-  flags.DEFINE_boolean(
-      'run_eagerly', False,
-      'Run the model op by op without building a model function.')
   flags.DEFINE_boolean(
       'scale_loss', False,
       'Whether to divide the loss by number of replica inside the per-replica '

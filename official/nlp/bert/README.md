@@ -209,7 +209,7 @@ script should run with `tf-nightly`.
 Just add the following flags to `run_classifier.py` or `run_squad.py`:
 
 ```shell
-  --strategy_type=tpu
+  --distribution_strategy=tpu
   --tpu=grpc://${TPU_IP_ADDRESS}:8470
 ```
 
@@ -243,7 +243,7 @@ python run_classifier.py \
   --learning_rate=2e-5 \
   --num_train_epochs=3 \
   --model_dir=${MODEL_DIR} \
-  --strategy_type=mirror
+  --distribution_strategy=mirror
 ```
 
 To use TPU, you only need to switch distribution strategy type to `tpu` with TPU
@@ -267,7 +267,7 @@ python run_classifier.py \
   --learning_rate=2e-5 \
   --num_train_epochs=3 \
   --model_dir=${MODEL_DIR} \
-  --strategy_type=tpu \
+  --distribution_strategy=tpu \
   --tpu=grpc://${TPU_IP_ADDRESS}:8470
 ```
 
@@ -299,7 +299,7 @@ python run_squad.py \
   --learning_rate=8e-5 \
   --num_train_epochs=2 \
   --model_dir=${MODEL_DIR} \
-  --strategy_type=mirror
+  --distribution_strategy=mirror
 ```
 
 To use TPU, you need switch distribution strategy type to `tpu` with TPU
@@ -323,7 +323,7 @@ python run_squad.py \
   --learning_rate=8e-5 \
   --num_train_epochs=2 \
   --model_dir=${MODEL_DIR} \
-  --strategy_type=tpu \
+  --distribution_strategy=tpu \
   --tpu=grpc://${TPU_IP_ADDRESS}:8470
 ```
 

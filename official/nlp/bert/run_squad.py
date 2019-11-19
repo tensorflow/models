@@ -36,6 +36,7 @@ from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
 from official.nlp.bert import squad_lib
 from official.nlp.bert import tokenization
+from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import tpu_lib
 
@@ -386,17 +387,10 @@ def main(_):
     export_squad(FLAGS.model_export_path, input_meta_data)
     return
 
-  strategy = None
-  if FLAGS.strategy_type == 'mirror':
-    strategy = tf.distribute.MirroredStrategy()
-  elif FLAGS.strategy_type == 'multi_worker_mirror':
-    strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
-  elif FLAGS.strategy_type == 'tpu':
-    cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
-  else:
-    raise ValueError('The distribution strategy type is not supported: %s' %
-                     FLAGS.strategy_type)
+  strategy = distribution_utils.get_distribution_strategy(
+      distribution_strategy=FLAGS.distribution_strategy,
+      num_gpus=FLAGS.num_gpus,
+      tpu_address=FLAGS.tpu)
   if FLAGS.mode in ('train', 'train_and_predict'):
     train_squad(strategy, input_meta_data)
   if FLAGS.mode in ('predict', 'train_and_predict'):

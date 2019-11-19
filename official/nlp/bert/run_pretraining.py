@@ -30,6 +30,7 @@ from official.nlp import optimization
 from official.nlp.bert import common_flags
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
+from official.utils.misc import distribution_utils
 from official.utils.misc import tpu_lib
 
 flags.DEFINE_string('input_files', None,
@@ -172,15 +173,10 @@ def main(_):
 
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'
-  strategy = None
-  if FLAGS.strategy_type == 'mirror':
-    strategy = tf.distribute.MirroredStrategy()
-  elif FLAGS.strategy_type == 'tpu':
-    cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
-  else:
-    raise ValueError('The distribution strategy type is not supported: %s' %
-                     FLAGS.strategy_type)
+  strategy = distribution_utils.get_distribution_strategy(
+      distribution_strategy=FLAGS.distribution_strategy,
+      num_gpus=FLAGS.num_gpus,
+      tpu_address=FLAGS.tpu)
   if strategy:
     print('***** Number of cores used : ', strategy.num_replicas_in_sync)
 
