@@ -22,9 +22,11 @@ import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import cv2 as cv2
 import scipy as sc
-import math 
+import math
 
-MAX_ALPHA=0.2
+MAX_ALPHA=0.5
+LOWER_CONTRAST=0.3
+UPPER_CONTRAST=0.8
 
 def flip_dim(tensor_list, prob=0.5, dim=1):
   """Randomly flips a dimension of the given tensor.
@@ -343,7 +345,7 @@ def overlay_patch(img, patch, i, j, alpha):
   return img_overlay
 
 def adjust_color(image):
-  return tf.image.random_contrast(image, 0.15, 1.3)
+  return tf.image.random_contrast(image, LOWER_CONTRAST, UPPER_CONTRAST)
 
 def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   """Gets a random scale value.
