@@ -59,7 +59,7 @@ def _save_annotation(annotation, filename):
     filename: Output filename.
   """
   pil_image = Image.fromarray(annotation.astype(dtype=np.uint8))
-  with tf.gfile.Open(filename, mode='w') as f:
+  with tf.io.gfile.GFile(filename, mode='w') as f:
     pil_image.save(f, 'PNG')
 
 
