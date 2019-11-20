@@ -125,11 +125,13 @@ class Transformer(tf.keras.layers.Layer):
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     self._attention_layer_norm = (
         tf.keras.layers.LayerNormalization(
-            name="self_attention_layer_norm", axis=-1, epsilon=1e-12,
+            name="self_attention_layer_norm",
+            axis=-1,
+            epsilon=1e-12,
             dtype=tf.float32))
     self._intermediate_dense = dense_einsum.DenseEinsum(
         output_shape=self._intermediate_size,
-        activation=self._intermediate_activation,
+        activation=None,
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -137,8 +139,9 @@ class Transformer(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
-        dtype=tf.float32,  # This layer is always float32 for numeric stability.
         name="intermediate")
+    self._intermediate_activation_layer = tf.keras.layers.Activation(
+        self._intermediate_activation)
     self._output_dense = dense_einsum.DenseEinsum(
         output_shape=hidden_size,
         kernel_initializer=self._kernel_initializer,
@@ -215,7 +218,14 @@ class Transformer(tf.keras.layers.Layer):
                                                   attention_output)
     intermediate_output = self._intermediate_dense(attention_output)
     if self.dtype == tf.float16:
+      # Casts to float32 so that activation is done in float32.
+      intermediate_output = tf.cast(intermediate_output, tf.float32)
+      intermediate_output = self._intermediate_activation_layer(
+          intermediate_output)
       intermediate_output = tf.cast(intermediate_output, tf.float16)
+    else:
+      intermediate_output = self._intermediate_activation_layer(
+          intermediate_output)
     layer_output = self._output_dense(intermediate_output)
     layer_output = self._output_dropout(layer_output)
     # Use float32 in keras layer norm for numeric stability

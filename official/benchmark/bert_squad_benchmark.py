@@ -34,13 +34,13 @@ from official.nlp.bert import run_squad
 from official.utils.misc import distribution_utils
 
 # pylint: disable=line-too-long
-PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16/bert_model.ckpt'
+PRETRAINED_CHECKPOINT_PATH = '/placer/prod/home/tensorflow-performance-data/datasets/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
 SQUAD_TRAIN_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_train.tf_record'
 SQUAD_PREDICT_FILE = 'gs://tf-perfzero-data/bert/squad/dev-v1.1.json'
-SQUAD_VOCAB_FILE = 'gs://tf-perfzero-data/bert/squad/vocab.txt'
+SQUAD_VOCAB_FILE = '/placer/prod/home/tensorflow-performance-data/datasets/bert/keras_bert/uncased_L-24_H-1024_A-16/vocab.txt'
 SQUAD_MEDIUM_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_medium_meta_data'
 SQUAD_FULL_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_full_meta_data'
-MODEL_CONFIG_FILE_PATH = 'gs://cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16/bert_config'
+MODEL_CONFIG_FILE_PATH = '/placer/prod/home/tensorflow-performance-data/datasets/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_config.json'
 # pylint: enable=line-too-long
 
 TMP_DIR = os.getenv('TMPDIR')
@@ -340,6 +340,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     FLAGS.init_checkpoint = PRETRAINED_CHECKPOINT_PATH
     FLAGS.num_train_epochs = 2
     FLAGS.steps_per_loop = 1
+    FLAGS.use_keras_bert_for_squad = True
 
   def _run_and_report_benchmark(self,
                                 use_ds=True,
