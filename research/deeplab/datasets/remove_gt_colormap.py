@@ -26,17 +26,17 @@ from PIL import Image
 
 import tensorflow as tf
 
-FLAGS = tf.app.flags.FLAGS
+FLAGS = tf.compat.v1.flags.FLAGS
 
-tf.app.flags.DEFINE_string('original_gt_folder',
-                           './VOCdevkit/VOC2012/SegmentationClass',
-                           'Original ground truth annotations.')
+tf.compat.v1.flags.DEFINE_string('original_gt_folder',
+                                 './VOCdevkit/VOC2012/SegmentationClass',
+                                 'Original ground truth annotations.')
 
-tf.app.flags.DEFINE_string('segmentation_format', 'png', 'Segmentation format.')
+tf.compat.v1.flags.DEFINE_string('segmentation_format', 'png', 'Segmentation format.')
 
-tf.app.flags.DEFINE_string('output_dir',
-                           './VOCdevkit/VOC2012/SegmentationClassRaw',
-                           'folder to save modified ground truth annotations.')
+tf.compat.v1.flags.DEFINE_string('output_dir',
+                                 './VOCdevkit/VOC2012/SegmentationClassRaw',
+                                 'folder to save modified ground truth annotations.')
 
 
 def _remove_colormap(filename):
@@ -65,8 +65,8 @@ def _save_annotation(annotation, filename):
 
 def main(unused_argv):
   # Create the output directory if not exists.
-  if not tf.gfile.IsDirectory(FLAGS.output_dir):
-    tf.gfile.MakeDirs(FLAGS.output_dir)
+  if not tf.io.gfile.isdir(FLAGS.output_dir):
+    tf.io.gfile.makedirs(FLAGS.output_dir)
 
   annotations = glob.glob(os.path.join(FLAGS.original_gt_folder,
                                        '*.' + FLAGS.segmentation_format))
@@ -80,4 +80,4 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()
