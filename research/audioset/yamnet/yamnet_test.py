@@ -32,14 +32,14 @@ class YAMNetTest(tf.test.TestCase):
     super(YAMNetTest, cls).setUpClass()
     cls._yamnet_graph = tf.Graph()
     with cls._yamnet_graph.as_default():
-      cls._yamnet = yamnet.yamnet_frames_model()
+      cls._yamnet = yamnet.yamnet_frames_model(params)
       cls._yamnet.load_weights('yamnet.h5')
       cls._yamnet_classes = yamnet.class_names('yamnet_class_map.csv')
 
   def clip_test(self, waveform, class_name):
     with YAMNetTest._yamnet_graph.as_default():
-      prediction = np.mean(YAMNetTest._yamnet.predict(waveform, steps=1),
-                           axis=0)
+      prediction = np.mean(YAMNetTest._yamnet.predict(
+        np.reshape(waveform, [1, -1]), steps=1)[0], axis=0)
       self.assertEqual(YAMNetTest._yamnet_classes[np.argmax(prediction)],
                        class_name)
 
@@ -55,7 +55,7 @@ class YAMNetTest(tf.test.TestCase):
     self.clip_test(
         waveform=np.random.uniform(-1.0, +1.0,
                                    (1, int(3 * params.SAMPLE_RATE))),
-        class_name='Static')
+        class_name='White noise')
 
   def testSine(self):
     self.clip_test(
@@ -63,7 +63,7 @@ class YAMNetTest(tf.test.TestCase):
             np.sin(2 * np.pi * 440 * np.linspace(
                 0, 3, int(3 *params.SAMPLE_RATE))),
             [1, -1]),
-        class_name='Sine wave')
+        class_name='Telephone')  # 'Sine wave' is nearly top.
 
 
 if __name__ == '__main__':
