@@ -36,26 +36,26 @@ class YAMNetTest(tf.test.TestCase):
       cls._yamnet.load_weights('yamnet.h5')
       cls._yamnet_classes = yamnet.class_names('yamnet_class_map.csv')
 
-  def clip_test(self, waveform, class_name):
+  def clip_test(self, waveform, expected_class_name, top_n=10):
+    """Run the model on the waveform, check that expected class is in top-n."""
     with YAMNetTest._yamnet_graph.as_default():
       prediction = np.mean(YAMNetTest._yamnet.predict(
         np.reshape(waveform, [1, -1]), steps=1)[0], axis=0)
-      self.assertEqual(YAMNetTest._yamnet_classes[np.argmax(prediction)],
-                       class_name)
+      top_n_class_names = YAMNetTest._yamnet_classes[
+        np.argsort(prediction)[-top_n:]]
+      self.assertIn(expected_class_name, top_n_class_names)
 
   def testZeros(self):
     self.clip_test(
         waveform=np.zeros((1, int(3 * params.SAMPLE_RATE))),
-        class_name='Silence')
+        expected_class_name='Silence')
 
   def testRandom(self):
-    # Ensure repeatability.  The boundary between 'Static' and 'White noise'
-    # is quite thin.
-    np.random.seed(51773)
+    np.random.seed(51773)  # Ensure repeatability.
     self.clip_test(
         waveform=np.random.uniform(-1.0, +1.0,
                                    (1, int(3 * params.SAMPLE_RATE))),
-        class_name='White noise')
+        expected_class_name='White noise')
 
   def testSine(self):
     self.clip_test(
@@ -63,7 +63,7 @@ class YAMNetTest(tf.test.TestCase):
             np.sin(2 * np.pi * 440 * np.linspace(
                 0, 3, int(3 *params.SAMPLE_RATE))),
             [1, -1]),
-        class_name='Telephone')  # 'Sine wave' is nearly top.
+        expected_class_name='Sine wave')
 
 
 if __name__ == '__main__':
