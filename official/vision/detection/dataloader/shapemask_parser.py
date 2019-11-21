@@ -268,7 +268,7 @@ class Parser(object):
         boxes, image_scale, self._output_size, offset)
 
     # Filters out ground truth boxes that are all zeros.
-    indices = input_utils.get_non_empty_box_indices(boxes)
+    indices = box_utils.get_non_empty_box_indices(boxes)
     boxes = tf.gather(boxes, indices)
     classes = tf.gather(classes, indices)
     masks = tf.gather(masks, indices)
@@ -427,7 +427,7 @@ class Parser(object):
         tf.expand_dims(masks, axis=-1), image_scale, self._output_size, offset)
 
     # Filters out ground truth boxes that are all zeros.
-    indices = input_utils.get_non_empty_box_indices(boxes)
+    indices = box_utils.get_non_empty_box_indices(boxes)
     boxes = tf.gather(boxes, indices)
     classes = tf.gather(classes, indices)
 

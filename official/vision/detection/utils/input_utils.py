@@ -362,13 +362,3 @@ def resize_and_crop_masks(masks,
 def random_horizontal_flip(image, boxes=None, masks=None):
   """Randomly flips input image and bounding boxes."""
   return preprocessor.random_horizontal_flip(image, boxes, masks)
-
-
-def get_non_empty_box_indices(boxes):
-  """Get indices for non-empty boxes."""
-  # Selects indices if box height or width is 0.
-  height = boxes[:, 2] - boxes[:, 0]
-  width = boxes[:, 3] - boxes[:, 1]
-  indices = tf.where(tf.logical_and(tf.greater(height, 0),
-                                    tf.greater(width, 0)))
-  return indices[:, 0]

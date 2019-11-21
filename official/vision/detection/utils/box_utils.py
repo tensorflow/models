@@ -523,3 +523,13 @@ def bbox_overlap(boxes, gt_boxes):
     iou = tf.where(padding_mask, -tf.ones_like(iou), iou)
 
     return iou
+
+
+def get_non_empty_box_indices(boxes):
+  """Get indices for non-empty boxes."""
+  # Selects indices if box height or width is 0.
+  height = boxes[:, 2] - boxes[:, 0]
+  width = boxes[:, 3] - boxes[:, 1]
+  indices = tf.where(tf.logical_and(tf.greater(height, 0),
+                                    tf.greater(width, 0)))
+  return indices[:, 0]
