@@ -127,7 +127,7 @@ them on the recommendation of our Fairness reviewers to avoid potentially
 offensive mislabelings.  We dropped the gendered versions (Male/Female) of
 Speech and Singing.  We also dropped Battle cry and Funny music.
 
-### Peformance
+### Performance
 
 On the 20,366-segment AudioSet eval set, over the 521 included classes, the
 balanced average d-prime is 2.318, balanced mAP is 0.306, and the balanced
