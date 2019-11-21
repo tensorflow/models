@@ -356,6 +356,35 @@ def define_keras_flags(dynamic_loss_scale=True):
       'steps per epoch.')
 
 
+def get_synth_data(height, width, num_channels, num_classes, dtype):
+  """Creates a set of synthetic random data.
+
+  Args:
+    height: Integer height that will be used to create a fake image tensor.
+    width: Integer width that will be used to create a fake image tensor.
+    num_channels: Integer depth that will be used to create a fake image tensor.
+    num_classes: Number of classes that should be represented in the fake labels
+      tensor
+    dtype: Data type for features/images.
+
+  Returns:
+    A tuple of tensors representing the inputs and labels.
+
+  """
+  # Synthetic input should be within [0, 255].
+  inputs = tf.random.truncated_normal([height, width, num_channels],
+                                      dtype=dtype,
+                                      mean=127,
+                                      stddev=60,
+                                      name='synthetic_inputs')
+  labels = tf.random.uniform([1],
+                             minval=0,
+                             maxval=num_classes - 1,
+                             dtype=tf.int32,
+                             name='synthetic_labels')
+  return inputs, labels
+
+
 def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32, drop_remainder=True):
   """Returns an input function that returns a dataset with random data.
@@ -382,20 +411,13 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   # pylint: disable=unused-argument
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
     """Returns dataset filled with random data."""
-    # Synthetic input should be within [0, 255].
-    inputs = tf.random.truncated_normal([height, width, num_channels],
-                                        dtype=dtype,
-                                        mean=127,
-                                        stddev=60,
-                                        name='synthetic_inputs')
-    labels = tf.random.uniform([1],
-                               minval=0,
-                               maxval=num_classes - 1,
-                               dtype=tf.int32,
-                               name='synthetic_labels')
+    inputs, labels = get_synth_data(height=height,
+                                    width=width,
+                                    num_channels=num_channels,
+                                    num_classes=num_classes,
+                                    dtype=dtype)
     # Cast to float32 for Keras model.
     labels = tf.cast(labels, dtype=tf.float32)
-
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
 
     # `drop_remainder` will make dataset produce outputs with known shapes.
