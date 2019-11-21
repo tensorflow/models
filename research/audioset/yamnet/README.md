@@ -129,8 +129,9 @@ Speech and Singing.  We also dropped Battle cry and Funny music.
 
 ### Peformance
 
-On the AudioSet eval set, the balanced average d-prime is 1.27, balanced mAP is
-0.591, and the balanced average lwlrap is ...
+On the 20,366-segment AudioSet eval set, over the 521 included classes, the
+balanced average d-prime is 2.318, balanced mAP is 0.306, and the balanced
+average lwlrap is 0.393.
 
 According to our calculations, the classifier has 3.7M weights and performs
 69.2M multiplies for each 960ms input frame.
