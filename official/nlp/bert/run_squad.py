@@ -81,9 +81,7 @@ flags.DEFINE_integer(
     'The maximum length of an answer that can be generated. This is needed '
     'because the start and end predictions are not conditioned on one another.')
 flags.DEFINE_bool(
-    'use_keras_bert_for_squad', False, 'Whether to use keras BERT for squad '
-    'task. Note that when the FLAG "hub_module_url" is specified, '
-    '"use_keras_bert_for_squad" cannot be True.')
+    'use_keras_bert_for_squad', True, 'Deprecated and will be removed soon.')
 
 common_flags.define_common_bert_flags()
 
@@ -173,8 +171,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     squad_model, _ = bert_models.squad_model(
         bert_config,
         input_meta_data['max_seq_length'],
-        float_type=tf.float32,
-        use_keras_bert=FLAGS.use_keras_bert_for_squad)
+        float_type=tf.float32)
 
   checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
   logging.info('Restoring checkpoints from %s', checkpoint_path)
@@ -242,9 +239,7 @@ def train_squad(strategy,
         bert_config,
         max_seq_length,
         float_type=tf.float16 if use_float16 else tf.float32,
-        hub_module_url=FLAGS.hub_module_url,
-        use_keras_bert=False
-        if FLAGS.hub_module_url else FLAGS.use_keras_bert_for_squad)
+        hub_module_url=FLAGS.hub_module_url)
     squad_model.optimizer = optimization.create_optimizer(
         FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
     if use_float16:
@@ -370,8 +365,7 @@ def export_squad(model_export_path, input_meta_data):
   squad_model, _ = bert_models.squad_model(
       bert_config,
       input_meta_data['max_seq_length'],
-      float_type=tf.float32,
-      use_keras_bert=FLAGS.use_keras_bert_for_squad)
+      float_type=tf.float32)
   model_saving_utils.export_bert_model(
       model_export_path, model=squad_model, checkpoint_dir=FLAGS.model_dir)
 
@@ -379,6 +373,10 @@ def export_squad(model_export_path, input_meta_data):
 def main(_):
   # Users should always run this script under TF 2.x
   assert tf.version.VERSION.startswith('2.')
+
+  if not FLAGS.use_keras_bert_for_squad:
+    raise ValueError(
+        'Old tf2 BERT is no longer supported. Please use keras BERT.')
 
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
