@@ -37,10 +37,10 @@ from official.utils.misc import distribution_utils
 PRETRAINED_CHECKPOINT_PATH = '/placer/prod/home/tensorflow-performance-data/datasets/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
 SQUAD_TRAIN_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_train.tf_record'
 SQUAD_PREDICT_FILE = 'gs://tf-perfzero-data/bert/squad/dev-v1.1.json'
-SQUAD_VOCAB_FILE = '/placer/prod/home/tensorflow-performance-data/datasets/bert/keras_bert/uncased_L-24_H-1024_A-16/vocab.txt'
+SQUAD_VOCAB_FILE = 'gs://tf-perfzero-data/bert/squad/vocab.txt'
 SQUAD_MEDIUM_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_medium_meta_data'
 SQUAD_FULL_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_full_meta_data'
-MODEL_CONFIG_FILE_PATH = '/placer/prod/home/tensorflow-performance-data/datasets/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_config.json'
+MODEL_CONFIG_FILE_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_config.json'
 # pylint: enable=line-too-long
 
 TMP_DIR = os.getenv('TMPDIR')
