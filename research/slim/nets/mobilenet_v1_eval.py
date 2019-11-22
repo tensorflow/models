@@ -20,12 +20,14 @@ from __future__ import print_function
 
 import math
 import tensorflow as tf
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from nets import mobilenet_v1
 from preprocessing import preprocessing_factory
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 flags = tf.app.flags
 
@@ -124,7 +126,7 @@ def build_model():
           num_classes=FLAGS.num_classes)
 
     if FLAGS.quantize:
-      tf.contrib.quantize.create_eval_graph()
+      contrib_quantize.create_eval_graph()
 
     eval_ops = metrics(logits, labels)
 

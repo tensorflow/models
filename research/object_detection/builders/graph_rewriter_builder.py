@@ -32,11 +32,14 @@ def build(graph_rewriter_config, is_training):
 
     # Quantize the graph by inserting quantize ops for weights and activations
     if is_training:
-      tf.contrib.quantize.create_training_graph(
+      tf.contrib.quantize.experimental_create_training_graph(
           input_graph=tf.get_default_graph(),
-          quant_delay=graph_rewriter_config.quantization.delay)
+          quant_delay=graph_rewriter_config.quantization.delay
+      )
     else:
-      tf.contrib.quantize.create_eval_graph(input_graph=tf.get_default_graph())
+      tf.contrib.quantize.experimental_create_eval_graph(
+          input_graph=tf.get_default_graph()
+      )
 
     tf.contrib.layers.summarize_collection('quant_vars')
   return graph_rewrite_fn

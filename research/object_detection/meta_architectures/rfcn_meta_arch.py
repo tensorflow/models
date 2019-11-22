@@ -81,7 +81,9 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                add_summaries=True,
                clip_anchors_to_image=False,
                use_static_shapes=False,
-               resize_masks=False):
+               resize_masks=False,
+               freeze_batchnorm=False,
+               return_raw_detections_during_predict=False):
     """RFCNMetaArch Constructor.
 
     Args:
@@ -110,9 +112,12 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         denser resolutions.  The atrous rate is used to compensate for the
         denser feature maps by using an effectively larger receptive field.
         (This should typically be set to 1).
-      first_stage_box_predictor_arg_scope_fn: A function to generate tf-slim
-        arg_scope for conv2d, separable_conv2d and fully_connected ops for the
-        RPN box predictor.
+      first_stage_box_predictor_arg_scope_fn: Either a
+        Keras layer hyperparams object or a function to construct tf-slim
+        arg_scope for conv2d, separable_conv2d and fully_connected ops. Used
+        for the RPN box predictor. If it is a keras hyperparams object the
+        RPN box predictor will be a Keras model. If it is a function to
+        construct an arg scope it will be a tf-slim box predictor.
       first_stage_box_predictor_kernel_size: Kernel size to use for the
         convolution op just prior to RPN box predictions.
       first_stage_box_predictor_depth: Output depth for the convolution op
@@ -180,6 +185,13 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         guarantees.
       resize_masks: Indicates whether the masks presend in the groundtruth
         should be resized in the model with `image_resizer_fn`
+      freeze_batchnorm: Whether to freeze batch norm parameters during
+        training or not. When training with a small batch size (e.g. 1), it is
+        desirable to freeze batch norm update and use pretrained batch norm
+        params.
+      return_raw_detections_during_predict: Whether to return raw detection
+        boxes in the predict() method. These are decoded boxes that have not
+        been through postprocessing (i.e. NMS). Default False.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals`
@@ -225,7 +237,10 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         add_summaries,
         clip_anchors_to_image,
         use_static_shapes,
-        resize_masks)
+        resize_masks,
+        freeze_batchnorm=freeze_batchnorm,
+        return_raw_detections_during_predict=(
+            return_raw_detections_during_predict))
 
     self._rfcn_box_predictor = second_stage_rfcn_box_predictor
 
@@ -288,14 +303,13 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     """
     image_shape_2d = tf.tile(tf.expand_dims(image_shape[1:], 0),
                              [image_shape[0], 1])
-    proposal_boxes_normalized, _, num_proposals = self._postprocess_rpn(
-        rpn_box_encodings, rpn_objectness_predictions_with_background,
-        anchors, image_shape_2d, true_image_shapes)
+    (proposal_boxes_normalized, _, _, num_proposals, _,
+     _) = self._postprocess_rpn(rpn_box_encodings,
+                                rpn_objectness_predictions_with_background,
+                                anchors, image_shape_2d, true_image_shapes)
 
     box_classifier_features = (
-        self._feature_extractor.extract_box_classifier_features(
-            rpn_features,
-            scope=self.second_stage_feature_extractor_scope))
+        self._extract_box_classifier_features(rpn_features))
 
     if self._rfcn_box_predictor.is_keras_model:
       box_predictions = self._rfcn_box_predictor(
@@ -327,5 +341,43 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         'proposal_boxes': absolute_proposal_boxes,
         'box_classifier_features': box_classifier_features,
         'proposal_boxes_normalized': proposal_boxes_normalized,
+        'final_anchors': absolute_proposal_boxes
     }
+    if self._return_raw_detections_during_predict:
+      prediction_dict.update(self._raw_detections_and_feature_map_inds(
+          refined_box_encodings, absolute_proposal_boxes))
     return prediction_dict
+
+  def regularization_losses(self):
+    """Returns a list of regularization losses for this model.
+
+    Returns a list of regularization losses for this model that the estimator
+    needs to use during training/optimization.
+
+    Returns:
+      A list of regularization loss tensors.
+    """
+    reg_losses = super(RFCNMetaArch, self).regularization_losses()
+    if self._rfcn_box_predictor.is_keras_model:
+      reg_losses.extend(self._rfcn_box_predictor.losses)
+    return reg_losses
+
+  def updates(self):
+    """Returns a list of update operators for this model.
+
+    Returns a list of update operators for this model that must be executed at
+    each training step. The estimator's train op needs to have a control
+    dependency on these updates.
+
+    Returns:
+      A list of update operators.
+    """
+    update_ops = super(RFCNMetaArch, self).updates()
+
+    if self._rfcn_box_predictor.is_keras_model:
+      update_ops.extend(
+          self._rfcn_box_predictor.get_updates_for(None))
+      update_ops.extend(
+          self._rfcn_box_predictor.get_updates_for(
+              self._rfcn_box_predictor.inputs))
+    return update_ops

@@ -25,15 +25,16 @@ from official.utils.flags._conventions import help_wrap
 from official.utils.logs import hooks_helper
 
 
-def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
-                epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                num_gpu=True, hooks=True, export_dir=True,
-                distribution_strategy=True):
+def define_base(data_dir=True, model_dir=True, clean=False, train_epochs=False,
+                epochs_between_evals=False, stop_threshold=False,
+                batch_size=True, num_gpu=False, hooks=False, export_dir=False,
+                distribution_strategy=False, run_eagerly=False):
   """Register base flags.
 
   Args:
     data_dir: Create a flag for specifying the input data directory.
     model_dir: Create a flag for specifying the model file directory.
+    clean: Create a flag for removing the model_dir.
     train_epochs: Create a flag to specify the number of training epochs.
     epochs_between_evals: Create a flag to specify the frequency of testing.
     stop_threshold: Create a flag to specify a threshold accuracy or other
@@ -44,6 +45,7 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
     export_dir: Create a flag to specify where a SavedModel should be exported.
     distribution_strategy: Create a flag to specify which Distribution Strategy
       to use.
+    run_eagerly: Create a flag to specify to run eagerly op by op.
   Returns:
     A list of flags for core.py to marks as key flags.
   """
@@ -101,10 +103,15 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
   if num_gpu:
     flags.DEFINE_integer(
         name="num_gpus", short_name="ng",
-        default=1 if tf.test.is_gpu_available() else 0,
+        default=1,
         help=help_wrap(
-            "How many GPUs to use with the DistributionStrategies API. The "
-            "default is 1 if TensorFlow can detect a GPU, and 0 otherwise."))
+            "How many GPUs to use at each worker with the "
+            "DistributionStrategies API. The default is 1."))
+
+  if run_eagerly:
+    flags.DEFINE_boolean(
+        name="run_eagerly", default=False,
+        help="Run the model op by op without building a model function.")
 
   if hooks:
     # Construct a pretty summary of hooks.
@@ -141,6 +148,7 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                        "from `MirroredStrategy` or `OneDeviceStrategy` "
                        "according to the number of GPUs.")
     )
+
 
   return key_flags
 

@@ -14,7 +14,12 @@
 # ==============================================================================
 """Tests for object_detection.utils.label_map_util."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
+from six.moves import range
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -49,6 +54,23 @@ class LabelMapUtilTest(tf.test.TestCase):
       f.write(label_map_string)
 
     label_map_dict = label_map_util.get_label_map_dict(label_map_path)
+    self.assertEqual(label_map_dict['dog'], 1)
+    self.assertEqual(label_map_dict['cat'], 2)
+
+  def test_get_label_map_dict_from_proto(self):
+    label_map_string = """
+      item {
+        id:2
+        name:'cat'
+      }
+      item {
+        id:1
+        name:'dog'
+      }
+    """
+    label_map_proto = text_format.Parse(
+        label_map_string, string_int_label_map_pb2.StringIntLabelMap())
+    label_map_dict = label_map_util.get_label_map_dict(label_map_proto)
     self.assertEqual(label_map_dict['dog'], 1)
     self.assertEqual(label_map_dict['cat'], 2)
 
@@ -138,7 +160,7 @@ class LabelMapUtilTest(tf.test.TestCase):
 
     self.assertEqual(label_map_dict['background'], 0)
     self.assertEqual(label_map_dict['dog'], 1)
-    self.assertEqual(label_map_dict['class_2'], 2)
+    self.assertEqual(label_map_dict['2'], 2)
     self.assertEqual(label_map_dict['cat'], 3)
     self.assertEqual(len(label_map_dict), max(label_map_dict.values()) + 1)
 

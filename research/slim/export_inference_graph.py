@@ -58,13 +58,15 @@ from __future__ import print_function
 import os
 
 import tensorflow as tf
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import slim as contrib_slim
 
 from tensorflow.python.platform import gfile
 from datasets import dataset_factory
 from nets import nets_factory
 
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to save.')
@@ -110,6 +112,9 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_bool('write_text_graphdef', False,
                          'Whether to write a text version of graphdef.')
 
+tf.app.flags.DEFINE_bool('use_grayscale', False,
+                         'Whether to convert input images to grayscale.')
+
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -128,17 +133,20 @@ def main(_):
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         is_training=FLAGS.is_training)
     image_size = FLAGS.image_size or network_fn.default_image_size
+    num_channels = 1 if FLAGS.use_grayscale else 3
     if FLAGS.is_video_model:
-      input_shape = [FLAGS.batch_size, FLAGS.num_frames,
-                     image_size, image_size, 3]
+      input_shape = [
+          FLAGS.batch_size, FLAGS.num_frames, image_size, image_size,
+          num_channels
+      ]
     else:
-      input_shape = [FLAGS.batch_size, image_size, image_size, 3]
+      input_shape = [FLAGS.batch_size, image_size, image_size, num_channels]
     placeholder = tf.placeholder(name='input', dtype=tf.float32,
                                  shape=input_shape)
     network_fn(placeholder)
 
     if FLAGS.quantize:
-      tf.contrib.quantize.create_eval_graph()
+      contrib_quantize.create_eval_graph()
 
     graph_def = graph.as_graph_def()
     if FLAGS.write_text_graphdef:

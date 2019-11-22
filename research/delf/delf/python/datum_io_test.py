@@ -40,24 +40,32 @@ class DatumIoTest(tf.test.TestCase):
     retrieved_data = datum_io.ParseFromString(serialized)
     self.assertTrue(np.array_equal(original_data, retrieved_data))
 
+  # This test covers the following functions: ArrayToDatum, SerializeToString,
+  # ParseFromString, DatumToArray.
   def testConversion2dWithType(self):
-    self.Conversion2dTestWithType(np.int8)
-    self.Conversion2dTestWithType(np.int16)
-    self.Conversion2dTestWithType(np.int32)
-    self.Conversion2dTestWithType(np.int64)
+    self.Conversion2dTestWithType(np.uint16)
+    self.Conversion2dTestWithType(np.uint32)
+    self.Conversion2dTestWithType(np.uint64)
     self.Conversion2dTestWithType(np.float16)
     self.Conversion2dTestWithType(np.float32)
     self.Conversion2dTestWithType(np.float64)
 
+  # This test covers the following functions: ArrayToDatum, SerializeToString,
+  # ParseFromString, DatumToArray.
   def testConversion3dWithType(self):
-    self.Conversion3dTestWithType(np.int8)
-    self.Conversion3dTestWithType(np.int16)
-    self.Conversion3dTestWithType(np.int32)
-    self.Conversion3dTestWithType(np.int64)
+    self.Conversion3dTestWithType(np.uint16)
+    self.Conversion3dTestWithType(np.uint32)
+    self.Conversion3dTestWithType(np.uint64)
     self.Conversion3dTestWithType(np.float16)
     self.Conversion3dTestWithType(np.float32)
     self.Conversion3dTestWithType(np.float64)
 
+  def testConversionWithUnsupportedType(self):
+    with self.assertRaisesRegex(ValueError, 'Unsupported array type'):
+      self.Conversion3dTestWithType(int)
+
+  # This test covers the following functions: ArrayToDatum, SerializeToString,
+  # WriteToFile, ReadFromFile, ParseFromString, DatumToArray.
   def testWriteAndReadToFile(self):
     data = np.array([[[-1.0, 125.0, -2.5], [14.5, 3.5, 0.0]],
                      [[20.0, 0.0, 30.0], [25.5, 36.0, 42.0]]])
@@ -66,6 +74,22 @@ class DatumIoTest(tf.test.TestCase):
     datum_io.WriteToFile(data, filename)
     data_read = datum_io.ReadFromFile(filename)
     self.assertAllEqual(data_read, data)
+
+  # This test covers the following functions: ArraysToDatumPair,
+  # SerializePairToString, WritePairToFile, ReadPairFromFile,
+  # ParsePairFromString, DatumPairToArrays.
+  def testWriteAndReadPairToFile(self):
+    data_1 = np.array([[[-1.0, 125.0, -2.5], [14.5, 3.5, 0.0]],
+                       [[20.0, 0.0, 30.0], [25.5, 36.0, 42.0]]])
+    data_2 = np.array(
+        [[[255, 0, 5], [10, 300, 0]], [[20, 1, 100], [255, 360, 420]]],
+        dtype='uint32')
+    tmpdir = tf.test.get_temp_dir()
+    filename = os.path.join(tmpdir, 'test.datum_pair')
+    datum_io.WritePairToFile(data_1, data_2, filename)
+    data_read_1, data_read_2 = datum_io.ReadPairFromFile(filename)
+    self.assertAllEqual(data_read_1, data_1)
+    self.assertAllEqual(data_read_2, data_2)
 
 
 if __name__ == '__main__':

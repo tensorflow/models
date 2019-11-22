@@ -109,22 +109,35 @@ class DetectionResultFields(object):
     key: unique key corresponding to image.
     detection_boxes: coordinates of the detection boxes in the image.
     detection_scores: detection scores for the detection boxes in the image.
+    detection_multiclass_scores: class score distribution (including background)
+      for detection boxes in the image including background class.
     detection_classes: detection-level class labels.
     detection_masks: contains a segmentation mask for each detection box.
     detection_boundaries: contains an object boundary for each detection box.
     detection_keypoints: contains detection keypoints for each detection box.
     num_detections: number of detections in the batch.
+    raw_detection_boxes: contains decoded detection boxes without Non-Max
+      suppression.
+    raw_detection_scores: contains class score logits for raw detection boxes.
+    detection_anchor_indices: The anchor indices of the detections after NMS.
+    detection_features: contains extracted features for each detected box
+      after NMS.
   """
 
   source_id = 'source_id'
   key = 'key'
   detection_boxes = 'detection_boxes'
   detection_scores = 'detection_scores'
+  detection_multiclass_scores = 'detection_multiclass_scores'
+  detection_features = 'detection_features'
   detection_classes = 'detection_classes'
   detection_masks = 'detection_masks'
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   num_detections = 'num_detections'
+  raw_detection_boxes = 'raw_detection_boxes'
+  raw_detection_scores = 'raw_detection_scores'
+  detection_anchor_indices = 'detection_anchor_indices'
 
 
 class BoxListFields(object):
@@ -153,6 +166,22 @@ class BoxListFields(object):
   keypoints = 'keypoints'
   keypoint_heatmaps = 'keypoint_heatmaps'
   is_crowd = 'is_crowd'
+
+
+class PredictionFields(object):
+  """Naming conventions for standardized prediction outputs.
+
+  Attributes:
+    feature_maps: List of feature maps for prediction.
+    anchors: Generated anchors.
+    raw_detection_boxes: Decoded detection boxes without NMS.
+    raw_detection_feature_map_indices: Feature map indices from which each raw
+      detection box was produced.
+  """
+  feature_maps = 'feature_maps'
+  anchors = 'anchors'
+  raw_detection_boxes = 'raw_detection_boxes'
+  raw_detection_feature_map_indices = 'raw_detection_feature_map_indices'
 
 
 class TfExampleFields(object):

@@ -1,0 +1,97 @@
+/* Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+==============================================================================*/
+
+syntax = "proto2";
+
+package lstm_object_detection.tflite.protos;
+
+// The bounding box representation by center location and width/height.
+// Also includes optional keypoint coordinates.
+// It is a default representation in modern object detection systems.
+message CenterSizeEncoding {
+  // Encoded anchor box center.
+  repeated float y = 1;
+  repeated float x = 2;
+
+  // Encoded anchor box height.
+  repeated float h = 3;
+
+  // Encoded anchor box width.
+  repeated float w = 4;
+
+  // Encoded keypoint coordinates.
+  repeated float keypoint_y = 5;
+  repeated float keypoint_x = 6;
+}
+
+// The scaling factors for decoding predicted offsets with CenterSizeEncoding.
+// For example, given a prediction and an anchor in CenterSizeEncoding, the
+// decoded location is:
+//   y = prediction.y / coder.y_scale() * anchor.h + anchor.y;
+//   x = prediction.x / coder.x_scale() * anchor.w + anchor.x;
+//   h = exp(prediction.h / coder.h_scale()) * anchor.h;
+//   w = exp(prediction.w / coder.w_scale()) * anchor.w;
+//   keypoint_y = prediction.keypoint_y / coder.keypoint_y_scale() * anchor.h
+//                + anchor.y;
+//   keypoint_x = prediction.keypoint_x / coder.keypoint_x_scale() * anchor.w
+//                + anchor.x;
+// See mobile_ssd::DecodeCenterSizeBoxes for more details.
+// This coder is compatible with models trained using
+// object_detection.protos.FasterRcnnBoxCoder and
+// object_detection.protos.KeypointBoxCoder.
+message CenterSizeOffsetCoder {
+  // Scale factor for encoded box center offset.
+  optional float y_scale = 1 [default = 10.0];
+  optional float x_scale = 2 [default = 10.0];
+
+  // Scale factor for encoded box height offset.
+  optional float h_scale = 3 [default = 5.0];
+
+  // Scale factor for encoded box width offset.
+  optional float w_scale = 4 [default = 5.0];
+
+  // Scale factor for encoded keypoint coordinate offset.
+  optional float keypoint_y_scale = 5 [default = 10.0];
+  optional float keypoint_x_scale = 6 [default = 10.0];
+}
+
+// The canonical representation of bounding box.
+message BoxCornerEncoding {
+  // Box corners.
+  repeated float ymin = 1;
+  repeated float xmin = 2;
+  repeated float ymax = 3;
+  repeated float xmax = 4;
+
+  // Keypoint coordinates.
+  repeated float keypoint_y = 5;
+  repeated float keypoint_x = 6;
+}
+
+// The scaling value used to adjust predicted bounding box corners.
+// For example, given a prediction in BoxCornerEncoding and an anchor in
+// CenterSizeEncoding, the decoded location is:
+//   ymin = prediction.ymin * coder.stddev + anchor.y - anchor.h / 2
+//   xmin = prediction.xmin * coder.stddev + anchor.x - anchor.w / 2
+//   ymax = prediction.ymax * coder.stddev + anchor.y + anchor.h / 2
+//   xmax = prediction.xmax * coder.stddev + anchor.x + anchor.w / 2
+// This coder doesn't support keypoints.
+// See mobile_ssd::DecodeBoxCornerBoxes for more details.
+// This coder is compatible with models trained using
+// object_detection.protos.MeanStddevBoxCoder.
+message BoxCornerOffsetCoder {
+  // The standard deviation used to encode and decode boxes.
+  optional float stddev = 1 [default = 0.01];
+}

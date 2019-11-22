@@ -34,6 +34,14 @@ message PreprocessingStep {
     RandomRotation90 random_rotation90 = 26;
     RGBtoGray rgb_to_gray = 27;
     ConvertClassLogitsToSoftmax convert_class_logits_to_softmax = 28;
+    RandomAbsolutePadImage random_absolute_pad_image = 29;
+    RandomSelfConcatImage random_self_concat_image = 30;
+    AutoAugmentImage autoaugment_image = 31;
+    DropLabelProbabilistically drop_label_probabilistically = 32;
+    RemapLabels remap_labels = 33;
+    RandomJpegQuality random_jpeg_quality = 34;
+    RandomDownscaleToTargetPixels random_downscale_to_target_pixels = 35;
+    RandomPatchGaussian random_patch_gaussian = 36;
   }
 }
 
@@ -179,6 +187,18 @@ message RandomPadImage {
   repeated float pad_color = 5;
 }
 
+// Randomly adds a padding of size [0, max_height_padding), [0, max_width_padding).
+message RandomAbsolutePadImage {
+  // Height will be padded uniformly at random from [0, max_height_padding).
+  optional int32 max_height_padding = 1;
+  // Width will be padded uniformly at random from [0, max_width_padding).
+  optional int32 max_width_padding = 2;
+
+  // Color of the padding. If unset, will pad using average color of the input
+  // image.
+  repeated float pad_color = 3;
+}
+
 // Randomly crops an image followed by a random pad.
 message RandomCropPadImage {
   // Cropping operation must cover at least one box by this fraction.
@@ -243,8 +263,8 @@ message RandomBlackPatches {
 
 // Randomly resizes the image up to [target_height, target_width].
 message RandomResizeMethod {
-  optional float target_height = 1;
-  optional float target_width = 2;
+  optional int32 target_height = 1;
+  optional int32 target_width = 2;
 }
 
 // Converts the RGB image to a grayscale image. This also converts the image
@@ -438,4 +458,78 @@ message ConvertClassLogitsToSoftmax {
 
   // Scale to use on logits before applying softmax.
   optional float temperature = 1 [default=1.0];
+}
+
+// Randomly concatenates the image with itself horizontally and/or vertically.
+message RandomSelfConcatImage {
+  // Probability of concatenating the image vertically.
+  optional float concat_vertical_probability = 1 [default = 0.1];
+  // Probability of concatenating the image horizontally.
+  optional float concat_horizontal_probability = 2 [default = 0.1];
+}
+
+// Apply an Autoaugment policy to the image and bounding boxes.
+message AutoAugmentImage {
+
+  // What AutoAugment policy to apply to the Image
+  optional string policy_name = 1 [default="v0"];
+}
+
+
+// Randomly drops ground truth boxes for a label with some probability.
+message DropLabelProbabilistically {
+  // The label that should be dropped. This corresponds to one of the entries
+  // in the label map.
+  optional int32 label = 1;
+  // Probability of dropping the label.
+  optional float drop_probability = 2 [default = 1.0];
+}
+
+
+//Remap a set of labels to a new label.
+message RemapLabels {
+   // Labels to be remapped.
+  repeated int32 original_labels = 1;
+  // Label to map to.
+  optional int32 new_label = 2;
+}
+
+// Applies a jpeg encoding with a random quality factor.
+message RandomJpegQuality {
+  // Probability of keeping the original image.
+  optional float random_coef = 1 [default = 0.0];
+
+  // Minimum jpeg quality to use.
+  optional int32 min_jpeg_quality = 2 [default = 0];
+
+  // Maximum jpeg quality to use.
+  optional int32 max_jpeg_quality = 3 [default = 100];
+}
+
+// Randomly shrinks image (keeping aspect ratio) to a target number of pixels.
+// If the image contains less than the chosen target number of pixels, it will
+// not be changed.
+message RandomDownscaleToTargetPixels {
+  // Probability of keeping the original image.
+  optional float random_coef = 1 [default = 0.0];
+
+  // The target number of pixels will be chosen to be in the range
+  // [min_target_pixels, max_target_pixels]
+  optional int32 min_target_pixels = 2 [default = 300000];
+  optional int32 max_target_pixels = 3 [default = 500000];
+}
+
+message RandomPatchGaussian {
+  // Probability of keeping the original image.
+  optional float random_coef = 1 [default = 0.0];
+
+  // The patch size will be chosen to be in the range
+  // [min_patch_size, max_patch_size).
+  optional int32 min_patch_size = 2 [default = 1];
+  optional int32 max_patch_size = 3 [default = 250];
+
+  // The standard deviation of the gaussian noise applied within the patch will
+  // be chosen to be in the range [min_gaussian_stddev, max_gaussian_stddev).
+  optional float min_gaussian_stddev = 4 [default = 0.0];
+  optional float max_gaussian_stddev = 5 [default = 1.0];
 }

@@ -2,9 +2,10 @@ syntax = "proto2";
 
 package object_detection.protos;
 
+import "object_detection/protos/flexible_grid_anchor_generator.proto";
 import "object_detection/protos/grid_anchor_generator.proto";
-import "object_detection/protos/ssd_anchor_generator.proto";
 import "object_detection/protos/multiscale_anchor_generator.proto";
+import "object_detection/protos/ssd_anchor_generator.proto";
 
 // Configuration proto for the anchor generator to use in the object detection
 // pipeline. See core/anchor_generator.py for details.
@@ -13,5 +14,6 @@ message AnchorGenerator {
     GridAnchorGenerator grid_anchor_generator = 1;
     SsdAnchorGenerator ssd_anchor_generator = 2;
     MultiscaleAnchorGenerator multiscale_anchor_generator = 3;
+    FlexibleGridAnchorGenerator flexible_grid_anchor_generator = 4;
   }
 }

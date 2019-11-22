@@ -42,11 +42,11 @@ class LstmSsdMobilenetV1FeatureExtractorTest(
       use_explicit_padding: A boolean whether to use explicit padding.
 
     Returns:
-      An lstm_ssd_meta_arch.LSTMMobileNetV1FeatureExtractor object.
+      An lstm_ssd_meta_arch.LSTMSSDMobileNetV1FeatureExtractor object.
     """
     min_depth = 32
     extractor = (
-        feature_extactor.LSTMMobileNetV1FeatureExtractor(
+        feature_extactor.LSTMSSDMobileNetV1FeatureExtractor(
             is_training,
             depth_multiplier,
             min_depth,

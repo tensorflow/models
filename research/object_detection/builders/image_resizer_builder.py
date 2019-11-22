@@ -102,6 +102,40 @@ def build(image_resizer_config):
         method=method)
     if not fixed_shape_resizer_config.convert_to_grayscale:
       return image_resizer_fn
+  elif image_resizer_oneof == 'identity_resizer':
+    def image_resizer_fn(image, masks=None, **kwargs):
+      del kwargs
+      if masks is None:
+        return [image, tf.shape(image)]
+      else:
+        return [image, masks, tf.shape(image)]
+    return image_resizer_fn
+  elif image_resizer_oneof == 'conditional_shape_resizer':
+    conditional_shape_resize_config = (
+        image_resizer_config.conditional_shape_resizer)
+    method = _tf_resize_method(conditional_shape_resize_config.resize_method)
+
+    if conditional_shape_resize_config.condition == (
+        image_resizer_pb2.ConditionalShapeResizer.GREATER):
+      image_resizer_fn = functools.partial(
+          preprocessor.resize_to_max_dimension,
+          max_dimension=conditional_shape_resize_config.size_threshold,
+          method=method)
+
+    elif conditional_shape_resize_config.condition == (
+        image_resizer_pb2.ConditionalShapeResizer.SMALLER):
+      image_resizer_fn = functools.partial(
+          preprocessor.resize_to_min_dimension,
+          min_dimension=conditional_shape_resize_config.size_threshold,
+          method=method)
+    else:
+      raise ValueError(
+          'Invalid image resizer condition option for '
+          'ConditionalShapeResizer: \'%s\'.'
+          % conditional_shape_resize_config.condition)
+
+    if not conditional_shape_resize_config.convert_to_grayscale:
+      return image_resizer_fn
   else:
     raise ValueError(
         'Invalid image resizer option: \'%s\'.' % image_resizer_oneof)

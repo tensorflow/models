@@ -17,6 +17,11 @@
 A decoder to decode string tensors containing serialized tensorflow.Example
 protos for object detection.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import data_decoder
@@ -59,8 +64,15 @@ class _ClassTensorHandler(slim_example_decoder.Tensor):
         label_map_proto_file, use_display_name=False)
     # We use a default_value of -1, but we expect all labels to be contained
     # in the label map.
-    name_to_id_table = tf.contrib.lookup.HashTable(
-        initializer=tf.contrib.lookup.KeyValueTensorInitializer(
+    try:
+      # Dynamically try to load the tf v2 lookup, falling back to contrib
+      lookup = tf.compat.v2.lookup
+      hash_table_class = tf.compat.v2.lookup.StaticHashTable
+    except AttributeError:
+      lookup = tf.contrib.lookup
+      hash_table_class = tf.contrib.lookup.HashTable
+    name_to_id_table = hash_table_class(
+        initializer=lookup.KeyValueTensorInitializer(
             keys=tf.constant(list(name_to_id.keys())),
             values=tf.constant(list(name_to_id.values()), dtype=tf.int64)),
         default_value=-1)
@@ -68,8 +80,8 @@ class _ClassTensorHandler(slim_example_decoder.Tensor):
         label_map_proto_file, use_display_name=True)
     # We use a default_value of -1, but we expect all labels to be contained
     # in the label map.
-    display_name_to_id_table = tf.contrib.lookup.HashTable(
-        initializer=tf.contrib.lookup.KeyValueTensorInitializer(
+    display_name_to_id_table = hash_table_class(
+        initializer=lookup.KeyValueTensorInitializer(
             keys=tf.constant(list(display_name_to_id.keys())),
             values=tf.constant(
                 list(display_name_to_id.values()), dtype=tf.int64)),
@@ -131,7 +143,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                use_display_name=False,
                dct_method='',
                num_keypoints=0,
-               num_additional_channels=0):
+               num_additional_channels=0,
+               load_multiclass_scores=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -153,6 +166,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         example, the jpeg library does not have that specific option.
       num_keypoints: the number of keypoints per object.
       num_additional_channels: how many additional channels to use.
+      load_multiclass_scores: Whether to load multiclass scores associated with
+        boxes.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
@@ -205,6 +220,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.VarLenFeature(tf.int64),
         'image/object/weight':
             tf.VarLenFeature(tf.float32),
+
     }
     # We are checking `dct_method` instead of passing it directly in order to
     # ensure TF version 1.6 compatibility.
@@ -251,7 +267,13 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Tensor('image/object/group_of')),
         fields.InputDataFields.groundtruth_weights: (
             slim_example_decoder.Tensor('image/object/weight')),
+
     }
+    if load_multiclass_scores:
+      self.keys_to_features[
+          'image/object/class/multiclass_scores'] = tf.VarLenFeature(tf.float32)
+      self.items_to_handlers[fields.InputDataFields.multiclass_scores] = (
+          slim_example_decoder.Tensor('image/object/class/multiclass_scores'))
     if num_additional_channels > 0:
       self.keys_to_features[
           'image/additional_channels/encoded'] = tf.FixedLenFeature(
@@ -355,6 +377,9 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         shape [None, None, None] containing instance masks.
       fields.InputDataFields.groundtruth_image_classes - 1D uint64 of shape
         [None] containing classes for the boxes.
+      fields.InputDataFields.multiclass_scores - 1D float32 tensor of shape
+        [None * num_classes] containing flattened multiclass scores for
+        groundtruth boxes.
     """
     serialized_example = tf.reshape(tf_example_string_tensor, shape=[])
     decoder = slim_example_decoder.TFExampleDecoder(self.keys_to_features,
@@ -431,7 +456,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     masks = keys_to_tensors['image/object/mask']
     if isinstance(masks, tf.SparseTensor):
       masks = tf.sparse_tensor_to_dense(masks)
-    masks = tf.reshape(tf.to_float(tf.greater(masks, 0.0)), to_shape)
+    masks = tf.reshape(
+        tf.cast(tf.greater(masks, 0.0), dtype=tf.float32), to_shape)
     return tf.cast(masks, tf.float32)
 
   def _decode_png_instance_masks(self, keys_to_tensors):
@@ -452,7 +478,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       image = tf.squeeze(
           tf.image.decode_image(image_buffer, channels=1), axis=2)
       image.set_shape([None, None])
-      image = tf.to_float(tf.greater(image, 0))
+      image = tf.cast(tf.greater(image, 0), dtype=tf.float32)
       return image
 
     png_masks = keys_to_tensors['image/object/mask']
@@ -463,4 +489,4 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     return tf.cond(
         tf.greater(tf.size(png_masks), 0),
         lambda: tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32),
-        lambda: tf.zeros(tf.to_int32(tf.stack([0, height, width]))))
+        lambda: tf.zeros(tf.cast(tf.stack([0, height, width]), dtype=tf.int32)))

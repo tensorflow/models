@@ -1,0 +1,214 @@
+{
+  "info": {
+    "description": "Test COCO-format dataset",
+    "url": "https://github.com/tensorflow/models/tree/master/research/deeplab",
+    "version": "1.0",
+    "year": 2019
+  },
+  "images": [
+    {
+      "id": 1,
+      "file_name": "bird.jpg",
+      "height": 159,
+      "width": 240,
+      "flickr_url": "https://www.flickr.com/photos/chivinskia/40619099560"
+    },
+    {
+      "id": 2,
+      "file_name": "cat.jpg",
+      "height": 330,
+      "width": 317,
+      "flickr_url": "https://www.flickr.com/photos/magdalena_b/4995858743"
+    },
+    {
+      "id": 3,
+      "file_name": "team.jpg",
+      "height": 231,
+      "width": 345
+    },
+    {
+      "id": 4,
+      "file_name": "congress.jpg",
+      "height": 267,
+      "width": 525
+    }
+  ],
+  "annotations": [
+    {
+      "image_id": 1,
+      "file_name": "bird.png",
+      "segments_info": [
+        {
+          "id": 255,
+          "area": 2913,
+          "category_id": 4,
+          "iscrowd": 0
+        },
+        {
+          "id": 2586368,
+          "area": 1580,
+          "category_id": 3,
+          "iscrowd": 0
+        },
+        {
+          "id": 16770360,
+          "area": 33667,
+          "category_id": 5,
+          "iscrowd": 0
+        }
+      ]
+    },
+    {
+      "image_id": 2,
+      "file_name": "cat.png",
+      "segments_info": [
+        {
+          "id": 16711691,
+          "area": 34454,
+          "category_id": 6,
+          "iscrowd": 0
+        }
+      ]
+    },
+    {
+      "image_id": 3,
+      "file_name": "team.png",
+      "segments_info": [
+        {
+          "id": 129,
+          "area": 5443,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 255,
+          "area": 3574,
+          "category_id": 2,
+          "iscrowd": 0
+        },
+        {
+          "id": 47615,
+          "area": 11483,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 65532,
+          "area": 7080,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 8585107,
+          "area": 11363,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 9011200,
+          "area": 7158,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 12858027,
+          "area": 6419,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 16053492,
+          "area": 4350,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 16711680,
+          "area": 5800,
+          "category_id": 1,
+          "iscrowd": 0
+        }
+      ]
+    },
+    {
+      "image_id": 4,
+      "file_name": "congress.png",
+      "segments_info": [
+        {
+          "id": 255,
+          "area": 243,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 65315,
+          "area": 553,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 65516,
+          "area": 652,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 9895680,
+          "area": 82774,
+          "category_id": 1,
+          "iscrowd": 1
+        },
+        {
+          "id": 16711739,
+          "area": 137,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 16711868,
+          "area": 179,
+          "category_id": 1,
+          "iscrowd": 0
+        },
+        {
+          "id": 16762624,
+          "area": 2742,
+          "category_id": 1,
+          "iscrowd": 0
+        }
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "person",
+      "isthing": 1
+    },
+    {
+      "id": 2,
+      "name": "umbrella",
+      "isthing": 1
+    },
+    {
+      "id": 3,
+      "name": "tree-merged",
+      "isthing": 0
+    },
+    {
+      "id": 4,
+      "name": "bird",
+      "isthing": 1
+    },
+    {
+      "id": 5,
+      "name": "sky",
+      "isthing": 0
+    },
+    {
+      "id": 6,
+      "name": "cat",
+      "isthing": 1
+    }
+  ]
+}

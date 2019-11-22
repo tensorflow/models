@@ -25,7 +25,7 @@ class ComputeBleuTest(tf.test.TestCase):
 
   def _create_temp_file(self, text):
     temp_file = tempfile.NamedTemporaryFile(delete=False)
-    with tf.gfile.Open(temp_file.name, 'w') as w:
+    with tf.io.gfile.GFile(temp_file.name, "w") as w:
       w.write(text)
     return temp_file.name
 

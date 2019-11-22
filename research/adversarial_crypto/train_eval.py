@@ -84,7 +84,7 @@ def batch_of_random_bools(batch_size, n):
     preresented as -1 or 1.
   """
 
-  as_int = tf.random_uniform(
+  as_int = tf.random.uniform(
       [batch_size, n], minval=0, maxval=2, dtype=tf.int32)
   expanded_range = (as_int * 2) - 1
   return tf.cast(expanded_range, tf.float32)
@@ -110,7 +110,7 @@ class AdversarialCrypto(object):
   def get_message_and_key(self):
     """Generate random pseudo-boolean key and message values."""
 
-    batch_size = tf.placeholder_with_default(FLAGS.batch_size, shape=[])
+    batch_size = tf.compat.v1.placeholder_with_default(FLAGS.batch_size, shape=[])
 
     in_m = batch_of_random_bools(batch_size, TEXT_SIZE)
     in_k = batch_of_random_bools(batch_size, KEY_SIZE)
@@ -145,7 +145,8 @@ class AdversarialCrypto(object):
 
       # Perform a sequence of 1D convolutions (by expanding the message out to 2D
       # and then squeezing it back down).
-      fc = tf.expand_dims(fc, 2)
+      fc = tf.expand_dims(fc, 2) # 2D
+      fc = tf.expand_dims(fc, 3) # 3D -- conv2d needs a depth
       # 2,1 -> 1,2
       conv = tf.contrib.layers.conv2d(
           fc, 2, 2, 2, 'SAME', activation_fn=tf.nn.sigmoid)
@@ -155,6 +156,7 @@ class AdversarialCrypto(object):
       # 1,2 -> 1, 1
       conv = tf.contrib.layers.conv2d(
           conv, 1, 1, 1, 'SAME', activation_fn=tf.nn.tanh)
+      conv = tf.squeeze(conv, 3)
       conv = tf.squeeze(conv, 2)
       return conv
 
@@ -165,16 +167,16 @@ class AdversarialCrypto(object):
     eve_out = self.model('eve', encrypted, None)
 
     self.reset_eve_vars = tf.group(
-        *[w.initializer for w in tf.get_collection('eve')])
+        *[w.initializer for w in tf.compat.v1.get_collection('eve')])
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
+    optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
 
     # Eve's goal is to decrypt the entire message:
     eve_bits_wrong = tf.reduce_sum(
         tf.abs((eve_out + 1.0) / 2.0 - (in_m + 1.0) / 2.0), [1])
     self.eve_loss = tf.reduce_sum(eve_bits_wrong)
     self.eve_optimizer = optimizer.minimize(
-        self.eve_loss, var_list=tf.get_collection('eve'))
+        self.eve_loss, var_list=tf.compat.v1.get_collection('eve'))
 
     # Alice and Bob want to be accurate...
     self.bob_bits_wrong = tf.reduce_sum(
@@ -193,7 +195,7 @@ class AdversarialCrypto(object):
 
     self.bob_optimizer = optimizer.minimize(
         self.bob_loss,
-        var_list=(tf.get_collection('alice') + tf.get_collection('bob')))
+        var_list=(tf.compat.v1.get_collection('alice') + tf.compat.v1.get_collection('bob')))
 
 
 def doeval(s, ac, n, itercount):
@@ -240,9 +242,9 @@ def train_and_evaluate():
   """Run the full training and evaluation loop."""
 
   ac = AdversarialCrypto()
-  init = tf.global_variables_initializer()
+  init = tf.compat.v1.global_variables_initializer()
 
-  with tf.Session() as s:
+  with tf.compat.v1.Session() as s:
     s.run(init)
     print('# Batch size: ', FLAGS.batch_size)
     print('# %10s\t%20s\t%20s'%("Iter","Bob_Recon_Error","Eve_Recon_Error"))
@@ -271,4 +273,4 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()

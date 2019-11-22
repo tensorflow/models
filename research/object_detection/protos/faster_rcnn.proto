@@ -168,8 +168,17 @@ message FasterRcnn {
   // If True, uses implementation of ops with static shape guarantees when
   // running evaluation (specifically not is_training if False).
   optional bool use_static_shapes_for_eval = 37 [default = false];
-}
 
+  // If true, uses implementation of partitioned_non_max_suppression in first
+  // stage.
+  optional bool use_partitioned_nms_in_first_stage = 38 [default = true];
+
+  // Whether to return raw detections (pre NMS).
+  optional bool return_raw_detections_during_predict = 39 [default = false];
+
+  // Whether to use tf.image.combined_non_max_suppression.
+  optional bool use_combined_nms_in_first_stage = 40 [default = false];
+}
 
 message FasterRcnnFeatureExtractor {
   // Type of Faster R-CNN model (e.g., 'faster_rcnn_resnet101';

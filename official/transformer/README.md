@@ -1,5 +1,7 @@
 # Transformer Translation Model
-This is an implementation of the Transformer translation model as described in the [Attention is All You Need](https://arxiv.org/abs/1706.03762) paper. Based on the code provided by the authors: [Transformer code](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py) from [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor).
+This is an implementation of the Transformer translation model as described in the [Attention is All You Need](https://arxiv.org/abs/1706.03762) paper. Based on the code provided by the authors: [Transformer code](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py) from [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor). Also, check out the [tutorial](https://www.tensorflow.org/beta/tutorials/text/transformer) on Transformer in TF 2.0.
+
+**A new Keras-based TF 2.0 implementation is located inside v2 folder. Please follow the [README](v2/README.md) in v2 folder to walk through the new Transformer.**
 
 Transformer is a neural network architecture that solves sequence to sequence problems using attention mechanisms. Unlike traditional neural seq2seq models, Transformer does not involve recurrent connections. The attention mechanism learns dependencies between tokens in two sequences. Since attention weights apply to all tokens in the sequences, the Transformer model is able to easily capture long-distance dependencies.
 
@@ -31,7 +33,9 @@ The model also applies embeddings on the input and output tokens, and adds a con
 
 ## Walkthrough
 
-Below are the commands for running the Transformer model. See the [Detailed instrutions](#detailed-instructions) for more details on running the model.
+Below are the commands for running the Transformer model. See the
+[Detailed instructions](#detailed-instructions) for more details on running the
+model.
 
 ```
 cd /path/to/models/official/transformer
@@ -46,13 +50,13 @@ DATA_DIR=$HOME/transformer/data
 MODEL_DIR=$HOME/transformer/model_$PARAM_SET
 VOCAB_FILE=$DATA_DIR/vocab.ende.32768
 
-# Download training/evaluation datasets
+# Download training/evaluation/test datasets
 python data_download.py --data_dir=$DATA_DIR
 
 # Train the model for 10 epochs, and evaluate after every epoch.
 python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
     --vocab_file=$VOCAB_FILE --param_set=$PARAM_SET \
-    --bleu_source=test_data/newstest2014.en --bleu_ref=test_data/newstest2014.de
+    --bleu_source=$DATA_DIR/newstest2014.en --bleu_ref=$DATA_DIR/newstest2014.de
 
 # Run during training in a separate process to get continuous updates,
 # or after training is complete.
@@ -64,8 +68,8 @@ python translate.py --model_dir=$MODEL_DIR --vocab_file=$VOCAB_FILE \
 
 # Compute model's BLEU score using the newstest2014 dataset.
 python translate.py --model_dir=$MODEL_DIR --vocab_file=$VOCAB_FILE \
-    --param_set=$PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
-python compute_bleu.py --translation=translation.en --reference=test_data/newstest2014.de
+    --param_set=$PARAM_SET --file=$DATA_DIR/newstest2014.en --file_out=translation.en
+python compute_bleu.py --translation=translation.en --reference=$DATA_DIR/newstest2014.de
 ```
 
 ## Benchmarks
@@ -134,7 +138,7 @@ big | 28.9
    Arguments:
    * `--data_dir`: This should be set to the same directory given to the `data_download`'s `data_dir` argument.
    * `--model_dir`: Directory to save Transformer model training checkpoints.
-   * `--vocab_file`: Path to subtoken vacbulary file. If data_download was used, you may find the file in `data_dir`.
+   * `--vocab_file`: Path to subtoken vocabulary file. If data_download was used, you may find the file in `data_dir`.
    * `--param_set`: Parameter set to use when creating and training the model. Options are `base` and `big` (default).
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
 
@@ -159,9 +163,7 @@ big | 28.9
    * `--bleu_ref`: Path to file containing the reference translation.
    * `--stop_threshold`: Train until the BLEU score reaches this lower bound. This setting overrides the `--train_steps` and `--train_epochs` flags.
 
-   The test source and reference files located in the `test_data` directory are extracted from the preprocessed dataset from the [NMT Seq2Seq tutorial](https://google.github.io/seq2seq/nmt/#download-data).
-
-   When running `transformer_main.py`, use the flags: `--bleu_source=test_data/newstest2014.en --bleu_ref=test_data/newstest2014.de`
+   When running `transformer_main.py`, use the flags: `--bleu_source=$DATA_DIR/newstest2014.en --bleu_ref=$DATA_DIR/newstest2014.de`
 
    #### Tensorboard
    Training and evaluation metrics (loss, accuracy, approximate BLEU score, etc.) are logged, and can be displayed in the browser using Tensorboard.
@@ -181,7 +183,7 @@ big | 28.9
 
    Arguments for initializing the Subtokenizer and trained model:
    * `--model_dir` and `--param_set`: These parameters are used to rebuild the trained model
-   * `--vocab_file`: Path to subtoken vacbulary file. If data_download was used, you may find the file in `data_dir`.
+   * `--vocab_file`: Path to subtoken vocabulary file. If data_download was used, you may find the file in `data_dir`.
 
    Arguments for specifying what to translate:
    * `--text`: Text to translate
@@ -191,7 +193,7 @@ big | 28.9
    To translate the newstest2014 data, run:
    ```
    python translate.py --model_dir=$MODEL_DIR --vocab_file=$VOCAB_FILE \
-       --param_set=$PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
+       --param_set=$PARAM_SET --file=$DATA_DIR/newstest2014.en --file_out=translation.en
    ```
 
    Translating the file takes around 15 minutes on a GTX1080, or 5 minutes on a P100.
@@ -201,14 +203,14 @@ big | 28.9
 
    Command to run:
    ```
-   python compute_bleu.py --translation=translation.en --reference=test_data/newstest2014.de
+   python compute_bleu.py --translation=translation.en --reference=$DATA_DIR/newstest2014.de
    ```
 
    Arguments:
    * `--translation`: Path to file containing generated translations.
    * `--reference`: Path to file containing reference translations.
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
-   
+
 5. ### TPU
    TPU support for this version of Transformer is experimental. Currently it is present for
    demonstration purposes only, but will be optimized in the coming weeks.
@@ -337,7 +339,7 @@ Aside from the main file to train the Transformer model, we provide other script
 
 [data_download.py](data_download.py) downloads and extracts data, then uses `Subtokenizer` to tokenize strings into arrays of int IDs. The int arrays are converted to `tf.Examples` and saved in the `tf.RecordDataset` format.
 
- The data is downloaded from the Workshop of Machine Transtion (WMT) [news translation task](http://www.statmt.org/wmt17/translation-task.html). The following datasets are used:
+ The data is downloaded from the Workshop of Machine Translation (WMT) [news translation task](http://www.statmt.org/wmt17/translation-task.html). The following datasets are used:
 
  * Europarl v7
  * Common Crawl corpus
@@ -356,7 +358,12 @@ Translation is defined in [translate.py](translate.py). First, `Subtokenizer` to
 [compute_bleu.py](compute_bleu.py): Implementation from [https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/bleu_hook.py](https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/bleu_hook.py).
 
 ### Test dataset
-The [newstest2014 files](test_data) are extracted from the [NMT Seq2Seq tutorial](https://google.github.io/seq2seq/nmt/#download-data). The raw text files are converted from the SGM format of the [WMT 2016](http://www.statmt.org/wmt16/translation-task.html) test sets.
+The [newstest2014 files](https://storage.googleapis.com/tf-perf-public/official_transformer/test_data/newstest2014.tgz)
+are extracted from the [NMT Seq2Seq tutorial](https://google.github.io/seq2seq/nmt/#download-data).
+The raw text files are converted from the SGM format of the
+[WMT 2016](http://www.statmt.org/wmt16/translation-task.html) test sets. The
+newstest2014 files are put into the `$DATA_DIR` when executing
+`data_download.py`
 
 ## Term definitions
 

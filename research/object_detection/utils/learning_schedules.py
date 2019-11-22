@@ -14,7 +14,12 @@
 # ==============================================================================
 """Library of common learning rate schedules."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import numpy as np
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 
@@ -47,20 +52,34 @@ def exponential_decay_with_burnin(global_step,
     staircase: whether use staircase decay.
 
   Returns:
-    a (scalar) float tensor representing learning rate
+    If executing eagerly:
+      returns a no-arg callable that outputs the (scalar)
+      float tensor learning rate given the current value of global_step.
+    If in a graph:
+      immediately returns a (scalar) float tensor representing learning rate.
   """
   if burnin_learning_rate == 0:
     burnin_learning_rate = learning_rate_base
-  post_burnin_learning_rate = tf.train.exponential_decay(
-      learning_rate_base,
-      global_step - burnin_steps,
-      learning_rate_decay_steps,
-      learning_rate_decay_factor,
-      staircase=staircase)
-  return tf.maximum(tf.where(
-      tf.less(tf.cast(global_step, tf.int32), tf.constant(burnin_steps)),
-      tf.constant(burnin_learning_rate),
-      post_burnin_learning_rate), min_learning_rate, name='learning_rate')
+
+  def eager_decay_rate():
+    """Callable to compute the learning rate."""
+    post_burnin_learning_rate = tf.train.exponential_decay(
+        learning_rate_base,
+        global_step - burnin_steps,
+        learning_rate_decay_steps,
+        learning_rate_decay_factor,
+        staircase=staircase)
+    if callable(post_burnin_learning_rate):
+      post_burnin_learning_rate = post_burnin_learning_rate()
+    return tf.maximum(tf.where(
+        tf.less(tf.cast(global_step, tf.int32), tf.constant(burnin_steps)),
+        tf.constant(burnin_learning_rate),
+        post_burnin_learning_rate), min_learning_rate, name='learning_rate')
+
+  if tf.executing_eagerly():
+    return eager_decay_rate
+  else:
+    return eager_decay_rate()
 
 
 def cosine_decay_with_warmup(global_step,
@@ -88,7 +107,11 @@ def cosine_decay_with_warmup(global_step,
       before decaying.
 
   Returns:
-    a (scalar) float tensor representing learning rate.
+    If executing eagerly:
+      returns a no-arg callable that outputs the (scalar)
+      float tensor learning rate given the current value of global_step.
+    If in a graph:
+      immediately returns a (scalar) float tensor representing learning rate.
 
   Raises:
     ValueError: if warmup_learning_rate is larger than learning_rate_base,
@@ -97,24 +120,32 @@ def cosine_decay_with_warmup(global_step,
   if total_steps < warmup_steps:
     raise ValueError('total_steps must be larger or equal to '
                      'warmup_steps.')
-  learning_rate = 0.5 * learning_rate_base * (1 + tf.cos(
-      np.pi *
-      (tf.cast(global_step, tf.float32) - warmup_steps - hold_base_rate_steps
-      ) / float(total_steps - warmup_steps - hold_base_rate_steps)))
-  if hold_base_rate_steps > 0:
-    learning_rate = tf.where(global_step > warmup_steps + hold_base_rate_steps,
-                             learning_rate, learning_rate_base)
-  if warmup_steps > 0:
-    if learning_rate_base < warmup_learning_rate:
-      raise ValueError('learning_rate_base must be larger or equal to '
-                       'warmup_learning_rate.')
-    slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
-    warmup_rate = slope * tf.cast(global_step,
-                                  tf.float32) + warmup_learning_rate
-    learning_rate = tf.where(global_step < warmup_steps, warmup_rate,
-                             learning_rate)
-  return tf.where(global_step > total_steps, 0.0, learning_rate,
-                  name='learning_rate')
+  def eager_decay_rate():
+    """Callable to compute the learning rate."""
+    learning_rate = 0.5 * learning_rate_base * (1 + tf.cos(
+        np.pi *
+        (tf.cast(global_step, tf.float32) - warmup_steps - hold_base_rate_steps
+        ) / float(total_steps - warmup_steps - hold_base_rate_steps)))
+    if hold_base_rate_steps > 0:
+      learning_rate = tf.where(
+          global_step > warmup_steps + hold_base_rate_steps,
+          learning_rate, learning_rate_base)
+    if warmup_steps > 0:
+      if learning_rate_base < warmup_learning_rate:
+        raise ValueError('learning_rate_base must be larger or equal to '
+                         'warmup_learning_rate.')
+      slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
+      warmup_rate = slope * tf.cast(global_step,
+                                    tf.float32) + warmup_learning_rate
+      learning_rate = tf.where(global_step < warmup_steps, warmup_rate,
+                               learning_rate)
+    return tf.where(global_step > total_steps, 0.0, learning_rate,
+                    name='learning_rate')
+
+  if tf.executing_eagerly():
+    return eager_decay_rate
+  else:
+    return eager_decay_rate()
 
 
 def manual_stepping(global_step, boundaries, rates, warmup=False):
@@ -138,7 +169,11 @@ def manual_stepping(global_step, boundaries, rates, warmup=False):
       [0, boundaries[0]].
 
   Returns:
-    a (scalar) float tensor representing learning rate
+    If executing eagerly:
+      returns a no-arg callable that outputs the (scalar)
+      float tensor learning rate given the current value of global_step.
+    If in a graph:
+      immediately returns a (scalar) float tensor representing learning rate.
   Raises:
     ValueError: if one of the following checks fails:
       1. boundaries is a strictly increasing list of positive integers
@@ -161,15 +196,23 @@ def manual_stepping(global_step, boundaries, rates, warmup=False):
 
   if warmup and boundaries:
     slope = (rates[1] - rates[0]) * 1.0 / boundaries[0]
-    warmup_steps = range(boundaries[0])
+    warmup_steps = list(range(boundaries[0]))
     warmup_rates = [rates[0] + slope * step for step in warmup_steps]
     boundaries = warmup_steps + boundaries
     rates = warmup_rates + rates[1:]
   else:
     boundaries = [0] + boundaries
   num_boundaries = len(boundaries)
-  rate_index = tf.reduce_max(tf.where(tf.greater_equal(global_step, boundaries),
-                                      list(range(num_boundaries)),
-                                      [0] * num_boundaries))
-  return tf.reduce_sum(rates * tf.one_hot(rate_index, depth=num_boundaries),
-                       name='learning_rate')
+
+  def eager_decay_rate():
+    """Callable to compute the learning rate."""
+    rate_index = tf.reduce_max(tf.where(
+        tf.greater_equal(global_step, boundaries),
+        list(range(num_boundaries)),
+        [0] * num_boundaries))
+    return tf.reduce_sum(rates * tf.one_hot(rate_index, depth=num_boundaries),
+                         name='learning_rate')
+  if tf.executing_eagerly():
+    return eager_decay_rate
+  else:
+    return eager_decay_rate()

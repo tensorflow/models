@@ -1,11 +1,13 @@
 syntax = "proto2";
 
-package object_detection.protos;
+package lstm_object_detection.protos;
 
 import "object_detection/protos/pipeline.proto";
+import "lstm_object_detection/protos/quant_overrides.proto";
 
-extend TrainEvalPipelineConfig {
+extend object_detection.protos.TrainEvalPipelineConfig {
   optional LstmModel lstm_model = 205743444;
+  optional QuantOverrides quant_overrides = 246059837;
 }
 
 // Message for extra fields needed for configuring LSTM model.
@@ -18,4 +20,50 @@ message LstmModel {
 
   // Depth of the lstm feature map.
   optional int32 lstm_state_depth = 3 [default = 256];
+
+  // Depth multipliers for multiple feature extractors. Used for interleaved
+  // or ensemble model.
+  repeated float depth_multipliers = 4;
+
+  // Specifies how models are interleaved when multiple feature extractors are
+  // used during training. Must be in ['RANDOM', 'RANDOM_SKIP_SMALL'].
+  optional string train_interleave_method = 5 [default = 'RANDOM'];
+
+  // Specifies how models are interleaved when multiple feature extractors are
+  // used during training. Must be in ['RANDOM', 'RANDOM_SKIP', 'SKIPK'].
+  optional string eval_interleave_method = 6 [default = 'SKIP9'];
+
+  // The stride of the lstm state.
+  optional int32 lstm_state_stride = 7 [default = 32];
+
+  // Whether to flattern LSTM state and output. Note that this is typically
+  // intended only to be modified internally by export_tfmini_lstd_graph_lib
+  // to support flatten state for tfmini/tflite. Do not set this field in
+  // the pipeline config file unless necessary.
+  optional bool flatten_state = 8 [default = false];
+
+  // Whether to apply bottleneck layer before going into LSTM gates. This
+  // allows multiple feature extractors to use separate bottleneck layers
+  // instead of sharing the same one so that different base model output
+  // feature dimensions are not forced to be the same.
+  // For example:
+  // Model 1 outputs feature map f_1 of depth d_1.
+  // Model 2 outputs feature map f_2 of depth d_2.
+  // Pre-bottlenecking allows lstm input to be either:
+  // conv(concat([f_1, h])) or conv(concat([f_2, h])).
+  optional bool pre_bottleneck = 9 [default = false];
+
+  // Normalize LSTM state, default false.
+  optional bool scale_state = 10 [default = false];
+
+  // Clip LSTM state at [0, 6], default true.
+  optional bool clip_state = 11 [default = true];
+
+  // If the model is in quantized training. This field does NOT need to be set
+  // manually. Instead, it will be overridden by configs in graph_rewriter.
+  optional bool is_quantized = 12 [default = false];
+
+  // Downsample input image when using the smaller network in interleaved
+  // models, default false.
+  optional bool low_res = 13 [default = false];
 }

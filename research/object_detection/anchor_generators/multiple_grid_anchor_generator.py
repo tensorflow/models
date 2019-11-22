@@ -60,7 +60,7 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
         outside list having the same number of entries as feature_map_shape_list
         (which is passed in at generation time).
       base_anchor_size: base anchor size as [height, width]
-                        (length-2 float tensor, default=[1.0, 1.0]).
+                        (length-2 float numpy or Tensor, default=[1.0, 1.0]).
                         The height and width values are normalized to the
                         minimum dimension of the input height and width, so that
                         when the base anchor height equals the base anchor
@@ -95,7 +95,7 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
       raise ValueError('box_specs_list is expected to be a '
                        'list of lists of pairs')
     if base_anchor_size is None:
-      base_anchor_size = tf.constant([256, 256], dtype=tf.float32)
+      base_anchor_size = [256, 256]
     self._base_anchor_size = base_anchor_size
     self._anchor_strides = anchor_strides
     self._anchor_offsets = anchor_offsets
@@ -180,22 +180,23 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
                 for list_item in feature_map_shape_list]):
       raise ValueError('feature_map_shape_list must be a list of pairs.')
 
-    im_height = tf.to_float(im_height)
-    im_width = tf.to_float(im_width)
+    im_height = tf.cast(im_height, dtype=tf.float32)
+    im_width = tf.cast(im_width, dtype=tf.float32)
 
     if not self._anchor_strides:
-      anchor_strides = [(1.0 / tf.to_float(pair[0]), 1.0 / tf.to_float(pair[1]))
+      anchor_strides = [(1.0 / tf.cast(pair[0], dtype=tf.float32),
+                         1.0 / tf.cast(pair[1], dtype=tf.float32))
                         for pair in feature_map_shape_list]
     else:
-      anchor_strides = [(tf.to_float(stride[0]) / im_height,
-                         tf.to_float(stride[1]) / im_width)
+      anchor_strides = [(tf.cast(stride[0], dtype=tf.float32) / im_height,
+                         tf.cast(stride[1], dtype=tf.float32) / im_width)
                         for stride in self._anchor_strides]
     if not self._anchor_offsets:
       anchor_offsets = [(0.5 * stride[0], 0.5 * stride[1])
                         for stride in anchor_strides]
     else:
-      anchor_offsets = [(tf.to_float(offset[0]) / im_height,
-                         tf.to_float(offset[1]) / im_width)
+      anchor_offsets = [(tf.cast(offset[0], dtype=tf.float32) / im_height,
+                         tf.cast(offset[1], dtype=tf.float32) / im_width)
                         for offset in self._anchor_offsets]
 
     for arg, arg_name in zip([anchor_strides, anchor_offsets],
@@ -211,10 +212,18 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
     min_im_shape = tf.minimum(im_height, im_width)
     scale_height = min_im_shape / im_height
     scale_width = min_im_shape / im_width
-    base_anchor_size = [
-        scale_height * self._base_anchor_size[0],
-        scale_width * self._base_anchor_size[1]
-    ]
+    if not tf.contrib.framework.is_tensor(self._base_anchor_size):
+      base_anchor_size = [
+          scale_height * tf.constant(self._base_anchor_size[0],
+                                     dtype=tf.float32),
+          scale_width * tf.constant(self._base_anchor_size[1],
+                                    dtype=tf.float32)
+      ]
+    else:
+      base_anchor_size = [
+          scale_height * self._base_anchor_size[0],
+          scale_width * self._base_anchor_size[1]
+      ]
     for feature_map_index, (grid_size, scales, aspect_ratios, stride,
                             offset) in enumerate(
                                 zip(feature_map_shape_list, self._scales,
@@ -304,7 +313,6 @@ def create_ssd_anchors(num_layers=6,
   """
   if base_anchor_size is None:
     base_anchor_size = [1.0, 1.0]
-  base_anchor_size = tf.constant(base_anchor_size, dtype=tf.float32)
   box_specs_list = []
   if scales is None or not scales:
     scales = [min_scale + (max_scale - min_scale) * i / (num_layers - 1)

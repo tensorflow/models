@@ -26,9 +26,15 @@ class FasterRCNNMetaArchTest(
     faster_rcnn_meta_arch_test_lib.FasterRCNNMetaArchTestBase,
     parameterized.TestCase):
 
-  def test_postprocess_second_stage_only_inference_mode_with_masks(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_postprocess_second_stage_only_inference_mode_with_masks(
+      self, use_keras=False):
     model = self._build_model(
-        is_training=False, number_of_stages=2, second_stage_batch_size=6)
+        is_training=False, use_keras=use_keras,
+        number_of_stages=2, second_stage_batch_size=6)
 
     batch_size = 2
     total_num_padded_proposals = batch_size * model.max_num_proposals
@@ -85,9 +91,83 @@ class FasterRCNNMetaArchTest(
       self.assertTrue(np.amax(detections_out['detection_masks'] <= 1.0))
       self.assertTrue(np.amin(detections_out['detection_masks'] >= 0.0))
 
-  def test_postprocess_second_stage_only_inference_mode_with_shared_boxes(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_postprocess_second_stage_only_inference_mode_with_calibration(
+      self, use_keras=False):
     model = self._build_model(
-        is_training=False, number_of_stages=2, second_stage_batch_size=6)
+        is_training=False, use_keras=use_keras,
+        number_of_stages=2, second_stage_batch_size=6,
+        calibration_mapping_value=0.5)
+
+    batch_size = 2
+    total_num_padded_proposals = batch_size * model.max_num_proposals
+    proposal_boxes = tf.constant(
+        [[[1, 1, 2, 3],
+          [0, 0, 1, 1],
+          [.5, .5, .6, .6],
+          4*[0], 4*[0], 4*[0], 4*[0], 4*[0]],
+         [[2, 3, 6, 8],
+          [1, 2, 5, 3],
+          4*[0], 4*[0], 4*[0], 4*[0], 4*[0], 4*[0]]], dtype=tf.float32)
+    num_proposals = tf.constant([3, 2], dtype=tf.int32)
+    refined_box_encodings = tf.zeros(
+        [total_num_padded_proposals, model.num_classes, 4], dtype=tf.float32)
+    class_predictions_with_background = tf.ones(
+        [total_num_padded_proposals, model.num_classes+1], dtype=tf.float32)
+    image_shape = tf.constant([batch_size, 36, 48, 3], dtype=tf.int32)
+
+    mask_height = 2
+    mask_width = 2
+    mask_predictions = 30. * tf.ones(
+        [total_num_padded_proposals, model.num_classes,
+         mask_height, mask_width], dtype=tf.float32)
+    exp_detection_masks = np.array([[[[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]]],
+                                    [[[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[0, 0], [0, 0]]]])
+
+    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+    detections = model.postprocess({
+        'refined_box_encodings': refined_box_encodings,
+        'class_predictions_with_background': class_predictions_with_background,
+        'num_proposals': num_proposals,
+        'proposal_boxes': proposal_boxes,
+        'image_shape': image_shape,
+        'mask_predictions': mask_predictions
+    }, true_image_shapes)
+    with self.test_session() as sess:
+      detections_out = sess.run(detections)
+      self.assertAllEqual(detections_out['detection_boxes'].shape, [2, 5, 4])
+      # All scores map to 0.5, except for the final one, which is pruned.
+      self.assertAllClose(detections_out['detection_scores'],
+                          [[0.5, 0.5, 0.5, 0.5, 0.5],
+                           [0.5, 0.5, 0.5, 0.5, 0.0]])
+      self.assertAllClose(detections_out['detection_classes'],
+                          [[0, 0, 0, 1, 1], [0, 0, 1, 1, 0]])
+      self.assertAllClose(detections_out['num_detections'], [5, 4])
+      self.assertAllClose(detections_out['detection_masks'],
+                          exp_detection_masks)
+      self.assertTrue(np.amax(detections_out['detection_masks'] <= 1.0))
+      self.assertTrue(np.amin(detections_out['detection_masks'] >= 0.0))
+
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_postprocess_second_stage_only_inference_mode_with_shared_boxes(
+      self, use_keras=False):
+    model = self._build_model(
+        is_training=False, use_keras=use_keras,
+        number_of_stages=2, second_stage_batch_size=6)
 
     batch_size = 2
     total_num_padded_proposals = batch_size * model.max_num_proposals
@@ -126,11 +206,13 @@ class FasterRCNNMetaArchTest(
       self.assertAllClose(detections_out['num_detections'], [5, 4])
 
   @parameterized.parameters(
-      {'masks_are_class_agnostic': False},
-      {'masks_are_class_agnostic': True},
+      {'masks_are_class_agnostic': False, 'use_keras': True},
+      {'masks_are_class_agnostic': True, 'use_keras': True},
+      {'masks_are_class_agnostic': False, 'use_keras': False},
+      {'masks_are_class_agnostic': True, 'use_keras': False},
   )
   def test_predict_correct_shapes_in_inference_mode_three_stages_with_masks(
-      self, masks_are_class_agnostic):
+      self, masks_are_class_agnostic, use_keras):
     batch_size = 2
     image_size = 10
     max_num_proposals = 8
@@ -162,7 +244,8 @@ class FasterRCNNMetaArchTest(
                                                 max_num_proposals,
                                                 initial_crop_size,
                                                 maxpool_stride,
-                                                3)
+                                                3),
+        'feature_maps': [(2, image_size, image_size, 512)]
     }
 
     for input_shape in input_shapes:
@@ -170,6 +253,7 @@ class FasterRCNNMetaArchTest(
       with test_graph.as_default():
         model = self._build_model(
             is_training=False,
+            use_keras=use_keras,
             number_of_stages=3,
             second_stage_batch_size=2,
             predict_masks=True,
@@ -188,10 +272,15 @@ class FasterRCNNMetaArchTest(
           set(tensor_dict_out.keys()),
           set(expected_shapes.keys()).union(
               set([
-                  'detection_boxes', 'detection_scores', 'detection_classes',
+                  'detection_boxes', 'detection_scores',
+                  'detection_multiclass_scores', 'detection_classes',
                   'detection_masks', 'num_detections', 'mask_predictions',
+                  'raw_detection_boxes', 'raw_detection_scores',
+                  'detection_anchor_indices', 'final_anchors',
               ])))
       for key in expected_shapes:
+        if isinstance(tensor_dict_out[key], list):
+          continue
         self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
       self.assertAllEqual(tensor_dict_out['detection_boxes'].shape, [2, 5, 4])
       self.assertAllEqual(tensor_dict_out['detection_masks'].shape,
@@ -204,15 +293,113 @@ class FasterRCNNMetaArchTest(
                           [10, num_classes, 14, 14])
 
   @parameterized.parameters(
-      {'masks_are_class_agnostic': False},
-      {'masks_are_class_agnostic': True},
+      {'use_keras': True},
+      {'use_keras': False},
+  )
+  def test_raw_detection_boxes_and_anchor_indices_correct(self, use_keras):
+    batch_size = 2
+    image_size = 10
+    max_num_proposals = 8
+    initial_crop_size = 3
+    maxpool_stride = 1
+
+    input_shapes = [(batch_size, image_size, image_size, 3),
+                    (None, image_size, image_size, 3),
+                    (batch_size, None, None, 3),
+                    (None, None, None, 3)]
+    expected_num_anchors = image_size * image_size * 3 * 3
+    expected_shapes = {
+        'rpn_box_predictor_features':
+        (batch_size, image_size, image_size, 512),
+        'rpn_features_to_crop': (batch_size, image_size, image_size, 3),
+        'image_shape': (4,),
+        'rpn_box_encodings': (batch_size, expected_num_anchors, 4),
+        'rpn_objectness_predictions_with_background':
+        (batch_size, expected_num_anchors, 2),
+        'anchors': (expected_num_anchors, 4),
+        'refined_box_encodings': (batch_size * max_num_proposals, 1, 4),
+        'class_predictions_with_background':
+            (batch_size * max_num_proposals, 2 + 1),
+        'num_proposals': (batch_size,),
+        'proposal_boxes': (batch_size, max_num_proposals, 4),
+        'proposal_boxes_normalized': (batch_size, max_num_proposals, 4),
+        'box_classifier_features':
+        self._get_box_classifier_features_shape(image_size,
+                                                batch_size,
+                                                max_num_proposals,
+                                                initial_crop_size,
+                                                maxpool_stride,
+                                                3),
+        'feature_maps': [(batch_size, image_size, image_size, 3)],
+        'raw_detection_feature_map_indices': (batch_size, max_num_proposals, 1),
+        'raw_detection_boxes': (batch_size, max_num_proposals, 1, 4),
+        'final_anchors': (batch_size, max_num_proposals, 4)
+    }
+
+    for input_shape in input_shapes:
+      test_graph = tf.Graph()
+      with test_graph.as_default():
+        model = self._build_model(
+            is_training=False,
+            use_keras=use_keras,
+            number_of_stages=2,
+            second_stage_batch_size=2,
+            share_box_across_classes=True,
+            return_raw_detections_during_predict=True)
+        preprocessed_inputs = tf.placeholder(tf.float32, shape=input_shape)
+        _, true_image_shapes = model.preprocess(preprocessed_inputs)
+        predict_tensor_dict = model.predict(preprocessed_inputs,
+                                            true_image_shapes)
+        postprocess_tensor_dict = model.postprocess(predict_tensor_dict,
+                                                    true_image_shapes)
+        init_op = tf.global_variables_initializer()
+      with self.test_session(graph=test_graph) as sess:
+        sess.run(init_op)
+        [predict_dict_out, postprocess_dict_out] = sess.run(
+            [predict_tensor_dict, postprocess_tensor_dict], feed_dict={
+                preprocessed_inputs:
+                    np.zeros((batch_size, image_size, image_size, 3))})
+      self.assertEqual(
+          set(predict_dict_out.keys()),
+          set(expected_shapes.keys()))
+      for key in expected_shapes:
+        if isinstance(predict_dict_out[key], list):
+          continue
+        self.assertAllEqual(predict_dict_out[key].shape, expected_shapes[key])
+      # Verify that the raw detections from predict and postprocess are the
+      # same.
+      self.assertAllClose(
+          np.squeeze(predict_dict_out['raw_detection_boxes']),
+          postprocess_dict_out['raw_detection_boxes'])
+      # Verify that the raw detection boxes at detection anchor indices are the
+      # same as the postprocessed detections.
+      for i in range(batch_size):
+        num_detections_per_image = int(
+            postprocess_dict_out['num_detections'][i])
+        detection_boxes_per_image = postprocess_dict_out[
+            'detection_boxes'][i][:num_detections_per_image]
+        detection_anchor_indices_per_image = postprocess_dict_out[
+            'detection_anchor_indices'][i][:num_detections_per_image]
+        raw_detections_per_image = np.squeeze(predict_dict_out[
+            'raw_detection_boxes'][i])
+        raw_detections_at_anchor_indices = raw_detections_per_image[
+            detection_anchor_indices_per_image]
+        self.assertAllClose(detection_boxes_per_image,
+                            raw_detections_at_anchor_indices)
+
+  @parameterized.parameters(
+      {'masks_are_class_agnostic': False, 'use_keras': True},
+      {'masks_are_class_agnostic': True, 'use_keras': True},
+      {'masks_are_class_agnostic': False, 'use_keras': False},
+      {'masks_are_class_agnostic': True, 'use_keras': False},
   )
   def test_predict_gives_correct_shapes_in_train_mode_both_stages_with_masks(
-      self, masks_are_class_agnostic):
+      self, masks_are_class_agnostic, use_keras):
     test_graph = tf.Graph()
     with test_graph.as_default():
       model = self._build_model(
           is_training=True,
+          use_keras=use_keras,
           number_of_stages=3,
           second_stage_batch_size=7,
           predict_masks=True,
@@ -257,7 +444,8 @@ class FasterRCNNMetaArchTest(
               self._get_box_classifier_features_shape(
                   image_size, batch_size, max_num_proposals, initial_crop_size,
                   maxpool_stride, 3),
-          'mask_predictions': (2 * max_num_proposals, mask_shape_1, 14, 14)
+          'mask_predictions': (2 * max_num_proposals, mask_shape_1, 14, 14),
+          'feature_maps': [(2, image_size, image_size, 512)]
       }
 
       init_op = tf.global_variables_initializer()
@@ -271,12 +459,15 @@ class FasterRCNNMetaArchTest(
                     'rpn_box_encodings',
                     'rpn_objectness_predictions_with_background',
                     'anchors',
+                    'final_anchors',
                 ])))
         for key in expected_shapes:
+          if isinstance(tensor_dict_out[key], list):
+            continue
           self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
 
         anchors_shape_out = tensor_dict_out['anchors'].shape
-        self.assertEqual(2, len(anchors_shape_out))
+        self.assertLen(anchors_shape_out, 2)
         self.assertEqual(4, anchors_shape_out[1])
         num_anchors_out = anchors_shape_out[0]
         self.assertAllEqual(tensor_dict_out['rpn_box_encodings'].shape,
@@ -285,12 +476,21 @@ class FasterRCNNMetaArchTest(
             tensor_dict_out['rpn_objectness_predictions_with_background'].shape,
             (2, num_anchors_out, 2))
 
-  def test_postprocess_third_stage_only_inference_mode(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_postprocess_third_stage_only_inference_mode(self, use_keras=False):
     num_proposals_shapes = [(2), (None)]
     refined_box_encodings_shapes = [(16, 2, 4), (None, 2, 4)]
     class_predictions_with_background_shapes = [(16, 3), (None, 3)]
     proposal_boxes_shapes = [(2, 8, 4), (None, 8, 4)]
     batch_size = 2
+    initial_crop_size = 3
+    maxpool_stride = 1
+    height = initial_crop_size/maxpool_stride
+    width = initial_crop_size/maxpool_stride
+    depth = 3
     image_shape = np.array((2, 36, 48, 3), dtype=np.int32)
     for (num_proposals_shape, refined_box_encoding_shape,
          class_predictions_with_background_shape,
@@ -301,7 +501,7 @@ class FasterRCNNMetaArchTest(
       tf_graph = tf.Graph()
       with tf_graph.as_default():
         model = self._build_model(
-            is_training=False, number_of_stages=3,
+            is_training=False, use_keras=use_keras, number_of_stages=3,
             second_stage_batch_size=6, predict_masks=True)
         total_num_padded_proposals = batch_size * model.max_num_proposals
         proposal_boxes = np.array(
@@ -341,6 +541,7 @@ class FasterRCNNMetaArchTest(
             'detection_scores': tf.zeros([2, 5]),
             'detection_classes': tf.zeros([2, 5]),
             'num_detections': tf.zeros([2]),
+            'detection_features': tf.zeros([2, 5, width, height, depth])
         }, true_image_shapes)
       with self.test_session(graph=tf_graph) as sess:
         detections_out = sess.run(
@@ -361,6 +562,9 @@ class FasterRCNNMetaArchTest(
       self.assertAllClose(detections_out['num_detections'].shape, [2])
       self.assertTrue(np.amax(detections_out['detection_masks'] <= 1.0))
       self.assertTrue(np.amin(detections_out['detection_masks'] >= 0.0))
+      self.assertAllEqual(detections_out['detection_features'].shape,
+                          [2, 5, width, height, depth])
+      self.assertGreaterEqual(np.amax(detections_out['detection_features']), 0)
 
   def _get_box_classifier_features_shape(self,
                                          image_size,

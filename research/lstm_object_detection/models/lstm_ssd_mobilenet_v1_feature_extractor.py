@@ -13,13 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 
-"""LSTMFeatureExtractor for MobilenetV1 features."""
+"""LSTMSSDFeatureExtractor for MobilenetV1 features."""
 
 import tensorflow as tf
 from tensorflow.python.framework import ops as tf_ops
 from lstm_object_detection.lstm import lstm_cells
-from lstm_object_detection.lstm import lstm_meta_arch
 from lstm_object_detection.lstm import rnn_decoder
+from lstm_object_detection.meta_architectures import lstm_ssd_meta_arch
 from object_detection.models import feature_map_generators
 from object_detection.utils import context_manager
 from object_detection.utils import ops
@@ -29,7 +29,8 @@ from nets import mobilenet_v1
 slim = tf.contrib.slim
 
 
-class LSTMMobileNetV1FeatureExtractor(lstm_meta_arch.LSTMFeatureExtractor):
+class LSTMSSDMobileNetV1FeatureExtractor(
+    lstm_ssd_meta_arch.LSTMSSDFeatureExtractor):
   """LSTM Feature Extractor using MobilenetV1 features."""
 
   def __init__(self,
@@ -37,13 +38,13 @@ class LSTMMobileNetV1FeatureExtractor(lstm_meta_arch.LSTMFeatureExtractor):
                depth_multiplier,
                min_depth,
                pad_to_multiple,
-               conv_hyperparams,
+               conv_hyperparams_fn,
                reuse_weights=None,
                use_explicit_padding=False,
                use_depthwise=True,
                override_base_feature_extractor_hyperparams=False,
                lstm_state_depth=256):
-    """Initializes instance of MobileNetV1 Feature Extractor for LSTM Models.
+    """Initializes instance of MobileNetV1 Feature Extractor for LSTMSSD Models.
 
     Args:
       is_training: A boolean whether the network is in training mode.
@@ -51,7 +52,7 @@ class LSTMMobileNetV1FeatureExtractor(lstm_meta_arch.LSTMFeatureExtractor):
       min_depth: A number representing minimum feature extractor depth.
       pad_to_multiple: The nearest multiple to zero pad the input height and
         width dimensions to.
-      conv_hyperparams: A function to construct tf slim arg_scope for conv2d
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
         and separable_conv2d ops in the layers that are added on top of the
         base feature extractor.
       reuse_weights: Whether to reuse variables. Default is None.
@@ -63,9 +64,9 @@ class LSTMMobileNetV1FeatureExtractor(lstm_meta_arch.LSTMFeatureExtractor):
         `conv_hyperparams_fn`.
       lstm_state_depth: An integter of the depth of the lstm state.
     """
-    super(LSTMMobileNetV1FeatureExtractor, self).__init__(
+    super(LSTMSSDMobileNetV1FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, reuse_weights, use_explicit_padding, use_depthwise,
+        conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise,
         override_base_feature_extractor_hyperparams)
     self._feature_map_layout = {
         'from_layer': ['Conv2d_13_pointwise_lstm', '', '', '', ''],
@@ -75,6 +76,37 @@ class LSTMMobileNetV1FeatureExtractor(lstm_meta_arch.LSTMFeatureExtractor):
     }
     self._base_network_scope = 'MobilenetV1'
     self._lstm_state_depth = lstm_state_depth
+
+  def create_lstm_cell(self, batch_size, output_size, state_saver, state_name):
+    """Create the LSTM cell, and initialize state if necessary.
+
+    Args:
+      batch_size: input batch size.
+      output_size: output size of the lstm cell, [width, height].
+      state_saver: a state saver object with methods `state` and `save_state`.
+      state_name: string, the name to use with the state_saver.
+
+    Returns:
+      lstm_cell: the lstm cell unit.
+      init_state: initial state representations.
+      step: the step
+    """
+    lstm_cell = lstm_cells.BottleneckConvLSTMCell(
+        filter_size=(3, 3),
+        output_size=output_size,
+        num_units=max(self._min_depth, self._lstm_state_depth),
+        activation=tf.nn.relu6,
+        visualize_gates=False)
+
+    if state_saver is None:
+      init_state = lstm_cell.init_state(state_name, batch_size, tf.float32)
+      step = None
+    else:
+      step = state_saver.state(state_name + '_step')
+      c = state_saver.state(state_name + '_c')
+      h = state_saver.state(state_name + '_h')
+      init_state = (c, h)
+    return lstm_cell, init_state, step
 
   def extract_features(self,
                        preprocessed_inputs,
@@ -126,22 +158,12 @@ class LSTMMobileNetV1FeatureExtractor(lstm_meta_arch.LSTMFeatureExtractor):
       with slim.arg_scope(
           [slim.batch_norm], fused=False, is_training=self._is_training):
         # ConvLSTM layers.
+        batch_size = net.shape[0].value / unroll_length
         with tf.variable_scope('LSTM', reuse=self._reuse_weights) as lstm_scope:
-          lstm_cell = lstm_cells.BottleneckConvLSTMCell(
-              filter_size=(3, 3),
-              output_size=(net.shape[1].value, net.shape[2].value),
-              num_units=max(self._min_depth, self._lstm_state_depth),
-              activation=tf.nn.relu6,
-              visualize_gates=True)
-
+          lstm_cell, init_state, _ = self.create_lstm_cell(
+              batch_size, (net.shape[1].value, net.shape[2].value), state_saver,
+              state_name)
           net_seq = list(tf.split(net, unroll_length))
-          if state_saver is None:
-            init_state = lstm_cell.init_state(
-                state_name, net.shape[0].value / unroll_length, tf.float32)
-          else:
-            c = state_saver.state('%s_c' % state_name)
-            h = state_saver.state('%s_h' % state_name)
-            init_state = (c, h)
 
           # Identities added for inputing state tensors externally.
           c_ident = tf.identity(init_state[0], name='lstm_state_in_c')
@@ -157,7 +179,7 @@ class LSTMMobileNetV1FeatureExtractor(lstm_meta_arch.LSTMFeatureExtractor):
             batcher_ops = [
                 state_saver.save_state('%s_c' % state_name, states_out[-1][0]),
                 state_saver.save_state('%s_h' % state_name, states_out[-1][1]),
-                state_saver.save_state('%s_step' % state_name, self._step - 1)
+                state_saver.save_state('%s_step' % state_name, self._step + 1)
             ]
           with tf_ops.control_dependencies(batcher_ops):
             image_features['Conv2d_13_pointwise_lstm'] = tf.concat(net_seq, 0)

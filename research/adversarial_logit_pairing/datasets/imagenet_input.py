@@ -207,13 +207,13 @@ def imagenet_input(split, batch_size, image_size, is_training):
 
   # Read the data from disk in parallel
   dataset = dataset.apply(
-      tf.contrib.data.parallel_interleave(
+      tf.data.experimental.parallel_interleave(
           fetch_dataset, cycle_length=4, sloppy=True))
   dataset = dataset.shuffle(1024)
 
   # Parse, preprocess, and batch the data in parallel
   dataset = dataset.apply(
-      tf.contrib.data.map_and_batch(
+      tf.data.experimental.map_and_batch(
           lambda value: imagenet_parser(value, image_size, is_training),
           batch_size=batch_size,
           num_parallel_batches=4,
@@ -231,7 +231,7 @@ def imagenet_input(split, batch_size, image_size, is_training):
   dataset = dataset.map(set_shapes)
 
   # Prefetch overlaps in-feed with training
-  dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
+  dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
   return dataset
 
 

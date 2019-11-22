@@ -51,16 +51,22 @@ class PreprocessorCache(object):
   ADD_BLACK_PATCH = 'add_black_patch'
   SELECTOR = 'selector'
   SELECTOR_TUPLES = 'selector_tuples'
+  SELF_CONCAT_IMAGE = 'self_concat_image'
   SSD_CROP_SELECTOR_ID = 'ssd_crop_selector_id'
   SSD_CROP_PAD_SELECTOR_ID = 'ssd_crop_pad_selector_id'
+  JPEG_QUALITY = 'jpeg_quality'
+  DOWNSCALE_TO_TARGET_PIXELS = 'downscale_to_target_pixels'
+  PATCH_GAUSSIAN = 'patch_gaussian'
 
-  # 23 permitted function ids
+  # 27 permitted function ids
   _VALID_FNS = [ROTATION90, HORIZONTAL_FLIP, VERTICAL_FLIP, PIXEL_VALUE_SCALE,
                 IMAGE_SCALE, RGB_TO_GRAY, ADJUST_BRIGHTNESS, ADJUST_CONTRAST,
                 ADJUST_HUE, ADJUST_SATURATION, DISTORT_COLOR, STRICT_CROP_IMAGE,
                 CROP_IMAGE, PAD_IMAGE, CROP_TO_ASPECT_RATIO, RESIZE_METHOD,
                 PAD_TO_ASPECT_RATIO, BLACK_PATCHES, ADD_BLACK_PATCH, SELECTOR,
-                SELECTOR_TUPLES, SSD_CROP_SELECTOR_ID, SSD_CROP_PAD_SELECTOR_ID]
+                SELECTOR_TUPLES, SELF_CONCAT_IMAGE, SSD_CROP_SELECTOR_ID,
+                SSD_CROP_PAD_SELECTOR_ID, JPEG_QUALITY,
+                DOWNSCALE_TO_TARGET_PIXELS, PATCH_GAUSSIAN]
 
   def __init__(self):
     self._history = defaultdict(dict)
@@ -99,4 +105,3 @@ class PreprocessorCache(object):
     if function_id not in self._VALID_FNS:
       raise ValueError('Function id not recognized: %s.' % str(function_id))
     self._history[function_id][key] = value
-

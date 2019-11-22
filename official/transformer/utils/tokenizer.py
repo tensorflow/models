@@ -63,7 +63,8 @@ class Subtokenizer(object):
 
   def __init__(self, vocab_file, reserved_tokens=None):
     """Initializes class, creating a vocab file if data_files is provided."""
-    tf.logging.info("Initializing Subtokenizer from file %s." % vocab_file)
+    tf.compat.v1.logging.info("Initializing Subtokenizer from file %s." %
+                              vocab_file)
 
     if reserved_tokens is None:
       reserved_tokens = RESERVED_TOKENS
@@ -83,7 +84,7 @@ class Subtokenizer(object):
   @staticmethod
   def init_from_files(
       vocab_file, files, target_vocab_size, threshold, min_count=None,
-      file_byte_limit=1e6, reserved_tokens=None):
+      file_byte_limit=1e6, reserved_tokens=None, correct_strip=True):
     """Create subtoken vocabulary based on files, and save vocab to file.
 
     Args:
@@ -99,6 +100,7 @@ class Subtokenizer(object):
         will be drawn from the files.
       reserved_tokens: List of string tokens that are guaranteed to be at the
         beginning of the subtoken vocabulary list.
+      correct_strip: Whether to convert text to unicode before strip.
 
     Returns:
       Subtokenizer object
@@ -106,24 +108,24 @@ class Subtokenizer(object):
     if reserved_tokens is None:
       reserved_tokens = RESERVED_TOKENS
 
-    if tf.gfile.Exists(vocab_file):
-      tf.logging.info("Vocab file already exists (%s)" % vocab_file)
+    if tf.io.gfile.exists(vocab_file):
+      tf.compat.v1.logging.info("Vocab file already exists (%s)" % vocab_file)
     else:
-      tf.logging.info("Begin steps to create subtoken vocabulary...")
-      token_counts = _count_tokens(files, file_byte_limit)
+      tf.compat.v1.logging.info("Begin steps to create subtoken vocabulary...")
+      token_counts = _count_tokens(files, file_byte_limit, correct_strip)
       alphabet = _generate_alphabet_dict(token_counts)
       subtoken_list = _generate_subtokens_with_target_vocab_size(
           token_counts, alphabet, target_vocab_size, threshold, min_count,
           reserved_tokens)
-      tf.logging.info("Generated vocabulary with %d subtokens." %
-                      len(subtoken_list))
+      tf.compat.v1.logging.info("Generated vocabulary with %d subtokens." %
+                                len(subtoken_list))
       _save_vocab_file(vocab_file, subtoken_list)
     return Subtokenizer(vocab_file)
 
   def encode(self, raw_string, add_eos=False):
     """Encodes a string into a list of int subtoken ids."""
     ret = []
-    tokens = _split_string_to_tokens(_native_to_unicode(raw_string))
+    tokens = _split_string_to_tokens(native_to_unicode(raw_string))
     for token in tokens:
       ret.extend(self._token_to_subtoken_ids(token))
     if add_eos:
@@ -179,7 +181,7 @@ class Subtokenizer(object):
 
 def _save_vocab_file(vocab_file, subtoken_list):
   """Save subtokens to file."""
-  with tf.gfile.Open(vocab_file, mode="w") as f:
+  with tf.io.gfile.GFile(vocab_file, mode="w") as f:
     for subtoken in subtoken_list:
       f.write("'%s'\n" % _unicode_to_native(subtoken))
 
@@ -190,17 +192,17 @@ def _load_vocab_file(vocab_file, reserved_tokens=None):
     reserved_tokens = RESERVED_TOKENS
 
   subtoken_list = []
-  with tf.gfile.Open(vocab_file, mode="r") as f:
+  with tf.io.gfile.GFile(vocab_file, mode="r") as f:
     for line in f:
-      subtoken = _native_to_unicode(line.strip())
+      subtoken = native_to_unicode(line.strip())
       subtoken = subtoken[1:-1]  # Remove surrounding single-quotes
       if subtoken in reserved_tokens:
         continue
-      subtoken_list.append(_native_to_unicode(subtoken))
+      subtoken_list.append(native_to_unicode(subtoken))
   return reserved_tokens + subtoken_list
 
 
-def _native_to_unicode(s):
+def native_to_unicode(s):
   """Convert string to unicode (required in Python 2)."""
   try:               # Python 2
     return s if isinstance(s, unicode) else s.decode("utf-8")
@@ -322,7 +324,7 @@ def _unescape_token(token):
   return _UNESCAPE_REGEX.sub(match, token)
 
 
-def _count_tokens(files, file_byte_limit=1e6):
+def _count_tokens(files, file_byte_limit=1e6, correct_strip=True):
   """Return token counts of words in the files.
 
   Samples file_byte_limit bytes from each file, and counts the words that appear
@@ -331,6 +333,10 @@ def _count_tokens(files, file_byte_limit=1e6):
   Args:
     files: List of filepaths
     file_byte_limit: Max number of bytes that will be read from each file.
+    correct_strip: Whether to convert text to unicode before strip. This affects
+      vocabulary generation for PY2. Sets correct_strip to False in PY2 to
+      reproduce previous common public result. Sets correct_strip to True will
+      let PY2 and PY3 get a consistent vocabulary.
 
   Returns:
     Dictionary mapping tokens to the number of times they appear in the sampled
@@ -339,7 +345,7 @@ def _count_tokens(files, file_byte_limit=1e6):
   token_counts = collections.defaultdict(int)
 
   for filepath in files:
-    with tf.gfile.Open(filepath, mode="r") as reader:
+    with tf.io.gfile.GFile(filepath, mode="r") as reader:
       file_byte_budget = file_byte_limit
       counter = 0
       lines_to_skip = int(reader.size() / (file_byte_budget * 2))
@@ -349,12 +355,14 @@ def _count_tokens(files, file_byte_limit=1e6):
         else:
           if file_byte_budget < 0:
             break
+          if correct_strip:
+            line = native_to_unicode(line)
           line = line.strip()
           file_byte_budget -= len(line)
           counter = 0
 
           # Add words to token counts
-          for token in _split_string_to_tokens(_native_to_unicode(line)):
+          for token in _split_string_to_tokens(native_to_unicode(line)):
             token_counts[token] += 1
   return token_counts
 
@@ -394,22 +402,23 @@ def _generate_subtokens_with_target_vocab_size(
     reserved_tokens = RESERVED_TOKENS
 
   if min_count is not None:
-    tf.logging.info("Using min_count=%d to generate vocab with target size %d" %
-                    (min_count, target_size))
+    tf.compat.v1.logging.info(
+        "Using min_count=%d to generate vocab with target size %d" %
+        (min_count, target_size))
     return _generate_subtokens(
         token_counts, alphabet, min_count, reserved_tokens=reserved_tokens)
 
   def bisect(min_val, max_val):
     """Recursive function to binary search for subtoken vocabulary."""
     cur_count = (min_val + max_val) // 2
-    tf.logging.info("Binary search: trying min_count=%d (%d %d)" %
-                    (cur_count, min_val, max_val))
+    tf.compat.v1.logging.info("Binary search: trying min_count=%d (%d %d)" %
+                              (cur_count, min_val, max_val))
     subtoken_list = _generate_subtokens(
         token_counts, alphabet, cur_count, reserved_tokens=reserved_tokens)
 
     val = len(subtoken_list)
-    tf.logging.info("Binary search: min_count=%d resulted in %d tokens" %
-                    (cur_count, val))
+    tf.compat.v1.logging.info(
+        "Binary search: min_count=%d resulted in %d tokens" % (cur_count, val))
 
     within_threshold = abs(val - target_size) < threshold
     if within_threshold or min_val >= max_val or cur_count < 2:
@@ -425,8 +434,8 @@ def _generate_subtokens_with_target_vocab_size(
       return other_subtoken_list
     return subtoken_list
 
-  tf.logging.info("Finding best min_count to get target size of %d" %
-                  target_size)
+  tf.compat.v1.logging.info("Finding best min_count to get target size of %d" %
+                            target_size)
   return bisect(_MIN_MIN_COUNT, _MAX_MIN_COUNT)
 
 
@@ -594,7 +603,7 @@ def _generate_subtokens(
   # subtoken_dict, count how often the resulting subtokens appear, and update
   # the dictionary with subtokens w/ high enough counts.
   for i in xrange(num_iterations):
-    tf.logging.info("\tGenerating subtokens: iteration %d" % i)
+    tf.compat.v1.logging.info("\tGenerating subtokens: iteration %d" % i)
     # Generate new subtoken->id dictionary using the new subtoken list.
     subtoken_dict = _list_to_index_dict(subtoken_list)
 
@@ -607,5 +616,5 @@ def _generate_subtokens(
     subtoken_list, max_subtoken_length = _gen_new_subtoken_list(
         subtoken_counts, min_count, alphabet, reserved_tokens)
 
-    tf.logging.info("\tVocab size: %d" % len(subtoken_list))
+    tf.compat.v1.logging.info("\tVocab size: %d" % len(subtoken_list))
   return subtoken_list

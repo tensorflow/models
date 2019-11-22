@@ -39,7 +39,7 @@ def _get_step_config_from_proto(preprocessor_step_config, step_name):
     if field.name == step_name:
       return value
 
-  raise ValueError('Could not get field %s from proto!', step_name)
+  raise ValueError('Could not get field %s from proto!' % step_name)
 
 
 def _get_dict_from_proto(config):
@@ -95,6 +95,12 @@ PREPROCESSING_FUNCTION_MAP = {
         preprocessor.random_crop_to_aspect_ratio,
     'random_black_patches':
         preprocessor.random_black_patches,
+    'random_jpeg_quality':
+        preprocessor.random_jpeg_quality,
+    'random_downscale_to_target_pixels':
+        preprocessor.random_downscale_to_target_pixels,
+    'random_patch_gaussian':
+        preprocessor.random_patch_gaussian,
     'rgb_to_gray':
         preprocessor.rgb_to_gray,
     'scale_boxes_to_pixel_coordinates': (
@@ -191,10 +197,10 @@ def build(preprocessor_step_config):
 
     pad_color = config.pad_color or None
     if pad_color:
-      if len(pad_color) == 3:
-        pad_color = tf.to_float([x for x in config.pad_color])
-      else:
-        raise ValueError('pad_color should have 3 elements (RGB) if set!')
+      if len(pad_color) != 3:
+        tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
+
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
     return (preprocessor.random_pad_image,
             {
                 'min_image_size': min_image_size,
@@ -202,6 +208,25 @@ def build(preprocessor_step_config):
                 'pad_color': pad_color,
             })
 
+  if step_type == 'random_absolute_pad_image':
+    config = preprocessor_step_config.random_absolute_pad_image
+
+    max_height_padding = config.max_height_padding or 1
+    max_width_padding = config.max_width_padding or 1
+
+    pad_color = config.pad_color or None
+    if pad_color:
+      if len(pad_color) != 3:
+        tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
+
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
+
+    return (preprocessor.random_absolute_pad_image,
+            {
+                'max_height_padding': max_height_padding,
+                'max_width_padding': max_width_padding,
+                'pad_color': pad_color,
+            })
   if step_type == 'random_crop_pad_image':
     config = preprocessor_step_config.random_crop_pad_image
     min_padded_size_ratio = config.min_padded_size_ratio
@@ -210,9 +235,13 @@ def build(preprocessor_step_config):
     max_padded_size_ratio = config.max_padded_size_ratio
     if max_padded_size_ratio and len(max_padded_size_ratio) != 2:
       raise ValueError('max_padded_size_ratio should have 2 elements if set!')
-    pad_color = config.pad_color
-    if pad_color and len(pad_color) != 3:
-      raise ValueError('pad_color should have 3 elements if set!')
+    pad_color = config.pad_color or None
+    if pad_color:
+      if len(pad_color) != 3:
+        tf.logging.warn('pad_color should have 3 elements (RGB) if set!')
+
+      pad_color = tf.cast([x for x in config.pad_color], dtype=tf.float32)
+
     kwargs = {
         'min_object_covered': config.min_object_covered,
         'aspect_ratio_range': (config.min_aspect_ratio,
@@ -221,13 +250,12 @@ def build(preprocessor_step_config):
         'overlap_thresh': config.overlap_thresh,
         'clip_boxes': config.clip_boxes,
         'random_coef': config.random_coef,
+        'pad_color': pad_color,
     }
     if min_padded_size_ratio:
       kwargs['min_padded_size_ratio'] = tuple(min_padded_size_ratio)
     if max_padded_size_ratio:
       kwargs['max_padded_size_ratio'] = tuple(max_padded_size_ratio)
-    if pad_color:
-      kwargs['pad_color'] = tuple(pad_color)
     return (preprocessor.random_crop_pad_image, kwargs)
 
   if step_type == 'random_resize_method':
@@ -246,6 +274,13 @@ def build(preprocessor_step_config):
                 'new_width': config.new_width,
                 'method': method
             })
+
+  if step_type == 'random_self_concat_image':
+    config = preprocessor_step_config.random_self_concat_image
+    return (preprocessor.random_self_concat_image, {
+        'concat_vertical_probability': config.concat_vertical_probability,
+        'concat_horizontal_probability': config.concat_horizontal_probability
+    })
 
   if step_type == 'ssd_random_crop':
     config = preprocessor_step_config.ssd_random_crop
@@ -267,6 +302,26 @@ def build(preprocessor_step_config):
                   'random_coef': random_coef,
               })
     return (preprocessor.ssd_random_crop, {})
+
+  if step_type == 'autoaugment_image':
+    config = preprocessor_step_config.autoaugment_image
+    return (preprocessor.autoaugment_image, {
+        'policy_name': config.policy_name,
+    })
+
+  if step_type == 'drop_label_probabilistically':
+    config = preprocessor_step_config.drop_label_probabilistically
+    return (preprocessor.drop_label_probabilistically, {
+        'dropped_label': config.label,
+        'drop_probability': config.drop_probability,
+    })
+
+  if step_type == 'remap_labels':
+    config = preprocessor_step_config.remap_labels
+    return (preprocessor.remap_labels, {
+        'original_labels': config.original_labels,
+        'new_label': config.new_label
+    })
 
   if step_type == 'ssd_random_crop_pad':
     config = preprocessor_step_config.ssd_random_crop_pad

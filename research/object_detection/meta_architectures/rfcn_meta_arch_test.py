@@ -24,7 +24,9 @@ from object_detection.meta_architectures import rfcn_meta_arch
 class RFCNMetaArchTest(
     faster_rcnn_meta_arch_test_lib.FasterRCNNMetaArchTestBase):
 
-  def _get_second_stage_box_predictor_text_proto(self):
+  def _get_second_stage_box_predictor_text_proto(
+      self, share_box_across_classes=False):
+    del share_box_across_classes
     box_predictor_text_proto = """
       rfcn_box_predictor {
         conv_hyperparams {

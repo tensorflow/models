@@ -8,4 +8,13 @@ pandas>=0.22.0
 psutil>=5.4.3
 py-cpuinfo>=3.3.0
 scipy>=0.19.1
+tensorflow-hub>=0.6.0
+tensorflow_datasets
 typing
+sentencepiece
+Cython
+matplotlib
+opencv-python-headless
+pyyaml
+Pillow
+-e git+https://github.com/cocodataset/cocoapi#egg=pycocotools&subdirectory=PythonAPI

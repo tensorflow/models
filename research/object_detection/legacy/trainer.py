@@ -22,6 +22,7 @@ DetectionModel.
 import functools
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.builders import optimizer_builder
 from object_detection.builders import preprocessor_builder
@@ -32,7 +33,7 @@ from object_detection.utils import ops as util_ops
 from object_detection.utils import variables_helper
 from deployment import model_deploy
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
@@ -62,7 +63,7 @@ def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
       tensor_dict[fields.InputDataFields.image], 0)
 
   images = tensor_dict[fields.InputDataFields.image]
-  float_images = tf.to_float(images)
+  float_images = tf.cast(images, dtype=tf.float32)
   tensor_dict[fields.InputDataFields.image] = float_images
 
   include_instance_masks = (fields.InputDataFields.groundtruth_instance_masks

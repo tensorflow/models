@@ -21,6 +21,7 @@ import numpy as np
 import tensorflow as tf
 
 from google.protobuf import text_format
+from tensorflow.contrib import slim as contrib_slim
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
@@ -37,13 +38,13 @@ from object_detection.utils import ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 
-slim = tf.contrib.slim
+slim = contrib_slim
 BOX_CODE_SIZE = 4
 
 
 class FakeFasterRCNNFeatureExtractor(
     faster_rcnn_meta_arch.FasterRCNNFeatureExtractor):
-  """Fake feature extracture to use in tests."""
+  """Fake feature extractor to use in tests."""
 
   def __init__(self):
     super(FakeFasterRCNNFeatureExtractor, self).__init__(
@@ -67,6 +68,42 @@ class FakeFasterRCNNFeatureExtractor(
                              num_outputs=3, kernel_size=1, scope='layer2')
 
 
+class FakeFasterRCNNKerasFeatureExtractor(
+    faster_rcnn_meta_arch.FasterRCNNKerasFeatureExtractor):
+  """Fake feature extractor to use in tests."""
+
+  def __init__(self):
+    super(FakeFasterRCNNKerasFeatureExtractor, self).__init__(
+        is_training=False,
+        first_stage_features_stride=32,
+        weight_decay=0.0)
+
+  def preprocess(self, resized_inputs):
+    return tf.identity(resized_inputs)
+
+  def get_proposal_feature_extractor_model(self, name):
+
+    class ProposalFeatureExtractor(tf.keras.Model):
+      """Dummy proposal feature extraction."""
+
+      def __init__(self, name):
+        super(ProposalFeatureExtractor, self).__init__(name=name)
+        self.conv = None
+
+      def build(self, input_shape):
+        self.conv = tf.keras.layers.Conv2D(
+            3, kernel_size=1, padding='SAME', name='layer1')
+
+      def call(self, inputs):
+        return self.conv(inputs)
+
+    return ProposalFeatureExtractor(name=name)
+
+  def get_box_classifier_feature_extractor_model(self, name):
+    return tf.keras.Sequential([tf.keras.layers.Conv2D(
+        3, kernel_size=1, padding='SAME', name=name + '_layer2')])
+
+
 class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
   """Base class to test Faster R-CNN and R-FCN meta architectures."""
 
@@ -77,27 +114,35 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     text_format.Merge(hyperparams_text_proto, hyperparams)
     return hyperparams_builder.build(hyperparams, is_training=is_training)
 
-  def _get_second_stage_box_predictor_text_proto(self):
+  def _build_keras_layer_hyperparams(self, hyperparams_text_proto):
+    hyperparams = hyperparams_pb2.Hyperparams()
+    text_format.Merge(hyperparams_text_proto, hyperparams)
+    return hyperparams_builder.KerasLayerHyperparams(hyperparams)
+
+  def _get_second_stage_box_predictor_text_proto(
+      self, share_box_across_classes=False):
+    share_box_field = 'true' if share_box_across_classes else 'false'
     box_predictor_text_proto = """
-      mask_rcnn_box_predictor {
-        fc_hyperparams {
+      mask_rcnn_box_predictor {{
+        fc_hyperparams {{
           op: FC
           activation: NONE
-          regularizer {
-            l2_regularizer {
+          regularizer {{
+            l2_regularizer {{
               weight: 0.0005
-            }
-          }
-          initializer {
-            variance_scaling_initializer {
+            }}
+          }}
+          initializer {{
+            variance_scaling_initializer {{
               factor: 1.0
               uniform: true
               mode: FAN_AVG
-            }
-          }
-        }
-      }
-    """
+            }}
+          }}
+        }}
+        share_box_across_classes: {share_box_across_classes}
+      }}
+    """.format(share_box_across_classes=share_box_field)
     return box_predictor_text_proto
 
   def _add_mask_to_second_stage_box_predictor_text_proto(
@@ -127,23 +172,35 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     return box_predictor_text_proto
 
   def _get_second_stage_box_predictor(self, num_classes, is_training,
-                                      predict_masks, masks_are_class_agnostic):
+                                      predict_masks, masks_are_class_agnostic,
+                                      share_box_across_classes=False,
+                                      use_keras=False):
     box_predictor_proto = box_predictor_pb2.BoxPredictor()
-    text_format.Merge(self._get_second_stage_box_predictor_text_proto(),
-                      box_predictor_proto)
+    text_format.Merge(self._get_second_stage_box_predictor_text_proto(
+        share_box_across_classes), box_predictor_proto)
     if predict_masks:
       text_format.Merge(
           self._add_mask_to_second_stage_box_predictor_text_proto(
               masks_are_class_agnostic),
           box_predictor_proto)
 
-    return box_predictor_builder.build(
-        hyperparams_builder.build,
-        box_predictor_proto,
-        num_classes=num_classes,
-        is_training=is_training)
+    if use_keras:
+      return box_predictor_builder.build_keras(
+          hyperparams_builder.KerasLayerHyperparams,
+          inplace_batchnorm_update=False,
+          freeze_batchnorm=False,
+          box_predictor_config=box_predictor_proto,
+          num_classes=num_classes,
+          num_predictions_per_location_list=None,
+          is_training=is_training)
+    else:
+      return box_predictor_builder.build(
+          hyperparams_builder.build,
+          box_predictor_proto,
+          num_classes=num_classes,
+          is_training=is_training)
 
-  def _get_model(self, box_predictor, **common_kwargs):
+  def _get_model(self, box_predictor, keras_model=False, **common_kwargs):
     return faster_rcnn_meta_arch.FasterRCNNMetaArch(
         initial_crop_size=3,
         maxpool_kernel_size=1,
@@ -155,6 +212,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                    is_training,
                    number_of_stages,
                    second_stage_batch_size,
+                   use_keras=False,
                    first_stage_max_proposals=8,
                    num_classes=2,
                    hard_mining=False,
@@ -165,7 +223,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                    use_matmul_crop_and_resize=False,
                    clip_anchors_to_image=False,
                    use_matmul_gather_in_matcher=False,
-                   use_static_shapes=False):
+                   use_static_shapes=False,
+                   calibration_mapping_value=None,
+                   share_box_across_classes=False,
+                   return_raw_detections_during_predict=False):
 
     def image_resizer_fn(image, masks=None):
       """Fake image resizer function."""
@@ -203,7 +264,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         'proposal',
         use_matmul_gather=use_matmul_gather_in_matcher)
 
-    fake_feature_extractor = FakeFasterRCNNFeatureExtractor()
+    if use_keras:
+      fake_feature_extractor = FakeFasterRCNNKerasFeatureExtractor()
+    else:
+      fake_feature_extractor = FakeFasterRCNNFeatureExtractor()
 
     first_stage_box_predictor_hyperparams_text_proto = """
       op: CONV
@@ -219,9 +283,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         }
       }
     """
-    first_stage_box_predictor_arg_scope_fn = (
-        self._build_arg_scope_with_hyperparams(
-            first_stage_box_predictor_hyperparams_text_proto, is_training))
+    if use_keras:
+      first_stage_box_predictor_arg_scope_fn = (
+          self._build_keras_layer_hyperparams(
+              first_stage_box_predictor_hyperparams_text_proto))
+    else:
+      first_stage_box_predictor_arg_scope_fn = (
+          self._build_arg_scope_with_hyperparams(
+              first_stage_box_predictor_hyperparams_text_proto, is_training))
 
     first_stage_box_predictor_kernel_size = 3
     first_stage_atrous_rate = 1
@@ -244,7 +313,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     first_stage_localization_loss_weight = 1.0
     first_stage_objectness_loss_weight = 1.0
 
+    post_processing_config = post_processing_pb2.PostProcessing()
     post_processing_text_proto = """
+      score_converter: IDENTITY
       batch_non_max_suppression {
         score_threshold: -20.0
         iou_threshold: 1.0
@@ -253,18 +324,31 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         use_static_shapes: """ +'{}'.format(use_static_shapes) + """
       }
     """
-    post_processing_config = post_processing_pb2.PostProcessing()
+    if calibration_mapping_value:
+      calibration_text_proto = """
+      calibration_config {
+        function_approximation {
+          x_y_pairs {
+            x_y_pair {
+              x: 0.0
+              y: %f
+            }
+            x_y_pair {
+              x: 1.0
+              y: %f
+              }}}}""" % (calibration_mapping_value, calibration_mapping_value)
+      post_processing_text_proto = (post_processing_text_proto
+                                    + ' ' + calibration_text_proto)
     text_format.Merge(post_processing_text_proto, post_processing_config)
+    second_stage_non_max_suppression_fn, second_stage_score_conversion_fn = (
+        post_processing_builder.build(post_processing_config))
 
     second_stage_target_assigner = target_assigner.create_target_assigner(
         'FasterRCNN', 'detection',
         use_matmul_gather=use_matmul_gather_in_matcher)
-    second_stage_non_max_suppression_fn, _ = post_processing_builder.build(
-        post_processing_config)
     second_stage_sampler = sampler.BalancedPositiveNegativeSampler(
         positive_fraction=1.0, is_static=use_static_shapes)
 
-    second_stage_score_conversion_fn = tf.identity
     second_stage_localization_loss_weight = 1.0
     second_stage_classification_loss_weight = 1.0
     if softmax_second_stage_classification_loss:
@@ -327,17 +411,27 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         'clip_anchors_to_image': clip_anchors_to_image,
         'use_static_shapes': use_static_shapes,
         'resize_masks': True,
+        'return_raw_detections_during_predict':
+            return_raw_detections_during_predict
     }
 
     return self._get_model(
         self._get_second_stage_box_predictor(
             num_classes=num_classes,
             is_training=is_training,
+            use_keras=use_keras,
             predict_masks=predict_masks,
-            masks_are_class_agnostic=masks_are_class_agnostic), **common_kwargs)
+            masks_are_class_agnostic=masks_are_class_agnostic,
+            share_box_across_classes=share_box_across_classes), **common_kwargs)
 
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'use_keras': True},
+      {'use_static_shapes': False, 'use_keras': False},
+      {'use_static_shapes': True, 'use_keras': True},
+      {'use_static_shapes': True, 'use_keras': False},
+  )
   def test_predict_gives_correct_shapes_in_inference_mode_first_stage_only(
-      self, use_static_shapes=False):
+      self, use_static_shapes=False, use_keras=False):
     batch_size = 2
     height = 10
     width = 12
@@ -347,6 +441,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       """Function to construct tf graph for the test."""
       model = self._build_model(
           is_training=False,
+          use_keras=use_keras,
           number_of_stages=1,
           second_stage_batch_size=2,
           clip_anchors_to_image=use_static_shapes,
@@ -403,11 +498,44 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(np.all(np.less_equal(anchors[:, 2], height)))
     self.assertTrue(np.all(np.less_equal(anchors[:, 3], width)))
 
-  def test_predict_gives_valid_anchors_in_training_mode_first_stage_only(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_regularization_losses(
+      self, use_keras=False):
     test_graph = tf.Graph()
     with test_graph.as_default():
       model = self._build_model(
-          is_training=True, number_of_stages=1, second_stage_batch_size=2)
+          is_training=True, use_keras=use_keras,
+          number_of_stages=1, second_stage_batch_size=2,)
+      batch_size = 2
+      height = 10
+      width = 12
+      input_image_shape = (batch_size, height, width, 3)
+      _, true_image_shapes = model.preprocess(tf.zeros(input_image_shape))
+      preprocessed_inputs = tf.placeholder(
+          dtype=tf.float32, shape=(batch_size, None, None, 3))
+      model.predict(preprocessed_inputs, true_image_shapes)
+
+      reg_losses = tf.math.add_n(model.regularization_losses())
+
+      init_op = tf.global_variables_initializer()
+      with self.test_session(graph=test_graph) as sess:
+        sess.run(init_op)
+        self.assertGreaterEqual(sess.run(reg_losses), 0)
+
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_predict_gives_valid_anchors_in_training_mode_first_stage_only(
+      self, use_keras=False):
+    test_graph = tf.Graph()
+    with test_graph.as_default():
+      model = self._build_model(
+          is_training=True, use_keras=use_keras,
+          number_of_stages=1, second_stage_batch_size=2,)
       batch_size = 2
       height = 10
       width = 12
@@ -420,7 +548,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       expected_output_keys = set([
           'rpn_box_predictor_features', 'rpn_features_to_crop', 'image_shape',
           'rpn_box_encodings', 'rpn_objectness_predictions_with_background',
-          'anchors'])
+          'anchors', 'feature_maps'])
       # At training time, anchors that exceed image bounds are pruned.  Thus
       # the `expected_num_anchors` in the above inference mode test is now
       # a strict upper bound on the number of anchors.
@@ -457,8 +585,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
             prediction_out['rpn_objectness_predictions_with_background'].shape,
             (batch_size, num_anchors_out, 2))
 
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'use_keras': True},
+      {'use_static_shapes': False, 'use_keras': False},
+      {'use_static_shapes': True, 'use_keras': True},
+      {'use_static_shapes': True, 'use_keras': False},
+  )
   def test_predict_correct_shapes_in_inference_mode_two_stages(
-      self, use_static_shapes=False):
+      self, use_static_shapes=False, use_keras=False):
 
     def compare_results(results, expected_output_shapes):
       """Checks if the shape of the predictions are as expected."""
@@ -488,7 +622,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                           expected_output_shapes['proposal_boxes_normalized'])
       self.assertAllEqual(results[11].shape,
                           expected_output_shapes['box_classifier_features'])
-
+      self.assertAllEqual(results[12].shape,
+                          expected_output_shapes['final_anchors'])
     batch_size = 2
     image_size = 10
     max_num_proposals = 8
@@ -504,6 +639,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       """Function to construct tf graph for the test."""
       model = self._build_model(
           is_training=False,
+          use_keras=use_keras,
           number_of_stages=2,
           second_stage_batch_size=2,
           predict_masks=False,
@@ -523,7 +659,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
               prediction_dict['num_proposals'],
               prediction_dict['proposal_boxes'],
               prediction_dict['proposal_boxes_normalized'],
-              prediction_dict['box_classifier_features'])
+              prediction_dict['box_classifier_features'],
+              prediction_dict['final_anchors'])
 
     expected_num_anchors = image_size * image_size * 3 * 3
     expected_shapes = {
@@ -546,7 +683,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                                                 max_num_proposals,
                                                 initial_crop_size,
                                                 maxpool_stride,
-                                                3)
+                                                3),
+        'feature_maps': [(2, image_size, image_size, 512)],
+        'final_anchors': (2, max_num_proposals, 4)
     }
 
     if use_static_shapes:
@@ -560,6 +699,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         with test_graph.as_default():
           model = self._build_model(
               is_training=False,
+              use_keras=use_keras,
               number_of_stages=2,
               second_stage_batch_size=2,
               predict_masks=False)
@@ -576,11 +716,20 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         self.assertEqual(set(tensor_dict_out.keys()),
                          set(expected_shapes.keys()))
         for key in expected_shapes:
+          if isinstance(tensor_dict_out[key], list):
+            continue
           self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
 
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'use_keras': True},
+      {'use_static_shapes': False, 'use_keras': False},
+      {'use_static_shapes': True, 'use_keras': True},
+      {'use_static_shapes': True, 'use_keras': False},
+  )
   def test_predict_gives_correct_shapes_in_train_mode_both_stages(
       self,
-      use_static_shapes=False):
+      use_static_shapes=False,
+      use_keras=False):
     batch_size = 2
     image_size = 10
     max_num_proposals = 7
@@ -591,6 +740,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       """Function to construct tf graph for the test."""
       model = self._build_model(
           is_training=True,
+          use_keras=use_keras,
           number_of_stages=2,
           second_stage_batch_size=7,
           predict_masks=False,
@@ -604,6 +754,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           groundtruth_classes_list=tf.unstack(gt_classes),
           groundtruth_weights_list=tf.unstack(gt_weights))
       result_tensor_dict = model.predict(preprocessed_inputs, true_image_shapes)
+      updates = model.updates()
       return (result_tensor_dict['refined_box_encodings'],
               result_tensor_dict['class_predictions_with_background'],
               result_tensor_dict['proposal_boxes'],
@@ -613,6 +764,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
               result_tensor_dict['rpn_objectness_predictions_with_background'],
               result_tensor_dict['rpn_features_to_crop'],
               result_tensor_dict['rpn_box_predictor_features'],
+              updates,
+              result_tensor_dict['final_anchors'],
              )
 
     image_shape = (batch_size, image_size, image_size, 3)
@@ -649,7 +802,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                 image_size, batch_size, max_num_proposals, initial_crop_size,
                 maxpool_stride, 3),
         'rpn_objectness_predictions_with_background':
-        (2, image_size * image_size * 9, 2)
+        (2, image_size * image_size * 9, 2),
+        'final_anchors': (2, max_num_proposals, 4)
     }
     # TODO(rathodv): Possibly change utils/test_case.py to accept dictionaries
     # and return dicionaries so don't have to rely on the order of tensors.
@@ -669,9 +823,31 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                         expected_shapes['rpn_features_to_crop'])
     self.assertAllEqual(results[8].shape,
                         expected_shapes['rpn_box_predictor_features'])
+    self.assertAllEqual(results[10].shape,
+                        expected_shapes['final_anchors'])
 
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'pad_to_max_dimension': None,
+       'use_keras': True},
+      {'use_static_shapes': True, 'pad_to_max_dimension': None,
+       'use_keras': True},
+      {'use_static_shapes': False, 'pad_to_max_dimension': 56,
+       'use_keras': True},
+      {'use_static_shapes': True, 'pad_to_max_dimension': 56,
+       'use_keras': True},
+      {'use_static_shapes': False, 'pad_to_max_dimension': None,
+       'use_keras': False},
+      {'use_static_shapes': True, 'pad_to_max_dimension': None,
+       'use_keras': False},
+      {'use_static_shapes': False, 'pad_to_max_dimension': 56,
+       'use_keras': False},
+      {'use_static_shapes': True, 'pad_to_max_dimension': 56,
+       'use_keras': False}
+  )
   def test_postprocess_first_stage_only_inference_mode(
-      self, use_static_shapes=False, pad_to_max_dimension=None):
+      self, use_static_shapes=False,
+      pad_to_max_dimension=None,
+      use_keras=False):
     batch_size = 2
     first_stage_max_proposals = 4 if use_static_shapes else 8
 
@@ -682,7 +858,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                  anchors):
       """Function to construct tf graph for the test."""
       model = self._build_model(
-          is_training=False, number_of_stages=1, second_stage_batch_size=6,
+          is_training=False, use_keras=use_keras,
+          number_of_stages=1, second_stage_batch_size=6,
           use_matmul_crop_and_resize=use_static_shapes,
           clip_anchors_to_image=use_static_shapes,
           use_static_shapes=use_static_shapes,
@@ -696,9 +873,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           rpn_objectness_predictions_with_background,
           'rpn_features_to_crop': rpn_features_to_crop,
           'anchors': anchors}, true_image_shapes)
-      return (proposals['num_detections'],
-              proposals['detection_boxes'],
-              proposals['detection_scores'])
+      return (proposals['num_detections'], proposals['detection_boxes'],
+              proposals['detection_scores'], proposals['raw_detection_boxes'],
+              proposals['raw_detection_scores'])
 
     anchors = np.array(
         [[0, 0, 16, 16],
@@ -741,6 +918,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     expected_proposal_scores = [[1, 1, 0, 0, 0, 0, 0, 0],
                                 [1, 1, 0, 0, 0, 0, 0, 0]]
     expected_num_proposals = [4, 4]
+    expected_raw_proposal_boxes = [[[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                                    [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]],
+                                   [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                                    [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]]]
+    expected_raw_scores = [[[0., 1.], [1., 0.], [1., 0.], [0., 1.]],
+                           [[1., 0.], [0., 1.], [0., 1.], [1., 0.]]]
 
     self.assertAllClose(results[0], expected_num_proposals)
     for indx, num_proposals in enumerate(expected_num_proposals):
@@ -748,11 +931,15 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                           expected_proposal_boxes[indx][0:num_proposals])
       self.assertAllClose(results[2][indx][0:num_proposals],
                           expected_proposal_scores[indx][0:num_proposals])
+    self.assertAllClose(results[3], expected_raw_proposal_boxes)
+    self.assertAllClose(results[4], expected_raw_scores)
 
   def _test_postprocess_first_stage_only_train_mode(self,
+                                                    use_keras=False,
                                                     pad_to_max_dimension=None):
     model = self._build_model(
-        is_training=True, number_of_stages=1, second_stage_batch_size=2,
+        is_training=True, use_keras=use_keras,
+        number_of_stages=1, second_stage_batch_size=2,
         pad_to_max_dimension=pad_to_max_dimension)
     batch_size = 2
     anchors = tf.constant(
@@ -800,32 +987,88 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         [[0, 0, .5, .5], [.5, .5, 1, 1]], [[0, .5, .5, 1], [.5, 0, 1, .5]]]
     expected_proposal_scores = [[1, 1],
                                 [1, 1]]
-    expected_num_proposals = [2, 2]
-
-    expected_output_keys = set(['detection_boxes', 'detection_scores',
-                                'num_detections'])
+    expected_proposal_multiclass_scores = [[[0., 1.], [0., 1.]],
+                                           [[0., 1.], [0., 1.]]]
+    expected_raw_proposal_boxes = [[[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                                    [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]],
+                                   [[0., 0., 0.5, 0.5], [0., 0.5, 0.5, 1.],
+                                    [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]]]
+    expected_raw_scores = [[[0., 1.], [0., 1.], [0., 1.], [0., 1.]],
+                           [[0., 1.], [0., 1.], [0., 1.], [0., 1.]]]
+    expected_output_keys = set([
+        'detection_boxes', 'detection_scores', 'detection_multiclass_scores',
+        'num_detections', 'raw_detection_boxes', 'raw_detection_scores'
+    ])
     self.assertEqual(set(proposals.keys()), expected_output_keys)
 
     with self.test_session() as sess:
       proposals_out = sess.run(proposals)
       for image_idx in range(batch_size):
+        num_detections = int(proposals_out['num_detections'][image_idx])
+        boxes = proposals_out['detection_boxes'][
+            image_idx][:num_detections, :].tolist()
+        scores = proposals_out['detection_scores'][
+            image_idx][:num_detections].tolist()
+        multiclass_scores = proposals_out['detection_multiclass_scores'][
+            image_idx][:num_detections, :].tolist()
+        expected_boxes = expected_proposal_boxes[image_idx]
+        expected_scores = expected_proposal_scores[image_idx]
+        expected_multiclass_scores = expected_proposal_multiclass_scores[
+            image_idx]
         self.assertTrue(
-            test_utils.first_rows_close_as_set(
-                proposals_out['detection_boxes'][image_idx].tolist(),
-                expected_proposal_boxes[image_idx]))
-      self.assertAllClose(proposals_out['detection_scores'],
-                          expected_proposal_scores)
-      self.assertAllEqual(proposals_out['num_detections'],
-                          expected_num_proposals)
+            test_utils.first_rows_close_as_set(boxes, expected_boxes))
+        self.assertTrue(
+            test_utils.first_rows_close_as_set(scores, expected_scores))
+        self.assertTrue(
+            test_utils.first_rows_close_as_set(multiclass_scores,
+                                               expected_multiclass_scores))
 
-  def test_postprocess_first_stage_only_train_mode(self):
-    self._test_postprocess_first_stage_only_train_mode()
+    self.assertAllClose(proposals_out['raw_detection_boxes'],
+                        expected_raw_proposal_boxes)
+    self.assertAllClose(proposals_out['raw_detection_scores'],
+                        expected_raw_scores)
 
-  def test_postprocess_first_stage_only_train_mode_padded_image(self):
-    self._test_postprocess_first_stage_only_train_mode(pad_to_max_dimension=56)
+  @parameterized.named_parameters({
+      'testcase_name': 'keras',
+      'use_keras': True
+  }, {
+      'testcase_name': 'slim',
+      'use_keras': False
+  })
+  def test_postprocess_first_stage_only_train_mode(self, use_keras=False):
+    self._test_postprocess_first_stage_only_train_mode(use_keras=use_keras)
 
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_postprocess_first_stage_only_train_mode_padded_image(
+      self, use_keras=False):
+    self._test_postprocess_first_stage_only_train_mode(pad_to_max_dimension=56,
+                                                       use_keras=use_keras)
+
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'pad_to_max_dimension': None,
+       'use_keras': True},
+      {'use_static_shapes': True, 'pad_to_max_dimension': None,
+       'use_keras': True},
+      {'use_static_shapes': False, 'pad_to_max_dimension': 56,
+       'use_keras': True},
+      {'use_static_shapes': True, 'pad_to_max_dimension': 56,
+       'use_keras': True},
+      {'use_static_shapes': False, 'pad_to_max_dimension': None,
+       'use_keras': False},
+      {'use_static_shapes': True, 'pad_to_max_dimension': None,
+       'use_keras': False},
+      {'use_static_shapes': False, 'pad_to_max_dimension': 56,
+       'use_keras': False},
+      {'use_static_shapes': True, 'pad_to_max_dimension': 56,
+       'use_keras': False}
+  )
   def test_postprocess_second_stage_only_inference_mode(
-      self, use_static_shapes=False, pad_to_max_dimension=None):
+      self, use_static_shapes=False,
+      pad_to_max_dimension=None,
+      use_keras=False):
     batch_size = 2
     num_classes = 2
     image_shape = np.array((2, 36, 48, 3), dtype=np.int32)
@@ -839,7 +1082,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                  proposal_boxes):
       """Function to construct tf graph for the test."""
       model = self._build_model(
-          is_training=False, number_of_stages=2,
+          is_training=False, use_keras=use_keras,
+          number_of_stages=2,
           second_stage_batch_size=6,
           use_matmul_crop_and_resize=use_static_shapes,
           clip_anchors_to_image=use_static_shapes,
@@ -854,10 +1098,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           'num_proposals': num_proposals,
           'proposal_boxes': proposal_boxes,
       }, true_image_shapes)
-      return (detections['num_detections'],
-              detections['detection_boxes'],
-              detections['detection_scores'],
-              detections['detection_classes'])
+      return (detections['num_detections'], detections['detection_boxes'],
+              detections['detection_scores'], detections['detection_classes'],
+              detections['raw_detection_boxes'],
+              detections['raw_detection_scores'],
+              detections['detection_multiclass_scores'],
+              detections['detection_anchor_indices'])
 
     proposal_boxes = np.array(
         [[[1, 1, 2, 3],
@@ -867,6 +1113,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
          [[2, 3, 6, 8],
           [1, 2, 5, 3],
           4*[0], 4*[0], 4*[0], 4*[0], 4*[0], 4*[0]]], dtype=np.float32)
+
     num_proposals = np.array([3, 2], dtype=np.int32)
     refined_box_encodings = np.zeros(
         [total_num_padded_proposals, num_classes, 4], dtype=np.float32)
@@ -884,9 +1131,34 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                                  [images, refined_box_encodings,
                                   class_predictions_with_background,
                                   num_proposals, proposal_boxes])
+    # Note that max_total_detections=5 in the NMS config.
     expected_num_detections = [5, 4]
     expected_detection_classes = [[0, 0, 0, 1, 1], [0, 0, 1, 1, 0]]
     expected_detection_scores = [[1, 1, 1, 1, 1], [1, 1, 1, 1, 0]]
+    expected_multiclass_scores = [[[1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1]],
+                                  [[1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1],
+                                   [1, 1, 1],
+                                   [0, 0, 0]]]
+    # Note that a single anchor can be used for multiple detections (predictions
+    # are made independently per class).
+    expected_anchor_indices = [[0, 1, 2, 0, 1],
+                               [0, 1, 0, 1]]
+
+    h = float(image_shape[1])
+    w = float(image_shape[2])
+    expected_raw_detection_boxes = np.array(
+        [[[1 / h, 1 / w, 2 / h, 3 / w], [0, 0, 1 / h, 1 / w],
+          [.5 / h, .5 / w, .6 / h, .6 / w], 4 * [0], 4 * [0], 4 * [0], 4 * [0],
+          4 * [0]],
+         [[2 / h, 3 / w, 6 / h, 8 / w], [1 / h, 2 / w, 5 / h, 3 / w], 4 * [0],
+          4 * [0], 4 * [0], 4 * [0], 4 * [0], 4 * [0]]],
+        dtype=np.float32)
 
     self.assertAllClose(results[0], expected_num_detections)
 
@@ -895,25 +1167,42 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                           expected_detection_scores[indx][0:num_proposals])
       self.assertAllClose(results[3][indx][0:num_proposals],
                           expected_detection_classes[indx][0:num_proposals])
+      self.assertAllClose(results[6][indx][0:num_proposals],
+                          expected_multiclass_scores[indx][0:num_proposals])
+      self.assertAllClose(results[7][indx][0:num_proposals],
+                          expected_anchor_indices[indx][0:num_proposals])
 
+    self.assertAllClose(results[4], expected_raw_detection_boxes)
+    self.assertAllClose(results[5],
+                        class_predictions_with_background.reshape([-1, 8, 3]))
     if not use_static_shapes:
       self.assertAllEqual(results[1].shape, [2, 5, 4])
 
-  def test_preprocess_preserves_input_shapes(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_preprocess_preserves_input_shapes(self, use_keras=False):
     image_shapes = [(3, None, None, 3),
                     (None, 10, 10, 3),
                     (None, None, None, 3)]
     for image_shape in image_shapes:
       model = self._build_model(
-          is_training=False, number_of_stages=2, second_stage_batch_size=6)
+          is_training=False, use_keras=use_keras,
+          number_of_stages=2, second_stage_batch_size=6)
       image_placeholder = tf.placeholder(tf.float32, shape=image_shape)
       preprocessed_inputs, _ = model.preprocess(image_placeholder)
       self.assertAllEqual(preprocessed_inputs.shape.as_list(), image_shape)
 
   # TODO(rathodv): Split test into two - with and without masks.
-  def test_loss_first_stage_only_mode(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_loss_first_stage_only_mode(self, use_keras=False):
     model = self._build_model(
-        is_training=True, number_of_stages=1, second_stage_batch_size=6)
+        is_training=True, use_keras=use_keras,
+        number_of_stages=1, second_stage_batch_size=6)
     batch_size = 2
     anchors = tf.constant(
         [[0, 0, 16, 16],
@@ -965,9 +1254,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                        loss_dict_out)
 
   # TODO(rathodv): Split test into two - with and without masks.
-  def test_loss_full(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_loss_full(self, use_keras=False):
     model = self._build_model(
-        is_training=True, number_of_stages=2, second_stage_batch_size=6)
+        is_training=True, use_keras=use_keras,
+        number_of_stages=2, second_stage_batch_size=6)
     batch_size = 3
     anchors = tf.constant(
         [[0, 0, 16, 16],
@@ -1080,9 +1374,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           'Loss/BoxClassifierLoss/classification_loss'], 0)
       self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
-  def test_loss_full_zero_padded_proposals(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_loss_full_zero_padded_proposals(self, use_keras=False):
     model = self._build_model(
-        is_training=True, number_of_stages=2, second_stage_batch_size=6)
+        is_training=True, use_keras=use_keras,
+        number_of_stages=2, second_stage_batch_size=6)
     batch_size = 1
     anchors = tf.constant(
         [[0, 0, 16, 16],
@@ -1170,9 +1469,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           'Loss/BoxClassifierLoss/classification_loss'], 0)
       self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
-  def test_loss_full_multiple_label_groundtruth(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_loss_full_multiple_label_groundtruth(self, use_keras=False):
     model = self._build_model(
-        is_training=True, number_of_stages=2, second_stage_batch_size=6,
+        is_training=True, use_keras=use_keras,
+        number_of_stages=2, second_stage_batch_size=6,
         softmax_second_stage_classification_loss=False)
     batch_size = 1
     anchors = tf.constant(
@@ -1268,8 +1572,18 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           'Loss/BoxClassifierLoss/classification_loss'], 0)
       self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
+  @parameterized.parameters(
+      {'use_static_shapes': False, 'shared_boxes': False, 'use_keras': True},
+      {'use_static_shapes': False, 'shared_boxes': True, 'use_keras': True},
+      {'use_static_shapes': True, 'shared_boxes': False, 'use_keras': True},
+      {'use_static_shapes': True, 'shared_boxes': True, 'use_keras': True},
+      {'use_static_shapes': False, 'shared_boxes': False, 'use_keras': False},
+      {'use_static_shapes': False, 'shared_boxes': True, 'use_keras': False},
+      {'use_static_shapes': True, 'shared_boxes': False, 'use_keras': False},
+      {'use_static_shapes': True, 'shared_boxes': True, 'use_keras': False},
+  )
   def test_loss_full_zero_padded_proposals_nonzero_loss_with_two_images(
-      self, use_static_shapes=False, shared_boxes=False):
+      self, use_static_shapes=False, shared_boxes=False, use_keras=False):
     batch_size = 2
     first_stage_max_proposals = 8
     second_stage_batch_size = 6
@@ -1281,7 +1595,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                  groundtruth_classes):
       """Function to construct tf graph for the test."""
       model = self._build_model(
-          is_training=True, number_of_stages=2,
+          is_training=True, use_keras=use_keras,
+          number_of_stages=2,
           second_stage_batch_size=second_stage_batch_size,
           first_stage_max_proposals=first_stage_max_proposals,
           num_classes=num_classes,
@@ -1396,8 +1711,13 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(results[2], exp_loc_loss, rtol=1e-4, atol=1e-4)
     self.assertAllClose(results[3], 0.0)
 
-  def test_loss_with_hard_mining(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_loss_with_hard_mining(self, use_keras=False):
     model = self._build_model(is_training=True,
+                              use_keras=use_keras,
                               number_of_stages=2,
                               second_stage_batch_size=None,
                               first_stage_max_proposals=6,
@@ -1484,8 +1804,13 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       self.assertAllClose(loss_dict_out[
           'Loss/BoxClassifierLoss/classification_loss'], 0)
 
-  def test_loss_with_hard_mining_and_losses_mask(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_loss_with_hard_mining_and_losses_mask(self, use_keras=False):
     model = self._build_model(is_training=True,
+                              use_keras=use_keras,
                               number_of_stages=2,
                               second_stage_batch_size=None,
                               first_stage_max_proposals=6,
@@ -1598,7 +1923,11 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       self.assertAllClose(loss_dict_out[
           'Loss/BoxClassifierLoss/classification_loss'], 0)
 
-  def test_restore_map_for_classification_ckpt(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_restore_map_for_classification_ckpt(self, use_keras=False):
     # Define mock tensorflow classification graph and save variables.
     test_graph_classification = tf.Graph()
     with test_graph_classification.as_default():
@@ -1619,11 +1948,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     test_graph_detection = tf.Graph()
     with test_graph_detection.as_default():
       model = self._build_model(
-          is_training=False, number_of_stages=2, second_stage_batch_size=6)
+          is_training=False, use_keras=use_keras,
+          number_of_stages=2, second_stage_batch_size=6)
 
       inputs_shape = (2, 20, 20, 3)
-      inputs = tf.to_float(tf.random_uniform(
-          inputs_shape, minval=0, maxval=255, dtype=tf.int32))
+      inputs = tf.cast(tf.random_uniform(
+          inputs_shape, minval=0, maxval=255, dtype=tf.int32), dtype=tf.float32)
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
@@ -1636,15 +1966,20 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           self.assertNotIn(model.first_stage_feature_extractor_scope, var)
           self.assertNotIn(model.second_stage_feature_extractor_scope, var)
 
-  def test_restore_map_for_detection_ckpt(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_restore_map_for_detection_ckpt(self, use_keras=False):
     # Define first detection graph and save variables.
     test_graph_detection1 = tf.Graph()
     with test_graph_detection1.as_default():
       model = self._build_model(
-          is_training=False, number_of_stages=2, second_stage_batch_size=6)
+          is_training=False, use_keras=use_keras,
+          number_of_stages=2, second_stage_batch_size=6)
       inputs_shape = (2, 20, 20, 3)
-      inputs = tf.to_float(tf.random_uniform(
-          inputs_shape, minval=0, maxval=255, dtype=tf.int32))
+      inputs = tf.cast(tf.random_uniform(
+          inputs_shape, minval=0, maxval=255, dtype=tf.int32), dtype=tf.float32)
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
@@ -1659,12 +1994,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     # Define second detection graph and restore variables.
     test_graph_detection2 = tf.Graph()
     with test_graph_detection2.as_default():
-      model2 = self._build_model(is_training=False, number_of_stages=2,
+      model2 = self._build_model(is_training=False, use_keras=use_keras,
+                                 number_of_stages=2,
                                  second_stage_batch_size=6, num_classes=42)
 
       inputs_shape2 = (2, 20, 20, 3)
-      inputs2 = tf.to_float(tf.random_uniform(
-          inputs_shape2, minval=0, maxval=255, dtype=tf.int32))
+      inputs2 = tf.cast(tf.random_uniform(
+          inputs_shape2, minval=0, maxval=255, dtype=tf.int32),
+                        dtype=tf.float32)
       preprocessed_inputs2, true_image_shapes = model2.preprocess(inputs2)
       prediction_dict2 = model2.predict(preprocessed_inputs2, true_image_shapes)
       model2.postprocess(prediction_dict2, true_image_shapes)
@@ -1680,18 +2017,24 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           self.assertNotIn(model2.first_stage_feature_extractor_scope, var)
           self.assertNotIn(model2.second_stage_feature_extractor_scope, var)
 
-  def test_load_all_det_checkpoint_vars(self):
+  @parameterized.parameters(
+      {'use_keras': True},
+      {'use_keras': False}
+  )
+  def test_load_all_det_checkpoint_vars(self, use_keras=False):
     test_graph_detection = tf.Graph()
     with test_graph_detection.as_default():
       model = self._build_model(
           is_training=False,
+          use_keras=use_keras,
           number_of_stages=2,
           second_stage_batch_size=6,
           num_classes=42)
 
       inputs_shape = (2, 20, 20, 3)
-      inputs = tf.to_float(
-          tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32))
+      inputs = tf.cast(
+          tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32),
+          dtype=tf.float32)
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)

@@ -20,12 +20,14 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import framework as contrib_framework
+from tensorflow.contrib import layers as contrib_layers
 
 
 # Orignaly, add_arg_scope = slim.add_arg_scope and layers = slim, now switch to
 # more update-to-date tf.contrib.* API.
-add_arg_scope = tf.contrib.framework.add_arg_scope
-layers = tf.contrib.layers
+add_arg_scope = contrib_framework.add_arg_scope
+layers = contrib_layers
 
 
 def center_initializer():
