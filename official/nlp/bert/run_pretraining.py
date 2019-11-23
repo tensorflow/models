@@ -126,16 +126,9 @@ def run_customized_training(strategy,
       train_input_fn=train_input_fn,
       steps_per_epoch=steps_per_epoch,
       steps_per_loop=steps_per_loop,
-      epochs=epochs)
+      epochs=epochs,
+      sub_model_export_name='pretrained/bert_model')
 
-  # Creates the BERT core model outside distribution strategy scope.
-  _, core_model = bert_models.pretrain_model(bert_config, max_seq_length,
-                                             max_predictions_per_seq)
-
-  # Restores the core model from model checkpoints and get a new checkpoint only
-  # contains the core model.
-  model_saving_utils.export_pretraining_checkpoint(
-      checkpoint_dir=model_dir, model=core_model)
   return trained_model
 
 

@@ -94,7 +94,8 @@ def run_customized_training_loop(
     metric_fn=None,
     init_checkpoint=None,
     custom_callbacks=None,
-    run_eagerly=False):
+    run_eagerly=False,
+    sub_model_export_name=None):
   """Run BERT pretrain model training using low-level API.
 
   Arguments:
@@ -131,6 +132,11 @@ def run_customized_training_loop(
         methods are invoked during training.
       run_eagerly: Whether to run model training in pure eager execution. This
         should be disable for TPUStrategy.
+      sub_model_export_name: If not None, will export `sub_model` returned by
+        `model_fn` into checkpoint files. The name of intermediate checkpoint
+        file is {sub_model_export_name}_step_{step}.ckpt and the last
+        checkpint's name is {sub_model_export_name}.ckpt;
+        if None, `sub_model` will not be exported as checkpoint.
 
   Returns:
       Trained model.
@@ -139,6 +145,8 @@ def run_customized_training_loop(
       ValueError: (1) When model returned by `model_fn` does not have optimizer
         attribute or when required parameters are set to none. (2) eval args are
         not specified correctly. (3) metric_fn must be a callable if specified.
+        (4) sub_model_checkpoint_name is specified, but `sub_model` returned
+        by `model_fn` is None.
   """
 
   if _sentinel is not None:
@@ -191,6 +199,10 @@ def run_customized_training_loop(
     if not hasattr(model, 'optimizer'):
       raise ValueError('User should set optimizer attribute to model '
                        'inside `model_fn`.')
+    if sub_model_export_name and sub_model is None:
+      raise ValueError('sub_model_export_name is specified as %s, but '
+                       'sub_model is None.' % sub_model_export_name)
+
     optimizer = model.optimizer
     use_float16 = isinstance(
         optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer)
@@ -326,6 +338,9 @@ def run_customized_training_loop(
 
     # Training loop starts here.
     checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
+    sub_model_checkpoint = tf.train.Checkpoint(
+        model=sub_model) if sub_model_export_name else None
+
     latest_checkpoint_file = tf.train.latest_checkpoint(model_dir)
     if latest_checkpoint_file:
       logging.info(
@@ -382,7 +397,10 @@ def run_customized_training_loop(
         if current_step < total_training_steps:
           _save_checkpoint(checkpoint, model_dir,
                            checkpoint_name.format(step=current_step))
-
+          if sub_model_export_name:
+            _save_checkpoint(
+                sub_model_checkpoint, model_dir,
+                '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
         if eval_input_fn:
           logging.info('Running evaluation after step: %s.', current_step)
           _run_evaluation(current_step,
@@ -393,6 +411,9 @@ def run_customized_training_loop(
 
     _save_checkpoint(checkpoint, model_dir,
                      checkpoint_name.format(step=current_step))
+    if sub_model_export_name:
+      _save_checkpoint(sub_model_checkpoint, model_dir,
+                       '%s.ckpt' % sub_model_export_name)
 
     if eval_input_fn:
       logging.info('Running final evaluation after training is complete.')
