@@ -58,6 +58,13 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
           trainable_variables)
     logging.info('Filter trainable variables from %d to %d',
                  len(model.trainable_variables), len(trainable_variables))
+    _update_state = lambda labels, outputs: None
+    if isinstance(metric, tf.keras.metrics.Metric):
+      _update_state = lambda labels, outputs: metric.update_state(
+          labels, outputs)
+    else:
+      logging.error('Detection: train metric is not an instance of '
+                    'tf.keras.metrics.Metric.')
 
     def _replicated_step(inputs):
       """Replicated training step."""
@@ -71,11 +78,7 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
           v = tf.reduce_mean(v) / strategy.num_replicas_in_sync
           losses[k] = v
         loss = losses['total_loss']
-        if isinstance(metric, tf.keras.metrics.Metric):
-          metric.update_state(labels, outputs)
-        else:
-          logging.error('train metric is not an instance of '
-                        'tf.keras.metrics.Metric.')
+        _update_state(labels, outputs)
 
       grads = tape.gradient(loss, trainable_variables)
       optimizer.apply_gradients(zip(grads, trainable_variables))

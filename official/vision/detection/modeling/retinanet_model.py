@@ -120,6 +120,9 @@ class RetinanetModel(base_model.Model):
     if self._keras_model is None:
       raise ValueError('build_loss_fn() must be called after build_model().')
 
+    filter_fn = self.make_filter_trainable_variables_fn()
+    trainable_variables = filter_fn(self._keras_model.trainable_variables)
+
     def _total_loss_fn(labels, outputs):
       cls_loss = self._cls_loss_fn(outputs['cls_outputs'],
                                    labels['cls_targets'],
@@ -129,7 +132,7 @@ class RetinanetModel(base_model.Model):
                                    labels['num_positives'])
       model_loss = cls_loss + self._box_loss_weight * box_loss
       l2_regularization_loss = self.weight_decay_loss(self._l2_weight_decay,
-                                                      self._keras_model)
+                                                      trainable_variables)
       total_loss = model_loss + l2_regularization_loss
       return {
           'total_loss': total_loss,

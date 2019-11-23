@@ -24,6 +24,7 @@
 # Note that we need to trailing `/` to avoid the incorrect match.
 # [1]: https://github.com/facebookresearch/Detectron/blob/master/detectron/core/config.py#L198
 RESNET50_FROZEN_VAR_PREFIX = r'(resnet\d+/)conv2d(|_([1-9]|10))\/'
+RESNET_FROZEN_VAR_PREFIX = r'(resnet\d+)\/(conv2d(|_([1-9]|10))|batch_normalization(|_([1-9]|10)))\/'
 
 
 # pylint: disable=line-too-long
@@ -38,6 +39,7 @@ RETINANET_CFG = {
         'optimizer': {
             'type': 'momentum',
             'momentum': 0.9,
+            'nesterov': False,
         },
         'learning_rate': {
             'type': 'step',
@@ -56,6 +58,7 @@ RETINANET_CFG = {
         # TODO(b/142174042): Support transpose_input option.
         'transpose_input': False,
         'l2_weight_decay': 0.0001,
+        'input_sharding': False,
     },
     'eval': {
         'batch_size': 8,
@@ -65,6 +68,7 @@ RETINANET_CFG = {
         'type': 'box',
         'val_json_file': '',
         'eval_file_pattern': '',
+        'input_sharding': True,
     },
     'predict': {
         'predict_batch_size': 8,
@@ -165,7 +169,8 @@ RETINANET_CFG = {
         'num_classes': 91,
         'max_total_size': 100,
         'nms_iou_threshold': 0.5,
-        'score_threshold': 0.05
+        'score_threshold': 0.05,
+        'pre_nms_num_boxes': 5000,
     },
     'enable_summary': False,
 }

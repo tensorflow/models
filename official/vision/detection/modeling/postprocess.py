@@ -40,7 +40,8 @@ def generate_detections_factory(params):
         _generate_detections,
         max_total_size=params.max_total_size,
         nms_iou_threshold=params.nms_iou_threshold,
-        score_threshold=params.score_threshold)
+        score_threshold=params.score_threshold,
+        pre_nms_num_boxes=params.pre_nms_num_boxes)
   return func
 
 

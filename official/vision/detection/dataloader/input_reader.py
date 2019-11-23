@@ -58,6 +58,15 @@ class InputFn(object):
     self._parser_fn = factory.parser_generator(params, mode)
     self._dataset_fn = tf.data.TFRecordDataset
 
+    self._input_sharding = (not self._is_training)
+    try:
+      if self._is_training:
+        self._input_sharding = params.train.input_sharding
+      else:
+        self._input_sharding = params.eval.input_sharding
+    except KeyError:
+      pass
+
   def __call__(self, ctx=None, batch_size: int = None):
     """Provides tf.data.Dataset object.
 
@@ -74,7 +83,7 @@ class InputFn(object):
     dataset = tf.data.Dataset.list_files(
         self._file_pattern, shuffle=self._is_training)
 
-    if ctx and ctx.num_input_pipelines > 1:
+    if self._input_sharding and ctx and ctx.num_input_pipelines > 1:
       dataset = dataset.shard(ctx.num_input_pipelines, ctx.input_pipeline_id)
     if self._is_training:
       dataset = dataset.repeat()
@@ -82,6 +91,7 @@ class InputFn(object):
     dataset = dataset.interleave(
         map_func=lambda file_name: self._dataset_fn(file_name), cycle_length=32,
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.cache()
 
     if self._is_training:
       dataset = dataset.shuffle(64)
