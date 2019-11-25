@@ -227,7 +227,7 @@ def define_transformer_flags():
   # pylint: enable=unused-variable
 
 
-def get_callbacks():
+def get_callbacks(steps_per_epoch):
   """Returns common callbacks."""
   callbacks = []
   if FLAGS.enable_time_history:
@@ -243,7 +243,8 @@ def get_callbacks():
     profiler_callback = keras_utils.get_profiler_callback(
         FLAGS.model_dir,
         FLAGS.profile_steps,
-        FLAGS.enable_tensorboard)
+        FLAGS.enable_tensorboard,
+        steps_per_epoch)
     callbacks.append(profiler_callback)
 
   return callbacks

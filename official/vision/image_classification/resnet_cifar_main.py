@@ -171,14 +171,15 @@ def run(flags_obj):
                    if flags_obj.report_accuracy_metrics else None),
           run_eagerly=flags_obj.run_eagerly)
 
-  callbacks = common.get_callbacks(
-      learning_rate_schedule, cifar_preprocessing.NUM_IMAGES['train'])
-
-  train_steps = cifar_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size
+  steps_per_epoch = (
+      cifar_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
   train_epochs = flags_obj.train_epochs
 
-  if flags_obj.train_steps:
-    train_steps = min(flags_obj.train_steps, train_steps)
+  callbacks = common.get_callbacks(steps_per_epoch, learning_rate_schedule)
+
+  # if mutliple epochs, ignore the train_steps flag.
+  if train_epochs <= 1 and flags_obj.train_steps:
+    steps_per_epoch = min(flags_obj.train_steps, steps_per_epoch)
     train_epochs = 1
 
   num_eval_steps = (cifar_preprocessing.NUM_IMAGES['validation'] //
@@ -201,7 +202,7 @@ def run(flags_obj):
 
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
-                      steps_per_epoch=train_steps,
+                      steps_per_epoch=steps_per_epoch,
                       callbacks=callbacks,
                       validation_steps=num_eval_steps,
                       validation_data=validation_data,
@@ -225,7 +226,6 @@ def define_cifar_flags():
 
   flags_core.set_defaults(data_dir='/tmp/cifar10_data/cifar-10-batches-bin',
                           model_dir='/tmp/cifar10_model',
-                          train_epochs=182,
                           epochs_between_evals=10,
                           batch_size=128)
 

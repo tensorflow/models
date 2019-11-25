@@ -93,7 +93,8 @@ class TimeHistory(tf.keras.callbacks.Callback):
         (epoch, epoch_run_time))
 
 
-def get_profiler_callback(model_dir, profile_steps, enable_tensorboard):
+def get_profiler_callback(model_dir, profile_steps, enable_tensorboard,
+                          steps_per_epoch):
   """Validate profile_steps flag value and return profiler callback."""
   profile_steps_error_message = (
       'profile_steps must be a comma separated pair of positive integers, '
@@ -114,26 +115,39 @@ def get_profiler_callback(model_dir, profile_steps, enable_tensorboard):
         'TensorBoard callback profiles the 2nd step (unless otherwise '
         'specified). Please make sure the steps profiled by the two callbacks '
         'do not overlap.')
-
-  return ProfilerCallback(model_dir, start_step, stop_step)
+  return ProfilerCallback(model_dir, start_step, stop_step, steps_per_epoch)
 
 
 class ProfilerCallback(tf.keras.callbacks.Callback):
   """Save profiles in specified step range to log directory."""
 
-  def __init__(self, log_dir, start_step, stop_step):
+  def __init__(self, log_dir, start_step, stop_step, steps_per_epoch):
     super(ProfilerCallback, self).__init__()
     self.log_dir = log_dir
     self.start_step = start_step
     self.stop_step = stop_step
+    self.start_epoch = start_step // steps_per_epoch
+    self.stop_epoch = stop_step // steps_per_epoch
+    self.start_step_in_epoch = start_step % steps_per_epoch
+    self.stop_step_in_epoch = stop_step % steps_per_epoch
+    self.should_start = False
+    self.should_stop = False
+
+  def on_epoch_begin(self, epoch, logs=None):
+    if epoch == self.start_epoch:
+      self.should_start = True
+    if epoch == self.stop_epoch:
+      self.should_stop = True
 
   def on_batch_begin(self, batch, logs=None):
-    if batch == self.start_step:
+    if batch == self.start_step_in_epoch and self.should_start:
+      self.should_start = False
       profiler.start()
       tf.compat.v1.logging.info('Profiler started at Step %s', self.start_step)
 
   def on_batch_end(self, batch, logs=None):
-    if batch == self.stop_step:
+    if batch == self.stop_step_in_epoch and self.should_stop:
+      self.should_stop = False
       results = profiler.stop()
       profiler.save(self.log_dir, results)
       tf.compat.v1.logging.info(

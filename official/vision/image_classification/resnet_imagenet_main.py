@@ -187,19 +187,20 @@ def run(flags_obj):
                    if flags_obj.report_accuracy_metrics else None),
           run_eagerly=flags_obj.run_eagerly)
 
-  callbacks = common.get_callbacks(
-      common.learning_rate_schedule, imagenet_preprocessing.NUM_IMAGES['train'])
+  steps_per_epoch = (
+      imagenet_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
+  train_epochs = flags_obj.train_epochs
+
+  callbacks = common.get_callbacks(steps_per_epoch,
+                                   common.learning_rate_schedule)
   if flags_obj.enable_checkpoint_and_export:
     ckpt_full_path = os.path.join(flags_obj.model_dir, 'model.ckpt-{epoch:04d}')
     callbacks.append(tf.keras.callbacks.ModelCheckpoint(ckpt_full_path,
                                                         save_weights_only=True))
-  train_steps = (
-      imagenet_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
-  train_epochs = flags_obj.train_epochs
 
   # if mutliple epochs, ignore the train_steps flag.
   if train_epochs <= 1 and flags_obj.train_steps:
-    train_steps = min(flags_obj.train_steps, train_steps)
+    steps_per_epoch = min(flags_obj.train_steps, steps_per_epoch)
     train_epochs = 1
 
   num_eval_steps = (
@@ -225,7 +226,7 @@ def run(flags_obj):
 
   history = model.fit(train_input_dataset,
                       epochs=train_epochs,
-                      steps_per_epoch=train_steps,
+                      steps_per_epoch=steps_per_epoch,
                       callbacks=callbacks,
                       validation_steps=num_eval_steps,
                       validation_data=validation_data,

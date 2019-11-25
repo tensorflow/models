@@ -38,7 +38,7 @@ LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
 
 def learning_rate_schedule(current_epoch,
                            current_batch,
-                           batches_per_epoch,
+                           steps_per_epoch,
                            batch_size):
   """Handles linear scaling rule, gradual warmup, and LR decay.
 
@@ -48,14 +48,14 @@ def learning_rate_schedule(current_epoch,
   Args:
     current_epoch: integer, current epoch indexed from 0.
     current_batch: integer, current batch in the current epoch, indexed from 0.
-    batches_per_epoch: integer, number of steps in an epoch.
+    steps_per_epoch: integer, number of steps in an epoch.
     batch_size: integer, total batch sized.
 
   Returns:
     Adjusted learning rate.
   """
   initial_lr = BASE_LEARNING_RATE * batch_size / 256
-  epoch = current_epoch + float(current_batch) / batches_per_epoch
+  epoch = current_epoch + float(current_batch) / steps_per_epoch
   warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
   if epoch < warmup_end_epoch:
     # Learning rate increases linearly per step.
@@ -79,10 +79,10 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
           output (float).
   """
 
-  def __init__(self, schedule, batch_size, num_images):
+  def __init__(self, schedule, batch_size, steps_per_epoch):
     super(LearningRateBatchScheduler, self).__init__()
     self.schedule = schedule
-    self.batches_per_epoch = num_images / batch_size
+    self.steps_per_epoch = steps_per_epoch
     self.batch_size = batch_size
     self.epochs = -1
     self.prev_lr = -1
@@ -96,7 +96,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     """Executes before step begins."""
     lr = self.schedule(self.epochs,
                        batch,
-                       self.batches_per_epoch,
+                       self.steps_per_epoch,
                        self.batch_size)
     if not isinstance(lr, (float, np.float32, np.float64)):
       raise ValueError('The output of the "schedule" function should be float.')
@@ -120,13 +120,12 @@ class PiecewiseConstantDecayWithWarmup(
                        'length of multipliers')
 
     base_lr_batch_size = 256
-    num_batches_per_epoch = epoch_size // batch_size
+    steps_per_epoch = epoch_size // batch_size
 
     self.rescaled_lr = BASE_LEARNING_RATE * batch_size / base_lr_batch_size
-    self.step_boundaries = [float(num_batches_per_epoch) * x
-                            for x in boundaries]
+    self.step_boundaries = [float(steps_per_epoch) * x for x in boundaries]
     self.lr_values = [self.rescaled_lr * m for m in multipliers]
-    self.warmup_steps = warmup_epochs * num_batches_per_epoch
+    self.warmup_steps = warmup_epochs * steps_per_epoch
     self.compute_lr_on_cpu = compute_lr_on_cpu
     self.name = name
 
@@ -208,7 +207,7 @@ def get_optimizer(learning_rate=0.1):
 
 
 # TODO(hongkuny,haoyuzhang): make cifar model use_tensor_lr to clean up code.
-def get_callbacks(learning_rate_schedule_fn=None, num_images=None):
+def get_callbacks(steps_per_epoch, learning_rate_schedule_fn=None):
   """Returns common callbacks."""
   time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
   callbacks = [time_callback]
@@ -217,7 +216,7 @@ def get_callbacks(learning_rate_schedule_fn=None, num_images=None):
     lr_callback = LearningRateBatchScheduler(
         learning_rate_schedule_fn,
         batch_size=FLAGS.batch_size,
-        num_images=num_images)
+        steps_per_epoch=steps_per_epoch)
     callbacks.append(lr_callback)
 
   if FLAGS.enable_tensorboard:
@@ -229,7 +228,8 @@ def get_callbacks(learning_rate_schedule_fn=None, num_images=None):
     profiler_callback = keras_utils.get_profiler_callback(
         FLAGS.model_dir,
         FLAGS.profile_steps,
-        FLAGS.enable_tensorboard)
+        FLAGS.enable_tensorboard,
+        steps_per_epoch)
     callbacks.append(profiler_callback)
 
   return callbacks
@@ -332,7 +332,7 @@ def define_keras_flags(dynamic_loss_scale=True):
       'ignored if train_epochs is set to be larger than 1. ')
   flags.DEFINE_string(
       name='profile_steps', default=None,
-      help='Save profiling data to model dir at given range of steps. The '
+      help='Save profiling data to model dir at given range of global steps. The '
       'value must be a comma separated pair of positive integers, specifying '
       'the first and last step to profile. For example, "--profile_steps=2,4" '
       'triggers the profiler to process 3 steps, starting from the 2nd step. '
