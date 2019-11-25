@@ -340,7 +340,6 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     FLAGS.init_checkpoint = PRETRAINED_CHECKPOINT_PATH
     FLAGS.num_train_epochs = 2
     FLAGS.steps_per_loop = 1
-    FLAGS.use_keras_bert_for_squad = True
 
   def _run_and_report_benchmark(self,
                                 use_ds=True,

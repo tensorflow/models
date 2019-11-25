@@ -80,8 +80,6 @@ flags.DEFINE_integer(
     'max_answer_length', 30,
     'The maximum length of an answer that can be generated. This is needed '
     'because the start and end predictions are not conditioned on one another.')
-flags.DEFINE_bool(
-    'use_keras_bert_for_squad', True, 'Deprecated and will be removed soon.')
 
 common_flags.define_common_bert_flags()
 
@@ -373,10 +371,6 @@ def export_squad(model_export_path, input_meta_data):
 def main(_):
   # Users should always run this script under TF 2.x
   assert tf.version.VERSION.startswith('2.')
-
-  if not FLAGS.use_keras_bert_for_squad:
-    raise ValueError(
-        'Old tf2 BERT is no longer supported. Please use keras BERT.')
 
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
