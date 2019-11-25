@@ -25,6 +25,7 @@ import tensorflow as tf
 from official.vision.image_classification import common
 from official.vision.image_classification import resnet_ctl_imagenet_main
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
+from official.utils.testing import benchmark_wrappers
 from official.utils.flags import core as flags_core
 
 MIN_TOP_1_ACCURACY = 0.76
@@ -169,6 +170,7 @@ class Resnet50CtlAccuracy(CtlBenchmark):
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
     stats = resnet_ctl_imagenet_main.run(flags.FLAGS)
@@ -197,6 +199,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
         flag_methods=flag_methods,
         default_flags=default_flags)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
     stats = resnet_ctl_imagenet_main.run(FLAGS)

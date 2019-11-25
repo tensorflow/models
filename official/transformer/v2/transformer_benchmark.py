@@ -26,6 +26,7 @@ import tensorflow as tf
 from official.transformer.v2 import misc
 from official.transformer.v2 import transformer_main as transformer_main
 from official.utils.flags import core as flags_core
+from official.utils.testing import benchmark_wrappers
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 TRANSFORMER_EN2DE_DATA_DIR_NAME = 'wmt32k-en2de-official'
@@ -71,6 +72,7 @@ class TransformerBenchmark(PerfZeroBenchmark):
         default_flags=default_flags,
         flag_methods=flag_methods)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 bleu_max=None,
                                 bleu_min=None,

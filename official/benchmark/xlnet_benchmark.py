@@ -31,6 +31,8 @@ import tensorflow as tf
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.nlp.xlnet import run_classifier
 from official.nlp.xlnet import run_squad
+from official.utils.testing import benchmark_wrappers
+
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/xlnet/large/xlnet_model-1'
@@ -76,6 +78,7 @@ class XLNetClassifyAccuracy(XLNetBenchmarkBase):
 
     super(XLNetClassifyAccuracy, self).__init__(output_dir=output_dir)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 training_summary_path,
                                 min_accuracy=0.95,
@@ -149,6 +152,7 @@ class XLNetSquadAccuracy(XLNetBenchmarkBase):
 
     super(XLNetSquadAccuracy, self).__init__(output_dir=output_dir)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 training_summary_path,
                                 min_accuracy=87.0,

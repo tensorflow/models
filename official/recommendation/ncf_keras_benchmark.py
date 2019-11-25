@@ -28,6 +28,7 @@ import tensorflow as tf
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main
 from official.utils.flags import core
+from official.utils.testing import benchmark_wrappers
 
 FLAGS = flags.FLAGS
 NCF_DATA_DIR_NAME = 'movielens_data'
@@ -59,6 +60,7 @@ class NCFKerasBenchmarkBase(tf.test.Benchmark):
     else:
       flagsaver.restore_flag_values(NCFKerasBenchmarkBase.local_flags)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self, hr_at_10_min=0, hr_at_10_max=0):
     start_time_sec = time.time()
     stats = ncf_keras_main.run_ncf(FLAGS)

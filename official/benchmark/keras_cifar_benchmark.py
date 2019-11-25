@@ -23,6 +23,7 @@ from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.benchmark import keras_benchmark
+from official.utils.testing import benchmark_wrappers
 from official.vision.image_classification import resnet_cifar_main
 
 MIN_TOP_1_ACCURACY = 0.929
@@ -197,6 +198,7 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp32'
     self._run_and_report_benchmark()
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
     stats = resnet_cifar_main.run(FLAGS)
@@ -222,6 +224,7 @@ class Resnet56KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         flag_methods=flag_methods,
         default_flags=default_flags)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
     stats = resnet_cifar_main.run(FLAGS)

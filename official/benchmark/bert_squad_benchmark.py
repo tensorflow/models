@@ -32,6 +32,8 @@ from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.benchmark import squad_evaluate_v1_1
 from official.nlp.bert import run_squad
 from official.utils.misc import distribution_utils
+from official.utils.testing import benchmark_wrappers
+
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
@@ -132,6 +134,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     FLAGS.num_train_epochs = 1
     FLAGS.steps_per_loop = 1
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 use_ds=True,
                                 run_eagerly=False):
@@ -341,6 +344,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     FLAGS.num_train_epochs = 2
     FLAGS.steps_per_loop = 1
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 use_ds=True,
                                 run_eagerly=False):

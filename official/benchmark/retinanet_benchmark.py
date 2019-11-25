@@ -32,6 +32,7 @@ import tensorflow as tf
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.utils.flags import core as flags_core
+from official.utils.testing import benchmark_wrappers
 from official.vision.detection import main as detection
 
 TMP_DIR = os.getenv('TMPDIR')
@@ -151,6 +152,7 @@ class RetinanetAccuracy(RetinanetBenchmarkBase):
   def __init__(self, output_dir=TMP_DIR, **kwargs):
     super(RetinanetAccuracy, self).__init__(output_dir=output_dir)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self, min_ap=0.325, max_ap=0.35):
     """Starts RetinaNet accuracy benchmark test."""
 

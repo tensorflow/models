@@ -35,6 +35,7 @@ from official.nlp import bert_modeling as modeling
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import run_classifier
 from official.utils.misc import distribution_utils
+from official.utils.testing import benchmark_wrappers
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
@@ -130,6 +131,7 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     self.num_steps_per_epoch = 110
     self.num_epochs = 1
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 training_summary_path,
                                 min_accuracy=0,
@@ -308,6 +310,7 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
 
     super(BertClassifyAccuracy, self).__init__(output_dir=output_dir)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 training_summary_path,
                                 min_accuracy=0.84,

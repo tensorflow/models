@@ -22,6 +22,7 @@ from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.benchmark import keras_benchmark
+from official.utils.testing import benchmark_wrappers
 from official.vision.image_classification import resnet_imagenet_main
 
 MIN_TOP_1_ACCURACY = 0.76
@@ -171,6 +172,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     FLAGS.use_tensor_lr = True
     self._run_and_report_benchmark(top_1_min=0.736)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 top_1_min=MIN_TOP_1_ACCURACY,
                                 top_1_max=MAX_TOP_1_ACCURACY):
@@ -201,6 +203,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         flag_methods=flag_methods,
         default_flags=default_flags)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self, skip_steps=None):
     start_time_sec = time.time()
     stats = resnet_imagenet_main.run(FLAGS)
@@ -307,7 +310,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
     FLAGS.batch_size = 96  # BatchNorm is less efficient in legacy graph mode
-                           # due to its reliance on v1 cond.
+    # due to its reliance on v1 cond.
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu(self):
@@ -863,6 +866,7 @@ class Resnet50KerasBenchmarkRemoteData(Resnet50KerasBenchmarkBase):
     super(Resnet50KerasBenchmarkRemoteData, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self):
     # skip the first epoch for performance measurement.
     super(Resnet50KerasBenchmarkRemoteData,
@@ -891,6 +895,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
         flag_methods=flag_methods,
         default_flags=def_flags)
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self):
     start_time_sec = time.time()
     stats = resnet_imagenet_main.run(FLAGS)
@@ -1023,6 +1028,7 @@ class Resnet50MultiWorkerKerasAccuracy(keras_benchmark.KerasBenchmark):
 
     self._run_and_report_benchmark()
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 top_1_min=MIN_TOP_1_ACCURACY,
                                 top_1_max=MAX_TOP_1_ACCURACY):
