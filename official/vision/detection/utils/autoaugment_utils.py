@@ -1350,63 +1350,50 @@ def bbox_cutout(image, bboxes, pad_fraction, replace_with_mean):
     return image, bboxes
 
 
+def shear_wrapper(shear_horizontal):
+    def _wrapper(image, bboxes, level, replace):
+        return shear_with_bboxes(
+            image, bboxes, level, replace, shear_horizontal=shear_horizontal)
+
+    return _wrapper
+
+
+def translate_wrapper(shift_horizontal):
+    def _wrapper(image, bboxes, pixels, replace):
+        return translate_bbox(
+            image, bboxes, pixels, replace, shift_horizontal=shift_horizontal)
+
+    return _wrapper
+
+
 NAME_TO_FUNC = {
-    'AutoContrast':
-    autocontrast,
-    'Equalize':
-    equalize,
-    'Posterize':
-    posterize,
-    'Solarize':
-    solarize,
-    'SolarizeAdd':
-    solarize_add,
-    'Color':
-    color,
-    'Contrast':
-    contrast,
-    'Brightness':
-    brightness,
-    'Sharpness':
-    sharpness,
-    'Cutout':
-    cutout,
-    'BBox_Cutout':
-    bbox_cutout,
-    'Rotate_BBox':
-    rotate_with_bboxes,
+    'AutoContrast': autocontrast,
+    'Equalize': equalize,
+    'Posterize': posterize,
+    'Solarize': solarize,
+    'SolarizeAdd': solarize_add,
+    'Color': color,
+    'Contrast': contrast,
+    'Brightness': brightness,
+    'Sharpness': sharpness,
+    'Cutout': cutout,
+    'BBox_Cutout': bbox_cutout,
+    'Rotate_BBox': rotate_with_bboxes,
     # pylint:disable=g-long-lambda
-    'TranslateX_BBox':
-    lambda image, bboxes, pixels, replace: translate_bbox(
-        image, bboxes, pixels, replace, shift_horizontal=True),
-    'TranslateY_BBox':
-    lambda image, bboxes, pixels, replace: translate_bbox(
-        image, bboxes, pixels, replace, shift_horizontal=False),
-    'ShearX_BBox':
-    lambda image, bboxes, level, replace: shear_with_bboxes(
-        image, bboxes, level, replace, shear_horizontal=True),
-    'ShearY_BBox':
-    lambda image, bboxes, level, replace: shear_with_bboxes(
-        image, bboxes, level, replace, shear_horizontal=False),
+    'TranslateX_BBox': translate_wrapper(True),
+    'TranslateY_BBox': translate_wrapper(False),
+    'ShearX_BBox': shear_wrapper(True),
+    'ShearY_BBox': shear_wrapper(False),
     # pylint:enable=g-long-lambda
-    'Rotate_Only_BBoxes':
-    rotate_only_bboxes,
-    'ShearX_Only_BBoxes':
-    shear_x_only_bboxes,
-    'ShearY_Only_BBoxes':
-    shear_y_only_bboxes,
-    'TranslateX_Only_BBoxes':
-    translate_x_only_bboxes,
-    'TranslateY_Only_BBoxes':
-    translate_y_only_bboxes,
-    'Flip_Only_BBoxes':
-    flip_only_bboxes,
-    'Solarize_Only_BBoxes':
-    solarize_only_bboxes,
-    'Equalize_Only_BBoxes':
-    equalize_only_bboxes,
-    'Cutout_Only_BBoxes':
-    cutout_only_bboxes,
+    'Rotate_Only_BBoxes': rotate_only_bboxes,
+    'ShearX_Only_BBoxes': shear_x_only_bboxes,
+    'ShearY_Only_BBoxes': shear_y_only_bboxes,
+    'TranslateX_Only_BBoxes': translate_x_only_bboxes,
+    'TranslateY_Only_BBoxes': translate_y_only_bboxes,
+    'Flip_Only_BBoxes': flip_only_bboxes,
+    'Solarize_Only_BBoxes': solarize_only_bboxes,
+    'Equalize_Only_BBoxes': equalize_only_bboxes,
+    'Cutout_Only_BBoxes': cutout_only_bboxes,
 }
 
 
@@ -1459,64 +1446,52 @@ def _bbox_cutout_level_to_arg(level, hparams):
 
 
 def level_to_arg(hparams):
+    def _return_empty(level):
+        return ()
+
+    def _translate_level_to_arg_wrapper(level):
+        return _translate_level_to_arg(level, hparams.translate_bbox_const)
+
+    def _level_wrapper(num):
+        def _wrapper(level):
+            return (int((level / _MAX_LEVEL) * num),)
+
+        return _wrapper
+
+    def _cutout_wrapper(level):
+        return _bbox_cutout_level_to_arg(level, hparams)
+
     return {
-        'AutoContrast':
-        lambda level: (),
-        'Equalize':
-        lambda level: (),
-        'Posterize':
-        lambda level: (int((level / _MAX_LEVEL) * 4),),
-        'Solarize':
-        lambda level: (int((level / _MAX_LEVEL) * 256),),
-        'SolarizeAdd':
-        lambda level: (int((level / _MAX_LEVEL) * 110),),
-        'Color':
-        _enhance_level_to_arg,
-        'Contrast':
-        _enhance_level_to_arg,
-        'Brightness':
-        _enhance_level_to_arg,
-        'Sharpness':
-        _enhance_level_to_arg,
-        'Cutout':
-        lambda level: (int((level / _MAX_LEVEL) * hparams.cutout_const),),
+        'AutoContrast': _return_empty,
+        'Equalize': _return_empty,
+        'Posterize': _level_wrapper(4),
+        'Solarize': _level_wrapper(256),
+        'SolarizeAdd': _level_wrapper(110),
+        'Color': _enhance_level_to_arg,
+        'Contrast': _enhance_level_to_arg,
+        'Brightness': _enhance_level_to_arg,
+        'Sharpness': _enhance_level_to_arg,
+        'Cutout': _level_wrapper(hparams.cutout_const),
         # pylint:disable=g-long-lambda
-        'BBox_Cutout':
-        lambda level: _bbox_cutout_level_to_arg(level, hparams),
-        'TranslateX_BBox':
-        lambda level: _translate_level_to_arg(level, hparams.translate_const),
-        'TranslateY_BBox':
-        lambda level: _translate_level_to_arg(level, hparams.translate_const),
+        'BBox_Cutout': _cutout_wrapper,
+        'TranslateX_BBox': _translate_level_to_arg_wrapper,
+        'TranslateY_BBox': _translate_level_to_arg_wrapper,
         # pylint:enable=g-long-lambda
-        'ShearX_BBox':
-        _shear_level_to_arg,
-        'ShearY_BBox':
-        _shear_level_to_arg,
-        'Rotate_BBox':
-        _rotate_level_to_arg,
-        'Rotate_Only_BBoxes':
-        _rotate_level_to_arg,
-        'ShearX_Only_BBoxes':
-        _shear_level_to_arg,
-        'ShearY_Only_BBoxes':
-        _shear_level_to_arg,
+        'ShearX_BBox': _shear_level_to_arg,
+        'ShearY_BBox': _shear_level_to_arg,
+        'Rotate_BBox': _rotate_level_to_arg,
+        'Rotate_Only_BBoxes': _rotate_level_to_arg,
+        'ShearX_Only_BBoxes': _shear_level_to_arg,
+        'ShearY_Only_BBoxes': _shear_level_to_arg,
         # pylint:disable=g-long-lambda
-        'TranslateX_Only_BBoxes':
-        lambda level: _translate_level_to_arg(level, hparams.
-                                              translate_bbox_const),
-        'TranslateY_Only_BBoxes':
-        lambda level: _translate_level_to_arg(level, hparams.
-                                              translate_bbox_const),
+        'TranslateX_Only_BBoxes': _translate_level_to_arg_wrapper,
+        'TranslateY_Only_BBoxes': _translate_level_to_arg_wrapper,
         # pylint:enable=g-long-lambda
-        'Flip_Only_BBoxes':
-        lambda level: (),
-        'Solarize_Only_BBoxes':
-        lambda level: (int((level / _MAX_LEVEL) * 256),),
-        'Equalize_Only_BBoxes':
-        lambda level: (),
+        'Flip_Only_BBoxes': _return_empty,
+        'Solarize_Only_BBoxes': _level_wrapper(256),
+        'Equalize_Only_BBoxes': _return_empty,
         # pylint:disable=g-long-lambda
-        'Cutout_Only_BBoxes':
-        lambda level: (int((level / _MAX_LEVEL) * hparams.cutout_bbox_const),),
+        'Cutout_Only_BBoxes': _level_wrapper(hparams.cutout_const),
         # pylint:enable=g-long-lambda
     }
 
