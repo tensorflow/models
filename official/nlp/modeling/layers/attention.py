@@ -119,7 +119,7 @@ class Attention(tf.keras.layers.Layer):
     self._dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
 
   def compute_output_shape(self, input_shape):
-    # TODO(momernick): validate tensor dimensioos
+    # TODO(momernick): validate tensor dimensions.
     from_tensor_shape = tf.TensorShape(input_shape[0])
     batch = from_tensor_shape[0]
     from_tensor_length = from_tensor_shape[1]
@@ -188,3 +188,85 @@ class Attention(tf.keras.layers.Layer):
 
     # `context_layer` = [B, F, N, H]
     return tf.einsum("BNFT,BTNH->BFNH", attention_probs, value_tensor)
+
+
+@tf.keras.utils.register_keras_serializable(package="Text")
+class CachedAttention(Attention):
+  """Attention layer with cache used for auto-agressive decoding.
+
+  Attributes:
+    num_heads: Number of attention heads.
+    head_size: Size of each attention head.
+    **kwargs: Other keyword arguments inherit from `Attention` class.
+  """
+
+  def __init__(self, num_heads, head_size, **kwargs):
+    super(CachedAttention, self).__init__(num_heads, head_size, **kwargs)
+
+  def _update_cache(self, key_tensor, value_tensor, cache, decode_loop_step):
+    """Updates cache states and gets full-length key/value tensors."""
+    # Combines cached keys and values with new keys and values.
+    if decode_loop_step is not None:
+      # TPU special case.
+      key_seq_dim = cache["key"].shape.as_list()[1]
+      indices = tf.reshape(
+          tf.one_hot(decode_loop_step, key_seq_dim, dtype=key_tensor.dtype),
+          [1, key_seq_dim, 1, 1])
+      key_tensor = cache["key"] + key_tensor * indices
+      value_seq_dim = cache["value"].shape.as_list()[1]
+      indices = tf.reshape(
+          tf.one_hot(decode_loop_step, value_seq_dim, dtype=value_tensor.dtype),
+          [1, value_seq_dim, 1, 1])
+      value_tensor = cache["value"] + value_tensor * indices
+    else:
+      key_tensor = tf.concat(
+          [tf.cast(cache["key"], key_tensor.dtype), key_tensor], axis=1)
+      value_tensor = tf.concat(
+          [tf.cast(cache["value"], value_tensor.dtype), value_tensor], axis=1)
+
+    # Update cache
+    cache["key"] = key_tensor
+    cache["value"] = value_tensor
+
+    return key_tensor, value_tensor
+
+  def call(self, inputs, decode_loop_step=None):
+    from_tensor = inputs[0]
+    to_tensor = inputs[1]
+    attention_mask = inputs[2] if len(inputs) >= 3 else None
+    cache = inputs[3] if len(inputs) >= 4 else None
+    # Scalar dimensions referenced here:
+    #   B = batch size (number of sequences)
+    #   F = `from_tensor` sequence length
+    #   T = `to_tensor` sequence length
+    #   N = `num_attention_heads`
+    #   H = `size_per_head`
+    # `query_tensor` = [B, F, N ,H]
+    query_tensor = self._query_dense(from_tensor)
+
+    # `key_tensor` = [B, T, N, H]
+    key_tensor = self._key_dense(to_tensor)
+
+    # `value_tensor` = [B, T, N, H]
+    value_tensor = self._value_dense(to_tensor)
+
+    if cache:
+      key_tensor, value_tensor = self._update_cache(key_tensor, value_tensor,
+                                                    cache, decode_loop_step)
+
+    # Take the dot product between "query" and "key" to get the raw
+    # attention scores.
+    attention_scores = tf.einsum("BTNH,BFNH->BNFT", key_tensor, query_tensor)
+    attention_scores = tf.multiply(attention_scores,
+                                   1.0 / math.sqrt(float(self._head_size)))
+
+    # Normalize the attention scores to probabilities.
+    # `attention_probs` = [B, N, F, T]
+    attention_probs = self._masked_softmax([attention_scores, attention_mask])
+
+    # This is actually dropping out entire tokens to attend to, which might
+    # seem a bit unusual, but is taken from the original Transformer paper.
+    attention_probs = self._dropout(attention_probs)
+
+    # `context_layer` = [B, F, N, H]
+    return tf.einsum("BNFT,BTNH->BFNH", attention_probs, value_tensor), cache
