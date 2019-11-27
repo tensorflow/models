@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,8 +21,24 @@ import numpy as np
 import cv2
 
 
-def segm_results(masks, detections, image_height, image_width):
-  """Generates segmentation results."""
+def paste_instance_masks(masks,
+                         detected_boxes,
+                         image_height,
+                         image_width):
+  """Paste instance masks to generate the image segmentation results.
+
+  Args:
+    masks: a numpy array of shape [N, mask_height, mask_width] representing the
+      instance masks w.r.t. the `detected_boxes`.
+    detected_boxes: a numpy array of shape [N, 4] representing the reference
+      bounding boxes.
+    image_height: an integer representing the height of the image.
+    image_width: an integer representing the width of the image.
+
+  Returns:
+    segms: a numpy array of shape [N, image_height, image_width] representing
+      the instance masks *pasted* on the image canvas.
+  """
 
   def expand_boxes(boxes, scale):
     """Expands an array of boxes by a given scale."""
@@ -51,14 +67,17 @@ def segm_results(masks, detections, image_height, image_width):
   # prior to resizing back to the original image resolution. This prevents
   # "top hat" artifacts. We therefore need to expand the reference boxes by an
   # appropriate factor.
-  mask_size = masks.shape[2]
-  scale = (mask_size + 2.0) / mask_size
+  _, mask_height, mask_width = masks.shape
+  scale = max((mask_width + 2.0) / mask_width,
+              (mask_height + 2.0) / mask_height)
 
-  ref_boxes = expand_boxes(detections[:, 1:5], scale)
+  ref_boxes = expand_boxes(detected_boxes, scale)
   ref_boxes = ref_boxes.astype(np.int32)
-  padded_mask = np.zeros((mask_size + 2, mask_size + 2), dtype=np.float32)
+  padded_mask = np.zeros((mask_height + 2, mask_width + 2), dtype=np.float32)
   segms = []
   for mask_ind, mask in enumerate(masks):
+    im_mask = np.zeros((image_height, image_width), dtype=np.uint8)
+    # Process mask inside bounding boxes.
     padded_mask[1:-1, 1:-1] = mask[:, :]
 
     ref_box = ref_boxes[mask_ind, :]
@@ -69,7 +88,6 @@ def segm_results(masks, detections, image_height, image_width):
 
     mask = cv2.resize(padded_mask, (w, h))
     mask = np.array(mask > 0.5, dtype=np.uint8)
-    im_mask = np.zeros((image_height, image_width), dtype=np.uint8)
 
     x_0 = max(ref_box[0], 0)
     x_1 = min(ref_box[2] + 1, image_width)
