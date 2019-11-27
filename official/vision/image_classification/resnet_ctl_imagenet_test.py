@@ -82,7 +82,7 @@ class CtlImagenetTest(tf.test.TestCase):
 
     extra_flags = [
         '-num_gpus', num_gpus,
-        '-distribution_strategy', 'default',
+        '-distribution_strategy', 'mirrored',
         '-model_dir', 'ctl_imagenet_2_gpu',
         '-data_format', 'channels_last',
     ]

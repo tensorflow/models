@@ -104,7 +104,7 @@ class KerasCifarTest(googletest.TestCase):
 
     extra_flags = [
         "-num_gpus", "1",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
         "-model_dir", "keras_cifar_1_gpu",
         "-data_format", "channels_last",
     ]
@@ -126,7 +126,7 @@ class KerasCifarTest(googletest.TestCase):
     extra_flags = [
         "-num_gpus", "1",
         "-noenable_eager",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
         "-model_dir", "keras_cifar_graph_1_gpu",
         "-data_format", "channels_last",
     ]
@@ -150,7 +150,7 @@ class KerasCifarTest(googletest.TestCase):
 
     extra_flags = [
         "-num_gpus", "2",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
         "-model_dir", "keras_cifar_2_gpu",
     ]
     extra_flags = extra_flags + self._extra_flags
@@ -171,7 +171,7 @@ class KerasCifarTest(googletest.TestCase):
     extra_flags = [
         "-num_gpus", "2",
         "-enable_eager", "false",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
         "-model_dir", "keras_cifar_graph_2_gpu",
     ]
     extra_flags = extra_flags + self._extra_flags

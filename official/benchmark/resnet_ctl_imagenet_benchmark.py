@@ -231,7 +231,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
@@ -241,7 +241,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_amp')
     FLAGS.batch_size = 256
     FLAGS.dtype = 'fp16'
@@ -253,7 +253,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_amp')
     FLAGS.batch_size = 256
     FLAGS.dtype = 'fp16'
@@ -266,7 +266,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 1
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_eager')
     FLAGS.batch_size = 64
     FLAGS.use_tf_function = False
@@ -278,7 +278,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 8
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -288,7 +288,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 8
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.dtype = 'fp16'
@@ -300,7 +300,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._setup()
 
     FLAGS.num_gpus = 8
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_amp')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.dtype = 'fp16'

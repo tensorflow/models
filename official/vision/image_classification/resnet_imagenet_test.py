@@ -94,7 +94,7 @@ class KerasImagenetTest(tf.test.TestCase):
 
     extra_flags = [
         "-num_gpus", "1",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
         "-data_format", "channels_last",
         "-enable_checkpoint_and_export", "1",
     ]
@@ -119,7 +119,7 @@ class KerasImagenetTest(tf.test.TestCase):
     extra_flags = [
         "-num_gpus", "1",
         "-dtype", "fp16",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
         "-data_format", "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
@@ -143,7 +143,7 @@ class KerasImagenetTest(tf.test.TestCase):
 
     extra_flags = [
         "-num_gpus", "2",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -166,7 +166,7 @@ class KerasImagenetTest(tf.test.TestCase):
     extra_flags = [
         "-num_gpus", "2",
         "-enable_xla", "true",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -189,7 +189,7 @@ class KerasImagenetTest(tf.test.TestCase):
     extra_flags = [
         "-num_gpus", "2",
         "-dtype", "fp16",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
     ]
     extra_flags = extra_flags + self._extra_flags
 
@@ -213,7 +213,7 @@ class KerasImagenetTest(tf.test.TestCase):
         "-num_gpus", "2",
         "-dtype", "fp16",
         "-enable_xla", "true",
-        "-distribution_strategy", "default",
+        "-distribution_strategy", "mirrored",
     ]
     extra_flags = extra_flags + self._extra_flags
 

@@ -319,7 +319,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
@@ -332,7 +332,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_amp')
     FLAGS.batch_size = 256
     self._run_and_report_benchmark()
@@ -344,7 +344,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
@@ -358,7 +358,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_amp')
     FLAGS.batch_size = 256
     self._run_and_report_benchmark()
@@ -369,7 +369,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
@@ -381,7 +381,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16_dynamic')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
@@ -395,7 +395,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
@@ -408,7 +408,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16_tweaked')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
@@ -423,7 +423,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16_dynamic')
     FLAGS.dtype = 'fp16'
     FLAGS.batch_size = 256
@@ -436,7 +436,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
@@ -448,7 +448,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_1_gpu')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
@@ -460,7 +460,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_fp16')
     FLAGS.batch_size = 256
     self._run_and_report_benchmark()
@@ -473,7 +473,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_1_gpu_fp16')
     FLAGS.batch_size = 256
     self._run_and_report_benchmark()
@@ -485,7 +485,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_graph_xla_1_gpu_fp16_tweaked')
     FLAGS.dtype = 'fp16'
@@ -500,7 +500,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -513,7 +513,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -524,7 +524,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
@@ -538,7 +538,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -552,7 +552,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_amp')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -564,7 +564,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_tweaked')
     FLAGS.batch_size = 128 * 8
     FLAGS.use_tensor_lr = True
@@ -579,7 +579,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -591,7 +591,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
@@ -605,7 +605,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_8_gpu_fp16_dynamic_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
@@ -622,7 +622,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -635,7 +635,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
@@ -654,7 +654,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_xla_8_gpu_fp16_tweaked_delay_measure')
     FLAGS.batch_size = 256 * 8
@@ -671,7 +671,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = True
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_xla_8_gpu_fp16_dynamic_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
@@ -687,7 +687,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -699,7 +699,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_8_gpu')
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -711,7 +711,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu_fp16')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -724,7 +724,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_8_gpu_fp16')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
@@ -736,7 +736,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.use_tensor_lr = True
@@ -751,7 +751,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_graph_xla_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
@@ -770,7 +770,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_graph_xla_8_gpu_fp16_tweaked_delay_measure')
     FLAGS.batch_size = 256 * 8
@@ -786,7 +786,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.num_gpus = 8
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_graph_8_gpu_fp16_dynamic_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
@@ -803,7 +803,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.enable_eager = False
     FLAGS.enable_xla = True
-    FLAGS.distribution_strategy = 'default'
+    FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_graph_xla_8_gpu_fp16_dynamic_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
@@ -888,7 +888,7 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 600
     def_flags['log_steps'] = 100
-    def_flags['distribution_strategy'] = 'default'
+    def_flags['distribution_strategy'] = 'mirrored'
 
     super(TrivialKerasBenchmarkReal, self).__init__(
         output_dir=output_dir,
