@@ -43,6 +43,7 @@ from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import keras_utils
 from official.utils.misc import distribution_utils
+from official.vision.image_classification import common as image_common
 
 
 INF = int(1e9)
@@ -164,6 +165,8 @@ class TransformerTask(object):
     self.distribution_strategy = distribution_utils.get_distribution_strategy(
         distribution_strategy=flags_obj.distribution_strategy,
         num_gpus=num_gpus,
+        all_reduce_alg=flags_obj.all_reduce_alg,
+        num_packs=flags_obj.num_packs,
         tpu_address=flags_obj.tpu or "")
     if self.use_tpu:
       params["num_replicas"] = self.distribution_strategy.num_replicas_in_sync
@@ -207,7 +210,15 @@ class TransformerTask(object):
     flags_obj = self.flags_obj
     # Sets config options.
     keras_utils.set_session_config(
+        enable_eager=flags_obj.enable_eager,
         enable_xla=flags_obj.enable_xla)
+
+    # Execute flag override logic for better model performance
+    # Use the set_gpu_thread_mode_and_count function from
+    # vision.image_classification, which is universal and not specific to
+    # vision or image_classification
+    if flags_obj.tf_gpu_thread_mode:
+      image_common.set_gpu_thread_mode_and_count(flags_obj)
 
     _ensure_dir(flags_obj.model_dir)
     with distribution_utils.get_strategy_scope(self.distribution_strategy):
