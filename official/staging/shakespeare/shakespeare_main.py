@@ -75,6 +75,8 @@ def define_flags():
   flags.DEFINE_integer(
       name='predict_length', default=1000,
       help='Length of the predicted text including the context.')
+  flags.DEFINE_integer(name='train_steps', default=None,
+                       help='Overrides train_steps per epoch if not None.')
   flags.DEFINE_integer(
       name='log_steps', default=100,
       help='For every log_steps, we log the timing information such as '
@@ -174,7 +176,10 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
   Returns:
     The training history and callbacks.
   """
-  train_steps = BATCHES_PER_EPOCH // flags_obj.batch_size
+  if flags_obj.train_steps:
+    train_steps = flags_obj.train_steps
+  else:
+    train_steps = BATCHES_PER_EPOCH // flags_obj.batch_size
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
   with strategy_scope:

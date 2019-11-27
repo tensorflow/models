@@ -26,6 +26,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.staging.shakespeare import shakespeare_main
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
+from official.utils.testing import benchmark_wrappers
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 SHAKESPEARE_TRAIN_DATA = 'shakespeare/shakespeare.txt'
@@ -42,6 +43,7 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
         default_flags=default_flags,
         flag_methods=[shakespeare_main.define_flags])
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 top_1_train_min=0.91,
                                 top_1_train_max=0.94,
@@ -75,9 +77,10 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
     for callback in stats['callbacks']:
       if isinstance(callback, keras_utils.TimeHistory):
         epoch_timings = callback.epoch_runtime_log
-        average_time = sum(epoch_timings[1:]) / len(epoch_timings[1:])
-        metrics.append({'name': 'avg_epoch_time',
-                        'value': average_time})
+        if len(epoch_timings) > 1:
+          average_time = sum(epoch_timings[1:]) / len(epoch_timings[1:])
+          metrics.append({'name': 'avg_epoch_time',
+                          'value': average_time})
 
       # First entry in timestamp_log is the start of step 1. The rest of the
       # entries are the end of each step recorded.
