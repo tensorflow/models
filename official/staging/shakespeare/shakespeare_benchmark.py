@@ -88,9 +88,10 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
       elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
       num_examples = (
           total_batch_size * log_steps * (len(time_log) - warmup - 1))
-      examples_per_sec = num_examples / elapsed
-      metrics.append({'name': 'exp_per_second',
-                      'value': examples_per_sec})
+      if elapsed > 0:
+        examples_per_sec = num_examples / elapsed
+        metrics.append({'name': 'exp_per_second',
+                        'value': examples_per_sec})
 
     flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(iters=-1, wall_time=wall_time_sec,
