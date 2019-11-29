@@ -11,7 +11,7 @@ Tensorflow Object Detection API depends on the following libraries:
 *   tf Slim (which is included in the "tensorflow/models/research/" checkout)
 *   Jupyter notebook
 *   Matplotlib
-*   Tensorflow (>=1.12.0)
+*   Tensorflow (>=1.12.0, <=1.15.0)
 *   Cython
 *   contextlib2
 *   cocoapi
@@ -21,10 +21,8 @@ instructions](https://www.tensorflow.org/install/). A typical user can install
 Tensorflow using one of the following commands:
 
 ``` bash
-# For CPU
-pip install tensorflow
-# For GPU
-pip install tensorflow-gpu
+# For CPU and GPU
+pip install tensorflow==1.15
 ```
 
 The remaining libraries can be installed on Ubuntu 16.04 using via apt-get:
