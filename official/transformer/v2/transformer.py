@@ -355,39 +355,6 @@ class Transformer(tf.keras.Model):
     return {"outputs": top_decoded_ids, "scores": top_scores}
 
 
-class LayerNormalization(tf.keras.layers.Layer):
-  """Applies layer normalization."""
-
-  def __init__(self, hidden_size):
-    # Pass dtype=float32, as we have not yet tested if layer norm is numerically
-    # stable in float16 and bfloat16.
-    super(LayerNormalization, self).__init__(dtype="float32")
-    self.hidden_size = hidden_size
-
-  def build(self, input_shape):
-    """Builds the layer."""
-    self.scale = self.add_weight(
-        "layer_norm_scale",
-        shape=[self.hidden_size],
-        initializer=tf.ones_initializer())
-    self.bias = self.add_weight(
-        "layer_norm_bias",
-        shape=[self.hidden_size],
-        initializer=tf.zeros_initializer())
-    super(LayerNormalization, self).build(input_shape)
-
-  def get_config(self):
-    return {
-        "hidden_size": self.hidden_size,
-    }
-
-  def call(self, x, epsilon=1e-6):
-    mean = tf.reduce_mean(x, axis=[-1], keepdims=True)
-    variance = tf.reduce_mean(tf.square(x - mean), axis=[-1], keepdims=True)
-    norm_x = (x - mean) * tf.math.rsqrt(variance + epsilon)
-    return norm_x * self.scale + self.bias
-
-
 class PrePostProcessingWrapper(tf.keras.layers.Layer):
   """Wrapper class that applies layer pre-processing and post-processing."""
 
@@ -399,7 +366,8 @@ class PrePostProcessingWrapper(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     # Create normalization layer
-    self.layer_norm = LayerNormalization(self.params["hidden_size"])
+    self.layer_norm = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, dtype="float32")
     super(PrePostProcessingWrapper, self).build(input_shape)
 
   def get_config(self):
@@ -454,7 +422,8 @@ class EncoderStack(tf.keras.layers.Layer):
       ])
 
     # Create final layer normalization layer.
-    self.output_normalization = LayerNormalization(params["hidden_size"])
+    self.output_normalization = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, dtype="float32")
     super(EncoderStack, self).build(input_shape)
 
   def get_config(self):
@@ -527,7 +496,8 @@ class DecoderStack(tf.keras.layers.Layer):
           PrePostProcessingWrapper(enc_dec_attention_layer, params),
           PrePostProcessingWrapper(feed_forward_network, params)
       ])
-    self.output_normalization = LayerNormalization(params["hidden_size"])
+    self.output_normalization = tf.keras.layers.LayerNormalization(
+        epsilon=1e-6, dtype="float32")
     super(DecoderStack, self).build(input_shape)
 
   def get_config(self):

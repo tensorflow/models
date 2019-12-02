@@ -170,6 +170,7 @@ class TransformerTaskTest(tf.test.TestCase):
     t = transformer_main.TransformerTask(FLAGS)
     t.predict()
 
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_predict_fp16(self):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
