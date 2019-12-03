@@ -1,4 +1,5 @@
 #!/bin/bash
+sudo apt update
 sudo apt install protobuf-compiler python3-tk -y
 pip3 install virtualenv
 rm -rf tf_detection && virtualenv tf_detection --python=python3
