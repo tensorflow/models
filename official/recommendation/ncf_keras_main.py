@@ -480,8 +480,8 @@ def run_ncf_custom_training(params,
 
       train_loss += train_step(train_input_iterator)
 
-      # Write train loss once in every 100 steps.
-      if train_summary_writer and step % 100 == 0:
+      # Write train loss once in every 1000 steps.
+      if train_summary_writer and step % 1000 == 0:
         with train_summary_writer.as_default():
           tf.summary.scalar("training_loss", train_loss/(step + 1),
                             step=current_step)

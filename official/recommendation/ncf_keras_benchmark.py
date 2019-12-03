@@ -45,6 +45,8 @@ class NCFKerasBenchmarkBase(tf.test.Benchmark):
                **kwargs):
     self.output_dir = output_dir
     self.default_flags = default_flags or {}
+    # Run all benchmarks with ml_perf flag.
+    self.default_flags['ml_perf'] = True
 
   def _setup(self):
     """Sets up and resets flags before each test."""
