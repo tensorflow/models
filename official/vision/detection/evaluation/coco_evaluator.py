@@ -42,6 +42,35 @@ from official.vision.detection.evaluation import coco_utils
 from official.vision.detection.utils import class_utils
 
 
+class MetricWrapper(object):
+  # This is only a wrapper for COCO metric and works on for numpy array. So it
+  # doesn't inherit from tf.keras.layers.Layer or tf.keras.metrics.Metric.
+
+  def __init__(self, evaluator):
+    self._evaluator = evaluator
+
+  def update_state(self, y_true, y_pred):
+    labels = tf.nest.map_structure(lambda x: x.numpy(), y_true)
+    outputs = tf.nest.map_structure(lambda x: x.numpy(), y_pred)
+    groundtruths = {}
+    predictions = {}
+    for key, val in outputs.items():
+      if isinstance(val, tuple):
+        val = np.concatenate(val)
+      predictions[key] = val
+    for key, val in labels.items():
+      if isinstance(val, tuple):
+        val = np.concatenate(val)
+      groundtruths[key] = val
+    self._evaluator.update(predictions, groundtruths)
+
+  def result(self):
+    return self._evaluator.evaluate()
+
+  def reset_states(self):
+    return self._evaluator.reset()
+
+
 class COCOEvaluator(object):
   """COCO evaluation metric class."""
 

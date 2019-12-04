@@ -32,4 +32,4 @@ def evaluator_generator(params):
   else:
     raise ValueError('Evaluator %s is not supported.' % params.type)
 
-  return evaluator
+  return coco_evaluator.MetricWrapper(evaluator)
