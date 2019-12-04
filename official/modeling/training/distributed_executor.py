@@ -32,32 +32,13 @@ import tensorflow as tf
 from typing import Optional, Dict, List, Text, Callable, Union, Iterator, Any
 from official.modeling.hyperparams import params_dict
 from official.utils.misc import tpu_lib
+from official.utils.misc import distribution_utils
+from official.utils import hyperparams_flags
 
 FLAGS = flags.FLAGS
 
-
-def strategy_flags_dict():
-  """Returns TPU related flags in a dictionary."""
-  return {
-      # TPUStrategy related flags.
-      'tpu': FLAGS.tpu,
-      # MultiWorkerMirroredStrategy related flags.
-      'worker_hosts': FLAGS.worker_hosts,
-      'task_index': FLAGS.task_index,
-  }
-
-
-def hparam_flags_dict():
-  """Returns model params related flags in a dictionary."""
-  return {
-      'data_dir': FLAGS.data_dir,
-      'model_dir': FLAGS.model_dir,
-      'train_batch_size': FLAGS.train_batch_size,
-      'eval_batch_size': FLAGS.eval_batch_size,
-      'precision': FLAGS.precision,
-      'config_file': FLAGS.config_file,
-      'params_override': FLAGS.params_override,
-  }
+strategy_flags_dict = hyperparams_flags.strategy_flags_dict
+hparam_flags_dict = hyperparams_flags.hparam_flags_dict
 
 
 def _save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
@@ -647,7 +628,6 @@ class DistributedExecutor(object):
     return NotImplementedError('Unimplmented function.')
 
 
-# TODO(yeqing): Add unit test for MultiWorkerMirroredStrategy.
 class ExecutorBuilder(object):
   """Builder of DistributedExecutor.
 
@@ -692,8 +672,15 @@ class ExecutorBuilder(object):
   """
 
   def __init__(self, strategy_type=None, strategy_config=None):
-    self._strategy_config = strategy_config
-    self._strategy = self._build_strategy(strategy_type)
+    num_workers = distribution_utils.configure_cluster(
+        strategy_config.worker_hosts, strategy_config.task_index)
+    self._strategy = distribution_utils.get_distribution_strategy(
+        distribution_strategy=strategy_type,
+        num_gpus=strategy_config.num_gpus,
+        num_workers=num_workers,
+        all_reduce_alg=strategy_config.all_reduce_alg,
+        num_packs=strategy_config.num_packs,
+        tpu_address=strategy_config.tpu)
 
   @property
   def strategy(self):
@@ -705,66 +692,6 @@ class ExecutorBuilder(object):
     """Sets default summary writer for the current thread."""
     self._strategy = new_strategy
 
-  def _build_strategy(self, strategy_type):
-    """Builds tf.distribute.Strategy instance.
-
-    Args:
-      strategy_type: string. One of 'tpu', 'one_device_gpu', 'mirrored', 'multi_worker_mirrored'.
-
-    Returns:
-      An tf.distribute.Strategy object. Returns None if strategy_type is None.
-    """
-    if strategy_type is None:
-      return None
-
-    if strategy_type == 'tpu':
-      return self._build_tpu_strategy()
-    elif strategy_type == 'one_device_gpu':
-      return tf.distribute.OneDeviceStrategy("device:GPU:0")
-    elif strategy_type == 'mirrored':
-      return self._build_mirrored_strategy()
-    elif strategy_type == 'multi_worker_mirrored':
-      return self._build_multiworker_mirrored_strategy()
-    else:
-      raise NotImplementedError('Unsupport accelerator type "%s"' %
-                                strategy_type)
-
-  def _build_mirrored_strategy(self):
-    """Builds a MirroredStrategy object."""
-    return tf.distribute.MirroredStrategy()
-
-  def _build_tpu_strategy(self):
-    """Builds a TPUStrategy object."""
-
-    tpu = self._strategy_config.tpu
-    logging.info('Use TPU at %s', tpu if tpu is not None else '')
-    cluster_resolver = tpu_lib.tpu_initialize(tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
-
-    return strategy
-
-  def _build_multiworker_mirrored_strategy(self):
-    """Builds a MultiWorkerMirroredStrategy object."""
-
-    worker_hosts = self._strategy_config.worker_hosts
-
-    if worker_hosts is not None:
-      # Set TF_CONFIG environment variable
-      worker_hosts = worker_hosts.split(',')
-      task_index = self._strategy_config.task_index
-      os.environ['TF_CONFIG'] = json.dumps({
-          'cluster': {
-              'worker': worker_hosts
-          },
-          'task': {
-              'type': 'worker',
-              'index': task_index
-          }
-      })
-
-    multiworker_strategy = (
-        tf.distribute.experimental.MultiWorkerMirroredStrategy())
-    return multiworker_strategy
 
   def build_executor(self,
                      class_ctor=DistributedExecutor,

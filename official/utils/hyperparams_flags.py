@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import flags
+from official.utils.flags import core as flags_core
 
 FLAGS = flags.FLAGS
 
@@ -68,33 +69,51 @@ def define_common_hparams_flags():
             'The final override order of parameters: default_model_params --> '
             'params from config_file --> params in params_override.'
             'See also the help message of `--config_file`.'))
+  flags.DEFINE_integer('save_checkpoint_freq', None,
+                       'Number of steps to save checkpoint.')
+
+
+def initialize_common_flags():
+  """Define the common flags across models."""
+  define_common_hparams_flags()
+
+  flags_core.define_device(tpu=True)
+  flags_core.define_base(
+      num_gpu=True, model_dir=False, data_dir=False, batch_size=False)
+  flags_core.define_distribution(worker_hosts=True, task_index=True)
+  flags_core.define_performance(all_reduce_alg=True, num_packs=True)
+
+  # Reset the default value of num_gpus to zero.
+  FLAGS.num_gpus = 0
 
   flags.DEFINE_string(
       'strategy_type', 'mirrored', 'Type of distribute strategy.'
       'One of mirrored, tpu and multiworker.')
 
 
-def initialize_common_flags():
-  """Define the common flags across models."""
-  key_flags = []
-  define_common_hparams_flags()
-  flags.DEFINE_string(
-      'tpu',
-      default=None,
-      help='The Cloud TPU to use for training. This should be either the name '
-      'used when creating the Cloud TPU, or a grpc://ip.address.of.tpu:8470 '
-      'url.')
-  # Parameters for MultiWorkerMirroredStrategy
-  flags.DEFINE_string(
-      'worker_hosts',
-      default=None,
-      help='Comma-separated list of worker ip:port pairs for running '
-      'multi-worker models with distribution strategy.  The user would '
-      'start the program on each host with identical value for this flag.')
-  flags.DEFINE_integer(
-      'task_index', 0,
-      'If multi-worker training, the task_index of this worker.')
-  flags.DEFINE_integer('save_checkpoint_freq', None,
-                       'Number of steps to save checkpoint.')
-  return key_flags
+def strategy_flags_dict():
+  """Returns TPU and/or GPU related flags in a dictionary."""
+  return {
+      # TPUStrategy related flags.
+      'tpu': FLAGS.tpu,
+      # MultiWorkerMirroredStrategy related flags.
+      'all_reduce_alg': FLAGS.all_reduce_alg,
+      'worker_hosts': FLAGS.worker_hosts,
+      'task_index': FLAGS.task_index,
+      # MirroredStrategy and OneDeviceStrategy
+      'num_gpus': FLAGS.num_gpus,
+      'num_packs': FLAGS.num_packs,
+  }
 
+
+def hparam_flags_dict():
+  """Returns model params related flags in a dictionary."""
+  return {
+      'data_dir': FLAGS.data_dir,
+      'model_dir': FLAGS.model_dir,
+      'train_batch_size': FLAGS.train_batch_size,
+      'eval_batch_size': FLAGS.eval_batch_size,
+      'precision': FLAGS.precision,
+      'config_file': FLAGS.config_file,
+      'params_override': FLAGS.params_override,
+  }
