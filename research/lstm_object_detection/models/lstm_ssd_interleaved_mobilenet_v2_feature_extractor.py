@@ -257,6 +257,7 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
             step,
             selection_strategy=self._interleave_method,
             is_training=self._is_training,
+            is_quantized=self._is_quantized,
             pre_bottleneck=self._pre_bottleneck,
             flatten_state=self._flatten_state,
             scope=lstm_scope)

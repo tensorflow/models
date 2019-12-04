@@ -16,6 +16,7 @@
 """Custom RNN decoder."""
 
 import tensorflow as tf
+import lstm_object_detection.lstm.utils as lstm_utils
 
 
 def rnn_decoder(decoder_inputs,
@@ -136,7 +137,9 @@ def multi_input_rnn_decoder(decoder_inputs,
 
       action = generate_action(selection_strategy, local_step, sequence_step,
                                [batch_size, 1, 1, 1])
-      inputs, _ = select_inputs(decoder_inputs, action, local_step)
+      inputs, _ = (
+          select_inputs(decoder_inputs, action, local_step, is_training,
+                        is_quantized))
       # Mark base network endpoints under raw_inputs/
       with tf.name_scope(None):
         inputs = tf.identity(inputs, 'raw_inputs/base_endpoint')
@@ -189,7 +192,8 @@ def generate_action(selection_strategy, local_step, sequence_step,
   return tf.cast(action, tf.int32)
 
 
-def select_inputs(decoder_inputs, action, local_step, get_alt_inputs=False):
+def select_inputs(decoder_inputs, action, local_step, is_training, is_quantized,
+                  get_alt_inputs=False):
   """Selects sequence from decoder_inputs based on 1D actions.
 
   Given multiple input batches, creates a single output batch by
@@ -199,7 +203,10 @@ def select_inputs(decoder_inputs, action, local_step, get_alt_inputs=False):
     decoder_inputs: A 2-D list of tensor inputs.
     action: A tensor of shape [batch_size]. Each element corresponds to an index
       of decoder_inputs to choose.
-    step: The current timestep.
+    local_step: The current timestep.
+    is_training: boolean, whether the network is training. When using learned
+      selection, attempts exploration if training.
+    is_quantized: flag to enable/disable quantization mode.
     get_alt_inputs: Whether the non-chosen inputs should also be returned.
 
   Returns:
@@ -216,13 +223,19 @@ def select_inputs(decoder_inputs, action, local_step, get_alt_inputs=False):
       [decoder_inputs[seq_index][local_step] for seq_index in range(num_seqs)],
       axis=-1)
   action_index = tf.one_hot(action, num_seqs)
-  inputs = tf.reduce_sum(stacked_inputs * action_index, axis=-1)
+  selected_inputs = (
+      lstm_utils.quantize_op(stacked_inputs * action_index, is_training,
+                             is_quantized, scope='quant_selected_inputs'))
+  inputs = tf.reduce_sum(selected_inputs, axis=-1)
   inputs_alt = None
   # Only works for 2 models.
   if get_alt_inputs:
     # Reverse of action_index.
     action_index_alt = tf.one_hot(action, num_seqs, on_value=0.0, off_value=1.0)
-    inputs_alt = tf.reduce_sum(stacked_inputs * action_index_alt, axis=-1)
+    selected_inputs = (
+        lstm_utils.quantize_op(stacked_inputs * action_index_alt, is_training,
+                               is_quantized, scope='quant_selected_inputs_alt'))
+    inputs_alt = tf.reduce_sum(selected_inputs, axis=-1)
   return inputs, inputs_alt
 
 def select_state(previous_state, new_state, action):
