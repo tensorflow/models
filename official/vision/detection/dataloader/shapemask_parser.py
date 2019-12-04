@@ -265,7 +265,7 @@ class Parser(object):
 
     # Resizes and crops boxes and masks.
     boxes = input_utils.resize_and_crop_boxes(
-        boxes, image_scale, self._output_size, offset)
+        boxes, image_scale, image_info[1, :], offset)
 
     # Filters out ground truth boxes that are all zeros.
     indices = box_utils.get_non_empty_box_indices(boxes)
@@ -422,7 +422,7 @@ class Parser(object):
 
     # Resizes and crops boxes and masks.
     boxes = input_utils.resize_and_crop_boxes(
-        boxes, image_scale, self._output_size, offset)
+        boxes, image_scale, image_info[1, :], offset)
     masks = input_utils.resize_and_crop_masks(
         tf.expand_dims(masks, axis=-1), image_scale, self._output_size, offset)
 

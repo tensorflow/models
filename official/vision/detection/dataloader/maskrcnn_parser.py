@@ -231,7 +231,7 @@ class Parser(object):
     image_scale = image_info[2, :]
     offset = image_info[3, :]
     boxes = input_utils.resize_and_crop_boxes(
-        boxes, image_scale, (image_height, image_width), offset)
+        boxes, image_scale, image_info[1, :], offset)
 
     # Filters out ground truth boxes that are all zeros.
     indices = box_utils.get_non_empty_box_indices(boxes)
@@ -239,10 +239,10 @@ class Parser(object):
     classes = tf.gather(classes, indices)
     if self._include_mask:
       masks = tf.gather(masks, indices)
-      cropped_boxes = boxes + tf.cast(
-          tf.tile(tf.expand_dims(offset, axis=0), [1, 2]), dtype=tf.float32)
-      cropped_boxes = box_utils.normalize_boxes(
-          cropped_boxes, image_info[1, :])
+      # Transfer boxes to the original image space and do normalization.
+      cropped_boxes = boxes + tf.tile(tf.expand_dims(offset, axis=0), [1, 2])
+      cropped_boxes /= tf.tile(tf.expand_dims(image_scale, axis=0), [1, 2])
+      cropped_boxes = box_utils.normalize_boxes(cropped_boxes, image_shape)
       num_masks = tf.shape(masks)[0]
       masks = tf.image.crop_and_resize(
           tf.expand_dims(masks, axis=-1),

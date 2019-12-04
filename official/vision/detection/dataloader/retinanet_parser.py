@@ -249,7 +249,7 @@ class Parser(object):
     image_scale = image_info[2, :]
     offset = image_info[3, :]
     boxes = input_utils.resize_and_crop_boxes(
-        boxes, image_scale, (image_height, image_width), offset)
+        boxes, image_scale, image_info[1, :], offset)
     # Filters out ground truth boxes that are all zeros.
     indices = box_utils.get_non_empty_box_indices(boxes)
     boxes = tf.gather(boxes, indices)
@@ -309,7 +309,7 @@ class Parser(object):
     image_scale = image_info[2, :]
     offset = image_info[3, :]
     boxes = input_utils.resize_and_crop_boxes(
-        boxes, image_scale, (image_height, image_width), offset)
+        boxes, image_scale, image_info[1, :], offset)
     # Filters out ground truth boxes that are all zeros.
     indices = box_utils.get_non_empty_box_indices(boxes)
     boxes = tf.gather(boxes, indices)
@@ -412,7 +412,7 @@ class Parser(object):
       image_scale = image_info[2, :]
       offset = image_info[3, :]
       boxes = input_utils.resize_and_crop_boxes(
-          boxes, image_scale, (image_height, image_width), offset)
+          boxes, image_scale, image_info[1, :], offset)
       # Filters out ground truth boxes that are all zeros.
       indices = box_utils.get_non_empty_box_indices(boxes)
       boxes = tf.gather(boxes, indices)

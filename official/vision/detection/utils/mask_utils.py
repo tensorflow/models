@@ -89,10 +89,10 @@ def paste_instance_masks(masks,
     mask = cv2.resize(padded_mask, (w, h))
     mask = np.array(mask > 0.5, dtype=np.uint8)
 
-    x_0 = max(ref_box[0], 0)
-    x_1 = min(ref_box[2] + 1, image_width)
-    y_0 = max(ref_box[1], 0)
-    y_1 = min(ref_box[3] + 1, image_height)
+    x_0 = min(max(ref_box[0], 0), image_width)
+    x_1 = min(max(ref_box[2] + 1, 0), image_width)
+    y_0 = min(max(ref_box[1], 0), image_height)
+    y_1 = min(max(ref_box[3] + 1, 0), image_height)
 
     im_mask[y_0:y_1, x_0:x_1] = mask[
         (y_0 - ref_box[1]):(y_1 - ref_box[1]),
