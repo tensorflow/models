@@ -246,24 +246,6 @@ def parse_record(raw_record, is_training, dtype):
   return image, label
 
 
-def get_parse_record_fn(use_keras_image_data_format=False):
-  """Get function to use for parsing the records.
-
-  Args:
-    use_keras_image_data_format: A boolean denoting whether data format is keras
-      backend image data format.
-  Returns:
-    Function to use for parsing the records.
-  """
-  def parse_record_fn(raw_record, is_training, dtype):
-    image, label = parse_record(raw_record, is_training, dtype)
-    if use_keras_image_data_format:
-      if tf.keras.backend.image_data_format() == 'channels_first':
-        image = tf.transpose(image, perm=[2, 0, 1])
-    return image, label
-  return parse_record_fn
-
-
 def input_fn(is_training,
              data_dir,
              batch_size,
