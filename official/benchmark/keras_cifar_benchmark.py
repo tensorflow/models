@@ -123,7 +123,6 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     """Test keras based model with eager and no dist strat."""
     self._setup()
     FLAGS.num_gpus = 1
-    FLAGS.explicit_gpu_placement = True
     FLAGS.data_dir = self.data_dir
     FLAGS.batch_size = 128
     FLAGS.train_epochs = 182
