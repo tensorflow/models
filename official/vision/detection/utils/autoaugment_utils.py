@@ -14,13 +14,9 @@
 # ==============================================================================
 """AutoAugment util file."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import inspect
 import math
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_addons as tfa
 import six
 
