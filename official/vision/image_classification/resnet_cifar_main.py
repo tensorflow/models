@@ -83,7 +83,11 @@ def run(flags_obj):
 
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
-    common.set_gpu_thread_mode_and_count(flags_obj)
+    keras_utils.set_gpu_thread_mode_and_count(
+        per_gpu_thread_count=flags_obj.per_gpu_thread_count,
+        gpu_thread_mode=flags_obj.tf_gpu_thread_mode,
+        num_gpus=flags_obj.num_gpus,
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads)
   common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)

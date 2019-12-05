@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import multiprocessing
 import os
 
 from absl import flags
@@ -172,32 +171,6 @@ class PiecewiseConstantDecayWithWarmup(
         'compute_lr_on_cpu': self.compute_lr_on_cpu,
         'name': self.name
     }
-
-
-def set_gpu_thread_mode_and_count(flags_obj):
-  """Set GPU thread mode and count, and adjust dataset threads count."""
-  cpu_count = multiprocessing.cpu_count()
-  tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
-
-  # Allocate private thread pool for each GPU to schedule and launch kernels
-  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 2
-  os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
-  os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
-                            os.environ['TF_GPU_THREAD_COUNT'])
-  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
-                            os.environ['TF_GPU_THREAD_MODE'])
-
-  # Limit data preprocessing threadpool to CPU cores minus number of total GPU
-  # private threads and memory copy threads.
-  total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
-  num_runtime_threads = flags_obj.num_gpus
-  if not flags_obj.datasets_num_private_threads:
-    flags_obj.datasets_num_private_threads = min(
-        cpu_count - total_gpu_thread_count - num_runtime_threads,
-        flags_obj.num_gpus * 8)
-    tf.compat.v1.logging.info('Set datasets_num_private_threads to %s',
-                              flags_obj.datasets_num_private_threads)
 
 
 def get_optimizer(learning_rate=0.1):
