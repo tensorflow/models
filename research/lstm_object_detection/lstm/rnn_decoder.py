@@ -19,6 +19,15 @@ import tensorflow as tf
 import lstm_object_detection.lstm.utils as lstm_utils
 
 
+class _NoVariableScope(object):
+
+  def __enter__(self):
+    return
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    return False
+
+
 def rnn_decoder(decoder_inputs,
                 initial_state,
                 cell,
@@ -39,7 +48,7 @@ def rnn_decoder(decoder_inputs,
         * prev is a 2D Tensor of shape [batch_size x output_size],
         * i is an integer, the step number (when advanced control is needed),
         * next is a 2D Tensor of shape [batch_size x input_size].
-    scope: VariableScope for the created subgraph; defaults to "rnn_decoder".
+    scope: optional VariableScope for the created subgraph.
   Returns:
     A tuple of the form (outputs, state), where:
       outputs: A list of the same length as decoder_inputs of 4D Tensors with
@@ -48,7 +57,7 @@ def rnn_decoder(decoder_inputs,
         cell at each time-step. It is a 2D Tensor of shape
         [batch_size x cell.state_size].
   """
-  with tf.variable_scope(scope or 'rnn_decoder'):
+  with tf.variable_scope(scope) if scope else _NoVariableScope():
     state_tuple = initial_state
     outputs = []
     states = []
@@ -101,7 +110,7 @@ def multi_input_rnn_decoder(decoder_inputs,
       Useful when input sequences have differing numbers of channels. Final
       bottlenecks will have the same dimension.
     flatten_state: Whether the LSTM state is flattened.
-    scope: VariableScope for the created subgraph; defaults to "rnn_decoder".
+    scope: optional VariableScope for the created subgraph.
   Returns:
     A tuple of the form (outputs, state), where:
       outputs: A list of the same length as decoder_inputs of 2D Tensors with
@@ -115,7 +124,7 @@ def multi_input_rnn_decoder(decoder_inputs,
   """
   if flatten_state and len(decoder_inputs[0]) > 1:
     raise ValueError('In export mode, unroll length should not be more than 1')
-  with tf.variable_scope(scope or 'rnn_decoder'):
+  with tf.variable_scope(scope) if scope else _NoVariableScope():
     state_tuple = initial_state
     outputs = []
     states = []
