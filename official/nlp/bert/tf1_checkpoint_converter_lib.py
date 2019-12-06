@@ -94,13 +94,13 @@ def _get_permutation(name, permutations):
 
 def _get_new_shape(name, shape, num_heads):
   """Checks whether a variable requires reshape by pattern matching."""
-  if "attention/output/dense/kernel" in name:
+  if "self_attention_output/kernel" in name:
     return tuple([num_heads, shape[0] // num_heads, shape[1]])
-  if "attention/output/dense/bias" in name:
+  if "self_attention_output/bias" in name:
     return shape
 
   patterns = [
-      "attention/self/query", "attention/self/value", "attention/self/key"
+      "self_attention/query", "self_attention/value", "self_attention/key"
   ]
   for pattern in patterns:
     if pattern in name:
@@ -161,7 +161,7 @@ def convert(checkpoint_from_path,
       # See if we need to reshape the underlying tensor.
       new_shape = None
       if num_heads > 0:
-        new_shape = _get_new_shape(var_name, tensor.shape, num_heads)
+        new_shape = _get_new_shape(new_var_name, tensor.shape, num_heads)
       if new_shape:
         tf.logging.info("Veriable %s has a shape change from %s to %s",
 

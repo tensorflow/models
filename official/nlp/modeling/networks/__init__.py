@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Networks package definition."""
+from official.nlp.modeling.networks.albert_transformer_encoder import AlbertTransformerEncoder
 from official.nlp.modeling.networks.classification import Classification
 from official.nlp.modeling.networks.masked_lm import MaskedLM
 from official.nlp.modeling.networks.span_labeling import SpanLabeling
