@@ -80,16 +80,21 @@ def quantizable_concat(inputs,
       else:
         concat_tensors = tf.concat(inputs, axis=axis)
         tf.logging.info('concat_tensors: {}'.format(concat_tensors))
+        # TFLite requires that 0.0 is always in the [min; max] range.
+        range_min = tf.minimum(
+            tf.reduce_min(concat_tensors), 0.0, name='SafeQuantRangeMin')
+        range_max = tf.maximum(
+            tf.reduce_max(concat_tensors), 0.0, name='SafeQuantRangeMax')
         # Otherwise we need to keep track of the moving averages of the min and
         # of the elements of the input tensor max.
         min_val = moving_averages.assign_moving_average(
             min_var,
-            tf.reduce_min(concat_tensors),
+            range_min,
             ema_decay,
             name='AssignMinEma')
         max_val = moving_averages.assign_moving_average(
             max_var,
-            tf.reduce_max(concat_tensors),
+            range_max,
             ema_decay,
             name='AssignMaxEma')
         tf.logging.info('min_val: {}'.format(min_val))
@@ -202,10 +207,13 @@ def quantize_op(inputs,
       min_var = _quant_var('min', default_min)
       max_var = _quant_var('max', default_max)
       if is_training:
+        # TFLite requires that 0.0 is always in the [min; max] range.
+        range_min = tf.minimum(tf.reduce_min(inputs), 0.0, 'SafeQuantRangeMin')
+        range_max = tf.maximum(tf.reduce_max(inputs), 0.0, 'SafeQuantRangeMax')
         min_val = moving_averages.assign_moving_average(
-            min_var, tf.reduce_min(inputs), ema_decay, name='AssignMinEma')
+            min_var, range_min, ema_decay, name='AssignMinEma')
         max_val = moving_averages.assign_moving_average(
-            max_var, tf.reduce_max(inputs), ema_decay, name='AssignMaxEma')
+            max_var, range_max, ema_decay, name='AssignMaxEma')
         inputs = tf.fake_quant_with_min_max_vars(inputs, min_val, max_val)
       else:
         inputs = tf.fake_quant_with_min_max_vars(inputs, min_var, max_var)

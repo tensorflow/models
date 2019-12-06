@@ -409,7 +409,7 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
           if self._use_batch_norm:
             b_x = lstm_utils.quantizable_separable_conv2d(
                 inputs,
-                self._num_units / self._groups,
+                self._num_units // self._groups,
                 self._filter_size,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
@@ -418,7 +418,7 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
                 scope='bottleneck_%d_x' % k)
             b_h = lstm_utils.quantizable_separable_conv2d(
                 h_list[k],
-                self._num_units / self._groups,
+                self._num_units // self._groups,
                 self._filter_size,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
@@ -439,13 +439,13 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
             bottleneck_concat = lstm_utils.quantizable_concat(
                 [inputs, h_list[k]],
                 axis=3,
-                is_training=self._is_training,
+                is_training=False,
                 is_quantized=self._is_quantized,
                 scope='bottleneck_%d/quantized_concat' % k)
 
             bottleneck = lstm_utils.quantizable_separable_conv2d(
                 bottleneck_concat,
-                self._num_units / self._groups,
+                self._num_units // self._groups,
                 self._filter_size,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
@@ -455,7 +455,7 @@ class GroupedConvLSTMCell(tf.contrib.rnn.RNNCell):
 
         concat = lstm_utils.quantizable_separable_conv2d(
             bottleneck,
-            4 * self._num_units / self._groups,
+            4 * self._num_units // self._groups,
             self._filter_size,
             is_quantized=self._is_quantized,
             depth_multiplier=1,
