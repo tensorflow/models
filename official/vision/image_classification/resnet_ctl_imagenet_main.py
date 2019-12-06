@@ -274,13 +274,12 @@ def run(flags_obj):
         num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
 
         if flags_obj.single_l2_loss_op:
-          filtered_variables = [
-              tf.reshape(v, (-1,))
+          l2_loss = resnet_model.L2_WEIGHT_DECAY * 2 * tf.add_n([
+              tf.nn.l2_loss(v)
               for v in trainable_variables
               if 'bn' not in v.name
-          ]
-          l2_loss = resnet_model.L2_WEIGHT_DECAY * 2 * tf.nn.l2_loss(
-              tf.concat(filtered_variables, axis=0))
+          ])
+
           loss += (l2_loss / num_replicas)
         else:
           loss += (tf.reduce_sum(model.losses) / num_replicas)
