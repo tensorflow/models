@@ -179,10 +179,6 @@ def get_config_proto_v1(enable_xla=False):
     config = tf.compat.v1.ConfigProto()
     config.graph_options.optimizer_options.global_jit_level = (
         tf.OptimizerOptions.ON_2)
-    # Disable PinToHostOptimizer in grappler when enabling XLA because it causes
-    # OOM and performance regression.
-    config.graph_options.rewrite_options.pin_to_host_optimization = (
-        rewriter_config_pb2.RewriterConfig.OFF)
   return config
 
 
@@ -190,11 +186,6 @@ def set_config_v2(enable_xla=False):
   """Config eager context according to flag values using TF 2.0 API."""
   if enable_xla:
     tf.config.optimizer.set_jit(True)
-    # Disable PinToHostOptimizer in grappler when enabling XLA because it
-    # causes OOM and performance regression.
-    tf.config.optimizer.set_experimental_options(
-        {'pin_to_host_optimization': False}
-    )
 
 
 def is_v2_0():
