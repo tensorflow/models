@@ -241,7 +241,7 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
                          'not equal!')
 
     with slim.arg_scope(self._conv_hyperparams_fn()):
-      with tf.variable_scope('LSTM', reuse=self._reuse_weights) as lstm_scope:
+      with tf.variable_scope('LSTM', reuse=self._reuse_weights):
         output_size = (large_base_feature_shape[1], large_base_feature_shape[2])
         lstm_cell, init_state, step = self.create_lstm_cell(
             batch_size, output_size, state_saver, state_name)
@@ -257,9 +257,10 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
             step,
             selection_strategy=self._interleave_method,
             is_training=self._is_training,
+            is_quantized=self._is_quantized,
             pre_bottleneck=self._pre_bottleneck,
             flatten_state=self._flatten_state,
-            scope=lstm_scope)
+            scope=None)
         self._states_out = states_out
 
       batcher_ops = None
