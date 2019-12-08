@@ -20,8 +20,8 @@ import os
 import tensorflow as tf
 from tensorflow.contrib import slim
 
-import fsns
-import unittest_utils
+from datasets import fsns
+from datasets import unittest_utils
 
 FLAGS = tf.flags.FLAGS
 

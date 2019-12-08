@@ -15,7 +15,7 @@
 
 """Functions to make unit testing easier."""
 
-import StringIO
+from io import StringIO
 import numpy as np
 from PIL import Image as PILImage
 import tensorflow as tf

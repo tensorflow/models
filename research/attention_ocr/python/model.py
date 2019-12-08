@@ -63,7 +63,7 @@ EncodeCoordinatesParams = collections.namedtuple('EncodeCoordinatesParams', [
 def _dict_to_array(id_to_char, default_character):
   num_char_classes = max(id_to_char.keys()) + 1
   array = [default_character] * num_char_classes
-  for k, v in id_to_char.iteritems():
+  for k, v in id_to_char.items():
     array[k] = v
   return array
 
