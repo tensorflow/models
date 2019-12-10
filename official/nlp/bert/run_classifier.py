@@ -287,7 +287,11 @@ def run_bert(strategy,
              train_input_fn=None,
              eval_input_fn=None):
   """Run BERT training."""
-  bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+  if FLAGS.model_type == 'bert':
+    bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+  else:
+    assert FLAGS.model_type == 'albert'
+    bert_config = modeling.AlbertConfig.from_json_file(FLAGS.bert_config_file)
   if FLAGS.mode == 'export_only':
     # As Keras ModelCheckpoint callback used with Keras compile/fit() API
     # internally uses model.save_weights() to save checkpoints, we must

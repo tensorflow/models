@@ -22,6 +22,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.modeling import tf_utils
+from official.nlp import bert_modeling
 from official.nlp.modeling import losses
 from official.nlp.modeling import networks
 from official.nlp.modeling.networks import bert_classifier
@@ -139,14 +140,14 @@ def _get_transformer_encoder(bert_config,
   """Gets a 'TransformerEncoder' object.
 
   Args:
-    bert_config: A 'modeling.BertConfig' object.
+    bert_config: A 'modeling.BertConfig' or 'modeling.AlbertConfig' object.
     sequence_length: Maximum sequence length of the training data.
     float_dtype: tf.dtype, tf.float32 or tf.float16.
 
   Returns:
     A networks.TransformerEncoder object.
   """
-  return networks.TransformerEncoder(
+  kwargs = dict(
       vocab_size=bert_config.vocab_size,
       hidden_size=bert_config.hidden_size,
       num_layers=bert_config.num_hidden_layers,
@@ -161,6 +162,12 @@ def _get_transformer_encoder(bert_config,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range),
       float_dtype=float_dtype.name)
+  if isinstance(bert_config, bert_modeling.AlbertConfig):
+    kwargs['embedding_width'] = bert_config.embedding_size
+    return networks.AlbertTransformerEncoder(**kwargs)
+  else:
+    assert isinstance(bert_config, bert_modeling.BertConfig)
+    return networks.TransformerEncoder(**kwargs)
 
 
 def pretrain_model(bert_config,
@@ -332,7 +339,8 @@ def classifier_model(bert_config,
   maximum sequence length `max_seq_length`.
 
   Args:
-    bert_config: BertConfig, the config defines the core BERT model.
+    bert_config: BertConfig or AlbertConfig, the config defines the core
+      BERT or ALBERT model.
     float_type: dtype, tf.float32 or tf.bfloat16.
     num_labels: integer, the number of classes.
     max_seq_length: integer, the maximum input sequence length.
