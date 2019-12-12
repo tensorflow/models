@@ -69,6 +69,8 @@ installable Official Models package. This is being tracked in
 
 ## Available models
 
+**NOTE: For Officially Supported TPU models please check [README-TPU](README-TPU.md).**
+
 **NOTE:** Please make sure to follow the steps in the
 [Requirements](#requirements) section.
 
@@ -88,7 +90,7 @@ installable Official Models package. This is being tracked in
     the MNIST dataset.
 *   [resnet](vision/image_classification): A deep residual network that can be
     used to classify both CIFAR-10 and ImageNet's dataset of 1000 classes.
-*   [retinanet](vision/detection): A fast and power detector.
+*   [retinanet](vision/detection): A fast and powerful object detector.
 
 ### Others
 
