@@ -260,7 +260,7 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     FLAGS.num_gpus = self.num_gpus
     FLAGS.params_override = json.dumps(params)
     FLAGS.model_dir = self._get_model_dir('real_benchmark_1_gpu_coco')
-    FLAGS.strategy_type = 'one_device_gpu'
+    FLAGS.strategy_type = 'one_device'
     # Use negative value to avoid saving checkpoints.
     FLAGS.save_checkpoint_freq = -1
     if self.timer_callback is None:
@@ -281,7 +281,7 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     FLAGS.num_gpus = self.num_gpus
     FLAGS.params_override = json.dumps(params)
     FLAGS.model_dir = self._get_model_dir('real_benchmark_1_gpu_coco')
-    FLAGS.strategy_type = 'one_device_gpu'
+    FLAGS.strategy_type = 'one_device'
     FLAGS.enable_xla = True
     # Use negative value to avoid saving checkpoints.
     FLAGS.save_checkpoint_freq = -1
