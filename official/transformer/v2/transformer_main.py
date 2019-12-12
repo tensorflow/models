@@ -164,6 +164,8 @@ class TransformerTask(object):
     self.distribution_strategy = distribution_utils.get_distribution_strategy(
         distribution_strategy=flags_obj.distribution_strategy,
         num_gpus=num_gpus,
+        all_reduce_alg=flags_obj.all_reduce_alg,
+        num_packs=flags_obj.num_packs,
         tpu_address=flags_obj.tpu or "")
     if self.use_tpu:
       params["num_replicas"] = self.distribution_strategy.num_replicas_in_sync
@@ -464,6 +466,14 @@ def main(_):
   flags_obj = flags.FLAGS
   with logger.benchmark_context(flags_obj):
     task = TransformerTask(flags_obj)
+
+    # Execute flag override logic for better model performance
+    if flags_obj.tf_gpu_thread_mode:
+      keras_utils.set_gpu_thread_mode_and_count(
+          per_gpu_thread_count=flags_obj.per_gpu_thread_count,
+          gpu_thread_mode=flags_obj.tf_gpu_thread_mode,
+          num_gpus=flags_obj.num_gpus,
+          datasets_num_private_threads=flags_obj.datasets_num_private_threads)
 
     if flags_obj.mode == "train":
       task.train()

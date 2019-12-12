@@ -71,6 +71,9 @@ def define_transformer_flags():
       dtype=True,
       loss_scale=True,
       all_reduce_alg=True,
+      num_packs=True,
+      tf_gpu_thread_mode=True,
+      datasets_num_private_threads=True,
       enable_xla=True,
       force_v2_in_keras_compile=True,
       fp16_implementation=True
@@ -86,7 +89,7 @@ def define_transformer_flags():
            'convolutions and batch normalizations, and this flag allows to '
            'disable it.'
   )
-    
+
   flags_core.define_benchmark()
   flags_core.define_device(tpu=True)
 
