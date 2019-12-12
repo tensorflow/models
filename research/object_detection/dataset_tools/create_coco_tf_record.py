@@ -25,6 +25,7 @@ Example usage:
       --train_annotations_file="${TRAIN_ANNOTATIONS_FILE}" \
       --val_annotations_file="${VAL_ANNOTATIONS_FILE}" \
       --testdev_annotations_file="${TESTDEV_ANNOTATIONS_FILE}" \
+      --include_masks = ${BOOLEAN_VALUE} \ 
       --output_dir="${OUTPUT_DIR}"
 """
 from __future__ import absolute_import
