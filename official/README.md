@@ -48,7 +48,8 @@ Please follow the below steps before running models in this repo:
   Using Colab:
 
   ```python
-  import os os.environ['PYTHONPATH'] += ":/path/to/models"
+  import os
+  os.environ['PYTHONPATH'] += ":/path/to/models"
   ```
 
 3.  Install dependencies:
