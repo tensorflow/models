@@ -53,7 +53,6 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
-from tensorflow.contrib import estimator as contrib_estimator
 from official.utils.flags._conventions import help_wrap
 from official.utils.logs import logger
 
@@ -230,7 +229,7 @@ def train_boosted_trees(flags_obj):
 
   # Though BoostedTreesClassifier is under tf.estimator, faster in-memory
   # training is yet provided as a contrib library.
-  classifier = contrib_estimator.boosted_trees_classifier_train_in_memory(
+  classifier = tf.contrib.estimator.boosted_trees_classifier_train_in_memory(
       train_input_fn,
       feature_columns,
       model_dir=flags_obj.model_dir or None,

@@ -23,7 +23,6 @@ import os
 import random
 import string
 import tensorflow as tf
-from tensorflow.contrib import distribute as contrib_distribute
 
 from official.utils.misc import tpu_lib
 
@@ -286,9 +285,10 @@ def set_up_synthetic_data():
       tf.distribute.experimental.MultiWorkerMirroredStrategy)
   # TODO(tobyboyd): Remove when contrib.distribute is all in core.
   if hasattr(tf, 'contrib'):
-    _monkey_patch_dataset_method(contrib_distribute.MirroredStrategy)
-    _monkey_patch_dataset_method(contrib_distribute.OneDeviceStrategy)
-    _monkey_patch_dataset_method(contrib_distribute.CollectiveAllReduceStrategy)
+    _monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
+    _monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
+    _monkey_patch_dataset_method(
+        tf.contrib.distribute.CollectiveAllReduceStrategy)
   else:
     print('Contrib missing: Skip monkey patch tf.contrib.distribute.*')
 
@@ -300,10 +300,10 @@ def undo_set_up_synthetic_data():
       tf.distribute.experimental.MultiWorkerMirroredStrategy)
   # TODO(tobyboyd): Remove when contrib.distribute is all in core.
   if hasattr(tf, 'contrib'):
-    _undo_monkey_patch_dataset_method(contrib_distribute.MirroredStrategy)
-    _undo_monkey_patch_dataset_method(contrib_distribute.OneDeviceStrategy)
+    _undo_monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
+    _undo_monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
     _undo_monkey_patch_dataset_method(
-        contrib_distribute.CollectiveAllReduceStrategy)
+        tf.contrib.distribute.CollectiveAllReduceStrategy)
   else:
     print('Contrib missing: Skip remove monkey patch tf.contrib.distribute.*')
 

@@ -33,8 +33,6 @@ import tensorflow as tf
 
 # For open source environment, add grandparent directory for import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(sys.path[0]))))
-from tensorflow.contrib import cluster_resolver as contrib_cluster_resolver
-from tensorflow.contrib import tpu as contrib_tpu
 
 from official.r1.mnist import dataset  # pylint: disable=wrong-import-position
 from official.r1.mnist import mnist  # pylint: disable=wrong-import-position
@@ -100,7 +98,7 @@ def model_fn(features, labels, mode, params):
         'class_ids': tf.argmax(logits, axis=1),
         'probabilities': tf.nn.softmax(logits),
     }
-    return contrib_tpu.TPUEstimatorSpec(mode, predictions=predictions)
+    return tf.contrib.tpu.TPUEstimatorSpec(mode, predictions=predictions)
 
   logits = model(image, training=(mode == tf.estimator.ModeKeys.TRAIN))
   loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
@@ -113,14 +111,14 @@ def model_fn(features, labels, mode, params):
         decay_rate=0.96)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
     if FLAGS.use_tpu:
-      optimizer = contrib_tpu.CrossShardOptimizer(optimizer)
-    return contrib_tpu.TPUEstimatorSpec(
+      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+    return tf.contrib.tpu.TPUEstimatorSpec(
         mode=mode,
         loss=loss,
         train_op=optimizer.minimize(loss, tf.train.get_global_step()))
 
   if mode == tf.estimator.ModeKeys.EVAL:
-    return contrib_tpu.TPUEstimatorSpec(
+    return tf.contrib.tpu.TPUEstimatorSpec(
         mode=mode, loss=loss, eval_metrics=(metric_fn, [labels, logits]))
 
 
@@ -155,18 +153,21 @@ def main(argv):
   del argv  # Unused.
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  tpu_cluster_resolver = contrib_cluster_resolver.TPUClusterResolver(
-      FLAGS.tpu, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
+  tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+      FLAGS.tpu,
+      zone=FLAGS.tpu_zone,
+      project=FLAGS.gcp_project
+  )
 
-  run_config = contrib_tpu.RunConfig(
+  run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
       model_dir=FLAGS.model_dir,
       session_config=tf.ConfigProto(
           allow_soft_placement=True, log_device_placement=True),
-      tpu_config=contrib_tpu.TPUConfig(FLAGS.iterations, FLAGS.num_shards),
+      tpu_config=tf.contrib.tpu.TPUConfig(FLAGS.iterations, FLAGS.num_shards),
   )
 
-  estimator = contrib_tpu.TPUEstimator(
+  estimator = tf.contrib.tpu.TPUEstimator(
       model_fn=model_fn,
       use_tpu=FLAGS.use_tpu,
       train_batch_size=FLAGS.batch_size,

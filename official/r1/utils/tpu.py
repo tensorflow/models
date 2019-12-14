@@ -15,7 +15,6 @@
 """Functions specific to running TensorFlow on TPUs."""
 
 import tensorflow as tf
-from tensorflow.contrib import summary as contrib_summary
 
 
 # "local" is a magic word in the TPU cluster resolver; it informs the resolver
@@ -59,13 +58,13 @@ def construct_scalar_host_call(metric_dict, model_dir, prefix=""):
       List of summary ops to run on the CPU host.
     """
     step = global_step[0]
-    with contrib_summary.create_file_writer(
+    with tf.contrib.summary.create_file_writer(
         logdir=model_dir, filename_suffix=".host_call").as_default():
-      with contrib_summary.always_record_summaries():
+      with tf.contrib.summary.always_record_summaries():
         for i, name in enumerate(metric_names):
-          contrib_summary.scalar(prefix + name, args[i][0], step=step)
+          tf.contrib.summary.scalar(prefix + name, args[i][0], step=step)
 
-        return contrib_summary.all_summary_ops()
+        return tf.contrib.summary.all_summary_ops()
 
   # To log the current learning rate, and gradient norm for Tensorboard, the
   # summary op needs to be run on the host CPU via host_call. host_call

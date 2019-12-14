@@ -30,7 +30,6 @@ import os
 
 from absl import flags
 import tensorflow as tf
-from tensorflow.contrib import opt as contrib_opt
 
 from official.r1.resnet import imagenet_preprocessing
 from official.r1.resnet import resnet_model
@@ -446,7 +445,7 @@ def resnet_model_fn(features, labels, mode, model_class,
     tf.compat.v1.summary.scalar('learning_rate', learning_rate)
 
     if flags.FLAGS.enable_lars:
-      optimizer = contrib_opt.LARSOptimizer(
+      optimizer = tf.contrib.opt.LARSOptimizer(
           learning_rate,
           momentum=momentum,
           weight_decay=weight_decay,

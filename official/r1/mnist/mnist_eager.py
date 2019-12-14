@@ -33,7 +33,6 @@ import time
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
-from tensorflow.contrib import summary as contrib_summary
 from tensorflow.python import eager as tfe
 # pylint: enable=g-bad-import-order
 
@@ -62,7 +61,7 @@ def train(model, optimizer, dataset, step_counter, log_interval=None):
 
   start = time.time()
   for (batch, (images, labels)) in enumerate(dataset):
-    with contrib_summary.record_summaries_every_n_global_steps(
+    with tf.contrib.summary.record_summaries_every_n_global_steps(
         10, global_step=step_counter):
       # Record the operations used to compute the loss given the input,
       # so that the gradient of the loss with respect to the variables
@@ -70,8 +69,8 @@ def train(model, optimizer, dataset, step_counter, log_interval=None):
       with tf.GradientTape() as tape:
         logits = model(images, training=True)
         loss_value = loss(logits, labels)
-        contrib_summary.scalar('loss', loss_value)
-        contrib_summary.scalar('accuracy', compute_accuracy(logits, labels))
+        tf.contrib.summary.scalar('loss', loss_value)
+        tf.contrib.summary.scalar('accuracy', compute_accuracy(logits, labels))
       grads = tape.gradient(loss_value, model.variables)
       optimizer.apply_gradients(
           zip(grads, model.variables), global_step=step_counter)
@@ -94,9 +93,9 @@ def test(model, dataset):
         tf.cast(labels, tf.int64))
   print('Test set: Average loss: %.4f, Accuracy: %4f%%\n' %
         (avg_loss.result(), 100 * accuracy.result()))
-  with contrib_summary.always_record_summaries():
-    contrib_summary.scalar('loss', avg_loss.result())
-    contrib_summary.scalar('accuracy', accuracy.result())
+  with tf.contrib.summary.always_record_summaries():
+    tf.contrib.summary.scalar('loss', avg_loss.result())
+    tf.contrib.summary.scalar('accuracy', accuracy.result())
 
 
 def run_mnist_eager(flags_obj):
@@ -138,9 +137,9 @@ def run_mnist_eager(flags_obj):
   else:
     train_dir = None
     test_dir = None
-  summary_writer = contrib_summary.create_file_writer(
+  summary_writer = tf.contrib.summary.create_file_writer(
       train_dir, flush_millis=10000)
-  test_summary_writer = contrib_summary.create_file_writer(
+  test_summary_writer = tf.contrib.summary.create_file_writer(
       test_dir, flush_millis=10000, name='test')
 
   # Create and restore checkpoint (if one exists on the path)

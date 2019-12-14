@@ -37,7 +37,6 @@ import sys
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-from tensorflow.contrib import tpu as contrib_tpu
 
 from official.recommendation import constants as rconst
 from official.recommendation import movielens
@@ -117,7 +116,7 @@ def neumf_model_fn(features, labels, mode, params):
         epsilon=params["epsilon"])
     if params["use_tpu"]:
       # TODO(seemuch): remove this contrib import
-      optimizer = contrib_tpu.CrossShardOptimizer(optimizer)
+      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
@@ -275,7 +274,7 @@ def _get_estimator_spec_with_metrics(logits,              # type: tf.Tensor
       use_tpu_spec)
 
   if use_tpu_spec:
-    return contrib_tpu.TPUEstimatorSpec(
+    return tf.contrib.tpu.TPUEstimatorSpec(
         mode=tf.estimator.ModeKeys.EVAL,
         loss=cross_entropy,
         eval_metrics=(metric_fn, [in_top_k, ndcg, metric_weights]))
