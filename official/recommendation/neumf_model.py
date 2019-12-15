@@ -115,8 +115,7 @@ def neumf_model_fn(features, labels, mode, params):
         beta2=params["beta2"],
         epsilon=params["epsilon"])
     if params["use_tpu"]:
-      # TODO(seemuch): remove this contrib import
-      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+      optimizer = tf.compat.v1.tpu.CrossShardOptimizer(optimizer)
 
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
                             value=mlperf_helper.TAGS.BCE)
@@ -274,7 +273,7 @@ def _get_estimator_spec_with_metrics(logits,              # type: tf.Tensor
       use_tpu_spec)
 
   if use_tpu_spec:
-    return tf.contrib.tpu.TPUEstimatorSpec(
+    return tf.estimator.tpu.TPUEstimatorSpec(
         mode=tf.estimator.ModeKeys.EVAL,
         loss=cross_entropy,
         eval_metrics=(metric_fn, [in_top_k, ndcg, metric_weights]))
