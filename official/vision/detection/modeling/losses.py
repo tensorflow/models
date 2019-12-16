@@ -147,6 +147,7 @@ class RpnBoxLoss(object):
   """Region Proposal Network box regression loss function."""
 
   def __init__(self, params):
+    self._delta = params.huber_loss_delta
     self._huber_loss = tf.keras.losses.Huber(
         delta=params.huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
 
@@ -212,7 +213,7 @@ class FastrcnnClassLoss(object):
       a scalar tensor representing total class loss.
     """
     with tf.name_scope('fast_rcnn_loss'):
-      _, _, _, num_classes = class_outputs.get_shape().as_list()
+      _, _, num_classes = class_outputs.get_shape().as_list()
       class_targets = tf.cast(class_targets, dtype=tf.int32)
       class_targets_one_hot = tf.one_hot(class_targets, num_classes)
       return self._fast_rcnn_class_loss(class_outputs, class_targets_one_hot)
@@ -319,9 +320,6 @@ class FastrcnnBoxLoss(object):
 
 class MaskrcnnLoss(object):
   """Mask R-CNN instance segmentation mask loss function."""
-
-  def __init__(self):
-    raise ValueError('Not TF 2.0 ready.')
 
   def __call__(self, mask_outputs, mask_targets, select_class_targets):
     """Computes the mask loss of Mask-RCNN.

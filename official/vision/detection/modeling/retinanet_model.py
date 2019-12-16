@@ -56,7 +56,6 @@ class RetinanetModel(base_model.Model):
     self._generate_detections_fn = postprocess_ops.MultilevelDetectionGenerator(
         params.postprocess)
 
-    self._l2_weight_decay = params.train.l2_weight_decay
     self._transpose_input = params.train.transpose_input
     assert not self._transpose_input, 'Transpose input is not supportted.'
     # Input layer.
@@ -134,6 +133,7 @@ class RetinanetModel(base_model.Model):
     return self._keras_model
 
   def post_processing(self, labels, outputs):
+    # TODO(yeqing): Moves the output related part into build_outputs.
     required_output_fields = ['cls_outputs', 'box_outputs']
     for field in required_output_fields:
       if field not in outputs:

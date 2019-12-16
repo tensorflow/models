@@ -99,6 +99,7 @@ class Model(object):
         params.train.learning_rate)
 
     self._frozen_variable_prefix = params.train.frozen_variable_prefix
+    self._l2_weight_decay = params.train.l2_weight_decay
 
     # Checkpoint restoration.
     self._checkpoint = params.train.checkpoint.as_dict()

@@ -30,10 +30,11 @@ REGULARIZATION_VAR_REGEX = r'.*(kernel|weight):0$'
 BASE_CFG = {
     'model_dir': '',
     'use_tpu': True,
+    'strategy_type': 'tpu',
     'isolate_session_state': False,
     'train': {
         'iterations_per_loop': 100,
-        'train_batch_size': 64,
+        'batch_size': 64,
         'total_steps': 22500,
         'num_cores_per_replica': None,
         'input_partition_dims': None,
@@ -57,13 +58,13 @@ BASE_CFG = {
         'frozen_variable_prefix': RESNET_FROZEN_VAR_PREFIX,
         'train_file_pattern': '',
         'train_dataset_type': 'tfrecord',
-        'transpose_input': True,
+        'transpose_input': False,
         'regularization_variable_regex': REGULARIZATION_VAR_REGEX,
         'l2_weight_decay': 0.0001,
         'gradient_clip_norm': 0.0,
     },
     'eval': {
-        'eval_batch_size': 8,
+        'batch_size': 8,
         'eval_samples': 5000,
         'min_eval_interval': 180,
         'eval_timeout': None,

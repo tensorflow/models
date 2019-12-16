@@ -34,6 +34,7 @@ MASKRCNN_CFG.override({
     'maskrcnn_parser': {
         'use_bfloat16': True,
         'output_size': [1024, 1024],
+        'num_channels': 3,
         'rpn_match_threshold': 0.7,
         'rpn_unmatched_threshold': 0.3,
         'rpn_batch_size_per_im': 256,
