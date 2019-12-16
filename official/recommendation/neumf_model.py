@@ -93,7 +93,7 @@ def neumf_model_fn(features, labels, mode, params):
         duplicate_mask,
         params["num_neg"],
         params["match_mlperf"],
-        use_tpu_spec=params["use_xla_for_gpu"])
+        use_tpu_spec=params["use_tpu"])
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
@@ -269,8 +269,7 @@ def _get_estimator_spec_with_metrics(logits,              # type: tf.Tensor
       softmax_logits,
       duplicate_mask,
       num_training_neg,
-      match_mlperf,
-      use_tpu_spec)
+      match_mlperf)
 
   if use_tpu_spec:
     return tf.estimator.tpu.TPUEstimatorSpec(
@@ -285,13 +284,13 @@ def _get_estimator_spec_with_metrics(logits,              # type: tf.Tensor
   )
 
 
-def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
-                                         softmax_logits,      # type: tf.Tensor
-                                         duplicate_mask,      # type: tf.Tensor
-                                         num_training_neg,    # type: int
-                                         match_mlperf=False,  # type: bool
-                                         use_tpu_spec=False   # type: bool
-                                        ):
+def compute_eval_loss_and_metrics_helper(
+    logits,  # type: tf.Tensor
+    softmax_logits,  # type: tf.Tensor
+    duplicate_mask,  # type: tf.Tensor
+    num_training_neg,  # type: int
+    match_mlperf=False  # type: bool
+):
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -347,10 +346,6 @@ def compute_eval_loss_and_metrics_helper(logits,              # type: tf.Tensor
     num_training_neg: The number of negatives per positive during training.
 
     match_mlperf: Use the MLPerf reference convention for computing rank.
-
-    use_tpu_spec: Should a TPUEstimatorSpec be returned instead of an
-      EstimatorSpec. Required for TPUs and if XLA is done on a GPU. Despite its
-      name, TPUEstimatorSpecs work with GPUs
 
   Returns:
     cross_entropy: the loss

@@ -94,7 +94,6 @@ def parse_flags(flags_obj):
       "beta2": flags_obj.beta2,
       "epsilon": flags_obj.epsilon,
       "match_mlperf": flags_obj.ml_perf,
-      "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
@@ -306,16 +305,6 @@ def define_ncf_flags():
   def eval_size_check(eval_batch_size):
     return (eval_batch_size is None or
             int(eval_batch_size) > rconst.NUM_EVAL_NEGATIVES)
-
-  flags.DEFINE_bool(
-      name="use_xla_for_gpu", default=False, help=flags_core.help_wrap(
-          "If True, use XLA for the model function. Only works when using a "
-          "GPU. On TPUs, XLA is always used"))
-
-  xla_message = "--use_xla_for_gpu is incompatible with --tpu"
-  @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
-  def xla_validator(flag_dict):
-    return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
 
   flags.DEFINE_bool(
       name="early_stopping",
