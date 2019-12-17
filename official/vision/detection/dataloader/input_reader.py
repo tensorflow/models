@@ -94,7 +94,9 @@ class InputFn(object):
     dataset = dataset.cache()
 
     if self._is_training:
-      dataset = dataset.shuffle(64)
+      # Large shuffle size is critical for 2vm input pipeline. Can use small
+      # value (e.g. 64) for 1vm.
+      dataset = dataset.shuffle(1000)
     if self._num_examples > 0:
       dataset = dataset.take(self._num_examples)
 
