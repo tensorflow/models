@@ -144,6 +144,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     wall_time_sec = time.time() - start_time_sec
 
     summary = self._read_training_summary_from_file()
+    summary['start_time_sec'] = start_time_sec
 
     super(BertSquadBenchmarkReal, self)._report_benchmark(
         stats=summary,

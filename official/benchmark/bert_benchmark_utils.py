@@ -38,24 +38,25 @@ class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
 
   def __init__(self, num_batches_to_skip=10):
     super(BenchmarkTimerCallback, self).__init__()
-    self.num_batches_to_skip = num_batches_to_skip
-    self.timer_records = []
-    self.start_time = None
+    self.batch_start_times = {}
+    self.batch_stop_times = {}
 
   def on_batch_begin(self, batch, logs=None):
-    if batch < self.num_batches_to_skip:
-      return
-    self.start_time = time.time()
+    self.batch_start_times[batch] = time.time()
 
   def on_batch_end(self, batch, logs=None):
-    if batch < self.num_batches_to_skip:
-      return
+    self.batch_stop_times[batch] = time.time()
 
-    assert self.start_time
-    self.timer_records.append(time.time() - self.start_time)
+  def get_examples_per_sec(self, batch_size, num_batches_to_skip=10):
+    batch_durations = []
+    for batch in self.batch_start_times:
+      if batch in self.batch_stop_times and batch >= num_batches_to_skip:
+        batch_durations.append(self.batch_stop_times[batch] -
+                               self.batch_start_times[batch])
+    return batch_size / np.mean(batch_durations)
 
-  def get_examples_per_sec(self, batch_size):
-    return batch_size / np.mean(self.timer_records)
+  def get_startup_time(self, program_start_time):
+    return self.batch_start_times[0] - program_start_time
 
 
 class BertBenchmarkBase(tf.test.Benchmark):
@@ -112,6 +113,11 @@ class BertBenchmarkBase(tf.test.Benchmark):
       metrics.append({
           'name': 'exp_per_second',
           'value': 0.0,
+      })
+    if self.timer_callback and 'start_time_sec' in stats:
+      metrics.append({
+          'name': 'startup_time',
+          'value': self.timer_callback.get_startup_time(stats['start_time_sec'])
       })
 
     if 'eval_metrics' in stats:

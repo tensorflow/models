@@ -152,6 +152,8 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     # Since we do not load from any pretrained checkpoints, we ignore all
     # accuracy metrics.
     summary.pop('eval_metrics', None)
+    summary['start_time_sec'] = start_time_sec
+
     super(BertClassifyBenchmarkReal, self)._report_benchmark(
         stats=summary,
         wall_time_sec=wall_time_sec,
