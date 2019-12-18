@@ -18,17 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import time
 
 # pylint: disable=g-bad-import-order
 import numpy as np
 from absl import flags
-from absl.testing import flagsaver
 import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
+from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 FLAGS = flags.FLAGS
 
@@ -59,33 +58,19 @@ class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
     return self.batch_start_times[0] - program_start_time
 
 
-class BertBenchmarkBase(tf.test.Benchmark):
+class BertBenchmarkBase(PerfZeroBenchmark):
   """Base class to hold methods common to test classes."""
   local_flags = None
 
   def __init__(self, output_dir=None):
+    super(BertBenchmarkBase, self).__init__(output_dir=output_dir)
     self.num_gpus = 8
-
-    if not output_dir:
-      output_dir = '/tmp'
-    self.output_dir = output_dir
     self.timer_callback = None
-
-  def _get_model_dir(self, folder_name):
-    """Returns directory to store info, e.g. saved model and event log."""
-    return os.path.join(self.output_dir, folder_name)
 
   def _setup(self):
     """Sets up and resets flags before each test."""
+    super(BertBenchmarkBase, self)._setup()
     self.timer_callback = BenchmarkTimerCallback()
-
-    if BertBenchmarkBase.local_flags is None:
-      # Loads flags to get defaults to then override. List cannot be empty.
-      flags.FLAGS(['foo'])
-      saved_flag_values = flagsaver.save_flag_values()
-      BertBenchmarkBase.local_flags = saved_flag_values
-    else:
-      flagsaver.restore_flag_values(BertBenchmarkBase.local_flags)
 
   def _report_benchmark(self, stats, wall_time_sec, min_accuracy, max_accuracy):
     """Report benchmark results by writing to local protobuf file.

@@ -52,6 +52,10 @@ FLAGS = flags.FLAGS
 class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
 
+  def __init__(self, output_dir=None, tpu=None):
+    super(BertSquadBenchmarkBase, self).__init__(output_dir=output_dir)
+    self.tpu = tpu
+
   def _read_training_summary_from_file(self):
     """Reads the training summary from a file."""
     summary_path = os.path.join(FLAGS.model_dir,
@@ -78,9 +82,13 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
 
   def _get_distribution_strategy(self, use_ds=True):
     """Gets the distribution strategy."""
-    return distribution_utils.get_distribution_strategy(
-        distribution_strategy='mirrored' if use_ds else 'off',
-        num_gpus=self.num_gpus)
+    if self.tpu:
+      return distribution_utils.get_distribution_strategy(
+          distribution_strategy='tpu', tpu_address=self.tpu)
+    else:
+      return distribution_utils.get_distribution_strategy(
+          distribution_strategy='mirrored' if use_ds else 'off',
+          num_gpus=self.num_gpus)
 
   @flagsaver.flagsaver
   def _train_squad(self, use_ds=True, run_eagerly=False):
@@ -117,11 +125,12 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
   Tests BERT SQuAD performance in different GPU configurations.
   The naming convention of below test cases follow
-  `benchmark_(number of gpus)_gpu` format.
+  `benchmark_(number of gpus)_gpu` format for GPUs and
+  `benchmark_(topology)_tpu` format for TPUs.
   """
 
-  def __init__(self, output_dir=TMP_DIR, **kwargs):
-    super(BertSquadBenchmarkReal, self).__init__(output_dir=output_dir)
+  def __init__(self, output_dir=TMP_DIR, tpu=None, **kwargs):
+    super(BertSquadBenchmarkReal, self).__init__(output_dir=output_dir, tpu=tpu)
 
   def _setup(self):
     """Sets up the benchmark and SQuAD flags."""
@@ -322,16 +331,26 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark()
 
+  def benchmark_2x2_tpu(self):
+    """Tests BERT SQuAD model performance with 2x2 TPU."""
+
+    self._setup()
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu')
+    FLAGS.train_batch_size = 48
+
+    self._run_and_report_benchmark()
+
 
 class BertSquadAccuracy(BertSquadBenchmarkBase):
   """Short accuracy test for BERT SQuAD model.
 
   Tests BERT SQuAD accuracy. The naming convention of below test cases follow
-  `benchmark_(number of gpus)_gpu` format.
+  `benchmark_(number of gpus)_gpu` format for GPUs and
+  `benchmark_(topology)_tpu` format for TPUs.
   """
 
-  def __init__(self, output_dir=None, **kwargs):
-    super(BertSquadAccuracy, self).__init__(output_dir=output_dir)
+  def __init__(self, output_dir=None, tpu=None, **kwargs):
+    super(BertSquadAccuracy, self).__init__(output_dir=output_dir, tpu=tpu)
 
   def _setup(self):
     """Sets up the benchmark and SQuAD flags."""
@@ -404,6 +423,15 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad_xla')
     FLAGS.train_batch_size = 32
     FLAGS.enable_xla = True
+
+    self._run_and_report_benchmark()
+
+  def benchmark_2x2_tpu(self):
+    """Tests BERT SQuAD model accuracy with 2x2 TPU."""
+
+    self._setup()
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu')
+    FLAGS.train_batch_size = 48
 
     self._run_and_report_benchmark()
 
