@@ -53,10 +53,13 @@ class CtlImagenetTest(tf.test.TestCase):
   def setUp(self):
     super(CtlImagenetTest, self).setUp()
     imagenet_preprocessing.NUM_IMAGES['validation'] = 4
+    self.policy = \
+        tf.compat.v2.keras.mixed_precision.experimental.global_policy()
 
   def tearDown(self):
     super(CtlImagenetTest, self).tearDown()
     tf.io.gfile.rmtree(self.get_temp_dir())
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(self.policy)
 
   def test_end_to_end_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
