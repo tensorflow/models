@@ -19,7 +19,7 @@ https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/beam
 """
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.python.util import nest
 
 

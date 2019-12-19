@@ -17,7 +17,7 @@
 
 import tensorflow as tf
 
-from official.transformer.model import beam_search as v1
+from official.nlp.transformer import beam_search_v1 as v1
 from official.transformer.v2 import misc
 
 _StateKeys = v1._StateKeys  # pylint: disable=protected-access

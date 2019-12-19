@@ -24,11 +24,11 @@ from __future__ import print_function
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.nlp.transformer import beam_search_v1 as beam_search
+from official.nlp.transformer import model_utils
 from official.r1.transformer import attention_layer
 from official.r1.transformer import embedding_layer
 from official.r1.transformer import ffn_layer
-from official.transformer.model import beam_search
-from official.transformer.model import model_utils
 from official.transformer.utils.tokenizer import EOS_ID
 
 _NEG_INF = -1e9

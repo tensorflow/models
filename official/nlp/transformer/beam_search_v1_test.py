@@ -14,13 +14,9 @@
 # ==============================================================================
 """Test beam search helper methods."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+import tensorflow.compat.v1 as tf
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
-
-from official.transformer.model import beam_search
+from official.nlp.transformer import beam_search_v1 as beam_search
 
 
 class BeamSearchHelperTests(tf.test.TestCase):

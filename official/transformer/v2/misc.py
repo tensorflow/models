@@ -26,7 +26,7 @@ import tensorflow as tf
 # different TF versions are fixed.
 from tensorflow.python import tf2 as tf2_internal
 
-from official.transformer.model import model_params
+from official.nlp.transformer import model_params
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
 

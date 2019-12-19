@@ -32,6 +32,7 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
+from official.nlp.transformer import model_params
 from official.r1.utils import export
 from official.r1.utils import tpu as tpu_util
 from official.r1.transformer import translate
@@ -39,7 +40,6 @@ from official.r1.transformer import transformer
 from official.r1.transformer import dataset
 from official.r1.transformer import schedule
 from official.transformer import compute_bleu
-from official.transformer.model import model_params
 from official.transformer.utils import metrics
 from official.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
