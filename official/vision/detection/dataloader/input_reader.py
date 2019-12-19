@@ -28,7 +28,7 @@ from official.vision.detection.dataloader import mode_keys as ModeKeys
 
 
 class InputFn(object):
-  """Input function for tf.Estimator."""
+  """Input function that creates dataset from files."""
 
   def __init__(self,
                file_pattern: Text,
