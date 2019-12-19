@@ -176,11 +176,13 @@ class CaptionGenerator(object):
         word_probabilities = softmax[i]
         state = new_states[i]
         # For this partial caption, get the beam_size most probable next words.
-        words_and_probs = list(enumerate(word_probabilities))
-        words_and_probs.sort(key=lambda x: -x[1])
-        words_and_probs = words_and_probs[0:self.beam_size]
-        # Each next word gives a new partial caption.
-        for w, p in words_and_probs:
+        # Sort the indexes with numpy, select the last self.beam_size
+        # (3 by default) (ie, the most likely) and then reverse the sorted
+        # indexes with [::-1] to sort them from higher to lower.
+        most_likely_words = np.argsort(word_probabilities)[:-self.beam_size][::-1]
+
+        for w in most_likely_words:
+          p = word_probabilities[w]
           if p < 1e-12:
             continue  # Avoid log(0).
           sentence = partial_caption.sentence + [w]

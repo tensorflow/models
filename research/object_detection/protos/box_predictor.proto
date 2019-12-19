@@ -15,7 +15,6 @@ message BoxPredictor {
   }
 }
 
-
 // Configuration proto for Convolutional box predictor.
 // Next id: 13
 message ConvolutionalBoxPredictor {
@@ -57,10 +56,17 @@ message ConvolutionalBoxPredictor {
 
   // Whether to use depthwise separable convolution for box predictor layers.
   optional bool use_depthwise = 11 [default = false];
+
+  // If specified, apply clipping to box encodings.
+  message BoxEncodingsClipRange {
+    optional float min = 1;
+    optional float max = 2;
+  }
+  optional BoxEncodingsClipRange box_encodings_clip_range = 12;
 }
 
 // Configuration proto for weight shared convolutional box predictor.
-// Next id: 18
+// Next id: 19
 message WeightSharedConvolutionalBoxPredictor {
   // Hyperparameters for convolution ops used in the box predictor.
   optional Hyperparams conv_hyperparams = 1;
@@ -116,7 +122,9 @@ message WeightSharedConvolutionalBoxPredictor {
     optional float max = 2;
   }
   optional BoxEncodingsClipRange box_encodings_clip_range = 17;
+
 }
+
 
 // TODO(alirezafathi): Refactor the proto file to be able to configure mask rcnn
 // head easily.
@@ -189,3 +197,4 @@ message RfcnBoxPredictor {
 
   optional int32 crop_width = 7 [default = 12];
 }
+

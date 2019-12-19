@@ -1,5 +1,13 @@
 ## Quick start: DELF extraction and matching
 
+### Install DELF library
+
+To be able to use this code, please follow
+[these instructions](INSTALL_INSTRUCTIONS.md) to properly install the DELF
+library.
+
+### Download Oxford buildings dataset
+
 To illustrate DELF usage, please download the Oxford buildings dataset. To
 follow these instructions closely, please download the dataset to the
 `tensorflow/models/research/delf/delf/python/examples` directory, as in the
@@ -16,13 +24,15 @@ echo data/oxford5k_images/hertford_000056.jpg >> list_images.txt
 echo data/oxford5k_images/oxford_000317.jpg >> list_images.txt
 ```
 
+### Download pre-trained DELF model
+
 Also, you will need to download the trained DELF model:
 
 ```bash
 # From tensorflow/models/research/delf/delf/python/examples/
 mkdir parameters && cd parameters
-wget http://download.tensorflow.org/models/delf_v1_20171026.tar.gz
-tar -xvzf delf_v1_20171026.tar.gz
+wget http://storage.googleapis.com/delf/delf_gld_20190411.tar.gz
+tar -xvzf delf_gld_20190411.tar.gz
 ```
 
 ### DELF feature extraction
@@ -54,7 +64,7 @@ python match_images.py \
 
 The image `matched_images.png` is generated and should look similar to this one:
 
-![MatchedImagesExample](delf/python/examples/matched_images_example.png)
+![MatchedImagesExample](delf/python/examples/matched_images_example.jpg)
 
 ### Troubleshooting
 

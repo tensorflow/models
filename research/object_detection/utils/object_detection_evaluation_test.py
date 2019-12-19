@@ -15,8 +15,13 @@
 
 """Tests for object_detection.utils.object_detection_evaluation."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 from absl.testing import parameterized
 import numpy as np
+import six
+from six.moves import range
 import tensorflow as tf
 from object_detection import eval_util
 from object_detection.core import standard_fields
@@ -101,9 +106,9 @@ class OpenImagesV2EvaluationTest(tf.test.TestCase):
     self.assertFalse(oiv2_evaluator._image_ids)
 
 
-class OpenImagesDetectionChallengeEvaluatorTest(tf.test.TestCase):
+class OpenImagesChallengeEvaluatorTest(tf.test.TestCase):
 
-  def test_returns_correct_metric_values(self):
+  def test_returns_correct_detection_metric_values(self):
     categories = [{
         'id': 1,
         'name': 'cat'
@@ -115,8 +120,8 @@ class OpenImagesDetectionChallengeEvaluatorTest(tf.test.TestCase):
         'name': 'elephant'
     }]
     oivchallenge_evaluator = (
-        object_detection_evaluation.OpenImagesDetectionChallengeEvaluator(
-            categories, group_of_weight=0.5))
+        object_detection_evaluation.OpenImagesChallengeEvaluator(
+            categories, evaluate_masks=False, group_of_weight=0.5))
 
     image_key = 'img1'
     groundtruth_boxes = np.array(
@@ -203,19 +208,121 @@ class OpenImagesDetectionChallengeEvaluatorTest(tf.test.TestCase):
                 detected_class_labels
         })
     metrics = oivchallenge_evaluator.evaluate()
+    expected_metric_name = 'OpenImagesDetectionChallenge'
 
     self.assertAlmostEqual(
-        metrics['OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/dog'],
+        metrics[
+            expected_metric_name + '_PerformanceByCategory/AP@0.5IOU/dog'],
         0.3333333333)
     self.assertAlmostEqual(
         metrics[
-            'OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/elephant'],
+            expected_metric_name + '_PerformanceByCategory/AP@0.5IOU/elephant'],
         0.333333333333)
     self.assertAlmostEqual(
-        metrics['OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/cat'],
+        metrics[
+            expected_metric_name + '_PerformanceByCategory/AP@0.5IOU/cat'],
         0.142857142857)
     self.assertAlmostEqual(
-        metrics['OpenImagesChallenge2018_Precision/mAP@0.5IOU'], 0.269841269)
+        metrics[expected_metric_name + '_Precision/mAP@0.5IOU'],
+        0.269841269)
+
+    oivchallenge_evaluator.clear()
+    self.assertFalse(oivchallenge_evaluator._image_ids)
+
+  def test_returns_correct_instance_segm_metric_values(self):
+    categories = [{'id': 1, 'name': 'cat'}, {'id': 2, 'name': 'dog'}]
+    oivchallenge_evaluator = (
+        object_detection_evaluation.OpenImagesChallengeEvaluator(
+            categories, evaluate_masks=True))
+
+    image_key = 'img1'
+    groundtruth_boxes = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
+                                 dtype=float)
+    groundtruth_class_labels = np.array([1, 2, 1], dtype=int)
+    groundtruth_is_group_of_list = np.array([False, False, True], dtype=bool)
+    groundtruth_verified_labels = np.array([1, 2, 3], dtype=int)
+    groundtruth_mask_0 = np.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    zero_mask = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                         dtype=np.uint8)
+    groundtruth_masks = np.stack([groundtruth_mask_0, zero_mask, zero_mask],
+                                 axis=0)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels,
+            standard_fields.InputDataFields.groundtruth_group_of:
+                groundtruth_is_group_of_list,
+            standard_fields.InputDataFields.groundtruth_image_classes:
+                groundtruth_verified_labels,
+            standard_fields.InputDataFields.groundtruth_instance_masks:
+                groundtruth_masks
+        })
+    image_key = 'img3'
+    groundtruth_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    groundtruth_class_labels = np.array([2], dtype=int)
+    groundtruth_mask_0 = np.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                                  dtype=np.uint8)
+    groundtruth_masks = np.stack([groundtruth_mask_0], axis=0)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels,
+            standard_fields.InputDataFields.groundtruth_instance_masks:
+                groundtruth_masks
+        })
+    image_key = 'img1'
+    detected_boxes = np.array([[0, 0, 2, 2], [2, 2, 3, 3]], dtype=float)
+    detection_mask_0 = np.array([[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, 0, 0]],
+                                dtype=np.uint8)
+    detected_masks = np.stack([detection_mask_0, zero_mask], axis=0)
+    detected_class_labels = np.array([2, 1], dtype=int)
+    detected_scores = np.array([0.7, 0.8], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels,
+            standard_fields.DetectionResultFields.detection_masks:
+                detected_masks
+        })
+    image_key = 'img3'
+    detected_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    detected_class_labels = np.array([2], dtype=int)
+    detected_scores = np.array([0.5], dtype=float)
+    detected_mask_0 = np.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+                               dtype=np.uint8)
+    detected_masks = np.stack([detected_mask_0], axis=0)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels,
+            standard_fields.DetectionResultFields.detection_masks:
+                detected_masks
+        })
+    metrics = oivchallenge_evaluator.evaluate()
+    expected_metric_name = 'OpenImagesInstanceSegmentationChallenge'
+
+    self.assertAlmostEqual(
+        metrics[expected_metric_name + '_PerformanceByCategory/AP@0.5IOU/dog'],
+        1.0)
+    self.assertAlmostEqual(
+        metrics[
+            expected_metric_name + '_PerformanceByCategory/AP@0.5IOU/cat'],
+        0)
+    self.assertAlmostEqual(
+        metrics[expected_metric_name + '_Precision/mAP@0.5IOU'], 0.5)
 
     oivchallenge_evaluator.clear()
     self.assertFalse(oivchallenge_evaluator._image_ids)
@@ -572,6 +679,157 @@ class WeightedPascalEvaluationTest(tf.test.TestCase):
            groundtruth_class_labels1})
 
 
+class PrecisionAtRecallEvaluationTest(tf.test.TestCase):
+
+  def setUp(self):
+    self.categories = [{
+        'id': 1,
+        'name': 'cat'
+    }, {
+        'id': 2,
+        'name': 'dog'
+    }, {
+        'id': 3,
+        'name': 'elephant'
+    }]
+
+  def create_and_add_common_ground_truth(self):
+    #  Add groundtruth
+    self.wp_eval = (
+        object_detection_evaluation.PrecisionAtRecallDetectionEvaluator(
+            self.categories, recall_lower_bound=0.0, recall_upper_bound=0.5))
+
+    image_key1 = 'img1'
+    groundtruth_boxes1 = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
+                                  dtype=float)
+    groundtruth_class_labels1 = np.array([1, 3, 1], dtype=int)
+    self.wp_eval.add_single_ground_truth_image_info(
+        image_key1, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes1,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels1
+        })
+    # add 'img2' separately
+    image_key3 = 'img3'
+    groundtruth_boxes3 = np.array([[0, 0, 1, 1]], dtype=float)
+    groundtruth_class_labels3 = np.array([2], dtype=int)
+    self.wp_eval.add_single_ground_truth_image_info(
+        image_key3, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes3,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels3
+        })
+
+  def add_common_detected(self):
+    image_key = 'img2'
+    detected_boxes = np.array(
+        [[10, 10, 11, 11], [100, 100, 120, 120], [100, 100, 220, 220]],
+        dtype=float)
+    detected_class_labels = np.array([1, 1, 3], dtype=int)
+    detected_scores = np.array([0.7, 0.8, 0.9], dtype=float)
+    self.wp_eval.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+
+  def test_returns_correct_metric_values(self):
+    self.create_and_add_common_ground_truth()
+    image_key2 = 'img2'
+    groundtruth_boxes2 = np.array(
+        [[10, 10, 11, 11], [500, 500, 510, 510], [10, 10, 12, 12]], dtype=float)
+    groundtruth_class_labels2 = np.array([1, 1, 3], dtype=int)
+    self.wp_eval.add_single_ground_truth_image_info(
+        image_key2, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes2,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels2
+        })
+    self.add_common_detected()
+
+    metrics = self.wp_eval.evaluate()
+    self.assertAlmostEqual(
+        metrics[self.wp_eval._metric_prefix +
+                'PerformanceByCategory/AP@0.5IOU/dog'], 0.0)
+    self.assertAlmostEqual(
+        metrics[self.wp_eval._metric_prefix +
+                'PerformanceByCategory/AP@0.5IOU/elephant'], 0.0)
+    self.assertAlmostEqual(
+        metrics[self.wp_eval._metric_prefix +
+                'PerformanceByCategory/AP@0.5IOU/cat'], 0.5 / 4)
+    self.assertAlmostEqual(
+        metrics[self.wp_eval._metric_prefix +
+                'Precision/mAP@0.5IOU@[0.0,0.5]Recall'], 1. / (3 + 1 + 2) / 4)
+    self.wp_eval.clear()
+    self.assertFalse(self.wp_eval._image_ids)
+
+  def test_returns_correct_metric_values_with_difficult_list(self):
+    self.create_and_add_common_ground_truth()
+    image_key2 = 'img2'
+    groundtruth_boxes2 = np.array(
+        [[10, 10, 11, 11], [500, 500, 510, 510], [10, 10, 12, 12]], dtype=float)
+    groundtruth_class_labels2 = np.array([1, 1, 3], dtype=int)
+    groundtruth_is_difficult_list2 = np.array([False, True, False], dtype=bool)
+    self.wp_eval.add_single_ground_truth_image_info(
+        image_key2, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes2,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels2,
+            standard_fields.InputDataFields.groundtruth_difficult:
+                groundtruth_is_difficult_list2
+        })
+    self.add_common_detected()
+
+    metrics = self.wp_eval.evaluate()
+    self.assertAlmostEqual(
+        metrics[self.wp_eval._metric_prefix +
+                'PerformanceByCategory/AP@0.5IOU/dog'], 0.0)
+    self.assertAlmostEqual(
+        metrics[self.wp_eval._metric_prefix +
+                'PerformanceByCategory/AP@0.5IOU/elephant'], 0.0)
+    self.assertAlmostEqual(
+        metrics[self.wp_eval._metric_prefix +
+                'PerformanceByCategory/AP@0.5IOU/cat'], 0.5 / 3)
+    self.assertAlmostEqual(
+        metrics[self.wp_eval._metric_prefix +
+                'Precision/mAP@0.5IOU@[0.0,0.5]Recall'], 1. / (3 + 1 + 2) / 3)
+    self.wp_eval.clear()
+    self.assertFalse(self.wp_eval._image_ids)
+
+  def test_value_error_on_duplicate_images(self):
+    #  Add groundtruth
+    self.wp_eval = (
+        object_detection_evaluation.PrecisionAtRecallDetectionEvaluator(
+            self.categories, recall_lower_bound=0.0, recall_upper_bound=0.5))
+    image_key1 = 'img1'
+    groundtruth_boxes1 = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
+                                  dtype=float)
+    groundtruth_class_labels1 = np.array([1, 3, 1], dtype=int)
+    self.wp_eval.add_single_ground_truth_image_info(
+        image_key1, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes1,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels1
+        })
+    with self.assertRaises(ValueError):
+      self.wp_eval.add_single_ground_truth_image_info(
+          image_key1, {
+              standard_fields.InputDataFields.groundtruth_boxes:
+                  groundtruth_boxes1,
+              standard_fields.InputDataFields.groundtruth_classes:
+                  groundtruth_class_labels1
+          })
+
+
 class ObjectDetectionEvaluationTest(tf.test.TestCase):
 
   def setUp(self):
@@ -669,7 +927,7 @@ class ObjectDetectionEvaluationTest(tf.test.TestCase):
     ]
     expected_average_precision_per_class = np.array([1. / 6., 0, 0],
                                                     dtype=float)
-    expected_corloc_per_class = np.array([0, np.divide(0, 0), 0], dtype=float)
+    expected_corloc_per_class = np.array([0, 0, 0], dtype=float)
     expected_mean_ap = 1. / 18
     expected_mean_corloc = 0.0
     for i in range(self.od_eval.num_class):
@@ -682,6 +940,34 @@ class ObjectDetectionEvaluationTest(tf.test.TestCase):
     self.assertTrue(np.allclose(expected_corloc_per_class, corloc_per_class))
     self.assertAlmostEqual(expected_mean_ap, mean_ap)
     self.assertAlmostEqual(expected_mean_corloc, mean_corloc)
+
+  def test_merge_internal_state(self):
+    # Test that if initial state is merged, the results of the evaluation are
+    # the same.
+    od_eval_state = self.od_eval.get_internal_state()
+    copy_od_eval = object_detection_evaluation.ObjectDetectionEvaluation(
+        self.od_eval.num_class)
+    copy_od_eval.merge_internal_state(od_eval_state)
+
+    (average_precision_per_class, mean_ap, precisions_per_class,
+     recalls_per_class, corloc_per_class,
+     mean_corloc) = self.od_eval.evaluate()
+
+    (copy_average_precision_per_class, copy_mean_ap, copy_precisions_per_class,
+     copy_recalls_per_class, copy_corloc_per_class,
+     copy_mean_corloc) = copy_od_eval.evaluate()
+
+    for i in range(self.od_eval.num_class):
+      self.assertTrue(
+          np.allclose(copy_precisions_per_class[i], precisions_per_class[i]))
+      self.assertTrue(
+          np.allclose(copy_recalls_per_class[i], recalls_per_class[i]))
+    self.assertTrue(
+        np.allclose(copy_average_precision_per_class,
+                    average_precision_per_class))
+    self.assertTrue(np.allclose(copy_corloc_per_class, corloc_per_class))
+    self.assertAlmostEqual(copy_mean_ap, mean_ap)
+    self.assertAlmostEqual(copy_mean_corloc, mean_corloc)
 
 
 class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
@@ -813,7 +1099,7 @@ class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op)
       metrics = sess.run(metrics)

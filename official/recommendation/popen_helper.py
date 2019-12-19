@@ -16,21 +16,49 @@
 
 import contextlib
 import multiprocessing
-import os
-import sys
+import multiprocessing.pool
 
 
-_PYTHON = sys.executable
-if not _PYTHON:
-  raise RuntimeError("Could not find path to Python interpreter in order to "
-                     "spawn subprocesses.")
-
-_ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__),
-                               "data_async_generation.py")
-
-INVOCATION = [_PYTHON, _ASYNC_GEN_PATH]
+def get_forkpool(num_workers, init_worker=None, closing=True):
+  pool = multiprocessing.Pool(processes=num_workers, initializer=init_worker)
+  return contextlib.closing(pool) if closing else pool
 
 
-def get_pool(num_workers, init_worker=None):
-  return contextlib.closing(multiprocessing.Pool(
-      processes=num_workers, initializer=init_worker))
+def get_threadpool(num_workers, init_worker=None, closing=True):
+  pool = multiprocessing.pool.ThreadPool(processes=num_workers,
+                                         initializer=init_worker)
+  return contextlib.closing(pool) if closing else pool
+
+
+class FauxPool(object):
+  """Mimic a pool using for loops.
+
+  This class is used in place of proper pools when true determinism is desired
+  for testing or debugging.
+  """
+  def __init__(self, *args, **kwargs):
+    pass
+
+  def map(self, func, iterable, chunksize=None):
+    return [func(i) for i in iterable]
+
+  def imap(self, func, iterable, chunksize=1):
+    for i in iterable:
+      yield func(i)
+
+  def close(self):
+    pass
+
+  def terminate(self):
+    pass
+
+  def join(self):
+    pass
+
+def get_fauxpool(num_workers, init_worker=None, closing=True):
+  pool = FauxPool(processes=num_workers, initializer=init_worker)
+  return contextlib.closing(pool) if closing else pool
+
+
+def worker_job():
+  return "worker"

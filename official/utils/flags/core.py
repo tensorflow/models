@@ -21,8 +21,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import functools
 import sys
+from six.moves import shlex_quote
 
 from absl import app as absl_app
 from absl import flags
@@ -31,6 +31,7 @@ from official.utils.flags import _base
 from official.utils.flags import _benchmark
 from official.utils.flags import _conventions
 from official.utils.flags import _device
+from official.utils.flags import _distribution
 from official.utils.flags import _misc
 from official.utils.flags import _performance
 
@@ -68,14 +69,15 @@ def register_key_flags_in_core(f):
 
 
 define_base = register_key_flags_in_core(_base.define_base)
-# Remove options not relevant for Eager from define_base().
-define_base_eager = register_key_flags_in_core(functools.partial(
-    _base.define_base, epochs_between_evals=False, stop_threshold=False,
-    hooks=False))
+# We have define_base_eager for compatibility, since it used to be a separate
+# function from define_base.
+define_base_eager = define_base
 define_benchmark = register_key_flags_in_core(_benchmark.define_benchmark)
 define_device = register_key_flags_in_core(_device.define_device)
 define_image = register_key_flags_in_core(_misc.define_image)
 define_performance = register_key_flags_in_core(_performance.define_performance)
+define_distribution = register_key_flags_in_core(
+    _distribution.define_distribution)
 
 
 help_wrap = _conventions.help_wrap
@@ -86,3 +88,45 @@ get_tf_dtype = _performance.get_tf_dtype
 get_loss_scale = _performance.get_loss_scale
 DTYPE_MAP = _performance.DTYPE_MAP
 require_cloud_storage = _device.require_cloud_storage
+
+def _get_nondefault_flags_as_dict():
+  """Returns the nondefault flags as a dict from flag name to value."""
+  nondefault_flags = {}
+  for flag_name in flags.FLAGS:
+    flag_value = getattr(flags.FLAGS, flag_name)
+    if (flag_name != flags.FLAGS[flag_name].short_name and
+        flag_value != flags.FLAGS[flag_name].default):
+      nondefault_flags[flag_name] = flag_value
+  return nondefault_flags
+
+
+def get_nondefault_flags_as_str():
+  """Returns flags as a string that can be passed as command line arguments.
+
+  E.g., returns: "--batch_size=256 --use_synthetic_data" for the following code
+  block:
+
+  ```
+  flags.FLAGS.batch_size = 256
+  flags.FLAGS.use_synthetic_data = True
+  print(get_nondefault_flags_as_str())
+  ```
+
+  Only flags with nondefault values are returned, as passing default flags as
+  command line arguments has no effect.
+
+  Returns:
+    A string with the flags, that can be passed as command line arguments to a
+    program to use the flags.
+  """
+  nondefault_flags = _get_nondefault_flags_as_dict()
+  flag_strings = []
+  for name, value in sorted(nondefault_flags.items()):
+    if isinstance(value, bool):
+      flag_str = '--{}'.format(name) if value else '--no{}'.format(name)
+    elif isinstance(value, list):
+      flag_str = '--{}={}'.format(name, ','.join(value))
+    else:
+      flag_str = '--{}={}'.format(name, value)
+    flag_strings.append(flag_str)
+  return ' '.join(shlex_quote(flag_str) for flag_str in flag_strings)

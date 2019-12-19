@@ -15,9 +15,15 @@
 
 """Tests for object_detection.core.preprocessor."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from absl.testing import parameterized
 import numpy as np
 import six
-
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import preprocessor
@@ -30,7 +36,7 @@ else:
   from unittest import mock  # pylint: disable=g-import-not-at-top
 
 
-class PreprocessorTest(tf.test.TestCase):
+class PreprocessorTest(tf.test.TestCase, parameterized.TestCase):
 
   def createColorfulTestImage(self):
     ch255 = tf.fill([1, 100, 200, 1], tf.constant(255, dtype=tf.uint8))
@@ -109,6 +115,10 @@ class PreprocessorTest(tf.test.TestCase):
 
   def createTestLabels(self):
     labels = tf.constant([1, 2], dtype=tf.int32)
+    return labels
+
+  def createTestLabelsLong(self):
+    labels = tf.constant([1, 2, 4], dtype=tf.int32)
     return labels
 
   def createTestBoxesOutOfImage(self):
@@ -294,6 +304,30 @@ class PreprocessorTest(tf.test.TestCase):
   def expectedLabelsAfterThresholdingWithMissingScore(self):
     return tf.constant([2], dtype=tf.float32)
 
+  def expectedLabelScoresAfterDropping(self):
+    return tf.constant([0.5], dtype=tf.float32)
+
+  def expectedBoxesAfterDropping(self):
+    return tf.constant([[0.25, 0.5, 0.75, 1.0]], dtype=tf.float32)
+
+  def expectedLabelsAfterDropping(self):
+    return tf.constant([2], dtype=tf.float32)
+
+  def expectedMultiClassScoresAfterDropping(self):
+    return tf.constant([[0.5, 0.5]], dtype=tf.float32)
+
+  def expectedMasksAfterDropping(self):
+    masks = np.array([[[255.0, 255.0, 0.0], [255.0, 255.0, 0.0],
+                       [255.0, 255.0, 0.0]]])
+    return tf.constant(masks, dtype=tf.float32)
+
+  def expectedKeypointsAfterDropping(self):
+    keypoints = np.array([[[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]]])
+    return tf.constant(keypoints, dtype=tf.float32)
+
+  def expectedLabelsAfterRemapping(self):
+    return tf.constant([3, 3, 4], dtype=tf.float32)
+
   def testRgbToGrayscale(self):
     images = self.createTestImages()
     grayscale_images = preprocessor._rgb_to_grayscale(images)
@@ -399,6 +433,110 @@ class PreprocessorTest(tf.test.TestCase):
 
       self.assertAllClose(
           retained_keypoints_, expected_retained_keypoints_)
+
+  def testDropLabelProbabilistically(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    (retained_boxes, retained_labels,
+     retained_weights) = preprocessor.drop_label_probabilistically(
+         boxes, labels, weights, dropped_label=1, drop_probability=1.0)
+    with self.test_session() as sess:
+      (retained_boxes_, retained_labels_, retained_weights_,
+       expected_retained_boxes_, expected_retained_labels_,
+       expected_retained_weights_) = sess.run([
+           retained_boxes, retained_labels, retained_weights,
+           self.expectedBoxesAfterDropping(),
+           self.expectedLabelsAfterDropping(),
+           self.expectedLabelScoresAfterDropping()
+       ])
+      self.assertAllClose(retained_boxes_, expected_retained_boxes_)
+      self.assertAllClose(retained_labels_, expected_retained_labels_)
+      self.assertAllClose(retained_weights_, expected_retained_weights_)
+
+  def testDropLabelProbabilisticallyWithProbabilityHalf(self):
+    # Boxes contain one box of label 2 and one box of label 1 which should be
+    # dropped ~50% of the time.
+    num_tests = 100
+    total = 0
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    (_, retained_labels, _) = preprocessor.drop_label_probabilistically(
+        boxes, labels, weights, dropped_label=1, drop_probability=0.5)
+    for _ in range(num_tests):
+      with self.test_session() as sess:
+        retained_labels_ = sess.run(retained_labels)
+        total += len(retained_labels_)
+        self.assertIn(2, retained_labels_)
+    av = total * 1.0 / num_tests
+    self.assertGreater(av, 1.40)
+    self.assertLess(av, 1.50)
+
+  def testDropLabelProbabilisticallyWithMultiClassScores(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    multiclass_scores = self.createTestMultiClassScores()
+    (_, _, _,
+     retained_multiclass_scores) = preprocessor.drop_label_probabilistically(
+         boxes,
+         labels,
+         weights,
+         multiclass_scores=multiclass_scores,
+         dropped_label=1,
+         drop_probability=1.0)
+    with self.test_session() as sess:
+      (retained_multiclass_scores_,
+       expected_retained_multiclass_scores_) = sess.run([
+           retained_multiclass_scores,
+           self.expectedMultiClassScoresAfterDropping()
+       ])
+      self.assertAllClose(retained_multiclass_scores_,
+                          expected_retained_multiclass_scores_)
+
+  def testDropLabelProbabilisticallyWithMasks(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    masks = self.createTestMasks()
+    (_, _, _, retained_masks) = preprocessor.drop_label_probabilistically(
+        boxes,
+        labels,
+        weights,
+        masks=masks,
+        dropped_label=1,
+        drop_probability=1.0)
+    with self.test_session() as sess:
+      (retained_masks_, expected_retained_masks_) = sess.run(
+          [retained_masks, self.expectedMasksAfterDropping()])
+      self.assertAllClose(retained_masks_, expected_retained_masks_)
+
+  def testDropLabelProbabilisticallyWithKeypoints(self):
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    keypoints = self.createTestKeypoints()
+    (_, _, _, retained_keypoints) = preprocessor.drop_label_probabilistically(
+        boxes,
+        labels,
+        weights,
+        keypoints=keypoints,
+        dropped_label=1,
+        drop_probability=1.0)
+    with self.test_session() as sess:
+      (retained_keypoints_, expected_retained_keypoints_) = sess.run(
+          [retained_keypoints,
+           self.expectedKeypointsAfterDropping()])
+      self.assertAllClose(retained_keypoints_, expected_retained_keypoints_)
+
+  def testRemapLabels(self):
+    labels = self.createTestLabelsLong()
+    remapped_labels = preprocessor.remap_labels(labels, [1, 2], 3)
+    with self.test_session() as sess:
+      (remapped_labels_, expected_remapped_labels_) = sess.run(
+          [remapped_labels, self.expectedLabelsAfterRemapping()])
+      self.assertAllClose(remapped_labels_, expected_remapped_labels_)
 
   def testFlipBoxesLeftRight(self):
     boxes = self.createTestBoxes()
@@ -795,8 +933,8 @@ class PreprocessorTest(tf.test.TestCase):
     images = self.createTestImages()
     tensor_dict = {fields.InputDataFields.image: images}
     tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
-    images_min = tf.to_float(images) * 0.9 / 255.0
-    images_max = tf.to_float(images) * 1.1 / 255.0
+    images_min = tf.cast(images, dtype=tf.float32) * 0.9 / 255.0
+    images_max = tf.cast(images, dtype=tf.float32) * 1.1 / 255.0
     images = tensor_dict[fields.InputDataFields.image]
     values_greater = tf.greater_equal(images, images_min)
     values_less = tf.less_equal(images, images_max)
@@ -858,20 +996,26 @@ class PreprocessorTest(tf.test.TestCase):
         value=images_gray, num_or_size_splits=3, axis=3)
     images_r, images_g, images_b = tf.split(
         value=images_original, num_or_size_splits=3, axis=3)
-    images_r_diff1 = tf.squared_difference(tf.to_float(images_r),
-                                           tf.to_float(images_gray_r))
-    images_r_diff2 = tf.squared_difference(tf.to_float(images_gray_r),
-                                           tf.to_float(images_gray_g))
+    images_r_diff1 = tf.squared_difference(
+        tf.cast(images_r, dtype=tf.float32),
+        tf.cast(images_gray_r, dtype=tf.float32))
+    images_r_diff2 = tf.squared_difference(
+        tf.cast(images_gray_r, dtype=tf.float32),
+        tf.cast(images_gray_g, dtype=tf.float32))
     images_r_diff = tf.multiply(images_r_diff1, images_r_diff2)
-    images_g_diff1 = tf.squared_difference(tf.to_float(images_g),
-                                           tf.to_float(images_gray_g))
-    images_g_diff2 = tf.squared_difference(tf.to_float(images_gray_g),
-                                           tf.to_float(images_gray_b))
+    images_g_diff1 = tf.squared_difference(
+        tf.cast(images_g, dtype=tf.float32),
+        tf.cast(images_gray_g, dtype=tf.float32))
+    images_g_diff2 = tf.squared_difference(
+        tf.cast(images_gray_g, dtype=tf.float32),
+        tf.cast(images_gray_b, dtype=tf.float32))
     images_g_diff = tf.multiply(images_g_diff1, images_g_diff2)
-    images_b_diff1 = tf.squared_difference(tf.to_float(images_b),
-                                           tf.to_float(images_gray_b))
-    images_b_diff2 = tf.squared_difference(tf.to_float(images_gray_b),
-                                           tf.to_float(images_gray_r))
+    images_b_diff1 = tf.squared_difference(
+        tf.cast(images_b, dtype=tf.float32),
+        tf.cast(images_gray_b, dtype=tf.float32))
+    images_b_diff2 = tf.squared_difference(
+        tf.cast(images_gray_b, dtype=tf.float32),
+        tf.cast(images_gray_r, dtype=tf.float32))
     images_b_diff = tf.multiply(images_b_diff1, images_b_diff2)
     image_zero1 = tf.constant(0, dtype=tf.float32, shape=[1, 4, 4, 1])
     with self.test_session() as sess:
@@ -2071,6 +2215,96 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
           padded_boxes_[:, 3] - padded_boxes_[:, 1])))
 
+  def testRandomPadImageWithKeypoints(self):
+    preprocessing_options = [(preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    })]
+
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    keypoints = self.createTestKeypoints()
+    tensor_dict = {
+        fields.InputDataFields.image: images,
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_keypoints: keypoints,
+    }
+    tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+    images = tensor_dict[fields.InputDataFields.image]
+
+    preprocessing_options = [(preprocessor.random_pad_image, {})]
+    padded_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                 preprocessing_options)
+
+    padded_images = padded_tensor_dict[fields.InputDataFields.image]
+    padded_boxes = padded_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes]
+    padded_keypoints = padded_tensor_dict[
+        fields.InputDataFields.groundtruth_keypoints]
+    boxes_shape = tf.shape(boxes)
+    padded_boxes_shape = tf.shape(padded_boxes)
+    keypoints_shape = tf.shape(keypoints)
+    padded_keypoints_shape = tf.shape(padded_keypoints)
+    images_shape = tf.shape(images)
+    padded_images_shape = tf.shape(padded_images)
+
+    with self.test_session() as sess:
+      (boxes_shape_, padded_boxes_shape_, keypoints_shape_,
+       padded_keypoints_shape_, images_shape_, padded_images_shape_, boxes_,
+       padded_boxes_, keypoints_, padded_keypoints_) = sess.run(
+           [boxes_shape, padded_boxes_shape, keypoints_shape,
+            padded_keypoints_shape, images_shape, padded_images_shape, boxes,
+            padded_boxes, keypoints, padded_keypoints])
+      self.assertAllEqual(boxes_shape_, padded_boxes_shape_)
+      self.assertAllEqual(keypoints_shape_, padded_keypoints_shape_)
+      self.assertTrue((images_shape_[1] >= padded_images_shape_[1] * 0.5).all)
+      self.assertTrue((images_shape_[2] >= padded_images_shape_[2] * 0.5).all)
+      self.assertTrue((images_shape_[1] <= padded_images_shape_[1]).all)
+      self.assertTrue((images_shape_[2] <= padded_images_shape_[2]).all)
+      self.assertTrue(np.all((boxes_[:, 2] - boxes_[:, 0]) >= (
+          padded_boxes_[:, 2] - padded_boxes_[:, 0])))
+      self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
+          padded_boxes_[:, 3] - padded_boxes_[:, 1])))
+      self.assertTrue(np.all((keypoints_[1, :, 0] - keypoints_[0, :, 0]) >= (
+          padded_keypoints_[1, :, 0] - padded_keypoints_[0, :, 0])))
+      self.assertTrue(np.all((keypoints_[1, :, 1] - keypoints_[0, :, 1]) >= (
+          padded_keypoints_[1, :, 1] - padded_keypoints_[0, :, 1])))
+
+  def testRandomAbsolutePadImage(self):
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    tensor_dict = {
+        fields.InputDataFields.image: tf.cast(images, dtype=tf.float32),
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+    }
+
+    height_padding = 10
+    width_padding = 20
+    preprocessing_options = [(preprocessor.random_absolute_pad_image, {
+        'max_height_padding': height_padding,
+        'max_width_padding': width_padding})]
+    padded_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                 preprocessing_options)
+
+    original_shape = tf.shape(images)
+    final_shape = tf.shape(padded_tensor_dict[fields.InputDataFields.image])
+
+    with self.test_session() as sess:
+      _, height, width, _ = sess.run(original_shape)
+      for _ in range(100):
+        output_shape = sess.run(final_shape)
+
+        self.assertTrue(output_shape[1] >= height)
+        self.assertTrue(output_shape[1] < height + height_padding)
+        self.assertTrue(output_shape[2] >= width)
+        self.assertTrue(output_shape[2] < width + width_padding)
+
   def testRandomCropPadImageWithCache(self):
     preprocess_options = [(preprocessor.normalize_image, {
         'original_minval': 0,
@@ -2243,6 +2477,260 @@ class PreprocessorTest(tf.test.TestCase):
       (images_shape_, blacked_images_shape_) = sess.run(
           [images_shape, blacked_images_shape])
       self.assertAllEqual(images_shape_, blacked_images_shape_)
+
+  def testRandomJpegQuality(self):
+    preprocessing_options = [(preprocessor.random_jpeg_quality, {
+        'min_jpeg_quality': 0,
+        'max_jpeg_quality': 100
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    encoded_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    encoded_images_shape = tf.shape(encoded_images)
+
+    with self.test_session() as sess:
+      images_shape_out, encoded_images_shape_out = sess.run(
+          [images_shape, encoded_images_shape])
+      self.assertAllEqual(images_shape_out, encoded_images_shape_out)
+
+  def testRandomJpegQualityKeepsStaticChannelShape(self):
+    # Set at least three weeks past the forward compatibility horizon for
+    # tf 1.14 of 2019/11/01.
+    # https://github.com/tensorflow/tensorflow/blob/v1.14.0/tensorflow/python/compat/compat.py#L30
+    if not tf.compat.forward_compatible(year=2019, month=12, day=1):
+      self.skipTest('Skipping test for future functionality.')
+
+    preprocessing_options = [(preprocessor.random_jpeg_quality, {
+        'min_jpeg_quality': 0,
+        'max_jpeg_quality': 100
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    encoded_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_static_channels = images.shape[-1]
+    encoded_images_static_channels = encoded_images.shape[-1]
+    self.assertEqual(images_static_channels, encoded_images_static_channels)
+
+  def testRandomJpegQualityWithCache(self):
+    preprocessing_options = [(preprocessor.random_jpeg_quality, {
+        'min_jpeg_quality': 0,
+        'max_jpeg_quality': 100
+    })]
+    self._testPreprocessorCache(preprocessing_options)
+
+  def testRandomJpegQualityWithRandomCoefOne(self):
+    preprocessing_options = [(preprocessor.random_jpeg_quality, {
+        'random_coef': 1.0
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    encoded_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    encoded_images_shape = tf.shape(encoded_images)
+
+    with self.test_session() as sess:
+      (images_out, encoded_images_out, images_shape_out,
+       encoded_images_shape_out) = sess.run(
+           [images, encoded_images, images_shape, encoded_images_shape])
+      self.assertAllEqual(images_shape_out, encoded_images_shape_out)
+      self.assertAllEqual(images_out, encoded_images_out)
+
+  def testRandomDownscaleToTargetPixels(self):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'min_target_pixels': 100,
+        'max_target_pixels': 101
+    })]
+    images = tf.random_uniform([1, 25, 100, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    downscaled_images = processed_tensor_dict[fields.InputDataFields.image]
+    downscaled_shape = tf.shape(downscaled_images)
+    expected_shape = [1, 5, 20, 3]
+    with self.test_session() as sess:
+      downscaled_shape_out = sess.run(downscaled_shape)
+      self.assertAllEqual(downscaled_shape_out, expected_shape)
+
+  def testRandomDownscaleToTargetPixelsWithMasks(self):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'min_target_pixels': 100,
+        'max_target_pixels': 101
+    })]
+    images = tf.random_uniform([1, 25, 100, 3])
+    masks = tf.random_uniform([10, 25, 100])
+    tensor_dict = {
+        fields.InputDataFields.image: images,
+        fields.InputDataFields.groundtruth_instance_masks: masks
+    }
+    preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+        include_instance_masks=True)
+    processed_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options, func_arg_map=preprocessor_arg_map)
+    downscaled_images = processed_tensor_dict[fields.InputDataFields.image]
+    downscaled_masks = processed_tensor_dict[
+        fields.InputDataFields.groundtruth_instance_masks]
+    downscaled_images_shape = tf.shape(downscaled_images)
+    downscaled_masks_shape = tf.shape(downscaled_masks)
+    expected_images_shape = [1, 5, 20, 3]
+    expected_masks_shape = [10, 5, 20]
+    with self.test_session() as sess:
+      downscaled_images_shape_out, downscaled_masks_shape_out = sess.run(
+          [downscaled_images_shape, downscaled_masks_shape])
+      self.assertAllEqual(downscaled_images_shape_out, expected_images_shape)
+      self.assertAllEqual(downscaled_masks_shape_out, expected_masks_shape)
+
+  @parameterized.parameters(
+      {'test_masks': False},
+      {'test_masks': True}
+  )
+  def testRandomDownscaleToTargetPixelsWithCache(self, test_masks):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'min_target_pixels': 100,
+        'max_target_pixels': 999
+    })]
+    self._testPreprocessorCache(preprocessing_options, test_masks=test_masks)
+
+  def testRandomDownscaleToTargetPixelsWithRandomCoefOne(self):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'random_coef': 1.0,
+        'min_target_pixels': 10,
+        'max_target_pixels': 20,
+    })]
+    images = tf.random_uniform([1, 25, 100, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    downscaled_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    downscaled_images_shape = tf.shape(downscaled_images)
+
+    with self.test_session() as sess:
+      (images_out, downscaled_images_out, images_shape_out,
+       downscaled_images_shape_out) = sess.run(
+           [images, downscaled_images, images_shape, downscaled_images_shape])
+      self.assertAllEqual(images_shape_out, downscaled_images_shape_out)
+      self.assertAllEqual(images_out, downscaled_images_out)
+
+  def testRandomDownscaleToTargetPixelsIgnoresSmallImages(self):
+    preprocessing_options = [(preprocessor.random_downscale_to_target_pixels, {
+        'min_target_pixels': 1000,
+        'max_target_pixels': 1001
+    })]
+    images = tf.random_uniform([1, 10, 10, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    downscaled_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    downscaled_images_shape = tf.shape(downscaled_images)
+    with self.test_session() as sess:
+      (images_out, downscaled_images_out, images_shape_out,
+       downscaled_images_shape_out) = sess.run(
+           [images, downscaled_images, images_shape, downscaled_images_shape])
+      self.assertAllEqual(images_shape_out, downscaled_images_shape_out)
+      self.assertAllEqual(images_out, downscaled_images_out)
+
+  def testRandomPatchGaussianShape(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'min_patch_size': 1,
+        'max_patch_size': 200,
+        'min_gaussian_stddev': 0.0,
+        'max_gaussian_stddev': 2.0
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    patched_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    patched_images_shape = tf.shape(patched_images)
+    self.assertAllEqual(images_shape, patched_images_shape)
+
+  def testRandomPatchGaussianClippedToLowerBound(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'min_patch_size': 20,
+        'max_patch_size': 40,
+        'min_gaussian_stddev': 50,
+        'max_gaussian_stddev': 100
+    })]
+    images = tf.zeros([1, 5, 4, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    patched_images = processed_tensor_dict[fields.InputDataFields.image]
+    self.assertAllGreaterEqual(patched_images, 0.0)
+
+  def testRandomPatchGaussianClippedToUpperBound(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'min_patch_size': 20,
+        'max_patch_size': 40,
+        'min_gaussian_stddev': 50,
+        'max_gaussian_stddev': 100
+    })]
+    images = tf.constant(255.0, shape=[1, 5, 4, 3])
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    patched_images = processed_tensor_dict[fields.InputDataFields.image]
+    self.assertAllLessEqual(patched_images, 255.0)
+
+  def testRandomPatchGaussianWithCache(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'min_patch_size': 1,
+        'max_patch_size': 200,
+        'min_gaussian_stddev': 0.0,
+        'max_gaussian_stddev': 2.0
+    })]
+    self._testPreprocessorCache(preprocessing_options)
+
+  def testRandomPatchGaussianWithRandomCoefOne(self):
+    preprocessing_options = [(preprocessor.random_patch_gaussian, {
+        'random_coef': 1.0
+    })]
+    images = self.createTestImages()
+    tensor_dict = {fields.InputDataFields.image: images}
+    processed_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                    preprocessing_options)
+    patched_images = processed_tensor_dict[fields.InputDataFields.image]
+    images_shape = tf.shape(images)
+    patched_images_shape = tf.shape(patched_images)
+
+    self.assertAllEqual(images_shape, patched_images_shape)
+    self.assertAllEqual(images, patched_images)
+
+  def testAutoAugmentImage(self):
+    preprocessing_options = []
+    preprocessing_options.append((preprocessor.autoaugment_image, {
+        'policy_name': 'v1'
+    }))
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    tensor_dict = {fields.InputDataFields.image: images,
+                   fields.InputDataFields.groundtruth_boxes: boxes}
+    autoaugment_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options)
+    augmented_images = autoaugment_tensor_dict[fields.InputDataFields.image]
+    augmented_boxes = autoaugment_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes]
+    images_shape = tf.shape(images)
+    boxes_shape = tf.shape(boxes)
+    augmented_images_shape = tf.shape(augmented_images)
+    augmented_boxes_shape = tf.shape(augmented_boxes)
+
+    with self.test_session() as sess:
+      (images_shape_, boxes_shape_,
+       augmented_images_shape_, augmented_boxes_shape_) = sess.run(
+           [images_shape, boxes_shape,
+            augmented_images_shape, augmented_boxes_shape])
+      self.assertAllEqual(images_shape_, augmented_images_shape_)
+      self.assertAllEqual(boxes_shape_, augmented_boxes_shape_)
 
   def testRandomResizeMethodWithCache(self):
     preprocess_options = []
@@ -2573,6 +3061,68 @@ class PreprocessorTest(tf.test.TestCase):
         out_image_shape = sess.run(out_image_shape)
         self.assertAllEqual(out_image_shape, expected_shape)
 
+  def testResizeToMaxDimensionTensorShapes(self):
+    """Tests both cases where image should and shouldn't be resized."""
+    in_image_shape_list = [[100, 50, 3], [15, 30, 3]]
+    in_masks_shape_list = [[15, 100, 50], [10, 15, 30]]
+    max_dim = 50
+    expected_image_shape_list = [[50, 25, 3], [15, 30, 3]]
+    expected_masks_shape_list = [[15, 50, 25], [10, 15, 30]]
+
+    for (in_image_shape, expected_image_shape, in_masks_shape,
+         expected_mask_shape) in zip(in_image_shape_list,
+                                     expected_image_shape_list,
+                                     in_masks_shape_list,
+                                     expected_masks_shape_list):
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      in_masks = tf.placeholder(tf.float32, shape=(None, None, None))
+      in_masks = tf.random_uniform(in_masks_shape)
+      out_image, out_masks, _ = preprocessor.resize_to_max_dimension(
+          in_image, in_masks, max_dimension=max_dim)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape],
+            feed_dict={
+                in_image: np.random.randn(*in_image_shape),
+                in_masks: np.random.randn(*in_masks_shape)
+            })
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
+
+  def testResizeToMaxDimensionWithInstanceMasksTensorOfSizeZero(self):
+    """Tests both cases where image should and shouldn't be resized."""
+    in_image_shape_list = [[100, 50, 3], [15, 30, 3]]
+    in_masks_shape_list = [[0, 100, 50], [0, 15, 30]]
+    max_dim = 50
+    expected_image_shape_list = [[50, 25, 3], [15, 30, 3]]
+    expected_masks_shape_list = [[0, 50, 25], [0, 15, 30]]
+
+    for (in_image_shape, expected_image_shape, in_masks_shape,
+         expected_mask_shape) in zip(in_image_shape_list,
+                                     expected_image_shape_list,
+                                     in_masks_shape_list,
+                                     expected_masks_shape_list):
+      in_image = tf.random_uniform(in_image_shape)
+      in_masks = tf.random_uniform(in_masks_shape)
+      out_image, out_masks, _ = preprocessor.resize_to_max_dimension(
+          in_image, in_masks, max_dimension=max_dim)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape])
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
+
+  def testResizeToMaxDimensionRaisesErrorOn4DImage(self):
+    image = tf.random_uniform([1, 200, 300, 3])
+    with self.assertRaises(ValueError):
+      preprocessor.resize_to_max_dimension(image, 500)
+
   def testResizeToMinDimensionTensorShapes(self):
     in_image_shape_list = [[60, 55, 3], [15, 30, 3]]
     in_masks_shape_list = [[15, 60, 55], [10, 15, 30]]
@@ -2692,6 +3242,95 @@ class PreprocessorTest(tf.test.TestCase):
       one_hot = one_hot.eval()
 
       self.assertAllEqual([0, 1, 1, 0, 1], one_hot)
+
+  def testRandomSelfConcatImage(self):
+    tf.set_random_seed(24601)
+
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+    weights = self.createTestGroundtruthWeights()
+    confidences = weights
+    scores = self.createTestMultiClassScores()
+
+    tensor_dict = {
+        fields.InputDataFields.image: tf.cast(images, dtype=tf.float32),
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels,
+        fields.InputDataFields.groundtruth_weights: weights,
+        fields.InputDataFields.groundtruth_confidences: confidences,
+        fields.InputDataFields.multiclass_scores: scores,
+    }
+
+    preprocessing_options = [(preprocessor.random_self_concat_image, {
+        'concat_vertical_probability': 0.5,
+        'concat_horizontal_probability': 0.5,
+        'seed': 24601,
+    })]
+    func_arg_map = preprocessor.get_default_func_arg_map(
+        True, True, True)
+    output_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options, func_arg_map=func_arg_map)
+
+    final_shape = tf.shape(output_tensor_dict[fields.InputDataFields.image])[
+        1:3]
+
+    with self.test_session() as sess:
+      outputs = []
+
+      augment_height_only = False
+      augment_width_only = False
+
+      for _ in range(50):
+        original_boxes = sess.run(boxes)
+        shape, new_boxes, new_labels, new_confidences, new_scores = sess.run(
+            [final_shape,
+             output_tensor_dict[fields.InputDataFields.groundtruth_boxes],
+             output_tensor_dict[fields.InputDataFields.groundtruth_classes],
+             output_tensor_dict[fields.InputDataFields.groundtruth_confidences],
+             output_tensor_dict[fields.InputDataFields.multiclass_scores],
+            ])
+        shape = np.array(shape)
+        outputs.append(shape)
+
+        if np.array_equal(shape, [8, 4]):
+          augment_height_only = True
+          self.assertEqual(
+              new_boxes.shape[0], 2 * boxes.shape[0])
+
+          self.assertAllClose(new_boxes[:2, :] * [2.0, 1.0, 2.0, 1.0],
+                              original_boxes)
+          self.assertAllClose(
+              (new_boxes[2:, :] - [0.5, 0.0, 0.5, 0.0]) * [
+                  2.0, 1.0, 2.0, 1.0],
+              original_boxes)
+        elif np.array_equal(shape, [4, 8]):
+          augment_width_only = True
+          self.assertEqual(
+              new_boxes.shape[0], 2 * boxes.shape[0])
+
+          self.assertAllClose(new_boxes[:2, :] * [1.0, 2.0, 1.0, 2.0],
+                              original_boxes)
+          self.assertAllClose(
+              (new_boxes[2:, :] - [0.0, 0.5, 0.0, 0.5]) * [
+                  1.0, 2.0, 1.0, 2.0],
+              original_boxes)
+
+        augmentation_factor = new_boxes.shape[0] / boxes.shape[0].value
+        self.assertEqual(new_labels.shape[0],
+                         labels.shape[0].value * augmentation_factor)
+        self.assertEqual(new_confidences.shape[0],
+                         confidences.shape[0].value * augmentation_factor)
+        self.assertEqual(new_scores.shape[0],
+                         scores.shape[0].value * augmentation_factor)
+
+      max_height = max(x[0] for x in outputs)
+      max_width = max(x[1] for x in outputs)
+
+      self.assertEqual(max_height, 8)
+      self.assertEqual(max_width, 8)
+      self.assertEqual(augment_height_only, True)
+      self.assertEqual(augment_width_only, True)
 
   def testSSDRandomCropWithCache(self):
     preprocess_options = [

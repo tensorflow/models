@@ -135,22 +135,29 @@ output bounding-boxes labelled in the same manner.
 The old metric name is DEPRECATED.
 `EvalConfig.metrics_set='open_images_V2_detection_metrics'`
 
-## OID Challenge Object Detection Metric 2018
+## OID Challenge Object Detection Metric
 
 `EvalConfig.metrics_set='oid_challenge_detection_metrics'`
 
-The metric for the OID Challenge Object Detection Metric 2018, Object Detection
-track. The description is provided on the [Open Images Challenge
-website](https://storage.googleapis.com/openimages/web/challenge.html).
+The metric for the OID Challenge Object Detection Metric 2018/2019 Object
+Detection track. The description is provided on the
+[Open Images Challenge website](https://storage.googleapis.com/openimages/web/evaluation.html#object_detection_eval).
 
 The old metric name is DEPRECATED.
 `EvalConfig.metrics_set='oid_challenge_object_detection_metrics'`
 
-## OID Challenge Visual Relationship Detection Metric 2018
+## OID Challenge Visual Relationship Detection Metric
 
-The metric for the OID Challenge Visual Relationship Detection Metric 2018, Visual
-Relationship Detection track. The description is provided on the [Open Images
-Challenge
-website](https://storage.googleapis.com/openimages/web/challenge.html). Note:
-this is currently a stand-alone metric, that can be used only through the
+The metric for the OID Challenge Visual Relationship Detection Metric 2018,2019
+Visual Relationship Detection track. The description is provided on the
+[Open Images Challenge website](https://storage.googleapis.com/openimages/web/evaluation.html#visual_relationships_eval).
+Note: this is currently a stand-alone metric, that can be used only through the
 `metrics/oid_vrd_challenge_evaluation.py` util.
+
+## OID Challenge Instance Segmentation Metric
+
+`EvalConfig.metrics_set='oid_challenge_segmentation_metrics'`
+
+The metric for the OID Challenge Instance Segmentation Metric 2019, Instance
+Segmentation track. The description is provided on the
+[Open Images Challenge website](https://storage.googleapis.com/openimages/web/evaluation.html#instance_segmentation_eval).

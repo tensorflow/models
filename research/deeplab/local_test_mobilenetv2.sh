@@ -79,8 +79,7 @@ python "${WORK_DIR}"/train.py \
   --train_split="trainval" \
   --model_variant="mobilenet_v2" \
   --output_stride=16 \
-  --train_crop_size=513 \
-  --train_crop_size=513 \
+  --train_crop_size="513,513" \
   --train_batch_size=4 \
   --training_number_of_steps="${NUM_ITERATIONS}" \
   --fine_tune_batch_norm=true \
@@ -95,8 +94,7 @@ python "${WORK_DIR}"/eval.py \
   --logtostderr \
   --eval_split="val" \
   --model_variant="mobilenet_v2" \
-  --eval_crop_size=513 \
-  --eval_crop_size=513 \
+  --eval_crop_size="513,513" \
   --checkpoint_dir="${TRAIN_LOGDIR}" \
   --eval_logdir="${EVAL_LOGDIR}" \
   --dataset_dir="${PASCAL_DATASET}" \
@@ -107,8 +105,7 @@ python "${WORK_DIR}"/vis.py \
   --logtostderr \
   --vis_split="val" \
   --model_variant="mobilenet_v2" \
-  --vis_crop_size=513 \
-  --vis_crop_size=513 \
+  --vis_crop_size="513,513" \
   --checkpoint_dir="${TRAIN_LOGDIR}" \
   --vis_logdir="${VIS_LOGDIR}" \
   --dataset_dir="${PASCAL_DATASET}" \

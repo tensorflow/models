@@ -713,9 +713,6 @@ class BatchTargetAssignerTest(test_case.TestCase):
     groundtruth_boxlist2 = np.array([[0, 0.25123152, 1, 1],
                                      [0.015789, 0.0985, 0.55789, 0.3842]],
                                     dtype=np.float32)
-    class_targets1 = np.array([[0, 1, 0, 0]], dtype=np.float32)
-    class_targets2 = np.array([[0, 0, 0, 1],
-                               [0, 0, 1, 0]], dtype=np.float32)
     class_targets1 = np.array([[[0, 1, 1],
                                 [1, 1, 0]]], dtype=np.float32)
     class_targets2 = np.array([[[0, 1, 1],
@@ -819,6 +816,63 @@ class BatchTargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_targets_out, exp_reg_targets)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
+
+
+class BatchGetTargetsTest(test_case.TestCase):
+
+  def test_scalar_targets(self):
+    batch_match = np.array([[1, 0, 1],
+                            [-2, -1, 1]], dtype=np.int32)
+    groundtruth_tensors_list = np.array([[11, 12], [13, 14]], dtype=np.int32)
+    groundtruth_weights_list = np.array([[1.0, 1.0], [1.0, 0.5]],
+                                        dtype=np.float32)
+    unmatched_value = np.array(99, dtype=np.int32)
+    unmatched_weight = np.array(0.0, dtype=np.float32)
+
+    def graph_fn(batch_match, groundtruth_tensors_list,
+                 groundtruth_weights_list, unmatched_value, unmatched_weight):
+      targets, weights = targetassigner.batch_get_targets(
+          batch_match, tf.unstack(groundtruth_tensors_list),
+          tf.unstack(groundtruth_weights_list),
+          unmatched_value, unmatched_weight)
+      return (targets, weights)
+
+    (targets_np, weights_np) = self.execute(graph_fn, [
+        batch_match, groundtruth_tensors_list, groundtruth_weights_list,
+        unmatched_value, unmatched_weight
+    ])
+    self.assertAllEqual([[12, 11, 12],
+                         [99, 99, 14]], targets_np)
+    self.assertAllClose([[1.0, 1.0, 1.0],
+                         [0.0, 0.0, 0.5]], weights_np)
+
+  def test_1d_targets(self):
+    batch_match = np.array([[1, 0, 1],
+                            [-2, -1, 1]], dtype=np.int32)
+    groundtruth_tensors_list = np.array([[[11, 12], [12, 13]],
+                                         [[13, 14], [14, 15]]],
+                                        dtype=np.float32)
+    groundtruth_weights_list = np.array([[1.0, 1.0], [1.0, 0.5]],
+                                        dtype=np.float32)
+    unmatched_value = np.array([99, 99], dtype=np.float32)
+    unmatched_weight = np.array(0.0, dtype=np.float32)
+
+    def graph_fn(batch_match, groundtruth_tensors_list,
+                 groundtruth_weights_list, unmatched_value, unmatched_weight):
+      targets, weights = targetassigner.batch_get_targets(
+          batch_match, tf.unstack(groundtruth_tensors_list),
+          tf.unstack(groundtruth_weights_list),
+          unmatched_value, unmatched_weight)
+      return (targets, weights)
+
+    (targets_np, weights_np) = self.execute(graph_fn, [
+        batch_match, groundtruth_tensors_list, groundtruth_weights_list,
+        unmatched_value, unmatched_weight
+    ])
+    self.assertAllClose([[[12, 13], [11, 12], [12, 13]],
+                         [[99, 99], [99, 99], [14, 15]]], targets_np)
+    self.assertAllClose([[1.0, 1.0, 1.0],
+                         [0.0, 0.0, 0.5]], weights_np)
 
 
 class BatchTargetAssignConfidencesTest(test_case.TestCase):

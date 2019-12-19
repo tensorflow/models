@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,10 +51,14 @@ The Example proto contains the following fields:
   image/segmentation/class/encoded: encoded semantic segmentation content.
   image/segmentation/class/format: semantic segmentation file format.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import math
 import os.path
 import sys
 import build_data
+from six.moves import range
 import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
@@ -94,7 +99,7 @@ def _convert_dataset(dataset_split):
   sys.stdout.write('Processing ' + dataset)
   filenames = [x.strip('\n') for x in open(dataset_split, 'r')]
   num_images = len(filenames)
-  num_per_shard = int(math.ceil(num_images / float(_NUM_SHARDS)))
+  num_per_shard = int(math.ceil(num_images / _NUM_SHARDS))
 
   image_reader = build_data.ImageReader('jpeg', channels=3)
   label_reader = build_data.ImageReader('png', channels=1)
@@ -113,13 +118,13 @@ def _convert_dataset(dataset_split):
         # Read the image.
         image_filename = os.path.join(
             FLAGS.image_folder, filenames[i] + '.' + FLAGS.image_format)
-        image_data = tf.gfile.FastGFile(image_filename, 'rb').read()
+        image_data = tf.gfile.GFile(image_filename, 'rb').read()
         height, width = image_reader.read_image_dims(image_data)
         # Read the semantic segmentation annotation.
         seg_filename = os.path.join(
             FLAGS.semantic_segmentation_folder,
             filenames[i] + '.' + FLAGS.label_format)
-        seg_data = tf.gfile.FastGFile(seg_filename, 'rb').read()
+        seg_data = tf.gfile.GFile(seg_filename, 'rb').read()
         seg_height, seg_width = label_reader.read_image_dims(seg_data)
         if height != seg_height or width != seg_width:
           raise RuntimeError('Shape mismatched between image and label.')

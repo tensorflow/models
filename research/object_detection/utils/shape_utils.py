@@ -15,9 +15,17 @@
 
 """Utils used to manipulate tensor shapes."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.utils import static_shape
+
+
+get_dim_as_int = static_shape.get_dim_as_int
 
 
 def _is_tensor(t):
@@ -365,3 +373,126 @@ def assert_box_normalized(boxes, maximum_normalized_coordinate=1.1):
           tf.less_equal(box_maximum, maximum_normalized_coordinate),
           tf.greater_equal(box_minimum, 0)),
       [boxes])
+
+
+def flatten_dimensions(inputs, first, last):
+  """Flattens `K-d` tensor along [first, last) dimensions.
+
+  Converts `inputs` with shape [D0, D1, ..., D(K-1)] into a tensor of shape
+  [D0, D1, ..., D(first) * D(first+1) * ... * D(last-1), D(last), ..., D(K-1)].
+
+  Example:
+  `inputs` is a tensor with initial shape [10, 5, 20, 20, 3].
+  new_tensor = flatten_dimensions(inputs, first=1, last=3)
+  new_tensor.shape -> [10, 100, 20, 3].
+
+  Args:
+    inputs: a tensor with shape [D0, D1, ..., D(K-1)].
+    first: first value for the range of dimensions to flatten.
+    last: last value for the range of dimensions to flatten. Note that the last
+      dimension itself is excluded.
+
+  Returns:
+    a tensor with shape
+    [D0, D1, ..., D(first) * D(first + 1) * ... * D(last - 1), D(last), ...,
+     D(K-1)].
+
+  Raises:
+    ValueError: if first and last arguments are incorrect.
+  """
+  if first >= inputs.shape.ndims or last > inputs.shape.ndims:
+    raise ValueError('`first` and `last` must be less than inputs.shape.ndims. '
+                     'found {} and {} respectively while ndims is {}'.format(
+                         first, last, inputs.shape.ndims))
+  shape = combined_static_and_dynamic_shape(inputs)
+  flattened_dim_prod = tf.reduce_prod(shape[first:last],
+                                      keepdims=True)
+  new_shape = tf.concat([shape[:first], flattened_dim_prod,
+                         shape[last:]], axis=0)
+  return tf.reshape(inputs, new_shape)
+
+
+def flatten_first_n_dimensions(inputs, n):
+  """Flattens `K-d` tensor along first n dimension to be a `(K-n+1)-d` tensor.
+
+  Converts `inputs` with shape [D0, D1, ..., D(K-1)] into a tensor of shape
+  [D0 * D1 * ... * D(n-1), D(n), ... D(K-1)].
+
+  Example:
+  `inputs` is a tensor with initial shape [10, 5, 20, 20, 3].
+  new_tensor = flatten_first_n_dimensions(inputs, 2)
+  new_tensor.shape -> [50, 20, 20, 3].
+
+  Args:
+    inputs: a tensor with shape [D0, D1, ..., D(K-1)].
+    n: The number of dimensions to flatten.
+
+  Returns:
+    a tensor with shape [D0 * D1 * ... * D(n-1), D(n), ... D(K-1)].
+  """
+  return flatten_dimensions(inputs, first=0, last=n)
+
+
+def expand_first_dimension(inputs, dims):
+  """Expands `K-d` tensor along first dimension to be a `(K+n-1)-d` tensor.
+
+  Converts `inputs` with shape [D0, D1, ..., D(K-1)] into a tensor of shape
+  [dims[0], dims[1], ..., dims[-1], D1, ..., D(k-1)].
+
+  Example:
+  `inputs` is a tensor with shape [50, 20, 20, 3].
+  new_tensor = expand_first_dimension(inputs, [10, 5]).
+  new_tensor.shape -> [10, 5, 20, 20, 3].
+
+  Args:
+    inputs: a tensor with shape [D0, D1, ..., D(K-1)].
+    dims: List with new dimensions to expand first axis into. The length of
+      `dims` is typically 2 or larger.
+
+  Returns:
+    a tensor with shape [dims[0], dims[1], ..., dims[-1], D1, ..., D(k-1)].
+  """
+  inputs_shape = combined_static_and_dynamic_shape(inputs)
+  expanded_shape = tf.stack(dims + inputs_shape[1:])
+
+  # Verify that it is possible to expand the first axis of inputs.
+  assert_op = tf.assert_equal(
+      inputs_shape[0], tf.reduce_prod(tf.stack(dims)),
+      message=('First dimension of `inputs` cannot be expanded into provided '
+               '`dims`'))
+
+  with tf.control_dependencies([assert_op]):
+    inputs_reshaped = tf.reshape(inputs, expanded_shape)
+
+  return inputs_reshaped
+
+
+def resize_images_and_return_shapes(inputs, image_resizer_fn):
+  """Resizes images using the given function and returns their true shapes.
+
+  Args:
+    inputs: a float32 Tensor representing a batch of inputs of shape
+      [batch_size, height, width, channels].
+    image_resizer_fn: a function which takes in a single image and outputs
+      a resized image and its original shape.
+
+  Returns:
+    resized_inputs: The inputs resized according to image_resizer_fn.
+    true_image_shapes: A integer tensor of shape [batch_size, 3]
+      representing the height, width and number of channels in inputs.
+  """
+
+  if inputs.dtype is not tf.float32:
+    raise ValueError('`resize_images_and_return_shapes` expects a'
+                     ' tf.float32 tensor')
+
+  # TODO(jonathanhuang): revisit whether to always use batch size as
+  # the number of parallel iterations vs allow for dynamic batching.
+  outputs = static_or_dynamic_map_fn(
+      image_resizer_fn,
+      elems=inputs,
+      dtype=[tf.float32, tf.int32])
+  resized_inputs = outputs[0]
+  true_image_shapes = outputs[1]
+
+  return resized_inputs, true_image_shapes

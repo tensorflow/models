@@ -128,7 +128,7 @@ class RfcnBoxPredictor(box_predictor.BoxPredictor):
           crop_size=self._crop_size,
           num_spatial_bins=self._num_spatial_bins,
           global_pool=True)
-      box_encodings = tf.squeeze(box_encodings, squeeze_dims=[2, 3])
+      box_encodings = tf.squeeze(box_encodings, axis=[2, 3])
       box_encodings = tf.reshape(box_encodings,
                                  [batch_size * num_boxes, 1, self.num_classes,
                                   self._box_code_size])
@@ -149,7 +149,7 @@ class RfcnBoxPredictor(box_predictor.BoxPredictor):
               num_spatial_bins=self._num_spatial_bins,
               global_pool=True))
       class_predictions_with_background = tf.squeeze(
-          class_predictions_with_background, squeeze_dims=[2, 3])
+          class_predictions_with_background, axis=[2, 3])
       class_predictions_with_background = tf.reshape(
           class_predictions_with_background,
           [batch_size * num_boxes, 1, total_classes])

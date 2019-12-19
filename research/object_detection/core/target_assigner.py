@@ -31,12 +31,19 @@ Note that TargetAssigners only operate on detections from a single
 image at a time, so any logic for applying a TargetAssigner to multiple
 images must be handled externally.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.box_coders import faster_rcnn_box_coder
 from object_detection.box_coders import mean_stddev_box_coder
-from object_detection.core import box_coder as bcoder
+from object_detection.core import box_coder
 from object_detection.core import box_list
+from object_detection.core import box_list_ops
 from object_detection.core import matcher as mat
 from object_detection.core import region_similarity_calculator as sim_calc
 from object_detection.core import standard_fields as fields
@@ -51,7 +58,7 @@ class TargetAssigner(object):
   def __init__(self,
                similarity_calc,
                matcher,
-               box_coder,
+               box_coder_instance,
                negative_class_weight=1.0):
     """Construct Object Detection Target Assigner.
 
@@ -59,8 +66,8 @@ class TargetAssigner(object):
       similarity_calc: a RegionSimilarityCalculator
       matcher: an object_detection.core.Matcher used to match groundtruth to
         anchors.
-      box_coder: an object_detection.core.BoxCoder used to encode matching
-        groundtruth boxes with respect to anchors.
+      box_coder_instance: an object_detection.core.BoxCoder used to encode
+        matching groundtruth boxes with respect to anchors.
       negative_class_weight: classification weight to be associated to negative
         anchors (default: 1.0). The weight must be in [0., 1.].
 
@@ -72,11 +79,11 @@ class TargetAssigner(object):
       raise ValueError('similarity_calc must be a RegionSimilarityCalculator')
     if not isinstance(matcher, mat.Matcher):
       raise ValueError('matcher must be a Matcher')
-    if not isinstance(box_coder, bcoder.BoxCoder):
+    if not isinstance(box_coder_instance, box_coder.BoxCoder):
       raise ValueError('box_coder must be a BoxCoder')
     self._similarity_calc = similarity_calc
     self._matcher = matcher
-    self._box_coder = box_coder
+    self._box_coder = box_coder_instance
     self._negative_class_weight = negative_class_weight
 
   @property
@@ -130,9 +137,13 @@ class TargetAssigner(object):
         representing weights for each element in cls_targets.
       reg_targets: a float32 tensor with shape [num_anchors, box_code_dimension]
       reg_weights: a float32 tensor with shape [num_anchors]
-      match: a matcher.Match object encoding the match between anchors and
-        groundtruth boxes, with rows corresponding to groundtruth boxes
-        and columns corresponding to anchors.
+      match: an int32 tensor of shape [num_anchors] containing result of anchor
+        groundtruth matching. Each position in the tensor indicates an anchor
+        and holds the following meaning:
+        (1) if match[i] >= 0, anchor i is matched with groundtruth match[i].
+        (2) if match[i]=-1, anchor i is marked to be background .
+        (3) if match[i]=-2, anchor i is ignored since it is not background and
+            does not have sufficient overlap to call it a foreground.
 
     Raises:
       ValueError: if anchors or groundtruth_boxes are not of type
@@ -165,6 +176,10 @@ class TargetAssigner(object):
       if not num_gt_boxes:
         num_gt_boxes = groundtruth_boxes.num_boxes()
       groundtruth_weights = tf.ones([num_gt_boxes], dtype=tf.float32)
+
+    # set scores on the gt boxes
+    scores = 1 - groundtruth_labels[:, 0]
+    groundtruth_boxes.add_field(fields.BoxListFields.scores, scores)
 
     with tf.control_dependencies(
         [unmatched_shape_assert, labels_and_box_shapes_assert]):
@@ -199,7 +214,8 @@ class TargetAssigner(object):
       reg_weights = self._reset_target_shape(reg_weights, num_anchors)
       cls_weights = self._reset_target_shape(cls_weights, num_anchors)
 
-    return cls_targets, cls_weights, reg_targets, reg_weights, match
+    return (cls_targets, cls_weights, reg_targets, reg_weights,
+            match.match_results)
 
   def _reset_target_shape(self, target, num_anchors):
     """Sets the static shape of the target.
@@ -376,7 +392,7 @@ def create_target_assigner(reference, stage=None,
   if reference == 'Multibox' and stage == 'proposal':
     similarity_calc = sim_calc.NegSqDistSimilarity()
     matcher = bipartite_matcher.GreedyBipartiteMatcher()
-    box_coder = mean_stddev_box_coder.MeanStddevBoxCoder()
+    box_coder_instance = mean_stddev_box_coder.MeanStddevBoxCoder()
 
   elif reference == 'FasterRCNN' and stage == 'proposal':
     similarity_calc = sim_calc.IouSimilarity()
@@ -384,7 +400,7 @@ def create_target_assigner(reference, stage=None,
                                            unmatched_threshold=0.3,
                                            force_match_for_each_row=True,
                                            use_matmul_gather=use_matmul_gather)
-    box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder(
+    box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder(
         scale_factors=[10.0, 10.0, 5.0, 5.0])
 
   elif reference == 'FasterRCNN' and stage == 'detection':
@@ -393,7 +409,7 @@ def create_target_assigner(reference, stage=None,
     matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
                                            negatives_lower_than_unmatched=True,
                                            use_matmul_gather=use_matmul_gather)
-    box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder(
+    box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder(
         scale_factors=[10.0, 10.0, 5.0, 5.0])
 
   elif reference == 'FastRCNN':
@@ -403,21 +419,21 @@ def create_target_assigner(reference, stage=None,
                                            force_match_for_each_row=False,
                                            negatives_lower_than_unmatched=False,
                                            use_matmul_gather=use_matmul_gather)
-    box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder()
+    box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder()
 
   else:
     raise ValueError('No valid combination of reference and stage.')
 
-  return TargetAssigner(similarity_calc, matcher, box_coder,
+  return TargetAssigner(similarity_calc, matcher, box_coder_instance,
                         negative_class_weight=negative_class_weight)
 
 
-def batch_assign_targets(target_assigner,
-                         anchors_batch,
-                         gt_box_batch,
-                         gt_class_targets_batch,
-                         unmatched_class_label=None,
-                         gt_weights_batch=None):
+def batch_assign(target_assigner,
+                 anchors_batch,
+                 gt_box_batch,
+                 gt_class_targets_batch,
+                 unmatched_class_label=None,
+                 gt_weights_batch=None):
   """Batched assignment of classification and regression targets.
 
   Args:
@@ -446,10 +462,14 @@ def batch_assign_targets(target_assigner,
     batch_reg_targets: a tensor with shape [batch_size, num_anchors,
       box_code_dimension]
     batch_reg_weights: a tensor with shape [batch_size, num_anchors],
-    match_list: a list of matcher.Match objects encoding the match between
-      anchors and groundtruth boxes for each image of the batch,
-      with rows of the Match objects corresponding to groundtruth boxes
-      and columns corresponding to anchors.
+    match: an int32 tensor of shape [batch_size, num_anchors] containing result
+      of anchor groundtruth matching. Each position in the tensor indicates an
+      anchor and holds the following meaning:
+      (1) if match[x, i] >= 0, anchor i is matched with groundtruth match[x, i].
+      (2) if match[x, i]=-1, anchor i is marked to be background .
+      (3) if match[x, i]=-2, anchor i is ignored since it is not background and
+          does not have sufficient overlap to call it a foreground.
+
   Raises:
     ValueError: if input list lengths are inconsistent, i.e.,
       batch_size == len(gt_box_batch) == len(gt_class_targets_batch)
@@ -487,8 +507,55 @@ def batch_assign_targets(target_assigner,
   batch_cls_weights = tf.stack(cls_weights_list)
   batch_reg_targets = tf.stack(reg_targets_list)
   batch_reg_weights = tf.stack(reg_weights_list)
+  batch_match = tf.stack(match_list)
   return (batch_cls_targets, batch_cls_weights, batch_reg_targets,
-          batch_reg_weights, match_list)
+          batch_reg_weights, batch_match)
+
+
+# Assign an alias to avoid large refactor of existing users.
+batch_assign_targets = batch_assign
+
+
+def batch_get_targets(batch_match, groundtruth_tensor_list,
+                      groundtruth_weights_list, unmatched_value,
+                      unmatched_weight):
+  """Returns targets based on anchor-groundtruth box matching results.
+
+  Args:
+    batch_match: An int32 tensor of shape [batch, num_anchors] containing the
+      result of target assignment returned by TargetAssigner.assign(..).
+    groundtruth_tensor_list: A list of groundtruth tensors of shape
+      [num_groundtruth, d_1, d_2, ..., d_k]. The tensors can be of any type.
+    groundtruth_weights_list: A list of weights, one per groundtruth tensor, of
+      shape [num_groundtruth].
+    unmatched_value: A tensor of shape [d_1, d_2, ..., d_k] of the same type as
+      groundtruth tensor containing target value for anchors that remain
+      unmatched.
+    unmatched_weight: Scalar weight to assign to anchors that remain unmatched.
+
+  Returns:
+    targets: A tensor of shape [batch, num_anchors, d_1, d_2, ..., d_k]
+      containing targets for anchors.
+    weights: A float tensor of shape [batch, num_anchors] containing the weights
+      to assign to each target.
+  """
+  match_list = tf.unstack(batch_match)
+  targets_list = []
+  weights_list = []
+  for match_tensor, groundtruth_tensor, groundtruth_weight in zip(
+      match_list, groundtruth_tensor_list, groundtruth_weights_list):
+    match_object = mat.Match(match_tensor)
+    targets = match_object.gather_based_on_match(
+        groundtruth_tensor,
+        unmatched_value=unmatched_value,
+        ignored_value=unmatched_value)
+    targets_list.append(targets)
+    weights = match_object.gather_based_on_match(
+        groundtruth_weight,
+        unmatched_value=unmatched_weight,
+        ignored_value=tf.zeros_like(unmatched_weight))
+    weights_list.append(weights)
+  return tf.stack(targets_list), tf.stack(weights_list)
 
 
 def batch_assign_confidences(target_assigner,
@@ -544,10 +611,13 @@ def batch_assign_confidences(target_assigner,
     batch_reg_targets: a tensor with shape [batch_size, num_anchors,
       box_code_dimension]
     batch_reg_weights: a tensor with shape [batch_size, num_anchors],
-    match_list: a list of matcher.Match objects encoding the match between
-      anchors and groundtruth boxes for each image of the batch,
-      with rows of the Match objects corresponding to groundtruth boxes
-      and columns corresponding to anchors.
+    match: an int32 tensor of shape [batch_size, num_anchors] containing result
+      of anchor groundtruth matching. Each position in the tensor indicates an
+      anchor and holds the following meaning:
+      (1) if match[x, i] >= 0, anchor i is matched with groundtruth match[x, i].
+      (2) if match[x, i]=-1, anchor i is marked to be background .
+      (3) if match[x, i]=-2, anchor i is ignored since it is not background and
+          does not have sufficient overlap to call it a foreground.
 
   Raises:
     ValueError: if input list lengths are inconsistent, i.e.,
@@ -597,16 +667,16 @@ def batch_assign_confidences(target_assigner,
     explicit_example_mask = tf.logical_or(positive_mask, negative_mask)
     positive_anchors = tf.reduce_any(positive_mask, axis=-1)
 
-    regression_weights = tf.to_float(positive_anchors)
+    regression_weights = tf.cast(positive_anchors, dtype=tf.float32)
     regression_targets = (
         reg_targets * tf.expand_dims(regression_weights, axis=-1))
     regression_weights_expanded = tf.expand_dims(regression_weights, axis=-1)
 
     cls_targets_without_background = (
-        cls_targets_without_background * (1 - tf.to_float(negative_mask)))
-    cls_weights_without_background = (
-        (1 - implicit_class_weight) * tf.to_float(explicit_example_mask)
-        + implicit_class_weight)
+        cls_targets_without_background *
+        (1 - tf.cast(negative_mask, dtype=tf.float32)))
+    cls_weights_without_background = ((1 - implicit_class_weight) * tf.cast(
+        explicit_example_mask, dtype=tf.float32) + implicit_class_weight)
 
     if include_background_class:
       cls_weights_background = (
@@ -630,5 +700,8 @@ def batch_assign_confidences(target_assigner,
   batch_cls_weights = tf.stack(cls_weights_list)
   batch_reg_targets = tf.stack(reg_targets_list)
   batch_reg_weights = tf.stack(reg_weights_list)
+  batch_match = tf.stack(match_list)
   return (batch_cls_targets, batch_cls_weights, batch_reg_targets,
-          batch_reg_weights, match_list)
+          batch_reg_weights, batch_match)
+
+

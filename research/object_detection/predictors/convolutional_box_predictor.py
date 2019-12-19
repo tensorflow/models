@@ -17,6 +17,7 @@
 import functools
 import tensorflow as tf
 from object_detection.core import box_predictor
+from object_detection.utils import shape_utils
 from object_detection.utils import static_shape
 
 slim = tf.contrib.slim
@@ -108,14 +109,16 @@ class ConvolutionalBoxPredictor(box_predictor.BoxPredictor):
         feature map.
 
     Returns:
-      box_encodings: A list of float tensors of shape
-        [batch_size, num_anchors_i, q, code_size] representing the location of
-        the objects, where q is 1 or the number of classes. Each entry in the
-        list corresponds to a feature map in the input `image_features` list.
-      class_predictions_with_background: A list of float tensors of shape
-        [batch_size, num_anchors_i, num_classes + 1] representing the class
-        predictions for the proposals. Each entry in the list corresponds to a
-        feature map in the input `image_features` list.
+      A dictionary containing:
+        box_encodings: A list of float tensors of shape
+          [batch_size, num_anchors_i, q, code_size] representing the location of
+          the objects, where q is 1 or the number of classes. Each entry in the
+          list corresponds to a feature map in the input `image_features` list.
+        class_predictions_with_background: A list of float tensors of shape
+          [batch_size, num_anchors_i, num_classes + 1] representing the class
+          predictions for the proposals. Each entry in the list corresponds to a
+          feature map in the input `image_features` list.
+        (optional) Predictions from other heads.
     """
     predictions = {
         BOX_ENCODINGS: [],
@@ -226,8 +229,8 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
       kernel_size: Size of final convolution kernel.
       apply_batch_norm: Whether to apply batch normalization to conv layers in
         this predictor.
-      share_prediction_tower: Whether to share the multi-layer tower between box
-        prediction and class prediction heads.
+      share_prediction_tower: Whether to share the multi-layer tower among box
+        prediction head, class prediction head and other heads.
       use_depthwise: Whether to use depthwise separable conv2d instead of
        regular conv2d.
     """
@@ -270,9 +273,7 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
     inserted_layer_counter += 1
     return image_feature, inserted_layer_counter
 
-  def _compute_base_tower(self, tower_name_scope, image_feature, feature_index,
-                          has_different_feature_channels, target_channel,
-                          inserted_layer_counter):
+  def _compute_base_tower(self, tower_name_scope, image_feature, feature_index):
     net = image_feature
     for i in range(self._num_layers_before_predictor):
       if self._use_depthwise:
@@ -296,23 +297,18 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
     return net
 
   def _predict_head(self, head_name, head_obj, image_feature, box_tower_feature,
-                    feature_index, has_different_feature_channels,
-                    target_channel, inserted_layer_counter,
-                    num_predictions_per_location):
+                    feature_index, num_predictions_per_location):
     if head_name == CLASS_PREDICTIONS_WITH_BACKGROUND:
       tower_name_scope = 'ClassPredictionTower'
     else:
-      raise ValueError('Unknown head')
+      tower_name_scope = head_name + 'PredictionTower'
     if self._share_prediction_tower:
       head_tower_feature = box_tower_feature
     else:
       head_tower_feature = self._compute_base_tower(
           tower_name_scope=tower_name_scope,
           image_feature=image_feature,
-          feature_index=feature_index,
-          has_different_feature_channels=has_different_feature_channels,
-          target_channel=target_channel,
-          inserted_layer_counter=inserted_layer_counter)
+          feature_index=feature_index)
     return head_obj.predict(
         features=head_tower_feature,
         num_predictions_per_location=num_predictions_per_location)
@@ -341,13 +337,13 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
           [batch_size, num_anchors_i, num_classes + 1] representing the class
           predictions for the proposals. Each entry in the list corresponds to a
           feature map in the input `image_features` list.
-        (optional) mask_predictions: A list of float tensors of shape
+        (optional) Predictions from other heads.
+          E.g., mask_predictions: A list of float tensors of shape
           [batch_size, num_anchord_i, num_classes, mask_height, mask_width].
 
 
     Raises:
-      ValueError: If the image feature maps do not have the same number of
-        channels or if the num predictions per locations is differs between the
+      ValueError: If the num predictions per locations differs between the
         feature maps.
     """
     if len(set(num_predictions_per_location_list)) > 1:
@@ -355,16 +351,17 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
                        'feature maps, found: {}'.format(
                            num_predictions_per_location_list))
     feature_channels = [
-        image_feature.shape[3].value for image_feature in image_features
+        shape_utils.get_dim_as_int(image_feature.shape[3])
+        for image_feature in image_features
     ]
     has_different_feature_channels = len(set(feature_channels)) > 1
     if has_different_feature_channels:
       inserted_layer_counter = 0
       target_channel = max(set(feature_channels), key=feature_channels.count)
       tf.logging.info('Not all feature maps have the same number of '
-                      'channels, found: {}, addition project layers '
-                      'to bring all feature maps to uniform channels '
-                      'of {}'.format(feature_channels, target_channel))
+                      'channels, found: {}, appending additional projection '
+                      'layers to bring all feature maps to uniformly have {} '
+                      'channels.'.format(feature_channels, target_channel))
     else:
       # Place holder variables if has_different_feature_channels is False.
       target_channel = -1
@@ -382,40 +379,38 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
       with tf.variable_scope('WeightSharedConvolutionalBoxPredictor',
                              reuse=tf.AUTO_REUSE):
         with slim.arg_scope(self._conv_hyperparams_fn()):
-          (image_feature,
-           inserted_layer_counter) = self._insert_additional_projection_layer(
-               image_feature, inserted_layer_counter, target_channel)
-          if self._share_prediction_tower:
-            box_tower_scope = 'PredictionTower'
-          else:
-            box_tower_scope = 'BoxPredictionTower'
-          box_tower_feature = self._compute_base_tower(
-              tower_name_scope=box_tower_scope,
-              image_feature=image_feature,
-              feature_index=feature_index,
-              has_different_feature_channels=has_different_feature_channels,
-              target_channel=target_channel,
-              inserted_layer_counter=inserted_layer_counter)
-          box_encodings = self._box_prediction_head.predict(
-              features=box_tower_feature,
-              num_predictions_per_location=num_predictions_per_location)
-          predictions[BOX_ENCODINGS].append(box_encodings)
-          sorted_keys = sorted(self._other_heads.keys())
-          sorted_keys.append(CLASS_PREDICTIONS_WITH_BACKGROUND)
-          for head_name in sorted_keys:
-            if head_name == CLASS_PREDICTIONS_WITH_BACKGROUND:
-              head_obj = self._class_prediction_head
+          # TODO(wangjiang) Pass is_training to the head class directly.
+          with slim.arg_scope([slim.dropout], is_training=self._is_training):
+            (image_feature,
+             inserted_layer_counter) = self._insert_additional_projection_layer(
+                 image_feature, inserted_layer_counter, target_channel)
+            if self._share_prediction_tower:
+              box_tower_scope = 'PredictionTower'
             else:
-              head_obj = self._other_heads[head_name]
-            prediction = self._predict_head(
-                head_name=head_name,
-                head_obj=head_obj,
+              box_tower_scope = 'BoxPredictionTower'
+            box_tower_feature = self._compute_base_tower(
+                tower_name_scope=box_tower_scope,
                 image_feature=image_feature,
-                box_tower_feature=box_tower_feature,
-                feature_index=feature_index,
-                has_different_feature_channels=has_different_feature_channels,
-                target_channel=target_channel,
-                inserted_layer_counter=inserted_layer_counter,
+                feature_index=feature_index)
+            box_encodings = self._box_prediction_head.predict(
+                features=box_tower_feature,
                 num_predictions_per_location=num_predictions_per_location)
-            predictions[head_name].append(prediction)
+            predictions[BOX_ENCODINGS].append(box_encodings)
+            sorted_keys = sorted(self._other_heads.keys())
+            sorted_keys.append(CLASS_PREDICTIONS_WITH_BACKGROUND)
+            for head_name in sorted_keys:
+              if head_name == CLASS_PREDICTIONS_WITH_BACKGROUND:
+                head_obj = self._class_prediction_head
+              else:
+                head_obj = self._other_heads[head_name]
+              prediction = self._predict_head(
+                  head_name=head_name,
+                  head_obj=head_obj,
+                  image_feature=image_feature,
+                  box_tower_feature=box_tower_feature,
+                  feature_index=feature_index,
+                  num_predictions_per_location=num_predictions_per_location)
+              predictions[head_name].append(prediction)
     return predictions
+
+

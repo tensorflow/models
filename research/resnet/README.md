@@ -2,7 +2,7 @@
 
 # Deprecated
 This code is not actively maintained. Please use the
-[offical ResNet](https://github.com/tensorflow/models/tree/master/official/resnet) implementation
+[offical ResNet](https://github.com/tensorflow/models/tree/master/official/vision/image_classification) implementation
 instead.
 
 Xin Pan

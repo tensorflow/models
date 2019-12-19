@@ -14,7 +14,12 @@
 # ==============================================================================
 
 """Tests for object_detection.core.freezable_batch_norm."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import freezable_batch_norm
@@ -43,7 +48,24 @@ class FreezableBatchNormTest(tf.test.TestCase):
     model.fit(train_data, train_data, epochs=4, verbose=0)
     return model.weights
 
-  def test_batchnorm_freezing_training_true(self):
+  def _test_batchnorm_layer(
+      self, norm, should_be_training, test_data,
+      testing_mean, testing_var, training_arg, training_mean, training_var):
+    out_tensor = norm(tf.convert_to_tensor(test_data, dtype=tf.float32),
+                      training=training_arg)
+    out = tf.keras.backend.eval(out_tensor)
+    out -= tf.keras.backend.eval(norm.beta)
+    out /= tf.keras.backend.eval(norm.gamma)
+
+    if not should_be_training:
+      out *= training_var
+      out += (training_mean - testing_mean)
+      out /= testing_var
+
+    np.testing.assert_allclose(out.mean(), 0.0, atol=1.5e-1)
+    np.testing.assert_allclose(out.std(), 1.0, atol=1.5e-1)
+
+  def test_batchnorm_freezing_training_none(self):
     with self.test_session():
       training_mean = 5.0
       training_var = 10.0
@@ -69,14 +91,38 @@ class FreezableBatchNormTest(tf.test.TestCase):
           scale=testing_var,
           size=(1000, 10))
 
-      out_tensor = norm(tf.convert_to_tensor(test_data, dtype=tf.float32))
-      out = tf.keras.backend.eval(out_tensor)
+      # Test with training=True passed to the call method:
+      training_arg = True
+      should_be_training = True
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
 
-      out -= tf.keras.backend.eval(norm.beta)
-      out /= tf.keras.backend.eval(norm.gamma)
+      # Test with training=False passed to the call method:
+      training_arg = False
+      should_be_training = False
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
 
-      np.testing.assert_allclose(out.mean(), 0.0, atol=1.5e-1)
-      np.testing.assert_allclose(out.std(), 1.0, atol=1.5e-1)
+      # Test the layer in various Keras learning phase scopes:
+      training_arg = None
+      should_be_training = False
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
+
+      tf.keras.backend.set_learning_phase(True)
+      should_be_training = True
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
+
+      tf.keras.backend.set_learning_phase(False)
+      should_be_training = False
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
 
   def test_batchnorm_freezing_training_false(self):
     with self.test_session():
@@ -104,18 +150,40 @@ class FreezableBatchNormTest(tf.test.TestCase):
           scale=testing_var,
           size=(1000, 10))
 
-      out_tensor = norm(tf.convert_to_tensor(test_data, dtype=tf.float32))
-      out = tf.keras.backend.eval(out_tensor)
+      # Make sure that the layer is never training
+      # Test with training=True passed to the call method:
+      training_arg = True
+      should_be_training = False
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
 
-      out -= tf.keras.backend.eval(norm.beta)
-      out /= tf.keras.backend.eval(norm.gamma)
+      # Test with training=False passed to the call method:
+      training_arg = False
+      should_be_training = False
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
 
-      out *= training_var
-      out += (training_mean - testing_mean)
-      out /= testing_var
+      # Test the layer in various Keras learning phase scopes:
+      training_arg = None
+      should_be_training = False
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
 
-      np.testing.assert_allclose(out.mean(), 0.0, atol=1.5e-1)
-      np.testing.assert_allclose(out.std(), 1.0, atol=1.5e-1)
+      tf.keras.backend.set_learning_phase(True)
+      should_be_training = False
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
+
+      tf.keras.backend.set_learning_phase(False)
+      should_be_training = False
+      self._test_batchnorm_layer(norm, should_be_training, test_data,
+                                 testing_mean, testing_var, training_arg,
+                                 training_mean, training_var)
+
 
 if __name__ == '__main__':
   tf.test.main()

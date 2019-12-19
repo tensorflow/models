@@ -122,6 +122,6 @@ def make_dataset(batch_sz, x, y=None, shuffle=False, shuffle_buffer_size=1000):
             dataset = dataset.shuffle(shuffle_buffer_size).batch(batch_sz).repeat()
         else:
             dataset = dataset.batch(batch_sz)
-        return dataset.make_one_shot_iterator().get_next()
+        return dataset
 
     return input_fn

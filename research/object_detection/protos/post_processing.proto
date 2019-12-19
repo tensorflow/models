@@ -2,6 +2,8 @@ syntax = "proto2";
 
 package object_detection.protos;
 
+import "object_detection/protos/calibration.proto";
+
 // Configuration proto for non-max-suppression operation on a batch of
 // detections.
 message BatchNonMaxSuppression {
@@ -20,6 +22,29 @@ message BatchNonMaxSuppression {
 
   // Whether to use the implementation of NMS that guarantees static shapes.
   optional bool use_static_shapes = 6 [default = false];
+
+  // Whether to use class agnostic NMS.
+  // Class-agnostic NMS function implements a class-agnostic version
+  // of Non Maximal Suppression where if max_classes_per_detection=k,
+  // 1) we keep the top-k scores for each detection and
+  // 2) during NMS, each detection only uses the highest class score for sorting.
+  // 3) Compared to regular NMS, the worst runtime of this version is O(N^2)
+  // instead of O(KN^2) where N is the number of detections and K the number of
+  // classes.
+  optional bool use_class_agnostic_nms = 7 [default = false];
+
+  // Number of classes retained per detection in class agnostic NMS.
+
+  optional int32 max_classes_per_detection = 8 [default = 1];
+
+  // Soft NMS sigma parameter; Bodla et al, https://arxiv.org/abs/1704.04503)
+  optional float soft_nms_sigma = 9 [default = 0.0];
+
+  // Whether to use partitioned version of non_max_suppression.
+  optional bool use_partitioned_nms = 10 [default = false];
+
+  // Whether to use tf.image.combined_non_max_suppression.
+  optional bool use_combined_nms = 11 [default = false];
 }
 
 // Configuration proto for post-processing predicted boxes and
@@ -46,4 +71,7 @@ message PostProcessing {
   // Typically used for softmax distillation, though can be used to scale for
   // other reasons.
   optional float logit_scale = 3 [default = 1.0];
+  // Calibrate score outputs. Calibration is applied after score converter
+  // and before non max suppression.
+  optional CalibrationConfig calibration_config = 4;
 }

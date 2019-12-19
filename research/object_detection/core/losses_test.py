@@ -14,9 +14,14 @@
 # ==============================================================================
 
 """Tests for google3.research.vale.object_detection.losses."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import math
 
 import numpy as np
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import box_list

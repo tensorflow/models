@@ -14,7 +14,13 @@
 # ==============================================================================
 
 """Tests for object_detection.utils.ops."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+import six
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -401,6 +407,7 @@ class GroundtruthFilterTest(tf.test.TestCase):
     input_area = tf.placeholder(tf.float32, shape=(None,))
     input_difficult = tf.placeholder(tf.float32, shape=(None,))
     input_label_types = tf.placeholder(tf.string, shape=(None,))
+    input_confidences = tf.placeholder(tf.float32, shape=(None,))
     valid_indices = tf.placeholder(tf.int32, shape=(None,))
     input_tensors = {
         fields.InputDataFields.image: input_image,
@@ -409,7 +416,8 @@ class GroundtruthFilterTest(tf.test.TestCase):
         fields.InputDataFields.groundtruth_is_crowd: input_is_crowd,
         fields.InputDataFields.groundtruth_area: input_area,
         fields.InputDataFields.groundtruth_difficult: input_difficult,
-        fields.InputDataFields.groundtruth_label_types: input_label_types
+        fields.InputDataFields.groundtruth_label_types: input_label_types,
+        fields.InputDataFields.groundtruth_confidences: input_confidences,
     }
     output_tensors = ops.retain_groundtruth(input_tensors, valid_indices)
 
@@ -418,40 +426,31 @@ class GroundtruthFilterTest(tf.test.TestCase):
         input_image: image_tensor,
         input_boxes:
         np.array([[0.2, 0.4, 0.1, 0.8], [0.2, 0.4, 1.0, 0.8]], dtype=np.float),
-        input_classes:
-        np.array([1, 2], dtype=np.int32),
-        input_is_crowd:
-        np.array([False, True], dtype=np.bool),
-        input_area:
-        np.array([32, 48], dtype=np.float32),
-        input_difficult:
-        np.array([True, False], dtype=np.bool),
+        input_classes: np.array([1, 2], dtype=np.int32),
+        input_is_crowd: np.array([False, True], dtype=np.bool),
+        input_area: np.array([32, 48], dtype=np.float32),
+        input_difficult: np.array([True, False], dtype=np.bool),
         input_label_types:
         np.array(['APPROPRIATE', 'INCORRECT'], dtype=np.string_),
-        valid_indices:
-        np.array([0], dtype=np.int32)
+        input_confidences: np.array([0.99, 0.5], dtype=np.float32),
+        valid_indices: np.array([0], dtype=np.int32),
     }
     expected_tensors = {
-        fields.InputDataFields.image:
-        image_tensor,
-        fields.InputDataFields.groundtruth_boxes:
-        [[0.2, 0.4, 0.1, 0.8]],
-        fields.InputDataFields.groundtruth_classes:
-        [1],
-        fields.InputDataFields.groundtruth_is_crowd:
-        [False],
-        fields.InputDataFields.groundtruth_area:
-        [32],
-        fields.InputDataFields.groundtruth_difficult:
-        [True],
-        fields.InputDataFields.groundtruth_label_types:
-        ['APPROPRIATE']
+        fields.InputDataFields.image: image_tensor,
+        fields.InputDataFields.groundtruth_boxes: [[0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes: [1],
+        fields.InputDataFields.groundtruth_is_crowd: [False],
+        fields.InputDataFields.groundtruth_area: [32],
+        fields.InputDataFields.groundtruth_difficult: [True],
+        fields.InputDataFields.groundtruth_label_types: [six.b('APPROPRIATE')],
+        fields.InputDataFields.groundtruth_confidences: [0.99],
     }
     with self.test_session() as sess:
       output_tensors = sess.run(output_tensors, feed_dict=feed_dict)
       for key in [fields.InputDataFields.image,
                   fields.InputDataFields.groundtruth_boxes,
-                  fields.InputDataFields.groundtruth_area]:
+                  fields.InputDataFields.groundtruth_area,
+                  fields.InputDataFields.groundtruth_confidences]:
         self.assertAllClose(expected_tensors[key], output_tensors[key])
       for key in [fields.InputDataFields.groundtruth_classes,
                   fields.InputDataFields.groundtruth_is_crowd,
@@ -496,46 +495,41 @@ class GroundtruthFilterTest(tf.test.TestCase):
     input_is_crowd = tf.placeholder(tf.bool, shape=(None,))
     input_area = tf.placeholder(tf.float32, shape=(None,))
     input_difficult = tf.placeholder(tf.float32, shape=(None,))
+    input_confidences = tf.placeholder(tf.float32, shape=(None,))
     valid_indices = tf.placeholder(tf.int32, shape=(None,))
     input_tensors = {
         fields.InputDataFields.groundtruth_boxes: input_boxes,
         fields.InputDataFields.groundtruth_classes: input_classes,
         fields.InputDataFields.groundtruth_is_crowd: input_is_crowd,
         fields.InputDataFields.groundtruth_area: input_area,
-        fields.InputDataFields.groundtruth_difficult: input_difficult
+        fields.InputDataFields.groundtruth_difficult: input_difficult,
+        fields.InputDataFields.groundtruth_confidences: input_confidences,
     }
     output_tensors = ops.retain_groundtruth(input_tensors, valid_indices)
 
     feed_dict = {
         input_boxes:
         np.array([[0.2, 0.4, 0.1, 0.8], [0.2, 0.4, 1.0, 0.8]], dtype=np.float),
-        input_classes:
-        np.array([1, 2], dtype=np.int32),
-        input_is_crowd:
-        np.array([False, True], dtype=np.bool),
-        input_area:
-        np.array([], dtype=np.float32),
-        input_difficult:
-        np.array([], dtype=np.float32),
-        valid_indices:
-        np.array([0], dtype=np.int32)
+        input_classes: np.array([1, 2], dtype=np.int32),
+        input_is_crowd: np.array([False, True], dtype=np.bool),
+        input_area: np.array([], dtype=np.float32),
+        input_difficult: np.array([], dtype=np.float32),
+        input_confidences: np.array([0.99, 0.5], dtype=np.float32),
+        valid_indices: np.array([0], dtype=np.int32)
     }
     expected_tensors = {
-        fields.InputDataFields.groundtruth_boxes:
-        [[0.2, 0.4, 0.1, 0.8]],
-        fields.InputDataFields.groundtruth_classes:
-        [1],
-        fields.InputDataFields.groundtruth_is_crowd:
-        [False],
-        fields.InputDataFields.groundtruth_area:
-        [],
-        fields.InputDataFields.groundtruth_difficult:
-        []
+        fields.InputDataFields.groundtruth_boxes: [[0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes: [1],
+        fields.InputDataFields.groundtruth_is_crowd: [False],
+        fields.InputDataFields.groundtruth_area: [],
+        fields.InputDataFields.groundtruth_difficult: [],
+        fields.InputDataFields.groundtruth_confidences: [0.99],
     }
     with self.test_session() as sess:
       output_tensors = sess.run(output_tensors, feed_dict=feed_dict)
       for key in [fields.InputDataFields.groundtruth_boxes,
-                  fields.InputDataFields.groundtruth_area]:
+                  fields.InputDataFields.groundtruth_area,
+                  fields.InputDataFields.groundtruth_confidences]:
         self.assertAllClose(expected_tensors[key], output_tensors[key])
       for key in [fields.InputDataFields.groundtruth_classes,
                   fields.InputDataFields.groundtruth_is_crowd]:
@@ -547,29 +541,26 @@ class GroundtruthFilterTest(tf.test.TestCase):
     input_is_crowd = tf.placeholder(tf.bool, shape=(None,))
     input_area = tf.placeholder(tf.float32, shape=(None,))
     input_difficult = tf.placeholder(tf.float32, shape=(None,))
+    input_confidences = tf.placeholder(tf.float32, shape=(None,))
     valid_indices = tf.placeholder(tf.int32, shape=(None,))
     input_tensors = {
         fields.InputDataFields.groundtruth_boxes: input_boxes,
         fields.InputDataFields.groundtruth_classes: input_classes,
         fields.InputDataFields.groundtruth_is_crowd: input_is_crowd,
         fields.InputDataFields.groundtruth_area: input_area,
-        fields.InputDataFields.groundtruth_difficult: input_difficult
+        fields.InputDataFields.groundtruth_difficult: input_difficult,
+        fields.InputDataFields.groundtruth_confidences: input_confidences,
     }
     output_tensors = ops.retain_groundtruth(input_tensors, valid_indices)
 
     feed_dict = {
-        input_boxes:
-        np.array([], dtype=np.float).reshape(0, 4),
-        input_classes:
-        np.array([], dtype=np.int32),
-        input_is_crowd:
-        np.array([], dtype=np.bool),
-        input_area:
-        np.array([], dtype=np.float32),
-        input_difficult:
-        np.array([], dtype=np.float32),
-        valid_indices:
-        np.array([], dtype=np.int32)
+        input_boxes: np.array([], dtype=np.float).reshape(0, 4),
+        input_classes: np.array([], dtype=np.int32),
+        input_is_crowd: np.array([], dtype=np.bool),
+        input_area: np.array([], dtype=np.float32),
+        input_difficult: np.array([], dtype=np.float32),
+        input_confidences: np.array([], dtype=np.float32),
+        valid_indices: np.array([], dtype=np.int32),
     }
     with self.test_session() as sess:
       output_tensors = sess.run(output_tensors, feed_dict=feed_dict)
@@ -590,6 +581,7 @@ class RetainGroundTruthWithPositiveClasses(tf.test.TestCase):
     input_area = tf.placeholder(tf.float32, shape=(None,))
     input_difficult = tf.placeholder(tf.float32, shape=(None,))
     input_label_types = tf.placeholder(tf.string, shape=(None,))
+    input_confidences = tf.placeholder(tf.float32, shape=(None,))
     valid_indices = tf.placeholder(tf.int32, shape=(None,))
     input_tensors = {
         fields.InputDataFields.image: input_image,
@@ -598,7 +590,8 @@ class RetainGroundTruthWithPositiveClasses(tf.test.TestCase):
         fields.InputDataFields.groundtruth_is_crowd: input_is_crowd,
         fields.InputDataFields.groundtruth_area: input_area,
         fields.InputDataFields.groundtruth_difficult: input_difficult,
-        fields.InputDataFields.groundtruth_label_types: input_label_types
+        fields.InputDataFields.groundtruth_label_types: input_label_types,
+        fields.InputDataFields.groundtruth_confidences: input_confidences,
     }
     output_tensors = ops.retain_groundtruth_with_positive_classes(input_tensors)
 
@@ -607,40 +600,31 @@ class RetainGroundTruthWithPositiveClasses(tf.test.TestCase):
         input_image: image_tensor,
         input_boxes:
         np.array([[0.2, 0.4, 0.1, 0.8], [0.2, 0.4, 1.0, 0.8]], dtype=np.float),
-        input_classes:
-        np.array([1, 0], dtype=np.int32),
-        input_is_crowd:
-        np.array([False, True], dtype=np.bool),
-        input_area:
-        np.array([32, 48], dtype=np.float32),
-        input_difficult:
-        np.array([True, False], dtype=np.bool),
+        input_classes: np.array([1, 0], dtype=np.int32),
+        input_is_crowd: np.array([False, True], dtype=np.bool),
+        input_area: np.array([32, 48], dtype=np.float32),
+        input_difficult: np.array([True, False], dtype=np.bool),
         input_label_types:
         np.array(['APPROPRIATE', 'INCORRECT'], dtype=np.string_),
-        valid_indices:
-        np.array([0], dtype=np.int32)
+        input_confidences: np.array([0.99, 0.5], dtype=np.float32),
+        valid_indices: np.array([0], dtype=np.int32),
     }
     expected_tensors = {
-        fields.InputDataFields.image:
-        image_tensor,
-        fields.InputDataFields.groundtruth_boxes:
-        [[0.2, 0.4, 0.1, 0.8]],
-        fields.InputDataFields.groundtruth_classes:
-        [1],
-        fields.InputDataFields.groundtruth_is_crowd:
-        [False],
-        fields.InputDataFields.groundtruth_area:
-        [32],
-        fields.InputDataFields.groundtruth_difficult:
-        [True],
-        fields.InputDataFields.groundtruth_label_types:
-        ['APPROPRIATE']
+        fields.InputDataFields.image: image_tensor,
+        fields.InputDataFields.groundtruth_boxes: [[0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes: [1],
+        fields.InputDataFields.groundtruth_is_crowd: [False],
+        fields.InputDataFields.groundtruth_area: [32],
+        fields.InputDataFields.groundtruth_difficult: [True],
+        fields.InputDataFields.groundtruth_label_types: [six.b('APPROPRIATE')],
+        fields.InputDataFields.groundtruth_confidences: [0.99],
     }
     with self.test_session() as sess:
       output_tensors = sess.run(output_tensors, feed_dict=feed_dict)
       for key in [fields.InputDataFields.image,
                   fields.InputDataFields.groundtruth_boxes,
-                  fields.InputDataFields.groundtruth_area]:
+                  fields.InputDataFields.groundtruth_area,
+                  fields.InputDataFields.groundtruth_confidences]:
         self.assertAllClose(expected_tensors[key], output_tensors[key])
       for key in [fields.InputDataFields.groundtruth_classes,
                   fields.InputDataFields.groundtruth_is_crowd,
@@ -675,23 +659,18 @@ class GroundtruthFilterWithCrowdBoxesTest(tf.test.TestCase):
     input_tensors = {
         fields.InputDataFields.groundtruth_boxes:
         [[0.1, 0.2, 0.6, 0.8], [0.2, 0.4, 0.1, 0.8]],
-        fields.InputDataFields.groundtruth_classes:
-        [1, 2],
-        fields.InputDataFields.groundtruth_is_crowd:
-        [True, False],
-        fields.InputDataFields.groundtruth_area:
-        [100.0, 238.7]
+        fields.InputDataFields.groundtruth_classes: [1, 2],
+        fields.InputDataFields.groundtruth_is_crowd: [True, False],
+        fields.InputDataFields.groundtruth_area: [100.0, 238.7],
+        fields.InputDataFields.groundtruth_confidences: [0.5, 0.99],
     }
 
     expected_tensors = {
-        fields.InputDataFields.groundtruth_boxes:
-        [[0.2, 0.4, 0.1, 0.8]],
-        fields.InputDataFields.groundtruth_classes:
-        [2],
-        fields.InputDataFields.groundtruth_is_crowd:
-        [False],
-        fields.InputDataFields.groundtruth_area:
-        [238.7]
+        fields.InputDataFields.groundtruth_boxes: [[0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes: [2],
+        fields.InputDataFields.groundtruth_is_crowd: [False],
+        fields.InputDataFields.groundtruth_area: [238.7],
+        fields.InputDataFields.groundtruth_confidences: [0.99],
     }
 
     output_tensors = ops.filter_groundtruth_with_crowd_boxes(
@@ -699,7 +678,8 @@ class GroundtruthFilterWithCrowdBoxesTest(tf.test.TestCase):
     with self.test_session() as sess:
       output_tensors = sess.run(output_tensors)
       for key in [fields.InputDataFields.groundtruth_boxes,
-                  fields.InputDataFields.groundtruth_area]:
+                  fields.InputDataFields.groundtruth_area,
+                  fields.InputDataFields.groundtruth_confidences]:
         self.assertAllClose(expected_tensors[key], output_tensors[key])
       for key in [fields.InputDataFields.groundtruth_classes,
                   fields.InputDataFields.groundtruth_is_crowd]:
@@ -712,23 +692,18 @@ class GroundtruthFilterWithNanBoxTest(tf.test.TestCase):
     input_tensors = {
         fields.InputDataFields.groundtruth_boxes:
         [[np.nan, np.nan, np.nan, np.nan], [0.2, 0.4, 0.1, 0.8]],
-        fields.InputDataFields.groundtruth_classes:
-        [1, 2],
-        fields.InputDataFields.groundtruth_is_crowd:
-        [False, True],
-        fields.InputDataFields.groundtruth_area:
-        [100.0, 238.7]
+        fields.InputDataFields.groundtruth_classes: [1, 2],
+        fields.InputDataFields.groundtruth_is_crowd: [False, True],
+        fields.InputDataFields.groundtruth_area: [100.0, 238.7],
+        fields.InputDataFields.groundtruth_confidences: [0.5, 0.99],
     }
 
     expected_tensors = {
-        fields.InputDataFields.groundtruth_boxes:
-        [[0.2, 0.4, 0.1, 0.8]],
-        fields.InputDataFields.groundtruth_classes:
-        [2],
-        fields.InputDataFields.groundtruth_is_crowd:
-        [True],
-        fields.InputDataFields.groundtruth_area:
-        [238.7]
+        fields.InputDataFields.groundtruth_boxes: [[0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes: [2],
+        fields.InputDataFields.groundtruth_is_crowd: [True],
+        fields.InputDataFields.groundtruth_area: [238.7],
+        fields.InputDataFields.groundtruth_confidences: [0.99],
     }
 
     output_tensors = ops.filter_groundtruth_with_nan_box_coordinates(
@@ -736,7 +711,40 @@ class GroundtruthFilterWithNanBoxTest(tf.test.TestCase):
     with self.test_session() as sess:
       output_tensors = sess.run(output_tensors)
       for key in [fields.InputDataFields.groundtruth_boxes,
-                  fields.InputDataFields.groundtruth_area]:
+                  fields.InputDataFields.groundtruth_area,
+                  fields.InputDataFields.groundtruth_confidences]:
+        self.assertAllClose(expected_tensors[key], output_tensors[key])
+      for key in [fields.InputDataFields.groundtruth_classes,
+                  fields.InputDataFields.groundtruth_is_crowd]:
+        self.assertAllEqual(expected_tensors[key], output_tensors[key])
+
+
+class GroundtruthFilterWithUnrecognizedClassesTest(tf.test.TestCase):
+
+  def test_filter_unrecognized_classes(self):
+    input_tensors = {
+        fields.InputDataFields.groundtruth_boxes:
+        [[.3, .3, .5, .7], [0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes: [-1, 2],
+        fields.InputDataFields.groundtruth_is_crowd: [False, True],
+        fields.InputDataFields.groundtruth_area: [100.0, 238.7],
+        fields.InputDataFields.groundtruth_confidences: [0.5, 0.99],
+    }
+
+    expected_tensors = {
+        fields.InputDataFields.groundtruth_boxes: [[0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes: [2],
+        fields.InputDataFields.groundtruth_is_crowd: [True],
+        fields.InputDataFields.groundtruth_area: [238.7],
+        fields.InputDataFields.groundtruth_confidences: [0.99],
+    }
+
+    output_tensors = ops.filter_unrecognized_classes(input_tensors)
+    with self.test_session() as sess:
+      output_tensors = sess.run(output_tensors)
+      for key in [fields.InputDataFields.groundtruth_boxes,
+                  fields.InputDataFields.groundtruth_area,
+                  fields.InputDataFields.groundtruth_confidences]:
         self.assertAllClose(expected_tensors[key], output_tensors[key])
       for key in [fields.InputDataFields.groundtruth_classes,
                   fields.InputDataFields.groundtruth_is_crowd]:
@@ -817,8 +825,8 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     image_shape = [3, 2, 6]
 
     # First channel is 1's, second channel is 2's, etc.
-    image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
-                        shape=image_shape)
+    image = tf.constant(
+        list(range(1, 3 * 2 + 1)) * 6, dtype=tf.float32, shape=image_shape)
     boxes = tf.random_uniform((2, 4))
 
     # The result for both boxes should be [[1, 2], [3, 4], [5, 6]]
@@ -839,8 +847,8 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     image_shape = [3, 3, 4]
     crop_size = [2, 2]
 
-    image = tf.constant(range(1, 3 * 3 + 1), dtype=tf.float32,
-                        shape=[3, 3, 1])
+    image = tf.constant(
+        list(range(1, 3 * 3 + 1)), dtype=tf.float32, shape=[3, 3, 1])
     tiled_image = tf.tile(image, [1, 1, image_shape[2]])
     boxes = tf.random_uniform((3, 4))
     box_ind = tf.constant([0, 0, 0], dtype=tf.int32)
@@ -849,7 +857,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     # work as the usual crop and resize for just one channel.
     crop = tf.image.crop_and_resize(tf.expand_dims(image, axis=0), boxes,
                                     box_ind, crop_size)
-    crop_and_pool = tf.reduce_mean(crop, [1, 2], keep_dims=True)
+    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
 
     ps_crop_and_pool = ops.position_sensitive_crop_regions(
         tiled_image,
@@ -906,8 +914,8 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     num_boxes = 2
 
     # First channel is 1's, second channel is 2's, etc.
-    image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
-                        shape=image_shape)
+    image = tf.constant(
+        list(range(1, 3 * 2 + 1)) * 6, dtype=tf.float32, shape=image_shape)
     boxes = tf.random_uniform((num_boxes, 4))
 
     expected_output = []
@@ -935,8 +943,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
           image, boxes, crop_size, num_spatial_bins, global_pool=False)
       with self.test_session() as sess:
         output = sess.run(ps_crop)
-
-      self.assertAllEqual(output, expected_output[crop_size_mult - 1])
+      self.assertAllClose(output, expected_output[crop_size_mult - 1])
 
   def test_position_sensitive_with_global_pool_false_and_do_global_pool(self):
     num_spatial_bins = [3, 2]
@@ -944,8 +951,8 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     num_boxes = 2
 
     # First channel is 1's, second channel is 2's, etc.
-    image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
-                        shape=image_shape)
+    image = tf.constant(
+        list(range(1, 3 * 2 + 1)) * 6, dtype=tf.float32, shape=image_shape)
     boxes = tf.random_uniform((num_boxes, 4))
 
     expected_output = []
@@ -979,7 +986,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
       ps_crop = ops.position_sensitive_crop_regions(
           image, boxes, crop_size, num_spatial_bins, global_pool=False)
       ps_crop_and_pool = tf.reduce_mean(
-          ps_crop, reduction_indices=(1, 2), keep_dims=True)
+          ps_crop, reduction_indices=(1, 2), keepdims=True)
 
       with self.test_session() as sess:
         output = sess.run(ps_crop_and_pool)
@@ -1030,8 +1037,8 @@ class OpsTestBatchPositionSensitiveCropRegions(tf.test.TestCase):
     image_shape = [2, 2, 2, 4]
     crop_size = [2, 2]
 
-    images = tf.constant(range(1, 2 * 2 * 4  + 1) * 2, dtype=tf.float32,
-                         shape=image_shape)
+    images = tf.constant(
+        list(range(1, 2 * 2 * 4 + 1)) * 2, dtype=tf.float32, shape=image_shape)
 
     # First box contains whole image, and second box contains only first row.
     boxes = tf.constant(np.array([[[0., 0., 1., 1.]],
@@ -1221,6 +1228,35 @@ class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
       self.assertAllEqual(np_merged_confidences.shape, [0, 5])
       self.assertAllEqual(np_merged_box_indices.shape, [0])
 
+  def testMergeBoxesWithMultipleLabelsUsesInt64(self):
+    boxes = tf.constant(
+        [[0.25, 0.25, 0.75, 0.75], [0.0, 0.0, 0.5, 0.75],
+         [0.25, 0.25, 0.75, 0.75]],
+        dtype=tf.float32)
+    class_indices = tf.constant([0, 4, 2], dtype=tf.int32)
+    class_confidences = tf.constant([0.8, 0.2, 0.1], dtype=tf.float32)
+    num_classes = 5
+    ops.merge_boxes_with_multiple_labels(
+        boxes, class_indices, class_confidences, num_classes)
+
+    graph = tf.get_default_graph()
+
+    def assert_dtype_is_int64(op_name):
+      op = graph.get_operation_by_name(op_name)
+      self.assertEqual(op.get_attr('dtype'), tf.int64)
+
+    def assert_t_is_int64(op_name):
+      op = graph.get_operation_by_name(op_name)
+      self.assertEqual(op.get_attr('T'), tf.int64)
+
+    assert_dtype_is_int64('map/TensorArray')
+    assert_dtype_is_int64('map/TensorArray_1')
+    assert_dtype_is_int64('map/while/TensorArrayReadV3')
+    assert_t_is_int64('map/while/TensorArrayWrite/TensorArrayWriteV3')
+    assert_t_is_int64(
+        'map/TensorArrayUnstack/TensorArrayScatter/TensorArrayScatterV3')
+    assert_dtype_is_int64('map/TensorArrayStack/TensorArrayGatherV3')
+
 
 class NearestNeighborUpsamplingTest(test_case.TestCase):
 
@@ -1318,154 +1354,81 @@ class MatmulGatherOnZerothAxis(test_case.TestCase):
       self.assertAllClose(gather_output, expected_output)
 
 
-class OpsTestMatMulCropAndResize(test_case.TestCase):
+class FpnFeatureLevelsTest(test_case.TestCase):
 
-  def testMatMulCropAndResize2x2To1x1(self):
+  def test_correct_fpn_levels(self):
+    image_size = 640
+    pretraininig_image_size = 224
+    image_ratio = image_size * 1.0 / pretraininig_image_size
+    boxes = np.array(
+        [
+            [
+                [0, 0, 111, 111],  # Level 0.
+                [0, 0, 113, 113],  # Level 1.
+                [0, 0, 223, 223],  # Level 1.
+                [0, 0, 225, 225],  # Level 2.
+                [0, 0, 449, 449]   # Level 3.
+            ],
+        ],
+        dtype=np.float32) / image_size
 
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
+    def graph_fn(boxes):
+      return ops.fpn_feature_levels(
+          num_levels=5, unit_scale_index=2, image_ratio=image_ratio,
+          boxes=boxes)
 
-    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1]]], dtype=np.float32)
-    expected_output = [[[[[2.5]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize2x2To1x1Flipped(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
-
-    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[[1, 1, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[2.5]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize2x2To3x3(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
-
-    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1]]], dtype=np.float32)
-    expected_output = [[[[[1.0], [1.5], [2.0]],
-                         [[2.0], [2.5], [3.0]],
-                         [[3.0], [3.5], [4.0]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize2x2To3x3Flipped(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
-
-    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
-    boxes = np.array([[[1, 1, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[4.0], [3.5], [3.0]],
-                         [[3.0], [2.5], [2.0]],
-                         [[2.0], [1.5], [1.0]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize3x3To2x2(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1], [2], [3]],
-                       [[4], [5], [6]],
-                       [[7], [8], [9]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1],
-                       [0, 0, .5, .5]]], dtype=np.float32)
-    expected_output = [[[[[1], [3]], [[7], [9]]],
-                        [[[1], [2]], [[4], [5]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize3x3To2x2_2Channels(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1],
-                       [0, 0, .5, .5]]], dtype=np.float32)
-    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testBatchMatMulCropAndResize3x3To2x2_2Channels(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]],
-                      [[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1],
-                       [0, 0, .5, .5]],
-                      [[1, 1, 0, 0],
-                       [.5, .5, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
-                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
-                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testMatMulCropAndResize3x3To2x2Flipped(self):
-
-    def graph_fn(image, boxes):
-      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-    image = np.array([[[[1], [2], [3]],
-                       [[4], [5], [6]],
-                       [[7], [8], [9]]]], dtype=np.float32)
-    boxes = np.array([[[1, 1, 0, 0],
-                       [.5, .5, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[9], [7]], [[3], [1]]],
-                        [[[5], [4]], [[2], [1]]]]]
-    crop_output = self.execute(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
-
-  def testInvalidInputShape(self):
-    image = tf.constant([[[1], [2]], [[3], [4]]], dtype=tf.float32)
-    boxes = tf.constant([[-1, -1, 1, 1]], dtype=tf.float32)
-    crop_size = [4, 4]
-    with self.assertRaises(ValueError):
-      _ = ops.matmul_crop_and_resize(image, boxes, crop_size)
+    levels = self.execute(graph_fn, [boxes])
+    self.assertAllEqual([[0, 1, 1, 2, 3]], levels)
 
 
-class OpsTestCropAndResize(test_case.TestCase):
+class TestBfloat16ToFloat32(test_case.TestCase):
 
-  def testBatchCropAndResize3x3To2x2_2Channels(self):
+  def test_convert_list(self):
+    var_list = [
+        tf.constant([1.], dtype=tf.bfloat16),
+        tf.constant([2], dtype=tf.int32)
+    ]
+    casted_var_list = ops.bfloat16_to_float32_nested(var_list)
+    self.assertEqual(casted_var_list[0].dtype, tf.float32)
+    self.assertEqual(casted_var_list[1].dtype, tf.int32)
 
-    def graph_fn(image, boxes):
-      return ops.native_crop_and_resize(image, boxes, crop_size=[2, 2])
+  def test_convert_tensor_dict(self):
+    tensor_dict = {
+        'key1': tf.constant([1.], dtype=tf.bfloat16),
+        'key2': [
+            tf.constant([0.5], dtype=tf.bfloat16),
+            tf.constant([7], dtype=tf.int32),
+        ],
+        'key3': tf.constant([2], dtype=tf.uint8),
+    }
+    tensor_dict = ops.bfloat16_to_float32_nested(tensor_dict)
 
-    image = np.array([[[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]],
-                      [[[1, 0], [2, 1], [3, 2]],
-                       [[4, 3], [5, 4], [6, 5]],
-                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-    boxes = np.array([[[0, 0, 1, 1],
-                       [0, 0, .5, .5]],
-                      [[1, 1, 0, 0],
-                       [.5, .5, 0, 0]]], dtype=np.float32)
-    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
-                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
-                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
-    crop_output = self.execute_cpu(graph_fn, [image, boxes])
-    self.assertAllClose(crop_output, expected_output)
+    self.assertEqual(tensor_dict['key1'].dtype, tf.float32)
+    self.assertEqual(tensor_dict['key2'][0].dtype, tf.float32)
+    self.assertEqual(tensor_dict['key2'][1].dtype, tf.int32)
+    self.assertEqual(tensor_dict['key3'].dtype, tf.uint8)
+
+
+class TestGatherWithPaddingValues(test_case.TestCase):
+
+  def test_gather_with_padding_values(self):
+    indices = tf.constant([1, -1, 0, -1])
+    input_tensor = tf.constant([[0, 0, 0.1, 0.1], [0, 0, 0.2, 0.2]],
+                               dtype=tf.float32)
+    expected_gathered_tensor = [
+        [0, 0, 0.2, 0.2],
+        [0, 0, 0, 0],
+        [0, 0, 0.1, 0.1],
+        [0, 0, 0, 0],
+    ]
+    gathered_tensor = ops.gather_with_padding_values(
+        input_tensor,
+        indices=indices,
+        padding_value=tf.zeros_like(input_tensor[0]))
+    self.assertEqual(gathered_tensor.dtype, tf.float32)
+    with self.test_session():
+      gathered_tensor_np = gathered_tensor.eval()
+    self.assertAllClose(expected_gathered_tensor, gathered_tensor_np)
 
 
 

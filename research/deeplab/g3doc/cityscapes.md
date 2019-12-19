@@ -50,8 +50,7 @@ python deeplab/train.py \
     --atrous_rates=18 \
     --output_stride=16 \
     --decoder_output_stride=4 \
-    --train_crop_size=769 \
-    --train_crop_size=769 \
+    --train_crop_size="769,769" \
     --train_batch_size=1 \
     --dataset="cityscapes" \
     --tf_initial_checkpoint=${PATH_TO_INITIAL_CHECKPOINT} \
@@ -79,12 +78,14 @@ ${PATH_TO_DATASET} is the directory in which the Cityscapes dataset resides.
 3.  The users could skip the flag, `decoder_output_stride`, if you do not want
     to use the decoder structure.
 
-4.  Change and add the following flags in order to use the provided dense prediction cell.
+4.  Change and add the following flags in order to use the provided dense
+    prediction cell. Note we need to set decoder_output_stride if you want to
+    use the provided checkpoints which include the decoder module.
 
 ```bash
 --model_variant="xception_71"
 --dense_prediction_cell_json="deeplab/core/dense_prediction_cell_branch5_top1_cityscapes.json"
-
+--decoder_output_stride=4
 ```
 
 A local evaluation job using `xception_65` can be run with the following
@@ -101,8 +102,7 @@ python deeplab/eval.py \
     --atrous_rates=18 \
     --output_stride=16 \
     --decoder_output_stride=4 \
-    --eval_crop_size=1025 \
-    --eval_crop_size=2049 \
+    --eval_crop_size="1025,2049" \
     --dataset="cityscapes" \
     --checkpoint_dir=${PATH_TO_CHECKPOINT} \
     --eval_logdir=${PATH_TO_EVAL_DIR} \
@@ -128,8 +128,7 @@ python deeplab/vis.py \
     --atrous_rates=18 \
     --output_stride=16 \
     --decoder_output_stride=4 \
-    --vis_crop_size=1025 \
-    --vis_crop_size=2049 \
+    --vis_crop_size="1025,2049" \
     --dataset="cityscapes" \
     --colormap_type="cityscapes" \
     --checkpoint_dir=${PATH_TO_CHECKPOINT} \

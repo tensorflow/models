@@ -96,6 +96,7 @@ Flowers|2500 | 2500 | 5 | Various sizes (source: Flickr)
 [Cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) | 60k| 10k | 10 |32x32 color
 [MNIST](http://yann.lecun.com/exdb/mnist/)| 60k | 10k | 10 | 28x28 gray
 [ImageNet](http://www.image-net.org/challenges/LSVRC/2012/)|1.2M| 50k | 1000 | Various sizes
+VisualWakeWords|82783 | 40504 | 2 | Various sizes (source: MS COCO)
 
 ## Downloading and converting to TFRecord format
 
@@ -130,12 +131,11 @@ These represent the training and validation data, sharded over 5 files each.
 You will also find the `$DATA_DIR/labels.txt` file which contains the mapping
 from integer labels to class names.
 
-You can use the same script to create the mnist and cifar10 datasets.
-However, for ImageNet, you have to follow the instructions
+You can use the same script to create the mnist, cifar10 and visualwakewords
+datasets. However, for ImageNet, you have to follow the instructions
 [here](https://github.com/tensorflow/models/blob/master/research/inception/README.md#getting-started).
-Note that you first have to sign up for an account at image-net.org.
-Also, the download can take several hours, and could use up to 500GB.
-
+Note that you first have to sign up for an account at image-net.org. Also, the
+download can take several hours, and could use up to 500GB.
 
 ## Creating a TF-Slim Dataset Descriptor.
 
@@ -145,11 +145,12 @@ which stores pointers to the data file, as well as various other pieces of
 metadata, such as the class labels, the train/test split, and how to parse the
 TFExample protos. We have included the TF-Slim Dataset descriptors
 for
-[Cifar10](https://github.com/tensorflow/models/blob/master/research/slim/datasets/cifar10.py),
-[ImageNet](https://github.com/tensorflow/models/blob/master/research/slim/datasets/imagenet.py),
 [Flowers](https://github.com/tensorflow/models/blob/master/research/slim/datasets/flowers.py),
+[Cifar10](https://github.com/tensorflow/models/blob/master/research/slim/datasets/cifar10.py),
+[MNIST](https://github.com/tensorflow/models/blob/master/research/slim/datasets/mnist.py),
+[ImageNet](https://github.com/tensorflow/models/blob/master/research/slim/datasets/imagenet.py)
 and
-[MNIST](https://github.com/tensorflow/models/blob/master/research/slim/datasets/mnist.py).
+[VisualWakeWords](https://github.com/tensorflow/models/blob/master/research/slim/datasets/visualwakewords.py),
 An example of how to load data using a TF-Slim dataset descriptor using a
 TF-Slim
 [DatasetDataProvider](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/data/dataset_data_provider.py)

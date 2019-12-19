@@ -27,8 +27,6 @@ import functools
 import os
 import tensorflow as tf
 from google.protobuf import text_format
-from google3.pyglib import app
-from google3.pyglib import flags
 from lstm_object_detection import evaluator
 from lstm_object_detection import model_builder
 from lstm_object_detection.inputs import seq_dataset_builder
@@ -107,4 +105,4 @@ def main(unused_argv):
                      FLAGS.checkpoint_dir, FLAGS.eval_dir)
 
 if __name__ == '__main__':
-  app.run()
+  tf.app.run()

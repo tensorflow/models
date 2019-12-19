@@ -1,6 +1,5 @@
 [MESSAGES CONTROL]
-disable=R,W,
-        bad-option-value
+disable=R,W,bad-option-value,trailing-newlines,no-name-in-module
 
 [REPORTS]
 # Tells whether to display a full report or only the messages
@@ -145,6 +144,10 @@ no-space-check=
 # Allow the body of an if to be on the same line as the test if there is no
 # else.
 single-line-if-stmt=yes
+
+# Allow URLs and comment type annotations to exceed the max line length as neither can be easily
+# split across lines.
+ignore-long-lines=^\s*(?:(# )?<?https?://\S+>?$|# type:)
 
 
 [VARIABLES]

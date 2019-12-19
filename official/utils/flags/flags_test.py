@@ -22,8 +22,13 @@ from official.utils.flags import core as flags_core  # pylint: disable=g-bad-imp
 
 
 def define_flags():
-  flags_core.define_base(num_gpu=False)
-  flags_core.define_performance()
+  flags_core.define_base(clean=True, num_gpu=False, stop_threshold=True,
+                         hooks=True, train_epochs=True,
+                         epochs_between_evals=True)
+  flags_core.define_performance(
+      num_parallel_calls=True, inter_op=True,  intra_op=True,
+      dynamic_loss_scale=True, loss_scale=True, synthetic_data=True,
+      dtype=True)
   flags_core.define_image()
   flags_core.define_benchmark()
 
@@ -80,20 +85,77 @@ class BaseTester(unittest.TestCase):
     assert flags.FLAGS.use_synthetic_data
 
   def test_parse_dtype_info(self):
-    for dtype_str, tf_dtype, loss_scale in [["fp16", tf.float16, 128],
-                                            ["fp32", tf.float32, 1]]:
-      flags_core.parse_flags([__file__, "--dtype", dtype_str])
+    flags_core.parse_flags([__file__, "--dtype", "fp16"])
+    self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf.float16)
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), 2)
 
-      self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf_dtype)
-      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), loss_scale)
+    flags_core.parse_flags(
+        [__file__, "--dtype", "fp16", "--loss_scale", "5"])
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), 5)
 
-      flags_core.parse_flags(
-          [__file__, "--dtype", dtype_str, "--loss_scale", "5"])
+    flags_core.parse_flags(
+        [__file__, "--dtype", "fp16", "--loss_scale", "dynamic"])
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), "dynamic")
 
-      self.assertEqual(flags_core.get_loss_scale(flags.FLAGS), 5)
+    flags_core.parse_flags([__file__, "--dtype", "fp32"])
+    self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf.float32)
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), 1)
+
+    flags_core.parse_flags([__file__, "--dtype", "fp32", "--loss_scale", "5"])
+    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
+                                               default_for_fp16=2), 5)
+
 
     with self.assertRaises(SystemExit):
       flags_core.parse_flags([__file__, "--dtype", "int8"])
+
+    with self.assertRaises(SystemExit):
+      flags_core.parse_flags([__file__, "--dtype", "fp16",
+                              "--loss_scale", "abc"])
+
+  def test_get_nondefault_flags_as_str(self):
+    defaults = dict(
+        clean=True,
+        data_dir="abc",
+        hooks=["LoggingTensorHook"],
+        stop_threshold=1.5,
+        use_synthetic_data=False
+    )
+    flags_core.set_defaults(**defaults)
+    flags_core.parse_flags()
+
+    expected_flags = ""
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.clean = False
+    expected_flags += "--noclean"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.data_dir = "xyz"
+    expected_flags += " --data_dir=xyz"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.hooks = ["aaa", "bbb", "ccc"]
+    expected_flags += " --hooks=aaa,bbb,ccc"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.stop_threshold = 3.
+    expected_flags += " --stop_threshold=3.0"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    flags.FLAGS.use_synthetic_data = True
+    expected_flags += " --use_synthetic_data"
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
+
+    # Assert that explicit setting a flag to its default value does not cause it
+    # to appear in the string
+    flags.FLAGS.use_synthetic_data = False
+    expected_flags = expected_flags[:-len(" --use_synthetic_data")]
+    self.assertEqual(flags_core.get_nondefault_flags_as_str(), expected_flags)
 
 
 if __name__ == "__main__":

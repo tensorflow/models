@@ -18,6 +18,7 @@
 import tensorflow as tf
 
 from google.protobuf import text_format
+from tensorflow.contrib import layers as contrib_layers
 
 from object_detection.core import losses
 from object_detection.core import model
@@ -89,10 +90,10 @@ class FakeDetectionModel(model.DetectionModel):
       prediction_dict: a dictionary holding prediction tensors to be
         passed to the Loss or Postprocess functions.
     """
-    flattened_inputs = tf.contrib.layers.flatten(preprocessed_inputs)
-    class_prediction = tf.contrib.layers.fully_connected(
-        flattened_inputs, self._num_classes)
-    box_prediction = tf.contrib.layers.fully_connected(flattened_inputs, 4)
+    flattened_inputs = contrib_layers.flatten(preprocessed_inputs)
+    class_prediction = contrib_layers.fully_connected(flattened_inputs,
+                                                      self._num_classes)
+    box_prediction = contrib_layers.fully_connected(flattened_inputs, 4)
 
     return {
         'class_predictions_with_background': tf.reshape(

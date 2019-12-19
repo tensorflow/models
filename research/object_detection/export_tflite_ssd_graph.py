@@ -106,7 +106,7 @@ flags.DEFINE_string('trained_checkpoint_prefix', None, 'Checkpoint prefix.')
 flags.DEFINE_integer('max_detections', 10,
                      'Maximum number of detections (boxes) to show.')
 flags.DEFINE_integer('max_classes_per_detection', 1,
-                     'Number of classes to display per detection box.')
+                     'Maximum number of classes to output per detection box.')
 flags.DEFINE_integer(
     'detections_per_class', 100,
     'Number of anchors used per class in Regular Non-Max-Suppression.')
@@ -136,7 +136,7 @@ def main(argv):
   export_tflite_ssd_graph_lib.export_tflite_graph(
       pipeline_config, FLAGS.trained_checkpoint_prefix, FLAGS.output_directory,
       FLAGS.add_postprocessing_op, FLAGS.max_detections,
-      FLAGS.max_classes_per_detection, FLAGS.use_regular_nms)
+      FLAGS.max_classes_per_detection, use_regular_nms=FLAGS.use_regular_nms)
 
 
 if __name__ == '__main__':

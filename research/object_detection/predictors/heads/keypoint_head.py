@@ -23,9 +23,10 @@ Mask RCNN paper. Or they could be used to represent different part locations of
 objects.
 """
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.predictors.heads import head
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class MaskRCNNKeypointHead(head.Head):

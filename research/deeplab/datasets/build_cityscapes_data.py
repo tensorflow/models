@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,12 +60,16 @@ The Example proto contains the following fields:
   image/segmentation/class/encoded: encoded semantic segmentation content.
   image/segmentation/class/format: semantic segmentation file format.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import glob
 import math
 import os.path
 import re
 import sys
 import build_data
+from six.moves import range
 import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
@@ -137,7 +142,7 @@ def _convert_dataset(dataset_split):
   label_files = _get_files('label', dataset_split)
 
   num_images = len(image_files)
-  num_per_shard = int(math.ceil(num_images / float(_NUM_SHARDS)))
+  num_per_shard = int(math.ceil(num_images / _NUM_SHARDS))
 
   image_reader = build_data.ImageReader('png', channels=3)
   label_reader = build_data.ImageReader('png', channels=1)
