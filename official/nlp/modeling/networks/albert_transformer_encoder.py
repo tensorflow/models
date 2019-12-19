@@ -24,7 +24,6 @@ import tensorflow as tf
 from tensorflow.python.keras.engine import network  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 from official.nlp.modeling import layers
-from official.nlp.modeling.networks import transformer_encoder
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
@@ -159,7 +158,7 @@ class AlbertTransformerEncoder(network.Network):
       embeddings = tf.cast(embeddings, tf.float16)
 
     data = embeddings
-    attention_mask = transformer_encoder.MakeAttentionMaskLayer()([data, mask])
+    attention_mask = layers.SelfAttentionMask()([data, mask])
     shared_layer = layers.Transformer(
         num_attention_heads=num_attention_heads,
         intermediate_size=intermediate_size,

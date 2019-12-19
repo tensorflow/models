@@ -23,7 +23,6 @@ import tensorflow as tf
 
 from tensorflow.python.keras.engine import network  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
-from official.nlp import bert_modeling
 from official.nlp.modeling import layers
 
 
@@ -145,7 +144,7 @@ class TransformerEncoder(network.Network):
       embeddings = tf.cast(embeddings, tf.float16)
 
     data = embeddings
-    attention_mask = MakeAttentionMaskLayer()([data, mask])
+    attention_mask = layers.SelfAttentionMask()([data, mask])
     for i in range(num_layers):
       layer = layers.Transformer(
           num_attention_heads=num_attention_heads,
@@ -182,11 +181,3 @@ class TransformerEncoder(network.Network):
   @classmethod
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
-
-
-@tf.keras.utils.register_keras_serializable(package='Text')
-class MakeAttentionMaskLayer(tf.keras.layers.Layer):
-
-  def call(self, inputs):
-    return bert_modeling.create_attention_mask_from_input_mask(
-        inputs[0], inputs[1])
