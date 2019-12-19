@@ -27,12 +27,17 @@ from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 class KerasBenchmark(PerfZeroBenchmark):
   """Base benchmark class with methods to simplify testing."""
 
-  def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
+  def __init__(self,
+               output_dir=None,
+               default_flags=None,
+               flag_methods=None,
+               tpu=None):
     assert tf.version.VERSION.startswith('2.')
     super(KerasBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
-        flag_methods=flag_methods)
+        flag_methods=flag_methods,
+        tpu=tpu)
 
   def _report_benchmark(self,
                         stats,
@@ -41,7 +46,8 @@ class KerasBenchmark(PerfZeroBenchmark):
                         top_1_min=None,
                         log_steps=None,
                         total_batch_size=None,
-                        warmup=1):
+                        warmup=1,
+                        start_time_sec=None):
     """Report benchmark results by writing to local protobuf file.
 
     Args:
@@ -52,6 +58,7 @@ class KerasBenchmark(PerfZeroBenchmark):
       log_steps: How often the log was created for stats['step_timestamp_log'].
       total_batch_size: Global batch-size.
       warmup: number of entries in stats['step_timestamp_log'] to ignore.
+      start_time_sec: the start time of the program in seconds since epoch
     """
 
     metrics = []
@@ -78,6 +85,13 @@ class KerasBenchmark(PerfZeroBenchmark):
     if 'avg_exp_per_second' in stats:
       metrics.append({'name': 'avg_exp_per_second',
                       'value': stats['avg_exp_per_second']})
+
+    if start_time_sec and 'step_timestamp_log' in stats:
+      time_log = stats['step_timestamp_log']
+      # time_log[0] is recorded at the beginning of the first step.
+      startup_time = time_log[0].timestamp - start_time_sec
+      metrics.append({'name': 'startup_time', 'value': startup_time})
+
     flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(
         iters=-1,

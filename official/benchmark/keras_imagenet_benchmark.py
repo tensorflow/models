@@ -195,13 +195,14 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
 class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   """Resnet50 benchmarks."""
 
-  def __init__(self, output_dir=None, default_flags=None):
+  def __init__(self, output_dir=None, default_flags=None, tpu=None):
     flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
 
     super(Resnet50KerasBenchmarkBase, self).__init__(
         output_dir=output_dir,
         flag_methods=flag_methods,
-        default_flags=default_flags)
+        default_flags=default_flags,
+        tpu=tpu)
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self, skip_steps=None):
@@ -218,7 +219,8 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         wall_time_sec,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps,
-        warmup=warmup)
+        warmup=warmup,
+        start_time_sec=start_time_sec)
 
   def benchmark_1_gpu_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
@@ -798,6 +800,26 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
 
+  def benchmark_2x2_tpu_fp16(self):
+    """Test Keras model with 2x2 TPU, fp16."""
+    self._setup()
+
+    FLAGS.dtype = 'bf16'
+    FLAGS.distribution_strategy = 'tpu'
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_fp16')
+    FLAGS.batch_size = 1024
+    self._run_and_report_benchmark()
+
+  def benchmark_4x4_tpu_fp16(self):
+    """Test Keras model with 4x4 TPU, fp16."""
+    self._setup()
+
+    FLAGS.dtype = 'bf16'
+    FLAGS.distribution_strategy = 'tpu'
+    FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_fp16')
+    FLAGS.batch_size = 4096
+    self._run_and_report_benchmark()
+
   def fill_report_object(self, stats):
     super(Resnet50KerasBenchmarkBase, self).fill_report_object(
         stats,
@@ -808,7 +830,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
 class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
   """Resnet50 synthetic benchmark tests."""
 
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+  def __init__(self, output_dir=None, root_data_dir=None, tpu=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
@@ -817,13 +839,13 @@ class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkSynth, self).__init__(
-        output_dir=output_dir, default_flags=def_flags)
+        output_dir=output_dir, default_flags=def_flags, tpu=tpu)
 
 
 class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
   """Resnet50 real data benchmark tests."""
 
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+  def __init__(self, output_dir=None, root_data_dir=None, tpu=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
     def_flags['report_accuracy_metrics'] = False
@@ -832,7 +854,7 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkReal, self).__init__(
-        output_dir=output_dir, default_flags=def_flags)
+        output_dir=output_dir, default_flags=def_flags, tpu=tpu)
 
 
 class Resnet50KerasBenchmarkRemoteData(Resnet50KerasBenchmarkBase):
