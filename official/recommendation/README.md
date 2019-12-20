@@ -68,4 +68,4 @@ Arguments:
   * `--data_dir`: This should be set to the same directory given to the `data_download`'s `data_dir` argument.
   * `--dataset`: The dataset name to be downloaded and preprocessed. By default, it is `ml-1m`.
 
-There are other arguments about models and training process. Use the `--help` or `-h` flag to get a full list of possible arguments with detailed descriptions.
+There are other arguments about models and training process. Refer to the [Flags package](https://abseil.io/docs/python/guides/flags) documentation or use the `--helpfull` flag to get a full list of possible arguments with detailed descriptions.
