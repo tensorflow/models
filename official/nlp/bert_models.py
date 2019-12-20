@@ -134,9 +134,9 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
     return final_loss
 
 
-def _get_transformer_encoder(bert_config,
-                             sequence_length,
-                             float_dtype=tf.float32):
+def get_transformer_encoder(bert_config,
+                            sequence_length,
+                            float_dtype=tf.float32):
   """Gets a 'TransformerEncoder' object.
 
   Args:
@@ -206,7 +206,7 @@ def pretrain_model(bert_config,
   next_sentence_labels = tf.keras.layers.Input(
       shape=(1,), name='next_sentence_labels', dtype=tf.int32)
 
-  transformer_encoder = _get_transformer_encoder(bert_config, seq_length)
+  transformer_encoder = get_transformer_encoder(bert_config, seq_length)
   if initializer is None:
     initializer = tf.keras.initializers.TruncatedNormal(
         stddev=bert_config.initializer_range)
@@ -294,8 +294,8 @@ def squad_model(bert_config,
     initializer = tf.keras.initializers.TruncatedNormal(
         stddev=bert_config.initializer_range)
   if not hub_module_url:
-    bert_encoder = _get_transformer_encoder(bert_config, max_seq_length,
-                                            float_type)
+    bert_encoder = get_transformer_encoder(bert_config, max_seq_length,
+                                           float_type)
     return bert_span_labeler.BertSpanLabeler(
         network=bert_encoder, initializer=initializer), bert_encoder
 
@@ -359,7 +359,7 @@ def classifier_model(bert_config,
         stddev=bert_config.initializer_range)
 
   if not hub_module_url:
-    bert_encoder = _get_transformer_encoder(bert_config, max_seq_length)
+    bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
     return bert_classifier.BertClassifier(
         bert_encoder,
         num_classes=num_labels,
