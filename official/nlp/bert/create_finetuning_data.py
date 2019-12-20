@@ -25,7 +25,10 @@ from absl import flags
 import tensorflow as tf
 
 from official.nlp.bert import classifier_data_lib
-from official.nlp.bert import squad_lib
+# word-piece tokenizer based squad_lib
+from official.nlp.bert import squad_lib as squad_lib_wp
+# sentence-piece tokenizer based squad_lib
+from official.nlp.bert import squad_lib_sp
 
 FLAGS = flags.FLAGS
 
@@ -70,14 +73,12 @@ flags.DEFINE_string("vocab_file", None,
 flags.DEFINE_string(
     "train_data_output_path", None,
     "The path in which generated training input data will be written as tf"
-    " records."
-)
+    " records.")
 
 flags.DEFINE_string(
     "eval_data_output_path", None,
     "The path in which generated training input data will be written as tf"
-    " records."
-)
+    " records.")
 
 flags.DEFINE_string("meta_data_file_path", None,
                     "The path in which input meta data will be written.")
@@ -92,6 +93,15 @@ flags.DEFINE_integer(
     "The maximum total input sequence length after WordPiece tokenization. "
     "Sequences longer than this will be truncated, and sequences shorter "
     "than this will be padded.")
+
+flags.DEFINE_string("sp_model_file", "",
+                    "The path to the model used by sentence piece tokenizer.")
+
+flags.DEFINE_enum(
+    "tokenizer_impl", "word_piece", ["word_piece", "sentence_piece"],
+    "Specifies the tokenizer implementation, i.e., whehter to use word_piece "
+    "or sentence_piece tokenizer. Canonical BERT uses word_piece tokenizer, "
+    "while ALBERT uses sentence_piece tokenizer.")
 
 
 def generate_classifier_dataset():
@@ -124,13 +134,30 @@ def generate_classifier_dataset():
 def generate_squad_dataset():
   """Generates squad training dataset and returns input meta data."""
   assert FLAGS.squad_data_file
-  return squad_lib.generate_tf_record_from_json_file(
-      FLAGS.squad_data_file, FLAGS.vocab_file, FLAGS.train_data_output_path,
-      FLAGS.max_seq_length, FLAGS.do_lower_case, FLAGS.max_query_length,
-      FLAGS.doc_stride, FLAGS.version_2_with_negative)
+  if FLAGS.tokenizer_impl == "word_piece":
+    return squad_lib_wp.generate_tf_record_from_json_file(
+        FLAGS.squad_data_file, FLAGS.vocab_file, FLAGS.train_data_output_path,
+        FLAGS.max_seq_length, FLAGS.do_lower_case, FLAGS.max_query_length,
+        FLAGS.doc_stride, FLAGS.version_2_with_negative)
+  else:
+    assert FLAGS.tokenizer_impl == "sentence_piece"
+    return squad_lib_sp.generate_tf_record_from_json_file(
+        FLAGS.squad_data_file, FLAGS.sp_model_file,
+        FLAGS.train_data_output_path, FLAGS.max_seq_length, FLAGS.do_lower_case,
+        FLAGS.max_query_length, FLAGS.doc_stride, FLAGS.version_2_with_negative)
 
 
 def main(_):
+  if FLAGS.tokenizer_impl == "word_piece":
+    if not FLAGS.vocab_file:
+      raise ValueError(
+          "FLAG vocab_file for word-piece tokenizer is not specified.")
+  else:
+    assert FLAGS.tokenizer_impl == "sentence_piece"
+    if not FLAGS.sp_model_file:
+      raise ValueError(
+          "FLAG sp_model_file for sentence-piece tokenizer is not specified.")
+
   if FLAGS.fine_tuning_task_type == "classification":
     input_meta_data = generate_classifier_dataset()
   else:
@@ -141,7 +168,6 @@ def main(_):
 
 
 if __name__ == "__main__":
-  flags.mark_flag_as_required("vocab_file")
   flags.mark_flag_as_required("train_data_output_path")
   flags.mark_flag_as_required("meta_data_file_path")
   app.run(main)
