@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
 import json
 
 from absl import app
@@ -29,6 +30,7 @@ from official.nlp.bert import classifier_data_lib
 from official.nlp.bert import squad_lib as squad_lib_wp
 # sentence-piece tokenizer based squad_lib
 from official.nlp.bert import squad_lib_sp
+from official.nlp.bert import tokenization
 
 FLAGS = flags.FLAGS
 
@@ -120,15 +122,24 @@ def generate_classifier_dataset():
   if task_name not in processors:
     raise ValueError("Task not found: %s" % (task_name))
 
-  processor = processors[task_name]()
+  if FLAGS.tokenizer_impl == "word_piece":
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+    processor_text_fn = tokenization.convert_to_unicode
+  else:
+    assert FLAGS.tokenizer_impl == "sentence_piece"
+    tokenizer = tokenization.FullSentencePieceTokenizer(FLAGS.sp_model_file)
+    processor_text_fn = functools.partial(
+        tokenization.preprocess_text, lower=FLAGS.do_lower_case)
+
+  processor = processors[task_name](processor_text_fn)
   return classifier_data_lib.generate_tf_record_from_data_file(
       processor,
       FLAGS.input_data_dir,
-      FLAGS.vocab_file,
+      tokenizer,
       train_data_output_path=FLAGS.train_data_output_path,
       eval_data_output_path=FLAGS.eval_data_output_path,
-      max_seq_length=FLAGS.max_seq_length,
-      do_lower_case=FLAGS.do_lower_case)
+      max_seq_length=FLAGS.max_seq_length)
 
 
 def generate_squad_dataset():
