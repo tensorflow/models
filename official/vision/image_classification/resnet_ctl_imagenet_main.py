@@ -197,6 +197,7 @@ def run(flags_obj):
         'mixed_bfloat16')
     tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
 
+  # This only affects GPU.
   common.set_cudnn_batchnorm_mode()
 
   # TODO(anj-s): Set data_format without using Keras.
