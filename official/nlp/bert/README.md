@@ -239,7 +239,7 @@ python run_classifier.py \
   --learning_rate=2e-5 \
   --num_train_epochs=3 \
   --model_dir=${MODEL_DIR} \
-  --distribution_strategy=mirror
+  --distribution_strategy=mirrored
 ```
 
 To use TPU, you only need to switch distribution strategy type to `tpu` with TPU
@@ -295,7 +295,7 @@ python run_squad.py \
   --learning_rate=8e-5 \
   --num_train_epochs=2 \
   --model_dir=${MODEL_DIR} \
-  --distribution_strategy=mirror
+  --distribution_strategy=mirrored
 ```
 
 To use TPU, you need switch distribution strategy type to `tpu` with TPU
