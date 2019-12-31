@@ -27,7 +27,7 @@ class ParamsDictTest(tf.test.TestCase):
 
   def test_init_from_an_empty_dict(self):
     params = params_dict.ParamsDict()
-    with self.assertRaises(KeyError):
+    with self.assertRaises(AttributeError):
       _ = params.a
 
     with self.assertRaises(KeyError):

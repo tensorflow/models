@@ -111,10 +111,10 @@ class ParamsDict(object):
       the value of the key.
 
     Raises:
-      KeyError: if k is not defined in the ParamsDict.
+      AttributeError: if k is not defined in the ParamsDict.
     """
     if k not in self.__dict__.keys():
-      raise KeyError('The key `{}` does not exist. '.format(k))
+      raise AttributeError('The key `{}` does not exist. '.format(k))
     return self.__dict__[k]
 
   def __contains__(self, key):

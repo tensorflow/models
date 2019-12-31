@@ -39,7 +39,7 @@ class OptimizerFactory(object):
       nesterov = False
       try:
         nesterov = params.nesterov
-      except KeyError:
+      except AttributeError:
         pass
       self._optimizer = functools.partial(
           tf.keras.optimizers.SGD,

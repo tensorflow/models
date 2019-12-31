@@ -64,7 +64,7 @@ class InputFn(object):
         self._input_sharding = params.train.input_sharding
       else:
         self._input_sharding = params.eval.input_sharding
-    except KeyError:
+    except AttributeError:
       pass
 
   def __call__(self, ctx=None, batch_size: int = None):
