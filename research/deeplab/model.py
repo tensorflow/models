@@ -162,7 +162,7 @@ def predict_labels_multi_scale(images,
     # Compute average prediction across different scales and flipped images.
     predictions = tf.reduce_mean(tf.concat(predictions, 4), axis=4)
     outputs_to_predictions[output] = tf.argmax(predictions, 3)
-    predictions[output + PROB_SUFFIX] = tf.nn.softmax(predictions)
+    outputs_to_predictions[output + PROB_SUFFIX] = tf.nn.softmax(predictions)
 
   return outputs_to_predictions
 
