@@ -102,7 +102,7 @@ class XLNetConfig(object):
       setattr(self, key, getattr(flags, key))
 
   def init_from_json(self, json_path):
-    with tf.gfile.Open(json_path) as f:
+    with tf.io.gfile.GFile(json_path) as f:
       json_data = json.load(f)
       self.init_from_dict(json_data)
 
@@ -113,9 +113,9 @@ class XLNetConfig(object):
       json_data[key] = getattr(self, key)
 
     json_dir = os.path.dirname(json_path)
-    if not tf.gfile.Exists(json_dir):
-      tf.gfile.MakeDirs(json_dir)
-    with tf.gfile.Open(json_path, 'w') as f:
+    if not tf.io.gfile.exists(json_dir):
+      tf.io.gfile.makedirs(json_dir)
+    with tf.io.gfile.GFile(json_path, 'w') as f:
       json.dump(json_data, f, indent=4, sort_keys=True)
 
 
