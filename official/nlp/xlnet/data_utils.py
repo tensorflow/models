@@ -400,7 +400,7 @@ def _single_token_mask(inputs, tgt_len, num_predict):
   non_func_indices = tf.boolean_mask(all_indices, non_func_mask)
 
   masked_pos = tf.random.shuffle(non_func_indices)
-  masked_pos = tf.contrib.framework.sort(masked_pos[:num_predict])
+  masked_pos = tf.sort(masked_pos[:num_predict])
   target_mask = tf.sparse_to_dense(
       sparse_indices=masked_pos,
       output_shape=[tgt_len],

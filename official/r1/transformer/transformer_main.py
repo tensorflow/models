@@ -177,14 +177,15 @@ def get_train_op_and_metrics(loss, params):
 
     # Create optimizer. Use LazyAdamOptimizer from TF contrib, which is faster
     # than the TF core Adam optimizer.
-    optimizer = tf.contrib.opt.LazyAdamOptimizer(
+    from tensorflow.contrib import opt as contrib_opt  # pylint: disable=g-import-not-at-top
+    optimizer = contrib_opt.LazyAdamOptimizer(
         learning_rate,
         beta1=params["optimizer_adam_beta1"],
         beta2=params["optimizer_adam_beta2"],
         epsilon=params["optimizer_adam_epsilon"])
 
     if params["use_tpu"] and params["tpu"] != tpu_util.LOCAL:
-      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+      optimizer = tf.compat.v1.tpu.CrossShardOptimizer(optimizer)
 
     # Uses automatic mixed precision FP16 training if on GPU.
     if params["dtype"] == "fp16":
@@ -533,7 +534,7 @@ def construct_estimator(flags_obj, params, schedule_manager):
         model_fn=model_fn, model_dir=flags_obj.model_dir, params=params,
         config=tf.estimator.RunConfig(train_distribute=distribution_strategy))
 
-  tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+  tpu_cluster_resolver = tf.compat.v1.cluster_resolver.TPUClusterResolver(
       tpu=flags_obj.tpu,
       zone=flags_obj.tpu_zone,
       project=flags_obj.tpu_gcp_project

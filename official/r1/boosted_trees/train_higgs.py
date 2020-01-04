@@ -229,7 +229,8 @@ def train_boosted_trees(flags_obj):
 
   # Though BoostedTreesClassifier is under tf.estimator, faster in-memory
   # training is yet provided as a contrib library.
-  classifier = tf.contrib.estimator.boosted_trees_classifier_train_in_memory(
+  from tensorflow.contrib import estimator as contrib_estimator  # pylint: disable=g-import-not-at-top
+  classifier = contrib_estimator.boosted_trees_classifier_train_in_memory(
       train_input_fn,
       feature_columns,
       model_dir=flags_obj.model_dir or None,

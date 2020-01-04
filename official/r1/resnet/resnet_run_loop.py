@@ -445,7 +445,8 @@ def resnet_model_fn(features, labels, mode, model_class,
     tf.compat.v1.summary.scalar('learning_rate', learning_rate)
 
     if flags.FLAGS.enable_lars:
-      optimizer = tf.contrib.opt.LARSOptimizer(
+      from tensorflow.contrib import opt as contrib_opt  # pylint: disable=g-import-not-at-top
+      optimizer = contrib_opt.LARSOptimizer(
           learning_rate,
           momentum=momentum,
           weight_decay=weight_decay,

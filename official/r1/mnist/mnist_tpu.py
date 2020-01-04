@@ -98,7 +98,7 @@ def model_fn(features, labels, mode, params):
         'class_ids': tf.argmax(logits, axis=1),
         'probabilities': tf.nn.softmax(logits),
     }
-    return tf.contrib.tpu.TPUEstimatorSpec(mode, predictions=predictions)
+    return tf.compat.v1.estimator.tpu.TPUEstimatorSpec(mode, predictions=predictions)
 
   logits = model(image, training=(mode == tf.estimator.ModeKeys.TRAIN))
   loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
@@ -111,14 +111,14 @@ def model_fn(features, labels, mode, params):
         decay_rate=0.96)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
     if FLAGS.use_tpu:
-      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
-    return tf.contrib.tpu.TPUEstimatorSpec(
+      optimizer = tf.compat.v1.tpu.CrossShardOptimizer(optimizer)
+    return tf.compat.v1.estimator.tpu.TPUEstimatorSpec(
         mode=mode,
         loss=loss,
         train_op=optimizer.minimize(loss, tf.train.get_global_step()))
 
   if mode == tf.estimator.ModeKeys.EVAL:
-    return tf.contrib.tpu.TPUEstimatorSpec(
+    return tf.compat.v1.estimator.tpu.TPUEstimatorSpec(
         mode=mode, loss=loss, eval_metrics=(metric_fn, [labels, logits]))
 
 
@@ -128,7 +128,7 @@ def train_input_fn(params):
   data_dir = params["data_dir"]
   # Retrieves the batch size for the current shard. The # of shards is
   # computed according to the input pipeline deployment. See
-  # `tf.contrib.tpu.RunConfig` for details.
+  # `tf.compat.v1.estimator.tpu.RunConfig` for details.
   ds = dataset.train(data_dir).cache().repeat().shuffle(
       buffer_size=50000).batch(batch_size, drop_remainder=True)
   return ds
@@ -153,21 +153,22 @@ def main(argv):
   del argv  # Unused.
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+  tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
       FLAGS.tpu,
       zone=FLAGS.tpu_zone,
       project=FLAGS.gcp_project
   )
 
-  run_config = tf.contrib.tpu.RunConfig(
+  run_config = tf.compat.v1.estimator.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
       model_dir=FLAGS.model_dir,
       session_config=tf.ConfigProto(
           allow_soft_placement=True, log_device_placement=True),
-      tpu_config=tf.contrib.tpu.TPUConfig(FLAGS.iterations, FLAGS.num_shards),
+      tpu_config=tf.compat.v1.estimator.tpu.TPUConfig(
+          FLAGS.iterations, FLAGS.num_shards),
   )
 
-  estimator = tf.contrib.tpu.TPUEstimator(
+  estimator = tf.compat.v1.estimator.tpu.TPUEstimator(
       model_fn=model_fn,
       use_tpu=FLAGS.use_tpu,
       train_batch_size=FLAGS.batch_size,
