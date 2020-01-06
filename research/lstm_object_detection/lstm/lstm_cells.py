@@ -202,8 +202,7 @@ class BottleneckConvLSTMCell(contrib_rnn.RNNCell):
       ]
     for s, r in zip(state_size, ret_flat):
       r.set_shape([None] + s)
-    return tf.contrib.framework.nest.pack_sequence_as(
-        structure=[1, 1], flat_sequence=ret_flat)
+    return tf.nest.pack_sequence_as(structure=[1, 1], flat_sequence=ret_flat)
 
   def pre_bottleneck(self, inputs, state, input_index):
     """Apply pre-bottleneck projection to inputs.
@@ -675,8 +674,7 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
                   for tensor in ret_flat]
     for s, r in zip(state_size, ret_flat):
       r = tf.reshape(r, [-1] + s)
-    ret = tf.contrib.framework.nest.pack_sequence_as(
-        structure=[1, 1], flat_sequence=ret_flat)
+    ret = tf.nest.pack_sequence_as(structure=[1, 1], flat_sequence=ret_flat)
     return ret
 
   def pre_bottleneck(self, inputs, state, input_index):

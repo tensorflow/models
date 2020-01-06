@@ -18,13 +18,11 @@
 import itertools
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+from tensorflow.contrib import slim
 from tensorflow.contrib import training as contrib_training
 
 from lstm_object_detection.models import lstm_ssd_interleaved_mobilenet_v2_feature_extractor
 from object_detection.models import ssd_feature_extractor_test
-
-slim = contrib_slim
 
 
 class LSTMSSDInterleavedMobilenetV2FeatureExtractorTest(

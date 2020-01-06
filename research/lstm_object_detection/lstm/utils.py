@@ -19,6 +19,8 @@ from __future__ import absolute_import
 from __future__ import division
 
 import tensorflow as tf
+from tensorflow.contrib import framework as contrib_framework
+from tensorflow.contrib import layers as contrib_layers
 from tensorflow.python.training import moving_averages
 
 
@@ -28,7 +30,7 @@ def _quant_var(
     vars_collection=tf.GraphKeys.MOVING_AVERAGE_VARIABLES,
 ):
   """Create an var for storing the min/max quantization range."""
-  return tf.contrib.framework.model_variable(
+  return contrib_framework.model_variable(
       name,
       shape=[],
       initializer=tf.constant_initializer(initializer_val),
@@ -149,7 +151,7 @@ def quantizable_separable_conv2d(inputs,
     Tensor resulting from concatenation of input tensors
   """
   if is_quantized:
-    outputs = tf.contrib.layers.separable_conv2d(
+    outputs = contrib_layers.separable_conv2d(
         inputs,
         None,
         kernel_size,
@@ -159,9 +161,9 @@ def quantizable_separable_conv2d(inputs,
         normalizer_fn=None,
         biases_initializer=None,
         scope=scope)
-    outputs = tf.contrib.layers.bias_add(
+    outputs = contrib_layers.bias_add(
         outputs, trainable=True, scope='%s_bias' % scope)
-    outputs = tf.contrib.layers.conv2d(
+    outputs = contrib_layers.conv2d(
         outputs,
         num_outputs, [1, 1],
         activation_fn=activation_fn,
@@ -169,7 +171,7 @@ def quantizable_separable_conv2d(inputs,
         normalizer_fn=normalizer_fn,
         scope=scope)
   else:
-    outputs = tf.contrib.layers.separable_conv2d(
+    outputs = contrib_layers.separable_conv2d(
         inputs,
         num_outputs,
         kernel_size,
