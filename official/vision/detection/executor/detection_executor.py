@@ -82,7 +82,7 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
 
       grads = tape.gradient(loss, trainable_variables)
       optimizer.apply_gradients(zip(grads, trainable_variables))
-      return loss
+      return losses
 
     return _replicated_step
 

@@ -24,6 +24,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
+
 import tensorflow.compat.v2 as tf
 
 from tensorflow.python.keras import backend
@@ -39,6 +41,7 @@ class Fpn(object):
                max_level=7,
                fpn_feat_dims=256,
                use_separable_conv=False,
+               use_batch_norm=True,
                batch_norm_relu=nn_ops.BatchNormRelu):
     """FPN initialization function.
 
@@ -48,12 +51,19 @@ class Fpn(object):
       fpn_feat_dims: `int` number of filters in FPN layers.
       use_separable_conv: `bool`, if True use separable convolution for
         convolution in FPN layers.
+      use_batch_norm: 'bool', indicating whether batchnorm layers are added.
       batch_norm_relu: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     """
     self._min_level = min_level
     self._max_level = max_level
     self._fpn_feat_dims = fpn_feat_dims
+    if use_separable_conv:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.SeparableConv2D, depth_multiplier=1)
+    else:
+      self._conv2d_op = tf.keras.layers.Conv2D
+    self._use_batch_norm = use_batch_norm
     self._batch_norm_relu = batch_norm_relu
 
     self._batch_norm_relus = {}
@@ -61,47 +71,26 @@ class Fpn(object):
     self._post_hoc_conv2d_op = {}
     self._coarse_conv2d_op = {}
     for level in range(self._min_level, self._max_level + 1):
-      self._batch_norm_relus[level] = batch_norm_relu(
-          relu=False, name='p%d-bn' % level)
-      if use_separable_conv:
-        self._lateral_conv2d_op[level] = tf.keras.layers.SeparableConv2D(
-            filters=self._fpn_feat_dims,
-            kernel_size=(1, 1),
-            padding='same',
-            depth_multiplier=1,
-            name='l%d' % level)
-        self._post_hoc_conv2d_op[level] = tf.keras.layers.SeparableConv2D(
-            filters=self._fpn_feat_dims,
-            strides=(1, 1),
-            kernel_size=(3, 3),
-            padding='same',
-            depth_multiplier=1,
-            name='post_hoc_d%d' % level)
-        self._coarse_conv2d_op[level] = tf.keras.layers.SeparableConv2D(
-            filters=self._fpn_feat_dims,
-            strides=(2, 2),
-            kernel_size=(3, 3),
-            padding='same',
-            depth_multiplier=1,
-            name='p%d' % level)
-      else:
-        self._lateral_conv2d_op[level] = tf.keras.layers.Conv2D(
-            filters=self._fpn_feat_dims,
-            kernel_size=(1, 1),
-            padding='same',
-            name='l%d' % level)
-        self._post_hoc_conv2d_op[level] = tf.keras.layers.Conv2D(
-            filters=self._fpn_feat_dims,
-            strides=(1, 1),
-            kernel_size=(3, 3),
-            padding='same',
-            name='post_hoc_d%d' % level)
-        self._coarse_conv2d_op[level] = tf.keras.layers.Conv2D(
-            filters=self._fpn_feat_dims,
-            strides=(2, 2),
-            kernel_size=(3, 3),
-            padding='same',
-            name='p%d' % level)
+      if self._use_batch_norm:
+        self._batch_norm_relus[level] = batch_norm_relu(
+            relu=False, name='p%d-bn' % level)
+      self._lateral_conv2d_op[level] = self._conv2d_op(
+          filters=self._fpn_feat_dims,
+          kernel_size=(1, 1),
+          padding='same',
+          name='l%d' % level)
+      self._post_hoc_conv2d_op[level] = self._conv2d_op(
+          filters=self._fpn_feat_dims,
+          strides=(1, 1),
+          kernel_size=(3, 3),
+          padding='same',
+          name='post_hoc_d%d' % level)
+      self._coarse_conv2d_op[level] = self._conv2d_op(
+          filters=self._fpn_feat_dims,
+          strides=(2, 2),
+          kernel_size=(3, 3),
+          padding='same',
+          name='p%d' % level)
 
   def __call__(self, multilevel_features, is_training=None):
     """Returns the FPN features for a given multilevel features.
@@ -117,7 +106,7 @@ class Fpn(object):
       [min_level, min_level + 1, ..., max_level]. The values are corresponding
       FPN features with shape [batch_size, height_l, width_l, fpn_feat_dims].
     """
-    input_levels = multilevel_features.keys()
+    input_levels = list(multilevel_features.keys())
     if min(input_levels) > self._min_level:
       raise ValueError(
           'The minimum backbone level %d should be '%(min(input_levels)) +
@@ -146,8 +135,9 @@ class Fpn(object):
         if level > backbone_max_level + 1:
           feats_in = tf.nn.relu(feats_in)
         feats[level] = self._coarse_conv2d_op[level](feats_in)
-      # Adds batch_norm layer.
-      for level in range(self._min_level, self._max_level + 1):
-        feats[level] = self._batch_norm_relus[level](
-            feats[level], is_training=is_training)
+      if self._use_batch_norm:
+        # Adds batch_norm layer.
+        for level in range(self._min_level, self._max_level + 1):
+          feats[level] = self._batch_norm_relus[level](
+              feats[level], is_training=is_training)
     return feats

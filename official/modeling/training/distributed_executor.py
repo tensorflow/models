@@ -248,9 +248,10 @@ class DistributedExecutor(object):
             _replicated_step, args=(next(iterator),))
 
       # For reporting, we returns the mean of losses.
-      loss = strategy.reduce(
-          tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None)
-      return loss
+      losses = tf.nest.map_structure(
+          lambda x: strategy.reduce(tf.distribute.ReduceOp.MEAN, x, axis=None),
+          per_replica_losses)
+      return losses
 
     return train_step
 

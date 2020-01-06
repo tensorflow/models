@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
 import pickle
 
 from absl import logging
@@ -35,6 +36,10 @@ class RpnHead(object):
                min_level,
                max_level,
                anchors_per_location,
+               num_convs=2,
+               num_filters=256,
+               use_separable_conv=False,
+               use_batch_norm=True,
                batch_norm_relu=nn_ops.BatchNormRelu):
     """Initialize params to build Region Proposal Network head.
 
@@ -43,48 +48,67 @@ class RpnHead(object):
       max_level: `int` number of maximum feature level.
       anchors_per_location: `int` number of number of anchors per pixel
         location.
+      num_convs: `int` number that represents the number of the intermediate
+        conv layers before the prediction.
+      num_filters: `int` number that represents the number of filters of the
+        intermediate conv layers.
+      use_separable_conv: `bool`, indicating whether the separable conv layers
+        is used.
+      use_batch_norm: 'bool', indicating whether batchnorm layers are added.
       batch_norm_relu: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     """
     self._min_level = min_level
     self._max_level = max_level
     self._anchors_per_location = anchors_per_location
+    self._use_batch_norm = use_batch_norm
+
+    if use_separable_conv:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.SeparableConv2D,
+          depth_multiplier=1,
+          bias_initializer=tf.zeros_initializer())
+    else:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.Conv2D,
+          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+          bias_initializer=tf.zeros_initializer())
+
     self._rpn_conv = tf.keras.layers.Conv2D(
-        256,
+        num_filters,
         kernel_size=(3, 3),
         strides=(1, 1),
-        activation=None,
-        bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        activation=(None if self._use_batch_norm else tf.nn.relu),
         padding='same',
         name='rpn')
     self._rpn_class_conv = tf.keras.layers.Conv2D(
         anchors_per_location,
         kernel_size=(1, 1),
         strides=(1, 1),
-        bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
         padding='valid',
         name='rpn-class')
     self._rpn_box_conv = tf.keras.layers.Conv2D(
         4 * anchors_per_location,
         kernel_size=(1, 1),
         strides=(1, 1),
-        bias_initializer=tf.zeros_initializer(),
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
         padding='valid',
         name='rpn-box')
+
     self._batch_norm_relus = {}
     for level in range(self._min_level, self._max_level + 1):
-      self._batch_norm_relus[level] = batch_norm_relu(name='rpn%d-bn' % level)
+      if self._use_batch_norm:
+        self._batch_norm_relus[level] = batch_norm_relu(name='rpn-l%d-bn' %
+                                                        level)
 
   def _shared_rpn_heads(self, features, anchors_per_location, level,
                         is_training):
     """Shared RPN heads."""
     # TODO(chiachenc): check the channel depth of the first convoultion.
     features = self._rpn_conv(features)
-    # The batch normalization layers are not shared between levels.
-    features = self._batch_norm_relus[level](features, is_training=is_training)
+    if self._use_batch_norm:
+      # The batch normalization layers are not shared between levels.
+      features = self._batch_norm_relus[level](
+          features, is_training=is_training)
     # Proposal classification scores
     scores = self._rpn_class_conv(features)
     # Proposal bbox regression deltas
@@ -111,19 +135,51 @@ class FastrcnnHead(object):
 
   def __init__(self,
                num_classes,
-               mlp_head_dim,
+               num_convs=0,
+               num_filters=256,
+               use_separable_conv=False,
+               num_fcs=2,
+               fc_dims=1024,
+               use_batch_norm=True,
                batch_norm_relu=nn_ops.BatchNormRelu):
     """Initialize params to build Fast R-CNN box head.
 
     Args:
       num_classes: a integer for the number of classes.
-      mlp_head_dim: a integer that is the hidden dimension in the
-        fully-connected layers.
+      num_convs: `int` number that represents the number of the intermediate
+        conv layers before the FC layers.
+      num_filters: `int` number that represents the number of filters of the
+        intermediate conv layers.
+      use_separable_conv: `bool`, indicating whether the separable conv layers
+        is used.
+      num_fcs: `int` number that represents the number of FC layers before the
+        predictions.
+      fc_dims: `int` number that represents the number of dimension of the FC
+        layers.
+      use_batch_norm: 'bool', indicating whether batchnorm layers are added.
       batch_norm_relu: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     """
     self._num_classes = num_classes
-    self._mlp_head_dim = mlp_head_dim
+
+    self._num_convs = num_convs
+    self._num_filters = num_filters
+    if use_separable_conv:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.SeparableConv2D,
+          depth_multiplier=1,
+          bias_initializer=tf.zeros_initializer())
+    else:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.Conv2D,
+          kernel_initializer=tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          bias_initializer=tf.zeros_initializer())
+
+    self._num_fcs = num_fcs
+    self._fc_dims = fc_dims
+
+    self._use_batch_norm = use_batch_norm
     self._batch_norm_relu = batch_norm_relu
 
   def __call__(self, roi_features, is_training=None):
@@ -145,17 +201,33 @@ class FastrcnnHead(object):
     with backend.get_graph().as_default(), tf.name_scope('fast_rcnn_head'):
       # reshape inputs beofre FC.
       _, num_rois, height, width, filters = roi_features.get_shape().as_list()
-      roi_features = tf.reshape(roi_features,
-                                [-1, num_rois, height * width * filters])
-      net = tf.keras.layers.Dense(
-          units=self._mlp_head_dim, activation=None, name='fc6')(
-              roi_features)
 
-      net = self._batch_norm_relu(fused=False)(net, is_training=is_training)
-      net = tf.keras.layers.Dense(
-          units=self._mlp_head_dim, activation=None, name='fc7')(
-              net)
-      net = self._batch_norm_relu(fused=False)(net, is_training=is_training)
+      net = tf.reshape(roi_features, [-1, height, width, filters])
+      for i in range(self._num_convs):
+        net = self._conv2d_op(
+            self._num_filters,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding='same',
+            dilation_rate=(1, 1),
+            activation=(None if self._use_batch_norm else tf.nn.relu),
+            name='conv_{}'.format(i))(net)
+        if self._use_batch_norm:
+          net = self._batch_norm_relu()(net, is_training=is_training)
+
+      filters = self._num_filters if self._num_convs > 0 else filters
+      net = tf.reshape(net, [-1, num_rois, height * width * filters])
+
+      if self._use_batch_norm:
+        net = self._batch_norm_relu(fused=False)(net, is_training=is_training)
+      for i in range(self._num_fcs):
+        net = tf.keras.layers.Dense(
+            units=self._fc_dims,
+            activation=(None if self._use_batch_norm else tf.nn.relu),
+            name='fc{}'.format(i+6))(
+                net)
+        if self._use_batch_norm:
+          net = self._batch_norm_relu(fused=False)(net, is_training=is_training)
 
       class_outputs = tf.keras.layers.Dense(
           self._num_classes,
@@ -178,17 +250,44 @@ class MaskrcnnHead(object):
   def __init__(self,
                num_classes,
                mask_target_size,
+               num_convs=4,
+               num_filters=256,
+               use_separable_conv=False,
+               use_batch_norm=True,
                batch_norm_relu=nn_ops.BatchNormRelu):
     """Initialize params to build Fast R-CNN head.
 
     Args:
       num_classes: a integer for the number of classes.
       mask_target_size: a integer that is the resolution of masks.
+      num_convs: `int` number that represents the number of the intermediate
+        conv layers before the prediction.
+      num_filters: `int` number that represents the number of filters of the
+        intermediate conv layers.
+      use_separable_conv: `bool`, indicating whether the separable conv layers
+        is used.
+      use_batch_norm: 'bool', indicating whether batchnorm layers are added.
       batch_norm_relu: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     """
     self._num_classes = num_classes
     self._mask_target_size = mask_target_size
+
+    self._num_convs = num_convs
+    self._num_filters = num_filters
+    if use_separable_conv:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.SeparableConv2D,
+          depth_multiplier=1,
+          bias_initializer=tf.zeros_initializer())
+    else:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.Conv2D,
+          kernel_initializer=tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          bias_initializer=tf.zeros_initializer())
+
+    self._use_batch_norm = use_batch_norm
     self._batch_norm_relu = batch_norm_relu
 
   def __call__(self, roi_features, class_indices, is_training=None):
@@ -200,6 +299,7 @@ class MaskrcnnHead(object):
       class_indices: a Tensor of shape [batch_size, num_rois], indicating
         which class the ROI is.
       is_training: `boolean`, if True if model is in training mode.
+
     Returns:
       mask_outputs: a tensor with a shape of
         [batch_size, num_masks, mask_height, mask_width, num_classes],
@@ -211,64 +311,43 @@ class MaskrcnnHead(object):
         boxes is not 4.
     """
 
-    def _get_stddev_equivalent_to_msra_fill(kernel_size, fan_out):
-      """Returns the stddev of random normal initialization as MSRAFill."""
-      # Reference: https://github.com/pytorch/pytorch/blob/master/caffe2/operators/filler_op.h#L445-L463  # pylint: disable=line-too-long
-      # For example, kernel size is (3, 3) and fan out is 256, stddev is 0.029.
-      # stddev = (2/(3*3*256))^0.5 = 0.029
-      return (2 / (kernel_size[0] * kernel_size[1] * fan_out)) ** 0.5
-
     with backend.get_graph().as_default():
       with tf.name_scope('mask_head'):
         _, num_rois, height, width, filters = roi_features.get_shape().as_list()
         net = tf.reshape(roi_features, [-1, height, width, filters])
 
-        for i in range(4):
-          kernel_size = (3, 3)
-          fan_out = 256
-          init_stddev = _get_stddev_equivalent_to_msra_fill(
-              kernel_size, fan_out)
-          net = tf.keras.layers.Conv2D(
-              fan_out,
-              kernel_size=kernel_size,
+        for i in range(self._num_convs):
+          net = self._conv2d_op(
+              self._num_filters,
+              kernel_size=(3, 3),
               strides=(1, 1),
               padding='same',
               dilation_rate=(1, 1),
-              activation=None,
-              kernel_initializer=tf.keras.initializers.RandomNormal(
-                  stddev=init_stddev),
-              bias_initializer=tf.zeros_initializer(),
+              activation=(None if self._use_batch_norm else tf.nn.relu),
               name='mask-conv-l%d' % i)(
                   net)
-          net = self._batch_norm_relu()(net, is_training=is_training)
+          if self._use_batch_norm:
+            net = self._batch_norm_relu()(net, is_training=is_training)
 
-        kernel_size = (2, 2)
-        fan_out = 256
-        init_stddev = _get_stddev_equivalent_to_msra_fill(kernel_size, fan_out)
         net = tf.keras.layers.Conv2DTranspose(
-            fan_out,
-            kernel_size=kernel_size,
+            self._num_filters,
+            kernel_size=(2, 2),
             strides=(2, 2),
             padding='valid',
-            activation=None,
-            kernel_initializer=tf.keras.initializers.RandomNormal(
-                stddev=init_stddev),
+            activation=(None if self._use_batch_norm else tf.nn.relu),
+            kernel_initializer=tf.keras.initializers.VarianceScaling(
+                scale=2, mode='fan_out', distribution='untruncated_normal'),
             bias_initializer=tf.zeros_initializer(),
             name='conv5-mask')(
                 net)
-        net = self._batch_norm_relu()(net, is_training=is_training)
+        if self._use_batch_norm:
+          net = self._batch_norm_relu()(net, is_training=is_training)
 
-        kernel_size = (1, 1)
-        fan_out = self._num_classes
-        init_stddev = _get_stddev_equivalent_to_msra_fill(kernel_size, fan_out)
-        mask_outputs = tf.keras.layers.Conv2D(
-            fan_out,
-            kernel_size=kernel_size,
+        mask_outputs = self._conv2d_op(
+            self._num_classes,
+            kernel_size=(1, 1),
             strides=(1, 1),
             padding='valid',
-            kernel_initializer=tf.keras.initializers.RandomNormal(
-                stddev=init_stddev),
-            bias_initializer=tf.zeros_initializer(),
             name='mask_fcn_logits')(
                 net)
         mask_outputs = tf.reshape(mask_outputs, [

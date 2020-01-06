@@ -71,6 +71,9 @@ MASKRCNN_CFG.override({
         'min_level': 2,
         'max_level': 6,
         'anchors_per_location': 3,
+        'num_convs': 2,
+        'num_filters': 256,
+        'use_separable_conv': False,
         'use_batch_norm': False,
         'batch_norm': {
             'batch_norm_momentum': 0.997,
@@ -83,7 +86,11 @@ MASKRCNN_CFG.override({
         # Note that `num_classes` is the total number of classes including
         # one background classes whose index is 0.
         'num_classes': 91,
-        'fast_rcnn_mlp_head_dim': 1024,
+        'num_convs': 0,
+        'num_filters': 256,
+        'use_separable_conv': False,
+        'num_fcs': 2,
+        'fc_dims': 1024,
         'use_batch_norm': False,
         'batch_norm': {
             'batch_norm_momentum': 0.997,
@@ -95,6 +102,9 @@ MASKRCNN_CFG.override({
     'mrcnn_head': {
         'num_classes': 91,
         'mask_target_size': 28,
+        'num_convs': 4,
+        'num_filters': 256,
+        'use_separable_conv': False,
         'use_batch_norm': False,
         'batch_norm': {
             'batch_norm_momentum': 0.997,

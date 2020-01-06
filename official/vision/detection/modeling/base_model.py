@@ -93,6 +93,11 @@ class Model(object):
   def __init__(self, params):
     self._use_bfloat16 = params.architecture.use_bfloat16
 
+    if params.architecture.use_bfloat16:
+      policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
+          'mixed_bfloat16')
+      tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+
     # Optimization.
     self._optimizer_fn = OptimizerFactory(params.train.optimizer)
     self._learning_rate = learning_rates.learning_rate_generator(

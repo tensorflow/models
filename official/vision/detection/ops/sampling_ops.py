@@ -83,7 +83,7 @@ def box_matching(boxes, gt_boxes, gt_classes):
   matched_gt_boxes = tf.gather_nd(gt_boxes, gather_nd_indices)
   matched_gt_boxes = tf.where(
       tf.tile(tf.expand_dims(background_box_mask, axis=-1), [1, 1, 4]),
-      tf.zeros_like(matched_gt_boxes, dtype=tf.float32),
+      tf.zeros_like(matched_gt_boxes, dtype=matched_gt_boxes.dtype),
       matched_gt_boxes)
 
   matched_gt_classes = tf.gather_nd(gt_classes, gather_nd_indices)

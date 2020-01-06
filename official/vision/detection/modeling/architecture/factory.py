@@ -94,6 +94,10 @@ def rpn_head_generator(params):
   return heads.RpnHead(params.min_level,
                        params.max_level,
                        params.anchors_per_location,
+                       params.num_convs,
+                       params.num_filters,
+                       params.use_separable_conv,
+                       params.use_batch_norm,
                        batch_norm_relu=batch_norm_relu_generator(
                            params.batch_norm))
 
@@ -101,7 +105,12 @@ def rpn_head_generator(params):
 def fast_rcnn_head_generator(params):
   """Generator function for Fast R-CNN head architecture."""
   return heads.FastrcnnHead(params.num_classes,
-                            params.fast_rcnn_mlp_head_dim,
+                            params.num_convs,
+                            params.num_filters,
+                            params.use_separable_conv,
+                            params.num_fcs,
+                            params.fc_dims,
+                            params.use_batch_norm,
                             batch_norm_relu=batch_norm_relu_generator(
                                 params.batch_norm))
 
@@ -110,6 +119,10 @@ def mask_rcnn_head_generator(params):
   """Generator function for Mask R-CNN head architecture."""
   return heads.MaskrcnnHead(params.num_classes,
                             params.mask_target_size,
+                            params.num_convs,
+                            params.num_filters,
+                            params.use_separable_conv,
+                            params.use_batch_norm,
                             batch_norm_relu=batch_norm_relu_generator(
                                 params.batch_norm))
 
