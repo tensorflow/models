@@ -57,14 +57,12 @@ class SpanLabeling(network.Network):
     sequence_data = tf.keras.layers.Input(
         shape=(None, input_width), name='sequence_data', dtype=tf.float32)
 
-    time_distributed_dense = tf.keras.layers.TimeDistributed(
-        tf.keras.layers.Dense(
-            2,  # This layer predicts start location and end location.
-            activation=activation,
-            kernel_initializer=initializer,
-            name='predictions/transform/logits'))
-
-    intermediate_logits = time_distributed_dense(sequence_data)
+    intermediate_logits = tf.keras.layers.Dense(
+        2,  # This layer predicts start location and end location.
+        activation=activation,
+        kernel_initializer=initializer,
+        name='predictions/transform/logits')(
+            sequence_data)
     self.start_logits, self.end_logits = (
         tf.keras.layers.Lambda(self._split_output_tensor)(intermediate_logits))
 
