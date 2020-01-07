@@ -3,11 +3,7 @@
 The academic paper which describes BERT in detail and provides full results on a
 number of tasks can be found here: https://arxiv.org/abs/1810.04805.
 
-This repository contains TensorFlow 2 implementation for BERT.
-
-N.B. This repository is under active development. Though we intend
-to keep the top-level BERT Keras model interface stable, expect continued
-changes to the training code, utility function interface and flags.
+This repository contains TensorFlow 2.x implementation for BERT.
 
 ## Contents
   * [Contents](#contents)
@@ -110,8 +106,8 @@ pip install tf-nightly
 ```
 
 Warning: More details TPU-specific set-up instructions and tutorial should come
-along with official TF 2.x release for TPU. Note that this repo is not officially
-supported by Google Cloud TPU team yet.
+along with official TF 2.x release for TPU. Note that this repo is not
+officially supported by Google Cloud TPU team yet until TF 2.1 released.
 
 ## Process Datasets
 

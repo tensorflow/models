@@ -1,7 +1,11 @@
 # Transformer Translation Model
 This is an implementation of the Transformer translation model as described in
 the [Attention is All You Need](https://arxiv.org/abs/1706.03762) paper. The
-implementation leverages tf.keras and makes sure it is compatible with TF 2.0.
+implementation leverages tf.keras and makes sure it is compatible with TF 2.x.
+
+**Note: this transformer folder is subject to be integrated into official/nlp
+folder. Due to its dependencies, we will finish the refactoring after the model
+garden 2.1 release.**
 
 ## Contents
   * [Contents](#contents)
