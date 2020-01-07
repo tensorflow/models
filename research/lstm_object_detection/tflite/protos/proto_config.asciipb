@@ -1,5 +1,0 @@
-# This file necessary for Portable Proto library
-allow_all: true
-
-# Other configuration options:
-optimize_mode: LITE_RUNTIME

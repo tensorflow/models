@@ -1,1 +1,0 @@
-[{"kernel": 3, "rate": [1, 6], "op": "conv", "input": -1}, {"kernel": 3, "rate": [18, 15], "op": "conv", "input": 0}, {"kernel": 3, "rate": [6, 3], "op": "conv", "input": 1}, {"kernel": 3, "rate": [1, 1], "op": "conv", "input": 0}, {"kernel": 3, "rate": [6, 21], "op": "conv", "input": 0}]

@@ -1,8 +1,0 @@
-bazel
-.idea
-bazel-bin
-bazel-out
-bazel-genfiles
-bazel-ptn
-bazel-testlogs
-*.pyc

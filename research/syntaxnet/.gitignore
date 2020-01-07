@@ -1,7 +1,0 @@
-/bazel-bin
-/bazel-genfiles
-/bazel-out
-/bazel-tensorflow
-/bazel-testlogs
-/bazel-tf
-/bazel-syntaxnet
