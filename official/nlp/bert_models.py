@@ -256,7 +256,8 @@ class BertSquadLogitsLayer(tf.keras.layers.Layer):
     """Implements call() for the layer."""
     sequence_output = inputs
 
-    input_shape = sequence_output.shape.as_list()
+    input_shape = tf_utils.get_shape_list(
+        sequence_output, name='sequence_output_tensor')
     sequence_length = input_shape[1]
     num_hidden_units = input_shape[2]
 
