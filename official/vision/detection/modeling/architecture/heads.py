@@ -224,7 +224,7 @@ class FastrcnnHead(object):
         net = tf.keras.layers.Dense(
             units=self._fc_dims,
             activation=(None if self._use_batch_norm else tf.nn.relu),
-            name='fc{}'.format(i+6))(
+            name='fc{}'.format(i))(
                 net)
         if self._use_batch_norm:
           net = self._batch_norm_relu(fused=False)(net, is_training=is_training)
