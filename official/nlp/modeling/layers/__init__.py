@@ -20,3 +20,4 @@ from official.nlp.modeling.layers.on_device_embedding import OnDeviceEmbedding
 from official.nlp.modeling.layers.position_embedding import PositionEmbedding
 from official.nlp.modeling.layers.self_attention_mask import SelfAttentionMask
 from official.nlp.modeling.layers.transformer import Transformer
+from official.nlp.modeling.layers.transformer_scaffold import TransformerScaffold
