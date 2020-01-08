@@ -2983,7 +2983,6 @@ def subtract_channel_mean(image, means=None):
       raise ValueError('Input must be of size [height, width, channels]')
     if len(means) != image.get_shape()[-1]:
       raise ValueError('len(means) must match the number of channels')
-    means = list(means)
     return image - [[means]]
 
 
