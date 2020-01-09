@@ -27,9 +27,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from google3.learning.brain.contrib import slim
 from google3.third_party.tensorflow_models.slim.nets import resnet_v1
-
-slim = tf.contrib.slim
 
 _SUPPORTED_TARGET_LAYER = ['resnet_v1_50/block3', 'resnet_v1_50/block4']
 
