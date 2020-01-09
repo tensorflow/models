@@ -27,9 +27,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tensorflow as tf
+
 from tensorflow.python.keras import backend
 from tensorflow.python.keras import initializers
-from tensorflow.python.keras import layers
+from tensorflow.python.keras import layers as tf_python_keras_layers
 from tensorflow.python.keras import models
 from tensorflow.python.keras import regularizers
 from official.vision.image_classification import imagenet_preprocessing
@@ -37,6 +39,31 @@ from official.vision.image_classification import imagenet_preprocessing
 L2_WEIGHT_DECAY = 1e-4
 BATCH_NORM_DECAY = 0.9
 BATCH_NORM_EPSILON = 1e-5
+
+layers = tf_python_keras_layers
+
+
+def change_keras_layer(use_tf_keras_layers=False):
+  """Change layers to either tf.keras.layers or tf.python.keras.layers.
+
+  Layer version of  tf.keras.layers is depends on tensorflow version, but
+  tf.python.keras.layers checks environment variable TF2_BEHAVIOR.
+  This function is a temporal function to use tf.keras.layers.
+  Currently, tf v2 batchnorm layer is slower than tf v1 batchnorm layer.
+  this function is useful for tracking benchmark result for each version.
+  This function will be removed when we use tf.keras.layers as default.
+
+  TODO(b/146939027): Remove this function when tf v2 batchnorm reaches training
+  speed parity with tf v1 batchnorm.
+
+  Args:
+      use_tf_keras_layers: whether to use tf.keras.layers.
+  """
+  global layers
+  if use_tf_keras_layers:
+    layers = tf.keras.layers
+  else:
+    layers = tf_python_keras_layers
 
 
 def _gen_l2_regularizer(use_l2_regularizer=True):

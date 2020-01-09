@@ -170,6 +170,7 @@ def run(flags_obj):
       model = trivial_model.trivial_model(
           imagenet_preprocessing.NUM_CLASSES)
     else:
+      resnet_model.change_keras_layer(flags_obj.use_tf_keras_layers)
       model = resnet_model.resnet50(
           num_classes=imagenet_preprocessing.NUM_CLASSES)
 

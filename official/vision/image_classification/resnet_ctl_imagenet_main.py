@@ -230,6 +230,7 @@ def run(flags_obj):
                                           flags_obj.log_steps)
 
   with distribution_utils.get_strategy_scope(strategy):
+    resnet_model.change_keras_layer(flags_obj.use_tf_keras_layers)
     model = resnet_model.resnet50(
         num_classes=imagenet_preprocessing.NUM_CLASSES,
         batch_size=flags_obj.batch_size,

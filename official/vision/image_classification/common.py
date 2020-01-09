@@ -327,6 +327,12 @@ def define_keras_flags(dynamic_loss_scale=True):
       help='Number of steps per graph-mode loop. Only training step happens '
       'inside the loop. Callbacks will not be called inside. Will be capped at '
       'steps per epoch.')
+  flags.DEFINE_boolean(
+      name='use_tf_keras_layers', default=False,
+      help='Whether to use tf.keras.layers instead of tf.python.keras.layers.'
+      'It only changes imagenet resnet model layers for now. This flag is '
+      'a temporal flag during transition to tf.keras.layers. Do not use this '
+      'flag for external usage. this will be removed shortly.')
 
 
 def get_synth_data(height, width, num_channels, num_classes, dtype):
