@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from delf import aggregation_config_pb2
 
+_CLUSTER_CENTERS_VAR_NAME = "clusters"
 _NORM_SQUARED_TOLERANCE = 1e-12
 
 # Aliases for aggregation types.
@@ -66,10 +67,7 @@ class ExtractAggregatedRepresentation(object):
             aggregation_config.feature_dimensionality
         ])
     tf.compat.v1.train.init_from_checkpoint(
-        aggregation_config.codebook_path, {
-            tf.contrib.factorization.KMeansClustering.CLUSTER_CENTERS_VAR_NAME:
-                codebook
-        })
+        aggregation_config.codebook_path, {_CLUSTER_CENTERS_VAR_NAME: codebook})
 
     # Construct extraction graph based on desired options.
     if self._aggregation_type == _VLAD:
