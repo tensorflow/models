@@ -63,7 +63,8 @@ $ sudo python -m pip install --upgrade pip
 # Install dependences. Resampy needs to be installed after NumPy and SciPy
 # are already installed.
 $ sudo pip install numpy scipy soundfile
-$ sudo pip install resampy tensorflow six
+$ sudo pip install resampy six
+$ sudo pip install tensorflow==1.14
 
 # Clone TensorFlow models repo into a 'models' directory.
 $ git clone https://github.com/tensorflow/models.git
