@@ -44,7 +44,7 @@ python -m pip install --upgrade pip
 # Install dependences. Resampy needs to be installed after NumPy and SciPy
 # are already installed.
 pip install numpy scipy
-pip install resampy tensorflow pysoundfile
+pip install resampy tensorflow soundfile
 
 # Clone TensorFlow models repo into a 'models' directory.
 git clone https://github.com/tensorflow/models.git
