@@ -1,6 +1,7 @@
 # Description:
 #   Contains files for loading, training and evaluating TF-Slim-based models.
 # load("//devtools/python/blaze:python3.bzl", "py2and3_test")
+load("//devtools/python/blaze:pytype.bzl", "pytype_strict_binary")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -475,11 +476,10 @@ py_test(
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "inception_v2_test",
     size = "large",
     srcs = ["nets/inception_v2_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -590,14 +590,14 @@ py_library(
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "mobilenet_v2_test",
     srcs = ["nets/mobilenet/mobilenet_v2_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":mobilenet",
         ":mobilenet_common",
+        "//third_party/py/six",
         # "//tensorflow",
         # "//tensorflow/contrib/slim",
     ],
@@ -755,11 +755,10 @@ py_library(
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "overfeat_test",
     size = "medium",
     srcs = ["nets/overfeat_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":overfeat",
@@ -890,11 +889,10 @@ py_library(
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "vgg_test",
     size = "medium",
     srcs = ["nets/vgg_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":vgg",
@@ -912,11 +910,10 @@ py_library(
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "nets_factory_test",
     size = "large",
     srcs = ["nets/nets_factory_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -925,9 +922,24 @@ py_test(
     ],
 )
 
+pytype_strict_binary(
+    name = "post_training_quantization",
+    srcs = ["nets/post_training_quantization.py"],
+    python_version = "PY3",
+    deps = [
+        ":nets_factory",
+        ":preprocessing_factory",
+        "//third_party/py/absl:app",
+        "//third_party/py/absl/flags",
+        # "//tensorflow",
+        # "//tensorflow_datasets",
+    ],
+)
+
 py_library(
     name = "train_image_classifier_lib",
     srcs = ["train_image_classifier.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":dataset_factory",
         ":model_deploy",

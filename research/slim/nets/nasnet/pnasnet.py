@@ -147,7 +147,7 @@ def _build_pnasnet_base(images,
       # pylint: enable=protected-access
 
   # Final softmax layer
-  with tf.variable_scope('final_layer'):
+  with tf.compat.v1.variable_scope('final_layer'):
     net = activation_fn(net)
     net = nasnet_utils.global_avg_pool(net)
     if add_and_check_endpoint('global_pool', net) or not num_classes:
@@ -176,11 +176,12 @@ def build_pnasnet_large(images,
   # pylint: enable=protected-access
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.logging.info('A GPU is available on the machine, consider using NCHW '
-                    'data format for increased speed on GPU.')
+    tf.compat.v1.logging.info(
+        'A GPU is available on the machine, consider using NCHW '
+        'data format for increased speed on GPU.')
 
   if hparams.data_format == 'NCHW':
-    images = tf.transpose(images, [0, 3, 1, 2])
+    images = tf.transpose(a=images, perm=[0, 3, 1, 2])
 
   # Calculate the total number of cells in the network.
   # There is no distinction between reduction and normal cells in PNAS so the
@@ -224,11 +225,12 @@ def build_pnasnet_mobile(images,
   # pylint: enable=protected-access
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.logging.info('A GPU is available on the machine, consider using NCHW '
-                    'data format for increased speed on GPU.')
+    tf.compat.v1.logging.info(
+        'A GPU is available on the machine, consider using NCHW '
+        'data format for increased speed on GPU.')
 
   if hparams.data_format == 'NCHW':
-    images = tf.transpose(images, [0, 3, 1, 2])
+    images = tf.transpose(a=images, perm=[0, 3, 1, 2])
 
   # Calculate the total number of cells in the network.
   # There is no distinction between reduction and normal cells in PNAS so the

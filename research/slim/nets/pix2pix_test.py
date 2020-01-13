@@ -42,7 +42,7 @@ class GeneratorTest(tf.test.TestCase):
           upsample_method='nn_upsample_conv')
 
     with self.test_session() as session:
-      session.run(tf.global_variables_initializer())
+      session.run(tf.compat.v1.global_variables_initializer())
       np_outputs = session.run(logits)
       self.assertListEqual([batch_size, height, width, num_outputs],
                            list(np_outputs.shape))
@@ -59,7 +59,7 @@ class GeneratorTest(tf.test.TestCase):
           upsample_method='conv2d_transpose')
 
     with self.test_session() as session:
-      session.run(tf.global_variables_initializer())
+      session.run(tf.compat.v1.global_variables_initializer())
       np_outputs = session.run(logits)
       self.assertListEqual([batch_size, height, width, num_outputs],
                            list(np_outputs.shape))

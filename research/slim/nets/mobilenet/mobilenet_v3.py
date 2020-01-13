@@ -45,7 +45,7 @@ _se4 = lambda expansion_tensor, input_tensor: squeeze_excite(expansion_tensor)
 
 
 def hard_swish(x):
-  with tf.name_scope('hard_swish'):
+  with tf.compat.v1.name_scope('hard_swish'):
     return x * tf.nn.relu6(x + np.float32(3)) * np.float32(1. / 6.)
 
 
@@ -358,6 +358,12 @@ small = wrapped_partial(mobilenet, conv_defs=V3_SMALL)
 edge_tpu = wrapped_partial(mobilenet,
                            new_defaults={'scope': 'MobilenetEdgeTPU'},
                            conv_defs=V3_EDGETPU)
+edge_tpu_075 = wrapped_partial(
+    mobilenet,
+    new_defaults={'scope': 'MobilenetEdgeTPU'},
+    conv_defs=V3_EDGETPU,
+    depth_multiplier=0.75,
+    finegrain_classification_mode=True)
 
 # Minimalistic model that does not have Squeeze Excite blocks,
 # Hardswish, or 5x5 depthwise convolution.

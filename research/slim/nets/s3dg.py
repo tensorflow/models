@@ -30,7 +30,9 @@ from tensorflow.contrib import layers as contrib_layers
 
 from nets import i3d_utils
 
-trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
+# pylint: disable=g-long-lambda
+trunc_normal = lambda stddev: tf.compat.v1.truncated_normal_initializer(
+    0.0, stddev)
 conv3d_spatiotemporal = i3d_utils.conv3d_spatiotemporal
 inception_block_v1_3d = i3d_utils.inception_block_v1_3d
 
@@ -209,7 +211,7 @@ def s3dg_base(inputs,
     raise ValueError('depth_multiplier is not greater than zero.')
   depth = lambda d: max(int(d * depth_multiplier), min_depth)
 
-  with tf.variable_scope(scope, 'InceptionV1', [inputs]):
+  with tf.compat.v1.variable_scope(scope, 'InceptionV1', [inputs]):
     with arg_scope([layers.conv3d], weights_initializer=trunc_normal(0.01)):
       with arg_scope(
           [layers.conv3d, layers.max_pool3d, conv3d_spatiotemporal],
@@ -556,7 +558,7 @@ def s3dg(inputs,
   """
   assert data_format in ['NDHWC', 'NCDHW']
   # Final pooling and prediction
-  with tf.variable_scope(
+  with tf.compat.v1.variable_scope(
       scope, 'InceptionV1', [inputs, num_classes], reuse=reuse) as scope:
     with arg_scope(
         [layers.batch_norm, layers.dropout], is_training=is_training):
@@ -570,9 +572,9 @@ def s3dg(inputs,
           depth_multiplier=depth_multiplier,
           data_format=data_format,
           scope=scope)
-      with tf.variable_scope('Logits'):
+      with tf.compat.v1.variable_scope('Logits'):
         if data_format.startswith('NC'):
-          net = tf.transpose(net, [0, 2, 3, 4, 1])
+          net = tf.transpose(a=net, perm=[0, 2, 3, 4, 1])
         kernel_size = i3d_utils.reduced_kernel_size_3d(net, [2, 7, 7])
         net = layers.avg_pool3d(
             net,
@@ -589,7 +591,7 @@ def s3dg(inputs,
             data_format='NDHWC',
             scope='Conv2d_0c_1x1')
         # Temporal average pooling.
-        logits = tf.reduce_mean(logits, axis=1)
+        logits = tf.reduce_mean(input_tensor=logits, axis=1)
         if spatial_squeeze:
           logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
 
