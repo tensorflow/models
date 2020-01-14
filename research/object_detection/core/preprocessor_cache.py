@@ -47,6 +47,8 @@ class PreprocessorCache(object):
   CROP_TO_ASPECT_RATIO = 'crop_to_aspect_ratio'
   RESIZE_METHOD = 'resize_method'
   PAD_TO_ASPECT_RATIO = 'pad_to_aspect_ratio'
+  PAD_TO_ASPECT_RATIO_X_OFFSET = 'pad_to_aspect_ratio_x_offset'
+  PAD_TO_ASPECT_RATIO_Y_OFFSET = 'pad_to_aspect_ratio_y_offset'
   BLACK_PATCHES = 'black_patches'
   ADD_BLACK_PATCH = 'add_black_patch'
   SELECTOR = 'selector'
