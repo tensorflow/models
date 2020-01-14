@@ -226,7 +226,8 @@ def parse_record(raw_record, is_training, dtype):
     dtype: data type to use for images/features.
 
   Returns:
-    Tuple with processed image tensor and one-hot-encoded label tensor.
+    Tuple with processed image tensor in a channel-last format and
+    one-hot-encoded label tensor.
   """
   image_buffer, label, bbox = parse_example_proto(raw_record)
 
@@ -244,6 +245,32 @@ def parse_record(raw_record, is_training, dtype):
   label = tf.cast(tf.cast(tf.reshape(label, shape=[1]), dtype=tf.int32) - 1,
                   dtype=tf.float32)
   return image, label
+
+
+def get_parse_record_fn(use_keras_image_data_format=False):
+  """Get a function for parsing the records, accounting for image format.
+
+  This is useful by handling different types of Keras models. For instance,
+  the current resnet_model.resnet50 input format is always channel-last,
+  whereas the keras_applications mobilenet input format depends on
+  tf.keras.backend.image_data_format(). We should set
+  use_keras_image_data_format=False for the former and True for the latter.
+
+  Args:
+    use_keras_image_data_format: A boolean denoting whether data format is keras
+      backend image data format. If False, the image format is channel-last. If
+      True, the image format matches tf.keras.backend.image_data_format().
+
+  Returns:
+    Function to use for parsing the records.
+  """
+  def parse_record_fn(raw_record, is_training, dtype):
+    image, label = parse_record(raw_record, is_training, dtype)
+    if use_keras_image_data_format:
+      if tf.keras.backend.image_data_format() == 'channels_first':
+        image = tf.transpose(image, perm=[2, 0, 1])
+    return image, label
+  return parse_record_fn
 
 
 def input_fn(is_training,

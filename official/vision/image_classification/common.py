@@ -24,6 +24,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
+import tensorflow_model_optimization as tfmot
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
 
@@ -180,7 +181,12 @@ def get_optimizer(learning_rate=0.1):
 
 
 # TODO(hongkuny,haoyuzhang): make cifar model use_tensor_lr to clean up code.
-def get_callbacks(steps_per_epoch, learning_rate_schedule_fn=None):
+def get_callbacks(
+    steps_per_epoch,
+    learning_rate_schedule_fn=None,
+    pruning_method=None,
+    enable_checkpoint_and_export=False,
+    model_dir=None):
   """Returns common callbacks."""
   time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
   callbacks = [time_callback]
@@ -205,6 +211,19 @@ def get_callbacks(steps_per_epoch, learning_rate_schedule_fn=None):
         steps_per_epoch)
     callbacks.append(profiler_callback)
 
+  is_pruning_enabled = pruning_method is not None
+  if is_pruning_enabled:
+    callbacks.append(tfmot.sparsity.keras.UpdatePruningStep())
+    if model_dir is not None:
+      callbacks.append(tfmot.sparsity.keras.PruningSummaries(
+          log_dir=model_dir, profile_batch=0))
+
+  if enable_checkpoint_and_export:
+    if model_dir is not None:
+      ckpt_full_path = os.path.join(model_dir, 'model.ckpt-{epoch:04d}')
+      callbacks.append(
+          tf.keras.callbacks.ModelCheckpoint(ckpt_full_path,
+                                             save_weights_only=True))
   return callbacks
 
 
@@ -254,7 +273,11 @@ def build_stats(history, eval_output, callbacks):
   return stats
 
 
-def define_keras_flags(dynamic_loss_scale=True):
+def define_keras_flags(
+    dynamic_loss_scale=True,
+    model=False,
+    optimizer=False,
+    pretrained_filepath=False):
   """Define flags for Keras models."""
   flags_core.define_base(clean=True, num_gpu=True, run_eagerly=True,
                          train_epochs=True, epochs_between_evals=True,
@@ -334,6 +357,17 @@ def define_keras_flags(dynamic_loss_scale=True):
       'a temporal flag during transition to tf.keras.layers. Do not use this '
       'flag for external usage. this will be removed shortly.')
 
+  if model:
+    flags.DEFINE_string('model', 'resnet50_v1.5',
+                        'Name of model preset. (mobilenet, resnet50_v1.5)')
+  if optimizer:
+    flags.DEFINE_string('optimizer', 'resnet50_default',
+                        'Name of optimizer preset. '
+                        '(mobilenet_default, resnet50_default)')
+  if pretrained_filepath:
+    flags.DEFINE_string('pretrained_filepath', '',
+                        'Pretrained file path.')
+
 
 def get_synth_data(height, width, num_channels, num_classes, dtype):
   """Creates a set of synthetic random data.
@@ -362,6 +396,23 @@ def get_synth_data(height, width, num_channels, num_classes, dtype):
                              dtype=tf.int32,
                              name='synthetic_labels')
   return inputs, labels
+
+
+def define_pruning_flags():
+  """Define flags for pruning methods."""
+  flags.DEFINE_string('pruning_method', None,
+                      'Pruning method.'
+                      'None (no pruning) or polynomial_decay.')
+  flags.DEFINE_float('pruning_initial_sparsity', 0.0,
+                     'Initial sparsity for pruning.')
+  flags.DEFINE_float('pruning_final_sparsity', 0.5,
+                     'Final sparsity for pruning.')
+  flags.DEFINE_integer('pruning_begin_step', 0,
+                       'Begin step for pruning.')
+  flags.DEFINE_integer('pruning_end_step', 100000,
+                       'End step for pruning.')
+  flags.DEFINE_integer('pruning_frequency', 100,
+                       'Frequency for pruning.')
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
