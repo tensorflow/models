@@ -187,7 +187,12 @@ class RpnBoxLoss(object):
       mask = tf.math.not_equal(box_targets, 0.0)
       # The loss is normalized by the sum of non-zero weights before additional
       # normalizer provided by the function caller.
-      box_loss = self._huber_loss(box_targets, box_outputs, sample_weight=mask)
+      box_loss = tf.compat.v1.losses.huber_loss(
+          box_targets,
+          box_outputs,
+          weights=mask,
+          delta=delta,
+          reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
       box_loss /= normalizer
       return box_loss
 

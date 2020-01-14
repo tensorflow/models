@@ -67,6 +67,7 @@ def multilevel_features_generator(params):
         max_level=fpn_params.max_level,
         fpn_feat_dims=fpn_params.fpn_feat_dims,
         use_separable_conv=fpn_params.use_separable_conv,
+        use_batch_norm=fpn_params.use_batch_norm,
         batch_norm_relu=batch_norm_relu_generator(fpn_params.batch_norm))
   elif params.architecture.multilevel_features == 'identity':
     fpn_fn = identity.Identity()

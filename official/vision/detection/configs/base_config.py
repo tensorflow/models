@@ -76,7 +76,7 @@ BASE_CFG = {
         'eval_dataset_type': 'tfrecord',
     },
     'predict': {
-        'predict_batch_size': 8,
+        'batch_size': 8,
     },
     'anchor': {
         'min_level': 3,
