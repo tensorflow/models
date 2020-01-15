@@ -536,7 +536,7 @@ def draw_side_by_side_evaluation_image(eval_dict,
   # Add the batch dimension if the eval_dict is for single example.
   if len(eval_dict[detection_fields.detection_classes].shape) == 1:
     for key in eval_dict:
-      if key != input_data_fields.original_image:
+      if key != input_data_fields.original_image and key != input_data_fields.image_additional_channels:
         eval_dict[key] = tf.expand_dims(eval_dict[key], 0)
 
   for indx in range(eval_dict[input_data_fields.original_image].shape[0]):
@@ -600,8 +600,42 @@ def draw_side_by_side_evaluation_image(eval_dict,
         max_boxes_to_draw=None,
         min_score_thresh=0.0,
         use_normalized_coordinates=use_normalized_coordinates)
-    images_with_detections_list.append(
-        tf.concat([images_with_detections, images_with_groundtruth], axis=2))
+    images_to_visualize = tf.concat([images_with_detections,
+                                     images_with_groundtruth], axis=2)
+
+    if input_data_fields.image_additional_channels in eval_dict:
+      images_with_additional_channels_groundtruth = (
+          draw_bounding_boxes_on_image_tensors(
+              tf.expand_dims(
+                  eval_dict[input_data_fields.image_additional_channels][indx],
+                  axis=0),
+              tf.expand_dims(
+                  eval_dict[input_data_fields.groundtruth_boxes][indx], axis=0),
+              tf.expand_dims(
+                  eval_dict[input_data_fields.groundtruth_classes][indx],
+                  axis=0),
+              tf.expand_dims(
+                  tf.ones_like(
+                      eval_dict[input_data_fields.groundtruth_classes][indx],
+                      dtype=tf.float32),
+                  axis=0),
+              category_index,
+              original_image_spatial_shape=tf.expand_dims(
+                  eval_dict[input_data_fields.original_image_spatial_shape]
+                  [indx],
+                  axis=0),
+              true_image_shape=tf.expand_dims(
+                  eval_dict[input_data_fields.true_image_shape][indx], axis=0),
+              instance_masks=groundtruth_instance_masks,
+              keypoints=None,
+              max_boxes_to_draw=None,
+              min_score_thresh=0.0,
+              use_normalized_coordinates=use_normalized_coordinates))
+      images_to_visualize = tf.concat(
+          [images_to_visualize, images_with_additional_channels_groundtruth],
+          axis=2)
+    images_with_detections_list.append(images_to_visualize)
+
   return images_with_detections_list
 
 

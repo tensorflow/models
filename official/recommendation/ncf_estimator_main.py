@@ -39,10 +39,10 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
+from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
@@ -57,25 +57,19 @@ FLAGS = flags.FLAGS
 
 
 def construct_estimator(model_dir, params):
-  """Construct either an Estimator or TPUEstimator for NCF.
+  """Construct either an Estimator for NCF.
 
   Args:
     model_dir: The model directory for the estimator
     params: The params dict for the estimator
 
   Returns:
-    An Estimator or TPUEstimator.
+    An Estimator.
   """
   distribution = ncf_common.get_v1_distribution_strategy(params)
   run_config = tf.estimator.RunConfig(train_distribute=distribution,
                                       eval_distribute=distribution)
-
   model_fn = neumf_model.neumf_model_fn
-  if params["use_xla_for_gpu"]:
-    # TODO(seemuch): remove the contrib imput
-    from tensorflow.contrib.compiler import xla
-    logging.info("Using XLA for GPU for training and evaluation.")
-    model_fn = xla.estimator_model_fn(model_fn)
   estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=model_dir,
                                      config=run_config, params=params)
   return estimator

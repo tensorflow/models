@@ -10,9 +10,9 @@ models.
 Un-tar'ed directory includes:
 
 *   a frozen inference graph (`frozen_inference_graph.pb`). All frozen inference
-    graphs use output stride of 8 and a single eval scale of 1.0. No left-right
-    flips are used, and MobileNet-v2 based models do not include the decoder
-    module.
+    graphs by default use output stride of 8, a single eval scale of 1.0 and
+    no left-right flips, unless otherwise specified. MobileNet-v2 based models
+    do not include the decoder module.
 
 *   a checkpoint (`model.ckpt.data-00000-of-00001`, `model.ckpt.index`)
 
@@ -28,12 +28,12 @@ employ ASPP and decoder modules for fast computation.
 
 Checkpoint name             | Network backbone | Pretrained  dataset | ASPP  | Decoder
 --------------------------- | :--------------: | :-----------------: | :---: | :-----:
-mobilenetv2_dm05_coco_voc_trainaug | MobileNet-v2 <br> Depth-Multiplier = 0.5  | MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
-mobilenetv2_dm05_coco_voc_trainval | MobileNet-v2 <br> Depth-Multiplier = 0.5  | MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
-mobilenetv2_coco_voc_trainaug | MobileNet-v2  | MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
-mobilenetv2_coco_voc_trainval | MobileNet-v2  | MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
-xception65_coco_voc_trainaug  | Xception_65  | MS-COCO <br> VOC 2012 train_aug set| [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
-xception65_coco_voc_trainval  | Xception_65  | MS-COCO <br> VOC 2012 train_aug + trainval sets | [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
+mobilenetv2_dm05_coco_voc_trainaug | MobileNet-v2 <br> Depth-Multiplier = 0.5  | ImageNet <br> MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
+mobilenetv2_dm05_coco_voc_trainval | MobileNet-v2 <br> Depth-Multiplier = 0.5  | ImageNet <br> MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
+mobilenetv2_coco_voc_trainaug | MobileNet-v2  | ImageNet <br> MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
+mobilenetv2_coco_voc_trainval | MobileNet-v2  | ImageNet <br> MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
+xception65_coco_voc_trainaug  | Xception_65  | ImageNet <br> MS-COCO <br> VOC 2012 train_aug set| [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
+xception65_coco_voc_trainval  | Xception_65  | ImageNet <br> MS-COCO <br> VOC 2012 train_aug + trainval sets | [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
 
 In the table, **OS** denotes output stride.
 
@@ -64,7 +64,9 @@ dataset and does not employ ASPP and decoder modules for fast computation.
 
 Checkpoint name                       | Network backbone | Pretrained dataset                      | ASPP                                             | Decoder
 ------------------------------------- | :--------------: | :-------------------------------------: | :----------------------------------------------: | :-----:
-mobilenetv2_coco_cityscapes_trainfine | MobileNet-v2     | MS-COCO <br> Cityscapes train_fine set  | N/A                                              | N/A
+mobilenetv2_coco_cityscapes_trainfine | MobileNet-v2     | ImageNet <br> MS-COCO <br> Cityscapes train_fine set  | N/A                                              | N/A
+mobilenetv3_large_cityscapes_trainfine | MobileNet-v3 Large | Cityscapes train_fine set <br> (No ImageNet) | N/A                                              | OS = 8
+mobilenetv3_small_cityscapes_trainfine | MobileNet-v3 Small | Cityscapes train_fine set <br> (No ImageNet) | N/A                                              | OS = 8
 xception65_cityscapes_trainfine         | Xception_65      | ImageNet <br> Cityscapes train_fine set | [6, 12, 18] for OS=16 <br> [12, 24, 36] for OS=8 | OS = 4
 xception71_dpc_cityscapes_trainfine         | Xception_71      | ImageNet <br> MS-COCO <br> Cityscapes train_fine set | Dense Prediction Cell | OS = 4
 xception71_dpc_cityscapes_trainval         | Xception_71      | ImageNet <br> MS-COCO <br> Cityscapes trainval_fine and coarse set | Dense Prediction Cell | OS = 4
@@ -74,6 +76,8 @@ In the table, **OS** denotes output stride.
 Checkpoint name                                                                                                                  | Eval OS   | Eval scales                 | Left-right Flip | Multiply-Adds         | Runtime (sec)  | Cityscapes mIOU                | File Size
 -------------------------------------------------------------------------------------------------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :------------: | :----------------------------: | :-------:
 [mobilenetv2_coco_cityscapes_trainfine](http://download.tensorflow.org/models/deeplabv3_mnv2_cityscapes_train_2018_02_05.tar.gz) | 16 <br> 8 | [1.0] <br> [0.75:0.25:1.25] | No <br> Yes     | 21.27B <br> 433.24B   | 0.8 <br> 51.12 | 70.71% (val) <br> 73.57% (val) | 23MB
+[mobilenetv3_large_cityscapes_trainfine](http://download.tensorflow.org/models/deeplab_mnv3_large_cityscapes_trainfine_2019_11_15.tar.gz) | 32 | [1.0] | No  | 15.95B   | 0.6 | 72.41% (val) | 17MB
+[mobilenetv3_small_cityscapes_trainfine](http://download.tensorflow.org/models/deeplab_mnv3_small_cityscapes_trainfine_2019_11_15.tar.gz) | 32 | [1.0] | No  | 4.63B   | 0.4 | 68.99% (val) | 5MB
 [xception65_cityscapes_trainfine](http://download.tensorflow.org/models/deeplabv3_cityscapes_train_2018_02_06.tar.gz)              | 16 <br> 8 | [1.0] <br> [0.75:0.25:1.25] | No <br> Yes     | 418.64B <br> 8677.92B | 5.0 <br> 422.8 | 78.79% (val) <br> 80.42% (val) | 439MB
 [xception71_dpc_cityscapes_trainfine](http://download.tensorflow.org/models/deeplab_cityscapes_xception71_trainfine_2018_09_08.tar.gz) | 16 | [1.0] | No  | 502.07B | - | 80.31% (val) | 445MB
 [xception71_dpc_cityscapes_trainval](http://download.tensorflow.org/models/deeplab_cityscapes_xception71_trainvalfine_2018_09_08.tar.gz) | 8 | [0.75:0.25:2] | Yes  | - | - | 82.66% (**test**) | 446MB
@@ -188,3 +192,7 @@ Model name                                                                      
     Bolei Zhou, Hang Zhao, Xavier Puig, Sanja Fidler, Adela Barriuso, Antonio Torralba<br />
     [[link]](http://groups.csail.mit.edu/vision/datasets/ADE20K/). In CVPR,
     2017.
+
+13. **Searching for MobileNetV3**<br />
+    Andrew Howard, Mark Sandler, Grace Chu, Liang-Chieh Chen, Bo Chen, Mingxing Tan, Weijun Wang, Yukun Zhu, Ruoming Pang, Vijay Vasudevan, Quoc V. Le, Hartwig Adam<br />
+    [[link]](https://arxiv.org/abs/1905.02244). In ICCV, 2019.

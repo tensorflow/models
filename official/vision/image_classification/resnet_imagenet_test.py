@@ -18,32 +18,51 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tempfile
-
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.eager import context
-from tensorflow.python.platform import googletest
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.vision.image_classification import imagenet_preprocessing
 from official.vision.image_classification import resnet_imagenet_main
 
 
-class KerasImagenetTest(googletest.TestCase):
-  """Unit tests for Keras ResNet with ImageNet."""
-
-  _extra_flags = [
+@parameterized.parameters(
+    "resnet",
+    "resnet_polynomial_decay",
+    "mobilenet",
+    "mobilenet_polynomial_decay")
+class KerasImagenetTest(tf.test.TestCase):
+  """Unit tests for Keras Models with ImageNet."""
+  _default_flags_dict = [
       "-batch_size", "4",
       "-train_steps", "1",
-      "-use_synthetic_data", "true"
+      "-use_synthetic_data", "true",
+      "-data_format", "channels_last",
   ]
+  _extra_flags_dict = {
+      "resnet": [
+          "-model", "resnet50_v1.5",
+          "-optimizer", "resnet50_default",
+      ],
+      "resnet_polynomial_decay": [
+          "-model", "resnet50_v1.5",
+          "-optimizer", "resnet50_default",
+          "-pruning_method", "polynomial_decay",
+          "-use_tf_keras_layers", "true",
+      ],
+      "mobilenet": [
+          "-model", "mobilenet",
+          "-optimizer", "mobilenet_default",
+      ],
+      "mobilenet_polynomial_decay": [
+          "-model", "mobilenet",
+          "-optimizer", "mobilenet_default",
+          "-pruning_method", "polynomial_decay",
+      ],
+  }
   _tempdir = None
-
-  def get_temp_dir(self):
-    if not self._tempdir:
-      self._tempdir = tempfile.mkdtemp(dir=googletest.GetTempDir())
-    return self._tempdir
 
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
@@ -53,22 +72,26 @@ class KerasImagenetTest(googletest.TestCase):
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
     imagenet_preprocessing.NUM_IMAGES["validation"] = 4
+    self.policy = \
+        tf.compat.v2.keras.mixed_precision.experimental.global_policy()
 
   def tearDown(self):
     super(KerasImagenetTest, self).tearDown()
     tf.io.gfile.rmtree(self.get_temp_dir())
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(self.policy)
 
-  def test_end_to_end_no_dist_strat(self):
+  def get_extra_flags_dict(self, flags_key):
+    return self._extra_flags_dict[flags_key] + self._default_flags_dict
+
+  def test_end_to_end_no_dist_strat(self, flags_key):
     """Test Keras model with 1 GPU, no distribution strategy."""
     config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
 
     extra_flags = [
         "-distribution_strategy", "off",
-        "-model_dir", "keras_imagenet_no_dist_strat",
-        "-data_format", "channels_last",
     ]
-    extra_flags = extra_flags + self._extra_flags
+    extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -76,15 +99,13 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_graph_no_dist_strat(self):
+  def test_end_to_end_graph_no_dist_strat(self, flags_key):
     """Test Keras model in legacy graph mode with 1 GPU, no dist strat."""
     extra_flags = [
         "-enable_eager", "false",
         "-distribution_strategy", "off",
-        "-model_dir", "keras_imagenet_graph_no_dist_strat",
-        "-data_format", "channels_last",
     ]
-    extra_flags = extra_flags + self._extra_flags
+    extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -92,7 +113,7 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_1_gpu(self):
+  def test_end_to_end_1_gpu(self, flags_key):
     """Test Keras model with 1 GPU."""
     config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
@@ -104,11 +125,10 @@ class KerasImagenetTest(googletest.TestCase):
 
     extra_flags = [
         "-num_gpus", "1",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_1_gpu",
-        "-data_format", "channels_last",
+        "-distribution_strategy", "mirrored",
+        "-enable_checkpoint_and_export", "1",
     ]
-    extra_flags = extra_flags + self._extra_flags
+    extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -116,21 +136,25 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_graph_1_gpu(self):
-    """Test Keras model in legacy graph mode with 1 GPU."""
+  def test_end_to_end_1_gpu_fp16(self, flags_key):
+    """Test Keras model with 1 GPU and fp16."""
+    config = keras_utils.get_config_proto_v1()
+    tf.compat.v1.enable_eager_execution(config=config)
+
     if context.num_gpus() < 1:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(1, context.num_gpus()))
 
     extra_flags = [
         "-num_gpus", "1",
-        "-enable_eager", "false",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_graph_1_gpu",
-        "-data_format", "channels_last",
+        "-dtype", "fp16",
+        "-distribution_strategy", "mirrored",
     ]
-    extra_flags = extra_flags + self._extra_flags
+    extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
+
+    if "polynomial_decay" in extra_flags:
+      self.skipTest("Pruning with fp16 is not currently supported.")
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -138,7 +162,7 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_2_gpu(self):
+  def test_end_to_end_2_gpu(self, flags_key):
     """Test Keras model with 2 GPUs."""
     config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
@@ -150,10 +174,9 @@ class KerasImagenetTest(googletest.TestCase):
 
     extra_flags = [
         "-num_gpus", "2",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_2_gpu",
+        "-distribution_strategy", "mirrored",
     ]
-    extra_flags = extra_flags + self._extra_flags
+    extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -161,7 +184,7 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_xla_2_gpu(self):
+  def test_end_to_end_xla_2_gpu(self, flags_key):
     """Test Keras model with XLA and 2 GPUs."""
     config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
@@ -174,10 +197,9 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = [
         "-num_gpus", "2",
         "-enable_xla", "true",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_xla_2_gpu",
+        "-distribution_strategy", "mirrored",
     ]
-    extra_flags = extra_flags + self._extra_flags
+    extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -185,7 +207,7 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_2_gpu_fp16(self):
+  def test_end_to_end_2_gpu_fp16(self, flags_key):
     """Test Keras model with 2 GPUs and fp16."""
     config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
@@ -198,10 +220,12 @@ class KerasImagenetTest(googletest.TestCase):
     extra_flags = [
         "-num_gpus", "2",
         "-dtype", "fp16",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_2_gpu_fp16",
+        "-distribution_strategy", "mirrored",
     ]
-    extra_flags = extra_flags + self._extra_flags
+    extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
+
+    if "polynomial_decay" in extra_flags:
+      self.skipTest("Pruning with fp16 is not currently supported.")
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -209,7 +233,7 @@ class KerasImagenetTest(googletest.TestCase):
         extra_flags=extra_flags
     )
 
-  def test_end_to_end_xla_2_gpu_fp16(self):
+  def test_end_to_end_xla_2_gpu_fp16(self, flags_key):
     """Test Keras model with XLA, 2 GPUs and fp16."""
     config = keras_utils.get_config_proto_v1()
     tf.compat.v1.enable_eager_execution(config=config)
@@ -223,53 +247,12 @@ class KerasImagenetTest(googletest.TestCase):
         "-num_gpus", "2",
         "-dtype", "fp16",
         "-enable_xla", "true",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_xla_2_gpu_fp16",
+        "-distribution_strategy", "mirrored",
     ]
-    extra_flags = extra_flags + self._extra_flags
+    extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
-    integration.run_synthetic(
-        main=resnet_imagenet_main.run,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
-
-  def test_end_to_end_graph_2_gpu(self):
-    """Test Keras model in legacy graph mode with 2 GPUs."""
-    if context.num_gpus() < 2:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
-
-    extra_flags = [
-        "-num_gpus", "2",
-        "-enable_eager", "false",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_graph_2_gpu",
-    ]
-    extra_flags = extra_flags + self._extra_flags
-
-    integration.run_synthetic(
-        main=resnet_imagenet_main.run,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
-
-  def test_end_to_end_graph_xla_2_gpu(self):
-    """Test Keras model in legacy graph mode with XLA and 2 GPUs."""
-    if context.num_gpus() < 2:
-      self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
-
-    extra_flags = [
-        "-num_gpus", "2",
-        "-enable_eager", "false",
-        "-enable_xla", "true",
-        "-distribution_strategy", "default",
-        "-model_dir", "keras_imagenet_graph_xla_2_gpu",
-    ]
-    extra_flags = extra_flags + self._extra_flags
+    if "polynomial_decay" in extra_flags:
+      self.skipTest("Pruning with fp16 is not currently supported.")
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -279,4 +262,5 @@ class KerasImagenetTest(googletest.TestCase):
 
 
 if __name__ == "__main__":
-  googletest.main()
+  tf.compat.v1.enable_v2_behavior()
+  tf.test.main()

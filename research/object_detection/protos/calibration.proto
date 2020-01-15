@@ -21,6 +21,9 @@ message CalibrationConfig {
 
     // Per-class sigmoid calibration.
     ClassIdSigmoidCalibrations class_id_sigmoid_calibrations = 4;
+
+    // Temperature scaling calibration.
+    TemperatureScalingCalibration temperature_scaling_calibration = 5;
   }
 }
 
@@ -48,6 +51,11 @@ message SigmoidCalibration {
 message ClassIdSigmoidCalibrations {
   // Message mapping class index to Sigmoid Parameters.
   map<int32, SigmoidParameters> class_id_sigmoid_parameters_map = 1;
+}
+
+// Message for Temperature Scaling Calibration.
+message TemperatureScalingCalibration {
+  optional float scaler = 1;
 }
 
 // Description of data used to fit the calibration model. CLASS_SPECIFIC

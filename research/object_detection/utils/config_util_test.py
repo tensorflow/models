@@ -872,6 +872,62 @@ class ConfigUtilTest(tf.test.TestCase):
           field_name="shuffle",
           value=False)
 
+  def testOverWriteRetainOriginalImageAdditionalChannels(self):
+    """Tests that keyword arguments are applied correctly."""
+    original_retain_original_image_additional_channels = True
+    desired_retain_original_image_additional_channels = False
+
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_config.retain_original_image_additional_channels = (
+        original_retain_original_image_additional_channels)
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    override_dict = {
+        "retain_original_image_additional_channels_in_eval":
+            desired_retain_original_image_additional_channels
+    }
+    configs = config_util.merge_external_params_with_configs(
+        configs, kwargs_dict=override_dict)
+    retain_original_image_additional_channels = configs[
+        "eval_config"].retain_original_image_additional_channels
+    self.assertEqual(desired_retain_original_image_additional_channels,
+                     retain_original_image_additional_channels)
+
+  def testRemoveUnecessaryEma(self):
+    input_dict = {
+        "expanded_conv_10/project/act_quant/min":
+            1,
+        "FeatureExtractor/MobilenetV2_2/expanded_conv_5/expand/act_quant/min":
+            2,
+        "expanded_conv_10/expand/BatchNorm/gamma/min/ExponentialMovingAverage":
+            3,
+        "expanded_conv_3/depthwise/BatchNorm/beta/max/ExponentialMovingAverage":
+            4,
+        "BoxPredictor_1/ClassPredictor_depthwise/act_quant":
+            5
+    }
+
+    no_ema_collection = ["/min", "/max"]
+
+    output_dict = {
+        "expanded_conv_10/project/act_quant/min":
+            1,
+        "FeatureExtractor/MobilenetV2_2/expanded_conv_5/expand/act_quant/min":
+            2,
+        "expanded_conv_10/expand/BatchNorm/gamma/min":
+            3,
+        "expanded_conv_3/depthwise/BatchNorm/beta/max":
+            4,
+        "BoxPredictor_1/ClassPredictor_depthwise/act_quant":
+            5
+    }
+
+    self.assertEqual(
+        output_dict,
+        config_util.remove_unecessary_ema(input_dict, no_ema_collection))
+
 
 if __name__ == "__main__":
   tf.test.main()

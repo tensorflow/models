@@ -160,7 +160,8 @@ def preprocess_for_train(image,
                          fast_mode=True,
                          scope=None,
                          add_image_summaries=True,
-                         random_crop=True):
+                         random_crop=True,
+                         use_grayscale=False):
   """Distort one image for training a network.
 
   Distorting images provides a useful technique for augmenting the data
@@ -186,6 +187,7 @@ def preprocess_for_train(image,
     add_image_summaries: Enable image summaries.
     random_crop: Enable random cropping of images during preprocessing for
       training.
+    use_grayscale: Whether to convert the image from RGB to grayscale.
   Returns:
     3-D float Tensor of distorted image used for training with range [-1, 1].
   """
@@ -242,6 +244,9 @@ def preprocess_for_train(image,
         lambda x, ordering: distort_color(x, ordering, fast_mode),
         num_cases=num_distort_cases)
 
+    if use_grayscale:
+      distorted_image = tf.image.rgb_to_grayscale(distorted_image)
+
     if add_image_summaries:
       tf.summary.image('final_distorted_image',
                        tf.expand_dims(distorted_image, 0))
@@ -255,7 +260,8 @@ def preprocess_for_eval(image,
                         width,
                         central_fraction=0.875,
                         scope=None,
-                        central_crop=True):
+                        central_crop=True,
+                        use_grayscale=False):
   """Prepare one image for evaluation.
 
   If height and width are specified it would output an image with that size by
@@ -275,12 +281,15 @@ def preprocess_for_eval(image,
     scope: Optional scope for name_scope.
     central_crop: Enable central cropping of images during preprocessing for
       evaluation.
+    use_grayscale: Whether to convert the image from RGB to grayscale.
   Returns:
     3-D float Tensor of prepared image.
   """
   with tf.name_scope(scope, 'eval_image', [image, height, width]):
     if image.dtype != tf.float32:
       image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+    if use_grayscale:
+      image = tf.image.rgb_to_grayscale(image)
     # Crop the central region of the image with an area containing 87.5% of
     # the original image.
     if central_crop and central_fraction:
@@ -304,7 +313,8 @@ def preprocess_image(image,
                      bbox=None,
                      fast_mode=True,
                      add_image_summaries=True,
-                     crop_image=True):
+                     crop_image=True,
+                     use_grayscale=False):
   """Pre-process one image for training or evaluation.
 
   Args:
@@ -324,6 +334,7 @@ def preprocess_image(image,
     add_image_summaries: Enable image summaries.
     crop_image: Whether to enable cropping of images during preprocessing for
       both training and evaluation.
+    use_grayscale: Whether to convert the image from RGB to grayscale.
 
   Returns:
     3-D float Tensor containing an appropriately scaled image
@@ -339,6 +350,12 @@ def preprocess_image(image,
         bbox,
         fast_mode,
         add_image_summaries=add_image_summaries,
-        random_crop=crop_image)
+        random_crop=crop_image,
+        use_grayscale=use_grayscale)
   else:
-    return preprocess_for_eval(image, height, width, central_crop=crop_image)
+    return preprocess_for_eval(
+        image,
+        height,
+        width,
+        central_crop=crop_image,
+        use_grayscale=use_grayscale)

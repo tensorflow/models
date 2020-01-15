@@ -168,6 +168,22 @@ class BoxListFields(object):
   is_crowd = 'is_crowd'
 
 
+class PredictionFields(object):
+  """Naming conventions for standardized prediction outputs.
+
+  Attributes:
+    feature_maps: List of feature maps for prediction.
+    anchors: Generated anchors.
+    raw_detection_boxes: Decoded detection boxes without NMS.
+    raw_detection_feature_map_indices: Feature map indices from which each raw
+      detection box was produced.
+  """
+  feature_maps = 'feature_maps'
+  anchors = 'anchors'
+  raw_detection_boxes = 'raw_detection_boxes'
+  raw_detection_feature_map_indices = 'raw_detection_feature_map_indices'
+
+
 class TfExampleFields(object):
   """TF-example proto feature names for object detection.
 

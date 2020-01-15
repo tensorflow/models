@@ -169,6 +169,35 @@ class CalibrationBuilderTest(tf.test.TestCase):
     self.assertAllClose(calibrated_scores_np, [[[0.5, 0.6], [0.5, 0.3]],
                                                [[0.5, 0.7], [0.5, 0.96]]])
 
+  def test_temperature_scaling(self):
+    """Tests that calibration produces correct temperature scaling values."""
+    calibration_config = calibration_pb2.CalibrationConfig()
+    calibration_config.temperature_scaling_calibration.scaler = 2.0
+
+    od_graph = tf.Graph()
+    with self.test_session(graph=od_graph) as sess:
+      calibration_fn = calibration_builder.build(calibration_config)
+      # batch_size = 2, num_classes = 2, num_anchors = 2.
+      class_predictions_with_background = tf.constant(
+          [[[0.1, 0.2, 0.3], [0.4, 0.5, 0.0]],
+           [[0.6, 0.7, 0.8], [0.9, 1.0, 1.0]]],
+          dtype=tf.float32)
+      calibrated_scores = calibration_fn(class_predictions_with_background)
+      calibrated_scores_np = sess.run(calibrated_scores)
+    self.assertAllClose(calibrated_scores_np,
+                        [[[0.05, 0.1, 0.15], [0.2, 0.25, 0.0]],
+                         [[0.3, 0.35, 0.4], [0.45, 0.5, 0.5]]])
+
+  def test_temperature_scaling_incorrect_value_error(self):
+    calibration_config = calibration_pb2.CalibrationConfig()
+    calibration_config.temperature_scaling_calibration.scaler = 0
+
+    calibration_fn = calibration_builder.build(calibration_config)
+    class_predictions_with_background = tf.constant(
+        [[[0.1, 0.2, 0.3]]], dtype=tf.float32)
+    with self.assertRaises(ValueError):
+      calibration_fn(class_predictions_with_background)
+
   def test_skips_class_when_calibration_parameters_not_present(self):
     """Tests that graph fails when parameters not present for all classes."""
     # Only adding calibration parameters for class id = 0, even though class id

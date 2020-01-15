@@ -17,6 +17,7 @@
 import functools
 import tensorflow as tf
 from google.protobuf import text_format
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.builders import post_processing_builder
 from object_detection.core import anchor_generator
@@ -33,7 +34,7 @@ from object_detection.utils import ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 
-slim = tf.contrib.slim
+slim = contrib_slim
 keras = tf.keras.layers
 
 
@@ -129,7 +130,8 @@ class SSDMetaArchTestBase(test_case.TestCase):
       predict_mask=False,
       use_static_shapes=False,
       nms_max_size_per_class=5,
-      calibration_mapping_value=None):
+      calibration_mapping_value=None,
+      return_raw_detections_during_predict=False):
     is_training = False
     num_classes = 1
     mock_anchor_generator = MockAnchorGenerator2x2()
@@ -238,6 +240,8 @@ class SSDMetaArchTestBase(test_case.TestCase):
         add_background_class=add_background_class,
         random_example_sampler=random_example_sampler,
         expected_loss_weights_fn=expected_loss_weights_fn,
+        return_raw_detections_during_predict=(
+            return_raw_detections_during_predict),
         **kwargs)
     return model, num_classes, mock_anchor_generator.num_anchors(), code_size
 

@@ -242,7 +242,7 @@ class _LayersOverride(object):
 
     placeholder_with_default = tf.placeholder_with_default(
         input=input_tensor, shape=[None] + shape)
-    return tf.keras.layers.Input(tensor=placeholder_with_default)
+    return model_utils.input_layer(shape, placeholder_with_default)
 
   # pylint: disable=unused-argument
   def ReLU(self, *args, **kwargs):

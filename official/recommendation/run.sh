@@ -37,7 +37,7 @@ else
 fi
 
 DATA_DIR="${ROOT_DIR}/movielens_data"
-python "${SCRIPT_DIR}/../datasets/movielens.py" --data_dir ${DATA_DIR} --dataset ${DATASET}
+python "${SCRIPT_DIR}/movielens.py" --data_dir ${DATA_DIR} --dataset ${DATASET}
 
 if [ "$1" == "keras" ]
 then

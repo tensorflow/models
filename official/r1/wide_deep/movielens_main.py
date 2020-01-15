@@ -24,7 +24,7 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
 
-from official.datasets import movielens
+from official.recommendation import movielens
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.r1.wide_deep import movielens_dataset

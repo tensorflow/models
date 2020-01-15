@@ -25,15 +25,16 @@ from official.utils.flags._conventions import help_wrap
 from official.utils.logs import hooks_helper
 
 
-def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
-                epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                num_gpu=True, hooks=True, export_dir=True,
-                distribution_strategy=True, run_eagerly=False):
+def define_base(data_dir=True, model_dir=True, clean=False, train_epochs=False,
+                epochs_between_evals=False, stop_threshold=False,
+                batch_size=True, num_gpu=False, hooks=False, export_dir=False,
+                distribution_strategy=False, run_eagerly=False):
   """Register base flags.
 
   Args:
     data_dir: Create a flag for specifying the input data directory.
     model_dir: Create a flag for specifying the model file directory.
+    clean: Create a flag for removing the model_dir.
     train_epochs: Create a flag to specify the number of training epochs.
     epochs_between_evals: Create a flag to specify the frequency of testing.
     stop_threshold: Create a flag to specify a threshold accuracy or other
@@ -138,9 +139,9 @@ def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
 
   if distribution_strategy:
     flags.DEFINE_string(
-        name="distribution_strategy", short_name="ds", default="default",
+        name="distribution_strategy", short_name="ds", default="mirrored",
         help=help_wrap("The Distribution Strategy to use for training. "
-                       "Accepted values are 'off', 'default', 'one_device', "
+                       "Accepted values are 'off', 'one_device', "
                        "'mirrored', 'parameter_server', 'collective', "
                        "case insensitive. 'off' means not to use "
                        "Distribution Strategy; 'default' means to choose "

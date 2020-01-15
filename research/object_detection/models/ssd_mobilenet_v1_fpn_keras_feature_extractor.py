@@ -49,6 +49,7 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
                additional_layer_depth=256,
                use_explicit_padding=False,
                use_depthwise=False,
+               use_native_resize_op=False,
                override_base_feature_extractor_hyperparams=False,
                name=None):
     """SSD Keras based FPN feature extractor Mobilenet v1 architecture.
@@ -84,6 +85,8 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: whether to use depthwise convolutions. Default is False.
+      use_native_resize_op: Whether to use tf.image.nearest_neighbor_resize
+        to do upsampling in FPN. Default is false.
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams`.
@@ -109,6 +112,7 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
     self._conv_defs = None
     if self._use_depthwise:
       self._conv_defs = _create_modified_mobilenet_config()
+    self._use_native_resize_op = use_native_resize_op
     self._feature_blocks = [
         'Conv2d_3_pointwise', 'Conv2d_5_pointwise', 'Conv2d_11_pointwise',
         'Conv2d_13_pointwise'
@@ -153,6 +157,7 @@ class SSDMobileNetV1FpnKerasFeatureExtractor(
             depth=self._depth_fn(self._additional_layer_depth),
             use_depthwise=self._use_depthwise,
             use_explicit_padding=self._use_explicit_padding,
+            use_native_resize_op=self._use_native_resize_op,
             is_training=self._is_training,
             conv_hyperparams=self._conv_hyperparams,
             freeze_batchnorm=self._freeze_batchnorm,

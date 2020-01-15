@@ -81,7 +81,7 @@ def _mirrored_cross_device_ops(all_reduce_alg, num_packs):
   return cross_device_ops_class(num_packs=num_packs)
 
 
-def get_distribution_strategy(distribution_strategy="default",
+def get_distribution_strategy(distribution_strategy="mirrored",
                               num_gpus=0,
                               num_workers=1,
                               all_reduce_alg=None,
@@ -91,11 +91,9 @@ def get_distribution_strategy(distribution_strategy="default",
 
   Args:
     distribution_strategy: a string specifying which distribution strategy to
-      use. Accepted values are 'off', 'default', 'one_device', 'mirrored',
+      use. Accepted values are 'off', 'one_device', 'mirrored',
       'parameter_server', 'multi_worker_mirrored', and 'tpu' -- case insensitive.
-      'off' means not to use Distribution Strategy; 'default' means to choose from
-      `MirroredStrategy`, `MultiWorkerMirroredStrategy`, or `OneDeviceStrategy`
-      according to the number of GPUs and number of workers. 'tpu' means to use
+      'off' means not to use Distribution Strategy; 'tpu' means to use
       TPUStrategy using `tpu_address`.
     num_gpus: Number of GPUs to run this model.
     num_workers: Number of workers to run this model.
@@ -128,7 +126,6 @@ def get_distribution_strategy(distribution_strategy="default",
 
   if distribution_strategy == "tpu":
     # When tpu_address is an empty string, we communicate with local TPUs.
-    # Initialize TPU System.
     cluster_resolver = tpu_lib.tpu_initialize(tpu_address)
     return tf.distribute.experimental.TPUStrategy(cluster_resolver)
 
@@ -136,19 +133,16 @@ def get_distribution_strategy(distribution_strategy="default",
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=_collective_communication(all_reduce_alg))
 
-  if (distribution_strategy == "one_device" or
-      (distribution_strategy == "default" and num_gpus <= 1)):
+  if distribution_strategy == "one_device":
     if num_gpus == 0:
       return tf.distribute.OneDeviceStrategy("device:CPU:0")
-    else:
-      if num_gpus > 1:
-        raise ValueError("`OneDeviceStrategy` can not be used for more than "
-                         "one device.")
-      return tf.distribute.OneDeviceStrategy("device:GPU:0")
+    if num_gpus > 1:
+      raise ValueError("`OneDeviceStrategy` can not be used for more than "
+                       "one device.")
+    return tf.distribute.OneDeviceStrategy("device:GPU:0")
 
-  if distribution_strategy in ("mirrored", "default"):
+  if distribution_strategy == "mirrored":
     if num_gpus == 0:
-      assert distribution_strategy == "mirrored"
       devices = ["device:CPU:0"]
     else:
       devices = ["device:GPU:%d" % i for i in range(num_gpus)]
@@ -289,14 +283,6 @@ def set_up_synthetic_data():
   _monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
   _monkey_patch_dataset_method(
       tf.distribute.experimental.MultiWorkerMirroredStrategy)
-  # TODO(tobyboyd): Remove when contrib.distribute is all in core.
-  if hasattr(tf, 'contrib'):
-    _monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
-    _monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
-    _monkey_patch_dataset_method(
-        tf.contrib.distribute.CollectiveAllReduceStrategy)
-  else:
-    print('Contrib missing: Skip monkey patch tf.contrib.distribute.*')
 
 
 def undo_set_up_synthetic_data():
@@ -304,14 +290,6 @@ def undo_set_up_synthetic_data():
   _undo_monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
   _undo_monkey_patch_dataset_method(
       tf.distribute.experimental.MultiWorkerMirroredStrategy)
-  # TODO(tobyboyd): Remove when contrib.distribute is all in core.
-  if hasattr(tf, 'contrib'):
-    _undo_monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
-    _undo_monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
-    _undo_monkey_patch_dataset_method(
-        tf.contrib.distribute.CollectiveAllReduceStrategy)
-  else:
-    print('Contrib missing: Skip remove monkey patch tf.contrib.distribute.*')
 
 
 def configure_cluster(worker_hosts=None, task_index=-1):

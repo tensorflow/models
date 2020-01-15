@@ -29,10 +29,10 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
+from official.recommendation import movielens
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
@@ -94,7 +94,6 @@ def parse_flags(flags_obj):
       "beta2": flags_obj.beta2,
       "epsilon": flags_obj.epsilon,
       "match_mlperf": flags_obj.ml_perf,
-      "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
@@ -147,15 +146,16 @@ def get_v1_distribution_strategy(params):
 def define_ncf_flags():
   """Add flags for running ncf_main."""
   # Add common flags
-  flags_core.define_base(export_dir=False, run_eagerly=True)
+  flags_core.define_base(model_dir=True, clean=True, train_epochs=True,
+                         epochs_between_evals=True, export_dir=False,
+                         run_eagerly=True, stop_threshold=True, num_gpu=True,
+                         hooks=True, distribution_strategy=True)
   flags_core.define_performance(
-      num_parallel_calls=False,
-      inter_op=False,
-      intra_op=False,
       synthetic_data=True,
-      max_train_steps=False,
-      dtype=False,
-      all_reduce_alg=False,
+      dtype=True,
+      fp16_implementation=True,
+      loss_scale=True,
+      dynamic_loss_scale=True,
       enable_xla=True,
       force_v2_in_keras_compile=True
   )
@@ -305,16 +305,6 @@ def define_ncf_flags():
   def eval_size_check(eval_batch_size):
     return (eval_batch_size is None or
             int(eval_batch_size) > rconst.NUM_EVAL_NEGATIVES)
-
-  flags.DEFINE_bool(
-      name="use_xla_for_gpu", default=False, help=flags_core.help_wrap(
-          "If True, use XLA for the model function. Only works when using a "
-          "GPU. On TPUs, XLA is always used"))
-
-  xla_message = "--use_xla_for_gpu is incompatible with --tpu"
-  @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
-  def xla_validator(flag_dict):
-    return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
 
   flags.DEFINE_bool(
       name="early_stopping",

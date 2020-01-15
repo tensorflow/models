@@ -39,6 +39,9 @@ message PreprocessingStep {
     AutoAugmentImage autoaugment_image = 31;
     DropLabelProbabilistically drop_label_probabilistically = 32;
     RemapLabels remap_labels = 33;
+    RandomJpegQuality random_jpeg_quality = 34;
+    RandomDownscaleToTargetPixels random_downscale_to_target_pixels = 35;
+    RandomPatchGaussian random_patch_gaussian = 36;
   }
 }
 
@@ -489,4 +492,44 @@ message RemapLabels {
   repeated int32 original_labels = 1;
   // Label to map to.
   optional int32 new_label = 2;
+}
+
+// Applies a jpeg encoding with a random quality factor.
+message RandomJpegQuality {
+  // Probability of keeping the original image.
+  optional float random_coef = 1 [default = 0.0];
+
+  // Minimum jpeg quality to use.
+  optional int32 min_jpeg_quality = 2 [default = 0];
+
+  // Maximum jpeg quality to use.
+  optional int32 max_jpeg_quality = 3 [default = 100];
+}
+
+// Randomly shrinks image (keeping aspect ratio) to a target number of pixels.
+// If the image contains less than the chosen target number of pixels, it will
+// not be changed.
+message RandomDownscaleToTargetPixels {
+  // Probability of keeping the original image.
+  optional float random_coef = 1 [default = 0.0];
+
+  // The target number of pixels will be chosen to be in the range
+  // [min_target_pixels, max_target_pixels]
+  optional int32 min_target_pixels = 2 [default = 300000];
+  optional int32 max_target_pixels = 3 [default = 500000];
+}
+
+message RandomPatchGaussian {
+  // Probability of keeping the original image.
+  optional float random_coef = 1 [default = 0.0];
+
+  // The patch size will be chosen to be in the range
+  // [min_patch_size, max_patch_size).
+  optional int32 min_patch_size = 2 [default = 1];
+  optional int32 max_patch_size = 3 [default = 250];
+
+  // The standard deviation of the gaussian noise applied within the patch will
+  // be chosen to be in the range [min_gaussian_stddev, max_gaussian_stddev).
+  optional float min_gaussian_stddev = 4 [default = 0.0];
+  optional float max_gaussian_stddev = 5 [default = 1.0];
 }

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,21 +34,28 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import range
 import tensorflow as tf
+from tensorflow.contrib import framework as contrib_framework
+from tensorflow.contrib import layers as contrib_layers
+from tensorflow.contrib import slim as contrib_slim
+from tensorflow.contrib import training as contrib_training
 
 from deeplab.core import nas_genotypes
+from deeplab.core import utils
 from deeplab.core.nas_cell import NASBaseCell
-from deeplab.core.utils import resize_bilinear
-from deeplab.core.utils import scale_dimension
+from tensorflow.contrib.slim.nets import resnet_utils
 
-arg_scope = tf.contrib.framework.arg_scope
-slim = tf.contrib.slim
+arg_scope = contrib_framework.arg_scope
+slim = contrib_slim
+resize_bilinear = utils.resize_bilinear
+scale_dimension = utils.scale_dimension
 
 
 def config(num_conv_filters=20,
            total_training_steps=500000,
            drop_path_keep_prob=1.0):
-  return tf.contrib.training.HParams(
+  return contrib_training.HParams(
       # Multiplier when spatial size is reduced by 2.
       filter_scaling_rate=2.0,
       # Number of filters of the stem output tensor.
@@ -59,8 +67,10 @@ def config(num_conv_filters=20,
   )
 
 
-def nas_arg_scope(weight_decay=4e-5, batch_norm_decay=0.9997,
-                  batch_norm_epsilon=0.001):
+def nas_arg_scope(weight_decay=4e-5,
+                  batch_norm_decay=0.9997,
+                  batch_norm_epsilon=0.001,
+                  sync_batch_norm_method='None'):
   """Default arg scope for the NAS models."""
   batch_norm_params = {
       # Decay for the moving averages.
@@ -68,11 +78,11 @@ def nas_arg_scope(weight_decay=4e-5, batch_norm_decay=0.9997,
       # epsilon to prevent 0s in variance.
       'epsilon': batch_norm_epsilon,
       'scale': True,
-      'fused': True,
   }
-  weights_regularizer = tf.contrib.layers.l2_regularizer(weight_decay)
-  weights_initializer = tf.contrib.layers.variance_scaling_initializer(
-      factor=1/3.0, mode='FAN_IN', uniform=True)
+  batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
+  weights_regularizer = contrib_layers.l2_regularizer(weight_decay)
+  weights_initializer = contrib_layers.variance_scaling_initializer(
+      factor=1 / 3.0, mode='FAN_IN', uniform=True)
   with arg_scope([slim.fully_connected, slim.conv2d, slim.separable_conv2d],
                  weights_regularizer=weights_regularizer,
                  weights_initializer=weights_initializer):
@@ -80,24 +90,22 @@ def nas_arg_scope(weight_decay=4e-5, batch_norm_decay=0.9997,
                    activation_fn=None, scope='FC'):
       with arg_scope([slim.conv2d, slim.separable_conv2d],
                      activation_fn=None, biases_initializer=None):
-        with arg_scope([slim.batch_norm], **batch_norm_params) as sc:
+        with arg_scope([batch_norm], **batch_norm_params) as sc:
           return sc
 
 
-def _nas_stem(inputs):
+def _nas_stem(inputs,
+              batch_norm_fn=slim.batch_norm):
   """Stem used for NAS models."""
-  net = slim.conv2d(inputs, 64, [3, 3], stride=2,
-                    scope='conv0', padding='SAME')
-  net = slim.batch_norm(net, scope='conv0_bn')
+  net = resnet_utils.conv2d_same(inputs, 64, 3, stride=2, scope='conv0')
+  net = batch_norm_fn(net, scope='conv0_bn')
   net = tf.nn.relu(net)
-  net = slim.conv2d(net, 64, [3, 3], stride=1,
-                    scope='conv1', padding='SAME')
-  net = slim.batch_norm(net, scope='conv1_bn')
+  net = resnet_utils.conv2d_same(net, 64, 3, stride=1, scope='conv1')
+  net = batch_norm_fn(net, scope='conv1_bn')
   cell_outputs = [net]
   net = tf.nn.relu(net)
-  net = slim.conv2d(net, 128, [3, 3], stride=2,
-                    scope='conv2', padding='SAME')
-  net = slim.batch_norm(net, scope='conv2_bn')
+  net = resnet_utils.conv2d_same(net, 128, 3, stride=2, scope='conv2')
+  net = batch_norm_fn(net, scope='conv2_bn')
   cell_outputs.append(net)
   return net, cell_outputs
 
@@ -108,9 +116,13 @@ def _build_nas_base(images,
                     num_classes,
                     hparams,
                     global_pool=False,
+                    output_stride=16,
+                    nas_use_classification_head=False,
                     reuse=None,
                     scope=None,
-                    final_endpoint=None):
+                    final_endpoint=None,
+                    batch_norm_fn=slim.batch_norm,
+                    nas_remove_os32_stride=False):
   """Constructs a NAS model.
 
   Args:
@@ -123,15 +135,22 @@ def _build_nas_base(images,
     hparams: Hyperparameters needed to construct the network.
     global_pool: If True, we perform global average pooling before computing the
       logits. Set to True for image classification, False for dense prediction.
+    output_stride: Interger, the stride of output feature maps.
+    nas_use_classification_head: Boolean, use image classification head.
     reuse: Whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
     final_endpoint: The endpoint to construct the network up to.
+    batch_norm_fn: Batch norm function.
+    nas_remove_os32_stride: Boolean, remove stride in output_stride 32 branch.
 
   Returns:
     net: A rank-4 tensor of size [batch, height_out, width_out, channels_out].
     end_points: A dictionary from components of the network to the corresponding
       activation.
+
+  Raises:
+    ValueError: If output_stride is not a multiple of backbone output stride.
   """
   with tf.variable_scope(scope, 'nas', [images], reuse=reuse):
     end_points = {}
@@ -139,7 +158,8 @@ def _build_nas_base(images,
       end_points[endpoint_name] = net
       return final_endpoint and (endpoint_name == final_endpoint)
 
-    net, cell_outputs = _nas_stem(images)
+    net, cell_outputs = _nas_stem(images,
+                                  batch_norm_fn=batch_norm_fn)
     if add_and_check_endpoint('Stem', net):
       return net, end_points
 
@@ -154,11 +174,18 @@ def _build_nas_base(images,
       else:
         if backbone[cell_num] == backbone[cell_num - 1] + 1:
           stride = 2
+          if backbone[cell_num] == 3 and nas_remove_os32_stride:
+            stride = 1
           filter_scaling *= hparams.filter_scaling_rate
         elif backbone[cell_num] == backbone[cell_num - 1] - 1:
-          scaled_height = scale_dimension(net.shape[1].value, 2)
-          scaled_width = scale_dimension(net.shape[2].value, 2)
-          net = resize_bilinear(net, [scaled_height, scaled_width], net.dtype)
+          if backbone[cell_num - 1] == 3 and nas_remove_os32_stride:
+            # No need to rescale features.
+            pass
+          else:
+            # Scale features by a factor of 2.
+            scaled_height = scale_dimension(net.shape[1].value, 2)
+            scaled_width = scale_dimension(net.shape[2].value, 2)
+            net = resize_bilinear(net, [scaled_height, scaled_width], net.dtype)
           filter_scaling /= hparams.filter_scaling_rate
       net = cell(
           net,
@@ -172,11 +199,48 @@ def _build_nas_base(images,
       cell_outputs.append(net)
     net = tf.nn.relu(net)
 
+    if nas_use_classification_head:
+      # Add image classification head.
+      # We will expand the filters for different output_strides.
+      output_stride_to_expanded_filters = {8: 256, 16: 512, 32: 1024}
+      current_output_scale = 2 + backbone[-1]
+      current_output_stride = 2 ** current_output_scale
+      if output_stride % current_output_stride != 0:
+        raise ValueError(
+            'output_stride must be a multiple of backbone output stride.')
+      output_stride //= current_output_stride
+      rate = 1
+      if current_output_stride != 32:
+        num_downsampling = 5 - current_output_scale
+        for i in range(num_downsampling):
+          # Gradually donwsample feature maps to output stride = 32.
+          target_output_stride = 2 ** (current_output_scale + 1 + i)
+          target_filters = output_stride_to_expanded_filters[
+              target_output_stride]
+          scope = 'downsample_os{}'.format(target_output_stride)
+          if output_stride != 1:
+            stride = 2
+            output_stride //= 2
+          else:
+            stride = 1
+            rate *= 2
+          net = resnet_utils.conv2d_same(
+              net, target_filters, 3, stride=stride, rate=rate,
+              scope=scope + '_conv')
+          net = batch_norm_fn(net, scope=scope + '_bn')
+          add_and_check_endpoint(scope, net)
+          net = tf.nn.relu(net)
+      # Apply 1x1 convolution to expand dimension to 2048.
+      scope = 'classification_head'
+      net = slim.conv2d(net, 2048, 1, scope=scope + '_conv')
+      net = batch_norm_fn(net, scope=scope + '_bn')
+      add_and_check_endpoint(scope, net)
+      net = tf.nn.relu(net)
     if global_pool:
       # Global average pooling.
       net = tf.reduce_mean(net, [1, 2], name='global_pool', keepdims=True)
     if num_classes is not None:
-      net = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
+      net = slim.conv2d(net, num_classes, 1, activation_fn=None,
                         normalizer_fn=None, scope='logits')
       end_points['predictions'] = slim.softmax(net, scope='predictions')
     return net, end_points
@@ -187,13 +251,18 @@ def pnasnet(images,
             is_training=True,
             global_pool=False,
             output_stride=16,
-            nas_stem_output_num_conv_filters=20,
+            nas_architecture_options=None,
             nas_training_hyper_parameters=None,
             reuse=None,
             scope='pnasnet',
-            final_endpoint=None):
+            final_endpoint=None,
+            sync_batch_norm_method='None'):
   """Builds PNASNet model."""
-  hparams = config(num_conv_filters=nas_stem_output_num_conv_filters)
+  if nas_architecture_options is None:
+    raise ValueError(
+        'Using NAS model variants. nas_architecture_options cannot be None.')
+  hparams = config(num_conv_filters=nas_architecture_options[
+      'nas_stem_output_num_conv_filters'])
   if nas_training_hyper_parameters:
     hparams.set_hparam('drop_path_keep_prob',
                        nas_training_hyper_parameters['drop_path_keep_prob'])
@@ -211,11 +280,13 @@ def pnasnet(images,
     backbone = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3]
   else:
     raise ValueError('Unsupported output_stride ', output_stride)
+  batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
   cell = nas_genotypes.PNASCell(hparams.num_conv_filters,
                                 hparams.drop_path_keep_prob,
                                 len(backbone),
-                                hparams.total_training_steps)
-  with arg_scope([slim.dropout, slim.batch_norm], is_training=is_training):
+                                hparams.total_training_steps,
+                                batch_norm_fn=batch_norm)
+  with arg_scope([slim.dropout, batch_norm], is_training=is_training):
     return _build_nas_base(
         images,
         cell=cell,
@@ -223,9 +294,15 @@ def pnasnet(images,
         num_classes=num_classes,
         hparams=hparams,
         global_pool=global_pool,
+        output_stride=output_stride,
+        nas_use_classification_head=nas_architecture_options[
+            'nas_use_classification_head'],
         reuse=reuse,
         scope=scope,
-        final_endpoint=final_endpoint)
+        final_endpoint=final_endpoint,
+        batch_norm_fn=batch_norm,
+        nas_remove_os32_stride=nas_architecture_options[
+            'nas_remove_os32_stride'])
 
 
 # pylint: disable=unused-argument
@@ -233,14 +310,19 @@ def hnasnet(images,
             num_classes,
             is_training=True,
             global_pool=False,
-            output_stride=16,
-            nas_stem_output_num_conv_filters=20,
+            output_stride=8,
+            nas_architecture_options=None,
             nas_training_hyper_parameters=None,
             reuse=None,
             scope='hnasnet',
-            final_endpoint=None):
+            final_endpoint=None,
+            sync_batch_norm_method='None'):
   """Builds hierarchical model."""
-  hparams = config(num_conv_filters=nas_stem_output_num_conv_filters)
+  if nas_architecture_options is None:
+    raise ValueError(
+        'Using NAS model variants. nas_architecture_options cannot be None.')
+  hparams = config(num_conv_filters=nas_architecture_options[
+      'nas_stem_output_num_conv_filters'])
   if nas_training_hyper_parameters:
     hparams.set_hparam('drop_path_keep_prob',
                        nas_training_hyper_parameters['drop_path_keep_prob'])
@@ -258,14 +340,16 @@ def hnasnet(images,
   used_hiddenstates = [1, 1, 0, 0, 0, 0, 0]
   hiddenstate_indices = [1, 0, 1, 0, 3, 1, 4, 2, 3, 5]
   backbone = [0, 0, 0, 1, 2, 1, 2, 2, 3, 3, 2, 1]
+  batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
   cell = NASBaseCell(hparams.num_conv_filters,
                      operations,
                      used_hiddenstates,
                      hiddenstate_indices,
                      hparams.drop_path_keep_prob,
                      len(backbone),
-                     hparams.total_training_steps)
-  with arg_scope([slim.dropout, slim.batch_norm], is_training=is_training):
+                     hparams.total_training_steps,
+                     batch_norm_fn=batch_norm)
+  with arg_scope([slim.dropout, batch_norm], is_training=is_training):
     return _build_nas_base(
         images,
         cell=cell,
@@ -273,6 +357,12 @@ def hnasnet(images,
         num_classes=num_classes,
         hparams=hparams,
         global_pool=global_pool,
+        output_stride=output_stride,
+        nas_use_classification_head=nas_architecture_options[
+            'nas_use_classification_head'],
         reuse=reuse,
         scope=scope,
-        final_endpoint=final_endpoint)
+        final_endpoint=final_endpoint,
+        batch_norm_fn=batch_norm,
+        nas_remove_os32_stride=nas_architecture_options[
+            'nas_remove_os32_stride'])

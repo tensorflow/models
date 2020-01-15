@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import multiprocessing
 import os
 
 from absl import flags
@@ -25,12 +24,48 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
+import tensorflow_model_optimization as tfmot
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
 BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 TRAIN_TOP_1 = 'training_accuracy_top_1'
+LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
+    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
+]
+
+
+def learning_rate_schedule(current_epoch,
+                           current_batch,
+                           steps_per_epoch,
+                           batch_size):
+  """Handles linear scaling rule, gradual warmup, and LR decay.
+
+  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
+  provided scaling factor.
+
+  Args:
+    current_epoch: integer, current epoch indexed from 0.
+    current_batch: integer, current batch in the current epoch, indexed from 0.
+    steps_per_epoch: integer, number of steps in an epoch.
+    batch_size: integer, total batch sized.
+
+  Returns:
+    Adjusted learning rate.
+  """
+  initial_lr = BASE_LEARNING_RATE * batch_size / 256
+  epoch = current_epoch + float(current_batch) / steps_per_epoch
+  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
+  if epoch < warmup_end_epoch:
+    # Learning rate increases linearly per step.
+    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
+  for mult, start_epoch in LR_SCHEDULE:
+    if epoch >= start_epoch:
+      learning_rate = initial_lr * mult
+    else:
+      break
+  return learning_rate
 
 
 class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
@@ -38,16 +73,16 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
 
   N.B. Only support Keras optimizers, not TF optimizers.
 
-  Args:
+  Attributes:
       schedule: a function that takes an epoch index and a batch index as input
           (both integer, indexed from 0) and returns a new learning rate as
           output (float).
   """
 
-  def __init__(self, schedule, batch_size, num_images):
+  def __init__(self, schedule, batch_size, steps_per_epoch):
     super(LearningRateBatchScheduler, self).__init__()
     self.schedule = schedule
-    self.batches_per_epoch = num_images / batch_size
+    self.steps_per_epoch = steps_per_epoch
     self.batch_size = batch_size
     self.epochs = -1
     self.prev_lr = -1
@@ -61,7 +96,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     """Executes before step begins."""
     lr = self.schedule(self.epochs,
                        batch,
-                       self.batches_per_epoch,
+                       self.steps_per_epoch,
                        self.batch_size)
     if not isinstance(lr, (float, np.float32, np.float64)):
       raise ValueError('The output of the "schedule" function should be float.')
@@ -85,13 +120,12 @@ class PiecewiseConstantDecayWithWarmup(
                        'length of multipliers')
 
     base_lr_batch_size = 256
-    num_batches_per_epoch = epoch_size // batch_size
+    steps_per_epoch = epoch_size // batch_size
 
     self.rescaled_lr = BASE_LEARNING_RATE * batch_size / base_lr_batch_size
-    self.step_boundaries = [float(num_batches_per_epoch) * x
-                            for x in boundaries]
+    self.step_boundaries = [float(steps_per_epoch) * x for x in boundaries]
     self.lr_values = [self.rescaled_lr * m for m in multipliers]
-    self.warmup_steps = warmup_epochs * num_batches_per_epoch
+    self.warmup_steps = warmup_epochs * steps_per_epoch
     self.compute_lr_on_cpu = compute_lr_on_cpu
     self.name = name
 
@@ -140,48 +174,28 @@ class PiecewiseConstantDecayWithWarmup(
     }
 
 
-def set_gpu_thread_mode_and_count(flags_obj):
-  """Set GPU thread mode and count, and adjust dataset threads count."""
-  cpu_count = multiprocessing.cpu_count()
-  tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
-
-  # Allocate private thread pool for each GPU to schedule and launch kernels
-  per_gpu_thread_count = flags_obj.per_gpu_thread_count or 2
-  os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
-  os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
-                            os.environ['TF_GPU_THREAD_COUNT'])
-  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
-                            os.environ['TF_GPU_THREAD_MODE'])
-
-  # Limit data preprocessing threadpool to CPU cores minus number of total GPU
-  # private threads and memory copy threads.
-  total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
-  num_runtime_threads = flags_obj.num_gpus
-  if not flags_obj.datasets_num_private_threads:
-    flags_obj.datasets_num_private_threads = min(
-        cpu_count - total_gpu_thread_count - num_runtime_threads,
-        flags_obj.num_gpus * 8)
-    tf.compat.v1.logging.info('Set datasets_num_private_threads to %s',
-                              flags_obj.datasets_num_private_threads)
-
-
 def get_optimizer(learning_rate=0.1):
   """Returns optimizer to use."""
   # The learning_rate is overwritten at the beginning of each step by callback.
   return gradient_descent_v2.SGD(learning_rate=learning_rate, momentum=0.9)
 
 
-def get_callbacks(learning_rate_schedule_fn, num_images):
+# TODO(hongkuny,haoyuzhang): make cifar model use_tensor_lr to clean up code.
+def get_callbacks(
+    steps_per_epoch,
+    learning_rate_schedule_fn=None,
+    pruning_method=None,
+    enable_checkpoint_and_export=False,
+    model_dir=None):
   """Returns common callbacks."""
   time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
   callbacks = [time_callback]
 
-  if not FLAGS.use_tensor_lr:
+  if not FLAGS.use_tensor_lr and learning_rate_schedule_fn:
     lr_callback = LearningRateBatchScheduler(
         learning_rate_schedule_fn,
         batch_size=FLAGS.batch_size,
-        num_images=num_images)
+        steps_per_epoch=steps_per_epoch)
     callbacks.append(lr_callback)
 
   if FLAGS.enable_tensorboard:
@@ -193,9 +207,23 @@ def get_callbacks(learning_rate_schedule_fn, num_images):
     profiler_callback = keras_utils.get_profiler_callback(
         FLAGS.model_dir,
         FLAGS.profile_steps,
-        FLAGS.enable_tensorboard)
+        FLAGS.enable_tensorboard,
+        steps_per_epoch)
     callbacks.append(profiler_callback)
 
+  is_pruning_enabled = pruning_method is not None
+  if is_pruning_enabled:
+    callbacks.append(tfmot.sparsity.keras.UpdatePruningStep())
+    if model_dir is not None:
+      callbacks.append(tfmot.sparsity.keras.PruningSummaries(
+          log_dir=model_dir, profile_batch=0))
+
+  if enable_checkpoint_and_export:
+    if model_dir is not None:
+      ckpt_full_path = os.path.join(model_dir, 'model.ckpt-{epoch:04d}')
+      callbacks.append(
+          tf.keras.callbacks.ModelCheckpoint(ckpt_full_path,
+                                             save_weights_only=True))
   return callbacks
 
 
@@ -245,17 +273,29 @@ def build_stats(history, eval_output, callbacks):
   return stats
 
 
-def define_keras_flags(dynamic_loss_scale=True):
+def define_keras_flags(
+    dynamic_loss_scale=True,
+    model=False,
+    optimizer=False,
+    pretrained_filepath=False):
   """Define flags for Keras models."""
-  flags_core.define_base(run_eagerly=True)
+  flags_core.define_base(clean=True, num_gpu=True, run_eagerly=True,
+                         train_epochs=True, epochs_between_evals=True,
+                         distribution_strategy=True)
   flags_core.define_performance(num_parallel_calls=False,
+                                synthetic_data=True,
+                                dtype=True,
+                                all_reduce_alg=True,
+                                num_packs=True,
                                 tf_gpu_thread_mode=True,
                                 datasets_num_private_threads=True,
                                 dynamic_loss_scale=dynamic_loss_scale,
                                 loss_scale=True,
+                                fp16_implementation=True,
                                 tf_data_experimental_slack=True,
                                 enable_xla=True,
-                                force_v2_in_keras_compile=True)
+                                force_v2_in_keras_compile=True,
+                                training_dataset_cache=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags_core.define_distribution()
@@ -284,29 +324,96 @@ def define_keras_flags(dynamic_loss_scale=True):
   flags.DEFINE_integer(
       name='train_steps', default=None,
       help='The number of steps to run for training. If it is larger than '
-      '# batches per epoch, then use # batches per epoch. When this flag is '
-      'set, only one epoch is going to run for training.')
+      '# batches per epoch, then use # batches per epoch. This flag will be '
+      'ignored if train_epochs is set to be larger than 1. ')
   flags.DEFINE_string(
       name='profile_steps', default=None,
-      help='Save profiling data to model dir at given range of steps. The '
+      help='Save profiling data to model dir at given range of global steps. The '
       'value must be a comma separated pair of positive integers, specifying '
       'the first and last step to profile. For example, "--profile_steps=2,4" '
       'triggers the profiler to process 3 steps, starting from the 2nd step. '
       'Note that profiler has a non-trivial performance overhead, and the '
       'output file can be gigantic if profiling many steps.')
   flags.DEFINE_boolean(
-      name='data_delay_prefetch', default=False,
-      help='Add a small delay in tf.data prefetch to prioritize memory copy of '
-      'other tensors over the data minibatch for the (T+1)th step. It should '
-      'help improve performance using EagerIterator and function. The codepath '
-      'when enabling this feature is experimental and will be removed once the '
-      'corresponding performance features are fully supported in TensorFlow.')
-  flags.DEFINE_boolean(
       name='batchnorm_spatial_persistent', default=True,
       help='Enable the spacial persistent mode for CuDNN batch norm kernel.')
   flags.DEFINE_boolean(
       name='enable_get_next_as_optional', default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
+  flags.DEFINE_boolean(
+      name='enable_checkpoint_and_export', default=False,
+      help='Whether to enable a checkpoint callback and export the savedmodel.')
+  flags.DEFINE_string(
+      name='tpu', default='', help='TPU address to connect to.')
+  flags.DEFINE_integer(
+      name='steps_per_loop', default=1,
+      help='Number of steps per graph-mode loop. Only training step happens '
+      'inside the loop. Callbacks will not be called inside. Will be capped at '
+      'steps per epoch.')
+  flags.DEFINE_boolean(
+      name='use_tf_keras_layers', default=False,
+      help='Whether to use tf.keras.layers instead of tf.python.keras.layers.'
+      'It only changes imagenet resnet model layers for now. This flag is '
+      'a temporal flag during transition to tf.keras.layers. Do not use this '
+      'flag for external usage. this will be removed shortly.')
+
+  if model:
+    flags.DEFINE_string('model', 'resnet50_v1.5',
+                        'Name of model preset. (mobilenet, resnet50_v1.5)')
+  if optimizer:
+    flags.DEFINE_string('optimizer', 'resnet50_default',
+                        'Name of optimizer preset. '
+                        '(mobilenet_default, resnet50_default)')
+  if pretrained_filepath:
+    flags.DEFINE_string('pretrained_filepath', '',
+                        'Pretrained file path.')
+
+
+def get_synth_data(height, width, num_channels, num_classes, dtype):
+  """Creates a set of synthetic random data.
+
+  Args:
+    height: Integer height that will be used to create a fake image tensor.
+    width: Integer width that will be used to create a fake image tensor.
+    num_channels: Integer depth that will be used to create a fake image tensor.
+    num_classes: Number of classes that should be represented in the fake labels
+      tensor
+    dtype: Data type for features/images.
+
+  Returns:
+    A tuple of tensors representing the inputs and labels.
+
+  """
+  # Synthetic input should be within [0, 255].
+  inputs = tf.random.truncated_normal([height, width, num_channels],
+                                      dtype=dtype,
+                                      mean=127,
+                                      stddev=60,
+                                      name='synthetic_inputs')
+  labels = tf.random.uniform([1],
+                             minval=0,
+                             maxval=num_classes - 1,
+                             dtype=tf.int32,
+                             name='synthetic_labels')
+  return inputs, labels
+
+
+def define_pruning_flags():
+  """Define flags for pruning methods."""
+  flags.DEFINE_string('pruning_method', None,
+                      'Pruning method.'
+                      'None (no pruning) or polynomial_decay.')
+  flags.DEFINE_float('pruning_initial_sparsity', 0.0,
+                     'Initial sparsity for pruning.')
+  flags.DEFINE_float('pruning_final_sparsity', 0.5,
+                     'Final sparsity for pruning.')
+  flags.DEFINE_integer('pruning_begin_step', 0,
+                       'Begin step for pruning.')
+  flags.DEFINE_integer('pruning_end_step', 100000,
+                       'End step for pruning.')
+  flags.DEFINE_integer('pruning_frequency', 100,
+                       'Frequency for pruning.')
+
 
 def get_synth_input_fn(height, width, num_channels, num_classes,
                        dtype=tf.float32, drop_remainder=True):
@@ -334,21 +441,13 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
   # pylint: disable=unused-argument
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
     """Returns dataset filled with random data."""
-    # Synthetic input should be within [0, 255].
-    inputs = tf.random.truncated_normal([height, width, num_channels],
-                                        dtype=dtype,
-                                        mean=127,
-                                        stddev=60,
-                                        name='synthetic_inputs')
-
-    labels = tf.random.uniform([1],
-                               minval=0,
-                               maxval=num_classes - 1,
-                               dtype=tf.int32,
-                               name='synthetic_labels')
+    inputs, labels = get_synth_data(height=height,
+                                    width=width,
+                                    num_channels=num_channels,
+                                    num_classes=num_classes,
+                                    dtype=dtype)
     # Cast to float32 for Keras model.
     labels = tf.cast(labels, dtype=tf.float32)
-
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()
 
     # `drop_remainder` will make dataset produce outputs with known shapes.
@@ -357,12 +456,6 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     return data
 
   return input_fn
-
-
-def data_delay_prefetch():
-  """Use unstable code for perf tuning purposes."""
-  if not FLAGS.use_synthetic_data:
-    _monkey_patch_org_create_device_dataset()
 
 
 def set_cudnn_batchnorm_mode():
@@ -375,29 +468,3 @@ def set_cudnn_batchnorm_mode():
     os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'
   else:
     os.environ.pop('TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT', None)
-
-
-# TODO(haoyuzhang): remove this monkey patch when the "prefetch with slack"
-# feature is available in tf.data.
-def _monkey_patch_org_create_device_dataset():
-  """Monkey-patch `_create_device_dataset` method with delayed prefetch."""
-
-  import ast  # pylint: disable=g-import-not-at-top
-  import inspect  # pylint: disable=g-import-not-at-top
-  from tensorflow.python.data.ops import multi_device_iterator_ops  # pylint: disable=g-import-not-at-top
-
-  tf.compat.v1.logging.info(
-      'Using monkey-patched version of MultiDeviceIterator. It should be '
-      'removed when the prefetch with slack feature is implemented in tf.data.')
-  cls_multi_device_iterator = ast.parse(
-      inspect.getsource(multi_device_iterator_ops.MultiDeviceIterator))
-  org_create_device_dataset_code = inspect.getsource(
-      multi_device_iterator_ops.MultiDeviceIterator._create_device_dataset)  # pylint: disable=protected-access
-  code_lines = org_create_device_dataset_code.split('\n')
-  # Insert in reverse order to avoid line number shift by previous insertions
-  code_lines.insert(5, '      ds = ds.apply(sleep_ops.sleep(11000))')  # 11ms
-  code_lines.insert(2, '    from tensorflow.python.data.experimental.ops import sleep as sleep_ops')  # pylint: disable=line-too-long
-  patched_code = '\n'.join(line[2:] for line in code_lines)
-  cls_multi_device_iterator.body[0].body[2] = ast.parse(patched_code).body[0]
-  exec(compile(cls_multi_device_iterator, '<string>', 'exec'),  # pylint: disable=exec-used
-       multi_device_iterator_ops.__dict__)

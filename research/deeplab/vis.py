@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +18,16 @@
 
 See model.py for more details and usage.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import os.path
 import time
 import numpy as np
+from six.moves import range
 import tensorflow as tf
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import training as contrib_training
 from deeplab import common
 from deeplab import model
 from deeplab.datasets import data_generator
@@ -80,7 +87,7 @@ flags.DEFINE_string('vis_split', 'val',
 
 flags.DEFINE_string('dataset_dir', None, 'Where the dataset reside.')
 
-flags.DEFINE_enum('colormap_type', 'pascal', ['pascal', 'cityscapes'],
+flags.DEFINE_enum('colormap_type', 'pascal', ['pascal', 'cityscapes', 'ade20k'],
                   'Visualization colormap type.')
 
 flags.DEFINE_boolean('also_save_raw_predictions', False,
@@ -268,12 +275,12 @@ def main(unused_argv):
 
     tf.train.get_or_create_global_step()
     if FLAGS.quantize_delay_step >= 0:
-      tf.contrib.quantize.create_eval_graph()
+      contrib_quantize.create_eval_graph()
 
     num_iteration = 0
     max_num_iteration = FLAGS.max_number_of_iterations
 
-    checkpoints_iterator = tf.contrib.training.checkpoints_iterator(
+    checkpoints_iterator = contrib_training.checkpoints_iterator(
         FLAGS.checkpoint_dir, min_interval_secs=FLAGS.eval_interval_secs)
     for checkpoint_path in checkpoints_iterator:
       num_iteration += 1

@@ -22,6 +22,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from object_detection.core import freezable_batch_norm
+from object_detection.models.keras_models import model_utils
 
 
 def _fixed_padding(inputs, kernel_size, rate=1):  # pylint: disable=invalid-name
@@ -216,7 +217,7 @@ class _LayersOverride(object):
 
     placeholder_with_default = tf.placeholder_with_default(
         input=input_tensor, shape=[None] + shape)
-    return tf.keras.layers.Input(tensor=placeholder_with_default)
+    return model_utils.input_layer(shape, placeholder_with_default)
 
   def MaxPooling2D(self, pool_size, **kwargs):
     """Builds a MaxPooling2D layer with default padding as 'SAME'.

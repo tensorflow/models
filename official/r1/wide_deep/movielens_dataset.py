@@ -28,8 +28,8 @@ import numpy as np
 import tensorflow as tf
 # pylint: enable=wrong-import-order
 
-from official.datasets import movielens
-from official.utils.data import file_io
+from official.recommendation import movielens
+from official.r1.utils.data import file_io
 from official.utils.flags import core as flags_core
 
 

@@ -27,7 +27,7 @@ class ParamsDictTest(tf.test.TestCase):
 
   def test_init_from_an_empty_dict(self):
     params = params_dict.ParamsDict()
-    with self.assertRaises(KeyError):
+    with self.assertRaises(AttributeError):
       _ = params.a
 
     with self.assertRaises(KeyError):
@@ -68,6 +68,21 @@ class ParamsDictTest(tf.test.TestCase):
     self.assertEqual(params.a, 'aa')
     self.assertEqual(params.b, 2)
     self.assertEqual(params.c, None)
+
+  def test_contains(self):
+    params = params_dict.ParamsDict()
+    params.override(
+        {'a': 'aa'}, is_strict=False)
+    self.assertIn('a', params)
+    self.assertNotIn('b', params)
+
+  def test_get(self):
+    params = params_dict.ParamsDict()
+    params.override(
+        {'a': 'aa'}, is_strict=False)
+    self.assertEqual(params.get('a'), 'aa')
+    self.assertEqual(params.get('b', 2), 2)
+    self.assertEqual(params.get('b'), None)
 
   def test_override_is_strict_true(self):
     params = params_dict.ParamsDict(

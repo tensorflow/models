@@ -18,11 +18,11 @@
 import itertools
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import slim
+from tensorflow.contrib import training as contrib_training
 
 from lstm_object_detection.models import lstm_ssd_interleaved_mobilenet_v2_feature_extractor
 from object_detection.models import ssd_feature_extractor_test
-
-slim = tf.contrib.slim
 
 
 class LSTMSSDInterleavedMobilenetV2FeatureExtractorTest(
@@ -233,13 +233,23 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractorTest(
         'lstm_state_step': tf.zeros([1])
     }
     seq = {'dummy': tf.random_uniform([2, 1, 1, 1])}
-    stateful_reader1 = tf.contrib.training.SequenceQueueingStateSaver(
-        batch_size=1, num_unroll=1, input_length=2, input_key='',
-        input_sequences=seq, input_context={}, initial_states=init_state1,
+    stateful_reader1 = contrib_training.SequenceQueueingStateSaver(
+        batch_size=1,
+        num_unroll=1,
+        input_length=2,
+        input_key='',
+        input_sequences=seq,
+        input_context={},
+        initial_states=init_state1,
         capacity=1)
-    stateful_reader2 = tf.contrib.training.SequenceQueueingStateSaver(
-        batch_size=1, num_unroll=1, input_length=2, input_key='',
-        input_sequences=seq, input_context={}, initial_states=init_state2,
+    stateful_reader2 = contrib_training.SequenceQueueingStateSaver(
+        batch_size=1,
+        num_unroll=1,
+        input_length=2,
+        input_key='',
+        input_sequences=seq,
+        input_context={},
+        initial_states=init_state2,
         capacity=1)
     image = tf.random_uniform([1, image_height, image_width, 3])
     feature_extractor = self._create_feature_extractor(depth_multiplier,

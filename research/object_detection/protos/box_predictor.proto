@@ -66,7 +66,7 @@ message ConvolutionalBoxPredictor {
 }
 
 // Configuration proto for weight shared convolutional box predictor.
-// Next id: 18
+// Next id: 19
 message WeightSharedConvolutionalBoxPredictor {
   // Hyperparameters for convolution ops used in the box predictor.
   optional Hyperparams conv_hyperparams = 1;
@@ -122,8 +122,8 @@ message WeightSharedConvolutionalBoxPredictor {
     optional float max = 2;
   }
   optional BoxEncodingsClipRange box_encodings_clip_range = 17;
-}
 
+}
 
 
 // TODO(alirezafathi): Refactor the proto file to be able to configure mask rcnn
@@ -197,3 +197,4 @@ message RfcnBoxPredictor {
 
   optional int32 crop_width = 7 [default = 12];
 }
+

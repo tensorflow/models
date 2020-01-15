@@ -62,7 +62,11 @@ class ConvolutionalBoxHead(head.KerasHead):
 
     Raises:
       ValueError: if min_depth > max_depth.
+      ValueError: if use_depthwise is True and kernel_size is 1.
     """
+    if use_depthwise and (kernel_size == 1):
+      raise ValueError('Should not use 1x1 kernel when using depthwise conv')
+
     super(ConvolutionalBoxHead, self).__init__(name=name)
     self._is_training = is_training
     self._box_code_size = box_code_size
@@ -266,7 +270,13 @@ class WeightSharedConvolutionalBoxHead(head.KerasHead):
         num_class_slots].
       name: A string name scope to assign to the model. If `None`, Keras
         will auto-generate one from the class name.
+
+    Raises:
+      ValueError: if use_depthwise is True and kernel_size is 1.
     """
+    if use_depthwise and (kernel_size == 1):
+      raise ValueError('Should not use 1x1 kernel when using depthwise conv')
+
     super(WeightSharedConvolutionalBoxHead, self).__init__(name=name)
     self._box_code_size = box_code_size
     self._kernel_size = kernel_size

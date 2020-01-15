@@ -21,13 +21,16 @@ import os
 import time
 
 from absl import flags
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.staging.shakespeare import shakespeare_main
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
+from official.utils.testing import benchmark_wrappers
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 SHAKESPEARE_TRAIN_DATA = 'shakespeare/shakespeare.txt'
+TMP_DIR = os.getenv('TMPDIR')
 FLAGS = flags.FLAGS
 
 
@@ -40,9 +43,10 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
         default_flags=default_flags,
         flag_methods=[shakespeare_main.define_flags])
 
+  @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
-                                top_1_train_min=0.923,
-                                top_1_train_max=0.93,
+                                top_1_train_min=0.91,
+                                top_1_train_max=0.94,
                                 warmup=1,
                                 log_steps=100):
     """Report benchmark results by writing to local protobuf file.
@@ -73,9 +77,10 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
     for callback in stats['callbacks']:
       if isinstance(callback, keras_utils.TimeHistory):
         epoch_timings = callback.epoch_runtime_log
-        average_time = sum(epoch_timings[1:]) / len(epoch_timings[1:])
-        metrics.append({'name': 'avg_epoch_time',
-                        'value': average_time})
+        if len(epoch_timings) > 1:
+          average_time = sum(epoch_timings[1:]) / len(epoch_timings[1:])
+          metrics.append({'name': 'avg_epoch_time',
+                          'value': average_time})
 
       # First entry in timestamp_log is the start of step 1. The rest of the
       # entries are the end of each step recorded.
@@ -83,9 +88,10 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
       elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
       num_examples = (
           total_batch_size * log_steps * (len(time_log) - warmup - 1))
-      examples_per_sec = num_examples / elapsed
-      metrics.append({'name': 'exp_per_second',
-                      'value': examples_per_sec})
+      if elapsed > 0:
+        examples_per_sec = num_examples / elapsed
+        metrics.append({'name': 'exp_per_second',
+                        'value': examples_per_sec})
 
     flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(iters=-1, wall_time=wall_time_sec,
@@ -212,7 +218,7 @@ class ShakespeareAccuracy(ShakespeareBenchmarkBase):
 class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
   """Benchmark accuracy tests."""
 
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+  def __init__(self, output_dir=None, root_data_dir=TMP_DIR, **kwargs):
     """Benchmark tests w/Keras.
 
     Args:
@@ -369,3 +375,7 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     """Run and report benchmark."""
     super(ShakespeareKerasBenchmarkReal, self)._run_and_report_benchmark(
         top_1_train_min=None, log_steps=FLAGS.log_steps)
+
+
+if __name__ == '__main__':
+  tf.test.main()

@@ -25,6 +25,7 @@ import sys
 from absl import app as absl_app
 from absl import flags
 from six.moves import urllib
+from six.moves import zip
 import tensorflow as tf
 # pylint: enable=wrong-import-order
 
@@ -166,7 +167,7 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   def parse_csv(value):
     tf.logging.info('Parsing {}'.format(data_file))
     columns = tf.decode_csv(value, record_defaults=_CSV_COLUMN_DEFAULTS)
-    features = dict(zip(_CSV_COLUMNS, columns))
+    features = dict(list(zip(_CSV_COLUMNS, columns)))
     labels = features.pop('income_bracket')
     classes = tf.equal(labels, '>50K')  # binary classification
     return features, classes

@@ -19,13 +19,15 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
 from preprocessing import preprocessing_factory
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
@@ -205,6 +207,9 @@ tf.app.flags.DEFINE_integer(
 
 tf.app.flags.DEFINE_integer('max_number_of_steps', None,
                             'The maximum number of training steps.')
+
+tf.app.flags.DEFINE_bool('use_grayscale', False,
+                         'Whether to convert input images to grayscale.')
 
 #####################
 # Fine-Tuning Flags #
@@ -433,7 +438,8 @@ def main(_):
     preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
         preprocessing_name,
-        is_training=True)
+        is_training=True,
+        use_grayscale=FLAGS.use_grayscale)
 
     ##############################################################
     # Create a dataset provider that loads data from the dataset #
@@ -517,8 +523,7 @@ def main(_):
       moving_average_variables, variable_averages = None, None
 
     if FLAGS.quantize_delay >= 0:
-      tf.contrib.quantize.create_training_graph(
-          quant_delay=FLAGS.quantize_delay)
+      contrib_quantize.create_training_graph(quant_delay=FLAGS.quantize_delay)
 
     #########################################
     # Configure the optimization procedure. #

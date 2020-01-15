@@ -20,10 +20,11 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from nets import inception
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class InceptionV2Test(tf.test.TestCase):

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 import re
+import sys
 import unittest
 
 from absl import flags
@@ -27,7 +28,7 @@ from absl.testing import flagsaver
 import tensorflow as tf
 
 from official.transformer.v2 import misc
-from official.transformer.v2 import transformer_main as tm
+from official.transformer.v2 import transformer_main
 from official.utils.misc import keras_utils
 
 from tensorflow.python.eager import context  # pylint: disable=ungrouped-imports
@@ -71,10 +72,11 @@ class TransformerTaskTest(tf.test.TestCase):
     self.vocab_size = misc.get_model_params(FLAGS.param_set, 0)['vocab_size']
     self.bleu_source = os.path.join(temp_dir, 'bleu_source')
     self.bleu_ref = os.path.join(temp_dir, 'bleu_ref')
-    self.orig_policy = tf.keras.mixed_precision.experimental.global_policy()
+    self.orig_policy = (
+        tf.compat.v2.keras.mixed_precision.experimental.global_policy())
 
   def tearDown(self):
-    tf.keras.mixed_precision.experimental.set_policy(self.orig_policy)
+    tf.compat.v2.keras.mixed_precision.experimental.set_policy(self.orig_policy)
 
   def _assert_exists(self, filepath):
     self.assertTrue(os.path.exists(filepath))
@@ -82,7 +84,7 @@ class TransformerTaskTest(tf.test.TestCase):
   def test_train_no_dist_strat(self):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
   def test_train_static_batch(self):
@@ -94,20 +96,20 @@ class TransformerTaskTest(tf.test.TestCase):
     else:
       FLAGS.num_gpus = 0
     FLAGS.static_batch = True
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_1_gpu_with_dist_strat(self):
     FLAGS.distribution_strategy = 'one_device'
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_train_fp16(self):
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.dtype = 'fp16'
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
@@ -119,7 +121,7 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.num_gpus = 2
     FLAGS.param_set = 'base'
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
@@ -132,7 +134,7 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.num_gpus = 2
     FLAGS.param_set = 'base'
     FLAGS.dtype = 'fp16'
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.train()
 
   def _prepare_files_and_flags(self, *extra_flags):
@@ -165,23 +167,27 @@ class TransformerTaskTest(tf.test.TestCase):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
     self._prepare_files_and_flags()
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.predict()
 
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_predict_fp16(self):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
     self._prepare_files_and_flags('--dtype=fp16')
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.predict()
 
   def test_eval(self):
     if context.num_gpus() >= 2:
       self.skipTest('No need to test 2+ GPUs without a distribution strategy.')
+    if 'test_xla' in sys.argv[0]:
+      self.skipTest('TODO(xla): Make this test faster under XLA.')
     self._prepare_files_and_flags()
-    t = tm.TransformerTask(FLAGS)
+    t = transformer_main.TransformerTask(FLAGS)
     t.eval()
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
