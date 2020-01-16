@@ -21,9 +21,16 @@ from __future__ import print_function
 import six
 import tensorflow as tf
 
+from tensorflow.python.util import deprecation
 from official.modeling import activations
 
 
+@deprecation.deprecated(
+    None,
+    "tf.keras.layers.Layer supports multiple positional args and kwargs as "
+    "input tensors. pack/unpack inputs to override __call__ is no longer "
+    "needed."
+)
 def pack_inputs(inputs):
   """Pack a list of `inputs` tensors to a tuple.
 
@@ -44,6 +51,12 @@ def pack_inputs(inputs):
   return tuple(outputs)
 
 
+@deprecation.deprecated(
+    None,
+    "tf.keras.layers.Layer supports multiple positional args and kwargs as "
+    "input tensors. pack/unpack inputs to override __call__ is no longer "
+    "needed."
+)
 def unpack_inputs(inputs):
   """unpack a tuple of `inputs` tensors to a tuple.
 
