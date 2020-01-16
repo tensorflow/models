@@ -108,8 +108,8 @@ Note: If you download the tar.gz file of quantized models and un-tar, you will g
 
 Model name                                                                                                                          | Pixel 1 Latency (ms) | COCO mAP | Outputs
 ----------------------------------------------------------------------------------------------------------------------------------- | :------------------: | :------: | :-----:
-[ssd_mobilenet_v3_large_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v3_large_coco_2019_08_14.tar.gz) | 119                  | 22.3     | Boxes
-[ssd_mobilenet_v3_small_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v3_small_coco_2019_08_14.tar.gz) | 43                   | 15.6     | Boxes
+[ssd_mobilenet_v3_large_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v3_large_coco_2020_01_14.tar.gz) | 119                  | 22.6     | Boxes
+[ssd_mobilenet_v3_small_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v3_small_coco_2020_01_14.tar.gz) | 43                   | 15.4     | Boxes
 
 ### Pixel4 Edge TPU models
 Model name                                                                                                                          | Pixel 4  Edge TPU Latency (ms) | COCO mAP | Outputs
