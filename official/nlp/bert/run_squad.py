@@ -69,6 +69,10 @@ flags.DEFINE_bool(
     'do_lower_case', True,
     'Whether to lower case the input text. Should be True for uncased '
     'models and False for cased models.')
+flags.DEFINE_float(
+    'null_score_diff_threshold', 0.0,
+    'If null_score - best_non_null is greater than the threshold, '
+    'predict null. This is only used for SQuAD v2.')
 flags.DEFINE_bool(
     'verbose_logging', False,
     'If true, all of the warnings related to data processing will be printed. '
@@ -366,6 +370,8 @@ def predict_squad(strategy, input_meta_data):
       output_prediction_file,
       output_nbest_file,
       output_null_log_odds_file,
+      version_2_with_negative=version_2_with_negative,
+      null_score_diff_threshold=FLAGS.null_score_diff_threshold,
       verbose=FLAGS.verbose_logging)
 
 
