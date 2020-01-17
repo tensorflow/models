@@ -167,7 +167,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_squad')
-    FLAGS.train_batch_size = 3
+    FLAGS.train_batch_size = 4
 
     self._run_and_report_benchmark()
 
@@ -189,7 +189,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat_squad')
-    FLAGS.train_batch_size = 3
+    FLAGS.train_batch_size = 4
 
     self._run_and_report_benchmark(use_ds=False)
 
@@ -200,7 +200,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_1_gpu_eager_no_dist_strat_squad')
-    FLAGS.train_batch_size = 3
+    FLAGS.train_batch_size = 4
 
     self._run_and_report_benchmark(use_ds=False, run_eagerly=True)
 
@@ -210,7 +210,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 2
     FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_squad')
-    FLAGS.train_batch_size = 6
+    FLAGS.train_batch_size = 8
 
     self._run_and_report_benchmark()
 
@@ -220,7 +220,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 4
     FLAGS.model_dir = self._get_model_dir('benchmark_4_gpu_squad')
-    FLAGS.train_batch_size = 12
+    FLAGS.train_batch_size = 16
 
     self._run_and_report_benchmark()
 
@@ -230,7 +230,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad')
-    FLAGS.train_batch_size = 24
+    FLAGS.train_batch_size = 32
 
     self._run_and_report_benchmark()
 
