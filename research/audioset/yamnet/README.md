@@ -13,7 +13,6 @@ for applying the model to input sound files.
 YAMNet depends on the following Python packages:
 
 * [`numpy`](http://www.numpy.org/)
-* [`scipy`](http://www.scipy.org/)
 * [`resampy`](http://resampy.readthedocs.io/en/latest/)
 * [`tensorflow`](http://www.tensorflow.org/)
 * [`pysoundfile`](https://pysoundfile.readthedocs.io/)
@@ -22,9 +21,9 @@ These are all easily installable via, e.g., `pip install numpy` (as in the
 example command sequence below).
 
 Any reasonably recent version of these packages should work. TensorFlow should
-be at least version 1.8 to ensure Keras support is included.  We have tested
-that everything works on Ubuntu and MacOS with Python 3.7.2, Numpy v1.15.4,
-SciPy v1.1.0, resampy v0.2.1, TensorFlow v1.14.0, and PySoundFile 0.9.0.
+be at least version 1.8 to ensure Keras support is included. Note that while
+the code works fine with TensorFlow v1.x or v2.x, we explicitly enable v1.x
+behavior.
 
 YAMNet also requires downloading the following data file:
 
@@ -38,13 +37,11 @@ runs some synthetic signals through the model and checks the outputs.
 Here's a sample installation and test session:
 
 ```shell
-# Upgrade pip first.
-python -m pip install --upgrade pip
+# Upgrade pip first. Also make sure wheel is installed.
+python -m pip install --upgrade pip wheel.
 
-# Install dependences. Resampy needs to be installed after NumPy and SciPy
-# are already installed.
-pip install numpy scipy
-pip install resampy tensorflow soundfile
+# Install dependences.
+pip install numpy resampy tensorflow soundfile
 
 # Clone TensorFlow models repo into a 'models' directory.
 git clone https://github.com/tensorflow/models.git

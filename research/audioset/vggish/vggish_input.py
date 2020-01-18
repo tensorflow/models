@@ -27,7 +27,7 @@ try:
   def wav_read(wav_file):
     wav_data, sr = sf.read(wav_file, dtype='int16')
     return wav_data, sr
-    
+
 except ImportError:
 
   def wav_read(wav_file):

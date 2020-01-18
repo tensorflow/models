@@ -31,10 +31,10 @@ https://github.com/tensorflow/models/blob/master/research/slim/nets/vgg.py
 """
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
-import vggish_params as params
+tf.disable_v2_behavior()
+import tf_slim as slim
 
-slim = contrib_slim
+import vggish_params as params
 
 
 def define_vggish_slim(training=False):
