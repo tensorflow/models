@@ -153,7 +153,7 @@ class DenseEinsum(tf.keras.layers.Layer):
             "The %s dimension of input_shape must be defined, but saw: %s" %
             (-1 * i, input_shape))
     return input_shape[:-1 * self._num_summed_dimensions].concatenate(
-        self._units)
+        self._output_shape)
 
   def get_config(self):
     config = {
