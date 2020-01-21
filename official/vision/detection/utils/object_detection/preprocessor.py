@@ -41,6 +41,8 @@ back to rank 4.
 
 import tensorflow.compat.v2 as tf
 
+import numpy as np
+
 from official.vision.detection.utils.object_detection import box_list
 
 
