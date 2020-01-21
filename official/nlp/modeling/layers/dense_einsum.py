@@ -143,18 +143,6 @@ class DenseEinsum(tf.keras.layers.Layer):
       self._bias = None
     super(DenseEinsum, self).build(input_shape)
 
-  def compute_output_shape(self, input_shape):
-    input_shape = tf.TensorShape(input_shape)
-    input_shape = input_shape.with_rank_at_least(self._num_summed_dimensions +
-                                                 1)
-    for i in range(self._num_summed_dimensions):
-      if tf.dimension_value(input_shape[-1 * i]) is None:
-        raise ValueError(
-            "The %s dimension of input_shape must be defined, but saw: %s" %
-            (-1 * i, input_shape))
-    return input_shape[:-1 * self._num_summed_dimensions].concatenate(
-        self._units)
-
   def get_config(self):
     config = {
         "output_shape":

@@ -118,14 +118,6 @@ class Attention(tf.keras.layers.Layer):
 
     self._dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
 
-  def compute_output_shape(self, input_shape):
-    # TODO(momernick): validate tensor dimensions.
-    from_tensor_shape = tf.TensorShape(input_shape[0])
-    batch = from_tensor_shape[0]
-    from_tensor_length = from_tensor_shape[1]
-    return tf.TensorShape(
-        (batch, from_tensor_length, self._num_heads, self._head_size))
-
   def get_config(self):
     config = {
         "num_heads":

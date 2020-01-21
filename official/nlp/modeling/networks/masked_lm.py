@@ -168,9 +168,6 @@ class Bias(tf.keras.layers.Layer):
 
     super(Bias, self).build(input_shape)
 
-  def compute_output_shape(self, input_shape):
-    return input_shape
-
   def get_config(self):
     config = {
         'activation': tf.keras.activations.serialize(self._activation),

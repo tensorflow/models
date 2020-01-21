@@ -158,13 +158,6 @@ class Transformer(tf.keras.layers.Layer):
 
     super(Transformer, self).build(input_shape)
 
-  def compute_output_shape(self, input_shape):
-    data_tensor_shape = tf.TensorShape(input_shape[0])
-    batch = data_tensor_shape[0]
-    sequence_length = data_tensor_shape[1]
-
-    return tf.TensorShape((batch, sequence_length, self._output_einsum_shape))
-
   def get_config(self):
     config = {
         "num_attention_heads":
