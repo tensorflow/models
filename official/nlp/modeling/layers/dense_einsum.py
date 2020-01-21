@@ -148,7 +148,7 @@ class DenseEinsum(tf.keras.layers.Layer):
     input_shape = input_shape.with_rank_at_least(self._num_summed_dimensions +
                                                  1)
     for i in range(self._num_summed_dimensions):
-      if tf.dimension_value(input_shape[-1 * i]) is None:
+      if tf.compat.dimension_value(input_shape[-1 * i]) is None:
         raise ValueError(
             "The %s dimension of input_shape must be defined, but saw: %s" %
             (-1 * i, input_shape))
