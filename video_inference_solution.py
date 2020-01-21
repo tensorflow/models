@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-PB_PATH = '/home/mds/models/frozen_inference_graph.pb'
-VIDEO_PATH = '/home/mds/OpenCV_in_Ubuntu/Data/Lane_Detection_Videos/challenge.mp4'
+PB_PATH = '/home/opencv-mds/models/frozen_inference_graph.pb'
+VIDEO_PATH = '/home/opencv-mds/OpenCV_in_Ubuntu/Data/Lane_Detection_Videos/challenge.mp4'
 
 def import_graph(PATH_TO_FTOZEN_PB):
     detection_graph = tf.Graph()
@@ -65,22 +65,20 @@ def Video(openpath, graph, savepath = "output.avi"):
     out = cv2.VideoWriter(savepath, fourcc, fps, (width, height), True)
     cv2.namedWindow("Input", cv2.WINDOW_GUI_EXPANDED)
     cv2.namedWindow("Output", cv2.WINDOW_GUI_EXPANDED)
-    while cap.isOpened():
-        with graph.as_default():
-            with tf.Session() as sess:
-            # Get handles to input and output tensors
-                ops = tf.get_default_graph().get_operations()
-                all_tensor_names = {output.name for op in ops for output in op.outputs}
-                tensor_dict = {}
-                for key in [
-                    'num_detections', 'detection_boxes', 'detection_scores',
-                    'detection_classes', 'detection_masks'
-                    ]:
-                    tensor_name = key + ':0'
-                    if tensor_name in all_tensor_names:
-                        tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(tensor_name)
-                image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
-    
+    with graph.as_default():
+        with tf.Session() as sess:
+            ops = tf.get_default_graph().get_operations()
+            all_tensor_names = {output.name for op in ops for output in op.outputs}
+            tensor_dict = {}
+            for key in [
+                'num_detections', 'detection_boxes', 'detection_scores',
+                'detection_classes', 'detection_masks'
+                ]:
+                tensor_name = key + ':0'
+                if tensor_name in all_tensor_names:
+                    tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(tensor_name)
+            image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
+            while cap.isOpened():
                 # Capture frame-by-frame
                 ret, frame = cap.read()
                 if ret:
