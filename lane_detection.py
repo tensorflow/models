@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+
 def imageCopy(src):
     return np.copy(src)
 
@@ -13,20 +14,21 @@ def makeBlackImage(image, color=False):
         else:
             return np.zeros((height, width, 3), np.uint8)
 
-
 def convertColor(image, flag=cv2.COLOR_BGR2GRAY):
     return cv2.cvtColor(image, flag)
+    
 def rangeColor(image, lower, upper):
     result = imageCopy(image)
     return cv2.inRange(result, lower, upper)
     
 def addImage(image1, image2):
     return cv2.add(image1, image2)
+    
 def imageMorphologyKernel(flag=cv2.MORPH_RECT, size=5):
     return cv2.getStructuringElement(flag, (size, size))
+    
 def imageMorphologyEx(image, op, kernel, iterations=1):
     return cv2.morphologyEx(image, op=op, kernel=kernel, iterations=iterations)
-
 
 def fillPolyROI(image, points):
     if len(image.shape) == 2:
@@ -38,15 +40,12 @@ def fillPolyROI(image, points):
     cv2.fillPoly(mask, points, ignore_mask_color)
     return mask
 
-
 def polyROI(image, points):
     mask = fillPolyROI(image, points)
     return cv2.bitwise_and(image, mask)
 
 def houghLinesP(image, rho=1.0, theta=np.pi/180, threshold=100, minLineLength=10, maxLineGap=100):
     return cv2.HoughLinesP(image, rho, theta, threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
-
-
 
 def splitTwoSideLines(lines, slope_threshold = (5. * np.pi / 180.)):
     lefts = []
@@ -67,8 +66,6 @@ def splitTwoSideLines(lines, slope_threshold = (5. * np.pi / 180.)):
             rights.append([slope, x1, y1, x2, y2])
     return lefts, rights
 
-
-
 def medianPoint(x):
     if len(x) == 0:
         return None
@@ -76,12 +73,8 @@ def medianPoint(x):
         xx = sorted(x)
         return xx[(int)(len(xx)/2)]
 
-
 def interpolate(x1, y1, x2, y2, y):
     return int(float(y - y1) * float(x2-x1) / float(y2-y1) + x1)
-
-
-
 
 def lineFitting(image, lines, color = (0,0,255), thickness = 3, slope_threshold = (5. * np.pi / 180.)):
     result = imageCopy(image)
@@ -98,8 +91,6 @@ def lineFitting(image, lines, color = (0,0,255), thickness = 3, slope_threshold 
     cv2.line(result, (min_x_left, min_y), (max_x_left, max_y), color, thickness)
     cv2.line(result, (min_x_right, min_y), (max_x_right, max_y), color, thickness)
     return result
-
-
 
 def lane_detection_and_draw(image):
     result = imageCopy(image)
