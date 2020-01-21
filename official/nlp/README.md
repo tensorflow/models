@@ -10,6 +10,4 @@ model weights, usage scripts and conversion utilities for the following models:
 
 * [XLNet](xlnet)
 
-* GPT2 (comming soon)
-
 * [Transformer for translation](../transformer)
