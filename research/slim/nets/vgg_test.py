@@ -32,7 +32,7 @@ class VGGATest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_a(inputs, num_classes)
       self.assertEquals(logits.op.name, 'vgg_a/fc8/squeezed')
       self.assertListEqual(logits.get_shape().as_list(),
@@ -43,7 +43,7 @@ class VGGATest(tf.test.TestCase):
     height, width = 256, 256
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_a(inputs, num_classes, spatial_squeeze=False)
       self.assertEquals(logits.op.name, 'vgg_a/fc8/BiasAdd')
       self.assertListEqual(logits.get_shape().as_list(),
@@ -54,7 +54,7 @@ class VGGATest(tf.test.TestCase):
     height, width = 256, 256
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_a(inputs, num_classes, spatial_squeeze=False,
                             global_pool=True)
       self.assertEquals(logits.op.name, 'vgg_a/fc8/BiasAdd')
@@ -66,7 +66,7 @@ class VGGATest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       _, end_points = vgg.vgg_a(inputs, num_classes)
       expected_names = ['vgg_a/conv1/conv1_1',
                         'vgg_a/pool1',
@@ -92,7 +92,7 @@ class VGGATest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = None
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       net, end_points = vgg.vgg_a(inputs, num_classes)
       expected_names = ['vgg_a/conv1/conv1_1',
                         'vgg_a/pool1',
@@ -118,7 +118,7 @@ class VGGATest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       vgg.vgg_a(inputs, num_classes)
       expected_names = ['vgg_a/conv1/conv1_1/weights',
                         'vgg_a/conv1/conv1_1/biases',
@@ -151,11 +151,11 @@ class VGGATest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      eval_inputs = tf.random_uniform((batch_size, height, width, 3))
+      eval_inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_a(eval_inputs, is_training=False)
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, num_classes])
-      predictions = tf.argmax(logits, 1)
+      predictions = tf.argmax(input=logits, axis=1)
       self.assertListEqual(predictions.get_shape().as_list(), [batch_size])
 
   def testTrainEvalWithReuse(self):
@@ -165,29 +165,29 @@ class VGGATest(tf.test.TestCase):
     eval_height, eval_width = 256, 256
     num_classes = 1000
     with self.test_session():
-      train_inputs = tf.random_uniform(
+      train_inputs = tf.random.uniform(
           (train_batch_size, train_height, train_width, 3))
       logits, _ = vgg.vgg_a(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.get_variable_scope().reuse_variables()
-      eval_inputs = tf.random_uniform(
+      tf.compat.v1.get_variable_scope().reuse_variables()
+      eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = vgg.vgg_a(eval_inputs, is_training=False,
                             spatial_squeeze=False)
       self.assertListEqual(logits.get_shape().as_list(),
                            [eval_batch_size, 2, 2, num_classes])
-      logits = tf.reduce_mean(logits, [1, 2])
-      predictions = tf.argmax(logits, 1)
+      logits = tf.reduce_mean(input_tensor=logits, axis=[1, 2])
+      predictions = tf.argmax(input=logits, axis=1)
       self.assertEquals(predictions.get_shape().as_list(), [eval_batch_size])
 
   def testForward(self):
     batch_size = 1
     height, width = 224, 224
     with self.test_session() as sess:
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_a(inputs)
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 
@@ -199,7 +199,7 @@ class VGG16Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_16(inputs, num_classes)
       self.assertEquals(logits.op.name, 'vgg_16/fc8/squeezed')
       self.assertListEqual(logits.get_shape().as_list(),
@@ -210,7 +210,7 @@ class VGG16Test(tf.test.TestCase):
     height, width = 256, 256
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_16(inputs, num_classes, spatial_squeeze=False)
       self.assertEquals(logits.op.name, 'vgg_16/fc8/BiasAdd')
       self.assertListEqual(logits.get_shape().as_list(),
@@ -221,7 +221,7 @@ class VGG16Test(tf.test.TestCase):
     height, width = 256, 256
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_16(inputs, num_classes, spatial_squeeze=False,
                              global_pool=True)
       self.assertEquals(logits.op.name, 'vgg_16/fc8/BiasAdd')
@@ -233,7 +233,7 @@ class VGG16Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       _, end_points = vgg.vgg_16(inputs, num_classes)
       expected_names = ['vgg_16/conv1/conv1_1',
                         'vgg_16/conv1/conv1_2',
@@ -264,7 +264,7 @@ class VGG16Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = None
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       net, end_points = vgg.vgg_16(inputs, num_classes)
       expected_names = ['vgg_16/conv1/conv1_1',
                         'vgg_16/conv1/conv1_2',
@@ -295,7 +295,7 @@ class VGG16Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       vgg.vgg_16(inputs, num_classes)
       expected_names = ['vgg_16/conv1/conv1_1/weights',
                         'vgg_16/conv1/conv1_1/biases',
@@ -338,11 +338,11 @@ class VGG16Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      eval_inputs = tf.random_uniform((batch_size, height, width, 3))
+      eval_inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_16(eval_inputs, is_training=False)
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, num_classes])
-      predictions = tf.argmax(logits, 1)
+      predictions = tf.argmax(input=logits, axis=1)
       self.assertListEqual(predictions.get_shape().as_list(), [batch_size])
 
   def testTrainEvalWithReuse(self):
@@ -352,29 +352,29 @@ class VGG16Test(tf.test.TestCase):
     eval_height, eval_width = 256, 256
     num_classes = 1000
     with self.test_session():
-      train_inputs = tf.random_uniform(
+      train_inputs = tf.random.uniform(
           (train_batch_size, train_height, train_width, 3))
       logits, _ = vgg.vgg_16(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.get_variable_scope().reuse_variables()
-      eval_inputs = tf.random_uniform(
+      tf.compat.v1.get_variable_scope().reuse_variables()
+      eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = vgg.vgg_16(eval_inputs, is_training=False,
                              spatial_squeeze=False)
       self.assertListEqual(logits.get_shape().as_list(),
                            [eval_batch_size, 2, 2, num_classes])
-      logits = tf.reduce_mean(logits, [1, 2])
-      predictions = tf.argmax(logits, 1)
+      logits = tf.reduce_mean(input_tensor=logits, axis=[1, 2])
+      predictions = tf.argmax(input=logits, axis=1)
       self.assertEquals(predictions.get_shape().as_list(), [eval_batch_size])
 
   def testForward(self):
     batch_size = 1
     height, width = 224, 224
     with self.test_session() as sess:
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_16(inputs)
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 
@@ -386,7 +386,7 @@ class VGG19Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_19(inputs, num_classes)
       self.assertEquals(logits.op.name, 'vgg_19/fc8/squeezed')
       self.assertListEqual(logits.get_shape().as_list(),
@@ -397,7 +397,7 @@ class VGG19Test(tf.test.TestCase):
     height, width = 256, 256
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_19(inputs, num_classes, spatial_squeeze=False)
       self.assertEquals(logits.op.name, 'vgg_19/fc8/BiasAdd')
       self.assertListEqual(logits.get_shape().as_list(),
@@ -408,7 +408,7 @@ class VGG19Test(tf.test.TestCase):
     height, width = 256, 256
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_19(inputs, num_classes, spatial_squeeze=False,
                              global_pool=True)
       self.assertEquals(logits.op.name, 'vgg_19/fc8/BiasAdd')
@@ -420,7 +420,7 @@ class VGG19Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       _, end_points = vgg.vgg_19(inputs, num_classes)
       expected_names = [
           'vgg_19/conv1/conv1_1',
@@ -455,7 +455,7 @@ class VGG19Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = None
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       net, end_points = vgg.vgg_19(inputs, num_classes)
       expected_names = [
           'vgg_19/conv1/conv1_1',
@@ -490,7 +490,7 @@ class VGG19Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       vgg.vgg_19(inputs, num_classes)
       expected_names = [
           'vgg_19/conv1/conv1_1/weights',
@@ -540,11 +540,11 @@ class VGG19Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      eval_inputs = tf.random_uniform((batch_size, height, width, 3))
+      eval_inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_19(eval_inputs, is_training=False)
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, num_classes])
-      predictions = tf.argmax(logits, 1)
+      predictions = tf.argmax(input=logits, axis=1)
       self.assertListEqual(predictions.get_shape().as_list(), [batch_size])
 
   def testTrainEvalWithReuse(self):
@@ -554,29 +554,29 @@ class VGG19Test(tf.test.TestCase):
     eval_height, eval_width = 256, 256
     num_classes = 1000
     with self.test_session():
-      train_inputs = tf.random_uniform(
+      train_inputs = tf.random.uniform(
           (train_batch_size, train_height, train_width, 3))
       logits, _ = vgg.vgg_19(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.get_variable_scope().reuse_variables()
-      eval_inputs = tf.random_uniform(
+      tf.compat.v1.get_variable_scope().reuse_variables()
+      eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = vgg.vgg_19(eval_inputs, is_training=False,
                              spatial_squeeze=False)
       self.assertListEqual(logits.get_shape().as_list(),
                            [eval_batch_size, 2, 2, num_classes])
-      logits = tf.reduce_mean(logits, [1, 2])
-      predictions = tf.argmax(logits, 1)
+      logits = tf.reduce_mean(input_tensor=logits, axis=[1, 2])
+      predictions = tf.argmax(input=logits, axis=1)
       self.assertEquals(predictions.get_shape().as_list(), [eval_batch_size])
 
   def testForward(self):
     batch_size = 1
     height, width = 224, 224
     with self.test_session() as sess:
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_19(inputs)
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 

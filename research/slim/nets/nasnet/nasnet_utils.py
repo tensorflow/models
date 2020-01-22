@@ -82,9 +82,9 @@ def global_avg_pool(x, data_format=INVALID):
   assert data_format in ['NHWC', 'NCHW']
   assert x.shape.ndims == 4
   if data_format == 'NHWC':
-    return tf.reduce_mean(x, [1, 2])
+    return tf.reduce_mean(input_tensor=x, axis=[1, 2])
   else:
-    return tf.reduce_mean(x, [2, 3])
+    return tf.reduce_mean(input_tensor=x, axis=[2, 3])
 
 
 @contrib_framework.add_arg_scope
@@ -101,8 +101,12 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
     stride_spec = [1, 1, stride, stride]
 
   # Skip path 1
-  path1 = tf.nn.avg_pool(
-      net, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
+  path1 = tf.compat.v2.nn.avg_pool2d(
+      input=net,
+      ksize=[1, 1, 1, 1],
+      strides=stride_spec,
+      padding='VALID',
+      data_format=data_format)
   path1 = slim.conv2d(path1, int(output_filters / 2), 1, scope='path1_conv')
 
   # Skip path 2
@@ -110,15 +114,19 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   # include those 0's that were added.
   if data_format == 'NHWC':
     pad_arr = [[0, 0], [0, 1], [0, 1], [0, 0]]
-    path2 = tf.pad(net, pad_arr)[:, 1:, 1:, :]
+    path2 = tf.pad(tensor=net, paddings=pad_arr)[:, 1:, 1:, :]
     concat_axis = 3
   else:
     pad_arr = [[0, 0], [0, 0], [0, 1], [0, 1]]
-    path2 = tf.pad(net, pad_arr)[:, :, 1:, 1:]
+    path2 = tf.pad(tensor=net, paddings=pad_arr)[:, :, 1:, 1:]
     concat_axis = 1
 
-  path2 = tf.nn.avg_pool(
-      path2, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
+  path2 = tf.compat.v2.nn.avg_pool2d(
+      input=path2,
+      ksize=[1, 1, 1, 1],
+      strides=stride_spec,
+      padding='VALID',
+      data_format=data_format)
 
   # If odd number of filters, add an additional one to the second path.
   final_filter_size = int(output_filters / 2) + int(output_filters % 2)
@@ -134,10 +142,10 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
 def drop_path(net, keep_prob, is_training=True):
   """Drops out a whole example hiddenstate with the specified probability."""
   if is_training:
-    batch_size = tf.shape(net)[0]
+    batch_size = tf.shape(input=net)[0]
     noise_shape = [batch_size, 1, 1, 1]
     random_tensor = keep_prob
-    random_tensor += tf.random_uniform(noise_shape, dtype=tf.float32)
+    random_tensor += tf.random.uniform(noise_shape, dtype=tf.float32)
     binary_tensor = tf.cast(tf.floor(random_tensor), net.dtype)
     keep_prob_inv = tf.cast(1.0 / keep_prob, net.dtype)
     net = net * keep_prob_inv * binary_tensor
@@ -316,10 +324,10 @@ class NasNetABaseCell(object):
     self._filter_size = int(self._num_conv_filters * filter_scaling)
 
     i = 0
-    with tf.variable_scope(scope):
+    with tf.compat.v1.variable_scope(scope):
       net = self._cell_base(net, prev_layer)
       for iteration in range(5):
-        with tf.variable_scope('comb_iter_{}'.format(iteration)):
+        with tf.compat.v1.variable_scope('comb_iter_{}'.format(iteration)):
           left_hiddenstate_idx, right_hiddenstate_idx = (
               self._hiddenstate_indices[i],
               self._hiddenstate_indices[i + 1])
@@ -332,17 +340,17 @@ class NasNetABaseCell(object):
           operation_right = self._operations[i+1]
           i += 2
           # Apply conv operations
-          with tf.variable_scope('left'):
+          with tf.compat.v1.variable_scope('left'):
             h1 = self._apply_conv_operation(h1, operation_left,
                                             stride, original_input_left,
                                             current_step)
-          with tf.variable_scope('right'):
+          with tf.compat.v1.variable_scope('right'):
             h2 = self._apply_conv_operation(h2, operation_right,
                                             stride, original_input_right,
                                             current_step)
 
           # Combine hidden states using 'add'.
-          with tf.variable_scope('combine'):
+          with tf.compat.v1.variable_scope('combine'):
             h = h1 + h2
             if self._use_bounded_activation:
               h = tf.nn.relu6(h)
@@ -350,7 +358,7 @@ class NasNetABaseCell(object):
           # Add hiddenstate to the list of hiddenstates we can choose from
           net.append(h)
 
-      with tf.variable_scope('cell_output'):
+      with tf.compat.v1.variable_scope('cell_output'):
         net = self._combine_unused_states(net)
 
       return net
@@ -411,7 +419,7 @@ class NasNetABaseCell(object):
       should_reduce = should_reduce and not used_h
       if should_reduce:
         stride = 2 if final_height != curr_height else 1
-        with tf.variable_scope('reduction_{}'.format(idx)):
+        with tf.compat.v1.variable_scope('reduction_{}'.format(idx)):
           net[idx] = factorized_reduction(
               net[idx], final_num_filters, stride)
 
@@ -452,23 +460,24 @@ class NasNetABaseCell(object):
         layer_ratio = (self._cell_num + 1)/float(num_cells)
         if use_summaries:
           with tf.device('/cpu:0'):
-            tf.summary.scalar('layer_ratio', layer_ratio)
+            tf.compat.v1.summary.scalar('layer_ratio', layer_ratio)
         drop_path_keep_prob = 1 - layer_ratio * (1 - drop_path_keep_prob)
       if drop_connect_version in ['v1', 'v3']:
         # Decrease the keep probability over time
         if current_step is None:
-          current_step = tf.train.get_or_create_global_step()
+          current_step = tf.compat.v1.train.get_or_create_global_step()
         current_step = tf.cast(current_step, tf.float32)
         drop_path_burn_in_steps = self._total_training_steps
         current_ratio = current_step / drop_path_burn_in_steps
         current_ratio = tf.minimum(1.0, current_ratio)
         if use_summaries:
           with tf.device('/cpu:0'):
-            tf.summary.scalar('current_ratio', current_ratio)
+            tf.compat.v1.summary.scalar('current_ratio', current_ratio)
         drop_path_keep_prob = (1 - current_ratio * (1 - drop_path_keep_prob))
       if use_summaries:
         with tf.device('/cpu:0'):
-          tf.summary.scalar('drop_path_keep_prob', drop_path_keep_prob)
+          tf.compat.v1.summary.scalar('drop_path_keep_prob',
+                                      drop_path_keep_prob)
       net = drop_path(net, drop_path_keep_prob)
     return net
 

@@ -29,7 +29,7 @@ from preprocessing import preprocessing_factory
 
 slim = contrib_slim
 
-flags = tf.app.flags
+flags = tf.compat.v1.app.flags
 
 flags.DEFINE_string('master', '', 'Session master')
 flags.DEFINE_integer('batch_size', 250, 'Batch size')
@@ -74,7 +74,7 @@ def imagenet_input(is_training):
 
   image = image_preprocessing_fn(image, FLAGS.image_size, FLAGS.image_size)
 
-  images, labels = tf.train.batch(
+  images, labels = tf.compat.v1.train.batch(
       tensors=[image, label],
       batch_size=FLAGS.batch_size,
       num_threads=4,
@@ -94,8 +94,11 @@ def metrics(logits, labels):
   """
   labels = tf.squeeze(labels)
   names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
-      'Accuracy': tf.metrics.accuracy(tf.argmax(logits, 1), labels),
-      'Recall_5': tf.metrics.recall_at_k(labels, logits, 5),
+      'Accuracy':
+          tf.compat.v1.metrics.accuracy(
+              tf.argmax(input=logits, axis=1), labels),
+      'Recall_5':
+          tf.compat.v1.metrics.recall_at_k(labels, logits, 5),
   })
   for name, value in names_to_values.iteritems():
     slim.summaries.add_scalar_summary(
@@ -151,4 +154,4 @@ def main(unused_arg):
 
 
 if __name__ == '__main__':
-  tf.app.run(main)
+  tf.compat.v1.app.run(main)
