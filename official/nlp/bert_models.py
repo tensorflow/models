@@ -309,9 +309,6 @@ def squad_model(bert_config,
   core_model = hub.KerasLayer(hub_module_url, trainable=True)
   _, sequence_output = core_model(
       [input_word_ids, input_mask, input_type_ids])
-  # Sets the shape manually due to a bug in TF shape inference.
-  # TODO(hongkuny): remove this once shape inference is correct.
-  sequence_output.set_shape((None, max_seq_length, bert_config.hidden_size))
 
   squad_logits_layer = BertSquadLogitsLayer(
       initializer=initializer, float_type=float_type, name='squad_logits')
