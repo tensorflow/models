@@ -28,6 +28,16 @@ from official.vision.image_classification import resnet_imagenet_main
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77
 
+MOBILENET_V1_MIN_TOP_1_ACCURACY = 0.65
+MOBILENET_V1_MAX_TOP_1_ACCURACY = 0.68
+
+# Range of top-1 accracies for model optimization techniques.
+# Each item indicates (MIN_TOP_1_ACCURACY, MAX_TOP_1_ACCURACY).
+MODEL_OPTIMIZATION_TOP_1_ACCURACY = {
+    'RESNET50_FINETUNE_PRUNING': (0.76, 0.77),
+    'MOBILENET_V1_FINETUNE_PRUNING': (0.67, 0.68),
+}
+
 FLAGS = flags.FLAGS
 
 
@@ -181,6 +191,68 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     wall_time_sec = time.time() - start_time_sec
 
     super(Resnet50KerasAccuracy, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        top_1_min=top_1_min,
+        top_1_max=top_1_max,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=100)
+
+  def _get_model_dir(self, folder_name):
+    return os.path.join(self.output_dir, folder_name)
+
+
+class MobilenetV1KerasAccuracy(keras_benchmark.KerasBenchmark):
+  """Benchmark accuracy tests for MobilenetV1 in Keras."""
+
+  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
+    """A benchmark class.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+      **kwargs: arbitrary named arguments. This is needed to make the
+                constructor forward compatible in case PerfZero provides more
+                named arguments before updating the constructor.
+    """
+
+    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
+
+    self.data_dir = os.path.join(root_data_dir, 'imagenet')
+    super(MobilenetV1KerasAccuracy, self).__init__(
+        output_dir=output_dir,
+        flag_methods=flag_methods,
+        default_flags={
+            'model': 'mobilenet',
+            'optimizer': 'mobilenet_default',
+            'initial_learning_rate_per_sample': 0.00039,
+        })
+
+  def benchmark_8_gpu(self):
+    """Test Keras model with eager, dist_strat and 8 GPUs."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.data_dir = self.data_dir
+    FLAGS.batch_size = 128 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    # Add some thread tunings to improve performance.
+    FLAGS.datasets_num_private_threads = 14
+    FLAGS.use_tensor_lr = True
+    self._run_and_report_benchmark()
+
+  @benchmark_wrappers.enable_runtime_flags
+  def _run_and_report_benchmark(self,
+                                top_1_min=MOBILENET_V1_MIN_TOP_1_ACCURACY,
+                                top_1_max=MOBILENET_V1_MAX_TOP_1_ACCURACY):
+    start_time_sec = time.time()
+    stats = resnet_imagenet_main.run(flags.FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+
+    super(MobilenetV1KerasAccuracy, self)._report_benchmark(
         stats,
         wall_time_sec,
         top_1_min=top_1_min,
@@ -1153,6 +1225,178 @@ class Resnet50MultiWorkerKerasBenchmarkReal(Resnet50MultiWorkerKerasBenchmark):
 
     super(Resnet50MultiWorkerKerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
+
+
+# TODO(kimjaehong): It also should be also cover other metheods of model
+# optimization techniques. In that time, this class will change to something
+# like 'KerasModelOptimizationAccuracyBase'.
+class KerasPruningAccuracyBase(keras_benchmark.KerasBenchmark):
+  """Benchmark accuracy tests for pruning method."""
+
+  def __init__(self,
+               output_dir=None,
+               root_data_dir=None,
+               default_flags=None,
+               **kwargs):
+    """A accuracy benchmark class for pruning method.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+      default_flags: default flags
+      **kwargs: arbitrary named arguments. This is needed to make the
+                constructor forward compatible in case PerfZero provides more
+                named arguments before updating the constructor.
+    """
+    if default_flags is None:
+      default_flags = {}
+    default_flags['pruning_method'] = 'polynomial_decay'
+    default_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
+
+    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
+
+    super(KerasPruningAccuracyBase, self).__init__(
+        output_dir=output_dir,
+        flag_methods=flag_methods,
+        default_flags=default_flags,
+        **kwargs)
+
+  def benchmark_8_gpu(self):
+    """Test Keras model with eager, dist_strat and 8 GPUs."""
+    self._setup()
+    FLAGS.num_gpus = 8
+    FLAGS.batch_size = 32 * 8
+    FLAGS.train_epochs = 90
+    FLAGS.epochs_between_evals = 10
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    self._run_and_report_benchmark()
+
+  @benchmark_wrappers.enable_runtime_flags
+  def _run_and_report_benchmark(self,
+                                top_1_min=MODEL_OPTIMIZATION_TOP_1_ACCURACY[
+                                    'RESNET50_FINETUNE_PRUNING'][0],
+                                top_1_max=MODEL_OPTIMIZATION_TOP_1_ACCURACY[
+                                    'RESNET50_FINETUNE_PRUNING'][1]):
+    start_time_sec = time.time()
+    stats = resnet_imagenet_main.run(flags.FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+
+    super(KerasPruningAccuracyBase, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        top_1_min=top_1_min,
+        top_1_max=top_1_max,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=100)
+
+
+class MobilenetV1KerasPruningAccuracy(KerasPruningAccuracyBase):
+  """Benchmark accuracy tests for MobilenetV1 with pruning method."""
+
+  def __init__(self, root_data_dir=None, **kwargs):
+    default_flags = {
+        'model': 'mobilenet',
+        'optimizer': 'mobilenet_default',
+        'initial_learning_rate_per_sample': 0.00007,
+        'pretrained_filepath': tf.train.latest_checkpoint(
+            os.path.join(root_data_dir, 'mobilenet_v1')),
+        'pruning_begin_step': 0,
+        'pruning_end_step': 100000,
+        'pruning_initial_sparsity': 0.0,
+        'pruning_final_sparsity': 0.5,
+        'pruning_frequency': 100,
+    }
+    super(MobilenetV1KerasPruningAccuracy, self).__init__(
+        root_data_dir=root_data_dir,
+        default_flags=default_flags,
+        **kwargs)
+
+  def _run_and_report_benchmark(self):
+    super(MobilenetV1KerasPruningAccuracy, self)._run_and_report_benchmark(
+        top_1_min=\
+        MODEL_OPTIMIZATION_TOP_1_ACCURACY['MOBILENET_V1_FINETUNE_PRUNING'][0],
+        top_1_max=\
+        MODEL_OPTIMIZATION_TOP_1_ACCURACY['MOBILENET_V1_FINETUNE_PRUNING'][1])
+
+
+class Resnet50KerasPruningAccuracy(KerasPruningAccuracyBase):
+  """Benchmark accuracy tests for resnet50 with pruning method."""
+
+  def __init__(self, root_data_dir=None, **kwargs):
+    default_flags = {
+        'model': 'resnet50_v1.5',
+        'optimizer': 'mobilenet_default',
+        'initial_learning_rate_per_sample': 0.0000039,
+        'use_tf_keras_layers': True,
+        'pretrained_filepath': tf.train.latest_checkpoint(
+            os.path.join(root_data_dir, 'resnet50')),
+        'pruning_begin_step': 0,
+        'pruning_end_step': 50000,
+        'pruning_initial_sparsity': 0.0,
+        'pruning_final_sparsity': 0.5,
+        'pruning_frequency': 100,
+    }
+    super(Resnet50KerasPruningAccuracy, self).__init__(
+        root_data_dir=root_data_dir,
+        default_flags=default_flags,
+        **kwargs)
+
+  def _run_and_report_benchmark(self):
+    super(Resnet50KerasPruningAccuracy, self)._run_and_report_benchmark(
+        top_1_min=\
+        MODEL_OPTIMIZATION_TOP_1_ACCURACY['RESNET50_FINETUNE_PRUNING'][0],
+        top_1_max=\
+        MODEL_OPTIMIZATION_TOP_1_ACCURACY['RESNET50_FINETUNE_PRUNING'][1])
+
+
+class KerasPruningBenchmarkRealBase(Resnet50KerasBenchmarkBase):
+  """Pruning method benchmarks."""
+
+  def __init__(self, root_data_dir=None, default_flags=None, **kwargs):
+    if default_flags is None:
+      default_flags = {}
+    default_flags.update({
+        'skip_eval': True,
+        'report_accuracy_metrics': False,
+        'data_dir': os.path.join(root_data_dir, 'imagenet'),
+        'train_steps': 110,
+        'log_steps': 10,
+        'pruning_method': 'polynomial_decay',
+        'pruning_begin_step': 0,
+        'pruning_end_step': 50000,
+        'pruning_initial_sparsity': 0,
+        'pruning_final_sparsity': 0.5,
+        'pruning_frequency': 100,
+    })
+    super(KerasPruningBenchmarkRealBase, self).__init__(
+        default_flags=default_flags, **kwargs)
+
+
+class MobilenetV1KerasPruningBenchmarkReal(KerasPruningBenchmarkRealBase):
+  """Pruning method benchmarks for MobilenetV1."""
+
+  def __init__(self, **kwargs):
+    default_flags = {
+        'model': 'mobilenet',
+        'optimizer': 'mobilenet_default',
+    }
+    super(MobilenetV1KerasPruningBenchmarkReal, self).__init__(
+        default_flags=default_flags, **kwargs)
+
+
+class Resnet50KerasPruningBenchmarkReal(KerasPruningBenchmarkRealBase):
+  """Pruning method benchmarks for resnet50."""
+
+  def __init__(self, **kwargs):
+    default_flags = {
+        'model': 'resnet50_v1.5',
+        'optimizer': 'mobilenet_default',
+        'use_tf_keras_layers': True,
+    }
+    super(Resnet50KerasPruningBenchmarkReal, self).__init__(
+        default_flags=default_flags, **kwargs)
 
 
 if __name__ == '__main__':

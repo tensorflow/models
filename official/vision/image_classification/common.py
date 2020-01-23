@@ -364,6 +364,14 @@ def define_keras_flags(
     flags.DEFINE_string('optimizer', 'resnet50_default',
                         'Name of optimizer preset. '
                         '(mobilenet_default, resnet50_default)')
+    # TODO(kimjaehong): Replace as general hyper-params not only for mobilenet.
+    flags.DEFINE_float('initial_learning_rate_per_sample', 0.00007,
+                       'Initial value of learning rate per sample for '
+                       'mobilenet_default.')
+    flags.DEFINE_float('lr_decay_factor', 0.94,
+                       'Learning rate decay factor for mobilenet_default.')
+    flags.DEFINE_float('num_epochs_per_decay', 2.5,
+                       'Number of epochs per decay for mobilenet_default.')
   if pretrained_filepath:
     flags.DEFINE_string('pretrained_filepath', '',
                         'Pretrained file path.')
