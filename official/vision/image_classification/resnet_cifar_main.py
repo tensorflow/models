@@ -161,17 +161,17 @@ def run(flags_obj):
     # a valid arg for this model. Also remove as a valid flag.
     if flags_obj.force_v2_in_keras_compile is not None:
       model.compile(
-          loss='categorical_crossentropy',
+          loss='sparse_categorical_crossentropy',
           optimizer=optimizer,
-          metrics=(['categorical_accuracy']
+          metrics=(['sparse_categorical_accuracy']
                    if flags_obj.report_accuracy_metrics else None),
           run_eagerly=flags_obj.run_eagerly,
           experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
     else:
       model.compile(
-          loss='categorical_crossentropy',
+          loss='sparse_categorical_crossentropy',
           optimizer=optimizer,
-          metrics=(['categorical_accuracy']
+          metrics=(['sparse_categorical_accuracy']
                    if flags_obj.report_accuracy_metrics else None),
           run_eagerly=flags_obj.run_eagerly)
 
