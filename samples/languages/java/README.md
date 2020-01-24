@@ -1,4 +1,6 @@
 # TensorFlow for Java: Examples
 
-These examples have moved to the [java
-repository](https://github.com/tensorflow/java).
+These have moved.
+
+See: The [java repository](https://github.com/tensorflow/java), and the [Java models repository](https://github.com/tensorflow/java-models)
+
