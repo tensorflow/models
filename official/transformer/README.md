@@ -135,9 +135,7 @@ tensorboard --logdir=$MODEL_DIR
     - --num_gpus=2+: Uses tf.distribute.MirroredStrategy to run synchronous
     distributed training across the GPUs.
 
-   #### Using TPUs
-
-   Note: This model will **not** work with TPUs on Colab.
+   #### Using Cloud TPUs
 
    You can train the Transformer model on Cloud TPUs using
    `tf.distribute.TPUStrategy`. If you are not familiar with Cloud TPUs, it is
