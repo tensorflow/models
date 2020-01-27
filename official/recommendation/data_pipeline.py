@@ -425,7 +425,8 @@ class BaseDataConstructor(threading.Thread):
     self._shuffle_with_forkpool = not stream_files
     if stream_files:
       self._shard_root = epoch_dir or tempfile.mkdtemp(prefix="ncf_")
-      atexit.register(tf.io.gfile.rmtree, self._shard_root)
+      if not create_data_offline:
+        atexit.register(tf.io.gfile.rmtree, self._shard_root)
     else:
       self._shard_root = None
 
