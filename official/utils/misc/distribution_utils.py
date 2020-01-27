@@ -83,7 +83,6 @@ def _mirrored_cross_device_ops(all_reduce_alg, num_packs):
 
 def get_distribution_strategy(distribution_strategy="mirrored",
                               num_gpus=0,
-                              num_workers=1,
                               all_reduce_alg=None,
                               num_packs=1,
                               tpu_address=None):
@@ -96,7 +95,6 @@ def get_distribution_strategy(distribution_strategy="mirrored",
       'off' means not to use Distribution Strategy; 'tpu' means to use
       TPUStrategy using `tpu_address`.
     num_gpus: Number of GPUs to run this model.
-    num_workers: Number of workers to run this model.
     all_reduce_alg: Optional. Specifies which algorithm to use when performing
       all-reduce. For `MirroredStrategy`, valid values are "nccl" and
       "hierarchical_copy". For `MultiWorkerMirroredStrategy`, valid values are
@@ -120,8 +118,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   if distribution_strategy == "off":
     if num_gpus > 1:
       raise ValueError(
-          "When {} GPUs and  {} workers are specified, distribution_strategy "
-          "flag cannot be set to 'off'.".format(num_gpus, num_workers))
+          "When {} GPUs are specified, distribution_strategy "
+          "flag cannot be set to 'off'.".format(num_gpus))
     return None
 
   if distribution_strategy == "tpu":

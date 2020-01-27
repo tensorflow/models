@@ -673,12 +673,11 @@ class ExecutorBuilder(object):
   """
 
   def __init__(self, strategy_type=None, strategy_config=None):
-    num_workers = distribution_utils.configure_cluster(
+    _ = distribution_utils.configure_cluster(
         strategy_config.worker_hosts, strategy_config.task_index)
     self._strategy = distribution_utils.get_distribution_strategy(
         distribution_strategy=strategy_type,
         num_gpus=strategy_config.num_gpus,
-        num_workers=num_workers,
         all_reduce_alg=strategy_config.all_reduce_alg,
         num_packs=strategy_config.num_packs,
         tpu_address=strategy_config.tpu)

@@ -563,7 +563,6 @@ def resnet_main(
   distribution_strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_core.get_num_gpus(flags_obj),
-      num_workers=num_workers,
       all_reduce_alg=flags_obj.all_reduce_alg,
       num_packs=flags_obj.num_packs)
 
