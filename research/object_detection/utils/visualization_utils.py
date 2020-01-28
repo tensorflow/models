@@ -159,7 +159,10 @@ def draw_bounding_box_on_image_array(image,
   draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,
                              thickness, display_str_list,
                              use_normalized_coordinates)
-  np.copyto(image, np.array(image_pil))
+  #image.numpy()
+  # np.copyto(image, np.array(image_pil))
+  # image = np.array(image_pil)
+  return np.array(image_pil)
 
 
 def draw_bounding_box_on_image(image,
@@ -414,7 +417,7 @@ def draw_bounding_boxes_on_image_tensors(images,
                                          keypoints=None,
                                          track_ids=None,
                                          max_boxes_to_draw=20,
-                                         min_score_thresh=0.2,
+                                         min_score_thresh=0.5, #0.2
                                          use_normalized_coordinates=True):
   """Draws bounding boxes, masks, and keypoints on batch of image tensors.
 
@@ -494,7 +497,7 @@ def draw_bounding_boxes_on_image_tensors(images,
     if original_image_spatial_shape is not None:
       image_and_detections[2] = _resize_original_image(image, original_shape)
 
-    image_with_boxes = tf.py_func(visualize_boxes_fn, image_and_detections[2:],
+    image_with_boxes = tf.py_function(visualize_boxes_fn, image_and_detections[2:],
                                   tf.uint8)
     return image_with_boxes
 
@@ -796,7 +799,7 @@ def visualize_boxes_and_labels_on_image_array(
     max_boxes_to_draw = boxes.shape[0]
   for i in range(min(max_boxes_to_draw, boxes.shape[0])):
     if scores is None or scores[i] > min_score_thresh:
-      box = tuple(boxes[i].tolist())
+      box = tuple(boxes[i].numpy().tolist())
       if instance_masks is not None:
         box_to_instance_masks_map[box] = instance_masks[i]
       if instance_boundaries is not None:
@@ -853,7 +856,7 @@ def visualize_boxes_and_labels_on_image_array(
           color='red',
           alpha=1.0
       )
-    draw_bounding_box_on_image_array(
+    image = draw_bounding_box_on_image_array(
         image,
         ymin,
         xmin,
@@ -901,7 +904,7 @@ def add_cdf_image_summary(values, name):
     image = np.fromstring(fig.canvas.tostring_rgb(), dtype='uint8').reshape(
         1, int(height), int(width), 3)
     return image
-  cdf_plot = tf.py_func(cdf_plot, [values], tf.uint8)
+  cdf_plot = tf.py_function(cdf_plot, [values], tf.uint8)
   tf.summary.image(name, cdf_plot)
 
 
@@ -930,7 +933,7 @@ def add_hist_image_summary(values, bins, name):
         fig.canvas.tostring_rgb(), dtype='uint8').reshape(
             1, int(height), int(width), 3)
     return image
-  hist_plot = tf.py_func(hist_plot, [values, bins], tf.uint8)
+  hist_plot = tf.py_function(hist_plot, [values, bins], tf.uint8)
   tf.summary.image(name, hist_plot)
 
 
@@ -1048,8 +1051,8 @@ class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
       update_op = self.add_images([[images[0]]])
       image_tensors = get_images()
     else:
-      update_op = tf.py_func(self.add_images, [[images[0]]], [])
-      image_tensors = tf.py_func(
+      update_op = tf.py_function(self.add_images, [[images[0]]], [])
+      image_tensors = tf.py_function(
           get_images, [], [tf.uint8] * self._max_examples_to_draw)
     eval_metric_ops = {}
     for i, image in enumerate(image_tensors):

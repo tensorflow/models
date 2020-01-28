@@ -208,6 +208,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         'images': [{'id': image_id} for image_id in self._image_ids],
         'categories': self._categories
     }
+    tf.logging.info(f"########################################################################################\n{self._groundtruth_list}")
     coco_wrapped_groundtruth = coco_tools.COCOWrapper(groundtruth_dict)
     coco_wrapped_detections = coco_wrapped_groundtruth.LoadAnnotations(
         self._detection_boxes_list)
@@ -327,7 +328,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       if is_annotated is None:
         is_annotated = tf.ones_like(image_id, dtype=tf.bool)
 
-    return tf.py_func(update_op, [image_id,
+    return tf.py_function(update_op, [image_id,
                                   groundtruth_boxes,
                                   groundtruth_classes,
                                   groundtruth_is_crowd,
@@ -391,11 +392,11 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       return value_func
 
     # Ensure that the metrics are only evaluated once.
-    first_value_op = tf.py_func(first_value_func, [], tf.float32)
+    first_value_op = tf.py_function(first_value_func, [], tf.float32)
     eval_metric_ops = {metric_names[0]: (first_value_op, update_op)}
     with tf.control_dependencies([first_value_op]):
       for metric_name in metric_names[1:]:
-        eval_metric_ops[metric_name] = (tf.py_func(
+        eval_metric_ops[metric_name] = (tf.py_function(
             value_func_factory(metric_name), [], np.float32), update_op)
     return eval_metric_ops
 
@@ -718,7 +719,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
             tf.shape(detection_scores)[1:2],
             multiples=tf.shape(detection_scores)[0:1])
 
-    update_op = tf.py_func(update_op, [
+    update_op = tf.py_function(update_op, [
         image_id, groundtruth_boxes, groundtruth_classes,
         groundtruth_instance_masks, groundtruth_is_crowd,
         num_gt_boxes_per_image, detection_scores, detection_classes,
@@ -753,10 +754,10 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
       return value_func
 
     # Ensure that the metrics are only evaluated once.
-    first_value_op = tf.py_func(first_value_func, [], tf.float32)
+    first_value_op = tf.py_function(first_value_func, [], tf.float32)
     eval_metric_ops = {metric_names[0]: (first_value_op, update_op)}
     with tf.control_dependencies([first_value_op]):
       for metric_name in metric_names[1:]:
-        eval_metric_ops[metric_name] = (tf.py_func(
+        eval_metric_ops[metric_name] = (tf.py_function(
             value_func_factory(metric_name), [], np.float32), update_op)
     return eval_metric_ops

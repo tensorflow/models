@@ -59,7 +59,7 @@ FLAGS = flags.FLAGS
 def main(unused_argv):
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
-  config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir)
+  config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir, keep_checkpoint_max=1000) #####################<2020.1.7> here is log config
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,

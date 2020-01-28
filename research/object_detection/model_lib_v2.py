@@ -44,6 +44,14 @@ MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 #### & verify the loss output from the eval_loop method.
 ### TODO(kaftan): Make sure the unit tests run in TAP presubmits or Kokoro
 
+tf.enable_eager_execution()
+from tensorflow import ConfigProto
+from tensorflow import InteractiveSession
+
+config = ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
 
 def _compute_losses_and_predictions_dicts(
     model, features, labels,

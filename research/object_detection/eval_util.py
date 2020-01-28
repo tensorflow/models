@@ -95,11 +95,11 @@ def visualize_detection_results(result_dict,
                                 categories,
                                 summary_dir='',
                                 export_dir='',
-                                agnostic_mode=False,
-                                show_groundtruth=False,
+                                agnostic_mode=True, # False ##################################################################<2020.1.7>
+                                show_groundtruth=True, # False
                                 groundtruth_box_visualization_color='black',
-                                min_score_thresh=.5,
-                                max_num_predictions=20,
+                                min_score_thresh=.2, # .5 ##################################################################<2020.1.7>
+                                max_num_predictions=1000,
                                 skip_scores=False,
                                 skip_labels=False,
                                 keep_image_id_for_visualization_export=False):
@@ -183,7 +183,7 @@ def visualize_detection_results(result_dict,
   if show_groundtruth:
     groundtruth_boxes = result_dict[input_fields.groundtruth_boxes]
     groundtruth_keypoints = result_dict.get(input_fields.groundtruth_keypoints)
-    vis_utils.visualize_boxes_and_labels_on_image_array(
+    image = vis_utils.visualize_boxes_and_labels_on_image_array(
         image=image,
         boxes=groundtruth_boxes,
         classes=None,
@@ -193,7 +193,7 @@ def visualize_detection_results(result_dict,
         use_normalized_coordinates=False,
         max_boxes_to_draw=None,
         groundtruth_box_visualization_color=groundtruth_box_visualization_color)
-  vis_utils.visualize_boxes_and_labels_on_image_array(
+  image = vis_utils.visualize_boxes_and_labels_on_image_array(
       image,
       detection_boxes,
       detection_classes,

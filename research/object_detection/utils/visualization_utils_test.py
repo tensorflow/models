@@ -32,6 +32,9 @@ from object_detection.utils import visualization_utils
 
 _TESTDATA_PATH = 'object_detection/test_images'
 
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 
 class VisualizationUtilsTest(tf.test.TestCase):
 
@@ -110,7 +113,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
     xmin = 0.4
     xmax = 0.6
 
-    visualization_utils.draw_bounding_box_on_image_array(
+    visualization_utils.draw_bounding_box_on_image_array(\
         test_image, ymin, xmin, ymax, xmax)
     width_final = test_image.shape[0]
     height_final = test_image.shape[1]

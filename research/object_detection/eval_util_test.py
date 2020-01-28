@@ -30,6 +30,13 @@ from object_detection.core import standard_fields as fields
 from object_detection.protos import eval_pb2
 from object_detection.utils import test_case
 
+from tensorflow import ConfigProto, InteractiveSession
+
+config = ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.05
+# config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
+
 
 class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
@@ -113,7 +120,8 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
         eval_config, categories, eval_dict)
     _, update_op = metric_ops['DetectionBoxes_Precision/mAP']
-
+    print("####################################33")
+    print(metric_ops)
     with self.test_session() as sess:
       metrics = {}
       for key, (value_op, _) in six.iteritems(metric_ops):

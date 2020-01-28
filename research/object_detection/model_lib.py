@@ -38,6 +38,7 @@ from object_detection.utils import shape_utils
 from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils as vis_utils
 
+
 # A map of names to methods that help build the model.
 MODEL_BUILD_UTIL_MAP = {
     'get_configs_from_pipeline_file':
@@ -495,6 +496,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
             train_config.keep_checkpoint_every_n_hours)
         saver = tf.train.Saver(
             variables_to_restore,
+            max_to_keep=1000, ######################################################################################<2020.1.7> modified save weight interval
             keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours)
         scaffold = tf.train.Scaffold(saver=saver)
 
@@ -513,6 +515,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
         keep_checkpoint_every_n_hours = (
             train_config.keep_checkpoint_every_n_hours)
         saver = tf.train.Saver(
+            max_to_keep=1000, ######################################################################################<2020.1.7> modified save weight interval 
             sharded=True,
             keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours,
             save_relative_paths=True)
@@ -535,7 +538,7 @@ def create_estimator_and_inputs(run_config,
                                 pipeline_config_path,
                                 config_override=None,
                                 train_steps=None,
-                                sample_1_of_n_eval_examples=None,
+                                sample_1_of_n_eval_examples=1, # None
                                 sample_1_of_n_eval_on_train_examples=1,
                                 model_fn_creator=create_model_fn,
                                 use_tpu_estimator=False,
