@@ -406,9 +406,14 @@ def main(_):
     export_squad(FLAGS.model_export_path, input_meta_data)
     return
 
+  # Configures cluster spec for multi-worker distribution strategy.
+  if FLAGS.num_gpus > 0:
+    _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
+                                             FLAGS.task_index)
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
+      all_reduce_alg=FLAGS.all_reduce_alg,
       tpu_address=FLAGS.tpu)
   if FLAGS.mode in ('train', 'train_and_predict'):
     train_squad(strategy, input_meta_data)

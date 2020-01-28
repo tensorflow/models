@@ -35,6 +35,7 @@ def define_common_bert_flags():
       export_dir=False,
       distribution_strategy=True,
       run_eagerly=True)
+  flags_core.define_distribution()
   flags.DEFINE_string('bert_config_file', None,
                       'Bert configuration file to define core bert layers.')
   flags.DEFINE_string(
