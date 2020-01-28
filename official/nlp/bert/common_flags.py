@@ -71,7 +71,7 @@ def define_common_bert_flags():
       'Specifies the type of the model. '
       'If "bert", will use canonical BERT; if "albert", will use ALBERT model.')
 
-  # Adds flags for mixed precision training.
+  # Adds flags for mixed precision and multi-worker training.
   flags_core.define_performance(
       num_parallel_calls=False,
       inter_op=False,
@@ -81,7 +81,7 @@ def define_common_bert_flags():
       dtype=True,
       dynamic_loss_scale=True,
       loss_scale=True,
-      all_reduce_alg=False,
+      all_reduce_alg=True,
       num_packs=False,
       enable_xla=True,
       fp16_implementation=True,
