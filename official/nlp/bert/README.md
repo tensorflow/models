@@ -92,14 +92,14 @@ Install `tf-nightly` to get latest updates:
 pip install tf-nightly-gpu
 ```
 
-With TPU, GPU support is not necessary. First, you need to create a `tf-nigthly`
-TPU with [cptu tool](https://github.com/tensorflow/tpu/tree/master/tools/ctpu):
+With TPU, GPU support is not necessary. First, you need to create a `tf-nightly`
+TPU with [ctpu tool](https://github.com/tensorflow/tpu/tree/master/tools/ctpu):
 
 ```shell
 ctpu up -name <instance name> --tf-version=”nightly”
 ```
 
-Second, you need to install TF 2 `tf-night` on your VM:
+Second, you need to install TF 2 `tf-nightly` on your VM:
 
 ```shell
 pip install tf-nightly
