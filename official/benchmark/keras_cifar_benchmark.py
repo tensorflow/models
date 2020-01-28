@@ -24,7 +24,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.benchmark import keras_benchmark
 from official.utils.testing import benchmark_wrappers
-from official.vision.image_classification import resnet_cifar_main
+from official.benchmark.models import resnet_cifar_main
 
 MIN_TOP_1_ACCURACY = 0.929
 MAX_TOP_1_ACCURACY = 0.938

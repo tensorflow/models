@@ -18,17 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import flags
 from absl import app as absl_app
+from absl import flags
 import tensorflow as tf
-
+from official.benchmark.models import resnet_cifar_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.vision.image_classification import cifar_preprocessing
 from official.vision.image_classification import common
-from official.vision.image_classification import resnet_cifar_model
 
 
 LR_SCHEDULE = [  # (multiplier, epoch to start) tuples

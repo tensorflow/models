@@ -11,13 +11,11 @@ For more information about other types of models, please refer to this
 ## ResNet
 
 Similar to the [estimator implementation](../../r1/resnet), the Keras
-implementation has code for both CIFAR-10 data and ImageNet data. The CIFAR-10
-version uses a ResNet56 model implemented in
-[`resnet_cifar_model.py`](./resnet_cifar_model.py), and the ImageNet version
-uses a ResNet50 model implemented in [`resnet_model.py`](./resnet_model.py).
+implementation has code for the ImageNet dataset. The ImageNet
+version uses a ResNet50 model implemented in
+[`resnet_model.py`](./resnet_model.py).
 
-To use
-either dataset, make sure that you have the latest version of TensorFlow
+Please make sure that you have the latest version of TensorFlow
 installed and
 [add the models folder to your Python path](/official/#running-the-models).
 
@@ -27,26 +25,6 @@ installed and
 
 * ResNet50 TFHub: [feature vector](https://tfhub.dev/tensorflow/resnet_50/feature_vector/1)
 and [classification](https://tfhub.dev/tensorflow/resnet_50/classification/1)
-
-### CIFAR-10
-
-Download and extract the CIFAR-10 data. You can use the following script:
-```bash
-python ../../r1/resnet/cifar10_download_and_extract.py
-```
-
-After you download the data, you can run the program by:
-
-```bash
-python resnet_cifar_main.py
-```
-
-If you did not use the default directory to download the data, specify the
-location with the `--data_dir` flag, like:
-
-```bash
-python resnet_cifar_main.py --data_dir=/path/to/cifar
-```
 
 ### ImageNet Training
 
