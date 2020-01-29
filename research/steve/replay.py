@@ -74,9 +74,9 @@ class ReplayBuffer(object):
         def _save(datas, fnames):
             print("saving replay buffer...")
             for data, fname in zip(datas, fnames):
-                with open("%s.npz"%fname, "w") as f:
+                with open("%s.npz"%fname, "wb") as f:
                     pickle.dump(data, f)
-            with open("%s/%s.count" % (path,name), "w") as f:
+            with open("%s/%s.count" % (path,name), "wb") as f:
                 f.write(str(self.count))
             print("...done saving.")
 
