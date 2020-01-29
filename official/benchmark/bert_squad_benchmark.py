@@ -494,6 +494,14 @@ class BertSquadMultiWorkerAccuracy(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark()
 
+  def benchmark_eager_8_gpu_2_workers_fp16_ring_tweaked(self):
+    """8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
+    self._benchmark_common(num_workers=2, all_reduce_alg='ring')
+
+  def benchmark_eager_8_gpu_2_workers_fp16_nccl_tweaked(self):
+    """8 GPUs per worker, 2 workers, fp16, nccl all-reduce."""
+    self._benchmark_common(num_workers=2, all_reduce_alg='nccl')
+
   def benchmark_8_gpu_8_workers_fp16_ring_tweaked(self):
     """8 GPUs per worker, 8 workers, fp16, ring all-reduce."""
     self._benchmark_common(num_workers=8, all_reduce_alg='ring')
