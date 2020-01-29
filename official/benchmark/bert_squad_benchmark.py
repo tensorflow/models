@@ -481,7 +481,6 @@ class BertSquadMultiWorkerAccuracy(BertSquadBenchmarkBase):
     num_gpus = 8
     FLAGS.num_gpus = num_gpus
     FLAGS.dtype = 'fp16'
-    FLAGS.enable_eager = True,
     FLAGS.enable_xla = False
     FLAGS.distribution_strategy = 'multi_worker_mirrored'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
@@ -554,7 +553,6 @@ class BertSquadMultiWorkerBenchmark(BertSquadBenchmarkBase):
     num_gpus = 8
     FLAGS.num_gpus = num_gpus
     FLAGS.dtype = 'fp16'
-    FLAGS.enable_eager = True
     FLAGS.enable_xla = False
     FLAGS.distribution_strategy = 'multi_worker_mirrored'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
