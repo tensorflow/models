@@ -83,6 +83,8 @@ def define_common_bert_flags():
       loss_scale=True,
       all_reduce_alg=True,
       num_packs=False,
+      tf_gpu_thread_mode=True,
+      datasets_num_private_threads=True,
       enable_xla=True,
       fp16_implementation=True,
   )
