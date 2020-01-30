@@ -65,7 +65,6 @@ request.
     preserving (real NVP) transformations.
 -   [rebar](rebar): low-variance, unbiased gradient estimates for discrete
     latent variable models.
--   [resnet](resnet): deep and wide residual networks.
 -   [seq2species](seq2species): deep learning solution for read-level taxonomic
     classification.
 -   [skip_thoughts](skip_thoughts): recurrent neural network sentence-to-vector
