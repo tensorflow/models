@@ -25,9 +25,9 @@ pip install tf-nightly
 available as tagged branches or
 [downloadable releases](https://github.com/tensorflow/models/releases). Model
 repository version numbers match the target TensorFlow release, such that
-[release v2.0](https://github.com/tensorflow/models/releases/tag/v2.0) are
+[release v2.1.0](https://github.com/tensorflow/models/releases/tag/v2.1.0) are
 compatible with
-[TensorFlow v2.0.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.0.0).
+[TensorFlow v2.1.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0).
 
 If you are on a version of TensorFlow earlier than 1.4, please
 [update your installation](https://www.tensorflow.org/install/).
@@ -39,7 +39,15 @@ Please follow the below steps before running models in this repo:
 1.  TensorFlow
     [nightly binaries](https://github.com/tensorflow/tensorflow#installation)
 
-2.  Add the top-level ***/models*** folder to the Python path with the command:
+2.  If users would like to clone this repo but do not care about change history,
+please consider:
+
+  ```shell
+  export repo_version="master"
+  git clone -b ${repo_version} https://github.com/tensorflow/models.git --depth=1
+  ```
+
+3.  Add the top-level ***/models*** folder to the Python path with the command:
 
   ```shell
   export PYTHONPATH=$PYTHONPATH:/path/to/models
@@ -52,7 +60,7 @@ Please follow the below steps before running models in this repo:
   os.environ['PYTHONPATH'] += ":/path/to/models"
   ```
 
-3.  Install dependencies:
+4.  Install dependencies:
 
   ```shell
   pip3 install --user -r official/requirements.txt
