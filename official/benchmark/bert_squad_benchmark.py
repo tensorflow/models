@@ -311,6 +311,19 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_xla_fp16(self):
+    """Tests BERT SQuAD model performance with 8 GPUs with XLA."""
+
+    self._setup()
+    self.num_gpus = 8
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad_fp16')
+    FLAGS.train_batch_size = 32
+    FLAGS.enable_xla = True
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 'dynamic'
+
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_amp(self):
     """Tests BERT SQuAD model performance with 1 GPU with automatic mixed precision."""
 
