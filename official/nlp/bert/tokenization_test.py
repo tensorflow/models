@@ -77,10 +77,18 @@ class TokenizationTest(tf.test.TestCase):
         tokenizer.tokenize(u" \tHeLLo!how  \n Are yoU?  "),
         ["HeLLo", "!", "how", "Are", "yoU", "?"])
 
+  def test_basic_tokenizer_no_split_on_punc(self):
+    tokenizer = tokenization.BasicTokenizer(
+        do_lower_case=True, split_on_punc=False)
+
+    self.assertAllEqual(
+        tokenizer.tokenize(u" \tHeLLo!how  \n Are yoU?  "),
+        ["hello!how", "are", "you?"])
+
   def test_wordpiece_tokenizer(self):
     vocab_tokens = [
         "[UNK]", "[CLS]", "[SEP]", "want", "##want", "##ed", "wa", "un", "runn",
-        "##ing"
+        "##ing", "##!", "!"
     ]
 
     vocab = {}
@@ -93,6 +101,14 @@ class TokenizationTest(tf.test.TestCase):
     self.assertAllEqual(
         tokenizer.tokenize("unwanted running"),
         ["un", "##want", "##ed", "runn", "##ing"])
+
+    self.assertAllEqual(
+        tokenizer.tokenize("unwanted running !"),
+        ["un", "##want", "##ed", "runn", "##ing", "!"])
+
+    self.assertAllEqual(
+        tokenizer.tokenize("unwanted running!"),
+        ["un", "##want", "##ed", "runn", "##ing", "##!"])
 
     self.assertAllEqual(
         tokenizer.tokenize("unwantedX running"), ["[UNK]", "runn", "##ing"])
