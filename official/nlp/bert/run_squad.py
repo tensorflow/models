@@ -416,7 +416,7 @@ def main(_):
       all_reduce_alg=FLAGS.all_reduce_alg,
       tpu_address=FLAGS.tpu)
   if FLAGS.mode in ('train', 'train_and_predict'):
-    train_squad(strategy, input_meta_data)
+    train_squad(strategy, input_meta_data, run_eagerly=FLAGS.run_eagerly)
   if FLAGS.mode in ('predict', 'train_and_predict'):
     predict_squad(strategy, input_meta_data)
 
