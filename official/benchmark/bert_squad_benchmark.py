@@ -190,11 +190,10 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._setup()
     self.num_gpus = 1
-    FLAGS.run_eagerly = True
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_squad_eager')
     FLAGS.train_batch_size = 2
 
-    self._run_and_report_benchmark()
+    self._run_and_report_benchmark(run_eagerly=True)
 
   def benchmark_1_gpu_xla(self):
     """Tests BERT SQuAD model performance with 1 GPU with XLA."""
@@ -265,13 +264,12 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._setup()
     self.num_gpus = 1
-    FLAGS.run_eagerly = True
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_squad_fp16_eager')
     FLAGS.train_batch_size = 4
     FLAGS.dtype = 'fp16'
     FLAGS.loss_scale = 'dynamic'
 
-    self._run_and_report_benchmark()
+    self._run_and_report_benchmark(run_eagerly=True)
 
   def benchmark_1_gpu_fp16(self):
     """Tests BERT SQuAD model performance with 1 GPU and FP16."""
