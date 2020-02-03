@@ -2,6 +2,7 @@ import os
 import glob
 import pandas as pd
 import xml.etree.ElementTree as ET
+import getopt, sys
 
 
 def xml_to_csv(path):
@@ -25,11 +26,36 @@ def xml_to_csv(path):
     return xml_df
 
 
-def main():
-    image_path = os.path.join(os.getcwd(), 'annotations')
+def main(xml_path):
+    image_path = xml_path #os.path.join(os.getcwd(), 'annotations')
     xml_df = xml_to_csv(image_path)
-    xml_df.to_csv('raccoon_labels.csv', index=None)
-    print('Successfully converted xml to csv.')
+    xml_df.to_csv('speed_labels.csv', index=None)
+    print('Successfully converted xml to csv: \n  Output file: speed_labels.csv')
 
 
-main()
+
+# read commandline arguments, first
+fullCmdArguments = sys.argv
+
+# - further arguments
+argumentList = fullCmdArguments[1:]
+
+unixOptions = "xml"
+gnuOptions = ["xml_path"]
+
+try:
+    arguments, values = getopt.getopt(argumentList, unixOptions, gnuOptions)
+except getopt.error as err:
+    # output error, and return with an error code
+    print (str(err))
+    sys.exit(2)
+
+for currentArgument, currentValue in arguments:
+    if currentArgument in ("-xml", "--xml_path"):
+        xml_path = currentValue
+        print ("Taken")
+        main(xml_path)
+    else:
+        print( "Please add an argument containing path to the xml annotations directory \n xml_to_csv.py -xml /path/to/xml_dir")
+        
+
