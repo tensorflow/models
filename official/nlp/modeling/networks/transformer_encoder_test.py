@@ -55,6 +55,34 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     self.assertAllEqual(tf.float32, data.dtype)
     self.assertAllEqual(tf.float32, pooled.dtype)
 
+  def test_all_encoder_outputs_network_creation(self):
+    hidden_size = 32
+    sequence_length = 21
+    # Create a small TransformerEncoder for testing.
+    test_network = transformer_encoder.TransformerEncoder(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        sequence_length=sequence_length,
+        num_attention_heads=2,
+        num_layers=3,
+        return_all_encoder_outputs=True)
+    # Create the inputs (note that the first dimension is implicit).
+    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    all_encoder_outputs, pooled = test_network([word_ids, mask, type_ids])
+
+    expected_data_shape = [None, sequence_length, hidden_size]
+    expected_pooled_shape = [None, hidden_size]
+    self.assertLen(all_encoder_outputs, 3)
+    for data in all_encoder_outputs:
+      self.assertAllEqual(expected_data_shape, data.shape.as_list())
+    self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
+
+    # The default output dtype is float32.
+    self.assertAllEqual(tf.float32, all_encoder_outputs[-1].dtype)
+    self.assertAllEqual(tf.float32, pooled.dtype)
+
   def test_network_creation_with_float16_dtype(self):
     hidden_size = 32
     sequence_length = 21
@@ -146,7 +174,8 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
         dropout_rate=0.05,
         attention_dropout_rate=0.22,
         initializer="glorot_uniform",
-        float_dtype="float16")
+        float_dtype="float16",
+        return_all_encoder_outputs=False)
     network = transformer_encoder.TransformerEncoder(**kwargs)
 
     expected_config = dict(kwargs)

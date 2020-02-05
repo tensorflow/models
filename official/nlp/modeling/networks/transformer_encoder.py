@@ -60,6 +60,8 @@ class TransformerEncoder(network.Network):
       within the transformer layers.
     initializer: The initialzer to use for all weights in this encoder.
     float_dtype: The dtype of this encoder. Can be 'float32' or 'float16'.
+    return_all_encoder_outputs: Whether to output sequence embedding outputs of
+      all encoder transformer layers.
   """
 
   def __init__(self,
@@ -76,6 +78,7 @@ class TransformerEncoder(network.Network):
                attention_dropout_rate=0.1,
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                float_dtype='float32',
+               return_all_encoder_outputs=False,
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
@@ -97,6 +100,7 @@ class TransformerEncoder(network.Network):
         'attention_dropout_rate': attention_dropout_rate,
         'initializer': tf.keras.initializers.serialize(initializer),
         'float_dtype': float_dtype,
+        'return_all_encoder_outputs': return_all_encoder_outputs,
     }
 
     word_ids = tf.keras.layers.Input(
@@ -146,6 +150,7 @@ class TransformerEncoder(network.Network):
     self._transformer_layers = []
     data = embeddings
     attention_mask = layers.SelfAttentionMask()([data, mask])
+    encoder_outputs = []
     for i in range(num_layers):
       layer = layers.Transformer(
           num_attention_heads=num_attention_heads,
@@ -158,10 +163,11 @@ class TransformerEncoder(network.Network):
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
       data = layer([data, attention_mask])
+      encoder_outputs.append(data)
 
     first_token_tensor = (
-        tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(data)
-    )
+        tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
+            encoder_outputs[-1]))
     cls_output = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
@@ -169,10 +175,13 @@ class TransformerEncoder(network.Network):
         name='pooler_transform')(
             first_token_tensor)
 
+    if return_all_encoder_outputs:
+      outputs = [encoder_outputs, cls_output]
+    else:
+      outputs = [encoder_outputs[-1], cls_output]
+
     super(TransformerEncoder, self).__init__(
-        inputs=[word_ids, mask, type_ids],
-        outputs=[data, cls_output],
-        **kwargs)
+        inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
   def get_embedding_table(self):
     return self._embedding_layer.embeddings
