@@ -24,7 +24,7 @@ import tensorflow as tf
 from typing import Optional, Text
 
 from official.nlp import bert_modeling
-from official.nlp import bert_models
+from official.nlp.bert import bert_models
 
 FLAGS = flags.FLAGS
 
