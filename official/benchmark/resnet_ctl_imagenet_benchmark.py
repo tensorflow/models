@@ -279,7 +279,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_eager')
-    FLAGS.batch_size = 108
+    FLAGS.batch_size = 128
     FLAGS.use_tf_function = False
     FLAGS.single_l2_loss_op = True
     self._run_and_report_benchmark()
@@ -291,7 +291,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16_eager')
-    FLAGS.batch_size = 216
+    FLAGS.batch_size = 250
     FLAGS.dtype = 'fp16'
     FLAGS.use_tf_function = False
     FLAGS.single_l2_loss_op = True
