@@ -15,19 +15,18 @@ the released embedding features.
 VGGish depends on the following Python packages:
 
 * [`numpy`](http://www.numpy.org/)
-* [`scipy`](http://www.scipy.org/)
 * [`resampy`](http://resampy.readthedocs.io/en/latest/)
-* [`tensorflow`](http://www.tensorflow.org/)
+* [`tensorflow`](http://www.tensorflow.org/) (currently, only TF v1.x)
+* [`tf_slim`](https://github.com/google-research/tf-slim)
 * [`six`](https://pythonhosted.org/six/)
-* [`pysoundfile`](https://pysoundfile.readthedocs.io/)
+* [`soundfile`](https://pysoundfile.readthedocs.io/)
 
 These are all easily installable via, e.g., `pip install numpy` (as in the
-example command sequence below).
+sample installation session below).
 
-Any reasonably recent version of these packages should work. TensorFlow should
-be at least version 1.0.  We have tested that everything works on Ubuntu and
-Windows 10 with Python 3.6.6, Numpy v1.15.4, SciPy v1.1.0, resampy v0.2.1,
-TensorFlow v1.3.0, Six v1.11.0 and PySoundFile 0.9.0.
+Any reasonably recent version of these packages shold work. Note that we currently only support
+TensorFlow v1.x due to a [`tf_slim` limitation](https://github.com/google-research/tf-slim/pull/1).
+TensorFlow v1.15 (the latest version as of Jan 2020) has been tested to work.
 
 VGGish also requires downloading two data files:
 
@@ -57,17 +56,15 @@ Here's a sample installation and test session:
 #   $ deactivate
 # Within the virtual environment, do not use 'sudo'.
 
-# Upgrade pip first.
-$ sudo python -m pip install --upgrade pip
+# Upgrade pip first. Also make sure wheel is installed.
+$ sudo python -m pip install --upgrade pip wheel
 
-# Install dependences. Resampy needs to be installed after NumPy and SciPy
-# are already installed.
-$ sudo pip install numpy scipy
-$ sudo pip install resampy tensorflow six
+# Install all dependences.
+$ sudo pip install numpy resampy tensorflow==1.15 tf_slim six soundfile
 
 # Clone TensorFlow models repo into a 'models' directory.
 $ git clone https://github.com/tensorflow/models.git
-$ cd models/research/audioset
+$ cd models/research/audioset/vggish
 # Download data files into same directory as code.
 $ curl -O https://storage.googleapis.com/audioset/vggish_model.ckpt
 $ curl -O https://storage.googleapis.com/audioset/vggish_pca_params.npz

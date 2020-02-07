@@ -160,7 +160,12 @@ class _LayersOverride(object):
     """
     if self._conv_hyperparams:
       kwargs = self._conv_hyperparams.params(**kwargs)
+      # Both the regularizer and initializer apply to the depthwise layer in
+      # MobilenetV1, so we remap the kernel_* to depthwise_* here.
+      kwargs['depthwise_regularizer'] = kwargs['kernel_regularizer']
+      kwargs['depthwise_initializer'] = kwargs['kernel_initializer']
     else:
+      kwargs['depthwise_regularizer'] = self.regularizer
       kwargs['depthwise_initializer'] = self.initializer
 
     kwargs['padding'] = 'same'
@@ -225,10 +230,7 @@ class _LayersOverride(object):
 
     placeholder_with_default = tf.placeholder_with_default(
         input=input_tensor, shape=[None] + shape)
-    if tf.executing_eagerly():
-      return tf.keras.layers.Input(shape=shape)
-    else:
-      return tf.keras.layers.Input(tensor=placeholder_with_default)
+    return model_utils.input_layer(shape, placeholder_with_default)
 
   # pylint: disable=unused-argument
   def ReLU(self, *args, **kwargs):

@@ -14,7 +14,13 @@
 # ==============================================================================
 
 """Tests for object_detection.utils.ops."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+import six
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -436,7 +442,7 @@ class GroundtruthFilterTest(tf.test.TestCase):
         fields.InputDataFields.groundtruth_is_crowd: [False],
         fields.InputDataFields.groundtruth_area: [32],
         fields.InputDataFields.groundtruth_difficult: [True],
-        fields.InputDataFields.groundtruth_label_types: ['APPROPRIATE'],
+        fields.InputDataFields.groundtruth_label_types: [six.b('APPROPRIATE')],
         fields.InputDataFields.groundtruth_confidences: [0.99],
     }
     with self.test_session() as sess:
@@ -610,7 +616,7 @@ class RetainGroundTruthWithPositiveClasses(tf.test.TestCase):
         fields.InputDataFields.groundtruth_is_crowd: [False],
         fields.InputDataFields.groundtruth_area: [32],
         fields.InputDataFields.groundtruth_difficult: [True],
-        fields.InputDataFields.groundtruth_label_types: ['APPROPRIATE'],
+        fields.InputDataFields.groundtruth_label_types: [six.b('APPROPRIATE')],
         fields.InputDataFields.groundtruth_confidences: [0.99],
     }
     with self.test_session() as sess:
@@ -819,8 +825,8 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     image_shape = [3, 2, 6]
 
     # First channel is 1's, second channel is 2's, etc.
-    image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
-                        shape=image_shape)
+    image = tf.constant(
+        list(range(1, 3 * 2 + 1)) * 6, dtype=tf.float32, shape=image_shape)
     boxes = tf.random_uniform((2, 4))
 
     # The result for both boxes should be [[1, 2], [3, 4], [5, 6]]
@@ -841,8 +847,8 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     image_shape = [3, 3, 4]
     crop_size = [2, 2]
 
-    image = tf.constant(range(1, 3 * 3 + 1), dtype=tf.float32,
-                        shape=[3, 3, 1])
+    image = tf.constant(
+        list(range(1, 3 * 3 + 1)), dtype=tf.float32, shape=[3, 3, 1])
     tiled_image = tf.tile(image, [1, 1, image_shape[2]])
     boxes = tf.random_uniform((3, 4))
     box_ind = tf.constant([0, 0, 0], dtype=tf.int32)
@@ -908,8 +914,8 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     num_boxes = 2
 
     # First channel is 1's, second channel is 2's, etc.
-    image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
-                        shape=image_shape)
+    image = tf.constant(
+        list(range(1, 3 * 2 + 1)) * 6, dtype=tf.float32, shape=image_shape)
     boxes = tf.random_uniform((num_boxes, 4))
 
     expected_output = []
@@ -945,8 +951,8 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     num_boxes = 2
 
     # First channel is 1's, second channel is 2's, etc.
-    image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
-                        shape=image_shape)
+    image = tf.constant(
+        list(range(1, 3 * 2 + 1)) * 6, dtype=tf.float32, shape=image_shape)
     boxes = tf.random_uniform((num_boxes, 4))
 
     expected_output = []
@@ -1031,8 +1037,8 @@ class OpsTestBatchPositionSensitiveCropRegions(tf.test.TestCase):
     image_shape = [2, 2, 2, 4]
     crop_size = [2, 2]
 
-    images = tf.constant(range(1, 2 * 2 * 4  + 1) * 2, dtype=tf.float32,
-                         shape=image_shape)
+    images = tf.constant(
+        list(range(1, 2 * 2 * 4 + 1)) * 2, dtype=tf.float32, shape=image_shape)
 
     # First box contains whole image, and second box contains only first row.
     boxes = tf.constant(np.array([[[0., 0., 1., 1.]],

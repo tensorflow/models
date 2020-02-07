@@ -327,6 +327,20 @@ class ModelBuilderTest(tf.test.TestCase, parameterized.TestCase):
                                  'inplace batchnorm updates not supported'):
       model_builder.build(model_proto, is_training=True)
 
+  def test_create_experimental_model(self):
+
+    model_text_proto = """
+      experimental_model {
+        name: 'model42'
+      }"""
+
+    build_func = lambda *args: 42
+    model_builder.EXPERIMENTAL_META_ARCH_BUILDER_MAP['model42'] = build_func
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+
+    self.assertEqual(model_builder.build(model_proto, is_training=True), 42)
+
 
 if __name__ == '__main__':
   tf.test.main()

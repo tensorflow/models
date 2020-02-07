@@ -51,7 +51,7 @@ class NasnetUtilsTest(tf.test.TestCase):
 
   def testGlobalAvgPool(self):
     data_formats = ['NHWC', 'NCHW']
-    inputs = tf.placeholder(tf.float32, (5, 10, 20, 10))
+    inputs = tf.compat.v1.placeholder(tf.float32, (5, 10, 20, 10))
     for data_format in data_formats:
       output = nasnet_utils.global_avg_pool(
           inputs, data_format)

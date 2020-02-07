@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,32 +20,50 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
+from tensorflow.contrib import framework as contrib_framework
+from tensorflow.contrib import slim as contrib_slim
+from deeplab.core import xception as xception_utils
 from deeplab.core.utils import resize_bilinear
 from deeplab.core.utils import scale_dimension
+from tensorflow.contrib.slim.nets import resnet_utils
 
-arg_scope = tf.contrib.framework.arg_scope
-slim = tf.contrib.slim
+arg_scope = contrib_framework.arg_scope
+slim = contrib_slim
+
+separable_conv2d_same = functools.partial(xception_utils.separable_conv2d_same,
+                                          regularize_depthwise=True)
 
 
 class NASBaseCell(object):
-  """NASNet Cell class that is used as a 'layer' in image architectures.
-  See https://arxiv.org/abs/1707.07012 and https://arxiv.org/abs/1712.00559.
-
-  Args:
-    num_conv_filters: The number of filters for each convolution operation.
-    operations: List of operations that are performed in the NASNet Cell in
-      order.
-    used_hiddenstates: Binary array that signals if the hiddenstate was used
-      within the cell. This is used to determine what outputs of the cell
-      should be concatenated together.
-    hiddenstate_indices: Determines what hiddenstates should be combined
-      together with the specified operations to create the NASNet cell.
-  """
+  """NASNet Cell class that is used as a 'layer' in image architectures."""
 
   def __init__(self, num_conv_filters, operations, used_hiddenstates,
                hiddenstate_indices, drop_path_keep_prob, total_num_cells,
-               total_training_steps):
+               total_training_steps, batch_norm_fn=slim.batch_norm):
+    """Init function.
+
+    For more details about NAS cell, see
+    https://arxiv.org/abs/1707.07012 and https://arxiv.org/abs/1712.00559.
+
+    Args:
+      num_conv_filters: The number of filters for each convolution operation.
+      operations: List of operations that are performed in the NASNet Cell in
+        order.
+      used_hiddenstates: Binary array that signals if the hiddenstate was used
+        within the cell. This is used to determine what outputs of the cell
+        should be concatenated together.
+      hiddenstate_indices: Determines what hiddenstates should be combined
+        together with the specified operations to create the NASNet cell.
+      drop_path_keep_prob: Float, drop path keep probability.
+      total_num_cells: Integer, total number of cells.
+      total_training_steps: Integer, total training steps.
+      batch_norm_fn: Function, batch norm function. Defaults to
+        slim.batch_norm.
+    """
     if len(hiddenstate_indices) != len(operations):
       raise ValueError(
           'Number of hiddenstate_indices and operations should be the same.')
@@ -57,6 +76,7 @@ class NASBaseCell(object):
     self._drop_path_keep_prob = drop_path_keep_prob
     self._total_num_cells = total_num_cells
     self._total_training_steps = total_training_steps
+    self._batch_norm_fn = batch_norm_fn
 
   def __call__(self, net, scope, filter_scaling, stride, prev_layer, cell_num):
     """Runs the conv cell."""
@@ -100,11 +120,11 @@ class NASBaseCell(object):
       if filter_size != prev_layer.shape[3]:
         prev_layer = tf.nn.relu(prev_layer)
         prev_layer = slim.conv2d(prev_layer, filter_size, 1, scope='prev_1x1')
-        prev_layer = slim.batch_norm(prev_layer, scope='prev_bn')
+        prev_layer = self._batch_norm_fn(prev_layer, scope='prev_bn')
 
     net = tf.nn.relu(net)
     net = slim.conv2d(net, filter_size, 1, scope='1x1')
-    net = slim.batch_norm(net, scope='beginning_bn')
+    net = self._batch_norm_fn(net, scope='beginning_bn')
     net = tf.split(axis=3, num_or_size_splits=1, value=net)
     net.append(prev_layer)
     return net
@@ -121,14 +141,14 @@ class NASBaseCell(object):
       kernel_size = int(operation.split('x')[0][-1])
       for layer_num in range(num_layers):
         net = tf.nn.relu(net)
-        net = slim.separable_conv2d(
+        net = separable_conv2d_same(
             net,
             filter_size,
             kernel_size,
             depth_multiplier=1,
             scope='separable_{0}x{0}_{1}'.format(kernel_size, layer_num + 1),
             stride=stride)
-        net = slim.batch_norm(
+        net = self._batch_norm_fn(
             net, scope='bn_sep_{0}x{0}_{1}'.format(kernel_size, layer_num + 1))
         stride = 1
     elif 'atrous' in operation:
@@ -138,17 +158,19 @@ class NASBaseCell(object):
         scaled_height = scale_dimension(tf.shape(net)[1], 0.5)
         scaled_width = scale_dimension(tf.shape(net)[2], 0.5)
         net = resize_bilinear(net, [scaled_height, scaled_width], net.dtype)
-        net = slim.conv2d(net, filter_size, kernel_size, rate=1,
-                          scope='atrous_{0}x{0}'.format(kernel_size))
+        net = resnet_utils.conv2d_same(
+            net, filter_size, kernel_size, rate=1, stride=1,
+            scope='atrous_{0}x{0}'.format(kernel_size))
       else:
-        net = slim.conv2d(net, filter_size, kernel_size, rate=2,
-                          scope='atrous_{0}x{0}'.format(kernel_size))
-      net = slim.batch_norm(net, scope='bn_atr_{0}x{0}'.format(kernel_size))
+        net = resnet_utils.conv2d_same(
+            net, filter_size, kernel_size, rate=2, stride=1,
+            scope='atrous_{0}x{0}'.format(kernel_size))
+      net = self._batch_norm_fn(net, scope='bn_atr_{0}x{0}'.format(kernel_size))
     elif operation in ['none']:
       if stride > 1 or (input_filters != filter_size):
         net = tf.nn.relu(net)
         net = slim.conv2d(net, filter_size, 1, stride=stride, scope='1x1')
-        net = slim.batch_norm(net, scope='bn_1')
+        net = self._batch_norm_fn(net, scope='bn_1')
     elif 'pool' in operation:
       pooling_type = operation.split('_')[0]
       pooling_shape = int(operation.split('_')[-1].split('x')[0])
@@ -160,7 +182,7 @@ class NASBaseCell(object):
         raise ValueError('Unimplemented pooling type: ', pooling_type)
       if input_filters != filter_size:
         net = slim.conv2d(net, filter_size, 1, stride=1, scope='1x1')
-        net = slim.batch_norm(net, scope='bn_1')
+        net = self._batch_norm_fn(net, scope='bn_1')
     else:
       raise ValueError('Unimplemented operation', operation)
 
@@ -176,7 +198,7 @@ class NASBaseCell(object):
     net = tf.concat(values=states_to_combine, axis=3)
     return net
 
-  @tf.contrib.framework.add_arg_scope
+  @contrib_framework.add_arg_scope
   def _apply_drop_path(self, net):
     """Apply drop_path regularization."""
     drop_path_keep_prob = self._drop_path_keep_prob

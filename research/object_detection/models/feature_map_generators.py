@@ -26,8 +26,10 @@ of final feature maps.
 import collections
 import functools
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 from object_detection.utils import ops
-slim = tf.contrib.slim
+from object_detection.utils import shape_utils
+slim = contrib_slim
 
 # Activation bound used for TPU v1. Activations will be clipped to
 # [-ACTIVATION_BOUND, ACTIVATION_BOUND] when training with
@@ -79,14 +81,19 @@ def create_conv_block(
   """
   layers = []
   if use_depthwise:
-    layers.append(tf.keras.layers.SeparableConv2D(
-        depth,
-        [kernel_size, kernel_size],
-        depth_multiplier=1,
-        padding=padding,
-        strides=stride,
-        name=layer_name + '_depthwise_conv',
-        **conv_hyperparams.params()))
+    kwargs = conv_hyperparams.params()
+    # Both the regularizer and initializer apply to the depthwise layer,
+    # so we remap the kernel_* to depthwise_* here.
+    kwargs['depthwise_regularizer'] = kwargs['kernel_regularizer']
+    kwargs['depthwise_initializer'] = kwargs['kernel_initializer']
+    layers.append(
+        tf.keras.layers.SeparableConv2D(
+            depth, [kernel_size, kernel_size],
+            depth_multiplier=1,
+            padding=padding,
+            strides=stride,
+            name=layer_name + '_depthwise_conv',
+            **kwargs))
   else:
     layers.append(tf.keras.layers.Conv2D(
         depth,
@@ -563,7 +570,7 @@ class KerasFpnTopDownFeatureMaps(tf.keras.Model):
       # TODO (b/128922690): clean-up of ops.nearest_neighbor_upsampling
       if use_native_resize_op:
         def resize_nearest_neighbor(image):
-          image_shape = image.shape.as_list()
+          image_shape = shape_utils.combined_static_and_dynamic_shape(image)
           return tf.image.resize_nearest_neighbor(
               image, [image_shape[1] * 2, image_shape[2] * 2])
         top_down_net.append(tf.keras.layers.Lambda(
@@ -699,7 +706,8 @@ def fpn_top_down_feature_maps(image_features,
       for level in reversed(range(num_levels - 1)):
         if use_native_resize_op:
           with tf.name_scope('nearest_neighbor_upsampling'):
-            top_down_shape = top_down.shape.as_list()
+            top_down_shape = shape_utils.combined_static_and_dynamic_shape(
+                top_down)
             top_down = tf.image.resize_nearest_neighbor(
                 top_down, [top_down_shape[1] * 2, top_down_shape[2] * 2])
         else:

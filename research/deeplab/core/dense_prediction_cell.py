@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,10 +26,11 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from deeplab.core import utils
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 # Local constants.
 _META_ARCHITECTURE_SCOPE = 'meta_architecture'

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +15,13 @@
 # ==============================================================================
 """Tests for deeplab.datasets.data_generator."""
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 import collections
 
+from six.moves import range
 import tensorflow as tf
 
 from deeplab import common
@@ -60,13 +64,10 @@ class DatasetTest(tf.test.TestCase):
         batch = iterator.get_next()
         batch, = sess.run([batch])
         image_attributes = _get_attributes_of_image(i)
-
-        self.assertAllEqual(batch[common.IMAGE][0], image_attributes.image)
-        self.assertAllEqual(batch[common.LABEL][0], image_attributes.label)
         self.assertEqual(batch[common.HEIGHT][0], image_attributes.height)
         self.assertEqual(batch[common.WIDTH][0], image_attributes.width)
         self.assertEqual(batch[common.IMAGE_NAME][0],
-                         image_attributes.image_name)
+                         image_attributes.image_name.encode())
 
       # All data have been read.
       with self.assertRaisesRegexp(tf.errors.OutOfRangeError, ''):
@@ -87,136 +88,28 @@ def _get_attributes_of_image(index):
   """
   if index == 0:
     return ImageAttributes(
-        image=IMAGE_1,
-        label=LABEL_1,
+        image=None,
+        label=None,
         height=366,
         width=500,
         image_name='2007_000033')
   elif index == 1:
     return ImageAttributes(
-        image=IMAGE_2,
-        label=LABEL_2,
+        image=None,
+        label=None,
         height=335,
         width=500,
         image_name='2007_000042')
   elif index == 2:
     return ImageAttributes(
-        image=IMAGE_3,
-        label=LABEL_3,
+        image=None,
+        label=None,
         height=333,
         width=500,
         image_name='2007_000061')
   else:
     raise ValueError('Index can only be 0, 1 or 2.')
 
-
-IMAGE_1 = (
-    (
-        (57., 41., 18.),
-        (151.5, 138., 111.5),
-        (107., 158., 143.),
-    ),
-    (
-        (104.5, 141., 191.),
-        (101.75, 72.5, 120.75),
-        (86.5, 139.5, 120.),
-    ),
-    (
-        (96., 85., 145.),
-        (123.5, 107.5, 97.),
-        (61., 148., 116.),
-    ),
-)
-
-LABEL_1 = (
-    (
-        (70,),
-        (227,),
-        (251,),
-    ),
-    (
-        (101,),
-        (0,),
-        (10,),
-    ),
-    (
-        (145,),
-        (245,),
-        (146,),
-    ),
-)
-
-IMAGE_2 = (
-    (
-        (94., 64., 98.),
-        (145.5, 136.5, 134.5),
-        (108., 162., 172.),
-    ),
-    (
-        (168., 157., 213.),
-        (161.5, 154.5, 148.),
-        (25., 46., 93.),
-    ),
-    (
-        (255., 204., 237.),
-        (124., 102., 126.5),
-        (155., 181., 82.),
-    ),
-)
-
-LABEL_2 = (
-    (
-        (44,),
-        (146,),
-        (121,),
-    ),
-    (
-        (108,),
-        (118,),
-        (6,),
-    ),
-    (
-        (246,),
-        (121,),
-        (108,),
-    ),
-)
-
-IMAGE_3 = (
-    (
-        (235., 173., 150.),
-        (145.5, 83.5, 102.),
-        (82., 149., 158.),
-    ),
-    (
-        (130., 95., 14.),
-        (132.5, 141.5, 93.),
-        (119., 85., 86.),
-    ),
-    (
-        (127.5, 127.5, 127.5),
-        (127.5, 127.5, 127.5),
-        (127.5, 127.5, 127.5),
-    ),
-)
-
-LABEL_3 = (
-    (
-        (91,),
-        (120,),
-        (132,),
-    ),
-    (
-        (135,),
-        (139,),
-        (72,),
-    ),
-    (
-        (255,),
-        (255,),
-        (255,),
-    ),
-)
 
 if __name__ == '__main__':
   tf.test.main()

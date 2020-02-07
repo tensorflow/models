@@ -1,5 +1,7 @@
 # Description:
 #   Contains files for loading, training and evaluating TF-Slim-based models.
+# load("//devtools/python/blaze:python3.bzl", "py2and3_test")
+load("//devtools/python/blaze:pytype.bzl", "pytype_strict_binary")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -38,6 +40,7 @@ py_binary(
     python_version = "PY2",
     deps = [
         # "//numpy",
+        "//third_party/py/six",
         # "//tensorflow",
     ],
 )
@@ -48,6 +51,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//numpy",
+        "//third_party/py/six",
         # "//tensorflow",
     ],
 )
@@ -67,6 +71,27 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//numpy",
+        "//third_party/py/six",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "download_and_convert_visualwakewords_lib",
+    srcs = ["datasets/download_and_convert_visualwakewords_lib.py"],
+    deps = [
+        ":dataset_utils",
+        "//third_party/py/PIL:pil",
+        "//third_party/py/contextlib2",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "download_and_convert_visualwakewords",
+    srcs = ["datasets/download_and_convert_visualwakewords.py"],
+    deps = [
+        ":download_and_convert_visualwakewords_lib",
         # "//tensorflow",
     ],
 )
@@ -79,31 +104,7 @@ py_binary(
         ":download_and_convert_cifar10",
         ":download_and_convert_flowers",
         ":download_and_convert_mnist",
-        # "//tensorflow",
-    ],
-)
-
-sh_binary(
-    name = "download_mscoco",
-    srcs = ["datasets/download_mscoco.sh"],
-)
-
-py_binary(
-    name = "build_visualwakewords_data",
-    srcs = ["datasets/build_visualwakewords_data.py"],
-    deps = [
-        ":build_visualwakewords_data_lib",
-        # "//tensorflow",
-    ],
-)
-
-py_library(
-    name = "build_visualwakewords_data_lib",
-    srcs = ["datasets/build_visualwakewords_data_lib.py"],
-    deps = [
-        ":dataset_utils",
-        "//third_party/py/PIL:pil",
-        "//third_party/py/contextlib2",
+        ":download_and_convert_visualwakewords",
         # "//tensorflow",
     ],
 )
@@ -114,6 +115,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -123,6 +125,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -131,7 +134,9 @@ py_library(
     srcs = ["datasets/imagenet.py"],
     deps = [
         ":dataset_utils",
+        "//third_party/py/six",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -141,6 +146,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -150,6 +156,7 @@ py_library(
     deps = [
         ":dataset_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -170,6 +177,7 @@ py_library(
     srcs = ["deployment/model_deploy.py"],
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -182,6 +190,9 @@ py_test(
         ":model_deploy",
         # "//numpy",
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
+        # "//tensorflow/contrib/layers:layers_py",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -190,6 +201,7 @@ py_library(
     srcs = ["preprocessing/cifarnet_preprocessing.py"],
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -207,6 +219,7 @@ py_library(
     srcs = ["preprocessing/lenet_preprocessing.py"],
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -215,6 +228,7 @@ py_library(
     srcs = ["preprocessing/vgg_preprocessing.py"],
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -226,7 +240,7 @@ py_library(
         ":inception_preprocessing",
         ":lenet_preprocessing",
         ":vgg_preprocessing",
-        # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -259,6 +273,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -271,6 +286,7 @@ py_test(
     deps = [
         ":alexnet",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -279,6 +295,7 @@ py_library(
     srcs = ["nets/cifarnet.py"],
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -287,7 +304,11 @@ py_library(
     srcs = ["nets/cyclegan.py"],
     deps = [
         # "//numpy",
+        "//third_party/py/six",
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
+        # "//tensorflow/contrib/layers:layers_py",
+        # "//tensorflow/contrib/util:util_py",
     ],
 )
 
@@ -307,7 +328,9 @@ py_library(
     name = "dcgan",
     srcs = ["nets/dcgan.py"],
     deps = [
+        "//third_party/py/six",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -319,6 +342,7 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":dcgan",
+        "//third_party/py/six",
         # "//tensorflow",
     ],
 )
@@ -331,6 +355,7 @@ py_library(
         ":i3d_utils",
         ":s3dg",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -352,7 +377,10 @@ py_library(
     srcs = ["nets/i3d_utils.py"],
     srcs_version = "PY2AND3",
     deps = [
+        # "//numpy",
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
+        # "//tensorflow/contrib/layers:layers_py",
     ],
 )
 
@@ -375,6 +403,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -385,6 +414,7 @@ py_library(
     deps = [
         ":inception_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -395,6 +425,7 @@ py_library(
     deps = [
         ":inception_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -405,6 +436,7 @@ py_library(
     deps = [
         ":inception_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -415,6 +447,7 @@ py_library(
     deps = [
         ":inception_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -424,6 +457,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -438,20 +472,21 @@ py_test(
         ":inception",
         # "//numpy",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "inception_v2_test",
     size = "large",
     srcs = ["nets/inception_v2_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
         ":inception",
         # "//numpy",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -466,6 +501,7 @@ py_test(
         ":inception",
         # "//numpy",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -479,6 +515,7 @@ py_test(
     deps = [
         ":inception",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -492,6 +529,7 @@ py_test(
     deps = [
         ":inception",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -500,6 +538,7 @@ py_library(
     srcs = ["nets/lenet.py"],
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -509,25 +548,68 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/layers:layers_py",
+        # "//tensorflow/contrib/slim",
+    ],
+)
+
+py_library(
+    name = "mobilenet_common",
+    srcs = [
+        "nets/mobilenet/conv_blocks.py",
+        "nets/mobilenet/mobilenet.py",
+    ],
+    srcs_version = "PY2AND3",
+    deps = [
+        # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
 py_library(
     name = "mobilenet_v2",
-    srcs = glob(["nets/mobilenet/*.py"]),
+    srcs = ["nets/mobilenet/mobilenet_v2.py"],
     srcs_version = "PY2AND3",
     deps = [
+        ":mobilenet_common",
         # "//tensorflow",
+        # "//tensorflow/contrib/layers:layers_py",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
-py_test(
+py_library(
+    name = "mobilenet_v3",
+    srcs = ["nets/mobilenet/mobilenet_v3.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":mobilenet_common",
+        # "//numpy",
+        # "//tensorflow",
+        # "//tensorflow/contrib/slim",
+    ],
+)
+
+py_test(  # py2and3_test
     name = "mobilenet_v2_test",
     srcs = ["nets/mobilenet/mobilenet_v2_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":mobilenet",
+        ":mobilenet_common",
+        "//third_party/py/six",
+        # "//tensorflow",
+        # "//tensorflow/contrib/slim",
+    ],
+)
+
+py_test(  # py2and3_test
+    name = "mobilenet_v3_test",
+    srcs = ["nets/mobilenet/mobilenet_v3_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":mobilenet",
+        "//third_party/py/absl/testing:absltest",
         # "//tensorflow",
     ],
 )
@@ -537,6 +619,7 @@ py_library(
     deps = [
         ":mobilenet_v1",
         ":mobilenet_v2",
+        ":mobilenet_v3",
     ],
 )
 
@@ -551,6 +634,7 @@ py_test(
         ":mobilenet_v1",
         # "//numpy",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -563,6 +647,8 @@ py_binary(
         ":mobilenet_v1",
         ":preprocessing_factory",
         # "//tensorflow",
+        # "//tensorflow/contrib/quantize:quantize_graph",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -575,6 +661,8 @@ py_binary(
         ":mobilenet_v1",
         ":preprocessing_factory",
         # "//tensorflow",
+        # "//tensorflow/contrib/quantize:quantize_graph",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -584,6 +672,8 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -594,6 +684,10 @@ py_library(
     deps = [
         ":nasnet_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
+        # "//tensorflow/contrib/layers:layers_py",
+        # "//tensorflow/contrib/slim",
+        # "//tensorflow/contrib/training:training_py",
     ],
 )
 
@@ -619,6 +713,7 @@ py_test(
     deps = [
         ":nasnet",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -630,6 +725,9 @@ py_library(
         ":nasnet",
         ":nasnet_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
+        # "//tensorflow/contrib/slim",
+        # "//tensorflow/contrib/training:training_py",
     ],
 )
 
@@ -643,6 +741,7 @@ py_test(
     deps = [
         ":pnasnet",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -652,18 +751,19 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "overfeat_test",
     size = "medium",
     srcs = ["nets/overfeat_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":overfeat",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -673,17 +773,19 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
+        # "//tensorflow/contrib/layers:layers_py",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "pix2pix_test",
     srcs = ["nets/pix2pix_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":pix2pix",
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
     ],
 )
 
@@ -693,6 +795,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -703,12 +806,14 @@ py_library(
     deps = [
         ":resnet_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
 py_test(
     name = "resnet_v1_test",
     size = "medium",
+    timeout = "long",
     srcs = ["nets/resnet_v1_test.py"],
     python_version = "PY2",
     shard_count = 2,
@@ -718,6 +823,7 @@ py_test(
         ":resnet_v1",
         # "//numpy",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -728,6 +834,7 @@ py_library(
     deps = [
         ":resnet_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -743,6 +850,7 @@ py_test(
         ":resnet_v2",
         # "//numpy",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -753,6 +861,8 @@ py_library(
     deps = [
         ":i3d_utils",
         # "//tensorflow",
+        # "//tensorflow/contrib/framework:framework_py",
+        # "//tensorflow/contrib/layers:layers_py",
     ],
 )
 
@@ -775,18 +885,19 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "vgg_test",
     size = "medium",
     srcs = ["nets/vgg_test.py"],
-    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":vgg",
         # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -795,15 +906,14 @@ py_library(
     srcs = ["nets/nets_factory.py"],
     deps = [
         ":nets",
-        # "//tensorflow",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
-py_test(
+py_test(  # py2and3_test
     name = "nets_factory_test",
     size = "large",
     srcs = ["nets/nets_factory_test.py"],
-    python_version = "PY2",
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
@@ -812,15 +922,32 @@ py_test(
     ],
 )
 
+pytype_strict_binary(
+    name = "post_training_quantization",
+    srcs = ["nets/post_training_quantization.py"],
+    python_version = "PY3",
+    deps = [
+        ":nets_factory",
+        ":preprocessing_factory",
+        "//third_party/py/absl:app",
+        "//third_party/py/absl/flags",
+        # "//tensorflow",
+        # "//tensorflow_datasets",
+    ],
+)
+
 py_library(
     name = "train_image_classifier_lib",
     srcs = ["train_image_classifier.py"],
+    srcs_version = "PY2AND3",
     deps = [
         ":dataset_factory",
         ":model_deploy",
         ":nets_factory",
         ":preprocessing_factory",
         # "//tensorflow",
+        # "//tensorflow/contrib/quantize:quantize_graph",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -843,6 +970,8 @@ py_library(
         ":nets_factory",
         ":preprocessing_factory",
         # "//tensorflow",
+        # "//tensorflow/contrib/quantize:quantize_graph",
+        # "//tensorflow/contrib/slim",
     ],
 )
 
@@ -871,6 +1000,8 @@ py_library(
         ":dataset_factory",
         ":nets_factory",
         # "//tensorflow",
+        # "//tensorflow/contrib/quantize:quantize_graph",
+        # "//tensorflow/contrib/slim",
         # "//tensorflow/python:platform",
     ],
 )

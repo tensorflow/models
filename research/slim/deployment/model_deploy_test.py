@@ -20,10 +20,13 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import framework as contrib_framework
+from tensorflow.contrib import layers as contrib_layers
+from tensorflow.contrib import slim as contrib_slim
 
 from deployment import model_deploy
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class DeploymentConfigTest(tf.test.TestCase):
@@ -508,9 +511,8 @@ class DeployTest(tf.test.TestCase):
 
       with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        moving_mean = tf.contrib.framework.get_variables_by_name(
-            'moving_mean')[0]
-        moving_variance = tf.contrib.framework.get_variables_by_name(
+        moving_mean = contrib_framework.get_variables_by_name('moving_mean')[0]
+        moving_variance = contrib_framework.get_variables_by_name(
             'moving_variance')[0]
         initial_loss = sess.run(model.total_loss)
         initial_mean, initial_variance = sess.run([moving_mean,
@@ -537,8 +539,8 @@ class DeployTest(tf.test.TestCase):
       # clone function creates a fully_connected layer with a regularizer loss.
       def ModelFn():
         inputs = tf.constant(1.0, shape=(10, 20), dtype=tf.float32)
-        reg = tf.contrib.layers.l2_regularizer(0.001)
-        tf.contrib.layers.fully_connected(inputs, 30, weights_regularizer=reg)
+        reg = contrib_layers.l2_regularizer(0.001)
+        contrib_layers.fully_connected(inputs, 30, weights_regularizer=reg)
 
       model = model_deploy.deploy(
           deploy_config, ModelFn,
@@ -556,8 +558,8 @@ class DeployTest(tf.test.TestCase):
       # clone function creates a fully_connected layer with a regularizer loss.
       def ModelFn():
         inputs = tf.constant(1.0, shape=(10, 20), dtype=tf.float32)
-        reg = tf.contrib.layers.l2_regularizer(0.001)
-        tf.contrib.layers.fully_connected(inputs, 30, weights_regularizer=reg)
+        reg = contrib_layers.l2_regularizer(0.001)
+        contrib_layers.fully_connected(inputs, 30, weights_regularizer=reg)
 
       # No optimizer here, it's an eval.
       model = model_deploy.deploy(deploy_config, ModelFn)

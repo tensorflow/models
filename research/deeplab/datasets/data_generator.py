@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,10 +69,12 @@ DatasetDescriptor = collections.namedtuple(
     ])
 
 _CITYSCAPES_INFORMATION = DatasetDescriptor(
-    splits_to_sizes={
-        'train': 2975,
-        'val': 500,
-    },
+    splits_to_sizes={'train_fine': 2975,
+                     'train_coarse': 22973,
+                     'trainval_fine': 3475,
+                     'trainval_coarse': 23473,
+                     'val_fine': 500,
+                     'test_fine': 1525},
     num_classes=19,
     ignore_label=255,
 )

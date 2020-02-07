@@ -42,8 +42,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 def vgg_arg_scope(weight_decay=0.0005):
@@ -58,7 +59,7 @@ def vgg_arg_scope(weight_decay=0.0005):
   with slim.arg_scope([slim.conv2d, slim.fully_connected],
                       activation_fn=tf.nn.relu,
                       weights_regularizer=slim.l2_regularizer(weight_decay),
-                      biases_initializer=tf.zeros_initializer()):
+                      biases_initializer=tf.compat.v1.zeros_initializer()):
     with slim.arg_scope([slim.conv2d], padding='SAME') as arg_sc:
       return arg_sc
 
@@ -68,6 +69,7 @@ def vgg_a(inputs,
           is_training=True,
           dropout_keep_prob=0.5,
           spatial_squeeze=True,
+          reuse=None,
           scope='vgg_a',
           fc_conv_padding='VALID',
           global_pool=False):
@@ -85,6 +87,8 @@ def vgg_a(inputs,
       layers during training.
     spatial_squeeze: whether or not should squeeze the spatial dimensions of the
       outputs. Useful to remove unnecessary dimensions for classification.
+    reuse: whether or not the network and its variables should be reused. To be
+      able to reuse 'scope' must be given.
     scope: Optional scope for the variables.
     fc_conv_padding: the type of padding to use for the fully connected layer
       that is implemented as a convolutional layer. Use 'SAME' padding if you
@@ -101,7 +105,7 @@ def vgg_a(inputs,
       or the input to the logits layer (if num_classes is 0 or None).
     end_points: a dict of tensors with intermediate activations.
   """
-  with tf.variable_scope(scope, 'vgg_a', [inputs]) as sc:
+  with tf.compat.v1.variable_scope(scope, 'vgg_a', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d.
     with slim.arg_scope([slim.conv2d, slim.max_pool2d],
@@ -125,7 +129,8 @@ def vgg_a(inputs,
       # Convert end_points_collection into a end_point dict.
       end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if global_pool:
-        net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+        net = tf.reduce_mean(
+            input_tensor=net, axis=[1, 2], keepdims=True, name='global_pool')
         end_points['global_pool'] = net
       if num_classes:
         net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
@@ -146,6 +151,7 @@ def vgg_16(inputs,
            is_training=True,
            dropout_keep_prob=0.5,
            spatial_squeeze=True,
+           reuse=None,
            scope='vgg_16',
            fc_conv_padding='VALID',
            global_pool=False):
@@ -163,6 +169,8 @@ def vgg_16(inputs,
       layers during training.
     spatial_squeeze: whether or not should squeeze the spatial dimensions of the
       outputs. Useful to remove unnecessary dimensions for classification.
+    reuse: whether or not the network and its variables should be reused. To be
+      able to reuse 'scope' must be given.
     scope: Optional scope for the variables.
     fc_conv_padding: the type of padding to use for the fully connected layer
       that is implemented as a convolutional layer. Use 'SAME' padding if you
@@ -179,7 +187,8 @@ def vgg_16(inputs,
       or the input to the logits layer (if num_classes is 0 or None).
     end_points: a dict of tensors with intermediate activations.
   """
-  with tf.variable_scope(scope, 'vgg_16', [inputs]) as sc:
+  with tf.compat.v1.variable_scope(
+      scope, 'vgg_16', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d.
     with slim.arg_scope([slim.conv2d, slim.fully_connected, slim.max_pool2d],
@@ -203,7 +212,8 @@ def vgg_16(inputs,
       # Convert end_points_collection into a end_point dict.
       end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if global_pool:
-        net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+        net = tf.reduce_mean(
+            input_tensor=net, axis=[1, 2], keepdims=True, name='global_pool')
         end_points['global_pool'] = net
       if num_classes:
         net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
@@ -224,6 +234,7 @@ def vgg_19(inputs,
            is_training=True,
            dropout_keep_prob=0.5,
            spatial_squeeze=True,
+           reuse=None,
            scope='vgg_19',
            fc_conv_padding='VALID',
            global_pool=False):
@@ -241,6 +252,8 @@ def vgg_19(inputs,
       layers during training.
     spatial_squeeze: whether or not should squeeze the spatial dimensions of the
       outputs. Useful to remove unnecessary dimensions for classification.
+    reuse: whether or not the network and its variables should be reused. To be
+      able to reuse 'scope' must be given.
     scope: Optional scope for the variables.
     fc_conv_padding: the type of padding to use for the fully connected layer
       that is implemented as a convolutional layer. Use 'SAME' padding if you
@@ -258,7 +271,8 @@ def vgg_19(inputs,
       None).
     end_points: a dict of tensors with intermediate activations.
   """
-  with tf.variable_scope(scope, 'vgg_19', [inputs]) as sc:
+  with tf.compat.v1.variable_scope(
+      scope, 'vgg_19', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d.
     with slim.arg_scope([slim.conv2d, slim.fully_connected, slim.max_pool2d],
@@ -282,7 +296,8 @@ def vgg_19(inputs,
       # Convert end_points_collection into a end_point dict.
       end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if global_pool:
-        net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+        net = tf.reduce_mean(
+            input_tensor=net, axis=[1, 2], keepdims=True, name='global_pool')
         end_points['global_pool'] = net
       if num_classes:
         net = slim.dropout(net, dropout_keep_prob, is_training=is_training,

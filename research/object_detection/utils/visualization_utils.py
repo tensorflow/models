@@ -19,6 +19,10 @@ These functions often receive an image, perform some visualization on the image.
 The functions do not return a value, instead they modify the image itself.
 
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import abc
 import collections
 # Set headless-friendly backend.
@@ -30,6 +34,8 @@ import PIL.ImageColor as ImageColor
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import six
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -530,7 +536,7 @@ def draw_side_by_side_evaluation_image(eval_dict,
   # Add the batch dimension if the eval_dict is for single example.
   if len(eval_dict[detection_fields.detection_classes].shape) == 1:
     for key in eval_dict:
-      if key != input_data_fields.original_image:
+      if key != input_data_fields.original_image and key != input_data_fields.image_additional_channels:
         eval_dict[key] = tf.expand_dims(eval_dict[key], 0)
 
   for indx in range(eval_dict[input_data_fields.original_image].shape[0]):
@@ -594,8 +600,42 @@ def draw_side_by_side_evaluation_image(eval_dict,
         max_boxes_to_draw=None,
         min_score_thresh=0.0,
         use_normalized_coordinates=use_normalized_coordinates)
-    images_with_detections_list.append(
-        tf.concat([images_with_detections, images_with_groundtruth], axis=2))
+    images_to_visualize = tf.concat([images_with_detections,
+                                     images_with_groundtruth], axis=2)
+
+    if input_data_fields.image_additional_channels in eval_dict:
+      images_with_additional_channels_groundtruth = (
+          draw_bounding_boxes_on_image_tensors(
+              tf.expand_dims(
+                  eval_dict[input_data_fields.image_additional_channels][indx],
+                  axis=0),
+              tf.expand_dims(
+                  eval_dict[input_data_fields.groundtruth_boxes][indx], axis=0),
+              tf.expand_dims(
+                  eval_dict[input_data_fields.groundtruth_classes][indx],
+                  axis=0),
+              tf.expand_dims(
+                  tf.ones_like(
+                      eval_dict[input_data_fields.groundtruth_classes][indx],
+                      dtype=tf.float32),
+                  axis=0),
+              category_index,
+              original_image_spatial_shape=tf.expand_dims(
+                  eval_dict[input_data_fields.original_image_spatial_shape]
+                  [indx],
+                  axis=0),
+              true_image_shape=tf.expand_dims(
+                  eval_dict[input_data_fields.true_image_shape][indx], axis=0),
+              instance_masks=groundtruth_instance_masks,
+              keypoints=None,
+              max_boxes_to_draw=None,
+              min_score_thresh=0.0,
+              use_normalized_coordinates=use_normalized_coordinates))
+      images_to_visualize = tf.concat(
+          [images_to_visualize, images_with_additional_channels_groundtruth],
+          axis=2)
+    images_with_detections_list.append(images_to_visualize)
+
   return images_with_detections_list
 
 
@@ -771,7 +811,7 @@ def visualize_boxes_and_labels_on_image_array(
         display_str = ''
         if not skip_labels:
           if not agnostic_mode:
-            if classes[i] in category_index.keys():
+            if classes[i] in six.viewkeys(category_index):
               class_name = category_index[classes[i]]['name']
             else:
               class_name = 'N/A'
@@ -894,7 +934,7 @@ def add_hist_image_summary(values, bins, name):
   tf.summary.image(name, hist_plot)
 
 
-class EvalMetricOpsVisualization(object):
+class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class responsible for visualizations during evaluation.
 
   Currently, summary images are not run during evaluation. One way to produce
@@ -903,7 +943,6 @@ class EvalMetricOpsVisualization(object):
   responsible for accruing images (with overlaid detections and groundtruth)
   and returning a dictionary that can be passed to `eval_metric_ops`.
   """
-  __metaclass__ = abc.ABCMeta
 
   def __init__(self,
                category_index,

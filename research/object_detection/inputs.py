@@ -25,10 +25,14 @@ from object_detection.builders import dataset_builder
 from object_detection.builders import image_resizer_builder
 from object_detection.builders import model_builder
 from object_detection.builders import preprocessor_builder
+from object_detection.core import box_list
+from object_detection.core import box_list_ops
+from object_detection.core import keypoint_ops
 from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.protos import eval_pb2
+from object_detection.protos import image_resizer_pb2
 from object_detection.protos import input_reader_pb2
 from object_detection.protos import model_pb2
 from object_detection.protos import train_pb2
@@ -47,6 +51,22 @@ INPUT_BUILDER_UTIL_MAP = {
 }
 
 
+def _multiclass_scores_or_one_hot_labels(multiclass_scores,
+                                         groundtruth_boxes,
+                                         groundtruth_classes, num_classes):
+  """Returns one-hot encoding of classes when multiclass_scores is empty."""
+  # Replace groundtruth_classes tensor with multiclass_scores tensor when its
+  # non-empty. If multiclass_scores is empty fall back on groundtruth_classes
+  # tensor.
+  def true_fn():
+    return tf.reshape(multiclass_scores,
+                      [tf.shape(groundtruth_boxes)[0], num_classes])
+  def false_fn():
+    return tf.one_hot(groundtruth_classes, num_classes)
+
+  return tf.cond(tf.size(multiclass_scores) > 0, true_fn, false_fn)
+
+
 def transform_input_data(tensor_dict,
                          model_preprocess_fn,
                          image_resizer_fn,
@@ -55,7 +75,8 @@ def transform_input_data(tensor_dict,
                          merge_multiple_boxes=False,
                          retain_original_image=False,
                          use_multiclass_scores=False,
-                         use_bfloat16=False):
+                         use_bfloat16=False,
+                         retain_original_image_additional_channels=False):
   """A single function that is responsible for all input data transformations.
 
   Data transformation functions are applied in the following order.
@@ -89,102 +110,136 @@ def transform_input_data(tensor_dict,
       and classes for a given image if the boxes are exactly the same.
     retain_original_image: (optional) whether to retain original image in the
       output dictionary.
-    use_multiclass_scores: whether to use multiclass scores as
-      class targets instead of one-hot encoding of `groundtruth_classes`.
+    use_multiclass_scores: whether to use multiclass scores as class targets
+      instead of one-hot encoding of `groundtruth_classes`. When
+      this is True and multiclass_scores is empty, one-hot encoding of
+      `groundtruth_classes` is used as a fallback.
     use_bfloat16: (optional) a bool, whether to use bfloat16 in training.
+    retain_original_image_additional_channels: (optional) Whether to retain
+      original image additional channels in the output dictionary.
 
   Returns:
     A dictionary keyed by fields.InputDataFields containing the tensors obtained
     after applying all the transformations.
   """
-  # Reshape flattened multiclass scores tensor into a 2D tensor of shape
-  # [num_boxes, num_classes].
-  if fields.InputDataFields.multiclass_scores in tensor_dict:
-    tensor_dict[fields.InputDataFields.multiclass_scores] = tf.reshape(
-        tensor_dict[fields.InputDataFields.multiclass_scores], [
-            tf.shape(tensor_dict[fields.InputDataFields.groundtruth_boxes])[0],
-            num_classes
-        ])
-  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
-    tensor_dict = util_ops.filter_groundtruth_with_nan_box_coordinates(
-        tensor_dict)
-    tensor_dict = util_ops.filter_unrecognized_classes(tensor_dict)
+  out_tensor_dict = tensor_dict.copy()
+  if fields.InputDataFields.multiclass_scores in out_tensor_dict:
+    out_tensor_dict[
+        fields.InputDataFields
+        .multiclass_scores] = _multiclass_scores_or_one_hot_labels(
+            out_tensor_dict[fields.InputDataFields.multiclass_scores],
+            out_tensor_dict[fields.InputDataFields.groundtruth_boxes],
+            out_tensor_dict[fields.InputDataFields.groundtruth_classes],
+            num_classes)
+
+  if fields.InputDataFields.groundtruth_boxes in out_tensor_dict:
+    out_tensor_dict = util_ops.filter_groundtruth_with_nan_box_coordinates(
+        out_tensor_dict)
+    out_tensor_dict = util_ops.filter_unrecognized_classes(out_tensor_dict)
 
   if retain_original_image:
-    tensor_dict[fields.InputDataFields.original_image] = tf.cast(
-        image_resizer_fn(tensor_dict[fields.InputDataFields.image], None)[0],
-        tf.uint8)
+    out_tensor_dict[fields.InputDataFields.original_image] = tf.cast(
+        image_resizer_fn(out_tensor_dict[fields.InputDataFields.image],
+                         None)[0], tf.uint8)
 
-  if fields.InputDataFields.image_additional_channels in tensor_dict:
-    channels = tensor_dict[fields.InputDataFields.image_additional_channels]
-    tensor_dict[fields.InputDataFields.image] = tf.concat(
-        [tensor_dict[fields.InputDataFields.image], channels], axis=2)
+  if fields.InputDataFields.image_additional_channels in out_tensor_dict:
+    channels = out_tensor_dict[fields.InputDataFields.image_additional_channels]
+    out_tensor_dict[fields.InputDataFields.image] = tf.concat(
+        [out_tensor_dict[fields.InputDataFields.image], channels], axis=2)
+    if retain_original_image_additional_channels:
+      out_tensor_dict[
+          fields.InputDataFields.image_additional_channels] = tf.cast(
+              image_resizer_fn(channels, None)[0], tf.uint8)
 
   # Apply data augmentation ops.
   if data_augmentation_fn is not None:
-    tensor_dict = data_augmentation_fn(tensor_dict)
+    out_tensor_dict = data_augmentation_fn(out_tensor_dict)
 
   # Apply model preprocessing ops and resize instance masks.
-  image = tensor_dict[fields.InputDataFields.image]
+  image = out_tensor_dict[fields.InputDataFields.image]
   preprocessed_resized_image, true_image_shape = model_preprocess_fn(
       tf.expand_dims(tf.cast(image, dtype=tf.float32), axis=0))
+
+  preprocessed_shape = tf.shape(preprocessed_resized_image)
+  new_height, new_width = preprocessed_shape[1], preprocessed_shape[2]
+
+  im_box = tf.stack([
+      0.0, 0.0,
+      tf.to_float(new_height) / tf.to_float(true_image_shape[0, 0]),
+      tf.to_float(new_width) / tf.to_float(true_image_shape[0, 1])
+  ])
+
+  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
+    bboxes = out_tensor_dict[fields.InputDataFields.groundtruth_boxes]
+    boxlist = box_list.BoxList(bboxes)
+    realigned_bboxes = box_list_ops.change_coordinate_frame(boxlist, im_box)
+    out_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes] = realigned_bboxes.get()
+
+  if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
+    keypoints = out_tensor_dict[fields.InputDataFields.groundtruth_keypoints]
+    realigned_keypoints = keypoint_ops.change_coordinate_frame(keypoints,
+                                                               im_box)
+    out_tensor_dict[
+        fields.InputDataFields.groundtruth_keypoints] = realigned_keypoints
+
   if use_bfloat16:
     preprocessed_resized_image = tf.cast(
         preprocessed_resized_image, tf.bfloat16)
-  tensor_dict[fields.InputDataFields.image] = tf.squeeze(
+  out_tensor_dict[fields.InputDataFields.image] = tf.squeeze(
       preprocessed_resized_image, axis=0)
-  tensor_dict[fields.InputDataFields.true_image_shape] = tf.squeeze(
+  out_tensor_dict[fields.InputDataFields.true_image_shape] = tf.squeeze(
       true_image_shape, axis=0)
-  if fields.InputDataFields.groundtruth_instance_masks in tensor_dict:
-    masks = tensor_dict[fields.InputDataFields.groundtruth_instance_masks]
+  if fields.InputDataFields.groundtruth_instance_masks in out_tensor_dict:
+    masks = out_tensor_dict[fields.InputDataFields.groundtruth_instance_masks]
     _, resized_masks, _ = image_resizer_fn(image, masks)
     if use_bfloat16:
       resized_masks = tf.cast(resized_masks, tf.bfloat16)
-    tensor_dict[fields.InputDataFields.
-                groundtruth_instance_masks] = resized_masks
+    out_tensor_dict[
+        fields.InputDataFields.groundtruth_instance_masks] = resized_masks
 
-  # Transform groundtruth classes to one hot encodings.
   label_offset = 1
-  zero_indexed_groundtruth_classes = tensor_dict[
+  zero_indexed_groundtruth_classes = out_tensor_dict[
       fields.InputDataFields.groundtruth_classes] - label_offset
-  tensor_dict[fields.InputDataFields.groundtruth_classes] = tf.one_hot(
-      zero_indexed_groundtruth_classes, num_classes)
-
   if use_multiclass_scores:
-    tensor_dict[fields.InputDataFields.groundtruth_classes] = tensor_dict[
-        fields.InputDataFields.multiclass_scores]
-  tensor_dict.pop(fields.InputDataFields.multiclass_scores, None)
+    out_tensor_dict[
+        fields.InputDataFields.groundtruth_classes] = out_tensor_dict[
+            fields.InputDataFields.multiclass_scores]
+  else:
+    out_tensor_dict[fields.InputDataFields.groundtruth_classes] = tf.one_hot(
+        zero_indexed_groundtruth_classes, num_classes)
+  out_tensor_dict.pop(fields.InputDataFields.multiclass_scores, None)
 
-  if fields.InputDataFields.groundtruth_confidences in tensor_dict:
-    groundtruth_confidences = tensor_dict[
+  if fields.InputDataFields.groundtruth_confidences in out_tensor_dict:
+    groundtruth_confidences = out_tensor_dict[
         fields.InputDataFields.groundtruth_confidences]
     # Map the confidences to the one-hot encoding of classes
-    tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
+    out_tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
         tf.reshape(groundtruth_confidences, [-1, 1]) *
-        tensor_dict[fields.InputDataFields.groundtruth_classes])
+        out_tensor_dict[fields.InputDataFields.groundtruth_classes])
   else:
     groundtruth_confidences = tf.ones_like(
         zero_indexed_groundtruth_classes, dtype=tf.float32)
-    tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
-        tensor_dict[fields.InputDataFields.groundtruth_classes])
+    out_tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
+        out_tensor_dict[fields.InputDataFields.groundtruth_classes])
 
   if merge_multiple_boxes:
     merged_boxes, merged_classes, merged_confidences, _ = (
         util_ops.merge_boxes_with_multiple_labels(
-            tensor_dict[fields.InputDataFields.groundtruth_boxes],
+            out_tensor_dict[fields.InputDataFields.groundtruth_boxes],
             zero_indexed_groundtruth_classes,
             groundtruth_confidences,
             num_classes))
     merged_classes = tf.cast(merged_classes, tf.float32)
-    tensor_dict[fields.InputDataFields.groundtruth_boxes] = merged_boxes
-    tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
-    tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
+    out_tensor_dict[fields.InputDataFields.groundtruth_boxes] = merged_boxes
+    out_tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
+    out_tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
         merged_confidences)
-  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
-    tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
-        tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
+  if fields.InputDataFields.groundtruth_boxes in out_tensor_dict:
+    out_tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
+        out_tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
 
-  return tensor_dict
+  return out_tensor_dict
 
 
 def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
@@ -425,6 +480,9 @@ def _get_features_dict(input_dict):
   if fields.InputDataFields.original_image in input_dict:
     features[fields.InputDataFields.original_image] = input_dict[
         fields.InputDataFields.original_image]
+  if fields.InputDataFields.image_additional_channels in input_dict:
+    features[fields.InputDataFields.image_additional_channels] = input_dict[
+        fields.InputDataFields.image_additional_channels]
   return features
 
 
@@ -625,6 +683,14 @@ def eval_input(eval_config, eval_input_config, model_config,
     raise TypeError('The `model_config` must be a '
                     'model_pb2.DetectionModel.')
 
+  if eval_config.force_no_resize:
+    arch = model_config.WhichOneof('model')
+    arch_config = getattr(model_config, arch)
+    image_resizer_proto = image_resizer_pb2.ImageResizer()
+    image_resizer_proto.identity_resizer.CopyFrom(
+        image_resizer_pb2.IdentityResizer())
+    arch_config.image_resizer.CopyFrom(image_resizer_proto)
+
   if model is None:
     model_preprocess_fn = INPUT_BUILDER_UTIL_MAP['model_build'](
         model_config, is_training=False).preprocess
@@ -643,7 +709,9 @@ def eval_input(eval_config, eval_input_config, model_config,
         image_resizer_fn=image_resizer_fn,
         num_classes=num_classes,
         data_augmentation_fn=None,
-        retain_original_image=eval_config.retain_original_images)
+        retain_original_image=eval_config.retain_original_images,
+        retain_original_image_additional_channels=
+        eval_config.retain_original_image_additional_channels)
     tensor_dict = pad_input_data_to_static_shapes(
         tensor_dict=transform_data_fn(tensor_dict),
         max_num_boxes=eval_input_config.max_number_of_boxes,

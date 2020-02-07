@@ -18,10 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import base64
+import zlib
+
 import numpy as np
 import pandas as pd
+from pycocotools import mask as coco_mask
 
-from pycocotools import mask
 from object_detection.core import standard_fields
 
 
@@ -53,33 +56,42 @@ def _decode_raw_data_into_masks_and_boxes(segments, image_widths,
   """Decods binary segmentation masks into np.arrays and boxes.
 
   Args:
-    segments: pandas Series object containing either None entries or strings
-    with COCO-encoded binary masks. All masks are expected to be the same size.
+    segments: pandas Series object containing either
+      None entries, or strings with
+      base64, zlib compressed, COCO RLE-encoded binary masks.
+      All masks are expected to be the same size.
     image_widths: pandas Series of mask widths.
     image_heights: pandas Series of mask heights.
 
   Returns:
     a np.ndarray of the size NxWxH, where W and H is determined from the encoded
-    masks; for the None values, zero arrays of size WxH are created. if input
+    masks; for the None values, zero arrays of size WxH are created. If input
     contains only None values, W=1, H=1.
   """
   segment_masks = []
   segment_boxes = []
   ind = segments.first_valid_index()
   if ind is not None:
-    size = [int(image_heights.iloc[ind]), int(image_widths[ind])]
+    size = [int(image_heights[ind]), int(image_widths[ind])]
   else:
     # It does not matter which size we pick since no masks will ever be
     # evaluated.
-    size = [1, 1]
+    return np.zeros((segments.shape[0], 1, 1), dtype=np.uint8), np.zeros(
+        (segments.shape[0], 4), dtype=np.float32)
+
   for segment, im_width, im_height in zip(segments, image_widths,
                                           image_heights):
     if pd.isnull(segment):
       segment_masks.append(np.zeros([1, size[0], size[1]], dtype=np.uint8))
       segment_boxes.append(np.expand_dims(np.array([0.0, 0.0, 0.0, 0.0]), 0))
     else:
-      encoding_dict = {'size': [im_height, im_width], 'counts': segment}
-      mask_tensor = mask.decode(encoding_dict)
+      compressed_mask = base64.b64decode(segment)
+      rle_encoded_mask = zlib.decompress(compressed_mask)
+      decoding_dict = {
+          'size': [im_height, im_width],
+          'counts': rle_encoded_mask
+      }
+      mask_tensor = coco_mask.decode(decoding_dict)
 
       segment_masks.append(np.expand_dims(mask_tensor, 0))
       segment_boxes.append(np.expand_dims(_to_normalized_box(mask_tensor), 0))

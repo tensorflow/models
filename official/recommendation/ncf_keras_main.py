@@ -22,32 +22,34 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 import os
 
 # pylint: disable=g-bad-import-order
-from absl import app as absl_app
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
+from official.recommendation import movielens
 from official.recommendation import ncf_common
+from official.recommendation import ncf_input_pipeline
 from official.recommendation import neumf_model
 from official.utils.logs import logger
 from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
-
+from official.utils.flags import core as flags_core
 
 FLAGS = flags.FLAGS
 
 
 def metric_fn(logits, dup_mask, params):
   dup_mask = tf.cast(dup_mask, tf.float32)
-  logits = tf.slice(logits, [0, 0, 1], [-1, -1, -1])
+  logits = tf.slice(logits, [0, 1], [-1, -1])
   in_top_k, _, metric_weights, _ = neumf_model.compute_top_k_and_ndcg(
       logits,
       dup_mask,
@@ -62,67 +64,40 @@ class MetricLayer(tf.keras.layers.Layer):
   def __init__(self, params):
     super(MetricLayer, self).__init__()
     self.params = params
-    self.metric = tf.keras.metrics.Mean(name=rconst.HR_METRIC_NAME)
 
-  def call(self, inputs):
+  def call(self, inputs, training=False):
     logits, dup_mask = inputs
-    in_top_k, metric_weights = metric_fn(logits, dup_mask, self.params)
-    self.add_metric(self.metric(in_top_k, sample_weight=metric_weights))
+
+    if training:
+      hr_sum = 0.0
+      hr_count = 0.0
+    else:
+      metric, metric_weights = metric_fn(logits, dup_mask, self.params)
+      hr_sum = tf.reduce_sum(metric * metric_weights)
+      hr_count = tf.reduce_sum(metric_weights)
+
+    self.add_metric(hr_sum, name="hr_sum", aggregation="mean")
+    self.add_metric(hr_count, name="hr_count", aggregation="mean")
     return logits
 
 
-def _get_train_and_eval_data(producer, params):
-  """Returns the datasets for training and evalutating."""
+class LossLayer(tf.keras.layers.Layer):
+  """Pass-through loss layer for NCF model."""
 
-  def preprocess_train_input(features, labels):
-    """Pre-process the training data.
+  def __init__(self, loss_normalization_factor):
+    # The loss may overflow in float16, so we use float32 instead.
+    super(LossLayer, self).__init__(dtype="float32")
+    self.loss_normalization_factor = loss_normalization_factor
+    self.loss = tf.keras.losses.SparseCategoricalCrossentropy(
+        from_logits=True, reduction="sum")
 
-    This is needed because
-    - The label needs to be extended to be used in the loss fn
-    - We need the same inputs for training and eval so adding fake inputs
-      for DUPLICATE_MASK in training data.
-    """
-    labels = tf.expand_dims(labels, -1)
-    fake_dup_mask = tf.zeros_like(features[movielens.USER_COLUMN])
-    features[rconst.DUPLICATE_MASK] = fake_dup_mask
-    features[rconst.TRAIN_LABEL_KEY] = labels
-
-    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
-      return features
-    else:
-      # b/134708104
-      return (features,)
-
-  train_input_fn = producer.make_input_fn(is_training=True)
-  train_input_dataset = train_input_fn(params).map(
-      preprocess_train_input)
-
-  def preprocess_eval_input(features):
-    """Pre-process the eval data.
-
-    This is needed becasue:
-    - The label needs to be extended to be used in the loss fn
-    - We need the same inputs for training and eval so adding fake inputs
-      for VALID_PT_MASK in eval data.
-    """
-    labels = tf.cast(tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
-    labels = tf.expand_dims(labels, -1)
-    fake_valid_pt_mask = tf.cast(
-        tf.zeros_like(features[movielens.USER_COLUMN]), tf.bool)
-    features[rconst.VALID_POINT_MASK] = fake_valid_pt_mask
-    features[rconst.TRAIN_LABEL_KEY] = labels
-
-    if params["distribute_strategy"] or not ncf_common.is_tf_v2():
-      return features
-    else:
-      # b/134708104
-      return (features,)
-
-  eval_input_fn = producer.make_input_fn(is_training=False)
-  eval_input_dataset = eval_input_fn(params).map(
-      lambda features: preprocess_eval_input(features))
-
-  return train_input_dataset, eval_input_dataset
+  def call(self, inputs):
+    logits, labels, valid_pt_mask_input = inputs
+    loss = self.loss(
+        y_true=labels, y_pred=logits, sample_weight=valid_pt_mask_input)
+    loss = loss * (1.0 / self.loss_normalization_factor)
+    self.add_loss(loss)
+    return logits
 
 
 class IncrementEpochCallback(tf.keras.callbacks.Callback):
@@ -174,48 +149,24 @@ def _get_keras_model(params):
   """Constructs and returns the model."""
   batch_size = params["batch_size"]
 
-  # The input layers are of shape (1, batch_size), to match the size of the
-  # input data. The first dimension is needed because the input data are
-  # required to be batched to use distribution strategies, and in this case, it
-  # is designed to be of batch_size 1 for each replica.
   user_input = tf.keras.layers.Input(
-      shape=(batch_size,),
-      batch_size=params["batches_per_step"],
-      name=movielens.USER_COLUMN,
-      dtype=tf.int32)
+      shape=(1,), name=movielens.USER_COLUMN, dtype=tf.int32)
 
   item_input = tf.keras.layers.Input(
-      shape=(batch_size,),
-      batch_size=params["batches_per_step"],
-      name=movielens.ITEM_COLUMN,
-      dtype=tf.int32)
+      shape=(1,), name=movielens.ITEM_COLUMN, dtype=tf.int32)
 
   valid_pt_mask_input = tf.keras.layers.Input(
-      shape=(batch_size,),
-      batch_size=params["batches_per_step"],
-      name=rconst.VALID_POINT_MASK,
-      dtype=tf.bool)
+      shape=(1,), name=rconst.VALID_POINT_MASK, dtype=tf.bool)
 
   dup_mask_input = tf.keras.layers.Input(
-      shape=(batch_size,),
-      batch_size=params["batches_per_step"],
-      name=rconst.DUPLICATE_MASK,
-      dtype=tf.int32)
+      shape=(1,), name=rconst.DUPLICATE_MASK, dtype=tf.int32)
 
   label_input = tf.keras.layers.Input(
-      shape=(batch_size, 1),
-      batch_size=params["batches_per_step"],
-      name=rconst.TRAIN_LABEL_KEY,
-      dtype=tf.bool)
+      shape=(1,), name=rconst.TRAIN_LABEL_KEY, dtype=tf.bool)
 
-  base_model = neumf_model.construct_model(
-      user_input, item_input, params, need_strip=True)
+  base_model = neumf_model.construct_model(user_input, item_input, params)
 
-  base_model_output = base_model.output
-
-  logits = tf.keras.layers.Lambda(
-      lambda x: tf.expand_dims(x, 0),
-      name="logits")(base_model_output)
+  logits = base_model.output
 
   zeros = tf.keras.layers.Lambda(
       lambda x: x * 0)(logits)
@@ -224,7 +175,14 @@ def _get_keras_model(params):
       [zeros, logits],
       axis=-1)
 
-  softmax_logits = MetricLayer(params)([softmax_logits, dup_mask_input])
+  # Custom training loop calculates loss and metric as a part of
+  # training/evaluation step function.
+  if not params["keras_use_ctl"]:
+    softmax_logits = MetricLayer(params)([softmax_logits, dup_mask_input])
+    # TODO(b/134744680): Use model.add_loss() instead once the API is well
+    # supported.
+    softmax_logits = LossLayer(batch_size)(
+        [softmax_logits, label_input, valid_pt_mask_input])
 
   keras_model = tf.keras.Model(
       inputs={
@@ -235,15 +193,6 @@ def _get_keras_model(params):
           rconst.TRAIN_LABEL_KEY: label_input},
       outputs=softmax_logits)
 
-  loss_obj = tf.keras.losses.SparseCategoricalCrossentropy(
-      from_logits=True,
-      reduction="sum")
-
-  keras_model.add_loss(loss_obj(
-      y_true=label_input,
-      y_pred=softmax_logits,
-      sample_weight=valid_pt_mask_input) * 1.0 / batch_size)
-
   keras_model.summary()
   return keras_model
 
@@ -251,63 +200,72 @@ def _get_keras_model(params):
 def run_ncf(_):
   """Run NCF training and eval with Keras."""
 
+  keras_utils.set_session_config(enable_xla=FLAGS.enable_xla)
+
   if FLAGS.seed is not None:
     print("Setting tf seed")
     tf.random.set_seed(FLAGS.seed)
 
-  # TODO(seemuch): Support different train and eval batch sizes
-  if FLAGS.eval_batch_size != FLAGS.batch_size:
-    logging.warning(
-        "The Keras implementation of NCF currently does not support batch_size "
-        "!= eval_batch_size ({} vs. {}). Overriding eval_batch_size to match "
-        "batch_size".format(FLAGS.eval_batch_size, FLAGS.batch_size)
-        )
-    FLAGS.eval_batch_size = FLAGS.batch_size
+  model_helpers.apply_clean(FLAGS)
 
-  params = ncf_common.parse_flags(FLAGS)
+  if FLAGS.dtype == "fp16" and FLAGS.fp16_implementation == "keras":
+    policy = tf.keras.mixed_precision.experimental.Policy(
+        "mixed_float16",
+        loss_scale=flags_core.get_loss_scale(FLAGS, default_for_fp16="dynamic"))
+    tf.keras.mixed_precision.experimental.set_policy(policy)
 
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
-      num_gpus=FLAGS.num_gpus)
+      num_gpus=FLAGS.num_gpus,
+      tpu_address=FLAGS.tpu)
+
+  params = ncf_common.parse_flags(FLAGS)
   params["distribute_strategy"] = strategy
 
+  if not keras_utils.is_v2_0() and strategy is not None:
+    logging.error("NCF Keras only works with distribution strategy in TF 2.0")
+    return
   if (params["keras_use_ctl"] and (
-      not ncf_common.is_tf_v2() or strategy is None)):
+      not keras_utils.is_v2_0() or strategy is None)):
     logging.error(
         "Custom training loop only works with tensorflow 2.0 and dist strat.")
     return
+  if params["use_tpu"] and not params["keras_use_ctl"]:
+    logging.error("Custom training loop must be used when using TPUStrategy.")
+    return
 
-  # ncf_common rounds eval_batch_size (this is needed due to a reshape during
-  # eval). This carries over that rounding to batch_size as well. This is the
-  # per device batch size
-  params["batch_size"] = params["eval_batch_size"]
   batch_size = params["batch_size"]
+  time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
+  callbacks = [time_callback]
 
-  num_users, num_items, num_train_steps, num_eval_steps, producer = (
-      ncf_common.get_inputs(params))
+  producer, input_meta_data = None, None
+  generate_input_online = params["train_dataset_path"] is None
+
+  if generate_input_online:
+    # Start data producing thread.
+    num_users, num_items, _, _, producer = ncf_common.get_inputs(params)
+    producer.start()
+    per_epoch_callback = IncrementEpochCallback(producer)
+    callbacks.append(per_epoch_callback)
+  else:
+    assert params["eval_dataset_path"] and params["input_meta_data_path"]
+    with tf.io.gfile.GFile(params["input_meta_data_path"], "rb") as reader:
+      input_meta_data = json.loads(reader.read().decode("utf-8"))
+      num_users = input_meta_data["num_users"]
+      num_items = input_meta_data["num_items"]
 
   params["num_users"], params["num_items"] = num_users, num_items
-  producer.start()
-  model_helpers.apply_clean(flags.FLAGS)
-
-  batches_per_step = params["batches_per_step"]
-  train_input_dataset, eval_input_dataset = _get_train_and_eval_data(producer,
-                                                                     params)
-  # It is required that for distributed training, the dataset must call
-  # batch(). The parameter of batch() here is the number of replicas involed,
-  # such that each replica evenly gets a slice of data.
-  train_input_dataset = train_input_dataset.batch(batches_per_step)
-  eval_input_dataset = eval_input_dataset.batch(batches_per_step)
-
-  time_callback = keras_utils.TimeHistory(batch_size, FLAGS.log_steps)
-  per_epoch_callback = IncrementEpochCallback(producer)
-  callbacks = [per_epoch_callback, time_callback]
 
   if FLAGS.early_stopping:
     early_stopping_callback = CustomEarlyStopping(
         "val_HR_METRIC", desired_value=FLAGS.hr_threshold)
     callbacks.append(early_stopping_callback)
 
+  (train_input_dataset, eval_input_dataset,
+   num_train_steps, num_eval_steps) = \
+    (ncf_input_pipeline.create_ncf_input_data(
+        params, producer, input_meta_data, strategy))
+  steps_per_epoch = None if generate_input_online else num_train_steps
 
   with distribution_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
@@ -316,112 +274,255 @@ def run_ncf(_):
         beta_1=params["beta1"],
         beta_2=params["beta2"],
         epsilon=params["epsilon"])
+    if FLAGS.fp16_implementation == "graph_rewrite":
+      optimizer = \
+        tf.compat.v1.train.experimental.enable_mixed_precision_graph_rewrite(
+            optimizer,
+            loss_scale=flags_core.get_loss_scale(FLAGS,
+                                                 default_for_fp16="dynamic"))
+    elif FLAGS.dtype == "fp16" and params["keras_use_ctl"]:
+      # When keras_use_ctl is False, instead Model.fit() automatically applies
+      # loss scaling so we don't need to create a LossScaleOptimizer.
+      optimizer = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+          optimizer,
+          tf.keras.mixed_precision.experimental.global_policy().loss_scale)
 
-  if params["keras_use_ctl"]:
-    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
-        reduction=tf.keras.losses.Reduction.SUM,
-        from_logits=True)
-    train_input_iterator = strategy.make_dataset_iterator(train_input_dataset)
-    eval_input_iterator = strategy.make_dataset_iterator(eval_input_dataset)
+    if params["keras_use_ctl"]:
+      train_loss, eval_results = run_ncf_custom_training(
+          params,
+          strategy,
+          keras_model,
+          optimizer,
+          callbacks,
+          train_input_dataset,
+          eval_input_dataset,
+          num_train_steps,
+          num_eval_steps,
+          generate_input_online=generate_input_online)
+    else:
+      # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
+      # a valid arg for this model. Also remove as a valid flag.
+      if FLAGS.force_v2_in_keras_compile is not None:
+        keras_model.compile(
+            optimizer=optimizer,
+            run_eagerly=FLAGS.run_eagerly,
+            experimental_run_tf_function=FLAGS.force_v2_in_keras_compile)
+      else:
+        keras_model.compile(optimizer=optimizer, run_eagerly=FLAGS.run_eagerly)
 
-    @tf.function
-    def train_step():
-      """Called once per step to train the model."""
-      def step_fn(features):
-        """Computes loss and applied gradient per replica."""
-        with tf.GradientTape() as tape:
-          softmax_logits = keras_model(features)
-          labels = features[rconst.TRAIN_LABEL_KEY]
-          loss = loss_object(labels, softmax_logits,
-                             sample_weight=features[rconst.VALID_POINT_MASK])
-          loss *= (1.0 / (batch_size*strategy.num_replicas_in_sync))
+      if not FLAGS.ml_perf:
+        # Create Tensorboard summary and checkpoint callbacks.
+        summary_dir = os.path.join(FLAGS.model_dir, "summaries")
+        summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)
+        checkpoint_path = os.path.join(FLAGS.model_dir, "checkpoint")
+        checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path, save_weights_only=True)
 
-        grads = tape.gradient(loss, keras_model.trainable_variables)
-        optimizer.apply_gradients(list(zip(grads,
-                                           keras_model.trainable_variables)))
-        return loss
+        callbacks += [summary_callback, checkpoint_callback]
 
-      per_replica_losses = strategy.experimental_run(step_fn,
-                                                     train_input_iterator)
-      mean_loss = strategy.reduce(
-          tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
-      return mean_loss
-
-    @tf.function
-    def eval_step():
-      """Called once per eval step to compute eval metrics."""
-      def step_fn(features):
-        """Computes eval metrics per replica."""
-        softmax_logits = keras_model(features)
-        in_top_k, metric_weights = metric_fn(
-            softmax_logits, features[rconst.DUPLICATE_MASK], params)
-        hr_sum = tf.reduce_sum(in_top_k*metric_weights)
-        hr_count = tf.reduce_sum(metric_weights)
-        return hr_sum, hr_count
-
-      per_replica_hr_sum, per_replica_hr_count = (
-          strategy.experimental_run(step_fn, eval_input_iterator))
-      hr_sum = strategy.reduce(
-          tf.distribute.ReduceOp.SUM, per_replica_hr_sum, axis=None)
-      hr_count = strategy.reduce(
-          tf.distribute.ReduceOp.SUM, per_replica_hr_count, axis=None)
-      return hr_sum, hr_count
-
-    time_callback.on_train_begin()
-    for epoch in range(FLAGS.train_epochs):
-      per_epoch_callback.on_epoch_begin(epoch)
-      train_input_iterator.initialize()
-      train_loss = 0
-      for step in range(num_train_steps):
-        time_callback.on_batch_begin(step+epoch*num_train_steps)
-        train_loss += train_step()
-        time_callback.on_batch_end(step+epoch*num_train_steps)
-      train_loss /= num_train_steps
-      logging.info("Done training epoch %s, epoch loss=%s.",
-                   epoch+1, train_loss)
-      eval_input_iterator.initialize()
-      hr_sum = 0
-      hr_count = 0
-      for _ in range(num_eval_steps):
-        step_hr_sum, step_hr_count = eval_step()
-        hr_sum += step_hr_sum
-        hr_count += step_hr_count
-      logging.info("Done eval epoch %s, hr=%s.", epoch+1, hr_sum/hr_count)
-
-      if (FLAGS.early_stopping and
-          float(hr_sum/hr_count) > params["hr_threshold"]):
-        break
-
-    time_callback.on_train_end()
-    eval_results = [None, hr_sum/hr_count]
-
-  else:
-    with distribution_utils.get_strategy_scope(strategy):
-
-      keras_model.compile(optimizer=optimizer)
-
-      history = keras_model.fit(train_input_dataset,
-                                epochs=FLAGS.train_epochs,
-                                callbacks=callbacks,
-                                validation_data=eval_input_dataset,
-                                validation_steps=num_eval_steps,
-                                verbose=2)
+      history = keras_model.fit(
+          train_input_dataset,
+          epochs=FLAGS.train_epochs,
+          steps_per_epoch=steps_per_epoch,
+          callbacks=callbacks,
+          validation_data=eval_input_dataset,
+          validation_steps=num_eval_steps,
+          verbose=2)
 
       logging.info("Training done. Start evaluating")
 
-      eval_results = keras_model.evaluate(
-          eval_input_dataset,
-          steps=num_eval_steps,
-          verbose=2)
+      eval_loss_and_metrics = keras_model.evaluate(
+          eval_input_dataset, steps=num_eval_steps, verbose=2)
 
       logging.info("Keras evaluation is done.")
 
-    if history and history.history:
-      train_history = history.history
-      train_loss = train_history["loss"][-1]
+      # Keras evaluate() API returns scalar loss and metric values from
+      # evaluation as a list. Here, the returned list would contain
+      # [evaluation loss, hr sum, hr count].
+      eval_hit_rate = eval_loss_and_metrics[1] / eval_loss_and_metrics[2]
+
+      # Format evaluation result into [eval loss, eval hit accuracy].
+      eval_results = [eval_loss_and_metrics[0], eval_hit_rate]
+
+      if history and history.history:
+        train_history = history.history
+        train_loss = train_history["loss"][-1]
 
   stats = build_stats(train_loss, eval_results, time_callback)
   return stats
+
+
+def run_ncf_custom_training(params,
+                            strategy,
+                            keras_model,
+                            optimizer,
+                            callbacks,
+                            train_input_dataset,
+                            eval_input_dataset,
+                            num_train_steps,
+                            num_eval_steps,
+                            generate_input_online=True):
+  """Runs custom training loop.
+
+  Args:
+    params: Dictionary containing training parameters.
+    strategy: Distribution strategy to be used for distributed training.
+    keras_model: Model used for training.
+    optimizer: Optimizer used for training.
+    callbacks: Callbacks to be invoked between batches/epochs.
+    train_input_dataset: tf.data.Dataset used for training.
+    eval_input_dataset: tf.data.Dataset used for evaluation.
+    num_train_steps: Total number of steps to run for training.
+    num_eval_steps: Total number of steps to run for evaluation.
+    generate_input_online: Whether input data was generated by data producer.
+      When data is generated by data producer, then train dataset must be
+      re-initialized after every epoch.
+
+  Returns:
+    A tuple of train loss and a list of training and evaluation results.
+  """
+  loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
+      reduction="sum", from_logits=True)
+  train_input_iterator = iter(
+      strategy.experimental_distribute_dataset(train_input_dataset))
+
+  def train_step(train_iterator):
+    """Called once per step to train the model."""
+
+    def step_fn(features):
+      """Computes loss and applied gradient per replica."""
+      with tf.GradientTape() as tape:
+        softmax_logits = keras_model(features)
+        # The loss can overflow in float16, so we cast to float32.
+        softmax_logits = tf.cast(softmax_logits, "float32")
+        labels = features[rconst.TRAIN_LABEL_KEY]
+        loss = loss_object(
+            labels,
+            softmax_logits,
+            sample_weight=features[rconst.VALID_POINT_MASK])
+        loss *= (1.0 / params["batch_size"])
+        if FLAGS.dtype == "fp16":
+          loss = optimizer.get_scaled_loss(loss)
+
+      grads = tape.gradient(loss, keras_model.trainable_variables)
+      if FLAGS.dtype == "fp16":
+        grads = optimizer.get_unscaled_gradients(grads)
+      # Converting gradients to dense form helps in perf on GPU for NCF
+      grads = neumf_model.sparse_to_dense_grads(
+          list(zip(grads, keras_model.trainable_variables)))
+      optimizer.apply_gradients(grads)
+      return loss
+
+    per_replica_losses = strategy.experimental_run_v2(
+        step_fn, args=(next(train_iterator),))
+    mean_loss = strategy.reduce(
+        tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+    return mean_loss
+
+  def eval_step(eval_iterator):
+    """Called once per eval step to compute eval metrics."""
+
+    def step_fn(features):
+      """Computes eval metrics per replica."""
+      softmax_logits = keras_model(features)
+      in_top_k, metric_weights = metric_fn(softmax_logits,
+                                           features[rconst.DUPLICATE_MASK],
+                                           params)
+      hr_sum = tf.reduce_sum(in_top_k * metric_weights)
+      hr_count = tf.reduce_sum(metric_weights)
+      return hr_sum, hr_count
+
+    per_replica_hr_sum, per_replica_hr_count = (
+        strategy.experimental_run_v2(
+            step_fn, args=(next(eval_iterator),)))
+    hr_sum = strategy.reduce(
+        tf.distribute.ReduceOp.SUM, per_replica_hr_sum, axis=None)
+    hr_count = strategy.reduce(
+        tf.distribute.ReduceOp.SUM, per_replica_hr_count, axis=None)
+    return hr_sum, hr_count
+
+  if not FLAGS.run_eagerly:
+    train_step = tf.function(train_step)
+    eval_step = tf.function(eval_step)
+
+  for callback in callbacks:
+    callback.on_train_begin()
+
+  # Not writing tensorboard summaries if running in MLPerf.
+  if FLAGS.ml_perf:
+    eval_summary_writer, train_summary_writer = None, None
+  else:
+    summary_dir = os.path.join(FLAGS.model_dir, "summaries")
+    eval_summary_writer = tf.summary.create_file_writer(
+        os.path.join(summary_dir, "eval"))
+    train_summary_writer = tf.summary.create_file_writer(
+        os.path.join(summary_dir, "train"))
+
+  train_loss = 0
+  for epoch in range(FLAGS.train_epochs):
+    for cb in callbacks:
+      cb.on_epoch_begin(epoch)
+
+    # As NCF dataset is sampled with randomness, not repeating
+    # data elements in each epoch has significant impact on
+    # convergence. As so, offline-generated TF record files
+    # contains all epoch worth of data. Thus we do not need
+    # to initialize dataset when reading from tf record files.
+    if generate_input_online:
+      train_input_iterator = iter(
+          strategy.experimental_distribute_dataset(train_input_dataset))
+
+    train_loss = 0
+    for step in range(num_train_steps):
+      current_step = step + epoch * num_train_steps
+      for c in callbacks:
+        c.on_batch_begin(current_step)
+
+      train_loss += train_step(train_input_iterator)
+
+      # Write train loss once in every 1000 steps.
+      if train_summary_writer and step % 1000 == 0:
+        with train_summary_writer.as_default():
+          tf.summary.scalar("training_loss", train_loss/(step + 1),
+                            step=current_step)
+
+      for c in callbacks:
+        c.on_batch_end(current_step)
+
+    train_loss /= num_train_steps
+    logging.info("Done training epoch %s, epoch loss=%s.", epoch + 1,
+                 train_loss)
+
+    eval_input_iterator = iter(
+        strategy.experimental_distribute_dataset(eval_input_dataset))
+    hr_sum = 0
+    hr_count = 0
+    for _ in range(num_eval_steps):
+      step_hr_sum, step_hr_count = eval_step(eval_input_iterator)
+      hr_sum += step_hr_sum
+      hr_count += step_hr_count
+
+    logging.info("Done eval epoch %s, hit_rate=%s.", epoch + 1,
+                 hr_sum / hr_count)
+    if eval_summary_writer:
+      with eval_summary_writer.as_default():
+        tf.summary.scalar("hit_rate", hr_sum / hr_count, step=current_step)
+
+    if (FLAGS.early_stopping and
+        float(hr_sum / hr_count) > params["hr_threshold"]):
+      break
+
+  for c in callbacks:
+    c.on_train_end()
+
+  # Saving the model at the end of training.
+  if not FLAGS.ml_perf:
+    checkpoint = tf.train.Checkpoint(model=keras_model, optimizer=optimizer)
+    checkpoint_path = os.path.join(FLAGS.model_dir, "ctl_checkpoint")
+    checkpoint.save(checkpoint_path)
+    logging.info("Saving model as TF checkpoint: %s", checkpoint_path)
+
+  return train_loss, [None, hr_sum / hr_count]
 
 
 def build_stats(loss, eval_result, time_callback):
@@ -461,11 +562,9 @@ def main(_):
   with logger.benchmark_context(FLAGS), \
       mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
     mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
-    if FLAGS.tpu:
-      raise ValueError("NCF in Keras does not support TPU for now")
     run_ncf(FLAGS)
 
 
 if __name__ == "__main__":
   ncf_common.define_ncf_flags()
-  absl_app.run(main)
+  app.run(main)

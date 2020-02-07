@@ -30,6 +30,7 @@ class PostProcessingBuilderTest(tf.test.TestCase):
         iou_threshold: 0.6
         max_detections_per_class: 100
         max_total_detections: 300
+        soft_nms_sigma: 0.4
       }
     """
     post_processing_config = post_processing_pb2.PostProcessing()
@@ -40,6 +41,7 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     self.assertEqual(non_max_suppressor.keywords['max_total_size'], 300)
     self.assertAlmostEqual(non_max_suppressor.keywords['score_thresh'], 0.7)
     self.assertAlmostEqual(non_max_suppressor.keywords['iou_thresh'], 0.6)
+    self.assertAlmostEqual(non_max_suppressor.keywords['soft_nms_sigma'], 0.4)
 
   def test_build_non_max_suppressor_with_correct_parameters_classagnostic_nms(
       self):
@@ -158,6 +160,26 @@ class PostProcessingBuilderTest(tf.test.TestCase):
       expected_calibrated_scores = sess.run(tf.constant([0.5, 0.5], tf.float32))
       self.assertAllClose(calibrated_scores, expected_calibrated_scores)
 
+  def test_build_temperature_scaling_calibrator(self):
+    post_processing_text_proto = """
+      score_converter: SOFTMAX
+      calibration_config {
+        temperature_scaling_calibration {
+          scaler: 2.0
+          }}"""
+    post_processing_config = post_processing_pb2.PostProcessing()
+    text_format.Merge(post_processing_text_proto, post_processing_config)
+    _, calibrated_score_conversion_fn = post_processing_builder.build(
+        post_processing_config)
+    self.assertEqual(calibrated_score_conversion_fn.__name__,
+                     'calibrate_with_temperature_scaling_calibration')
+
+    input_scores = tf.constant([1, 1], tf.float32)
+    outputs = calibrated_score_conversion_fn(input_scores)
+    with self.test_session() as sess:
+      calibrated_scores = sess.run(outputs)
+      expected_calibrated_scores = sess.run(tf.constant([0.5, 0.5], tf.float32))
+      self.assertAllClose(calibrated_scores, expected_calibrated_scores)
 
 if __name__ == '__main__':
   tf.test.main()

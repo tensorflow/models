@@ -5,6 +5,7 @@ package object_detection.protos;
 // Message to configure graph rewriter for the tf graph.
 message GraphRewriter {
   optional Quantization quantization = 1;
+  extensions 1000 to max;
 }
 
 // Message for quantization options. See

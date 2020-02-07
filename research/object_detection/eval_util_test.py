@@ -20,6 +20,9 @@ from __future__ import print_function
 
 from absl.testing import parameterized
 
+import numpy as np
+import six
+from six.moves import range
 import tensorflow as tf
 
 from object_detection import eval_util
@@ -113,7 +116,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op)
       metrics = sess.run(metrics)
@@ -142,7 +145,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)
@@ -173,7 +176,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)
@@ -251,6 +254,56 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     self.assertFalse(evaluator[0]._include_metrics_per_category)
     self.assertAlmostEqual(evaluator[1]._recall_lower_bound, 0.0)
     self.assertAlmostEqual(evaluator[1]._recall_upper_bound, 1.0)
+
+  def test_padded_image_result_dict(self):
+
+    input_data_fields = fields.InputDataFields
+    detection_fields = fields.DetectionResultFields
+    key = tf.constant([str(i) for i in range(2)])
+
+    detection_boxes = np.array([[[0., 0., 1., 1.]], [[0.0, 0.0, 0.5, 0.5]]],
+                               dtype=np.float32)
+    detections = {
+        detection_fields.detection_boxes:
+            tf.constant(detection_boxes),
+        detection_fields.detection_scores:
+            tf.constant([[1.], [1.]]),
+        detection_fields.detection_classes:
+            tf.constant([[1], [2]]),
+        detection_fields.num_detections:
+            tf.constant([1, 1])
+    }
+
+    gt_boxes = detection_boxes
+    groundtruth = {
+        input_data_fields.groundtruth_boxes:
+            tf.constant(gt_boxes),
+        input_data_fields.groundtruth_classes:
+            tf.constant([[1.], [1.]]),
+    }
+
+    image = tf.zeros((2, 100, 100, 3), dtype=tf.float32)
+
+    true_image_shapes = tf.constant([[100, 100, 3], [50, 100, 3]])
+    original_image_spatial_shapes = tf.constant([[200, 200], [150, 300]])
+
+    result = eval_util.result_dict_for_batched_example(
+        image, key, detections, groundtruth,
+        scale_to_absolute=True,
+        true_image_shapes=true_image_shapes,
+        original_image_spatial_shapes=original_image_spatial_shapes,
+        max_gt_boxes=tf.constant(1))
+
+    with self.test_session() as sess:
+      result = sess.run(result)
+      self.assertAllEqual(
+          [[[0., 0., 200., 200.]], [[0.0, 0.0, 150., 150.]]],
+          result[input_data_fields.groundtruth_boxes])
+
+      # Predictions from the model are not scaled.
+      self.assertAllEqual(
+          [[[0., 0., 200., 200.]], [[0.0, 0.0, 75., 150.]]],
+          result[detection_fields.detection_boxes])
 
 
 if __name__ == '__main__':

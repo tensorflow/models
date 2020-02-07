@@ -95,6 +95,12 @@ PREPROCESSING_FUNCTION_MAP = {
         preprocessor.random_crop_to_aspect_ratio,
     'random_black_patches':
         preprocessor.random_black_patches,
+    'random_jpeg_quality':
+        preprocessor.random_jpeg_quality,
+    'random_downscale_to_target_pixels':
+        preprocessor.random_downscale_to_target_pixels,
+    'random_patch_gaussian':
+        preprocessor.random_patch_gaussian,
     'rgb_to_gray':
         preprocessor.rgb_to_gray,
     'scale_boxes_to_pixel_coordinates': (
@@ -296,6 +302,26 @@ def build(preprocessor_step_config):
                   'random_coef': random_coef,
               })
     return (preprocessor.ssd_random_crop, {})
+
+  if step_type == 'autoaugment_image':
+    config = preprocessor_step_config.autoaugment_image
+    return (preprocessor.autoaugment_image, {
+        'policy_name': config.policy_name,
+    })
+
+  if step_type == 'drop_label_probabilistically':
+    config = preprocessor_step_config.drop_label_probabilistically
+    return (preprocessor.drop_label_probabilistically, {
+        'dropped_label': config.label,
+        'drop_probability': config.drop_probability,
+    })
+
+  if step_type == 'remap_labels':
+    config = preprocessor_step_config.remap_labels
+    return (preprocessor.remap_labels, {
+        'original_labels': config.original_labels,
+        'new_label': config.new_label
+    })
 
   if step_type == 'ssd_random_crop_pad':
     config = preprocessor_step_config.ssd_random_crop_pad

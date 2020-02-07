@@ -89,6 +89,8 @@ class QuantizableUtilsTest(tf.test.TestCase):
     op_names = [op.name for op in graph.get_operations()]
     self.assertTrue(any('AssignMinEma' in name for name in op_names))
     self.assertTrue(any('AssignMaxEma' in name for name in op_names))
+    self.assertTrue(any('SafeQuantRangeMin' in name for name in op_names))
+    self.assertTrue(any('SafeQuantRangeMax' in name for name in op_names))
 
   def _check_no_min_max_vars(self, graph):
     op_types = [op.type for op in graph.get_operations()]
@@ -99,6 +101,8 @@ class QuantizableUtilsTest(tf.test.TestCase):
     op_names = [op.name for op in graph.get_operations()]
     self.assertFalse(any('AssignMinEma' in name for name in op_names))
     self.assertFalse(any('AssignMaxEma' in name for name in op_names))
+    self.assertFalse(any('SafeQuantRangeMin' in name for name in op_names))
+    self.assertFalse(any('SafeQuantRangeMax' in name for name in op_names))
 
 
 class QuantizableSeparableConv2dTest(tf.test.TestCase):

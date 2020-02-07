@@ -24,6 +24,8 @@ import random
 import string
 import tensorflow as tf
 
+from official.utils.misc import tpu_lib
+
 
 def _collective_communication(all_reduce_alg):
   """Return a CollectiveCommunication based on all_reduce_alg.
@@ -79,22 +81,20 @@ def _mirrored_cross_device_ops(all_reduce_alg, num_packs):
   return cross_device_ops_class(num_packs=num_packs)
 
 
-def get_distribution_strategy(distribution_strategy="default",
+def get_distribution_strategy(distribution_strategy="mirrored",
                               num_gpus=0,
-                              num_workers=1,
                               all_reduce_alg=None,
-                              num_packs=1):
+                              num_packs=1,
+                              tpu_address=None):
   """Return a DistributionStrategy for running the model.
 
   Args:
     distribution_strategy: a string specifying which distribution strategy to
-      use. Accepted values are 'off', 'default', 'one_device', 'mirrored',
-      'parameter_server', 'multi_worker_mirrored', case insensitive. 'off' means
-      not to use Distribution Strategy; 'default' means to choose from
-      `MirroredStrategy`, `MultiWorkerMirroredStrategy`, or `OneDeviceStrategy`
-      according to the number of GPUs and number of workers.
+      use. Accepted values are 'off', 'one_device', 'mirrored',
+      'parameter_server', 'multi_worker_mirrored', and 'tpu' -- case insensitive.
+      'off' means not to use Distribution Strategy; 'tpu' means to use
+      TPUStrategy using `tpu_address`.
     num_gpus: Number of GPUs to run this model.
-    num_workers: Number of workers to run this model.
     all_reduce_alg: Optional. Specifies which algorithm to use when performing
       all-reduce. For `MirroredStrategy`, valid values are "nccl" and
       "hierarchical_copy". For `MultiWorkerMirroredStrategy`, valid values are
@@ -102,41 +102,45 @@ def get_distribution_strategy(distribution_strategy="default",
       device topology.
     num_packs: Optional.  Sets the `num_packs` in `tf.distribute.NcclAllReduce`
       or `tf.distribute.HierarchicalCopyAllReduce` for `MirroredStrategy`.
-
+    tpu_address: Optional. String that represents TPU to connect to. Must not
+      be None if `distribution_strategy` is set to `tpu`.
   Returns:
     tf.distribute.DistibutionStrategy object.
   Raises:
     ValueError: if `distribution_strategy` is 'off' or 'one_device' and
-      `num_gpus` is larger than 1; or `num_gpus` is negative.
+      `num_gpus` is larger than 1; or `num_gpus` is negative or if
+      `distribution_strategy` is `tpu` but `tpu_address` is not specified.
   """
   if num_gpus < 0:
     raise ValueError("`num_gpus` can not be negative.")
 
   distribution_strategy = distribution_strategy.lower()
   if distribution_strategy == "off":
-    if num_gpus > 1 or num_workers > 1:
+    if num_gpus > 1:
       raise ValueError(
-          "When {} GPUs and  {} workers are specified, distribution_strategy "
-          "flag cannot be set to 'off'.".format(num_gpus, num_workers))
+          "When {} GPUs are specified, distribution_strategy "
+          "flag cannot be set to 'off'.".format(num_gpus))
     return None
 
-  if distribution_strategy == "multi_worker_mirrored" or num_workers > 1:
+  if distribution_strategy == "tpu":
+    # When tpu_address is an empty string, we communicate with local TPUs.
+    cluster_resolver = tpu_lib.tpu_initialize(tpu_address)
+    return tf.distribute.experimental.TPUStrategy(cluster_resolver)
+
+  if distribution_strategy == "multi_worker_mirrored":
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(
         communication=_collective_communication(all_reduce_alg))
 
-  if (distribution_strategy == "one_device" or
-      (distribution_strategy == "default" and num_gpus <= 1)):
+  if distribution_strategy == "one_device":
     if num_gpus == 0:
       return tf.distribute.OneDeviceStrategy("device:CPU:0")
-    else:
-      if num_gpus > 1:
-        raise ValueError("`OneDeviceStrategy` can not be used for more than "
-                         "one device.")
-      return tf.distribute.OneDeviceStrategy("device:GPU:0")
+    if num_gpus > 1:
+      raise ValueError("`OneDeviceStrategy` can not be used for more than "
+                       "one device.")
+    return tf.distribute.OneDeviceStrategy("device:GPU:0")
 
-  if distribution_strategy in ("mirrored", "default"):
+  if distribution_strategy == "mirrored":
     if num_gpus == 0:
-      assert distribution_strategy == "mirrored"
       devices = ["device:CPU:0"]
     else:
       devices = ["device:GPU:%d" % i for i in range(num_gpus)]
@@ -190,24 +194,53 @@ class SyntheticDataset(object):
   """A dataset that generates synthetic data on each device."""
 
   def __init__(self, dataset, split_by=1):
-    self._input_data = {}
     # dataset.take(1) doesn't have GPU kernel.
     with tf.device('device:CPU:0'):
       tensor = tf.data.experimental.get_single_element(dataset.take(1))
     flat_tensor = tf.nest.flatten(tensor)
     variable_data = []
-    self._initializers = []
+    initializers = []
     for t in flat_tensor:
       rebatched_t = tf.split(t, num_or_size_splits=split_by, axis=0)[0]
       assert rebatched_t.shape.is_fully_defined(), rebatched_t.shape
-      v = tf.compat.v1.get_local_variable(self.random_name(),
+      v = tf.compat.v1.get_local_variable(self._random_name(),
                                           initializer=rebatched_t)
       variable_data.append(v)
-      self._initializers.append(v.initializer)
-    self._input_data = tf.nest.pack_sequence_as(tensor, variable_data)
+      initializers.append(v.initializer)
+    input_data = tf.nest.pack_sequence_as(tensor, variable_data)
+    self._iterator = SyntheticIterator(input_data, initializers)
+
+  def _random_name(self, size=10, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+  def __iter__(self):
+    return self._iterator
+
+  def make_one_shot_iterator(self):
+    return self._iterator
+
+  def make_initializable_iterator(self):
+    return self._iterator
+
+
+class SyntheticIterator(object):
+  """A dataset that generates synthetic data on each device."""
+
+  def __init__(self, input_data, initializers):
+    self._input_data = input_data
+    self._initializers = initializers
 
   def get_next(self):
     return self._input_data
+
+  def next(self):
+    return self.__next__()
+
+  def __next__(self):
+    try:
+      return self.get_next()
+    except tf.errors.OutOfRangeError:
+      raise StopIteration
 
   def initialize(self):
     if tf.executing_eagerly():
@@ -215,13 +248,10 @@ class SyntheticDataset(object):
     else:
       return self._initializers
 
-  def random_name(self, size=10, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
-
 
 def _monkey_patch_dataset_method(strategy):
   """Monkey-patch `strategy`'s `make_dataset_iterator` method."""
-  def make_dataset_iterator(self, dataset):
+  def make_dataset(self, dataset):
     tf.compat.v1.logging.info('Using pure synthetic data.')
     with self.scope():
       if self.extended._global_batch_size:  # pylint: disable=protected-access
@@ -229,35 +259,35 @@ def _monkey_patch_dataset_method(strategy):
       else:
         return SyntheticDataset(dataset)
 
-  strategy.org_make_dataset_iterator = strategy.make_dataset_iterator
-  strategy.make_dataset_iterator = make_dataset_iterator
+  def make_iterator(self, dataset):
+    dist_dataset = make_dataset(self, dataset)
+    return iter(dist_dataset)
+
+  strategy.orig_make_dataset_iterator = strategy.make_dataset_iterator
+  strategy.make_dataset_iterator = make_iterator
+  strategy.orig_distribute_dataset = strategy.experimental_distribute_dataset
+  strategy.experimental_distribute_dataset = make_dataset
 
 
 def _undo_monkey_patch_dataset_method(strategy):
-  if hasattr(strategy, 'org_make_dataset_iterator'):
-    strategy.make_dataset_iterator = strategy.org_make_dataset_iterator
+  if hasattr(strategy, 'orig_make_dataset_iterator'):
+    strategy.make_dataset_iterator = strategy.orig_make_dataset_iterator
+  if hasattr(strategy, 'orig_distribute_dataset'):
+    strategy.make_dataset_iterator = strategy.orig_distribute_dataset
 
 
 def set_up_synthetic_data():
   _monkey_patch_dataset_method(tf.distribute.OneDeviceStrategy)
   _monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
-  # TODO(tobyboyd): Remove when contrib.distribute is all in core.
-  if hasattr(tf, 'contrib'):
-    _monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
-    _monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
-  else:
-    print('Contrib missing: Skip monkey patch tf.contrib.distribute.*')
+  _monkey_patch_dataset_method(
+      tf.distribute.experimental.MultiWorkerMirroredStrategy)
 
 
 def undo_set_up_synthetic_data():
   _undo_monkey_patch_dataset_method(tf.distribute.OneDeviceStrategy)
   _undo_monkey_patch_dataset_method(tf.distribute.MirroredStrategy)
-  # TODO(tobyboyd): Remove when contrib.distribute is all in core.
-  if hasattr(tf, 'contrib'):
-    _undo_monkey_patch_dataset_method(tf.contrib.distribute.MirroredStrategy)
-    _undo_monkey_patch_dataset_method(tf.contrib.distribute.OneDeviceStrategy)
-  else:
-    print('Contrib missing: Skip remove monkey patch tf.contrib.distribute.*')
+  _undo_monkey_patch_dataset_method(
+      tf.distribute.experimental.MultiWorkerMirroredStrategy)
 
 
 def configure_cluster(worker_hosts=None, task_index=-1):

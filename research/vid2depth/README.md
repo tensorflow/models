@@ -50,7 +50,7 @@ git clone --depth 1 https://github.com/tensorflow/models.git
 ```shell
 mkdir -p ~/vid2depth/kitti-raw-uncompressed
 cd ~/vid2depth/kitti-raw-uncompressed
-wget https://github.com/mrharicot/monodepth/blob/master/utils/kitti_archives_to_download.txt
+wget https://raw.githubusercontent.com/mrharicot/monodepth/master/utils/kitti_archives_to_download.txt
 wget -i kitti_archives_to_download.txt
 unzip "*.zip"
 ```

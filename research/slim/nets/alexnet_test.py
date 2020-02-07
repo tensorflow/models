@@ -18,10 +18,11 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from nets import alexnet
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class AlexnetV2Test(tf.test.TestCase):
@@ -31,7 +32,7 @@ class AlexnetV2Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = alexnet.alexnet_v2(inputs, num_classes)
       self.assertEquals(logits.op.name, 'alexnet_v2/fc8/squeezed')
       self.assertListEqual(logits.get_shape().as_list(),
@@ -42,7 +43,7 @@ class AlexnetV2Test(tf.test.TestCase):
     height, width = 300, 400
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = alexnet.alexnet_v2(inputs, num_classes, spatial_squeeze=False)
       self.assertEquals(logits.op.name, 'alexnet_v2/fc8/BiasAdd')
       self.assertListEqual(logits.get_shape().as_list(),
@@ -53,7 +54,7 @@ class AlexnetV2Test(tf.test.TestCase):
     height, width = 256, 256
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = alexnet.alexnet_v2(inputs, num_classes, spatial_squeeze=False,
                                      global_pool=True)
       self.assertEquals(logits.op.name, 'alexnet_v2/fc8/BiasAdd')
@@ -65,7 +66,7 @@ class AlexnetV2Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       _, end_points = alexnet.alexnet_v2(inputs, num_classes)
       expected_names = ['alexnet_v2/conv1',
                         'alexnet_v2/pool1',
@@ -86,7 +87,7 @@ class AlexnetV2Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = None
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       net, end_points = alexnet.alexnet_v2(inputs, num_classes)
       expected_names = ['alexnet_v2/conv1',
                         'alexnet_v2/pool1',
@@ -109,7 +110,7 @@ class AlexnetV2Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       alexnet.alexnet_v2(inputs, num_classes)
       expected_names = ['alexnet_v2/conv1/weights',
                         'alexnet_v2/conv1/biases',
@@ -136,11 +137,11 @@ class AlexnetV2Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     with self.test_session():
-      eval_inputs = tf.random_uniform((batch_size, height, width, 3))
+      eval_inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = alexnet.alexnet_v2(eval_inputs, is_training=False)
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, num_classes])
-      predictions = tf.argmax(logits, 1)
+      predictions = tf.argmax(input=logits, axis=1)
       self.assertListEqual(predictions.get_shape().as_list(), [batch_size])
 
   def testTrainEvalWithReuse(self):
@@ -150,29 +151,29 @@ class AlexnetV2Test(tf.test.TestCase):
     eval_height, eval_width = 300, 400
     num_classes = 1000
     with self.test_session():
-      train_inputs = tf.random_uniform(
+      train_inputs = tf.random.uniform(
           (train_batch_size, train_height, train_width, 3))
       logits, _ = alexnet.alexnet_v2(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.get_variable_scope().reuse_variables()
-      eval_inputs = tf.random_uniform(
+      tf.compat.v1.get_variable_scope().reuse_variables()
+      eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = alexnet.alexnet_v2(eval_inputs, is_training=False,
                                      spatial_squeeze=False)
       self.assertListEqual(logits.get_shape().as_list(),
                            [eval_batch_size, 4, 7, num_classes])
-      logits = tf.reduce_mean(logits, [1, 2])
-      predictions = tf.argmax(logits, 1)
+      logits = tf.reduce_mean(input_tensor=logits, axis=[1, 2])
+      predictions = tf.argmax(input=logits, axis=1)
       self.assertEquals(predictions.get_shape().as_list(), [eval_batch_size])
 
   def testForward(self):
     batch_size = 1
     height, width = 224, 224
     with self.test_session() as sess:
-      inputs = tf.random_uniform((batch_size, height, width, 3))
+      inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = alexnet.alexnet_v2(inputs)
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 

@@ -78,7 +78,7 @@ Extras:
   * <a href='g3doc/instance_segmentation.md'>
       Run an instance segmentation model</a><br>
   * <a href='g3doc/challenge_evaluation.md'>
-      Run the evaluation for the Open Images Challenge 2018</a><br>
+      Run the evaluation for the Open Images Challenge 2018/2019</a><br>
   * <a href='g3doc/tpu_compatibility.md'>
       TPU compatible detection pipelines</a><br>
   * <a href='g3doc/running_on_mobile_tensorflowlite.md'>
@@ -101,9 +101,51 @@ reporting an issue.
 
 ## Release information
 
+### Nov 13th, 2019
+We have released MobileNetEdgeTPU SSDLite model.
+
+* SSDLite with MobileNetEdgeTPU backbone, which achieves 10% mAP higher than
+MobileNetV2 SSDLite (24.3 mAP vs 22 mAP) on a Google Pixel4 at comparable
+latency (6.6ms vs 6.8ms).
+
+Along with the model definition, we are also releasing model checkpoints
+trained on the COCO dataset.
+
+<b>Thanks to contributors</b>: Yunyang Xiong, Bo Chen, Suyog Gupta, Hanxiao Liu,
+Gabriel Bender, Mingxing Tan, Berkin Akin, Zhichao Lu, Quoc Le
+
+### Oct 15th, 2019
+We have released two MobileNet V3 SSDLite models (presented in
+[Searching for MobileNetV3](https://arxiv.org/abs/1905.02244)).
+
+* SSDLite with MobileNet-V3-Large backbone, which is 27% faster than Mobilenet
+V2 SSDLite (119ms vs 162ms) on a Google Pixel phone CPU at the same mAP.
+* SSDLite with MobileNet-V3-Small backbone, which is 37% faster than MnasNet
+SSDLite reduced with depth-multiplier (43ms vs 68ms) at the same mAP.
+
+Along with the model definition, we are also releasing model checkpoints
+trained on the COCO dataset.
+
+<b>Thanks to contributors</b>: Bo Chen, Zhichao Lu, Vivek Rathod, Jonathan Huang
+
+
+### July 1st, 2019
+
+We have released an updated set of utils and an updated
+[tutorial](g3doc/challenge_evaluation.md) for all three tracks of the
+[Open Images Challenge 2019](https://storage.googleapis.com/openimages/web/challenge2019.html)!
+
+The Instance Segmentation metric for
+[Open Images V5](https://storage.googleapis.com/openimages/web/index.html)
+and [Challenge 2019](https://storage.googleapis.com/openimages/web/challenge2019.html)
+is part of this release. Check out [the metric description](https://storage.googleapis.com/openimages/web/evaluation.html#instance_segmentation_eval)
+on the Open Images website.
+
+<b>Thanks to contributors</b>: Alina Kuznetsova, Rodrigo Benenson
+
 ### Feb 11, 2019
 
-We have released detection models trained on the [Open Images Dataset V4](https://storage.googleapis.com/openimages/web/challenge.html)
+We have released detection models trained on the Open Images Dataset V4
 in our detection model zoo, including
 
 * Faster R-CNN detector with Inception Resnet V2 feature extractor
@@ -251,8 +293,7 @@ release includes:
   distributed training and evaluation pipelines via
   [Google Cloud](g3doc/running_on_cloud.md).
 
-
-<b>Thanks to contributors</b>: Jonathan Huang, Vivek Rathod, Derek Chow,
-Chen Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings,
-Viacheslav Kovalevskyi, Kevin Murphy
-
+<b>Thanks to contributors</b>: Jonathan Huang, Vivek Rathod, Derek Chow, Chen
+Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer,
+Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings, Viacheslav
+Kovalevskyi, Kevin Murphy

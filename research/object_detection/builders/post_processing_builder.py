@@ -78,13 +78,18 @@ def _build_non_max_suppressor(nms_config):
 
   Raises:
     ValueError: On incorrect iou_threshold or on incompatible values of
-      max_total_detections and max_detections_per_class.
+      max_total_detections and max_detections_per_class or on negative
+      soft_nms_sigma.
   """
   if nms_config.iou_threshold < 0 or nms_config.iou_threshold > 1.0:
     raise ValueError('iou_threshold not in [0, 1.0].')
   if nms_config.max_detections_per_class > nms_config.max_total_detections:
     raise ValueError('max_detections_per_class should be no greater than '
                      'max_total_detections.')
+  if nms_config.soft_nms_sigma < 0.0:
+    raise ValueError('soft_nms_sigma should be non-negative.')
+  if nms_config.use_combined_nms and nms_config.use_class_agnostic_nms:
+    raise ValueError('combined_nms does not support class_agnostic_nms.')
   non_max_suppressor_fn = functools.partial(
       post_processing.batch_multiclass_non_max_suppression,
       score_thresh=nms_config.score_threshold,
@@ -93,7 +98,12 @@ def _build_non_max_suppressor(nms_config):
       max_total_size=nms_config.max_total_detections,
       use_static_shapes=nms_config.use_static_shapes,
       use_class_agnostic_nms=nms_config.use_class_agnostic_nms,
-      max_classes_per_detection=nms_config.max_classes_per_detection)
+      max_classes_per_detection=nms_config.max_classes_per_detection,
+      soft_nms_sigma=nms_config.soft_nms_sigma,
+      use_partitioned_nms=nms_config.use_partitioned_nms,
+      use_combined_nms=nms_config.use_combined_nms,
+      change_coordinate_frame=True)
+
   return non_max_suppressor_fn
 
 
@@ -135,8 +145,12 @@ def _build_score_converter(score_converter_config, logit_scale):
 def _build_calibrated_score_converter(score_converter_fn, calibration_config):
   """Wraps a score_converter_fn, adding a calibration step.
 
-  Builds a score converter function witha calibration transformation according
-  to calibration_builder.py. Calibration applies positive monotonic
+  Builds a score converter function with a calibration transformation according
+  to calibration_builder.py. The score conversion function may be applied before
+  or after the calibration transformation, depending on the calibration method.
+  If the method is temperature scaling, the score conversion is
+  after the calibration transformation. Otherwise, the score conversion is
+  before the calibration transformation. Calibration applies positive monotonic
   transformations to inputs (i.e. score ordering is strictly preserved or
   adjacent scores are mapped to the same score). When calibration is
   class-agnostic, the highest-scoring class remains unchanged, unless two
@@ -154,8 +168,14 @@ def _build_calibrated_score_converter(score_converter_fn, calibration_config):
   """
   calibration_fn = calibration_builder.build(calibration_config)
   def calibrated_score_converter_fn(logits):
-    converted_logits = score_converter_fn(logits)
-    return calibration_fn(converted_logits)
+    if (calibration_config.WhichOneof('calibrator') ==
+        'temperature_scaling_calibration'):
+      calibrated_logits = calibration_fn(logits)
+      return score_converter_fn(calibrated_logits)
+    else:
+      converted_logits = score_converter_fn(logits)
+      return calibration_fn(converted_logits)
+
   calibrated_score_converter_fn.__name__ = (
       'calibrate_with_%s' % calibration_config.WhichOneof('calibrator'))
   return calibrated_score_converter_fn

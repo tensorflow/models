@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +16,15 @@
 
 """Converts ADE20K data to TFRecord file format with Example protos."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import math
 import os
 import random
 import sys
 import build_data
+from six.moves import range
 import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
@@ -73,7 +78,7 @@ def _convert_dataset(dataset_split, dataset_dir, dataset_label_dir):
     seg_names.append(seg)
 
   num_images = len(img_names)
-  num_per_shard = int(math.ceil(num_images / float(_NUM_SHARDS)))
+  num_per_shard = int(math.ceil(num_images / _NUM_SHARDS))
 
   image_reader = build_data.ImageReader('jpeg', channels=3)
   label_reader = build_data.ImageReader('png', channels=1)

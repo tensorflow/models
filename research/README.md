@@ -33,7 +33,6 @@ request.
 -   [domain_adaptation](domain_adaptation): domain separation networks.
 -   [fivo](fivo): filtering variational objectives for training generative
     sequence models.
--   [gan](gan): generative adversarial networks.
 -   [im2txt](im2txt): image-to-text neural network for image captioning.
 -   [inception](inception): deep convolutional networks for computer vision.
 -   [keypointnet](keypointnet): discovery of latent 3D keypoints via end-to-end
@@ -66,7 +65,6 @@ request.
     preserving (real NVP) transformations.
 -   [rebar](rebar): low-variance, unbiased gradient estimates for discrete
     latent variable models.
--   [resnet](resnet): deep and wide residual networks.
 -   [seq2species](seq2species): deep learning solution for read-level taxonomic
     classification.
 -   [skip_thoughts](skip_thoughts): recurrent neural network sentence-to-vector

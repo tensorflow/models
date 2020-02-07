@@ -24,7 +24,6 @@ import os
 
 import tensorflow as tf
 
-from tensorflow.python.util import function_utils
 from object_detection import eval_util
 from object_detection import exporter as exporter_lib
 from object_detection import inputs
@@ -187,7 +186,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   return unbatched_tensor_dict
 
 
-def _provide_groundtruth(model, labels):
+def provide_groundtruth(model, labels):
   """Provides the labels to a model as groundtruth.
 
   This helper function extracts the corresponding boxes, classes,
@@ -268,6 +267,13 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
     # Make sure to set the Keras learning phase. True during training,
     # False for inference.
     tf.keras.backend.set_learning_phase(is_training)
+    # Set policy for mixed-precision training with Keras-based models.
+    if use_tpu and train_config.use_bfloat16:
+      from tensorflow.python.keras.engine import base_layer_utils  # pylint: disable=g-import-not-at-top
+      # Enable v2 behavior, as `mixed_bfloat16` is only supported in TF 2.0.
+      base_layer_utils.enable_v2_dtype_behavior()
+      tf.compat.v2.keras.mixed_precision.experimental.set_policy(
+          'mixed_bfloat16')
     detection_model = detection_model_fn(
         is_training=is_training, add_summaries=(not use_tpu))
     scaffold_fn = None
@@ -287,7 +293,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
           labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
-      _provide_groundtruth(detection_model, labels)
+      provide_groundtruth(detection_model, labels)
 
     preprocessed_images = features[fields.InputDataFields.image]
     if use_tpu and train_config.use_bfloat16:
@@ -316,7 +322,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
             features[fields.InputDataFields.true_image_shape]))
 
     if mode == tf.estimator.ModeKeys.TRAIN:
-      if train_config.fine_tune_checkpoint and hparams.load_pretrained:
+      load_pretrained = hparams.load_pretrained if hparams else False
+      if train_config.fine_tune_checkpoint and load_pretrained:
         if not train_config.fine_tune_checkpoint_type:
           # train_config.from_detection_checkpoint field is deprecated. For
           # backward compatibility, set train_config.fine_tune_checkpoint_type
@@ -450,6 +457,10 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
           original_image_spatial_shapes=original_image_spatial_shapes,
           true_image_shapes=true_image_shapes)
 
+      if fields.InputDataFields.image_additional_channels in features:
+        eval_dict[fields.InputDataFields.image_additional_channels] = features[
+            fields.InputDataFields.image_additional_channels]
+
       if class_agnostic:
         category_index = label_map_util.create_class_agnostic_category_index()
       else:
@@ -524,7 +535,7 @@ def create_estimator_and_inputs(run_config,
                                 pipeline_config_path,
                                 config_override=None,
                                 train_steps=None,
-                                sample_1_of_n_eval_examples=1,
+                                sample_1_of_n_eval_examples=None,
                                 sample_1_of_n_eval_on_train_examples=1,
                                 model_fn_creator=create_model_fn,
                                 use_tpu_estimator=False,
@@ -606,9 +617,12 @@ def create_estimator_and_inputs(run_config,
       pipeline_config_path, config_override=config_override)
   kwargs.update({
       'train_steps': train_steps,
-      'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples,
       'use_bfloat16': configs['train_config'].use_bfloat16 and use_tpu
   })
+  if sample_1_of_n_eval_examples >= 1:
+    kwargs.update({
+        'sample_1_of_n_eval_examples': sample_1_of_n_eval_examples
+    })
   if override_eval_num_epochs:
     kwargs.update({'eval_num_epochs': 1})
     tf.logging.warning(
@@ -667,11 +681,6 @@ def create_estimator_and_inputs(run_config,
   model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu,
                               postprocess_on_cpu)
   if use_tpu_estimator:
-    # Multicore inference disabled due to b/129367127
-    tpu_estimator_args = function_utils.fn_args(tf.contrib.tpu.TPUEstimator)
-    kwargs = {}
-    if 'experimental_export_device_assignment' in tpu_estimator_args:
-      kwargs['experimental_export_device_assignment'] = True
     estimator = tf.contrib.tpu.TPUEstimator(
         model_fn=model_fn,
         train_batch_size=train_config.batch_size,
@@ -681,8 +690,7 @@ def create_estimator_and_inputs(run_config,
         config=run_config,
         export_to_tpu=export_to_tpu,
         eval_on_tpu=False,  # Eval runs on CPU, so disable eval on TPU
-        params=params if params else {},
-        **kwargs)
+        params=params if params else {})
   else:
     estimator = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
 

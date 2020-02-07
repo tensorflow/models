@@ -22,6 +22,7 @@ import argparse
 
 import numpy as np
 import tensorflow as tf
+from absl import app
 
 import automobile_data
 
@@ -98,5 +99,5 @@ def main(argv):
 
 if __name__ == "__main__":
   # The Estimator periodically generates "INFO" logs; make these logs visible.
-  tf.logging.set_verbosity(tf.logging.INFO)
-  tf.app.run(main=main)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  app.run(main=main)

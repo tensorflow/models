@@ -15,8 +15,13 @@
 
 """Tests for object_detection.utils.object_detection_evaluation."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 from absl.testing import parameterized
 import numpy as np
+import six
+from six.moves import range
 import tensorflow as tf
 from object_detection import eval_util
 from object_detection.core import standard_fields
@@ -310,17 +315,14 @@ class OpenImagesChallengeEvaluatorTest(tf.test.TestCase):
     expected_metric_name = 'OpenImagesInstanceSegmentationChallenge'
 
     self.assertAlmostEqual(
-        metrics[
-            expected_metric_name + '_PerformanceByCategory/AP@0.5IOU/dog'],
-        0.5)
+        metrics[expected_metric_name + '_PerformanceByCategory/AP@0.5IOU/dog'],
+        1.0)
     self.assertAlmostEqual(
         metrics[
             expected_metric_name + '_PerformanceByCategory/AP@0.5IOU/cat'],
         0)
     self.assertAlmostEqual(
-        metrics[
-            expected_metric_name + '_Precision/mAP@0.5IOU'],
-        0.25)
+        metrics[expected_metric_name + '_Precision/mAP@0.5IOU'], 0.5)
 
     oivchallenge_evaluator.clear()
     self.assertFalse(oivchallenge_evaluator._image_ids)
@@ -925,7 +927,7 @@ class ObjectDetectionEvaluationTest(tf.test.TestCase):
     ]
     expected_average_precision_per_class = np.array([1. / 6., 0, 0],
                                                     dtype=float)
-    expected_corloc_per_class = np.array([0, np.divide(0, 0), 0], dtype=float)
+    expected_corloc_per_class = np.array([0, 0, 0], dtype=float)
     expected_mean_ap = 1. / 18
     expected_mean_corloc = 0.0
     for i in range(self.od_eval.num_class):
@@ -938,6 +940,34 @@ class ObjectDetectionEvaluationTest(tf.test.TestCase):
     self.assertTrue(np.allclose(expected_corloc_per_class, corloc_per_class))
     self.assertAlmostEqual(expected_mean_ap, mean_ap)
     self.assertAlmostEqual(expected_mean_corloc, mean_corloc)
+
+  def test_merge_internal_state(self):
+    # Test that if initial state is merged, the results of the evaluation are
+    # the same.
+    od_eval_state = self.od_eval.get_internal_state()
+    copy_od_eval = object_detection_evaluation.ObjectDetectionEvaluation(
+        self.od_eval.num_class)
+    copy_od_eval.merge_internal_state(od_eval_state)
+
+    (average_precision_per_class, mean_ap, precisions_per_class,
+     recalls_per_class, corloc_per_class,
+     mean_corloc) = self.od_eval.evaluate()
+
+    (copy_average_precision_per_class, copy_mean_ap, copy_precisions_per_class,
+     copy_recalls_per_class, copy_corloc_per_class,
+     copy_mean_corloc) = copy_od_eval.evaluate()
+
+    for i in range(self.od_eval.num_class):
+      self.assertTrue(
+          np.allclose(copy_precisions_per_class[i], precisions_per_class[i]))
+      self.assertTrue(
+          np.allclose(copy_recalls_per_class[i], recalls_per_class[i]))
+    self.assertTrue(
+        np.allclose(copy_average_precision_per_class,
+                    average_precision_per_class))
+    self.assertTrue(np.allclose(copy_corloc_per_class, corloc_per_class))
+    self.assertAlmostEqual(copy_mean_ap, mean_ap)
+    self.assertAlmostEqual(copy_mean_corloc, mean_corloc)
 
 
 class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
@@ -1069,7 +1099,7 @@ class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op)
       metrics = sess.run(metrics)

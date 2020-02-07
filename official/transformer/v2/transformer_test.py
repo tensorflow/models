@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from official.transformer.model import model_params
+from official.nlp.transformer import model_params
 from official.transformer.v2 import transformer
 
 
@@ -37,6 +37,7 @@ class TransformerV2Test(tf.test.TestCase):
     params["vocab_size"] = 41
     params["extra_decode_length"] = 2
     params["beam_size"] = 3
+    params["dtype"] = tf.float32
 
   def test_create_model_train(self):
     model = transformer.create_model(self.params, True)
@@ -64,4 +65,5 @@ class TransformerV2Test(tf.test.TestCase):
 
 
 if __name__ == "__main__":
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

@@ -36,6 +36,15 @@ message BatchNonMaxSuppression {
   // Number of classes retained per detection in class agnostic NMS.
 
   optional int32 max_classes_per_detection = 8 [default = 1];
+
+  // Soft NMS sigma parameter; Bodla et al, https://arxiv.org/abs/1704.04503)
+  optional float soft_nms_sigma = 9 [default = 0.0];
+
+  // Whether to use partitioned version of non_max_suppression.
+  optional bool use_partitioned_nms = 10 [default = false];
+
+  // Whether to use tf.image.combined_non_max_suppression.
+  optional bool use_combined_nms = 11 [default = false];
 }
 
 // Configuration proto for post-processing predicted boxes and

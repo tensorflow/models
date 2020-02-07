@@ -31,7 +31,7 @@ class CycleganTest(tf.test.TestCase):
     img_batch = tf.zeros([2, 32, 32, 3])
     model_output, _ = cyclegan.cyclegan_generator_resnet(img_batch)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       sess.run(model_output)
 
   def _test_generator_graph_helper(self, shape):
@@ -50,13 +50,13 @@ class CycleganTest(tf.test.TestCase):
 
   def test_generator_unknown_batch_dim(self):
     """Check that generator can take unknown batch dimension inputs."""
-    img = tf.placeholder(tf.float32, shape=[None, 32, None, 3])
+    img = tf.compat.v1.placeholder(tf.float32, shape=[None, 32, None, 3])
     output_imgs, _ = cyclegan.cyclegan_generator_resnet(img)
 
     self.assertAllEqual([None, 32, None, 3], output_imgs.shape.as_list())
 
   def _input_and_output_same_shape_helper(self, kernel_size):
-    img_batch = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
+    img_batch = tf.compat.v1.placeholder(tf.float32, shape=[None, 32, 32, 3])
     output_img_batch, _ = cyclegan.cyclegan_generator_resnet(
         img_batch, kernel_size=kernel_size)
 
@@ -77,10 +77,9 @@ class CycleganTest(tf.test.TestCase):
 
   def _error_if_height_not_multiple_of_four_helper(self, height):
     self.assertRaisesRegexp(
-        ValueError,
-        'The input height must be a multiple of 4.',
+        ValueError, 'The input height must be a multiple of 4.',
         cyclegan.cyclegan_generator_resnet,
-        tf.placeholder(tf.float32, shape=[None, height, 32, 3]))
+        tf.compat.v1.placeholder(tf.float32, shape=[None, height, 32, 3]))
 
   def test_error_if_height_not_multiple_of_four_height29(self):
     self._error_if_height_not_multiple_of_four_helper(29)
@@ -93,10 +92,9 @@ class CycleganTest(tf.test.TestCase):
 
   def _error_if_width_not_multiple_of_four_helper(self, width):
     self.assertRaisesRegexp(
-        ValueError,
-        'The input width must be a multiple of 4.',
+        ValueError, 'The input width must be a multiple of 4.',
         cyclegan.cyclegan_generator_resnet,
-        tf.placeholder(tf.float32, shape=[None, 32, width, 3]))
+        tf.compat.v1.placeholder(tf.float32, shape=[None, 32, width, 3]))
 
   def test_error_if_width_not_multiple_of_four_width29(self):
     self._error_if_width_not_multiple_of_four_helper(29)

@@ -20,11 +20,14 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from nets import resnet_utils
 from nets import resnet_v2
 
-slim = tf.contrib.slim
+slim = contrib_slim
+
+tf.compat.v1.disable_resource_variables()
 
 
 def create_test_input(batch_size, height, width, channels):
@@ -42,28 +45,29 @@ def create_test_input(batch_size, height, width, channels):
     constant `Tensor` with the mesh grid values along the spatial dimensions.
   """
   if None in [batch_size, height, width, channels]:
-    return tf.placeholder(tf.float32, (batch_size, height, width, channels))
+    return tf.compat.v1.placeholder(tf.float32,
+                                    (batch_size, height, width, channels))
   else:
-    return tf.to_float(
+    return tf.cast(
         np.tile(
             np.reshape(
                 np.reshape(np.arange(height), [height, 1]) +
                 np.reshape(np.arange(width), [1, width]),
-                [1, height, width, 1]),
-            [batch_size, 1, 1, channels]))
+                [1, height, width, 1]), [batch_size, 1, 1, channels]),
+        dtype=tf.float32)
 
 
 class ResnetUtilsTest(tf.test.TestCase):
 
   def testSubsampleThreeByThree(self):
-    x = tf.reshape(tf.to_float(tf.range(9)), [1, 3, 3, 1])
+    x = tf.reshape(tf.cast(tf.range(9), dtype=tf.float32), [1, 3, 3, 1])
     x = resnet_utils.subsample(x, 2)
     expected = tf.reshape(tf.constant([0, 2, 6, 8]), [1, 2, 2, 1])
     with self.test_session():
       self.assertAllClose(x.eval(), expected.eval())
 
   def testSubsampleFourByFour(self):
-    x = tf.reshape(tf.to_float(tf.range(16)), [1, 4, 4, 1])
+    x = tf.reshape(tf.cast(tf.range(16), dtype=tf.float32), [1, 4, 4, 1])
     x = resnet_utils.subsample(x, 2)
     expected = tf.reshape(tf.constant([0, 2, 8, 10]), [1, 2, 2, 1])
     with self.test_session():
@@ -79,32 +83,29 @@ class ResnetUtilsTest(tf.test.TestCase):
     w = create_test_input(1, 3, 3, 1)
     w = tf.reshape(w, [3, 3, 1, 1])
 
-    tf.get_variable('Conv/weights', initializer=w)
-    tf.get_variable('Conv/biases', initializer=tf.zeros([1]))
-    tf.get_variable_scope().reuse_variables()
+    tf.compat.v1.get_variable('Conv/weights', initializer=w)
+    tf.compat.v1.get_variable('Conv/biases', initializer=tf.zeros([1]))
+    tf.compat.v1.get_variable_scope().reuse_variables()
 
     y1 = slim.conv2d(x, 1, [3, 3], stride=1, scope='Conv')
-    y1_expected = tf.to_float([[14, 28, 43, 26],
-                               [28, 48, 66, 37],
-                               [43, 66, 84, 46],
-                               [26, 37, 46, 22]])
+    y1_expected = tf.cast([[14, 28, 43, 26], [28, 48, 66, 37], [43, 66, 84, 46],
+                           [26, 37, 46, 22]],
+                          dtype=tf.float32)
     y1_expected = tf.reshape(y1_expected, [1, n, n, 1])
 
     y2 = resnet_utils.subsample(y1, 2)
-    y2_expected = tf.to_float([[14, 43],
-                               [43, 84]])
+    y2_expected = tf.cast([[14, 43], [43, 84]], dtype=tf.float32)
     y2_expected = tf.reshape(y2_expected, [1, n2, n2, 1])
 
     y3 = resnet_utils.conv2d_same(x, 1, 3, stride=2, scope='Conv')
     y3_expected = y2_expected
 
     y4 = slim.conv2d(x, 1, [3, 3], stride=2, scope='Conv')
-    y4_expected = tf.to_float([[48, 37],
-                               [37, 22]])
+    y4_expected = tf.cast([[48, 37], [37, 22]], dtype=tf.float32)
     y4_expected = tf.reshape(y4_expected, [1, n2, n2, 1])
 
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       self.assertAllClose(y1.eval(), y1_expected.eval())
       self.assertAllClose(y2.eval(), y2_expected.eval())
       self.assertAllClose(y3.eval(), y3_expected.eval())
@@ -120,22 +121,20 @@ class ResnetUtilsTest(tf.test.TestCase):
     w = create_test_input(1, 3, 3, 1)
     w = tf.reshape(w, [3, 3, 1, 1])
 
-    tf.get_variable('Conv/weights', initializer=w)
-    tf.get_variable('Conv/biases', initializer=tf.zeros([1]))
-    tf.get_variable_scope().reuse_variables()
+    tf.compat.v1.get_variable('Conv/weights', initializer=w)
+    tf.compat.v1.get_variable('Conv/biases', initializer=tf.zeros([1]))
+    tf.compat.v1.get_variable_scope().reuse_variables()
 
     y1 = slim.conv2d(x, 1, [3, 3], stride=1, scope='Conv')
-    y1_expected = tf.to_float([[14, 28, 43, 58, 34],
-                               [28, 48, 66, 84, 46],
-                               [43, 66, 84, 102, 55],
-                               [58, 84, 102, 120, 64],
-                               [34, 46, 55, 64, 30]])
+    y1_expected = tf.cast(
+        [[14, 28, 43, 58, 34], [28, 48, 66, 84, 46], [43, 66, 84, 102, 55],
+         [58, 84, 102, 120, 64], [34, 46, 55, 64, 30]],
+        dtype=tf.float32)
     y1_expected = tf.reshape(y1_expected, [1, n, n, 1])
 
     y2 = resnet_utils.subsample(y1, 2)
-    y2_expected = tf.to_float([[14, 43, 34],
-                               [43, 84, 55],
-                               [34, 55, 30]])
+    y2_expected = tf.cast([[14, 43, 34], [43, 84, 55], [34, 55, 30]],
+                          dtype=tf.float32)
     y2_expected = tf.reshape(y2_expected, [1, n2, n2, 1])
 
     y3 = resnet_utils.conv2d_same(x, 1, 3, stride=2, scope='Conv')
@@ -145,7 +144,7 @@ class ResnetUtilsTest(tf.test.TestCase):
     y4_expected = y2_expected
 
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       self.assertAllClose(y1.eval(), y1_expected.eval())
       self.assertAllClose(y2.eval(), y2_expected.eval())
       self.assertAllClose(y3.eval(), y3_expected.eval())
@@ -153,7 +152,7 @@ class ResnetUtilsTest(tf.test.TestCase):
 
   def _resnet_plain(self, inputs, blocks, output_stride=None, scope=None):
     """A plain ResNet without extra layers before or after the ResNet blocks."""
-    with tf.variable_scope(scope, values=[inputs]):
+    with tf.compat.v1.variable_scope(scope, values=[inputs]):
       with slim.arg_scope([slim.conv2d], outputs_collections='end_points'):
         net = resnet_utils.stack_blocks_dense(inputs, blocks, output_stride)
         end_points = slim.utils.convert_collection_to_dict('end_points')
@@ -190,9 +189,9 @@ class ResnetUtilsTest(tf.test.TestCase):
   def _stack_blocks_nondense(self, net, blocks):
     """A simplified ResNet Block stacker without output stride control."""
     for block in blocks:
-      with tf.variable_scope(block.scope, 'block', [net]):
+      with tf.compat.v1.variable_scope(block.scope, 'block', [net]):
         for i, unit in enumerate(block.args):
-          with tf.variable_scope('unit_%d' % (i + 1), values=[net]):
+          with tf.compat.v1.variable_scope('unit_%d' % (i + 1), values=[net]):
             net = block.unit_fn(net, rate=1, **unit)
     return net
 
@@ -220,7 +219,7 @@ class ResnetUtilsTest(tf.test.TestCase):
         for output_stride in [1, 2, 4, 8, None]:
           with tf.Graph().as_default():
             with self.test_session() as sess:
-              tf.set_random_seed(0)
+              tf.compat.v1.set_random_seed(0)
               inputs = create_test_input(1, height, width, 3)
               # Dense feature extraction followed by subsampling.
               output = resnet_utils.stack_blocks_dense(inputs,
@@ -233,10 +232,10 @@ class ResnetUtilsTest(tf.test.TestCase):
 
               output = resnet_utils.subsample(output, factor)
               # Make the two networks use the same weights.
-              tf.get_variable_scope().reuse_variables()
+              tf.compat.v1.get_variable_scope().reuse_variables()
               # Feature extraction at the nominal network rate.
               expected = self._stack_blocks_nondense(inputs, blocks)
-              sess.run(tf.global_variables_initializer())
+              sess.run(tf.compat.v1.global_variables_initializer())
               output, expected = sess.run([output, expected])
               self.assertAllClose(output, expected, atol=1e-4, rtol=1e-4)
 
@@ -393,7 +392,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
       with slim.arg_scope(resnet_utils.resnet_arg_scope()):
         with tf.Graph().as_default():
           with self.test_session() as sess:
-            tf.set_random_seed(0)
+            tf.compat.v1.set_random_seed(0)
             inputs = create_test_input(2, 81, 81, 3)
             # Dense feature extraction followed by subsampling.
             output, _ = self._resnet_small(inputs, None,
@@ -406,12 +405,12 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
               factor = nominal_stride // output_stride
             output = resnet_utils.subsample(output, factor)
             # Make the two networks use the same weights.
-            tf.get_variable_scope().reuse_variables()
+            tf.compat.v1.get_variable_scope().reuse_variables()
             # Feature extraction at the nominal network rate.
             expected, _ = self._resnet_small(inputs, None,
                                              is_training=False,
                                              global_pool=False)
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.compat.v1.global_variables_initializer())
             self.assertAllClose(output.eval(), expected.eval(),
                                 atol=1e-4, rtol=1e-4)
 
@@ -431,7 +430,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [None, 1, 1, num_classes])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 1, 1, num_classes))
 
@@ -447,7 +446,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [batch, None, None, 32])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(output, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 3, 3, 32))
 
@@ -466,7 +465,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [batch, None, None, 32])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(output, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 9, 9, 32))
 

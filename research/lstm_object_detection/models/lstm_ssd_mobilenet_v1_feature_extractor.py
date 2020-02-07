@@ -16,6 +16,7 @@
 """LSTMSSDFeatureExtractor for MobilenetV1 features."""
 
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 from tensorflow.python.framework import ops as tf_ops
 from lstm_object_detection.lstm import lstm_cells
 from lstm_object_detection.lstm import rnn_decoder
@@ -26,7 +27,7 @@ from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from nets import mobilenet_v1
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class LSTMSSDMobileNetV1FeatureExtractor(

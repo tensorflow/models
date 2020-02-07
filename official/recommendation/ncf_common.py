@@ -29,13 +29,13 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
+from official.recommendation import movielens
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
-
+from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
 
@@ -59,13 +59,8 @@ def get_inputs(params):
         dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
         constructor_type=FLAGS.constructor_type,
         deterministic=FLAGS.seed is not None)
-
-    num_train_steps = (producer.train_batches_per_epoch //
-                       params["batches_per_step"])
-    num_eval_steps = (producer.eval_batches_per_epoch //
-                      params["batches_per_step"])
-    assert not producer.train_batches_per_epoch % params["batches_per_step"]
-    assert not producer.eval_batches_per_epoch % params["batches_per_step"]
+    num_train_steps = producer.train_batches_per_epoch
+    num_eval_steps = producer.eval_batches_per_epoch
 
   return num_users, num_items, num_train_steps, num_eval_steps, producer
 
@@ -73,18 +68,13 @@ def get_inputs(params):
 def parse_flags(flags_obj):
   """Convenience function to turn flags into params."""
   num_gpus = flags_core.get_num_gpus(flags_obj)
-  num_devices = FLAGS.num_tpu_shards if FLAGS.tpu else num_gpus or 1
 
-  batch_size = (flags_obj.batch_size + num_devices - 1) // num_devices
-
-  eval_divisor = (rconst.NUM_EVAL_NEGATIVES + 1) * num_devices
+  batch_size = flags_obj.batch_size
   eval_batch_size = flags_obj.eval_batch_size or flags_obj.batch_size
-  eval_batch_size = ((eval_batch_size + eval_divisor - 1) //
-                     eval_divisor * eval_divisor // num_devices)
 
   return {
       "train_epochs": flags_obj.train_epochs,
-      "batches_per_step": num_devices,
+      "batches_per_step": 1,
       "use_seed": flags_obj.seed is not None,
       "batch_size": batch_size,
       "eval_batch_size": eval_batch_size,
@@ -94,6 +84,7 @@ def parse_flags(flags_obj):
       "mf_regularization": flags_obj.mf_regularization,
       "mlp_reg_layers": [float(reg) for reg in flags_obj.mlp_regularization],
       "num_neg": flags_obj.num_neg,
+      "distribution_strategy": flags_obj.distribution_strategy,
       "num_gpus": num_gpus,
       "use_tpu": flags_obj.tpu is not None,
       "tpu": flags_obj.tpu,
@@ -103,14 +94,17 @@ def parse_flags(flags_obj):
       "beta2": flags_obj.beta2,
       "epsilon": flags_obj.epsilon,
       "match_mlperf": flags_obj.ml_perf,
-      "use_xla_for_gpu": flags_obj.use_xla_for_gpu,
       "epochs_between_evals": FLAGS.epochs_between_evals,
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
+      "stream_files": flags_obj.tpu is not None,
+      "train_dataset_path": flags_obj.train_dataset_path,
+      "eval_dataset_path": flags_obj.eval_dataset_path,
+      "input_meta_data_path": flags_obj.input_meta_data_path,
   }
 
 
-def get_distribution_strategy(params):
+def get_v1_distribution_strategy(params):
   """Returns the distribution strategy to use."""
   if params["use_tpu"]:
     # Some of the networking libraries are quite chatty.
@@ -152,15 +146,18 @@ def get_distribution_strategy(params):
 def define_ncf_flags():
   """Add flags for running ncf_main."""
   # Add common flags
-  flags_core.define_base(export_dir=False)
+  flags_core.define_base(model_dir=True, clean=True, train_epochs=True,
+                         epochs_between_evals=True, export_dir=False,
+                         run_eagerly=True, stop_threshold=True, num_gpu=True,
+                         hooks=True, distribution_strategy=True)
   flags_core.define_performance(
-      num_parallel_calls=False,
-      inter_op=False,
-      intra_op=False,
       synthetic_data=True,
-      max_train_steps=False,
-      dtype=False,
-      all_reduce_alg=False
+      dtype=True,
+      fp16_implementation=True,
+      loss_scale=True,
+      dynamic_loss_scale=True,
+      enable_xla=True,
+      force_v2_in_keras_compile=True
   )
   flags_core.define_device(tpu=True)
   flags_core.define_benchmark()
@@ -257,6 +254,21 @@ def define_ncf_flags():
           "precompute that scales badly, but a faster per-epoch construction"
           "time and can be faster on very large systems."))
 
+  flags.DEFINE_string(
+      name="train_dataset_path",
+      default=None,
+      help=flags_core.help_wrap("Path to training data."))
+
+  flags.DEFINE_string(
+      name="eval_dataset_path",
+      default=None,
+      help=flags_core.help_wrap("Path to evaluation data."))
+
+  flags.DEFINE_string(
+      name="input_meta_data_path",
+      default=None,
+      help=flags_core.help_wrap("Path to input meta data file."))
+
   flags.DEFINE_bool(
       name="ml_perf", default=False,
       help=flags_core.help_wrap(
@@ -295,16 +307,6 @@ def define_ncf_flags():
             int(eval_batch_size) > rconst.NUM_EVAL_NEGATIVES)
 
   flags.DEFINE_bool(
-      name="use_xla_for_gpu", default=False, help=flags_core.help_wrap(
-          "If True, use XLA for the model function. Only works when using a "
-          "GPU. On TPUs, XLA is always used"))
-
-  xla_message = "--use_xla_for_gpu is incompatible with --tpu"
-  @flags.multi_flags_validator(["use_xla_for_gpu", "tpu"], message=xla_message)
-  def xla_validator(flag_dict):
-    return not flag_dict["use_xla_for_gpu"] or not flag_dict["tpu"]
-
-  flags.DEFINE_bool(
       name="early_stopping",
       default=False,
       help=flags_core.help_wrap(
@@ -318,14 +320,13 @@ def define_ncf_flags():
 
 
 def convert_to_softmax_logits(logits):
-  '''Convert the logits returned by the base model to softmax logits.
+  """Convert the logits returned by the base model to softmax logits.
 
-  Softmax with the first column of zeros is equivalent to sigmoid.
-  '''
+  Args:
+    logits: used to create softmax.
+
+  Returns:
+    Softmax with the first column of zeros is equivalent to sigmoid.
+  """
   softmax_logits = tf.concat([logits * 0, logits], axis=1)
   return softmax_logits
-
-def is_tf_v2():
-  """Returns whether it is v2."""
-  from tensorflow.python import tf2 as tf2_internal
-  return tf2_internal.enabled()

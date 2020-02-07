@@ -35,10 +35,11 @@ from six.moves import queue
 import tensorflow as tf
 from absl import logging
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
+from official.recommendation import movielens
 from official.recommendation import popen_helper
 from official.recommendation import stat_utils
+from tensorflow.python.tpu.datasets import StreamingFilesDataset
 
 
 SUMMARY_TEMPLATE = """General:
@@ -56,21 +57,6 @@ Eval:
 {spacer}Batch count per epoch:   {eval_batch_ct}"""
 
 
-_TRAIN_FEATURE_MAP = {
-    movielens.USER_COLUMN: tf.io.FixedLenFeature([], dtype=tf.string),
-    movielens.ITEM_COLUMN: tf.io.FixedLenFeature([], dtype=tf.string),
-    rconst.MASK_START_INDEX: tf.io.FixedLenFeature([1], dtype=tf.string),
-    "labels": tf.io.FixedLenFeature([], dtype=tf.string),
-}
-
-
-_EVAL_FEATURE_MAP = {
-    movielens.USER_COLUMN: tf.io.FixedLenFeature([], dtype=tf.string),
-    movielens.ITEM_COLUMN: tf.io.FixedLenFeature([], dtype=tf.string),
-    rconst.DUPLICATE_MASK: tf.io.FixedLenFeature([], dtype=tf.string)
-}
-
-
 class DatasetManager(object):
   """Helper class for handling TensorFlow specific data tasks.
 
@@ -78,9 +64,15 @@ class DatasetManager(object):
   constructor classes and handles the TensorFlow specific portions (TFRecord
   management, tf.Dataset creation, etc.).
   """
-  def __init__(self, is_training, stream_files, batches_per_epoch,
-               shard_root=None, deterministic=False):
-    # type: (bool, bool, int, typing.Optional[str], bool) -> None
+
+  def __init__(self,
+               is_training,
+               stream_files,
+               batches_per_epoch,
+               shard_root=None,
+               deterministic=False,
+               num_train_epochs=None):
+    # type: (bool, bool, int, typing.Optional[str], bool, int) -> None
     """Constructs a `DatasetManager` instance.
     Args:
       is_training: Boolean of whether the data provided is training or
@@ -92,6 +84,8 @@ class DatasetManager(object):
       batches_per_epoch: The number of batches in a single epoch.
       shard_root: The base directory to be used when stream_files=True.
       deterministic: Forgo non-deterministic speedups. (i.e. sloppy=True)
+      num_train_epochs: Number of epochs to generate. If None, then each
+        call to `get_dataset()` increments the number of epochs requested.
     """
     self._is_training = is_training
     self._deterministic = deterministic
@@ -101,7 +95,7 @@ class DatasetManager(object):
                          range(rconst.NUM_FILE_SHARDS)] if stream_files else []
     self._batches_per_epoch = batches_per_epoch
     self._epochs_completed = 0
-    self._epochs_requested = 0
+    self._epochs_requested = num_train_epochs if num_train_epochs else 0
     self._shard_root = shard_root
 
     self._result_queue = queue.Queue()
@@ -119,55 +113,87 @@ class DatasetManager(object):
             rconst.CYCLES_TO_BUFFER and self._is_training)
 
   @staticmethod
-  def _serialize(data):
+  def serialize(data):
     """Convert NumPy arrays into a TFRecords entry."""
 
+    def create_int_feature(values):
+      return tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
+
     feature_dict = {
-        k: tf.train.Feature(bytes_list=tf.train.BytesList(
-            value=[memoryview(v).tobytes()])) for k, v in data.items()}
+        k: create_int_feature(v.astype(np.int64)) for k, v in data.items()
+    }
 
     return tf.train.Example(
         features=tf.train.Features(feature=feature_dict)).SerializeToString()
 
-  def _deserialize(self, serialized_data, batch_size):
+  @staticmethod
+  def deserialize(serialized_data, batch_size=None, is_training=True):
     """Convert serialized TFRecords into tensors.
 
     Args:
       serialized_data: A tensor containing serialized records.
       batch_size: The data arrives pre-batched, so batch size is needed to
         deserialize the data.
+      is_training: Boolean, whether data to deserialize to training data
+        or evaluation data.
     """
-    feature_map = _TRAIN_FEATURE_MAP if self._is_training else _EVAL_FEATURE_MAP
-    features = tf.parse_single_example(serialized_data, feature_map)
 
-    users = tf.reshape(tf.decode_raw(
-        features[movielens.USER_COLUMN], rconst.USER_DTYPE), (batch_size,))
-    items = tf.reshape(tf.decode_raw(
-        features[movielens.ITEM_COLUMN], rconst.ITEM_DTYPE), (batch_size,))
+    def _get_feature_map(batch_size, is_training=True):
+      """Returns data format of the serialized tf record file."""
 
-    def decode_binary(data_bytes):
-      # tf.decode_raw does not support bool as a decode type. As a result it is
-      # necessary to decode to int8 (7 of the bits will be ignored) and then
-      # cast to bool.
-      return tf.reshape(tf.cast(tf.decode_raw(data_bytes, tf.int8), tf.bool),
-                        (batch_size,))
+      if is_training:
+        return {
+            movielens.USER_COLUMN:
+                tf.io.FixedLenFeature([batch_size, 1], dtype=tf.int64),
+            movielens.ITEM_COLUMN:
+                tf.io.FixedLenFeature([batch_size, 1], dtype=tf.int64),
+            rconst.VALID_POINT_MASK:
+                tf.io.FixedLenFeature([batch_size, 1], dtype=tf.int64),
+            "labels":
+                tf.io.FixedLenFeature([batch_size, 1], dtype=tf.int64)
+        }
+      else:
+        return {
+            movielens.USER_COLUMN:
+                tf.io.FixedLenFeature([batch_size, 1], dtype=tf.int64),
+            movielens.ITEM_COLUMN:
+                tf.io.FixedLenFeature([batch_size, 1], dtype=tf.int64),
+            rconst.DUPLICATE_MASK:
+                tf.io.FixedLenFeature([batch_size, 1], dtype=tf.int64)
+        }
 
-    if self._is_training:
-      mask_start_index = tf.decode_raw(
-          features[rconst.MASK_START_INDEX], tf.int32)[0]
-      valid_point_mask = tf.less(tf.range(batch_size), mask_start_index)
+    features = tf.io.parse_single_example(
+        serialized_data, _get_feature_map(batch_size, is_training=is_training))
+    users = tf.cast(features[movielens.USER_COLUMN], rconst.USER_DTYPE)
+    items = tf.cast(features[movielens.ITEM_COLUMN], rconst.ITEM_DTYPE)
 
+    if is_training:
+      valid_point_mask = tf.cast(features[rconst.VALID_POINT_MASK], tf.bool)
+      fake_dup_mask = tf.zeros_like(users)
       return {
           movielens.USER_COLUMN: users,
           movielens.ITEM_COLUMN: items,
           rconst.VALID_POINT_MASK: valid_point_mask,
-      }, decode_binary(features["labels"])
-
-    return {
-        movielens.USER_COLUMN: users,
-        movielens.ITEM_COLUMN: items,
-        rconst.DUPLICATE_MASK: decode_binary(features[rconst.DUPLICATE_MASK]),
-    }
+          rconst.TRAIN_LABEL_KEY:
+              tf.reshape(tf.cast(features["labels"], tf.bool),
+                         (batch_size, 1)),
+          rconst.DUPLICATE_MASK: fake_dup_mask
+      }
+    else:
+      labels = tf.cast(tf.zeros_like(users), tf.bool)
+      fake_valid_pt_mask = tf.cast(tf.zeros_like(users), tf.bool)
+      return {
+          movielens.USER_COLUMN:
+              users,
+          movielens.ITEM_COLUMN:
+              items,
+          rconst.DUPLICATE_MASK:
+              tf.cast(features[rconst.DUPLICATE_MASK], tf.bool),
+          rconst.VALID_POINT_MASK:
+              fake_valid_pt_mask,
+          rconst.TRAIN_LABEL_KEY:
+              labels
+      }
 
   def put(self, index, data):
     # type: (int, dict) -> None
@@ -183,20 +209,20 @@ class DatasetManager(object):
       data: A dict of the data to be stored. This method mutates data, and
         therefore expects to be the only consumer.
     """
+    if self._is_training:
+      mask_start_index = data.pop(rconst.MASK_START_INDEX)
+      batch_size = data[movielens.ITEM_COLUMN].shape[0]
+      data[rconst.VALID_POINT_MASK] = np.expand_dims(
+          np.less(np.arange(batch_size), mask_start_index), -1)
 
     if self._stream_files:
-      example_bytes = self._serialize(data)
+      example_bytes = self.serialize(data)
       with self._write_locks[index % rconst.NUM_FILE_SHARDS]:
         self._writers[index % rconst.NUM_FILE_SHARDS].write(example_bytes)
 
     else:
-      if self._is_training:
-        mask_start_index = data.pop(rconst.MASK_START_INDEX)
-        batch_size = data[movielens.ITEM_COLUMN].shape[0]
-        data[rconst.VALID_POINT_MASK] = np.less(np.arange(batch_size),
-                                                mask_start_index)
-        data = (data, data.pop("labels"))
-      self._result_queue.put(data)
+      self._result_queue.put((
+          data, data.pop("labels")) if self._is_training else data)
 
   def start_construction(self):
     if self._stream_files:
@@ -261,33 +287,34 @@ class DatasetManager(object):
 
       file_pattern = os.path.join(
           epoch_data_dir, rconst.SHARD_TEMPLATE.format("*"))
-      # TODO(seemuch): remove this contrib import
-      # pylint: disable=line-too-long
-      from tensorflow.contrib.tpu.python.tpu.datasets import StreamingFilesDataset
-      # pylint: enable=line-too-long
       dataset = StreamingFilesDataset(
           files=file_pattern, worker_job=popen_helper.worker_job(),
           num_parallel_reads=rconst.NUM_FILE_SHARDS, num_epochs=1,
           sloppy=not self._deterministic)
-      map_fn = functools.partial(self._deserialize, batch_size=batch_size)
+      map_fn = functools.partial(
+          self.deserialize,
+          batch_size=batch_size,
+          is_training=self._is_training)
       dataset = dataset.map(map_fn, num_parallel_calls=16)
 
     else:
       types = {movielens.USER_COLUMN: rconst.USER_DTYPE,
                movielens.ITEM_COLUMN: rconst.ITEM_DTYPE}
-      shapes = {movielens.USER_COLUMN: tf.TensorShape([batch_size]),
-                movielens.ITEM_COLUMN: tf.TensorShape([batch_size])}
+      shapes = {
+          movielens.USER_COLUMN: tf.TensorShape([batch_size, 1]),
+          movielens.ITEM_COLUMN: tf.TensorShape([batch_size, 1])
+      }
 
       if self._is_training:
         types[rconst.VALID_POINT_MASK] = np.bool
-        shapes[rconst.VALID_POINT_MASK] = tf.TensorShape([batch_size])
+        shapes[rconst.VALID_POINT_MASK] = tf.TensorShape([batch_size, 1])
 
         types = (types, np.bool)
-        shapes = (shapes, tf.TensorShape([batch_size]))
+        shapes = (shapes, tf.TensorShape([batch_size, 1]))
 
       else:
         types[rconst.DUPLICATE_MASK] = np.bool
-        shapes[rconst.DUPLICATE_MASK] = tf.TensorShape([batch_size])
+        shapes[rconst.DUPLICATE_MASK] = tf.TensorShape([batch_size, 1])
 
       data_generator = functools.partial(
           self.data_generator, epochs_between_evals=epochs_between_evals)
@@ -330,25 +357,29 @@ class BaseDataConstructor(threading.Thread):
     self.lookup_negative_items
 
   """
-  def __init__(self,
-               maximum_number_epochs,   # type: int
-               num_users,               # type: int
-               num_items,               # type: int
-               user_map,                # type: dict
-               item_map,                # type: dict
-               train_pos_users,         # type: np.ndarray
-               train_pos_items,         # type: np.ndarray
-               train_batch_size,        # type: int
-               batches_per_train_step,  # type: int
-               num_train_negatives,     # type: int
-               eval_pos_users,          # type: np.ndarray
-               eval_pos_items,          # type: np.ndarray
-               eval_batch_size,         # type: int
-               batches_per_eval_step,   # type: int
-               stream_files,            # type: bool
-               deterministic=False,     # type: bool
-               epoch_dir=None           # type: str
-              ):
+
+  def __init__(
+      self,
+      maximum_number_epochs,  # type: int
+      num_users,  # type: int
+      num_items,  # type: int
+      user_map,  # type: dict
+      item_map,  # type: dict
+      train_pos_users,  # type: np.ndarray
+      train_pos_items,  # type: np.ndarray
+      train_batch_size,  # type: int
+      batches_per_train_step,  # type: int
+      num_train_negatives,  # type: int
+      eval_pos_users,  # type: np.ndarray
+      eval_pos_items,  # type: np.ndarray
+      eval_batch_size,  # type: int
+      batches_per_eval_step,  # type: int
+      stream_files,  # type: bool
+      deterministic=False,  # type: bool
+      epoch_dir=None,  # type: str
+      num_train_epochs=None,  # type: int
+      create_data_offline=False  # type: bool
+  ):
     # General constants
     self._maximum_number_epochs = maximum_number_epochs
     self._num_users = num_users
@@ -363,6 +394,8 @@ class BaseDataConstructor(threading.Thread):
     self._eval_pos_users = eval_pos_users
     self._eval_pos_items = eval_pos_items
     self.eval_batch_size = eval_batch_size
+    self.num_train_epochs = num_train_epochs
+    self.create_data_offline = create_data_offline
 
     # Training
     if self._train_pos_users.shape != self._train_pos_items.shape:
@@ -392,16 +425,19 @@ class BaseDataConstructor(threading.Thread):
     self._shuffle_with_forkpool = not stream_files
     if stream_files:
       self._shard_root = epoch_dir or tempfile.mkdtemp(prefix="ncf_")
-      atexit.register(tf.io.gfile.rmtree, dirname=self._shard_root)
+      if not create_data_offline:
+        atexit.register(tf.io.gfile.rmtree, self._shard_root)
     else:
       self._shard_root = None
 
-    self._train_dataset = DatasetManager(
-        True, stream_files, self.train_batches_per_epoch, self._shard_root,
-        deterministic)
-    self._eval_dataset = DatasetManager(
-        False, stream_files, self.eval_batches_per_epoch, self._shard_root,
-        deterministic)
+    self._train_dataset = DatasetManager(True, stream_files,
+                                         self.train_batches_per_epoch,
+                                         self._shard_root, deterministic,
+                                         num_train_epochs)
+    self._eval_dataset = DatasetManager(False, stream_files,
+                                        self.eval_batches_per_epoch,
+                                        self._shard_root, deterministic,
+                                        num_train_epochs)
 
     # Threading details
     super(BaseDataConstructor, self).__init__()
@@ -508,12 +544,17 @@ class BaseDataConstructor(threading.Thread):
       items = np.concatenate([items, item_pad])
       labels = np.concatenate([labels, label_pad])
 
-    self._train_dataset.put(i, {
-        movielens.USER_COLUMN: users,
-        movielens.ITEM_COLUMN: items,
-        rconst.MASK_START_INDEX: np.array(mask_start_index, dtype=np.int32),
-        "labels": labels,
-    })
+    self._train_dataset.put(
+        i, {
+            movielens.USER_COLUMN:
+                np.reshape(users, (self.train_batch_size, 1)),
+            movielens.ITEM_COLUMN:
+                np.reshape(items, (self.train_batch_size, 1)),
+            rconst.MASK_START_INDEX:
+                np.array(mask_start_index, dtype=np.int32),
+            "labels":
+                np.reshape(labels, (self.train_batch_size, 1)),
+        })
 
   def _wait_to_construct_train_epoch(self):
     count = 0
@@ -526,7 +567,9 @@ class BaseDataConstructor(threading.Thread):
 
   def _construct_training_epoch(self):
     """Loop to construct a batch of training data."""
-    self._wait_to_construct_train_epoch()
+    if not self.create_data_offline:
+      self._wait_to_construct_train_epoch()
+
     start_time = timeit.default_timer()
     if self._stop_loop:
       return
@@ -601,11 +644,15 @@ class BaseDataConstructor(threading.Thread):
     users, items, duplicate_mask = self._assemble_eval_batch(
         users, positive_items, negative_items, self._eval_users_per_batch)
 
-    self._eval_dataset.put(i, {
-        movielens.USER_COLUMN: users.flatten(),
-        movielens.ITEM_COLUMN: items.flatten(),
-        rconst.DUPLICATE_MASK: duplicate_mask.flatten(),
-    })
+    self._eval_dataset.put(
+        i, {
+            movielens.USER_COLUMN:
+                np.reshape(users.flatten(), (self.eval_batch_size, 1)),
+            movielens.ITEM_COLUMN:
+                np.reshape(items.flatten(), (self.eval_batch_size, 1)),
+            rconst.DUPLICATE_MASK:
+                np.reshape(duplicate_mask.flatten(), (self.eval_batch_size, 1)),
+        })
 
   def _construct_eval_epoch(self):
     """Loop to construct data for evaluation."""
@@ -644,6 +691,11 @@ class BaseDataConstructor(threading.Thread):
 class DummyConstructor(threading.Thread):
   """Class for running with synthetic data."""
 
+  def __init__(self, *args, **kwargs):
+    super(DummyConstructor, self).__init__(*args, **kwargs)
+    self.train_batches_per_epoch = rconst.SYNTHETIC_BATCHES_PER_EPOCH
+    self.eval_batches_per_epoch = rconst.SYNTHETIC_BATCHES_PER_EPOCH
+
   def run(self):
     pass
 
@@ -667,24 +719,37 @@ class DummyConstructor(threading.Thread):
       num_users = params["num_users"]
       num_items = params["num_items"]
 
-      users = tf.random.uniform([batch_size], dtype=tf.int32, minval=0,
+      users = tf.random.uniform([batch_size, 1],
+                                dtype=tf.int32,
+                                minval=0,
                                 maxval=num_users)
-      items = tf.random.uniform([batch_size], dtype=tf.int32, minval=0,
+      items = tf.random.uniform([batch_size, 1],
+                                dtype=tf.int32,
+                                minval=0,
                                 maxval=num_items)
 
       if is_training:
-        valid_point_mask = tf.cast(tf.random.uniform(
-            [batch_size], dtype=tf.int32, minval=0, maxval=2), tf.bool)
-        labels = tf.cast(tf.random.uniform(
-            [batch_size], dtype=tf.int32, minval=0, maxval=2), tf.bool)
+        valid_point_mask = tf.cast(
+            tf.random.uniform([batch_size, 1],
+                              dtype=tf.int32,
+                              minval=0,
+                              maxval=2), tf.bool)
+        labels = tf.cast(
+            tf.random.uniform([batch_size, 1],
+                              dtype=tf.int32,
+                              minval=0,
+                              maxval=2), tf.bool)
         data = {
             movielens.USER_COLUMN: users,
             movielens.ITEM_COLUMN: items,
             rconst.VALID_POINT_MASK: valid_point_mask,
         }, labels
       else:
-        dupe_mask = tf.cast(tf.random.uniform([batch_size], dtype=tf.int32,
-                                              minval=0, maxval=2), tf.bool)
+        dupe_mask = tf.cast(
+            tf.random.uniform([batch_size, 1],
+                              dtype=tf.int32,
+                              minval=0,
+                              maxval=2), tf.bool)
         data = {
             movielens.USER_COLUMN: users,
             movielens.ITEM_COLUMN: items,

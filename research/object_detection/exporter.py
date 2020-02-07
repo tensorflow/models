@@ -40,47 +40,54 @@ def rewrite_nn_resize_op(is_quantized=False):
   Args:
     is_quantized: True if the default graph is quantized.
   """
-  input_pattern = graph_matcher.OpTypePattern(
-      'FakeQuantWithMinMaxVars' if is_quantized else '*')
-  reshape_1_pattern = graph_matcher.OpTypePattern(
-      'Reshape', inputs=[input_pattern, 'Const'], ordered_inputs=False)
-  mul_pattern = graph_matcher.OpTypePattern(
-      'Mul', inputs=[reshape_1_pattern, 'Const'], ordered_inputs=False)
-  # The quantization script may or may not insert a fake quant op after the
-  # Mul. In either case, these min/max vars are not needed once replaced with
-  # the TF version of NN resize.
-  fake_quant_pattern = graph_matcher.OpTypePattern(
-      'FakeQuantWithMinMaxVars',
-      inputs=[mul_pattern, 'Identity', 'Identity'],
-      ordered_inputs=False)
-  reshape_2_pattern = graph_matcher.OpTypePattern(
-      'Reshape',
-      inputs=[graph_matcher.OneofPattern([fake_quant_pattern, mul_pattern]),
-              'Const'],
-      ordered_inputs=False)
-  add_pattern = graph_matcher.OpTypePattern(
-      'Add', inputs=[reshape_2_pattern, '*'], ordered_inputs=False)
+  def remove_nn():
+    """Remove nearest neighbor upsampling structure and replace with TF op."""
+    input_pattern = graph_matcher.OpTypePattern(
+        'FakeQuantWithMinMaxVars' if is_quantized else '*')
+    stack_1_pattern = graph_matcher.OpTypePattern(
+        'Pack', inputs=[input_pattern, input_pattern], ordered_inputs=False)
+    stack_2_pattern = graph_matcher.OpTypePattern(
+        'Pack', inputs=[stack_1_pattern, stack_1_pattern], ordered_inputs=False)
+    reshape_pattern = graph_matcher.OpTypePattern(
+        'Reshape', inputs=[stack_2_pattern, 'Const'], ordered_inputs=False)
+    consumer_pattern = graph_matcher.OpTypePattern(
+        'Add|AddV2|Max|Mul', inputs=[reshape_pattern, '*'],
+        ordered_inputs=False)
 
-  matcher = graph_matcher.GraphMatcher(add_pattern)
-  for match in matcher.match_graph(tf.get_default_graph()):
-    projection_op = match.get_op(input_pattern)
-    reshape_2_op = match.get_op(reshape_2_pattern)
-    add_op = match.get_op(add_pattern)
-    nn_resize = tf.image.resize_nearest_neighbor(
-        projection_op.outputs[0],
-        add_op.outputs[0].shape.dims[1:3],
-        align_corners=False,
-        name=os.path.split(reshape_2_op.name)[0] + '/resize_nearest_neighbor')
+    match_counter = 0
+    matcher = graph_matcher.GraphMatcher(consumer_pattern)
+    for match in matcher.match_graph(tf.get_default_graph()):
+      match_counter += 1
+      projection_op = match.get_op(input_pattern)
+      reshape_op = match.get_op(reshape_pattern)
+      consumer_op = match.get_op(consumer_pattern)
+      nn_resize = tf.image.resize_nearest_neighbor(
+          projection_op.outputs[0],
+          reshape_op.outputs[0].shape.dims[1:3],
+          align_corners=False,
+          name=os.path.split(reshape_op.name)[0] + '/resize_nearest_neighbor')
 
-    for index, op_input in enumerate(add_op.inputs):
-      if op_input == reshape_2_op.outputs[0]:
-        add_op._update_input(index, nn_resize)  # pylint: disable=protected-access
-        break
+      for index, op_input in enumerate(consumer_op.inputs):
+        if op_input == reshape_op.outputs[0]:
+          consumer_op._update_input(index, nn_resize)  # pylint: disable=protected-access
+          break
+
+    tf.logging.info('Found and fixed {} matches'.format(match_counter))
+    return match_counter
+
+  # Applying twice because both inputs to Add could be NN pattern
+  total_removals = 0
+  while remove_nn():
+    total_removals += 1
+    # This number is chosen based on the nas-fpn architecture.
+    if total_removals > 4:
+      raise ValueError('Graph removal encountered a infinite loop.')
 
 
 def replace_variable_values_with_moving_averages(graph,
                                                  current_checkpoint_file,
-                                                 new_checkpoint_file):
+                                                 new_checkpoint_file,
+                                                 no_ema_collection=None):
   """Replaces variable values in the checkpoint with their moving averages.
 
   If the current checkpoint has shadow variables maintaining moving averages of
@@ -92,10 +99,14 @@ def replace_variable_values_with_moving_averages(graph,
     current_checkpoint_file: a checkpoint containing both original variables and
       their moving averages.
     new_checkpoint_file: file path to write a new checkpoint.
+    no_ema_collection: A list of namescope substrings to match the variables
+      to eliminate EMA.
   """
   with graph.as_default():
     variable_averages = tf.train.ExponentialMovingAverage(0.0)
     ema_variables_to_restore = variable_averages.variables_to_restore()
+    ema_variables_to_restore = config_util.remove_unecessary_ema(
+        ema_variables_to_restore, no_ema_collection)
     with tf.Session() as sess:
       read_saver = tf.train.Saver(ema_variables_to_restore)
       read_saver.restore(sess, current_checkpoint_file)
@@ -112,8 +123,11 @@ def _image_tensor_input_placeholder(input_shape=None):
   return input_tensor, input_tensor
 
 
-def _tf_example_input_placeholder():
+def _tf_example_input_placeholder(input_shape=None):
   """Returns input that accepts a batch of strings with tf examples.
+
+  Args:
+    input_shape: the shape to resize the output decoded images to (optional).
 
   Returns:
     a tuple of input placeholder and the output decoded images.
@@ -124,6 +138,8 @@ def _tf_example_input_placeholder():
     tensor_dict = tf_example_decoder.TfExampleDecoder().decode(
         tf_example_string_tensor)
     image_tensor = tensor_dict[fields.InputDataFields.image]
+    if input_shape is not None:
+      image_tensor = tf.image.resize(image_tensor, input_shape[1:3])
     return image_tensor
   return (batch_tf_example_placeholder,
           shape_utils.static_or_dynamic_map_fn(
@@ -134,8 +150,11 @@ def _tf_example_input_placeholder():
               back_prop=False))
 
 
-def _encoded_image_string_tensor_input_placeholder():
+def _encoded_image_string_tensor_input_placeholder(input_shape=None):
   """Returns input that accepts a batch of PNG or JPEG strings.
+
+  Args:
+    input_shape: the shape to resize the output decoded images to (optional).
 
   Returns:
     a tuple of input placeholder and the output decoded images.
@@ -148,6 +167,8 @@ def _encoded_image_string_tensor_input_placeholder():
     image_tensor = tf.image.decode_image(encoded_image_string_tensor,
                                          channels=3)
     image_tensor.set_shape((None, None, 3))
+    if input_shape is not None:
+      image_tensor = tf.image.resize(image_tensor, input_shape[1:3])
     return image_tensor
   return (batch_image_str_placeholder,
           tf.map_fn(
@@ -179,6 +200,10 @@ def add_output_tensor_nodes(postprocessed_tensors,
     * detection_multiclass_scores: (Optional) float32 tensor of shape
       [batch_size, num_boxes, num_classes_with_background] for containing class
       score distribution for detected boxes including background if any.
+    * detection_features: (Optional) float32 tensor of shape
+      [batch, num_boxes, roi_height, roi_width, depth]
+      containing classifier features
+      for each detected box
     * detection_classes: float32 tensor of shape [batch_size, num_boxes]
       containing class predictions for the detected boxes.
     * detection_keypoints: (Optional) float32 tensor of shape
@@ -194,6 +219,7 @@ def add_output_tensor_nodes(postprocessed_tensors,
       'detection_scores': [batch, max_detections]
       'detection_multiclass_scores': [batch, max_detections,
         num_classes_with_background]
+      'detection_features': [batch, num_boxes, roi_height, roi_width, depth]
       'detection_classes': [batch, max_detections]
       'detection_masks': [batch, max_detections, mask_height, mask_width]
         (optional).
@@ -211,6 +237,8 @@ def add_output_tensor_nodes(postprocessed_tensors,
   scores = postprocessed_tensors.get(detection_fields.detection_scores)
   multiclass_scores = postprocessed_tensors.get(
       detection_fields.detection_multiclass_scores)
+  box_classifier_features = postprocessed_tensors.get(
+      detection_fields.detection_features)
   raw_boxes = postprocessed_tensors.get(detection_fields.raw_detection_boxes)
   raw_scores = postprocessed_tensors.get(detection_fields.raw_detection_scores)
   classes = postprocessed_tensors.get(
@@ -226,6 +254,10 @@ def add_output_tensor_nodes(postprocessed_tensors,
   if multiclass_scores is not None:
     outputs[detection_fields.detection_multiclass_scores] = tf.identity(
         multiclass_scores, name=detection_fields.detection_multiclass_scores)
+  if box_classifier_features is not None:
+    outputs[detection_fields.detection_features] = tf.identity(
+        box_classifier_features,
+        name=detection_fields.detection_features)
   outputs[detection_fields.detection_classes] = tf.identity(
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(
@@ -333,8 +365,11 @@ def build_detection_graph(input_type, detection_model, input_shape,
     raise ValueError('Unknown input type: {}'.format(input_type))
   placeholder_args = {}
   if input_shape is not None:
-    if input_type != 'image_tensor':
-      raise ValueError('Can only specify input shape for `image_tensor` '
+    if (input_type != 'image_tensor' and
+        input_type != 'encoded_image_string_tensor' and
+        input_type != 'tf_example'):
+      raise ValueError('Can only specify input shape for `image_tensor`, '
+                       '`encoded_image_string_tensor`, or `tf_example` '
                        'inputs.')
     placeholder_args['input_shape'] = input_shape
   placeholder_tensor, input_tensors = input_placeholder_fn_map[input_type](

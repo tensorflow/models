@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,14 +18,20 @@
 See model.py for more details and usage.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import six
 import tensorflow as tf
-from tensorflow.python.ops import math_ops
+from tensorflow.contrib import quantize as contrib_quantize
+from tensorflow.contrib import tfprof as contrib_tfprof
 from deeplab import common
 from deeplab import model
 from deeplab.datasets import data_generator
 from deeplab.utils import train_utils
+from deployment import model_deploy
 
+slim = tf.contrib.slim
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
@@ -74,6 +81,12 @@ flags.DEFINE_string('profile_logdir', None,
 
 # Settings for training strategy.
 
+flags.DEFINE_enum('optimizer', 'momentum', ['momentum', 'adam'],
+                  'Which optimizer to use.')
+
+
+# Momentum optimizer flags
+
 flags.DEFINE_enum('learning_policy', 'poly', ['poly', 'step'],
                   'Learning rate policy for training.')
 
@@ -81,6 +94,12 @@ flags.DEFINE_enum('learning_policy', 'poly', ['poly', 'step'],
 # fine-tuning on PASCAL trainval set, use learning rate=0.0001.
 flags.DEFINE_float('base_learning_rate', .0001,
                    'The base learning rate for model training.')
+
+flags.DEFINE_float('decay_steps', 0.0,
+                   'Decay steps for polynomial learning rate schedule.')
+
+flags.DEFINE_float('end_learning_rate', 0.0,
+                   'End learning rate for polynomial learning rate schedule.')
 
 flags.DEFINE_float('learning_rate_decay_factor', 0.1,
                    'The rate to decay the base learning rate.')
@@ -95,6 +114,11 @@ flags.DEFINE_integer('training_number_of_steps', 30000,
                      'The number of steps used for training')
 
 flags.DEFINE_float('momentum', 0.9, 'The momentum value to use')
+
+# Adam optimizer flags
+flags.DEFINE_float('adam_learning_rate', 0.001,
+                   'Learning rate for the adam optimizer.')
+flags.DEFINE_float('adam_epsilon', 1e-08, 'Adam optimizer epsilon.')
 
 # When fine_tune_batch_norm=True, use at least batch size larger than 12
 # (batch size more than 16 is better). Otherwise, one could use smaller batch
@@ -174,7 +198,6 @@ flags.DEFINE_integer(
     'top_k_percent_pixels=0.25, then mining percent will gradually reduce from '
     '100% to 25% until 100K steps after which we only mine top 25% pixels.')
 
-
 flags.DEFINE_float(
     'top_k_percent_pixels', 1.0,
     'The top k percent pixels (in terms of the loss values) used to compute '
@@ -240,207 +263,34 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
         samples[common.LABEL],
         num_classes,
         ignore_label,
-        loss_weight=1.0,
+        loss_weight=model_options.label_weights,
         upsample_logits=FLAGS.upsample_logits,
         hard_example_mining_step=FLAGS.hard_example_mining_step,
         top_k_percent_pixels=FLAGS.top_k_percent_pixels,
         scope=output)
 
-    # Log the summary
-    _log_summaries(samples[common.IMAGE], samples[common.LABEL], num_classes,
-                   output_type_dict[model.MERGED_LOGITS_SCOPE])
-
-
-def _tower_loss(iterator, num_of_classes, ignore_label, scope, reuse_variable):
-  """Calculates the total loss on a single tower running the deeplab model.
-
-  Args:
-    iterator: An iterator of type tf.data.Iterator for images and labels.
-    num_of_classes: Number of classes for the dataset.
-    ignore_label: Ignore label for the dataset.
-    scope: Unique prefix string identifying the deeplab tower.
-    reuse_variable: If the variable should be reused.
-
-  Returns:
-     The total loss for a batch of data.
-  """
-  with tf.variable_scope(
-      tf.get_variable_scope(), reuse=True if reuse_variable else None):
-    _build_deeplab(iterator, {common.OUTPUT_TYPE: num_of_classes}, ignore_label)
-
-  losses = tf.losses.get_losses(scope=scope)
-  for loss in losses:
-    tf.summary.scalar('Losses/%s' % loss.op.name, loss)
-
-  regularization_loss = tf.losses.get_regularization_loss(scope=scope)
-  tf.summary.scalar('Losses/%s' % regularization_loss.op.name,
-                    regularization_loss)
-
-  total_loss = tf.add_n([tf.add_n(losses), regularization_loss])
-  return total_loss
-
-
-def _average_gradients(tower_grads):
-  """Calculates average of gradient for each shared variable across all towers.
-
-  Note that this function provides a synchronization point across all towers.
-
-  Args:
-    tower_grads: List of lists of (gradient, variable) tuples. The outer list is
-      over individual gradients. The inner list is over the gradient calculation
-      for each tower.
-
-  Returns:
-     List of pairs of (gradient, variable) where the gradient has been summed
-       across all towers.
-  """
-  average_grads = []
-  for grad_and_vars in zip(*tower_grads):
-    # Note that each grad_and_vars looks like the following:
-    #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
-    grads, variables = zip(*grad_and_vars)
-    grad = tf.reduce_mean(tf.stack(grads, axis=0), axis=0)
-
-    # All vars are of the same value, using the first tower here.
-    average_grads.append((grad, variables[0]))
-
-  return average_grads
-
-
-def _log_summaries(input_image, label, num_of_classes, output):
-  """Logs the summaries for the model.
-
-  Args:
-    input_image: Input image of the model. Its shape is [batch_size, height,
-      width, channel].
-    label: Label of the image. Its shape is [batch_size, height, width].
-    num_of_classes: The number of classes of the dataset.
-    output: Output of the model. Its shape is [batch_size, height, width].
-  """
-  # Add summaries for model variables.
-  for model_var in tf.model_variables():
-    tf.summary.histogram(model_var.op.name, model_var)
-
-  # Add summaries for images, labels, semantic predictions.
-  if FLAGS.save_summaries_images:
-    tf.summary.image('samples/%s' % common.IMAGE, input_image)
-
-    # Scale up summary image pixel values for better visualization.
-    pixel_scaling = max(1, 255 // num_of_classes)
-    summary_label = tf.cast(label * pixel_scaling, tf.uint8)
-    tf.summary.image('samples/%s' % common.LABEL, summary_label)
-
-    predictions = tf.expand_dims(tf.argmax(output, 3), -1)
-    summary_predictions = tf.cast(predictions * pixel_scaling, tf.uint8)
-    tf.summary.image('samples/%s' % common.OUTPUT_TYPE, summary_predictions)
-
-
-def _train_deeplab_model(iterator, num_of_classes, ignore_label):
-  """Trains the deeplab model.
-
-  Args:
-    iterator: An iterator of type tf.data.Iterator for images and labels.
-    num_of_classes: Number of classes for the dataset.
-    ignore_label: Ignore label for the dataset.
-
-  Returns:
-    train_tensor: A tensor to update the model variables.
-    summary_op: An operation to log the summaries.
-  """
-  global_step = tf.train.get_or_create_global_step()
-
-  learning_rate = train_utils.get_model_learning_rate(
-      FLAGS.learning_policy, FLAGS.base_learning_rate,
-      FLAGS.learning_rate_decay_step, FLAGS.learning_rate_decay_factor,
-      FLAGS.training_number_of_steps, FLAGS.learning_power,
-      FLAGS.slow_start_step, FLAGS.slow_start_learning_rate)
-  tf.summary.scalar('learning_rate', learning_rate)
-
-  optimizer = tf.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
-
-  tower_losses = []
-  tower_grads = []
-  for i in range(FLAGS.num_clones):
-    with tf.device('/gpu:%d' % i):
-      # First tower has default name scope.
-      name_scope = ('clone_%d' % i) if i else ''
-      with tf.name_scope(name_scope) as scope:
-        loss = _tower_loss(
-            iterator=iterator,
-            num_of_classes=num_of_classes,
-            ignore_label=ignore_label,
-            scope=scope,
-            reuse_variable=(i != 0))
-        tower_losses.append(loss)
-
-  if FLAGS.quantize_delay_step >= 0:
-    if FLAGS.num_clones > 1:
-      raise ValueError('Quantization doesn\'t support multi-clone yet.')
-    tf.contrib.quantize.create_training_graph(
-        quant_delay=FLAGS.quantize_delay_step)
-
-  for i in range(FLAGS.num_clones):
-    with tf.device('/gpu:%d' % i):
-      name_scope = ('clone_%d' % i) if i else ''
-      with tf.name_scope(name_scope) as scope:
-        grads = optimizer.compute_gradients(tower_losses[i])
-        tower_grads.append(grads)
-
-  with tf.device('/cpu:0'):
-    grads_and_vars = _average_gradients(tower_grads)
-
-    # Modify the gradients for biases and last layer variables.
-    last_layers = model.get_extra_layer_scopes(
-        FLAGS.last_layers_contain_logits_only)
-    grad_mult = train_utils.get_model_gradient_multipliers(
-        last_layers, FLAGS.last_layer_gradient_multiplier)
-    if grad_mult:
-      grads_and_vars = tf.contrib.training.multiply_gradients(
-          grads_and_vars, grad_mult)
-
-    # Create gradient update op.
-    grad_updates = optimizer.apply_gradients(
-        grads_and_vars, global_step=global_step)
-
-    # Gather update_ops. These contain, for example,
-    # the updates for the batch_norm variables created by model_fn.
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    update_ops.append(grad_updates)
-    update_op = tf.group(*update_ops)
-
-    total_loss = tf.losses.get_total_loss(add_regularization_losses=True)
-
-    # Print total loss to the terminal.
-    # This implementation is mirrored from tf.slim.summaries.
-    should_log = math_ops.equal(math_ops.mod(global_step, FLAGS.log_steps), 0)
-    total_loss = tf.cond(
-        should_log,
-        lambda: tf.Print(total_loss, [total_loss], 'Total loss is :'),
-        lambda: total_loss)
-
-    tf.summary.scalar('total_loss', total_loss)
-    with tf.control_dependencies([update_op]):
-      train_tensor = tf.identity(total_loss, name='train_op')
-
-    # Excludes summaries from towers other than the first one.
-    summary_op = tf.summary.merge_all(scope='(?!clone_)')
-
-  return train_tensor, summary_op
-
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
+  # Set up deployment (i.e., multi-GPUs and/or multi-replicas).
+  config = model_deploy.DeploymentConfig(
+      num_clones=FLAGS.num_clones,
+      clone_on_cpu=FLAGS.clone_on_cpu,
+      replica_id=FLAGS.task,
+      num_replicas=FLAGS.num_replicas,
+      num_ps_tasks=FLAGS.num_ps_tasks)
+
+  # Split the batch across GPUs.
+  assert FLAGS.train_batch_size % config.num_clones == 0, (
+      'Training batch size not divisble by number of clones (GPUs).')
+
+  clone_batch_size = FLAGS.train_batch_size // config.num_clones
 
   tf.gfile.MakeDirs(FLAGS.train_logdir)
   tf.logging.info('Training on %s set', FLAGS.train_split)
 
-  graph = tf.Graph()
-  with graph.as_default():
-    with tf.device(tf.train.replica_device_setter(ps_tasks=FLAGS.num_ps_tasks)):
-      assert FLAGS.train_batch_size % FLAGS.num_clones == 0, (
-          'Training batch size not divisble by number of clones (GPUs).')
-      clone_batch_size = FLAGS.train_batch_size // FLAGS.num_clones
-
+  with tf.Graph().as_default() as graph:
+    with tf.device(config.inputs_device()):
       dataset = data_generator.Dataset(
           dataset_name=FLAGS.dataset,
           split_name=FLAGS.train_split,
@@ -454,21 +304,136 @@ def main(unused_argv):
           max_scale_factor=FLAGS.max_scale_factor,
           scale_factor_step_size=FLAGS.scale_factor_step_size,
           model_variant=FLAGS.model_variant,
-          num_readers=2,
+          num_readers=4,
           is_training=True,
           should_shuffle=True,
           should_repeat=True)
 
-      train_tensor, summary_op = _train_deeplab_model(
-          dataset.get_one_shot_iterator(), dataset.num_of_classes,
-          dataset.ignore_label)
+    # Create the global step on the device storing the variables.
+    with tf.device(config.variables_device()):
+      global_step = tf.train.get_or_create_global_step()
 
-      # Soft placement allows placing on CPU ops without GPU implementation.
-      session_config = tf.ConfigProto(
-          allow_soft_placement=True, log_device_placement=False)
+      # Define the model and create clones.
+      model_fn = _build_deeplab
+      model_args = (dataset.get_one_shot_iterator(), {
+          common.OUTPUT_TYPE: dataset.num_of_classes
+      }, dataset.ignore_label)
+      clones = model_deploy.create_clones(config, model_fn, args=model_args)
 
+      # Gather update_ops from the first clone. These contain, for example,
+      # the updates for the batch_norm variables created by model_fn.
+      first_clone_scope = config.clone_scope(0)
+      update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
+
+    # Gather initial summaries.
+    summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
+
+    # Add summaries for model variables.
+    for model_var in tf.model_variables():
+      summaries.add(tf.summary.histogram(model_var.op.name, model_var))
+
+    # Add summaries for images, labels, semantic predictions
+    if FLAGS.save_summaries_images:
+      summary_image = graph.get_tensor_by_name(
+          ('%s/%s:0' % (first_clone_scope, common.IMAGE)).strip('/'))
+      summaries.add(
+          tf.summary.image('samples/%s' % common.IMAGE, summary_image))
+
+      first_clone_label = graph.get_tensor_by_name(
+          ('%s/%s:0' % (first_clone_scope, common.LABEL)).strip('/'))
+      # Scale up summary image pixel values for better visualization.
+      pixel_scaling = max(1, 255 // dataset.num_of_classes)
+      summary_label = tf.cast(first_clone_label * pixel_scaling, tf.uint8)
+      summaries.add(
+          tf.summary.image('samples/%s' % common.LABEL, summary_label))
+
+      first_clone_output = graph.get_tensor_by_name(
+          ('%s/%s:0' % (first_clone_scope, common.OUTPUT_TYPE)).strip('/'))
+      predictions = tf.expand_dims(tf.argmax(first_clone_output, 3), -1)
+
+      summary_predictions = tf.cast(predictions * pixel_scaling, tf.uint8)
+      summaries.add(
+          tf.summary.image(
+              'samples/%s' % common.OUTPUT_TYPE, summary_predictions))
+
+    # Add summaries for losses.
+    for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
+      summaries.add(tf.summary.scalar('losses/%s' % loss.op.name, loss))
+
+    # Build the optimizer based on the device specification.
+    with tf.device(config.optimizer_device()):
+      learning_rate = train_utils.get_model_learning_rate(
+          FLAGS.learning_policy,
+          FLAGS.base_learning_rate,
+          FLAGS.learning_rate_decay_step,
+          FLAGS.learning_rate_decay_factor,
+          FLAGS.training_number_of_steps,
+          FLAGS.learning_power,
+          FLAGS.slow_start_step,
+          FLAGS.slow_start_learning_rate,
+          decay_steps=FLAGS.decay_steps,
+          end_learning_rate=FLAGS.end_learning_rate)
+
+      summaries.add(tf.summary.scalar('learning_rate', learning_rate))
+
+      if FLAGS.optimizer == 'momentum':
+        optimizer = tf.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
+      elif FLAGS.optimizer == 'adam':
+        optimizer = tf.train.AdamOptimizer(
+            learning_rate=FLAGS.adam_learning_rate, epsilon=FLAGS.adam_epsilon)
+      else:
+        raise ValueError('Unknown optimizer')
+
+    if FLAGS.quantize_delay_step >= 0:
+      if FLAGS.num_clones > 1:
+        raise ValueError('Quantization doesn\'t support multi-clone yet.')
+      contrib_quantize.create_training_graph(
+          quant_delay=FLAGS.quantize_delay_step)
+
+    startup_delay_steps = FLAGS.task * FLAGS.startup_delay_steps
+
+    with tf.device(config.variables_device()):
+      total_loss, grads_and_vars = model_deploy.optimize_clones(
+          clones, optimizer)
+      total_loss = tf.check_numerics(total_loss, 'Loss is inf or nan.')
+      summaries.add(tf.summary.scalar('total_loss', total_loss))
+
+      # Modify the gradients for biases and last layer variables.
       last_layers = model.get_extra_layer_scopes(
           FLAGS.last_layers_contain_logits_only)
+      grad_mult = train_utils.get_model_gradient_multipliers(
+          last_layers, FLAGS.last_layer_gradient_multiplier)
+      if grad_mult:
+        grads_and_vars = slim.learning.multiply_gradients(
+            grads_and_vars, grad_mult)
+
+      # Create gradient update op.
+      grad_updates = optimizer.apply_gradients(
+          grads_and_vars, global_step=global_step)
+      update_ops.append(grad_updates)
+      update_op = tf.group(*update_ops)
+      with tf.control_dependencies([update_op]):
+        train_tensor = tf.identity(total_loss, name='train_op')
+
+    # Add the summaries from the first clone. These contain the summaries
+    # created by model_fn and either optimize_clones() or _gather_clone_loss().
+    summaries |= set(
+        tf.get_collection(tf.GraphKeys.SUMMARIES, first_clone_scope))
+
+    # Merge all summaries together.
+    summary_op = tf.summary.merge(list(summaries))
+
+    # Soft placement allows placing on CPU ops without GPU implementation.
+    session_config = tf.ConfigProto(
+        allow_soft_placement=True, log_device_placement=False)
+
+    # Start the training.
+    profile_dir = FLAGS.profile_logdir
+    if profile_dir is not None:
+      tf.gfile.MakeDirs(profile_dir)
+
+    with contrib_tfprof.ProfileContext(
+        enabled=profile_dir is not None, profile_dir=profile_dir):
       init_fn = None
       if FLAGS.tf_initial_checkpoint:
         init_fn = train_utils.get_model_init_fn(
@@ -478,33 +443,19 @@ def main(unused_argv):
             last_layers,
             ignore_missing_vars=True)
 
-      scaffold = tf.train.Scaffold(
+      slim.learning.train(
+          train_tensor,
+          logdir=FLAGS.train_logdir,
+          log_every_n_steps=FLAGS.log_steps,
+          master=FLAGS.master,
+          number_of_steps=FLAGS.training_number_of_steps,
+          is_chief=(FLAGS.task == 0),
+          session_config=session_config,
+          startup_delay_steps=startup_delay_steps,
           init_fn=init_fn,
           summary_op=summary_op,
-      )
-
-      stop_hook = tf.train.StopAtStepHook(
-          last_step=FLAGS.training_number_of_steps)
-
-      profile_dir = FLAGS.profile_logdir
-      if profile_dir is not None:
-        tf.gfile.MakeDirs(profile_dir)
-
-      with tf.contrib.tfprof.ProfileContext(
-          enabled=profile_dir is not None, profile_dir=profile_dir):
-        with tf.train.MonitoredTrainingSession(
-            master=FLAGS.master,
-            is_chief=(FLAGS.task == 0),
-            config=session_config,
-            scaffold=scaffold,
-            checkpoint_dir=FLAGS.train_logdir,
-            summary_dir=FLAGS.train_logdir,
-            log_step_count_steps=FLAGS.log_steps,
-            save_summaries_steps=FLAGS.save_summaries_secs,
-            save_checkpoint_secs=FLAGS.save_interval_secs,
-            hooks=[stop_hook]) as sess:
-          while not sess.should_stop():
-            sess.run([train_tensor])
+          save_summaries_secs=FLAGS.save_summaries_secs,
+          save_interval_secs=FLAGS.save_interval_secs)
 
 
 if __name__ == '__main__':

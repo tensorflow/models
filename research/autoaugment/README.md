@@ -2,7 +2,7 @@
 and CIFAR-100 dataset with AutoAugment.</b></font>
 
 The CIFAR-10/CIFAR-100 data can be downloaded from:
-https://www.cs.toronto.edu/~kriz/cifar.html.
+https://www.cs.toronto.edu/~kriz/cifar.html. Use the Python version instead of the binary version.
 
 The code replicates the results from Tables 1 and 2 on CIFAR-10/100 with the
 following models: Wide-ResNet-28-10, Shake-Shake (26 2x32d), Shake-Shake (26
