@@ -26,10 +26,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import tf_slim as slim
 
 from nets import resnet_v1
-
-slim = tf.contrib.slim
 
 _SUPPORTED_TARGET_LAYER = ['resnet_v1_50/block3', 'resnet_v1_50/block4']
 
@@ -89,8 +88,8 @@ class DelfV1(object):
     the attention score map.
 
     Args:
-      attention_feature_map: Potentially normalized feature map that will
-        be aggregated with attention score map.
+      attention_feature_map: Potentially normalized feature map that will be
+        aggregated with attention score map.
       feature_map: Unnormalized feature map that will be used to compute
         attention score map.
       attention_nonlinear: Type of non-linearity that will be applied to
@@ -182,8 +181,9 @@ class DelfV1(object):
         attention_feature_map = feature_map
       end_points['attention_feature_map'] = attention_feature_map
 
-      attention_outputs = self._PerformAttention(
-          attention_feature_map, feature_map, attention_nonlinear, kernel)
+      attention_outputs = self._PerformAttention(attention_feature_map,
+                                                 feature_map,
+                                                 attention_nonlinear, kernel)
       prelogits, attention_prob, attention_score = attention_outputs
       end_points['prelogits'] = prelogits
       end_points['attention_prob'] = attention_prob
@@ -248,8 +248,8 @@ class DelfV1(object):
       kernel: Convolutional kernel to use in attention layers (eg, [3, 3]).
       training_resnet: Whether or not the Resnet blocks from the model are in
         training mode.
-      training_attention: Whether or not the attention part of the model is
-        in training mode.
+      training_attention: Whether or not the attention part of the model is in
+        training mode.
       reuse: Whether or not the layer and its variables should be reused.
       use_batch_norm: Whether or not to use batch normalization.
 
