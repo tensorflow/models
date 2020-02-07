@@ -329,12 +329,12 @@ def run_customized_training_loop(
       for callback in custom_callbacks:
         callback.on_batch_begin(batch)
 
-    def _run_callbacks_on_batch_end(batch):
+    def _run_callbacks_on_batch_end(batch, logs):
       """Runs custom callbacks at the end of every step."""
       if not custom_callbacks:
         return
       for callback in custom_callbacks:
-        callback.on_batch_end(batch)
+        callback.on_batch_end(batch, logs)
 
     # Training loop starts here.
     checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
@@ -371,10 +371,10 @@ def run_customized_training_loop(
         # Converts steps to a Tensor to avoid tf.function retracing.
         train_steps(train_iterator,
                     tf.convert_to_tensor(steps, dtype=tf.int32))
-      _run_callbacks_on_batch_end(current_step)
+      train_loss = _float_metric_value(train_loss_metric)
+      _run_callbacks_on_batch_end(current_step, {'loss': train_loss})
       current_step += steps
 
-      train_loss = _float_metric_value(train_loss_metric)
       # Updates training logging.
       training_status = 'Train Step: %d/%d  / loss = %s' % (
           current_step, total_training_steps, train_loss)
