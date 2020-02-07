@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A script to export the BERT core model as a TF-Hub SavedModel."""
+"""A script to export the ALBERT core model as a TF-Hub SavedModel."""
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -28,20 +28,22 @@ from official.nlp.bert import bert_models
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string("bert_config_file", None,
-                    "Bert configuration file to define core bert layers.")
+flags.DEFINE_string("albert_config_file", None,
+                    "Albert configuration file to define core albert layers.")
 flags.DEFINE_string("model_checkpoint_path", None,
                     "File path to TF model checkpoint.")
 flags.DEFINE_string("export_path", None, "TF-Hub SavedModel destination path.")
-flags.DEFINE_string("vocab_file", None,
-                    "The vocabulary file that the BERT model was trained on.")
+flags.DEFINE_string(
+    "sp_model_file", None,
+    "The sentence piece model file that the ALBERT model was trained on.")
 
 
-def create_bert_model(bert_config: bert_modeling.BertConfig) -> tf.keras.Model:
-  """Creates a BERT keras core model from BERT configuration.
+def create_albert_model(
+    albert_config: bert_modeling.AlbertConfig) -> tf.keras.Model:
+  """Creates an ALBERT keras core model from ALBERT configuration.
 
   Args:
-    bert_config: A `BertConfig` to create the core model.
+    albert_config: An `AlbertConfig` to create the core model.
 
   Returns:
     A keras model.
@@ -54,7 +56,7 @@ def create_bert_model(bert_config: bert_modeling.BertConfig) -> tf.keras.Model:
   input_type_ids = tf.keras.layers.Input(
       shape=(None,), dtype=tf.int32, name="input_type_ids")
   transformer_encoder = bert_models.get_transformer_encoder(
-      bert_config, sequence_length=None, float_dtype=tf.float32)
+      albert_config, sequence_length=None, float_dtype=tf.float32)
   sequence_output, pooled_output = transformer_encoder(
       [input_word_ids, input_mask, input_type_ids])
   # To keep consistent with legacy hub modules, the outputs are
@@ -64,24 +66,23 @@ def create_bert_model(bert_config: bert_modeling.BertConfig) -> tf.keras.Model:
       outputs=[pooled_output, sequence_output]), transformer_encoder
 
 
-def export_bert_tfhub(bert_config: bert_modeling.BertConfig,
-                      model_checkpoint_path: Text, hub_destination: Text,
-                      vocab_file: Text):
+def export_albert_tfhub(albert_config: bert_modeling.AlbertConfig,
+                        model_checkpoint_path: Text, hub_destination: Text,
+                        sp_model_file: Text):
   """Restores a tf.keras.Model and saves for TF-Hub."""
-  core_model, encoder = create_bert_model(bert_config)
+  core_model, encoder = create_albert_model(albert_config)
   checkpoint = tf.train.Checkpoint(model=encoder)
   checkpoint.restore(model_checkpoint_path).assert_consumed()
-  core_model.vocab_file = tf.saved_model.Asset(vocab_file)
-  core_model.do_lower_case = tf.Variable(
-      "uncased" in vocab_file, trainable=False)
+  core_model.sp_model_file = tf.saved_model.Asset(sp_model_file)
   core_model.save(hub_destination, include_optimizer=False, save_format="tf")
 
 
 def main(_):
   assert tf.version.VERSION.startswith('2.')
-  bert_config = bert_modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
-  export_bert_tfhub(bert_config, FLAGS.model_checkpoint_path, FLAGS.export_path,
-                    FLAGS.vocab_file)
+  albert_config = bert_modeling.AlbertConfig.from_json_file(
+      FLAGS.albert_config_file)
+  export_albert_tfhub(albert_config, FLAGS.model_checkpoint_path,
+                      FLAGS.export_path, FLAGS.sp_model_file)
 
 
 if __name__ == "__main__":

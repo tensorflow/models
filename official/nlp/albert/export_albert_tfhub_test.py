@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests official.nlp.bert.export_tfhub."""
-
+"""Tests official.nlp.albert.export_albert_tfhub."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -24,43 +23,46 @@ import numpy as np
 
 import tensorflow as tf
 import tensorflow_hub as hub
+
 from official.nlp import bert_modeling
-from official.nlp.bert import export_tfhub
+from official.nlp.albert import export_albert_tfhub
 
 
-class ExportTfhubTest(tf.test.TestCase):
+class ExportAlbertTfhubTest(tf.test.TestCase):
 
-  def test_export_tfhub(self):
+  def test_export_albert_tfhub(self):
     # Exports a savedmodel for TF-Hub
-    bert_config = bert_modeling.BertConfig(
+    albert_config = bert_modeling.AlbertConfig(
         vocab_size=100,
+        embedding_size=8,
         hidden_size=16,
         intermediate_size=32,
         max_position_embeddings=128,
         num_attention_heads=2,
         num_hidden_layers=1)
-    bert_model, encoder = export_tfhub.create_bert_model(bert_config)
+    bert_model, encoder = export_albert_tfhub.create_albert_model(albert_config)
     model_checkpoint_dir = os.path.join(self.get_temp_dir(), "checkpoint")
     checkpoint = tf.train.Checkpoint(model=encoder)
     checkpoint.save(os.path.join(model_checkpoint_dir, "test"))
     model_checkpoint_path = tf.train.latest_checkpoint(model_checkpoint_dir)
 
-    vocab_file = os.path.join(self.get_temp_dir(), "uncased_vocab.txt")
-    with tf.io.gfile.GFile(vocab_file, "w") as f:
+    sp_model_file = os.path.join(self.get_temp_dir(), "sp_tokenizer.model")
+    with tf.io.gfile.GFile(sp_model_file, "w") as f:
       f.write("dummy content")
 
     hub_destination = os.path.join(self.get_temp_dir(), "hub")
-    export_tfhub.export_bert_tfhub(bert_config, model_checkpoint_path,
-                                   hub_destination, vocab_file)
+    export_albert_tfhub.export_albert_tfhub(
+        albert_config,
+        model_checkpoint_path,
+        hub_destination,
+        sp_model_file=sp_model_file)
 
     # Restores a hub KerasLayer.
     hub_layer = hub.KerasLayer(hub_destination, trainable=True)
 
     if hasattr(hub_layer, "resolved_object"):
-      # Checks meta attributes.
-      self.assertTrue(hub_layer.resolved_object.do_lower_case.numpy())
       with tf.io.gfile.GFile(
-          hub_layer.resolved_object.vocab_file.asset_path.numpy()) as f:
+          hub_layer.resolved_object.sp_model_file.asset_path.numpy()) as f:
         self.assertEqual("dummy content", f.read())
     # Checks the hub KerasLayer.
     for source_weight, hub_weight in zip(bert_model.trainable_weights,
