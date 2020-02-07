@@ -16,10 +16,19 @@
 
 from setuptools import setup, find_packages
 
+install_requires = [
+    'absl-py >= 0.2.2',
+    'protobuf',
+    'numpy',
+    'tensorflow >= 1.10',
+    'tf_slim >= 1.0',
+]
+
 setup(
     name='delf',
-    version='0.1',
+    version='1.0',
     include_package_data=True,
     packages=find_packages(),
+    install_requires=install_requires,
     description='DELF (DEep Local Features)',
 )
