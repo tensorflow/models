@@ -29,7 +29,7 @@ from absl import app
 from absl import flags
 import tensorflow as tf
 
-from delf.python.training.model import delf
+from delf.python.training.model import delf_model
 from delf.python.training.model import feature_extractor as extractor
 
 FLAGS = flags.FLAGS
@@ -68,7 +68,7 @@ def main(argv):
   with tf.Graph().as_default() as g, tf.Session(graph=g) as sess:
 
     # Setup the DELF model for extraction.
-    model = delf.Delf(block3_strides=FLAGS.block3_strides, name='DELF')
+    model = delf_model.Delf(block3_strides=FLAGS.block3_strides, name='DELF')
 
     # Initial forward pass to build model.
     images = tf.zeros((1, 321, 321, 3), dtype=tf.float32)

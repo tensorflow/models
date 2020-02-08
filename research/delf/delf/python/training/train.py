@@ -21,7 +21,6 @@ using MirroredStrategy to so it can run on multiple GPUs.
 
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import google_type_annotations
 from __future__ import print_function
 
 import os
@@ -29,12 +28,13 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
+import numpy as np
 import tensorflow.compat.v2 as tf
 import tensorflow_probability as tfp
 
 # Placeholder for internal import. Do not remove this line.
 from delf.python.training.datasets import googlelandmarks as gld
-from delf.python.training.model import delf
+from delf.python.training.model import delf_model
 
 FLAGS = flags.FLAGS
 
@@ -80,7 +80,7 @@ def _attention_summaries(scores, global_step):
 
 def create_model(num_classes):
   """Define DELF model, and initialize classifiers."""
-  model = delf.Delf(block3_strides=FLAGS.block3_strides, name='DELF')
+  model = delf_model.Delf(block3_strides=FLAGS.block3_strides, name='DELF')
   model.init_classifiers(num_classes)
   return model
 
@@ -407,8 +407,8 @@ def main(argv):
                 'validation/attn', attn_validation_result, step=global_step)
 
             logging.info('\nValidation(%f)\n', global_step_value)
-            logging.info(': desc: %f\n', {desc_validation_result.numpy()})
-            logging.info(': attn: %f\n', {attn_validation_result.numpy()})
+            logging.info(': desc: %f\n', desc_validation_result.numpy())
+            logging.info(': attn: %f\n', attn_validation_result.numpy())
             # Print to console.
             if FLAGS.debug:
               print('Validation: desc:', desc_validation_result.numpy())

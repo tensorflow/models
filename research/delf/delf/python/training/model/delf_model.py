@@ -122,18 +122,14 @@ class Delf(tf.keras.Model):
   # Weights to optimize for descriptor fine tuning.
   @property
   def desc_trainable_weights(self):
-    return [
-        *self.backbone.trainable_weights,
-        *self.desc_classification.trainable_weights
-    ]
+    return (self.backbone.trainable_weights +
+            self.desc_classification.trainable_weights)
 
   # Weights to optimize for attention model training.
   @property
   def attn_trainable_weights(self):
-    return [
-        *self.attention.trainable_weights,
-        *self.attn_classification.trainable_weights
-    ]
+    return (self.attention.trainable_weights +
+            self.attn_classification.trainable_weights)
 
   def call(self, input_image, training=True):
     blocks = {'block3': None}

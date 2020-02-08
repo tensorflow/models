@@ -22,7 +22,7 @@ from __future__ import print_function
 from absl.testing import parameterized
 import tensorflow.compat.v2 as tf
 
-from delf.python.training.model import delf
+from delf.python.training.model import delf_model
 
 
 # Currently all tests run in TF 2.0 mode
@@ -42,7 +42,7 @@ class DelfTest(tf.test.TestCase, parameterized.TestCase):
     batch_size = 2
     input_shape = (batch_size, image_size, image_size, 3)
 
-    model = delf.Delf(block3_strides=block3_strides, name='DELF')
+    model = delf_model.Delf(block3_strides=block3_strides, name='DELF')
     model.init_classifiers(num_classes)
 
     images = tf.random.uniform(input_shape, minval=-1.0, maxval=1.0, seed=0)
@@ -73,7 +73,7 @@ class DelfTest(tf.test.TestCase, parameterized.TestCase):
     clip_val = 10.0
     input_shape = (batch_size, image_size, image_size, 3)
 
-    model = delf.Delf(block3_strides=block3_strides, name='DELF')
+    model = delf_model.Delf(block3_strides=block3_strides, name='DELF')
     model.init_classifiers(num_classes)
 
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.001, momentum=0.9)

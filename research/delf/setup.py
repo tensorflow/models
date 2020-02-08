@@ -19,9 +19,12 @@ from setuptools import setup, find_packages
 install_requires = [
     'absl-py >= 0.2.2',
     'protobuf',
+    'pandas',
     'numpy',
+    'scipy',
     'tensorflow >= 1.10',
     'tf_slim >= 1.0',
+    'tensorflow_probability',
 ]
 
 setup(

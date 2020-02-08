@@ -20,7 +20,6 @@ Placeholder for Google Landmarks dataset.
 
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import google_type_annotations
 from __future__ import print_function
 
 import functools
@@ -98,21 +97,6 @@ def _ImageNetCrop(image):
   return cropped_image
 
 
-def _ImageNetCropBatch(images):
-  """Imagenet-style crop with random bbox and aspect ratio for batch of images.
-
-  Callback function applied to dataset with arguments being the input batch of
-  images and labels.
-  Args:
-    images: a `Tensor`, images to crop.
-
-  Returns:
-    images: a `Tensor`, cropped images.
-  """
-  cropped_images = tf.map_fn(_ImageNetCrop, images)
-  return cropped_images
-
-
 def _ParseFunction(example, name_to_features, image_size, augmentation):
   """Parse a single TFExample to get the image and label and process the image.
 
@@ -126,12 +110,12 @@ def _ParseFunction(example, name_to_features, image_size, augmentation):
     image: a `Tensor`. The processed image.
     label: a `Tensor`. The ground-truth label.
   """
-  parsed_example = tf.parse_single_example(example, name_to_features)
+  parsed_example = tf.io.parse_single_example(example, name_to_features)
   # Parse to get image.
   image = parsed_example['image/encoded']
   image = tf.image.decode_jpeg(image)
   if augmentation:
-    image = _ImageNetCropBatch(image)
+    image = _ImageNetCrop(image)
   else:
     image = tf.image.resize(image, [image_size, image_size])
     image.set_shape([image_size, image_size, 3])

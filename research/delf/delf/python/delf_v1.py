@@ -26,9 +26,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-import tf_slim as slim
-
-from nets import resnet_v1
+from tf_slim import layers
+from tf_slim.nets import resnet_v1
+from tf_slim.ops.arg_scope import arg_scope
 
 _SUPPORTED_TARGET_LAYER = ['resnet_v1_50/block3', 'resnet_v1_50/block4']
 
@@ -108,7 +108,7 @@ class DelfV1(object):
         'attention', values=[attention_feature_map, feature_map]):
       with tf.variable_scope('compute', values=[feature_map]):
         activation_fn_conv1 = tf.nn.relu
-        feature_map_conv1 = slim.conv2d(
+        feature_map_conv1 = layers.conv2d(
             feature_map,
             512,
             kernel,
@@ -116,7 +116,7 @@ class DelfV1(object):
             activation_fn=activation_fn_conv1,
             scope='conv1')
 
-        attention_score = slim.conv2d(
+        attention_score = layers.conv2d(
             feature_map_conv1,
             1,
             kernel,
@@ -262,18 +262,17 @@ class DelfV1(object):
       end_points: Set of activations for external use.
     """
     # Construct Resnet50 features.
-    with slim.arg_scope(
-        resnet_v1.resnet_arg_scope(use_batch_norm=use_batch_norm)):
+    with arg_scope(resnet_v1.resnet_arg_scope(use_batch_norm=use_batch_norm)):
       _, end_points = self.GetResnet50Subnetwork(
           images, is_training=training_resnet, reuse=reuse)
 
     feature_map = end_points[self._target_layer_type]
 
     # Construct attention subnetwork on top of features.
-    with slim.arg_scope(
+    with arg_scope(
         resnet_v1.resnet_arg_scope(
             weight_decay=weight_decay, use_batch_norm=use_batch_norm)):
-      with slim.arg_scope([slim.batch_norm], is_training=training_attention):
+      with arg_scope([layers.batch_norm], is_training=training_attention):
         (prelogits, attention_prob, attention_score,
          end_points) = self._GetAttentionSubnetwork(
              feature_map,
@@ -330,13 +329,13 @@ class DelfV1(object):
             training_resnet=training_resnet,
             training_attention=training_attention,
             reuse=reuse))
-    with slim.arg_scope(
+    with arg_scope(
         resnet_v1.resnet_arg_scope(
             weight_decay=weight_decay, batch_norm_scale=True)):
-      with slim.arg_scope([slim.batch_norm], is_training=training_attention):
+      with arg_scope([layers.batch_norm], is_training=training_attention):
         with tf.variable_scope(
             _ATTENTION_VARIABLE_SCOPE, values=[attention_feat], reuse=reuse):
-          logits = slim.conv2d(
+          logits = layers.conv2d(
               attention_feat,
               num_classes, [1, 1],
               activation_fn=None,

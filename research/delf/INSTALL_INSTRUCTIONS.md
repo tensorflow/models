@@ -2,15 +2,26 @@
 
 ### Tensorflow
 
-For detailed steps to install Tensorflow, follow the [Tensorflow installation
-instructions](https://www.tensorflow.org/install/). A typical user can install
-Tensorflow using one of the following commands:
+For detailed steps to install Tensorflow, follow the
+[Tensorflow installation instructions](https://www.tensorflow.org/install/). A
+typical user can install Tensorflow using one of the following commands:
 
 ```bash
 # For CPU:
 pip install tensorflow
 # For GPU:
 pip install tensorflow-gpu
+```
+
+### TF-Slim
+
+Note: currently, we need to install the latest version from source, to avoid
+using previous versions which relied on tf.contrib (which is now deprecated).
+
+```bash
+git clone git@github.com:google-research/tf-slim.git
+cd tf-slim
+pip install .
 ```
 
 ### Protobuf
@@ -43,13 +54,9 @@ your `PYTHONPATH`, as instructed
 [here](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/installation.md))
 
 ```bash
-git clone https://github.com/tensorflow/models
+git clone git@github.com:tensorflow/models.git
 
-# First, install slim's "nets" package.
-cd models/research/slim/
-pip install -e .
-
-# Second, setup the object_detection module by editing PYTHONPATH.
+# Setup the object_detection module by editing PYTHONPATH.
 cd ..
 # From tensorflow/models/research/
 export PYTHONPATH=$PYTHONPATH:`pwd`
@@ -63,7 +70,8 @@ downloaded the `protoc` compiler.
 ${PATH_TO_PROTOC?}/bin/protoc delf/protos/*.proto --python_out=.
 ```
 
-Finally, install the DELF package.
+Finally, install the DELF package. This may also install some other dependencies
+under the hood.
 
 ```bash
 # From tensorflow/models/research/delf/
@@ -91,5 +99,5 @@ to use `pip3` instead of `pip`, and all should work.
 
 Issues might be observed if using `pip install` with `-e` option (editable
 mode). You may try out to simply remove the `-e` from the commands above. Also,
-depending on your machine setup, you might need to run the `sudo pip install` command,
-that is with a `sudo` at the beginning.
+depending on your machine setup, you might need to run the `sudo pip install`
+command, that is with a `sudo` at the beginning.
