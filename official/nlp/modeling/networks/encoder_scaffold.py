@@ -50,7 +50,6 @@ class EncoderScaffold(network.Network):
     num_output_classes: The output size of the classification layer.
     classification_layer_initializer: The initializer for the classification
       layer.
-    classification_layer_dtype: The dtype for the classification layer.
     embedding_cls: The class or instance to use to embed the input data. This
       class or instance defines the inputs to this encoder. If embedding_cls is
       not set, a default embedding network (from the original BERT paper) will
@@ -65,7 +64,6 @@ class EncoderScaffold(network.Network):
       "seq_length": The sequence length for this encoder.
       "initializer": The initializer for the embedding portion of this encoder.
       "dropout_rate": The dropout rate to apply before the encoding layers.
-      "dtype": (Optional): The dtype of the embedding layers.
     embedding_data: A reference to the embedding weights that will be used to
       train the masked language model, if necessary. This is optional, and only
       needed if (1) you are overriding embedding_cls and (2) are doing standard
@@ -84,7 +82,6 @@ class EncoderScaffold(network.Network):
         "dropout_rate": The overall dropout rate for the transformer layers.
         "attention_dropout_rate": The dropout rate for the attention layers.
         "kernel_initializer": The initializer for the transformer layers.
-        "dtype": The dtype of the transformer.
   """
 
   def __init__(
@@ -92,7 +89,6 @@ class EncoderScaffold(network.Network):
       num_output_classes,
       classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=0.02),
-      classification_layer_dtype=tf.float32,
       embedding_cls=None,
       embedding_cfg=None,
       embedding_data=None,
@@ -168,10 +164,7 @@ class EncoderScaffold(network.Network):
               dtype=tf.float32)(embeddings))
       embeddings = (
           tf.keras.layers.Dropout(
-              rate=embedding_cfg['dropout_rate'], dtype=tf.float32)(embeddings))
-
-      if embedding_cfg.get('dtype') == 'float16':
-        embeddings = tf.cast(embeddings, tf.float16)
+              rate=embedding_cfg['dropout_rate'])(embeddings))
 
     attention_mask = layers.SelfAttentionMask()([embeddings, mask])
     data = embeddings
@@ -190,7 +183,6 @@ class EncoderScaffold(network.Network):
         units=num_output_classes,
         activation='tanh',
         kernel_initializer=classification_layer_initializer,
-        dtype=classification_layer_dtype,
         name='cls_transform')(
             first_token_tensor)
 

@@ -123,7 +123,6 @@ def run_bert_classifier(strategy,
     classifier_model, core_model = (
         bert_models.classifier_model(
             bert_config,
-            tf.float32,
             num_classes,
             max_seq_length,
             hub_module_url=FLAGS.hub_module_url))
@@ -271,8 +270,10 @@ def export_classifier(model_export_path, input_meta_data,
   if not model_dir:
     raise ValueError('Export path is not specified: %s' % model_dir)
 
+  # Export uses float32 for now, even if training uses mixed precision.
+  tf.keras.mixed_precision.experimental.set_policy('float32')
   classifier_model = bert_models.classifier_model(
-      bert_config, tf.float32, input_meta_data['num_labels'],
+      bert_config, input_meta_data['num_labels'],
       input_meta_data['max_seq_length'])[0]
 
   model_saving_utils.export_bert_model(

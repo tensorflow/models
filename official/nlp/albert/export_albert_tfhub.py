@@ -56,7 +56,7 @@ def create_albert_model(
   input_type_ids = tf.keras.layers.Input(
       shape=(None,), dtype=tf.int32, name="input_type_ids")
   transformer_encoder = bert_models.get_transformer_encoder(
-      albert_config, sequence_length=None, float_dtype=tf.float32)
+      albert_config, sequence_length=None)
   sequence_output, pooled_output = transformer_encoder(
       [input_word_ids, input_mask, input_type_ids])
   # To keep consistent with legacy hub modules, the outputs are

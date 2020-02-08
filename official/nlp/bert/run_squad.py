@@ -186,7 +186,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     # Prediction always uses float32, even if training uses mixed precision.
     tf.keras.mixed_precision.experimental.set_policy('float32')
     squad_model, _ = bert_models.squad_model(
-        bert_config, input_meta_data['max_seq_length'], float_type=tf.float32)
+        bert_config, input_meta_data['max_seq_length'])
 
   checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
   logging.info('Restoring checkpoints from %s', checkpoint_path)
@@ -254,7 +254,6 @@ def train_squad(strategy,
     squad_model, core_model = bert_models.squad_model(
         bert_config,
         max_seq_length,
-        float_type=tf.float16 if use_float16 else tf.float32,
         hub_module_url=FLAGS.hub_module_url)
     squad_model.optimizer = optimization.create_optimizer(
         FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
@@ -389,8 +388,10 @@ def export_squad(model_export_path, input_meta_data):
     raise ValueError('Export path is not specified: %s' % model_export_path)
   bert_config = MODEL_CLASSES[FLAGS.model_type][0].from_json_file(
       FLAGS.bert_config_file)
-  squad_model, _ = bert_models.squad_model(
-      bert_config, input_meta_data['max_seq_length'], float_type=tf.float32)
+  # Export uses float32 for now, even if training uses mixed precision.
+  tf.keras.mixed_precision.experimental.set_policy('float32')
+  squad_model, _ = bert_models.squad_model(bert_config,
+                                           input_meta_data['max_seq_length'])
   model_saving_utils.export_bert_model(
       model_export_path, model=squad_model, checkpoint_dir=FLAGS.model_dir)
 

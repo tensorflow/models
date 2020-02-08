@@ -31,14 +31,17 @@ from official.nlp.modeling.networks import albert_transformer_encoder
 @keras_parameterized.run_all_keras_modes
 class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
 
+  def tearDown(self):
+    super(AlbertTransformerEncoderTest, self).tearDown()
+    tf.keras.mixed_precision.experimental.set_policy("float32")
+
   @parameterized.named_parameters(
       dict(testcase_name="default", expected_dtype=tf.float32),
       dict(
           testcase_name="with_float16_dtype",
-          expected_dtype=tf.float16,
-          float_dtype="float16"),
+          expected_dtype=tf.float16),
   )
-  def test_network_creation(self, expected_dtype, float_dtype=None):
+  def test_network_creation(self, expected_dtype):
     hidden_size = 32
     sequence_length = 21
 
@@ -48,8 +51,8 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
         sequence_length=sequence_length,
         num_attention_heads=2,
         num_layers=3)
-    if float_dtype is not None:
-      kwargs["float_dtype"] = float_dtype
+    if expected_dtype == tf.float16:
+      tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
 
     # Create a small TransformerEncoder for testing.
     test_network = albert_transformer_encoder.AlbertTransformerEncoder(**kwargs)
@@ -65,7 +68,9 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
     self.assertAllEqual(expected_data_shape, data.shape.as_list())
     self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
 
-    self.assertEqual(expected_dtype, data.dtype)
+    # If float_dtype is set to float16, the data output is float32 (from a layer
+    # norm) and pool output should be float16.
+    self.assertEqual(tf.float32, data.dtype)
     self.assertEqual(expected_dtype, pooled.dtype)
 
     # ALBERT has additonal 'embedding_hidden_mapping_in' weights and
@@ -128,6 +133,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
     _ = model.predict([word_id_data, mask_data, type_id_data])
 
   def test_serialize_deserialize(self):
+    tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
     # Create a network object that sets all of its config options.
     kwargs = dict(
         vocab_size=100,
@@ -142,8 +148,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
         activation="relu",
         dropout_rate=0.05,
         attention_dropout_rate=0.22,
-        initializer="glorot_uniform",
-        float_dtype="float16")
+        initializer="glorot_uniform")
     network = albert_transformer_encoder.AlbertTransformerEncoder(**kwargs)
 
     expected_config = dict(kwargs)
@@ -166,4 +171,5 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
 
 
 if __name__ == "__main__":
+  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

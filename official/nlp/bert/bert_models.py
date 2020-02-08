@@ -85,14 +85,12 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
 
 
 def get_transformer_encoder(bert_config,
-                            sequence_length,
-                            float_dtype=tf.float32):
+                            sequence_length):
   """Gets a 'TransformerEncoder' object.
 
   Args:
     bert_config: A 'modeling.BertConfig' or 'modeling.AlbertConfig' object.
     sequence_length: Maximum sequence length of the training data.
-    float_dtype: tf.dtype, tf.float32 or tf.float16.
 
   Returns:
     A networks.TransformerEncoder object.
@@ -110,8 +108,7 @@ def get_transformer_encoder(bert_config,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=bert_config.initializer_range),
-      float_dtype=float_dtype.name)
+          stddev=bert_config.initializer_range))
   if isinstance(bert_config, bert_modeling.AlbertConfig):
     kwargs['embedding_width'] = bert_config.embedding_size
     return networks.AlbertTransformerEncoder(**kwargs)
@@ -191,10 +188,9 @@ def pretrain_model(bert_config,
 class BertSquadLogitsLayer(tf.keras.layers.Layer):
   """Returns a layer that computes custom logits for BERT squad model."""
 
-  def __init__(self, initializer=None, float_type=tf.float32, **kwargs):
+  def __init__(self, initializer=None, **kwargs):
     super(BertSquadLogitsLayer, self).__init__(**kwargs)
     self.initializer = initializer
-    self.float_type = float_type
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
@@ -217,14 +213,11 @@ class BertSquadLogitsLayer(tf.keras.layers.Layer):
     logits = tf.keras.backend.reshape(logits, [-1, sequence_length, 2])
     logits = tf.transpose(logits, [2, 0, 1])
     unstacked_logits = tf.unstack(logits, axis=0)
-    if self.float_type == tf.float16:
-      unstacked_logits = tf.cast(unstacked_logits, tf.float32)
     return unstacked_logits[0], unstacked_logits[1]
 
 
 def squad_model(bert_config,
                 max_seq_length,
-                float_type,
                 initializer=None,
                 hub_module_url=None):
   """Returns BERT Squad model along with core BERT model to import weights.
@@ -232,7 +225,6 @@ def squad_model(bert_config,
   Args:
     bert_config: BertConfig, the config defines the core Bert model.
     max_seq_length: integer, the maximum input sequence length.
-    float_type: tf.dtype, tf.float32 or tf.bfloat16.
     initializer: Initializer for the final dense layer in the span labeler.
       Defaulted to TruncatedNormal initializer.
     hub_module_url: TF-Hub path/url to Bert module.
@@ -245,8 +237,7 @@ def squad_model(bert_config,
     initializer = tf.keras.initializers.TruncatedNormal(
         stddev=bert_config.initializer_range)
   if not hub_module_url:
-    bert_encoder = get_transformer_encoder(bert_config, max_seq_length,
-                                           float_type)
+    bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
     return bert_span_labeler.BertSpanLabeler(
         network=bert_encoder, initializer=initializer), bert_encoder
 
@@ -261,7 +252,7 @@ def squad_model(bert_config,
       [input_word_ids, input_mask, input_type_ids])
 
   squad_logits_layer = BertSquadLogitsLayer(
-      initializer=initializer, float_type=float_type, name='squad_logits')
+      initializer=initializer, name='squad_logits')
   start_logits, end_logits = squad_logits_layer(sequence_output)
 
   squad = tf.keras.Model(
@@ -276,7 +267,6 @@ def squad_model(bert_config,
 
 
 def classifier_model(bert_config,
-                     float_type,
                      num_labels,
                      max_seq_length,
                      final_layer_initializer=None,
@@ -289,7 +279,6 @@ def classifier_model(bert_config,
   Args:
     bert_config: BertConfig or AlbertConfig, the config defines the core
       BERT or ALBERT model.
-    float_type: dtype, tf.float32 or tf.bfloat16.
     num_labels: integer, the number of classes.
     max_seq_length: integer, the maximum input sequence length.
     final_layer_initializer: Initializer for final dense layer. Defaulted
@@ -328,8 +317,7 @@ def classifier_model(bert_config,
   output = tf.keras.layers.Dense(
       num_labels,
       kernel_initializer=initializer,
-      name='output',
-      dtype=float_type)(
+      name='output')(
           output)
   return tf.keras.Model(
       inputs={
