@@ -23,6 +23,7 @@ import tensorflow_hub as hub
 
 from official.modeling import tf_utils
 from official.nlp import bert_modeling
+from official.nlp.albert import configs as albert_configs
 from official.nlp.modeling import losses
 from official.nlp.modeling import networks
 from official.nlp.modeling.networks import bert_classifier
@@ -109,7 +110,7 @@ def get_transformer_encoder(bert_config,
       type_vocab_size=bert_config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range))
-  if isinstance(bert_config, bert_modeling.AlbertConfig):
+  if isinstance(bert_config, albert_configs.AlbertConfig):
     kwargs['embedding_width'] = bert_config.embedding_size
     return networks.AlbertTransformerEncoder(**kwargs)
   else:

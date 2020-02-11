@@ -31,6 +31,7 @@ import tensorflow as tf
 from official.modeling import model_training_utils
 from official.nlp import bert_modeling as modeling
 from official.nlp import optimization
+from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
 from official.nlp.bert import input_pipeline
@@ -292,7 +293,8 @@ def run_bert(strategy,
     bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
   else:
     assert FLAGS.model_type == 'albert'
-    bert_config = modeling.AlbertConfig.from_json_file(FLAGS.bert_config_file)
+    bert_config = albert_configs.AlbertConfig.from_json_file(
+        FLAGS.bert_config_file)
   if FLAGS.mode == 'export_only':
     # As Keras ModelCheckpoint callback used with Keras compile/fit() API
     # internally uses model.save_weights() to save checkpoints, we must

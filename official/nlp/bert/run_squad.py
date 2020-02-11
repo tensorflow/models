@@ -30,6 +30,7 @@ import tensorflow as tf
 from official.modeling import model_training_utils
 from official.nlp import bert_modeling as modeling
 from official.nlp import optimization
+from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
 from official.nlp.bert import input_pipeline
@@ -99,7 +100,7 @@ FLAGS = flags.FLAGS
 
 MODEL_CLASSES = {
     'bert': (modeling.BertConfig, squad_lib_wp, tokenization.FullTokenizer),
-    'albert': (modeling.AlbertConfig, squad_lib_sp,
+    'albert': (albert_configs.AlbertConfig, squad_lib_sp,
                tokenization.FullSentencePieceTokenizer),
 }
 
