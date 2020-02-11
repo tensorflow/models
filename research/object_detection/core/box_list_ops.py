@@ -29,6 +29,7 @@ from object_detection.core import box_list
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 
+EPSILON = 1e-8
 
 class SortOrder(object):
   """Enum class for sort order.
@@ -269,10 +270,9 @@ def iou(boxlist1, boxlist2, scope=None):
     areas2 = area(boxlist2)
     unions = (
         tf.expand_dims(areas1, 1) + tf.expand_dims(areas2, 0) - intersections)
-    eps = 1e-7
     return tf.where(
         tf.equal(intersections, 0.0),
-        tf.zeros_like(intersections), tf.truediv(intersections, tf.maximum(unions, eps)))
+        tf.zeros_like(intersections), tf.truediv(intersections, tf.maximum(unions, EPSILON)))
 
 
 def matched_iou(boxlist1, boxlist2, scope=None):
@@ -291,10 +291,9 @@ def matched_iou(boxlist1, boxlist2, scope=None):
     areas1 = area(boxlist1)
     areas2 = area(boxlist2)
     unions = areas1 + areas2 - intersections
-    eps = 1e-7
     return tf.where(
         tf.equal(intersections, 0.0),
-        tf.zeros_like(intersections), tf.truediv(intersections, tf.maximum(unions, eps)))
+        tf.zeros_like(intersections), tf.truediv(intersections, tf.maximum(unions, EPSILON)))
 
 
 def ioa(boxlist1, boxlist2, scope=None):
@@ -315,8 +314,7 @@ def ioa(boxlist1, boxlist2, scope=None):
   with tf.name_scope(scope, 'IOA'):
     intersections = intersection(boxlist1, boxlist2)
     areas = tf.expand_dims(area(boxlist2), 0)
-    eps = 1e-7
-    return tf.truediv(intersections, tf.maximum(areas, eps))
+    return tf.truediv(intersections, tf.maximum(areas, EPSILON))
 
 
 def prune_non_overlapping_boxes(
