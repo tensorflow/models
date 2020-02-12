@@ -77,7 +77,7 @@ def get_loss_fn(loss_factor=1.0):
   """Returns loss function for BERT pretraining."""
 
   def _bert_pretrain_loss_fn(unused_labels, losses, **unused_args):
-    return tf.keras.backend.mean(losses) * loss_factor
+    return tf.reduce_mean(losses) * loss_factor
 
   return _bert_pretrain_loss_fn
 

@@ -68,14 +68,14 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
   def call(self, lm_output, sentence_output, lm_label_ids, lm_label_weights,
            sentence_labels):
     """Implements call() for the layer."""
-    lm_label_weights = tf.keras.backend.cast(lm_label_weights, tf.float32)
+    lm_label_weights = tf.cast(lm_label_weights, tf.float32)
 
     mask_label_loss = losses.weighted_sparse_categorical_crossentropy_loss(
         labels=lm_label_ids, predictions=lm_output, weights=lm_label_weights)
     sentence_loss = losses.weighted_sparse_categorical_crossentropy_loss(
         labels=sentence_labels, predictions=sentence_output)
     loss = mask_label_loss + sentence_loss
-    batch_shape = tf.slice(tf.keras.backend.shape(sentence_labels), [0], [1])
+    batch_shape = tf.slice(tf.shape(sentence_labels), [0], [1])
     # TODO(hongkuny): Avoids the hack and switches add_loss.
     final_loss = tf.fill(batch_shape, loss)
 
@@ -208,10 +208,9 @@ class BertSquadLogitsLayer(tf.keras.layers.Layer):
     sequence_length = input_shape[1]
     num_hidden_units = input_shape[2]
 
-    final_hidden_input = tf.keras.backend.reshape(sequence_output,
-                                                  [-1, num_hidden_units])
+    final_hidden_input = tf.reshape(sequence_output, [-1, num_hidden_units])
     logits = self.final_dense(final_hidden_input)
-    logits = tf.keras.backend.reshape(logits, [-1, sequence_length, 2])
+    logits = tf.reshape(logits, [-1, sequence_length, 2])
     logits = tf.transpose(logits, [2, 0, 1])
     unstacked_logits = tf.unstack(logits, axis=0)
     return unstacked_logits[0], unstacked_logits[1]
