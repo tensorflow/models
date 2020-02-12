@@ -28,8 +28,6 @@ request.
 -   [deep_speech](deep_speech): automatic speech recognition.
 -   [deeplab](deeplab): deep labeling for semantic image segmentation.
 -   [delf](delf): deep local features for image matching and retrieval.
--   [differential_privacy](differential_privacy): differential privacy for training
-    data.
 -   [domain_adaptation](domain_adaptation): domain separation networks.
 -   [fivo](fivo): filtering variational objectives for training generative
     sequence models.
