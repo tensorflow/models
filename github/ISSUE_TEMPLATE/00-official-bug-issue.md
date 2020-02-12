@@ -1,6 +1,6 @@
 ---
 name: Bug Issue
-about: Use this template for reporting a bug or a performance issue.
+about: Use this template for reporting a bug for projects under the “official” folder
 labels: 'type:bug'
 
 ---
