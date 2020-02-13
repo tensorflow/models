@@ -37,7 +37,7 @@ class AccuracyTest(tf.test.TestCase):
     Yields:
       A session object that should be used as a context manager.
     """
-    with self.test_session() as sess:
+    with self.cached_session() as sess:
       sess.run(tf.global_variables_initializer())
       sess.run(tf.local_variables_initializer())
       yield sess

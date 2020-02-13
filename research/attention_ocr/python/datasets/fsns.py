@@ -79,7 +79,7 @@ def read_charset(filename, null_character=u'\u2591'):
         logging.warning('incorrect charset file. line #%d: %s', i, line)
         continue
       code = int(m.group(1))
-      char = m.group(2).decode('utf-8')
+      char = m.group(2)
       if char == '<nul>':
         char = null_character
       charset[code] = char
