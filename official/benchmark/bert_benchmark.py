@@ -31,7 +31,7 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
-from official.nlp import bert_modeling as modeling
+from official.nlp.bert import configs
 from official.nlp.bert import run_classifier
 from official.utils.misc import distribution_utils
 from official.utils.testing import benchmark_wrappers
@@ -63,7 +63,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
       input_meta_data = json.loads(reader.read().decode('utf-8'))
 
-    bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+    bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
     epochs = self.num_epochs if self.num_epochs else FLAGS.num_train_epochs
     if self.num_steps_per_epoch:
       steps_per_epoch = self.num_steps_per_epoch

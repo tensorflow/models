@@ -19,131 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-import json
 import math
-import six
 import tensorflow as tf
 
 from tensorflow.python.util import deprecation
 from official.modeling import tf_utils
-
-
-class BertConfig(object):
-  """Configuration for `BertModel`."""
-
-  def __init__(self,
-               vocab_size,
-               hidden_size=768,
-               num_hidden_layers=12,
-               num_attention_heads=12,
-               intermediate_size=3072,
-               hidden_act="gelu",
-               hidden_dropout_prob=0.1,
-               attention_probs_dropout_prob=0.1,
-               max_position_embeddings=512,
-               type_vocab_size=16,
-               initializer_range=0.02,
-               backward_compatible=True):
-    """Constructs BertConfig.
-
-    Args:
-      vocab_size: Vocabulary size of `inputs_ids` in `BertModel`.
-      hidden_size: Size of the encoder layers and the pooler layer.
-      num_hidden_layers: Number of hidden layers in the Transformer encoder.
-      num_attention_heads: Number of attention heads for each attention layer in
-        the Transformer encoder.
-      intermediate_size: The size of the "intermediate" (i.e., feed-forward)
-        layer in the Transformer encoder.
-      hidden_act: The non-linear activation function (function or string) in the
-        encoder and pooler.
-      hidden_dropout_prob: The dropout probability for all fully connected
-        layers in the embeddings, encoder, and pooler.
-      attention_probs_dropout_prob: The dropout ratio for the attention
-        probabilities.
-      max_position_embeddings: The maximum sequence length that this model might
-        ever be used with. Typically set this to something large just in case
-        (e.g., 512 or 1024 or 2048).
-      type_vocab_size: The vocabulary size of the `token_type_ids` passed into
-        `BertModel`.
-      initializer_range: The stdev of the truncated_normal_initializer for
-        initializing all weight matrices.
-      backward_compatible: Boolean, whether the variables shape are compatible
-        with checkpoints converted from TF 1.x BERT.
-    """
-    self.vocab_size = vocab_size
-    self.hidden_size = hidden_size
-    self.num_hidden_layers = num_hidden_layers
-    self.num_attention_heads = num_attention_heads
-    self.hidden_act = hidden_act
-    self.intermediate_size = intermediate_size
-    self.hidden_dropout_prob = hidden_dropout_prob
-    self.attention_probs_dropout_prob = attention_probs_dropout_prob
-    self.max_position_embeddings = max_position_embeddings
-    self.type_vocab_size = type_vocab_size
-    self.initializer_range = initializer_range
-    self.backward_compatible = backward_compatible
-
-  @classmethod
-  def from_dict(cls, json_object):
-    """Constructs a `BertConfig` from a Python dictionary of parameters."""
-    config = BertConfig(vocab_size=None)
-    for (key, value) in six.iteritems(json_object):
-      config.__dict__[key] = value
-    return config
-
-  @classmethod
-  def from_json_file(cls, json_file):
-    """Constructs a `BertConfig` from a json file of parameters."""
-    with tf.io.gfile.GFile(json_file, "r") as reader:
-      text = reader.read()
-    return cls.from_dict(json.loads(text))
-
-  def to_dict(self):
-    """Serializes this instance to a Python dictionary."""
-    output = copy.deepcopy(self.__dict__)
-    return output
-
-  def to_json_string(self):
-    """Serializes this instance to a JSON string."""
-    return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
-
-
-class AlbertConfig(BertConfig):
-  """Configuration for `ALBERT`."""
-
-  def __init__(self,
-               embedding_size,
-               num_hidden_groups=1,
-               inner_group_num=1,
-               **kwargs):
-    """Constructs AlbertConfig.
-
-    Args:
-      embedding_size: Size of the factorized word embeddings.
-      num_hidden_groups: Number of group for the hidden layers, parameters in
-        the same group are shared. Note that this value and also the following
-        'inner_group_num' has to be 1 for now, because all released ALBERT
-        models set them to 1. We may support arbitary valid values in future.
-      inner_group_num: Number of inner repetition of attention and ffn.
-      **kwargs: The remaining arguments are the same as above 'BertConfig'.
-    """
-    super(AlbertConfig, self).__init__(**kwargs)
-    self.embedding_size = embedding_size
-
-    # TODO(chendouble): 'inner_group_num' and 'num_hidden_groups' are always 1
-    # in the released ALBERT. Support other values in AlbertTransformerEncoder
-    # if needed.
-    if inner_group_num != 1 or num_hidden_groups != 1:
-      raise ValueError("We only support 'inner_group_num' and "
-                       "'num_hidden_groups' as 1.")
-
-  @classmethod
-  def from_dict(cls, json_object):
-    """Constructs a `AlbertConfig` from a Python dictionary of parameters."""
-    config = AlbertConfig(embedding_size=None, vocab_size=None)
-    for (key, value) in six.iteritems(json_object):
-      config.__dict__[key] = value
-    return config
+from official.nlp.bert import configs
 
 
 @deprecation.deprecated(None, "The function should not be used any more.")
@@ -174,7 +55,7 @@ class BertModel(tf.keras.layers.Layer):
   input_mask = tf.constant([[1, 1, 1], [1, 1, 0]])
   input_type_ids = tf.constant([[0, 0, 1], [0, 2, 0]])
 
-  config = modeling.BertConfig(vocab_size=32000, hidden_size=512,
+  config = configs.BertConfig(vocab_size=32000, hidden_size=512,
     num_hidden_layers=8, num_attention_heads=6, intermediate_size=1024)
 
   pooled_output, sequence_output = modeling.BertModel(config=config)(
@@ -190,7 +71,7 @@ class BertModel(tf.keras.layers.Layer):
   def __init__(self, config, float_type=tf.float32, **kwargs):
     super(BertModel, self).__init__(**kwargs)
     self.config = (
-        BertConfig.from_dict(config)
+        configs.BertConfig.from_dict(config)
         if isinstance(config, dict) else copy.deepcopy(config))
     self.float_type = float_type
 

@@ -20,10 +20,10 @@ from __future__ import print_function
 
 import six
 
-from official.nlp import bert_modeling
+from official.nlp.bert import configs
 
 
-class AlbertConfig(bert_modeling.BertConfig):
+class AlbertConfig(configs.BertConfig):
   """Configuration for `ALBERT`."""
 
   def __init__(self,

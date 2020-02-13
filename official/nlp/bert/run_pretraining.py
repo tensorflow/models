@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Run masked LM/next sentence masked_lm pre-training for BERT in tf2.0."""
+"""Run masked LM/next sentence masked_lm pre-training for BERT in TF 2.x."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -22,16 +22,14 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-# pylint: disable=unused-import,g-import-not-at-top,redefined-outer-name,reimported
 from official.modeling import model_training_utils
-from official.nlp import bert_modeling as modeling
 from official.nlp import optimization
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
+from official.nlp.bert import configs
 from official.nlp.bert import input_pipeline
-from official.nlp.bert import model_saving_utils
 from official.utils.misc import distribution_utils
-from official.utils.misc import tpu_lib
+
 
 flags.DEFINE_string('input_files', None,
                     'File path to retrieve training data for pre-training.')
@@ -135,7 +133,7 @@ def run_customized_training(strategy,
 def run_bert_pretrain(strategy):
   """Runs BERT pre-training."""
 
-  bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
   if not strategy:
     raise ValueError('Distribution strategy is not specified.')
 

@@ -22,8 +22,8 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.modeling import tf_utils
-from official.nlp import bert_modeling
 from official.nlp.albert import configs as albert_configs
+from official.nlp.bert import configs
 from official.nlp.modeling import losses
 from official.nlp.modeling import networks
 from official.nlp.modeling.networks import bert_classifier
@@ -114,7 +114,7 @@ def get_transformer_encoder(bert_config,
     kwargs['embedding_width'] = bert_config.embedding_size
     return networks.AlbertTransformerEncoder(**kwargs)
   else:
-    assert isinstance(bert_config, bert_modeling.BertConfig)
+    assert isinstance(bert_config, configs.BertConfig)
     return networks.TransformerEncoder(**kwargs)
 
 
