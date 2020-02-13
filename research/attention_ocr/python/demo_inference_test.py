@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
+import os
 import demo_inference
 import tensorflow as tf
 from tensorflow.python.training import monitored_session
@@ -18,6 +19,7 @@ class DemoInferenceTest(tf.test.TestCase):
                           'Please download and extract it from %s' %
                           (filename, _CHECKPOINT_URL))
     self._batch_size = 32
+    tf.flags.FLAGS.dataset_dir = os.path.join(os.path.dirname(__file__), 'datasets/testdata/fsns')
 
   def test_moving_variables_properly_loaded_from_a_checkpoint(self):
     batch_size = 32
@@ -48,7 +50,7 @@ class DemoInferenceTest(tf.test.TestCase):
                                      'fsns',
                                      image_path_pattern)
     self.assertEqual([
-      'Boulevard de Lunel░░░░░░░░░░░░░░░░░░░',
+      u'Boulevard de Lunel░░░░░░░░░░░░░░░░░░░',
       'Rue de Provence░░░░░░░░░░░░░░░░░░░░░░',
       'Rue de Port Maria░░░░░░░░░░░░░░░░░░░░',
       'Avenue Charles Gounod░░░░░░░░░░░░░░░░',

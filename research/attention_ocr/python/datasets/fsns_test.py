@@ -20,15 +20,15 @@ import os
 import tensorflow as tf
 from tensorflow.contrib import slim
 
-import fsns
-import unittest_utils
+from datasets import fsns
+from datasets import unittest_utils
 
 FLAGS = tf.flags.FLAGS
 
 
 def get_test_split():
   config = fsns.DEFAULT_CONFIG.copy()
-  config['splits'] = {'test': {'size': 50, 'pattern': 'fsns-00000-of-00001'}}
+  config['splits'] = {'test': {'size': 5, 'pattern': 'fsns-00000-of-00001'}}
   return fsns.get_split('test', dataset_dir(), config)
 
 
@@ -43,12 +43,12 @@ class FsnsTest(tf.test.TestCase):
         'PNG', shape=(150, 600, 3))
     serialized = unittest_utils.create_serialized_example({
         'image/encoded': [encoded],
-        'image/format': ['PNG'],
+        'image/format': [b'PNG'],
         'image/class':
         expected_label,
         'image/unpadded_class':
         range(10),
-        'image/text': ['Raw text'],
+        'image/text': [b'Raw text'],
         'image/orig_width': [150],
         'image/width': [600]
     })
@@ -60,7 +60,7 @@ class FsnsTest(tf.test.TestCase):
 
     self.assertAllEqual(expected_image, data.image)
     self.assertAllEqual(expected_label, data.label)
-    self.assertEqual(['Raw text'], data.text)
+    self.assertEqual([b'Raw text'], data.text)
     self.assertEqual([1], data.num_of_views)
 
   def test_label_has_shape_defined(self):

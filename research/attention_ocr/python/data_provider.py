@@ -109,8 +109,8 @@ def central_crop(image, crop_size):
         tf.greater_equal(image_width, target_width),
         ['image_width < target_width', image_width, target_width])
     with tf.control_dependencies([assert_op1, assert_op2]):
-      offset_width = (image_width - target_width) / 2
-      offset_height = (image_height - target_height) / 2
+      offset_width = tf.cast((image_width - target_width) / 2, tf.int32)
+      offset_height = tf.cast((image_height - target_height) / 2, tf.int32)
       return tf.image.crop_to_bounding_box(image, offset_height, offset_width,
                                            target_height, target_width)
 
@@ -137,7 +137,7 @@ def preprocess_image(image, augment=False, central_crop_size=None,
       else:
         images = tf.split(value=image, num_or_size_splits=num_towers, axis=1)
       if central_crop_size:
-        view_crop_size = (central_crop_size[0] / num_towers,
+        view_crop_size = (int(central_crop_size[0] / num_towers),
                           central_crop_size[1])
         images = [central_crop(img, view_crop_size) for img in images]
       if augment:
