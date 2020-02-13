@@ -31,14 +31,14 @@ from absl import logging
 import tensorflow as tf
 
 # pylint: disable=g-bad-import-order
-from official.transformer import compute_bleu
-from official.transformer.utils import tokenizer
-from official.transformer.v2 import data_pipeline
-from official.transformer.v2 import metrics
-from official.transformer.v2 import misc
-from official.transformer.v2 import optimizer
-from official.transformer.v2 import transformer
-from official.transformer.v2 import translate
+from official.nlp.transformer import compute_bleu
+from official.nlp.transformer.utils import tokenizer
+from official.nlp.transformer import data_pipeline
+from official.nlp.transformer import metrics
+from official.nlp.transformer import misc
+from official.nlp.transformer import optimizer
+from official.nlp.transformer import transformer
+from official.nlp.transformer import translate
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import keras_utils

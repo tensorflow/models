@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Beam search in TF v2.
-"""
+"""Beam search in TF v2."""
 
 import tensorflow as tf
 
 from official.nlp.transformer import beam_search_v1 as v1
-from official.transformer.v2 import misc
+from official.nlp.transformer import misc
 
 _StateKeys = v1._StateKeys  # pylint: disable=protected-access
 

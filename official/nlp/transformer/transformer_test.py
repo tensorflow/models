@@ -21,7 +21,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from official.nlp.transformer import model_params
-from official.transformer.v2 import transformer
+from official.nlp.transformer import transformer
 
 
 class TransformerV2Test(tf.test.TestCase):

@@ -21,7 +21,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from official.transformer.utils import tokenizer
+from official.nlp.transformer.utils import tokenizer
 
 _EXTRA_DECODE_LENGTH = 100
 _BEAM_SIZE = 4

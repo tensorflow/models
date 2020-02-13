@@ -16,9 +16,9 @@
 
 import tempfile
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
-from official.transformer import compute_bleu
+from official.nlp.transformer import compute_bleu
 
 
 class ComputeBleuTest(tf.test.TestCase):

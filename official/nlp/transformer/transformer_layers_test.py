@@ -20,10 +20,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from official.transformer.v2 import attention_layer
-from official.transformer.v2 import embedding_layer
-from official.transformer.v2 import ffn_layer
-from official.transformer.v2 import metrics
+from official.nlp.transformer import attention_layer
+from official.nlp.transformer import embedding_layer
+from official.nlp.transformer import ffn_layer
+from official.nlp.transformer import metrics
 
 
 class TransformerLayersTest(tf.test.TestCase):

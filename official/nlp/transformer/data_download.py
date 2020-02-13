@@ -31,7 +31,7 @@ from absl import logging
 import tensorflow.compat.v1 as tf
 # pylint: enable=g-bad-import-order
 
-from official.transformer.utils import tokenizer
+from official.nlp.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
 
 # Data sources for training/evaluating the transformer translation model.
@@ -88,7 +88,7 @@ VOCAB_FILE = "vocab.ende.%d" % _TARGET_VOCAB_SIZE
 _PREFIX = "wmt32k"
 _TRAIN_TAG = "train"
 _EVAL_TAG = "dev"  # Following WMT and Tensor2Tensor conventions, in which the
-                   # evaluation datasets are tagged as "dev" for development.
+# evaluation datasets are tagged as "dev" for development.
 
 # Number of files to split train and evaluation data
 _TRAIN_SHARDS = 100

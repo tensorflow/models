@@ -26,12 +26,10 @@ import unittest
 from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf
-
-from official.transformer.v2 import misc
-from official.transformer.v2 import transformer_main
-from official.utils.misc import keras_utils
-
 from tensorflow.python.eager import context  # pylint: disable=ungrouped-imports
+from official.nlp.transformer import misc
+from official.nlp.transformer import transformer_main
+from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
 FIXED_TIMESTAMP = 'my_time_stamp'

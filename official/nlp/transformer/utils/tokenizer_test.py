@@ -19,7 +19,7 @@ import tempfile
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.transformer.utils import tokenizer
+from official.nlp.transformer.utils import tokenizer
 
 
 class SubtokenizerTest(tf.test.TestCase):

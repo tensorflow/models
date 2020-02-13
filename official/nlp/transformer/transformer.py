@@ -22,14 +22,13 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-
+from official.nlp.transformer import attention_layer
+from official.nlp.transformer import beam_search
+from official.nlp.transformer import embedding_layer
+from official.nlp.transformer import ffn_layer
+from official.nlp.transformer import metrics
 from official.nlp.transformer import model_utils
-from official.transformer.utils.tokenizer import EOS_ID
-from official.transformer.v2 import attention_layer
-from official.transformer.v2 import beam_search
-from official.transformer.v2 import embedding_layer
-from official.transformer.v2 import ffn_layer
-from official.transformer.v2 import metrics
+from official.nlp.transformer.utils.tokenizer import EOS_ID
 
 
 # Disable the not-callable lint error, since it claims many objects are not

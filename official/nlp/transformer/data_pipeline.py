@@ -57,7 +57,7 @@ import os
 from absl import logging
 import tensorflow as tf
 
-from official.transformer.v2 import misc
+from official.nlp.transformer import misc
 from official.utils.misc import model_helpers
 
 # Buffer size for reading records from a TFRecord file. Each training file is

@@ -30,7 +30,7 @@ model.
 # https://github.com/tensorflow/models/tree/master/official#requirements
 export PYTHONPATH="$PYTHONPATH:/path/to/models"
 
-cd /path/to/models/official/transformer/v2
+cd /path/to/models/official/nlp/transformer
 
 # Export variables
 PARAM_SET=big
@@ -94,7 +94,7 @@ tensorboard --logdir=$MODEL_DIR
 
 2. ### Model training and evaluation
 
-   [transformer_main.py](v2/transformer_main.py) creates a Transformer keras model,
+   [transformer_main.py](transformer_main.py) creates a Transformer keras model,
    and trains it uses keras model.fit().
 
    Users need to adjust `batch_size` and `num_gpus` to get good performance
@@ -199,16 +199,16 @@ tensorboard --logdir=$MODEL_DIR
 A brief look at each component in the code:
 
 ### Model Definition
-* [transformer.py](v2/transformer.py): Defines a tf.keras.Model: `Transformer`.
-* [embedding_layer.py](v2/embedding_layer.py): Contains the layer that calculates the embeddings. The embedding weights are also used to calculate the pre-softmax probabilities from the decoder output.
-* [attention_layer.py](v2/attention_layer.py): Defines the multi-headed and self attention layers that are used in the encoder/decoder stacks.
-* [ffn_layer.py](v2/ffn_layer.py): Defines the feedforward network that is used in the encoder/decoder stacks. The network is composed of 2 fully connected layers.
+* [transformer.py](transformer.py): Defines a tf.keras.Model: `Transformer`.
+* [embedding_layer.py](embedding_layer.py): Contains the layer that calculates the embeddings. The embedding weights are also used to calculate the pre-softmax probabilities from the decoder output.
+* [attention_layer.py](attention_layer.py): Defines the multi-headed and self attention layers that are used in the encoder/decoder stacks.
+* [ffn_layer.py](ffn_layer.py): Defines the feedforward network that is used in the encoder/decoder stacks. The network is composed of 2 fully connected layers.
 
 Other files:
-* [beam_search.py](v2/beam_search.py) contains the beam search implementation, which is used during model inference to find high scoring translations.
+* [beam_search.py](beam_search.py) contains the beam search implementation, which is used during model inference to find high scoring translations.
 
 ### Model Trainer
-[transformer_main.py](v2/transformer_main.py) creates an `TransformerTask` to train and evaluate the model using tf.keras.
+[transformer_main.py](transformer_main.py) creates an `TransformerTask` to train and evaluate the model using tf.keras.
 
 ### Test dataset
 The [newstest2014 files](https://storage.googleapis.com/tf-perf-public/official_transformer/test_data/newstest2014.tgz)

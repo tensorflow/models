@@ -22,14 +22,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.nlp.transformer import beam_search_v1 as beam_search
 from official.nlp.transformer import model_utils
+from official.nlp.transformer.utils.tokenizer import EOS_ID
 from official.r1.transformer import attention_layer
 from official.r1.transformer import embedding_layer
 from official.r1.transformer import ffn_layer
-from official.transformer.utils.tokenizer import EOS_ID
 
 _NEG_INF = -1e9
 
