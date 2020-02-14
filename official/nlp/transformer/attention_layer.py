@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from official.nlp import bert_modeling as common_layer
+from official.nlp.modeling import layers
 
 
 class Attention(tf.keras.layers.Layer):
@@ -47,18 +47,27 @@ class Attention(tf.keras.layers.Layer):
     """Builds the layer."""
     # Layers for linearly projecting the queries, keys, and values.
     size_per_head = self.hidden_size // self.num_heads
-    self.query_dense_layer = common_layer.Dense3D(
-        self.num_heads, size_per_head, kernel_initializer="glorot_uniform",
-        use_bias=False, name="query")
-    self.key_dense_layer = common_layer.Dense3D(
-        self.num_heads, size_per_head, kernel_initializer="glorot_uniform",
-        use_bias=False, name="key")
-    self.value_dense_layer = common_layer.Dense3D(
-        self.num_heads, size_per_head, kernel_initializer="glorot_uniform",
-        use_bias=False, name="value")
-    self.output_dense_layer = common_layer.Dense3D(
-        self.num_heads, size_per_head, kernel_initializer="glorot_uniform",
-        use_bias=False, output_projection=True, name="output_transform")
+    self.query_dense_layer = layers.DenseEinsum(
+        output_shape=(self.num_heads, size_per_head),
+        kernel_initializer="glorot_uniform",
+        use_bias=False,
+        name="query")
+    self.key_dense_layer = layers.DenseEinsum(
+        output_shape=(self.num_heads, size_per_head),
+        kernel_initializer="glorot_uniform",
+        use_bias=False,
+        name="key")
+    self.value_dense_layer = layers.DenseEinsum(
+        output_shape=(self.num_heads, size_per_head),
+        kernel_initializer="glorot_uniform",
+        use_bias=False,
+        name="value")
+    self.output_dense_layer = layers.DenseEinsum(
+        output_shape=self.hidden_size,
+        num_summed_dimensions=2,
+        kernel_initializer="glorot_uniform",
+        use_bias=False,
+        name="output_transform")
     super(Attention, self).build(input_shape)
 
   def get_config(self):
