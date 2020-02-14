@@ -28,7 +28,6 @@ import tensorflow as tf
 
 from official.modeling import model_training_utils
 from official.nlp import optimization
-from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
 from official.nlp.bert import configs as bert_configs
@@ -285,22 +284,17 @@ def export_classifier(model_export_path, input_meta_data,
 
 def run_bert(strategy,
              input_meta_data,
+             model_config,
              train_input_fn=None,
              eval_input_fn=None):
   """Run BERT training."""
-  if FLAGS.model_type == 'bert':
-    bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
-  else:
-    assert FLAGS.model_type == 'albert'
-    bert_config = albert_configs.AlbertConfig.from_json_file(
-        FLAGS.bert_config_file)
   if FLAGS.mode == 'export_only':
     # As Keras ModelCheckpoint callback used with Keras compile/fit() API
     # internally uses model.save_weights() to save checkpoints, we must
     # use model.load_weights() when Keras compile/fit() is used.
     export_classifier(FLAGS.model_export_path, input_meta_data,
                       FLAGS.use_keras_compile_fit,
-                      bert_config, FLAGS.model_dir)
+                      model_config, FLAGS.model_dir)
     return
 
   if FLAGS.mode != 'train_and_eval':
@@ -320,7 +314,7 @@ def run_bert(strategy,
 
   trained_model = run_bert_classifier(
       strategy,
-      bert_config,
+      model_config,
       input_meta_data,
       FLAGS.model_dir,
       epochs,
@@ -372,7 +366,9 @@ def main(_):
       FLAGS.eval_batch_size,
       is_training=False)
 
-  run_bert(strategy, input_meta_data, train_input_fn, eval_input_fn)
+  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+  run_bert(strategy, input_meta_data, bert_config, train_input_fn,
+           eval_input_fn)
 
 
 if __name__ == '__main__':
