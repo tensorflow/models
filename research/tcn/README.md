@@ -526,7 +526,7 @@ like:
 
 `$outdir/qtrain_clearodwalla_to_clear1_realv1_imtrain_clearsoda_to_white13_realv0.mp4`
 
-that look like this: <img src="g3doc/im.gif" title="Imitation Video" />
+that look like this: <img src="https://github.com/sermanet/tcn/blob/master/docs/figs/pouring.gif?raw=true" title="Imitation Video" />
 
 #### T-SNE / PCA Visualization
 
