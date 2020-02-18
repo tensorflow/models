@@ -274,7 +274,7 @@ class IntervalTrigger(Trigger):
       self._last_trigger_value = value
       return True
 
-    if self._interval > 0:
+    if self._interval and self._interval > 0:
       if value >= self._last_trigger_value + self._interval:
         self._last_trigger_value = value
         return True
