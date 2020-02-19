@@ -6,7 +6,7 @@
 
 3. The issue should be related to the repo it is created in. 
 
-Please go to [Stack Overflow](http://stackoverflow.com/questions/tagged/tensorflow) for help and support.
+Please go to [Stack Overflow](https://stackoverflow.com/questions/tagged/tensorflow-model-garden) for help and support.
 
 Please understand that research models (https://github.com/tensorflow/models/tree/master/research) included in this repository are experimental and research-style code. They are not officially supported.
 
