@@ -304,7 +304,12 @@ def define_deep_speech_flags():
   """Add flags for run_deep_speech."""
   # Add common flags
   flags_core.define_base(
-      data_dir=False  # we use train_data_dir and eval_data_dir instead
+      data_dir=False,  # we use train_data_dir and eval_data_dir instead
+      export_dir=True,
+      train_epochs=True,
+      hooks=True,
+      num_gpu=True,
+      epochs_between_evals=True
   )
   flags_core.define_performance(
       num_parallel_calls=False,
