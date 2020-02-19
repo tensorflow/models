@@ -64,7 +64,7 @@ class SummaryWriter(object):
   """Simple SummaryWriter for writing dictionary of metrics.
 
   Attributes:
-    _writer: The tf.SummaryWriter.
+    writer: The tf.SummaryWriter.
   """
 
   def __init__(self, model_dir: Text, name: Text):
@@ -74,7 +74,7 @@ class SummaryWriter(object):
       model_dir: the model folder path.
       name: the summary subfolder name.
     """
-    self._writer = tf.summary.create_file_writer(os.path.join(model_dir, name))
+    self.writer = tf.summary.create_file_writer(os.path.join(model_dir, name))
 
   def __call__(self, metrics: Union[Dict[Text, float], float], step: int):
     """Write metrics to summary with the given writer.
@@ -88,10 +88,10 @@ class SummaryWriter(object):
       logging.warning('Warning: summary writer prefer metrics as dictionary.')
       metrics = {'metric': metrics}
 
-    with self._writer.as_default():
+    with self.writer.as_default():
       for k, v in metrics.items():
         tf.summary.scalar(k, v, step=step)
-      self._writer.flush()
+      self.writer.flush()
 
 
 class DistributedExecutor(object):
@@ -122,6 +122,9 @@ class DistributedExecutor(object):
     self._strategy = strategy
     self._checkpoint_name = 'ctl_step_{step}.ckpt'
     self._is_multi_host = is_multi_host
+    self.train_summary_writer = None
+    self.eval_summary_writer = None
+    self.global_train_step = None
 
   @property
   def checkpoint_name(self):
@@ -395,7 +398,10 @@ class DistributedExecutor(object):
       eval_metric = eval_metric_fn()
       train_metric = train_metric_fn()
       train_summary_writer = summary_writer_fn(model_dir, 'eval_train')
+      self.train_summary_writer = train_summary_writer.writer
+
       test_summary_writer = summary_writer_fn(model_dir, 'eval_test')
+      self.eval_summary_writer = test_summary_writer.writer
 
     # Continue training loop.
     train_step = self._create_train_step(
@@ -406,6 +412,7 @@ class DistributedExecutor(object):
         metric=train_metric)
     test_step = None
     if eval_input_fn and eval_metric:
+      self.global_train_step = model.optimizer.iterations
       test_step = self._create_test_step(strategy, model, metric=eval_metric)
 
     logging.info('Training started')
@@ -549,6 +556,7 @@ class DistributedExecutor(object):
       return True
 
     summary_writer = summary_writer_fn(model_dir, 'eval')
+    self.eval_summary_writer = summary_writer.writer
 
     # Read checkpoints from the given model directory
     # until `eval_timeout` seconds elapses.
@@ -615,6 +623,7 @@ class DistributedExecutor(object):
           'checkpoint', checkpoint_path)
       checkpoint.restore(checkpoint_path)
 
+      self.global_train_step = model.optimizer.iterations
       eval_iterator = self._get_input_iterator(eval_input_fn, strategy)
       eval_metric_result = self._run_evaluation(test_step, current_step,
                                                 eval_metric, eval_iterator)

@@ -70,6 +70,9 @@ RETINANET_CFG = {
         'val_json_file': '',
         'eval_file_pattern': '',
         'input_sharding': True,
+        # When visualizing images, set evaluation batch size to 40 to avoid
+        # potential OOM.
+        'num_images_to_visualize': 0,
     },
     'predict': {
         'predict_batch_size': 8,
