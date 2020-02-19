@@ -1,28 +1,24 @@
 ---
-name: Feature Request
-about: Use this template for raising a feature request
-labels: models:research, type:feature
+name: Feature Request for Research Models
+about: Use this template for raising a feature request for projects under the “research” folder
+labels: type:feature,models:research
 
 ---
+<!--
+Please make sure that this is a feature request. 
 
-<em>Please make sure that this is a feature request. As per our [GitHub Policy](https://github.com/jvishnuvardhan/models/blob/master/ISSUES.md), we only address code/doc bugs, performance issues, feature requests and build/installation issues on GitHub. tag:feature_template</em>
+As per our GitHub Policy (https://github.com/tensorflow/models/blob/master/ISSUES.md), we only address code bugs, documentation issues, and feature requests on GitHub.
 
+Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflow) for help and support.
 
-**System information**
-- TensorFlow version (you are using):
-- Are you willing to contribute it (Yes/No):
+The research models (https://github.com/tensorflow/models/tree/master/research) are a large collection of models implemented in TensorFlow by researchers. They are not officially supported. It is up to the individual researchers to maintain the models and/or provide support on issues and pull requests.
+-->
 
+**Please provide the entire URL of the model you are using?**
+<!-- (e.g., https://github.com/tensorflow/models/tree/master/official/nlp/bert) -->
 
-**What is the top-level directory of the model you are using?**
+**Describe the feature you request and the current behavior/state.**
 
+**Are you willing to contribute it (Yes/No)?**
 
-**Describe the feature and the current behavior/state.**
-
-
-**Will this change the current api? How?**
-
-
-**Who will benefit with this feature?**
-
-
-**Any Other info.**
+**Any other info.**
