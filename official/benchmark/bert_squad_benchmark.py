@@ -155,7 +155,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     FLAGS.input_meta_data_path = SQUAD_MEDIUM_INPUT_META_DATA_PATH
     FLAGS.bert_config_file = MODEL_CONFIG_FILE_PATH
     FLAGS.num_train_epochs = 1
-    FLAGS.steps_per_loop = 1
+    FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
@@ -414,7 +414,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     FLAGS.bert_config_file = MODEL_CONFIG_FILE_PATH
     FLAGS.init_checkpoint = PRETRAINED_CHECKPOINT_PATH
     FLAGS.num_train_epochs = 2
-    FLAGS.steps_per_loop = 1
+    FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
@@ -508,7 +508,7 @@ class BertSquadMultiWorkerAccuracy(BertSquadBenchmarkBase):
     FLAGS.bert_config_file = MODEL_CONFIG_FILE_PATH
     FLAGS.init_checkpoint = PRETRAINED_CHECKPOINT_PATH
     FLAGS.num_train_epochs = 2
-    FLAGS.steps_per_loop = 1
+    FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
@@ -581,7 +581,7 @@ class BertSquadMultiWorkerBenchmark(BertSquadBenchmarkBase):
     FLAGS.input_meta_data_path = SQUAD_MEDIUM_INPUT_META_DATA_PATH
     FLAGS.bert_config_file = MODEL_CONFIG_FILE_PATH
     FLAGS.num_train_epochs = 1
-    FLAGS.steps_per_loop = 1
+    FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,

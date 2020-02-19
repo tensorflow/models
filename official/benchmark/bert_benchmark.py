@@ -81,7 +81,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
           distribution_strategy='mirrored' if use_ds else 'off',
           num_gpus=self.num_gpus)
 
-    steps_per_loop = 1
+    steps_per_loop = 100
 
     max_seq_length = input_meta_data['max_seq_length']
     train_input_fn = run_classifier.get_dataset_fn(

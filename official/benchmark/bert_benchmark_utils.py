@@ -46,7 +46,7 @@ class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
   def on_batch_end(self, batch, logs=None):
     self.batch_stop_times[batch] = time.time()
 
-  def get_examples_per_sec(self, batch_size, num_batches_to_skip=10):
+  def get_examples_per_sec(self, batch_size, num_batches_to_skip=1):
     batch_durations = []
     for batch in self.batch_start_times:
       if batch in self.batch_stop_times and batch >= num_batches_to_skip:
@@ -92,7 +92,8 @@ class BertBenchmarkBase(PerfZeroBenchmark):
           'name':
               'exp_per_second',
           'value':
-              self.timer_callback.get_examples_per_sec(FLAGS.train_batch_size)
+              self.timer_callback.get_examples_per_sec(FLAGS.train_batch_size *
+                                                       FLAGS.steps_per_loop)
       })
     else:
       metrics.append({
