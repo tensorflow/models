@@ -12,7 +12,7 @@ As per our GitHub Policy (https://github.com/tensorflow/models/blob/master/ISSUE
 Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflow) for help and support.
 -->
 
-## Documentation URL(s) with the issue:
+**Documentation URL(s) with the issue:**
 <!-- Please provide a link to the documentation entry, for example: https://github.com/tensorflow/models/tree/master/official/README.md -->
 
-## Description of issue (what needs changing):
+**Description of the issue (what needs to be changed):**
