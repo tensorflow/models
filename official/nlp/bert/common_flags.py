@@ -70,6 +70,8 @@ def define_common_bert_flags():
       'model_type', 'bert', ['bert', 'albert'],
       'Specifies the type of the model. '
       'If "bert", will use canonical BERT; if "albert", will use ALBERT model.')
+  flags.DEFINE_bool('hub_module_trainable', True,
+                    'True to make keras layers in the hub module trainable.')
 
   # Adds flags for mixed precision and multi-worker training.
   flags_core.define_performance(

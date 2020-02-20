@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Run BERT on SQuAD 1.1 and SQuAD 2.0 in tf2.0."""
-
+"""Run BERT on SQuAD 1.1 and SQuAD 2.0 in TF 2.x."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -26,22 +25,20 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-# pylint: disable=unused-import,g-import-not-at-top,redefined-outer-name,reimported
 from official.modeling import model_training_utils
-from official.nlp import bert_modeling as modeling
 from official.nlp import optimization
+from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
+from official.nlp.bert import configs as bert_configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
-# word-piece tokenizer based squad_lib
 from official.nlp.bert import squad_lib as squad_lib_wp
-# sentence-piece tokenizer based squad_lib
 from official.nlp.bert import squad_lib_sp
 from official.nlp.bert import tokenization
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-from official.utils.misc import tpu_lib
+
 
 flags.DEFINE_enum(
     'mode', 'train_and_predict',
@@ -98,8 +95,8 @@ common_flags.define_common_bert_flags()
 FLAGS = flags.FLAGS
 
 MODEL_CLASSES = {
-    'bert': (modeling.BertConfig, squad_lib_wp, tokenization.FullTokenizer),
-    'albert': (modeling.AlbertConfig, squad_lib_sp,
+    'bert': (bert_configs.BertConfig, squad_lib_wp, tokenization.FullTokenizer),
+    'albert': (albert_configs.AlbertConfig, squad_lib_sp,
                tokenization.FullSentencePieceTokenizer),
 }
 
@@ -186,7 +183,9 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     # Prediction always uses float32, even if training uses mixed precision.
     tf.keras.mixed_precision.experimental.set_policy('float32')
     squad_model, _ = bert_models.squad_model(
-        bert_config, input_meta_data['max_seq_length'])
+        bert_config,
+        input_meta_data['max_seq_length'],
+        hub_module_url=FLAGS.hub_module_url)
 
   checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
   logging.info('Restoring checkpoints from %s', checkpoint_path)
@@ -254,7 +253,8 @@ def train_squad(strategy,
     squad_model, core_model = bert_models.squad_model(
         bert_config,
         max_seq_length,
-        hub_module_url=FLAGS.hub_module_url)
+        hub_module_url=FLAGS.hub_module_url,
+        hub_module_trainable=FLAGS.hub_module_trainable)
     squad_model.optimizer = optimization.create_optimizer(
         FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
     if use_float16:

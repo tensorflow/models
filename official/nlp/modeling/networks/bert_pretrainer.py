@@ -33,9 +33,9 @@ class BertPretrainer(tf.keras.Model):
   encoder as described in "BERT: Pre-training of Deep Bidirectional Transformers
   for Language Understanding" (https://arxiv.org/abs/1810.04805).
 
-  The BertTrainer allows a user to pass in a transformer stack, and instantiates
-  the masked language model and classification networks that are used to create
-  the training objectives.
+  The BertPretrainer allows a user to pass in a transformer stack, and
+  instantiates the masked language model and classification networks that are
+  used to create the training objectives.
 
   Attributes:
     network: A transformer network. This network should output a sequence output
@@ -56,7 +56,6 @@ class BertPretrainer(tf.keras.Model):
                num_classes,
                num_token_predictions,
                activation=None,
-               output_activation=None,
                initializer='glorot_uniform',
                output='logits',
                **kwargs):
@@ -66,7 +65,6 @@ class BertPretrainer(tf.keras.Model):
         'num_classes': num_classes,
         'num_token_predictions': num_token_predictions,
         'activation': activation,
-        'output_activation': output_activation,
         'initializer': initializer,
         'output': output,
     }

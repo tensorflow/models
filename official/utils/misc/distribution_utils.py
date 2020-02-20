@@ -22,7 +22,7 @@ import json
 import os
 import random
 import string
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from official.utils.misc import tpu_lib
 

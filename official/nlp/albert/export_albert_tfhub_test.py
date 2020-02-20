@@ -24,7 +24,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 
-from official.nlp import bert_modeling
+from official.nlp.albert import configs
 from official.nlp.albert import export_albert_tfhub
 
 
@@ -32,7 +32,7 @@ class ExportAlbertTfhubTest(tf.test.TestCase):
 
   def test_export_albert_tfhub(self):
     # Exports a savedmodel for TF-Hub
-    albert_config = bert_modeling.AlbertConfig(
+    albert_config = configs.AlbertConfig(
         vocab_size=100,
         embedding_size=8,
         hidden_size=16,

@@ -24,7 +24,7 @@ import tensorflow as tf
 
 
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
-  """Applys a warmup schedule on a given learning rate decay schedule."""
+  """Applies a warmup schedule on a given learning rate decay schedule."""
 
   def __init__(
       self,

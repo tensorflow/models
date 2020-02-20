@@ -16,10 +16,8 @@
 /research/deep_contextual_bandits/ @rikel
 /research/deeplab/ @aquariusjay @yknzhu @gpapan
 /research/delf/ @andrefaraujo
-/research/differential_privacy/ @ilyamironov @ananthr
 /research/domain_adaptation/ @bousmalis @dmrd
 /research/efficient-hrl/ @ofirnachum
-/research/gan/ @joel-shor
 /research/global_objectives/ @mackeya-google
 /research/im2txt/ @cshallue
 /research/inception/ @shlens @vincentvanhoucke
@@ -34,7 +32,6 @@
 /research/lstm_object_detection/ @dreamdragon @masonliuw @yinxiaoli @yongzhe2160
 /research/marco/ @vincentvanhoucke
 /research/maskgan/ @a-dai
-/research/morph_net/ @gariel-google
 /research/namignizer/ @knathanieltucker
 /research/neural_gpu/ @lukaszkaiser
 /research/neural_programmer/ @arvind2505

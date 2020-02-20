@@ -63,12 +63,12 @@ def per_example_loss(labels, predictions, weights=None):
   labels, predictions = _adjust_labels(labels, predictions)
   _validate_rank(labels, predictions, weights)
 
-  labels_one_hot = tf.keras.backend.one_hot(labels, predictions.shape[-1])
-  labels_one_hot = tf.keras.backend.cast(labels_one_hot, predictions.dtype)
-  per_example_loss_data = -tf.keras.backend.sum(
+  labels_one_hot = tf.one_hot(labels, predictions.shape[-1])
+  labels_one_hot = tf.cast(labels_one_hot, predictions.dtype)
+  per_example_loss_data = -tf.reduce_sum(
       predictions * labels_one_hot, axis=[-1])
   if weights is not None:
-    weights = tf.keras.backend.cast(weights, per_example_loss_data.dtype)
+    weights = tf.cast(weights, per_example_loss_data.dtype)
     per_example_loss_data = weights * per_example_loss_data
   return per_example_loss_data
 
@@ -98,9 +98,9 @@ def loss(labels, predictions, weights=None):
   per_example_loss_data = per_example_loss(labels, predictions, weights)
 
   if weights is None:
-    return tf.keras.backend.mean(per_example_loss_data)
+    return tf.reduce_mean(per_example_loss_data)
   else:
-    numerator = tf.keras.backend.sum(per_example_loss_data)
-    weights = tf.keras.backend.cast(weights, predictions.dtype)
-    denominator = tf.keras.backend.sum(weights) + 1e-5
+    numerator = tf.reduce_sum(per_example_loss_data)
+    weights = tf.cast(weights, predictions.dtype)
+    denominator = tf.reduce_sum(weights) + 1e-5
     return numerator / denominator

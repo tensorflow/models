@@ -39,9 +39,9 @@ from official.r1.transformer import translate
 from official.r1.transformer import transformer
 from official.r1.transformer import dataset
 from official.r1.transformer import schedule
-from official.transformer import compute_bleu
-from official.transformer.utils import metrics
-from official.transformer.utils import tokenizer
+from official.nlp.transformer import compute_bleu
+from official.nlp.transformer.utils import metrics
+from official.nlp.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger

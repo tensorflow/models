@@ -28,7 +28,7 @@ from absl import flags
 
 import tensorflow as tf
 from official.modeling import activations
-from official.nlp import bert_modeling as modeling
+from official.nlp.albert import configs
 from official.nlp.bert import tf1_checkpoint_converter_lib
 from official.nlp.modeling import networks
 
@@ -125,7 +125,7 @@ def main(_):
   assert tf.version.VERSION.startswith('2.')
   output_path = FLAGS.converted_checkpoint_path
   v1_checkpoint = FLAGS.checkpoint_to_convert
-  albert_config = modeling.AlbertConfig.from_json_file(FLAGS.albert_config_file)
+  albert_config = configs.AlbertConfig.from_json_file(FLAGS.albert_config_file)
   convert_checkpoint(albert_config, output_path, v1_checkpoint)
 
 

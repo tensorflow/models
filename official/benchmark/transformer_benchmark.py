@@ -23,8 +23,8 @@ import time
 from absl import flags
 import tensorflow as tf
 
-from official.transformer.v2 import misc
-from official.transformer.v2 import transformer_main as transformer_main
+from official.nlp.transformer import misc
+from official.nlp.transformer import transformer_main as transformer_main
 from official.utils.flags import core as flags_core
 from official.utils.testing import benchmark_wrappers
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark

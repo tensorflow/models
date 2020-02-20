@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""BERT classification finetuning runner in tf2.0."""
-
+"""BERT classification finetuning runner in TF 2.x."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -27,16 +26,16 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-# pylint: disable=g-import-not-at-top,redefined-outer-name,reimported
 from official.modeling import model_training_utils
-from official.nlp import bert_modeling as modeling
 from official.nlp import optimization
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
+from official.nlp.bert import configs as bert_configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
+
 
 flags.DEFINE_enum(
     'mode', 'train_and_eval', ['train_and_eval', 'export_only'],
@@ -125,7 +124,8 @@ def run_bert_classifier(strategy,
             bert_config,
             num_classes,
             max_seq_length,
-            hub_module_url=FLAGS.hub_module_url))
+            hub_module_url=FLAGS.hub_module_url,
+            hub_module_trainable=FLAGS.hub_module_trainable))
     classifier_model.optimizer = optimization.create_optimizer(
         initial_lr, steps_per_epoch * epochs, warmup_steps)
     if FLAGS.fp16_implementation == 'graph_rewrite':
@@ -285,21 +285,17 @@ def export_classifier(model_export_path, input_meta_data,
 
 def run_bert(strategy,
              input_meta_data,
+             model_config,
              train_input_fn=None,
              eval_input_fn=None):
   """Run BERT training."""
-  if FLAGS.model_type == 'bert':
-    bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
-  else:
-    assert FLAGS.model_type == 'albert'
-    bert_config = modeling.AlbertConfig.from_json_file(FLAGS.bert_config_file)
   if FLAGS.mode == 'export_only':
     # As Keras ModelCheckpoint callback used with Keras compile/fit() API
     # internally uses model.save_weights() to save checkpoints, we must
     # use model.load_weights() when Keras compile/fit() is used.
     export_classifier(FLAGS.model_export_path, input_meta_data,
                       FLAGS.use_keras_compile_fit,
-                      bert_config, FLAGS.model_dir)
+                      model_config, FLAGS.model_dir)
     return
 
   if FLAGS.mode != 'train_and_eval':
@@ -319,7 +315,7 @@ def run_bert(strategy,
 
   trained_model = run_bert_classifier(
       strategy,
-      bert_config,
+      model_config,
       input_meta_data,
       FLAGS.model_dir,
       epochs,
@@ -371,7 +367,9 @@ def main(_):
       FLAGS.eval_batch_size,
       is_training=False)
 
-  run_bert(strategy, input_meta_data, train_input_fn, eval_input_fn)
+  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+  run_bert(strategy, input_meta_data, bert_config, train_input_fn,
+           eval_input_fn)
 
 
 if __name__ == '__main__':

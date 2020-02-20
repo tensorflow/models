@@ -22,9 +22,8 @@ from absl import app
 from absl import flags
 import tensorflow as tf
 from typing import Text
-
-from official.nlp import bert_modeling
 from official.nlp.bert import bert_models
+from official.nlp.bert import configs
 
 FLAGS = flags.FLAGS
 
@@ -37,7 +36,7 @@ flags.DEFINE_string("vocab_file", None,
                     "The vocabulary file that the BERT model was trained on.")
 
 
-def create_bert_model(bert_config: bert_modeling.BertConfig) -> tf.keras.Model:
+def create_bert_model(bert_config: configs.BertConfig) -> tf.keras.Model:
   """Creates a BERT keras core model from BERT configuration.
 
   Args:
@@ -64,7 +63,7 @@ def create_bert_model(bert_config: bert_modeling.BertConfig) -> tf.keras.Model:
       outputs=[pooled_output, sequence_output]), transformer_encoder
 
 
-def export_bert_tfhub(bert_config: bert_modeling.BertConfig,
+def export_bert_tfhub(bert_config: configs.BertConfig,
                       model_checkpoint_path: Text, hub_destination: Text,
                       vocab_file: Text):
   """Restores a tf.keras.Model and saves for TF-Hub."""
@@ -79,7 +78,7 @@ def export_bert_tfhub(bert_config: bert_modeling.BertConfig,
 
 def main(_):
   assert tf.version.VERSION.startswith('2.')
-  bert_config = bert_modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
   export_bert_tfhub(bert_config, FLAGS.model_checkpoint_path, FLAGS.export_path,
                     FLAGS.vocab_file)
 

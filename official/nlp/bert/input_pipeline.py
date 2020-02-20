@@ -78,6 +78,10 @@ def create_pretrain_dataset(input_patterns,
           tf.io.FixedLenFeature([1], tf.int64),
   }
 
+  for input_pattern in input_patterns:
+    if not tf.io.gfile.glob(input_pattern):
+      raise ValueError('%s does not match any files.' % input_pattern)
+
   dataset = tf.data.Dataset.list_files(input_patterns, shuffle=is_training)
 
   if input_pipeline_context and input_pipeline_context.num_input_pipelines > 1:

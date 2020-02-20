@@ -346,10 +346,17 @@ def define_keras_flags(
   flags.DEFINE_string(
       name='tpu', default='', help='TPU address to connect to.')
   flags.DEFINE_integer(
-      name='steps_per_loop', default=1,
-      help='Number of steps per graph-mode loop. Only training step happens '
+      name='steps_per_loop',
+      default=500,
+      help='Number of steps per training loop. Only training step happens '
       'inside the loop. Callbacks will not be called inside. Will be capped at '
       'steps per epoch.')
+  flags.DEFINE_boolean(
+      name='use_tf_while_loop',
+      default=True,
+      help='Whether to build a tf.while_loop inside the training loop on the '
+      'host. Setting it to True is critical to have peak performance on '
+      'TPU.')
   flags.DEFINE_boolean(
       name='use_tf_keras_layers', default=False,
       help='Whether to use tf.keras.layers instead of tf.python.keras.layers.'

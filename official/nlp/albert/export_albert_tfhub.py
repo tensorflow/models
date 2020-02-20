@@ -23,7 +23,7 @@ from absl import flags
 import tensorflow as tf
 from typing import Text
 
-from official.nlp import bert_modeling
+from official.nlp.albert import configs
 from official.nlp.bert import bert_models
 
 FLAGS = flags.FLAGS
@@ -39,7 +39,7 @@ flags.DEFINE_string(
 
 
 def create_albert_model(
-    albert_config: bert_modeling.AlbertConfig) -> tf.keras.Model:
+    albert_config: configs.AlbertConfig) -> tf.keras.Model:
   """Creates an ALBERT keras core model from ALBERT configuration.
 
   Args:
@@ -66,7 +66,7 @@ def create_albert_model(
       outputs=[pooled_output, sequence_output]), transformer_encoder
 
 
-def export_albert_tfhub(albert_config: bert_modeling.AlbertConfig,
+def export_albert_tfhub(albert_config: configs.AlbertConfig,
                         model_checkpoint_path: Text, hub_destination: Text,
                         sp_model_file: Text):
   """Restores a tf.keras.Model and saves for TF-Hub."""
@@ -79,7 +79,7 @@ def export_albert_tfhub(albert_config: bert_modeling.AlbertConfig,
 
 def main(_):
   assert tf.version.VERSION.startswith('2.')
-  albert_config = bert_modeling.AlbertConfig.from_json_file(
+  albert_config = configs.AlbertConfig.from_json_file(
       FLAGS.albert_config_file)
   export_albert_tfhub(albert_config, FLAGS.model_checkpoint_path,
                       FLAGS.export_path, FLAGS.sp_model_file)
