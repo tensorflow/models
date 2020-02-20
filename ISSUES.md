@@ -2,7 +2,7 @@
 
 1. It must be a bug, a feature request, or a significant problem with documentation (for small docs fixes please send a PR instead). 
 
-2. The form below must be filled out.
+2. The required form must be filled out.
 
 3. The issue should be related to the repo it is created in. 
 
@@ -16,6 +16,6 @@ TensorFlow developers respond to issues. We want to focus on work that benefits 
 
 We want to focus on the work that benefits the whole community, e.g., fixing bugs and adding features. 
 
-Individual support should be sought on Stack Overflow or other non-GitHub channels. 
+Individual support should be sought on [Stack Overflow](https://stackoverflow.com/questions/tagged/tensorflow-model-garden) or other non-GitHub channels. 
 
 It helps us to address bugs and feature requests in a timely manner.
