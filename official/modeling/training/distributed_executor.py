@@ -31,7 +31,6 @@ import tensorflow as tf
 # pylint: disable=unused-import,g-import-not-at-top,redefined-outer-name,reimported
 from typing import Optional, Dict, List, Text, Callable, Union, Iterator, Any
 from official.modeling.hyperparams import params_dict
-from official.utils.misc import tpu_lib
 from official.utils.misc import distribution_utils
 from official.utils import hyperparams_flags
 
