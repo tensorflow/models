@@ -14,7 +14,7 @@ Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflo
 The research models (https://github.com/tensorflow/models/tree/master/research) are a large collection of models implemented in TensorFlow by researchers. They are not officially supported. It is up to the individual researchers to maintain the models and/or provide support on issues and pull requests.
 -->
 
-## Documentation URL(s) with the issue:
+**Documentation URL(s) with the issue:**
 <!-- Please provide a link to the documentation entry, for example: https://github.com/tensorflow/models/blob/master/research/README.md -->
 
-## Description of issue (what needs changing):
+**Description of the issue (what needs to be changed):**
