@@ -22,9 +22,9 @@ import tensorflow as tf
 
 # Supported rnn cells.
 SUPPORTED_RNNS = {
-    "lstm": tf.nn.rnn_cell.BasicLSTMCell,
-    "rnn": tf.nn.rnn_cell.RNNCell,
-    "gru": tf.nn.rnn_cell.GRUCell,
+    "lstm": tf.compat.v1.nn.rnn_cell.BasicLSTMCell,
+    "rnn": tf.compat.v1.nn.rnn_cell.RNNCell,
+    "gru": tf.compat.v1.nn.rnn_cell.GRUCell,
 }
 
 # Parameters for batch normalization.
@@ -53,7 +53,7 @@ def batch_norm(inputs, training):
   Returns:
     tensor output from batch norm layer.
   """
-  return tf.layers.batch_normalization(
+  return tf.compat.v1.layers.batch_normalization(
       inputs=inputs, momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON,
       fused=True, training=training)
 
@@ -79,9 +79,9 @@ def _conv_bn_layer(inputs, padding, filters, kernel_size, strides, layer_id,
   # This step is required to avoid issues when RNN output sequence is shorter
   # than the label length.
   inputs = tf.pad(
-      inputs,
-      [[0, 0], [padding[0], padding[0]], [padding[1], padding[1]], [0, 0]])
-  inputs = tf.layers.conv2d(
+      tensor=inputs,
+      paddings=[[0, 0], [padding[0], padding[0]], [padding[1], padding[1]], [0, 0]])
+  inputs = tf.compat.v1.layers.conv2d(
       inputs=inputs, filters=filters, kernel_size=kernel_size, strides=strides,
       padding="valid", use_bias=False, activation=tf.nn.relu6,
       name="cnn_{}".format(layer_id))
@@ -116,12 +116,12 @@ def _rnn_layer(inputs, rnn_cell, rnn_hidden_size, layer_id, is_batch_norm,
                      name="rnn_bw_{}".format(layer_id))
 
   if is_bidirectional:
-    outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+    outputs, _ = tf.compat.v1.nn.bidirectional_dynamic_rnn(
         cell_fw=fw_cell, cell_bw=bw_cell, inputs=inputs, dtype=tf.float32,
         swap_memory=True)
     rnn_outputs = tf.concat(outputs, -1)
   else:
-    rnn_outputs = tf.nn.dynamic_rnn(
+    rnn_outputs = tf.compat.v1.nn.dynamic_rnn(
         fw_cell, inputs, dtype=tf.float32, swap_memory=True)
 
   return rnn_outputs
@@ -162,7 +162,7 @@ class DeepSpeech2(object):
     # output of conv_layer2 with the shape of
     # [batch_size (N), times (T), features (F), channels (C)].
     # Convert the conv output to rnn input.
-    batch_size = tf.shape(inputs)[0]
+    batch_size = tf.shape(input=inputs)[0]
     feat_size = inputs.get_shape().as_list()[2]
     inputs = tf.reshape(
         inputs,
@@ -179,7 +179,7 @@ class DeepSpeech2(object):
 
     # FC layer with batch norm.
     inputs = batch_norm(inputs, training)
-    logits = tf.layers.dense(inputs, self.num_classes, use_bias=self.use_bias)
+    logits = tf.compat.v1.layers.dense(inputs, self.num_classes, use_bias=self.use_bias)
 
     return logits
 
