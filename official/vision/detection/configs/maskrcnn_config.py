@@ -14,8 +14,9 @@
 # ==============================================================================
 """Config template to train Mask R-CNN."""
 
-from official.vision.detection.configs import base_config
 from official.modeling.hyperparams import params_dict
+from official.vision.detection.configs import base_config
+
 
 # pylint: disable=line-too-long
 MASKRCNN_CFG = params_dict.ParamsDict(base_config.BASE_CFG)
@@ -23,6 +24,7 @@ MASKRCNN_CFG.override({
     'type': 'mask_rcnn',
     'eval': {
         'type': 'box_and_mask',
+        'num_images_to_visualize': 0,
     },
     'architecture': {
         'parser': 'maskrcnn_parser',
