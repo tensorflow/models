@@ -124,7 +124,8 @@ def run_bert_classifier(strategy,
             bert_config,
             num_classes,
             max_seq_length,
-            hub_module_url=FLAGS.hub_module_url))
+            hub_module_url=FLAGS.hub_module_url,
+            hub_module_trainable=FLAGS.hub_module_trainable))
     classifier_model.optimizer = optimization.create_optimizer(
         initial_lr, steps_per_epoch * epochs, warmup_steps)
     if FLAGS.fp16_implementation == 'graph_rewrite':

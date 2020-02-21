@@ -42,6 +42,7 @@ SQUAD_TRAIN_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_train.tf_record'
 SQUAD_PREDICT_FILE = 'gs://tf-perfzero-data/bert/squad/dev-v1.1.json'
 SQUAD_VOCAB_FILE = 'gs://tf-perfzero-data/bert/squad/vocab.txt'
 SQUAD_MEDIUM_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_medium_meta_data'
+SQUAD_LONG_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_long_meta_data'
 SQUAD_FULL_INPUT_META_DATA_PATH = 'gs://tf-perfzero-data/bert/squad/squad_full_meta_data'
 MODEL_CONFIG_FILE_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_config.json'
 # pylint: enable=line-too-long
@@ -100,8 +101,6 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
           num_gpus=self.num_gpus,
           datasets_num_private_threads=FLAGS.datasets_num_private_threads)
 
-
-
   @flagsaver.flagsaver
   def _train_squad(self, use_ds=True, run_eagerly=False):
     """Runs BERT SQuAD training."""
@@ -152,16 +151,19 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     FLAGS.train_data_path = SQUAD_TRAIN_DATA_PATH
     FLAGS.predict_file = SQUAD_PREDICT_FILE
     FLAGS.vocab_file = SQUAD_VOCAB_FILE
-    FLAGS.input_meta_data_path = SQUAD_MEDIUM_INPUT_META_DATA_PATH
     FLAGS.bert_config_file = MODEL_CONFIG_FILE_PATH
     FLAGS.num_train_epochs = 1
-    FLAGS.steps_per_loop = 1
+    FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 use_ds=True,
                                 run_eagerly=False):
     """Runs the benchmark and reports various metrics."""
+    if FLAGS.train_batch_size <= 4:
+      FLAGS.input_meta_data_path = SQUAD_MEDIUM_INPUT_META_DATA_PATH
+    else:
+      FLAGS.input_meta_data_path = SQUAD_LONG_INPUT_META_DATA_PATH
     start_time_sec = time.time()
     self._train_squad(use_ds=use_ds, run_eagerly=run_eagerly)
     wall_time_sec = time.time() - start_time_sec
@@ -414,7 +416,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     FLAGS.bert_config_file = MODEL_CONFIG_FILE_PATH
     FLAGS.init_checkpoint = PRETRAINED_CHECKPOINT_PATH
     FLAGS.num_train_epochs = 2
-    FLAGS.steps_per_loop = 1
+    FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
@@ -508,7 +510,7 @@ class BertSquadMultiWorkerAccuracy(BertSquadBenchmarkBase):
     FLAGS.bert_config_file = MODEL_CONFIG_FILE_PATH
     FLAGS.init_checkpoint = PRETRAINED_CHECKPOINT_PATH
     FLAGS.num_train_epochs = 2
-    FLAGS.steps_per_loop = 1
+    FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
@@ -578,16 +580,20 @@ class BertSquadMultiWorkerBenchmark(BertSquadBenchmarkBase):
     FLAGS.train_data_path = SQUAD_TRAIN_DATA_PATH
     FLAGS.predict_file = SQUAD_PREDICT_FILE
     FLAGS.vocab_file = SQUAD_VOCAB_FILE
-    FLAGS.input_meta_data_path = SQUAD_MEDIUM_INPUT_META_DATA_PATH
+    FLAGS.input_meta_data_path = SQUAD_FULL_INPUT_META_DATA_PATH
     FLAGS.bert_config_file = MODEL_CONFIG_FILE_PATH
     FLAGS.num_train_epochs = 1
-    FLAGS.steps_per_loop = 1
+    FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
                                 use_ds=True,
                                 run_eagerly=False):
     """Runs the benchmark and reports various metrics."""
+    if FLAGS.train_batch_size <= 4 * 8:
+      FLAGS.input_meta_data_path = SQUAD_LONG_INPUT_META_DATA_PATH
+    else:
+      FLAGS.input_meta_data_path = SQUAD_FULL_INPUT_META_DATA_PATH
     start_time_sec = time.time()
     self._train_squad(use_ds=use_ds, run_eagerly=run_eagerly)
     wall_time_sec = time.time() - start_time_sec

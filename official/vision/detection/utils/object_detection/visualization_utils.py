@@ -32,6 +32,7 @@ import PIL.ImageFont as ImageFont
 import six
 import tensorflow.compat.v2 as tf
 
+from official.vision.detection.utils import box_utils
 from official.vision.detection.utils.object_detection import shape_utils
 
 
@@ -91,6 +92,23 @@ def encode_image_array_as_png_str(image):
   png_string = output.getvalue()
   output.close()
   return png_string
+
+
+def visualize_images_with_bounding_boxes(images, box_outputs, step,
+                                         summary_writer):
+  """Records subset of evaluation images with bounding boxes."""
+  image_shape = tf.shape(images[0])
+  image_height = tf.cast(image_shape[0], tf.float32)
+  image_width = tf.cast(image_shape[1], tf.float32)
+  normalized_boxes = box_utils.normalize_boxes(box_outputs,
+                                               [image_height, image_width])
+
+  bounding_box_color = tf.constant([[1.0, 1.0, 0.0, 1.0]])
+  image_summary = tf.image.draw_bounding_boxes(images, normalized_boxes,
+                                               bounding_box_color)
+  with summary_writer.as_default():
+    tf.summary.image('bounding_box_summary', image_summary, step=step)
+    summary_writer.flush()
 
 
 def draw_bounding_box_on_image_array(image,

@@ -24,13 +24,12 @@ import json
 from absl import app
 from absl import flags
 import tensorflow as tf
-
-from official.nlp.bert import classifier_data_lib
-# word-piece tokenizer based squad_lib
-from official.nlp.bert import squad_lib as squad_lib_wp
-# sentence-piece tokenizer based squad_lib
-from official.nlp.bert import squad_lib_sp
 from official.nlp.bert import tokenization
+from official.nlp.data import classifier_data_lib
+# word-piece tokenizer based squad_lib
+from official.nlp.data import squad_lib as squad_lib_wp
+# sentence-piece tokenizer based squad_lib
+from official.nlp.data import squad_lib_sp
 
 FLAGS = flags.FLAGS
 

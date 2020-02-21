@@ -114,7 +114,7 @@ officially supported by Google Cloud TPU team yet until TF 2.1 released.
 ### Pre-training
 
 There is no change to generate pre-training data. Please use the script
-[`create_pretraining_data.py`](create_pretraining_data.py)
+[`../data/create_pretraining_data.py`](../data/create_pretraining_data.py)
 which is essentially branched from [BERT research repo](https://github.com/google-research/bert)
 to get processed pre-training data and it adapts to TF2 symbols and python3
 compatibility.
@@ -123,10 +123,10 @@ compatibility.
 ### Fine-tuning
 
 To prepare the fine-tuning data for final model training, use the
-[`create_finetuning_data.py`](./create_finetuning_data.py) script.  Resulting
-datasets in `tf_record` format and training meta data should be later passed to
-training or evaluation scripts. The task-specific arguments are described in
-following sections:
+[`../data/create_finetuning_data.py`](../data/create_finetuning_data.py) script.
+Resulting datasets in `tf_record` format and training meta data should be later
+passed to training or evaluation scripts. The task-specific arguments are
+described in following sections:
 
 * GLUE
 
@@ -141,7 +141,7 @@ export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1
 
 export TASK_NAME=MNLI
 export OUTPUT_DIR=gs://some_bucket/datasets
-python create_finetuning_data.py \
+python ../data/create_finetuning_data.py \
  --input_data_dir=${GLUE_DIR}/${TASK_NAME}/ \
  --vocab_file=${BERT_BASE_DIR}/vocab.txt \
  --train_data_output_path=${OUTPUT_DIR}/${TASK_NAME}_train.tf_record \
@@ -171,7 +171,7 @@ export SQUAD_VERSION=v1.1
 export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 export OUTPUT_DIR=gs://some_bucket/datasets
 
-python create_finetuning_data.py \
+python ../data/create_finetuning_data.py \
  --squad_data_file=${SQUAD_DIR}/train-${SQUAD_VERSION}.json \
  --vocab_file=${BERT_BASE_DIR}/vocab.txt \
  --train_data_output_path=${OUTPUT_DIR}/squad_${SQUAD_VERSION}_train.tf_record \

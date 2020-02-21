@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Run BERT on SQuAD 1.1 and SQuAD 2.0 in TF 2.x."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -33,12 +34,13 @@ from official.nlp.bert import common_flags
 from official.nlp.bert import configs as bert_configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
-from official.nlp.bert import squad_lib as squad_lib_wp
-from official.nlp.bert import squad_lib_sp
 from official.nlp.bert import tokenization
+# word-piece tokenizer based squad_lib
+from official.nlp.data import squad_lib as squad_lib_wp
+# sentence-piece tokenizer based squad_lib
+from official.nlp.data import squad_lib_sp
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-
 
 flags.DEFINE_enum(
     'mode', 'train_and_predict',
@@ -183,7 +185,9 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
     # Prediction always uses float32, even if training uses mixed precision.
     tf.keras.mixed_precision.experimental.set_policy('float32')
     squad_model, _ = bert_models.squad_model(
-        bert_config, input_meta_data['max_seq_length'])
+        bert_config,
+        input_meta_data['max_seq_length'],
+        hub_module_url=FLAGS.hub_module_url)
 
   checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
   logging.info('Restoring checkpoints from %s', checkpoint_path)
@@ -251,7 +255,8 @@ def train_squad(strategy,
     squad_model, core_model = bert_models.squad_model(
         bert_config,
         max_seq_length,
-        hub_module_url=FLAGS.hub_module_url)
+        hub_module_url=FLAGS.hub_module_url,
+        hub_module_trainable=FLAGS.hub_module_trainable)
     squad_model.optimizer = optimization.create_optimizer(
         FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
     if use_float16:
