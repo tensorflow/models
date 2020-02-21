@@ -188,7 +188,10 @@ def get_callbacks(
     enable_checkpoint_and_export=False,
     model_dir=None):
   """Returns common callbacks."""
-  time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
+  time_callback = keras_utils.TimeHistory(
+      FLAGS.batch_size,
+      FLAGS.log_steps,
+      logdir=FLAGS.model_dir if FLAGS.enable_tensorboard else None)
   callbacks = [time_callback]
 
   if not FLAGS.use_tensor_lr and learning_rate_schedule_fn:
@@ -265,11 +268,9 @@ def build_stats(history, eval_output, callbacks):
       timestamp_log = callback.timestamp_log
       stats['step_timestamp_log'] = timestamp_log
       stats['train_finish_time'] = callback.train_finish_time
-      if len(timestamp_log) > 1:
-        stats['avg_exp_per_second'] = (
-            callback.batch_size * callback.log_steps *
-            (len(callback.timestamp_log)-1) /
-            (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
+      if callback.epoch_runtime_log:
+        stats['avg_exp_per_second'] = callback.average_examples_per_second
+
   return stats
 
 

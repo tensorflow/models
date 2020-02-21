@@ -64,15 +64,8 @@ def build_stats(runnable, time_callback):
     timestamp_log = time_callback.timestamp_log
     stats['step_timestamp_log'] = timestamp_log
     stats['train_finish_time'] = time_callback.train_finish_time
-    if len(timestamp_log) > 1:
-      stats['avg_exp_per_second'] = (
-          time_callback.batch_size * time_callback.log_steps *
-          (len(time_callback.timestamp_log) - 1) /
-          (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
-
-  avg_exp_per_second = tf.reduce_mean(
-      runnable.examples_per_second_history).numpy(),
-  stats['avg_exp_per_second'] = avg_exp_per_second
+    if time_callback.epoch_runtime_log:
+      stats['avg_exp_per_second'] = time_callback.average_examples_per_second
 
   return stats
 
@@ -154,8 +147,10 @@ def run(flags_obj):
       'total steps: %d; Eval %d steps', train_epochs, per_epoch_steps,
       train_epochs * per_epoch_steps, eval_steps)
 
-  time_callback = keras_utils.TimeHistory(flags_obj.batch_size,
-                                          flags_obj.log_steps)
+  time_callback = keras_utils.TimeHistory(
+      flags_obj.batch_size,
+      flags_obj.log_steps,
+      logdir=flags_obj.model_dir if flags_obj.enable_tensorboard else None)
   with distribution_utils.get_strategy_scope(strategy):
     runnable = resnet_runnable.ResnetRunnable(flags_obj, time_callback,
                                               per_epoch_steps)
