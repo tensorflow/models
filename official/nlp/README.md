@@ -10,4 +10,4 @@ model weights, usage scripts and conversion utilities for the following models:
 
 * [XLNet](xlnet)
 
-* [Transformer for translation](../transformer)
+* [Transformer for translation](transformer)
