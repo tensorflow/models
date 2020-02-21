@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Run BERT on SQuAD 1.1 and SQuAD 2.0 in TF 2.x."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -33,12 +34,13 @@ from official.nlp.bert import common_flags
 from official.nlp.bert import configs as bert_configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
-from official.nlp.bert import squad_lib as squad_lib_wp
-from official.nlp.bert import squad_lib_sp
 from official.nlp.bert import tokenization
+# word-piece tokenizer based squad_lib
+from official.nlp.data import squad_lib as squad_lib_wp
+# sentence-piece tokenizer based squad_lib
+from official.nlp.data import squad_lib_sp
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-
 
 flags.DEFINE_enum(
     'mode', 'train_and_predict',

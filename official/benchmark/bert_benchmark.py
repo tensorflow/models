@@ -81,7 +81,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
           distribution_strategy='mirrored' if use_ds else 'off',
           num_gpus=self.num_gpus)
 
-    steps_per_loop = 100
+    steps_per_loop = 50
 
     max_seq_length = input_meta_data['max_seq_length']
     train_input_fn = run_classifier.get_dataset_fn(
@@ -132,7 +132,7 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     # Since we only care about performance metrics, we limit
     # the number of training steps and epochs to prevent unnecessarily
     # long tests.
-    self.num_steps_per_epoch = 110
+    self.num_steps_per_epoch = 100
     self.num_epochs = 1
 
   @benchmark_wrappers.enable_runtime_flags

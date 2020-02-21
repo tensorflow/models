@@ -21,11 +21,9 @@ from __future__ import print_function
 
 from absl import logging
 
-import os
-import json
 import tensorflow.compat.v2 as tf
 from official.modeling.training import distributed_executor as executor
-from official.vision.detection.utils import box_utils
+from official.vision.detection.utils.object_detection import visualization_utils
 
 
 class DetectionDistributedExecutor(executor.DistributedExecutor):
@@ -115,7 +113,7 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
           # TODO(hongjunchoi): Once dynamic slicing is supported on TPU, only
           # write correct slice of outputs to summary file.
           if num_remaining_visualizations > 0:
-            box_utils.visualize_bounding_boxes(
+            visualization_utils.visualize_images_with_bounding_boxes(
                 inputs, prediction_outputs['detection_boxes'],
                 self.global_train_step, self.eval_summary_writer)
 

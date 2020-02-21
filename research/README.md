@@ -72,7 +72,6 @@ request.
     using a Deep RNN.
 -   [struct2depth](struct2depth): unsupervised learning of depth and ego-motion.
 -   [swivel](swivel): the Swivel algorithm for generating word embeddings.
--   [syntaxnet](syntaxnet): neural models of natural language syntax.
 -   [tcn](tcn): Self-supervised representation learning from multi-view video.
 -   [textsum](textsum): sequence-to-sequence with attention model for text
     summarization.
