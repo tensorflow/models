@@ -26,7 +26,7 @@ from absl import logging
 import tensorflow as tf
 from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python import tf2
-from tensorflow.python.profiler import profiler_v2 as profiler
+from tensorflow.python.eager import profiler
 
 
 class BatchTimestamp(object):
@@ -44,17 +44,28 @@ class BatchTimestamp(object):
 class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
 
-  def __init__(self, batch_size, log_steps):
+  def __init__(self, batch_size, log_steps, logdir=None):
     """Callback for logging performance.
 
     Args:
       batch_size: Total batch size.
       log_steps: Interval of steps between logging of batch level stats.
+      logdir: Optional directory to write TensorBoard summaries.
     """
+    # TODO(wcromar): remove this parameter and rely on `logs` parameter of
+    # on_train_batch_end()
     self.batch_size = batch_size
     super(TimeHistory, self).__init__()
     self.log_steps = log_steps
-    self.global_steps = 0
+    self.last_log_step = 0
+    self.steps_before_epoch = 0
+    self.steps_in_epoch = 0
+    self.start_time = None
+
+    if logdir:
+      self.summary_writer = tf.summary.create_file_writer(logdir)
+    else:
+      self.summary_writer = None
 
     # Logs start of step 1 then end of each step based on log_steps interval.
     self.timestamp_log = []
@@ -62,38 +73,70 @@ class TimeHistory(tf.keras.callbacks.Callback):
     # Records the time each epoch takes to run from start to finish of epoch.
     self.epoch_runtime_log = []
 
+  @property
+  def global_steps(self):
+    """The current 1-indexed global step."""
+    return self.steps_before_epoch + self.steps_in_epoch
+
+  @property
+  def average_steps_per_second(self):
+    """The average training steps per second across all epochs."""
+    return self.global_steps / sum(self.epoch_runtime_log)
+
+  @property
+  def average_examples_per_second(self):
+    """The average number of training examples per second across all epochs."""
+    return self.average_steps_per_second * self.batch_size
+
   def on_train_end(self, logs=None):
     self.train_finish_time = time.time()
+
+    if self.summary_writer:
+      self.summary_writer.flush()
 
   def on_epoch_begin(self, epoch, logs=None):
     self.epoch_start = time.time()
 
   def on_batch_begin(self, batch, logs=None):
-    self.global_steps += 1
-    if self.global_steps == 1:
+    if not self.start_time:
       self.start_time = time.time()
+
+    # Record the timestamp of the first global step
+    if not self.timestamp_log:
       self.timestamp_log.append(BatchTimestamp(self.global_steps,
                                                self.start_time))
 
   def on_batch_end(self, batch, logs=None):
     """Records elapse time of the batch and calculates examples per second."""
-    if self.global_steps % self.log_steps == 0:
-      timestamp = time.time()
-      elapsed_time = timestamp - self.start_time
-      examples_per_second = (self.batch_size * self.log_steps) / elapsed_time
-      self.timestamp_log.append(BatchTimestamp(self.global_steps, timestamp))
+    self.steps_in_epoch = batch + 1
+    steps_since_last_log = self.global_steps - self.last_log_step
+    if steps_since_last_log >= self.log_steps:
+      now = time.time()
+      elapsed_time = now - self.start_time
+      steps_per_second = steps_since_last_log / elapsed_time
+      examples_per_second = steps_per_second * self.batch_size
+
+      self.timestamp_log.append(BatchTimestamp(self.global_steps, now))
       logging.info(
-          "BenchmarkMetric: {'global step':%d, 'time_taken': %f,"
-          "'examples_per_second': %f}",
-          self.global_steps, elapsed_time, examples_per_second)
-      self.start_time = timestamp
+          "TimeHistory: %.2f examples/second between steps %d and %d",
+          examples_per_second, self.last_log_step, self.global_steps)
+
+      if self.summary_writer:
+        with self.summary_writer.as_default():
+          tf.summary.scalar('global_step/sec', steps_per_second,
+                            self.global_steps)
+          tf.summary.scalar('examples/sec', examples_per_second,
+                            self.global_steps)
+
+      self.last_log_step = self.global_steps
+      self.start_time = None
 
   def on_epoch_end(self, epoch, logs=None):
     epoch_run_time = time.time() - self.epoch_start
     self.epoch_runtime_log.append(epoch_run_time)
-    logging.info(
-        "BenchmarkMetric: {'epoch':%d, 'time_taken': %f}",
-        epoch, epoch_run_time)
+
+    self.steps_before_epoch += self.steps_in_epoch
+    self.steps_in_epoch = 0
 
 
 def get_profiler_callback(model_dir, profile_steps, enable_tensorboard,
@@ -145,15 +188,17 @@ class ProfilerCallback(tf.keras.callbacks.Callback):
   def on_batch_begin(self, batch, logs=None):
     if batch == self.start_step_in_epoch and self.should_start:
       self.should_start = False
-      profiler.start(self.log_dir)
+      profiler.start()
       logging.info('Profiler started at Step %s', self.start_step)
 
   def on_batch_end(self, batch, logs=None):
     if batch == self.stop_step_in_epoch and self.should_stop:
       self.should_stop = False
-      profiler.stop()
-      logging.info('Profiler saved profiles for steps between %s and %s to %s',
-                   self.start_step, self.stop_step, self.log_dir)
+      results = profiler.stop()
+      profiler.save(self.log_dir, results)
+      logging.info(
+          'Profiler saved profiles for steps between %s and %s to %s',
+          self.start_step, self.stop_step, self.log_dir)
 
 
 def set_session_config(enable_eager=False,

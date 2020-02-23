@@ -114,7 +114,6 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
     # Handling epochs.
     self.epoch_steps = epoch_steps
     self.epoch_helper = utils.EpochHelper(epoch_steps, self.global_step)
-    self.examples_per_second_history = []
 
   def build_train_dataset(self):
     """See base class."""
@@ -147,8 +146,8 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
     self.train_loss.reset_states()
     self.train_accuracy.reset_states()
 
-    self.time_callback.on_batch_begin(self.global_step)
     self._epoch_begin()
+    self.time_callback.on_batch_begin(self.epoch_helper.batch_index)
 
   def train_step(self, iterator):
     """See base class."""
@@ -194,12 +193,13 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
 
   def train_loop_end(self):
     """See base class."""
-    self.time_callback.on_batch_end(self.global_step)
-    self._epoch_end()
-    return {
+    metrics = {
         'train_loss': self.train_loss.result(),
         'train_accuracy': self.train_accuracy.result(),
     }
+    self.time_callback.on_batch_end(self.epoch_helper.batch_index - 1)
+    self._epoch_end()
+    return metrics
 
   def eval_begin(self):
     """See base class."""
@@ -234,10 +234,3 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
   def _epoch_end(self):
     if self.epoch_helper.epoch_end():
       self.time_callback.on_epoch_end(self.epoch_helper.current_epoch)
-      epoch_time = self.time_callback.epoch_runtime_log[-1]
-      steps_per_second = self.epoch_steps / epoch_time
-      examples_per_second = steps_per_second * self.flags_obj.batch_size
-      self.examples_per_second_history.append(examples_per_second)
-
-      tf.summary.scalar('global_step/sec', steps_per_second)
-      tf.summary.scalar('examples/sec', examples_per_second)

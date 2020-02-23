@@ -23,9 +23,8 @@
 # need to be fine-tuned for the detection task.
 # Note that we need to trailing `/` to avoid the incorrect match.
 # [1]: https://github.com/facebookresearch/Detectron/blob/master/detectron/core/config.py#L198
-RESNET50_FROZEN_VAR_PREFIX = r'(resnet\d+/)conv2d(|_([1-9]|10))\/'
 RESNET_FROZEN_VAR_PREFIX = r'(resnet\d+)\/(conv2d(|_([1-9]|10))|batch_normalization(|_([1-9]|10)))\/'
-
+REGULARIZATION_VAR_REGEX = r'.*(kernel|weight):0$'
 
 # pylint: disable=line-too-long
 RETINANET_CFG = {
@@ -54,10 +53,11 @@ RETINANET_CFG = {
             'path': '',
             'prefix': '',
         },
-        'frozen_variable_prefix': RESNET50_FROZEN_VAR_PREFIX,
+        'frozen_variable_prefix': RESNET_FROZEN_VAR_PREFIX,
         'train_file_pattern': '',
         # TODO(b/142174042): Support transpose_input option.
         'transpose_input': False,
+        'regularization_variable_regex': REGULARIZATION_VAR_REGEX,
         'l2_weight_decay': 0.0001,
         'input_sharding': False,
     },
