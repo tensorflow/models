@@ -1,4 +1,4 @@
-# Tensorflow detection model zoo
+# TensorFlow detection model collection
 
 We provide a collection of detection models pre-trained on the [COCO
 dataset](http://mscoco.org), the [Kitti dataset](http://www.cvlibs.net/datasets/kitti/),
