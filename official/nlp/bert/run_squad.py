@@ -109,9 +109,9 @@ def squad_loss_fn(start_positions,
                   end_logits,
                   loss_factor=1.0):
   """Returns sparse categorical crossentropy for start/end logits."""
-  start_loss = tf.keras.backend.sparse_categorical_crossentropy(
+  start_loss = tf.keras.losses.sparse_categorical_crossentropy(
       start_positions, start_logits, from_logits=True)
-  end_loss = tf.keras.backend.sparse_categorical_crossentropy(
+  end_loss = tf.keras.losses.sparse_categorical_crossentropy(
       end_positions, end_logits, from_logits=True)
 
   total_loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
