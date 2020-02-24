@@ -5,7 +5,7 @@ This folder contains machine learning models implemented by researchers in
 respective authors. To propose a model for inclusion, please submit a pull
 request.
 
-**Note: some research models are stale and have not updated to latest
+**Note: some research models are stale and have not updated to the latest
 TensorFlow yet. If users have trouble with TF 2.x for research models,
 please consider TF 1.15.**
 
