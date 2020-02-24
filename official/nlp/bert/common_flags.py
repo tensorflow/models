@@ -66,10 +66,6 @@ def define_common_bert_flags():
   flags.DEFINE_string(
       'hub_module_url', None, 'TF-Hub path/url to Bert module. '
       'If specified, init_checkpoint flag should not be used.')
-  flags.DEFINE_enum(
-      'model_type', 'bert', ['bert', 'albert'],
-      'Specifies the type of the model. '
-      'If "bert", will use canonical BERT; if "albert", will use ALBERT model.')
   flags.DEFINE_bool('hub_module_trainable', True,
                     'True to make keras layers in the hub module trainable.')
 
