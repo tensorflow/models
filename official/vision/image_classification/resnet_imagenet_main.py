@@ -155,23 +155,19 @@ def run(flags_obj):
         dtype=dtype,
         drop_remainder=drop_remainder)
 
-  lr_schedule = 0.1
-  if flags_obj.use_tensor_lr:
-    lr_schedule = common.PiecewiseConstantDecayWithWarmup(
-        batch_size=flags_obj.batch_size,
-        epoch_size=imagenet_preprocessing.NUM_IMAGES['train'],
-        warmup_epochs=common.LR_SCHEDULE[0][1],
-        boundaries=list(p[1] for p in common.LR_SCHEDULE[1:]),
-        multipliers=list(p[0] for p in common.LR_SCHEDULE),
-        compute_lr_on_cpu=True)
+  lr_schedule = common.PiecewiseConstantDecayWithWarmup(
+      batch_size=flags_obj.batch_size,
+      epoch_size=imagenet_preprocessing.NUM_IMAGES['train'],
+      warmup_epochs=common.LR_SCHEDULE[0][1],
+      boundaries=list(p[1] for p in common.LR_SCHEDULE[1:]),
+      multipliers=list(p[0] for p in common.LR_SCHEDULE),
+      compute_lr_on_cpu=True)
   steps_per_epoch = (
       imagenet_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
 
-  learning_rate_schedule_fn = None
   with strategy_scope:
     if flags_obj.optimizer == 'resnet50_default':
       optimizer = common.get_optimizer(lr_schedule)
-      learning_rate_schedule_fn = common.learning_rate_schedule
     elif flags_obj.optimizer == 'mobilenet_default':
       initial_learning_rate = \
           flags_obj.initial_learning_rate_per_sample * flags_obj.batch_size
@@ -248,7 +244,6 @@ def run(flags_obj):
 
   callbacks = common.get_callbacks(
       steps_per_epoch=steps_per_epoch,
-      learning_rate_schedule_fn=learning_rate_schedule_fn,
       pruning_method=flags_obj.pruning_method,
       enable_checkpoint_and_export=flags_obj.enable_checkpoint_and_export,
       model_dir=flags_obj.model_dir)

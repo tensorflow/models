@@ -53,6 +53,10 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
     super(Resnet56KerasAccuracy, self).__init__(
         output_dir=output_dir, flag_methods=flag_methods)
 
+  def _setup(self):
+    super(Resnet56KerasAccuracy, self)._setup()
+    FLAGS.use_tensor_lr = False
+
   def benchmark_graph_1_gpu(self):
     """Test keras based model with Keras fit and distribution strategies."""
     self._setup()
@@ -439,6 +443,7 @@ class Resnet56KerasBenchmarkSynth(Resnet56KerasBenchmarkBase):
     default_flags['use_synthetic_data'] = True
     default_flags['train_steps'] = 110
     default_flags['log_steps'] = 10
+    default_flags['use_tensor_lr'] = False
 
     super(Resnet56KerasBenchmarkSynth, self).__init__(
         output_dir=output_dir, default_flags=default_flags)
@@ -453,6 +458,7 @@ class Resnet56KerasBenchmarkReal(Resnet56KerasBenchmarkBase):
     default_flags['data_dir'] = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)
     default_flags['train_steps'] = 110
     default_flags['log_steps'] = 10
+    default_flags['use_tensor_lr'] = False
 
     super(Resnet56KerasBenchmarkReal, self).__init__(
         output_dir=output_dir, default_flags=default_flags)

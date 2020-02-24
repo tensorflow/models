@@ -20,7 +20,6 @@ from __future__ import print_function
 import os
 
 from absl import flags
-import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
@@ -34,78 +33,6 @@ TRAIN_TOP_1 = 'training_accuracy_top_1'
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
-
-
-def learning_rate_schedule(current_epoch,
-                           current_batch,
-                           steps_per_epoch,
-                           batch_size):
-  """Handles linear scaling rule, gradual warmup, and LR decay.
-
-  Scale learning rate at epoch boundaries provided in LR_SCHEDULE by the
-  provided scaling factor.
-
-  Args:
-    current_epoch: integer, current epoch indexed from 0.
-    current_batch: integer, current batch in the current epoch, indexed from 0.
-    steps_per_epoch: integer, number of steps in an epoch.
-    batch_size: integer, total batch sized.
-
-  Returns:
-    Adjusted learning rate.
-  """
-  initial_lr = BASE_LEARNING_RATE * batch_size / 256
-  epoch = current_epoch + float(current_batch) / steps_per_epoch
-  warmup_lr_multiplier, warmup_end_epoch = LR_SCHEDULE[0]
-  if epoch < warmup_end_epoch:
-    # Learning rate increases linearly per step.
-    return initial_lr * warmup_lr_multiplier * epoch / warmup_end_epoch
-  for mult, start_epoch in LR_SCHEDULE:
-    if epoch >= start_epoch:
-      learning_rate = initial_lr * mult
-    else:
-      break
-  return learning_rate
-
-
-class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
-  """Callback to update learning rate on every batch (not epoch boundaries).
-
-  N.B. Only support Keras optimizers, not TF optimizers.
-
-  Attributes:
-      schedule: a function that takes an epoch index and a batch index as input
-          (both integer, indexed from 0) and returns a new learning rate as
-          output (float).
-  """
-
-  def __init__(self, schedule, batch_size, steps_per_epoch):
-    super(LearningRateBatchScheduler, self).__init__()
-    self.schedule = schedule
-    self.steps_per_epoch = steps_per_epoch
-    self.batch_size = batch_size
-    self.epochs = -1
-    self.prev_lr = -1
-
-  def on_epoch_begin(self, epoch, logs=None):
-    if not hasattr(self.model.optimizer, 'learning_rate'):
-      raise ValueError('Optimizer must have a "learning_rate" attribute.')
-    self.epochs += 1
-
-  def on_batch_begin(self, batch, logs=None):
-    """Executes before step begins."""
-    lr = self.schedule(self.epochs,
-                       batch,
-                       self.steps_per_epoch,
-                       self.batch_size)
-    if not isinstance(lr, (float, np.float32, np.float64)):
-      raise ValueError('The output of the "schedule" function should be float.')
-    if lr != self.prev_lr:
-      self.model.optimizer.learning_rate = lr  # lr should be a float here
-      self.prev_lr = lr
-      tf.compat.v1.logging.debug(
-          'Epoch %05d Batch %05d: LearningRateBatchScheduler '
-          'change learning rate to %s.', self.epochs, batch, lr)
 
 
 class PiecewiseConstantDecayWithWarmup(
@@ -180,10 +107,8 @@ def get_optimizer(learning_rate=0.1):
   return gradient_descent_v2.SGD(learning_rate=learning_rate, momentum=0.9)
 
 
-# TODO(hongkuny,haoyuzhang): make cifar model use_tensor_lr to clean up code.
 def get_callbacks(
     steps_per_epoch,
-    learning_rate_schedule_fn=None,
     pruning_method=None,
     enable_checkpoint_and_export=False,
     model_dir=None):
@@ -193,13 +118,6 @@ def get_callbacks(
       FLAGS.log_steps,
       logdir=FLAGS.model_dir if FLAGS.enable_tensorboard else None)
   callbacks = [time_callback]
-
-  if not FLAGS.use_tensor_lr and learning_rate_schedule_fn:
-    lr_callback = LearningRateBatchScheduler(
-        learning_rate_schedule_fn,
-        batch_size=FLAGS.batch_size,
-        steps_per_epoch=steps_per_epoch)
-    callbacks.append(lr_callback)
 
   if FLAGS.enable_tensorboard:
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
@@ -317,7 +235,7 @@ def define_keras_flags(
                        help='Whether to use a trivial Keras model.')
   flags.DEFINE_boolean(name='report_accuracy_metrics', default=True,
                        help='Report metrics during training and evaluation.')
-  flags.DEFINE_boolean(name='use_tensor_lr', default=False,
+  flags.DEFINE_boolean(name='use_tensor_lr', default=True,
                        help='Use learning rate tensor instead of a callback.')
   flags.DEFINE_boolean(
       name='enable_tensorboard', default=False,
