@@ -94,12 +94,12 @@ class EstimatorBenchmark(tf.test.Benchmark):
     metrics = []
     if 'accuracy' in eval_results:
       metrics.append({'name': 'accuracy_top_1',
-                      'value': eval_results['accuracy'].item(),
+                      'value': float(eval_results['accuracy']),
                       'min_value': top_1_min,
                       'max_value': top_1_max})
     if 'accuracy_top_5' in eval_results:
       metrics.append({'name': 'accuracy_top_5',
-                      'value': eval_results['accuracy_top_5'].item()})
+                      'value': float(eval_results['accuracy_top_5'])})
 
     if examples_per_sec_hook:
       exp_per_second_list = examples_per_sec_hook.current_examples_per_sec_list

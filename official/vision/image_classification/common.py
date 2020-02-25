@@ -164,18 +164,18 @@ def build_stats(history, eval_output, callbacks):
   """
   stats = {}
   if eval_output:
-    stats['accuracy_top_1'] = eval_output[1].item()
-    stats['eval_loss'] = eval_output[0].item()
+    stats['accuracy_top_1'] = float(eval_output[1])
+    stats['eval_loss'] = float(eval_output[0])
 
   if history and history.history:
     train_hist = history.history
     # Gets final loss from training.
-    stats['loss'] = train_hist['loss'][-1].item()
+    stats['loss'] = float(train_hist['loss'][-1])
     # Gets top_1 training accuracy.
     if 'categorical_accuracy' in train_hist:
-      stats[TRAIN_TOP_1] = train_hist['categorical_accuracy'][-1].item()
+      stats[TRAIN_TOP_1] = float(train_hist['categorical_accuracy'][-1])
     elif 'sparse_categorical_accuracy' in train_hist:
-      stats[TRAIN_TOP_1] = train_hist['sparse_categorical_accuracy'][-1].item()
+      stats[TRAIN_TOP_1] = float(train_hist['sparse_categorical_accuracy'][-1])
 
   if not callbacks:
     return stats
