@@ -23,6 +23,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import model_training_utils
+from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
@@ -102,16 +103,12 @@ def run_customized_training(strategy,
     """Gets a pretraining model."""
     pretrain_model, core_model = bert_models.pretrain_model(
         bert_config, max_seq_length, max_predictions_per_seq)
-    pretrain_model.optimizer = optimization.create_optimizer(
+    optimizer = optimization.create_optimizer(
         initial_lr, steps_per_epoch * epochs, warmup_steps)
-    if FLAGS.fp16_implementation == 'graph_rewrite':
-      # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
-      # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
-      # which will ensure tf.compat.v2.keras.mixed_precision and
-      # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
-      # up.
-      pretrain_model.optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
-          pretrain_model.optimizer)
+    pretrain_model.optimizer = performance.configure_optimizer(
+        optimizer,
+        use_float16=common_flags.use_float16(),
+        use_graph_rewrite=common_flags.use_graph_rewrite())
     return pretrain_model, core_model
 
   trained_model = model_training_utils.run_customized_training_loop(
@@ -140,6 +137,8 @@ def run_bert_pretrain(strategy):
   # Runs customized training loop.
   logging.info('Training using customized training loop TF 2.0 with distrubuted'
                'strategy.')
+
+  performance.set_mixed_precision_policy(common_flags.dtype())
 
   return run_customized_training(
       strategy,

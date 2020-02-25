@@ -23,6 +23,7 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
+from official.modeling import performance
 from official.staging.training import controller
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
@@ -110,16 +111,7 @@ def run(flags_obj):
   keras_utils.set_session_config(
       enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
-
-  dtype = flags_core.get_tf_dtype(flags_obj)
-  if dtype == tf.float16:
-    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-        'mixed_float16')
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
-  elif dtype == tf.bfloat16:
-    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-        'mixed_bfloat16')
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+  performance.set_mixed_precision_policy(flags_core.get_tf_dtype(flags_obj))
 
   # This only affects GPU.
   common.set_cudnn_batchnorm_mode()

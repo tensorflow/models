@@ -66,10 +66,6 @@ def define_common_bert_flags():
   flags.DEFINE_string(
       'hub_module_url', None, 'TF-Hub path/url to Bert module. '
       'If specified, init_checkpoint flag should not be used.')
-  flags.DEFINE_enum(
-      'model_type', 'bert', ['bert', 'albert'],
-      'Specifies the type of the model. '
-      'If "bert", will use canonical BERT; if "albert", will use ALBERT model.')
   flags.DEFINE_bool('hub_module_trainable', True,
                     'True to make keras layers in the hub module trainable.')
 
@@ -92,8 +88,16 @@ def define_common_bert_flags():
   )
 
 
+def dtype():
+  return flags_core.get_tf_dtype(flags.FLAGS)
+
+
 def use_float16():
   return flags_core.get_tf_dtype(flags.FLAGS) == tf.float16
+
+
+def use_graph_rewrite():
+  return flags.FLAGS.fp16_implementation == 'graph_rewrite'
 
 
 def get_loss_scale():

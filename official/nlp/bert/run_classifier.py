@@ -27,6 +27,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import model_training_utils
+from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
@@ -126,16 +127,12 @@ def run_bert_classifier(strategy,
             max_seq_length,
             hub_module_url=FLAGS.hub_module_url,
             hub_module_trainable=FLAGS.hub_module_trainable))
-    classifier_model.optimizer = optimization.create_optimizer(
+    optimizer = optimization.create_optimizer(
         initial_lr, steps_per_epoch * epochs, warmup_steps)
-    if FLAGS.fp16_implementation == 'graph_rewrite':
-      # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
-      # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
-      # which will ensure tf.compat.v2.keras.mixed_precision and
-      # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
-      # up.
-      classifier_model.optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
-          classifier_model.optimizer)
+    classifier_model.optimizer = performance.configure_optimizer(
+        optimizer,
+        use_float16=common_flags.use_float16(),
+        use_graph_rewrite=common_flags.use_graph_rewrite())
     return classifier_model, core_model
 
   # During distributed training, loss used for gradient computation is
@@ -302,6 +299,7 @@ def run_bert(strategy,
     raise ValueError('Unsupported mode is specified: %s' % FLAGS.mode)
   # Enables XLA in Session Config. Should not be set for TPU.
   keras_utils.set_config_v2(FLAGS.enable_xla)
+  performance.set_mixed_precision_policy(common_flags.dtype())
 
   epochs = FLAGS.num_train_epochs
   train_data_size = input_meta_data['train_data_size']
