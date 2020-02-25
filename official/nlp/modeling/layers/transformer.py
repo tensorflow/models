@@ -193,8 +193,15 @@ class Transformer(tf.keras.layers.Layer):
     base_config = super(Transformer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  @tf.function(experimental_compile=True)
   def call(self, inputs):
+    # TODO(b/150147476, b/150024785): Fix tf.function in TF1 crash.
+    call_impl = self.call_impl
+    if not hasattr(tf.compat.v1, "executing_eagerly_outside_functions"
+                  ) or tf.compat.v1.executing_eagerly_outside_functions():
+      call_impl = tf.function(experimental_compile=True)(call_impl)
+    return call_impl(inputs)
+
+  def call_impl(self, inputs):
     if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
       input_tensor, attention_mask = inputs
     else:
