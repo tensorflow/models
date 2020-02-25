@@ -15,10 +15,10 @@ they target the
 [nightly binaries](https://github.com/tensorflow/tensorflow#installation) built
 from the
 [master branch of TensorFlow](https://github.com/tensorflow/tensorflow/tree/master).
-You may start from installing with pip:
+You may start from installing with pip3:
 
 ```shell
-pip install tf-nightly
+pip3 install tf-nightly
 ```
 
 **Stable versions** of the official models targeting releases of TensorFlow are
@@ -66,11 +66,6 @@ please consider:
   pip3 install --user -r official/requirements.txt
   ```
 
-  or (Python 2 compatibility is not guaranteed)
-
-  ```shell
-  pip install --user -r official/requirements.txt
-  ```
 
 To make Official Models easier to use, we are planning to create a pip
 installable Official Models package. This is being tracked in
