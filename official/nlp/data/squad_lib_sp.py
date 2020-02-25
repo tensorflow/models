@@ -562,10 +562,6 @@ def _check_is_max_context(doc_spans, cur_span_index, position):
   return cur_span_index == best_span_index
 
 
-RawResult = collections.namedtuple("RawResult",
-                                   ["unique_id", "start_logits", "end_logits"])
-
-
 def write_predictions(all_examples,
                       all_features,
                       all_results,

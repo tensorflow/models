@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Run BERT on SQuAD 1.1 and SQuAD 2.0 in TF 2.x."""
+"""Run ALBERT on SQuAD 1.1 and SQuAD 2.0 in TF 2.x."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,15 +24,16 @@ from absl import app
 from absl import flags
 import tensorflow as tf
 
-from official.nlp.bert import configs as bert_configs
+from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import run_squad_helper
 from official.nlp.bert import tokenization
-from official.nlp.data import squad_lib as squad_lib_wp
+from official.nlp.data import squad_lib_sp
 from official.utils.misc import distribution_utils
 
-
-flags.DEFINE_string('vocab_file', None,
-                    'The vocabulary file that the BERT model was trained on.')
+flags.DEFINE_string(
+    'sp_model_file', None,
+    'The path to the sentence piece model. Used by sentence piece tokenizer '
+    'employed by ALBERT.')
 
 # More flags can be found in run_squad_helper.
 run_squad_helper.define_common_squad_flags()
@@ -44,19 +45,22 @@ def train_squad(strategy,
                 input_meta_data,
                 custom_callbacks=None,
                 run_eagerly=False):
-  """Run bert squad training."""
-  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+  """Runs bert squad training."""
+  bert_config = albert_configs.AlbertConfig.from_json_file(
+      FLAGS.bert_config_file)
   run_squad_helper.train_squad(strategy, input_meta_data, bert_config,
                                custom_callbacks, run_eagerly)
 
 
 def predict_squad(strategy, input_meta_data):
   """Makes predictions for a squad dataset."""
-  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
-  tokenizer = tokenization.FullTokenizer(
-      vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+  bert_config = albert_configs.AlbertConfig.from_json_file(
+      FLAGS.bert_config_file)
+  tokenizer = tokenization.FullSentencePieceTokenizer(
+      sp_model_file=FLAGS.sp_model_file)
+
   run_squad_helper.predict_squad(strategy, input_meta_data, tokenizer,
-                                 bert_config, squad_lib_wp)
+                                 bert_config, squad_lib_sp)
 
 
 def export_squad(model_export_path, input_meta_data):
@@ -69,7 +73,8 @@ def export_squad(model_export_path, input_meta_data):
   Raises:
     Export path is not specified, got an empty string or None.
   """
-  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = albert_configs.AlbertConfig.from_json_file(
+      FLAGS.bert_config_file)
   run_squad_helper.export_squad(model_export_path, input_meta_data, bert_config)
 
 

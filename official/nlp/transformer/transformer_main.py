@@ -17,7 +17,6 @@
 See README for description of setting the training schedule and evaluating the
 BLEU score.
 """
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -30,19 +29,19 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-# pylint: disable=g-bad-import-order
+from official.modeling import performance
 from official.nlp.transformer import compute_bleu
-from official.nlp.transformer.utils import tokenizer
 from official.nlp.transformer import data_pipeline
 from official.nlp.transformer import metrics
 from official.nlp.transformer import misc
 from official.nlp.transformer import optimizer
 from official.nlp.transformer import transformer
 from official.nlp.transformer import translate
+from official.nlp.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
-from official.utils.misc import keras_utils
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 
 INF = int(1e9)
 BLEU_DIR = "bleu"
@@ -180,21 +179,9 @@ class TransformerTask(object):
     else:
       logging.info("Not using any distribution strategy.")
 
-    if params["dtype"] == tf.float16:
-      # TODO(reedwm): It's pretty ugly to set the global policy in a constructor
-      # like this. What if multiple instances of TransformerTask are created?
-      # We should have a better way in the tf.keras.mixed_precision API of doing
-      # this.
-      loss_scale = flags_core.get_loss_scale(
-          flags_obj, default_for_fp16="dynamic")
-      policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-          "mixed_float16", loss_scale=loss_scale)
-      tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
-
-    elif params["dtype"] == tf.bfloat16:
-      policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-          "mixed_bfloat16")
-      tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+    performance.set_mixed_precision_policy(
+        params["dtype"],
+        flags_core.get_loss_scale(flags_obj, default_for_fp16="dynamic"))
 
   @property
   def use_tpu(self):
@@ -434,8 +421,6 @@ class TransformerTask(object):
   def _create_optimizer(self):
     """Creates optimizer."""
     params = self.params
-    # TODO(b/139414679): Explore the difference between using
-    # LearningRateSchedule and callback for GPU runs, and try to merge them.
     lr_schedule = optimizer.LearningRateSchedule(
         params["learning_rate"], params["hidden_size"],
         params["learning_rate_warmup_steps"])
@@ -445,18 +430,12 @@ class TransformerTask(object):
         params["optimizer_adam_beta2"],
         epsilon=params["optimizer_adam_epsilon"])
 
-    if params["dtype"] == tf.float16:
-      opt = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-          opt,
-          loss_scale=flags_core.get_loss_scale(
-              self.flags_obj, default_for_fp16="dynamic"))
-    if self.flags_obj.fp16_implementation == "graph_rewrite":
-      # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
-      # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
-      # which will ensure tf.compat.v2.keras.mixed_precision and
-      # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
-      # up.
-      opt = tf.train.experimental.enable_mixed_precision_graph_rewrite(opt)
+    opt = performance.configure_optimizer(
+        opt,
+        use_float16=params["dtype"] == tf.float16,
+        use_graph_rewrite=self.flags_obj.fp16_implementation == "graph_rewrite",
+        loss_scale=flags_core.get_loss_scale(
+            self.flags_obj, default_for_fp16="dynamic"))
 
     return opt
 
