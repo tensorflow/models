@@ -280,7 +280,8 @@ def train_squad(strategy,
       train_input_fn=train_input_fn,
       init_checkpoint=FLAGS.init_checkpoint,
       run_eagerly=run_eagerly,
-      custom_callbacks=custom_callbacks)
+      custom_callbacks=custom_callbacks,
+      explicit_allreduce=FLAGS.explicit_allreduce)
 
 
 def predict_squad(strategy, input_meta_data, tokenizer, bert_config, squad_lib):

@@ -68,6 +68,10 @@ def define_common_bert_flags():
       'If specified, init_checkpoint flag should not be used.')
   flags.DEFINE_bool('hub_module_trainable', True,
                     'True to make keras layers in the hub module trainable.')
+  flags.DEFINE_bool('explicit_allreduce', False,
+                    'Whether to explicit perform gradient allreduce in '
+                    'training loop, instead of relying on implicit allreduce '
+                    'in optimizer.apply_gradients().')
 
   # Adds flags for mixed precision and multi-worker training.
   flags_core.define_performance(
