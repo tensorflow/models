@@ -88,8 +88,16 @@ def define_common_bert_flags():
   )
 
 
+def dtype():
+  return flags_core.get_tf_dtype(flags.FLAGS)
+
+
 def use_float16():
   return flags_core.get_tf_dtype(flags.FLAGS) == tf.float16
+
+
+def use_graph_rewrite():
+  return flags.FLAGS.fp16_implementation == 'graph_rewrite'
 
 
 def get_loss_scale():

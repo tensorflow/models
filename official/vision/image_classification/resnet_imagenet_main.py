@@ -28,6 +28,7 @@ import tensorflow as tf
 import tensorflow_model_optimization as tfmot
 
 from official.benchmark.models import trivial_model
+from official.modeling import performance
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
@@ -65,17 +66,9 @@ def run(flags_obj):
   common.set_cudnn_batchnorm_mode()
 
   dtype = flags_core.get_tf_dtype(flags_obj)
-  if dtype == tf.float16:
-    loss_scale = flags_core.get_loss_scale(flags_obj, default_for_fp16=128)
-    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-        'mixed_float16', loss_scale=loss_scale)
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
-    if not keras_utils.is_v2_0():
-      raise ValueError('--dtype=fp16 is not supported in TensorFlow 1.')
-  elif dtype == tf.bfloat16:
-    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-        'mixed_bfloat16')
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+  performance.set_mixed_precision_policy(
+      flags_core.get_tf_dtype(flags_obj),
+      flags_core.get_loss_scale(flags_obj, default_for_fp16=128))
 
   data_format = flags_obj.data_format
   if data_format is None:

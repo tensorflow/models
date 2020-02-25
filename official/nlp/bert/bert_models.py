@@ -69,6 +69,8 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
            sentence_labels):
     """Implements call() for the layer."""
     lm_label_weights = tf.cast(lm_label_weights, tf.float32)
+    lm_output = tf.cast(lm_output, tf.float32)
+    sentence_output = tf.cast(sentence_output, tf.float32)
 
     mask_label_loss = losses.weighted_sparse_categorical_crossentropy_loss(
         labels=lm_label_ids, predictions=lm_output, weights=lm_label_weights)
