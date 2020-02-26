@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
 from official.benchmark.models import resnet_cifar_model
