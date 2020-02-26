@@ -76,56 +76,6 @@ def write_txt_summary(training_summary, summary_dir):
     f.write(json.dumps(training_summary, indent=4))
 
 
-def _filter_grads(grads_and_vars):
-  """Filter out iterable with grad equal to None."""
-  grads_and_vars = tuple(grads_and_vars)
-  if not grads_and_vars:
-    return grads_and_vars
-  filtered = []
-  vars_with_empty_grads = []
-  for grad, var in grads_and_vars:
-    if grad is None:
-      vars_with_empty_grads.append(var)
-    else:
-      filtered.append((grad, var))
-  filtered = tuple(filtered)
-  if not filtered:
-    raise ValueError('No gradients provided for any variable: %s.' %
-                     ([v.name for _, v in grads_and_vars],))
-  if vars_with_empty_grads:
-    logging.warning(
-        ('Gradients do not exist for variables %s when minimizing the loss.'),
-        ([v.name for v in vars_with_empty_grads]))
-  return filtered
-
-
-def _filter_and_allreduce_gradients(grads_and_vars,
-                                    allreduce_precision='float32'):
-  """Filter None grads and then allreduce gradients in specified precision.
-
-  This utils function is used when users intent to explicitly allreduce
-  gradients and customize gradients operations before and after allreduce.
-  The allreduced gradients are then passed to optimizer.apply_gradients(
-  all_reduce_sum_gradients=False).
-
-  Arguments:
-      grads_and_vars: gradients and variables pairs.
-      allreduce_precision: Whether to allreduce gradients in float32 or float16.
-
-  Returns:
-      pairs of allreduced non-None gradients and variables.
-  """
-  filtered_grads_and_vars = _filter_grads(grads_and_vars)
-  (grads, variables) = zip(*filtered_grads_and_vars)
-  if allreduce_precision == 'float16':
-    grads = [tf.cast(grad, 'float16') for grad in grads]
-  allreduced_grads = tf.distribute.get_replica_context().all_reduce(
-      tf.distribute.ReduceOp.SUM, grads)
-  if allreduce_precision == 'float16':
-    allreduced_grads = [tf.cast(grad, 'float32') for grad in allreduced_grads]
-  return allreduced_grads, variables
-
-
 def run_customized_training_loop(
     # pylint: disable=invalid-name
     _sentinel=None,
@@ -144,8 +94,7 @@ def run_customized_training_loop(
     init_checkpoint=None,
     custom_callbacks=None,
     run_eagerly=False,
-    sub_model_export_name=None,
-    explicit_allreduce=False):
+    sub_model_export_name=None):
   """Run BERT pretrain model training using low-level API.
 
   Arguments:
@@ -187,12 +136,6 @@ def run_customized_training_loop(
         file is {sub_model_export_name}_step_{step}.ckpt and the last
         checkpint's name is {sub_model_export_name}.ckpt;
         if None, `sub_model` will not be exported as checkpoint.
-      explicit_allreduce: Whether to explicitly perform gradient allreduce,
-        instead of relying on implicit allreduce in optimizer.apply_gradients().
-        default is False. For now, if training using FP16 mixed precision,
-        explicit allreduce will aggregate gradients in FP16 format. For TPU and
-        GPU training using FP32, explicit allreduce will aggregate gradients in
-        FP32 format.
 
   Returns:
       Trained model.
@@ -308,30 +251,10 @@ def run_customized_training_loop(
 
       if use_float16:
         scaled_grads = tape.gradient(scaled_loss, training_vars)
-        if explicit_allreduce:
-          (allreduced_scaled_grads,
-           filtered_training_vars) = _filter_and_allreduce_gradients(
-               zip(scaled_grads, training_vars), allreduce_precision='float16')
-          allreduced_unscaled_grads = optimizer.get_unscaled_gradients(
-              allreduced_scaled_grads)
-          grads_and_vars = zip(allreduced_unscaled_grads,
-                               filtered_training_vars)
-        else:
-          grads = optimizer.get_unscaled_gradients(scaled_grads)
-          grads_and_vars = zip(grads, training_vars)
+        grads = optimizer.get_unscaled_gradients(scaled_grads)
       else:
-        # TPU or FP32 GPU code path
         grads = tape.gradient(loss, training_vars)
-        if explicit_allreduce:
-          (allreduced_grads,
-           filtered_training_vars) = _filter_and_allreduce_gradients(
-               zip(grads, training_vars), allreduce_precision='float32')
-          grads_and_vars = zip(allreduced_grads, filtered_training_vars)
-        else:
-          grads_and_vars = zip(grads, training_vars)
-      optimizer.apply_gradients(
-          grads_and_vars, all_reduce_sum_gradients=not explicit_allreduce)
-
+      optimizer.apply_gradients(zip(grads, training_vars))
       # For reporting, the metric takes the mean of losses.
       train_loss_metric.update_state(loss)
       for metric in train_metrics:

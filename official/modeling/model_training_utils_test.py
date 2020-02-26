@@ -139,8 +139,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     super(ModelTrainingUtilsTest, self).setUp()
     self._model_fn = create_model_fn(input_shape=[128], num_classes=3)
 
-  def run_training(self, strategy, model_dir, steps_per_loop, run_eagerly,
-                   explicit_allreduce=False):
+  def run_training(self, strategy, model_dir, steps_per_loop, run_eagerly):
     input_fn = create_fake_data_input_fn(
         batch_size=8, features_shape=[128], num_classes=3)
     model_training_utils.run_customized_training_loop(
@@ -180,7 +179,12 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.run_training(
         distribution, model_dir, steps_per_loop=1, run_eagerly=True)
 
-  def _verify_artifacts(self, model_dir):
+  @combinations.generate(eager_strategy_combinations())
+  def test_train_check_artifacts(self, distribution):
+    model_dir = self.get_temp_dir()
+    self.run_training(
+        distribution, model_dir, steps_per_loop=10, run_eagerly=False)
+
     # Two checkpoints should be saved after two epochs.
     self.assertNotEmpty(tf.io.gfile.glob(os.path.join(model_dir, 'ctl_step_*')))
     self.assertNotEmpty(
@@ -204,23 +208,6 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
         check_eventfile_for_keyword('mean_input',
                                     os.path.join(model_dir, 'summaries/eval')))
 
-  @combinations.generate(eager_strategy_combinations())
-  def test_train_check_artifacts(self, distribution):
-    model_dir = self.get_temp_dir()
-    self.run_training(
-        distribution, model_dir, steps_per_loop=10, run_eagerly=False)
-    self._verify_artifacts(model_dir)
-
-  @combinations.generate(eager_strategy_combinations())
-  def test_train_explicit_allreduce_check_artifacts(self, distribution):
-    model_dir = self.get_temp_dir()
-    self.run_training(
-        distribution,
-        model_dir,
-        steps_per_loop=10,
-        run_eagerly=False,
-        explicit_allreduce=True)
-    self._verify_artifacts(model_dir)
 
 if __name__ == '__main__':
   assert tf.version.VERSION.startswith('2.')

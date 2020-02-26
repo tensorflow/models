@@ -551,8 +551,6 @@ class BertSquadMultiWorkerAccuracy(BertSquadBenchmarkBase):
     num_gpus = 8
     FLAGS.num_gpus = num_gpus
     FLAGS.dtype = 'fp16'
-    # Enable gradient allreduce in fp16
-    FLAGS.explicit_allreduce = True
     FLAGS.enable_xla = False
     FLAGS.distribution_strategy = 'multi_worker_mirrored'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
@@ -623,8 +621,7 @@ class BertSquadMultiWorkerBenchmark(BertSquadBenchmarkBase):
         min_accuracy=0,
         max_accuracy=1)
 
-  def _benchmark_common(self, num_workers, all_reduce_alg,
-                        explicit_allreduce=False):
+  def _benchmark_common(self, num_workers, all_reduce_alg):
     """Common to all benchmarks in this class."""
     self._setup()
 
@@ -640,8 +637,6 @@ class BertSquadMultiWorkerBenchmark(BertSquadBenchmarkBase):
             num_workers, all_reduce_alg))
     FLAGS.train_batch_size = 4 * num_gpus * num_workers
     FLAGS.all_reduce_alg = all_reduce_alg
-    # Enable gradient allreduce in fp16
-    FLAGS.explicit_allreduce = explicit_allreduce
 
     self._run_and_report_benchmark()
 
@@ -655,23 +650,19 @@ class BertSquadMultiWorkerBenchmark(BertSquadBenchmarkBase):
 
   def benchmark_8_gpu_2_workers_fp16_ring_tweaked(self):
     """8 GPUs per worker, 2 workers, fp16, ring all-reduce."""
-    self._benchmark_common(num_workers=2, all_reduce_alg='ring',
-                           explicit_allreduce=True)
+    self._benchmark_common(num_workers=2, all_reduce_alg='ring')
 
   def benchmark_8_gpu_2_workers_fp16_nccl_tweaked(self):
     """8 GPUs per worker, 2 workers, fp16, nccl all-reduce."""
-    self._benchmark_common(num_workers=2, all_reduce_alg='nccl',
-                           explicit_allreduce=True)
+    self._benchmark_common(num_workers=2, all_reduce_alg='nccl')
 
   def benchmark_8_gpu_8_workers_fp16_ring_tweaked(self):
     """8 GPUs per worker, 8 workers, fp16, ring all-reduce."""
-    self._benchmark_common(num_workers=8, all_reduce_alg='ring',
-                           explicit_allreduce=True)
+    self._benchmark_common(num_workers=8, all_reduce_alg='ring')
 
   def benchmark_8_gpu_8_workers_fp16_nccl_tweaked(self):
     """8 GPUs per worker, 8 workers, fp16, nccl all-reduce."""
-    self._benchmark_common(num_workers=8, all_reduce_alg='nccl',
-                           explicit_allreduce=True)
+    self._benchmark_common(num_workers=8, all_reduce_alg='nccl')
 
 
 if __name__ == '__main__':
