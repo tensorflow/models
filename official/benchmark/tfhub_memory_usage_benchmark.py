@@ -30,6 +30,14 @@ FLAGS = flags.FLAGS
 class TfHubMemoryUsageBenchmark(PerfZeroBenchmark):
   """A benchmark measuring memory usage for a given TF Hub SavedModel."""
 
+  def __init__(self,
+               output_dir=None,
+               default_flags=None,
+               root_data_dir=None,
+               **kwargs):
+    super(TfHubMemoryUsageBenchmark, self).__init__(
+        output_dir=output_dir, default_flags=default_flags, **kwargs)
+
   def benchmark_memory_usage(self):
     start_time_sec = time.time()
     self.load_model()
