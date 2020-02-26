@@ -104,8 +104,8 @@ def visualize_images_with_bounding_boxes(images, box_outputs, step,
                                                [image_height, image_width])
 
   bounding_box_color = tf.constant([[1.0, 1.0, 0.0, 1.0]])
-  image_summary = tf.image.draw_bounding_boxes(images, normalized_boxes,
-                                               bounding_box_color)
+  image_summary = tf.image.draw_bounding_boxes(
+      tf.cast(images, tf.float32), normalized_boxes, bounding_box_color)
   with summary_writer.as_default():
     tf.summary.image('bounding_box_summary', image_summary, step=step)
     summary_writer.flush()
