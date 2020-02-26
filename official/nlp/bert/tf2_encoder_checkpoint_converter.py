@@ -50,7 +50,7 @@ def _create_bert_model(cfg):
   Args:
     cfg: A `BertConfig` to create the core model.
   Returns:
-    A keras model.
+    A TransformerEncoder netowork.
   """
   bert_encoder = networks.TransformerEncoder(
       vocab_size=cfg.vocab_size,
