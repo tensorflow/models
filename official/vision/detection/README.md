@@ -70,7 +70,61 @@ python ~/models/official/vision/detection/main.py \
 
 ## Train RetinaNet on GPU
 
-Note: Instructions are comming soon.
+Training on GPU is similar to that on TPU. The major change is the strategy
+type (use "[mirrored](https://www.tensorflow.org/api_docs/python/tf/distribute/MirroredStrategy)" for multiple GPU and
+"[one_device](https://www.tensorflow.org/api_docs/python/tf/distribute/OneDeviceStrategy)" for single GPU).
+
+Multi-GPUs example (assuming there are 8GPU connected to the host):
+
+```bash
+MODEL_DIR="<path to the directory to store model files>"
+python3 ~/models/official/vision/detection/main.py \
+  --strategy_type=mirrored \
+  --num_gpus=8 \
+  --model_dir="${MODEL_DIR?}" \
+  --mode=train \
+  --config_file="my_retinanet.yaml"
+```
+
+
+```bash
+MODEL_DIR="<path to the directory to store model files>"
+python3 ~/models/official/vision/detection/main.py \
+  --strategy_type=one_device \
+  --num_gpus=1 \
+  --model_dir="${MODEL_DIR?}" \
+  --mode=train \
+  --config_file="my_retinanet.yaml"
+```
+
+An example with inline configuration (YAML or JSON format):
+
+```
+python3 ~/models/official/vision/detection/main.py \
+  --model_dir=<model folder> \
+  --strategy_type=one_device \
+  --num_gpus=1 \
+  --mode=train \
+  --params_override="eval:
+ eval_file_pattern: <Eval TFRecord file pattern>
+ batch_size: 8
+ val_json_file: <COCO format groundtruth JSON file>
+predict:
+ predict_batch_size: 8
+architecture:
+ use_bfloat16: False
+retinanet_parser:
+ use_bfloat16: Flase
+train:
+ total_steps: 1
+ batch_size: 8
+ train_file_pattern: <Eval TFRecord file pattern>
+use_tpu: False
+"
+```
+
+Note: The JSON groundtruth file is useful for [COCO dataset](http://cocodataset.org/#home) and can be
+downloaded from the [COCO website](http://cocodataset.org/#download). For custom dataset, it is unncessary because the groundtruth can be included in the TFRecord files.
 
 ## References
 
