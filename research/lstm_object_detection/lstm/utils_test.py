@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from lstm_object_detection.lstm import utils
 
 
@@ -73,12 +73,19 @@ class QuantizableUtilsTest(tf.test.TestCase):
     self._check_min_max_ema(tf.get_default_graph())
     self._check_min_max_vars(tf.get_default_graph())
 
-  def test_quantize_op_inferene(self):
+  def test_quantize_op_inference(self):
     inputs = tf.zeros([4, 10, 10, 128], dtype=tf.float32)
     outputs = utils.quantize_op(inputs, is_training=False)
     self.assertAllEqual(inputs.shape.as_list(), outputs.shape.as_list())
     self._check_no_min_max_ema(tf.get_default_graph())
     self._check_min_max_vars(tf.get_default_graph())
+
+  def test_fixed_quantize_op(self):
+    inputs = tf.zeros([4, 10, 10, 128], dtype=tf.float32)
+    outputs = utils.fixed_quantize_op(inputs)
+    self.assertAllEqual(inputs.shape.as_list(), outputs.shape.as_list())
+    self._check_no_min_max_ema(tf.get_default_graph())
+    self._check_no_min_max_vars(tf.get_default_graph())
 
   def _check_min_max_vars(self, graph):
     op_types = [op.type for op in graph.get_operations()]
