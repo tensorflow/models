@@ -26,7 +26,7 @@ from absl import logging
 import tensorflow as tf
 from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python import tf2
-from tensorflow.python.eager import profiler
+from tensorflow.python.profiler import profiler_v2 as profiler
 
 
 class BatchTimestamp(object):
@@ -188,17 +188,15 @@ class ProfilerCallback(tf.keras.callbacks.Callback):
   def on_batch_begin(self, batch, logs=None):
     if batch == self.start_step_in_epoch and self.should_start:
       self.should_start = False
-      profiler.start()
+      profiler.start(self.log_dir)
       logging.info('Profiler started at Step %s', self.start_step)
 
   def on_batch_end(self, batch, logs=None):
     if batch == self.stop_step_in_epoch and self.should_stop:
       self.should_stop = False
-      results = profiler.stop()
-      profiler.save(self.log_dir, results)
-      logging.info(
-          'Profiler saved profiles for steps between %s and %s to %s',
-          self.start_step, self.stop_step, self.log_dir)
+      profiler.stop()
+      logging.info('Profiler saved profiles for steps between %s and %s to %s',
+                   self.start_step, self.stop_step, self.log_dir)
 
 
 def set_session_config(enable_eager=False,
