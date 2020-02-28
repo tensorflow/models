@@ -9,7 +9,7 @@ Please make sure that this is a documentation issue.
 
 As per our GitHub Policy (https://github.com/tensorflow/models/blob/master/ISSUES.md), we only address code bugs, documentation issues, and feature requests on GitHub.
 
-Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflow) for help and support.
+Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflow-model-garden) for help and support.
 -->
 
 **Documentation URL(s) with the issue:**
