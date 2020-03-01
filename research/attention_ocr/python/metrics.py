@@ -18,6 +18,9 @@
 import tensorflow as tf
 
 
+# EPSILON to avoid NAN in tf.div
+EPSILON = 1e-9
+
 def char_accuracy(predictions, targets, rej_char, streaming=False):
   """Computes character level accuracy.
 
@@ -43,7 +46,7 @@ def char_accuracy(predictions, targets, rej_char, streaming=False):
     correct_chars = tf.to_float(tf.equal(predictions, targets))
     accuracy_per_example = tf.div(
         tf.reduce_sum(tf.multiply(correct_chars, weights), 1),
-        tf.reduce_sum(weights, 1))
+        tf.reduce_sum(weights, 1) + EPSILON)
     if streaming:
       return tf.contrib.metrics.streaming_mean(accuracy_per_example)
     else:
