@@ -19,14 +19,16 @@ This repository contains TensorFlow 2.x implementation for BERT.
 
 ## Pre-trained Models
 
-Our current released checkpoints are exactly the same as TF 1.x official BERT
-repository, thus inside `BertConfig`, there is `backward_compatible=True`. We
-are going to release new pre-trained checkpoints soon.
+We released both checkpoints and tf.hub modules as the pretrained models for
+fine-tuning. They are TF 2.x compatible and are converted from the checkpoints
+released in TF 1.x official BERT repository
+[google-research/bert](https://github.com/google-research/bert)
+in order to keep consistent with BERT paper.
+
 
 ### Access to Pretrained Checkpoints
 
-We provide checkpoints that are converted from [google-research/bert](https://github.com/google-research/bert),
-in order to keep consistent with BERT paper.
+Pretrained checkpoints can be found in the following links:
 
 **Note: We have switched BERT implementation
 to use Keras functional-style networks in [nlp/modeling](../modeling).
@@ -43,23 +45,6 @@ The new checkpoints are:**
 *   **[`BERT-Base, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/cased_L-12_H-768_A-12.tar.gz)**:
     12-layer, 768-hidden, 12-heads , 110M parameters
 *   **[`BERT-Large, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/cased_L-24_H-1024_A-16.tar.gz)**:
-    24-layer, 1024-hidden, 16-heads, 340M parameters
-
-Here are the stable model checkpoints work with [v2.0 release](https://github.com/tensorflow/models/releases/tag/v2.0).
-
-**Note: these checkpoints are not compatible with the current master examples.**
-
-*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/wwm_uncased_L-24_H-1024_A-16.tar.gz)**:
-    24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Large, Cased (Whole Word Masking)`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/wwm_cased_L-24_H-1024_A-16.tar.gz)**:
-    24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Base, Uncased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/uncased_L-12_H-768_A-12.tar.gz)**:
-    12-layer, 768-hidden, 12-heads, 110M parameters
-*   **[`BERT-Large, Uncased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/uncased_L-24_H-1024_A-16.tar.gz)**:
-    24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Base, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/cased_L-12_H-768_A-12.tar.gz)**:
-    12-layer, 768-hidden, 12-heads , 110M parameters
-*   **[`BERT-Large, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/tf_20/cased_L-24_H-1024_A-16.tar.gz)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
 
 We recommend to host checkpoints on Google Cloud storage buckets when you use
@@ -79,6 +64,29 @@ checkpoint.restore(init_checkpoint)
 
 Checkpoints featuring native serialized Keras models
 (i.e. model.load()/load_weights()) will be available soon.
+
+### Access to Pretrained hub modules.
+
+Pretrained tf.hub modules in TF 2.x SavedModel format can be found in the
+following links:
+
+*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_uncased_L-24_H-1024_A-16/1)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Large, Cased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_cased_L-24_H-1024_A-16/1)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/1)**:
+    12-layer, 768-hidden, 12-heads, 110M parameters
+*   **[`BERT-Large, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-24_H-1024_A-16/1)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/1)**:
+    12-layer, 768-hidden, 12-heads , 110M parameters
+*   **[`BERT-Large, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-24_H-1024_A-16/1)**:
+    24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Multilingual Cased`](https://tfhub.dev/tensorflow/bert_multi_cased_L-12_H-768_A-12/1)**:
+    104 languages, 12-layer, 768-hidden, 12-heads, 110M parameters
+*   **[`BERT-Base, Chinese`](https://tfhub.dev/tensorflow/bert_zh_L-12_H-768_A-12/1)**:
+    Chinese Simplified and Traditional, 12-layer, 768-hidden, 12-heads,
+    110M parameters
 
 ## Set Up
 
@@ -137,13 +145,13 @@ and unpack it to some directory `$GLUE_DIR`.
 
 ```shell
 export GLUE_DIR=~/glue
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
+export BERT_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 
 export TASK_NAME=MNLI
 export OUTPUT_DIR=gs://some_bucket/datasets
 python ../data/create_finetuning_data.py \
  --input_data_dir=${GLUE_DIR}/${TASK_NAME}/ \
- --vocab_file=${BERT_BASE_DIR}/vocab.txt \
+ --vocab_file=${BERT_DIR}/vocab.txt \
  --train_data_output_path=${OUTPUT_DIR}/${TASK_NAME}_train.tf_record \
  --eval_data_output_path=${OUTPUT_DIR}/${TASK_NAME}_eval.tf_record \
  --meta_data_file_path=${OUTPUT_DIR}/${TASK_NAME}_meta_data \
@@ -168,12 +176,12 @@ The necessary files can be found here:
 ```shell
 export SQUAD_DIR=~/squad
 export SQUAD_VERSION=v1.1
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
+export BERT_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 export OUTPUT_DIR=gs://some_bucket/datasets
 
 python ../data/create_finetuning_data.py \
  --squad_data_file=${SQUAD_DIR}/train-${SQUAD_VERSION}.json \
- --vocab_file=${BERT_BASE_DIR}/vocab.txt \
+ --vocab_file=${BERT_DIR}/vocab.txt \
  --train_data_output_path=${OUTPUT_DIR}/squad_${SQUAD_VERSION}_train.tf_record \
  --meta_data_file_path=${OUTPUT_DIR}/squad_${SQUAD_VERSION}_meta_data \
  --fine_tuning_task_type=squad --max_seq_length=384
@@ -189,7 +197,7 @@ The unzipped pre-trained model files can also be found in the Google Cloud
 Storage folder `gs://cloud-tpu-checkpoints/bert/keras_bert`. For example:
 
 ```shell
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
+export BERT_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 export MODEL_DIR=gs://some_bucket/my_output_dir
 ```
 
@@ -217,7 +225,7 @@ For GPU memory of 16GB or smaller, you may try to use `BERT-Base`
 (uncased_L-12_H-768_A-12).
 
 ```shell
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
+export BERT_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 export MODEL_DIR=gs://some_bucket/my_output_dir
 export GLUE_DIR=gs://some_bucket/datasets
 export TASK=MRPC
@@ -227,8 +235,8 @@ python run_classifier.py \
   --input_meta_data_path=${GLUE_DIR}/${TASK}_meta_data \
   --train_data_path=${GLUE_DIR}/${TASK}_train.tf_record \
   --eval_data_path=${GLUE_DIR}/${TASK}_eval.tf_record \
-  --bert_config_file=${BERT_BASE_DIR}/bert_config.json \
-  --init_checkpoint=${BERT_BASE_DIR}/bert_model.ckpt \
+  --bert_config_file=${BERT_DIR}/bert_config.json \
+  --init_checkpoint=${BERT_DIR}/bert_model.ckpt \
   --train_batch_size=4 \
   --eval_batch_size=4 \
   --steps_per_loop=1 \
@@ -238,22 +246,27 @@ python run_classifier.py \
   --distribution_strategy=mirrored
 ```
 
+Alternatively, instead of specifying `init_checkpoint`, you can specify
+`hub_module_url` to employ a pretraind BERT hub module, e.g.,
+` --hub_module_url=https://tfhub.dev/tensorflow/bert_en_uncased_L-24_H-1024_A-16/1`.
+
 To use TPU, you only need to switch distribution strategy type to `tpu` with TPU
 information and use remote storage for model checkpoints.
 
 ```shell
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
+export BERT_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 export TPU_IP_ADDRESS='???'
 export MODEL_DIR=gs://some_bucket/my_output_dir
 export GLUE_DIR=gs://some_bucket/datasets
+export TASK=MRPC
 
 python run_classifier.py \
   --mode='train_and_eval' \
   --input_meta_data_path=${GLUE_DIR}/${TASK}_meta_data \
   --train_data_path=${GLUE_DIR}/${TASK}_train.tf_record \
   --eval_data_path=${GLUE_DIR}/${TASK}_eval.tf_record \
-  --bert_config_file=$BERT_BASE_DIR/bert_config.json \
-  --init_checkpoint=$BERT_BASE_DIR/bert_model.ckpt \
+  --bert_config_file=${BERT_DIR}/bert_config.json \
+  --init_checkpoint=${BERT_DIR}/bert_model.ckpt \
   --train_batch_size=32 \
   --eval_batch_size=32 \
   --learning_rate=2e-5 \
@@ -274,7 +287,7 @@ For GPU memory of 16GB or smaller, you may try to use `BERT-Base`
 (uncased_L-12_H-768_A-12).
 
 ```shell
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
+export BERT_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 export SQUAD_DIR=gs://some_bucket/datasets
 export MODEL_DIR=gs://some_bucket/my_output_dir
 export SQUAD_VERSION=v1.1
@@ -283,9 +296,9 @@ python run_squad.py \
   --input_meta_data_path=${SQUAD_DIR}/squad_${SQUAD_VERSION}_meta_data \
   --train_data_path=${SQUAD_DIR}/squad_${SQUAD_VERSION}_train.tf_record \
   --predict_file=${SQUAD_DIR}/dev-v1.1.json \
-  --vocab_file=${BERT_BASE_DIR}/vocab.txt \
-  --bert_config_file=$BERT_BASE_DIR/bert_config.json \
-  --init_checkpoint=$BERT_BASE_DIR/bert_model.ckpt \
+  --vocab_file=${BERT_DIR}/vocab.txt \
+  --bert_config_file=${BERT_DIR}/bert_config.json \
+  --init_checkpoint=${BERT_DIR}/bert_model.ckpt \
   --train_batch_size=4 \
   --predict_batch_size=4 \
   --learning_rate=8e-5 \
@@ -294,11 +307,14 @@ python run_squad.py \
   --distribution_strategy=mirrored
 ```
 
+Similarily, you can replace `init_checkpoint` FLAG with `hub_module_url` to
+specify a hub module path.
+
 To use TPU, you need switch distribution strategy type to `tpu` with TPU
 information.
 
 ```shell
-export BERT_BASE_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
+export BERT_DIR=gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16
 export TPU_IP_ADDRESS='???'
 export MODEL_DIR=gs://some_bucket/my_output_dir
 export SQUAD_DIR=gs://some_bucket/datasets
@@ -308,9 +324,9 @@ python run_squad.py \
   --input_meta_data_path=${SQUAD_DIR}/squad_${SQUAD_VERSION}_meta_data \
   --train_data_path=${SQUAD_DIR}/squad_${SQUAD_VERSION}_train.tf_record \
   --predict_file=${SQUAD_DIR}/dev-v1.1.json \
-  --vocab_file=${BERT_BASE_DIR}/vocab.txt \
-  --bert_config_file=$BERT_BASE_DIR/bert_config.json \
-  --init_checkpoint=$BERT_BASE_DIR/bert_model.ckpt \
+  --vocab_file=${BERT_DIR}/vocab.txt \
+  --bert_config_file=${BERT_DIR}/bert_config.json \
+  --init_checkpoint=${BERT_DIR}/bert_model.ckpt \
   --train_batch_size=32 \
   --learning_rate=8e-5 \
   --num_train_epochs=2 \
