@@ -8,6 +8,8 @@ model weights, usage scripts and conversion utilities for the following models:
 
 * [Bert](bert)
 
+* [Albert](albert)
+
 * [XLNet](xlnet)
 
 * [Transformer for translation](transformer)
