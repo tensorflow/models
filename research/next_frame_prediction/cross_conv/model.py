@@ -23,6 +23,9 @@ import sys
 from six.moves import xrange
 import tensorflow as tf
 
+# UPPER_BOUND bounds the tf.exp to avoid INF
+UPPER_BOUND = 80
+
 slim = tf.contrib.slim
 
 
@@ -130,7 +133,7 @@ class CrossConvModel(object):
         z = tf.reshape(net, shape=[batch_size, -1])
         self.z_mean, self.z_stddev_log = tf.split(
             axis=1, num_or_size_splits=2, value=z)
-        self.z_stddev = tf.exp(self.z_stddev_log)
+        self.z_stddev = tf.exp(tf.minimum(self.z_stddev_log, UPPER_BOUND))
 
         epsilon = tf.random_normal(
             self.z_mean.get_shape().as_list(), 0, 1, dtype=tf.float32)
