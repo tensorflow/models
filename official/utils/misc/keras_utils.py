@@ -23,8 +23,7 @@ import os
 import time
 
 from absl import logging
-import tensorflow as tf
-from tensorflow.core.protobuf import rewriter_config_pb2
+import tensorflow.compat.v2 as tf
 from tensorflow.python import tf2
 from tensorflow.python.profiler import profiler_v2 as profiler
 
@@ -118,7 +117,7 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
       self.timestamp_log.append(BatchTimestamp(self.global_steps, now))
       logging.info(
-          "TimeHistory: %.2f examples/second between steps %d and %d",
+          'TimeHistory: %.2f examples/second between steps %d and %d',
           examples_per_second, self.last_log_step, self.global_steps)
 
       if self.summary_writer:
@@ -209,8 +208,8 @@ def set_session_config(enable_eager=False,
     if enable_eager:
       tf.compat.v1.enable_eager_execution(config=config)
     else:
-      sess = tf.Session(config=config)
-      tf.keras.backend.set_session(sess)
+      sess = tf.compat.v1.Session(config=config)
+      tf.compat.v1.keras.backend.set_session(sess)
 
 
 def get_config_proto_v1(enable_xla=False):

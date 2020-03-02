@@ -69,6 +69,8 @@ def define_common_bert_flags():
   flags.DEFINE_bool('hub_module_trainable', True,
                     'True to make keras layers in the hub module trainable.')
 
+  flags_core.define_log_steps()
+
   # Adds flags for mixed precision and multi-worker training.
   flags_core.define_performance(
       num_parallel_calls=False,
