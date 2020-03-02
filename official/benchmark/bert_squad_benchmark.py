@@ -442,6 +442,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
 
     summary = self._read_training_summary_from_file()
     summary['eval_metrics'] = self.eval_metrics
+    summary['start_time_sec'] = start_time_sec
 
     super(BertSquadAccuracy, self)._report_benchmark(
         stats=summary,
