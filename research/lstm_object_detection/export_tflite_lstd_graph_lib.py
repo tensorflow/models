@@ -20,7 +20,7 @@ import os
 import tempfile
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow.core.framework import attr_value_pb2
 from tensorflow.core.framework import types_pb2

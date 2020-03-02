@@ -22,7 +22,8 @@ from __future__ import print_function
 import functools
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from lstm_object_detection.lstm import lstm_cells
 from lstm_object_detection.meta_architectures import lstm_ssd_meta_arch
@@ -38,7 +39,7 @@ from object_detection.utils import test_case
 from object_detection.utils import test_utils
 
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 MAX_TOTAL_NUM_BOXES = 5
 NUM_CLASSES = 1

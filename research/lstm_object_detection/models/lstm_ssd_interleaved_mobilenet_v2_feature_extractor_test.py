@@ -17,7 +17,7 @@
 
 import itertools
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import slim
 from tensorflow.contrib import training as contrib_training
 
@@ -59,6 +59,47 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractorTest(
     ]
     feature_extractor.is_quantized = is_quantized
     return feature_extractor
+
+  def test_feature_extractor_construct_with_expected_params(self):
+    def conv_hyperparams_fn():
+      with (slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm) and
+            slim.arg_scope([slim.batch_norm], decay=0.97, epsilon=1e-3)) as sc:
+        return sc
+
+    params = {
+        'is_training': True,
+        'depth_multiplier': .55,
+        'min_depth': 9,
+        'pad_to_multiple': 3,
+        'conv_hyperparams_fn': conv_hyperparams_fn,
+        'reuse_weights': False,
+        'use_explicit_padding': True,
+        'use_depthwise': False,
+        'override_base_feature_extractor_hyperparams': True}
+
+    feature_extractor = (
+        lstm_ssd_interleaved_mobilenet_v2_feature_extractor
+        .LSTMSSDInterleavedMobilenetV2FeatureExtractor(**params))
+
+    self.assertEqual(params['is_training'],
+                     feature_extractor._is_training)
+    self.assertEqual(params['depth_multiplier'],
+                     feature_extractor._depth_multiplier)
+    self.assertEqual(params['min_depth'],
+                     feature_extractor._min_depth)
+    self.assertEqual(params['pad_to_multiple'],
+                     feature_extractor._pad_to_multiple)
+    self.assertEqual(params['conv_hyperparams_fn'],
+                     feature_extractor._conv_hyperparams_fn)
+    self.assertEqual(params['reuse_weights'],
+                     feature_extractor._reuse_weights)
+    self.assertEqual(params['use_explicit_padding'],
+                     feature_extractor._use_explicit_padding)
+    self.assertEqual(params['use_depthwise'],
+                     feature_extractor._use_depthwise)
+    self.assertEqual(params['override_base_feature_extractor_hyperparams'],
+                     (feature_extractor.
+                      _override_base_feature_extractor_hyperparams))
 
   def test_extract_features_returns_correct_shapes_128(self):
     image_height = 128
