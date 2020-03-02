@@ -168,10 +168,6 @@ def run_customized_training_loop(
   assert tf.executing_eagerly()
 
   if run_eagerly:
-    if steps_per_loop > 1:
-      raise ValueError(
-          'steps_per_loop is used for performance optimization. When you want '
-          'to run eagerly, you cannot leverage graph mode loop.')
     if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
       raise ValueError(
           'TPUStrategy should not run eagerly as it heavily replies on graph'
