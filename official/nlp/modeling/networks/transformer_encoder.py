@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Transformer-based text encoder network."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -40,7 +40,7 @@ class TransformerEncoder(network.Network):
   in "BERT: Pre-training of Deep Bidirectional Transformers for Language
   Understanding".
 
-  Attributes:
+  Arguments:
     vocab_size: The size of the token vocabulary.
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.

@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based transformer scaffold layer."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -35,7 +35,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
   `attention_cfg`, in which case the scaffold will instantiate the class with
   the config, or pass a class instance to `attention_cls`.
 
-  Attributes:
+  Arguments:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.

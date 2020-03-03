@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based positional embedding layer."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -37,7 +37,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
   can have a dynamic 1st dimension, while if `use_dynamic_slicing` is False the
   input size must be fixed.
 
-  Attributes:
+  Arguments:
     use_dynamic_slicing: Whether to use the dynamic slicing path.
     max_sequence_length: The maximum size of the dynamic sequence. Only
       applicable if `use_dynamic_slicing` is True.

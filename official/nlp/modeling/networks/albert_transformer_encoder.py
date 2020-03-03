@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """ALBERT (https://arxiv.org/abs/1810.04805) text encoder network."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -41,7 +41,7 @@ class AlbertTransformerEncoder(network.Network):
   The default values for this object are taken from the ALBERT-Base
   implementation described in the paper.
 
-  Attributes:
+  Arguments:
     vocab_size: The size of the token vocabulary.
     embedding_width: The width of the word embeddings. If the embedding width
       is not equal to hidden size, embedding parameters will be factorized into

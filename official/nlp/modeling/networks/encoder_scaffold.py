@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Transformer-based text encoder network."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -46,7 +46,7 @@ class EncoderScaffold(network.Network):
   If the hidden_cls is not overridden, a default transformer layer will be
   instantiated.
 
-  Attributes:
+  Arguments:
     num_output_classes: The output size of the classification layer.
     classification_layer_initializer: The initializer for the classification
       layer.

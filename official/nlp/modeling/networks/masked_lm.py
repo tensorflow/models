@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Masked language model network."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -32,7 +32,7 @@ class MaskedLM(network.Network):
   This network implements a masked language model based on the provided network.
   It assumes that the network being passed has a "get_embedding_table()" method.
 
-  Attributes:
+  Arguments:
     input_width: The innermost dimension of the input tensor to this network.
     num_predictions: The number of predictions to make per sequence.
     source_network: The network with the embedding layer to use for the

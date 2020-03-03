@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based softmax layer with optional masking."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -26,7 +26,7 @@ import tensorflow as tf
 class MaskedSoftmax(tf.keras.layers.Layer):
   """Performs a softmax with optional masking on a tensor.
 
-  Attributes:
+  Arguments:
     mask_expansion_axes: Any axes that should be padded on the mask tensor.
   """
 
