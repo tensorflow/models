@@ -83,8 +83,8 @@ class CtlBenchmark(PerfZeroBenchmark):
       metrics.append({'name': 'train_loss', 'value': stats['train_loss']})
 
     if (warmup and 'step_timestamp_log' in stats and
-        len(stats['step_timestamp_log']) > warmup):
-      # first entry in the time_log is start of step 1. The rest of the
+        len(stats['step_timestamp_log']) > warmup + 1):
+      # first entry in the time_log is start of step 0. The rest of the
       # entries are the end of each step recorded
       time_log = stats['step_timestamp_log']
       elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
@@ -379,6 +379,7 @@ class Resnet50CtlBenchmarkSynth(Resnet50CtlBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['use_synthetic_data'] = True
     def_flags['train_steps'] = 110
+    def_flags['steps_per_loop'] = 20
     def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkSynth, self).__init__(
@@ -391,8 +392,10 @@ class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
-    def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
+    def_flags['data_dir'] = ('/readahead/200M/placer/prod/home/distbelief/'
+                             'imagenet-tensorflow/imagenet-2012-tfrecord')
     def_flags['train_steps'] = 110
+    def_flags['steps_per_loop'] = 20
     def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkReal, self).__init__(
