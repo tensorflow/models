@@ -24,7 +24,8 @@ for details.
 """
 import abc
 import re
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.core import box_list_ops
 from object_detection.core import matcher
@@ -33,7 +34,7 @@ from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class LSTMSSDMetaArch(ssd_meta_arch.SSDMetaArch):

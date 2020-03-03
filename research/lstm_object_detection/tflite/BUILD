@@ -50,7 +50,9 @@ cc_library(
         "//utils:ssd_utils",
     ] + select({
         "//conditions:default": [],
-        "enable_edgetpu": ["@libedgetpu//libedgetpu:header"],
+        "enable_edgetpu": [
+            "@libedgetpu//libedgetpu:header",
+        ],
     }),
     alwayslink = 1,
 )
@@ -71,7 +73,9 @@ cc_library(
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
     ] + select({
         "//conditions:default": [],
-        "enable_edgetpu": ["@libedgetpu//libedgetpu:header"],
+        "enable_edgetpu": [
+            "@libedgetpu//libedgetpu:header",
+        ],
     }),
     alwayslink = 1,
 )

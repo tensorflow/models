@@ -20,7 +20,8 @@ DetectionModel.
 
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+from tensorflow.contrib import tfprof as contrib_tfprof
 from lstm_object_detection.metrics import coco_evaluation_all_frames
 from object_detection import eval_util
 from object_detection.core import prefetcher
@@ -105,13 +106,13 @@ def _extract_prediction_tensors(model,
   detections = _create_detection_op(model, input_dict, batch)
 
   # Print out anaylsis of the model.
-  tf.contrib.tfprof.model_analyzer.print_model_analysis(
+  contrib_tfprof.model_analyzer.print_model_analysis(
       tf.get_default_graph(),
-      tfprof_options=tf.contrib.tfprof.model_analyzer.
-      TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
-  tf.contrib.tfprof.model_analyzer.print_model_analysis(
+      tfprof_options=contrib_tfprof.model_analyzer
+      .TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+  contrib_tfprof.model_analyzer.print_model_analysis(
       tf.get_default_graph(),
-      tfprof_options=tf.contrib.tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
+      tfprof_options=contrib_tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
 
   num_frames = len(input_dict[fields.InputDataFields.image])
   ret = []
