@@ -35,22 +35,22 @@ def my_dnn_regression_fn(features, labels, mode, params):
   """A model function implementing DNN regression for a custom Estimator."""
 
   # Extract the input into a dense layer, according to the feature_columns.
-  top = tf.feature_column.input_layer(features, params["feature_columns"])
+  top = tf.compat.v1.feature_column.input_layer(features, params["feature_columns"])
 
   # Iterate over the "hidden_units" list of layer sizes, default is [20].
   for units in params.get("hidden_units", [20]):
     # Add a hidden layer, densely connected on top of the previous layer.
-    top = tf.layers.dense(inputs=top, units=units, activation=tf.nn.relu)
+    top = tf.compat.v1.layers.dense(inputs=top, units=units, activation=tf.nn.relu)
 
   # Connect a linear output layer on top.
-  output_layer = tf.layers.dense(inputs=top, units=1)
+  output_layer = tf.compat.v1.layers.dense(inputs=top, units=1)
 
   # Reshape the output layer to a 1-dim Tensor to return predictions
   predictions = tf.squeeze(output_layer, 1)
 
-  if mode == tf.estimator.ModeKeys.PREDICT:
+  if mode == tf.compat.v1.estimator.ModeKeys.PREDICT:
     # In `PREDICT` mode we only need to return predictions.
-    return tf.estimator.EstimatorSpec(
+    return tf.compat.v1.estimator.EstimatorSpec(
         mode=mode, predictions={"price": predictions})
 
   # Calculate loss using mean squared error
@@ -59,19 +59,19 @@ def my_dnn_regression_fn(features, labels, mode, params):
   # Pre-made estimators use the total_loss instead of the average,
   # so report total_loss for compatibility.
   batch_size = tf.shape(labels)[0]
-  total_loss = tf.to_float(batch_size) * average_loss
+  total_loss = tf.compat.v1.to_float(batch_size) * average_loss
 
-  if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = params.get("optimizer", tf.train.AdamOptimizer)
+  if mode == tf.compat.v1.estimator.ModeKeys.TRAIN:
+    optimizer = params.get("optimizer", tf.compat.v1.train.AdamOptimizer)
     optimizer = optimizer(params.get("learning_rate", None))
     train_op = optimizer.minimize(
-        loss=average_loss, global_step=tf.train.get_global_step())
+        loss=average_loss, global_step=tf.compat.v1.train.get_global_step())
 
-    return tf.estimator.EstimatorSpec(
+    return tf.compat.v1.estimator.EstimatorSpec(
         mode=mode, loss=total_loss, train_op=train_op)
 
   # In evaluation mode we will calculate evaluation metrics.
-  assert mode == tf.estimator.ModeKeys.EVAL
+  assert mode == tf.compat.v1.estimator.ModeKeys.EVAL
 
   # Calculate root mean squared error
   print(labels)
@@ -80,12 +80,12 @@ def my_dnn_regression_fn(features, labels, mode, params):
   # Fixed for #4083
   predictions = tf.cast(predictions, tf.float64)
 
-  rmse = tf.metrics.root_mean_squared_error(labels, predictions)
+  rmse = tf.compat.v1.metrics.root_mean_squared_error(labels, predictions)
 
   # Add the rmse to the collection of evaluation metrics.
   eval_metrics = {"rmse": rmse}
 
-  return tf.estimator.EstimatorSpec(
+  return tf.compat.v1.estimator.EstimatorSpec(
       mode=mode,
       # Report sum of error for compatibility with pre-made estimators
       loss=total_loss,
@@ -139,7 +139,7 @@ def main(argv):
       params={
           "feature_columns": feature_columns,
           "learning_rate": 0.001,
-          "optimizer": tf.train.AdamOptimizer,
+          "optimizer": tf.compat.v1.train.AdamOptimizer,
           "hidden_units": [20, 20]
       })
 
@@ -159,5 +159,5 @@ def main(argv):
 
 if __name__ == "__main__":
   # The Estimator periodically generates "INFO" logs; make these logs visible.
-  tf.logging.set_verbosity(tf.logging.INFO)
-  tf.app.run(main=main)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  tf.compat.v1.app.run(main=main)
