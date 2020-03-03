@@ -23,7 +23,6 @@ import tensorflow as tf
 
 from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import dense_einsum
-from official.nlp.modeling.layers.util import tf_function_if_eager
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -194,7 +193,6 @@ class Transformer(tf.keras.layers.Layer):
     base_config = super(Transformer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  @tf_function_if_eager(experimental_compile=True)
   def call(self, inputs):
     if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
       input_tensor, attention_mask = inputs
@@ -206,21 +204,20 @@ class Transformer(tf.keras.layers.Layer):
     if attention_mask is not None:
       attention_inputs.append(attention_mask)
 
-    with tf.name_scope(self.name):
-      attention_output = self._attention_layer(attention_inputs)
-      attention_output = self._attention_output_dense(attention_output)
-      attention_output = self._attention_dropout(attention_output)
-      attention_output = self._attention_layer_norm(input_tensor +
-                                                    attention_output)
-      intermediate_output = self._intermediate_dense(attention_output)
-      intermediate_output = self._intermediate_activation_layer(
-          intermediate_output)
-      layer_output = self._output_dense(intermediate_output)
-      layer_output = self._output_dropout(layer_output)
-      # During mixed precision training, attention_output is from layer norm and
-      # is always fp32 for now. Cast layer_output to fp32 for the subsequent
-      # add.
-      layer_output = tf.cast(layer_output, tf.float32)
-      layer_output = self._output_layer_norm(layer_output + attention_output)
+    attention_output = self._attention_layer(attention_inputs)
+    attention_output = self._attention_output_dense(attention_output)
+    attention_output = self._attention_dropout(attention_output)
+    attention_output = self._attention_layer_norm(input_tensor +
+                                                  attention_output)
+    intermediate_output = self._intermediate_dense(attention_output)
+    intermediate_output = self._intermediate_activation_layer(
+        intermediate_output)
+    layer_output = self._output_dense(intermediate_output)
+    layer_output = self._output_dropout(layer_output)
+    # During mixed precision training, attention_output is from layer norm and
+    # is always fp32 for now. Cast layer_output to fp32 for the subsequent
+    # add.
+    layer_output = tf.cast(layer_output, tf.float32)
+    layer_output = self._output_layer_norm(layer_output + attention_output)
 
-      return layer_output
+    return layer_output
