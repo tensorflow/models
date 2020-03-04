@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based attention layer."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -45,7 +45,7 @@ class Attention(tf.keras.layers.Layer):
   interpolated by these probabilities, then concatenated back to a single
   tensor and returned.
 
-  Attributes:
+  Arguments:
     num_heads: Number of attention heads.
     head_size: Size of each attention head.
     dropout: Dropout probability.
@@ -186,7 +186,7 @@ class Attention(tf.keras.layers.Layer):
 class CachedAttention(Attention):
   """Attention layer with cache used for auto-agressive decoding.
 
-  Attributes:
+  Arguments:
     num_heads: Number of attention heads.
     head_size: Size of each attention head.
     **kwargs: Other keyword arguments inherit from `Attention` class.

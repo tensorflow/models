@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Span labeling network."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -31,7 +31,7 @@ class SpanLabeling(network.Network):
 
   This network implements a simple single-span labeler based on a dense layer.
 
-  Attributes:
+  Arguments:
     input_width: The innermost dimension of the input tensor to this network.
     activation: The activation, if any, for the dense layer in this network.
     initializer: The intializer for the dense layer in this network. Defaults to

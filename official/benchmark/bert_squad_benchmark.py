@@ -172,7 +172,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
                                 run_eagerly=False,
                                 ds_type='mirrored'):
     """Runs the benchmark and reports various metrics."""
-    if FLAGS.train_batch_size <= 4:
+    if FLAGS.train_batch_size <= 4 or run_eagerly:
       FLAGS.input_meta_data_path = SQUAD_MEDIUM_INPUT_META_DATA_PATH
     else:
       FLAGS.input_meta_data_path = SQUAD_LONG_INPUT_META_DATA_PATH

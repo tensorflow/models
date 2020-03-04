@@ -20,7 +20,8 @@ DetectionModel.
 """
 
 import functools
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
@@ -28,7 +29,7 @@ from object_detection.utils import ops as util_ops
 from object_detection.utils import variables_helper
 from deployment import model_deploy
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 def create_input_queue(create_tensor_dict_fn):

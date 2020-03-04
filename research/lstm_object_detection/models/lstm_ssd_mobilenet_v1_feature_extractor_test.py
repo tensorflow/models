@@ -16,11 +16,11 @@
 """Tests for models.lstm_ssd_mobilenet_v1_feature_extractor."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import slim as contrib_slim
 from tensorflow.contrib import training as contrib_training
 
-from lstm_object_detection.models import lstm_ssd_mobilenet_v1_feature_extractor as feature_extactor
+from lstm_object_detection.models import lstm_ssd_mobilenet_v1_feature_extractor as feature_extractor
 from object_detection.models import ssd_feature_extractor_test
 
 slim = contrib_slim
@@ -48,7 +48,7 @@ class LstmSsdMobilenetV1FeatureExtractorTest(
     """
     min_depth = 32
     extractor = (
-        feature_extactor.LSTMSSDMobileNetV1FeatureExtractor(
+        feature_extractor.LSTMSSDMobileNetV1FeatureExtractor(
             is_training,
             depth_multiplier,
             min_depth,
@@ -57,6 +57,46 @@ class LstmSsdMobilenetV1FeatureExtractorTest(
             use_explicit_padding=use_explicit_padding))
     extractor.lstm_state_depth = int(256 * depth_multiplier)
     return extractor
+
+  def test_feature_extractor_construct_with_expected_params(self):
+    def conv_hyperparams_fn():
+      with (slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm) and
+            slim.arg_scope([slim.batch_norm], decay=0.97, epsilon=1e-3)) as sc:
+        return sc
+
+    params = {
+        'is_training': True,
+        'depth_multiplier': .55,
+        'min_depth': 9,
+        'pad_to_multiple': 3,
+        'conv_hyperparams_fn': conv_hyperparams_fn,
+        'reuse_weights': False,
+        'use_explicit_padding': True,
+        'use_depthwise': False,
+        'override_base_feature_extractor_hyperparams': True}
+
+    extractor = (
+        feature_extractor.LSTMSSDMobileNetV1FeatureExtractor(**params))
+
+    self.assertEqual(params['is_training'],
+                     extractor._is_training)
+    self.assertEqual(params['depth_multiplier'],
+                     extractor._depth_multiplier)
+    self.assertEqual(params['min_depth'],
+                     extractor._min_depth)
+    self.assertEqual(params['pad_to_multiple'],
+                     extractor._pad_to_multiple)
+    self.assertEqual(params['conv_hyperparams_fn'],
+                     extractor._conv_hyperparams_fn)
+    self.assertEqual(params['reuse_weights'],
+                     extractor._reuse_weights)
+    self.assertEqual(params['use_explicit_padding'],
+                     extractor._use_explicit_padding)
+    self.assertEqual(params['use_depthwise'],
+                     extractor._use_depthwise)
+    self.assertEqual(params['override_base_feature_extractor_hyperparams'],
+                     (extractor.
+                      _override_base_feature_extractor_hyperparams))
 
   def test_extract_features_returns_correct_shapes_256(self):
     image_height = 256
@@ -87,8 +127,8 @@ class LstmSsdMobilenetV1FeatureExtractorTest(
 
   def test_preprocess_returns_correct_value_range(self):
     test_image = np.random.rand(5, 128, 128, 3)
-    feature_extractor = self._create_feature_extractor()
-    preprocessed_image = feature_extractor.preprocess(test_image)
+    extractor = self._create_feature_extractor()
+    preprocessed_image = extractor.preprocess(test_image)
     self.assertTrue(np.all(np.less_equal(np.abs(preprocessed_image), 1.0)))
 
   def test_variables_only_created_in_scope(self):
@@ -96,8 +136,8 @@ class LstmSsdMobilenetV1FeatureExtractorTest(
     g = tf.Graph()
     with g.as_default():
       preprocessed_inputs = tf.placeholder(tf.float32, (5, 256, 256, 3))
-      feature_extractor = self._create_feature_extractor()
-      feature_extractor.extract_features(preprocessed_inputs)
+      extractor = self._create_feature_extractor()
+      extractor.extract_features(preprocessed_inputs)
       variables = g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
       find_scope = False
       for variable in variables:
@@ -122,10 +162,10 @@ class LstmSsdMobilenetV1FeatureExtractorTest(
         input_context={},
         initial_states=init_state,
         capacity=1)
-    feature_extractor = self._create_feature_extractor()
+    extractor = self._create_feature_extractor()
     image = tf.random_uniform([5, 256, 256, 3])
     with tf.variable_scope('zero_state'):
-      feature_map = feature_extractor.extract_features(
+      feature_map = extractor.extract_features(
           image, stateful_reader.next_batch)
     with tf.Session() as sess:
       sess.run(tf.global_variables_initializer())

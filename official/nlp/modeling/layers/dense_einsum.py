@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based einsum layer."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -30,7 +30,7 @@ class DenseEinsum(tf.keras.layers.Layer):
 
   This layer can perform einsum calculations of arbitrary dimensionality.
 
-  Attributes:
+  Arguments:
     output_shape: Positive integer or tuple, dimensionality of the output space.
     num_summed_dimensions: The number of dimensions to sum over. Standard 2D
       matmul should use 1, 3D matmul should use 2, and so forth.

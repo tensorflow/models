@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Trainer network for BERT-style models."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -35,7 +35,7 @@ class BertSpanLabeler(tf.keras.Model):
   The BertSpanLabeler allows a user to pass in a transformer stack, and
   instantiates a span labeling network based on a single dense layer.
 
-  Attributes:
+  Arguments:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.

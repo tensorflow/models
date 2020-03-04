@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based transformer block layer."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -32,7 +32,7 @@ class Transformer(tf.keras.layers.Layer):
   This layer implements the Transformer from "Attention Is All You Need".
   (https://arxiv.org/abs/1706.03762).
 
-  Attributes:
+  Arguments:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.

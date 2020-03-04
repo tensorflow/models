@@ -15,7 +15,7 @@
 
 """LSTDInterleavedFeatureExtractor which interleaves multiple MobileNet V2."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import slim
 
 from tensorflow.python.framework import ops as tf_ops
@@ -64,8 +64,15 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
         `conv_hyperparams_fn`.
     """
     super(LSTMSSDInterleavedMobilenetV2FeatureExtractor, self).__init__(
-        is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise,
+        is_training=is_training,
+        depth_multiplier=depth_multiplier,
+        min_depth=min_depth,
+        pad_to_multiple=pad_to_multiple,
+        conv_hyperparams_fn=conv_hyperparams_fn,
+        reuse_weights=reuse_weights,
+        use_explicit_padding=use_explicit_padding,
+        use_depthwise=use_depthwise,
+        override_base_feature_extractor_hyperparams=
         override_base_feature_extractor_hyperparams)
     # RANDOM_SKIP_SMALL means the training policy is random and the small model
     # does not update state during training.

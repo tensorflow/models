@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based one-hot embedding layer."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -31,7 +31,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
   This layer uses either tf.gather or tf.one_hot to translate integer indices to
   float embeddings.
 
-  Attributes:
+  Arguments:
     vocab_size: Number of elements in the vocabulary.
     embedding_width: Output size of the embedding layer.
     initializer: The initializer to use for the embedding weights. Defaults to

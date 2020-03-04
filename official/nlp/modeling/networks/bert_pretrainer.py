@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Trainer network for BERT-style models."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -37,7 +37,7 @@ class BertPretrainer(tf.keras.Model):
   instantiates the masked language model and classification networks that are
   used to create the training objectives.
 
-  Attributes:
+  Arguments:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.
