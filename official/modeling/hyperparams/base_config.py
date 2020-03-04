@@ -143,12 +143,10 @@ class Config(params_dict.ParamsDict):
     return subconfig_type
 
   def __post_init__(self, default_params, restrictions, *args, **kwargs):
-    logging.error('DEBUG before init %r', type(self))
     super().__init__(default_params=default_params,
                      restrictions=restrictions,
                      *args,
                      **kwargs)
-    logging.error('DEBUG after init %r', type(self))
 
   def _set(self, k, v):
     """Overrides same method in ParamsDict.
