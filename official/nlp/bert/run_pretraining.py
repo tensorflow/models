@@ -20,6 +20,7 @@ from __future__ import print_function
 from absl import app
 from absl import flags
 from absl import logging
+import gin
 import tensorflow as tf
 
 from official.modeling import model_training_utils
@@ -49,6 +50,7 @@ flags.DEFINE_float('warmup_steps', 10000,
                    'Warmup steps for Adam weight decay optimizer.')
 
 common_flags.define_common_bert_flags()
+common_flags.define_gin_flags()
 
 FLAGS = flags.FLAGS
 
@@ -158,7 +160,7 @@ def run_bert_pretrain(strategy):
 def main(_):
   # Users should always run this script under TF 2.x
   assert tf.version.VERSION.startswith('2.')
-
+  gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'
   strategy = distribution_utils.get_distribution_strategy(

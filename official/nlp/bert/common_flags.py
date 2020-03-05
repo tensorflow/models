@@ -20,6 +20,14 @@ import tensorflow as tf
 from official.utils.flags import core as flags_core
 
 
+def define_gin_flags():
+  """Define common gin configurable flags."""
+  flags.DEFINE_multi_string('gin_file', None,
+                            'List of paths to the config files.')
+  flags.DEFINE_multi_string(
+      'gin_param', None, 'Newline separated list of Gin parameter bindings.')
+
+
 def define_common_bert_flags():
   """Define common flags for BERT tasks."""
   flags_core.define_base(
