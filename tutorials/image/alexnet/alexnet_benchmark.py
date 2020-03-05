@@ -62,10 +62,10 @@ def inference(images):
   """
   parameters = []
   # conv1
-  with tf.name_scope('conv1') as scope:
-    kernel = tf.Variable(tf.truncated_normal([11, 11, 3, 64], dtype=tf.float32,
+  with tf.compat.v1.name_scope('conv1') as scope:
+    kernel = tf.Variable(tf.random.truncated_normal([11, 11, 3, 64], dtype=tf.float32,
                                              stddev=1e-1), name='weights')
-    conv = tf.nn.conv2d(images, kernel, [1, 4, 4, 1], padding='SAME')
+    conv = tf.nn.conv2d(input=images, filters=kernel, strides=[1, 4, 4, 1], padding='SAME')
     biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                          trainable=True, name='biases')
     bias = tf.nn.bias_add(conv, biases)
@@ -74,7 +74,7 @@ def inference(images):
     parameters += [kernel, biases]
 
   # lrn1
-  with tf.name_scope('lrn1') as scope:
+  with tf.compat.v1.name_scope('lrn1') as scope:
     lrn1 = tf.nn.local_response_normalization(conv1,
                                               alpha=1e-4,
                                               beta=0.75,
@@ -82,7 +82,7 @@ def inference(images):
                                               bias=2.0)
 
   # pool1
-  pool1 = tf.nn.max_pool(lrn1,
+  pool1 = tf.nn.max_pool2d(input=lrn1,
                          ksize=[1, 3, 3, 1],
                          strides=[1, 2, 2, 1],
                          padding='VALID',
@@ -90,10 +90,10 @@ def inference(images):
   print_activations(pool1)
 
   # conv2
-  with tf.name_scope('conv2') as scope:
-    kernel = tf.Variable(tf.truncated_normal([5, 5, 64, 192], dtype=tf.float32,
+  with tf.compat.v1.name_scope('conv2') as scope:
+    kernel = tf.Variable(tf.random.truncated_normal([5, 5, 64, 192], dtype=tf.float32,
                                              stddev=1e-1), name='weights')
-    conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], padding='SAME')
+    conv = tf.nn.conv2d(input=pool1, filters=kernel, strides=[1, 1, 1, 1], padding='SAME')
     biases = tf.Variable(tf.constant(0.0, shape=[192], dtype=tf.float32),
                          trainable=True, name='biases')
     bias = tf.nn.bias_add(conv, biases)
@@ -102,7 +102,7 @@ def inference(images):
   print_activations(conv2)
 
   # lrn2
-  with tf.name_scope('lrn2') as scope:
+  with tf.compat.v1.name_scope('lrn2') as scope:
     lrn2 = tf.nn.local_response_normalization(conv2,
                                               alpha=1e-4,
                                               beta=0.75,
@@ -110,7 +110,7 @@ def inference(images):
                                               bias=2.0)
 
   # pool2
-  pool2 = tf.nn.max_pool(lrn2,
+  pool2 = tf.nn.max_pool2d(input=lrn2,
                          ksize=[1, 3, 3, 1],
                          strides=[1, 2, 2, 1],
                          padding='VALID',
@@ -118,11 +118,11 @@ def inference(images):
   print_activations(pool2)
 
   # conv3
-  with tf.name_scope('conv3') as scope:
-    kernel = tf.Variable(tf.truncated_normal([3, 3, 192, 384],
+  with tf.compat.v1.name_scope('conv3') as scope:
+    kernel = tf.Variable(tf.random.truncated_normal([3, 3, 192, 384],
                                              dtype=tf.float32,
                                              stddev=1e-1), name='weights')
-    conv = tf.nn.conv2d(pool2, kernel, [1, 1, 1, 1], padding='SAME')
+    conv = tf.nn.conv2d(input=pool2, filters=kernel, strides=[1, 1, 1, 1], padding='SAME')
     biases = tf.Variable(tf.constant(0.0, shape=[384], dtype=tf.float32),
                          trainable=True, name='biases')
     bias = tf.nn.bias_add(conv, biases)
@@ -131,11 +131,11 @@ def inference(images):
     print_activations(conv3)
 
   # conv4
-  with tf.name_scope('conv4') as scope:
-    kernel = tf.Variable(tf.truncated_normal([3, 3, 384, 256],
+  with tf.compat.v1.name_scope('conv4') as scope:
+    kernel = tf.Variable(tf.random.truncated_normal([3, 3, 384, 256],
                                              dtype=tf.float32,
                                              stddev=1e-1), name='weights')
-    conv = tf.nn.conv2d(conv3, kernel, [1, 1, 1, 1], padding='SAME')
+    conv = tf.nn.conv2d(input=conv3, filters=kernel, strides=[1, 1, 1, 1], padding='SAME')
     biases = tf.Variable(tf.constant(0.0, shape=[256], dtype=tf.float32),
                          trainable=True, name='biases')
     bias = tf.nn.bias_add(conv, biases)
@@ -144,11 +144,11 @@ def inference(images):
     print_activations(conv4)
 
   # conv5
-  with tf.name_scope('conv5') as scope:
-    kernel = tf.Variable(tf.truncated_normal([3, 3, 256, 256],
+  with tf.compat.v1.name_scope('conv5') as scope:
+    kernel = tf.Variable(tf.random.truncated_normal([3, 3, 256, 256],
                                              dtype=tf.float32,
                                              stddev=1e-1), name='weights')
-    conv = tf.nn.conv2d(conv4, kernel, [1, 1, 1, 1], padding='SAME')
+    conv = tf.nn.conv2d(input=conv4, filters=kernel, strides=[1, 1, 1, 1], padding='SAME')
     biases = tf.Variable(tf.constant(0.0, shape=[256], dtype=tf.float32),
                          trainable=True, name='biases')
     bias = tf.nn.bias_add(conv, biases)
@@ -157,7 +157,7 @@ def inference(images):
     print_activations(conv5)
 
   # pool5
-  pool5 = tf.nn.max_pool(conv5,
+  pool5 = tf.nn.max_pool2d(input=conv5,
                          ksize=[1, 3, 3, 1],
                          strides=[1, 2, 2, 1],
                          padding='VALID',
@@ -207,7 +207,7 @@ def run_benchmark():
     # Note that our padding definition is slightly different the cuda-convnet.
     # In order to force the model to start with the same activations sizes,
     # we add 3 to the image_size and employ VALID padding above.
-    images = tf.Variable(tf.random_normal([FLAGS.batch_size,
+    images = tf.Variable(tf.random.normal([FLAGS.batch_size,
                                            image_size,
                                            image_size, 3],
                                           dtype=tf.float32,
@@ -218,12 +218,12 @@ def run_benchmark():
     pool5, parameters = inference(images)
 
     # Build an initialization operation.
-    init = tf.global_variables_initializer()
+    init = tf.compat.v1.global_variables_initializer()
 
     # Start running operations on the Graph.
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allocator_type = 'BFC'
-    sess = tf.Session(config=config)
+    sess = tf.compat.v1.Session(config=config)
     sess.run(init)
 
     # Run the forward benchmark.
@@ -232,7 +232,7 @@ def run_benchmark():
     # Add a simple objective so we can calculate the backward pass.
     objective = tf.nn.l2_loss(pool5)
     # Compute the gradient with respect to all the parameters.
-    grad = tf.gradients(objective, parameters)
+    grad = tf.gradients(ys=objective, xs=parameters)
     # Run the backward benchmark.
     time_tensorflow_run(sess, grad, "Forward-backward")
 
@@ -256,4 +256,4 @@ if __name__ == '__main__':
       help='Number of batches to run.'
   )
   FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  tf.compat.v1.app.run(main=main, argv=[sys.argv[0]] + unparsed)
