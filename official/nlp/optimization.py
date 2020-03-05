@@ -142,7 +142,13 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                       name=None,
                       all_reduce_sum_gradients=True):
     grads, tvars = list(zip(*grads_and_vars))
-    (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+    if all_reduce_sum_gradients:
+      # when all_reduce_sum_gradients = False, apply_gradients() no longer
+      # implicitly allreduce gradients, users manually allreduce gradient and
+      # passed the allreduced grads_and_vars. For now, the clip_by_global_norm
+      # will be moved to before the explicit allreduce to keep the math
+      # the same as TF 1 and pre TF 2.2 implementation.
+      (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
     return super(AdamWeightDecay, self).apply_gradients(
         zip(grads, tvars),
         name=name,
