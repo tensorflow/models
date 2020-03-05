@@ -25,7 +25,7 @@ import time
 from absl import logging
 import tensorflow.compat.v2 as tf
 from tensorflow.python import tf2
-from tensorflow.python.profiler import profiler_v2 as profiler
+from tensorflow.python.profiler import profiler
 
 
 class BatchTimestamp(object):
