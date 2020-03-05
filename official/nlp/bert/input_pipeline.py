@@ -87,15 +87,15 @@ def create_pretrain_dataset(input_patterns,
   if input_pipeline_context and input_pipeline_context.num_input_pipelines > 1:
     dataset = dataset.shard(input_pipeline_context.num_input_pipelines,
                             input_pipeline_context.input_pipeline_id)
+  if is_training:
+    dataset = dataset.repeat()
 
-  dataset = dataset.repeat()
-
-  # We set shuffle buffer to exactly match total number of
-  # training files to ensure that training data is well shuffled.
-  input_files = []
-  for input_pattern in input_patterns:
-    input_files.extend(tf.io.gfile.glob(input_pattern))
-  dataset = dataset.shuffle(len(input_files))
+    # We set shuffle buffer to exactly match total number of
+    # training files to ensure that training data is well shuffled.
+    input_files = []
+    for input_pattern in input_patterns:
+      input_files.extend(tf.io.gfile.glob(input_pattern))
+    dataset = dataset.shuffle(len(input_files))
 
   # In parallel, create tf record dataset for each train files.
   # cycle_length = 8 means that up to 8 files will be read and deserialized in
@@ -132,7 +132,7 @@ def create_pretrain_dataset(input_patterns,
   if is_training:
     dataset = dataset.shuffle(100)
 
-  dataset = dataset.batch(batch_size, drop_remainder=True)
+  dataset = dataset.batch(batch_size, drop_remainder=is_training)
   dataset = dataset.prefetch(1024)
   return dataset
 
