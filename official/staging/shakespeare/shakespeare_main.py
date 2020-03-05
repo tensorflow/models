@@ -59,8 +59,7 @@ def define_flags():
                                 max_train_steps=False,
                                 dtype=True,
                                 loss_scale=True,
-                                enable_xla=True,
-                                force_v2_in_keras_compile=True)
+                                enable_xla=True)
 
   flags_core.set_defaults(train_epochs=43,
                           batch_size=64)
@@ -193,8 +192,7 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
         loss=tf.keras.losses.CategoricalCrossentropy(),
         metrics=[tf.keras.metrics.Recall(top_k=1, name='RecallAt1'),
                  tf.keras.metrics.Recall(top_k=5, name='RecallAt5')],
-        run_eagerly=flags_obj.run_eagerly,
-        experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
+        run_eagerly=flags_obj.run_eagerly)
 
   callbacks = []
   if checkpoint_dir:

@@ -142,23 +142,10 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.early_stopping = True
     self._run_and_report_benchmark()
 
-  def benchmark_1_gpu_force_v1_path_early_stop(self):
-    self._setup()
-    FLAGS.early_stopping = True
-    FLAGS.force_v2_in_keras_compile = False
-    self._run_and_report_benchmark()
-
   def benchmark_1_gpu_no_dist_strat_early_stop(self):
     self._setup()
     FLAGS.distribution_strategy = 'off'
     FLAGS.early_stopping = True
-    self._run_and_report_benchmark()
-
-  def benchmark_1_gpu_no_dist_strat_force_v1_path_early_stop(self):
-    self._setup()
-    FLAGS.distribution_strategy = 'off'
-    FLAGS.early_stopping = True
-    FLAGS.force_v2_in_keras_compile = False
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_run_eagerly_early_stop(self):
@@ -172,13 +159,6 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.early_stopping = True
     FLAGS.enable_xla = True
-    self._run_and_report_benchmark()
-
-  def benchmark_xla_1_gpu_force_v1_path_early_stop(self):
-    self._setup()
-    FLAGS.early_stopping = True
-    FLAGS.enable_xla = True
-    FLAGS.force_v2_in_keras_compile = False
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_ctl_early_stop(self):
@@ -232,14 +212,6 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     self._setup()
     FLAGS.train_epochs = 7
     self._run_and_report_benchmark_mlperf_like()
-
-  def benchmark_1_gpu_no_dist_strat_force_v1_path_mlperf_like(self):
-    """1 GPU using compile/fit without dist_strat."""
-    self._setup()
-    FLAGS.train_epochs = 7
-    FLAGS.distribution_strategy = 'off'
-    FLAGS.force_v2_in_keras_compile = False
-    self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_dist_strat_mlperf_like(self):
     """1 GPU using compile/fit without dist_strat."""
@@ -351,20 +323,6 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.beta1 = 0.25
     FLAGS.beta2 = 0.5
     FLAGS.epsilon = 1e-8
-    self._run_and_report_benchmark_mlperf_like()
-
-  def benchmark_8_gpu_force_v1_path_mlperf_like(self):
-    """8 GPU using keras fit/compile v1 codepath."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.train_epochs = 17
-    FLAGS.batch_size = 1048576
-    FLAGS.eval_batch_size = 160000
-    FLAGS.learning_rate = 0.0045
-    FLAGS.beta1 = 0.25
-    FLAGS.beta2 = 0.5
-    FLAGS.epsilon = 1e-8
-    FLAGS.force_v2_in_keras_compile = False
     self._run_and_report_benchmark_mlperf_like()
 
   def benchmark_8_gpu_ctl_mlperf_like(self):

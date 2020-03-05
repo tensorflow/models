@@ -75,7 +75,6 @@ def define_transformer_flags():
       tf_gpu_thread_mode=True,
       datasets_num_private_threads=True,
       enable_xla=True,
-      force_v2_in_keras_compile=True,
       fp16_implementation=True
   )
 

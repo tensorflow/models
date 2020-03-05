@@ -215,23 +215,13 @@ def run(flags_obj):
     elif flags_obj.pruning_method:
       raise NotImplementedError(
           'Only polynomial_decay is currently supported.')
-    # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
-    # a valid arg for this model. Also remove as a valid flag.
-    if flags_obj.force_v2_in_keras_compile is not None:
-      model.compile(
-          loss='sparse_categorical_crossentropy',
-          optimizer=optimizer,
-          metrics=(['sparse_categorical_accuracy']
-                   if flags_obj.report_accuracy_metrics else None),
-          run_eagerly=flags_obj.run_eagerly,
-          experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
-    else:
-      model.compile(
-          loss='sparse_categorical_crossentropy',
-          optimizer=optimizer,
-          metrics=(['sparse_categorical_accuracy']
-                   if flags_obj.report_accuracy_metrics else None),
-          run_eagerly=flags_obj.run_eagerly)
+
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=optimizer,
+        metrics=(['sparse_categorical_accuracy']
+                 if flags_obj.report_accuracy_metrics else None),
+        run_eagerly=flags_obj.run_eagerly)
 
   train_epochs = flags_obj.train_epochs
 
