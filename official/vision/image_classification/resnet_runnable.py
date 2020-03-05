@@ -21,6 +21,7 @@ from __future__ import print_function
 import tensorflow.compat.v2 as tf
 
 from official.modeling import performance
+from official.staging.training import grad_utils
 from official.staging.training import standard_runnable
 from official.staging.training import utils
 from official.utils.flags import core as flags_core
@@ -170,17 +171,8 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
         else:
           loss += (tf.reduce_sum(self.model.losses) / num_replicas)
 
-        # Scale the loss
-        if self.flags_obj.dtype == 'fp16':
-          loss = self.optimizer.get_scaled_loss(loss)
-
-      grads = tape.gradient(loss, self.model.trainable_variables)
-
-      # Unscale the grads
-      if self.flags_obj.dtype == 'fp16':
-        grads = self.optimizer.get_unscaled_gradients(grads)
-
-      self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+      grad_utils.minimize_using_explicit_allreduce(
+          tape, self.optimizer, loss, self.model.trainable_variables)
       self.train_loss.update_state(loss)
       self.train_accuracy.update_state(labels, logits)
 

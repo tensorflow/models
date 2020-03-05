@@ -23,6 +23,7 @@ import os
 
 from absl import logging
 import tensorflow as tf
+from official.staging.training import grad_utils
 from official.utils.misc import distribution_utils
 
 _SUMMARY_TXT = 'training_summary.txt'
@@ -94,7 +95,10 @@ def run_customized_training_loop(
     init_checkpoint=None,
     custom_callbacks=None,
     run_eagerly=False,
-    sub_model_export_name=None):
+    sub_model_export_name=None,
+    explicit_allreduce=False,
+    pre_allreduce_callbacks=None,
+    post_allreduce_callbacks=None):
   """Run BERT pretrain model training using low-level API.
 
   Arguments:
@@ -136,6 +140,23 @@ def run_customized_training_loop(
         file is {sub_model_export_name}_step_{step}.ckpt and the last
         checkpint's name is {sub_model_export_name}.ckpt;
         if None, `sub_model` will not be exported as checkpoint.
+      explicit_allreduce: Whether to explicitly perform gradient allreduce,
+        instead of relying on implicit allreduce in optimizer.apply_gradients().
+        default is False. For now, if training using FP16 mixed precision,
+        explicit allreduce will aggregate gradients in FP16 format. For TPU and
+        GPU training using FP32, explicit allreduce will aggregate gradients in
+        FP32 format.
+      pre_allreduce_callbacks: A list of callback functions that takes gradients
+        and model variables pairs as input, manipulate them, and returns a new
+        gradients and model variables paris. The callback functions will be
+        invoked in the list order and before gradients are allreduced.
+        Default is no callbacks. Only used when explicit_allreduce=True.
+      post_allreduce_callbacks: A list of callback functions that takes
+        gradients and model variables pairs as input, manipulate them, and
+        returns a new gradients and model variables paris. The callback
+        functions will be invoked in the list order and right before gradients
+        are applied to variables for updates. Default is no callbacks. Only used
+        when explicit_allreduce=True.
 
   Returns:
       Trained model.
@@ -199,8 +220,6 @@ def run_customized_training_loop(
                        'sub_model is None.' % sub_model_export_name)
 
     optimizer = model.optimizer
-    use_float16 = isinstance(
-        optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer)
 
     if init_checkpoint:
       logging.info(
@@ -242,15 +261,21 @@ def run_customized_training_loop(
       with tf.GradientTape() as tape:
         model_outputs = model(inputs, training=True)
         loss = loss_fn(labels, model_outputs)
-        if use_float16:
-          scaled_loss = optimizer.get_scaled_loss(loss)
-
-      if use_float16:
-        scaled_grads = tape.gradient(scaled_loss, training_vars)
-        grads = optimizer.get_unscaled_gradients(scaled_grads)
+      if explicit_allreduce:
+        grad_utils.minimize_using_explicit_allreduce(tape, optimizer, loss,
+                                                     training_vars,
+                                                     pre_allreduce_callbacks,
+                                                     post_allreduce_callbacks)
       else:
-        grads = tape.gradient(loss, training_vars)
-      optimizer.apply_gradients(zip(grads, training_vars))
+        if isinstance(optimizer,
+                      tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+          with tape:
+            scaled_loss = optimizer.get_scaled_loss(loss)
+          scaled_grads = tape.gradient(scaled_loss, training_vars)
+          grads = optimizer.get_unscaled_gradients(scaled_grads)
+        else:
+          grads = tape.gradient(loss, training_vars)
+        optimizer.apply_gradients(zip(grads, training_vars))
       # For reporting, the metric takes the mean of losses.
       train_loss_metric.update_state(loss)
       for metric in train_metrics:

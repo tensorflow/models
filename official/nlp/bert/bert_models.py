@@ -25,10 +25,8 @@ from official.modeling import tf_utils
 from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import configs
 from official.nlp.modeling import losses
+from official.nlp.modeling import models
 from official.nlp.modeling import networks
-from official.nlp.modeling.networks import bert_classifier
-from official.nlp.modeling.networks import bert_pretrainer
-from official.nlp.modeling.networks import bert_span_labeler
 
 
 class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
@@ -159,7 +157,7 @@ def pretrain_model(bert_config,
   if initializer is None:
     initializer = tf.keras.initializers.TruncatedNormal(
         stddev=bert_config.initializer_range)
-  pretrainer_model = bert_pretrainer.BertPretrainer(
+  pretrainer_model = models.BertPretrainer(
       network=transformer_encoder,
       num_classes=2,  # The next sentence prediction label has two classes.
       num_token_predictions=max_predictions_per_seq,
@@ -211,7 +209,7 @@ def squad_model(bert_config,
         stddev=bert_config.initializer_range)
   if not hub_module_url:
     bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
-    return bert_span_labeler.BertSpanLabeler(
+    return models.BertSpanLabeler(
         network=bert_encoder, initializer=initializer), bert_encoder
 
   input_word_ids = tf.keras.layers.Input(
@@ -231,7 +229,7 @@ def squad_model(bert_config,
       },
       outputs=[sequence_output, pooled_output],
       name='core_model')
-  return bert_span_labeler.BertSpanLabeler(
+  return models.BertSpanLabeler(
       network=bert_encoder, initializer=initializer), bert_encoder
 
 
@@ -268,7 +266,7 @@ def classifier_model(bert_config,
 
   if not hub_module_url:
     bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
-    return bert_classifier.BertClassifier(
+    return models.BertClassifier(
         bert_encoder,
         num_classes=num_labels,
         dropout_rate=bert_config.hidden_dropout_prob,
