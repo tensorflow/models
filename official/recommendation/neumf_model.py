@@ -190,37 +190,83 @@ def construct_model(user_input, item_input, params):
     x = tf.squeeze(x, [1])
     return x[:, mf_dim:]
 
-  # It turns out to be significantly more effecient to store the MF and MLP
-  # embedding portions in the same table, and then slice as needed.
-  embedding_user = tf.keras.layers.Embedding(
-      num_users,
-      mf_dim + model_layers[0] // 2,
-      embeddings_initializer=embedding_initializer,
-      embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
-      input_length=1,
-      name="embedding_user")(
-          user_input)
+  if params["use_tpu"]:
+    # It turns out to be significantly more effecient to store the MF and MLP
+    # embedding portions in the same table, and then slice as needed.
+    embedding_user = tf.keras.layers.Embedding(
+        num_users,
+        mf_dim + model_layers[0] // 2,
+        embeddings_initializer=embedding_initializer,
+        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+        input_length=1,
+        name="embedding_user")(
+            user_input)
+    
+    embedding_item = tf.keras.layers.Embedding(
+        num_items,
+        mf_dim + model_layers[0] // 2,
+        embeddings_initializer=embedding_initializer,
+        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+        input_length=1,
+        name="embedding_item")(
+            item_input)
 
-  embedding_item = tf.keras.layers.Embedding(
-      num_items,
-      mf_dim + model_layers[0] // 2,
-      embeddings_initializer=embedding_initializer,
-      embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
-      input_length=1,
-      name="embedding_item")(
-          item_input)
+    # GMF part
+    mf_user_latent = tf.keras.layers.Lambda(
+        mf_slice_fn, name="embedding_user_mf")(embedding_user)
+    mf_item_latent = tf.keras.layers.Lambda(
+        mf_slice_fn, name="embedding_item_mf")(embedding_item)
+    
+    # MLP part
+    mlp_user_latent = tf.keras.layers.Lambda(
+        mlp_slice_fn, name="embedding_user_mlp")(embedding_user)
+    mlp_item_latent = tf.keras.layers.Lambda(
+        mlp_slice_fn, name="embedding_item_mlp")(embedding_item)
 
-  # GMF part
-  mf_user_latent = tf.keras.layers.Lambda(
-      mf_slice_fn, name="embedding_user_mf")(embedding_user)
-  mf_item_latent = tf.keras.layers.Lambda(
-      mf_slice_fn, name="embedding_item_mf")(embedding_item)
-
-  # MLP part
-  mlp_user_latent = tf.keras.layers.Lambda(
-      mlp_slice_fn, name="embedding_user_mlp")(embedding_user)
-  mlp_item_latent = tf.keras.layers.Lambda(
-      mlp_slice_fn, name="embedding_item_mlp")(embedding_item)
+  else:
+    mf_user_latent = tf.keras.layers.Embedding(
+        num_users,
+        mf_dim,
+        embeddings_initializer=embedding_initializer,
+        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+        input_length=1,
+        name="embedding_user_mf")(
+            user_input)
+    
+    mf_user_latent = tf.squeeze(mf_user_latent, [1])
+    
+    mlp_user_latent = tf.keras.layers.Embedding(
+        num_users,
+        model_layers[0] // 2,
+        embeddings_initializer=embedding_initializer,
+        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+        input_length=1,
+        name="embedding_user_mlp")(
+            user_input)
+    
+    mlp_user_latent = tf.squeeze(mlp_user_latent, [1])
+    
+    mf_item_latent = tf.keras.layers.Embedding(
+        num_items,
+        mf_dim,
+        embeddings_initializer=embedding_initializer,
+        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+        input_length=1,
+        name="embedding_item_mf")(
+            item_input)
+    
+    mf_item_latent = tf.squeeze(mf_item_latent, [1])
+    
+    mlp_item_latent = tf.keras.layers.Embedding(
+        num_items,
+        model_layers[0] // 2,
+        embeddings_initializer=embedding_initializer,
+        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+        input_length=1,
+        name="embedding_item_mlp")(
+            item_input)
+    
+    mlp_item_latent = tf.squeeze(mlp_item_latent, [1])
 
   # Element-wise multiply
   mf_vector = tf.keras.layers.multiply([mf_user_latent, mf_item_latent])
