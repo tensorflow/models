@@ -115,7 +115,6 @@ def get_filenames(is_training, data_dir):
 def input_fn(is_training,
              data_dir,
              batch_size,
-             num_epochs=1,
              dtype=tf.float32,
              datasets_num_private_threads=None,
              parse_record_fn=parse_record,
@@ -127,7 +126,6 @@ def input_fn(is_training,
     is_training: A boolean denoting whether the input is for training.
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
-    num_epochs: The number of epochs to repeat the dataset.
     dtype: Data type to use for images/features
     datasets_num_private_threads: Number of private threads for tf.data.
     parse_record_fn: Function to use for parsing the records.
@@ -155,7 +153,6 @@ def input_fn(is_training,
       batch_size=batch_size,
       shuffle_buffer=NUM_IMAGES['train'],
       parse_record_fn=parse_record_fn,
-      num_epochs=num_epochs,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
       drop_remainder=drop_remainder
