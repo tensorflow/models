@@ -395,8 +395,8 @@ def run_customized_training_loop(
         train_steps(train_iterator,
                     tf.convert_to_tensor(steps, dtype=tf.int32))
       train_loss = _float_metric_value(train_loss_metric)
+      _run_callbacks_on_batch_end(current_step, {'loss': train_loss})
       current_step += steps
-      _run_callbacks_on_batch_end(current_step - 1, {'loss': train_loss})
 
       # Updates training logging.
       training_status = 'Train Step: %d/%d  / loss = %s' % (

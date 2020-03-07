@@ -29,7 +29,6 @@ from official.nlp.bert import run_squad_helper
 from official.nlp.bert import tokenization
 from official.nlp.data import squad_lib as squad_lib_wp
 from official.utils.misc import distribution_utils
-from official.utils.misc import keras_utils
 
 
 flags.DEFINE_string('vocab_file', None,
@@ -95,21 +94,7 @@ def main(_):
       all_reduce_alg=FLAGS.all_reduce_alg,
       tpu_address=FLAGS.tpu)
   if FLAGS.mode in ('train', 'train_and_predict'):
-    if FLAGS.log_steps:
-      custom_callbacks = [keras_utils.TimeHistory(
-          batch_size=FLAGS.train_batch_size,
-          log_steps=FLAGS.log_steps,
-          logdir=FLAGS.model_dir,
-      )]
-    else:
-      custom_callbacks = None
-
-    train_squad(
-        strategy,
-        input_meta_data,
-        custom_callbacks=custom_callbacks,
-        run_eagerly=FLAGS.run_eagerly,
-    )
+    train_squad(strategy, input_meta_data, run_eagerly=FLAGS.run_eagerly)
   if FLAGS.mode in ('predict', 'train_and_predict'):
     predict_squad(strategy, input_meta_data)
 
