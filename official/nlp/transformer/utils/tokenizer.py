@@ -140,6 +140,8 @@ class Subtokenizer(object):
     for token in tokens:
       ret.extend(self._token_to_subtoken_ids(token))
     if add_eos:
+      assert EOS in self.subtoken_list, \
+          "Can't append 'EOS' because it is not in list of known subtokens."
       ret.append(EOS_ID)
     return ret
 
