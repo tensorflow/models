@@ -213,7 +213,6 @@ def define_keras_flags(
                                 fp16_implementation=True,
                                 tf_data_experimental_slack=True,
                                 enable_xla=True,
-                                force_v2_in_keras_compile=True,
                                 training_dataset_cache=True)
   flags_core.define_image()
   flags_core.define_benchmark()

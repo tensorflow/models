@@ -157,7 +157,6 @@ def define_ncf_flags():
       loss_scale=True,
       dynamic_loss_scale=True,
       enable_xla=True,
-      force_v2_in_keras_compile=True
   )
   flags_core.define_device(tpu=True)
   flags_core.define_benchmark()

@@ -19,6 +19,7 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
+import gin
 import tensorflow as tf
 
 from official.nlp.modeling.layers import attention
@@ -26,6 +27,7 @@ from official.nlp.modeling.layers import dense_einsum
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
+@gin.configurable
 class TransformerScaffold(tf.keras.layers.Layer):
   """Transformer scaffold layer.
 

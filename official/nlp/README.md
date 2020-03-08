@@ -1,15 +1,21 @@
-# TensorFlow Natural Language Processing Models
+# TensorFlow Natural Language Processing Modelling Toolkit
 
-tensorflow/models/official/nlp is a library of state-of-the-art models for
-Natural Language Processing (NLP).
+tensorflow/models/official/nlp provides a [modeling library](modeling) for constructing
+NLP model achitectures, as well as TF2 reference implementations for
+state-of-the-art models.
 
-The library currently contains TensorFlow 2.x implementations, pre-trained
-model weights, usage scripts and conversion utilities for the following models:
+The repository contains the following models, with implementations, pre-trained
+model weights, usage scripts and conversion utilities:
 
 * [Bert](bert)
-
 * [Albert](albert)
-
 * [XLNet](xlnet)
-
 * [Transformer for translation](transformer)
+
+Addtional features:
+
+* Distributed trainable on both multi-GPU and TPU
+* e2e training for custom models, including both pretraining and finetuning.
+
+
+

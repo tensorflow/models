@@ -150,7 +150,9 @@ def run_customized_training_loop(
         and model variables pairs as input, manipulate them, and returns a new
         gradients and model variables paris. The callback functions will be
         invoked in the list order and before gradients are allreduced.
-        Default is no callbacks. Only used when explicit_allreduce=True.
+        With mixed precision training, the pre_allreduce_allbacks will be
+        applied on scaled_gradients. Default is no callbacks.
+        Only used when explicit_allreduce=True.
       post_allreduce_callbacks: A list of callback functions that takes
         gradients and model variables pairs as input, manipulate them, and
         returns a new gradients and model variables paris. The callback
@@ -393,8 +395,8 @@ def run_customized_training_loop(
         train_steps(train_iterator,
                     tf.convert_to_tensor(steps, dtype=tf.int32))
       train_loss = _float_metric_value(train_loss_metric)
+      _run_callbacks_on_batch_end(current_step, {'loss': train_loss})
       current_step += steps
-      _run_callbacks_on_batch_end(current_step - 1, {'loss': train_loss})
 
       # Updates training logging.
       training_status = 'Train Step: %d/%d  / loss = %s' % (

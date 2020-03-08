@@ -269,11 +269,10 @@ def train_squad(strategy,
       loss_factor=1.0 /
       strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0)
 
-  # when all_reduce_sum_gradients = False, apply_gradients() no longer
-  # implicitly allreduce gradients, users manually allreduce gradient and
-  # passed the allreduced grads_and_vars. For now, the clip_by_global_norm
-  # will be moved to before users' manual allreduce to keep the math
-  # unchanged.
+  # If explicit_allreduce = True, apply_gradients() no longer implicitly
+  # allreduce gradients, users manually allreduce gradient and pass the
+  # allreduced grads_and_vars to apply_gradients(). clip_by_global_norm will be
+  # applied to allreduced gradients.
   def clip_by_global_norm_callback(grads_and_vars):
     grads, variables = zip(*grads_and_vars)
     (clipped_grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
@@ -291,8 +290,8 @@ def train_squad(strategy,
       init_checkpoint=FLAGS.init_checkpoint,
       run_eagerly=run_eagerly,
       custom_callbacks=custom_callbacks,
-      explicit_allreduce=True,
-      pre_allreduce_callbacks=[clip_by_global_norm_callback])
+      explicit_allreduce=False,
+      post_allreduce_callbacks=[clip_by_global_norm_callback])
 
 
 def predict_squad(strategy, input_meta_data, tokenizer, bert_config, squad_lib):
