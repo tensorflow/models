@@ -22,7 +22,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 
 class LoggingMetricHook(tf.estimator.LoggingTensorHook):
-  """Hook to log benchmark metric information.
+    """Hook to log benchmark metric information.
 
   This hook is very similar as tf.train.LoggingTensorHook, which logs given
   tensors every N local steps, every N seconds, or at the end. The metric
@@ -33,9 +33,13 @@ class LoggingMetricHook(tf.estimator.LoggingTensorHook):
   whose evaluation produces a side effect such as consuming additional inputs.
   """
 
-  def __init__(self, tensors, metric_logger=None,
-               every_n_iter=None, every_n_secs=None, at_end=False):
-    """Initializer for LoggingMetricHook.
+    def __init__(self,
+                 tensors,
+                 metric_logger=None,
+                 every_n_iter=None,
+                 every_n_secs=None,
+                 at_end=False):
+        """Initializer for LoggingMetricHook.
 
     Args:
       tensors: `dict` that maps string-valued tags to tensors/tensor names,
@@ -56,42 +60,43 @@ class LoggingMetricHook(tf.estimator.LoggingTensorHook):
         2. Exactly one of every_n_iter and every_n_secs should be provided.
         3. Exactly one of log_dir and metric_logger should be provided.
     """
-    super(LoggingMetricHook, self).__init__(
-        tensors=tensors,
-        every_n_iter=every_n_iter,
-        every_n_secs=every_n_secs,
-        at_end=at_end)
+        super(LoggingMetricHook, self).__init__(tensors=tensors,
+                                                every_n_iter=every_n_iter,
+                                                every_n_secs=every_n_secs,
+                                                at_end=at_end)
 
-    if metric_logger is None:
-      raise ValueError("metric_logger should be provided.")
-    self._logger = metric_logger
+        if metric_logger is None:
+            raise ValueError("metric_logger should be provided.")
+        self._logger = metric_logger
 
-  def begin(self):
-    super(LoggingMetricHook, self).begin()
-    self._global_step_tensor = tf.compat.v1.train.get_global_step()
-    if self._global_step_tensor is None:
-      raise RuntimeError(
-          "Global step should be created to use LoggingMetricHook.")
-    if self._global_step_tensor.name not in self._current_tensors:
-      self._current_tensors[self._global_step_tensor.name] = (
-          self._global_step_tensor)
+    def begin(self):
+        super(LoggingMetricHook, self).begin()
+        self._global_step_tensor = tf.compat.v1.train.get_global_step()
+        if self._global_step_tensor is None:
+            raise RuntimeError(
+                "Global step should be created to use LoggingMetricHook.")
+        if self._global_step_tensor.name not in self._current_tensors:
+            self._current_tensors[self._global_step_tensor.name] = (
+                self._global_step_tensor)
 
-  def after_run(self, unused_run_context, run_values):
-    # should_trigger is a internal state that populated at before_run, and it is
-    # using self_timer to determine whether it should trigger.
-    if self._should_trigger:
-      self._log_metric(run_values.results)
+    def after_run(self, unused_run_context, run_values):
+        # should_trigger is a internal state that populated at before_run, and it is
+        # using self_timer to determine whether it should trigger.
+        if self._should_trigger:
+            self._log_metric(run_values.results)
 
-    self._iter_count += 1
+        self._iter_count += 1
 
-  def end(self, session):
-    if self._log_at_end:
-      values = session.run(self._current_tensors)
-      self._log_metric(values)
+    def end(self, session):
+        if self._log_at_end:
+            values = session.run(self._current_tensors)
+            self._log_metric(values)
 
-  def _log_metric(self, tensor_values):
-    self._timer.update_last_triggered_step(self._iter_count)
-    global_step = tensor_values[self._global_step_tensor.name]
-    # self._tag_order is populated during the init of LoggingTensorHook
-    for tag in self._tag_order:
-      self._logger.log_metric(tag, tensor_values[tag], global_step=global_step)
+    def _log_metric(self, tensor_values):
+        self._timer.update_last_triggered_step(self._iter_count)
+        global_step = tensor_values[self._global_step_tensor.name]
+        # self._tag_order is populated during the init of LoggingTensorHook
+        for tag in self._tag_order:
+            self._logger.log_metric(tag,
+                                    tensor_values[tag],
+                                    global_step=global_step)

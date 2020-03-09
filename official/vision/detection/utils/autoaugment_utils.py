@@ -22,4 +22,4 @@ import tensorflow.compat.v2 as tf
 
 
 def distort_image_with_autoaugment(image, bboxes, augmentation_name):
-  raise NotImplementedError("Not TF 2.0 ready.")
+    raise NotImplementedError("Not TF 2.0 ready.")

@@ -30,7 +30,6 @@ from official.nlp.bert import tokenization
 from official.nlp.data import squad_lib as squad_lib_wp
 from official.utils.misc import distribution_utils
 
-
 flags.DEFINE_string('vocab_file', None,
                     'The vocabulary file that the BERT model was trained on.')
 
@@ -44,23 +43,23 @@ def train_squad(strategy,
                 input_meta_data,
                 custom_callbacks=None,
                 run_eagerly=False):
-  """Run bert squad training."""
-  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
-  run_squad_helper.train_squad(strategy, input_meta_data, bert_config,
-                               custom_callbacks, run_eagerly)
+    """Run bert squad training."""
+    bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+    run_squad_helper.train_squad(strategy, input_meta_data, bert_config,
+                                 custom_callbacks, run_eagerly)
 
 
 def predict_squad(strategy, input_meta_data):
-  """Makes predictions for a squad dataset."""
-  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
-  tokenizer = tokenization.FullTokenizer(
-      vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
-  run_squad_helper.predict_squad(strategy, input_meta_data, tokenizer,
-                                 bert_config, squad_lib_wp)
+    """Makes predictions for a squad dataset."""
+    bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+    tokenizer = tokenization.FullTokenizer(vocab_file=FLAGS.vocab_file,
+                                           do_lower_case=FLAGS.do_lower_case)
+    run_squad_helper.predict_squad(strategy, input_meta_data, tokenizer,
+                                   bert_config, squad_lib_wp)
 
 
 def export_squad(model_export_path, input_meta_data):
-  """Exports a trained model as a `SavedModel` for inference.
+    """Exports a trained model as a `SavedModel` for inference.
 
   Args:
     model_export_path: a string specifying the path to the SavedModel directory.
@@ -69,37 +68,38 @@ def export_squad(model_export_path, input_meta_data):
   Raises:
     Export path is not specified, got an empty string or None.
   """
-  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
-  run_squad_helper.export_squad(model_export_path, input_meta_data, bert_config)
+    bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+    run_squad_helper.export_squad(model_export_path, input_meta_data,
+                                  bert_config)
 
 
 def main(_):
-  # Users should always run this script under TF 2.x
-  assert tf.version.VERSION.startswith('2.')
+    # Users should always run this script under TF 2.x
+    assert tf.version.VERSION.startswith('2.')
 
-  with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
-    input_meta_data = json.loads(reader.read().decode('utf-8'))
+    with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
+        input_meta_data = json.loads(reader.read().decode('utf-8'))
 
-  if FLAGS.mode == 'export_only':
-    export_squad(FLAGS.model_export_path, input_meta_data)
-    return
+    if FLAGS.mode == 'export_only':
+        export_squad(FLAGS.model_export_path, input_meta_data)
+        return
 
-  # Configures cluster spec for multi-worker distribution strategy.
-  if FLAGS.num_gpus > 0:
-    _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
-                                             FLAGS.task_index)
-  strategy = distribution_utils.get_distribution_strategy(
-      distribution_strategy=FLAGS.distribution_strategy,
-      num_gpus=FLAGS.num_gpus,
-      all_reduce_alg=FLAGS.all_reduce_alg,
-      tpu_address=FLAGS.tpu)
-  if FLAGS.mode in ('train', 'train_and_predict'):
-    train_squad(strategy, input_meta_data, run_eagerly=FLAGS.run_eagerly)
-  if FLAGS.mode in ('predict', 'train_and_predict'):
-    predict_squad(strategy, input_meta_data)
+    # Configures cluster spec for multi-worker distribution strategy.
+    if FLAGS.num_gpus > 0:
+        _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
+                                                 FLAGS.task_index)
+    strategy = distribution_utils.get_distribution_strategy(
+        distribution_strategy=FLAGS.distribution_strategy,
+        num_gpus=FLAGS.num_gpus,
+        all_reduce_alg=FLAGS.all_reduce_alg,
+        tpu_address=FLAGS.tpu)
+    if FLAGS.mode in ('train', 'train_and_predict'):
+        train_squad(strategy, input_meta_data, run_eagerly=FLAGS.run_eagerly)
+    if FLAGS.mode in ('predict', 'train_and_predict'):
+        predict_squad(strategy, input_meta_data)
 
 
 if __name__ == '__main__':
-  flags.mark_flag_as_required('bert_config_file')
-  flags.mark_flag_as_required('model_dir')
-  app.run(main)
+    flags.mark_flag_as_required('bert_config_file')
+    flags.mark_flag_as_required('model_dir')
+    app.run(main)

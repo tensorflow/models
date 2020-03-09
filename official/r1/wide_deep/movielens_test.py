@@ -31,10 +31,9 @@ from official.r1.wide_deep import movielens_main
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-
 TEST_INPUT_VALUES = {
-    "genres": np.array(
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    "genres":
+        np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     "user_id": [3],
     "item_id": [4],
 }
@@ -61,59 +60,62 @@ TEST_RATING_DATA = """user_id,item_id,rating,timestamp
 
 
 class BaseTest(tf.test.TestCase):
-  """Tests for Wide Deep model."""
+    """Tests for Wide Deep model."""
 
-  @classmethod
-  def setUpClass(cls):  # pylint: disable=invalid-name
-    super(BaseTest, cls).setUpClass()
-    movielens_main.define_movie_flags()
+    @classmethod
+    def setUpClass(cls):  # pylint: disable=invalid-name
+        super(BaseTest, cls).setUpClass()
+        movielens_main.define_movie_flags()
 
-  def setUp(self):
-    # Create temporary CSV file
-    self.temp_dir = self.get_temp_dir()
-    tf.io.gfile.makedirs(os.path.join(self.temp_dir, movielens.ML_1M))
+    def setUp(self):
+        # Create temporary CSV file
+        self.temp_dir = self.get_temp_dir()
+        tf.io.gfile.makedirs(os.path.join(self.temp_dir, movielens.ML_1M))
 
-    self.ratings_csv = os.path.join(
-        self.temp_dir, movielens.ML_1M, movielens.RATINGS_FILE)
-    self.item_csv = os.path.join(
-        self.temp_dir, movielens.ML_1M, movielens.MOVIES_FILE)
+        self.ratings_csv = os.path.join(self.temp_dir, movielens.ML_1M,
+                                        movielens.RATINGS_FILE)
+        self.item_csv = os.path.join(self.temp_dir, movielens.ML_1M,
+                                     movielens.MOVIES_FILE)
 
-    with tf.io.gfile.GFile(self.ratings_csv, "w") as f:
-      f.write(TEST_RATING_DATA)
+        with tf.io.gfile.GFile(self.ratings_csv, "w") as f:
+            f.write(TEST_RATING_DATA)
 
-    with tf.io.gfile.GFile(self.item_csv, "w") as f:
-      f.write(TEST_ITEM_DATA)
+        with tf.io.gfile.GFile(self.item_csv, "w") as f:
+            f.write(TEST_ITEM_DATA)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
-  def test_input_fn(self):
-    train_input_fn, _, _ = movielens_dataset.construct_input_fns(
-        dataset=movielens.ML_1M, data_dir=self.temp_dir, batch_size=8, repeat=1)
+    @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
+    def test_input_fn(self):
+        train_input_fn, _, _ = movielens_dataset.construct_input_fns(
+            dataset=movielens.ML_1M,
+            data_dir=self.temp_dir,
+            batch_size=8,
+            repeat=1)
 
-    dataset = train_input_fn()
-    features, labels = dataset.make_one_shot_iterator().get_next()
+        dataset = train_input_fn()
+        features, labels = dataset.make_one_shot_iterator().get_next()
 
-    with self.session() as sess:
-      features, labels = sess.run((features, labels))
+        with self.session() as sess:
+            features, labels = sess.run((features, labels))
 
-      # Compare the two features dictionaries.
-      for key in TEST_INPUT_VALUES:
-        self.assertTrue(key in features)
-        self.assertAllClose(TEST_INPUT_VALUES[key], features[key][0])
+            # Compare the two features dictionaries.
+            for key in TEST_INPUT_VALUES:
+                self.assertTrue(key in features)
+                self.assertAllClose(TEST_INPUT_VALUES[key], features[key][0])
 
-      self.assertAllClose(labels[0], [1.0])
+            self.assertAllClose(labels[0], [1.0])
 
-  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
-  def test_end_to_end_deep(self):
-    integration.run_synthetic(
-        main=movielens_main.main, tmp_root=self.temp_dir,
-        extra_flags=[
-            "--data_dir", self.temp_dir,
-            "--download_if_missing=false",
-            "--train_epochs", "1",
-            "--epochs_between_evals", "1"
-        ],
-        synth=False)
+    @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
+    def test_end_to_end_deep(self):
+        integration.run_synthetic(main=movielens_main.main,
+                                  tmp_root=self.temp_dir,
+                                  extra_flags=[
+                                      "--data_dir", self.temp_dir,
+                                      "--download_if_missing=false",
+                                      "--train_epochs", "1",
+                                      "--epochs_between_evals", "1"
+                                  ],
+                                  synth=False)
 
 
 if __name__ == "__main__":
-  tf.test.main()
+    tf.test.main()

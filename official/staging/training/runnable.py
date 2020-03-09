@@ -27,12 +27,13 @@ from typing import Dict, Optional, Text
 
 @six.add_metaclass(abc.ABCMeta)
 class AbstractTrainable(tf.Module):
-  """An abstract class defining the APIs required for training."""
+    """An abstract class defining the APIs required for training."""
 
-  @abc.abstractmethod
-  def train(self,
+    @abc.abstractmethod
+    def train(
+            self,
             num_steps: Optional[tf.Tensor]) -> Optional[Dict[Text, tf.Tensor]]:
-    """Implements model training with multiple steps.
+        """Implements model training with multiple steps.
 
     In training, it is common to break the total training steps into several
     training loops, so users can do checkpointing, write summaries and run some
@@ -53,17 +54,18 @@ class AbstractTrainable(tf.Module):
       The function may return a dictionary of `Tensors`, which will be
       written to logs and as TensorBoard summaries.
     """
-    pass
+        pass
 
 
 @six.add_metaclass(abc.ABCMeta)
 class AbstractEvaluable(tf.Module):
-  """An abstract class defining the APIs required for evaluation."""
+    """An abstract class defining the APIs required for evaluation."""
 
-  @abc.abstractmethod
-  def evaluate(
-      self, num_steps: Optional[tf.Tensor]) -> Optional[Dict[Text, tf.Tensor]]:
-    """Implements model evaluation.
+    @abc.abstractmethod
+    def evaluate(
+            self,
+            num_steps: Optional[tf.Tensor]) -> Optional[Dict[Text, tf.Tensor]]:
+        """Implements model evaluation.
 
     Args:
       num_steps: A guideline for how many evaluation steps to run. Note that it
@@ -76,4 +78,4 @@ class AbstractEvaluable(tf.Module):
       The function may return a dictionary of `Tensors`, which will be
       written to logs and as TensorBoard summaries.
     """
-    pass
+        pass

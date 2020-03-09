@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Wrapper for the mlperf logging utils.
 
 MLPerf compliance logging is only desired under a limited set of circumstances.
@@ -52,122 +51,142 @@ _CALLSITE = r"\((.+):([0-9]+)\)"
 _TAG = r"([a-zA-Z0-9_]+)"
 _VALUE = r"(.*)"
 
-ParsedLine = namedtuple("ParsedLine", ["version", "benchmark", "timestamp",
-                                       "callsite", "tag", "value"])
+ParsedLine = namedtuple(
+    "ParsedLine",
+    ["version", "benchmark", "timestamp", "callsite", "tag", "value"])
 
 LINE_PATTERN = re.compile(
     "^{prefix} {benchmark} {timestamp} {callsite} {tag}(: |$){value}?$".format(
-        prefix=_PREFIX, benchmark=_BENCHMARK, timestamp=_TIMESTAMP,
-        callsite=_CALLSITE, tag=_TAG, value=_VALUE))
+        prefix=_PREFIX,
+        benchmark=_BENCHMARK,
+        timestamp=_TIMESTAMP,
+        callsite=_CALLSITE,
+        tag=_TAG,
+        value=_VALUE))
 
 
-def parse_line(line): # type: (str) -> typing.Optional[ParsedLine]
-  match = LINE_PATTERN.match(line.strip())
-  if not match:
-    return
+def parse_line(line):  # type: (str) -> typing.Optional[ParsedLine]
+    match = LINE_PATTERN.match(line.strip())
+    if not match:
+        return
 
-  major, minor, micro, benchmark, timestamp = match.groups()[:5]
-  call_file, call_line, tag, _, value = match.groups()[5:]
+    major, minor, micro, benchmark, timestamp = match.groups()[:5]
+    call_file, call_line, tag, _, value = match.groups()[5:]
 
-  return ParsedLine(version=(int(major), int(minor), int(micro)),
-                    benchmark=benchmark, timestamp=timestamp,
-                    callsite=(call_file, call_line), tag=tag, value=value)
+    return ParsedLine(version=(int(major), int(minor), int(micro)),
+                      benchmark=benchmark,
+                      timestamp=timestamp,
+                      callsite=(call_file, call_line),
+                      tag=tag,
+                      value=value)
 
 
-def unparse_line(parsed_line): # type: (ParsedLine) -> str
-  version_str = "{}.{}.{}".format(*parsed_line.version)
-  callsite_str = "({}:{})".format(*parsed_line.callsite)
-  value_str = ": {}".format(parsed_line.value) if parsed_line.value else ""
-  return ":::MLPv{} {} {} {} {} {}".format(
-      version_str, parsed_line.benchmark, parsed_line.timestamp, callsite_str,
-      parsed_line.tag, value_str)
+def unparse_line(parsed_line):  # type: (ParsedLine) -> str
+    version_str = "{}.{}.{}".format(*parsed_line.version)
+    callsite_str = "({}:{})".format(*parsed_line.callsite)
+    value_str = ": {}".format(parsed_line.value) if parsed_line.value else ""
+    return ":::MLPv{} {} {} {} {} {}".format(version_str, parsed_line.benchmark,
+                                             parsed_line.timestamp,
+                                             callsite_str, parsed_line.tag,
+                                             value_str)
 
 
 def get_mlperf_log():
-  """Shielded import of mlperf_log module."""
-  try:
-    import mlperf_compliance
+    """Shielded import of mlperf_log module."""
+    try:
+        import mlperf_compliance
 
-    def test_mlperf_log_pip_version():
-      """Check that mlperf_compliance is up to date."""
-      import pkg_resources
-      version = pkg_resources.get_distribution("mlperf_compliance")
-      version = tuple(int(i) for i in version.version.split("."))
-      if version < _MIN_VERSION:
-        tf.compat.v1.logging.warning(
-            "mlperf_compliance is version {}, must be >= {}".format(
-                ".".join([str(i) for i in version]),
-                ".".join([str(i) for i in _MIN_VERSION])))
-        raise ImportError
-      return mlperf_compliance.mlperf_log
+        def test_mlperf_log_pip_version():
+            """Check that mlperf_compliance is up to date."""
+            import pkg_resources
+            version = pkg_resources.get_distribution("mlperf_compliance")
+            version = tuple(int(i) for i in version.version.split("."))
+            if version < _MIN_VERSION:
+                tf.compat.v1.logging.warning(
+                    "mlperf_compliance is version {}, must be >= {}".format(
+                        ".".join([str(i) for i in version]),
+                        ".".join([str(i) for i in _MIN_VERSION])))
+                raise ImportError
+            return mlperf_compliance.mlperf_log
 
-    mlperf_log = test_mlperf_log_pip_version()
+        mlperf_log = test_mlperf_log_pip_version()
 
-  except ImportError:
-    mlperf_log = None
+    except ImportError:
+        mlperf_log = None
 
-  return mlperf_log
+    return mlperf_log
 
 
 class Logger(object):
-  """MLPerf logger indirection class.
+    """MLPerf logger indirection class.
 
   This logger only logs for MLPerf runs, and prevents various errors associated
   with not having the mlperf_compliance package installed.
   """
-  class Tags(object):
-    def __init__(self, mlperf_log):
-      self._enabled = False
-      self._mlperf_log = mlperf_log
 
-    def __getattr__(self, item):
-      if self._mlperf_log is None or not self._enabled:
-        return
-      return getattr(self._mlperf_log, item)
+    class Tags(object):
 
-  def __init__(self):
-    self._enabled = False
-    self._mlperf_log = get_mlperf_log()
-    self.tags = self.Tags(self._mlperf_log)
+        def __init__(self, mlperf_log):
+            self._enabled = False
+            self._mlperf_log = mlperf_log
 
-  def __call__(self, enable=False):
-    if enable and self._mlperf_log is None:
-      raise ImportError("MLPerf logging was requested, but mlperf_compliance "
-                        "module could not be loaded.")
+        def __getattr__(self, item):
+            if self._mlperf_log is None or not self._enabled:
+                return
+            return getattr(self._mlperf_log, item)
 
-    self._enabled = enable
-    self.tags._enabled = enable
-    return self
+    def __init__(self):
+        self._enabled = False
+        self._mlperf_log = get_mlperf_log()
+        self.tags = self.Tags(self._mlperf_log)
 
-  def __enter__(self):
-    pass
+    def __call__(self, enable=False):
+        if enable and self._mlperf_log is None:
+            raise ImportError(
+                "MLPerf logging was requested, but mlperf_compliance "
+                "module could not be loaded.")
 
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    self._enabled = False
-    self.tags._enabled = False
+        self._enabled = enable
+        self.tags._enabled = enable
+        return self
 
-  @property
-  def log_file(self):
-    if self._mlperf_log is None:
-      return
-    return self._mlperf_log.LOG_FILE
+    def __enter__(self):
+        pass
 
-  @property
-  def enabled(self):
-    return self._enabled
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._enabled = False
+        self.tags._enabled = False
 
-  def ncf_print(self, key, value=None, stack_offset=_STACK_OFFSET,
-                deferred=False, extra_print=False, prefix=_NCF_PREFIX):
-    if self._mlperf_log is None or not self.enabled:
-      return
-    self._mlperf_log.ncf_print(key=key, value=value, stack_offset=stack_offset,
-                               deferred=deferred, extra_print=extra_print,
-                               prefix=prefix)
+    @property
+    def log_file(self):
+        if self._mlperf_log is None:
+            return
+        return self._mlperf_log.LOG_FILE
 
-  def set_ncf_root(self, path):
-    if self._mlperf_log is None:
-      return
-    self._mlperf_log.ROOT_DIR_NCF = path
+    @property
+    def enabled(self):
+        return self._enabled
+
+    def ncf_print(self,
+                  key,
+                  value=None,
+                  stack_offset=_STACK_OFFSET,
+                  deferred=False,
+                  extra_print=False,
+                  prefix=_NCF_PREFIX):
+        if self._mlperf_log is None or not self.enabled:
+            return
+        self._mlperf_log.ncf_print(key=key,
+                                   value=value,
+                                   stack_offset=stack_offset,
+                                   deferred=deferred,
+                                   extra_print=extra_print,
+                                   prefix=prefix)
+
+    def set_ncf_root(self, path):
+        if self._mlperf_log is None:
+            return
+        self._mlperf_log.ROOT_DIR_NCF = path
 
 
 LOGGER = Logger()
@@ -176,17 +195,16 @@ TAGS = LOGGER.tags
 
 
 def clear_system_caches():
-  if not LOGGER.enabled:
-    return
-  ret_code = subprocess.call(
-      ["sync && echo 3 | {} tee {}".format(SUDO, DROP_CACHE_LOC)],
-      shell=True)
+    if not LOGGER.enabled:
+        return
+    ret_code = subprocess.call(
+        ["sync && echo 3 | {} tee {}".format(SUDO, DROP_CACHE_LOC)], shell=True)
 
-  if ret_code:
-    raise ValueError("Failed to clear caches")
+    if ret_code:
+        raise ValueError("Failed to clear caches")
 
 
 if __name__ == "__main__":
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-  with LOGGER(True):
-    ncf_print(key=TAGS.RUN_START)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+    with LOGGER(True):
+        ncf_print(key=TAGS.RUN_START)

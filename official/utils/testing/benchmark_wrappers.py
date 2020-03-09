@@ -24,7 +24,7 @@ flags.DEFINE_multi_string(
 
 
 def enable_runtime_flags(decorated_func):
-  """Sets attributes from --benchmark_method_flags for method execution.
+    """Sets attributes from --benchmark_method_flags for method execution.
 
   @enable_runtime_flags decorator temporarily adds flags passed in via
   --benchmark_method_flags and runs the decorated function in that context.
@@ -54,30 +54,30 @@ def enable_runtime_flags(decorated_func):
       overrides from --benchmark_method_flags are active.
   """
 
-  def runner(*args, **kwargs):
-    """Creates a temporary context to activate --benchmark_method_flags."""
-    if FLAGS.benchmark_method_flags:
-      saved_flag_values = flagsaver.save_flag_values()
-      for key_value in FLAGS.benchmark_method_flags:
-        key, value = key_value.split('=', 1)
+    def runner(*args, **kwargs):
+        """Creates a temporary context to activate --benchmark_method_flags."""
+        if FLAGS.benchmark_method_flags:
+            saved_flag_values = flagsaver.save_flag_values()
+            for key_value in FLAGS.benchmark_method_flags:
+                key, value = key_value.split('=', 1)
+                try:
+                    numeric_float = float(value)
+                    numeric_int = int(numeric_float)
+                    if abs(numeric_int) == abs(numeric_float):
+                        flag_value = numeric_int
+                    else:
+                        flag_value = numeric_float
+                except ValueError:
+                    flag_value = value
+                logging.info('Setting --%s=%s', key, flag_value)
+                setattr(FLAGS, key, flag_value)
+        else:
+            saved_flag_values = None
         try:
-          numeric_float = float(value)
-          numeric_int = int(numeric_float)
-          if abs(numeric_int) == abs(numeric_float):
-            flag_value = numeric_int
-          else:
-            flag_value = numeric_float
-        except ValueError:
-          flag_value = value
-        logging.info('Setting --%s=%s', key, flag_value)
-        setattr(FLAGS, key, flag_value)
-    else:
-      saved_flag_values = None
-    try:
-      result = decorated_func(*args, **kwargs)
-      return result
-    finally:
-      if saved_flag_values:
-        flagsaver.restore_flag_values(saved_flag_values)
+            result = decorated_func(*args, **kwargs)
+            return result
+        finally:
+            if saved_flag_values:
+                flagsaver.restore_flag_values(saved_flag_values)
 
-  return runner
+    return runner

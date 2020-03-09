@@ -31,75 +31,78 @@ from official.vision.image_classification import resnet_ctl_imagenet_main
 
 
 class CtlImagenetTest(tf.test.TestCase):
-  """Unit tests for Keras ResNet with ImageNet using CTL."""
+    """Unit tests for Keras ResNet with ImageNet using CTL."""
 
-  _extra_flags = [
-      '-batch_size', '4',
-      '-train_steps', '4',
-      '-use_synthetic_data', 'true'
-  ]
-  _tempdir = None
-
-  def get_temp_dir(self):
-    if not self._tempdir:
-      self._tempdir = tempfile.mkdtemp(
-          dir=super(CtlImagenetTest, self).get_temp_dir())
-    return self._tempdir
-
-  @classmethod
-  def setUpClass(cls):
-    super(CtlImagenetTest, cls).setUpClass()
-    common.define_keras_flags()
-
-  def setUp(self):
-    super(CtlImagenetTest, self).setUp()
-    imagenet_preprocessing.NUM_IMAGES['validation'] = 4
-    self.policy = \
-        tf.compat.v2.keras.mixed_precision.experimental.global_policy()
-
-  def tearDown(self):
-    super(CtlImagenetTest, self).tearDown()
-    tf.io.gfile.rmtree(self.get_temp_dir())
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy(self.policy)
-
-  def test_end_to_end_no_dist_strat(self):
-    """Test Keras model with 1 GPU, no distribution strategy."""
-
-    model_dir = os.path.join(self.get_temp_dir(), 'ctl_imagenet_no_dist_strat')
-    extra_flags = [
-        '-distribution_strategy', 'off',
-        '-model_dir', model_dir,
-        '-data_format', 'channels_last',
+    _extra_flags = [
+        '-batch_size', '4', '-train_steps', '4', '-use_synthetic_data', 'true'
     ]
-    extra_flags = extra_flags + self._extra_flags
+    _tempdir = None
 
-    integration.run_synthetic(
-        main=resnet_ctl_imagenet_main.run,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+    def get_temp_dir(self):
+        if not self._tempdir:
+            self._tempdir = tempfile.mkdtemp(
+                dir=super(CtlImagenetTest, self).get_temp_dir())
+        return self._tempdir
 
-  def test_end_to_end_2_gpu(self):
-    """Test Keras model with 2 GPUs."""
-    num_gpus = '2'
-    if context.num_gpus() < 2:
-      num_gpus = '0'
+    @classmethod
+    def setUpClass(cls):
+        super(CtlImagenetTest, cls).setUpClass()
+        common.define_keras_flags()
 
-    model_dir = os.path.join(self.get_temp_dir(), 'ctl_imagenet_2_gpu')
-    extra_flags = [
-        '-num_gpus', num_gpus,
-        '-distribution_strategy', 'mirrored',
-        '-model_dir', model_dir,
-        '-data_format', 'channels_last',
-    ]
-    extra_flags = extra_flags + self._extra_flags
+    def setUp(self):
+        super(CtlImagenetTest, self).setUp()
+        imagenet_preprocessing.NUM_IMAGES['validation'] = 4
+        self.policy = \
+            tf.compat.v2.keras.mixed_precision.experimental.global_policy()
 
-    integration.run_synthetic(
-        main=resnet_ctl_imagenet_main.run,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+    def tearDown(self):
+        super(CtlImagenetTest, self).tearDown()
+        tf.io.gfile.rmtree(self.get_temp_dir())
+        tf.compat.v2.keras.mixed_precision.experimental.set_policy(self.policy)
+
+    def test_end_to_end_no_dist_strat(self):
+        """Test Keras model with 1 GPU, no distribution strategy."""
+
+        model_dir = os.path.join(self.get_temp_dir(),
+                                 'ctl_imagenet_no_dist_strat')
+        extra_flags = [
+            '-distribution_strategy',
+            'off',
+            '-model_dir',
+            model_dir,
+            '-data_format',
+            'channels_last',
+        ]
+        extra_flags = extra_flags + self._extra_flags
+
+        integration.run_synthetic(main=resnet_ctl_imagenet_main.run,
+                                  tmp_root=self.get_temp_dir(),
+                                  extra_flags=extra_flags)
+
+    def test_end_to_end_2_gpu(self):
+        """Test Keras model with 2 GPUs."""
+        num_gpus = '2'
+        if context.num_gpus() < 2:
+            num_gpus = '0'
+
+        model_dir = os.path.join(self.get_temp_dir(), 'ctl_imagenet_2_gpu')
+        extra_flags = [
+            '-num_gpus',
+            num_gpus,
+            '-distribution_strategy',
+            'mirrored',
+            '-model_dir',
+            model_dir,
+            '-data_format',
+            'channels_last',
+        ]
+        extra_flags = extra_flags + self._extra_flags
+
+        integration.run_synthetic(main=resnet_ctl_imagenet_main.run,
+                                  tmp_root=self.get_temp_dir(),
+                                  extra_flags=extra_flags)
+
 
 if __name__ == '__main__':
-  assert tf.version.VERSION.startswith('2.')
-  tf.test.main()
+    assert tf.version.VERSION.startswith('2.')
+    tf.test.main()

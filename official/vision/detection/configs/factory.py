@@ -20,14 +20,14 @@ from official.modeling.hyperparams import params_dict
 
 
 def config_generator(model):
-  """Model function generator."""
-  if model == 'retinanet':
-    default_config = retinanet_config.RETINANET_CFG
-    restrictions = retinanet_config.RETINANET_RESTRICTIONS
-  elif model == 'mask_rcnn':
-    default_config = maskrcnn_config.MASKRCNN_CFG
-    restrictions = maskrcnn_config.MASKRCNN_RESTRICTIONS
-  else:
-    raise ValueError('Model %s is not supported.' % model)
+    """Model function generator."""
+    if model == 'retinanet':
+        default_config = retinanet_config.RETINANET_CFG
+        restrictions = retinanet_config.RETINANET_RESTRICTIONS
+    elif model == 'mask_rcnn':
+        default_config = maskrcnn_config.MASKRCNN_CFG
+        restrictions = maskrcnn_config.MASKRCNN_RESTRICTIONS
+    else:
+        raise ValueError('Model %s is not supported.' % model)
 
-  return params_dict.ParamsDict(default_config, restrictions)
+    return params_dict.ParamsDict(default_config, restrictions)

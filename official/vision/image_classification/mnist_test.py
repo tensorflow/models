@@ -32,61 +32,61 @@ from official.vision.image_classification import mnist_main
 
 
 def eager_strategy_combinations():
-  return combinations.combine(
-      distribution=[
-          strategy_combinations.default_strategy,
-          strategy_combinations.tpu_strategy,
-          strategy_combinations.one_device_strategy_gpu,
-      ],
-      mode="eager",
-  )
+    return combinations.combine(
+        distribution=[
+            strategy_combinations.default_strategy,
+            strategy_combinations.tpu_strategy,
+            strategy_combinations.one_device_strategy_gpu,
+        ],
+        mode="eager",
+    )
 
 
 class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
-  """Unit tests for sample Keras MNIST model."""
-  _tempdir = None
+    """Unit tests for sample Keras MNIST model."""
+    _tempdir = None
 
-  @classmethod
-  def setUpClass(cls):  # pylint: disable=invalid-name
-    super(KerasMnistTest, cls).setUpClass()
-    mnist_main.define_mnist_flags()
+    @classmethod
+    def setUpClass(cls):  # pylint: disable=invalid-name
+        super(KerasMnistTest, cls).setUpClass()
+        mnist_main.define_mnist_flags()
 
-  def tearDown(self):
-    super(KerasMnistTest, self).tearDown()
-    tf.io.gfile.rmtree(self.get_temp_dir())
+    def tearDown(self):
+        super(KerasMnistTest, self).tearDown()
+        tf.io.gfile.rmtree(self.get_temp_dir())
 
-  @combinations.generate(eager_strategy_combinations())
-  def test_end_to_end(self, distribution):
-    """Test Keras MNIST model with `strategy`."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
+    @combinations.generate(eager_strategy_combinations())
+    def test_end_to_end(self, distribution):
+        """Test Keras MNIST model with `strategy`."""
+        config = keras_utils.get_config_proto_v1()
+        tf.compat.v1.enable_eager_execution(config=config)
 
-    extra_flags = [
-        "-train_epochs", "1",
-        # Let TFDS find the metadata folder automatically
-        "--data_dir="
-    ]
+        extra_flags = [
+            "-train_epochs",
+            "1",
+            # Let TFDS find the metadata folder automatically
+            "--data_dir="
+        ]
 
-    dummy_data = (
-        tf.ones(shape=(10, 28, 28, 1), dtype=tf.int32),
-        tf.range(10),
-    )
-    datasets = (
-        tf.data.Dataset.from_tensor_slices(dummy_data),
-        tf.data.Dataset.from_tensor_slices(dummy_data),
-    )
+        dummy_data = (
+            tf.ones(shape=(10, 28, 28, 1), dtype=tf.int32),
+            tf.range(10),
+        )
+        datasets = (
+            tf.data.Dataset.from_tensor_slices(dummy_data),
+            tf.data.Dataset.from_tensor_slices(dummy_data),
+        )
 
-    run = functools.partial(mnist_main.run,
-                            datasets_override=datasets,
-                            strategy_override=distribution)
+        run = functools.partial(mnist_main.run,
+                                datasets_override=datasets,
+                                strategy_override=distribution)
 
-    integration.run_synthetic(
-        main=run,
-        synth=False,
-        tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags)
+        integration.run_synthetic(main=run,
+                                  synth=False,
+                                  tmp_root=self.get_temp_dir(),
+                                  extra_flags=extra_flags)
 
 
 if __name__ == "__main__":
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()
+    tf.compat.v1.enable_v2_behavior()
+    tf.test.main()

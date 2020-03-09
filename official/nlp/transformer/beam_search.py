@@ -23,39 +23,40 @@ _StateKeys = v1._StateKeys  # pylint: disable=protected-access
 
 
 class SequenceBeamSearchV2(v1.SequenceBeamSearch):
-  """Implementation of beam search loop in v2."""
+    """Implementation of beam search loop in v2."""
 
-  def search(self, initial_ids, initial_cache):
-    """Beam search for sequences with highest scores."""
-    state, state_shapes = self._create_initial_state(initial_ids, initial_cache)
+    def search(self, initial_ids, initial_cache):
+        """Beam search for sequences with highest scores."""
+        state, state_shapes = self._create_initial_state(
+            initial_ids, initial_cache)
 
-    finished_state = tf.nest.map_structure(
-        tf.stop_gradient,
-        tf.while_loop(self._continue_search,
-                      self._search_step,
-                      loop_vars=[state],
-                      shape_invariants=[state_shapes],
-                      parallel_iterations=1))
-    finished_state = finished_state[0]
+        finished_state = tf.nest.map_structure(
+            tf.stop_gradient,
+            tf.while_loop(self._continue_search,
+                          self._search_step,
+                          loop_vars=[state],
+                          shape_invariants=[state_shapes],
+                          parallel_iterations=1))
+        finished_state = finished_state[0]
 
-    alive_seq = finished_state[_StateKeys.ALIVE_SEQ]
-    alive_log_probs = finished_state[_StateKeys.ALIVE_LOG_PROBS]
-    finished_seq = finished_state[_StateKeys.FINISHED_SEQ]
-    finished_scores = finished_state[_StateKeys.FINISHED_SCORES]
-    finished_flags = finished_state[_StateKeys.FINISHED_FLAGS]
+        alive_seq = finished_state[_StateKeys.ALIVE_SEQ]
+        alive_log_probs = finished_state[_StateKeys.ALIVE_LOG_PROBS]
+        finished_seq = finished_state[_StateKeys.FINISHED_SEQ]
+        finished_scores = finished_state[_StateKeys.FINISHED_SCORES]
+        finished_flags = finished_state[_StateKeys.FINISHED_FLAGS]
 
-    # 2.0 changes tf.where behavior. Should make parameters broadcastable.
-    finished_cond = tf.reduce_any(finished_flags, 1, name="finished_cond")
-    seq_cond = _expand_to_same_rank(finished_cond, finished_seq)
-    score_cond = _expand_to_same_rank(finished_cond, finished_scores)
+        # 2.0 changes tf.where behavior. Should make parameters broadcastable.
+        finished_cond = tf.reduce_any(finished_flags, 1, name="finished_cond")
+        seq_cond = _expand_to_same_rank(finished_cond, finished_seq)
+        score_cond = _expand_to_same_rank(finished_cond, finished_scores)
 
-    # Account for corner case where there are no finished sequences for a
-    # particular batch item. In that case, return alive sequences for that batch
-    # item.
-    finished_seq = tf.compat.v2.where(seq_cond, finished_seq, alive_seq)
-    finished_scores = tf.compat.v2.where(
-        score_cond, finished_scores, alive_log_probs)
-    return finished_seq, finished_scores
+        # Account for corner case where there are no finished sequences for a
+        # particular batch item. In that case, return alive sequences for that batch
+        # item.
+        finished_seq = tf.compat.v2.where(seq_cond, finished_seq, alive_seq)
+        finished_scores = tf.compat.v2.where(score_cond, finished_scores,
+                                             alive_log_probs)
+        return finished_seq, finished_scores
 
 
 def sequence_beam_search(symbols_to_logits_fn,
@@ -68,7 +69,7 @@ def sequence_beam_search(symbols_to_logits_fn,
                          eos_id,
                          padded_decode=False,
                          dtype="float32"):
-  """Search for sequence of subtoken ids with the largest probability.
+    """Search for sequence of subtoken ids with the largest probability.
 
   Args:
     symbols_to_logits_fn: A function that takes in ids, index, and cache as
@@ -99,22 +100,22 @@ def sequence_beam_search(symbols_to_logits_fn,
     Top decoded sequences [batch_size, beam_size, max_decode_length]
     sequence scores [batch_size, beam_size]
   """
-  batch_size = (
-      initial_ids.shape.as_list()[0] if padded_decode else
-      tf.shape(initial_ids)[0])
-  if misc.is_v2():
-    sbs = SequenceBeamSearchV2(symbols_to_logits_fn, vocab_size, batch_size,
-                               beam_size, alpha, max_decode_length, eos_id,
-                               padded_decode, dtype)
-  else:
-    sbs = v1.SequenceBeamSearch(symbols_to_logits_fn, vocab_size, batch_size,
-                                beam_size, alpha, max_decode_length, eos_id,
-                                padded_decode, dtype)
-  return sbs.search(initial_ids, initial_cache)
+    batch_size = (initial_ids.shape.as_list()[0]
+                  if padded_decode else tf.shape(initial_ids)[0])
+    if misc.is_v2():
+        sbs = SequenceBeamSearchV2(symbols_to_logits_fn, vocab_size, batch_size,
+                                   beam_size, alpha, max_decode_length, eos_id,
+                                   padded_decode, dtype)
+    else:
+        sbs = v1.SequenceBeamSearch(symbols_to_logits_fn, vocab_size,
+                                    batch_size, beam_size, alpha,
+                                    max_decode_length, eos_id, padded_decode,
+                                    dtype)
+    return sbs.search(initial_ids, initial_cache)
 
 
 def _expand_to_same_rank(tensor, target):
-  """Expands a given tensor to target's rank to be broadcastable.
+    """Expands a given tensor to target's rank to be broadcastable.
 
   Args:
     tensor: input tensor to tile. Shape: [b, d1, ..., da]
@@ -126,13 +127,13 @@ def _expand_to_same_rank(tensor, target):
   Raises:
     ValueError, if the shape rank of rank tensor/target is None.
   """
-  if tensor.shape.rank is None:
-    raise ValueError("Expect rank for tensor shape, but got None.")
-  if target.shape.rank is None:
-    raise ValueError("Expect rank for target shape, but got None.")
+    if tensor.shape.rank is None:
+        raise ValueError("Expect rank for tensor shape, but got None.")
+    if target.shape.rank is None:
+        raise ValueError("Expect rank for target shape, but got None.")
 
-  with tf.name_scope("expand_rank"):
-    diff_rank = target.shape.rank - tensor.shape.rank
-    for _ in range(diff_rank):
-      tensor = tf.expand_dims(tensor, -1)
-    return tensor
+    with tf.name_scope("expand_rank"):
+        diff_rank = target.shape.rank - tensor.shape.rank
+        for _ in range(diff_rank):
+            tensor = tf.expand_dims(tensor, -1)
+        return tensor

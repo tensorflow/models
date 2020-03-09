@@ -31,50 +31,51 @@ _MIN_SUMMARY_STEPS = 10
 
 
 def _save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
-  """Saves model to with provided checkpoint prefix."""
+    """Saves model to with provided checkpoint prefix."""
 
-  checkpoint_path = os.path.join(model_dir, checkpoint_prefix)
-  saved_path = checkpoint.save(checkpoint_path)
-  logging.info('Saving model as TF checkpoint: %s', saved_path)
-  return
+    checkpoint_path = os.path.join(model_dir, checkpoint_prefix)
+    saved_path = checkpoint.save(checkpoint_path)
+    logging.info('Saving model as TF checkpoint: %s', saved_path)
+    return
 
 
 def _get_input_iterator(input_fn, strategy):
-  """Returns distributed dataset iterator."""
-  # When training with TPU pods, datasets needs to be cloned across
-  # workers. Since Dataset instance cannot be cloned in eager mode, we instead
-  # pass callable that returns a dataset.
-  if not callable(input_fn):
-    raise ValueError('`input_fn` should be a closure that returns a dataset.')
-  iterator = iter(
-      strategy.experimental_distribute_datasets_from_function(input_fn))
-  return iterator
+    """Returns distributed dataset iterator."""
+    # When training with TPU pods, datasets needs to be cloned across
+    # workers. Since Dataset instance cannot be cloned in eager mode, we instead
+    # pass callable that returns a dataset.
+    if not callable(input_fn):
+        raise ValueError(
+            '`input_fn` should be a closure that returns a dataset.')
+    iterator = iter(
+        strategy.experimental_distribute_datasets_from_function(input_fn))
+    return iterator
 
 
 def _float_metric_value(metric):
-  """Gets the value of a float-value keras metric."""
-  return metric.result().numpy().astype(float)
+    """Gets the value of a float-value keras metric."""
+    return metric.result().numpy().astype(float)
 
 
 def steps_to_run(current_step, steps_per_epoch, steps_per_loop):
-  """Calculates steps to run on device."""
-  if steps_per_loop <= 0:
-    raise ValueError('steps_per_loop should be positive integer.')
-  if steps_per_loop == 1:
-    return steps_per_loop
-  remainder_in_epoch = current_step % steps_per_epoch
-  if remainder_in_epoch != 0:
-    return min(steps_per_epoch - remainder_in_epoch, steps_per_loop)
-  else:
-    return steps_per_loop
+    """Calculates steps to run on device."""
+    if steps_per_loop <= 0:
+        raise ValueError('steps_per_loop should be positive integer.')
+    if steps_per_loop == 1:
+        return steps_per_loop
+    remainder_in_epoch = current_step % steps_per_epoch
+    if remainder_in_epoch != 0:
+        return min(steps_per_epoch - remainder_in_epoch, steps_per_loop)
+    else:
+        return steps_per_loop
 
 
 def write_txt_summary(training_summary, summary_dir):
-  """Writes a summary text file to record stats."""
-  summary_path = os.path.join(summary_dir, _SUMMARY_TXT)
-  with tf.io.gfile.GFile(summary_path, 'wb') as f:
-    logging.info('Training Summary: \n%s', str(training_summary))
-    f.write(json.dumps(training_summary, indent=4))
+    """Writes a summary text file to record stats."""
+    summary_path = os.path.join(summary_dir, _SUMMARY_TXT)
+    with tf.io.gfile.GFile(summary_path, 'wb') as f:
+        logging.info('Training Summary: \n%s', str(training_summary))
+        f.write(json.dumps(training_summary, indent=4))
 
 
 def run_customized_training_loop(
@@ -99,7 +100,7 @@ def run_customized_training_loop(
     explicit_allreduce=False,
     pre_allreduce_callbacks=None,
     post_allreduce_callbacks=None):
-  """Run BERT pretrain model training using low-level API.
+    """Run BERT pretrain model training using low-level API.
 
   Arguments:
       _sentinel: Used to prevent positional parameters. Internal, do not use.
@@ -171,121 +172,122 @@ def run_customized_training_loop(
         by `model_fn` is None.
   """
 
-  if _sentinel is not None:
-    raise ValueError('only call `run_customized_training_loop()` '
-                     'with named arguments.')
+    if _sentinel is not None:
+        raise ValueError('only call `run_customized_training_loop()` '
+                         'with named arguments.')
 
-  required_arguments = [
-      strategy, model_fn, loss_fn, model_dir, steps_per_epoch, train_input_fn
-  ]
-  if [arg for arg in required_arguments if arg is None]:
-    raise ValueError('`strategy`, `model_fn`, `loss_fn`, `model_dir`, '
-                     '`steps_per_loop` and `steps_per_epoch` are required '
-                     'parameters.')
-  if steps_per_loop > steps_per_epoch:
-    logging.error(
-        'steps_per_loop: %d is specified to be greater than '
-        ' steps_per_epoch: %d, we will use steps_per_epoch as'
-        ' steps_per_loop.', steps_per_loop, steps_per_epoch)
-    steps_per_loop = steps_per_epoch
-  assert tf.executing_eagerly()
-
-  if run_eagerly:
-    if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
-      raise ValueError(
-          'TPUStrategy should not run eagerly as it heavily replies on graph'
-          ' optimization for the distributed system.')
-
-  if eval_input_fn and (eval_steps is None or metric_fn is None):
-    raise ValueError(
-        '`eval_step` and `metric_fn` are required when `eval_input_fn ` '
-        'is not none.')
-  if metric_fn and not callable(metric_fn):
-    raise ValueError(
-        'if `metric_fn` is specified, metric_fn must be a callable.')
-
-  total_training_steps = steps_per_epoch * epochs
-
-  # To reduce unnecessary send/receive input pipeline operation, we place input
-  # pipeline ops in worker task.
-  train_iterator = _get_input_iterator(train_input_fn, strategy)
-
-  with distribution_utils.get_strategy_scope(strategy):
-    # To correctly place the model weights on accelerators,
-    # model and optimizer should be created in scope.
-    model, sub_model = model_fn()
-    if not hasattr(model, 'optimizer'):
-      raise ValueError('User should set optimizer attribute to model '
-                       'inside `model_fn`.')
-    if sub_model_export_name and sub_model is None:
-      raise ValueError('sub_model_export_name is specified as %s, but '
-                       'sub_model is None.' % sub_model_export_name)
-
-    optimizer = model.optimizer
-
-    if init_checkpoint:
-      logging.info(
-          'Checkpoint file %s found and restoring from '
-          'initial checkpoint for core model.', init_checkpoint)
-      checkpoint = tf.train.Checkpoint(model=sub_model)
-      checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
-      logging.info('Loading from checkpoint file completed')
-
-    train_loss_metric = tf.keras.metrics.Mean(
-        'training_loss', dtype=tf.float32)
-    eval_metrics = [metric_fn()] if metric_fn else []
-    # If evaluation is required, make a copy of metric as it will be used by
-    # both train and evaluation.
-    train_metrics = [
-        metric.__class__.from_config(metric.get_config())
-        for metric in eval_metrics
+    required_arguments = [
+        strategy, model_fn, loss_fn, model_dir, steps_per_epoch, train_input_fn
     ]
+    if [arg for arg in required_arguments if arg is None]:
+        raise ValueError('`strategy`, `model_fn`, `loss_fn`, `model_dir`, '
+                         '`steps_per_loop` and `steps_per_epoch` are required '
+                         'parameters.')
+    if steps_per_loop > steps_per_epoch:
+        logging.error(
+            'steps_per_loop: %d is specified to be greater than '
+            ' steps_per_epoch: %d, we will use steps_per_epoch as'
+            ' steps_per_loop.', steps_per_loop, steps_per_epoch)
+        steps_per_loop = steps_per_epoch
+    assert tf.executing_eagerly()
 
-    # Create summary writers
-    summary_dir = os.path.join(model_dir, 'summaries')
-    eval_summary_writer = tf.summary.create_file_writer(
-        os.path.join(summary_dir, 'eval'))
-    if steps_per_loop >= _MIN_SUMMARY_STEPS:
-      # Only writes summary when the stats are collected sufficiently over
-      # enough steps.
-      train_summary_writer = tf.summary.create_file_writer(
-          os.path.join(summary_dir, 'train'))
-    else:
-      train_summary_writer = None
+    if run_eagerly:
+        if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
+            raise ValueError(
+                'TPUStrategy should not run eagerly as it heavily replies on graph'
+                ' optimization for the distributed system.')
 
-    # Collects training variables.
-    training_vars = model.trainable_variables
+    if eval_input_fn and (eval_steps is None or metric_fn is None):
+        raise ValueError(
+            '`eval_step` and `metric_fn` are required when `eval_input_fn ` '
+            'is not none.')
+    if metric_fn and not callable(metric_fn):
+        raise ValueError(
+            'if `metric_fn` is specified, metric_fn must be a callable.')
 
-    def _replicated_step(inputs):
-      """Replicated training step."""
+    total_training_steps = steps_per_epoch * epochs
 
-      inputs, labels = inputs
-      with tf.GradientTape() as tape:
-        model_outputs = model(inputs, training=True)
-        loss = loss_fn(labels, model_outputs)
-      if explicit_allreduce:
-        grad_utils.minimize_using_explicit_allreduce(tape, optimizer, loss,
-                                                     training_vars,
-                                                     pre_allreduce_callbacks,
-                                                     post_allreduce_callbacks)
-      else:
-        if isinstance(optimizer,
-                      tf.keras.mixed_precision.experimental.LossScaleOptimizer):
-          with tape:
-            scaled_loss = optimizer.get_scaled_loss(loss)
-          scaled_grads = tape.gradient(scaled_loss, training_vars)
-          grads = optimizer.get_unscaled_gradients(scaled_grads)
+    # To reduce unnecessary send/receive input pipeline operation, we place input
+    # pipeline ops in worker task.
+    train_iterator = _get_input_iterator(train_input_fn, strategy)
+
+    with distribution_utils.get_strategy_scope(strategy):
+        # To correctly place the model weights on accelerators,
+        # model and optimizer should be created in scope.
+        model, sub_model = model_fn()
+        if not hasattr(model, 'optimizer'):
+            raise ValueError('User should set optimizer attribute to model '
+                             'inside `model_fn`.')
+        if sub_model_export_name and sub_model is None:
+            raise ValueError('sub_model_export_name is specified as %s, but '
+                             'sub_model is None.' % sub_model_export_name)
+
+        optimizer = model.optimizer
+
+        if init_checkpoint:
+            logging.info(
+                'Checkpoint file %s found and restoring from '
+                'initial checkpoint for core model.', init_checkpoint)
+            checkpoint = tf.train.Checkpoint(model=sub_model)
+            checkpoint.restore(
+                init_checkpoint).assert_existing_objects_matched()
+            logging.info('Loading from checkpoint file completed')
+
+        train_loss_metric = tf.keras.metrics.Mean('training_loss',
+                                                  dtype=tf.float32)
+        eval_metrics = [metric_fn()] if metric_fn else []
+        # If evaluation is required, make a copy of metric as it will be used by
+        # both train and evaluation.
+        train_metrics = [
+            metric.__class__.from_config(metric.get_config())
+            for metric in eval_metrics
+        ]
+
+        # Create summary writers
+        summary_dir = os.path.join(model_dir, 'summaries')
+        eval_summary_writer = tf.summary.create_file_writer(
+            os.path.join(summary_dir, 'eval'))
+        if steps_per_loop >= _MIN_SUMMARY_STEPS:
+            # Only writes summary when the stats are collected sufficiently over
+            # enough steps.
+            train_summary_writer = tf.summary.create_file_writer(
+                os.path.join(summary_dir, 'train'))
         else:
-          grads = tape.gradient(loss, training_vars)
-        optimizer.apply_gradients(zip(grads, training_vars))
-      # For reporting, the metric takes the mean of losses.
-      train_loss_metric.update_state(loss)
-      for metric in train_metrics:
-        metric.update_state(labels, model_outputs)
+            train_summary_writer = None
 
-    @tf.function
-    def train_steps(iterator, steps):
-      """Performs distributed training steps in a loop.
+        # Collects training variables.
+        training_vars = model.trainable_variables
+
+        def _replicated_step(inputs):
+            """Replicated training step."""
+
+            inputs, labels = inputs
+            with tf.GradientTape() as tape:
+                model_outputs = model(inputs, training=True)
+                loss = loss_fn(labels, model_outputs)
+            if explicit_allreduce:
+                grad_utils.minimize_using_explicit_allreduce(
+                    tape, optimizer, loss, training_vars,
+                    pre_allreduce_callbacks, post_allreduce_callbacks)
+            else:
+                if isinstance(
+                        optimizer, tf.keras.mixed_precision.experimental.
+                        LossScaleOptimizer):
+                    with tape:
+                        scaled_loss = optimizer.get_scaled_loss(loss)
+                    scaled_grads = tape.gradient(scaled_loss, training_vars)
+                    grads = optimizer.get_unscaled_gradients(scaled_grads)
+                else:
+                    grads = tape.gradient(loss, training_vars)
+                optimizer.apply_gradients(zip(grads, training_vars))
+            # For reporting, the metric takes the mean of losses.
+            train_loss_metric.update_state(loss)
+            for metric in train_metrics:
+                metric.update_state(labels, model_outputs)
+
+        @tf.function
+        def train_steps(iterator, steps):
+            """Performs distributed training steps in a loop.
 
       Args:
         iterator: the distributed iterator of training datasets.
@@ -295,15 +297,17 @@ def run_customized_training_loop(
       Raises:
         ValueError: Any of the arguments or tensor shapes are invalid.
       """
-      if not isinstance(steps, tf.Tensor):
-        raise ValueError('steps should be an Tensor. Python object may cause '
-                         'retracing.')
+            if not isinstance(steps, tf.Tensor):
+                raise ValueError(
+                    'steps should be an Tensor. Python object may cause '
+                    'retracing.')
 
-      for _ in tf.range(steps):
-        strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+            for _ in tf.range(steps):
+                strategy.experimental_run_v2(_replicated_step,
+                                             args=(next(iterator),))
 
-    def train_single_step(iterator):
-      """Performs a distributed training step.
+        def train_single_step(iterator):
+            """Performs a distributed training step.
 
       Args:
         iterator: the distributed iterator of training datasets.
@@ -311,148 +315,158 @@ def run_customized_training_loop(
       Raises:
         ValueError: Any of the arguments or tensor shapes are invalid.
       """
-      strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+            strategy.experimental_run_v2(_replicated_step,
+                                         args=(next(iterator),))
 
-    def test_step(iterator):
-      """Calculates evaluation metrics on distributed devices."""
+        def test_step(iterator):
+            """Calculates evaluation metrics on distributed devices."""
 
-      def _test_step_fn(inputs):
-        """Replicated accuracy calculation."""
+            def _test_step_fn(inputs):
+                """Replicated accuracy calculation."""
 
-        inputs, labels = inputs
-        model_outputs = model(inputs, training=False)
-        for metric in eval_metrics:
-          metric.update_state(labels, model_outputs)
+                inputs, labels = inputs
+                model_outputs = model(inputs, training=False)
+                for metric in eval_metrics:
+                    metric.update_state(labels, model_outputs)
 
-      strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
+            strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
-    if not run_eagerly:
-      train_single_step = tf.function(train_single_step)
-      test_step = tf.function(test_step)
+        if not run_eagerly:
+            train_single_step = tf.function(train_single_step)
+            test_step = tf.function(test_step)
 
-    def _run_evaluation(current_training_step, test_iterator):
-      """Runs validation steps and aggregate metrics."""
-      for _ in range(eval_steps):
-        test_step(test_iterator)
+        def _run_evaluation(current_training_step, test_iterator):
+            """Runs validation steps and aggregate metrics."""
+            for _ in range(eval_steps):
+                test_step(test_iterator)
 
-      with eval_summary_writer.as_default():
-        for metric in eval_metrics + model.metrics:
-          metric_value = _float_metric_value(metric)
-          logging.info('Step: [%d] Validation %s = %f', current_training_step,
-                       metric.name, metric_value)
-          tf.summary.scalar(
-              metric.name, metric_value, step=current_training_step)
-        eval_summary_writer.flush()
+            with eval_summary_writer.as_default():
+                for metric in eval_metrics + model.metrics:
+                    metric_value = _float_metric_value(metric)
+                    logging.info('Step: [%d] Validation %s = %f',
+                                 current_training_step, metric.name,
+                                 metric_value)
+                    tf.summary.scalar(metric.name,
+                                      metric_value,
+                                      step=current_training_step)
+                eval_summary_writer.flush()
 
-    def _run_callbacks_on_batch_begin(batch):
-      """Runs custom callbacks at the start of every step."""
-      if not custom_callbacks:
-        return
-      for callback in custom_callbacks:
-        callback.on_batch_begin(batch)
+        def _run_callbacks_on_batch_begin(batch):
+            """Runs custom callbacks at the start of every step."""
+            if not custom_callbacks:
+                return
+            for callback in custom_callbacks:
+                callback.on_batch_begin(batch)
 
-    def _run_callbacks_on_batch_end(batch, logs):
-      """Runs custom callbacks at the end of every step."""
-      if not custom_callbacks:
-        return
-      for callback in custom_callbacks:
-        callback.on_batch_end(batch, logs)
+        def _run_callbacks_on_batch_end(batch, logs):
+            """Runs custom callbacks at the end of every step."""
+            if not custom_callbacks:
+                return
+            for callback in custom_callbacks:
+                callback.on_batch_end(batch, logs)
 
-    # Training loop starts here.
-    checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
-    sub_model_checkpoint = tf.train.Checkpoint(
-        model=sub_model) if sub_model_export_name else None
+        # Training loop starts here.
+        checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
+        sub_model_checkpoint = tf.train.Checkpoint(
+            model=sub_model) if sub_model_export_name else None
 
-    latest_checkpoint_file = tf.train.latest_checkpoint(model_dir)
-    if latest_checkpoint_file:
-      logging.info(
-          'Checkpoint file %s found and restoring from '
-          'checkpoint', latest_checkpoint_file)
-      checkpoint.restore(latest_checkpoint_file)
-      logging.info('Loading from checkpoint file completed')
+        latest_checkpoint_file = tf.train.latest_checkpoint(model_dir)
+        if latest_checkpoint_file:
+            logging.info(
+                'Checkpoint file %s found and restoring from '
+                'checkpoint', latest_checkpoint_file)
+            checkpoint.restore(latest_checkpoint_file)
+            logging.info('Loading from checkpoint file completed')
 
-    current_step = optimizer.iterations.numpy()
-    checkpoint_name = 'ctl_step_{step}.ckpt'
+        current_step = optimizer.iterations.numpy()
+        checkpoint_name = 'ctl_step_{step}.ckpt'
 
-    while current_step < total_training_steps:
-      # Training loss/metric are taking average over steps inside micro
-      # training loop. We reset the their values before each round.
-      train_loss_metric.reset_states()
-      for metric in train_metrics + model.metrics:
-        metric.reset_states()
+        while current_step < total_training_steps:
+            # Training loss/metric are taking average over steps inside micro
+            # training loop. We reset the their values before each round.
+            train_loss_metric.reset_states()
+            for metric in train_metrics + model.metrics:
+                metric.reset_states()
 
-      _run_callbacks_on_batch_begin(current_step)
-      # Runs several steps in the host while loop.
-      steps = steps_to_run(current_step, steps_per_epoch, steps_per_loop)
+            _run_callbacks_on_batch_begin(current_step)
+            # Runs several steps in the host while loop.
+            steps = steps_to_run(current_step, steps_per_epoch, steps_per_loop)
 
-      if tf.test.is_built_with_cuda():
-        # TODO(zongweiz): merge with train_steps once tf.while_loop
-        # GPU performance bugs are fixed.
-        for _ in range(steps):
-          train_single_step(train_iterator)
-      else:
-        # Converts steps to a Tensor to avoid tf.function retracing.
-        train_steps(train_iterator,
-                    tf.convert_to_tensor(steps, dtype=tf.int32))
-      train_loss = _float_metric_value(train_loss_metric)
-      _run_callbacks_on_batch_end(current_step, {'loss': train_loss})
-      current_step += steps
+            if tf.test.is_built_with_cuda():
+                # TODO(zongweiz): merge with train_steps once tf.while_loop
+                # GPU performance bugs are fixed.
+                for _ in range(steps):
+                    train_single_step(train_iterator)
+            else:
+                # Converts steps to a Tensor to avoid tf.function retracing.
+                train_steps(train_iterator,
+                            tf.convert_to_tensor(steps, dtype=tf.int32))
+            train_loss = _float_metric_value(train_loss_metric)
+            _run_callbacks_on_batch_end(current_step, {'loss': train_loss})
+            current_step += steps
 
-      # Updates training logging.
-      training_status = 'Train Step: %d/%d  / loss = %s' % (
-          current_step, total_training_steps, train_loss)
+            # Updates training logging.
+            training_status = 'Train Step: %d/%d  / loss = %s' % (
+                current_step, total_training_steps, train_loss)
 
-      if train_summary_writer:
-        with train_summary_writer.as_default():
-          tf.summary.scalar(
-              train_loss_metric.name, train_loss, step=current_step)
-          for metric in train_metrics + model.metrics:
-            metric_value = _float_metric_value(metric)
-            training_status += '  %s = %f' % (metric.name, metric_value)
-            tf.summary.scalar(metric.name, metric_value, step=current_step)
-          train_summary_writer.flush()
-      logging.info(training_status)
+            if train_summary_writer:
+                with train_summary_writer.as_default():
+                    tf.summary.scalar(train_loss_metric.name,
+                                      train_loss,
+                                      step=current_step)
+                    for metric in train_metrics + model.metrics:
+                        metric_value = _float_metric_value(metric)
+                        training_status += '  %s = %f' % (metric.name,
+                                                          metric_value)
+                        tf.summary.scalar(metric.name,
+                                          metric_value,
+                                          step=current_step)
+                    train_summary_writer.flush()
+            logging.info(training_status)
 
-      # Saves model checkpoints and run validation steps at every epoch end.
-      if current_step % steps_per_epoch == 0:
-        # To avoid repeated model saving, we do not save after the last
-        # step of training.
-        if current_step < total_training_steps:
-          _save_checkpoint(checkpoint, model_dir,
-                           checkpoint_name.format(step=current_step))
-          if sub_model_export_name:
-            _save_checkpoint(
-                sub_model_checkpoint, model_dir,
-                '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
+            # Saves model checkpoints and run validation steps at every epoch end.
+            if current_step % steps_per_epoch == 0:
+                # To avoid repeated model saving, we do not save after the last
+                # step of training.
+                if current_step < total_training_steps:
+                    _save_checkpoint(checkpoint, model_dir,
+                                     checkpoint_name.format(step=current_step))
+                    if sub_model_export_name:
+                        _save_checkpoint(
+                            sub_model_checkpoint, model_dir, '%s_step_%d.ckpt' %
+                            (sub_model_export_name, current_step))
+                if eval_input_fn:
+                    logging.info('Running evaluation after step: %s.',
+                                 current_step)
+                    _run_evaluation(
+                        current_step,
+                        _get_input_iterator(eval_input_fn, strategy))
+                    # Re-initialize evaluation metric.
+                    for metric in eval_metrics + model.metrics:
+                        metric.reset_states()
+
+        _save_checkpoint(checkpoint, model_dir,
+                         checkpoint_name.format(step=current_step))
+        if sub_model_export_name:
+            _save_checkpoint(sub_model_checkpoint, model_dir,
+                             '%s.ckpt' % sub_model_export_name)
+
         if eval_input_fn:
-          logging.info('Running evaluation after step: %s.', current_step)
-          _run_evaluation(current_step,
-                          _get_input_iterator(eval_input_fn, strategy))
-          # Re-initialize evaluation metric.
-          for metric in eval_metrics + model.metrics:
-            metric.reset_states()
+            logging.info('Running final evaluation after training is complete.')
+            _run_evaluation(current_step,
+                            _get_input_iterator(eval_input_fn, strategy))
 
-    _save_checkpoint(checkpoint, model_dir,
-                     checkpoint_name.format(step=current_step))
-    if sub_model_export_name:
-      _save_checkpoint(sub_model_checkpoint, model_dir,
-                       '%s.ckpt' % sub_model_export_name)
+        training_summary = {
+            'total_training_steps': total_training_steps,
+            'train_loss': _float_metric_value(train_loss_metric),
+        }
+        if eval_metrics:
+            # TODO(hongkuny): Cleans up summary reporting in text.
+            training_summary['last_train_metrics'] = _float_metric_value(
+                train_metrics[0])
+            training_summary['eval_metrics'] = _float_metric_value(
+                eval_metrics[0])
 
-    if eval_input_fn:
-      logging.info('Running final evaluation after training is complete.')
-      _run_evaluation(current_step,
-                      _get_input_iterator(eval_input_fn, strategy))
+        write_txt_summary(training_summary, summary_dir)
 
-    training_summary = {
-        'total_training_steps': total_training_steps,
-        'train_loss': _float_metric_value(train_loss_metric),
-    }
-    if eval_metrics:
-      # TODO(hongkuny): Cleans up summary reporting in text.
-      training_summary['last_train_metrics'] = _float_metric_value(
-          train_metrics[0])
-      training_summary['eval_metrics'] = _float_metric_value(eval_metrics[0])
-
-    write_txt_summary(training_summary, summary_dir)
-
-    return model
+        return model

@@ -106,78 +106,81 @@ flags.DEFINE_enum(
 
 
 def generate_classifier_dataset():
-  """Generates classifier dataset and returns input meta data."""
-  assert FLAGS.input_data_dir and FLAGS.classification_task_name
+    """Generates classifier dataset and returns input meta data."""
+    assert FLAGS.input_data_dir and FLAGS.classification_task_name
 
-  processors = {
-      "cola": classifier_data_lib.ColaProcessor,
-      "mnli": classifier_data_lib.MnliProcessor,
-      "mrpc": classifier_data_lib.MrpcProcessor,
-      "qnli": classifier_data_lib.QnliProcessor,
-      "sst-2": classifier_data_lib.SstProcessor,
-      "xnli": classifier_data_lib.XnliProcessor,
-  }
-  task_name = FLAGS.classification_task_name.lower()
-  if task_name not in processors:
-    raise ValueError("Task not found: %s" % (task_name))
+    processors = {
+        "cola": classifier_data_lib.ColaProcessor,
+        "mnli": classifier_data_lib.MnliProcessor,
+        "mrpc": classifier_data_lib.MrpcProcessor,
+        "qnli": classifier_data_lib.QnliProcessor,
+        "sst-2": classifier_data_lib.SstProcessor,
+        "xnli": classifier_data_lib.XnliProcessor,
+    }
+    task_name = FLAGS.classification_task_name.lower()
+    if task_name not in processors:
+        raise ValueError("Task not found: %s" % (task_name))
 
-  if FLAGS.tokenizer_impl == "word_piece":
-    tokenizer = tokenization.FullTokenizer(
-        vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
-    processor_text_fn = tokenization.convert_to_unicode
-  else:
-    assert FLAGS.tokenizer_impl == "sentence_piece"
-    tokenizer = tokenization.FullSentencePieceTokenizer(FLAGS.sp_model_file)
-    processor_text_fn = functools.partial(
-        tokenization.preprocess_text, lower=FLAGS.do_lower_case)
+    if FLAGS.tokenizer_impl == "word_piece":
+        tokenizer = tokenization.FullTokenizer(
+            vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+        processor_text_fn = tokenization.convert_to_unicode
+    else:
+        assert FLAGS.tokenizer_impl == "sentence_piece"
+        tokenizer = tokenization.FullSentencePieceTokenizer(FLAGS.sp_model_file)
+        processor_text_fn = functools.partial(tokenization.preprocess_text,
+                                              lower=FLAGS.do_lower_case)
 
-  processor = processors[task_name](processor_text_fn)
-  return classifier_data_lib.generate_tf_record_from_data_file(
-      processor,
-      FLAGS.input_data_dir,
-      tokenizer,
-      train_data_output_path=FLAGS.train_data_output_path,
-      eval_data_output_path=FLAGS.eval_data_output_path,
-      max_seq_length=FLAGS.max_seq_length)
+    processor = processors[task_name](processor_text_fn)
+    return classifier_data_lib.generate_tf_record_from_data_file(
+        processor,
+        FLAGS.input_data_dir,
+        tokenizer,
+        train_data_output_path=FLAGS.train_data_output_path,
+        eval_data_output_path=FLAGS.eval_data_output_path,
+        max_seq_length=FLAGS.max_seq_length)
 
 
 def generate_squad_dataset():
-  """Generates squad training dataset and returns input meta data."""
-  assert FLAGS.squad_data_file
-  if FLAGS.tokenizer_impl == "word_piece":
-    return squad_lib_wp.generate_tf_record_from_json_file(
-        FLAGS.squad_data_file, FLAGS.vocab_file, FLAGS.train_data_output_path,
-        FLAGS.max_seq_length, FLAGS.do_lower_case, FLAGS.max_query_length,
-        FLAGS.doc_stride, FLAGS.version_2_with_negative)
-  else:
-    assert FLAGS.tokenizer_impl == "sentence_piece"
-    return squad_lib_sp.generate_tf_record_from_json_file(
-        FLAGS.squad_data_file, FLAGS.sp_model_file,
-        FLAGS.train_data_output_path, FLAGS.max_seq_length, FLAGS.do_lower_case,
-        FLAGS.max_query_length, FLAGS.doc_stride, FLAGS.version_2_with_negative)
+    """Generates squad training dataset and returns input meta data."""
+    assert FLAGS.squad_data_file
+    if FLAGS.tokenizer_impl == "word_piece":
+        return squad_lib_wp.generate_tf_record_from_json_file(
+            FLAGS.squad_data_file, FLAGS.vocab_file,
+            FLAGS.train_data_output_path, FLAGS.max_seq_length,
+            FLAGS.do_lower_case, FLAGS.max_query_length, FLAGS.doc_stride,
+            FLAGS.version_2_with_negative)
+    else:
+        assert FLAGS.tokenizer_impl == "sentence_piece"
+        return squad_lib_sp.generate_tf_record_from_json_file(
+            FLAGS.squad_data_file, FLAGS.sp_model_file,
+            FLAGS.train_data_output_path, FLAGS.max_seq_length,
+            FLAGS.do_lower_case, FLAGS.max_query_length, FLAGS.doc_stride,
+            FLAGS.version_2_with_negative)
 
 
 def main(_):
-  if FLAGS.tokenizer_impl == "word_piece":
-    if not FLAGS.vocab_file:
-      raise ValueError(
-          "FLAG vocab_file for word-piece tokenizer is not specified.")
-  else:
-    assert FLAGS.tokenizer_impl == "sentence_piece"
-    if not FLAGS.sp_model_file:
-      raise ValueError(
-          "FLAG sp_model_file for sentence-piece tokenizer is not specified.")
+    if FLAGS.tokenizer_impl == "word_piece":
+        if not FLAGS.vocab_file:
+            raise ValueError(
+                "FLAG vocab_file for word-piece tokenizer is not specified.")
+    else:
+        assert FLAGS.tokenizer_impl == "sentence_piece"
+        if not FLAGS.sp_model_file:
+            raise ValueError(
+                "FLAG sp_model_file for sentence-piece tokenizer is not specified."
+            )
 
-  if FLAGS.fine_tuning_task_type == "classification":
-    input_meta_data = generate_classifier_dataset()
-  else:
-    input_meta_data = generate_squad_dataset()
+    if FLAGS.fine_tuning_task_type == "classification":
+        input_meta_data = generate_classifier_dataset()
+    else:
+        input_meta_data = generate_squad_dataset()
 
-  with tf.io.gfile.GFile(FLAGS.meta_data_file_path, "w") as writer:
-    writer.write(json.dumps(input_meta_data, indent=4) + "\n")
+    with tf.io.gfile.GFile(FLAGS.meta_data_file_path, "w") as writer:
+        writer.write(json.dumps(input_meta_data, indent=4) + "\n")
 
 
 if __name__ == "__main__":
-  flags.mark_flag_as_required("train_data_output_path")
-  flags.mark_flag_as_required("meta_data_file_path")
-  app.run(main)
+    flags.mark_flag_as_required("train_data_output_path")
+    flags.mark_flag_as_required("meta_data_file_path")
+    app.run(main)

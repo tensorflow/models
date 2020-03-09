@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """A module for helper tensorflow ops.
 
 This is originally implemented in TensorFlow Object Detection API.
@@ -28,7 +27,7 @@ def indices_to_dense_vector(indices,
                             indices_value=1.,
                             default_value=0,
                             dtype=tf.float32):
-  """Creates dense vector with indices set to specific value and rest to zeros.
+    """Creates dense vector with indices set to specific value and rest to zeros.
 
   This function exists because it is unclear if it is safe to use
     tf.sparse_to_dense(indices, [size], 1, validate_indices=False)
@@ -47,16 +46,16 @@ def indices_to_dense_vector(indices,
     dense 1D Tensor of shape [size] with indices set to indices_values and the
         rest set to default_value.
   """
-  size = tf.cast(size, dtype=tf.int32)
-  zeros = tf.ones([size], dtype=dtype) * default_value
-  values = tf.ones_like(indices, dtype=dtype) * indices_value
+    size = tf.cast(size, dtype=tf.int32)
+    zeros = tf.ones([size], dtype=dtype) * default_value
+    values = tf.ones_like(indices, dtype=dtype) * indices_value
 
-  return tf.dynamic_stitch(
-      [tf.range(size), tf.cast(indices, dtype=tf.int32)], [zeros, values])
+    return tf.dynamic_stitch(
+        [tf.range(size), tf.cast(indices, dtype=tf.int32)], [zeros, values])
 
 
 def matmul_gather_on_zeroth_axis(params, indices, scope=None):
-  """Matrix multiplication based implementation of tf.gather on zeroth axis.
+    """Matrix multiplication based implementation of tf.gather on zeroth axis.
 
   TODO(rathodv, jonathanhuang): enable sparse matmul option.
 
@@ -71,12 +70,12 @@ def matmul_gather_on_zeroth_axis(params, indices, scope=None):
     A Tensor. Has the same type as params. Values from params gathered
     from indices given by indices, with shape indices.shape + params.shape[1:].
   """
-  scope = scope or 'MatMulGather'
-  with tf.name_scope(scope):
-    params_shape = shape_utils.combined_static_and_dynamic_shape(params)
-    indices_shape = shape_utils.combined_static_and_dynamic_shape(indices)
-    params2d = tf.reshape(params, [params_shape[0], -1])
-    indicator_matrix = tf.one_hot(indices, params_shape[0])
-    gathered_result_flattened = tf.matmul(indicator_matrix, params2d)
-    return tf.reshape(gathered_result_flattened,
-                      tf.stack(indices_shape + params_shape[1:]))
+    scope = scope or 'MatMulGather'
+    with tf.name_scope(scope):
+        params_shape = shape_utils.combined_static_and_dynamic_shape(params)
+        indices_shape = shape_utils.combined_static_and_dynamic_shape(indices)
+        params2d = tf.reshape(params, [params_shape[0], -1])
+        indicator_matrix = tf.one_hot(indices, params_shape[0])
+        gathered_result_flattened = tf.matmul(indicator_matrix, params2d)
+        return tf.reshape(gathered_result_flattened,
+                          tf.stack(indices_shape + params_shape[1:]))

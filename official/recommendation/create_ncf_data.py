@@ -60,58 +60,58 @@ FLAGS = flags.FLAGS
 
 
 def prepare_raw_data(flag_obj):
-  """Downloads and prepares raw data for data generation."""
-  movielens.download(flag_obj.dataset, flag_obj.data_dir)
+    """Downloads and prepares raw data for data generation."""
+    movielens.download(flag_obj.dataset, flag_obj.data_dir)
 
-  data_processing_params = {
-      "train_epochs": flag_obj.num_train_epochs,
-      "batch_size": flag_obj.train_prebatch_size,
-      "eval_batch_size": flag_obj.eval_prebatch_size,
-      "batches_per_step": 1,
-      "stream_files": True,
-      "num_neg": flag_obj.num_negative_samples,
-  }
+    data_processing_params = {
+        "train_epochs": flag_obj.num_train_epochs,
+        "batch_size": flag_obj.train_prebatch_size,
+        "eval_batch_size": flag_obj.eval_prebatch_size,
+        "batches_per_step": 1,
+        "stream_files": True,
+        "num_neg": flag_obj.num_negative_samples,
+    }
 
-  num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
-      dataset=flag_obj.dataset,
-      data_dir=flag_obj.data_dir,
-      params=data_processing_params,
-      constructor_type=flag_obj.constructor_type,
-      epoch_dir=flag_obj.data_dir,
-      generate_data_offline=True)
+    num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
+        dataset=flag_obj.dataset,
+        data_dir=flag_obj.data_dir,
+        params=data_processing_params,
+        constructor_type=flag_obj.constructor_type,
+        epoch_dir=flag_obj.data_dir,
+        generate_data_offline=True)
 
-  # pylint: disable=protected-access
-  input_metadata = {
-      "num_users": num_users,
-      "num_items": num_items,
-      "constructor_type": flag_obj.constructor_type,
-      "num_train_elements": producer._elements_in_epoch,
-      "num_eval_elements": producer._eval_elements_in_epoch,
-      "num_train_epochs": flag_obj.num_train_epochs,
-      "train_prebatch_size": flag_obj.train_prebatch_size,
-      "eval_prebatch_size": flag_obj.eval_prebatch_size,
-      "num_train_steps": producer.train_batches_per_epoch,
-      "num_eval_steps": producer.eval_batches_per_epoch,
-  }
-  # pylint: enable=protected-access
+    # pylint: disable=protected-access
+    input_metadata = {
+        "num_users": num_users,
+        "num_items": num_items,
+        "constructor_type": flag_obj.constructor_type,
+        "num_train_elements": producer._elements_in_epoch,
+        "num_eval_elements": producer._eval_elements_in_epoch,
+        "num_train_epochs": flag_obj.num_train_epochs,
+        "train_prebatch_size": flag_obj.train_prebatch_size,
+        "eval_prebatch_size": flag_obj.eval_prebatch_size,
+        "num_train_steps": producer.train_batches_per_epoch,
+        "num_eval_steps": producer.eval_batches_per_epoch,
+    }
+    # pylint: enable=protected-access
 
-  return producer, input_metadata
+    return producer, input_metadata
 
 
 def generate_data():
-  """Creates NCF train/eval dataset and writes input metadata as a file."""
-  producer, input_metadata = prepare_raw_data(FLAGS)
-  producer.run()
+    """Creates NCF train/eval dataset and writes input metadata as a file."""
+    producer, input_metadata = prepare_raw_data(FLAGS)
+    producer.run()
 
-  with tf.io.gfile.GFile(FLAGS.meta_data_file_path, "w") as writer:
-    writer.write(json.dumps(input_metadata, indent=4) + "\n")
+    with tf.io.gfile.GFile(FLAGS.meta_data_file_path, "w") as writer:
+        writer.write(json.dumps(input_metadata, indent=4) + "\n")
 
 
 def main(_):
-  generate_data()
+    generate_data()
 
 
 if __name__ == "__main__":
-  flags.mark_flag_as_required("data_dir")
-  flags.mark_flag_as_required("meta_data_file_path")
-  app.run(main)
+    flags.mark_flag_as_required("data_dir")
+    flags.mark_flag_as_required("meta_data_file_path")
+    app.run(main)
