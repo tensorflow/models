@@ -24,14 +24,14 @@ from official.nlp.bert import configs
 
 
 class AlbertConfig(configs.BertConfig):
-  """Configuration for `ALBERT`."""
+    """Configuration for `ALBERT`."""
 
-  def __init__(self,
-               embedding_size,
-               num_hidden_groups=1,
-               inner_group_num=1,
-               **kwargs):
-    """Constructs AlbertConfig.
+    def __init__(self,
+                 embedding_size,
+                 num_hidden_groups=1,
+                 inner_group_num=1,
+                 **kwargs):
+        """Constructs AlbertConfig.
 
     Args:
       embedding_size: Size of the factorized word embeddings.
@@ -42,20 +42,20 @@ class AlbertConfig(configs.BertConfig):
       inner_group_num: Number of inner repetition of attention and ffn.
       **kwargs: The remaining arguments are the same as above 'BertConfig'.
     """
-    super(AlbertConfig, self).__init__(**kwargs)
-    self.embedding_size = embedding_size
+        super(AlbertConfig, self).__init__(**kwargs)
+        self.embedding_size = embedding_size
 
-    # TODO(chendouble): 'inner_group_num' and 'num_hidden_groups' are always 1
-    # in the released ALBERT. Support other values in AlbertTransformerEncoder
-    # if needed.
-    if inner_group_num != 1 or num_hidden_groups != 1:
-      raise ValueError("We only support 'inner_group_num' and "
-                       "'num_hidden_groups' as 1.")
+        # TODO(chendouble): 'inner_group_num' and 'num_hidden_groups' are always 1
+        # in the released ALBERT. Support other values in AlbertTransformerEncoder
+        # if needed.
+        if inner_group_num != 1 or num_hidden_groups != 1:
+            raise ValueError("We only support 'inner_group_num' and "
+                             "'num_hidden_groups' as 1.")
 
-  @classmethod
-  def from_dict(cls, json_object):
-    """Constructs a `AlbertConfig` from a Python dictionary of parameters."""
-    config = AlbertConfig(embedding_size=None, vocab_size=None)
-    for (key, value) in six.iteritems(json_object):
-      config.__dict__[key] = value
-    return config
+    @classmethod
+    def from_dict(cls, json_object):
+        """Constructs a `AlbertConfig` from a Python dictionary of parameters."""
+        config = AlbertConfig(embedding_size=None, vocab_size=None)
+        for (key, value) in six.iteritems(json_object):
+            config.__dict__[key] = value
+        return config

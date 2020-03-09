@@ -37,7 +37,7 @@ flags.DEFINE_string("vocab_file", None,
 
 
 def create_bert_model(bert_config: configs.BertConfig) -> tf.keras.Model:
-  """Creates a BERT keras core model from BERT configuration.
+    """Creates a BERT keras core model from BERT configuration.
 
   Args:
     bert_config: A `BertConfig` to create the core model.
@@ -45,43 +45,46 @@ def create_bert_model(bert_config: configs.BertConfig) -> tf.keras.Model:
   Returns:
     A keras model.
   """
-  # Adds input layers just as placeholders.
-  input_word_ids = tf.keras.layers.Input(
-      shape=(None,), dtype=tf.int32, name="input_word_ids")
-  input_mask = tf.keras.layers.Input(
-      shape=(None,), dtype=tf.int32, name="input_mask")
-  input_type_ids = tf.keras.layers.Input(
-      shape=(None,), dtype=tf.int32, name="input_type_ids")
-  transformer_encoder = bert_models.get_transformer_encoder(
-      bert_config, sequence_length=None)
-  sequence_output, pooled_output = transformer_encoder(
-      [input_word_ids, input_mask, input_type_ids])
-  # To keep consistent with legacy hub modules, the outputs are
-  # "pooled_output" and "sequence_output".
-  return tf.keras.Model(
-      inputs=[input_word_ids, input_mask, input_type_ids],
-      outputs=[pooled_output, sequence_output]), transformer_encoder
+    # Adds input layers just as placeholders.
+    input_word_ids = tf.keras.layers.Input(shape=(None,),
+                                           dtype=tf.int32,
+                                           name="input_word_ids")
+    input_mask = tf.keras.layers.Input(shape=(None,),
+                                       dtype=tf.int32,
+                                       name="input_mask")
+    input_type_ids = tf.keras.layers.Input(shape=(None,),
+                                           dtype=tf.int32,
+                                           name="input_type_ids")
+    transformer_encoder = bert_models.get_transformer_encoder(
+        bert_config, sequence_length=None)
+    sequence_output, pooled_output = transformer_encoder(
+        [input_word_ids, input_mask, input_type_ids])
+    # To keep consistent with legacy hub modules, the outputs are
+    # "pooled_output" and "sequence_output".
+    return tf.keras.Model(inputs=[input_word_ids, input_mask, input_type_ids],
+                          outputs=[pooled_output,
+                                   sequence_output]), transformer_encoder
 
 
 def export_bert_tfhub(bert_config: configs.BertConfig,
                       model_checkpoint_path: Text, hub_destination: Text,
                       vocab_file: Text):
-  """Restores a tf.keras.Model and saves for TF-Hub."""
-  core_model, encoder = create_bert_model(bert_config)
-  checkpoint = tf.train.Checkpoint(model=encoder)
-  checkpoint.restore(model_checkpoint_path).assert_consumed()
-  core_model.vocab_file = tf.saved_model.Asset(vocab_file)
-  core_model.do_lower_case = tf.Variable(
-      "uncased" in vocab_file, trainable=False)
-  core_model.save(hub_destination, include_optimizer=False, save_format="tf")
+    """Restores a tf.keras.Model and saves for TF-Hub."""
+    core_model, encoder = create_bert_model(bert_config)
+    checkpoint = tf.train.Checkpoint(model=encoder)
+    checkpoint.restore(model_checkpoint_path).assert_consumed()
+    core_model.vocab_file = tf.saved_model.Asset(vocab_file)
+    core_model.do_lower_case = tf.Variable("uncased" in vocab_file,
+                                           trainable=False)
+    core_model.save(hub_destination, include_optimizer=False, save_format="tf")
 
 
 def main(_):
-  assert tf.version.VERSION.startswith('2.')
-  bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
-  export_bert_tfhub(bert_config, FLAGS.model_checkpoint_path, FLAGS.export_path,
-                    FLAGS.vocab_file)
+    assert tf.version.VERSION.startswith('2.')
+    bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+    export_bert_tfhub(bert_config, FLAGS.model_checkpoint_path,
+                      FLAGS.export_path, FLAGS.vocab_file)
 
 
 if __name__ == "__main__":
-  app.run(main)
+    app.run(main)

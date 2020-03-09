@@ -43,7 +43,6 @@ flags.DEFINE_string(
 flags.DEFINE_string("converted_checkpoint_path", None,
                     "Name for the created object-based V2 checkpoint.")
 
-
 ALBERT_NAME_REPLACEMENTS = (
     ("bert/encoder/", ""),
     ("bert/", ""),
@@ -68,7 +67,7 @@ ALBERT_NAME_REPLACEMENTS = (
 
 
 def _create_albert_model(cfg):
-  """Creates a BERT keras core model from BERT configuration.
+    """Creates a BERT keras core model from BERT configuration.
 
   Args:
     cfg: A `BertConfig` to create the core model.
@@ -76,58 +75,60 @@ def _create_albert_model(cfg):
   Returns:
     A keras model.
   """
-  albert_encoder = networks.AlbertTransformerEncoder(
-      vocab_size=cfg.vocab_size,
-      hidden_size=cfg.hidden_size,
-      embedding_width=cfg.embedding_size,
-      num_layers=cfg.num_hidden_layers,
-      num_attention_heads=cfg.num_attention_heads,
-      intermediate_size=cfg.intermediate_size,
-      activation=activations.gelu,
-      dropout_rate=cfg.hidden_dropout_prob,
-      attention_dropout_rate=cfg.attention_probs_dropout_prob,
-      sequence_length=cfg.max_position_embeddings,
-      type_vocab_size=cfg.type_vocab_size,
-      initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=cfg.initializer_range))
-  return albert_encoder
+    albert_encoder = networks.AlbertTransformerEncoder(
+        vocab_size=cfg.vocab_size,
+        hidden_size=cfg.hidden_size,
+        embedding_width=cfg.embedding_size,
+        num_layers=cfg.num_hidden_layers,
+        num_attention_heads=cfg.num_attention_heads,
+        intermediate_size=cfg.intermediate_size,
+        activation=activations.gelu,
+        dropout_rate=cfg.hidden_dropout_prob,
+        attention_dropout_rate=cfg.attention_probs_dropout_prob,
+        sequence_length=cfg.max_position_embeddings,
+        type_vocab_size=cfg.type_vocab_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=cfg.initializer_range))
+    return albert_encoder
 
 
 def convert_checkpoint(bert_config, output_path, v1_checkpoint):
-  """Converts a V1 checkpoint into an OO V2 checkpoint."""
-  output_dir, _ = os.path.split(output_path)
+    """Converts a V1 checkpoint into an OO V2 checkpoint."""
+    output_dir, _ = os.path.split(output_path)
 
-  # Create a temporary V1 name-converted checkpoint in the output directory.
-  temporary_checkpoint_dir = os.path.join(output_dir, "temp_v1")
-  temporary_checkpoint = os.path.join(temporary_checkpoint_dir, "ckpt")
-  tf1_checkpoint_converter_lib.convert(
-      checkpoint_from_path=v1_checkpoint,
-      checkpoint_to_path=temporary_checkpoint,
-      num_heads=bert_config.num_attention_heads,
-      name_replacements=ALBERT_NAME_REPLACEMENTS,
-      permutations=tf1_checkpoint_converter_lib.BERT_V2_PERMUTATIONS,
-      exclude_patterns=["adam", "Adam"])
+    # Create a temporary V1 name-converted checkpoint in the output directory.
+    temporary_checkpoint_dir = os.path.join(output_dir, "temp_v1")
+    temporary_checkpoint = os.path.join(temporary_checkpoint_dir, "ckpt")
+    tf1_checkpoint_converter_lib.convert(
+        checkpoint_from_path=v1_checkpoint,
+        checkpoint_to_path=temporary_checkpoint,
+        num_heads=bert_config.num_attention_heads,
+        name_replacements=ALBERT_NAME_REPLACEMENTS,
+        permutations=tf1_checkpoint_converter_lib.BERT_V2_PERMUTATIONS,
+        exclude_patterns=["adam", "Adam"])
 
-  # Create a V2 checkpoint from the temporary checkpoint.
-  model = _create_albert_model(bert_config)
-  tf1_checkpoint_converter_lib.create_v2_checkpoint(model, temporary_checkpoint,
-                                                    output_path)
+    # Create a V2 checkpoint from the temporary checkpoint.
+    model = _create_albert_model(bert_config)
+    tf1_checkpoint_converter_lib.create_v2_checkpoint(model,
+                                                      temporary_checkpoint,
+                                                      output_path)
 
-  # Clean up the temporary checkpoint, if it exists.
-  try:
-    tf.io.gfile.rmtree(temporary_checkpoint_dir)
-  except tf.errors.OpError:
-    # If it doesn't exist, we don't need to clean it up; continue.
-    pass
+    # Clean up the temporary checkpoint, if it exists.
+    try:
+        tf.io.gfile.rmtree(temporary_checkpoint_dir)
+    except tf.errors.OpError:
+        # If it doesn't exist, we don't need to clean it up; continue.
+        pass
 
 
 def main(_):
-  assert tf.version.VERSION.startswith('2.')
-  output_path = FLAGS.converted_checkpoint_path
-  v1_checkpoint = FLAGS.checkpoint_to_convert
-  albert_config = configs.AlbertConfig.from_json_file(FLAGS.albert_config_file)
-  convert_checkpoint(albert_config, output_path, v1_checkpoint)
+    assert tf.version.VERSION.startswith('2.')
+    output_path = FLAGS.converted_checkpoint_path
+    v1_checkpoint = FLAGS.checkpoint_to_convert
+    albert_config = configs.AlbertConfig.from_json_file(
+        FLAGS.albert_config_file)
+    convert_checkpoint(albert_config, output_path, v1_checkpoint)
 
 
 if __name__ == "__main__":
-  app.run(main)
+    app.run(main)

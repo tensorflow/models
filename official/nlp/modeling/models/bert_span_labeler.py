@@ -26,7 +26,7 @@ from official.nlp.modeling import networks
 
 @tf.keras.utils.register_keras_serializable(package='Text')
 class BertSpanLabeler(tf.keras.Model):
-  """Span labeler model based on a BERT-style transformer-based encoder.
+    """Span labeler model based on a BERT-style transformer-based encoder.
 
   This is an implementation of the network structure surrounding a transformer
   encoder as described in "BERT: Pre-training of Deep Bidirectional Transformers
@@ -45,53 +45,52 @@ class BertSpanLabeler(tf.keras.Model):
       'predictions'.
   """
 
-  def __init__(self,
-               network,
-               initializer='glorot_uniform',
-               output='logits',
-               **kwargs):
-    self._self_setattr_tracking = False
-    self._config = {
-        'network': network,
-        'initializer': initializer,
-        'output': output,
-    }
-    # We want to use the inputs of the passed network as the inputs to this
-    # Model. To do this, we need to keep a handle to the network inputs for use
-    # when we construct the Model object at the end of init.
-    inputs = network.inputs
+    def __init__(self,
+                 network,
+                 initializer='glorot_uniform',
+                 output='logits',
+                 **kwargs):
+        self._self_setattr_tracking = False
+        self._config = {
+            'network': network,
+            'initializer': initializer,
+            'output': output,
+        }
+        # We want to use the inputs of the passed network as the inputs to this
+        # Model. To do this, we need to keep a handle to the network inputs for use
+        # when we construct the Model object at the end of init.
+        inputs = network.inputs
 
-    # Because we have a copy of inputs to create this Model object, we can
-    # invoke the Network object with its own input tensors to start the Model.
-    sequence_output, _ = network(inputs)
+        # Because we have a copy of inputs to create this Model object, we can
+        # invoke the Network object with its own input tensors to start the Model.
+        sequence_output, _ = network(inputs)
 
-    # This is an instance variable for ease of access to the underlying task
-    # network.
-    self.span_labeling = networks.SpanLabeling(
-        input_width=sequence_output.shape[-1],
-        initializer=initializer,
-        output=output,
-        name='span_labeling')
-    start_logits, end_logits = self.span_labeling(sequence_output)
+        # This is an instance variable for ease of access to the underlying task
+        # network.
+        self.span_labeling = networks.SpanLabeling(
+            input_width=sequence_output.shape[-1],
+            initializer=initializer,
+            output=output,
+            name='span_labeling')
+        start_logits, end_logits = self.span_labeling(sequence_output)
 
-    # Use identity layers wrapped in lambdas to explicitly name the output
-    # tensors. This allows us to use string-keyed dicts in Keras fit/predict/
-    # evaluate calls.
-    start_logits = tf.keras.layers.Lambda(
-        tf.identity, name='start_positions')(
-            start_logits)
-    end_logits = tf.keras.layers.Lambda(
-        tf.identity, name='end_positions')(
-            end_logits)
+        # Use identity layers wrapped in lambdas to explicitly name the output
+        # tensors. This allows us to use string-keyed dicts in Keras fit/predict/
+        # evaluate calls.
+        start_logits = tf.keras.layers.Lambda(
+            tf.identity, name='start_positions')(start_logits)
+        end_logits = tf.keras.layers.Lambda(tf.identity,
+                                            name='end_positions')(end_logits)
 
-    logits = [start_logits, end_logits]
+        logits = [start_logits, end_logits]
 
-    super(BertSpanLabeler, self).__init__(
-        inputs=inputs, outputs=logits, **kwargs)
+        super(BertSpanLabeler, self).__init__(inputs=inputs,
+                                              outputs=logits,
+                                              **kwargs)
 
-  def get_config(self):
-    return self._config
+    def get_config(self):
+        return self._config
 
-  @classmethod
-  def from_config(cls, config, custom_objects=None):
-    return cls(**config)
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        return cls(**config)

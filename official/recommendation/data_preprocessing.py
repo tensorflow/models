@@ -36,21 +36,19 @@ from official.recommendation import data_pipeline
 from official.recommendation import movielens
 from official.utils.logs import mlperf_helper
 
-
 DATASET_TO_NUM_USERS_AND_ITEMS = {
     "ml-1m": (6040, 3706),
     "ml-20m": (138493, 26744)
 }
 
-
-_EXPECTED_CACHE_KEYS = (
-    rconst.TRAIN_USER_KEY, rconst.TRAIN_ITEM_KEY, rconst.EVAL_USER_KEY,
-    rconst.EVAL_ITEM_KEY, rconst.USER_MAP, rconst.ITEM_MAP)
+_EXPECTED_CACHE_KEYS = (rconst.TRAIN_USER_KEY, rconst.TRAIN_ITEM_KEY,
+                        rconst.EVAL_USER_KEY, rconst.EVAL_ITEM_KEY,
+                        rconst.USER_MAP, rconst.ITEM_MAP)
 
 
 def _filter_index_sort(raw_rating_path, cache_path):
-  # type: (str, str, bool) -> (dict, bool)
-  """Read in data CSV, and output structured data.
+    # type: (str, str, bool) -> (dict, bool)
+    """Read in data CSV, and output structured data.
 
   This function reads in the raw CSV of positive items, and performs three
   preprocessing transformations:
@@ -81,100 +79,107 @@ def _filter_index_sort(raw_rating_path, cache_path):
     IDs to regularized user IDs, and a dict mapping raw item IDs to regularized
     item IDs.
   """
-  valid_cache = tf.io.gfile.exists(cache_path)
-  if valid_cache:
-    with tf.io.gfile.GFile(cache_path, "rb") as f:
-      cached_data = pickle.load(f)
+    valid_cache = tf.io.gfile.exists(cache_path)
+    if valid_cache:
+        with tf.io.gfile.GFile(cache_path, "rb") as f:
+            cached_data = pickle.load(f)
 
-    # (nnigania)disabled this check as the dataset is not expected to change
-    # cache_age = time.time() - cached_data.get("create_time", 0)
-    # if cache_age > rconst.CACHE_INVALIDATION_SEC:
-    #   valid_cache = False
+        # (nnigania)disabled this check as the dataset is not expected to change
+        # cache_age = time.time() - cached_data.get("create_time", 0)
+        # if cache_age > rconst.CACHE_INVALIDATION_SEC:
+        #   valid_cache = False
 
-    for key in _EXPECTED_CACHE_KEYS:
-      if key not in cached_data:
-        valid_cache = False
+        for key in _EXPECTED_CACHE_KEYS:
+            if key not in cached_data:
+                valid_cache = False
 
-    if not valid_cache:
-      logging.info("Removing stale raw data cache file.")
-      tf.io.gfile.remove(cache_path)
+        if not valid_cache:
+            logging.info("Removing stale raw data cache file.")
+            tf.io.gfile.remove(cache_path)
 
-  if valid_cache:
-    data = cached_data
-  else:
-    with tf.io.gfile.GFile(raw_rating_path) as f:
-      df = pd.read_csv(f)
+    if valid_cache:
+        data = cached_data
+    else:
+        with tf.io.gfile.GFile(raw_rating_path) as f:
+            df = pd.read_csv(f)
 
-    # Get the info of users who have more than 20 ratings on items
-    grouped = df.groupby(movielens.USER_COLUMN)
-    df = grouped.filter(
-        lambda x: len(x) >= rconst.MIN_NUM_RATINGS) # type: pd.DataFrame
+        # Get the info of users who have more than 20 ratings on items
+        grouped = df.groupby(movielens.USER_COLUMN)
+        df = grouped.filter(
+            lambda x: len(x) >= rconst.MIN_NUM_RATINGS)  # type: pd.DataFrame
 
-    original_users = df[movielens.USER_COLUMN].unique()
-    original_items = df[movielens.ITEM_COLUMN].unique()
+        original_users = df[movielens.USER_COLUMN].unique()
+        original_items = df[movielens.ITEM_COLUMN].unique()
 
-    # Map the ids of user and item to 0 based index for following processing
-    logging.info("Generating user_map and item_map...")
-    user_map = {user: index for index, user in enumerate(original_users)}
-    item_map = {item: index for index, item in enumerate(original_items)}
+        # Map the ids of user and item to 0 based index for following processing
+        logging.info("Generating user_map and item_map...")
+        user_map = {user: index for index, user in enumerate(original_users)}
+        item_map = {item: index for index, item in enumerate(original_items)}
 
-    df[movielens.USER_COLUMN] = df[movielens.USER_COLUMN].apply(
-        lambda user: user_map[user])
-    df[movielens.ITEM_COLUMN] = df[movielens.ITEM_COLUMN].apply(
-        lambda item: item_map[item])
+        df[movielens.USER_COLUMN] = df[movielens.USER_COLUMN].apply(
+            lambda user: user_map[user])
+        df[movielens.ITEM_COLUMN] = df[movielens.ITEM_COLUMN].apply(
+            lambda item: item_map[item])
 
-    num_users = len(original_users)
-    num_items = len(original_items)
+        num_users = len(original_users)
+        num_items = len(original_items)
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_NUM_EVAL,
-                            value=rconst.NUM_EVAL_NEGATIVES)
+        mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_NUM_EVAL,
+                                value=rconst.NUM_EVAL_NEGATIVES)
 
-    assert num_users <= np.iinfo(rconst.USER_DTYPE).max
-    assert num_items <= np.iinfo(rconst.ITEM_DTYPE).max
-    assert df[movielens.USER_COLUMN].max() == num_users - 1
-    assert df[movielens.ITEM_COLUMN].max() == num_items - 1
+        assert num_users <= np.iinfo(rconst.USER_DTYPE).max
+        assert num_items <= np.iinfo(rconst.ITEM_DTYPE).max
+        assert df[movielens.USER_COLUMN].max() == num_users - 1
+        assert df[movielens.ITEM_COLUMN].max() == num_items - 1
 
-    # This sort is used to shard the dataframe by user, and later to select
-    # the last item for a user to be used in validation.
-    logging.info("Sorting by user, timestamp...")
+        # This sort is used to shard the dataframe by user, and later to select
+        # the last item for a user to be used in validation.
+        logging.info("Sorting by user, timestamp...")
 
-    # This sort is equivalent to
-    #   df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
-    #   inplace=True)
-    # except that the order of items with the same user and timestamp are
-    # sometimes different. For some reason, this sort results in a better
-    # hit-rate during evaluation, matching the performance of the MLPerf
-    # reference implementation.
-    df.sort_values(by=movielens.TIMESTAMP_COLUMN, inplace=True)
-    df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
-                   inplace=True, kind="mergesort")
+        # This sort is equivalent to
+        #   df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
+        #   inplace=True)
+        # except that the order of items with the same user and timestamp are
+        # sometimes different. For some reason, this sort results in a better
+        # hit-rate during evaluation, matching the performance of the MLPerf
+        # reference implementation.
+        df.sort_values(by=movielens.TIMESTAMP_COLUMN, inplace=True)
+        df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
+                       inplace=True,
+                       kind="mergesort")
 
-    # The dataframe does not reconstruct indices in the sort or filter steps.
-    df = df.reset_index()
+        # The dataframe does not reconstruct indices in the sort or filter steps.
+        df = df.reset_index()
 
-    grouped = df.groupby(movielens.USER_COLUMN, group_keys=False)
-    eval_df, train_df = grouped.tail(1), grouped.apply(lambda x: x.iloc[:-1])
+        grouped = df.groupby(movielens.USER_COLUMN, group_keys=False)
+        eval_df, train_df = grouped.tail(1), grouped.apply(
+            lambda x: x.iloc[:-1])
 
-    data = {
-        rconst.TRAIN_USER_KEY: train_df[movielens.USER_COLUMN]
-                               .values.astype(rconst.USER_DTYPE),
-        rconst.TRAIN_ITEM_KEY: train_df[movielens.ITEM_COLUMN]
-                               .values.astype(rconst.ITEM_DTYPE),
-        rconst.EVAL_USER_KEY: eval_df[movielens.USER_COLUMN]
-                              .values.astype(rconst.USER_DTYPE),
-        rconst.EVAL_ITEM_KEY: eval_df[movielens.ITEM_COLUMN]
-                              .values.astype(rconst.ITEM_DTYPE),
-        rconst.USER_MAP: user_map,
-        rconst.ITEM_MAP: item_map,
-        "create_time": time.time(),
-    }
+        data = {
+            rconst.TRAIN_USER_KEY:
+                train_df[movielens.USER_COLUMN].values.astype(rconst.USER_DTYPE
+                                                             ),
+            rconst.TRAIN_ITEM_KEY:
+                train_df[movielens.ITEM_COLUMN].values.astype(rconst.ITEM_DTYPE
+                                                             ),
+            rconst.EVAL_USER_KEY:
+                eval_df[movielens.USER_COLUMN].values.astype(rconst.USER_DTYPE),
+            rconst.EVAL_ITEM_KEY:
+                eval_df[movielens.ITEM_COLUMN].values.astype(rconst.ITEM_DTYPE),
+            rconst.USER_MAP:
+                user_map,
+            rconst.ITEM_MAP:
+                item_map,
+            "create_time":
+                time.time(),
+        }
 
-    logging.info("Writing raw data cache.")
-    with tf.io.gfile.GFile(cache_path, "wb") as f:
-      pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+        logging.info("Writing raw data cache.")
+        with tf.io.gfile.GFile(cache_path, "wb") as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-  # TODO(robieta): MLPerf cache clear.
-  return data, valid_cache
+    # TODO(robieta): MLPerf cache clear.
+    return data, valid_cache
 
 
 def instantiate_pipeline(dataset,
@@ -184,8 +189,8 @@ def instantiate_pipeline(dataset,
                          deterministic=False,
                          epoch_dir=None,
                          generate_data_offline=False):
-  # type: (str, str, dict, typing.Optional[str], bool, typing.Optional[str], bool) -> (int, int, data_pipeline.BaseDataConstructor)
-  """Load and digest data CSV into a usable form.
+    # type: (str, str, dict, typing.Optional[str], bool, typing.Optional[str], bool) -> (int, int, data_pipeline.BaseDataConstructor)
+    """Load and digest data CSV into a usable form.
 
   Args:
     dataset: The name of the dataset to be used.
@@ -198,46 +203,47 @@ def instantiate_pipeline(dataset,
     generate_data_offline: Boolean, whether current pipeline is done offline
       or while training.
   """
-  logging.info("Beginning data preprocessing.")
+    logging.info("Beginning data preprocessing.")
 
-  st = timeit.default_timer()
-  raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
-  cache_path = os.path.join(data_dir, dataset, rconst.RAW_CACHE_FILE)
+    st = timeit.default_timer()
+    raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
+    cache_path = os.path.join(data_dir, dataset, rconst.RAW_CACHE_FILE)
 
-  raw_data, _ = _filter_index_sort(raw_rating_path, cache_path)
-  user_map, item_map = raw_data["user_map"], raw_data["item_map"]
-  num_users, num_items = DATASET_TO_NUM_USERS_AND_ITEMS[dataset]
+    raw_data, _ = _filter_index_sort(raw_rating_path, cache_path)
+    user_map, item_map = raw_data["user_map"], raw_data["item_map"]
+    num_users, num_items = DATASET_TO_NUM_USERS_AND_ITEMS[dataset]
 
-  if num_users != len(user_map):
-    raise ValueError("Expected to find {} users, but found {}".format(
-        num_users, len(user_map)))
-  if num_items != len(item_map):
-    raise ValueError("Expected to find {} items, but found {}".format(
-        num_items, len(item_map)))
+    if num_users != len(user_map):
+        raise ValueError("Expected to find {} users, but found {}".format(
+            num_users, len(user_map)))
+    if num_items != len(item_map):
+        raise ValueError("Expected to find {} items, but found {}".format(
+            num_items, len(item_map)))
 
-  producer = data_pipeline.get_constructor(constructor_type or "materialized")(
-      maximum_number_epochs=params["train_epochs"],
-      num_users=num_users,
-      num_items=num_items,
-      user_map=user_map,
-      item_map=item_map,
-      train_pos_users=raw_data[rconst.TRAIN_USER_KEY],
-      train_pos_items=raw_data[rconst.TRAIN_ITEM_KEY],
-      train_batch_size=params["batch_size"],
-      batches_per_train_step=params["batches_per_step"],
-      num_train_negatives=params["num_neg"],
-      eval_pos_users=raw_data[rconst.EVAL_USER_KEY],
-      eval_pos_items=raw_data[rconst.EVAL_ITEM_KEY],
-      eval_batch_size=params["eval_batch_size"],
-      batches_per_eval_step=params["batches_per_step"],
-      stream_files=params["stream_files"],
-      deterministic=deterministic,
-      epoch_dir=epoch_dir,
-      create_data_offline=generate_data_offline)
+    producer = data_pipeline.get_constructor(
+        constructor_type or
+        "materialized")(maximum_number_epochs=params["train_epochs"],
+                        num_users=num_users,
+                        num_items=num_items,
+                        user_map=user_map,
+                        item_map=item_map,
+                        train_pos_users=raw_data[rconst.TRAIN_USER_KEY],
+                        train_pos_items=raw_data[rconst.TRAIN_ITEM_KEY],
+                        train_batch_size=params["batch_size"],
+                        batches_per_train_step=params["batches_per_step"],
+                        num_train_negatives=params["num_neg"],
+                        eval_pos_users=raw_data[rconst.EVAL_USER_KEY],
+                        eval_pos_items=raw_data[rconst.EVAL_ITEM_KEY],
+                        eval_batch_size=params["eval_batch_size"],
+                        batches_per_eval_step=params["batches_per_step"],
+                        stream_files=params["stream_files"],
+                        deterministic=deterministic,
+                        epoch_dir=epoch_dir,
+                        create_data_offline=generate_data_offline)
 
-  run_time = timeit.default_timer() - st
-  logging.info("Data preprocessing complete. Time: {:.1f} sec."
-               .format(run_time))
+    run_time = timeit.default_timer() - st
+    logging.info(
+        "Data preprocessing complete. Time: {:.1f} sec.".format(run_time))
 
-  print(producer)
-  return num_users, num_items, producer
+    print(producer)
+    return num_users, num_items, producer

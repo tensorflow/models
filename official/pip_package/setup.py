@@ -26,10 +26,8 @@ setup(
     license='Apache 2.0',
     packages=find_packages(exclude=["research*", "tutorials*", "samples*"]),
     exclude_package_data={
-            '': [
-                '*_test.py',
-            ],
-        },
+        '': ['*_test.py',],
+    },
     install_requires=[
         'six',
     ],

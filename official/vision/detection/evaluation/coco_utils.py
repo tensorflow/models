@@ -35,7 +35,7 @@ from official.vision.detection.utils import mask_utils
 
 
 class COCOWrapper(coco.COCO):
-  """COCO wrapper class.
+    """COCO wrapper class.
 
   This class wraps COCO API object, which provides the following additional
   functionalities:
@@ -46,8 +46,8 @@ class COCOWrapper(coco.COCO):
        dictionary.
   """
 
-  def __init__(self, eval_type='box', annotation_file=None, gt_dataset=None):
-    """Instantiates a COCO-style API object.
+    def __init__(self, eval_type='box', annotation_file=None, gt_dataset=None):
+        """Instantiates a COCO-style API object.
 
     Args:
       eval_type: either 'box' or 'mask'.
@@ -55,22 +55,24 @@ class COCOWrapper(coco.COCO):
         This is required if `gt_dataset` is not provided.
       gt_dataset: the groundtruth eval datatset in COCO API format.
     """
-    if ((annotation_file and gt_dataset) or
-        ((not annotation_file) and (not gt_dataset))):
-      raise ValueError('One and only one of `annotation_file` and `gt_dataset` '
-                       'needs to be specified.')
+        if ((annotation_file and gt_dataset) or ((not annotation_file) and
+                                                 (not gt_dataset))):
+            raise ValueError(
+                'One and only one of `annotation_file` and `gt_dataset` '
+                'needs to be specified.')
 
-    if eval_type not in ['box', 'mask']:
-      raise ValueError('The `eval_type` can only be either `box` or `mask`.')
+        if eval_type not in ['box', 'mask']:
+            raise ValueError(
+                'The `eval_type` can only be either `box` or `mask`.')
 
-    coco.COCO.__init__(self, annotation_file=annotation_file)
-    self._eval_type = eval_type
-    if gt_dataset:
-      self.dataset = gt_dataset
-      self.createIndex()
+        coco.COCO.__init__(self, annotation_file=annotation_file)
+        self._eval_type = eval_type
+        if gt_dataset:
+            self.dataset = gt_dataset
+            self.createIndex()
 
-  def loadRes(self, predictions):
-    """Loads result file and return a result api object.
+    def loadRes(self, predictions):
+        """Loads result file and return a result api object.
 
     Args:
       predictions: a list of dictionary each representing an annotation in COCO
@@ -84,30 +86,32 @@ class COCOWrapper(coco.COCO):
       ValueError: if the set of image id from predctions is not the subset of
         the set of image id of the groundtruth dataset.
     """
-    res = coco.COCO()
-    res.dataset['images'] = copy.deepcopy(self.dataset['images'])
-    res.dataset['categories'] = copy.deepcopy(self.dataset['categories'])
+        res = coco.COCO()
+        res.dataset['images'] = copy.deepcopy(self.dataset['images'])
+        res.dataset['categories'] = copy.deepcopy(self.dataset['categories'])
 
-    image_ids = [ann['image_id'] for ann in predictions]
-    if set(image_ids) != (set(image_ids) & set(self.getImgIds())):
-      raise ValueError('Results do not correspond to the current dataset!')
-    for ann in predictions:
-      x1, x2, y1, y2 = [ann['bbox'][0], ann['bbox'][0] + ann['bbox'][2],
-                        ann['bbox'][1], ann['bbox'][1] + ann['bbox'][3]]
-      if self._eval_type == 'box':
-        ann['area'] = ann['bbox'][2] * ann['bbox'][3]
-        ann['segmentation'] = [
-            [x1, y1, x1, y2, x2, y2, x2, y1]]
-      elif self._eval_type == 'mask':
-        ann['area'] = mask_api.area(ann['segmentation'])
+        image_ids = [ann['image_id'] for ann in predictions]
+        if set(image_ids) != (set(image_ids) & set(self.getImgIds())):
+            raise ValueError(
+                'Results do not correspond to the current dataset!')
+        for ann in predictions:
+            x1, x2, y1, y2 = [
+                ann['bbox'][0], ann['bbox'][0] + ann['bbox'][2], ann['bbox'][1],
+                ann['bbox'][1] + ann['bbox'][3]
+            ]
+            if self._eval_type == 'box':
+                ann['area'] = ann['bbox'][2] * ann['bbox'][3]
+                ann['segmentation'] = [[x1, y1, x1, y2, x2, y2, x2, y1]]
+            elif self._eval_type == 'mask':
+                ann['area'] = mask_api.area(ann['segmentation'])
 
-    res.dataset['annotations'] = copy.deepcopy(predictions)
-    res.createIndex()
-    return res
+        res.dataset['annotations'] = copy.deepcopy(predictions)
+        res.createIndex()
+        return res
 
 
 def convert_predictions_to_coco_annotations(predictions):
-  """Converts a batch of predictions to annotations in COCO format.
+    """Converts a batch of predictions to annotations in COCO format.
 
   Args:
     predictions: a dictionary of lists of numpy arrays including the following
@@ -130,50 +134,50 @@ def convert_predictions_to_coco_annotations(predictions):
   Returns:
     coco_predictions: prediction in COCO annotation format.
   """
-  coco_predictions = []
-  num_batches = len(predictions['source_id'])
-  batch_size = predictions['source_id'][0].shape[0]
-  max_num_detections = predictions['detection_classes'][0].shape[1]
-  use_outer_box = 'detection_outer_boxes' in predictions
-  for i in range(num_batches):
-    predictions['detection_boxes'][i] = box_utils.yxyx_to_xywh(
-        predictions['detection_boxes'][i])
-    if use_outer_box:
-      predictions['detection_outer_boxes'][i] = box_utils.yxyx_to_xywh(
-          predictions['detection_outer_boxes'][i])
-      mask_boxes = predictions['detection_outer_boxes']
-    else:
-      mask_boxes = predictions['detection_boxes']
+    coco_predictions = []
+    num_batches = len(predictions['source_id'])
+    batch_size = predictions['source_id'][0].shape[0]
+    max_num_detections = predictions['detection_classes'][0].shape[1]
+    use_outer_box = 'detection_outer_boxes' in predictions
+    for i in range(num_batches):
+        predictions['detection_boxes'][i] = box_utils.yxyx_to_xywh(
+            predictions['detection_boxes'][i])
+        if use_outer_box:
+            predictions['detection_outer_boxes'][i] = box_utils.yxyx_to_xywh(
+                predictions['detection_outer_boxes'][i])
+            mask_boxes = predictions['detection_outer_boxes']
+        else:
+            mask_boxes = predictions['detection_boxes']
 
-    for j in range(batch_size):
-      if 'detection_masks' in predictions:
-        image_masks = mask_utils.paste_instance_masks(
-            predictions['detection_masks'][i][j],
-            mask_boxes[i][j],
-            int(predictions['image_info'][i][j, 0, 0]),
-            int(predictions['image_info'][i][j, 0, 1]))
-        binary_masks = (image_masks > 0.0).astype(np.uint8)
-        encoded_masks = [
-            mask_api.encode(np.asfortranarray(binary_mask))
-            for binary_mask in list(binary_masks)]
-      for k in range(max_num_detections):
-        ann = {}
-        ann['image_id'] = predictions['source_id'][i][j]
-        ann['category_id'] = predictions['detection_classes'][i][j, k]
-        ann['bbox'] = predictions['detection_boxes'][i][j, k]
-        ann['score'] = predictions['detection_scores'][i][j, k]
-        if 'detection_masks' in predictions:
-          ann['segmentation'] = encoded_masks[k]
-        coco_predictions.append(ann)
+        for j in range(batch_size):
+            if 'detection_masks' in predictions:
+                image_masks = mask_utils.paste_instance_masks(
+                    predictions['detection_masks'][i][j], mask_boxes[i][j],
+                    int(predictions['image_info'][i][j, 0, 0]),
+                    int(predictions['image_info'][i][j, 0, 1]))
+                binary_masks = (image_masks > 0.0).astype(np.uint8)
+                encoded_masks = [
+                    mask_api.encode(np.asfortranarray(binary_mask))
+                    for binary_mask in list(binary_masks)
+                ]
+            for k in range(max_num_detections):
+                ann = {}
+                ann['image_id'] = predictions['source_id'][i][j]
+                ann['category_id'] = predictions['detection_classes'][i][j, k]
+                ann['bbox'] = predictions['detection_boxes'][i][j, k]
+                ann['score'] = predictions['detection_scores'][i][j, k]
+                if 'detection_masks' in predictions:
+                    ann['segmentation'] = encoded_masks[k]
+                coco_predictions.append(ann)
 
-  for i, ann in enumerate(coco_predictions):
-    ann['id'] = i + 1
+    for i, ann in enumerate(coco_predictions):
+        ann['id'] = i + 1
 
-  return coco_predictions
+    return coco_predictions
 
 
 def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
-  """Converts groundtruths to the dataset in COCO format.
+    """Converts groundtruths to the dataset in COCO format.
 
   Args:
     groundtruths: a dictionary of numpy arrays including the fields below.
@@ -204,78 +208,82 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
   Returns:
     coco_groundtruths: the groundtruth dataset in COCO format.
   """
-  source_ids = np.concatenate(groundtruths['source_id'], axis=0)
-  heights = np.concatenate(groundtruths['height'], axis=0)
-  widths = np.concatenate(groundtruths['width'], axis=0)
-  gt_images = [{'id': int(i), 'height': int(h), 'width': int(w)} for i, h, w
-               in zip(source_ids, heights, widths)]
+    source_ids = np.concatenate(groundtruths['source_id'], axis=0)
+    heights = np.concatenate(groundtruths['height'], axis=0)
+    widths = np.concatenate(groundtruths['width'], axis=0)
+    gt_images = [{
+        'id': int(i),
+        'height': int(h),
+        'width': int(w)
+    } for i, h, w in zip(source_ids, heights, widths)]
 
-  gt_annotations = []
-  num_batches = len(groundtruths['source_id'])
-  batch_size = groundtruths['source_id'][0].shape[0]
-  for i in range(num_batches):
-    for j in range(batch_size):
-      num_instances = groundtruths['num_detections'][i][j]
-      for k in range(num_instances):
-        ann = {}
-        ann['image_id'] = int(groundtruths['source_id'][i][j])
-        if 'is_crowds' in groundtruths:
-          ann['iscrowd'] = int(groundtruths['is_crowds'][i][j, k])
-        else:
-          ann['iscrowd'] = 0
-        ann['category_id'] = int(groundtruths['classes'][i][j, k])
-        boxes = groundtruths['boxes'][i]
-        ann['bbox'] = [
-            float(boxes[j, k, 1]),
-            float(boxes[j, k, 0]),
-            float(boxes[j, k, 3] - boxes[j, k, 1]),
-            float(boxes[j, k, 2] - boxes[j, k, 0])]
-        if 'areas' in groundtruths:
-          ann['area'] = float(groundtruths['areas'][i][j, k])
-        else:
-          ann['area'] = float(
-              (boxes[j, k, 3] - boxes[j, k, 1]) *
-              (boxes[j, k, 2] - boxes[j, k, 0]))
-        if 'masks' in groundtruths:
-          mask = Image.open(six.StringIO(groundtruths['masks'][i][j, k]))
-          width, height = mask.size
-          np_mask = (
-              np.array(mask.getdata()).reshape(height, width).astype(np.uint8))
-          np_mask[np_mask > 0] = 255
-          encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
-          ann['segmentation'] = encoded_mask
-          if 'areas' not in groundtruths:
-            ann['area'] = mask_api.area(encoded_mask)
-        gt_annotations.append(ann)
+    gt_annotations = []
+    num_batches = len(groundtruths['source_id'])
+    batch_size = groundtruths['source_id'][0].shape[0]
+    for i in range(num_batches):
+        for j in range(batch_size):
+            num_instances = groundtruths['num_detections'][i][j]
+            for k in range(num_instances):
+                ann = {}
+                ann['image_id'] = int(groundtruths['source_id'][i][j])
+                if 'is_crowds' in groundtruths:
+                    ann['iscrowd'] = int(groundtruths['is_crowds'][i][j, k])
+                else:
+                    ann['iscrowd'] = 0
+                ann['category_id'] = int(groundtruths['classes'][i][j, k])
+                boxes = groundtruths['boxes'][i]
+                ann['bbox'] = [
+                    float(boxes[j, k, 1]),
+                    float(boxes[j, k, 0]),
+                    float(boxes[j, k, 3] - boxes[j, k, 1]),
+                    float(boxes[j, k, 2] - boxes[j, k, 0])
+                ]
+                if 'areas' in groundtruths:
+                    ann['area'] = float(groundtruths['areas'][i][j, k])
+                else:
+                    ann['area'] = float((boxes[j, k, 3] - boxes[j, k, 1]) *
+                                        (boxes[j, k, 2] - boxes[j, k, 0]))
+                if 'masks' in groundtruths:
+                    mask = Image.open(
+                        six.StringIO(groundtruths['masks'][i][j, k]))
+                    width, height = mask.size
+                    np_mask = (np.array(mask.getdata()).reshape(
+                        height, width).astype(np.uint8))
+                    np_mask[np_mask > 0] = 255
+                    encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
+                    ann['segmentation'] = encoded_mask
+                    if 'areas' not in groundtruths:
+                        ann['area'] = mask_api.area(encoded_mask)
+                gt_annotations.append(ann)
 
-  for i, ann in enumerate(gt_annotations):
-    ann['id'] = i + 1
+    for i, ann in enumerate(gt_annotations):
+        ann['id'] = i + 1
 
-  if label_map:
-    gt_categories = [{'id': i, 'name': label_map[i]} for i in label_map]
-  else:
-    category_ids = [gt['category_id'] for gt in gt_annotations]
-    gt_categories = [{'id': i} for i in set(category_ids)]
+    if label_map:
+        gt_categories = [{'id': i, 'name': label_map[i]} for i in label_map]
+    else:
+        category_ids = [gt['category_id'] for gt in gt_annotations]
+        gt_categories = [{'id': i} for i in set(category_ids)]
 
-  gt_dataset = {
-      'images': gt_images,
-      'categories': gt_categories,
-      'annotations': copy.deepcopy(gt_annotations),
-  }
-  return gt_dataset
+    gt_dataset = {
+        'images': gt_images,
+        'categories': gt_categories,
+        'annotations': copy.deepcopy(gt_annotations),
+    }
+    return gt_dataset
 
 
 class COCOGroundtruthGenerator(object):
-  """Generates the groundtruth annotations from a single example."""
+    """Generates the groundtruth annotations from a single example."""
 
-  def __init__(self, file_pattern, num_examples, include_mask):
-    self._file_pattern = file_pattern
-    self._num_examples = num_examples
-    self._include_mask = include_mask
-    self._dataset_fn = tf.data.TFRecordDataset
+    def __init__(self, file_pattern, num_examples, include_mask):
+        self._file_pattern = file_pattern
+        self._num_examples = num_examples
+        self._include_mask = include_mask
+        self._dataset_fn = tf.data.TFRecordDataset
 
-  def _parse_single_example(self, example):
-    """Parses a single serialized tf.Example proto.
+    def _parse_single_example(self, example):
+        """Parses a single serialized tf.Example proto.
 
     Args:
       example: a serialized tf.Example proto string.
@@ -296,79 +304,84 @@ class COCOGroundtruthGenerator(object):
         masks: a string tensor of shape [K], containing the bytes of the png
           mask of each instance.
     """
-    decoder = tf_example_decoder.TfExampleDecoder(
-        include_mask=self._include_mask)
-    decoded_tensors = decoder.decode(example)
+        decoder = tf_example_decoder.TfExampleDecoder(
+            include_mask=self._include_mask)
+        decoded_tensors = decoder.decode(example)
 
-    image = decoded_tensors['image']
-    image_size = tf.shape(image)[0:2]
-    boxes = box_utils.denormalize_boxes(
-        decoded_tensors['groundtruth_boxes'], image_size)
-    groundtruths = {
-        'source_id': tf.string_to_number(
-            decoded_tensors['source_id'], out_type=tf.int64),
-        'height': decoded_tensors['height'],
-        'width': decoded_tensors['width'],
-        'num_detections': tf.shape(decoded_tensors['groundtruth_classes'])[0],
-        'boxes': boxes,
-        'classes': decoded_tensors['groundtruth_classes'],
-        'is_crowds': decoded_tensors['groundtruth_is_crowd'],
-        'areas': decoded_tensors['groundtruth_area'],
-    }
-    if self._include_mask:
-      groundtruths.update({
-          'masks': decoded_tensors['groundtruth_instance_masks_png'],
-      })
-    return groundtruths
+        image = decoded_tensors['image']
+        image_size = tf.shape(image)[0:2]
+        boxes = box_utils.denormalize_boxes(
+            decoded_tensors['groundtruth_boxes'], image_size)
+        groundtruths = {
+            'source_id':
+                tf.string_to_number(decoded_tensors['source_id'],
+                                    out_type=tf.int64),
+            'height':
+                decoded_tensors['height'],
+            'width':
+                decoded_tensors['width'],
+            'num_detections':
+                tf.shape(decoded_tensors['groundtruth_classes'])[0],
+            'boxes':
+                boxes,
+            'classes':
+                decoded_tensors['groundtruth_classes'],
+            'is_crowds':
+                decoded_tensors['groundtruth_is_crowd'],
+            'areas':
+                decoded_tensors['groundtruth_area'],
+        }
+        if self._include_mask:
+            groundtruths.update({
+                'masks': decoded_tensors['groundtruth_instance_masks_png'],
+            })
+        return groundtruths
 
-  def _build_pipeline(self):
-    """Builds data pipeline to generate groundtruth annotations."""
-    dataset = tf.data.Dataset.list_files(self._file_pattern, shuffle=False)
-    dataset = dataset.apply(
-        tf.data.experimental.parallel_interleave(
-            lambda filename: self._dataset_fn(filename).prefetch(1),
-            cycle_length=32,
-            sloppy=False))
-    dataset = dataset.map(self._parse_single_example, num_parallel_calls=64)
-    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    dataset = dataset.batch(1, drop_remainder=False)
-    return dataset
+    def _build_pipeline(self):
+        """Builds data pipeline to generate groundtruth annotations."""
+        dataset = tf.data.Dataset.list_files(self._file_pattern, shuffle=False)
+        dataset = dataset.apply(
+            tf.data.experimental.parallel_interleave(
+                lambda filename: self._dataset_fn(filename).prefetch(1),
+                cycle_length=32,
+                sloppy=False))
+        dataset = dataset.map(self._parse_single_example, num_parallel_calls=64)
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+        dataset = dataset.batch(1, drop_remainder=False)
+        return dataset
 
-  def __call__(self):
-    with tf.Graph().as_default():
-      dataset = self._build_pipeline()
-      groundtruth = dataset.make_one_shot_iterator().get_next()
+    def __call__(self):
+        with tf.Graph().as_default():
+            dataset = self._build_pipeline()
+            groundtruth = dataset.make_one_shot_iterator().get_next()
 
-      with tf.Session() as sess:
-        for _ in range(self._num_examples):
-          groundtruth_result = sess.run(groundtruth)
-          yield groundtruth_result
+            with tf.Session() as sess:
+                for _ in range(self._num_examples):
+                    groundtruth_result = sess.run(groundtruth)
+                    yield groundtruth_result
 
 
-def scan_and_generator_annotation_file(file_pattern,
-                                       num_samples,
-                                       include_mask,
+def scan_and_generator_annotation_file(file_pattern, num_samples, include_mask,
                                        annotation_file):
-  """Scans and generate the COCO-style annotation JSON file given a dataset."""
-  groundtruth_generator = COCOGroundtruthGenerator(
-      file_pattern, num_samples, include_mask)
-  generate_annotation_file(groundtruth_generator, annotation_file)
+    """Scans and generate the COCO-style annotation JSON file given a dataset."""
+    groundtruth_generator = COCOGroundtruthGenerator(file_pattern, num_samples,
+                                                     include_mask)
+    generate_annotation_file(groundtruth_generator, annotation_file)
 
 
-def generate_annotation_file(groundtruth_generator,
-                             annotation_file):
-  """Generates COCO-style annotation JSON file given a groundtruth generator."""
-  groundtruths = {}
-  logging.info('Loading groundtruth annotations from dataset to memory...')
-  for groundtruth in groundtruth_generator():
-    for k, v in six.iteritems(groundtruth):
-      if k not in groundtruths:
-        groundtruths[k] = [v]
-      else:
-        groundtruths[k].append(v)
-  gt_dataset = convert_groundtruths_to_coco_dataset(groundtruths)
+def generate_annotation_file(groundtruth_generator, annotation_file):
+    """Generates COCO-style annotation JSON file given a groundtruth generator."""
+    groundtruths = {}
+    logging.info('Loading groundtruth annotations from dataset to memory...')
+    for groundtruth in groundtruth_generator():
+        for k, v in six.iteritems(groundtruth):
+            if k not in groundtruths:
+                groundtruths[k] = [v]
+            else:
+                groundtruths[k].append(v)
+    gt_dataset = convert_groundtruths_to_coco_dataset(groundtruths)
 
-  logging.info('Saving groundtruth annotations to the JSON file...')
-  with tf.io.gfile.GFile(annotation_file, 'w') as f:
-    f.write(json.dumps(gt_dataset))
-  logging.info('Done saving the JSON file...')
+    logging.info('Saving groundtruth annotations to the JSON file...')
+    with tf.io.gfile.GFile(annotation_file, 'w') as f:
+        f.write(json.dumps(gt_dataset))
+    logging.info('Done saving the JSON file...')

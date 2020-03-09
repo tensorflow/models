@@ -32,7 +32,6 @@ from official.nlp.bert import configs
 from official.nlp.bert import input_pipeline
 from official.utils.misc import distribution_utils
 
-
 flags.DEFINE_string('input_files', None,
                     'File path to retrieve training data for pre-training.')
 # Model training specific flags.
@@ -57,121 +56,109 @@ FLAGS = flags.FLAGS
 
 def get_pretrain_dataset_fn(input_file_pattern, seq_length,
                             max_predictions_per_seq, global_batch_size):
-  """Returns input dataset from input file string."""
-  def _dataset_fn(ctx=None):
-    """Returns tf.data.Dataset for distributed BERT pretraining."""
-    input_patterns = input_file_pattern.split(',')
-    batch_size = ctx.get_per_replica_batch_size(global_batch_size)
-    train_dataset = input_pipeline.create_pretrain_dataset(
-        input_patterns,
-        seq_length,
-        max_predictions_per_seq,
-        batch_size,
-        is_training=True,
-        input_pipeline_context=ctx)
-    return train_dataset
+    """Returns input dataset from input file string."""
 
-  return _dataset_fn
+    def _dataset_fn(ctx=None):
+        """Returns tf.data.Dataset for distributed BERT pretraining."""
+        input_patterns = input_file_pattern.split(',')
+        batch_size = ctx.get_per_replica_batch_size(global_batch_size)
+        train_dataset = input_pipeline.create_pretrain_dataset(
+            input_patterns,
+            seq_length,
+            max_predictions_per_seq,
+            batch_size,
+            is_training=True,
+            input_pipeline_context=ctx)
+        return train_dataset
+
+    return _dataset_fn
 
 
 def get_loss_fn(loss_factor=1.0):
-  """Returns loss function for BERT pretraining."""
+    """Returns loss function for BERT pretraining."""
 
-  def _bert_pretrain_loss_fn(unused_labels, losses, **unused_args):
-    return tf.reduce_mean(losses) * loss_factor
+    def _bert_pretrain_loss_fn(unused_labels, losses, **unused_args):
+        return tf.reduce_mean(losses) * loss_factor
 
-  return _bert_pretrain_loss_fn
+    return _bert_pretrain_loss_fn
 
 
-def run_customized_training(strategy,
-                            bert_config,
-                            max_seq_length,
-                            max_predictions_per_seq,
-                            model_dir,
-                            steps_per_epoch,
-                            steps_per_loop,
-                            epochs,
-                            initial_lr,
-                            warmup_steps,
-                            input_files,
-                            train_batch_size):
-  """Run BERT pretrain model training using low-level API."""
+def run_customized_training(strategy, bert_config, max_seq_length,
+                            max_predictions_per_seq, model_dir, steps_per_epoch,
+                            steps_per_loop, epochs, initial_lr, warmup_steps,
+                            input_files, train_batch_size):
+    """Run BERT pretrain model training using low-level API."""
 
-  train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
-                                           max_predictions_per_seq,
-                                           train_batch_size)
+    train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
+                                             max_predictions_per_seq,
+                                             train_batch_size)
 
-  def _get_pretrain_model():
-    """Gets a pretraining model."""
-    pretrain_model, core_model = bert_models.pretrain_model(
-        bert_config, max_seq_length, max_predictions_per_seq)
-    optimizer = optimization.create_optimizer(
-        initial_lr, steps_per_epoch * epochs, warmup_steps)
-    pretrain_model.optimizer = performance.configure_optimizer(
-        optimizer,
-        use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite())
-    return pretrain_model, core_model
+    def _get_pretrain_model():
+        """Gets a pretraining model."""
+        pretrain_model, core_model = bert_models.pretrain_model(
+            bert_config, max_seq_length, max_predictions_per_seq)
+        optimizer = optimization.create_optimizer(initial_lr,
+                                                  steps_per_epoch * epochs,
+                                                  warmup_steps)
+        pretrain_model.optimizer = performance.configure_optimizer(
+            optimizer,
+            use_float16=common_flags.use_float16(),
+            use_graph_rewrite=common_flags.use_graph_rewrite())
+        return pretrain_model, core_model
 
-  trained_model = model_training_utils.run_customized_training_loop(
-      strategy=strategy,
-      model_fn=_get_pretrain_model,
-      loss_fn=get_loss_fn(
-          loss_factor=1.0 /
-          strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0),
-      model_dir=model_dir,
-      train_input_fn=train_input_fn,
-      steps_per_epoch=steps_per_epoch,
-      steps_per_loop=steps_per_loop,
-      epochs=epochs,
-      sub_model_export_name='pretrained/bert_model')
+    trained_model = model_training_utils.run_customized_training_loop(
+        strategy=strategy,
+        model_fn=_get_pretrain_model,
+        loss_fn=get_loss_fn(
+            loss_factor=1.0 /
+            strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0),
+        model_dir=model_dir,
+        train_input_fn=train_input_fn,
+        steps_per_epoch=steps_per_epoch,
+        steps_per_loop=steps_per_loop,
+        epochs=epochs,
+        sub_model_export_name='pretrained/bert_model')
 
-  return trained_model
+    return trained_model
 
 
 def run_bert_pretrain(strategy):
-  """Runs BERT pre-training."""
+    """Runs BERT pre-training."""
 
-  bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
-  if not strategy:
-    raise ValueError('Distribution strategy is not specified.')
+    bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+    if not strategy:
+        raise ValueError('Distribution strategy is not specified.')
 
-  # Runs customized training loop.
-  logging.info('Training using customized training loop TF 2.0 with distrubuted'
-               'strategy.')
+    # Runs customized training loop.
+    logging.info(
+        'Training using customized training loop TF 2.0 with distrubuted'
+        'strategy.')
 
-  performance.set_mixed_precision_policy(common_flags.dtype())
+    performance.set_mixed_precision_policy(common_flags.dtype())
 
-  return run_customized_training(
-      strategy,
-      bert_config,
-      FLAGS.max_seq_length,
-      FLAGS.max_predictions_per_seq,
-      FLAGS.model_dir,
-      FLAGS.num_steps_per_epoch,
-      FLAGS.steps_per_loop,
-      FLAGS.num_train_epochs,
-      FLAGS.learning_rate,
-      FLAGS.warmup_steps,
-      FLAGS.input_files,
-      FLAGS.train_batch_size)
+    return run_customized_training(strategy, bert_config, FLAGS.max_seq_length,
+                                   FLAGS.max_predictions_per_seq,
+                                   FLAGS.model_dir, FLAGS.num_steps_per_epoch,
+                                   FLAGS.steps_per_loop, FLAGS.num_train_epochs,
+                                   FLAGS.learning_rate, FLAGS.warmup_steps,
+                                   FLAGS.input_files, FLAGS.train_batch_size)
 
 
 def main(_):
-  # Users should always run this script under TF 2.x
-  assert tf.version.VERSION.startswith('2.')
-  gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
-  if not FLAGS.model_dir:
-    FLAGS.model_dir = '/tmp/bert20/'
-  strategy = distribution_utils.get_distribution_strategy(
-      distribution_strategy=FLAGS.distribution_strategy,
-      num_gpus=FLAGS.num_gpus,
-      tpu_address=FLAGS.tpu)
-  if strategy:
-    print('***** Number of cores used : ', strategy.num_replicas_in_sync)
+    # Users should always run this script under TF 2.x
+    assert tf.version.VERSION.startswith('2.')
+    gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
+    if not FLAGS.model_dir:
+        FLAGS.model_dir = '/tmp/bert20/'
+    strategy = distribution_utils.get_distribution_strategy(
+        distribution_strategy=FLAGS.distribution_strategy,
+        num_gpus=FLAGS.num_gpus,
+        tpu_address=FLAGS.tpu)
+    if strategy:
+        print('***** Number of cores used : ', strategy.num_replicas_in_sync)
 
-  run_bert_pretrain(strategy)
+    run_bert_pretrain(strategy)
 
 
 if __name__ == '__main__':
-  app.run(main)
+    app.run(main)

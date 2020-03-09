@@ -28,7 +28,7 @@ from official.nlp.modeling import layers
 
 @tf.keras.utils.register_keras_serializable(package='Text')
 class TransformerEncoder(network.Network):
-  """Bi-directional Transformer-based encoder network.
+    """Bi-directional Transformer-based encoder network.
 
   This network implements a bi-directional Transformer-based encoder as
   described in "BERT: Pre-training of Deep Bidirectional Transformers for
@@ -63,129 +63,130 @@ class TransformerEncoder(network.Network):
       all encoder transformer layers.
   """
 
-  def __init__(self,
-               vocab_size,
-               hidden_size=768,
-               num_layers=12,
-               num_attention_heads=12,
-               sequence_length=512,
-               max_sequence_length=None,
-               type_vocab_size=16,
-               intermediate_size=3072,
-               activation=activations.gelu,
-               dropout_rate=0.1,
-               attention_dropout_rate=0.1,
-               initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
-               return_all_encoder_outputs=False,
-               **kwargs):
-    activation = tf.keras.activations.get(activation)
-    initializer = tf.keras.initializers.get(initializer)
+    def __init__(self,
+                 vocab_size,
+                 hidden_size=768,
+                 num_layers=12,
+                 num_attention_heads=12,
+                 sequence_length=512,
+                 max_sequence_length=None,
+                 type_vocab_size=16,
+                 intermediate_size=3072,
+                 activation=activations.gelu,
+                 dropout_rate=0.1,
+                 attention_dropout_rate=0.1,
+                 initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
+                 return_all_encoder_outputs=False,
+                 **kwargs):
+        activation = tf.keras.activations.get(activation)
+        initializer = tf.keras.initializers.get(initializer)
 
-    if not max_sequence_length:
-      max_sequence_length = sequence_length
-    self._self_setattr_tracking = False
-    self._config_dict = {
-        'vocab_size': vocab_size,
-        'hidden_size': hidden_size,
-        'num_layers': num_layers,
-        'num_attention_heads': num_attention_heads,
-        'sequence_length': sequence_length,
-        'max_sequence_length': max_sequence_length,
-        'type_vocab_size': type_vocab_size,
-        'intermediate_size': intermediate_size,
-        'activation': tf.keras.activations.serialize(activation),
-        'dropout_rate': dropout_rate,
-        'attention_dropout_rate': attention_dropout_rate,
-        'initializer': tf.keras.initializers.serialize(initializer),
-        'return_all_encoder_outputs': return_all_encoder_outputs,
-    }
+        if not max_sequence_length:
+            max_sequence_length = sequence_length
+        self._self_setattr_tracking = False
+        self._config_dict = {
+            'vocab_size': vocab_size,
+            'hidden_size': hidden_size,
+            'num_layers': num_layers,
+            'num_attention_heads': num_attention_heads,
+            'sequence_length': sequence_length,
+            'max_sequence_length': max_sequence_length,
+            'type_vocab_size': type_vocab_size,
+            'intermediate_size': intermediate_size,
+            'activation': tf.keras.activations.serialize(activation),
+            'dropout_rate': dropout_rate,
+            'attention_dropout_rate': attention_dropout_rate,
+            'initializer': tf.keras.initializers.serialize(initializer),
+            'return_all_encoder_outputs': return_all_encoder_outputs,
+        }
 
-    word_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_word_ids')
-    mask = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_mask')
-    type_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_type_ids')
+        word_ids = tf.keras.layers.Input(shape=(sequence_length,),
+                                         dtype=tf.int32,
+                                         name='input_word_ids')
+        mask = tf.keras.layers.Input(shape=(sequence_length,),
+                                     dtype=tf.int32,
+                                     name='input_mask')
+        type_ids = tf.keras.layers.Input(shape=(sequence_length,),
+                                         dtype=tf.int32,
+                                         name='input_type_ids')
 
-    self._embedding_layer = layers.OnDeviceEmbedding(
-        vocab_size=vocab_size,
-        embedding_width=hidden_size,
-        initializer=initializer,
-        name='word_embeddings')
-    word_embeddings = self._embedding_layer(word_ids)
+        self._embedding_layer = layers.OnDeviceEmbedding(
+            vocab_size=vocab_size,
+            embedding_width=hidden_size,
+            initializer=initializer,
+            name='word_embeddings')
+        word_embeddings = self._embedding_layer(word_ids)
 
-    # Always uses dynamic slicing for simplicity.
-    self._position_embedding_layer = layers.PositionEmbedding(
-        initializer=initializer,
-        use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length)
-    position_embeddings = self._position_embedding_layer(word_embeddings)
+        # Always uses dynamic slicing for simplicity.
+        self._position_embedding_layer = layers.PositionEmbedding(
+            initializer=initializer,
+            use_dynamic_slicing=True,
+            max_sequence_length=max_sequence_length)
+        position_embeddings = self._position_embedding_layer(word_embeddings)
 
-    type_embeddings = (
-        layers.OnDeviceEmbedding(
+        type_embeddings = (layers.OnDeviceEmbedding(
             vocab_size=type_vocab_size,
             embedding_width=hidden_size,
             initializer=initializer,
             use_one_hot=True,
             name='type_embeddings')(type_ids))
 
-    embeddings = tf.keras.layers.Add()(
-        [word_embeddings, position_embeddings, type_embeddings])
-    embeddings = (
-        tf.keras.layers.LayerNormalization(
+        embeddings = tf.keras.layers.Add()(
+            [word_embeddings, position_embeddings, type_embeddings])
+        embeddings = (tf.keras.layers.LayerNormalization(
             name='embeddings/layer_norm',
             axis=-1,
             epsilon=1e-12,
             dtype=tf.float32)(embeddings))
-    embeddings = (
-        tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
+        embeddings = (tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
 
-    self._transformer_layers = []
-    data = embeddings
-    attention_mask = layers.SelfAttentionMask()([data, mask])
-    encoder_outputs = []
-    for i in range(num_layers):
-      layer = layers.Transformer(
-          num_attention_heads=num_attention_heads,
-          intermediate_size=intermediate_size,
-          intermediate_activation=activation,
-          dropout_rate=dropout_rate,
-          attention_dropout_rate=attention_dropout_rate,
-          kernel_initializer=initializer,
-          name='transformer/layer_%d' % i)
-      self._transformer_layers.append(layer)
-      data = layer([data, attention_mask])
-      encoder_outputs.append(data)
+        self._transformer_layers = []
+        data = embeddings
+        attention_mask = layers.SelfAttentionMask()([data, mask])
+        encoder_outputs = []
+        for i in range(num_layers):
+            layer = layers.Transformer(
+                num_attention_heads=num_attention_heads,
+                intermediate_size=intermediate_size,
+                intermediate_activation=activation,
+                dropout_rate=dropout_rate,
+                attention_dropout_rate=attention_dropout_rate,
+                kernel_initializer=initializer,
+                name='transformer/layer_%d' % i)
+            self._transformer_layers.append(layer)
+            data = layer([data, attention_mask])
+            encoder_outputs.append(data)
 
-    first_token_tensor = (
-        tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
-            encoder_outputs[-1]))
-    cls_output = tf.keras.layers.Dense(
-        units=hidden_size,
-        activation='tanh',
-        kernel_initializer=initializer,
-        name='pooler_transform')(
-            first_token_tensor)
+        first_token_tensor = (
+            tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
+                encoder_outputs[-1]))
+        cls_output = tf.keras.layers.Dense(
+            units=hidden_size,
+            activation='tanh',
+            kernel_initializer=initializer,
+            name='pooler_transform')(first_token_tensor)
 
-    if return_all_encoder_outputs:
-      outputs = [encoder_outputs, cls_output]
-    else:
-      outputs = [encoder_outputs[-1], cls_output]
+        if return_all_encoder_outputs:
+            outputs = [encoder_outputs, cls_output]
+        else:
+            outputs = [encoder_outputs[-1], cls_output]
 
-    super(TransformerEncoder, self).__init__(
-        inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
+        super(TransformerEncoder,
+              self).__init__(inputs=[word_ids, mask, type_ids],
+                             outputs=outputs,
+                             **kwargs)
 
-  def get_embedding_table(self):
-    return self._embedding_layer.embeddings
+    def get_embedding_table(self):
+        return self._embedding_layer.embeddings
 
-  def get_config(self):
-    return self._config_dict
+    def get_config(self):
+        return self._config_dict
 
-  @property
-  def transformer_layers(self):
-    """List of Transformer layers in the encoder."""
-    return self._transformer_layers
+    @property
+    def transformer_layers(self):
+        """List of Transformer layers in the encoder."""
+        return self._transformer_layers
 
-  @classmethod
-  def from_config(cls, config, custom_objects=None):
-    return cls(**config)
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        return cls(**config)

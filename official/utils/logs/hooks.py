@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Hook that counts examples per second every N steps or seconds."""
-
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,7 +24,7 @@ from official.utils.logs import logger
 
 
 class ExamplesPerSecondHook(tf.estimator.SessionRunHook):
-  """Hook to print out examples per second.
+    """Hook to print out examples per second.
 
   Total time is tracked and then divided by the total number of steps
   to get the average step time and then batch_size is used to determine
@@ -34,13 +32,13 @@ class ExamplesPerSecondHook(tf.estimator.SessionRunHook):
   most recent interval is also logged.
   """
 
-  def __init__(self,
-               batch_size,
-               every_n_steps=None,
-               every_n_secs=None,
-               warm_steps=0,
-               metric_logger=None):
-    """Initializer for ExamplesPerSecondHook.
+    def __init__(self,
+                 batch_size,
+                 every_n_steps=None,
+                 every_n_secs=None,
+                 warm_steps=0,
+                 metric_logger=None):
+        """Initializer for ExamplesPerSecondHook.
 
     Args:
       batch_size: Total batch size across all workers used to calculate
@@ -60,31 +58,31 @@ class ExamplesPerSecondHook(tf.estimator.SessionRunHook):
       both are set.
     """
 
-    if (every_n_steps is None) == (every_n_secs is None):
-      raise ValueError("exactly one of every_n_steps"
-                       " and every_n_secs should be provided.")
+        if (every_n_steps is None) == (every_n_secs is None):
+            raise ValueError("exactly one of every_n_steps"
+                             " and every_n_secs should be provided.")
 
-    self._logger = metric_logger or logger.BaseBenchmarkLogger()
+        self._logger = metric_logger or logger.BaseBenchmarkLogger()
 
-    self._timer = tf.estimator.SecondOrStepTimer(
-        every_steps=every_n_steps, every_secs=every_n_secs)
+        self._timer = tf.estimator.SecondOrStepTimer(every_steps=every_n_steps,
+                                                     every_secs=every_n_secs)
 
-    self._step_train_time = 0
-    self._total_steps = 0
-    self._batch_size = batch_size
-    self._warm_steps = warm_steps
-    # List of examples per second logged every_n_steps.
-    self.current_examples_per_sec_list = []
+        self._step_train_time = 0
+        self._total_steps = 0
+        self._batch_size = batch_size
+        self._warm_steps = warm_steps
+        # List of examples per second logged every_n_steps.
+        self.current_examples_per_sec_list = []
 
-  def begin(self):
-    """Called once before using the session to check global step."""
-    self._global_step_tensor = tf.compat.v1.train.get_global_step()
-    if self._global_step_tensor is None:
-      raise RuntimeError(
-          "Global step should be created to use StepCounterHook.")
+    def begin(self):
+        """Called once before using the session to check global step."""
+        self._global_step_tensor = tf.compat.v1.train.get_global_step()
+        if self._global_step_tensor is None:
+            raise RuntimeError(
+                "Global step should be created to use StepCounterHook.")
 
-  def before_run(self, run_context):  # pylint: disable=unused-argument
-    """Called before each call to run().
+    def before_run(self, run_context):  # pylint: disable=unused-argument
+        """Called before each call to run().
 
     Args:
       run_context: A SessionRunContext object.
@@ -92,39 +90,40 @@ class ExamplesPerSecondHook(tf.estimator.SessionRunHook):
     Returns:
       A SessionRunArgs object or None if never triggered.
     """
-    return tf.estimator.SessionRunArgs(self._global_step_tensor)
+        return tf.estimator.SessionRunArgs(self._global_step_tensor)
 
-  def after_run(self, run_context, run_values):  # pylint: disable=unused-argument
-    """Called after each call to run().
+    def after_run(self, run_context, run_values):  # pylint: disable=unused-argument
+        """Called after each call to run().
 
     Args:
       run_context: A SessionRunContext object.
       run_values: A SessionRunValues object.
     """
-    global_step = run_values.results
+        global_step = run_values.results
 
-    if self._timer.should_trigger_for_step(
-        global_step) and global_step > self._warm_steps:
-      elapsed_time, elapsed_steps = self._timer.update_last_triggered_step(
-          global_step)
-      if elapsed_time is not None:
-        self._step_train_time += elapsed_time
-        self._total_steps += elapsed_steps
+        if self._timer.should_trigger_for_step(
+                global_step) and global_step > self._warm_steps:
+            elapsed_time, elapsed_steps = self._timer.update_last_triggered_step(
+                global_step)
+            if elapsed_time is not None:
+                self._step_train_time += elapsed_time
+                self._total_steps += elapsed_steps
 
-        # average examples per second is based on the total (accumulative)
-        # training steps and training time so far
-        average_examples_per_sec = self._batch_size * (
-            self._total_steps / self._step_train_time)
-        # current examples per second is based on the elapsed training steps
-        # and training time per batch
-        current_examples_per_sec = self._batch_size * (
-            elapsed_steps / elapsed_time)
-        # Logs entries to be read from hook during or after run.
-        self.current_examples_per_sec_list.append(current_examples_per_sec)
-        self._logger.log_metric(
-            "average_examples_per_sec", average_examples_per_sec,
-            global_step=global_step)
+                # average examples per second is based on the total (accumulative)
+                # training steps and training time so far
+                average_examples_per_sec = self._batch_size * (
+                    self._total_steps / self._step_train_time)
+                # current examples per second is based on the elapsed training steps
+                # and training time per batch
+                current_examples_per_sec = self._batch_size * (elapsed_steps /
+                                                               elapsed_time)
+                # Logs entries to be read from hook during or after run.
+                self.current_examples_per_sec_list.append(
+                    current_examples_per_sec)
+                self._logger.log_metric("average_examples_per_sec",
+                                        average_examples_per_sec,
+                                        global_step=global_step)
 
-        self._logger.log_metric(
-            "current_examples_per_sec", current_examples_per_sec,
-            global_step=global_step)
+                self._logger.log_metric("current_examples_per_sec",
+                                        current_examples_per_sec,
+                                        global_step=global_step)

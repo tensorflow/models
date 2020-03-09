@@ -16,7 +16,6 @@
 
 from collections import defaultdict
 
-
 BASE_PARAMS = defaultdict(
     lambda: None,  # Set default value to None.
 
@@ -66,7 +65,6 @@ BIG_PARAMS.update(
 
     # default batch size is smaller than for BASE_PARAMS due to memory limits.
     default_batch_size_tpu=16384,
-
     hidden_size=1024,
     filter_size=4096,
     num_heads=16,
@@ -75,15 +73,11 @@ BIG_PARAMS.update(
 # Parameters for running the model in multi gpu. These should not change the
 # params that modify the model shape (such as the hidden_size or num_heads).
 BASE_MULTI_GPU_PARAMS = BASE_PARAMS.copy()
-BASE_MULTI_GPU_PARAMS.update(
-    learning_rate_warmup_steps=8000
-)
+BASE_MULTI_GPU_PARAMS.update(learning_rate_warmup_steps=8000)
 
 BIG_MULTI_GPU_PARAMS = BIG_PARAMS.copy()
-BIG_MULTI_GPU_PARAMS.update(
-    layer_postprocess_dropout=0.3,
-    learning_rate_warmup_steps=8000
-)
+BIG_MULTI_GPU_PARAMS.update(layer_postprocess_dropout=0.3,
+                            learning_rate_warmup_steps=8000)
 
 # Parameters for testing the model
 TINY_PARAMS = BASE_PARAMS.copy()

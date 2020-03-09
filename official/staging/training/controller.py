@@ -30,28 +30,28 @@ from official.staging.training import utils
 
 
 class Controller(object):
-  """Class that facilitates training and evaluation of models."""
+    """Class that facilitates training and evaluation of models."""
 
-  def __init__(
-      self,
-      strategy: Optional[tf.distribute.Strategy] = None,
-      train_fn: Optional[Callable[[tf.Tensor],
-                                  Optional[Dict[Text, tf.Tensor]]]] = None,
-      eval_fn: Optional[Callable[[tf.Tensor],
-                                 Optional[Dict[Text, tf.Tensor]]]] = None,
-      global_step: Optional[tf.Variable] = None,
-      # Train related
-      train_steps: Optional[int] = None,
-      steps_per_loop: Optional[int] = None,
-      summary_dir: Optional[Text] = None,
-      checkpoint_manager: Optional[tf.train.CheckpointManager] = None,
-      # summary related
-      summary_interval: Optional[int] = None,
-      # Evaluation related
-      eval_summary_dir: Optional[Text] = None,
-      eval_steps: Optional[int] = None,
-      eval_interval: Optional[int] = None):
-    """Constructs a `Controller` instance.
+    def __init__(
+        self,
+        strategy: Optional[tf.distribute.Strategy] = None,
+        train_fn: Optional[Callable[[tf.Tensor],
+                                    Optional[Dict[Text, tf.Tensor]]]] = None,
+        eval_fn: Optional[Callable[[tf.Tensor],
+                                   Optional[Dict[Text, tf.Tensor]]]] = None,
+        global_step: Optional[tf.Variable] = None,
+        # Train related
+        train_steps: Optional[int] = None,
+        steps_per_loop: Optional[int] = None,
+        summary_dir: Optional[Text] = None,
+        checkpoint_manager: Optional[tf.train.CheckpointManager] = None,
+        # summary related
+        summary_interval: Optional[int] = None,
+        # Evaluation related
+        eval_summary_dir: Optional[Text] = None,
+        eval_steps: Optional[int] = None,
+        eval_interval: Optional[int] = None):
+        """Constructs a `Controller` instance.
 
     Args:
       strategy: An instance of `tf.distribute.Strategy`.
@@ -88,72 +88,76 @@ class Controller(object):
       ValueError: If `steps_per_loop` is None when `train_fn` is provided.
       ValueError: If `steps_per_loop` is not a positive integer.
     """
-    if train_fn is None and eval_fn is None:
-      raise ValueError("`train_fn` and `eval_fn` should not both be None")
+        if train_fn is None and eval_fn is None:
+            raise ValueError("`train_fn` and `eval_fn` should not both be None")
 
-    # TODO(rxsang): Support training until exhaustion by passing
-    # `train_steps=-1`. Currently it cannot be supported with a host training
-    # loop because break statements are not supported with distributed dataset.
-    if train_fn is not None and train_steps is None:
-      raise ValueError("`train_steps` is required when `train_fn` is provided.")
-    if train_fn is not None and steps_per_loop is None:
-      raise ValueError("`steps_per_loop` is required when `train_fn is "
-                       "provided.")
-    if not isinstance(steps_per_loop, int) or steps_per_loop < 1:
-      raise ValueError("`steps_per_loop` should be a positive integer")
-    if summary_interval is not None and summary_interval <= 0:
-      raise ValueError("`summary_interval` should be larger than 0")
+        # TODO(rxsang): Support training until exhaustion by passing
+        # `train_steps=-1`. Currently it cannot be supported with a host training
+        # loop because break statements are not supported with distributed dataset.
+        if train_fn is not None and train_steps is None:
+            raise ValueError(
+                "`train_steps` is required when `train_fn` is provided.")
+        if train_fn is not None and steps_per_loop is None:
+            raise ValueError("`steps_per_loop` is required when `train_fn is "
+                             "provided.")
+        if not isinstance(steps_per_loop, int) or steps_per_loop < 1:
+            raise ValueError("`steps_per_loop` should be a positive integer")
+        if summary_interval is not None and summary_interval <= 0:
+            raise ValueError("`summary_interval` should be larger than 0")
 
-    self.strategy = strategy or tf.distribute.get_strategy()
+        self.strategy = strategy or tf.distribute.get_strategy()
 
-    self.train_fn = train_fn
-    self.eval_fn = eval_fn
-    self.global_step = global_step
+        self.train_fn = train_fn
+        self.eval_fn = eval_fn
+        self.global_step = global_step
 
-    self.train_steps = train_steps
+        self.train_steps = train_steps
 
-    self.steps_per_loop = steps_per_loop
+        self.steps_per_loop = steps_per_loop
 
-    self.summary_dir = summary_dir or checkpoint_manager.directory
-    self.checkpoint_manager = checkpoint_manager
+        self.summary_dir = summary_dir or checkpoint_manager.directory
+        self.checkpoint_manager = checkpoint_manager
 
-    self.summary_interval = summary_interval
-    summary_writer = tf.summary.create_file_writer(
-        self.summary_dir) if self.summary_interval else None
-    # TODO(rxsang): Consider pass SummaryManager directly into Controller for
-    # maximum customizability.
-    self.summary_manager = utils.SummaryManager(
-        summary_writer,
-        tf.summary.scalar,
-        global_step=self.global_step,
-        summary_interval=self.summary_interval)
-    if self.global_step:
-      tf.summary.experimental.set_step(self.global_step)
+        self.summary_interval = summary_interval
+        summary_writer = tf.summary.create_file_writer(
+            self.summary_dir) if self.summary_interval else None
+        # TODO(rxsang): Consider pass SummaryManager directly into Controller for
+        # maximum customizability.
+        self.summary_manager = utils.SummaryManager(
+            summary_writer,
+            tf.summary.scalar,
+            global_step=self.global_step,
+            summary_interval=self.summary_interval)
+        if self.global_step:
+            tf.summary.experimental.set_step(self.global_step)
 
-    self.eval_summary_dir = eval_summary_dir or self.summary_dir
-    eval_summary_writer = tf.summary.create_file_writer(self.eval_summary_dir)
-    self.eval_summary_manager = utils.SummaryManager(
-        eval_summary_writer, tf.summary.scalar, global_step=self.global_step)
+        self.eval_summary_dir = eval_summary_dir or self.summary_dir
+        eval_summary_writer = tf.summary.create_file_writer(
+            self.eval_summary_dir)
+        self.eval_summary_manager = utils.SummaryManager(
+            eval_summary_writer,
+            tf.summary.scalar,
+            global_step=self.global_step)
 
-    self.eval_steps = eval_steps
-    self.eval_interval = eval_interval
+        self.eval_steps = eval_steps
+        self.eval_interval = eval_interval
 
-    # Restore Model if needed.
-    if self.checkpoint_manager is not None:
-      model_restored = self._restore_model()
-      if not model_restored and self.checkpoint_manager.checkpoint_interval:
-        # If the model is not restored from a checkpoint, save an initial
-        # checkpoint.
-        ckpt_path = self.checkpoint_manager.save(
-            checkpoint_number=self.global_step)
-        logging.info("Saved checkpoins in %s", ckpt_path)
+        # Restore Model if needed.
+        if self.checkpoint_manager is not None:
+            model_restored = self._restore_model()
+            if not model_restored and self.checkpoint_manager.checkpoint_interval:
+                # If the model is not restored from a checkpoint, save an initial
+                # checkpoint.
+                ckpt_path = self.checkpoint_manager.save(
+                    checkpoint_number=self.global_step)
+                logging.info("Saved checkpoins in %s", ckpt_path)
 
-    # Create and initialize the interval triggers.
-    self.eval_trigger = utils.IntervalTrigger(self.eval_interval,
-                                              self.global_step.numpy())
+        # Create and initialize the interval triggers.
+        self.eval_trigger = utils.IntervalTrigger(self.eval_interval,
+                                                  self.global_step.numpy())
 
-  def _restore_model(self, checkpoint_path=None):
-    """Restore or initialize the model.
+    def _restore_model(self, checkpoint_path=None):
+        """Restore or initialize the model.
 
     Args:
       checkpoint_path: An optional string indicates the checkpoint path to
@@ -162,47 +166,48 @@ class Controller(object):
     Returns:
       True if the latest checkpoint is found or restored. Otherwise False.
     """
-    with self.strategy.scope():
-      # Checkpoint restoring should be inside scope. b/139450638
-      if checkpoint_path is not None:
-        self.checkpoint_manager.checkpoint.restore(checkpoint_path)
-        return True
-      return self.checkpoint_manager.restore_or_initialize()
+        with self.strategy.scope():
+            # Checkpoint restoring should be inside scope. b/139450638
+            if checkpoint_path is not None:
+                self.checkpoint_manager.checkpoint.restore(checkpoint_path)
+                return True
+            return self.checkpoint_manager.restore_or_initialize()
 
-  def _evaluate_once(self, current_step):
-    """Runs the evaluation once."""
-    logging.info("Start evaluation at step: %s", current_step)
+    def _evaluate_once(self, current_step):
+        """Runs the evaluation once."""
+        logging.info("Start evaluation at step: %s", current_step)
 
-    with self.eval_summary_manager.summary_writer.as_default():
-      eval_outputs = self.eval_fn(self.eval_steps)
+        with self.eval_summary_manager.summary_writer.as_default():
+            eval_outputs = self.eval_fn(self.eval_steps)
 
-    if eval_outputs:
-      eval_outputs = tf.nest.map_structure(lambda x: x.numpy(), eval_outputs)
+        if eval_outputs:
+            eval_outputs = tf.nest.map_structure(lambda x: x.numpy(),
+                                                 eval_outputs)
 
-    info = "step: {}        evaluation metric: {}".format(
-        current_step, eval_outputs)
-    self._log_info(info)
+        info = "step: {}        evaluation metric: {}".format(
+            current_step, eval_outputs)
+        self._log_info(info)
 
-    self.eval_summary_manager.write_summaries(eval_outputs)
+        self.eval_summary_manager.write_summaries(eval_outputs)
 
-  def _maybe_save_checkpoints(self, current_step, force_trigger=False):
-    if self.checkpoint_manager.checkpoint_interval:
-      ckpt_path = self.checkpoint_manager.save(
-          checkpoint_number=current_step, check_interval=force_trigger)
-      if ckpt_path is not None:
-        logging.info("Saved checkpoins in %s", ckpt_path)
+    def _maybe_save_checkpoints(self, current_step, force_trigger=False):
+        if self.checkpoint_manager.checkpoint_interval:
+            ckpt_path = self.checkpoint_manager.save(
+                checkpoint_number=current_step, check_interval=force_trigger)
+            if ckpt_path is not None:
+                logging.info("Saved checkpoins in %s", ckpt_path)
 
-  def _maybe_evaluate(self, current_step, force_trigger=False):
-    if self.eval_trigger(current_step, force_trigger):
-      self._evaluate_once(current_step)
+    def _maybe_evaluate(self, current_step, force_trigger=False):
+        if self.eval_trigger(current_step, force_trigger):
+            self._evaluate_once(current_step)
 
-  def _log_info(self, message):
-    """Logs `message` to the `info` log, and also prints to stdout."""
-    logging.info(message)
-    print(message)
+    def _log_info(self, message):
+        """Logs `message` to the `info` log, and also prints to stdout."""
+        logging.info(message)
+        print(message)
 
-  def train(self, evaluate=True):
-    """Runs the training, with optional evaluation.
+    def train(self, evaluate=True):
+        """Runs the training, with optional evaluation.
 
     This handles evaluation, gathering summaries, and saving checkpoints.
 
@@ -213,62 +218,68 @@ class Controller(object):
     Raises:
       RuntimeError: If `global_step` is not updated correctly in `train_fn`.
     """
-    if self.train_fn is None:
-      raise ValueError("`self.train_fn` is required when calling `train` "
-                       "method.")
-    if self.global_step is None:
-      raise ValueError("`self.global_step` is required when calling `train` "
-                       "method.")
-    if evaluate and self.eval_fn is None:
-      raise ValueError("`self.eval_fn` is required when calling `train` method "
-                       "with `evaluate=True`")
+        if self.train_fn is None:
+            raise ValueError("`self.train_fn` is required when calling `train` "
+                             "method.")
+        if self.global_step is None:
+            raise ValueError(
+                "`self.global_step` is required when calling `train` "
+                "method.")
+        if evaluate and self.eval_fn is None:
+            raise ValueError(
+                "`self.eval_fn` is required when calling `train` method "
+                "with `evaluate=True`")
 
-    step_timer = _StepTimer(self.global_step)
-    current_step = self.global_step.numpy()
-    logging.info("Train at step %s of %s", current_step, self.train_steps)
-    while current_step < self.train_steps:
-      # Calculates steps to run for the next train loop.
-      steps_per_loop = min(self.train_steps - current_step, self.steps_per_loop)
-      logging.info("Entering training loop with %s steps, at step %s of %s",
-                   steps_per_loop, current_step, self.train_steps)
-      current_step += steps_per_loop
-      steps_per_loop = tf.convert_to_tensor(steps_per_loop, dtype=tf.int32)
+        step_timer = _StepTimer(self.global_step)
+        current_step = self.global_step.numpy()
+        logging.info("Train at step %s of %s", current_step, self.train_steps)
+        while current_step < self.train_steps:
+            # Calculates steps to run for the next train loop.
+            steps_per_loop = min(self.train_steps - current_step,
+                                 self.steps_per_loop)
+            logging.info(
+                "Entering training loop with %s steps, at step %s of %s",
+                steps_per_loop, current_step, self.train_steps)
+            current_step += steps_per_loop
+            steps_per_loop = tf.convert_to_tensor(steps_per_loop,
+                                                  dtype=tf.int32)
 
-      with self.summary_manager.summary_writer.as_default():
-        train_outputs = self.train_fn(steps_per_loop)
+            with self.summary_manager.summary_writer.as_default():
+                train_outputs = self.train_fn(steps_per_loop)
 
-      # Updates and verifies the current step after a training loop finishes.
-      if current_step != self.global_step.numpy():
-        raise RuntimeError("`self.train_fn` is not updating `global_step` "
-                           "correctly, expected: %s, actual: %s" %
-                           (current_step, self.global_step.numpy()))
+            # Updates and verifies the current step after a training loop finishes.
+            if current_step != self.global_step.numpy():
+                raise RuntimeError(
+                    "`self.train_fn` is not updating `global_step` "
+                    "correctly, expected: %s, actual: %s" %
+                    (current_step, self.global_step.numpy()))
 
-      # Print information like metrics and steps_per_second after a training
-      # loop.
-      if train_outputs:
-        train_outputs = tf.nest.map_structure(
-            lambda x: x.numpy(), train_outputs)
-      steps_per_second = step_timer.steps_per_second()
-      info = "step: {}        steps_per_second: {:.2f}        {}".format(
-          current_step, steps_per_second, train_outputs)
-      self._log_info(info)
+            # Print information like metrics and steps_per_second after a training
+            # loop.
+            if train_outputs:
+                train_outputs = tf.nest.map_structure(lambda x: x.numpy(),
+                                                      train_outputs)
+            steps_per_second = step_timer.steps_per_second()
+            info = "step: {}        steps_per_second: {:.2f}        {}".format(
+                current_step, steps_per_second, train_outputs)
+            self._log_info(info)
 
-      train_outputs = train_outputs or {}
-      train_outputs["steps_per_second"] = steps_per_second
-      self.summary_manager.write_summaries(train_outputs)
+            train_outputs = train_outputs or {}
+            train_outputs["steps_per_second"] = steps_per_second
+            self.summary_manager.write_summaries(train_outputs)
 
-      self._maybe_save_checkpoints(current_step)
+            self._maybe_save_checkpoints(current_step)
 
-      if evaluate:
-        self._maybe_evaluate(current_step)
+            if evaluate:
+                self._maybe_evaluate(current_step)
 
-    self.summary_manager.write_summaries(train_outputs, always_write=True)
-    self._maybe_save_checkpoints(current_step, force_trigger=True)
-    if evaluate:
-      self._maybe_evaluate(current_step, force_trigger=True)
+        self.summary_manager.write_summaries(train_outputs, always_write=True)
+        self._maybe_save_checkpoints(current_step, force_trigger=True)
+        if evaluate:
+            self._maybe_evaluate(current_step, force_trigger=True)
 
-  def evaluate(self, continuous=False, timeout_fn=None):
-    """Runs the evaluation.
+    def evaluate(self, continuous=False, timeout_fn=None):
+        """Runs the evaluation.
 
     Args:
       continuous: If `True`, will continously monitor the checkpoint directory
@@ -281,43 +292,44 @@ class Controller(object):
     Raises:
       ValueError: If no checkpoint found in `self.checkpoint_manager.directory`.
     """
-    if self.eval_fn is None:
-      raise ValueError("`self.eval_fn` should not be None to call "
-                       "`evaluate()` method.")
+        if self.eval_fn is None:
+            raise ValueError("`self.eval_fn` should not be None to call "
+                             "`evaluate()` method.")
 
-    if not continuous and timeout_fn is not None:
-      raise ValueError("`timeout_fn` can be only passed when `continuous` is "
-                       "True")
+        if not continuous and timeout_fn is not None:
+            raise ValueError(
+                "`timeout_fn` can be only passed when `continuous` is "
+                "True")
 
-    if continuous:
-      for checkpoint_path in tf.train.checkpoints_iterator(
-          self.checkpoint_manager.directory, timeout_fn=timeout_fn):
-        self._restore_model(checkpoint_path)
+        if continuous:
+            for checkpoint_path in tf.train.checkpoints_iterator(
+                    self.checkpoint_manager.directory, timeout_fn=timeout_fn):
+                self._restore_model(checkpoint_path)
+                self._evaluate_once(self.global_step.numpy())
+            return
+
+        latest_checkpoint = self.checkpoint_manager.latest_checkpoint
+        if not latest_checkpoint:
+            raise ValueError("no checkpoint found in dir %s" %
+                             self.checkpoint_manager.directory)
+        self._restore_model()
         self._evaluate_once(self.global_step.numpy())
-      return
-
-    latest_checkpoint = self.checkpoint_manager.latest_checkpoint
-    if not latest_checkpoint:
-      raise ValueError("no checkpoint found in dir %s" %
-                       self.checkpoint_manager.directory)
-    self._restore_model()
-    self._evaluate_once(self.global_step.numpy())
 
 
 class _StepTimer(object):
-  """Utility class for measuring steps/second."""
+    """Utility class for measuring steps/second."""
 
-  def __init__(self, step):
-    self.step = step
-    self.start()
+    def __init__(self, step):
+        self.step = step
+        self.start()
 
-  def start(self):
-    self.last_iteration = self.step.numpy()
-    self.last_time = time.time()
+    def start(self):
+        self.last_iteration = self.step.numpy()
+        self.last_time = time.time()
 
-  def steps_per_second(self, restart=True):
-    value = ((self.step.numpy() - self.last_iteration) /
-             (time.time() - self.last_time))
-    if restart:
-      self.start()
-    return value
+    def steps_per_second(self, restart=True):
+        value = ((self.step.numpy() - self.last_iteration) /
+                 (time.time() - self.last_time))
+        if restart:
+            self.start()
+        return value

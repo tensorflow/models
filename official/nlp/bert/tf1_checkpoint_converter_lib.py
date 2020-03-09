@@ -65,58 +65,58 @@ BERT_V2_PERMUTATIONS = (("cls/seq_relationship/output_weights", (1, 0)),)
 
 
 def _bert_name_replacement(var_name, name_replacements):
-  """Gets the variable name replacement."""
-  for src_pattern, tgt_pattern in name_replacements:
-    if src_pattern in var_name:
-      old_var_name = var_name
-      var_name = var_name.replace(src_pattern, tgt_pattern)
-      tf.logging.info("Converted: %s --> %s", old_var_name, var_name)
-  return var_name
+    """Gets the variable name replacement."""
+    for src_pattern, tgt_pattern in name_replacements:
+        if src_pattern in var_name:
+            old_var_name = var_name
+            var_name = var_name.replace(src_pattern, tgt_pattern)
+            tf.logging.info("Converted: %s --> %s", old_var_name, var_name)
+    return var_name
 
 
 def _has_exclude_patterns(name, exclude_patterns):
-  """Checks if a string contains substrings that match patterns to exclude."""
-  for p in exclude_patterns:
-    if p in name:
-      return True
-  return False
+    """Checks if a string contains substrings that match patterns to exclude."""
+    for p in exclude_patterns:
+        if p in name:
+            return True
+    return False
 
 
 def _get_permutation(name, permutations):
-  """Checks whether a variable requires transposition by pattern matching."""
-  for src_pattern, permutation in permutations:
-    if src_pattern in name:
-      tf.logging.info("Permuted: %s --> %s", name, permutation)
-      return permutation
+    """Checks whether a variable requires transposition by pattern matching."""
+    for src_pattern, permutation in permutations:
+        if src_pattern in name:
+            tf.logging.info("Permuted: %s --> %s", name, permutation)
+            return permutation
 
-  return None
+    return None
 
 
 def _get_new_shape(name, shape, num_heads):
-  """Checks whether a variable requires reshape by pattern matching."""
-  if "self_attention_output/kernel" in name:
-    return tuple([num_heads, shape[0] // num_heads, shape[1]])
-  if "self_attention_output/bias" in name:
-    return shape
+    """Checks whether a variable requires reshape by pattern matching."""
+    if "self_attention_output/kernel" in name:
+        return tuple([num_heads, shape[0] // num_heads, shape[1]])
+    if "self_attention_output/bias" in name:
+        return shape
 
-  patterns = [
-      "self_attention/query", "self_attention/value", "self_attention/key"
-  ]
-  for pattern in patterns:
-    if pattern in name:
-      if "kernel" in name:
-        return tuple([shape[0], num_heads, shape[1] // num_heads])
-      if "bias" in name:
-        return tuple([num_heads, shape[0] // num_heads])
-  return None
+    patterns = [
+        "self_attention/query", "self_attention/value", "self_attention/key"
+    ]
+    for pattern in patterns:
+        if pattern in name:
+            if "kernel" in name:
+                return tuple([shape[0], num_heads, shape[1] // num_heads])
+            if "bias" in name:
+                return tuple([num_heads, shape[0] // num_heads])
+    return None
 
 
 def create_v2_checkpoint(model, src_checkpoint, output_path):
-  """Converts a name-based matched TF V1 checkpoint to TF V2 checkpoint."""
-  # Uses streaming-restore in eager model to read V1 name-based checkpoints.
-  model.load_weights(src_checkpoint).assert_existing_objects_matched()
-  checkpoint = tf.train.Checkpoint(model=model)
-  checkpoint.save(output_path)
+    """Converts a name-based matched TF V1 checkpoint to TF V2 checkpoint."""
+    # Uses streaming-restore in eager model to read V1 name-based checkpoints.
+    model.load_weights(src_checkpoint).assert_existing_objects_matched()
+    checkpoint = tf.train.Checkpoint(model=model)
+    checkpoint.save(output_path)
 
 
 def convert(checkpoint_from_path,
@@ -125,7 +125,7 @@ def convert(checkpoint_from_path,
             name_replacements,
             permutations,
             exclude_patterns=None):
-  """Migrates the names of variables within a checkpoint.
+    """Migrates the names of variables within a checkpoint.
 
   Args:
     checkpoint_from_path: Path to source checkpoint to be read in.
@@ -143,53 +143,54 @@ def convert(checkpoint_from_path,
     A dictionary that maps the new variable names to the Variable objects.
     A dictionary that maps the old variable names to the new variable names.
   """
-  with tf.Graph().as_default():
-    tf.logging.info("Reading checkpoint_from_path %s", checkpoint_from_path)
-    reader = tf.train.NewCheckpointReader(checkpoint_from_path)
-    name_shape_map = reader.get_variable_to_shape_map()
-    new_variable_map = {}
-    conversion_map = {}
-    for var_name in name_shape_map:
-      if exclude_patterns and _has_exclude_patterns(var_name, exclude_patterns):
-        continue
-      # Get the original tensor data.
-      tensor = reader.get_tensor(var_name)
+    with tf.Graph().as_default():
+        tf.logging.info("Reading checkpoint_from_path %s", checkpoint_from_path)
+        reader = tf.train.NewCheckpointReader(checkpoint_from_path)
+        name_shape_map = reader.get_variable_to_shape_map()
+        new_variable_map = {}
+        conversion_map = {}
+        for var_name in name_shape_map:
+            if exclude_patterns and _has_exclude_patterns(
+                    var_name, exclude_patterns):
+                continue
+            # Get the original tensor data.
+            tensor = reader.get_tensor(var_name)
 
-      # Look up the new variable name, if any.
-      new_var_name = _bert_name_replacement(var_name, name_replacements)
+            # Look up the new variable name, if any.
+            new_var_name = _bert_name_replacement(var_name, name_replacements)
 
-      # See if we need to reshape the underlying tensor.
-      new_shape = None
-      if num_heads > 0:
-        new_shape = _get_new_shape(new_var_name, tensor.shape, num_heads)
-      if new_shape:
-        tf.logging.info("Veriable %s has a shape change from %s to %s",
+            # See if we need to reshape the underlying tensor.
+            new_shape = None
+            if num_heads > 0:
+                new_shape = _get_new_shape(new_var_name, tensor.shape,
+                                           num_heads)
+            if new_shape:
+                tf.logging.info("Veriable %s has a shape change from %s to %s",
+                                var_name, tensor.shape, new_shape)
+                tensor = np.reshape(tensor, new_shape)
 
-                        var_name, tensor.shape, new_shape)
-        tensor = np.reshape(tensor, new_shape)
+            # See if we need to permute the underlying tensor.
+            permutation = _get_permutation(var_name, permutations)
+            if permutation:
+                tensor = np.transpose(tensor, permutation)
 
-      # See if we need to permute the underlying tensor.
-      permutation = _get_permutation(var_name, permutations)
-      if permutation:
-        tensor = np.transpose(tensor, permutation)
+            # Create a new variable with the possibly-reshaped or transposed tensor.
+            var = tf.Variable(tensor, name=var_name)
 
-      # Create a new variable with the possibly-reshaped or transposed tensor.
-      var = tf.Variable(tensor, name=var_name)
+            # Save the variable into the new variable map.
+            new_variable_map[new_var_name] = var
 
-      # Save the variable into the new variable map.
-      new_variable_map[new_var_name] = var
+            # Keep a list of converter variables for sanity checking.
+            if new_var_name != var_name:
+                conversion_map[var_name] = new_var_name
 
-      # Keep a list of converter variables for sanity checking.
-      if new_var_name != var_name:
-        conversion_map[var_name] = new_var_name
+        saver = tf.train.Saver(new_variable_map)
 
-    saver = tf.train.Saver(new_variable_map)
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            tf.logging.info("Writing checkpoint_to_path %s", checkpoint_to_path)
+            saver.save(sess, checkpoint_to_path)
 
-    with tf.Session() as sess:
-      sess.run(tf.global_variables_initializer())
-      tf.logging.info("Writing checkpoint_to_path %s", checkpoint_to_path)
-      saver.save(sess, checkpoint_to_path)
-
-  tf.logging.info("Summary:")
-  tf.logging.info("  Converted %d variable name(s).", len(new_variable_map))
-  tf.logging.info("  Converted: %s", str(conversion_map))
+    tf.logging.info("Summary:")
+    tf.logging.info("  Converted %d variable name(s).", len(new_variable_map))
+    tf.logging.info("  Converted: %s", str(conversion_map))

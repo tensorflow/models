@@ -65,7 +65,7 @@ CACHE_INVALIDATION_SEC = 3600 * 24
 # == Data Generation ===========================================================
 # ==============================================================================
 CYCLES_TO_BUFFER = 3  # The number of train cycles worth of data to "run ahead"
-                      # of the main training loop.
+# of the main training loop.
 
 # Number of batches to run per epoch when using synthetic data. At high batch
 # sizes, we run for more batches than with real data, which is good since

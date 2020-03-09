@@ -16,7 +16,6 @@
 
 import tensorflow as tf
 
-
 # "local" is a magic word in the TPU cluster resolver; it informs the resolver
 # to use the local CPU as the compute device. This is useful for testing and
 # debugging; the code flow is ostensibly identical, but without the need to
@@ -25,7 +24,7 @@ LOCAL = "local"
 
 
 def construct_scalar_host_call(metric_dict, model_dir, prefix=""):
-  """Construct a host call to log scalars when training on TPU.
+    """Construct a host call to log scalars when training on TPU.
 
   Args:
     metric_dict: A dict of the tensors to be logged.
@@ -35,11 +34,11 @@ def construct_scalar_host_call(metric_dict, model_dir, prefix=""):
   Returns:
     A tuple of (function, args_to_be_passed_to_said_function)
   """
-  # type: (dict, str) -> (function, list)
-  metric_names = list(metric_dict.keys())
+    # type: (dict, str) -> (function, list)
+    metric_names = list(metric_dict.keys())
 
-  def host_call_fn(global_step, *args):
-    """Training host call. Creates scalar summaries for training metrics.
+    def host_call_fn(global_step, *args):
+        """Training host call. Creates scalar summaries for training metrics.
 
     This function is executed on the CPU and should not directly reference
     any Tensors in the rest of the `model_fn`. To pass Tensors from the
@@ -57,29 +56,31 @@ def construct_scalar_host_call(metric_dict, model_dir, prefix=""):
     Returns:
       List of summary ops to run on the CPU host.
     """
-    step = global_step[0]
-    with tf.compat.v1.summary.create_file_writer(
-        logdir=model_dir, filename_suffix=".host_call").as_default():
-      with tf.compat.v1.summary.always_record_summaries():
-        for i, name in enumerate(metric_names):
-          tf.compat.v1.summary.scalar(prefix + name, args[i][0], step=step)
+        step = global_step[0]
+        with tf.compat.v1.summary.create_file_writer(
+                logdir=model_dir, filename_suffix=".host_call").as_default():
+            with tf.compat.v1.summary.always_record_summaries():
+                for i, name in enumerate(metric_names):
+                    tf.compat.v1.summary.scalar(prefix + name,
+                                                args[i][0],
+                                                step=step)
 
-        return tf.compat.v1.summary.all_summary_ops()
+                return tf.compat.v1.summary.all_summary_ops()
 
-  # To log the current learning rate, and gradient norm for Tensorboard, the
-  # summary op needs to be run on the host CPU via host_call. host_call
-  # expects [batch_size, ...] Tensors, thus reshape to introduce a batch
-  # dimension. These Tensors are implicitly concatenated to
-  # [params['batch_size']].
-  global_step_tensor = tf.reshape(
-      tf.compat.v1.train.get_or_create_global_step(), [1])
-  other_tensors = [tf.reshape(metric_dict[key], [1]) for key in metric_names]
+    # To log the current learning rate, and gradient norm for Tensorboard, the
+    # summary op needs to be run on the host CPU via host_call. host_call
+    # expects [batch_size, ...] Tensors, thus reshape to introduce a batch
+    # dimension. These Tensors are implicitly concatenated to
+    # [params['batch_size']].
+    global_step_tensor = tf.reshape(
+        tf.compat.v1.train.get_or_create_global_step(), [1])
+    other_tensors = [tf.reshape(metric_dict[key], [1]) for key in metric_names]
 
-  return host_call_fn, [global_step_tensor] + other_tensors
+    return host_call_fn, [global_step_tensor] + other_tensors
 
 
 def embedding_matmul(embedding_table, values, mask, name="embedding_matmul"):
-  """Performs embedding lookup via a matmul.
+    """Performs embedding lookup via a matmul.
 
   The matrix to be multiplied by the embedding table Tensor is constructed
   via an implementation of scatter based on broadcasting embedding indices
@@ -98,19 +99,18 @@ def embedding_matmul(embedding_table, values, mask, name="embedding_matmul"):
     Rank 3 tensor of embedding vectors.
   """
 
-  with tf.name_scope(name):
-    n_embeddings = embedding_table.get_shape().as_list()[0]
-    batch_size, padded_size = values.shape.as_list()
+    with tf.name_scope(name):
+        n_embeddings = embedding_table.get_shape().as_list()[0]
+        batch_size, padded_size = values.shape.as_list()
 
-    emb_idcs = tf.tile(
-        tf.reshape(values, (batch_size, padded_size, 1)), (1, 1, n_embeddings))
-    emb_weights = tf.tile(
-        tf.reshape(mask, (batch_size, padded_size, 1)), (1, 1, n_embeddings))
-    col_idcs = tf.tile(
-        tf.reshape(tf.range(n_embeddings), (1, 1, n_embeddings)),
-        (batch_size, padded_size, 1))
-    one_hot = tf.where(
-        tf.equal(emb_idcs, col_idcs), emb_weights,
-        tf.zeros((batch_size, padded_size, n_embeddings)))
+        emb_idcs = tf.tile(tf.reshape(values, (batch_size, padded_size, 1)),
+                           (1, 1, n_embeddings))
+        emb_weights = tf.tile(tf.reshape(mask, (batch_size, padded_size, 1)),
+                              (1, 1, n_embeddings))
+        col_idcs = tf.tile(
+            tf.reshape(tf.range(n_embeddings), (1, 1, n_embeddings)),
+            (batch_size, padded_size, 1))
+        one_hot = tf.where(tf.equal(emb_idcs, col_idcs), emb_weights,
+                           tf.zeros((batch_size, padded_size, n_embeddings)))
 
-    return tf.tensordot(one_hot, embedding_table, 1)
+        return tf.tensordot(one_hot, embedding_table, 1)

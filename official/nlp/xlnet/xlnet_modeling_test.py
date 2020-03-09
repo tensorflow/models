@@ -25,8 +25,8 @@ from official.nlp.xlnet import xlnet_modeling
 
 class PositionalEmbeddingLayerTest(tf.test.TestCase):
 
-  def test_positional_embedding(self):
-    """A low-dimensional example is tested.
+    def test_positional_embedding(self):
+        """A low-dimensional example is tested.
 
      With len(pos_seq)=2 and d_model=4:
 
@@ -38,16 +38,17 @@ class PositionalEmbeddingLayerTest(tf.test.TestCase):
                = [[0.84147096, 0.00999983, 0.54030228, 0.99994999],
                  [0., 0., 1., 1.]]
     """
-    target = np.array([[[0.84147096, 0.00999983, 0.54030228, 0.99994999]],
-                       [[0., 0., 1., 1.]]])
-    d_model = 4
-    pos_seq = tf.range(1, -1, -1.0)  # [1., 0.]
-    pos_emb_layer = xlnet_modeling.PositionalEmbedding(d_model)
-    pos_emb = pos_emb_layer(pos_seq, batch_size=None).numpy().astype(float)
+        target = np.array([[[0.84147096, 0.00999983, 0.54030228, 0.99994999]],
+                           [[0., 0., 1., 1.]]])
+        d_model = 4
+        pos_seq = tf.range(1, -1, -1.0)  # [1., 0.]
+        pos_emb_layer = xlnet_modeling.PositionalEmbedding(d_model)
+        pos_emb = pos_emb_layer(pos_seq, batch_size=None).numpy().astype(float)
 
-    logging.info(pos_emb)
-    self.assertAllClose(pos_emb, target)
+        logging.info(pos_emb)
+        self.assertAllClose(pos_emb, target)
+
 
 if __name__ == "__main__":
-  assert tf.version.VERSION.startswith('2.')
-  tf.test.main()
+    assert tf.version.VERSION.startswith('2.')
+    tf.test.main()

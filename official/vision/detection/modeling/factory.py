@@ -14,15 +14,14 @@
 # ==============================================================================
 """Factory to build detection model."""
 
-
 from official.vision.detection.modeling import retinanet_model
 
 
 def model_generator(params):
-  """Model function generator."""
-  if params.type == 'retinanet':
-    model_fn = retinanet_model.RetinanetModel(params)
-  else:
-    raise ValueError('Model %s is not supported.'% params.type)
+    """Model function generator."""
+    if params.type == 'retinanet':
+        model_fn = retinanet_model.RetinanetModel(params)
+    else:
+        raise ValueError('Model %s is not supported.' % params.type)
 
-  return model_fn
+    return model_fn

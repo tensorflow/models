@@ -27,7 +27,7 @@ from official.nlp.modeling import networks
 
 @tf.keras.utils.register_keras_serializable(package='Text')
 class BertPretrainer(tf.keras.Model):
-  """BERT network training model.
+    """BERT network training model.
 
   This is an implementation of the network structure surrounding a transformer
   encoder as described in "BERT: Pre-training of Deep Bidirectional Transformers
@@ -51,75 +51,77 @@ class BertPretrainer(tf.keras.Model):
       'predictions'.
   """
 
-  def __init__(self,
-               network,
-               num_classes,
-               num_token_predictions,
-               activation=None,
-               initializer='glorot_uniform',
-               output='logits',
-               **kwargs):
-    self._self_setattr_tracking = False
-    self._config = {
-        'network': network,
-        'num_classes': num_classes,
-        'num_token_predictions': num_token_predictions,
-        'activation': activation,
-        'initializer': initializer,
-        'output': output,
-    }
+    def __init__(self,
+                 network,
+                 num_classes,
+                 num_token_predictions,
+                 activation=None,
+                 initializer='glorot_uniform',
+                 output='logits',
+                 **kwargs):
+        self._self_setattr_tracking = False
+        self._config = {
+            'network': network,
+            'num_classes': num_classes,
+            'num_token_predictions': num_token_predictions,
+            'activation': activation,
+            'initializer': initializer,
+            'output': output,
+        }
 
-    # We want to use the inputs of the passed network as the inputs to this
-    # Model. To do this, we need to keep a copy of the network inputs for use
-    # when we construct the Model object at the end of init. (We keep a copy
-    # because we'll be adding another tensor to the copy later.)
-    network_inputs = network.inputs
-    inputs = copy.copy(network_inputs)
+        # We want to use the inputs of the passed network as the inputs to this
+        # Model. To do this, we need to keep a copy of the network inputs for use
+        # when we construct the Model object at the end of init. (We keep a copy
+        # because we'll be adding another tensor to the copy later.)
+        network_inputs = network.inputs
+        inputs = copy.copy(network_inputs)
 
-    # Because we have a copy of inputs to create this Model object, we can
-    # invoke the Network object with its own input tensors to start the Model.
-    # Note that, because of how deferred construction happens, we can't use
-    # the copy of the list here - by the time the network is invoked, the list
-    # object contains the additional input added below.
-    sequence_output, cls_output = network(network_inputs)
+        # Because we have a copy of inputs to create this Model object, we can
+        # invoke the Network object with its own input tensors to start the Model.
+        # Note that, because of how deferred construction happens, we can't use
+        # the copy of the list here - by the time the network is invoked, the list
+        # object contains the additional input added below.
+        sequence_output, cls_output = network(network_inputs)
 
-    sequence_output_length = sequence_output.shape.as_list()[1]
-    if sequence_output_length < num_token_predictions:
-      raise ValueError(
-          "The passed network's output length is %s, which is less than the "
-          'requested num_token_predictions %s.' %
-          (sequence_output_length, num_token_predictions))
+        sequence_output_length = sequence_output.shape.as_list()[1]
+        if sequence_output_length < num_token_predictions:
+            raise ValueError(
+                "The passed network's output length is %s, which is less than the "
+                'requested num_token_predictions %s.' %
+                (sequence_output_length, num_token_predictions))
 
-    masked_lm_positions = tf.keras.layers.Input(
-        shape=(num_token_predictions,),
-        name='masked_lm_positions',
-        dtype=tf.int32)
-    inputs.append(masked_lm_positions)
+        masked_lm_positions = tf.keras.layers.Input(
+            shape=(num_token_predictions,),
+            name='masked_lm_positions',
+            dtype=tf.int32)
+        inputs.append(masked_lm_positions)
 
-    self.masked_lm = networks.MaskedLM(
-        num_predictions=num_token_predictions,
-        input_width=sequence_output.shape[-1],
-        source_network=network,
-        activation=activation,
-        initializer=initializer,
-        output=output,
-        name='masked_lm')
-    lm_outputs = self.masked_lm([sequence_output, masked_lm_positions])
+        self.masked_lm = networks.MaskedLM(
+            num_predictions=num_token_predictions,
+            input_width=sequence_output.shape[-1],
+            source_network=network,
+            activation=activation,
+            initializer=initializer,
+            output=output,
+            name='masked_lm')
+        lm_outputs = self.masked_lm([sequence_output, masked_lm_positions])
 
-    self.classification = networks.Classification(
-        input_width=cls_output.shape[-1],
-        num_classes=num_classes,
-        initializer=initializer,
-        output=output,
-        name='classification')
-    sentence_outputs = self.classification(cls_output)
+        self.classification = networks.Classification(
+            input_width=cls_output.shape[-1],
+            num_classes=num_classes,
+            initializer=initializer,
+            output=output,
+            name='classification')
+        sentence_outputs = self.classification(cls_output)
 
-    super(BertPretrainer, self).__init__(
-        inputs=inputs, outputs=[lm_outputs, sentence_outputs], **kwargs)
+        super(BertPretrainer,
+              self).__init__(inputs=inputs,
+                             outputs=[lm_outputs, sentence_outputs],
+                             **kwargs)
 
-  def get_config(self):
-    return self._config
+    def get_config(self):
+        return self._config
 
-  @classmethod
-  def from_config(cls, config, custom_objects=None):
-    return cls(**config)
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        return cls(**config)
