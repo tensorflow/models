@@ -27,8 +27,8 @@ from official.nlp.modeling.layers import masked_softmax
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
-class Attention(tf.keras.layers.Layer):
-  """Attention layer.
+class MultiHeadAttention(tf.keras.layers.Layer):
+  """MultiHeadAttention layer.
 
   This is an implementation of multi-headed attention based on "Attention
   is all you Need". If `from_tensor` and `to_tensor` are the same, then
@@ -70,7 +70,7 @@ class Attention(tf.keras.layers.Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    super(Attention, self).__init__(**kwargs)
+    super(MultiHeadAttention, self).__init__(**kwargs)
     self._num_heads = num_heads
     self._head_size = head_size
     self._dropout_rate = dropout_rate
@@ -141,7 +141,7 @@ class Attention(tf.keras.layers.Layer):
         "bias_constraint":
             tf.keras.constraints.serialize(self._bias_constraint)
     }
-    base_config = super(Attention, self).get_config()
+    base_config = super(MultiHeadAttention, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):
@@ -183,7 +183,7 @@ class Attention(tf.keras.layers.Layer):
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
-class CachedAttention(Attention):
+class CachedAttention(MultiHeadAttention):
   """Attention layer with cache used for auto-agressive decoding.
 
   Arguments:

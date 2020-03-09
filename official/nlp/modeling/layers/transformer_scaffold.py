@@ -59,7 +59,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
                num_attention_heads,
                intermediate_size,
                intermediate_activation,
-               attention_cls=attention.Attention,
+               attention_cls=attention.MultiHeadAttention,
                attention_cfg=None,
                dropout_rate=0.0,
                attention_dropout_rate=0.0,

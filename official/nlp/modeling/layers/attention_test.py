@@ -28,11 +28,11 @@ from official.nlp.modeling.layers import attention
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
 # guarantees forward compatibility of this code for the V2 switchover.
 @keras_parameterized.run_all_keras_modes
-class AttentionLayerTest(keras_parameterized.TestCase):
+class MultiHeadAttentionTest(keras_parameterized.TestCase):
 
   def test_non_masked_attention(self):
     """Test that the attention layer can be created without a mask tensor."""
-    test_layer = attention.Attention(num_heads=12, head_size=64)
+    test_layer = attention.MultiHeadAttention(num_heads=12, head_size=64)
     # Create a 3-dimensional input (the first dimension is implicit).
     from_tensor = tf.keras.Input(shape=(40, 80))
     to_tensor = tf.keras.Input(shape=(20, 80))
@@ -41,7 +41,7 @@ class AttentionLayerTest(keras_parameterized.TestCase):
 
   def test_non_masked_self_attention(self):
     """Test with one input (self-attenntion) and no mask tensor."""
-    test_layer = attention.Attention(num_heads=12, head_size=64)
+    test_layer = attention.MultiHeadAttention(num_heads=12, head_size=64)
     # Create a 3-dimensional input (the first dimension is implicit).
     from_tensor = tf.keras.Input(shape=(40, 80))
     output = test_layer([from_tensor, from_tensor])
@@ -49,7 +49,7 @@ class AttentionLayerTest(keras_parameterized.TestCase):
 
   def test_masked_attention(self):
     """Test with a mask tensor."""
-    test_layer = attention.Attention(num_heads=2, head_size=2)
+    test_layer = attention.MultiHeadAttention(num_heads=2, head_size=2)
     # Create a 3-dimensional input (the first dimension is implicit).
     from_tensor = tf.keras.Input(shape=(4, 8))
     to_tensor = tf.keras.Input(shape=(2, 8))
@@ -78,7 +78,7 @@ class AttentionLayerTest(keras_parameterized.TestCase):
 
   def test_initializer(self):
     """Test with a specified initializer."""
-    test_layer = attention.Attention(
+    test_layer = attention.MultiHeadAttention(
         num_heads=12,
         head_size=64,
         kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
