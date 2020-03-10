@@ -126,7 +126,6 @@ def run(flags_obj):
       is_training=True,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
       parse_record_fn=imagenet_preprocessing.get_parse_record_fn(
           use_keras_image_data_format=use_keras_image_data_format),
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
@@ -142,7 +141,6 @@ def run(flags_obj):
         is_training=False,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
-        num_epochs=flags_obj.train_epochs,
         parse_record_fn=imagenet_preprocessing.get_parse_record_fn(
             use_keras_image_data_format=use_keras_image_data_format),
         dtype=dtype,
