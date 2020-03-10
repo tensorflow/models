@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import json
 import os
+import tempfile
 
 from absl import logging
 import tensorflow as tf
@@ -30,12 +31,29 @@ _SUMMARY_TXT = 'training_summary.txt'
 _MIN_SUMMARY_STEPS = 10
 
 
-def _save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
+def _should_export_checkpoint(strategy):
+  return (not strategy) or strategy.extended.should_checkpoint
+
+
+def _should_export_summary(strategy):
+  return (not strategy) or strategy.extended.should_save_summary
+
+
+def _save_checkpoint(strategy, checkpoint, model_dir, checkpoint_prefix):
   """Saves model to with provided checkpoint prefix."""
 
-  checkpoint_path = os.path.join(model_dir, checkpoint_prefix)
-  saved_path = checkpoint.save(checkpoint_path)
-  logging.info('Saving model as TF checkpoint: %s', saved_path)
+  if _should_export_checkpoint(strategy):
+    checkpoint_path = os.path.join(model_dir, checkpoint_prefix)
+    saved_path = checkpoint.save(checkpoint_path)
+    logging.info('Saving model as TF checkpoint: %s', saved_path)
+  else:
+    # In multi worker training we need every worker to save checkpoint, because
+    # variables can trigger synchronization on read and synchronization needs
+    # all workers to participate. To avoid workers overriding each other we save
+    # to a temporary directory on non-chief workers.
+    tmp_dir = tempfile.mkdtemp()
+    checkpoint.save(os.path.join(tmp_dir, 'ckpt'))
+    tf.io.gfile.rmtree(tmp_dir)
   return
 
 
@@ -242,7 +260,13 @@ def run_customized_training_loop(
     ]
 
     # Create summary writers
-    summary_dir = os.path.join(model_dir, 'summaries')
+    if _should_export_summary(strategy):
+      summary_dir = os.path.join(model_dir, 'summaries')
+    else:
+      # In multi worker training we need every worker to write summary, because
+      # variables can trigger synchronization on read and synchronization needs
+      # all workers to participate.
+      summary_dir = tempfile.mkdtemp()
     eval_summary_writer = tf.summary.create_file_writer(
         os.path.join(summary_dir, 'eval'))
     if steps_per_loop >= _MIN_SUMMARY_STEPS:
@@ -418,11 +442,11 @@ def run_customized_training_loop(
         # To avoid repeated model saving, we do not save after the last
         # step of training.
         if current_step < total_training_steps:
-          _save_checkpoint(checkpoint, model_dir,
+          _save_checkpoint(strategy, checkpoint, model_dir,
                            checkpoint_name.format(step=current_step))
           if sub_model_export_name:
             _save_checkpoint(
-                sub_model_checkpoint, model_dir,
+                strategy, sub_model_checkpoint, model_dir,
                 '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
         if eval_input_fn:
           logging.info('Running evaluation after step: %s.', current_step)
@@ -432,10 +456,10 @@ def run_customized_training_loop(
           for metric in eval_metrics + model.metrics:
             metric.reset_states()
 
-    _save_checkpoint(checkpoint, model_dir,
+    _save_checkpoint(strategy, checkpoint, model_dir,
                      checkpoint_name.format(step=current_step))
     if sub_model_export_name:
-      _save_checkpoint(sub_model_checkpoint, model_dir,
+      _save_checkpoint(strategy, sub_model_checkpoint, model_dir,
                        '%s.ckpt' % sub_model_export_name)
 
     if eval_input_fn:
@@ -454,5 +478,8 @@ def run_customized_training_loop(
       training_summary['eval_metrics'] = _float_metric_value(eval_metrics[0])
 
     write_txt_summary(training_summary, summary_dir)
+
+    if not _should_export_summary(strategy):
+      tf.io.gfile.rmtree(summary_dir)
 
     return model
