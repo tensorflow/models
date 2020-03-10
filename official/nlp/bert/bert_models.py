@@ -89,7 +89,8 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
 @gin.configurable
 def get_transformer_encoder(bert_config,
                             sequence_length,
-                            transformer_encoder_cls=None):
+                            float_dtype=tf.float32):
+                         #   transformer_encoder_cls=None):
   """Gets a 'TransformerEncoder' object.
 
   Args:
@@ -139,7 +140,8 @@ def get_transformer_encoder(bert_config,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=bert_config.initializer_range))
+          stddev=bert_config.initializer_range),
+      float_dtype=float_dtype.name)
   if isinstance(bert_config, albert_configs.AlbertConfig):
     kwargs['embedding_width'] = bert_config.embedding_size
     return networks.AlbertTransformerEncoder(**kwargs)
@@ -218,6 +220,7 @@ def pretrain_model(bert_config,
 
 def squad_model(bert_config,
                 max_seq_length,
+                float_type,
                 initializer=None,
                 hub_module_url=None,
                 hub_module_trainable=True):
@@ -239,7 +242,7 @@ def squad_model(bert_config,
     initializer = tf.keras.initializers.TruncatedNormal(
         stddev=bert_config.initializer_range)
   if not hub_module_url:
-    bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
+    bert_encoder = get_transformer_encoder(bert_config, max_seq_length, float_type)
     return models.BertSpanLabeler(
         network=bert_encoder, initializer=initializer), bert_encoder
 
