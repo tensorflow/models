@@ -81,6 +81,7 @@ class AlbertTransformerEncoder(network.Network):
                dropout_rate=0.1,
                attention_dropout_rate=0.1,
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
+               float_dtype='float32',
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
@@ -102,6 +103,7 @@ class AlbertTransformerEncoder(network.Network):
         'dropout_rate': dropout_rate,
         'attention_dropout_rate': attention_dropout_rate,
         'initializer': tf.keras.initializers.serialize(initializer),
+        'float_dtype': float_dtype,
     }
 
     word_ids = tf.keras.layers.Input(
@@ -115,6 +117,7 @@ class AlbertTransformerEncoder(network.Network):
         vocab_size=vocab_size,
         embedding_width=embedding_width,
         initializer=initializer,
+        dtype=float_dtype,
         name='word_embeddings')
     word_embeddings = self._embedding_layer(word_ids)
 
@@ -122,7 +125,8 @@ class AlbertTransformerEncoder(network.Network):
     self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length)
+        max_sequence_length=max_sequence_length,
+        dtype=float_dtype)
     position_embeddings = self._position_embedding_layer(word_embeddings)
 
     type_embeddings = (
@@ -140,17 +144,21 @@ class AlbertTransformerEncoder(network.Network):
             name='embeddings/layer_norm',
             axis=-1,
             epsilon=1e-12,
-            dtype=tf.float32)(embeddings))
+            dtype=float_dtype)(embeddings))
     embeddings = (
-        tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
+        tf.keras.layers.Dropout(rate=dropout_rate, dtype=tf.float32)(embeddings))
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     if embedding_width != hidden_size:
       embeddings = layers.DenseEinsum(
           output_shape=hidden_size,
           kernel_initializer=initializer,
+          dtype=float_dtype,
           name='embedding_projection')(
               embeddings)
+      
+     if float_dtype == 'float16':
+      embeddings = tf.cast(embeddings, tf.float16)
 
     data = embeddings
     attention_mask = layers.SelfAttentionMask()([data, mask])
@@ -161,6 +169,7 @@ class AlbertTransformerEncoder(network.Network):
         dropout_rate=dropout_rate,
         attention_dropout_rate=attention_dropout_rate,
         kernel_initializer=initializer,
+        dtype=float_dtype,
         name='transformer')
     for _ in range(num_layers):
       data = shared_layer([data, attention_mask])
