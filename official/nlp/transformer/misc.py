@@ -205,6 +205,12 @@ def define_transformer_flags():
           'use padded_decode, it has not been tested. In addition, this method '
           'will introduce unnecessary overheads which grow quadratically with '
           'the max sequence length.'))
+  flags.DEFINE_bool(
+      name='enable_checkpointing',
+      default=True,
+      help=flags_core.help_wrap(
+          'Whether to do checkpointing during training. When running under '
+          'benchmark harness, we will avoid checkpointing.'))
 
   flags_core.set_defaults(data_dir='/tmp/translate_ende',
                           model_dir='/tmp/transformer_model',
