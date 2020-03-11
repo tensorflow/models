@@ -240,7 +240,7 @@ def train_squad(strategy,
     squad_model, core_model = bert_models.squad_model(
         bert_config,
         max_seq_length,
-        float_type=tf.float32,
+        float_type=tf.float16 if use_float16 else tf.float32,
         hub_module_url=FLAGS.hub_module_url,
         hub_module_trainable=FLAGS.hub_module_trainable)
     squad_model.optimizer = optimization.create_optimizer(
