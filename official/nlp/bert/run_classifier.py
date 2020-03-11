@@ -169,7 +169,7 @@ def run_bert_classifier(strategy,
         epochs,
         steps_per_epoch,
         eval_steps,
-        custom_callbacks=None)
+        custom_callbacks=custom_callbacks)
 
   # Use user-defined loop to start training.
   logging.info('Training using customized training loop TF 2.0 with '
@@ -363,6 +363,15 @@ def run_bert(strategy,
   if not strategy:
     raise ValueError('Distribution strategy has not been specified.')
 
+  if FLAGS.log_steps:
+    custom_callbacks = [keras_utils.TimeHistory(
+        batch_size=FLAGS.train_batch_size,
+        log_steps=FLAGS.log_steps,
+        logdir=FLAGS.model_dir,
+    )]
+  else:
+    custom_callbacks = None
+
   trained_model = run_bert_classifier(
       strategy,
       model_config,
@@ -378,7 +387,8 @@ def run_bert(strategy,
       train_input_fn,
       eval_input_fn,
       run_eagerly=FLAGS.run_eagerly,
-      use_keras_compile_fit=FLAGS.use_keras_compile_fit)
+      use_keras_compile_fit=FLAGS.use_keras_compile_fit,
+      custom_callbacks=custom_callbacks)
 
   if FLAGS.model_export_path:
     # As Keras ModelCheckpoint callback used with Keras compile/fit() API

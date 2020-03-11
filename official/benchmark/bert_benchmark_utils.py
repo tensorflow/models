@@ -44,6 +44,11 @@ class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
     self.batch_start_times[batch] = time.time()
 
   def on_batch_end(self, batch, logs=None):
+    # If there are multiple steps_per_loop, the end batch index will not be the
+    # same as the starting index. Use the last starting index instead.
+    if batch not in self.batch_start_times:
+      batch = max(self.batch_start_times.keys())
+
     self.batch_stop_times[batch] = time.time()
 
   def get_examples_per_sec(self, batch_size, num_batches_to_skip=1):
