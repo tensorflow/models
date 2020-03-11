@@ -157,7 +157,7 @@ class AlbertTransformerEncoder(network.Network):
           name='embedding_projection')(
               embeddings)
       
-     if float_dtype == 'float16':
+    if float_dtype == 'float16':
       embeddings = tf.cast(embeddings, tf.float16)
 
     data = embeddings
