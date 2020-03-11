@@ -93,6 +93,7 @@ class EncoderScaffold(network.Network):
       num_output_classes,
       classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=0.02),
+      classification_layer_dtype=tf.float32,
       embedding_cls=None,
       embedding_cfg=None,
       embedding_data=None,
@@ -167,7 +168,10 @@ class EncoderScaffold(network.Network):
               dtype=tf.float32)(embeddings))
       embeddings = (
           tf.keras.layers.Dropout(
-              rate=embedding_cfg['dropout_rate'])(embeddings))
+              rate=embedding_cfg['dropout_rate'], dtype=tf.float32)(embeddings))
+
+      if embedding_cfg.get('dtype') == 'float16':
+        embeddings = tf.cast(embeddings, tf.float16)
 
     attention_mask = layers.SelfAttentionMask()([embeddings, mask])
     data = embeddings
@@ -187,6 +191,7 @@ class EncoderScaffold(network.Network):
         units=num_output_classes,
         activation='tanh',
         kernel_initializer=classification_layer_initializer,
+        dtype=classification_layer_dtype,
         name='cls_transform')(
             first_token_tensor)
 
