@@ -27,7 +27,7 @@ from official.staging.training import utils
 from official.utils.flags import core as flags_core
 from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
-from official.vision.image_classification import resnet_model
+from official.vision.image_classification.resnet import resnet_model
 
 
 class ResnetRunnable(standard_runnable.StandardTrainable,

@@ -24,10 +24,10 @@ import os
 from absl import app
 from absl import flags
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from official.vision.image_classification import imagenet_preprocessing
-from official.vision.image_classification import resnet_model
+from official.vision.image_classification.resnet import resnet_model
 
 FLAGS = flags.FLAGS
 
