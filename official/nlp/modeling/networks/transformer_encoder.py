@@ -150,6 +150,7 @@ class TransformerEncoder(network.Network):
     data = embeddings
     attention_mask = layers.SelfAttentionMask()([data, mask])
     encoder_outputs = []
+    print("PKKK: float_dtype" , float_dtype)
     for i in range(num_layers):
       layer = layers.Transformer(
           num_attention_heads=num_attention_heads,
