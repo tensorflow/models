@@ -144,7 +144,7 @@ class TransformerEncoder(network.Network):
                                 dtype=tf.float32)(embeddings))
 
     if float_dtype == 'float16':
-      embeddings = tf.cast(embeddings, tf.float1
+      embeddings = tf.cast(embeddings, tf.float16)
 
     self._transformer_layers = []
     data = embeddings
