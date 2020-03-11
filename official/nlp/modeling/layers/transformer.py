@@ -207,6 +207,9 @@ class Transformer(tf.keras.layers.Layer):
     attention_output = self._attention_layer(attention_inputs)
     attention_output = self._attention_output_dense(attention_output)
     attention_output = self._attention_dropout(attention_output)
+    print("REED SAYS dtype policy:: ", self._dtype_policy)
+    print("REED SAYS input_tensor:: ", input_tensor.dtype)
+    print("REED SAYS attention output:: ", attention_output.dtype)
     attention_output = self._attention_layer_norm(input_tensor +
                                                   attention_output)
     # Use float32 in keras layer norm and the gelu activation in the
