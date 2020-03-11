@@ -380,6 +380,6 @@ def export_squad(model_export_path, input_meta_data, bert_config):
   # Export uses float32 for now, even if training uses mixed precision.
   tf.keras.mixed_precision.experimental.set_policy('float32')
   squad_model, _ = bert_models.squad_model(bert_config,
-                                           input_meta_data['max_seq_length'])
+                                           input_meta_data['max_seq_length'], float_type=tf.float32)
   model_saving_utils.export_bert_model(
       model_export_path, model=squad_model, checkpoint_dir=FLAGS.model_dir)
