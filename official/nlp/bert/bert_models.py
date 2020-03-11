@@ -89,8 +89,8 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
 @gin.configurable
 def get_transformer_encoder(bert_config,
                             sequence_length,
-                            float_dtype=tf.float32):
-                         #   transformer_encoder_cls=None):
+                            float_dtype=tf.float32,
+                            transformer_encoder_cls=None):
   """Gets a 'TransformerEncoder' object.
 
   Args:
