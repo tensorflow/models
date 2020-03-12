@@ -77,7 +77,6 @@ def export_bert_tfhub(bert_config: configs.BertConfig,
 
 
 def main(_):
-  assert tf.version.VERSION.startswith('2.')
   bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
   export_bert_tfhub(bert_config, FLAGS.model_checkpoint_path, FLAGS.export_path,
                     FLAGS.vocab_file)

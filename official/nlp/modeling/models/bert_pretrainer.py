@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from official.nlp.modeling import networks
 

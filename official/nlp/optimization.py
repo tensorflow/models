@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import re
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):

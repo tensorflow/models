@@ -403,7 +403,6 @@ def run_bert(strategy,
 
 def main(_):
   # Users should always run this script under TF 2.x
-  assert tf.version.VERSION.startswith('2.')
 
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
