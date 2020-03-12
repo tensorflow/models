@@ -24,12 +24,17 @@ setup(
     author_email='no-reply@google.com',
     url='https://github.com/tensorflow/models',
     license='Apache 2.0',
-    packages=find_packages(exclude=["research*", "tutorials*", "samples*"]),
+    packages=find_packages(exclude=[
+        'research*',
+        'tutorials*',
+        'samples*',
+        'official.r1*',
+        'official.pip_package*',
+        'official.benchmark*',
+    ]),
     exclude_package_data={
-            '': [
-                '*_test.py',
-            ],
-        },
+        '': ['*_test.py',],
+    },
     install_requires=[
         'six',
     ],
