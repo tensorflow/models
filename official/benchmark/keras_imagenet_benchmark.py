@@ -1305,7 +1305,6 @@ class Resnet50KerasPruningAccuracy(KerasPruningAccuracyBase):
         'model': 'resnet50_v1.5',
         'optimizer': 'mobilenet_default',
         'initial_learning_rate_per_sample': 0.0000039,
-        'use_tf_keras_layers': True,
         'pretrained_filepath': tf.train.latest_checkpoint(
             os.path.join(root_data_dir, 'resnet50')),
         'pruning_begin_step': 0,
@@ -1369,7 +1368,6 @@ class Resnet50KerasPruningBenchmarkReal(KerasPruningBenchmarkRealBase):
     default_flags = {
         'model': 'resnet50_v1.5',
         'optimizer': 'mobilenet_default',
-        'use_tf_keras_layers': True,
     }
     super(Resnet50KerasPruningBenchmarkReal, self).__init__(
         default_flags=default_flags, **kwargs)

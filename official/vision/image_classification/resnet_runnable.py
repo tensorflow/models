@@ -70,7 +70,6 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
     else:
       self.input_fn = imagenet_preprocessing.input_fn
 
-    resnet_model.change_keras_layer(flags_obj.use_tf_keras_layers)
     self.model = resnet_model.resnet50(
         num_classes=imagenet_preprocessing.NUM_CLASSES,
         batch_size=flags_obj.batch_size,
