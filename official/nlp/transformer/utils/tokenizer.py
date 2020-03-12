@@ -26,7 +26,7 @@ import unicodedata
 import numpy as np
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 PAD = "<pad>"
 PAD_ID = 0

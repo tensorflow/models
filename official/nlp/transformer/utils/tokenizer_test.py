@@ -17,7 +17,7 @@
 import collections
 import tempfile
 
-import tensorflow.compat.v2 as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.nlp.transformer.utils import tokenizer
 
