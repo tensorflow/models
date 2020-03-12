@@ -33,7 +33,7 @@ from official.nlp.modeling.layers import transformer_scaffold
 # boolean 'True'. We register this class as a Keras serializable so we can
 # test serialization below.
 @tf.keras.utils.register_keras_serializable(package='TestOnly')
-class ValidatedAttentionLayer(attention.Attention):
+class ValidatedAttentionLayer(attention.MultiHeadAttention):
 
   def __init__(self, call_list, **kwargs):
     super(ValidatedAttentionLayer, self).__init__(**kwargs)

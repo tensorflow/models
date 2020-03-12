@@ -22,6 +22,7 @@ import os
 
 from absl import app as absl_app
 from absl import flags
+from six.moves import range
 import tensorflow as tf
 
 from official.r1.resnet import imagenet_preprocessing
@@ -307,7 +308,7 @@ def _get_block_sizes(resnet_size):
   except KeyError:
     err = ('Could not find layers for selected Resnet size.\n'
            'Size received: {}; sizes allowed: {}.'.format(
-               resnet_size, choices.keys()))
+               resnet_size, list(choices.keys())))
     raise ValueError(err)
 
 

@@ -159,6 +159,7 @@ class TransformerTask(object):
     params["enable_tensorboard"] = flags_obj.enable_tensorboard
     params["enable_metrics_in_training"] = flags_obj.enable_metrics_in_training
     params["steps_between_evals"] = flags_obj.steps_between_evals
+    params["enable_checkpointing"] = flags_obj.enable_checkpointing
 
     self.distribution_strategy = distribution_utils.get_distribution_strategy(
         distribution_strategy=flags_obj.distribution_strategy,
@@ -313,10 +314,12 @@ class TransformerTask(object):
               tf.compat.v2.summary.scalar(metric_obj.name, metric_obj.result(),
                                           current_step)
 
-        checkpoint_name = checkpoint.save(
-            os.path.join(flags_obj.model_dir,
-                         "ctl_step_{}.ckpt".format(current_step)))
-        logging.info("Saved checkpoint to %s", checkpoint_name)
+        if flags_obj.enable_checkpointing:
+          # avoid check-pointing when running for benchmarking.
+          checkpoint_name = checkpoint.save(
+              os.path.join(flags_obj.model_dir,
+                           "ctl_step_{}.ckpt".format(current_step)))
+          logging.info("Saved checkpoint to %s", checkpoint_name)
       else:
         if self.use_tpu:
           raise NotImplementedError(
@@ -397,10 +400,11 @@ class TransformerTask(object):
     scheduler_callback = optimizer.LearningRateScheduler(sfunc, init_steps)
     callbacks = misc.get_callbacks(params["steps_between_evals"])
     callbacks.append(scheduler_callback)
-    ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
-    callbacks.append(
-        tf.keras.callbacks.ModelCheckpoint(
-            ckpt_full_path, save_weights_only=True))
+    if params["enable_checkpointing"]:
+      ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
+      callbacks.append(
+          tf.keras.callbacks.ModelCheckpoint(
+              ckpt_full_path, save_weights_only=True))
     return callbacks
 
   def _load_weights_if_possible(self, model, init_weight_path=None):
@@ -470,7 +474,6 @@ def main(_):
 
 
 if __name__ == "__main__":
-  tf.compat.v1.enable_v2_behavior()
   logging.set_verbosity(logging.INFO)
   misc.define_transformer_flags()
   app.run(main)

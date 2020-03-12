@@ -22,6 +22,7 @@ import os
 
 from absl import app as absl_app
 from absl import flags
+from six.moves import range
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.r1.resnet import resnet_model

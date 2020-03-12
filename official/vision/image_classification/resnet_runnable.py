@@ -27,7 +27,7 @@ from official.staging.training import utils
 from official.utils.flags import core as flags_core
 from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
-from official.vision.image_classification import resnet_model
+from official.vision.image_classification.resnet import resnet_model
 
 
 class ResnetRunnable(standard_runnable.StandardTrainable,
@@ -70,7 +70,6 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
     else:
       self.input_fn = imagenet_preprocessing.input_fn
 
-    resnet_model.change_keras_layer(flags_obj.use_tf_keras_layers)
     self.model = resnet_model.resnet50(
         num_classes=imagenet_preprocessing.NUM_CLASSES,
         batch_size=flags_obj.batch_size,

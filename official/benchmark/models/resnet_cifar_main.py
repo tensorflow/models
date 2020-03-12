@@ -18,9 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
-from absl import app as absl_app
+from absl import app
 from absl import flags
+import numpy as np
 import tensorflow as tf
 from official.benchmark.models import resnet_cifar_model
 from official.utils.flags import core as flags_core
@@ -174,7 +174,6 @@ def run(flags_obj):
       is_training=True,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
       parse_record_fn=cifar_preprocessing.parse_record,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
@@ -189,7 +188,6 @@ def run(flags_obj):
         is_training=False,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
-        num_epochs=flags_obj.train_epochs,
         parse_record_fn=cifar_preprocessing.parse_record)
 
   steps_per_epoch = (
@@ -284,4 +282,4 @@ def main(_):
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   define_cifar_flags()
-  absl_app.run(main)
+  app.run(main)

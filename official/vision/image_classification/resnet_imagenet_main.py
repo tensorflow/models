@@ -36,7 +36,7 @@ from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 from official.vision.image_classification import common
 from official.vision.image_classification import imagenet_preprocessing
-from official.vision.image_classification import resnet_model
+from official.vision.image_classification.resnet import resnet_model
 
 
 def run(flags_obj):
@@ -126,7 +126,6 @@ def run(flags_obj):
       is_training=True,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
       parse_record_fn=imagenet_preprocessing.get_parse_record_fn(
           use_keras_image_data_format=use_keras_image_data_format),
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
@@ -142,7 +141,6 @@ def run(flags_obj):
         is_training=False,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
-        num_epochs=flags_obj.train_epochs,
         parse_record_fn=imagenet_preprocessing.get_parse_record_fn(
             use_keras_image_data_format=use_keras_image_data_format),
         dtype=dtype,
@@ -185,7 +183,6 @@ def run(flags_obj):
       model = trivial_model.trivial_model(
           imagenet_preprocessing.NUM_CLASSES)
     elif flags_obj.model == 'resnet50_v1.5':
-      resnet_model.change_keras_layer(flags_obj.use_tf_keras_layers)
       model = resnet_model.resnet50(
           num_classes=imagenet_preprocessing.NUM_CLASSES)
     elif flags_obj.model == 'mobilenet':

@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 
 from absl.testing import parameterized
+from absl.testing.absltest import mock
 import numpy as np
 import tensorflow as tf
 
@@ -207,6 +208,27 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         check_eventfile_for_keyword('mean_input',
                                     os.path.join(model_dir, 'summaries/eval')))
+
+  @combinations.generate(
+      combinations.combine(
+          distribution=[
+              strategy_combinations.one_device_strategy_gpu,
+          ],
+          mode='eager',
+      ))
+  def test_train_check_artifacts_non_chief(self, distribution):
+    # We shouldn't export artifacts on non-chief workers. Since there's no easy
+    # way to test with real MultiWorkerMirroredStrategy, we patch the strategy
+    # to make it as if it's MultiWorkerMirroredStrategy on non-chief workers.
+    extended = distribution.extended
+    with mock.patch.object(extended.__class__, 'should_checkpoint',
+                           new_callable=mock.PropertyMock, return_value=False), \
+         mock.patch.object(extended.__class__, 'should_save_summary',
+                           new_callable=mock.PropertyMock, return_value=False):
+      model_dir = self.get_temp_dir()
+      self.run_training(
+          distribution, model_dir, steps_per_loop=10, run_eagerly=False)
+      self.assertEmpty(tf.io.gfile.listdir(model_dir))
 
 
 if __name__ == '__main__':

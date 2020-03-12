@@ -275,12 +275,6 @@ def define_keras_flags(
       help='Whether to build a tf.while_loop inside the training loop on the '
       'host. Setting it to True is critical to have peak performance on '
       'TPU.')
-  flags.DEFINE_boolean(
-      name='use_tf_keras_layers', default=False,
-      help='Whether to use tf.keras.layers instead of tf.python.keras.layers.'
-      'It only changes imagenet resnet model layers for now. This flag is '
-      'a temporal flag during transition to tf.keras.layers. Do not use this '
-      'flag for external usage. this will be removed shortly.')
 
   if model:
     flags.DEFINE_string('model', 'resnet50_v1.5',

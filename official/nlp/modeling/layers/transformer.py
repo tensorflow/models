@@ -99,7 +99,7 @@ class Transformer(tf.keras.layers.Layer):
           "heads (%d)" % (hidden_size, self._num_heads))
     self._attention_head_size = int(hidden_size // self._num_heads)
 
-    self._attention_layer = attention.Attention(
+    self._attention_layer = attention.MultiHeadAttention(
         num_heads=self._num_heads,
         head_size=self._attention_head_size,
         dropout_rate=self._attention_dropout_rate,

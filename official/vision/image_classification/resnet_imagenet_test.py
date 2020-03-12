@@ -50,7 +50,6 @@ class KerasImagenetTest(tf.test.TestCase):
           "-model", "resnet50_v1.5",
           "-optimizer", "resnet50_default",
           "-pruning_method", "polynomial_decay",
-          "-use_tf_keras_layers", "true",
       ],
       "mobilenet": [
           "-model", "mobilenet",

@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import math
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 _TRAIN, _EVAL = tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL

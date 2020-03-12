@@ -94,13 +94,15 @@ class Controller(object):
     # TODO(rxsang): Support training until exhaustion by passing
     # `train_steps=-1`. Currently it cannot be supported with a host training
     # loop because break statements are not supported with distributed dataset.
-    if train_fn is not None and train_steps is None:
-      raise ValueError("`train_steps` is required when `train_fn` is provided.")
-    if train_fn is not None and steps_per_loop is None:
-      raise ValueError("`steps_per_loop` is required when `train_fn is "
-                       "provided.")
-    if not isinstance(steps_per_loop, int) or steps_per_loop < 1:
-      raise ValueError("`steps_per_loop` should be a positive integer")
+    if train_fn is not None:
+      if train_steps is None:
+        raise ValueError("`train_steps` is required when `train_fn` is "
+                         "provided.")
+      if steps_per_loop is None:
+        raise ValueError("`steps_per_loop` is required when `train_fn is "
+                         "provided.")
+      if not isinstance(steps_per_loop, int) or steps_per_loop < 1:
+        raise ValueError("`steps_per_loop` should be a positive integer")
     if summary_interval is not None and summary_interval <= 0:
       raise ValueError("`summary_interval` should be larger than 0")
 

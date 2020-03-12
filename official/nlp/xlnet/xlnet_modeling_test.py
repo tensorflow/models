@@ -49,5 +49,4 @@ class PositionalEmbeddingLayerTest(tf.test.TestCase):
     self.assertAllClose(pos_emb, target)
 
 if __name__ == "__main__":
-  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

@@ -122,7 +122,6 @@ def convert_checkpoint(bert_config, output_path, v1_checkpoint):
 
 
 def main(_):
-  assert tf.version.VERSION.startswith('2.')
   output_path = FLAGS.converted_checkpoint_path
   v1_checkpoint = FLAGS.checkpoint_to_convert
   albert_config = configs.AlbertConfig.from_json_file(FLAGS.albert_config_file)

@@ -626,5 +626,4 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
 
 
 if __name__ == "__main__":
-  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

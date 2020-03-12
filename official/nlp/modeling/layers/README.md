@@ -6,7 +6,10 @@ assemble new layers, networks, or models.
 logic required to generate the einsum expression for the given initialization
 parameters.
 
-* [Attention](attention.py) implements an optionally masked attention between two tensors, from_tensor and to_tensor, as described in ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762). If `from_tensor` and `to_tensor` are the same, then this is self-attention.
+* [MultiHeadAttention](attention.py) implements an optionally masked attention
+between two tensors, from_tensor and to_tensor, as described in
+["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
+If `from_tensor` and `to_tensor` are the same, then this is self-attention.
 
 * [CachedAttention](attention.py) implements an attention layer with cache used
 for auto-agressive decoding.

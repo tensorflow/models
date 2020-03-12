@@ -53,13 +53,17 @@ def create_loop_fn(step_fn):
     """
     try:
       step = 0
-      while (num_steps == -1 or step < num_steps):
-        outputs = step_fn(iterator)
-        if reduce_fn is not None:
-          state = reduce_fn(state, outputs)
-        step += 1
-      return state
+      # To make sure the OutOfRangeError exception can be handled well with
+      # async remote eager, we need to wrap the loop body in a `async_scope`.
+      with tf.experimental.async_scope():
+        while (num_steps == -1 or step < num_steps):
+          outputs = step_fn(iterator)
+          if reduce_fn is not None:
+            state = reduce_fn(state, outputs)
+          step += 1
+        return state
     except (StopIteration, tf.errors.OutOfRangeError):
+      tf.experimental.async_clear_error()
       return state
 
   return loop_fn
