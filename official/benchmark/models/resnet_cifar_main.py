@@ -18,9 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
-from absl import app as absl_app
+from absl import app
 from absl import flags
+import numpy as np
 import tensorflow as tf
 from official.benchmark.models import resnet_cifar_model
 from official.utils.flags import core as flags_core
@@ -282,4 +282,4 @@ def main(_):
 if __name__ == '__main__':
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   define_cifar_flags()
-  absl_app.run(main)
+  app.run(main)
