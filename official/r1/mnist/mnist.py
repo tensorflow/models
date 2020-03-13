@@ -243,6 +243,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logger = tf.get_logger()
+  logger.setLevel(20)
   define_mnist_flags()
   absl_app.run(main)
