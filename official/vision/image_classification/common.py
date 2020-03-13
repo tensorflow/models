@@ -67,7 +67,6 @@ class PiecewiseConstantDecayWithWarmup(
     # avoid this, we cache the ops if not executing eagerly.
     graph = tf.Graph()
     with graph.as_default():
-
       if graph not in self.learning_rate_ops_cache:
         if self.compute_lr_on_cpu:
           with tf.device('/device:CPU:0'):
