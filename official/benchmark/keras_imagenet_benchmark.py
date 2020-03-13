@@ -61,18 +61,6 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     super(Resnet50KerasAccuracy, self).__init__(
         output_dir=output_dir, flag_methods=flag_methods)
 
-  def benchmark_graph_8_gpu(self):
-    """Test Keras model with Keras fit/dist_strat and 8 GPUs."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128 * 8
-    FLAGS.train_epochs = 90
-    FLAGS.epochs_between_evals = 10
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
-    FLAGS.dtype = 'fp32'
-    self._run_and_report_benchmark()
-
   def benchmark_8_gpu(self):
     """Test Keras model with eager, dist_strat and 8 GPUs."""
     self._setup()
@@ -134,30 +122,6 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     # Thread tuning to improve performance.
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     self._run_and_report_benchmark()
-
-  def benchmark_8_gpu_mlperf_like(self):
-    """Test similar to the rules for MLPerf 0.5.
-
-    Listed below are reasons this comparison is not to the MLSpec, but this is
-    still a decent directional measurement:
-      - Eval is every 4 epochs and again at the end. ~2 extra times.
-      - Learning rate is not tuned to hit 75%, but we know the model is correct.
-      - We measure total time and MLPerf 0.5 excluded some startup time.
-      - Eval is not on the total set, need to set eval batch_size where
-        8*batch_size/50K is even. 250 is a good number.
-      - Not sure if we are doing any extra or too few steps due to epoch bleed.
-    """
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 256 * 8
-    FLAGS.train_epochs = 61
-    FLAGS.epochs_between_evals = 4
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_mlperf_like')
-    FLAGS.dtype = 'fp16'
-    FLAGS.enable_eager = True
-    FLAGS.enable_xla = True
-    self._run_and_report_benchmark(top_1_min=0.736)
 
   def benchmark_xla_8_gpu_fp16_dynamic(self):
     """Test Keras model with XLA, eager, dist_strat, 8 GPUs, dynamic fp16."""
@@ -974,76 +938,6 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_warmup')
     FLAGS.batch_size = 256 * 8
     FLAGS.train_steps = 700
-    self._run_and_report_benchmark()
-
-  def benchmark_1_gpu(self):
-    """Test trivial Keras model (input pipeline) with 1 GPU."""
-    self._setup()
-
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = True
-    FLAGS.enable_xla = True
-    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
-    FLAGS.batch_size = 256
-    self._run_and_report_benchmark()
-
-  def benchmark_graph_1_gpu(self):
-    """Test trivial Keras model (input pipeline) with 1 GPU."""
-    self._setup()
-
-    FLAGS.num_gpus = 1
-    FLAGS.enable_eager = False
-    FLAGS.enable_xla = True
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
-    FLAGS.batch_size = 256
-    self._run_and_report_benchmark()
-
-  def benchmark_8_gpu(self):
-    """Test trivial Keras model (input pipeline) with 8 GPUs."""
-    self._setup()
-
-    FLAGS.num_gpus = 8
-    FLAGS.enable_eager = True
-    FLAGS.enable_xla = True
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
-    FLAGS.batch_size = 256 * 8
-    self._run_and_report_benchmark()
-
-  def benchmark_8_gpu_tweaked(self):
-    """Test trivial Keras model with tuning and 8 GPUs."""
-    self._setup()
-
-    FLAGS.num_gpus = 8
-    FLAGS.enable_eager = True
-    FLAGS.enable_xla = True
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
-    FLAGS.batch_size = 256 * 8
-    FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.datasets_num_private_threads = 48
-    self._run_and_report_benchmark()
-
-  def benchmark_graph_8_gpu(self):
-    """Test trivial Keras model in legacy graph mode with 8 GPUs."""
-    self._setup()
-
-    FLAGS.num_gpus = 8
-    FLAGS.enable_eager = False
-    FLAGS.enable_xla = True
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu')
-    FLAGS.batch_size = 256 * 8
-    self._run_and_report_benchmark()
-
-  def benchmark_graph_8_gpu_tweaked(self):
-    """Test trivial Keras model in legacy graph mode with tuning and 8 GPUs."""
-    self._setup()
-
-    FLAGS.num_gpus = 8
-    FLAGS.enable_eager = False
-    FLAGS.enable_xla = True
-    FLAGS.model_dir = self._get_model_dir('benchmark_graph_8_gpu_tweaked')
-    FLAGS.batch_size = 256 * 8
-    FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.datasets_num_private_threads = 48
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):
