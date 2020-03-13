@@ -143,5 +143,6 @@ class Benchmarks(tf.test.Benchmark):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+  logger = tf.get_logger()
+  logger.setLevel(40)
   tf.test.main()
