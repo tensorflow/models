@@ -125,7 +125,8 @@ def summaries_with_matching_keyword(keyword, summary_dir):
     if event.summary is not None:
       for value in event.summary.value:
         if keyword in value.tag:
-          tf.compat.v1.logging.error(event)
+          logger = tf.get_logger()
+          logger.error(event)
           yield event.summary
 
 
