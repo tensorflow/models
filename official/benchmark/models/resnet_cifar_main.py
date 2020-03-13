@@ -100,7 +100,8 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     if lr != self.prev_lr:
       self.model.optimizer.learning_rate = lr  # lr should be a float here
       self.prev_lr = lr
-      tf.compat.v1.logging.debug(
+      logger = tf.get_logger()
+      logger.debug(
           'Epoch %05d Batch %05d: LearningRateBatchScheduler '
           'change learning rate to %s.', self.epochs, batch, lr)
 
@@ -280,6 +281,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logger = tf.get_logger()
+  logger.setLevel(20)
   define_cifar_flags()
   app.run(main)
