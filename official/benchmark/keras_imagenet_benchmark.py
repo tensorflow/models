@@ -885,15 +885,309 @@ class Resnet50KerasBenchmarkRemoteData(Resnet50KerasBenchmarkBase):
     # Cache dataset so performance is stable after the first epoch.
     def_flags['training_dataset_cache'] = True
     def_flags['log_steps'] = 100
+    # Note that for single GPU and pure eager tests which are less likely to be
+    # input bound and more stable, these tests will run for shorter time by
+    # overriding FLAGS.train_epochs, train_seteps, log_steps in benchmark
+    # methods, and skip_steps in _run_and_report_benchmark().
 
     super(Resnet50KerasBenchmarkRemoteData, self).__init__(
         output_dir=output_dir, default_flags=def_flags)
 
+  def _override_flags_to_run_test_shorter(self):
+    FLAGS.train_epochs = 1
+    FLAGS.train_steps = 300
+    FLAGS.log_steps = 10
+
+  def benchmark_1_gpu_no_dist_strat(self):
+    """Test Keras model with 1 GPU, no distribution strategy."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
+    FLAGS.batch_size = 128
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly(self):
+    """Test Keras model with 1 GPU, no distribution strategy, run eagerly."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_run_eagerly')
+    FLAGS.batch_size = 64
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_tweaked(self):
+    """Test Keras model with 1 GPU, no distribution strategy, run eagerly."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.explicit_gpu_placement = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_run_eagerly_tweaked')
+    FLAGS.batch_size = 64
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_fp16(self):
+    """Test with 1 GPU, no distribution strategy, fp16, run eagerly."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_run_eagerly_fp16')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 128
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_fp16_tweaked(self):
+    """Test with 1 GPU, no distribution strategy, fp16, run eagerly."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.run_eagerly = True
+    FLAGS.explicit_gpu_placement = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_run_eagerly_fp16_tweaked')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 128
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_1_gpu_no_dist_strat(self):
+    """Test Keras model in legacy graph mode with 1 GPU, no dist strat."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_no_dist_strat')
+    FLAGS.batch_size = 96  # BatchNorm is less efficient in legacy graph mode
+    # due to its reliance on v1 cond.
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu(self):
+    """Test Keras model with 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu')
+    FLAGS.batch_size = 128
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_amp(self):
+    """Test Keras model with 1 GPU with automatic mixed precision."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_amp')
+    FLAGS.batch_size = 256
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu(self):
+    """Test Keras model with XLA and 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu')
+    FLAGS.batch_size = 128
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_amp(self):
+    """Test Keras model with XLA and 1 GPU with automatic mixed precision."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.dtype = 'fp16'
+    FLAGS.fp16_implementation = 'graph_rewrite'
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_amp')
+    FLAGS.batch_size = 256
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_fp16(self):
+    """Test Keras model with 1 GPU and fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_fp16_dynamic(self):
+    """Test Keras model with 1 GPU, fp16, and dynamic loss scaling."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_fp16_dynamic')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.loss_scale = 'dynamic'
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_fp16(self):
+    """Test Keras model with XLA, 1 GPU and fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_fp16_tweaked(self):
+    """Test Keras model with XLA, 1 GPU, fp16, and manual config tuning."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16_tweaked')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_xla_1_gpu_fp16_dynamic(self):
+    """Test Keras model with XLA, 1 GPU, fp16, and dynamic loss scaling."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = True
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_1_gpu_fp16_dynamic')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.loss_scale = 'dynamic'
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_1_gpu(self):
+    """Test Keras model in legacy graph mode with 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu')
+    FLAGS.batch_size = 128
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_1_gpu(self):
+    """Test Keras model in legacy graph mode with XLA and 1 GPU."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_1_gpu')
+    FLAGS.batch_size = 128
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_1_gpu_fp16(self):
+    """Test Keras model in legacy graph mode with 1 GPU and fp16."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_1_gpu_fp16')
+    FLAGS.batch_size = 256
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_1_gpu_fp16(self):
+    """Test Keras model in legacy graph mode with 1 GPU, fp16 and XLA."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir('benchmark_graph_xla_1_gpu_fp16')
+    FLAGS.batch_size = 256
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
+  def benchmark_graph_xla_1_gpu_fp16_tweaked(self):
+    """Test Keras model in legacy graph with 1 GPU, fp16, XLA, and tuning."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.enable_eager = False
+    FLAGS.enable_xla = True
+    FLAGS.distribution_strategy = 'one_device'
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_graph_xla_1_gpu_fp16_tweaked')
+    FLAGS.dtype = 'fp16'
+    FLAGS.batch_size = 256
+    FLAGS.tf_gpu_thread_mode = 'gpu_private'
+    self._override_flags_to_run_test_shorter()
+    self._run_and_report_benchmark()
+
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self):
-    # skip the first epoch for performance measurement.
+    if FLAGS.num_gpus == 1 or FLAGS.run_eagerly:
+      # For single GPU and pure eager tests which are less likely to be input
+      # bound and more stable, run for shorter time and use the default
+      # skip_steps.
+      skip_steps = None
+    else:
+      # skip the first epoch for performance measurement.
+      skip_steps = 600
     super(Resnet50KerasBenchmarkRemoteData,
-          self)._run_and_report_benchmark(skip_steps=600)
+          self)._run_and_report_benchmark(skip_steps=skip_steps)
 
 
 class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
