@@ -194,7 +194,8 @@ def input_fn(is_training,
   dataset = tf.data.Dataset.from_tensor_slices(filenames)
 
   if input_context:
-    tf.compat.v1.logging.info(
+    logger = tf.get_logger()
+    logger.info(
         'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d' % (
             input_context.input_pipeline_id, input_context.num_input_pipelines))
     dataset = dataset.shard(input_context.num_input_pipelines,
@@ -387,6 +388,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logger = tf.get_logger()
+  logger.setLevel(20)
   define_imagenet_flags()
   absl_app.run(main)
