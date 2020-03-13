@@ -223,9 +223,6 @@ def run_customized_training_loop(
         'if `metric_fn` is specified, metric_fn must be a callable.')
 
   total_training_steps = steps_per_epoch * epochs
-
-  # To reduce unnecessary send/receive input pipeline operation, we place input
-  # pipeline ops in worker task.
   train_iterator = _get_input_iterator(train_input_fn, strategy)
 
   with distribution_utils.get_strategy_scope(strategy):
