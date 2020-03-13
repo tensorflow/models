@@ -87,10 +87,9 @@ class CtlBenchmark(PerfZeroBenchmark):
       # first entry in the time_log is start of step 0. The rest of the
       # entries are the end of each step recorded
       time_log = stats['step_timestamp_log']
-      elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
-      num_examples = (
-          total_batch_size * log_steps * (len(time_log) - warmup - 1))
-      examples_per_sec = num_examples / elapsed
+      steps_elapsed = time_log[-1].batch_index - time_log[warmup].batch_index
+      time_elapsed = time_log[-1].timestamp - time_log[warmup].timestamp
+      examples_per_sec = total_batch_size * (steps_elapsed / time_elapsed)
       metrics.append({'name': 'exp_per_second', 'value': examples_per_sec})
 
     if 'avg_exp_per_second' in stats:
