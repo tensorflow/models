@@ -26,8 +26,8 @@ from official.r1.resnet import cifar10_main
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
+logger = tf.get_logger()
+logger.setLevel(40) # 40 resembles ERROR
 _BATCH_SIZE = 128
 _HEIGHT = 32
 _WIDTH = 32
