@@ -27,8 +27,8 @@ from official.utils.testing import integration
 from official.r1.wide_deep import census_dataset
 from official.r1.wide_deep import census_main
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
+logger = tf.get_logger()
+logger.setLevel(40)
 TEST_INPUT = ('18,Self-emp-not-inc,987,Bachelors,12,Married-civ-spouse,abc,'
               'Husband,zyx,wvu,34,56,78,tsr,<=50K')
 
