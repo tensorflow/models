@@ -29,8 +29,8 @@ from official.utils.testing import integration
 from official.r1.wide_deep import movielens_dataset
 from official.r1.wide_deep import movielens_main
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
+logger = tf.get_logger()
+logger.setLevel(40)
 
 TEST_INPUT_VALUES = {
     "genres": np.array(
