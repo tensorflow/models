@@ -19,7 +19,7 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.1.0.dev2'
+version = '2.1.0'
 
 project_name = 'tf-models-official'
 
@@ -30,7 +30,7 @@ if '--project_name' in sys.argv:
   sys.argv.pop(project_name_idx)
 
 if project_name == 'tf-models-nightly':
-  version += '.' + datetime.datetime.now().strftime('%Y%m%d%H%M')
+  version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
 
 setup(
     name=project_name,
