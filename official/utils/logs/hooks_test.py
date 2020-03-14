@@ -26,8 +26,8 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.utils.logs import hooks
 from official.utils.testing import mock_lib
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
-
+logger = tf.get_logger()
+logger.setLevel(10) # 10 resembles DEBUG
 
 class ExamplesPerSecondHookTest(tf.test.TestCase):
   """Tests for the ExamplesPerSecondHook.
