@@ -109,7 +109,7 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
-    optimizer = tf.compat.v1.train.AdamOptimizer(
+    optimizer = tf.keras.optimizers.Adam(
         learning_rate=params["learning_rate"],
         beta1=params["beta1"],
         beta2=params["beta2"],
