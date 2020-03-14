@@ -25,7 +25,8 @@ from official.r1.resnet import imagenet_main
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+logger = tf.get_logger()
+logger.setLevel(40)
 
 _BATCH_SIZE = 32
 _LABEL_CLASSES = 1001
