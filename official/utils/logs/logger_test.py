@@ -79,7 +79,8 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     mock_logger = mock.MagicMock()
     mock_config_benchmark_logger.return_value = mock_logger
     with logger.benchmark_context(None):
-      tf.compat.v1.logging.info("start benchmarking")
+      logger = tf.get_logger()
+      loger.info("start benchmarking")
     mock_logger.on_finish.assert_called_once_with(logger.RUN_STATUS_SUCCESS)
 
   @mock.patch("official.utils.logs.logger.config_benchmark_logger")
@@ -96,18 +97,21 @@ class BaseBenchmarkLoggerTest(tf.test.TestCase):
 
   def setUp(self):
     super(BaseBenchmarkLoggerTest, self).setUp()
-    self._actual_log = tf.compat.v1.logging.info
+    logger = tf.get_logger()
+    self._actual_log = logger.info
     self.logged_message = None
 
     def mock_log(*args, **kwargs):
       self.logged_message = args
       self._actual_log(*args, **kwargs)
 
-    tf.compat.v1.logging.info = mock_log
+    
+    logger.info(mock_log)
 
   def tearDown(self):
     super(BaseBenchmarkLoggerTest, self).tearDown()
-    tf.compat.v1.logging.info = self._actual_log
+    logger = tf.get_logger()
+    logger.info = self._actual_log
 
   def test_log_metric(self):
     log = logger.BaseBenchmarkLogger()
