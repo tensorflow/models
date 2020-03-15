@@ -83,7 +83,7 @@ installable Official Models package. This is being tracked in
 *   [bert](nlp/bert): A powerful pre-trained language representation model:
     BERT, which stands for Bidirectional Encoder Representations from
     Transformers.
-*   [transformer](transformer): A transformer model to translate the WMT English
+*   [transformer](nlp/transformer): A transformer model to translate the WMT English
     to German dataset.
 *   [xlnet](nlp/xlnet): XLNet: Generalized Autoregressive Pretraining for
     Language Understanding.
