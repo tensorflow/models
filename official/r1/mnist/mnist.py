@@ -125,7 +125,7 @@ def model_fn(features, labels, mode, params):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
+    optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=LEARNING_RATE)
 
     logits = model(image, training=True)
     loss = tf.compat.v1.losses.sparse_softmax_cross_entropy(labels=labels,
