@@ -211,7 +211,7 @@ def run_customized_training_loop(
   if run_eagerly:
     if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
       raise ValueError(
-          'TPUStrategy should not run eagerly as it heavily replies on graph'
+          'TPUStrategy should not run eagerly as it heavily relies on graph'
           ' optimization for the distributed system.')
 
   if eval_input_fn and (eval_steps is None or metric_fn is None):
