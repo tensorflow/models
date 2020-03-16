@@ -23,7 +23,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.benchmark import keras_benchmark
 from official.utils.testing import benchmark_wrappers
-from official.vision.image_classification import resnet_imagenet_main
+from official.vision.image_classification.resnet import resnet_imagenet_main
 
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77

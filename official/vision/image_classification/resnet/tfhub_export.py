@@ -26,7 +26,7 @@ from absl import flags
 
 import tensorflow.compat.v2 as tf
 
-from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification.resnet import imagenet_preprocessing
 from official.vision.image_classification.resnet import resnet_model
 
 FLAGS = flags.FLAGS
