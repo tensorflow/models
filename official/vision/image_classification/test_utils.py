@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A trivial model for Keras."""
+"""Test utilities for image classification tasks."""
 
 from __future__ import absolute_import
 from __future__ import division
