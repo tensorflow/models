@@ -14,6 +14,7 @@
 # ==============================================================================
 """Sets up TensorFlow Official Models."""
 import datetime
+import os
 import sys
 
 from setuptools import find_packages
@@ -29,8 +30,31 @@ if '--project_name' in sys.argv:
   sys.argv.remove('--project_name')
   sys.argv.pop(project_name_idx)
 
+
+def _get_requirements():
+  """Parses requirements.txt file."""
+  install_requires_tmp = []
+  dependency_links_tmp = []
+  with open(
+      os.path.join(os.path.dirname(__file__), '../requirements.txt'), 'r') as f:
+    for line in f:
+      package_name = line.strip()
+      if package_name.startswith('-e '):
+        dependency_links_tmp.append(package_name[3:].strip())
+      else:
+        install_requires_tmp.append(package_name)
+  return install_requires_tmp, dependency_links_tmp
+
+install_requires, dependency_links = _get_requirements()
+
 if project_name == 'tf-models-nightly':
   version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
+  install_requires.append('tf-nightly')
+else:
+  install_requires.append('tensorflow>=2.1.0')
+
+print('install_requires: ', install_requires)
+print('dependency_links: ', dependency_links)
 
 setup(
     name=project_name,
@@ -51,13 +75,7 @@ setup(
     exclude_package_data={
         '': ['*_test.py',],
     },
-    install_requires=[
-        'six',
-    ],
-    extras_require={
-        'tensorflow': ['tensorflow>=2.0.0'],
-        'tensorflow_gpu': ['tensorflow-gpu>=2.0.0'],
-        'tensorflow-hub': ['tensorflow-hub>=0.6.0'],
-    },
+    install_requires=install_requires,
+    dependency_links=dependency_links,
     python_requires='>=3.6',
 )
