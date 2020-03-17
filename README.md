@@ -6,8 +6,6 @@ The [official models](official) are a collection of example models that use Tens
 
 The [research models](https://github.com/tensorflow/models/tree/master/research) are a large collection of models implemented in TensorFlow by researchers. They are not officially supported or available in release branches; it is up to the individual researchers to maintain the models and/or provide support on issues and pull requests.
 
-The [tutorials folder](tutorials) is a collection of models described in the [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
-
 ## Contribution guidelines
 
 If you want to contribute to models, be sure to review the [contribution guidelines](CONTRIBUTING.md).
