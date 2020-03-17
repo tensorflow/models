@@ -61,7 +61,7 @@ common_flags.define_common_bert_flags()
 FLAGS = flags.FLAGS
 
 
-def get_loss_fn(num_classes, loss_factor=1.0):
+def get_loss_fn(num_classes):
   """Gets the classification loss function."""
 
   def classification_loss_fn(labels, logits):
@@ -72,9 +72,7 @@ def get_loss_fn(num_classes, loss_factor=1.0):
         tf.cast(labels, dtype=tf.int32), depth=num_classes, dtype=tf.float32)
     per_example_loss = -tf.reduce_sum(
         tf.cast(one_hot_labels, dtype=tf.float32) * log_probs, axis=-1)
-    loss = tf.reduce_mean(per_example_loss)
-    loss *= loss_factor
-    return loss
+    return tf.reduce_mean(per_example_loss)
 
   return classification_loss_fn
 
@@ -135,17 +133,7 @@ def run_bert_classifier(strategy,
         use_graph_rewrite=common_flags.use_graph_rewrite())
     return classifier_model, core_model
 
-  # During distributed training, loss used for gradient computation is
-  # summed over from all replicas. When Keras compile/fit() API is used,
-  # the fit() API internally normalizes the loss by dividing the loss by
-  # the number of replicas used for computation. However, when custom
-  # training loop is used this is not done automatically and should be
-  # done manually by the end user.
-  loss_multiplier = 1.0
-  if FLAGS.scale_loss and not use_keras_compile_fit:
-    loss_multiplier = 1.0 / strategy.num_replicas_in_sync
-
-  loss_fn = get_loss_fn(num_classes, loss_factor=loss_multiplier)
+  loss_fn = get_loss_fn(num_classes)
 
   # Defines evaluation metrics function, which will create metrics in the
   # correct device and strategy scope.

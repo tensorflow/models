@@ -90,8 +90,7 @@ FLAGS = flags.FLAGS
 def squad_loss_fn(start_positions,
                   end_positions,
                   start_logits,
-                  end_logits,
-                  loss_factor=1.0):
+                  end_logits):
   """Returns sparse categorical crossentropy for start/end logits."""
   start_loss = tf.keras.losses.sparse_categorical_crossentropy(
       start_positions, start_logits, from_logits=True)
@@ -99,11 +98,10 @@ def squad_loss_fn(start_positions,
       end_positions, end_logits, from_logits=True)
 
   total_loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
-  total_loss *= loss_factor
   return total_loss
 
 
-def get_loss_fn(loss_factor=1.0):
+def get_loss_fn():
   """Gets a loss function for squad task."""
 
   def _loss_fn(labels, model_outputs):
@@ -114,8 +112,7 @@ def get_loss_fn(loss_factor=1.0):
         start_positions,
         end_positions,
         start_logits,
-        end_logits,
-        loss_factor=loss_factor)
+        end_logits)
 
   return _loss_fn
 
@@ -249,14 +246,6 @@ def train_squad(strategy,
         use_graph_rewrite=common_flags.use_graph_rewrite())
     return squad_model, core_model
 
-  # The original BERT model does not scale the loss by
-  # 1/num_replicas_in_sync. It could be an accident. So, in order to use
-  # the same hyper parameter, we do the same thing here by keeping each
-  # replica loss as it is.
-  loss_fn = get_loss_fn(
-      loss_factor=1.0 /
-      strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0)
-
   # If explicit_allreduce = True, apply_gradients() no longer implicitly
   # allreduce gradients, users manually allreduce gradient and pass the
   # allreduced grads_and_vars to apply_gradients(). clip_by_global_norm will be
@@ -269,7 +258,7 @@ def train_squad(strategy,
   model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_squad_model,
-      loss_fn=loss_fn,
+      loss_fn=get_loss_fn(),
       model_dir=FLAGS.model_dir,
       steps_per_epoch=steps_per_epoch,
       steps_per_loop=FLAGS.steps_per_loop,
