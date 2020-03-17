@@ -194,7 +194,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
           start_logits=start_logits,
           end_logits=end_logits)
 
-    outputs = strategy.experimental_run_v2(
+    outputs = strategy.run(
         _replicated_step, args=(next(iterator),))
     return tf.nest.map_structure(strategy.experimental_local_results, outputs)
 

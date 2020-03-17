@@ -130,7 +130,7 @@ def run_evaluation(strategy, test_input_fn, eval_examples, eval_features,
   @tf.function
   def _run_evaluation(test_iterator):
     """Runs validation steps."""
-    res, unique_ids = strategy.experimental_run_v2(
+    res, unique_ids = strategy.run(
         _test_step_fn, args=(next(test_iterator),))
     return res, unique_ids
 

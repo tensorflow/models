@@ -267,7 +267,7 @@ def get_predictions_and_labels(strategy, trained_model, eval_input_fn,
       model_outputs = trained_model(inputs, training=False)
       return model_outputs, labels
 
-    outputs, labels = strategy.experimental_run_v2(
+    outputs, labels = strategy.run(
         _test_step_fn, args=(next(iterator),))
     # outputs: current batch logits as a tuple of shard logits
     outputs = tf.nest.map_structure(strategy.experimental_local_results,

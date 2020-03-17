@@ -321,7 +321,7 @@ def run_customized_training_loop(
                          'retracing.')
 
       for _ in tf.range(steps):
-        strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+        strategy.run(_replicated_step, args=(next(iterator),))
 
     def train_single_step(iterator):
       """Performs a distributed training step.
@@ -332,7 +332,7 @@ def run_customized_training_loop(
       Raises:
         ValueError: Any of the arguments or tensor shapes are invalid.
       """
-      strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+      strategy.run(_replicated_step, args=(next(iterator),))
 
     def test_step(iterator):
       """Calculates evaluation metrics on distributed devices."""
@@ -345,7 +345,7 @@ def run_customized_training_loop(
         for metric in eval_metrics:
           metric.update_state(labels, model_outputs)
 
-      strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
+      strategy.run(_test_step_fn, args=(next(iterator),))
 
     if not run_eagerly:
       train_single_step = tf.function(train_single_step)

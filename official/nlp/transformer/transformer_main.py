@@ -280,7 +280,7 @@ class TransformerTask(object):
 
       for _ in tf.range(steps):
         train_loss_metric.reset_states()
-        self.distribution_strategy.experimental_run_v2(
+        self.distribution_strategy.run(
             _step_fn, args=(next(iterator),))
 
     cased_score, uncased_score = None, None

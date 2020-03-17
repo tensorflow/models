@@ -119,7 +119,7 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
 
         return labels, prediction_outputs
 
-      labels, outputs = strategy.experimental_run_v2(
+      labels, outputs = strategy.run(
           _test_step_fn, args=(
               next(iterator),
               eval_steps,

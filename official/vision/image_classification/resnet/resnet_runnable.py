@@ -175,7 +175,7 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
       self.train_loss.update_state(loss)
       self.train_accuracy.update_state(labels, logits)
 
-    self.strategy.experimental_run_v2(step_fn, args=(next(iterator),))
+    self.strategy.run(step_fn, args=(next(iterator),))
 
   def train_loop_end(self):
     """See base class."""
@@ -204,7 +204,7 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
       self.test_loss.update_state(loss)
       self.test_accuracy.update_state(labels, logits)
 
-    self.strategy.experimental_run_v2(step_fn, args=(next(iterator),))
+    self.strategy.run(step_fn, args=(next(iterator),))
 
   def eval_end(self):
     """See base class."""
