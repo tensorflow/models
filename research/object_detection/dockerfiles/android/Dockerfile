@@ -20,14 +20,20 @@ FROM tensorflow/tensorflow:nightly-devel
 RUN git clone --depth 1 https://github.com/tensorflow/models.git && \
     mv models /tensorflow/models
 
+# Install gpg-agent
+RUN apt-get update -y && \
+	apt-get install -y apt-utils && \
+	apt-get install -y curl && \
+	apt-get install -y lsb-release && \
+	apt-get install -y gpg-agent 
 
 # Install gcloud and gsutil commands
 # https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu
 RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
     echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
-    apt-get update -y && apt-get install google-cloud-sdk -y
-
+	apt-get update -y && \
+	apt-get install -y google-cloud-sdk
 
 # Install the Tensorflow Object Detection API from here
 # https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/installation.md
