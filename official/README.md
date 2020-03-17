@@ -1,6 +1,6 @@
 # TensorFlow Official Models
 
-The TensorFlow official models are a collection of example models that use
+The TensorFlow official models are a collection of models that use
 TensorFlow's high-level APIs. They are intended to be well-maintained, tested,
 and kept up to date with the latest TensorFlow API. They should also be
 reasonably optimized for fast performance while still being easy to read.

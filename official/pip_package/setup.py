@@ -24,6 +24,12 @@ version = '2.2.0'
 
 project_name = 'tf-models-official'
 
+long_description = """The TensorFlow official models are a collection of
+models that use TensorFlow's high-level APIs.
+They are intended to be well-maintained, tested, and kept up to date with the
+latest TensorFlow API. They should also be reasonably optimized for fast
+performance while still being easy to read."""
+
 if '--project_name' in sys.argv:
   project_name_idx = sys.argv.index('--project_name')
   project_name = sys.argv[project_name_idx + 1]
@@ -60,6 +66,7 @@ setup(
     name=project_name,
     version=version,
     description='TensorFlow Official Models',
+    long_description=long_description,
     author='Google Inc.',
     author_email='no-reply@google.com',
     url='https://github.com/tensorflow/models',
