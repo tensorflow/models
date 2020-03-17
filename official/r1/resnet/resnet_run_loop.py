@@ -28,6 +28,7 @@ import math
 import multiprocessing
 import os
 
+from absl import logging
 from absl import flags
 import tensorflow as tf
 
@@ -83,7 +84,7 @@ def process_record_dataset(dataset,
     options.experimental_threading.private_threadpool_size = (
         datasets_num_private_threads)
     dataset = dataset.with_options(options)
-    tf.compat.v1.logging.info('datasets_num_private_threads: %s',
+    logging.info('datasets_num_private_threads: %s',
                               datasets_num_private_threads)
 
   # Disable intra-op parallelism to optimize for throughput instead of latency.
@@ -205,16 +206,16 @@ def override_flags_and_set_envars_for_gpu_thread_pool(flags_obj):
     what has been set by the user on the command-line.
   """
   cpu_count = multiprocessing.cpu_count()
-  tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
+  logging.info('Logical CPU cores: %s', cpu_count)
 
   # Sets up thread pool for each GPU for op scheduling.
   per_gpu_thread_count = 1
   total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
   os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
+  logging.info('TF_GPU_THREAD_COUNT: %s',
                             os.environ['TF_GPU_THREAD_COUNT'])
-  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
+  logging.info('TF_GPU_THREAD_MODE: %s',
                             os.environ['TF_GPU_THREAD_MODE'])
 
   # Reduces general thread pool by number of threads used for GPU pool.
@@ -648,7 +649,7 @@ def resnet_main(
         hooks=train_hooks,
         max_steps=flags_obj.max_train_steps)
     eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval)
-    tf.compat.v1.logging.info('Starting to train and evaluate.')
+    logging.info('Starting to train and evaluate.')
     tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
     # tf.estimator.train_and_evalute doesn't return anything in multi-worker
     # case.
@@ -671,7 +672,7 @@ def resnet_main(
       schedule[-1] = train_epochs - sum(schedule[:-1])  # over counting.
 
     for cycle_index, num_train_epochs in enumerate(schedule):
-      tf.compat.v1.logging.info('Starting cycle: %d/%d', cycle_index,
+      logging.info('Starting cycle: %d/%d', cycle_index,
                                 int(n_loops))
 
       if num_train_epochs:
@@ -691,7 +692,7 @@ def resnet_main(
       # allows the eval (which is generally unimportant in those circumstances)
       # to terminate.  Note that eval will run for max_train_steps each loop,
       # regardless of the global_step count.
-      tf.compat.v1.logging.info('Starting to evaluate.')
+      logging.info('Starting to evaluate.')
       eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                          steps=flags_obj.max_train_steps)
 

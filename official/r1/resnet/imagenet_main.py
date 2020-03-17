@@ -22,6 +22,7 @@ import os
 
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 from six.moves import range
 import tensorflow as tf
 
@@ -194,7 +195,7 @@ def input_fn(is_training,
   dataset = tf.data.Dataset.from_tensor_slices(filenames)
 
   if input_context:
-    tf.compat.v1.logging.info(
+    logging.info(
         'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d' % (
             input_context.input_pipeline_id, input_context.num_input_pipelines))
     dataset = dataset.shard(input_context.num_input_pipelines,
@@ -387,6 +388,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_imagenet_flags()
   absl_app.run(main)

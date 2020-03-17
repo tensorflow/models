@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 
+from absl import logging
 from absl import app as absl_app
 from absl import flags
 from six.moves import range
@@ -139,7 +140,7 @@ def input_fn(is_training,
   dataset = tf.data.FixedLengthRecordDataset(filenames, _RECORD_BYTES)
 
   if input_context:
-    tf.compat.v1.logging.info(
+    logging.info(
         'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d' % (
             input_context.input_pipeline_id, input_context.num_input_pipelines))
     dataset = dataset.shard(input_context.num_input_pipelines,
@@ -270,7 +271,7 @@ def run_cifar(flags_obj):
     Dictionary of results. Including final accuracy.
   """
   if flags_obj.image_bytes_as_serving_input:
-    tf.compat.v1.logging.fatal(
+    logging.fatal(
         '--image_bytes_as_serving_input cannot be set to True for CIFAR. '
         'This flag is only applicable to ImageNet.')
     return
@@ -291,6 +292,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_cifar_flags()
   absl_app.run(main)

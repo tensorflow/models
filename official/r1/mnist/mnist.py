@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import logging
 from absl import app as absl_app
 from absl import flags
 from six.moves import range
@@ -243,6 +244,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_mnist_flags()
   absl_app.run(main)

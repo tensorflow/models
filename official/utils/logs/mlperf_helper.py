@@ -31,6 +31,7 @@ import re
 import subprocess
 import sys
 import typing
+from absl import logging
 
 import tensorflow as tf
 
@@ -94,7 +95,7 @@ def get_mlperf_log():
       version = pkg_resources.get_distribution("mlperf_compliance")
       version = tuple(int(i) for i in version.version.split("."))
       if version < _MIN_VERSION:
-        tf.compat.v1.logging.warning(
+        logging.warning(
             "mlperf_compliance is version {}, must be >= {}".format(
                 ".".join([str(i) for i in version]),
                 ".".join([str(i) for i in _MIN_VERSION])))
@@ -187,6 +188,6 @@ def clear_system_caches():
 
 
 if __name__ == "__main__":
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   with LOGGER(True):
     ncf_print(key=TAGS.RUN_START)

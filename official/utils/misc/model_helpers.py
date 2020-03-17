@@ -22,6 +22,7 @@ import numbers
 
 import tensorflow as tf
 from tensorflow.python.util import nest
+from absl import logging
 
 
 def past_stop_threshold(stop_threshold, eval_metric):
@@ -48,7 +49,7 @@ def past_stop_threshold(stop_threshold, eval_metric):
                      "must be a number.")
 
   if eval_metric >= stop_threshold:
-    tf.compat.v1.logging.info(
+    logging.info(
         "Stop threshold of {} was passed with metric value {}.".format(
             stop_threshold, eval_metric))
     return True
@@ -88,6 +89,6 @@ def generate_synthetic_data(
 
 def apply_clean(flags_obj):
   if flags_obj.clean and tf.io.gfile.exists(flags_obj.model_dir):
-    tf.compat.v1.logging.info("--clean flag set. Removing existing model dir:"
+    logging.info("--clean flag set. Removing existing model dir:"
                               " {}".format(flags_obj.model_dir))
     tf.io.gfile.rmtree(flags_obj.model_dir)

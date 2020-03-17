@@ -22,6 +22,7 @@ import os
 
 from absl.testing import parameterized
 from absl.testing.absltest import mock
+from absl import logging
 import numpy as np
 import tensorflow as tf
 
@@ -125,7 +126,7 @@ def summaries_with_matching_keyword(keyword, summary_dir):
     if event.summary is not None:
       for value in event.summary.value:
         if keyword in value.tag:
-          tf.compat.v1.logging.error(event)
+          logging.error(event)
           yield event.summary
 
 
