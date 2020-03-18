@@ -21,8 +21,6 @@ from __future__ import print_function
 import abc
 import functools
 import re
-from absl import logging
-
 import tensorflow.compat.v2 as tf
 from official.vision.detection.modeling import checkpoint_utils
 from official.vision.detection.modeling import learning_rates
@@ -60,11 +58,10 @@ class OptimizerFactory(object):
 
 
 def _make_filter_trainable_variables_fn(frozen_variable_prefix):
-  """Creates a function for filtering trainable varialbes.
-  """
+  """Creates a function for filtering trainable varialbes."""
 
   def _filter_trainable_variables(variables):
-    """Filters trainable varialbes
+    """Filters trainable varialbes.
 
     Args:
       variables: a list of tf.Variable to be filtered.
@@ -141,8 +138,7 @@ class Model(object):
     return self._optimizer_fn(self._learning_rate)
 
   def make_filter_trainable_variables_fn(self):
-    """Creates a function for filtering trainable varialbes.
-    """
+    """Creates a function for filtering trainable varialbes."""
     return _make_filter_trainable_variables_fn(self._frozen_variable_prefix)
 
   def weight_decay_loss(self, trainable_variables):
@@ -151,8 +147,6 @@ class Model(object):
         if self._regularization_var_regex is None
         or re.match(self._regularization_var_regex, v.name)
     ]
-    logging.info('Regularization Variables: %s',
-                 [v.name for v in reg_variables])
 
     return self._l2_weight_decay * tf.add_n(
         [tf.nn.l2_loss(v) for v in reg_variables])
