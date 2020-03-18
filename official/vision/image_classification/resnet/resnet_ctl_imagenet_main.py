@@ -147,9 +147,7 @@ def run(flags_obj):
     runnable = resnet_runnable.ResnetRunnable(flags_obj, time_callback,
                                               per_epoch_steps)
 
-  eval_interval = (
-      flags_obj.epochs_between_evals *
-      per_epoch_steps if not flags_obj.skip_eval else None)
+  eval_interval = flags_obj.epochs_between_evals * per_epoch_steps
   checkpoint_interval = (
       per_epoch_steps if flags_obj.enable_checkpoint_and_export else None)
   summary_interval = per_epoch_steps if flags_obj.enable_tensorboard else None
@@ -174,7 +172,7 @@ def run(flags_obj):
       eval_interval=eval_interval)
 
   time_callback.on_train_begin()
-  resnet_controller.train(evaluate=True)
+  resnet_controller.train(evaluate=not flags_obj.skip_eval)
   time_callback.on_train_end()
 
   stats = build_stats(runnable, time_callback)
