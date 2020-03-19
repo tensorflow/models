@@ -1,8 +1,0 @@
-# For projects which use TensorFlow as part of a Bazel build process, putting
-# nothing in a bazelrc will default to a monolithic build. The following line
-# opts in to modular op registration support by default.
-build --define framework_shared_object=true
-
-build --copt=-DGEMMLOWP_ALLOW_SLOW_SCALAR_FALLBACK
-
-build --define=grpc_no_ares=true

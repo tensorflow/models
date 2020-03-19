@@ -1,7 +1,0 @@
-codebook_size: 65536
-feature_dimensionality: 128
-aggregation_type: ASMK_STAR
-codebook_path: "parameters/rparis6k_codebook_65536/k65536_codebook_tfckpt/codebook"
-num_assignments: 1
-use_regional_aggregation: false
-feature_batch_size: 100
