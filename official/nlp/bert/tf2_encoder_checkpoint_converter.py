@@ -98,7 +98,6 @@ def convert_checkpoint(bert_config, output_path, v1_checkpoint):
 
 
 def main(_):
-  tf.enable_v2_behavior()
   output_path = FLAGS.converted_checkpoint_path
   v1_checkpoint = FLAGS.checkpoint_to_convert
   bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
