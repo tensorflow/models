@@ -93,8 +93,8 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
 
   if len(ref_lines) != len(hyp_lines):
     raise ValueError("Reference and translation files have different number of "
-                     "lines. If training only a few steps (100-200), the "
-                     "translation may be empty.")
+                     "lines (%d VS %d). If training only a few steps (100-200), the "
+                     "translation may be empty." % (len(ref_lines), len(hyp_lines)))
   if not case_sensitive:
     ref_lines = [x.lower() for x in ref_lines]
     hyp_lines = [x.lower() for x in hyp_lines]
