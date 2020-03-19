@@ -21,7 +21,6 @@ from mock import Mock
 import numpy as np
 import tensorflow as tf
 
-from absl import logging
 from tensorflow.python.platform import googletest
 from official.utils.misc import keras_utils
 from official.vision.image_classification import common
@@ -107,5 +106,5 @@ class KerasCommonTests(tf.test.TestCase):
     return eval_output
 
 if __name__ == '__main__':
-  logging.set_verbosity(logging.ERROR)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
   googletest.main()
