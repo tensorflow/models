@@ -39,7 +39,7 @@ class AbstractTrainable(tf.Module):
     python callbacks. This is necessary for getting good performance in TPU
     training, as the overhead for launching a multi worker tf.function may be
     large in Eager mode. It is usually encouraged to create a host training loop
-    (e.g. using a `tf.range` wrapping `strategy.experimental_run_v2` inside a
+    (e.g. using a `tf.range` wrapping `strategy.run` inside a
     `tf.function`) in the TPU case. For the cases that don't require host
     training loop to acheive peak performance, users can just implement a simple
     python loop to drive each step.

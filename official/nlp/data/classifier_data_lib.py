@@ -24,6 +24,7 @@ import os
 
 from absl import logging
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
 from official.nlp.bert import tokenization
 
@@ -381,6 +382,99 @@ class QnliProcessor(DataProcessor):
         text_a = tokenization.convert_to_unicode(line[1])
         text_b = tokenization.convert_to_unicode(line[2])
         label = tokenization.convert_to_unicode(line[-1])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+
+class TfdsProcessor(DataProcessor):
+  """Processor for generic text classification TFDS data set.
+
+  The TFDS parameters are expected to be provided in the tfds_params string, in
+  a comma-separated list of parameter assignments.
+  Examples:
+    tfds_params="dataset=scicite,text_key=string"
+    tfds_params="dataset=imdb_reviews,test_split=,dev_split=test"
+    tfds_params="dataset=glue/cola,text_key=sentence"
+    tfds_params="dataset=glue/sst2,text_key=sentence"
+    tfds_params="dataset=glue/qnli,text_key=question,text_b_key=sentence"
+    tfds_params="dataset=glue/mrpc,text_key=sentence1,text_b_key=sentence2"
+  Possible parameters (please refer to the documentation of Tensorflow Datasets
+  (TFDS) for the meaning of individual parameters):
+    dataset: Required dataset name (potentially with subset and version number).
+    data_dir: Optional TFDS source root directory.
+    train_split: Name of the train split (defaults to `train`).
+    dev_split: Name of the dev split (defaults to `validation`).
+    test_split: Name of the test split (defaults to `test`).
+    text_key: Key of the text_a feature (defaults to `text`).
+    text_b_key: Key of the second text feature if available.
+    label_key: Key of the label feature (defaults to `label`).
+    test_text_key: Key of the text feature to use in test set.
+    test_text_b_key: Key of the second text feature to use in test set.
+    test_label: String to be used as the label for all test examples.
+  """
+
+  def __init__(self, tfds_params,
+               process_text_fn=tokenization.convert_to_unicode):
+    super(TfdsProcessor, self).__init__(process_text_fn)
+    self._process_tfds_params_str(tfds_params)
+    self.dataset, info = tfds.load(self.dataset_name, data_dir=self.data_dir,
+                                   with_info=True)
+    self._labels = list(range(info.features[self.label_key].num_classes))
+
+  def _process_tfds_params_str(self, params_str):
+    """Extracts TFDS parameters from a comma-separated assignements string."""
+    tuples = [x.split("=") for x in params_str.split(",")]
+    d = {k.strip(): v.strip() for k, v in tuples}
+    self.dataset_name = d["dataset"]  # Required.
+    self.data_dir = d.get("data_dir", None)
+    self.train_split = d.get("train_split", "train")
+    self.dev_split = d.get("dev_split", "validation")
+    self.test_split = d.get("test_split", "test")
+    self.text_key = d.get("text_key", "text")
+    self.text_b_key = d.get("text_b_key", None)
+    self.label_key = d.get("label_key", "label")
+    self.test_text_key = d.get("test_text_key", self.text_key)
+    self.test_text_b_key = d.get("test_text_b_key", self.text_b_key)
+    self.test_label = d.get("test_label", "test_example")
+
+  def get_train_examples(self, data_dir):
+    assert data_dir is None
+    return self._create_examples(self.train_split, "train")
+
+  def get_dev_examples(self, data_dir):
+    assert data_dir is None
+    return self._create_examples(self.dev_split, "dev")
+
+  def get_test_examples(self, data_dir):
+    assert data_dir is None
+    return self._create_examples(self.test_split, "test")
+
+  def get_labels(self):
+    return self._labels
+
+  def get_processor_name(self):
+    return "TFDS_" + self.dataset_name
+
+  def _create_examples(self, split_name, set_type):
+    """Creates examples for the training and dev sets."""
+    if split_name not in self.dataset:
+      raise ValueError("Split {} not available.".format(split_name))
+    dataset = self.dataset[split_name].as_numpy_iterator()
+    examples = []
+    text_b = None
+    for i, example in enumerate(dataset):
+      guid = "%s-%s" % (set_type, i)
+      if set_type == "test":
+        text_a = self.process_text_fn(example[self.test_text_key])
+        if self.test_text_b_key:
+          text_b = self.process_text_fn(example[self.test_text_b_key])
+        label = self.test_label
+      else:
+        text_a = self.process_text_fn(example[self.text_key])
+        if self.text_b_key:
+          text_b = self.process_text_fn(example[self.text_b_key])
+        label = int(example[self.label_key])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples

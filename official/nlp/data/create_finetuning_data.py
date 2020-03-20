@@ -104,22 +104,16 @@ flags.DEFINE_enum(
     "or sentence_piece tokenizer. Canonical BERT uses word_piece tokenizer, "
     "while ALBERT uses sentence_piece tokenizer.")
 
+flags.DEFINE_string("tfds_params", "",
+                    "Comma-separated list of TFDS parameter assigments for "
+                    "generic classfication data import (for more details "
+                    "see the TfdsProcessor class documentation).")
+
 
 def generate_classifier_dataset():
   """Generates classifier dataset and returns input meta data."""
-  assert FLAGS.input_data_dir and FLAGS.classification_task_name
-
-  processors = {
-      "cola": classifier_data_lib.ColaProcessor,
-      "mnli": classifier_data_lib.MnliProcessor,
-      "mrpc": classifier_data_lib.MrpcProcessor,
-      "qnli": classifier_data_lib.QnliProcessor,
-      "sst-2": classifier_data_lib.SstProcessor,
-      "xnli": classifier_data_lib.XnliProcessor,
-  }
-  task_name = FLAGS.classification_task_name.lower()
-  if task_name not in processors:
-    raise ValueError("Task not found: %s" % (task_name))
+  assert (FLAGS.input_data_dir and FLAGS.classification_task_name
+          or FLAGS.tfds_params)
 
   if FLAGS.tokenizer_impl == "word_piece":
     tokenizer = tokenization.FullTokenizer(
@@ -131,14 +125,38 @@ def generate_classifier_dataset():
     processor_text_fn = functools.partial(
         tokenization.preprocess_text, lower=FLAGS.do_lower_case)
 
-  processor = processors[task_name](processor_text_fn)
-  return classifier_data_lib.generate_tf_record_from_data_file(
-      processor,
-      FLAGS.input_data_dir,
-      tokenizer,
-      train_data_output_path=FLAGS.train_data_output_path,
-      eval_data_output_path=FLAGS.eval_data_output_path,
-      max_seq_length=FLAGS.max_seq_length)
+  if FLAGS.tfds_params:
+    processor = classifier_data_lib.TfdsProcessor(
+        tfds_params=FLAGS.tfds_params,
+        process_text_fn=processor_text_fn)
+    return classifier_data_lib.generate_tf_record_from_data_file(
+        processor,
+        None,
+        tokenizer,
+        train_data_output_path=FLAGS.train_data_output_path,
+        eval_data_output_path=FLAGS.eval_data_output_path,
+        max_seq_length=FLAGS.max_seq_length)
+  else:
+    processors = {
+        "cola": classifier_data_lib.ColaProcessor,
+        "mnli": classifier_data_lib.MnliProcessor,
+        "mrpc": classifier_data_lib.MrpcProcessor,
+        "qnli": classifier_data_lib.QnliProcessor,
+        "sst-2": classifier_data_lib.SstProcessor,
+        "xnli": classifier_data_lib.XnliProcessor,
+    }
+    task_name = FLAGS.classification_task_name.lower()
+    if task_name not in processors:
+      raise ValueError("Task not found: %s" % (task_name))
+
+    processor = processors[task_name](processor_text_fn)
+    return classifier_data_lib.generate_tf_record_from_data_file(
+        processor,
+        FLAGS.input_data_dir,
+        tokenizer,
+        train_data_output_path=FLAGS.train_data_output_path,
+        eval_data_output_path=FLAGS.eval_data_output_path,
+        max_seq_length=FLAGS.max_seq_length)
 
 
 def generate_squad_dataset():

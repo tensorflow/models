@@ -21,6 +21,7 @@ The functions do not return a value, instead they modify the image itself.
 """
 import collections
 import functools
+from absl import logging
 # Set headless-friendly backend.
 import matplotlib; matplotlib.use('Agg')  # pylint: disable=multiple-statements
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
@@ -97,6 +98,12 @@ def encode_image_array_as_png_str(image):
 def visualize_images_with_bounding_boxes(images, box_outputs, step,
                                          summary_writer):
   """Records subset of evaluation images with bounding boxes."""
+  if not isinstance(images, list):
+    logging.warning('visualize_images_with_bounding_boxes expects list of '
+                    'images but received type: %s and value: %s',
+                    type(images), images)
+    return
+
   image_shape = tf.shape(images[0])
   image_height = tf.cast(image_shape[0], tf.float32)
   image_width = tf.cast(image_shape[1], tf.float32)

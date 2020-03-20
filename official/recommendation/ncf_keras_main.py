@@ -405,7 +405,7 @@ def run_ncf_custom_training(params,
       optimizer.apply_gradients(grads)
       return loss
 
-    per_replica_losses = strategy.experimental_run_v2(
+    per_replica_losses = strategy.run(
         step_fn, args=(next(train_iterator),))
     mean_loss = strategy.reduce(
         tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
@@ -425,7 +425,7 @@ def run_ncf_custom_training(params,
       return hr_sum, hr_count
 
     per_replica_hr_sum, per_replica_hr_count = (
-        strategy.experimental_run_v2(
+        strategy.run(
             step_fn, args=(next(eval_iterator),)))
     hr_sum = strategy.reduce(
         tf.distribute.ReduceOp.SUM, per_replica_hr_sum, axis=None)

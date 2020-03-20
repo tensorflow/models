@@ -37,8 +37,6 @@ def create_model(data_format):
 
   Network structure is equivalent to:
   https://github.com/tensorflow/tensorflow/blob/r1.5/tensorflow/examples/tutorials/mnist/mnist_deep.py
-  and
-  https://github.com/tensorflow/models/blob/master/tutorials/image/mnist/convolutional.py
 
   But uses the tf.keras API.
 

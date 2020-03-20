@@ -193,6 +193,11 @@ class SummaryManager(object):
     """Returns the underlying summary writer."""
     return self._summary_writer
 
+  def flush(self):
+    """Flush the underlying summary writer."""
+    if self._enabled:
+      tf.summary.flush(self._summary_writer)
+
   def write_summaries(self, items, always_write=True):
     """Write a bulk of summaries.
 

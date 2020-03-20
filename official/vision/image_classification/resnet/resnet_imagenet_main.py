@@ -26,16 +26,15 @@ from absl import logging
 import tensorflow as tf
 
 import tensorflow_model_optimization as tfmot
-
-from official.benchmark.models import trivial_model
 from official.modeling import performance
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
-from official.vision.image_classification import common
-from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification import test_utils
+from official.vision.image_classification.resnet import common
+from official.vision.image_classification.resnet import imagenet_preprocessing
 from official.vision.image_classification.resnet import resnet_model
 
 
@@ -180,8 +179,7 @@ def run(flags_obj):
 
     # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
     if flags_obj.use_trivial_model:
-      model = trivial_model.trivial_model(
-          imagenet_preprocessing.NUM_CLASSES)
+      model = test_utils.trivial_model(imagenet_preprocessing.NUM_CLASSES)
     elif flags_obj.model == 'resnet50_v1.5':
       model = resnet_model.resnet50(
           num_classes=imagenet_preprocessing.NUM_CLASSES)

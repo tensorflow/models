@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import logging
 import tensorflow.compat.v2 as tf
 
 
@@ -76,7 +77,7 @@ def focal_loss(logits, targets, alpha, gamma, normalizer):
     #      (1 - p_t)^r = exp(-r * z * x - r * log(1 + exp(-x))).
     neg_logits = -1.0 * logits
     modulator = tf.math.exp(gamma * targets * neg_logits -
-                       gamma * tf.math.log1p(tf.math.exp(neg_logits)))
+                            gamma * tf.math.log1p(tf.math.exp(neg_logits)))
     loss = modulator * cross_entropy
     weighted_loss = tf.where(positive_label_mask, alpha * loss,
                              (1.0 - alpha) * loss)
@@ -89,6 +90,8 @@ class RpnScoreLoss(object):
 
   def __init__(self, params):
     self._rpn_batch_size_per_im = params.rpn_batch_size_per_im
+    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
+        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, score_outputs, labels):
     """Computes total RPN detection loss.
@@ -128,17 +131,16 @@ class RpnScoreLoss(object):
     # (3) score_targets[i]=-1, the anchor is don't care (ignore).
     with tf.name_scope('rpn_score_loss'):
       mask = tf.math.logical_or(tf.math.equal(score_targets, 1),
-                           tf.math.equal(score_targets, 0))
-      score_targets = tf.math.maximum(score_targets, tf.zeros_like(score_targets))
-      # RPN score loss is sum over all except ignored samples.
-      # Keep the compat.v1 loss because Keras does not have a
-      # sigmoid_cross_entropy substitution yet.
-      # TODO(b/143720144): replace this loss.
-      score_loss = tf.compat.v1.losses.sigmoid_cross_entropy(
-          score_targets,
-          score_outputs,
-          weights=mask,
-          reduction=tf.compat.v1.losses.Reduction.SUM)
+                                tf.math.equal(score_targets, 0))
+
+      score_targets = tf.math.maximum(score_targets,
+                                      tf.zeros_like(score_targets))
+
+      score_targets = tf.expand_dims(score_targets, axis=-1)
+      score_outputs = tf.expand_dims(score_outputs, axis=-1)
+      score_loss = self._binary_crossentropy(
+          score_targets, score_outputs, sample_weight=mask)
+
       score_loss /= normalizer
       return score_loss
 
@@ -147,7 +149,10 @@ class RpnBoxLoss(object):
   """Region Proposal Network box regression loss function."""
 
   def __init__(self, params):
-    self._delta = params.huber_loss_delta
+    logging.info('RpnBoxLoss huber_loss_delta %s', params.huber_loss_delta)
+    # The delta is typically around the mean value of regression target.
+    # for instances, the regression targets of 512x512 input with 6 anchors on
+    # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
     self._huber_loss = tf.keras.losses.Huber(
         delta=params.huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
 
@@ -171,34 +176,31 @@ class RpnBoxLoss(object):
 
       box_losses = []
       for level in levels:
-        box_losses.append(
-            self._rpn_box_loss(
-                box_outputs[level], labels[level], delta=self._delta))
+        box_losses.append(self._rpn_box_loss(box_outputs[level], labels[level]))
 
       # Sum per level losses to total loss.
       return tf.add_n(box_losses)
 
-  def _rpn_box_loss(self, box_outputs, box_targets, normalizer=1.0, delta=1./9):
+  def _rpn_box_loss(self, box_outputs, box_targets, normalizer=1.0):
     """Computes box regression loss."""
-    # The delta is typically around the mean value of regression target.
-    # for instances, the regression targets of 512x512 input with 6 anchors on
-    # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
     with tf.name_scope('rpn_box_loss'):
-      mask = tf.math.not_equal(box_targets, 0.0)
-      # The loss is normalized by the sum of non-zero weights before additional
-      # normalizer provided by the function caller.
-      box_loss = tf.compat.v1.losses.huber_loss(
-          box_targets,
-          box_outputs,
-          weights=mask,
-          delta=delta,
-          reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
-      box_loss /= normalizer
+      mask = tf.cast(tf.not_equal(box_targets, 0.0), dtype=tf.float32)
+      box_targets = tf.expand_dims(box_targets, axis=-1)
+      box_outputs = tf.expand_dims(box_outputs, axis=-1)
+      box_loss = self._huber_loss(box_targets, box_outputs, sample_weight=mask)
+      # The loss is normalized by the sum of non-zero weights and additional
+      # normalizer provided by the function caller. Using + 0.01 here to avoid
+      # division by zero.
+      box_loss /= normalizer * (tf.reduce_sum(mask) + 0.01)
       return box_loss
 
 
 class FastrcnnClassLoss(object):
   """Fast R-CNN classification loss function."""
+
+  def __init__(self):
+    self._categorical_crossentropy = tf.keras.losses.CategoricalCrossentropy(
+        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, class_outputs, class_targets):
     """Computes the class loss (Fast-RCNN branch) of Mask-RCNN.
@@ -218,24 +220,19 @@ class FastrcnnClassLoss(object):
       a scalar tensor representing total class loss.
     """
     with tf.name_scope('fast_rcnn_loss'):
-      _, _, num_classes = class_outputs.get_shape().as_list()
+      batch_size, num_boxes, num_classes = class_outputs.get_shape().as_list()
       class_targets = tf.cast(class_targets, dtype=tf.int32)
       class_targets_one_hot = tf.one_hot(class_targets, num_classes)
-      return self._fast_rcnn_class_loss(class_outputs, class_targets_one_hot)
+      return self._fast_rcnn_class_loss(class_outputs, class_targets_one_hot,
+                                        normalizer=batch_size * num_boxes / 2.0)
 
   def _fast_rcnn_class_loss(self, class_outputs, class_targets_one_hot,
-                            normalizer=1.0):
+                            normalizer):
     """Computes classification loss."""
     with tf.name_scope('fast_rcnn_class_loss'):
-      # The loss is normalized by the sum of non-zero weights before additional
-      # normalizer provided by the function caller.
-      # Keep the compat.v1 loss because Keras does not have a
-      # softmax_cross_entropy substitution yet.
-      # TODO(b/143720144): replace this loss.
-      class_loss = tf.compat.v1.losses.softmax_cross_entropy(
-          class_targets_one_hot,
-          class_outputs,
-          reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+      class_loss = self._categorical_crossentropy(class_targets_one_hot,
+                                                  class_outputs)
+
       class_loss /= normalizer
       return class_loss
 
@@ -244,7 +241,12 @@ class FastrcnnBoxLoss(object):
   """Fast R-CNN box regression loss function."""
 
   def __init__(self, params):
-    self._delta = params.huber_loss_delta
+    logging.info('FastrcnnBoxLoss huber_loss_delta %s', params.huber_loss_delta)
+    # The delta is typically around the mean value of regression target.
+    # for instances, the regression targets of 512x512 input with 6 anchors on
+    # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
+    self._huber_loss = tf.keras.losses.Huber(
+        delta=params.huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
 
   def __call__(self, box_outputs, class_targets, box_targets):
     """Computes the box loss (Fast-RCNN branch) of Mask-RCNN.
@@ -296,35 +298,31 @@ class FastrcnnBoxLoss(object):
               dtype=box_outputs.dtype), tf.reshape(box_outputs, [-1, 4]))
       box_outputs = tf.reshape(box_outputs, [batch_size, -1, 4])
 
-      return self._fast_rcnn_box_loss(box_outputs, box_targets, class_targets,
-                                      delta=self._delta)
+      return self._fast_rcnn_box_loss(box_outputs, box_targets, class_targets)
 
   def _fast_rcnn_box_loss(self, box_outputs, box_targets, class_targets,
-                          normalizer=1.0, delta=1.):
+                          normalizer=1.0):
     """Computes box regression loss."""
-    # The delta is typically around the mean value of regression target.
-    # for instances, the regression targets of 512x512 input with 6 anchors on
-    # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
     with tf.name_scope('fast_rcnn_box_loss'):
       mask = tf.tile(tf.expand_dims(tf.greater(class_targets, 0), axis=2),
                      [1, 1, 4])
-      # The loss is normalized by the sum of non-zero weights before additional
-      # normalizer provided by the function caller.
-      # Keep the compat.v1 loss because Keras does not have a
-      # Reduction.SUM_BY_NONZERO_WEIGHTS substitution yet.
-      # TODO(b/143720144): replace this loss.
-      box_loss = tf.compat.v1.losses.huber_loss(
-          box_targets,
-          box_outputs,
-          weights=mask,
-          delta=delta,
-          reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
-      box_loss /= normalizer
+      mask = tf.cast(mask, dtype=tf.float32)
+      box_targets = tf.expand_dims(box_targets, axis=-1)
+      box_outputs = tf.expand_dims(box_outputs, axis=-1)
+      box_loss = self._huber_loss(box_targets, box_outputs, sample_weight=mask)
+      # The loss is normalized by the number of ones in mask,
+      # additianal normalizer provided by the user and using 0.01 here to avoid
+      # division by 0.
+      box_loss /= normalizer * (tf.reduce_sum(mask) + 0.01)
       return box_loss
 
 
 class MaskrcnnLoss(object):
   """Mask R-CNN instance segmentation mask loss function."""
+
+  def __init__(self):
+    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
+        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
 
   def __call__(self, mask_outputs, mask_targets, select_class_targets):
     """Computes the mask loss of Mask-RCNN.
@@ -358,11 +356,16 @@ class MaskrcnnLoss(object):
           tf.reshape(tf.greater(select_class_targets, 0),
                      [batch_size, num_masks, 1, 1]),
           [1, 1, mask_height, mask_width])
-      return tf.compat.v1.losses.sigmoid_cross_entropy(
-          mask_targets,
-          mask_outputs,
-          weights=weights,
-          reduction=tf.compat.v1.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+      weights = tf.cast(weights, dtype=tf.float32)
+
+      mask_targets = tf.expand_dims(mask_targets, axis=-1)
+      mask_outputs = tf.expand_dims(mask_outputs, axis=-1)
+      mask_loss = self._binary_crossentropy(mask_targets, mask_outputs,
+                                            sample_weight=weights)
+
+      # The loss is normalized by the number of 1's in weights and
+      # + 0.01 is used to avoid division by zero.
+      return mask_loss / (tf.reduce_sum(weights) + 0.01)
 
 
 class RetinanetClassLoss(object):

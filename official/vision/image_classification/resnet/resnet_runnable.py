@@ -25,8 +25,8 @@ from official.staging.training import grad_utils
 from official.staging.training import standard_runnable
 from official.staging.training import utils
 from official.utils.flags import core as flags_core
-from official.vision.image_classification import common
-from official.vision.image_classification import imagenet_preprocessing
+from official.vision.image_classification.resnet import common
+from official.vision.image_classification.resnet import imagenet_preprocessing
 from official.vision.image_classification.resnet import resnet_model
 
 
@@ -175,7 +175,7 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
       self.train_loss.update_state(loss)
       self.train_accuracy.update_state(labels, logits)
 
-    self.strategy.experimental_run_v2(step_fn, args=(next(iterator),))
+    self.strategy.run(step_fn, args=(next(iterator),))
 
   def train_loop_end(self):
     """See base class."""
@@ -204,7 +204,7 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
       self.test_loss.update_state(loss)
       self.test_accuracy.update_state(labels, logits)
 
-    self.strategy.experimental_run_v2(step_fn, args=(next(iterator),))
+    self.strategy.run(step_fn, args=(next(iterator),))
 
   def eval_end(self):
     """See base class."""

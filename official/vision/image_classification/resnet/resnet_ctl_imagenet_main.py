@@ -30,9 +30,9 @@ from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
-from official.vision.image_classification import common
-from official.vision.image_classification import imagenet_preprocessing
-from official.vision.image_classification import resnet_runnable
+from official.vision.image_classification.resnet import common
+from official.vision.image_classification.resnet import imagenet_preprocessing
+from official.vision.image_classification.resnet import resnet_runnable
 
 flags.DEFINE_boolean(name='use_tf_function', default=True,
                      help='Wrap the train and test step inside a '
@@ -147,9 +147,7 @@ def run(flags_obj):
     runnable = resnet_runnable.ResnetRunnable(flags_obj, time_callback,
                                               per_epoch_steps)
 
-  eval_interval = (
-      flags_obj.epochs_between_evals *
-      per_epoch_steps if not flags_obj.skip_eval else None)
+  eval_interval = flags_obj.epochs_between_evals * per_epoch_steps
   checkpoint_interval = (
       per_epoch_steps if flags_obj.enable_checkpoint_and_export else None)
   summary_interval = per_epoch_steps if flags_obj.enable_tensorboard else None
@@ -174,7 +172,7 @@ def run(flags_obj):
       eval_interval=eval_interval)
 
   time_callback.on_train_begin()
-  resnet_controller.train(evaluate=True)
+  resnet_controller.train(evaluate=not flags_obj.skip_eval)
   time_callback.on_train_end()
 
   stats = build_stats(runnable, time_callback)

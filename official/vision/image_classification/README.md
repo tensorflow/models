@@ -13,7 +13,7 @@ For more information about other types of models, please refer to this
 Similar to the [estimator implementation](../../r1/resnet), the Keras
 implementation has code for the ImageNet dataset. The ImageNet
 version uses a ResNet50 model implemented in
-[`resnet_model.py`](./resnet_model.py).
+[`resnet_model.py`](./resnet/resnet_model.py).
 
 Please make sure that you have the latest version of TensorFlow
 installed and
@@ -36,14 +36,14 @@ provide a few options.
 Once your dataset is ready, you can begin training the model as follows:
 
 ```bash
-python resnet_imagenet_main.py
+python resnet/resnet_imagenet_main.py
 ```
 
 Again, if you did not download the data to the default directory, specify the
 location with the `--data_dir` flag:
 
 ```bash
-python resnet_imagenet_main.py --data_dir=/path/to/imagenet
+python resnet/resnet_imagenet_main.py --data_dir=/path/to/imagenet
 ```
 
 There are more flag options you can specify. Here are some examples:
@@ -62,7 +62,7 @@ For example, this is a typical command line to run with ImageNet data with
 batch size 128 per GPU:
 
 ```bash
-python -m resnet_imagenet_main \
+python -m resnet/resnet_imagenet_main.py \
     --model_dir=/tmp/model_dir/something \
     --num_gpus=2 \
     --batch_size=128 \
@@ -120,7 +120,7 @@ From a GCE VM, you can run the following command to train ResNet for one epoch
 on a v2-8 or v3-8 TPU:
 
 ```bash
-python resnet_ctl_imagenet_main.py \
+python resnet/resnet_ctl_imagenet_main.py \
   --tpu=$TPU_NAME \
   --model_dir=$MODEL_DIR \
   --data_dir=$DATA_DIR \
@@ -140,7 +140,7 @@ python resnet_ctl_imagenet_main.py \
 To train the ResNet to convergence, run it for 90 epochs:
 
 ```bash
-python resnet_ctl_imagenet_main.py \
+python resnet/resnet_ctl_imagenet_main.py \
   --tpu=$TPU_NAME \
   --model_dir=$MODEL_DIR \
   --data_dir=$DATA_DIR \

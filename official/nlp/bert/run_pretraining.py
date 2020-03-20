@@ -74,11 +74,11 @@ def get_pretrain_dataset_fn(input_file_pattern, seq_length,
   return _dataset_fn
 
 
-def get_loss_fn(loss_factor=1.0):
+def get_loss_fn():
   """Returns loss function for BERT pretraining."""
 
   def _bert_pretrain_loss_fn(unused_labels, losses, **unused_args):
-    return tf.reduce_mean(losses) * loss_factor
+    return tf.reduce_mean(losses)
 
   return _bert_pretrain_loss_fn
 
@@ -116,9 +116,8 @@ def run_customized_training(strategy,
   trained_model = model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_pretrain_model,
-      loss_fn=get_loss_fn(
-          loss_factor=1.0 /
-          strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0),
+      loss_fn=get_loss_fn(),
+      scale_loss=FLAGS.scale_loss,
       model_dir=model_dir,
       train_input_fn=train_input_fn,
       steps_per_epoch=steps_per_epoch,

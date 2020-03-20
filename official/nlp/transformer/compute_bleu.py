@@ -47,8 +47,10 @@ class UnicodeRegex(object):
     self.symbol_re = re.compile("([" + self.property_chars("S") + "])")
 
   def property_chars(self, prefix):
-    return "".join(six.unichr(x) for x in range(sys.maxunicode)
-                   if unicodedata.category(six.unichr(x)).startswith(prefix))
+    return "".join(
+        six.unichr(x)
+        for x in range(sys.maxunicode)
+        if unicodedata.category(six.unichr(x)).startswith(prefix))
 
 
 uregex = UnicodeRegex()
@@ -92,9 +94,10 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
       tf.io.gfile.GFile(hyp_filename).read()).strip().splitlines()
 
   if len(ref_lines) != len(hyp_lines):
-    raise ValueError("Reference and translation files have different number of "
-                     "lines. If training only a few steps (100-200), the "
-                     "translation may be empty.")
+    raise ValueError(
+        "Reference and translation files have different number of "
+        "lines (%d VS %d). If training only a few steps (100-200), the "
+        "translation may be empty." % (len(ref_lines), len(hyp_lines)))
   if not case_sensitive:
     ref_lines = [x.lower() for x in ref_lines]
     hyp_lines = [x.lower() for x in hyp_lines]
@@ -116,18 +119,23 @@ def main(unused_argv):
 def define_compute_bleu_flags():
   """Add flags for computing BLEU score."""
   flags.DEFINE_string(
-      name="translation", default=None,
+      name="translation",
+      default=None,
       help=flags_core.help_wrap("File containing translated text."))
   flags.mark_flag_as_required("translation")
 
   flags.DEFINE_string(
-      name="reference", default=None,
+      name="reference",
+      default=None,
       help=flags_core.help_wrap("File containing reference translation."))
   flags.mark_flag_as_required("reference")
 
   flags.DEFINE_enum(
-      name="bleu_variant", short_name="bv", default="both",
-      enum_values=["both", "uncased", "cased"], case_sensitive=False,
+      name="bleu_variant",
+      short_name="bv",
+      default="both",
+      enum_values=["both", "uncased", "cased"],
+      case_sensitive=False,
       help=flags_core.help_wrap(
           "Specify one or more BLEU variants to calculate. Variants: \"cased\""
           ", \"uncased\", or \"both\"."))
