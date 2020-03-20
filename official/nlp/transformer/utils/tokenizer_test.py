@@ -59,13 +59,15 @@ class StringHelperTest(tf.test.TestCase):
   def test_split_string_to_tokens(self):
     text = "test? testing 123."
 
-    tokens = tokenizer._split_string_to_tokens(text)
+    tokens = tokenizer._split_string_to_tokens(text,
+                                               tokenizer._ALPHANUMERIC_CHAR_SET)
     self.assertEqual(["test", "? ", "testing", "123", "."], tokens)
 
   def test_join_tokens_to_string(self):
     tokens = ["test", "? ", "testing", "123", "."]
 
-    s = tokenizer._join_tokens_to_string(tokens)
+    s = tokenizer._join_tokens_to_string(tokens,
+                                         tokenizer._ALPHANUMERIC_CHAR_SET)
     self.assertEqual("test? testing 123.", s)
 
   def test_escape_token(self):
@@ -79,8 +81,7 @@ class StringHelperTest(tf.test.TestCase):
     escaped_token = u"Underline: \\u, Backslash: \\\\, Unicode: \\52;"
 
     unescaped_token = tokenizer._unescape_token(escaped_token)
-    self.assertEqual(
-        "Underline: _, Backslash: \\, Unicode: 4", unescaped_token)
+    self.assertEqual("Underline: _, Backslash: \\, Unicode: 4", unescaped_token)
 
   def test_list_to_index_dict(self):
     lst = ["test", "strings"]
@@ -93,8 +94,8 @@ class StringHelperTest(tf.test.TestCase):
     subtoken_dict = {"a": 0, "b": 1, "c": 2, "ab": 3}
     max_subtoken_length = 2
 
-    subtokens = tokenizer._split_token_to_subtokens(
-        token, subtoken_dict, max_subtoken_length)
+    subtokens = tokenizer._split_token_to_subtokens(token, subtoken_dict,
+                                                    max_subtoken_length)
     self.assertEqual(["ab", "c"], subtokens)
 
   def test_generate_alphabet_dict(self):
@@ -124,12 +125,28 @@ class StringHelperTest(tf.test.TestCase):
 
     self.assertIsInstance(subtoken_counts, collections.defaultdict)
     self.assertDictEqual(
-        {"a": 5, "b": 5, "c": 5, "_": 5, "ab": 5, "bc": 5, "c_": 5,
-         "abc": 5, "bc_": 5, "abc_": 5}, subtoken_counts)
+        {
+            "a": 5,
+            "b": 5,
+            "c": 5,
+            "_": 5,
+            "ab": 5,
+            "bc": 5,
+            "c_": 5,
+            "abc": 5,
+            "bc_": 5,
+            "abc_": 5
+        }, subtoken_counts)
 
   def test_filter_and_bucket_subtokens(self):
-    subtoken_counts = collections.defaultdict(
-        int, {"a": 2, "b": 4, "c": 1, "ab": 6, "ac": 3, "abbc": 5})
+    subtoken_counts = collections.defaultdict(int, {
+        "a": 2,
+        "b": 4,
+        "c": 1,
+        "ab": 6,
+        "ac": 3,
+        "abbc": 5
+    })
     min_count = 3
 
     subtoken_buckets = tokenizer._filter_and_bucket_subtokens(
@@ -142,8 +159,12 @@ class StringHelperTest(tf.test.TestCase):
     self.assertEqual(set(["abbc"]), subtoken_buckets[4])
 
   def test_gen_new_subtoken_list(self):
-    subtoken_counts = collections.defaultdict(
-        int, {"translate": 10, "t": 40, "tr": 16, "tra": 12})
+    subtoken_counts = collections.defaultdict(int, {
+        "translate": 10,
+        "t": 40,
+        "tr": 16,
+        "tra": 12
+    })
     min_count = 5
     alphabet = set("translate")
     reserved_tokens = ["reserved", "tokens"]
@@ -167,8 +188,9 @@ class StringHelperTest(tf.test.TestCase):
     num_iterations = 1
     reserved_tokens = ["reserved", "tokens"]
 
-    vocab_list = tokenizer._generate_subtokens(
-        token_counts, alphabet, min_count, num_iterations, reserved_tokens)
+    vocab_list = tokenizer._generate_subtokens(token_counts, alphabet,
+                                               min_count, num_iterations,
+                                               reserved_tokens)
 
     # Check that reserved tokens are at the front of the list
     self.assertEqual(vocab_list[:2], reserved_tokens)

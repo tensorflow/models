@@ -102,6 +102,7 @@ def run_customized_training_loop(
     strategy=None,
     model_fn=None,
     loss_fn=None,
+    scale_loss=True,
     model_dir=None,
     train_input_fn=None,
     steps_per_epoch=None,
@@ -129,6 +130,8 @@ def run_customized_training_loop(
         to be used for initial checkpoint -- if provided.
       loss_fn: Function with signature func(labels, logits) and returns a loss
         tensor.
+      scale_loss: Whether to divide the raw loss by number of replicas before
+        gradients calculation.
       model_dir: Model directory used during training for restoring/saving model
         weights.
       train_input_fn: Function that returns a tf.data.Dataset used for training.
@@ -211,7 +214,7 @@ def run_customized_training_loop(
   if run_eagerly:
     if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
       raise ValueError(
-          'TPUStrategy should not run eagerly as it heavily replies on graph'
+          'TPUStrategy should not run eagerly as it heavily relies on graph'
           ' optimization for the distributed system.')
 
   if eval_input_fn and (eval_steps is None or metric_fn is None):
@@ -223,9 +226,6 @@ def run_customized_training_loop(
         'if `metric_fn` is specified, metric_fn must be a callable.')
 
   total_training_steps = steps_per_epoch * epochs
-
-  # To reduce unnecessary send/receive input pipeline operation, we place input
-  # pipeline ops in worker task.
   train_iterator = _get_input_iterator(train_input_fn, strategy)
 
   with distribution_utils.get_strategy_scope(strategy):
@@ -287,6 +287,12 @@ def run_customized_training_loop(
       with tf.GradientTape() as tape:
         model_outputs = model(inputs, training=True)
         loss = loss_fn(labels, model_outputs)
+        # Raw loss is used for reporting in metrics/logs.
+        raw_loss = loss
+        if scale_loss:
+          # Scales down the loss for gradients to be invariant from replicas.
+          loss = loss / strategy.num_replicas_in_sync
+
       if explicit_allreduce:
         grad_utils.minimize_using_explicit_allreduce(tape, optimizer, loss,
                                                      training_vars,
@@ -303,7 +309,7 @@ def run_customized_training_loop(
           grads = tape.gradient(loss, training_vars)
         optimizer.apply_gradients(zip(grads, training_vars))
       # For reporting, the metric takes the mean of losses.
-      train_loss_metric.update_state(loss)
+      train_loss_metric.update_state(raw_loss)
       for metric in train_metrics:
         metric.update_state(labels, model_outputs)
 
@@ -324,7 +330,7 @@ def run_customized_training_loop(
                          'retracing.')
 
       for _ in tf.range(steps):
-        strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+        strategy.run(_replicated_step, args=(next(iterator),))
 
     def train_single_step(iterator):
       """Performs a distributed training step.
@@ -335,7 +341,7 @@ def run_customized_training_loop(
       Raises:
         ValueError: Any of the arguments or tensor shapes are invalid.
       """
-      strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+      strategy.run(_replicated_step, args=(next(iterator),))
 
     def test_step(iterator):
       """Calculates evaluation metrics on distributed devices."""
@@ -348,7 +354,7 @@ def run_customized_training_loop(
         for metric in eval_metrics:
           metric.update_state(labels, model_outputs)
 
-      strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
+      strategy.run(_test_step_fn, args=(next(iterator),))
 
     if not run_eagerly:
       train_single_step = tf.function(train_single_step)

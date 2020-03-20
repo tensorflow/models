@@ -69,7 +69,7 @@ def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
       model_dir=model_dir,
       feature_columns=deep_columns,
       hidden_units=hidden_units,
-      optimizer=tf.train.AdamOptimizer(),
+      optimizer=tf.compat.v1.train.AdamOptimizer(),
       activation_fn=tf.nn.sigmoid,
       dropout=0.3,
       loss_reduction=tf.losses.Reduction.MEAN)

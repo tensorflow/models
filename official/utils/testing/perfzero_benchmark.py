@@ -48,15 +48,26 @@ class PerfZeroBenchmark(tf.test.Benchmark):
       flag_methods: Set of flag methods to run during setup.
       tpu: (optional) TPU name to use in a TPU benchmark.
     """
-    if not output_dir:
-      output_dir = '/tmp'
-    self.output_dir = output_dir
+    if os.getenv('BENCHMARK_OUTPUT_DIR'):
+      self.output_dir = os.getenv('BENCHMARK_OUTPUT_DIR')
+    elif output_dir:
+      self.output_dir = output_dir
+    else:
+      self.output_dir = '/tmp'
     self.default_flags = default_flags or {}
     self.flag_methods = flag_methods or {}
-    if tpu:
+
+    if os.getenv('BENCHMARK_TPU'):
+      resolved_tpu = os.getenv('BENCHMARK_TPU')
+    elif tpu:
+      resolved_tpu = tpu
+    else:
+      resolved_tpu = None
+
+    if resolved_tpu:
       # TPU models are expected to accept a --tpu=name flag. PerfZero creates
       # the TPU at runtime and passes the TPU's name to this flag.
-      self.default_flags['tpu'] = tpu
+      self.default_flags['tpu'] = resolved_tpu
 
   def _get_model_dir(self, folder_name):
     """Returns directory to store info, e.g. saved model and event log."""

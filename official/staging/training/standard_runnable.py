@@ -87,7 +87,7 @@ class StandardTrainable(runnable.AbstractTrainable):
     What a "step" consists of is up to the implementer. If using distribution
     strategies, the call to this method should take place in the "cross-replica
     context" for generality, to allow e.g. multiple iterator dequeues and calls
-    to `strategy.experimental_run_v2`.
+    to `strategy.run`.
 
     Args:
       iterator: A tf.nest-compatible structure of tf.data Iterator or
@@ -163,7 +163,7 @@ class StandardEvaluable(runnable.AbstractEvaluable):
     What a "step" consists of is up to the implementer. If using distribution
     strategies, the call to this method should take place in the "cross-replica
     context" for generality, to allow e.g. multiple iterator dequeues and calls
-    to `strategy.experimental_run_v2`.
+    to `strategy.run`.
 
     Args:
       iterator: A tf.nest-compatible structure of tf.data Iterator or

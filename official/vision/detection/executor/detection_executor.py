@@ -80,12 +80,11 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
         all_losses = loss_fn(labels, outputs)
         losses = {}
         for k, v in all_losses.items():
-          v = tf.reduce_mean(v) / strategy.num_replicas_in_sync
-          losses[k] = v
-        loss = losses['total_loss']
+          losses[k] = tf.reduce_mean(v)
+        per_replica_loss = losses['total_loss'] / strategy.num_replicas_in_sync
         _update_state(labels, outputs)
 
-      grads = tape.gradient(loss, trainable_variables)
+      grads = tape.gradient(per_replica_loss, trainable_variables)
       optimizer.apply_gradients(zip(grads, trainable_variables))
       return losses
 
@@ -119,7 +118,7 @@ class DetectionDistributedExecutor(executor.DistributedExecutor):
 
         return labels, prediction_outputs
 
-      labels, outputs = strategy.experimental_run_v2(
+      labels, outputs = strategy.run(
           _test_step_fn, args=(
               next(iterator),
               eval_steps,

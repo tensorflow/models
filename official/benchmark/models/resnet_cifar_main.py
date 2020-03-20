@@ -28,8 +28,8 @@ from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-from official.vision.image_classification import cifar_preprocessing
-from official.vision.image_classification import common
+from official.vision.image_classification.resnet import cifar_preprocessing
+from official.vision.image_classification.resnet import common
 
 
 LR_SCHEDULE = [  # (multiplier, epoch to start) tuples

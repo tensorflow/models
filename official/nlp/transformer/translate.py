@@ -132,7 +132,7 @@ def translate_file(model,
       val_outputs, _ = model([val_inputs], training=False)
       return tag, val_outputs
 
-    return distribution_strategy.experimental_run_v2(_step_fn, args=(inputs,))
+    return distribution_strategy.run(_step_fn, args=(inputs,))
 
   translations = []
   if distribution_strategy:
@@ -151,7 +151,7 @@ def translate_file(model,
         replica_id = replica_context.replica_id_in_sync_group
         return replica_id, text[replica_id]
 
-      text = distribution_strategy.experimental_run_v2(text_as_per_replica)
+      text = distribution_strategy.run(text_as_per_replica)
       outputs = distribution_strategy.experimental_local_results(
           predict_step(text))
       tags, unordered_val_outputs = outputs[0]

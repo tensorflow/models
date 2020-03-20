@@ -243,10 +243,10 @@ class DistributedExecutor(object):
         raise ValueError('steps should be an Tensor. Python object may cause '
                          'retracing.')
 
-      per_replica_losses = strategy.experimental_run_v2(
+      per_replica_losses = strategy.run(
           _replicated_step, args=(next(iterator),))
       for _ in tf.range(num_steps - 1):
-        per_replica_losses = strategy.experimental_run_v2(
+        per_replica_losses = strategy.run(
             _replicated_step, args=(next(iterator),))
 
       # For reporting, we returns the mean of losses.
@@ -278,7 +278,7 @@ class DistributedExecutor(object):
         metric.update_state(labels, model_outputs)
         return labels, model_outputs
 
-      return strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
+      return strategy.run(_test_step_fn, args=(next(iterator),))
 
     return test_step
 

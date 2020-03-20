@@ -24,6 +24,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import model_training_utils
+from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
@@ -89,8 +90,7 @@ FLAGS = flags.FLAGS
 def squad_loss_fn(start_positions,
                   end_positions,
                   start_logits,
-                  end_logits,
-                  loss_factor=1.0):
+                  end_logits):
   """Returns sparse categorical crossentropy for start/end logits."""
   start_loss = tf.keras.losses.sparse_categorical_crossentropy(
       start_positions, start_logits, from_logits=True)
@@ -98,11 +98,10 @@ def squad_loss_fn(start_positions,
       end_positions, end_logits, from_logits=True)
 
   total_loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
-  total_loss *= loss_factor
   return total_loss
 
 
-def get_loss_fn(loss_factor=1.0):
+def get_loss_fn():
   """Gets a loss function for squad task."""
 
   def _loss_fn(labels, model_outputs):
@@ -113,8 +112,7 @@ def get_loss_fn(loss_factor=1.0):
         start_positions,
         end_positions,
         start_logits,
-        end_logits,
-        loss_factor=loss_factor)
+        end_logits)
 
   return _loss_fn
 
@@ -194,8 +192,7 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
           start_logits=start_logits,
           end_logits=end_logits)
 
-    outputs = strategy.experimental_run_v2(
-        _replicated_step, args=(next(iterator),))
+    outputs = strategy.run(_replicated_step, args=(next(iterator),))
     return tf.nest.map_structure(strategy.experimental_local_results, outputs)
 
   all_results = []
@@ -219,10 +216,7 @@ def train_squad(strategy,
                  ' strategy.')
   # Enables XLA in Session Config. Should not be set for TPU.
   keras_utils.set_config_v2(FLAGS.enable_xla)
-
-  use_float16 = common_flags.use_float16()
-  if use_float16:
-    tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
+  performance.set_mixed_precision_policy(common_flags.dtype())
 
   epochs = FLAGS.num_train_epochs
   num_train_examples = input_meta_data['train_data_size']
@@ -242,32 +236,15 @@ def train_squad(strategy,
         max_seq_length,
         hub_module_url=FLAGS.hub_module_url,
         hub_module_trainable=FLAGS.hub_module_trainable)
-    squad_model.optimizer = optimization.create_optimizer(
-        FLAGS.learning_rate, steps_per_epoch * epochs, warmup_steps)
-    if use_float16:
-      # Wraps optimizer with a LossScaleOptimizer. This is done automatically
-      # in compile() with the "mixed_float16" policy, but since we do not call
-      # compile(), we must wrap the optimizer manually.
-      squad_model.optimizer = (
-          tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-              squad_model.optimizer, loss_scale=common_flags.get_loss_scale()))
-    if FLAGS.fp16_implementation == 'graph_rewrite':
-      # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
-      # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
-      # which will ensure tf.compat.v2.keras.mixed_precision and
-      # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
-      # up.
-      squad_model.optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
-          squad_model.optimizer)
-    return squad_model, core_model
+    optimizer = optimization.create_optimizer(FLAGS.learning_rate,
+                                              steps_per_epoch * epochs,
+                                              warmup_steps)
 
-  # The original BERT model does not scale the loss by
-  # 1/num_replicas_in_sync. It could be an accident. So, in order to use
-  # the same hyper parameter, we do the same thing here by keeping each
-  # replica loss as it is.
-  loss_fn = get_loss_fn(
-      loss_factor=1.0 /
-      strategy.num_replicas_in_sync if FLAGS.scale_loss else 1.0)
+    squad_model.optimizer = performance.configure_optimizer(
+        optimizer,
+        use_float16=common_flags.use_float16(),
+        use_graph_rewrite=common_flags.use_graph_rewrite())
+    return squad_model, core_model
 
   # If explicit_allreduce = True, apply_gradients() no longer implicitly
   # allreduce gradients, users manually allreduce gradient and pass the
@@ -281,7 +258,7 @@ def train_squad(strategy,
   model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_squad_model,
-      loss_fn=loss_fn,
+      loss_fn=get_loss_fn(),
       model_dir=FLAGS.model_dir,
       steps_per_epoch=steps_per_epoch,
       steps_per_loop=FLAGS.steps_per_loop,
