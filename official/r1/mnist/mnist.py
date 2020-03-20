@@ -19,8 +19,9 @@ from __future__ import print_function
 
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 from six.moves import range
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.r1.mnist import dataset
 from official.utils.flags import core as flags_core
@@ -241,6 +242,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_mnist_flags()
   absl_app.run(main)

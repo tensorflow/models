@@ -25,6 +25,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
+from absl import logging
 
 from official.utils.logs import hooks
 from official.utils.logs import logger
@@ -57,9 +58,9 @@ def get_train_hooks(name_list, use_tpu=False, **kwargs):
     return []
 
   if use_tpu:
-    tf.compat.v1.logging.warning('hooks_helper received name_list `{}`, but a '
-                                 'TPU is specified. No hooks will be used.'
-                                 .format(name_list))
+    logging.warning(
+        'hooks_helper received name_list `%s`, but a '
+        'TPU is specified. No hooks will be used.', name_list)
     return []
 
   train_hooks = []

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from absl import app
 from absl import flags
+from absl import logging
 import numpy as np
 import tensorflow as tf
 from official.benchmark.models import resnet_cifar_model
@@ -100,7 +101,7 @@ class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
     if lr != self.prev_lr:
       self.model.optimizer.learning_rate = lr  # lr should be a float here
       self.prev_lr = lr
-      tf.compat.v1.logging.debug(
+      logging.debug(
           'Epoch %05d Batch %05d: LearningRateBatchScheduler '
           'change learning rate to %s.', self.epochs, batch, lr)
 
@@ -280,6 +281,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_cifar_flags()
   app.run(main)

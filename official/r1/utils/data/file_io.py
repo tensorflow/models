@@ -25,10 +25,11 @@ import os
 import tempfile
 import uuid
 
+from absl import logging
 import numpy as np
 import six
-
 import tensorflow as tf
+# pylint:disable=logging-format-interpolation
 
 
 class _GarbageCollector(object):
@@ -50,9 +51,9 @@ class _GarbageCollector(object):
       for i in self.temp_buffers:
         if tf.io.gfile.exists(i):
           tf.io.gfile.remove(i)
-          tf.compat.v1.logging.info("Buffer file {} removed".format(i))
+          logging.info("Buffer file {} removed".format(i))
     except Exception as e:
-      tf.compat.v1.logging.error("Failed to cleanup buffer files: {}".format(e))
+      logging.error("Failed to cleanup buffer files: {}".format(e))
 
 
 _GARBAGE_COLLECTOR = _GarbageCollector()
@@ -176,7 +177,7 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
     actual_size = tf.io.gfile.stat(buffer_path).length
     if expected_size == actual_size:
       return buffer_path
-    tf.compat.v1.logging.warning(
+    logging.warning(
         "Existing buffer {} has size {}. Expected size {}. Deleting and "
         "rebuilding buffer.".format(buffer_path, actual_size, expected_size))
     tf.io.gfile.remove(buffer_path)
@@ -187,8 +188,7 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
 
   tf.io.gfile.makedirs(os.path.split(buffer_path)[0])
 
-  tf.compat.v1.logging.info("Constructing TFRecordDataset buffer: {}"
-                            .format(buffer_path))
+  logging.info("Constructing TFRecordDataset buffer: {}".format(buffer_path))
 
   count = 0
   pool = multiprocessing.dummy.Pool(multiprocessing.cpu_count())
@@ -198,10 +198,10 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
                                             rows_per_core=_ROWS_PER_CORE):
         _serialize_shards(df_shards, columns, pool, writer)
         count += sum([len(s) for s in df_shards])
-        tf.compat.v1.logging.info("{}/{} examples written."
-                                  .format(str(count).ljust(8), len(dataframe)))
+        logging.info("{}/{} examples written.".format(
+            str(count).ljust(8), len(dataframe)))
   finally:
     pool.terminate()
 
-  tf.compat.v1.logging.info("Buffer write complete.")
+  logging.info("Buffer write complete.")
   return buffer_path
