@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Executes Keras benchmarks and accuracy tests."""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -22,6 +21,7 @@ import os
 import time
 
 from absl import flags
+from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
 
@@ -51,7 +51,7 @@ class NCFKerasBenchmarkBase(tf.test.Benchmark):
   def _setup(self):
     """Sets up and resets flags before each test."""
     assert tf.version.VERSION.startswith('2.')
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+    logging.set_verbosity(logging.INFO)
     if NCFKerasBenchmarkBase.local_flags is None:
       ncf_common.define_ncf_flags()
       # Loads flags to get defaults to then override. List cannot be empty.

@@ -143,6 +143,52 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     super(ControllerTest, self).setUp()
     self.model_dir = self.get_temp_dir()
 
+  def test_no_checkpoint(self):
+    test_runnable = TestRunnable()
+    # No checkpoint manager and no strategy.
+    test_controller = controller.Controller(
+        train_fn=test_runnable.train,
+        eval_fn=test_runnable.evaluate,
+        global_step=test_runnable.global_step,
+        train_steps=10,
+        steps_per_loop=2,
+        summary_dir=os.path.join(self.model_dir, "summaries/train"),
+        summary_interval=2,
+        eval_summary_dir=os.path.join(self.model_dir, "summaries/eval"),
+        eval_steps=2,
+        eval_interval=5)
+    test_controller.train(evaluate=True)
+    self.assertEqual(test_runnable.global_step.numpy(), 10)
+    # Loss and accuracy values should be written into summaries.
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/train")))
+    self.assertTrue(
+        check_eventfile_for_keyword(
+            "loss", os.path.join(self.model_dir, "summaries/train")))
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/eval")))
+    self.assertTrue(
+        check_eventfile_for_keyword(
+            "eval_loss", os.path.join(self.model_dir, "summaries/eval")))
+    # No checkpoint, so global step starts from 0.
+    test_runnable.global_step.assign(0)
+    test_controller.train(evaluate=True)
+    self.assertEqual(test_runnable.global_step.numpy(), 10)
+
+  def test_no_checkpoint_and_summaries(self):
+    test_runnable = TestRunnable()
+    # No checkpoint + summary directories.
+    test_controller = controller.Controller(
+        train_fn=test_runnable.train,
+        eval_fn=test_runnable.evaluate,
+        global_step=test_runnable.global_step,
+        train_steps=10,
+        steps_per_loop=2,
+        eval_steps=2,
+        eval_interval=5)
+    test_controller.train(evaluate=True)
+    self.assertEqual(test_runnable.global_step.numpy(), 10)
+
   @combinations.generate(all_strategy_combinations())
   def test_train_and_evaluate(self, strategy):
     with strategy.scope():

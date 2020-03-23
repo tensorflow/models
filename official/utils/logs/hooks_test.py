@@ -21,12 +21,13 @@ from __future__ import print_function
 
 import time
 
+from absl import logging
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.logs import hooks
 from official.utils.testing import mock_lib
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+logging.set_verbosity(logging.DEBUG)
 
 
 class ExamplesPerSecondHookTest(tf.test.TestCase):

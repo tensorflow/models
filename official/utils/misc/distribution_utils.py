@@ -22,6 +22,8 @@ import json
 import os
 import random
 import string
+
+from absl import logging
 import tensorflow.compat.v2 as tf
 
 from official.utils.misc import tpu_lib
@@ -252,7 +254,7 @@ class SyntheticIterator(object):
 def _monkey_patch_dataset_method(strategy):
   """Monkey-patch `strategy`'s `make_dataset_iterator` method."""
   def make_dataset(self, dataset):
-    tf.compat.v1.logging.info('Using pure synthetic data.')
+    logging.info('Using pure synthetic data.')
     with self.scope():
       if self.extended._global_batch_size:  # pylint: disable=protected-access
         return SyntheticDataset(dataset, self.num_replicas_in_sync)
