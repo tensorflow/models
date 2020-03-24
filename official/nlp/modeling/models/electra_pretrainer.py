@@ -103,7 +103,7 @@ class ElectraPretrainer(tf.keras.Model):
         source_network=network,
         activation=activation,
         initializer=initializer,
-        output=output,
+        output='both',
         name='generator')
     lm_outputs = self.masked_lm([sequence_output, masked_lm_positions])
 
