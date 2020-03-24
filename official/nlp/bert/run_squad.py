@@ -20,8 +20,11 @@ from __future__ import print_function
 
 import json
 
+import os
+import tempfile
 from absl import app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 
 from official.nlp.bert import configs as bert_configs
@@ -52,12 +55,22 @@ def train_squad(strategy,
 
 
 def predict_squad(strategy, input_meta_data):
-  """Makes predictions for a squad dataset."""
+  """Makes predictions for the squad dataset."""
   bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
   tokenizer = tokenization.FullTokenizer(
       vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
-  run_squad_helper.predict_squad(strategy, input_meta_data, tokenizer,
-                                 bert_config, squad_lib_wp)
+  run_squad_helper.predict_squad(
+      strategy, input_meta_data, tokenizer, bert_config, squad_lib_wp)
+
+
+def eval_squad(strategy, input_meta_data):
+  """Evaluate on the squad dataset."""
+  bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+  tokenizer = tokenization.FullTokenizer(
+      vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+  eval_metrics = run_squad_helper.eval_squad(
+      strategy, input_meta_data, tokenizer, bert_config, squad_lib_wp)
+  return eval_metrics
 
 
 def export_squad(model_export_path, input_meta_data):
@@ -93,7 +106,8 @@ def main(_):
       num_gpus=FLAGS.num_gpus,
       all_reduce_alg=FLAGS.all_reduce_alg,
       tpu_address=FLAGS.tpu)
-  if FLAGS.mode in ('train', 'train_and_predict'):
+
+  if 'train' in FLAGS.mode:
     if FLAGS.log_steps:
       custom_callbacks = [keras_utils.TimeHistory(
           batch_size=FLAGS.train_batch_size,
@@ -109,8 +123,27 @@ def main(_):
         custom_callbacks=custom_callbacks,
         run_eagerly=FLAGS.run_eagerly,
     )
-  if FLAGS.mode in ('predict', 'train_and_predict'):
+  if 'predict' in FLAGS.mode:
     predict_squad(strategy, input_meta_data)
+  if 'eval' in FLAGS.mode:
+    if input_meta_data.get('version_2_with_negative', False):
+      logging.error('SQuAD v2 eval is not supported. '
+                    'Falling back to predict mode.')
+      predict_squad(strategy, input_meta_data)
+    else:
+      eval_metrics = eval_squad(strategy, input_meta_data)
+      f1_score = eval_metrics['f1']
+      logging.info('SQuAD eval F1-score: %f', f1_score)
+      if (not strategy) or strategy.extended.should_save_summary:
+        summary_dir = os.path.join(FLAGS.model_dir, 'summaries')
+      else:
+        summary_dir = tempfile.mkdtemp()
+      summary_writer = tf.summary.create_file_writer(
+          os.path.join(summary_dir, 'eval'))
+      with summary_writer.as_default():
+        # TODO(lehou): write to the correct step number.
+        tf.summary.scalar('F1-score', f1_score, step=0)
+        summary_writer.flush()
 
 
 if __name__ == '__main__':
