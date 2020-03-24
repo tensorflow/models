@@ -54,7 +54,7 @@ def _filter_and_allreduce_gradients(grads_and_vars,
   This utils function is used when users intent to explicitly allreduce
   gradients and customize gradients operations before and after allreduce.
   The allreduced gradients are then passed to optimizer.apply_gradients(
-  all_reduce_sum_gradients=False).
+  experimental_aggregate_gradients=False).
 
   Arguments:
       grads_and_vars: gradients and variables pairs.
@@ -139,4 +139,5 @@ def minimize_using_explicit_allreduce(tape,
     grads_and_vars = zip(allreduced_grads, filtered_training_vars)
   if post_allreduce_callbacks:
     grads_and_vars = _run_callbacks(post_allreduce_callbacks, grads_and_vars)
-  optimizer.apply_gradients(grads_and_vars, all_reduce_sum_gradients=False)
+  optimizer.apply_gradients(
+      grads_and_vars, experimental_aggregate_gradients=False)
