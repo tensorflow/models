@@ -24,6 +24,7 @@ import tensorflow_hub as hub
 
 from official.modeling import tf_utils
 from official.nlp.albert import configs as albert_configs
+from official.nlp.bert import electraconfigs
 from official.nlp.bert import configs
 from official.nlp.modeling import losses
 from official.nlp.modeling import models
@@ -133,7 +134,7 @@ def get_transformer_encoder(bert_config,
     return networks.TransformerEncoder(**kwargs)
 
 
-def pretrain_model(bert_config,
+def pretrain_model(electra_config,
                    seq_length,
                    max_predictions_per_seq,
                    initializer=None):
@@ -169,13 +170,14 @@ def pretrain_model(bert_config,
   next_sentence_labels = tf.keras.layers.Input(
       shape=(1,), name='next_sentence_labels', dtype=tf.int32)
 
-  transformer_encoder = get_transformer_encoder(bert_config, seq_length)
-  discrim_encoder = get_transformer_encoder(bigger_bert_config, seq_length)
+  gen_encoder = get_transformer_encoder(electraconfigs.ElectraConfig.get_generator_bert(electra_config), seq_length)
+  discrim_encoder = get_transformer_encoder(electraconfigs.ElectraConfig.get_discriminator_bert(electra_config), seq_length)
   if initializer is None:
     initializer = tf.keras.initializers.TruncatedNormal(
-        stddev=bert_config.initializer_range)
+        stddev=electra_config.initializer_range)
   pretrainer_model = models.ElectraPretrainer(
-      network=transformer_encoder,
+      network=gen_encoder,
+      discriminator=discrim_encoder,
       num_classes=2,  # The next sentence prediction label has two classes.
       num_token_predictions=max_predictions_per_seq,
       initializer=initializer,
@@ -185,7 +187,7 @@ def pretrain_model(bert_config,
       [input_word_ids, input_mask, input_type_ids, masked_lm_positions])
 
   pretrain_loss_layer = ElectraPretrainLossAndMetricLayer(
-      vocab_size=bert_config.vocab_size)
+      vocab_size=electra_config.vocab_size)
   output_loss = pretrain_loss_layer(lm_output, discrim_output, masked_lm_ids,
                                     masked_lm_weights, next_sentence_labels)
   keras_model = tf.keras.Model(
@@ -199,7 +201,7 @@ def pretrain_model(bert_config,
           'next_sentence_labels': next_sentence_labels,
       },
       outputs=output_loss)
-  return keras_model, transformer_encoder
+  return keras_model, discrim_encoder
 
 
 def squad_model(bert_config,

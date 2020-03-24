@@ -26,9 +26,9 @@ import tensorflow as tf
 from official.modeling import model_training_utils
 from official.modeling import performance
 from official.nlp import optimization
-from official.nlp.bert import bert_models
+from official.nlp.bert import electra_model
 from official.nlp.bert import common_flags
-from official.nlp.bert import configs
+from official.nlp.bert import electraconfigs
 from official.nlp.bert import input_pipeline
 from official.utils.misc import distribution_utils
 
@@ -48,7 +48,8 @@ flags.DEFINE_integer('num_steps_per_epoch', 1000,
                      'Total number of training steps to run per epoch.')
 flags.DEFINE_float('warmup_steps', 10000,
                    'Warmup steps for Adam weight decay optimizer.')
-
+flags.DEFINE_string('electra_config_file', None,
+                    'Configuration File')
 common_flags.define_common_bert_flags()
 common_flags.define_gin_flags()
 
@@ -77,14 +78,14 @@ def get_pretrain_dataset_fn(input_file_pattern, seq_length,
 def get_loss_fn():
   """Returns loss function for BERT pretraining."""
 
-  def _bert_pretrain_loss_fn(unused_labels, losses, **unused_args):
+  def _electra_pretrain_loss_fn(unused_labels, losses, **unused_args):
     return tf.reduce_mean(losses)
 
-  return _bert_pretrain_loss_fn
+  return _electra_pretrain_loss_fn
 
 
 def run_customized_training(strategy,
-                            bert_config,
+                            electra_config,
                             max_seq_length,
                             max_predictions_per_seq,
                             model_dir,
@@ -103,15 +104,15 @@ def run_customized_training(strategy,
 
   def _get_pretrain_model():
     """Gets a pretraining model."""
-    pretrain_model, core_model = bert_models.pretrain_model(
-        bert_config, max_seq_length, max_predictions_per_seq)
+    pretrain_model, disc_model = electra_model.pretrain_model(
+        electra_config, max_seq_length, max_predictions_per_seq)
     optimizer = optimization.create_optimizer(
         initial_lr, steps_per_epoch * epochs, warmup_steps)
     pretrain_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),
         use_graph_rewrite=common_flags.use_graph_rewrite())
-    return pretrain_model, core_model
+    return pretrain_model, disc_model
 
   trained_model = model_training_utils.run_customized_training_loop(
       strategy=strategy,
@@ -128,10 +129,10 @@ def run_customized_training(strategy,
   return trained_model
 
 
-def run_bert_pretrain(strategy):
+def run_electra_pretrain(strategy):
   """Runs BERT pre-training."""
 
-  bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+  electra_config = electraconfigs.ElectraConfig.from_json_file(FLAGS.electra_config_file)
   if not strategy:
     raise ValueError('Distribution strategy is not specified.')
 
@@ -143,7 +144,7 @@ def run_bert_pretrain(strategy):
 
   return run_customized_training(
       strategy,
-      bert_config,
+      electra_config,
       FLAGS.max_seq_length,
       FLAGS.max_predictions_per_seq,
       FLAGS.model_dir,
@@ -168,7 +169,7 @@ def main(_):
   if strategy:
     print('***** Number of cores used : ', strategy.num_replicas_in_sync)
 
-  run_bert_pretrain(strategy)
+  run_electra_pretrain(strategy)
 
 
 if __name__ == '__main__':
