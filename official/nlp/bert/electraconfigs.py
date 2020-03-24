@@ -78,7 +78,7 @@ class ElectraConfig(object):
     self.attention_probs_dropout_prob = attention_probs_dropout_prob
     self.multiplier = multiplier
     self.discrim_hidden_size = hidden_size*multiplier
-    self.discim_layers = self.num_hidden_layers*multiplier
+    self.discrim_layers = self.num_hidden_layers*multiplier
     self.discrim_rate = discrim_rate
     self.discrim_attention_heads = self.num_attention_heads*multiplier
     self.max_position_embeddings = max_position_embeddings
@@ -99,8 +99,8 @@ class ElectraConfig(object):
     self.hidden_size,
     self.num_hidden_layers,
     self.num_attention_heads,
-    self.hidden_act,
     self.intermediate_size,
+    self.hidden_act,
     self.hidden_dropout_prob,
     self.attention_probs_dropout_prob,
     self.max_position_embeddings,
@@ -112,8 +112,8 @@ class ElectraConfig(object):
     self.discrim_hidden_size,
     self.discrim_layers,
     self.discrim_attention_heads,
-    self.hidden_act,
     self.intermediate_size,
+    self.hidden_act,
     self.hidden_dropout_prob,
     self.attention_probs_dropout_prob,
     self.max_position_embeddings,

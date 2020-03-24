@@ -107,7 +107,7 @@ class ElectraPretrainer(tf.keras.Model):
         name='generator')
     lm_outputs = self.masked_lm([sequence_output, masked_lm_positions])
 
-    self.discrimnator = networks.discriminator(
+    self.discrimnator = networks.Discriminator(
         num_predictions=num_token_predictions,
         input_width=sequence_output.shape[-1],
         source_network=discriminator,
@@ -118,7 +118,7 @@ class ElectraPretrainer(tf.keras.Model):
     )
     discrim_outputs = self.discrimnator(lm_outputs[1])
 
-    super(BertPretrainer, self).__init__(
+    super(ElectraPretrainer, self).__init__(
         inputs=inputs, outputs=[lm_outputs, discrim_outputs], **kwargs)
 
   def get_config(self):
