@@ -269,12 +269,17 @@ python run_classifier.py \
   --init_checkpoint=${BERT_DIR}/bert_model.ckpt \
   --train_batch_size=32 \
   --eval_batch_size=32 \
+  --steps_per_loop=1000 \
   --learning_rate=2e-5 \
   --num_train_epochs=3 \
   --model_dir=${MODEL_DIR} \
   --distribution_strategy=tpu \
   --tpu=grpc://${TPU_IP_ADDRESS}:8470
 ```
+
+Note that, we specify `steps_per_loop=1000` for TPU, because running a loop of
+training steps inside a `tf.function` can significantly increase TPU utilization
+and callbacks will not be called inside the loop.
 
 ### SQuAD 1.1
 

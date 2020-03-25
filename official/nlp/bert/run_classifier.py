@@ -156,6 +156,7 @@ def run_bert_classifier(strategy,
         init_checkpoint,
         epochs,
         steps_per_epoch,
+        steps_per_loop,
         eval_steps,
         custom_callbacks=custom_callbacks)
 
@@ -189,6 +190,7 @@ def run_keras_compile_fit(model_dir,
                           init_checkpoint,
                           epochs,
                           steps_per_epoch,
+                          steps_per_loop,
                           eval_steps,
                           custom_callbacks=None):
   """Runs BERT classifier model using Keras compile/fit API."""
@@ -203,7 +205,11 @@ def run_keras_compile_fit(model_dir,
       checkpoint = tf.train.Checkpoint(model=sub_model)
       checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
 
-    bert_model.compile(optimizer=optimizer, loss=loss_fn, metrics=[metric_fn()])
+    bert_model.compile(
+        optimizer=optimizer,
+        loss=loss_fn,
+        metrics=[metric_fn()],
+        experimental_steps_per_execution=steps_per_loop)
 
     summary_dir = os.path.join(model_dir, 'summaries')
     summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)
