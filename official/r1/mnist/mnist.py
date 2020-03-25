@@ -183,8 +183,8 @@ def run_mnist(flags_obj):
 
   data_format = flags_obj.data_format
   if data_format is None:
-    data_format = ('channels_first'
-                   if tf.test.is_built_with_cuda() else 'channels_last')
+    data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
+                   else 'channels_last')
   mnist_classifier = tf.estimator.Estimator(
       model_fn=model_function,
       model_dir=flags_obj.model_dir,

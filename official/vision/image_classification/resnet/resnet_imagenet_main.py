@@ -71,8 +71,8 @@ def run(flags_obj):
 
   data_format = flags_obj.data_format
   if data_format is None:
-    data_format = ('channels_first'
-                   if tf.test.is_built_with_cuda() else 'channels_last')
+    data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
+                   else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
 
   # Configures cluster spec for distribution strategy.
