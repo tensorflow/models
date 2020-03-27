@@ -105,7 +105,8 @@ def run_customized_training(strategy,
     pretrain_model, core_model = bert_models.pretrain_model(
         bert_config, max_seq_length, max_predictions_per_seq)
     optimizer = optimization.create_optimizer(
-        initial_lr, steps_per_epoch * epochs, warmup_steps)
+        initial_lr, steps_per_epoch * epochs, warmup_steps,
+        FLAGS.optimizer_type)
     pretrain_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),

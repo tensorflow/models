@@ -20,7 +20,9 @@ from __future__ import print_function
 
 import re
 
+from absl import logging
 import tensorflow as tf
+import tensorflow_addons.optimizers as tfa_optimizers
 
 
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -65,7 +67,8 @@ class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
     }
 
 
-def create_optimizer(init_lr, num_train_steps, num_warmup_steps):
+def create_optimizer(init_lr, num_train_steps, num_warmup_steps,
+                     optimizer_type='adamw'):
   """Creates an optimizer with learning rate schedule."""
   # Implements linear decay of the learning rate.
   learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
@@ -76,13 +79,28 @@ def create_optimizer(init_lr, num_train_steps, num_warmup_steps):
     learning_rate_fn = WarmUp(initial_learning_rate=init_lr,
                               decay_schedule_fn=learning_rate_fn,
                               warmup_steps=num_warmup_steps)
-  optimizer = AdamWeightDecay(
-      learning_rate=learning_rate_fn,
-      weight_decay_rate=0.01,
-      beta_1=0.9,
-      beta_2=0.999,
-      epsilon=1e-6,
-      exclude_from_weight_decay=['layer_norm', 'bias'])
+
+  if optimizer_type == 'adamw':
+    logging.info('using Adamw optimizer')
+    optimizer = AdamWeightDecay(
+        learning_rate=learning_rate_fn,
+        weight_decay_rate=0.01,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-6,
+        exclude_from_weight_decay=['layer_norm', 'bias'])
+  elif optimizer_type == 'lamb':
+    logging.info('using Lamb optimizer')
+    optimizer = tfa_optimizers.LAMB(
+        learning_rate=learning_rate_fn,
+        weight_decay_rate=0.01,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-6,
+        exclude_from_weight_decay=['layer_norm', 'bias'])
+  else:
+    raise ValueError('Unsupported optimizer type: ', optimizer_type)
+
   return optimizer
 
 

@@ -125,7 +125,8 @@ def run_bert_classifier(strategy,
             hub_module_url=FLAGS.hub_module_url,
             hub_module_trainable=FLAGS.hub_module_trainable))
     optimizer = optimization.create_optimizer(
-        initial_lr, steps_per_epoch * epochs, warmup_steps)
+        initial_lr, steps_per_epoch * epochs, warmup_steps,
+        FLAGS.optimizer_type)
     classifier_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),

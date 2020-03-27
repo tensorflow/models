@@ -76,6 +76,8 @@ def define_common_bert_flags():
       'If specified, init_checkpoint flag should not be used.')
   flags.DEFINE_bool('hub_module_trainable', True,
                     'True to make keras layers in the hub module trainable.')
+  flags.DEFINE_string('optimizer_type', 'adamw',
+                      'The type of optimizer to use for training (adamw|lamb)')
 
   flags_core.define_log_steps()
 
