@@ -19,9 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-
 import os
 import tempfile
+import time
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -126,24 +127,22 @@ def main(_):
   if 'predict' in FLAGS.mode:
     predict_squad(strategy, input_meta_data)
   if 'eval' in FLAGS.mode:
-    if input_meta_data.get('version_2_with_negative', False):
-      logging.error('SQuAD v2 eval is not supported. '
-                    'Falling back to predict mode.')
-      predict_squad(strategy, input_meta_data)
+    eval_metrics = eval_squad(strategy, input_meta_data)
+    f1_score = eval_metrics['final_f1']
+    logging.info('SQuAD eval F1-score: %f', f1_score)
+    if (not strategy) or strategy.extended.should_save_summary:
+      summary_dir = os.path.join(FLAGS.model_dir, 'summaries')
     else:
-      eval_metrics = eval_squad(strategy, input_meta_data)
-      f1_score = eval_metrics['f1']
-      logging.info('SQuAD eval F1-score: %f', f1_score)
-      if (not strategy) or strategy.extended.should_save_summary:
-        summary_dir = os.path.join(FLAGS.model_dir, 'summaries')
-      else:
-        summary_dir = tempfile.mkdtemp()
-      summary_writer = tf.summary.create_file_writer(
-          os.path.join(summary_dir, 'eval'))
-      with summary_writer.as_default():
-        # TODO(lehou): write to the correct step number.
-        tf.summary.scalar('F1-score', f1_score, step=0)
-        summary_writer.flush()
+      summary_dir = tempfile.mkdtemp()
+    summary_writer = tf.summary.create_file_writer(
+        os.path.join(summary_dir, 'eval'))
+    with summary_writer.as_default():
+      # TODO(lehou): write to the correct step number.
+      tf.summary.scalar('F1-score', f1_score, step=0)
+      summary_writer.flush()
+    # Wait for some time, for the depending mldash/tensorboard jobs to finish
+    # exporting the final F1-score.
+    time.sleep(60)
 
 
 if __name__ == '__main__':

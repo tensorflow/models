@@ -31,6 +31,7 @@ from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
 from official.nlp.bert import model_training_utils
 from official.nlp.bert import squad_evaluate_v1_1
+from official.nlp.bert import squad_evaluate_v2_0
 from official.nlp.data import squad_lib_sp
 from official.utils.misc import keras_utils
 
@@ -373,16 +374,16 @@ def eval_squad(strategy, input_meta_data, tokenizer, bert_config, squad_lib):
   dump_to_files(all_predictions, all_nbest_json, scores_diff_json, squad_lib,
                 input_meta_data.get('version_2_with_negative', False))
 
+  with tf.io.gfile.GFile(FLAGS.predict_file, 'r') as reader:
+    dataset_json = json.load(reader)
+    pred_dataset = dataset_json['data']
   if input_meta_data.get('version_2_with_negative', False):
-    # TODO(lehou): support in memory evaluation for SQuAD v2.
-    logging.error('SQuAD v2 eval is not supported. Skipping eval')
-    return None
+    eval_metrics = squad_evaluate_v2_0.evaluate(pred_dataset,
+                                                all_predictions,
+                                                scores_diff_json)
   else:
-    with tf.io.gfile.GFile(FLAGS.predict_file, 'r') as reader:
-      dataset_json = json.load(reader)
-      pred_dataset = dataset_json['data']
     eval_metrics = squad_evaluate_v1_1.evaluate(pred_dataset, all_predictions)
-    return eval_metrics
+  return eval_metrics
 
 
 def export_squad(model_export_path, input_meta_data, bert_config):
