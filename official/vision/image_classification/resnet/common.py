@@ -65,13 +65,14 @@ class PiecewiseConstantDecayWithWarmup(
     # In an eager function or graph, the current implementation of optimizer
     # repeatedly call and thus create ops for the learning rate schedule. To
     # avoid this, we cache the ops if not executing eagerly.
-    graph = tf.compat.v1.get_default_graph()
-    if graph not in self.learning_rate_ops_cache:
-      if self.compute_lr_on_cpu:
-        with tf.device('/device:CPU:0'):
+    graph = tf.Graph()
+    with graph.as_default():
+      if graph not in self.learning_rate_ops_cache:
+        if self.compute_lr_on_cpu:
+          with tf.device('/device:CPU:0'):
+            self.learning_rate_ops_cache[graph] = self._get_learning_rate(step)
+        else:
           self.learning_rate_ops_cache[graph] = self._get_learning_rate(step)
-      else:
-        self.learning_rate_ops_cache[graph] = self._get_learning_rate(step)
     return self.learning_rate_ops_cache[graph]
 
   def _get_learning_rate(self, step):
