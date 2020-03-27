@@ -142,10 +142,8 @@ class Transformer(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
         name="intermediate")
-    # Use float32 in intermediate gelu activation for numeric stability.
-    # TODO(b/149117297): investigate gelu numeric stability.
     self._intermediate_activation_layer = tf.keras.layers.Activation(
-        self._intermediate_activation, dtype=tf.float32)
+        self._intermediate_activation)
     self._output_dense = dense_einsum.DenseEinsum(
         output_shape=hidden_size,
         kernel_initializer=self._kernel_initializer,
