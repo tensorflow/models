@@ -52,7 +52,7 @@ flags.DEFINE_string(
 
 flags.DEFINE_string(
     'model', default='retinanet',
-    help='Model to run: `retinanet` or `shapemask`.')
+    help='Model to run: `retinanet` or `mask_rcnn`.')
 
 flags.DEFINE_string('training_file_pattern', None,
                     'Location of the train data.')

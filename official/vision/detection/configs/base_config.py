@@ -87,10 +87,6 @@ BASE_CFG = {
     },
     'resnet': {
         'resnet_depth': 50,
-        'dropblock': {
-            'dropblock_keep_prob': None,
-            'dropblock_size': None,
-        },
         'batch_norm': {
             'batch_norm_momentum': 0.997,
             'batch_norm_epsilon': 1e-4,
@@ -111,43 +107,6 @@ BASE_CFG = {
             'use_sync_bn': False,
         },
     },
-    'nasfpn': {
-        'min_level': 3,
-        'max_level': 7,
-        'fpn_feat_dims': 256,
-        'num_repeats': 5,
-        'use_separable_conv': False,
-        'dropblock': {
-            'dropblock_keep_prob': None,
-            'dropblock_size': None,
-        },
-        'batch_norm': {
-            'batch_norm_momentum': 0.997,
-            'batch_norm_epsilon': 1e-4,
-            'batch_norm_trainable': True,
-            'use_sync_bn': False,
-        },
-    },
-    # tunable_nasfpn:strip_begin
-    'tunable_nasfpn_v1': {
-        'min_level': 3,
-        'max_level': 7,
-        'fpn_feat_dims': 256,
-        'num_repeats': 5,
-        'use_separable_conv': False,
-        'dropblock': {
-            'dropblock_keep_prob': None,
-            'dropblock_size': None,
-        },
-        'batch_norm': {
-            'batch_norm_momentum': 0.997,
-            'batch_norm_epsilon': 1e-4,
-            'batch_norm_trainable': True,
-            'use_sync_bn': False,
-        },
-        'nodes': None
-    },
-    # tunable_nasfpn:strip_end
     'postprocess': {
         'use_batched_nms': False,
         'max_total_size': 100,

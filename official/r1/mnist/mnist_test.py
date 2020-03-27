@@ -21,7 +21,7 @@ import time
 import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
-
+from absl import logging
 from official.r1.mnist import mnist
 from official.utils.misc import keras_utils
 
@@ -143,5 +143,5 @@ class Benchmarks(tf.test.Benchmark):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+  logging.set_verbosity(logging.ERROR)
   tf.test.main()

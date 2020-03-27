@@ -57,7 +57,7 @@ def define_common_bert_flags():
   flags.DEFINE_integer('num_train_epochs', 3,
                        'Total number of training epochs to perform.')
   flags.DEFINE_integer(
-      'steps_per_loop', 200,
+      'steps_per_loop', 1,
       'Number of steps per graph-mode loop. Only training step '
       'happens inside the loop. Callbacks will not be called '
       'inside.')

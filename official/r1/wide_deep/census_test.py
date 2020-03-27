@@ -21,13 +21,14 @@ import os
 import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
+from absl import logging
 
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.r1.wide_deep import census_dataset
 from official.r1.wide_deep import census_main
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+logging.set_verbosity(logging.ERROR)
 
 TEST_INPUT = ('18,Self-emp-not-inc,987,Bachelors,12,Married-civ-spouse,abc,'
               'Husband,zyx,wvu,34,56,78,tsr,<=50K')

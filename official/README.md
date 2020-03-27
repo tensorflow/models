@@ -80,6 +80,8 @@ installable Official Models package. This is being tracked in
 
 ### Natural Language Processing
 
+*   [albert](nlp/albert): A Lite BERT for Self-supervised Learning of Language
+    Representations.
 *   [bert](nlp/bert): A powerful pre-trained language representation model:
     BERT, which stands for Bidirectional Encoder Representations from
     Transformers.

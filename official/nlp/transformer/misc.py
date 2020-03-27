@@ -239,7 +239,10 @@ def get_callbacks(steps_per_epoch):
   """Returns common callbacks."""
   callbacks = []
   if FLAGS.enable_time_history:
-    time_callback = keras_utils.TimeHistory(FLAGS.batch_size, FLAGS.log_steps)
+    time_callback = keras_utils.TimeHistory(
+        FLAGS.batch_size,
+        FLAGS.log_steps,
+        FLAGS.model_dir if FLAGS.enable_tensorboard else None)
     callbacks.append(time_callback)
 
   if FLAGS.enable_tensorboard:

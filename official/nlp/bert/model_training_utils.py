@@ -415,7 +415,7 @@ def run_customized_training_loop(
       # Runs several steps in the host while loop.
       steps = steps_to_run(current_step, steps_per_epoch, steps_per_loop)
 
-      if tf.test.is_built_with_cuda():
+      if tf.config.list_physical_devices('GPU'):
         # TODO(zongweiz): merge with train_steps once tf.while_loop
         # GPU performance bugs are fixed.
         for _ in range(steps):

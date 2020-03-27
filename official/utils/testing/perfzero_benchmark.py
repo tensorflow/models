@@ -20,8 +20,9 @@ from __future__ import print_function
 import os
 
 from absl import flags
+from absl import logging
 from absl.testing import flagsaver
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 FLAGS = flags.FLAGS
 
@@ -75,7 +76,7 @@ class PerfZeroBenchmark(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+    logging.set_verbosity(logging.INFO)
     if PerfZeroBenchmark.local_flags is None:
       for flag_method in self.flag_methods:
         flag_method()

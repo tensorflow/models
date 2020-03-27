@@ -212,39 +212,6 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
                                 'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path, use_ds=False)
 
-  def benchmark_2_gpu_mrpc(self):
-    """Test BERT model performance with 2 GPUs."""
-
-    self._setup()
-    self.num_gpus = 2
-    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_mrpc')
-    FLAGS.train_data_path = self.train_data_path
-    FLAGS.eval_data_path = self.eval_data_path
-    FLAGS.input_meta_data_path = self.input_meta_data_path
-    FLAGS.bert_config_file = self.bert_config_file
-    FLAGS.train_batch_size = 8
-    FLAGS.eval_batch_size = 8
-
-    summary_path = os.path.join(FLAGS.model_dir,
-                                'summaries/training_summary.txt')
-    self._run_and_report_benchmark(summary_path)
-
-  def benchmark_4_gpu_mrpc(self):
-    """Test BERT model performance with 4 GPUs."""
-
-    self._setup()
-    self.num_gpus = 4
-    FLAGS.model_dir = self._get_model_dir('benchmark_4_gpu_mrpc')
-    FLAGS.train_data_path = self.train_data_path
-    FLAGS.eval_data_path = self.eval_data_path
-    FLAGS.input_meta_data_path = self.input_meta_data_path
-    FLAGS.bert_config_file = self.bert_config_file
-    FLAGS.train_batch_size = 16
-
-    summary_path = os.path.join(FLAGS.model_dir,
-                                'summaries/training_summary.txt')
-    self._run_and_report_benchmark(summary_path)
-
   def benchmark_8_gpu_mrpc(self):
     """Test BERT model performance with 8 GPUs."""
 

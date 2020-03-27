@@ -117,11 +117,18 @@ class Controller(object):
     if self.train_fn is not None:
       self.train_steps = train_steps
       self.steps_per_loop = steps_per_loop
-      self.summary_dir = summary_dir or checkpoint_manager.directory
+      if summary_dir:
+        self.summary_dir = summary_dir
+      elif checkpoint_manager:
+        self.summary_dir = checkpoint_manager.directory
+      else:
+        self.summary_dir = None
 
       self.summary_interval = summary_interval
-      summary_writer = tf.summary.create_file_writer(
-          self.summary_dir) if self.summary_interval else None
+      if self.summary_dir and self.summary_interval:
+        summary_writer = tf.summary.create_file_writer(self.summary_dir)
+      else:
+        summary_writer = None
       # TODO(rxsang): Consider pass SummaryManager directly into Controller for
       # maximum customizability.
       self.summary_manager = utils.SummaryManager(
@@ -140,14 +147,14 @@ class Controller(object):
       self.eval_steps = eval_steps
       self.eval_interval = eval_interval
 
-      # Create and initialize the interval triggers.
+      # Creates and initializes the interval triggers.
       self.eval_trigger = utils.IntervalTrigger(self.eval_interval,
-                                                self.global_step.numpy())
+                                                self.global_step.numpy())  # pytype: disable=attribute-error
 
     if self.global_step:
       tf.summary.experimental.set_step(self.global_step)
 
-    # Restore Model if needed.
+    # Restores the model if needed.
     if self.checkpoint_manager is not None:
       model_restored = self._restore_model()
       if not model_restored and self.checkpoint_manager.checkpoint_interval:
@@ -192,7 +199,7 @@ class Controller(object):
     self.eval_summary_manager.flush()
 
   def _maybe_save_checkpoints(self, current_step, force_trigger=False):
-    if self.checkpoint_manager.checkpoint_interval:
+    if self.checkpoint_manager and self.checkpoint_manager.checkpoint_interval:
       ckpt_path = self.checkpoint_manager.save(
           checkpoint_number=current_step, check_interval=not force_trigger)
       if ckpt_path is not None:

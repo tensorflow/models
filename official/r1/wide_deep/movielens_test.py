@@ -28,8 +28,9 @@ from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.r1.wide_deep import movielens_dataset
 from official.r1.wide_deep import movielens_main
+from absl import logging
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+logging.set_verbosity(logging.ERROR)
 
 
 TEST_INPUT_VALUES = {

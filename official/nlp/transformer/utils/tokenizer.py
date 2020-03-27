@@ -22,6 +22,7 @@ import collections
 import re
 import sys
 import unicodedata
+from absl import logging
 
 import numpy as np
 import six
@@ -71,8 +72,7 @@ class Subtokenizer(object):
 
   def __init__(self, vocab_file, reserved_tokens=None, master_char_set=None):
     """Initializes class, creating a vocab file if data_files is provided."""
-    tf.compat.v1.logging.info("Initializing Subtokenizer from file %s." %
-                              vocab_file)
+    logging.info("Initializing Subtokenizer from file %s.", vocab_file)
 
     if master_char_set is None:
       master_char_set = _ALPHANUMERIC_CHAR_SET
@@ -130,17 +130,17 @@ class Subtokenizer(object):
       reserved_tokens = RESERVED_TOKENS
 
     if tf.io.gfile.exists(vocab_file):
-      tf.compat.v1.logging.info("Vocab file already exists (%s)" % vocab_file)
+      logging.info("Vocab file already exists (%s)", vocab_file)
     else:
-      tf.compat.v1.logging.info("Begin steps to create subtoken vocabulary...")
+      logging.info("Begin steps to create subtoken vocabulary...")
       token_counts = _count_tokens(files, file_byte_limit, correct_strip,
                                    master_char_set)
       alphabet = _generate_alphabet_dict(token_counts)
       subtoken_list = _generate_subtokens_with_target_vocab_size(
           token_counts, alphabet, target_vocab_size, threshold, min_count,
           reserved_tokens)
-      tf.compat.v1.logging.info("Generated vocabulary with %d subtokens." %
-                                len(subtoken_list))
+      logging.info("Generated vocabulary with %d subtokens.",
+                   len(subtoken_list))
       _save_vocab_file(vocab_file, subtoken_list)
     return Subtokenizer(vocab_file, master_char_set=master_char_set)
 
@@ -439,23 +439,22 @@ def _generate_subtokens_with_target_vocab_size(token_counts,
     reserved_tokens = RESERVED_TOKENS
 
   if min_count is not None:
-    tf.compat.v1.logging.info(
-        "Using min_count=%d to generate vocab with target size %d" %
-        (min_count, target_size))
+    logging.info("Using min_count=%d to generate vocab with target size %d",
+                 min_count, target_size)
     return _generate_subtokens(
         token_counts, alphabet, min_count, reserved_tokens=reserved_tokens)
 
   def bisect(min_val, max_val):
     """Recursive function to binary search for subtoken vocabulary."""
     cur_count = (min_val + max_val) // 2
-    tf.compat.v1.logging.info("Binary search: trying min_count=%d (%d %d)" %
-                              (cur_count, min_val, max_val))
+    logging.info("Binary search: trying min_count=%d (%d %d)", cur_count,
+                 min_val, max_val)
     subtoken_list = _generate_subtokens(
         token_counts, alphabet, cur_count, reserved_tokens=reserved_tokens)
 
     val = len(subtoken_list)
-    tf.compat.v1.logging.info(
-        "Binary search: min_count=%d resulted in %d tokens" % (cur_count, val))
+    logging.info("Binary search: min_count=%d resulted in %d tokens", cur_count,
+                 val)
 
     within_threshold = abs(val - target_size) < threshold
     if within_threshold or min_val >= max_val or cur_count < 2:
@@ -471,8 +470,7 @@ def _generate_subtokens_with_target_vocab_size(token_counts,
       return other_subtoken_list
     return subtoken_list
 
-  tf.compat.v1.logging.info("Finding best min_count to get target size of %d" %
-                            target_size)
+  logging.info("Finding best min_count to get target size of %d", target_size)
   return bisect(_MIN_MIN_COUNT, _MAX_MIN_COUNT)
 
 
@@ -644,7 +642,7 @@ def _generate_subtokens(token_counts,
   # subtoken_dict, count how often the resulting subtokens appear, and update
   # the dictionary with subtokens w/ high enough counts.
   for i in xrange(num_iterations):
-    tf.compat.v1.logging.info("\tGenerating subtokens: iteration %d" % i)
+    logging.info("\tGenerating subtokens: iteration %d", i)
     # Generate new subtoken->id dictionary using the new subtoken list.
     subtoken_dict = _list_to_index_dict(subtoken_list)
 
@@ -658,5 +656,5 @@ def _generate_subtokens(token_counts,
     subtoken_list, max_subtoken_length = _gen_new_subtoken_list(
         subtoken_counts, min_count, alphabet, reserved_tokens)
 
-    tf.compat.v1.logging.info("\tVocab size: %d" % len(subtoken_list))
+    logging.info("\tVocab size: %d", len(subtoken_list))
   return subtoken_list
