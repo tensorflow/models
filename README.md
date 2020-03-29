@@ -1,3 +1,5 @@
+![Logo](https://storage.googleapis.com/model_garden_artifacts/TF_Model_Garden.png)
+
 # TensorFlow Models
 
 This repository contains a number of different models implemented in [TensorFlow](https://www.tensorflow.org):
