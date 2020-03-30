@@ -30,7 +30,7 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Optional, T
 
 from absl import flags
 from absl.testing import parameterized
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -313,5 +313,4 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
     tf.io.gfile.rmtree(model_dir)
 
 if __name__ == '__main__':
-  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

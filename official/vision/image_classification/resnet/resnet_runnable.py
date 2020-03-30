@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.modeling import performance
 from official.staging.training import grad_utils

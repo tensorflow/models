@@ -19,7 +19,7 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from absl.testing import parameterized
 from official.vision.image_classification import optimizer_factory
@@ -111,5 +111,4 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

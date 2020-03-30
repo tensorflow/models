@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from typing import Any, List, Mapping
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 BASE_LEARNING_RATE = 0.1
 
