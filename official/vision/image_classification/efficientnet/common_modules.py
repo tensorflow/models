@@ -21,7 +21,7 @@ from __future__ import print_function
 import numpy as np
 
 import tensorflow.compat.v1 as tf1
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from typing import Text, Optional
 
 from tensorflow.python.tpu import tpu_function

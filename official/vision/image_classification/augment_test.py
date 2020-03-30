@@ -21,7 +21,7 @@ from __future__ import print_function
 
 from absl.testing import parameterized
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.image_classification import augment
 
@@ -133,5 +133,4 @@ class AutoaugmentTest(tf.test.TestCase):
     self.assertEqual((224, 224, 3), image.shape)
 
 if __name__ == '__main__':
-  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

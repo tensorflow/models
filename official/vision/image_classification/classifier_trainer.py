@@ -27,7 +27,7 @@ from typing import Any, Tuple, Text, Optional, Mapping
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.modeling import performance
 from official.modeling.hyperparams import params_dict
@@ -423,5 +423,4 @@ if __name__ == '__main__':
   flags.mark_flag_as_required('model_type')
   flags.mark_flag_as_required('dataset')
 
-  assert tf.version.VERSION.startswith('2.')
   app.run(main)

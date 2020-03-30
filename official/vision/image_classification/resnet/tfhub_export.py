@@ -24,7 +24,7 @@ import os
 from absl import app
 from absl import flags
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.image_classification.resnet import imagenet_preprocessing
 from official.vision.image_classification.resnet import resnet_model

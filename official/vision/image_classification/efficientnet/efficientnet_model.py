@@ -30,7 +30,7 @@ from typing import Any, Dict, Optional, Text, Tuple
 
 from absl import logging
 from dataclasses import dataclass
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config

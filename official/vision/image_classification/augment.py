@@ -24,7 +24,7 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 from tensorflow.python.keras.layers.preprocessing import image_preprocessing as image_ops
@@ -75,8 +75,7 @@ def from_4d(image: tf.Tensor, ndims: int) -> tf.Tensor:
   return tf.reshape(image, new_shape)
 
 
-def _convert_translation_to_transform(
-    translations: Iterable[int]) -> tf.Tensor:
+def _convert_translation_to_transform(translations) -> tf.Tensor:
   """Converts translations to a projective transform.
 
   The translation matrix looks like this:
@@ -166,8 +165,7 @@ def _convert_angles_to_transform(
   )
 
 
-def transform(image: tf.Tensor,
-              transforms: Iterable[float]) -> tf.Tensor:
+def transform(image: tf.Tensor, transforms) -> tf.Tensor:
   """Prepares input data for `image_ops.transform`."""
   original_ndims = tf.rank(image)
   transforms = tf.convert_to_tensor(transforms, dtype=tf.float32)
@@ -181,8 +179,7 @@ def transform(image: tf.Tensor,
   return from_4d(image, original_ndims)
 
 
-def translate(image: tf.Tensor,
-              translations: Iterable[int]) -> tf.Tensor:
+def translate(image: tf.Tensor, translations) -> tf.Tensor:
   """Translates image(s) by provided vectors.
 
   Args:
@@ -577,7 +574,7 @@ def unwrap(image: tf.Tensor, replace: int) -> tf.Tensor:
   return image
 
 
-def _randomly_negate_tensor(tensor: tf.Tensor) -> tf.Tensor:
+def _randomly_negate_tensor(tensor):
   """With 50% prob turn the tensor negative."""
   should_flip = tf.cast(tf.floor(tf.random.uniform([]) + 0.5), tf.bool)
   final_tensor = tf.cond(should_flip, lambda: tensor, lambda: -tensor)
