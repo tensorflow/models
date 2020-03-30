@@ -29,10 +29,24 @@ provide a few options.
 Note: These models will **not** work with TPUs on Colab.
 
 You can train image classification models on Cloud TPUs using
-`tf.distribute.TPUStrategy`. If you are not familiar with Cloud TPUs, it is
-strongly recommended that you go through the
+[tf.distribute.experimental.TPUStrategy](https://www.tensorflow.org/api_docs/python/tf/distribute/experimental/TPUStrategy?version=nightly).
+If you are not familiar with Cloud TPUs, it is strongly recommended that you go
+through the
 [quickstart](https://cloud.google.com/tpu/docs/quickstart) to learn how to
 create a TPU and GCE VM.
+
+### Running on multiple GPU hosts
+
+You can also train these models on multiple hosts, each with GPUs, using
+[tf.distribute.experimental.MultiWorkerMirroredStrategy](https://www.tensorflow.org/api_docs/python/tf/distribute/experimental/MultiWorkerMirroredStrategy).
+
+The easiest way to run multi-host benchmarks is to set the
+[`TF_CONFIG`](https://www.tensorflow.org/guide/distributed_training#TF_CONFIG)
+appropriately at each host.  e.g., to run using `MultiWorkerMirroredStrategy` on
+2 hosts, the `cluster` in `TF_CONFIG` should have 2 `host:port` entries, and
+host `i` should have the `task` in `TF_CONFIG` set to `{"type": "worker",
+"index": i}`.  `MultiWorkerMirroredStrategy` will automatically use all the
+available GPUs at each host.
 
 ## MNIST
 
