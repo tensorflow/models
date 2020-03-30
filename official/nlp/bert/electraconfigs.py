@@ -29,9 +29,9 @@ class ElectraConfig(object):
 
   def __init__(self,
                vocab_size,
-               hidden_size=768,
-               num_hidden_layers=12,
-               num_attention_heads=12,
+               hidden_size=256,
+               num_hidden_layers=4,
+               num_attention_heads=4,
                intermediate_size=3072,
                hidden_act="gelu",
                hidden_dropout_prob=0.1,
@@ -77,10 +77,10 @@ class ElectraConfig(object):
     self.hidden_dropout_prob = hidden_dropout_prob
     self.attention_probs_dropout_prob = attention_probs_dropout_prob
     self.multiplier = multiplier
-    self.discrim_hidden_size = hidden_size*multiplier
-    self.discrim_layers = self.num_hidden_layers*multiplier
+    self.discrim_hidden_size = self.hidden_size*self.multiplier
+    self.discrim_layers = self.num_hidden_layers*self.multiplier
     self.discrim_rate = discrim_rate
-    self.discrim_attention_heads = self.num_attention_heads*multiplier
+    self.discrim_attention_heads = self.num_attention_heads*self.multiplier
     self.max_position_embeddings = max_position_embeddings
     self.type_vocab_size = type_vocab_size
     self.initializer_range = initializer_range

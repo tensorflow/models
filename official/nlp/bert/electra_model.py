@@ -34,42 +34,51 @@ from official.nlp.modeling import networks
 class ElectraPretrainLossAndMetricLayer(tf.keras.layers.Layer):
   """Returns layer that computes custom loss and metrics for pretraining."""
 
-  def __init__(self, vocab_size, **kwargs):
+  def __init__(self, vocab_size, discrim_rate, **kwargs):
     super(ElectraPretrainLossAndMetricLayer, self).__init__(**kwargs)
     self._vocab_size = vocab_size
+    self._discrim_rate = discrim_rate
     self.config = {
         'vocab_size': vocab_size,
+        'discrim_rate': discrim_rate
     }
 
   def _add_metrics(self, lm_output, lm_labels, lm_label_weights,
-                   lm_example_loss, discrim_output):
+                   lm_example_loss, discrim_output, discrim_label, discrim_loss, tot_loss):
     """Adds metrics."""
     masked_lm_accuracy = tf.keras.metrics.sparse_categorical_accuracy(
         lm_labels, lm_output)
-    numerator = tf.reduce_sum(masked_lm_accuracy * lm_label_weights)
-    denominator = tf.reduce_sum(lm_label_weights) + 1e-5
+    numerator = tf.reduce_sum(masked_lm_accuracy * tf.cast(lm_label_weights,tf.float32))
+    denominator = tf.reduce_sum(tf.cast(lm_label_weights, tf.float32)) + 1e-5
     masked_lm_accuracy = numerator / denominator
+
+    discrim_accuracy = tf.keras.metrics.binary_accuracy(tf.cast(discrim_label, tf.float32), discrim_output)
+    self.add_metric(discrim_accuracy, name='discrinator_accuracy', aggregation='mean')
     self.add_metric(
         masked_lm_accuracy, name='masked_lm_accuracy', aggregation='mean')
 
     self.add_metric(lm_example_loss, name='lm_example_loss', aggregation='mean')
 
+    self.add_metric(tot_loss, name='total_loss', aggregation='mean')
+    self.add_metric(discrim_loss, name='discriminator_loss', aggregation='mean')
+
 
   def call(self, lm_output, lm_label_ids, lm_label_weights,
-           discrim_output, input_mask):
+           discrim_output, discrim_labels,input_mask):
     """Implements call() for the layer."""
     weights = tf.cast(lm_label_weights, tf.float32)
     lm_output = tf.cast(lm_output, tf.float32)
     discrim_output = tf.cast(discrim_output, tf.float32)
     mask_label_loss = losses.weighted_sparse_categorical_crossentropy_loss(
         labels=lm_label_ids, predictions=lm_output, weights=weights)
-    discrim_ind_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits = discrim_output, labels=lm_label_ids)*weights
-    discrim_loss = tf.reduce_sum(discrim_ind_loss)/(1e-6+tf.reduce_sum(weights))
+    discrim_ind_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits = discrim_output, labels=tf.cast(discrim_labels,tf.float32))
+    discrim_loss = tf.reduce_sum(discrim_ind_loss)
     loss = mask_label_loss+self.config["discrim_rate"]*discrim_loss
 
 
     self._add_metrics(lm_output, lm_label_ids, lm_label_weights,
-                      mask_label_loss)
+                      mask_label_loss, discrim_output, discrim_labels, discrim_loss, loss)
+    return loss
 
 
 @gin.configurable
@@ -183,13 +192,13 @@ def pretrain_model(electra_config,
       initializer=initializer,
       output='predictions')
 
-  lm_output, discrim_output = pretrainer_model(
+  lm_output, discrim_output, discrim_labels = pretrainer_model(
       [input_word_ids, input_mask, input_type_ids, masked_lm_positions])
 
   pretrain_loss_layer = ElectraPretrainLossAndMetricLayer(
-      vocab_size=electra_config.vocab_size)
-  output_loss = pretrain_loss_layer(lm_output, discrim_output, masked_lm_ids,
-                                    masked_lm_weights, next_sentence_labels)
+      vocab_size=electra_config.vocab_size, discrim_rate=electra_config.discrim_rate)
+  output_loss = pretrain_loss_layer(lm_output,  masked_lm_ids, masked_lm_weights,
+                                    discrim_output, discrim_labels, input_mask)
   keras_model = tf.keras.Model(
       inputs={
           'input_word_ids': input_word_ids,
