@@ -82,12 +82,6 @@ def basic_params_override() -> MutableMapping[str, Any]:
           'use_per_replica_batch_size': True,
           'image_size': 224,
       },
-      'test_dataset': {
-          'builder': 'synthetic',
-          'batch_size': 1,
-          'use_per_replica_batch_size': True,
-          'image_size': 224,
-      },
       'train': {
           'steps': 1,
           'epochs': 1,

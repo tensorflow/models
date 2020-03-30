@@ -216,7 +216,6 @@ class ExperimentConfig(base_config.Config):
   runtime: RuntimeConfig = None
   train_dataset: Any = None
   validation_dataset: Any = None
-  test_dataset: Any = None
   train: TrainConfig = None
   evaluation: EvalConfig = None
   model: ModelConfig = None

@@ -45,8 +45,6 @@ class EfficientNetImageNetConfig(base_configs.ExperimentConfig):
       dataset_factory.ImageNetConfig(split='train')
   validation_dataset: dataset_factory.DatasetConfig = \
       dataset_factory.ImageNetConfig(split='validation')
-  test_dataset: dataset_factory.DatasetConfig = \
-      dataset_factory.ImageNetConfig(split='validation')
   train: base_configs.TrainConfig = base_configs.TrainConfig(
       resume_checkpoint=True,
       epochs=500,
@@ -74,11 +72,6 @@ class ResNetImagenetConfig(base_configs.ExperimentConfig):
                                      mean_subtract=True,
                                      standardize=True)
   validation_dataset: dataset_factory.DatasetConfig = \
-      dataset_factory.ImageNetConfig(split='validation',
-                                     one_hot=False,
-                                     mean_subtract=True,
-                                     standardize=True)
-  test_dataset: dataset_factory.DatasetConfig = \
       dataset_factory.ImageNetConfig(split='validation',
                                      one_hot=False,
                                      mean_subtract=True,
