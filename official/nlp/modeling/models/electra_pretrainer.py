@@ -23,7 +23,7 @@ import copy
 import tensorflow as tf
 
 from official.nlp.modeling import networks
-
+from official.modeling import tf_utils
 
 @tf.keras.utils.register_keras_serializable(package='Text')
 class ElectraPretrainer(tf.keras.Model):
@@ -96,30 +96,29 @@ class ElectraPretrainer(tf.keras.Model):
         name='masked_lm_positions',
         dtype=tf.int32)
     inputs.append(masked_lm_positions)
-
     self.masked_lm = networks.MaskedLM(
         num_predictions=num_token_predictions,
         input_width=sequence_output.shape[-1],
         source_network=network,
         activation=activation,
         initializer=initializer,
-        output='both',
+        output='logits',
         name='generator')
     lm_outputs = self.masked_lm([sequence_output, masked_lm_positions])
-
+    fake_data, labels = _get_fake_data(inputs[0], lm_outputs, masked_lm_positions)
+    other_output, other_cls_output = discriminator([fake_data, inputs[1], inputs[2]])
     self.discrimnator = networks.Discriminator(
-        num_predictions=num_token_predictions,
-        input_width=sequence_output.shape[-1],
+        input_width=other_output.shape[-1],
         source_network=discriminator,
         activation=activation,
         initializer=initializer,
-        output=output,
         name='discriminator'
     )
-    discrim_outputs = self.discrimnator(lm_outputs[1])
+
+    discrim_outputs = self.discrimnator(other_output)
 
     super(ElectraPretrainer, self).__init__(
-        inputs=inputs, outputs=[lm_outputs, discrim_outputs], **kwargs)
+        inputs=inputs, outputs=[lm_outputs, discrim_outputs, labels], **kwargs)
 
   def get_config(self):
     return self._config
@@ -127,3 +126,33 @@ class ElectraPretrainer(tf.keras.Model):
   @classmethod
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
+
+
+def _get_fake_data(og, predictions, maskedlm_ids):
+  tokids = tf.stop_gradient(tf.math.argmax(predictions,axis=-1,output_type=tf.dtypes.int32))
+  updatedids, mask = _scatter_update(og,maskedlm_ids,tokids)
+  labels = mask*(1-tf.cast(tf.equal(og,updatedids),tf.int32))
+  return updatedids, labels
+def _scatter_update(og, maskedlm_ids, tokids):
+    sequence_shape = tf_utils.get_shape_list(
+        og, name='input_word_ids')
+    B, L = sequence_shape
+    N = maskedlm_ids.shape[1]
+    shift = L * tf.range(B)
+    flat_positions = tf.reshape(maskedlm_ids + shift, [-1,1])
+    flat_updates = tf.reshape(tokids, [-1])
+    updates = tf.scatter_nd(flat_positions, flat_updates, [B * L])
+    updates = tf.reshape(updates, [B, L])
+
+    flat_updates_mask = tf.ones([B * N], tf.int32)
+    updates_mask = tf.scatter_nd(flat_positions, flat_updates_mask, [B * L])
+    updates_mask = tf.reshape(updates_mask, [B, L])
+    not_first_token = tf.concat([tf.zeros((B, 1), tf.int32),
+                                 tf.ones((B, L - 1), tf.int32, name="otherones")], -1)
+    updates_mask *= not_first_token
+    updates = tf.math.floordiv(updates, tf.maximum(1, updates_mask))
+    updates_mask = tf.minimum(updates_mask, 1)
+
+    updated_sequence = (((1 - updates_mask) * og) +
+                        (updates_mask * updates))
+    return updated_sequence, updates_mask
