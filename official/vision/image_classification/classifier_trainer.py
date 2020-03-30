@@ -113,7 +113,7 @@ def _get_dataset_builders(params: base_configs.ExperimentConfig,
   image_size = get_image_size_from_model(params)
 
   dataset_configs = [
-      params.train_dataset, params.validation_dataset, params.test_dataset
+      params.train_dataset, params.validation_dataset
   ]
   builders = []
 
@@ -320,8 +320,8 @@ def train_and_eval(
   datasets = [builder.build() if builder else None for builder in builders]
 
   # Unpack datasets and builders based on train/val/test splits
-  train_builder, validation_builder, test_builder = builders  # pylint: disable=unbalanced-tuple-unpacking
-  train_dataset, validation_dataset, test_dataset = datasets
+  train_builder, validation_builder = builders  # pylint: disable=unbalanced-tuple-unpacking
+  train_dataset, validation_dataset = datasets
 
   train_epochs = params.train.epochs
   train_steps = params.train.steps or train_builder.num_steps

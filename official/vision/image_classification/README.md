@@ -19,10 +19,24 @@ installed and
 
 ### ImageNet preparation
 
+#### Using TFDS
+`classifier_trainer.py` supports ImageNet with
+[TensorFlow Datasets (TFDS)](https://www.tensorflow.org/datasets/overview).
+
+Please see the following [example snippet](https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/scripts/download_and_prepare.py)
+for more information on how to use TFDS to download and prepare datasets, and
+specifically the [TFDS ImageNet readme](https://github.com/tensorflow/datasets/blob/master/docs/catalog/imagenet2012.md)
+for manual download instructions.
+
+#### Legacy TFRecords
 Download the ImageNet dataset and convert it to TFRecord format.
 The following [script](https://github.com/tensorflow/tpu/blob/master/tools/datasets/imagenet_to_gcs.py)
 and [README](https://github.com/tensorflow/tpu/tree/master/tools/datasets#imagenet_to_gcspy)
 provide a few options.
+
+Note that the legacy ResNet runners, e.g. [resnet/resnet_ctl_imagenet_main.py](resnet/resnet_ctl_imagenet_main.py)
+require TFRecords whereas `classifier_trainer.py` can use both by setting the
+builder to 'records' or 'tfds' in the configurations.
 
 ### Running on Cloud TPUs
 
@@ -114,7 +128,7 @@ python3 classifier_trainer.py \
   --tpu=$TPU_NAME \
   --model_dir=$MODEL_DIR \
   --data_dir=$DATA_DIR \
-  --config_file=config/examples/resnet/imagenet/tpu.yaml
+  --config_file=configs/examples/resnet/imagenet/tpu.yaml
 ```
 
 ### EfficientNet
@@ -141,7 +155,7 @@ python3 classifier_trainer.py \
   --tpu=$TPU_NAME \
   --model_dir=$MODEL_DIR \
   --data_dir=$DATA_DIR \
-  --config_file=config/examples/efficientnet/imagenet/efficientnet-b0-tpu.yaml
+  --config_file=configs/examples/efficientnet/imagenet/efficientnet-b0-tpu.yaml
 ```
 
 Note that the number of GPU devices can be overridden in the command line using
