@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import json
 import os
-import tempfile
 import time
 
 from absl import app
@@ -130,18 +129,15 @@ def main(_):
     eval_metrics = eval_squad(strategy, input_meta_data)
     f1_score = eval_metrics['final_f1']
     logging.info('SQuAD eval F1-score: %f', f1_score)
-    if (not strategy) or strategy.extended.should_save_summary:
-      summary_dir = os.path.join(FLAGS.model_dir, 'summaries')
-    else:
-      summary_dir = tempfile.mkdtemp()
-    summary_writer = tf.summary.create_file_writer(
-        os.path.join(summary_dir, 'eval'))
+    summary_dir = os.path.join(FLAGS.model_dir, 'summaries', 'eval')
+    summary_writer = tf.summary.create_file_writer(summary_dir)
     with summary_writer.as_default():
       # TODO(lehou): write to the correct step number.
       tf.summary.scalar('F1-score', f1_score, step=0)
       summary_writer.flush()
-    # Wait for some time, for the depending mldash/tensorboard jobs to finish
-    # exporting the final F1-score.
+    # Also write eval_metrics to json file.
+    squad_lib_wp.write_to_json_files(
+        eval_metrics, os.path.join(summary_dir, 'eval_metrics.json'))
     time.sleep(60)
 
 
