@@ -23,17 +23,14 @@ import unittest
 
 import numpy as np
 import tensorflow as tf
-
+from tensorflow.python.eager import context  # pylint: disable=ungrouped-imports
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
-from official.recommendation import neumf_model
 from official.recommendation import ncf_common
-from official.recommendation import ncf_estimator_main
 from official.recommendation import ncf_keras_main
+from official.recommendation import neumf_model
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
-
-from tensorflow.python.eager import context # pylint: disable=ungrouped-imports
 
 
 NUM_TRAIN_NEG = 4
@@ -189,20 +186,6 @@ class NcfTest(tf.test.TestCase):
                                   2 * math.log(2) / math.log(4)) / 4)
 
   _BASE_END_TO_END_FLAGS = ['-batch_size', '1044', '-train_epochs', '1']
-
-  @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
-  @unittest.mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end_estimator(self):
-    integration.run_synthetic(
-        ncf_estimator_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=self._BASE_END_TO_END_FLAGS)
-
-  @unittest.skipIf(keras_utils.is_v2_0(), "TODO(b/136018594)")
-  @unittest.mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
-  def test_end_to_end_estimator_mlperf(self):
-    integration.run_synthetic(
-        ncf_estimator_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=self._BASE_END_TO_END_FLAGS + ['-ml_perf', 'True'])
 
   @unittest.mock.patch.object(rconst, "SYNTHETIC_BATCHES_PER_EPOCH", 100)
   def test_end_to_end_keras_no_dist_strat(self):
