@@ -122,7 +122,7 @@ def split_separable_conv2d(input_tensor,
       were used.
 
   Returns:
-    output tesnor
+    output tensor
   """
 
   with _v1_compatible_scope_naming(scope) as scope:
