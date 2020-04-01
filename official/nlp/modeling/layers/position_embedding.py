@@ -111,15 +111,10 @@ class PositionEmbedding(tf.keras.layers.Layer):
 
   def call(self, inputs):
     """Implements call() for the layer."""
+    input_shape = tf_utils.get_shape_list(inputs, expected_rank=3)
     if self._use_dynamic_slicing:
-      input_shape = tf_utils.get_shape_list(inputs, expected_rank=3)
-      seq_length = input_shape[1]
-      width = input_shape[2]
-
-      position_embeddings = tf.expand_dims(
-          tf.slice(self._position_embeddings, [0, 0], [seq_length, width]),
-          axis=0)
+      position_embeddings = self._position_embeddings[:input_shape[1], :]
     else:
-      position_embeddings = tf.expand_dims(self._position_embeddings, axis=0)
+      position_embeddings = self._position_embeddings
 
-    return position_embeddings
+    return tf.broadcast_to(position_embeddings, input_shape)
