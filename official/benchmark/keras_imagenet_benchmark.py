@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,14 +16,18 @@
 """Executes Keras benchmarks and accuracy tests."""
 from __future__ import print_function
 
+import json
 import os
 import time
+
+from typing import Any, MutableMapping, Optional
 
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.benchmark import keras_benchmark
 from official.utils.testing import benchmark_wrappers
+from official.vision.image_classification import classifier_trainer
 from official.vision.image_classification.resnet import resnet_imagenet_main
 
 MIN_TOP_1_ACCURACY = 0.76
@@ -39,6 +44,62 @@ MODEL_OPTIMIZATION_TOP_1_ACCURACY = {
 }
 
 FLAGS = flags.FLAGS
+
+
+def _get_classifier_parameters(
+    num_gpus: int = 0,
+    builder: str = 'records',
+    skip_eval: bool = False,
+    distribution_strategy: str = 'mirrored',
+    per_replica_batch_size: int = 128,
+    epochs: int = 90,
+    steps: int = 0,
+    epochs_between_evals: int = 1,
+    dtype: str = 'float32',
+    enable_xla: bool = False,
+    run_eagerly: bool = False,
+    gpu_thread_mode: Optional[str] = None,
+    dataset_num_private_threads: Optional[int] = None,
+    loss_scale: Optional[str] = None) -> MutableMapping[str, Any]:
+  """Gets classifier trainer's ResNet parameters."""
+  return {
+      'runtime': {
+          'num_gpus': num_gpus,
+          'distribution_strategy': distribution_strategy,
+          'run_eagerly': run_eagerly,
+          'enable_xla': enable_xla,
+          'dataset_num_private_threads': dataset_num_private_threads,
+          'gpu_thread_mode': gpu_thread_mode,
+          'loss_scale': loss_scale,
+      },
+      'train_dataset': {
+          'builder': builder,
+          'use_per_replica_batch_size': True,
+          'batch_size': per_replica_batch_size,
+          'image_size': 224,
+          'dtype': dtype,
+      },
+      'validation_dataset': {
+          'builder': builder,
+          'batch_size': per_replica_batch_size,
+          'use_per_replica_batch_size': True,
+          'image_size': 224,
+          'dtype': dtype,
+      },
+      'train': {
+          'epochs': epochs,
+          'steps': steps,
+          'callbacks': {
+              'enable_tensorboard': False,
+              'enable_checkpoint_and_export': False,
+              'enable_time_history': True,
+          },
+      },
+      'evaluation': {
+          'epochs_between_evals': epochs_between_evals,
+          'skip_eval': skip_eval,
+      },
+  }
 
 
 class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
@@ -160,6 +221,136 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
     return os.path.join(self.output_dir, folder_name)
 
 
+class Resnet50KerasClassifierAccuracy(keras_benchmark.KerasBenchmark):
+  """Benchmark accuracy tests for ResNet50 in Keras."""
+
+  # TODO(allencwang) - Create the benchmark for eager, dist_strat, 8 GPUs and
+  # automatic mixed precision once Graph rewrite is supported.
+
+  def __init__(self,
+               output_dir: Optional[str] = None,
+               root_data_dir: Optional[str] = None,
+               **kwargs):
+    """A benchmark class.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+      **kwargs: arbitrary named arguments. This is needed to make the
+                constructor forward compatible in case PerfZero provides more
+                named arguments before updating the constructor.
+    """
+
+    flag_methods = [classifier_trainer.define_classifier_flags]
+
+    self.data_dir = os.path.join(root_data_dir, 'imagenet')
+    super(Resnet50KerasClassifierAccuracy, self).__init__(
+        output_dir=output_dir, flag_methods=flag_methods)
+
+  @benchmark_wrappers.enable_runtime_flags
+  def _run_and_report_benchmark(
+      self,
+      experiment_name: str,
+      top_1_min: float = MIN_TOP_1_ACCURACY,
+      top_1_max: float = MAX_TOP_1_ACCURACY,
+      num_gpus: int = 0,
+      distribution_strategy: str = 'mirrored',
+      per_replica_batch_size: int = 128,
+      epochs: int = 90,
+      steps: int = 0,
+      epochs_between_evals: int = 1,
+      dtype: str = 'float32',
+      enable_xla: bool = False,
+      run_eagerly: bool = False,
+      gpu_thread_mode: Optional[str] = None,
+      dataset_num_private_threads: Optional[int] = None,
+      loss_scale: Optional[str] = None):
+    """Runs and reports the benchmark given the provided configuration."""
+    self._setup()
+    FLAGS.model_type = 'resnet'
+    FLAGS.dataset = 'imagenet'
+    FLAGS.mode = 'train_and_eval'
+    FLAGS.data_dir = self.data_dir
+    FLAGS.model_dir = self._get_model_dir(experiment_name)
+    parameters = _get_classifier_parameters(
+        num_gpus=num_gpus,
+        distribution_strategy=distribution_strategy,
+        per_replica_batch_size=per_replica_batch_size,
+        epochs=epochs,
+        steps=steps,
+        epochs_between_evals=epochs_between_evals,
+        dtype=dtype,
+        enable_xla=enable_xla,
+        run_eagerly=run_eagerly,
+        gpu_thread_mode=gpu_thread_mode,
+        dataset_num_private_threads=dataset_num_private_threads,
+        loss_scale=loss_scale)
+    FLAGS.params_override = json.dumps(parameters)
+    total_batch_size = num_gpus * per_replica_batch_size
+
+    start_time_sec = time.time()
+    stats = classifier_trainer.run(flags.FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+
+    super(Resnet50KerasClassifierAccuracy, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        top_1_min=top_1_min,
+        top_1_max=top_1_max,
+        total_batch_size=total_batch_size,
+        log_steps=100)
+
+  def benchmark_8_gpu(self):
+    """Tests Keras model with eager, dist_strat and 8 GPUs."""
+    self._run_benchmark(
+        experiment_name='benchmark_8_gpu',
+        num_gpus=8,
+        per_replica_batch_size=128,
+        epochs=90,
+        epochs_between_evals=10,
+        dtype='float32',
+        dataset_num_private_threads=14)
+
+  def benchmark_8_gpu_fp16(self):
+    """Tests Keras model with eager, dist_strat, 8 GPUs, and fp16."""
+    self._run_benchmark(
+        experiment_name='benchmark_8_gpu_fp16',
+        num_gpus=8,
+        per_replica_batch_size=256,
+        epochs=90,
+        epochs_between_evals=10,
+        dtype='float16',
+        gpu_thread_mode='gpu_private')
+
+  def benchmark_xla_8_gpu_fp16(self):
+    """Tests Keras model with XLA, eager, dist_strat, 8 GPUs and fp16."""
+    self._run_benchmark(
+        experiment_name='benchmark_xla_8_gpu_fp16',
+        num_gpus=8,
+        per_replica_batch_size=256,
+        epochs=90,
+        epochs_between_evals=10,
+        dtype='float16',
+        enable_xla=True,
+        gpu_thread_mode='gpu_private')
+
+  def benchmark_xla_8_gpu_fp16_dynamic(self):
+    """Tests Keras model with XLA, eager, dist_strat, 8 GPUs, dynamic fp16."""
+    self._run_benchmark(
+        experiment_name='benchmark_xla_8_gpu_fp16_dynamic',
+        top_1_min=0.736,
+        num_gpus=8,
+        per_replica_batch_size=256,
+        epochs=90,
+        epochs_between_evals=10,
+        dtype='float16',
+        loss_scale='dynamic',
+        gpu_thread_mode='gpu_private')
+
+  def _get_model_dir(self, folder_name):
+    return os.path.join(self.output_dir, folder_name)
+
+
 class MobilenetV1KerasAccuracy(keras_benchmark.KerasBenchmark):
   """Benchmark accuracy tests for MobilenetV1 in Keras."""
 
@@ -219,6 +410,352 @@ class MobilenetV1KerasAccuracy(keras_benchmark.KerasBenchmark):
 
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)
+
+
+class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
+  """Resnet50 (classifier_trainer) benchmarks."""
+
+  def __init__(self, output_dir=None, default_flags=None,
+               tpu=None, dataset_builder='records', train_epochs=1,
+               train_steps=110, data_dir=None):
+    flag_methods = [classifier_trainer.define_classifier_flags]
+
+    self.dataset_builder = dataset_builder
+    self.train_epochs = train_epochs
+    self.train_steps = train_steps
+    self.data_dir = data_dir
+
+    super(Resnet50KerasClassifierBenchmarkBase, self).__init__(
+        output_dir=output_dir,
+        flag_methods=flag_methods,
+        default_flags=default_flags,
+        tpu=tpu)
+
+  @benchmark_wrappers.enable_runtime_flags
+  def _run_and_report_benchmark(
+      self,
+      experiment_name: str,
+      skip_steps: Optional[int] = None,
+      top_1_min: float = MIN_TOP_1_ACCURACY,
+      top_1_max: float = MAX_TOP_1_ACCURACY,
+      num_gpus: int = 0,
+      distribution_strategy: str = 'mirrored',
+      per_replica_batch_size: int = 128,
+      epochs_between_evals: int = 1,
+      dtype: str = 'float32',
+      enable_xla: bool = False,
+      run_eagerly: bool = False,
+      gpu_thread_mode: Optional[str] = None,
+      dataset_num_private_threads: Optional[int] = None,
+      loss_scale: Optional[str] = None):
+    """Runs and reports the benchmark given the provided configuration."""
+    self._setup()
+    FLAGS.model_type = 'resnet'
+    FLAGS.dataset = 'imagenet'
+    FLAGS.mode = 'train_and_eval'
+    FLAGS.data_dir = self.data_dir
+    FLAGS.model_dir = self._get_model_dir(experiment_name)
+    parameters = _get_classifier_parameters(
+        builder=self.dataset_builder,
+        skip_eval=True,
+        num_gpus=num_gpus,
+        distribution_strategy=distribution_strategy,
+        per_replica_batch_size=per_replica_batch_size,
+        epochs=self.train_epochs,
+        steps=self.train_steps,
+        epochs_between_evals=epochs_between_evals,
+        dtype=dtype,
+        enable_xla=enable_xla,
+        gpu_thread_mode=gpu_thread_mode,
+        dataset_num_private_threads=dataset_num_private_threads,
+        loss_scale=loss_scale)
+    FLAGS.params_override = json.dumps(parameters)
+    total_batch_size = num_gpus * per_replica_batch_size
+
+    start_time_sec = time.time()
+    stats = classifier_trainer.run(flags.FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+    # Number of logged step time entries that are excluded in performance
+    # report. We keep results from last 100 batches, or skip the steps based on
+    # input skip_steps.
+    warmup = (skip_steps or (self.train_steps - 100)) // FLAGS.log_steps
+
+    super(Resnet50KerasClassifierBenchmarkBase, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        total_batch_size=total_batch_size,
+        log_steps=FLAGS.log_steps,
+        warmup=warmup,
+        start_time_sec=start_time_sec)
+
+  def benchmark_1_gpu_no_dist_strat(self):
+    """Tests Keras model with 1 GPU, no distribution strategy."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_1_gpu_no_dist_strat',
+        num_gpus=1,
+        distribution_strategy='off',
+        per_replica_batch_size=128)
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly(self):
+    """Tests Keras model with 1 GPU, no distribution strategy, run eagerly."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_1_gpu_no_dist_strat_run_eagerly',
+        num_gpus=1,
+        run_eagerly=True,
+        distribution_strategy='off',
+        per_replica_batch_size=64)
+
+  def benchmark_1_gpu_no_dist_strat_run_eagerly_fp16(self):
+    """Tests with 1 GPU, no distribution strategy, fp16, run eagerly."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_1_gpu_no_dist_strat_run_eagerly_fp16',
+        num_gpus=1,
+        run_eagerly=True,
+        distribution_strategy='off',
+        dtype='float16',
+        per_replica_batch_size=128)
+
+  def benchmark_1_gpu(self):
+    """Tests Keras model with 1 GPU."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_1_gpu',
+        num_gpus=1,
+        distribution_strategy='one_device',
+        per_replica_batch_size=128)
+
+  def benchmark_xla_1_gpu(self):
+    """Tests Keras model with XLA and 1 GPU."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_1_gpu',
+        num_gpus=1,
+        enable_xla=True,
+        distribution_strategy='one_device',
+        per_replica_batch_size=128)
+    self._setup()
+
+  def benchmark_1_gpu_fp16(self):
+    """Tests Keras model with 1 GPU and fp16."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_1_gpu_fp16',
+        num_gpus=1,
+        distribution_strategy='one_device',
+        dtype='float16',
+        per_replica_batch_size=256)
+
+  def benchmark_1_gpu_fp16_dynamic(self):
+    """Tests Keras model with 1 GPU, fp16, and dynamic loss scaling."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_1_gpu_fp16_dynamic',
+        num_gpus=1,
+        distribution_strategy='one_device',
+        dtype='float16',
+        per_replica_batch_size=256,
+        loss_scale='dynamic')
+
+  def benchmark_xla_1_gpu_fp16(self):
+    """Tests Keras model with XLA, 1 GPU and fp16."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_1_gpu_fp16',
+        num_gpus=1,
+        enable_xla=True,
+        distribution_strategy='one_device',
+        dtype='float16',
+        per_replica_batch_size=256)
+
+  def benchmark_xla_1_gpu_fp16_tweaked(self):
+    """Tests Keras model with XLA, 1 GPU, fp16, and manual config tuning."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_1_gpu_fp16_tweaked',
+        num_gpus=1,
+        enable_xla=True,
+        distribution_strategy='one_device',
+        dtype='float16',
+        per_replica_batch_size=256,
+        gpu_thread_mode='gpu_private')
+
+  def benchmark_xla_1_gpu_fp16_dynamic(self):
+    """Tests Keras model with XLA, 1 GPU, fp16, and dynamic loss scaling."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_1_gpu_fp16_dynamic',
+        num_gpus=1,
+        enable_xla=True,
+        distribution_strategy='one_device',
+        dtype='float16',
+        per_replica_batch_size=256,
+        loss_scale='dynamic')
+
+  def benchmark_graph_1_gpu(self):
+    """Tests Keras model in legacy graph mode with 1 GPU."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_graph_1_gpu',
+        num_gpus=1,
+        distribution_strategy='one_device',
+        per_replica_batch_size=128)
+
+  def benchmark_graph_xla_1_gpu(self):
+    """Tests Keras model in legacy graph mode with XLA and 1 GPU."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_graph_xla_1_gpu',
+        num_gpus=1,
+        enable_xla=True,
+        distribution_strategy='one_device',
+        per_replica_batch_size=128)
+
+  def benchmark_8_gpu(self):
+    """Tests Keras model with 8 GPUs."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_8_gpu',
+        num_gpus=8,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=128)
+
+  def benchmark_8_gpu_tweaked(self):
+    """Tests Keras model with manual config tuning and 8 GPUs."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_8_gpu_tweaked',
+        num_gpus=8,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=128,
+        dataset_num_private_threads=14)
+
+  def benchmark_xla_8_gpu(self):
+    """Tests Keras model with XLA and 8 GPUs."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_8_gpu',
+        num_gpus=8,
+        enable_xla=True,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=128)
+
+  def benchmark_xla_8_gpu_tweaked(self):
+    """Tests Keras model with manual config tuning, 8 GPUs, and XLA."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_8_gpu_tweaked',
+        num_gpus=8,
+        enable_xla=True,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=128,
+        gpu_thread_mode='gpu_private',
+        dataset_num_private_threads=24)
+
+  def benchmark_8_gpu_fp16(self):
+    """Tests Keras model with 8 GPUs and fp16."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_8_gpu_fp16',
+        num_gpus=8,
+        dtype='float16',
+        distribution_strategy='mirrored',
+        per_replica_batch_size=256)
+
+  def benchmark_8_gpu_fp16_tweaked(self):
+    """Tests Keras model with 8 GPUs, fp16, and manual config tuning."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_8_gpu_fp16_tweaked',
+        num_gpus=8,
+        dtype='float16',
+        distribution_strategy='mirrored',
+        per_replica_batch_size=256,
+        gpu_thread_mode='gpu_private')
+
+  def benchmark_8_gpu_fp16_dynamic_tweaked(self):
+    """Tests Keras model with 8 GPUs, fp16, dynamic loss scaling, and tuned."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_8_gpu_fp16_dynamic_tweaked',
+        num_gpus=8,
+        dtype='float16',
+        distribution_strategy='mirrored',
+        per_replica_batch_size=256,
+        loss_scale='dynamic',
+        gpu_thread_mode='gpu_private')
+
+  def benchmark_xla_8_gpu_fp16(self):
+    """Tests Keras model with XLA, 8 GPUs and fp16."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_8_gpu_fp16',
+        dtype='float16',
+        num_gpus=8,
+        enable_xla=True,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=256)
+
+  def benchmark_xla_8_gpu_fp16_tweaked(self):
+    """Test Keras model with manual config tuning, XLA, 8 GPUs and fp16."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_8_gpu_fp16_tweaked',
+        dtype='float16',
+        num_gpus=8,
+        enable_xla=True,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=256,
+        gpu_thread_mode='gpu_private',
+        dataset_num_private_threads=48)
+
+  def benchmark_xla_8_gpu_fp16_tweaked_delay_measure(self):
+    """Tests with manual config tuning, XLA, 8 GPUs and fp16.
+
+    Delay performance measurement for stable performance on 96 vCPU platforms.
+    """
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_8_gpu_fp16_tweaked_delay_measure',
+        dtype='float16',
+        num_gpus=8,
+        enable_xla=True,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=256,
+        gpu_thread_mode='gpu_private',
+        steps=310)
+
+  def benchmark_xla_8_gpu_fp16_dynamic_tweaked(self):
+    """Tests Keras model with config tuning, XLA, 8 GPUs and dynamic fp16."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_xla_8_gpu_fp16_dynamic_tweaked',
+        dtype='float16',
+        num_gpus=8,
+        enable_xla=True,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=256,
+        gpu_thread_mode='gpu_private',
+        loss_scale='dynamic',
+        dataset_num_private_threads=48)
+
+  def benchmark_graph_8_gpu(self):
+    """Tests Keras model in legacy graph mode with 8 GPUs."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_graph_8_gpu',
+        num_gpus=8,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=128)
+
+  def benchmark_graph_xla_8_gpu(self):
+    """Tests Keras model in legacy graph mode with XLA and 8 GPUs."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_graph_xla_8_gpu',
+        num_gpus=8,
+        enable_xla=True,
+        distribution_strategy='mirrored',
+        per_replica_batch_size=128)
+
+  def benchmark_2x2_tpu_fp16(self):
+    """Test Keras model with 2x2 TPU, fp16."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_2x2_tpu_fp16',
+        dtype='bfloat16',
+        distribution_strategy='tpu',
+        per_replica_batch_size=128)
+
+  def benchmark_4x4_tpu_fp16(self):
+    """Test Keras model with 4x4 TPU, fp16."""
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_4x4_tpu_fp16',
+        dtype='bfloat16',
+        distribution_strategy='tpu',
+        per_replica_batch_size=128)
+
+  def fill_report_object(self, stats):
+    super(Resnet50KerasClassifierBenchmarkBase, self).fill_report_object(
+        stats,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps)
 
 
 class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
@@ -842,34 +1379,31 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
         log_steps=FLAGS.log_steps)
 
 
-class Resnet50KerasBenchmarkSynth(Resnet50KerasBenchmarkBase):
+class Resnet50KerasBenchmarkSynth(Resnet50KerasClassifierBenchmarkBase):
   """Resnet50 synthetic benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, tpu=None, **kwargs):
     def_flags = {}
-    def_flags['skip_eval'] = True
-    def_flags['report_accuracy_metrics'] = False
-    def_flags['use_synthetic_data'] = True
-    def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkSynth, self).__init__(
-        output_dir=output_dir, default_flags=def_flags, tpu=tpu)
+        output_dir=output_dir, default_flags=def_flags, tpu=tpu,
+        dataset_builder='synthetic', train_epochs=1, train_steps=110)
 
 
-class Resnet50KerasBenchmarkReal(Resnet50KerasBenchmarkBase):
+class Resnet50KerasBenchmarkReal(Resnet50KerasClassifierBenchmarkBase):
   """Resnet50 real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, tpu=None, **kwargs):
+    data_dir = ('/readahead/200M/placer/prod/home/distbelief/'
+                'imagenet-tensorflow/imagenet-2012-tfrecord')
     def_flags = {}
-    def_flags['skip_eval'] = True
-    def_flags['report_accuracy_metrics'] = False
-    def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
-    def_flags['train_steps'] = 110
     def_flags['log_steps'] = 10
 
     super(Resnet50KerasBenchmarkReal, self).__init__(
-        output_dir=output_dir, default_flags=def_flags, tpu=tpu)
+        output_dir=output_dir, default_flags=def_flags, tpu=tpu,
+        dataset_builder='records', train_epochs=1, train_steps=110,
+        data_dir=data_dir)
 
 
 class Resnet50KerasBenchmarkRemoteData(Resnet50KerasBenchmarkBase):
@@ -1245,7 +1779,7 @@ class Resnet50MultiWorkerKerasAccuracy(keras_benchmark.KerasBenchmark):
   """Resnet50 distributed accuracy tests with multiple workers."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
+    flag_methods = [classifier_trainer.define_imagenet_keras_flags]
     self.data_dir = os.path.join(root_data_dir, 'imagenet')
     super(Resnet50MultiWorkerKerasAccuracy, self).__init__(
         output_dir=output_dir, flag_methods=flag_methods)
@@ -1278,7 +1812,7 @@ class Resnet50MultiWorkerKerasAccuracy(keras_benchmark.KerasBenchmark):
                                 top_1_min=MIN_TOP_1_ACCURACY,
                                 top_1_max=MAX_TOP_1_ACCURACY):
     start_time_sec = time.time()
-    stats = resnet_imagenet_main.run(flags.FLAGS)
+    stats = classifier_trainer.run(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
     super(Resnet50MultiWorkerKerasAccuracy, self)._report_benchmark(
