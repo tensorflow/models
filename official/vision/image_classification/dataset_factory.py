@@ -87,8 +87,6 @@ class DatasetConfig(base_config.Config):
       (e.g., the number of GPUs or TPU cores).
     num_devices: The number of replica devices to use. This should be set by
       `strategy.num_replicas_in_sync` when using a distribution strategy.
-    data_format: The data format of the images. Should be 'channels_last' or
-      'channels_first'.
     dtype: The desired dtype of the dataset. This will be set during
       preprocessing.
     one_hot: Whether to apply one hot encoding. Set to `True` to be able to use
@@ -120,7 +118,6 @@ class DatasetConfig(base_config.Config):
   batch_size: int = 128
   use_per_replica_batch_size: bool = False
   num_devices: int = 1
-  data_format: str = 'channels_last'
   dtype: str = 'float32'
   one_hot: bool = True
   augmenter: AugmentConfig = AugmentConfig()

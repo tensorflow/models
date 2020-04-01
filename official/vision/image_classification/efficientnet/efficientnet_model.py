@@ -166,7 +166,7 @@ def conv2d_block(inputs: tf.Tensor,
   batch_norm = common_modules.get_batch_norm(config.batch_norm)
   bn_momentum = config.bn_momentum
   bn_epsilon = config.bn_epsilon
-  data_format = config.data_format
+  data_format = tf.keras.backend.image_data_format()
   weight_decay = config.weight_decay
 
   name = name or ''
@@ -223,7 +223,7 @@ def mb_conv_block(inputs: tf.Tensor,
   use_se = config.use_se
   activation = tf_utils.get_activation(config.activation)
   drop_connect_rate = config.drop_connect_rate
-  data_format = config.data_format
+  data_format = tf.keras.backend.image_data_format()
   use_depthwise = block.conv_type != 'no_depthwise'
   prefix = prefix or ''
 
@@ -346,12 +346,14 @@ def efficientnet(image_input: tf.keras.layers.Input,
   num_classes = config.num_classes
   input_channels = config.input_channels
   rescale_input = config.rescale_input
-  data_format = config.data_format
+  data_format = tf.keras.backend.image_data_format()
   dtype = config.dtype
   weight_decay = config.weight_decay
 
   x = image_input
-
+  if data_format == 'channels_first':
+    # Happens on GPU/TPU if available.
+    x = tf.keras.layers.Permute((3, 1, 2))(x)
   if rescale_input:
     x = preprocessing.normalize_images(x,
                                        num_channels=input_channels,

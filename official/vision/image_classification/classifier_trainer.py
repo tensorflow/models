@@ -242,9 +242,6 @@ def initialize(params: base_configs.ExperimentConfig,
         datasets_num_private_threads=params.runtime.dataset_num_private_threads)
 
   performance.set_mixed_precision_policy(dataset_builder.dtype)
-
-  if dataset_builder.config.data_format:
-    data_format = dataset_builder.config.data_format
   if tf.config.list_physical_devices('GPU'):
     data_format = 'channels_first'
   else:
