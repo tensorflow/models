@@ -264,7 +264,6 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
     fake_ds_builder = EmptyClass()
     fake_ds_builder.dtype = dtype
     fake_ds_builder.config = EmptyClass()
-    fake_ds_builder.config.data_format = None
     classifier_trainer.initialize(config, fake_ds_builder)
 
   def test_resume_from_checkpoint(self):
