@@ -59,6 +59,17 @@ class MetricsConfig(base_config.Config):
 
 
 @dataclasses.dataclass
+class TimeHistoryConfig(base_config.Config):
+  """Configuration for the TimeHistory callback.
+
+  Attributes:
+    log_steps: Interval of steps between logging of batch level stats.
+
+  """
+  log_steps: int = None
+
+
+@dataclasses.dataclass
 class TrainConfig(base_config.Config):
   """Configuration for training.
 
@@ -77,8 +88,9 @@ class TrainConfig(base_config.Config):
   epochs: int = None
   steps: int = None
   callbacks: CallbacksConfig = CallbacksConfig()
-  metrics: List[str] = None
+  metrics: MetricsConfig = None
   tensorboard: TensorboardConfig = TensorboardConfig()
+  time_history: TimeHistoryConfig = TimeHistoryConfig()
 
 
 @dataclasses.dataclass
@@ -91,10 +103,12 @@ class EvalConfig(base_config.Config):
     steps: The number of eval steps to run during evaluation. If None, this will
       be inferred based on the number of images and batch size. Defaults to
       None.
+    skip_eval: Whether or not to skip evaluation.
 
   """
   epochs_between_evals: int = None
   steps: int = None
+  skip_eval: bool = False
 
 
 @dataclasses.dataclass

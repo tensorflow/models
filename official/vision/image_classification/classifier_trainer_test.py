@@ -233,8 +233,8 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
   )
   def test_get_loss_scale(self, loss_scale, dtype, expected):
     config = base_configs.ExperimentConfig(
-        model=base_configs.ModelConfig(
-            loss=base_configs.LossConfig(loss_scale=loss_scale)),
+        runtime=base_configs.RuntimeConfig(
+            loss_scale=loss_scale),
         train_dataset=dataset_factory.DatasetConfig(dtype=dtype))
     ls = classifier_trainer.get_loss_scale(config, fp16_default=128)
     self.assertEqual(ls, expected)
@@ -246,7 +246,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
   def test_initialize(self, dtype):
     config = base_configs.ExperimentConfig(
         runtime=base_configs.RuntimeConfig(
-            enable_eager=False,
+            run_eagerly=False,
             enable_xla=False,
             gpu_threads_enabled=True,
             per_gpu_thread_count=1,
@@ -258,7 +258,14 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
         model=base_configs.ModelConfig(
             loss=base_configs.LossConfig(loss_scale='dynamic')),
     )
-    classifier_trainer.initialize(config)
+
+    class EmptyClass:
+      pass
+    fake_ds_builder = EmptyClass()
+    fake_ds_builder.dtype = dtype
+    fake_ds_builder.config = EmptyClass()
+    fake_ds_builder.config.data_format = None
+    classifier_trainer.initialize(config, fake_ds_builder)
 
   def test_resume_from_checkpoint(self):
     """Tests functionality for resuming from checkpoint."""

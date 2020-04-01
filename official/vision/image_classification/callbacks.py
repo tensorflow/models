@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,15 +23,20 @@ import os
 from absl import logging
 
 import tensorflow as tf
-from typing import Any, List, MutableMapping, Text
+from typing import Any, List, MutableMapping
+
+from official.utils.misc import keras_utils
 
 
 def get_callbacks(model_checkpoint: bool = True,
                   include_tensorboard: bool = True,
+                  time_history: bool = True,
                   track_lr: bool = True,
                   write_model_weights: bool = True,
                   initial_step: int = 0,
-                  model_dir: Text = None) -> List[tf.keras.callbacks.Callback]:
+                  batch_size: int = 0,
+                  log_steps: int = 0,
+                  model_dir: str = None) -> List[tf.keras.callbacks.Callback]:
   """Get all callbacks."""
   model_dir = model_dir or ''
   callbacks = []
@@ -44,6 +50,11 @@ def get_callbacks(model_checkpoint: bool = True,
         track_lr=track_lr,
         initial_step=initial_step,
         write_images=write_model_weights))
+  if time_history:
+    callbacks.append(keras_utils.TimeHistory(
+        batch_size,
+        log_steps,
+        logdir=model_dir if include_tensorboard else None))
   return callbacks
 
 
@@ -74,7 +85,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
   # classification loss
 
   def __init__(self,
-               log_dir: Text,
+               log_dir: str,
                track_lr: bool = False,
                initial_step: int = 0,
                **kwargs):
@@ -84,7 +95,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
 
   def on_batch_begin(self,
                      epoch: int,
-                     logs: MutableMapping[Text, Any] = None) -> None:
+                     logs: MutableMapping[str, Any] = None) -> None:
     self.step += 1
     if logs is None:
       logs = {}
@@ -93,7 +104,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
 
   def on_epoch_begin(self,
                      epoch: int,
-                     logs: MutableMapping[Text, Any] = None) -> None:
+                     logs: MutableMapping[str, Any] = None) -> None:
     if logs is None:
       logs = {}
     metrics = self._calculate_metrics()
@@ -104,14 +115,14 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
 
   def on_epoch_end(self,
                    epoch: int,
-                   logs: MutableMapping[Text, Any] = None) -> None:
+                   logs: MutableMapping[str, Any] = None) -> None:
     if logs is None:
       logs = {}
     metrics = self._calculate_metrics()
     logs.update(metrics)
     super(CustomTensorBoard, self).on_epoch_end(epoch, logs)
 
-  def _calculate_metrics(self) -> MutableMapping[Text, Any]:
+  def _calculate_metrics(self) -> MutableMapping[str, Any]:
     logs = {}
     if self._track_lr:
       logs['learning_rate'] = self._calculate_lr()

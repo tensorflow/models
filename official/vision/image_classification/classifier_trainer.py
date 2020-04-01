@@ -44,10 +44,24 @@ from official.vision.image_classification.efficientnet import efficientnet_model
 from official.vision.image_classification.resnet import common
 from official.vision.image_classification.resnet import resnet_model
 
-MODELS = {
-    'efficientnet': efficientnet_model.EfficientNet.from_name,
-    'resnet': resnet_model.resnet50,
-}
+
+def get_models() -> Mapping[str, tf.keras.Model]:
+  """Returns the mapping from model type name to Keras model."""
+  return  {
+      'efficientnet': efficientnet_model.EfficientNet.from_name,
+      'resnet': resnet_model.resnet50,
+  }
+
+
+def get_dtype_map() -> Mapping[str, tf.dtypes.DType]:
+  """Returns the mapping from dtype string representations to TF dtypes."""
+  return {
+      'float32': tf.float32,
+      'bfloat16': tf.bfloat16,
+      'float16': tf.float16,
+      'fp32': tf.float32,
+      'bf16': tf.bfloat16,
+    }
 
 
 def _get_metrics(one_hot: bool) -> Mapping[Text, Any]:
@@ -120,7 +134,7 @@ def _get_dataset_builders(params: base_configs.ExperimentConfig,
 def get_loss_scale(params: base_configs.ExperimentConfig,
                    fp16_default: float = 128.) -> float:
   """Returns the loss scale for initializations."""
-  loss_scale = params.model.loss.loss_scale
+  loss_scale = params.runtime.loss_scale
   if loss_scale == 'dynamic':
     return loss_scale
   elif loss_scale is not None:
@@ -145,7 +159,7 @@ def _get_params_from_flags(flags_obj: flags.FlagValues):
           'name': model,
       },
       'runtime': {
-          'enable_eager': flags_obj.enable_eager,
+          'run_eagerly': flags_obj.run_eagerly,
           'tpu': flags_obj.tpu,
       },
       'train_dataset': {
@@ -153,6 +167,11 @@ def _get_params_from_flags(flags_obj: flags.FlagValues):
       },
       'validation_dataset': {
           'data_dir': flags_obj.data_dir,
+      },
+      'train': {
+          'time_history': {
+              'log_steps': flags_obj.log_steps,
+          },
       },
   }
 
@@ -209,10 +228,11 @@ def resume_from_checkpoint(model: tf.keras.Model,
   return int(initial_epoch)
 
 
-def initialize(params: base_configs.ExperimentConfig):
+def initialize(params: base_configs.ExperimentConfig,
+               dataset_builder: dataset_factory.DatasetBuilder):
   """Initializes backend related initializations."""
   keras_utils.set_session_config(
-      enable_eager=params.runtime.enable_eager,
+      enable_eager=params.runtime.run_eagerly,
       enable_xla=params.runtime.enable_xla)
   if params.runtime.gpu_threads_enabled:
     keras_utils.set_gpu_thread_mode_and_count(
@@ -221,12 +241,11 @@ def initialize(params: base_configs.ExperimentConfig):
         num_gpus=params.runtime.num_gpus,
         datasets_num_private_threads=params.runtime.dataset_num_private_threads)
 
-  dataset = params.train_dataset or params.validation_dataset
-  performance.set_mixed_precision_policy(dataset.dtype)
+  performance.set_mixed_precision_policy(dataset_builder.dtype)
 
-  if dataset.data_format:
-    data_format = dataset.data_format
-  elif tf.config.list_physical_devices('GPU'):
+  if dataset_builder.config.data_format:
+    data_format = dataset_builder.config.data_format
+  if tf.config.list_physical_devices('GPU'):
     data_format = 'channels_first'
   else:
     data_format = 'channels_last'
@@ -234,7 +253,7 @@ def initialize(params: base_configs.ExperimentConfig):
   distribution_utils.configure_cluster(
       params.runtime.worker_hosts,
       params.runtime.task_index)
-  if params.runtime.enable_eager:
+  if params.runtime.run_eagerly:
     # Enable eager execution to allow step-by-step debugging
     tf.config.experimental_run_functions_eagerly(True)
 
@@ -251,7 +270,7 @@ def define_classifier_flags():
       default=None,
       help='Mode to run: `train`, `eval`, `train_and_eval` or `export`.')
   flags.DEFINE_bool(
-      'enable_eager',
+      'run_eagerly',
       default=None,
       help='Use eager execution and disable autograph for debugging.')
   flags.DEFINE_string(
@@ -262,6 +281,10 @@ def define_classifier_flags():
       'dataset',
       default=None,
       help='The name of the dataset, e.g. ImageNet, etc.')
+  flags.DEFINE_integer(
+      'log_steps',
+      default=100,
+      help='The interval of steps between logging of batch level stats.')
 
 
 def serialize_config(params: base_configs.ExperimentConfig,
@@ -304,11 +327,13 @@ def train_and_eval(
   train_steps = params.train.steps or train_builder.num_steps
   validation_steps = params.evaluation.steps or validation_builder.num_steps
 
+  initialize(params, train_builder)
+
   logging.info('Global batch size: %d', train_builder.global_batch_size)
 
   with strategy_scope:
     model_params = params.model.model_params.as_dict()
-    model = MODELS[params.model.name](**model_params)
+    model = get_models()[params.model.name](**model_params)
     learning_rate = optimizer_factory.build_learning_rate(
         params=params.model.learning_rate,
         batch_size=train_builder.global_batch_size,
@@ -328,8 +353,7 @@ def train_and_eval(
       loss_obj = tf.keras.losses.SparseCategoricalCrossentropy()
     model.compile(optimizer=optimizer,
                   loss=loss_obj,
-                  metrics=metrics,
-                  run_eagerly=params.runtime.enable_eager)
+                  metrics=metrics)
 
     initial_epoch = 0
     if params.train.resume_checkpoint:
@@ -342,10 +366,22 @@ def train_and_eval(
   callbacks = custom_callbacks.get_callbacks(
       model_checkpoint=params.train.callbacks.enable_checkpoint_and_export,
       include_tensorboard=params.train.callbacks.enable_tensorboard,
+      time_history=params.train.callbacks.enable_time_history,
       track_lr=params.train.tensorboard.track_lr,
       write_model_weights=params.train.tensorboard.write_model_weights,
       initial_step=initial_epoch * train_steps,
+      batch_size=train_builder.global_batch_size,
+      log_steps=params.train.time_history.log_steps,
       model_dir=params.model_dir)
+
+  if params.evaluation.skip_eval:
+    validation_kwargs = {}
+  else:
+    validation_kwargs = {
+        'validation_data': validation_dataset,
+        'validation_steps': validation_steps,
+        'validation_freq': params.evaluation.epochs_between_evals,
+    }
 
   history = model.fit(
       train_dataset,
@@ -353,15 +389,14 @@ def train_and_eval(
       steps_per_epoch=train_steps,
       initial_epoch=initial_epoch,
       callbacks=callbacks,
-      validation_data=validation_dataset,
-      validation_steps=validation_steps,
-      validation_freq=params.evaluation.epochs_between_evals)
+      **validation_kwargs)
 
-  validation_output = model.evaluate(
-      validation_dataset, steps=validation_steps, verbose=2)
+  validation_output = None
+  if not params.evaluation.skip_eval:
+    validation_output = model.evaluate(
+        validation_dataset, steps=validation_steps, verbose=2)
 
   # TODO(dankondratyuk): eval and save final test accuracy
-
   stats = common.build_stats(history,
                              validation_output,
                              callbacks)
@@ -372,7 +407,7 @@ def export(params: base_configs.ExperimentConfig):
   """Runs the model export functionality."""
   logging.info('Exporting model.')
   model_params = params.model.model_params.as_dict()
-  model = MODELS[params.model.name](**model_params)
+  model = get_models()[params.model.name](**model_params)
   checkpoint = params.export.checkpoint
   if checkpoint is None:
     logging.info('No export checkpoint was provided. Using the latest '
@@ -395,8 +430,6 @@ def run(flags_obj: flags.FlagValues,
     Dictionary of training/eval stats
   """
   params = _get_params_from_flags(flags_obj)
-  initialize(params)
-
   if params.mode == 'train_and_eval':
     return train_and_eval(params, strategy_override)
   elif params.mode == 'export_only':

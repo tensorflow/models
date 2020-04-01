@@ -204,6 +204,30 @@ class DatasetBuilder:
     return self.num_examples // self.global_batch_size
 
   @property
+  def dtype(self) -> tf.dtypes.DType:
+    """Converts the config's dtype string to a tf dtype.
+
+    Returns:
+      A mapping from string representation of a dtype to the `tf.dtypes.DType`.
+
+    Raises:
+      ValueError if the config's dtype is not supported.
+
+    """
+    dtype_map = {
+        'float32': tf.float32,
+        'bfloat16': tf.bfloat16,
+        'float16': tf.float16,
+        'fp32': tf.float32,
+        'bf16': tf.bfloat16,
+    }
+    try:
+      return dtype_map[self.config.dtype]
+    except:
+      raise ValueError('Invalid DType provided. Supported types: {}'.format(
+          dtype_map.keys()))
+
+  @property
   def image_size(self) -> int:
     """The size of each image (can be inferred from the dataset)."""
 
@@ -326,7 +350,7 @@ class DatasetBuilder:
 
     def generate_data(_):
       image = tf.zeros([self.image_size, self.image_size, self.num_channels],
-                       dtype=self.config.dtype)
+                       dtype=self.dtype)
       label = tf.zeros([1], dtype=tf.int32)
       return image, label
 
@@ -451,7 +475,7 @@ class DatasetBuilder:
           image_size=self.image_size,
           mean_subtract=self.config.mean_subtract,
           standardize=self.config.standardize,
-          dtype=self.config.dtype,
+          dtype=self.dtype,
           augmenter=self.augmenter)
     else:
       image = preprocessing.preprocess_for_eval(
@@ -460,7 +484,7 @@ class DatasetBuilder:
           num_channels=self.num_channels,
           mean_subtract=self.config.mean_subtract,
           standardize=self.config.standardize,
-          dtype=self.config.dtype)
+          dtype=self.dtype)
 
     label = tf.cast(label, tf.int32)
     if self.config.one_hot:

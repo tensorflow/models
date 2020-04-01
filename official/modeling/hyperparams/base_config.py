@@ -257,7 +257,6 @@ class RuntimeConfig(Config):
 
   Attributes:
     distribution_strategy: e.g. 'mirrored', 'tpu', etc.
-    enable_eager: Whether or not to enable eager mode.
     enable_xla: Whether or not to enable XLA.
     per_gpu_thread_count: thread count per GPU.
     gpu_threads_enabled: Whether or not GPU threads are enabled.
@@ -272,9 +271,12 @@ class RuntimeConfig(Config):
     all_reduce_alg: Defines the algorithm for performing all-reduce.
     num_packs: Sets `num_packs` in the cross device ops used in
       MirroredStrategy.  For details, see tf.distribute.NcclAllReduce.
+    loss_scale: The type of loss scale. This is used when setting the mixed
+      precision policy.
+    run_eagerly: Whether or not to run the experiment eagerly.
+
   """
   distribution_strategy: str = 'mirrored'
-  enable_eager: bool = False
   enable_xla: bool = False
   gpu_threads_enabled: bool = False
   gpu_thread_mode: Optional[str] = None
@@ -286,6 +288,8 @@ class RuntimeConfig(Config):
   task_index: int = -1
   all_reduce_alg: Optional[str] = None
   num_packs: int = 1
+  loss_scale: Optional[str] = None
+  run_eagerly: bool = False
 
 
 @dataclasses.dataclass
@@ -312,7 +316,10 @@ class CallbacksConfig(Config):
       Callback. Defaults to True.
     enable_tensorboard: Whether or not to enable Tensorboard as a Callback.
       Defaults to True.
+    enable_time_history: Whether or not to enable TimeHistory Callbacks.
+      Defaults to True.
 
   """
   enable_checkpoint_and_export: bool = True
   enable_tensorboard: bool = True
+  enable_time_history: bool = True
