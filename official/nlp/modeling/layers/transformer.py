@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import dense_einsum
+from official.nlp.modeling.layers.util import tf_function_if_eager
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -219,3 +220,10 @@ class Transformer(tf.keras.layers.Layer):
     layer_output = self._output_layer_norm(layer_output + attention_output)
 
     return layer_output
+
+
+class CompiledTransformer(Transformer):
+
+  @tf_function_if_eager(experimental_compile=True)
+  def call(self, inputs):
+    return super(CompiledTransformer, self).call(inputs)
