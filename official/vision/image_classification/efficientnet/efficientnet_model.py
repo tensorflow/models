@@ -104,6 +104,8 @@ MODEL_CONFIGS = {
     'efficientnet-b5': ModelConfig.from_args(1.6, 2.2, 456, 0.4),
     'efficientnet-b6': ModelConfig.from_args(1.8, 2.6, 528, 0.5),
     'efficientnet-b7': ModelConfig.from_args(2.0, 3.1, 600, 0.5),
+    'efficientnet-b8': ModelConfig.from_args(2.2, 3.6, 672, 0.5),
+    'efficientnet-l2': ModelConfig.from_args(4.3, 5.3, 800, 0.5),
 }
 
 CONV_KERNEL_INITIALIZER = {
