@@ -139,7 +139,8 @@ def get_loss_scale(params: base_configs.ExperimentConfig,
     return loss_scale
   elif loss_scale is not None:
     return float(loss_scale)
-  elif params.train_dataset.dtype == 'float32':
+  elif (params.train_dataset.dtype == 'float32' or
+        params.train_dataset.dtype == 'bfloat16'):
     return 1.
   else:
     assert params.train_dataset.dtype == 'float16'
@@ -241,7 +242,8 @@ def initialize(params: base_configs.ExperimentConfig,
         num_gpus=params.runtime.num_gpus,
         datasets_num_private_threads=params.runtime.dataset_num_private_threads)
 
-  performance.set_mixed_precision_policy(dataset_builder.dtype)
+  performance.set_mixed_precision_policy(dataset_builder.dtype,
+                                         get_loss_scale(params))
   if tf.config.list_physical_devices('GPU'):
     data_format = 'channels_first'
   else:
