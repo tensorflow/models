@@ -73,6 +73,24 @@ xception71_dpc_cityscapes_trainval         | Xception_71      | ImageNet <br> MS
 
 In the table, **OS** denotes output stride.
 
+Note for mobilenet v3 models, we use additional commandline flags as follows:
+
+```
+--model_variant={ mobilenet_v3_large_seg | mobilenet_v3_small_seg }
+--image_pooling_crop_size=769,769
+--image_pooling_stride=4,5
+--add_image_level_feature=1
+--aspp_convs_filters=128
+--aspp_with_concat_projection=0
+--aspp_with_squeeze_and_excitation=1
+--decoder_use_sum_merge=1
+--decoder_filters=19
+--decoder_output_is_logits=1
+--image_se_uses_qsigmoid=1
+--decoder_output_stride=8
+--output_stride=32
+```
+
 Checkpoint name                                                                                                                  | Eval OS   | Eval scales                 | Left-right Flip | Multiply-Adds         | Runtime (sec)  | Cityscapes mIOU                | File Size
 -------------------------------------------------------------------------------------------------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :------------: | :----------------------------: | :-------:
 [mobilenetv2_coco_cityscapes_trainfine](http://download.tensorflow.org/models/deeplabv3_mnv2_cityscapes_train_2018_02_05.tar.gz) | 16 <br> 8 | [1.0] <br> [0.75:0.25:1.25] | No <br> Yes     | 21.27B <br> 433.24B   | 0.8 <br> 51.12 | 70.71% (val) <br> 73.57% (val) | 23MB
@@ -82,7 +100,45 @@ Checkpoint name                                                                 
 [xception71_dpc_cityscapes_trainfine](http://download.tensorflow.org/models/deeplab_cityscapes_xception71_trainfine_2018_09_08.tar.gz) | 16 | [1.0] | No  | 502.07B | - | 80.31% (val) | 445MB
 [xception71_dpc_cityscapes_trainval](http://download.tensorflow.org/models/deeplab_cityscapes_xception71_trainvalfine_2018_09_08.tar.gz) | 8 | [0.75:0.25:2] | Yes  | - | - | 82.66% (**test**) | 446MB
 
+### EdgeTPU-DeepLab models on Cityscapes
 
+EdgeTPU is Google's machine learning accelerator architecture for edge devices
+(exists in Coral devices and Pixel4's Neural Core). Leveraging nerual
+architecture search (NAS, also named as Auto-ML) algorithms,
+[EdgeTPU-Mobilenet](https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet)
+has been released which yields higher hardware utilization, lower latency, as
+well as better accuracy over Mobilenet-v2/v3. We use EdgeTPU-Mobilenet as the
+backbone and provide checkpoints that have been pretrained on Cityscapes
+train_fine set. We named them as EdgeTPU-DeepLab models.
+
+Checkpoint name      | Network backbone   | Pretrained dataset | ASPP | Decoder
+-------------------- | :----------------: | :----------------: | :--: | :-----:
+EdgeTPU-DeepLab      | EdgeMobilenet-1.0  | ImageNet           | N/A  | N/A
+EdgeTPU-DeepLab-slim | EdgeMobilenet-0.75 | ImageNet           | N/A  | N/A
+
+For EdgeTPU-DeepLab-slim, the backbone feature extractor has depth multiplier =
+0.75 and aspp_convs_filters = 128. We do not employ ASPP nor decoder modules to
+further reduce the latency. We employ the same train/eval flags used for
+MobileNet-v2 DeepLab model. Flags changed for EdgeTPU-DeepLab model are listed
+here.
+
+```
+--decoder_output_stride=''
+--aspp_convs_filters=256
+--model_variant=mobilenet_edgetpu
+```
+
+For EdgeTPU-DeepLab-slim, also include the following flags.
+
+```
+--depth_multiplier=0.75
+--aspp_convs_filters=128
+```
+
+Checkpoint name                                                                                      | Eval OS    | Eval scales | Cityscapes mIOU              | Multiply-Adds  | Simulator latency on Pixel 4 EdgeTPU
+---------------------------------------------------------------------------------------------------- | :--------: | :---------: | :--------------------------: | :------------: | :----------------------------------:
+[EdgeTPU-DeepLab](http://download.tensorflow.org/models/edgetpu-deeplab_2020_03_09.tar.gz)           | 32 <br> 16 | [1.0]       | 70.6% (val) <br> 74.1% (val) | 5.6B <br> 7.1B | 13.8 ms <br> 17.5 ms
+[EdgeTPU-DeepLab-slim](http://download.tensorflow.org/models/edgetpu-deeplab-slim_2020_03_09.tar.gz) | 32 <br> 16 | [1.0]       | 70.0% (val) <br> 73.2% (val) | 3.5B <br> 4.3B | 9.9 ms <br> 13.2 ms
 
 ## DeepLab models trained on ADE20K
 
