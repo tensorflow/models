@@ -12,6 +12,10 @@
 
 ## Computer Vision
 
+*   [efficientnet](vision/image_classification): A family of convolutional
+    neural networks that scale by balancing network depth, width, and
+    resolution and can be used to classify ImageNet's dataset of 1000 classes.
+    See [Tensorboard.dev training metrics](https://tensorboard.dev/experiment/KnaWjrq5TXGfv0NW5m7rpg/#scalars).
 *   [mnist](vision/image_classification): A basic model to classify digits
     from the MNIST dataset. See [Running MNIST on Cloud TPU](https://cloud.google.com/tpu/docs/tutorials/mnist-2.x) tutorial and [Tensorboard.dev metrics](https://tensorboard.dev/experiment/mIah5lppTASvrHqWrdr6NA).
 *   [resnet](vision/image_classification): A deep residual network that can
