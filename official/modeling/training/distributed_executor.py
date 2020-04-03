@@ -19,7 +19,6 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
-import json
 import os
 
 from absl import flags
@@ -32,6 +31,7 @@ import tensorflow as tf
 from typing import Optional, Dict, List, Text, Callable, Union, Iterator, Any
 from official.modeling.hyperparams import params_dict
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 from official.utils import hyperparams_flags
 
 FLAGS = flags.FLAGS
@@ -330,9 +330,11 @@ class DistributedExecutor(object):
     eval_metric_fn = eval_metric_fn or _no_metric
 
     if custom_callbacks and iterations_per_loop != 1:
-      logging.error(
+      logging.warning(
           'It is sematically wrong to run callbacks when '
           'iterations_per_loop is not one (%s)', iterations_per_loop)
+
+    custom_callbacks = custom_callbacks or []
 
     def _run_callbacks_on_batch_begin(batch):
       """Runs custom callbacks at the start of every step."""
@@ -402,6 +404,11 @@ class DistributedExecutor(object):
       test_summary_writer = summary_writer_fn(model_dir, 'eval_test')
       self.eval_summary_writer = test_summary_writer.writer
 
+    # Use training summary writer in TimeHistory if it's in use
+    for cb in custom_callbacks:
+      if isinstance(cb, keras_utils.TimeHistory):
+        cb.summary_writer = self.train_summary_writer
+
     # Continue training loop.
     train_step = self._create_train_step(
         strategy=strategy,
@@ -422,11 +429,12 @@ class DistributedExecutor(object):
       _run_callbacks_on_batch_begin(current_step)
       train_loss = train_step(train_iterator,
                               tf.convert_to_tensor(num_steps, dtype=tf.int32))
-      _run_callbacks_on_batch_end(current_step)
       current_step += num_steps
 
       train_loss = tf.nest.map_structure(lambda x: x.numpy().astype(float),
                                          train_loss)
+
+      _run_callbacks_on_batch_end(current_step - 1)
       if not isinstance(train_loss, dict):
         train_loss = {'total_loss': train_loss}
       if np.isnan(train_loss['total_loss']):
@@ -492,6 +500,9 @@ class DistributedExecutor(object):
       logging.info('Final evaluation metric = %s.', eval_metric_result)
       test_summary_writer(
           metrics=eval_metric_result, step=optimizer.iterations)
+
+    self.train_summary_writer.close()
+    self.eval_summary_writer.close()
 
     return train_loss, eval_metric_result
 
