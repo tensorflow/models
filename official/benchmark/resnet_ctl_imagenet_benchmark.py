@@ -53,7 +53,8 @@ class CtlBenchmark(PerfZeroBenchmark):
                         top_1_min=None,
                         total_batch_size=None,
                         log_steps=None,
-                        warmup=1):
+                        warmup=1,
+                        start_time_sec=None):
     """Report benchmark results by writing to local protobuf file.
 
     Args:
@@ -64,6 +65,7 @@ class CtlBenchmark(PerfZeroBenchmark):
       total_batch_size: Global batch-size.
       log_steps: How often the log was created for stats['step_timestamp_log'].
       warmup: number of entries in stats['step_timestamp_log'] to ignore.
+      start_time_sec: the start time of the program in seconds since epoch.
     """
 
     metrics = []
@@ -97,6 +99,12 @@ class CtlBenchmark(PerfZeroBenchmark):
           'name': 'avg_exp_per_second',
           'value': stats['avg_exp_per_second']
       })
+
+    if start_time_sec and 'step_timestamp_log' in stats:
+      time_log = stats['step_timestamp_log']
+      # time_log[0] is recorded at the beginning of the first step.
+      startup_time = time_log[0].timestamp - start_time_sec
+      metrics.append({'name': 'startup_time', 'value': startup_time})
 
     flags_str = flags_core.get_nondefault_flags_as_str()
     self.report_benchmark(
@@ -181,7 +189,8 @@ class Resnet50CtlAccuracy(CtlBenchmark):
         top_1_min=MIN_TOP_1_ACCURACY,
         top_1_max=MAX_TOP_1_ACCURACY,
         total_batch_size=FLAGS.batch_size,
-        log_steps=100)
+        log_steps=100,
+        start_time_sec=start_time_sec)
 
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)
@@ -213,7 +222,8 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
         wall_time_sec,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps,
-        warmup=warmup)
+        warmup=warmup,
+        start_time_sec=start_time_sec)
 
   def benchmark_1_gpu_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
