@@ -30,7 +30,6 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 | Name | GitHub |
 | --- | --- |
 | Jonathan Huang | [jch1](https://github.com/jch1) | 
-| Jonathan Huang | [jch1](https://github.com/jch1) |
 | Vivek Rathod | [tombstone](https://github.com/tombstone) |
 | Ronny Votel | [ronnyvotel](https://github.com/ronnyvotel) |
 | Derek Chow | [derekjchow](https://github.com/derekjchow) |
