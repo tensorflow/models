@@ -184,9 +184,15 @@ def create_float_feature(values):
   return feature
 
 
-def create_training_instances(input_files, tokenizer, max_seq_length,
-                              dupe_factor, short_seq_prob, masked_lm_prob,
-                              max_predictions_per_seq, rng, do_whole_word_mask):
+def create_training_instances(input_files,
+                              tokenizer,
+                              max_seq_length,
+                              dupe_factor,
+                              short_seq_prob,
+                              masked_lm_prob,
+                              max_predictions_per_seq,
+                              rng,
+                              do_whole_word_mask=False):
   """Create `TrainingInstance`s from raw text."""
   all_documents = [[]]
 
@@ -232,7 +238,7 @@ def create_training_instances(input_files, tokenizer, max_seq_length,
 def create_instances_from_document(
     all_documents, document_index, max_seq_length, short_seq_prob,
     masked_lm_prob, max_predictions_per_seq, vocab_words, rng,
-    do_whole_word_mask):
+    do_whole_word_mask=False):
   """Creates `TrainingInstance`s for a single document."""
   document = all_documents[document_index]
 
