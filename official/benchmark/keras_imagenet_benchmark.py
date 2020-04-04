@@ -105,128 +105,6 @@ def _get_classifier_parameters(
 class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
   """Benchmark accuracy tests for ResNet50 in Keras."""
 
-  def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    """A benchmark class.
-
-    Args:
-      output_dir: directory where to output e.g. log files
-      root_data_dir: directory under which to look for dataset
-      **kwargs: arbitrary named arguments. This is needed to make the
-                constructor forward compatible in case PerfZero provides more
-                named arguments before updating the constructor.
-    """
-
-    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
-
-    self.data_dir = os.path.join(root_data_dir, 'imagenet')
-    super(Resnet50KerasAccuracy, self).__init__(
-        output_dir=output_dir, flag_methods=flag_methods)
-
-  def benchmark_8_gpu(self):
-    """Test Keras model with eager, dist_strat and 8 GPUs."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128 * 8
-    FLAGS.train_epochs = 90
-    FLAGS.epochs_between_evals = 10
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
-    FLAGS.dtype = 'fp32'
-    FLAGS.enable_eager = True
-    # Add some thread tunings to improve performance.
-    FLAGS.datasets_num_private_threads = 14
-    self._run_and_report_benchmark()
-
-  def benchmark_8_gpu_amp(self):
-    """Test Keras model with eager, dist_strat and 8 GPUs with automatic mixed precision."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 128 * 8
-    FLAGS.train_epochs = 90
-    FLAGS.epochs_between_evals = 10
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
-    FLAGS.dtype = 'fp16'
-    FLAGS.enable_eager = True
-    FLAGS.fp16_implementation = 'graph_rewrite'
-    # Add some thread tunings to improve performance.
-    FLAGS.datasets_num_private_threads = 14
-    self._run_and_report_benchmark()
-
-  def benchmark_8_gpu_fp16(self):
-    """Test Keras model with eager, dist_strat, 8 GPUs, and fp16."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 256 * 8
-    FLAGS.train_epochs = 90
-    FLAGS.epochs_between_evals = 10
-    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
-    FLAGS.dtype = 'fp16'
-    FLAGS.enable_eager = True
-    # Thread tuning to improve performance.
-    FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    self._run_and_report_benchmark()
-
-  def benchmark_xla_8_gpu_fp16(self):
-    """Test Keras model with XLA, eager, dist_strat, 8 GPUs and fp16."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 256 * 8
-    FLAGS.train_epochs = 90
-    FLAGS.epochs_between_evals = 10
-    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16')
-    FLAGS.dtype = 'fp16'
-    FLAGS.enable_eager = True
-    FLAGS.enable_xla = True
-    # Thread tuning to improve performance.
-    FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    self._run_and_report_benchmark()
-
-  def benchmark_xla_8_gpu_fp16_dynamic(self):
-    """Test Keras model with XLA, eager, dist_strat, 8 GPUs, dynamic fp16."""
-    self._setup()
-    FLAGS.num_gpus = 8
-    FLAGS.data_dir = self.data_dir
-    FLAGS.batch_size = 256 * 8
-    FLAGS.train_epochs = 90
-    FLAGS.epochs_between_evals = 10
-    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_dynamic')
-    FLAGS.dtype = 'fp16'
-    FLAGS.enable_eager = True
-    FLAGS.enable_xla = True
-    FLAGS.loss_scale = 'dynamic'
-    # Thread tuning to improve performance.
-    FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    self._run_and_report_benchmark(top_1_min=0.736)
-
-  @benchmark_wrappers.enable_runtime_flags
-  def _run_and_report_benchmark(self,
-                                top_1_min=MIN_TOP_1_ACCURACY,
-                                top_1_max=MAX_TOP_1_ACCURACY):
-    start_time_sec = time.time()
-    stats = resnet_imagenet_main.run(flags.FLAGS)
-    wall_time_sec = time.time() - start_time_sec
-
-    super(Resnet50KerasAccuracy, self)._report_benchmark(
-        stats,
-        wall_time_sec,
-        top_1_min=top_1_min,
-        top_1_max=top_1_max,
-        total_batch_size=FLAGS.batch_size,
-        log_steps=100)
-
-  def _get_model_dir(self, folder_name):
-    return os.path.join(self.output_dir, folder_name)
-
-
-class Resnet50KerasClassifierAccuracy(keras_benchmark.KerasBenchmark):
-  """Benchmark accuracy tests for ResNet50 in Keras."""
-
-  # TODO(allencwang) - Create the benchmark for eager, dist_strat, 8 GPUs and
-  # automatic mixed precision once Graph rewrite is supported.
-
   def __init__(self,
                output_dir: Optional[str] = None,
                root_data_dir: Optional[str] = None,
@@ -244,7 +122,7 @@ class Resnet50KerasClassifierAccuracy(keras_benchmark.KerasBenchmark):
     flag_methods = [classifier_trainer.define_classifier_flags]
 
     self.data_dir = os.path.join(root_data_dir, 'imagenet')
-    super(Resnet50KerasClassifierAccuracy, self).__init__(
+    super(Resnet50KerasAccuracy, self).__init__(
         output_dir=output_dir, flag_methods=flag_methods)
 
   @benchmark_wrappers.enable_runtime_flags
@@ -292,7 +170,7 @@ class Resnet50KerasClassifierAccuracy(keras_benchmark.KerasBenchmark):
     stats = classifier_trainer.run(flags.FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
-    super(Resnet50KerasClassifierAccuracy, self)._report_benchmark(
+    super(Resnet50KerasAccuracy, self)._report_benchmark(
         stats,
         wall_time_sec,
         top_1_min=top_1_min,
