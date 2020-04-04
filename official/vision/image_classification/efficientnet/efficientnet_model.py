@@ -467,7 +467,7 @@ class EfficientNet(tf.keras.Model):
   def from_name(cls,
                 model_name: Text,
                 model_weights_path: Text = None,
-                copy_to_local: bool = False,
+                weights_format: Text = 'saved_model',
                 overrides: Dict[Text, Any] = None):
     """Construct an EfficientNet model from a predefined model name.
 
@@ -476,7 +476,8 @@ class EfficientNet(tf.keras.Model):
     Args:
       model_name: the predefined model name
       model_weights_path: the path to the weights (h5 file or saved model dir)
-      copy_to_local: copy the weights to a local tmp dir
+      weights_format: the model weights format. One of 'saved_model', 'h5',
+       or 'checkpoint'.
       overrides: (optional) a dict containing keys that can override config
 
     Returns:
@@ -496,12 +497,8 @@ class EfficientNet(tf.keras.Model):
     model = cls(config=config, overrides=overrides)
 
     if model_weights_path:
-      if copy_to_local:
-        tmp_file = os.path.join('/tmp', model_name + '.h5')
-        model_weights_file = os.path.join(model_weights_path, 'model.h5')
-        tf.io.gfile.copy(model_weights_file, tmp_file, overwrite=True)
-        model_weights_path = tmp_file
-
-      model.load_weights(model_weights_path)
+      common_modules.load_weights(model,
+                                  model_weights_path,
+                                  weights_format=weights_format)
 
     return model

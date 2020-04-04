@@ -50,7 +50,7 @@ class EfficientNetModelConfig(base_configs.ModelConfig):
   model_params: Mapping[str, Any] = dataclasses.field(default_factory=lambda: {
       'model_name': 'efficientnet-b0',
       'model_weights_path': '',
-      'copy_to_local': False,
+      'weights_format': 'saved_model',
       'overrides': {
           'batch_norm': 'default',
           'rescale_input': True,
