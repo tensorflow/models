@@ -180,7 +180,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
 
   def benchmark_8_gpu(self):
     """Tests Keras model with eager, dist_strat and 8 GPUs."""
-    self._run_benchmark(
+    self._setup()
+    self._run_and_report_benchmark(
         experiment_name='benchmark_8_gpu',
         num_gpus=8,
         per_replica_batch_size=128,
@@ -191,7 +192,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
 
   def benchmark_8_gpu_fp16(self):
     """Tests Keras model with eager, dist_strat, 8 GPUs, and fp16."""
-    self._run_benchmark(
+    self._setup()
+    self._run_and_report_benchmark(
         experiment_name='benchmark_8_gpu_fp16',
         num_gpus=8,
         per_replica_batch_size=256,
@@ -202,7 +204,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_8_gpu_fp16(self):
     """Tests Keras model with XLA, eager, dist_strat, 8 GPUs and fp16."""
-    self._run_benchmark(
+    self._setup()
+    self._run_and_report_benchmark(
         experiment_name='benchmark_xla_8_gpu_fp16',
         num_gpus=8,
         per_replica_batch_size=256,
@@ -214,7 +217,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_8_gpu_fp16_dynamic(self):
     """Tests Keras model with XLA, eager, dist_strat, 8 GPUs, dynamic fp16."""
-    self._run_benchmark(
+    self._setup()
+    self._run_and_report_benchmark(
         experiment_name='benchmark_xla_8_gpu_fp16_dynamic',
         top_1_min=0.736,
         num_gpus=8,

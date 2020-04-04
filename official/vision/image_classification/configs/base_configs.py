@@ -117,13 +117,11 @@ class LossConfig(base_config.Config):
 
   Attributes:
     name: The name of the loss. Defaults to None.
-    loss_scale: The type of loss scale
     label_smoothing: Whether or not to apply label smoothing to the loss. This
       only applies to 'categorical_cross_entropy'.
 
   """
   name: str = None
-  loss_scale: str = None
   label_smoothing: float = None
 
 

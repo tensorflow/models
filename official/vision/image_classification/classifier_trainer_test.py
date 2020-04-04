@@ -340,8 +340,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
             dataset_num_private_threads=1,
         ),
         train_dataset=dataset_factory.DatasetConfig(dtype=dtype),
-        model=base_configs.ModelConfig(
-            loss=base_configs.LossConfig(loss_scale='dynamic')),
+        model=base_configs.ModelConfig(),
     )
 
     class EmptyClass:
