@@ -128,7 +128,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     eval_metrics = run_squad.eval_squad(strategy=strategy,
                                         input_meta_data=input_meta_data)
     # Use F1 score as reported evaluation metric.
-    self.eval_metrics = eval_metrics['f1']
+    self.eval_metrics = eval_metrics['final_f1']
 
 
 class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
