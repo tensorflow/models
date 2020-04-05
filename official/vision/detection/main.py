@@ -251,6 +251,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
-  assert tf.version.VERSION.startswith('2.')
   tf.config.set_soft_device_placement(True)
   app.run(main)

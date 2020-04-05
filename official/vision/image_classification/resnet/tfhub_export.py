@@ -59,7 +59,7 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
 
-  assert tf.version.VERSION.startswith('2.')
+  tf.enable_v2_behavior()
   export_tfhub(FLAGS.model_path, FLAGS.export_path)
 
 
