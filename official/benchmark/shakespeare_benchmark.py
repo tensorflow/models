@@ -29,7 +29,7 @@ from official.utils.misc import keras_utils
 from official.utils.testing import benchmark_wrappers
 from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
-SHAKESPEARE_TRAIN_DATA = '/placer/prod/home/tensorflow-performance-data/datasets/shakespeare/shakespeare.txt'
+SHAKESPEARE_TRAIN_DATA = 'shakespeare/shakespeare.txt'
 TMP_DIR = os.getenv('TMPDIR')
 FLAGS = flags.FLAGS
 
