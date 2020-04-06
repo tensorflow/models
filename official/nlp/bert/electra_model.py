@@ -178,7 +178,6 @@ def pretrain_model(electra_config,
       dtype=tf.int32)
   next_sentence_labels = tf.keras.layers.Input(
       shape=(1,), name='next_sentence_labels', dtype=tf.int32)
-
   gen_encoder = get_transformer_encoder(electraconfigs.ElectraConfig.get_generator_bert(electra_config), seq_length)
   discrim_encoder = get_transformer_encoder(electraconfigs.ElectraConfig.get_discriminator_bert(electra_config), seq_length)
   if initializer is None:

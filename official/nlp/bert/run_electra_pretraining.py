@@ -97,7 +97,6 @@ def run_customized_training(strategy,
                             input_files,
                             train_batch_size):
   """Run BERT pretrain model training using low-level API."""
-
   train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
                                            max_predictions_per_seq,
                                            train_batch_size)
@@ -124,7 +123,7 @@ def run_customized_training(strategy,
       steps_per_epoch=steps_per_epoch,
       steps_per_loop=steps_per_loop,
       epochs=epochs,
-      sub_model_export_name='pretrained/bert_model')
+      sub_model_export_name='pretrained/electra_model')
 
   return trained_model
 
@@ -141,7 +140,6 @@ def run_electra_pretrain(strategy):
                'strategy.')
 
   performance.set_mixed_precision_policy(common_flags.dtype())
-
   return run_customized_training(
       strategy,
       electra_config,

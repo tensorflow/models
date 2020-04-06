@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import copy
 import tensorflow as tf
-
+import sys
 from official.nlp.modeling import networks
 from official.modeling import tf_utils
 
@@ -76,7 +76,6 @@ class ElectraPretrainer(tf.keras.Model):
     # because we'll be adding another tensor to the copy later.)
     network_inputs = network.inputs
     inputs = copy.copy(network_inputs)
-
     # Because we have a copy of inputs to create this Model object, we can
     # invoke the Network object with its own input tensors to start the Model.
     # Note that, because of how deferred construction happens, we can't use
@@ -104,7 +103,7 @@ class ElectraPretrainer(tf.keras.Model):
         initializer=initializer,
         output='logits',
         name='generator')
-    lm_outputs = self.masked_lm([sequence_output, masked_lm_positions])
+    lm_outputs = tf.identity(self.masked_lm([sequence_output, masked_lm_positions]), "mlm_logits")
     fake_data, labels = _get_fake_data(inputs[0], lm_outputs, masked_lm_positions)
     other_output, other_cls_output = discriminator([fake_data, inputs[1], inputs[2]])
     self.discrimnator = networks.Discriminator(
@@ -138,8 +137,11 @@ def _scatter_update(og, maskedlm_ids, tokids):
         og, name='input_word_ids')
     B, L = sequence_shape
     N = maskedlm_ids.shape[1]
-    shift = L * tf.range(B)
-    flat_positions = tf.reshape(maskedlm_ids + shift, [-1,1])
+    shift = tf.reshape(tf.range(0, B, dtype=tf.int32) * L, [-1, 1])
+    print("discrim outputs")
+    print(shift)
+    print(maskedlm_ids)
+    flat_positions = tf.reshape(maskedlm_ids+shift, [-1, 1])
     flat_updates = tf.reshape(tokids, [-1])
     updates = tf.scatter_nd(flat_positions, flat_updates, [B * L])
     updates = tf.reshape(updates, [B, L])
@@ -151,8 +153,7 @@ def _scatter_update(og, maskedlm_ids, tokids):
                                  tf.ones((B, L - 1), tf.int32, name="otherones")], -1)
     updates_mask *= not_first_token
     updates = tf.math.floordiv(updates, tf.maximum(1, updates_mask))
-    updates_mask = tf.minimum(updates_mask, 1)
-
+    updates_mask = tf.minimum(updates_mask, 1, name = 'updates_mask')
     updated_sequence = (((1 - updates_mask) * og) +
                         (updates_mask * updates))
     return updated_sequence, updates_mask
