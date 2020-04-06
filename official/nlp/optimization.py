@@ -174,7 +174,11 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
     return super(AdamWeightDecay, self).apply_gradients(
         zip(grads, tvars),
         name=name,
+<<<<<<< HEAD
         experimental_aggregate_gradients=experimental_aggregate_gradients)
+=======
+        experimental_aggregate_gradients=all_reduce_sum_gradients)
+>>>>>>> finally made it work
 
   def _get_lr(self, var_device, var_dtype, apply_state):
     """Retrieves the learning rate with the given state."""
