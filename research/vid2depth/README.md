@@ -89,7 +89,7 @@ cd tensorflow/models/research/vid2depth
 python inference.py \
   --kitti_dir ~/vid2depth/kitti-raw-uncompressed \
   --output_dir ~/vid2depth/inference \
-  --video 2011_09_26/2011_09_26_drive_0009_sync \
+  --kitti_video 2011_09_26/2011_09_26_drive_0009_sync \
   --model_ckpt ~/vid2depth/trained-model/model-119496
 ```
 
