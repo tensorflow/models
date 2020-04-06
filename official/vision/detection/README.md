@@ -1,17 +1,17 @@
 # Object Detection Models on TensorFlow 2
 
-**Note**: The repo is still under construction. More features and instructions
-will be added soon.
+**Note**: This repository is still under construction.
+More features and instructions will be added soon.
 
 ## Prerequsite
-To get started, download the code from TensorFlow models github repository or
+To get started, download the code from TensorFlow models GitHub repository or
 use the pre-installed Google Cloud VM.
 
 ```bash
 git clone https://github.com/tensorflow/models.git
 ```
 
-Next, make sure to use Tensorflow 2.1+ on Google Cloud. Also here are
+Next, make sure to use TensorFlow 2.1+ on Google Cloud. Also here are
 a few package you need to install to get started:
 
 ```bash
@@ -20,6 +20,7 @@ pip3 install -r ~/models/official/requirements.txt
 ```
 
 ## Train RetinaNet on TPU
+
 ### Train a vanilla ResNet-50 based RetinaNet.
 
 ```bash
@@ -85,7 +86,6 @@ python3 ~/models/official/vision/detection/main.py \
   --config_file="my_retinanet.yaml"
 ```
 
-
 ```bash
 MODEL_DIR="<path to the directory to store model files>"
 python3 ~/models/official/vision/detection/main.py \
@@ -122,8 +122,11 @@ use_tpu: False
 "
 ```
 
-## Train Mask-RCNN on TPU
-### Train a vanilla ResNet-50 based Mask-RCNN.
+---
+
+## Train Mask R-CNN on TPU
+
+### Train a vanilla ResNet-50 based Mask R-CNN.
 
 ```bash
 TPU_NAME="<your GCP TPU name>"
@@ -141,11 +144,11 @@ python3 ~/models/official/vision/detection/main.py \
   --params_override="{train: { checkpoint: { path: ${RESNET_CHECKPOINT}, prefix: resnet50/ }, train_file_pattern: ${TRAIN_FILE_PATTERN} }, eval: { val_json_file: ${VAL_JSON_FILE}, eval_file_pattern: ${EVAL_FILE_PATTERN} } }"
 ```
 
-### Train a custom Mask-RCNN using the config file.
+### Train a custom Mask R-CNN using the config file.
 
-First, create a YAML config file, e.g. *my_maskrcnn.yaml*. This file specifies
-the parameters to be overridden, which should at least include the following
-fields.
+First, create a YAML config file, e.g. *my_maskrcnn.yaml*.
+This file specifies the parameters to be overridden,
+which should at least include the following fields.
 
 ```YAML
 # my_maskrcnn.yaml
@@ -171,7 +174,7 @@ python3 ~/models/official/vision/detection/main.py \
   --config_file="my_maskrcnn.yaml"
 ```
 
-## Train Mask-RCNN on GPU
+## Train Mask R-CNN on GPU
 
 Training on GPU is similar to that on TPU. The major change is the strategy type
 (use
@@ -192,7 +195,6 @@ python3 ~/models/official/vision/detection/main.py \
   --model=mask_rcnn \
   --config_file="my_maskrcnn.yaml"
 ```
-
 
 ```bash
 MODEL_DIR="<path to the directory to store model files>"
