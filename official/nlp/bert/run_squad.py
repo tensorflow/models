@@ -47,11 +47,13 @@ FLAGS = flags.FLAGS
 def train_squad(strategy,
                 input_meta_data,
                 custom_callbacks=None,
-                run_eagerly=False):
+                run_eagerly=False,
+                init_checkpoint=None):
   """Run bert squad training."""
   bert_config = bert_configs.BertConfig.from_json_file(FLAGS.bert_config_file)
+  init_checkpoint = init_checkpoint or FLAGS.init_checkpoint
   run_squad_helper.train_squad(strategy, input_meta_data, bert_config,
-                               custom_callbacks, run_eagerly)
+                               custom_callbacks, run_eagerly, init_checkpoint)
 
 
 def predict_squad(strategy, input_meta_data):
