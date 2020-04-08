@@ -58,6 +58,7 @@ class MaskedLM(network.Network):
 
     sequence_data = tf.keras.layers.Input(
         shape=(None, input_width), name='sequence_data', dtype=tf.float32)
+
     masked_lm_positions = tf.keras.layers.Input(
         shape=(num_predictions,), name='masked_lm_positions', dtype=tf.int32)
 
@@ -133,14 +134,15 @@ class MaskedLM(network.Network):
     sequence_shape = tf_utils.get_shape_list(
         sequence_tensor, name='sequence_output_tensor')
     batch_size, seq_length, width = sequence_shape
-
     flat_offsets = tf.reshape(
         tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])
+    print("masked_lm_model tensors")
+    print(sequence_tensor)
+    print(flat_offsets)
     flat_positions = tf.reshape(positions + flat_offsets, [-1])
     flat_sequence_tensor = tf.reshape(sequence_tensor,
                                       [batch_size * seq_length, width])
     output_tensor = tf.gather(flat_sequence_tensor, flat_positions)
-
     return output_tensor
 
 

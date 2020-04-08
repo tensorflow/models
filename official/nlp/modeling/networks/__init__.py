@@ -19,3 +19,4 @@ from official.nlp.modeling.networks.encoder_scaffold import EncoderScaffold
 from official.nlp.modeling.networks.masked_lm import MaskedLM
 from official.nlp.modeling.networks.span_labeling import SpanLabeling
 from official.nlp.modeling.networks.transformer_encoder import TransformerEncoder
+from official.nlp.modeling.networks.discrim_head import Discriminator
