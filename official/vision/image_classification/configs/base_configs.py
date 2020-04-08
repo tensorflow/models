@@ -82,6 +82,8 @@ class TrainConfig(base_config.Config):
     callbacks: An instance of CallbacksConfig.
     metrics: An instance of MetricsConfig.
     tensorboard: An instance of TensorboardConfig.
+    steps_per_loop: The number of batches to run during each `tf.function`
+      call during training, which can increase training speed.
 
   """
   resume_checkpoint: bool = None
@@ -91,6 +93,7 @@ class TrainConfig(base_config.Config):
   metrics: MetricsConfig = None
   tensorboard: TensorboardConfig = TensorboardConfig()
   time_history: TimeHistoryConfig = TimeHistoryConfig()
+  steps_per_loop: int = None
 
 
 @dataclasses.dataclass
@@ -176,6 +179,7 @@ class LearningRateConfig(base_config.Config):
     multipliers: multipliers used in piecewise constant decay with warmup.
     scale_by_batch_size: Scale the learning rate by a fraction of the batch
       size. Set to 0 for no scaling (default).
+    staircase: Apply exponential decay at discrete values instead of continuous.
 
   """
   name: str = None
@@ -187,6 +191,7 @@ class LearningRateConfig(base_config.Config):
   boundaries: List[int] = None
   multipliers: List[float] = None
   scale_by_batch_size: float = 0.
+  staircase: bool = None
 
 
 @dataclasses.dataclass

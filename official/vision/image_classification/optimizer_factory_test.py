@@ -35,9 +35,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
       ('adam', 'adam', 0., False),
       ('adamw', 'adamw', 0., False),
       ('momentum_lookahead', 'momentum', 0., True),
-      ('sgd_ema', 'sgd', 0.001, False),
-      ('momentum_ema', 'momentum', 0.001, False),
-      ('rmsprop_ema', 'rmsprop', 0.001, False))
+      ('sgd_ema', 'sgd', 0.999, False),
+      ('momentum_ema', 'momentum', 0.999, False),
+      ('rmsprop_ema', 'rmsprop', 0.999, False))
   def test_optimizer(self, optimizer_name, moving_average_decay, lookahead):
     """Smoke test to be sure no syntax errors."""
     params = {

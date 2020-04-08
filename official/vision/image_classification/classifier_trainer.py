@@ -360,18 +360,18 @@ def train_and_eval(
                                              model_dir=params.model_dir,
                                              train_steps=train_steps)
 
+    callbacks = custom_callbacks.get_callbacks(
+        model_checkpoint=params.train.callbacks.enable_checkpoint_and_export,
+        include_tensorboard=params.train.callbacks.enable_tensorboard,
+        time_history=params.train.callbacks.enable_time_history,
+        track_lr=params.train.tensorboard.track_lr,
+        write_model_weights=params.train.tensorboard.write_model_weights,
+        initial_step=initial_epoch * train_steps,
+        batch_size=train_builder.global_batch_size,
+        log_steps=params.train.time_history.log_steps,
+        model_dir=params.model_dir)
+
   serialize_config(params=params, model_dir=params.model_dir)
-  # TODO(dankondratyuk): callbacks significantly slow down training
-  callbacks = custom_callbacks.get_callbacks(
-      model_checkpoint=params.train.callbacks.enable_checkpoint_and_export,
-      include_tensorboard=params.train.callbacks.enable_tensorboard,
-      time_history=params.train.callbacks.enable_time_history,
-      track_lr=params.train.tensorboard.track_lr,
-      write_model_weights=params.train.tensorboard.write_model_weights,
-      initial_step=initial_epoch * train_steps,
-      batch_size=train_builder.global_batch_size,
-      log_steps=params.train.time_history.log_steps,
-      model_dir=params.model_dir)
 
   if params.evaluation.skip_eval:
     validation_kwargs = {}
@@ -388,7 +388,9 @@ def train_and_eval(
       steps_per_epoch=train_steps,
       initial_epoch=initial_epoch,
       callbacks=callbacks,
-      **validation_kwargs)
+      **validation_kwargs,
+      experimental_steps_per_execution=params.train.steps_per_loop,
+      verbose=2)
 
   validation_output = None
   if not params.evaluation.skip_eval:

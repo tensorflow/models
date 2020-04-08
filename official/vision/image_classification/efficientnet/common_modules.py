@@ -19,15 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-
-import tensorflow.compat.v1 as tf1
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
 from typing import Text, Optional
 
 from tensorflow.python.tpu import tpu_function
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class TpuBatchNormalization(tf.keras.layers.BatchNormalization):
   """Cross replica batch normalization."""
 

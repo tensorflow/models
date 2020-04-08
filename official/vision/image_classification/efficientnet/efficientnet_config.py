@@ -72,4 +72,5 @@ class EfficientNetModelConfig(base_configs.ModelConfig):
       decay_epochs=2.4,
       decay_rate=0.97,
       warmup_epochs=5,
-      scale_by_batch_size=1. / 128.)
+      scale_by_batch_size=1. / 128.,
+      staircase=True)

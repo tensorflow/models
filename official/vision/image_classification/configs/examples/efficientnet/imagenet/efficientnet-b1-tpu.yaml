@@ -38,6 +38,8 @@ model:
     name: 'rmsprop'
     momentum: 0.9
     decay: 0.9
+    moving_average_decay: 0.0
+    lookahead: false
   learning_rate:
     name: 'exponential'
   loss:
