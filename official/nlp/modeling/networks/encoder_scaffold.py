@@ -51,8 +51,8 @@ class EncoderScaffold(network.Network):
   instantiated.
 
   Arguments:
-    num_output_classes: The output size of the classification layer.
-    classification_layer_initializer: The initializer for the classification
+    pooled_output_dim: The dimension of pooled output.
+    pooler_layer_initializer: The initializer for the classification
       layer.
     embedding_cls: The class or instance to use to embed the input data. This
       class or instance defines the inputs to this encoder. If embedding_cls is
@@ -90,8 +90,8 @@ class EncoderScaffold(network.Network):
 
   def __init__(
       self,
-      num_output_classes,
-      classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+      pooled_output_dim,
+      pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=0.02),
       embedding_cls=None,
       embedding_cfg=None,
@@ -104,8 +104,8 @@ class EncoderScaffold(network.Network):
     self._hidden_cls = hidden_cls
     self._hidden_cfg = hidden_cfg
     self._num_hidden_instances = num_hidden_instances
-    self._num_output_classes = num_output_classes
-    self._classification_layer_initializer = classification_layer_initializer
+    self._pooled_output_dim = pooled_output_dim
+    self._pooler_layer_initializer = pooler_layer_initializer
     self._embedding_cls = embedding_cls
     self._embedding_cfg = embedding_cfg
     self._embedding_data = embedding_data
@@ -184,9 +184,9 @@ class EncoderScaffold(network.Network):
         tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(data)
     )
     cls_output = tf.keras.layers.Dense(
-        units=num_output_classes,
+        units=pooled_output_dim,
         activation='tanh',
-        kernel_initializer=classification_layer_initializer,
+        kernel_initializer=pooler_layer_initializer,
         name='cls_transform')(
             first_token_tensor)
 
@@ -197,10 +197,10 @@ class EncoderScaffold(network.Network):
     config_dict = {
         'num_hidden_instances':
             self._num_hidden_instances,
-        'num_output_classes':
-            self._num_output_classes,
-        'classification_layer_initializer':
-            self._classification_layer_initializer,
+        'pooled_output_dim':
+            self._pooled_output_dim,
+        'pooler_layer_initializer':
+            self._pooler_layer_initializer,
         'embedding_cls':
             self._embedding_network,
         'embedding_cfg':
