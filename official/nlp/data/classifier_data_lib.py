@@ -578,6 +578,7 @@ def file_based_convert_examples_to_features(examples, label_list,
                                             output_file):
   """Convert a set of `InputExample`s to a TFRecord file."""
 
+  tf.io.gfile.makedirs(os.path.dirname(output_file))
   writer = tf.io.TFRecordWriter(output_file)
 
   for (ex_index, example) in enumerate(examples):
