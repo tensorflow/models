@@ -22,12 +22,11 @@ import time
 
 from absl import flags
 import tensorflow as tf
-
+from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.nlp.transformer import misc
 from official.nlp.transformer import transformer_main as transformer_main
 from official.utils.flags import core as flags_core
 from official.utils.testing import benchmark_wrappers
-from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 TRANSFORMER_EN2DE_DATA_DIR_NAME = 'wmt32k-en2de-official'
 EN2DE_2014_BLEU_DATA_DIR_NAME = 'newstest2014'

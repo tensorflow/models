@@ -27,7 +27,7 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
-from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
+from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 
 FLAGS = flags.FLAGS
 

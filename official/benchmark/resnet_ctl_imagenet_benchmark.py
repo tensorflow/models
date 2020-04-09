@@ -24,7 +24,7 @@ import tensorflow as tf
 
 from official.vision.image_classification.resnet import common
 from official.vision.image_classification.resnet import resnet_ctl_imagenet_main
-from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
+from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.utils.testing import benchmark_wrappers
 from official.utils.flags import core as flags_core
 
