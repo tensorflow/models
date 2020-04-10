@@ -63,6 +63,10 @@ def define_common_bert_flags():
       'inside.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
+  flags.DEFINE_float('end_lr', 0.0,
+                     'The end learning rate for learning rate decay.')
+  flags.DEFINE_string('optimizer_type', 'adamw',
+                      'The type of optimizer to use for training (adamw|lamb)')
   flags.DEFINE_boolean(
       'scale_loss', False,
       'Whether to divide the loss by number of replica inside the per-replica '
@@ -76,8 +80,6 @@ def define_common_bert_flags():
       'If specified, init_checkpoint flag should not be used.')
   flags.DEFINE_bool('hub_module_trainable', True,
                     'True to make keras layers in the hub module trainable.')
-  flags.DEFINE_string('optimizer_type', 'adamw',
-                      'The type of optimizer to use for training (adamw|lamb)')
 
   flags_core.define_log_steps()
 

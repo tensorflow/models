@@ -92,6 +92,8 @@ def run_customized_training(strategy,
                             epochs,
                             initial_lr,
                             warmup_steps,
+                            end_lr,
+                            optimizer_type,
                             input_files,
                             train_batch_size):
   """Run BERT pretrain model training using low-level API."""
@@ -106,7 +108,7 @@ def run_customized_training(strategy,
         bert_config, max_seq_length, max_predictions_per_seq)
     optimizer = optimization.create_optimizer(
         initial_lr, steps_per_epoch * epochs, warmup_steps,
-        FLAGS.optimizer_type)
+        end_lr, optimizer_type)
     pretrain_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),
@@ -152,6 +154,8 @@ def run_bert_pretrain(strategy):
       FLAGS.num_train_epochs,
       FLAGS.learning_rate,
       FLAGS.warmup_steps,
+      FLAGS.end_lr,
+      FLAGS.optimizer_type,
       FLAGS.input_files,
       FLAGS.train_batch_size)
 
