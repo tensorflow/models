@@ -98,7 +98,6 @@ def run(flags_obj):
 
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
-    distribution_utils.set_up_synthetic_data()
     input_fn = common.get_synth_input_fn(
         height=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
         width=imagenet_preprocessing.DEFAULT_IMAGE_SIZE,
@@ -107,7 +106,6 @@ def run(flags_obj):
         dtype=dtype,
         drop_remainder=True)
   else:
-    distribution_utils.undo_set_up_synthetic_data()
     input_fn = imagenet_preprocessing.input_fn
 
   # When `enable_xla` is True, we always drop the remainder of the batches
