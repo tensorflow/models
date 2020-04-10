@@ -421,6 +421,19 @@ class DistributedExecutor(object):
       self.global_train_step = model.optimizer.iterations
       test_step = self._create_test_step(strategy, model, metric=eval_metric)
 
+    # Step-0 operations
+    _save_checkpoint(
+        checkpoint, model_dir, checkpoint_name.format(step=current_step))
+    if test_step:
+      eval_iterator = self._get_input_iterator(eval_input_fn, strategy)
+      eval_metric_result = self._run_evaluation(
+          test_step, current_step, eval_metric, eval_iterator)
+      logging.info(
+          'Step: %s evalation metric = %s.', current_step, eval_metric_result)
+      test_summary_writer(
+          metrics=eval_metric_result, step=optimizer.iterations)
+      eval_metric.reset_states()
+
     logging.info('Training started')
     last_save_checkpoint_step = current_step
     while current_step < total_steps:
