@@ -233,7 +233,6 @@ def initialize(params: base_configs.ExperimentConfig,
                dataset_builder: dataset_factory.DatasetBuilder):
   """Initializes backend related initializations."""
   keras_utils.set_session_config(
-      enable_eager=params.runtime.run_eagerly,
       enable_xla=params.runtime.enable_xla)
   if params.runtime.gpu_threads_enabled:
     keras_utils.set_gpu_thread_mode_and_count(
