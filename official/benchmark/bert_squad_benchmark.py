@@ -252,7 +252,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad')
-    FLAGS.train_batch_size = 32
+    FLAGS.train_batch_size = 24
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
 
     self._run_and_report_benchmark()
