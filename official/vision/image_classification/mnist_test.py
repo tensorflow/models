@@ -22,7 +22,6 @@ import functools
 
 from absl.testing import parameterized
 import tensorflow as tf
-import tensorflow_datasets as tfds
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
