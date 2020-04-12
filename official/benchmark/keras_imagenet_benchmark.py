@@ -14,6 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Executes Keras benchmarks and accuracy tests."""
+# pylint: disable=line-too-long
 from __future__ import print_function
 
 import json
@@ -266,7 +267,6 @@ class Resnet50KerasClassifierAccuracy(keras_benchmark.KerasBenchmark):
       dataset_num_private_threads: Optional[int] = None,
       loss_scale: Optional[str] = None):
     """Runs and reports the benchmark given the provided configuration."""
-    self._setup()
     FLAGS.model_type = 'resnet'
     FLAGS.dataset = 'imagenet'
     FLAGS.mode = 'train_and_eval'
@@ -449,7 +449,6 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
       dataset_num_private_threads: Optional[int] = None,
       loss_scale: Optional[str] = None):
     """Runs and reports the benchmark given the provided configuration."""
-    self._setup()
     FLAGS.model_type = 'resnet'
     FLAGS.dataset = 'imagenet'
     FLAGS.mode = 'train_and_eval'
@@ -490,6 +489,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_1_gpu_no_dist_strat(self):
     """Tests Keras model with 1 GPU, no distribution strategy."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_1_gpu_no_dist_strat',
         num_gpus=1,
@@ -498,6 +498,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_1_gpu_no_dist_strat_run_eagerly(self):
     """Tests Keras model with 1 GPU, no distribution strategy, run eagerly."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_1_gpu_no_dist_strat_run_eagerly',
         num_gpus=1,
@@ -507,6 +508,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_1_gpu_no_dist_strat_run_eagerly_fp16(self):
     """Tests with 1 GPU, no distribution strategy, fp16, run eagerly."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_1_gpu_no_dist_strat_run_eagerly_fp16',
         num_gpus=1,
@@ -517,6 +519,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_1_gpu(self):
     """Tests Keras model with 1 GPU."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_1_gpu',
         num_gpus=1,
@@ -525,16 +528,17 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_1_gpu(self):
     """Tests Keras model with XLA and 1 GPU."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_1_gpu',
         num_gpus=1,
         enable_xla=True,
         distribution_strategy='one_device',
         per_replica_batch_size=128)
-    self._setup()
 
   def benchmark_1_gpu_fp16(self):
     """Tests Keras model with 1 GPU and fp16."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_1_gpu_fp16',
         num_gpus=1,
@@ -544,6 +548,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_1_gpu_fp16_dynamic(self):
     """Tests Keras model with 1 GPU, fp16, and dynamic loss scaling."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_1_gpu_fp16_dynamic',
         num_gpus=1,
@@ -554,6 +559,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_1_gpu_fp16(self):
     """Tests Keras model with XLA, 1 GPU and fp16."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_1_gpu_fp16',
         num_gpus=1,
@@ -564,6 +570,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_1_gpu_fp16_tweaked(self):
     """Tests Keras model with XLA, 1 GPU, fp16, and manual config tuning."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_1_gpu_fp16_tweaked',
         num_gpus=1,
@@ -575,6 +582,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_1_gpu_fp16_dynamic(self):
     """Tests Keras model with XLA, 1 GPU, fp16, and dynamic loss scaling."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_1_gpu_fp16_dynamic',
         num_gpus=1,
@@ -586,6 +594,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_graph_1_gpu(self):
     """Tests Keras model in legacy graph mode with 1 GPU."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_graph_1_gpu',
         num_gpus=1,
@@ -594,6 +603,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_graph_xla_1_gpu(self):
     """Tests Keras model in legacy graph mode with XLA and 1 GPU."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_graph_xla_1_gpu',
         num_gpus=1,
@@ -603,6 +613,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_8_gpu(self):
     """Tests Keras model with 8 GPUs."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_8_gpu',
         num_gpus=8,
@@ -611,6 +622,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_8_gpu_tweaked(self):
     """Tests Keras model with manual config tuning and 8 GPUs."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_8_gpu_tweaked',
         num_gpus=8,
@@ -620,6 +632,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_8_gpu(self):
     """Tests Keras model with XLA and 8 GPUs."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_8_gpu',
         num_gpus=8,
@@ -629,6 +642,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_8_gpu_tweaked(self):
     """Tests Keras model with manual config tuning, 8 GPUs, and XLA."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_8_gpu_tweaked',
         num_gpus=8,
@@ -640,6 +654,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_8_gpu_fp16(self):
     """Tests Keras model with 8 GPUs and fp16."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_8_gpu_fp16',
         num_gpus=8,
@@ -649,6 +664,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_8_gpu_fp16_tweaked(self):
     """Tests Keras model with 8 GPUs, fp16, and manual config tuning."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_8_gpu_fp16_tweaked',
         num_gpus=8,
@@ -659,6 +675,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_8_gpu_fp16_dynamic_tweaked(self):
     """Tests Keras model with 8 GPUs, fp16, dynamic loss scaling, and tuned."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_8_gpu_fp16_dynamic_tweaked',
         num_gpus=8,
@@ -670,6 +687,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_8_gpu_fp16(self):
     """Tests Keras model with XLA, 8 GPUs and fp16."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_8_gpu_fp16',
         dtype='float16',
@@ -680,6 +698,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_8_gpu_fp16_tweaked(self):
     """Test Keras model with manual config tuning, XLA, 8 GPUs and fp16."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_8_gpu_fp16_tweaked',
         dtype='float16',
@@ -695,6 +714,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
     Delay performance measurement for stable performance on 96 vCPU platforms.
     """
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_8_gpu_fp16_tweaked_delay_measure',
         dtype='float16',
@@ -707,6 +727,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_xla_8_gpu_fp16_dynamic_tweaked(self):
     """Tests Keras model with config tuning, XLA, 8 GPUs and dynamic fp16."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_xla_8_gpu_fp16_dynamic_tweaked',
         dtype='float16',
@@ -720,6 +741,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_graph_8_gpu(self):
     """Tests Keras model in legacy graph mode with 8 GPUs."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_graph_8_gpu',
         num_gpus=8,
@@ -728,6 +750,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_graph_xla_8_gpu(self):
     """Tests Keras model in legacy graph mode with XLA and 8 GPUs."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_graph_xla_8_gpu',
         num_gpus=8,
@@ -737,6 +760,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_2x2_tpu_fp16(self):
     """Test Keras model with 2x2 TPU, fp16."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_2x2_tpu_fp16',
         dtype='bfloat16',
@@ -745,6 +769,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
 
   def benchmark_4x4_tpu_fp16(self):
     """Test Keras model with 4x4 TPU, fp16."""
+    self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_4x4_tpu_fp16',
         dtype='bfloat16',
@@ -1395,8 +1420,7 @@ class Resnet50KerasBenchmarkReal(Resnet50KerasClassifierBenchmarkBase):
   """Resnet50 real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, tpu=None, **kwargs):
-    data_dir = ('/readahead/200M/placer/prod/home/distbelief/'
-                'imagenet-tensorflow/imagenet-2012-tfrecord')
+    data_dir = os.path.join(root_data_dir, 'imagenet')
     def_flags = {}
     def_flags['log_steps'] = 10
 

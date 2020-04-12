@@ -13,12 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 """Executes CTL benchmarks and accuracy tests."""
+# pylint: disable=line-too-long,g-bad-import-order
 from __future__ import print_function
 
 import os
 import time
 
-# pylint: disable=g-bad-import-order
 from absl import flags
 import tensorflow as tf
 
