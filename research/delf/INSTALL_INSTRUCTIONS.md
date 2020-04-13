@@ -8,9 +8,9 @@ Tensorflow using one of the following commands:
 
 ```bash
 # For CPU:
-pip install tensorflow
+pip install 'tensorflow==1.14'
 # For GPU:
-pip install tensorflow-gpu
+pip install 'tensorflow-gpu==1.14'
 ```
 
 ### Protobuf
