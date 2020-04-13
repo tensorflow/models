@@ -59,7 +59,8 @@ def create_pretrain_dataset(input_patterns,
                             max_predictions_per_seq,
                             batch_size,
                             is_training=True,
-                            input_pipeline_context=None):
+                            input_pipeline_context=None,
+                            use_next_sentence_label=True):
   """Creates input dataset from (tf)records files for pretraining."""
   name_to_features = {
       'input_ids':
@@ -74,9 +75,10 @@ def create_pretrain_dataset(input_patterns,
           tf.io.FixedLenFeature([max_predictions_per_seq], tf.int64),
       'masked_lm_weights':
           tf.io.FixedLenFeature([max_predictions_per_seq], tf.float32),
-      'next_sentence_labels':
-          tf.io.FixedLenFeature([1], tf.int64),
   }
+  if use_next_sentence_label:
+    name_to_features['next_sentence_labels'] = tf.io.FixedLenFeature([1],
+                                                                     tf.int64)
 
   for input_pattern in input_patterns:
     if not tf.io.gfile.glob(input_pattern):
@@ -118,8 +120,9 @@ def create_pretrain_dataset(input_patterns,
         'masked_lm_positions': record['masked_lm_positions'],
         'masked_lm_ids': record['masked_lm_ids'],
         'masked_lm_weights': record['masked_lm_weights'],
-        'next_sentence_labels': record['next_sentence_labels'],
     }
+    if use_next_sentence_label:
+      x['next_sentence_labels'] = record['next_sentence_labels']
 
     y = record['masked_lm_weights']
 
