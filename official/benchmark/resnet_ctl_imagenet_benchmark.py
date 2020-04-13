@@ -288,7 +288,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = 'one_device'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_eager')
-    FLAGS.batch_size = 128
+    FLAGS.batch_size = 120
     FLAGS.use_tf_function = False
     FLAGS.use_tf_while_loop = False
     FLAGS.single_l2_loss_op = True
