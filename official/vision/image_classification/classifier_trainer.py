@@ -234,7 +234,7 @@ def initialize(params: base_configs.ExperimentConfig,
   """Initializes backend related initializations."""
   keras_utils.set_session_config(
       enable_xla=params.runtime.enable_xla)
-  if params.runtime.gpu_threads_enabled:
+  if params.runtime.gpu_thread_mode:
     keras_utils.set_gpu_thread_mode_and_count(
         per_gpu_thread_count=params.runtime.per_gpu_thread_count,
         gpu_thread_mode=params.runtime.gpu_thread_mode,

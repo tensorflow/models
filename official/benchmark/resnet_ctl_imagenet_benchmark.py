@@ -144,8 +144,6 @@ class Resnet50CtlAccuracy(CtlBenchmark):
     FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
     FLAGS.dtype = 'fp32'
-    # Add some thread tunings to improve performance.
-    FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16(self):
@@ -158,8 +156,6 @@ class Resnet50CtlAccuracy(CtlBenchmark):
     FLAGS.epochs_between_evals = 10
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
     FLAGS.dtype = 'fp16'
-    # Add some thread tunings to improve performance.
-    FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_amp(self):
@@ -173,8 +169,6 @@ class Resnet50CtlAccuracy(CtlBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
-    # Add some thread tunings to improve performance.
-    FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
   @benchmark_wrappers.enable_runtime_flags

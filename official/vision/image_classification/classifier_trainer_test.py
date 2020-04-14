@@ -320,7 +320,6 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
         runtime=base_configs.RuntimeConfig(
             run_eagerly=False,
             enable_xla=False,
-            gpu_threads_enabled=True,
             per_gpu_thread_count=1,
             gpu_thread_mode='gpu_private',
             num_gpus=1,

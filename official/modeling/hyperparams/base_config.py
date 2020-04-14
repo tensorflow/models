@@ -259,7 +259,6 @@ class RuntimeConfig(Config):
     distribution_strategy: e.g. 'mirrored', 'tpu', etc.
     enable_xla: Whether or not to enable XLA.
     per_gpu_thread_count: thread count per GPU.
-    gpu_threads_enabled: Whether or not GPU threads are enabled.
     gpu_thread_mode: Whether and how the GPU device uses its own threadpool.
     dataset_num_private_threads: Number of threads for a private threadpool
       created for all datasets computation.
@@ -278,7 +277,6 @@ class RuntimeConfig(Config):
   """
   distribution_strategy: str = 'mirrored'
   enable_xla: bool = False
-  gpu_threads_enabled: bool = False
   gpu_thread_mode: Optional[str] = None
   dataset_num_private_threads: Optional[int] = None
   per_gpu_thread_count: int = 0
