@@ -331,7 +331,7 @@ class DatasetManager(object):
       """Returns batches for training."""
 
       # Estimator passes batch_size during training and eval_batch_size during
-      # eval. TPUEstimator only passes batch_size.
+      # eval.
       param_batch_size = (params["batch_size"] if self._is_training else
                           params.get("eval_batch_size") or params["batch_size"])
       if batch_size != param_batch_size:
@@ -713,7 +713,7 @@ class DummyConstructor(threading.Thread):
       """Returns dummy input batches for training."""
 
       # Estimator passes batch_size during training and eval_batch_size during
-      # eval. TPUEstimator only passes batch_size.
+      # eval.
       batch_size = (params["batch_size"] if is_training else
                     params.get("eval_batch_size") or params["batch_size"])
       num_users = params["num_users"]

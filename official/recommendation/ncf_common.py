@@ -167,7 +167,7 @@ def define_ncf_flags():
       model_dir="/tmp/ncf/",
       data_dir="/tmp/movielens-data/",
       train_epochs=2,
-      batch_size=256,
+      batch_size=99000,
       hooks="ProfilerHook",
       tpu=None
   )
