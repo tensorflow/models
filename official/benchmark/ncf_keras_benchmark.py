@@ -24,11 +24,10 @@ from absl import flags
 from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
-
+from official.benchmark import benchmark_wrappers
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main
 from official.utils.flags import core
-from official.utils.testing import benchmark_wrappers
 
 FLAGS = flags.FLAGS
 NCF_DATA_DIR_NAME = 'movielens_data'

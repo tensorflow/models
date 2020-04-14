@@ -32,7 +32,7 @@ import tensorflow as tf
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.utils.flags import core as flags_core
-from official.utils.testing import benchmark_wrappers
+from official.benchmark import benchmark_wrappers
 from official.vision.detection import main as detection
 
 TMP_DIR = os.getenv('TMPDIR')

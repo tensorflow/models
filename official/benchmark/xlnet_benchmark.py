@@ -31,7 +31,7 @@ import tensorflow as tf
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.nlp.xlnet import run_classifier
 from official.nlp.xlnet import run_squad
-from official.utils.testing import benchmark_wrappers
+from official.benchmark import benchmark_wrappers
 
 
 # pylint: disable=line-too-long

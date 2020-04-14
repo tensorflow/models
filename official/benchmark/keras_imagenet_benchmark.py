@@ -26,8 +26,8 @@ from typing import Any, MutableMapping, Optional
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.benchmark import benchmark_wrappers
 from official.benchmark import keras_benchmark
-from official.utils.testing import benchmark_wrappers
 from official.vision.image_classification import classifier_trainer
 from official.vision.image_classification.resnet import resnet_imagenet_main
 
