@@ -46,35 +46,28 @@ class Discriminator(network.Network):
 
   def __init__(self,
                input_width,
-               num_predictions,
                source_network,
                activation=None,
                initializer='glorot_uniform',
-               output='logits',
                **kwargs):
 
     embedding_table = source_network.get_embedding_table()
     vocab_size, hidden_size = embedding_table.shape
 
     sequence_data = tf.keras.layers.Input(
-        shape=(None, input_width), name='sequence_data', dtype=tf.float32)
-    masked_lm_positions = tf.keras.layers.Input(
-        shape=(num_predictions,), name='input_masks', dtype=tf.int32)
+        shape=(None, input_width), name='encoder_output', dtype=tf.float32)
 
-    masked_lm_input = tf.keras.layers.Lambda(
-        lambda x: self._gather_indexes(x[0], x[1]))(
-            [sequence_data, masked_lm_positions])
     lm_data = (
         tf.keras.layers.Dense(
             hidden_size,
             activation=activation,
             kernel_initializer=initializer,
-            name='cls/predictions/transform/dense')(masked_lm_input))
+            name='cls/predictions/transform/discrimdense')(sequence_data))
     self.logits = tf.squeeze(tf.keras.layers.Dense(1)(lm_data), axis=-1)
 
     output_tensors = self.logits
     super(Discriminator, self).__init__(
-        inputs=[sequence_data, masked_lm_positions],
+        inputs=[sequence_data],
         outputs=output_tensors,
         **kwargs)
 
