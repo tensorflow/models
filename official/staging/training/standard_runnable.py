@@ -139,13 +139,10 @@ class StandardEvaluable(runnable.AbstractEvaluable):
         eval_fn = tf.function(eval_fn)
       self.eval_loop_fn = utils.create_loop_fn(eval_fn)
 
-    # TODO(b/147718615): When async RPC is enabled in eager runtime, we make
-    # eval iterator as a class member so it doesn't get destroyed when out of
-    # the function scope.
-    self.eval_iter = tf.nest.map_structure(iter, self.eval_dataset)
+    eval_iter = tf.nest.map_structure(iter, self.eval_dataset)
 
     self.eval_begin()
-    self.eval_loop_fn(self.eval_iter, num_steps)
+    self.eval_loop_fn(eval_iter, num_steps)
     return self.eval_end()
 
   def eval_begin(self):

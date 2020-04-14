@@ -106,10 +106,6 @@ RETINANET_CFG = {
     },
     'resnet': {
         'resnet_depth': 50,
-        'dropblock': {
-            'dropblock_keep_prob': None,
-            'dropblock_size': None,
-        },
         'batch_norm': {
             'batch_norm_momentum': 0.997,
             'batch_norm_epsilon': 1e-4,
@@ -122,22 +118,6 @@ RETINANET_CFG = {
         'fpn_feat_dims': 256,
         'use_separable_conv': False,
         'use_batch_norm': True,
-        'batch_norm': {
-            'batch_norm_momentum': 0.997,
-            'batch_norm_epsilon': 1e-4,
-            'batch_norm_trainable': True,
-        },
-    },
-    'nasfpn': {
-        'min_level': 3,
-        'max_level': 7,
-        'fpn_feat_dims': 256,
-        'num_repeats': 5,
-        'use_separable_conv': False,
-        'dropblock': {
-            'dropblock_keep_prob': None,
-            'dropblock_size': None,
-        },
         'batch_norm': {
             'batch_norm_momentum': 0.997,
             'batch_norm_epsilon': 1e-4,

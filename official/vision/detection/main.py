@@ -35,10 +35,12 @@ from official.vision.detection.dataloader import input_reader
 from official.vision.detection.dataloader import mode_keys as ModeKeys
 from official.vision.detection.executor.detection_executor import DetectionDistributedExecutor
 from official.vision.detection.modeling import factory as model_factory
+from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 hyperparams_flags.initialize_common_flags()
+flags_core.define_log_steps()
 
 flags.DEFINE_bool(
     'enable_xla',
@@ -52,7 +54,7 @@ flags.DEFINE_string(
 
 flags.DEFINE_string(
     'model', default='retinanet',
-    help='Model to run: `retinanet` or `shapemask`.')
+    help='Model to run: `retinanet` or `mask_rcnn`.')
 
 flags.DEFINE_string('training_file_pattern', None,
                     'Location of the train data.')
@@ -224,6 +226,17 @@ def run(callbacks=None):
         mode=input_reader.ModeKeys.PREDICT_WITH_GT,
         batch_size=params.eval.batch_size,
         num_examples=params.eval.eval_samples)
+
+  if callbacks is None:
+    callbacks = []
+
+  if FLAGS.log_steps:
+    callbacks.append(
+        keras_utils.TimeHistory(
+            batch_size=params.train.batch_size,
+            log_steps=FLAGS.log_steps,
+        ))
+
   return run_executor(
       params,
       train_input_fn=train_input_fn,
@@ -238,6 +251,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
-  assert tf.version.VERSION.startswith('2.')
   tf.config.set_soft_device_placement(True)
   app.run(main)

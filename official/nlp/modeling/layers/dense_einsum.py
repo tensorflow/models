@@ -147,6 +147,8 @@ class DenseEinsum(tf.keras.layers.Layer):
     config = {
         "output_shape":
             self._output_shape,
+        "num_summed_dimensions":
+            self._num_summed_dimensions,
         "activation":
             tf.keras.activations.serialize(self._activation),
         "use_bias":

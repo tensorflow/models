@@ -24,12 +24,12 @@ import time
 
 # pylint: disable=g-bad-import-order
 from absl import flags
+from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
-from official.benchmark import squad_evaluate_v1_1
 from official.nlp.bert import run_squad
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
@@ -70,18 +70,6 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
       return json.loads(reader.read().decode('utf-8'))
 
-  def _read_predictions_dataset_from_file(self):
-    """Reads the predictions dataset from a file."""
-    with tf.io.gfile.GFile(SQUAD_PREDICT_FILE, 'r') as reader:
-      dataset_json = json.load(reader)
-      return dataset_json['data']
-
-  def _read_predictions_from_file(self):
-    """Reads the predictions from a file."""
-    predictions_file = os.path.join(FLAGS.model_dir, 'predictions.json')
-    with tf.io.gfile.GFile(predictions_file, 'r') as reader:
-      return json.load(reader)
-
   def _get_distribution_strategy(self, ds_type='mirrored'):
     """Gets the distribution strategy.
 
@@ -116,7 +104,6 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _train_squad(self, run_eagerly=False, ds_type='mirrored'):
     """Runs BERT SQuAD training. Uses mirrored strategy by default."""
-    assert tf.version.VERSION.startswith('2.')
     self._init_gpu_and_data_threads()
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(ds_type)
@@ -130,19 +117,16 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _evaluate_squad(self, ds_type='mirrored'):
     """Runs BERT SQuAD evaluation. Uses mirrored strategy by default."""
-    assert tf.version.VERSION.startswith('2.')
     self._init_gpu_and_data_threads()
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(ds_type)
 
-    run_squad.predict_squad(strategy=strategy, input_meta_data=input_meta_data)
-
-    dataset = self._read_predictions_dataset_from_file()
-    predictions = self._read_predictions_from_file()
-
-    eval_metrics = squad_evaluate_v1_1.evaluate(dataset, predictions)
+    if input_meta_data.get('version_2_with_negative', False):
+      logging.error('In memory evaluation result for SQuAD v2 is not accurate')
+    eval_metrics = run_squad.eval_squad(strategy=strategy,
+                                        input_meta_data=input_meta_data)
     # Use F1 score as reported evaluation metric.
-    self.eval_metrics = eval_metrics['f1']
+    self.eval_metrics = eval_metrics['final_f1']
 
 
 class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
@@ -268,7 +252,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad')
-    FLAGS.train_batch_size = 32
+    FLAGS.train_batch_size = 24
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
 
     self._run_and_report_benchmark()

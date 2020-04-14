@@ -57,12 +57,16 @@ def define_common_bert_flags():
   flags.DEFINE_integer('num_train_epochs', 3,
                        'Total number of training epochs to perform.')
   flags.DEFINE_integer(
-      'steps_per_loop', 200,
+      'steps_per_loop', 1,
       'Number of steps per graph-mode loop. Only training step '
       'happens inside the loop. Callbacks will not be called '
       'inside.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
+  flags.DEFINE_float('end_lr', 0.0,
+                     'The end learning rate for learning rate decay.')
+  flags.DEFINE_string('optimizer_type', 'adamw',
+                      'The type of optimizer to use for training (adamw|lamb)')
   flags.DEFINE_boolean(
       'scale_loss', False,
       'Whether to divide the loss by number of replica inside the per-replica '

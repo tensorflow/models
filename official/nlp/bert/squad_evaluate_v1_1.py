@@ -1,5 +1,4 @@
-# Copyright 2019 Pranav Rajpurkar, Jian Zhang, Konstantin Lopyrev and
-# Percy Liang. All Rights Reserved.
+# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -106,4 +105,4 @@ def evaluate(dataset, predictions):
   exact_match = exact_match / total
   f1 = f1 / total
 
-  return {"exact_match": exact_match, "f1": f1}
+  return {"exact_match": exact_match, "final_f1": f1}

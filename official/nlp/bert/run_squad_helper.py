@@ -18,18 +18,20 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import json
 import os
 from absl import flags
 from absl import logging
 import tensorflow as tf
-
-from official.modeling import model_training_utils
 from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import bert_models
 from official.nlp.bert import common_flags
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
+from official.nlp.bert import model_training_utils
+from official.nlp.bert import squad_evaluate_v1_1
+from official.nlp.bert import squad_evaluate_v2_0
 from official.nlp.data import squad_lib_sp
 from official.utils.misc import keras_utils
 
@@ -37,11 +39,15 @@ from official.utils.misc import keras_utils
 def define_common_squad_flags():
   """Defines common flags used by SQuAD tasks."""
   flags.DEFINE_enum(
-      'mode', 'train_and_predict',
-      ['train_and_predict', 'train', 'predict', 'export_only'],
-      'One of {"train_and_predict", "train", "predict", "export_only"}. '
-      '`train_and_predict`: both train and predict to a json file. '
+      'mode', 'train_and_eval',
+      ['train_and_eval', 'train_and_predict',
+       'train', 'eval', 'predict', 'export_only'],
+      'One of {"train_and_eval", "train_and_predict", '
+      '"train", "eval", "predict", "export_only"}. '
+      '`train_and_eval`: train & predict to json files & compute eval metrics. '
+      '`train_and_predict`: train & predict to json files. '
       '`train`: only trains the model. '
+      '`eval`: predict answers from squad json file & compute eval metrics. '
       '`predict`: predict answers from the squad json file. '
       '`export_only`: will take the latest checkpoint inside '
       'model_dir and export a `SavedModel`.')
@@ -153,8 +159,12 @@ def get_dataset_fn(input_file_pattern, max_seq_length, global_batch_size,
   return _dataset_fn
 
 
-def predict_squad_customized(strategy, input_meta_data, bert_config,
-                             predict_tfrecord_path, num_steps):
+def predict_squad_customized(strategy,
+                             input_meta_data,
+                             bert_config,
+                             checkpoint_path,
+                             predict_tfrecord_path,
+                             num_steps):
   """Make predictions using a Bert-based squad model."""
   predict_dataset_fn = get_dataset_fn(
       predict_tfrecord_path,
@@ -173,7 +183,8 @@ def predict_squad_customized(strategy, input_meta_data, bert_config,
         input_meta_data['max_seq_length'],
         hub_module_url=FLAGS.hub_module_url)
 
-  checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
+  if checkpoint_path is None:
+    checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
   logging.info('Restoring checkpoints from %s', checkpoint_path)
   checkpoint = tf.train.Checkpoint(model=squad_model)
   checkpoint.restore(checkpoint_path).expect_partial()
@@ -209,7 +220,8 @@ def train_squad(strategy,
                 input_meta_data,
                 bert_config,
                 custom_callbacks=None,
-                run_eagerly=False):
+                run_eagerly=False,
+                init_checkpoint=None):
   """Run bert squad training."""
   if strategy:
     logging.info('Training using customized training loop with distribution'
@@ -238,7 +250,9 @@ def train_squad(strategy,
         hub_module_trainable=FLAGS.hub_module_trainable)
     optimizer = optimization.create_optimizer(FLAGS.learning_rate,
                                               steps_per_epoch * epochs,
-                                              warmup_steps)
+                                              warmup_steps,
+                                              FLAGS.end_lr,
+                                              FLAGS.optimizer_type)
 
     squad_model.optimizer = performance.configure_optimizer(
         optimizer,
@@ -264,14 +278,15 @@ def train_squad(strategy,
       steps_per_loop=FLAGS.steps_per_loop,
       epochs=epochs,
       train_input_fn=train_input_fn,
-      init_checkpoint=FLAGS.init_checkpoint,
+      init_checkpoint=init_checkpoint or FLAGS.init_checkpoint,
       run_eagerly=run_eagerly,
       custom_callbacks=custom_callbacks,
       explicit_allreduce=False,
       post_allreduce_callbacks=[clip_by_global_norm_callback])
 
 
-def predict_squad(strategy, input_meta_data, tokenizer, bert_config, squad_lib):
+def prediction_output_squad(
+    strategy, input_meta_data, tokenizer, bert_config, squad_lib, checkpoint):
   """Makes predictions for a squad dataset."""
   doc_stride = input_meta_data['doc_stride']
   max_query_length = input_meta_data['max_query_length']
@@ -319,26 +334,81 @@ def predict_squad(strategy, input_meta_data, tokenizer, bert_config, squad_lib):
   logging.info('  Batch size = %d', FLAGS.predict_batch_size)
 
   num_steps = int(dataset_size / FLAGS.predict_batch_size)
-  all_results = predict_squad_customized(strategy, input_meta_data, bert_config,
-                                         eval_writer.filename, num_steps)
+  all_results = predict_squad_customized(
+      strategy, input_meta_data, bert_config,
+      checkpoint, eval_writer.filename, num_steps)
 
+  all_predictions, all_nbest_json, scores_diff_json = (
+      squad_lib.postprocess_output(
+          eval_examples,
+          eval_features,
+          all_results,
+          FLAGS.n_best_size,
+          FLAGS.max_answer_length,
+          FLAGS.do_lower_case,
+          version_2_with_negative=version_2_with_negative,
+          null_score_diff_threshold=FLAGS.null_score_diff_threshold,
+          verbose=FLAGS.verbose_logging))
+
+  return all_predictions, all_nbest_json, scores_diff_json
+
+
+def dump_to_files(all_predictions, all_nbest_json, scores_diff_json,
+                  squad_lib, version_2_with_negative):
+  """Save output to json files."""
   output_prediction_file = os.path.join(FLAGS.model_dir, 'predictions.json')
   output_nbest_file = os.path.join(FLAGS.model_dir, 'nbest_predictions.json')
   output_null_log_odds_file = os.path.join(FLAGS.model_dir, 'null_odds.json')
+  logging.info('Writing predictions to: %s', (output_prediction_file))
+  logging.info('Writing nbest to: %s', (output_nbest_file))
 
-  squad_lib.write_predictions(
-      eval_examples,
-      eval_features,
-      all_results,
-      FLAGS.n_best_size,
-      FLAGS.max_answer_length,
-      FLAGS.do_lower_case,
-      output_prediction_file,
-      output_nbest_file,
-      output_null_log_odds_file,
-      version_2_with_negative=version_2_with_negative,
-      null_score_diff_threshold=FLAGS.null_score_diff_threshold,
-      verbose=FLAGS.verbose_logging)
+  squad_lib.write_to_json_files(all_predictions, output_prediction_file)
+  squad_lib.write_to_json_files(all_nbest_json, output_nbest_file)
+  if version_2_with_negative:
+    squad_lib.write_to_json_files(scores_diff_json, output_null_log_odds_file)
+
+
+def predict_squad(strategy,
+                  input_meta_data,
+                  tokenizer,
+                  bert_config,
+                  squad_lib,
+                  init_checkpoint=None):
+  """Get prediction results and evaluate them to hard drive."""
+  if init_checkpoint is None:
+    init_checkpoint = tf.train.latest_checkpoint(FLAGS.model_dir)
+  all_predictions, all_nbest_json, scores_diff_json = prediction_output_squad(
+      strategy, input_meta_data, tokenizer,
+      bert_config, squad_lib, init_checkpoint)
+  dump_to_files(all_predictions, all_nbest_json, scores_diff_json, squad_lib,
+                input_meta_data.get('version_2_with_negative', False))
+
+
+def eval_squad(strategy,
+               input_meta_data,
+               tokenizer,
+               bert_config,
+               squad_lib,
+               init_checkpoint=None):
+  """Get prediction results and evaluate them against ground truth."""
+  if init_checkpoint is None:
+    init_checkpoint = tf.train.latest_checkpoint(FLAGS.model_dir)
+  all_predictions, all_nbest_json, scores_diff_json = prediction_output_squad(
+      strategy, input_meta_data, tokenizer,
+      bert_config, squad_lib, init_checkpoint)
+  dump_to_files(all_predictions, all_nbest_json, scores_diff_json, squad_lib,
+                input_meta_data.get('version_2_with_negative', False))
+
+  with tf.io.gfile.GFile(FLAGS.predict_file, 'r') as reader:
+    dataset_json = json.load(reader)
+    pred_dataset = dataset_json['data']
+  if input_meta_data.get('version_2_with_negative', False):
+    eval_metrics = squad_evaluate_v2_0.evaluate(pred_dataset,
+                                                all_predictions,
+                                                scores_diff_json)
+  else:
+    eval_metrics = squad_evaluate_v1_1.evaluate(pred_dataset, all_predictions)
+  return eval_metrics
 
 
 def export_squad(model_export_path, input_meta_data, bert_config):

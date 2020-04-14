@@ -78,6 +78,7 @@ setup(
         'official.r1*',
         'official.pip_package*',
         'official.benchmark*',
+        'official.colab*',
     ]),
     exclude_package_data={
         '': ['*_test.py',],

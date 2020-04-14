@@ -19,9 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-
+from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.utils.flags import core as flags_core
-from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 
 class KerasBenchmark(PerfZeroBenchmark):
@@ -32,7 +31,6 @@ class KerasBenchmark(PerfZeroBenchmark):
                default_flags=None,
                flag_methods=None,
                tpu=None):
-    assert tf.version.VERSION.startswith('2.')
     super(KerasBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,

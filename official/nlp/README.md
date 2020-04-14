@@ -7,8 +7,9 @@ state-of-the-art models.
 The repository contains the following models, with implementations, pre-trained
 model weights, usage scripts and conversion utilities:
 
-* [Bert](bert)
 * [Albert](albert)
+* [Bert](bert)
+* [NHNet](nhnet)
 * [XLNet](xlnet)
 * [Transformer for translation](transformer)
 
@@ -16,6 +17,3 @@ Addtional features:
 
 * Distributed trainable on both multi-GPU and TPU
 * e2e training for custom models, including both pretraining and finetuning.
-
-
-

@@ -329,6 +329,37 @@ def learning_rate_with_decay(
   return learning_rate_fn
 
 
+def per_replica_batch_size(batch_size, num_gpus):
+  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
+
+
+  Note that distribution strategy handles this automatically when used with
+  Keras. For using with Estimator, we need to get per GPU batch.
+
+  Args:
+    batch_size: Global batch size to be divided among devices. This should be
+      equal to num_gpus times the single-GPU batch_size for multi-gpu training.
+    num_gpus: How many GPUs are used with DistributionStrategies.
+
+  Returns:
+    Batch size per device.
+
+  Raises:
+    ValueError: if batch_size is not divisible by number of devices
+  """
+  if num_gpus <= 1:
+    return batch_size
+
+  remainder = batch_size % num_gpus
+  if remainder:
+    err = ('When running with multiple GPUs, batch size '
+           'must be a multiple of the number of available GPUs. Found {} '
+           'GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
+    raise ValueError(err)
+  return int(batch_size / num_gpus)
+
+
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
                     data_format, resnet_version, loss_scale,
@@ -620,7 +651,7 @@ def resnet_main(
     return input_function(
         is_training=True,
         data_dir=flags_obj.data_dir,
-        batch_size=distribution_utils.per_replica_batch_size(
+        batch_size=per_replica_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=num_epochs,
         dtype=flags_core.get_tf_dtype(flags_obj),
@@ -631,7 +662,7 @@ def resnet_main(
     return input_function(
         is_training=False,
         data_dir=flags_obj.data_dir,
-        batch_size=distribution_utils.per_replica_batch_size(
+        batch_size=per_replica_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1,
         dtype=flags_core.get_tf_dtype(flags_obj))

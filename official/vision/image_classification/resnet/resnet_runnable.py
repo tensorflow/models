@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.modeling import performance
 from official.staging.training import grad_utils
@@ -158,9 +158,9 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
         loss = tf.reduce_sum(prediction_loss) * (1.0 /
                                                  self.flags_obj.batch_size)
         num_replicas = self.strategy.num_replicas_in_sync
-
+        l2_weight_decay = 1e-4
         if self.flags_obj.single_l2_loss_op:
-          l2_loss = resnet_model.L2_WEIGHT_DECAY * 2 * tf.add_n([
+          l2_loss = l2_weight_decay * 2 * tf.add_n([
               tf.nn.l2_loss(v)
               for v in self.model.trainable_variables
               if 'bn' not in v.name

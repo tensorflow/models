@@ -1019,7 +1019,8 @@ class Summarization(tf.keras.layers.Layer):
       summary = inputs[0]
     else:
       raise ValueError('Invalid summary type provided: %s' % self.summary_type)
-    summary = self.proj_layer(summary)
+    if self.use_proj:
+      summary = self.proj_layer(summary)
     summary = self.dropout_layer(summary)
     return summary
 

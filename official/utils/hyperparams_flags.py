@@ -94,6 +94,7 @@ def initialize_common_flags():
 def strategy_flags_dict():
   """Returns TPU and/or GPU related flags in a dictionary."""
   return {
+      'distribution_strategy': FLAGS.strategy_type,
       # TPUStrategy related flags.
       'tpu': FLAGS.tpu,
       # MultiWorkerMirroredStrategy related flags.

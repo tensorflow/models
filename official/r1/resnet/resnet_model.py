@@ -391,8 +391,8 @@ class Model(object):
     self.resnet_size = resnet_size
 
     if not data_format:
-      data_format = (
-          'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
+      data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
+                     else 'channels_last')
 
     self.resnet_version = resnet_version
     if resnet_version not in (1, 2):

@@ -28,7 +28,7 @@ from absl import logging
 import tensorflow as tf
 from typing import Any, Callable, Dict, Text, Optional
 
-from official.modeling import model_training_utils
+from official.nlp.bert import model_training_utils
 from official.nlp.xlnet import data_utils
 from official.nlp.xlnet import xlnet_modeling as modeling
 

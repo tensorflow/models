@@ -50,7 +50,6 @@ class NCFKerasBenchmarkBase(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    assert tf.version.VERSION.startswith('2.')
     logging.set_verbosity(logging.INFO)
     if NCFKerasBenchmarkBase.local_flags is None:
       ncf_common.define_ncf_flags()

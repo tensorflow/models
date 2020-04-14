@@ -506,6 +506,34 @@ def write_predictions(all_examples,
   logging.info("Writing predictions to: %s", (output_prediction_file))
   logging.info("Writing nbest to: %s", (output_nbest_file))
 
+  all_predictions, all_nbest_json, scores_diff_json = (
+      postprocess_output(all_examples=all_examples,
+                         all_features=all_features,
+                         all_results=all_results,
+                         n_best_size=n_best_size,
+                         max_answer_length=max_answer_length,
+                         do_lower_case=do_lower_case,
+                         version_2_with_negative=version_2_with_negative,
+                         null_score_diff_threshold=null_score_diff_threshold,
+                         verbose=verbose))
+
+  write_to_json_files(all_predictions, output_prediction_file)
+  write_to_json_files(all_nbest_json, output_nbest_file)
+  if version_2_with_negative:
+    write_to_json_files(scores_diff_json, output_null_log_odds_file)
+
+
+def postprocess_output(all_examples,
+                       all_features,
+                       all_results,
+                       n_best_size,
+                       max_answer_length,
+                       do_lower_case,
+                       version_2_with_negative=False,
+                       null_score_diff_threshold=0.0,
+                       verbose=False):
+  """Postprocess model output, to form predicton results."""
+
   example_index_to_features = collections.defaultdict(list)
   for feature in all_features:
     example_index_to_features[feature.example_index].append(feature)
@@ -676,15 +704,12 @@ def write_predictions(all_examples,
 
     all_nbest_json[example.qas_id] = nbest_json
 
-  with tf.io.gfile.GFile(output_prediction_file, "w") as writer:
-    writer.write(json.dumps(all_predictions, indent=4) + "\n")
+  return all_predictions, all_nbest_json, scores_diff_json
 
-  with tf.io.gfile.GFile(output_nbest_file, "w") as writer:
-    writer.write(json.dumps(all_nbest_json, indent=4) + "\n")
 
-  if version_2_with_negative:
-    with tf.io.gfile.GFile(output_null_log_odds_file, "w") as writer:
-      writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
+def write_to_json_files(json_records, json_file):
+  with tf.io.gfile.GFile(json_file, "w") as writer:
+    writer.write(json.dumps(json_records, indent=4) + "\n")
 
 
 def get_final_text(pred_text, orig_text, do_lower_case, verbose=False):
