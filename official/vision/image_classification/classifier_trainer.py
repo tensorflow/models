@@ -101,8 +101,8 @@ def get_image_size_from_model(
 def _get_dataset_builders(params: base_configs.ExperimentConfig,
                           strategy: tf.distribute.Strategy,
                           one_hot: bool
-                         ) -> Tuple[Any, Any, Any]:
-  """Create and return train, validation, and test dataset builders."""
+                         ) -> Tuple[Any, Any]:
+  """Create and return train and validation dataset builders."""
   if one_hot:
     logging.warning('label_smoothing > 0, so datasets will be one hot encoded.')
   else:
