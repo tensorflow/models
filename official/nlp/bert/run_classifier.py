@@ -197,7 +197,7 @@ def run_keras_compile_fit(model_dir,
 
   with strategy.scope():
     training_dataset = train_input_fn()
-    evaluation_dataset = eval_input_fn()
+    evaluation_dataset = eval_input_fn() if eval_input_fn else None
     bert_model, sub_model = model_fn()
     optimizer = bert_model.optimizer
 
@@ -330,7 +330,8 @@ def run_bert(strategy,
              input_meta_data,
              model_config,
              train_input_fn=None,
-             eval_input_fn=None):
+             eval_input_fn=None,
+             init_checkpoint=None):
   """Run BERT training."""
   if FLAGS.mode == 'export_only':
     # As Keras ModelCheckpoint callback used with Keras compile/fit() API
@@ -377,7 +378,7 @@ def run_bert(strategy,
       eval_steps,
       warmup_steps,
       FLAGS.learning_rate,
-      FLAGS.init_checkpoint,
+      init_checkpoint or FLAGS.init_checkpoint,
       train_input_fn,
       eval_input_fn,
       run_eagerly=FLAGS.run_eagerly,

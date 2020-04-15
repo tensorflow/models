@@ -389,9 +389,11 @@ def run_customized_training_loop(
         callback.on_batch_end(batch, logs)
 
     # Training loop starts here.
-    checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
+    checkpoint = tf.train.Checkpoint(
+        model=model, optimizer=optimizer, global_step=optimizer.iterations)
     sub_model_checkpoint = tf.train.Checkpoint(
-        model=sub_model) if sub_model_export_name else None
+        model=sub_model,
+        global_step=optimizer.iterations) if sub_model_export_name else None
 
     latest_checkpoint_file = tf.train.latest_checkpoint(model_dir)
     if latest_checkpoint_file:
