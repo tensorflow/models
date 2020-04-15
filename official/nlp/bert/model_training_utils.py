@@ -443,30 +443,33 @@ def run_customized_training_loop(
           train_summary_writer.flush()
       logging.info(training_status)
 
-      # Saves model checkpoints and run validation steps at every epoch end.
       if current_step % steps_per_epoch == 0:
-        # To avoid repeated model saving, we do not save after the last
-        # step of training.
+        # Save a submodel with the step in the file name after each epoch.
+        if sub_model_export_name:
+          _save_checkpoint(
+              strategy, sub_model_checkpoint, model_dir,
+              '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
+
+        # Save model checkpoints and run validation steps after each epoch
+        # (with the exception of the final epoch which is handled after the
+        # training loop).
         if current_step < total_training_steps:
           _save_checkpoint(strategy, checkpoint, model_dir,
                            checkpoint_name.format(step=current_step))
-          if sub_model_export_name:
-            _save_checkpoint(
-                strategy, sub_model_checkpoint, model_dir,
-                '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
-        if eval_input_fn:
-          logging.info('Running evaluation after step: %s.', current_step)
-          _run_evaluation(current_step,
-                          _get_input_iterator(eval_input_fn, strategy))
-          # Re-initialize evaluation metric.
-          for metric in eval_metrics + model.metrics:
-            metric.reset_states()
+          if eval_input_fn:
+            logging.info('Running evaluation after step: %s.', current_step)
+            _run_evaluation(current_step,
+                            _get_input_iterator(eval_input_fn, strategy))
+            # Re-initialize evaluation metric.
+            for metric in eval_metrics + model.metrics:
+              metric.reset_states()
 
-    _save_checkpoint(strategy, checkpoint, model_dir,
-                     checkpoint_name.format(step=current_step))
     if sub_model_export_name:
       _save_checkpoint(strategy, sub_model_checkpoint, model_dir,
                        '%s.ckpt' % sub_model_export_name)
+
+    _save_checkpoint(strategy, checkpoint, model_dir,
+                     checkpoint_name.format(step=current_step))
 
     if eval_input_fn:
       logging.info('Running final evaluation after training is complete.')
