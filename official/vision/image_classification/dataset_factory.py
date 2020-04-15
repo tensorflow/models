@@ -116,7 +116,7 @@ class DatasetConfig(base_config.Config):
   num_channels: Union[int, str] = 'infer'
   num_examples: Union[int, str] = 'infer'
   batch_size: int = 128
-  use_per_replica_batch_size: bool = False
+  use_per_replica_batch_size: bool = True
   num_devices: int = 1
   dtype: str = 'float32'
   one_hot: bool = True
@@ -185,14 +185,14 @@ class DatasetBuilder:
   def batch_size(self) -> int:
     """The batch size, multiplied by the number of replicas (if configured)."""
     if self.config.use_per_replica_batch_size:
-      return self.global_batch_size
+      return self.config.batch_size * self.config.num_devices
     else:
       return self.config.batch_size
 
   @property
   def global_batch_size(self):
     """The global batch size across all replicas."""
-    return self.config.batch_size * self.config.num_devices
+    return self.batch_size
 
   @property
   def num_steps(self) -> int:
