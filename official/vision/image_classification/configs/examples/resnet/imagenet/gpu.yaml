@@ -2,8 +2,6 @@
 # Reaches > 76.1% within 90 epochs.
 # Note: This configuration uses a scaled per-replica batch size based on the number of devices.
 runtime:
-  model_dir: null
-  mode: 'train_and_eval'
   distribution_strategy: 'mirrored'
   num_gpus: 1
 train_dataset:
@@ -33,7 +31,7 @@ validation_dataset:
   mean_subtract: True
   standardize: True
 model:
-  model_name: 'resnet'
+  name: 'resnet'
   model_params:
     rescale_inputs: False
   optimizer:
