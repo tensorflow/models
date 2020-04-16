@@ -25,16 +25,12 @@ from official.vision.detection.modeling.architecture import nn_ops
 from official.vision.detection.modeling.architecture import resnet
 
 
-def batch_norm_relu_generator(params):
-
-  def _batch_norm_op(**kwargs):
-    return nn_ops.BatchNormRelu(
-        momentum=params.batch_norm_momentum,
-        epsilon=params.batch_norm_epsilon,
-        trainable=params.batch_norm_trainable,
-        **kwargs)
-
-  return _batch_norm_op
+def norm_activation_generator(params):
+  return nn_ops.norm_activation_builder(
+      momentum=params.batch_norm_momentum,
+      epsilon=params.batch_norm_epsilon,
+      trainable=params.batch_norm_trainable,
+      activation=params.activation)
 
 
 def backbone_generator(params):
@@ -43,10 +39,12 @@ def backbone_generator(params):
     resnet_params = params.resnet
     backbone_fn = resnet.Resnet(
         resnet_depth=resnet_params.resnet_depth,
-        batch_norm_relu=batch_norm_relu_generator(resnet_params.batch_norm))
+        activation=params.norm_activation.activation,
+        norm_activation=norm_activation_generator(
+            params.norm_activation))
   else:
-    raise ValueError('Backbone model %s is not supported.' %
-                     params.architecture.backbone)
+    raise ValueError('Backbone model `{}` is not supported.'
+                     .format(params.architecture.backbone))
 
   return backbone_fn
 
@@ -56,81 +54,75 @@ def multilevel_features_generator(params):
   if params.architecture.multilevel_features == 'fpn':
     fpn_params = params.fpn
     fpn_fn = fpn.Fpn(
-        min_level=fpn_params.min_level,
-        max_level=fpn_params.max_level,
+        min_level=params.architecture.min_level,
+        max_level=params.architecture.max_level,
         fpn_feat_dims=fpn_params.fpn_feat_dims,
         use_separable_conv=fpn_params.use_separable_conv,
+        activation=params.norm_activation.activation,
         use_batch_norm=fpn_params.use_batch_norm,
-        batch_norm_relu=batch_norm_relu_generator(fpn_params.batch_norm))
+        norm_activation=norm_activation_generator(
+            params.norm_activation))
   elif params.architecture.multilevel_features == 'identity':
     fpn_fn = identity.Identity()
   else:
-    raise ValueError('The multi-level feature model %s is not supported.'
-                     % params.architecture.multilevel_features)
+    raise ValueError('The multi-level feature model `{}` is not supported.'
+                     .format(params.architecture.multilevel_features))
   return fpn_fn
 
 
 def retinanet_head_generator(params):
   """Generator function for RetinaNet head architecture."""
+  head_params = params.retinanet_head
   return heads.RetinanetHead(
-      params.min_level,
-      params.max_level,
-      params.num_classes,
-      params.anchors_per_location,
-      params.retinanet_head_num_convs,
-      params.retinanet_head_num_filters,
-      params.use_separable_conv,
-      batch_norm_relu=batch_norm_relu_generator(params.batch_norm))
+      params.architecture.min_level,
+      params.architecture.max_level,
+      params.architecture.num_classes,
+      head_params.anchors_per_location,
+      head_params.num_convs,
+      head_params.num_filters,
+      head_params.use_separable_conv,
+      norm_activation=norm_activation_generator(params.norm_activation))
 
 
 def rpn_head_generator(params):
+  head_params = params.rpn_head
   """Generator function for RPN head architecture."""
-  return heads.RpnHead(params.min_level,
-                       params.max_level,
-                       params.anchors_per_location,
-                       params.num_convs,
-                       params.num_filters,
-                       params.use_separable_conv,
-                       params.use_batch_norm,
-                       batch_norm_relu=batch_norm_relu_generator(
-                           params.batch_norm))
+  return heads.RpnHead(
+      params.architecture.min_level,
+      params.architecture.max_level,
+      head_params.anchors_per_location,
+      head_params.num_convs,
+      head_params.num_filters,
+      head_params.use_separable_conv,
+      params.norm_activation.activation,
+      head_params.use_batch_norm,
+      norm_activation=norm_activation_generator(params.norm_activation))
 
 
 def fast_rcnn_head_generator(params):
   """Generator function for Fast R-CNN head architecture."""
-  return heads.FastrcnnHead(params.num_classes,
-                            params.num_convs,
-                            params.num_filters,
-                            params.use_separable_conv,
-                            params.num_fcs,
-                            params.fc_dims,
-                            params.use_batch_norm,
-                            batch_norm_relu=batch_norm_relu_generator(
-                                params.batch_norm))
+  head_params = params.frcnn_head
+  return heads.FastrcnnHead(
+      params.architecture.num_classes,
+      head_params.num_convs,
+      head_params.num_filters,
+      head_params.use_separable_conv,
+      head_params.num_fcs,
+      head_params.fc_dims,
+      params.norm_activation.activation,
+      head_params.use_batch_norm,
+      norm_activation=norm_activation_generator(params.norm_activation))
 
 
 def mask_rcnn_head_generator(params):
   """Generator function for Mask R-CNN head architecture."""
-  return heads.MaskrcnnHead(params.num_classes,
-                            params.mask_target_size,
-                            params.num_convs,
-                            params.num_filters,
-                            params.use_separable_conv,
-                            params.use_batch_norm,
-                            batch_norm_relu=batch_norm_relu_generator(
-                                params.batch_norm))
-
-
-def shapeprior_head_generator(params):
-  """Generator function for Shapemask head architecture."""
-  raise NotImplementedError('Unimplemented')
-
-
-def coarsemask_head_generator(params):
-  """Generator function for Shapemask head architecture."""
-  raise NotImplementedError('Unimplemented')
-
-
-def finemask_head_generator(params):
-  """Generator function for Shapemask head architecture."""
-  raise NotImplementedError('Unimplemented')
+  head_params = params.mrcnn_head
+  return heads.MaskrcnnHead(
+      params.architecture.num_classes,
+      params.architecture.mask_target_size,
+      head_params.num_convs,
+      head_params.num_filters,
+      head_params.use_separable_conv,
+      params.norm_activation.activation,
+      head_params.use_batch_norm,
+      norm_activation=norm_activation_generator(params.norm_activation))

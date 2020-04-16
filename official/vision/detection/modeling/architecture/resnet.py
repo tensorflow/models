@@ -34,21 +34,27 @@ class Resnet(object):
 
   def __init__(self,
                resnet_depth,
-               batch_norm_relu=nn_ops.BatchNormRelu,
+               activation='relu',
+               norm_activation=nn_ops.norm_activation_builder(
+                   activation='relu'),
                data_format='channels_last'):
     """ResNet initialization function.
 
     Args:
       resnet_depth: `int` depth of ResNet backbone model.
-      batch_norm_relu: an operation that includes a batch normalization layer
-        followed by a relu layer(optional).
+      norm_activation: an operation that includes a normalization layer
+        followed by an optional activation layer.
       data_format: `str` either "channels_first" for `[batch, channels, height,
         width]` or "channels_last for `[batch, height, width, channels]`.
     """
     self._resnet_depth = resnet_depth
-
-    self._batch_norm_relu = batch_norm_relu
-
+    if activation == 'relu':
+      self._activation_op = tf.nn.relu
+    elif activation == 'swish':
+      self._activation_op = tf.nn.swish
+    else:
+      raise ValueError('Unsupported activation `{}`.'.format(activation))
+    self._norm_activation = norm_activation
     self._data_format = data_format
 
     model_params = {
@@ -170,19 +176,19 @@ class Resnet(object):
       # Projection shortcut in first layer to match filters and strides
       shortcut = self.conv2d_fixed_padding(
           inputs=inputs, filters=filters, kernel_size=1, strides=strides)
-      shortcut = self._batch_norm_relu(relu=False)(
+      shortcut = self._norm_activation(use_activation=False)(
           shortcut, is_training=is_training)
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=filters, kernel_size=3, strides=strides)
-    inputs = self._batch_norm_relu()(inputs, is_training=is_training)
+    inputs = self._norm_activation()(inputs, is_training=is_training)
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=filters, kernel_size=3, strides=1)
-    inputs = self._batch_norm_relu()(
-        inputs, relu=False, init_zero=True, is_training=is_training)
+    inputs = self._norm_activation(use_activation=False, init_zero=True)(
+        inputs, is_training=is_training)
 
-    return tf.nn.relu(inputs + shortcut)
+    return self._activation_op(inputs + shortcut)
 
   def bottleneck_block(self,
                        inputs,
@@ -214,24 +220,23 @@ class Resnet(object):
       filters_out = 4 * filters
       shortcut = self.conv2d_fixed_padding(
           inputs=inputs, filters=filters_out, kernel_size=1, strides=strides)
-      shortcut = self._batch_norm_relu(relu=False)(
+      shortcut = self._norm_activation(use_activation=False)(
           shortcut, is_training=is_training)
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=filters, kernel_size=1, strides=1)
-    inputs = self._batch_norm_relu()(inputs, is_training=is_training)
+    inputs = self._norm_activation()(inputs, is_training=is_training)
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=filters, kernel_size=3, strides=strides)
-    inputs = self._batch_norm_relu()(inputs, is_training=is_training)
+    inputs = self._norm_activation()(inputs, is_training=is_training)
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=4 * filters, kernel_size=1, strides=1)
-    inputs = self._batch_norm_relu(
-        relu=False, init_zero=True)(
-            inputs, is_training=is_training)
+    inputs = self._norm_activation(use_activation=False, init_zero=True)(
+        inputs, is_training=is_training)
 
-    return tf.nn.relu(inputs + shortcut)
+    return self._activation_op(inputs + shortcut)
 
   def block_group(self, inputs, filters, block_fn, blocks, strides, name,
                   is_training):
@@ -279,7 +284,7 @@ class Resnet(object):
       inputs = self.conv2d_fixed_padding(
           inputs=inputs, filters=64, kernel_size=7, strides=2)
       inputs = tf.identity(inputs, 'initial_conv')
-      inputs = self._batch_norm_relu()(inputs, is_training=is_training)
+      inputs = self._norm_activation()(inputs, is_training=is_training)
 
       inputs = tf.keras.layers.MaxPool2D(
           pool_size=3, strides=2, padding='SAME',

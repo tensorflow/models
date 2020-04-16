@@ -346,9 +346,9 @@ class ROISampler(object):
 class MaskSampler(object):
   """Samples and creates mask training targets."""
 
-  def __init__(self, params):
-    self._num_mask_samples_per_image = params.num_mask_samples_per_image
-    self._mask_target_size = params.mask_target_size
+  def __init__(self, mask_target_size, num_mask_samples_per_image):
+    self._mask_target_size = mask_target_size
+    self._num_mask_samples_per_image = num_mask_samples_per_image
 
   def __call__(self,
                candidate_rois,

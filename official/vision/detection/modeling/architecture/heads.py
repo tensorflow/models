@@ -39,8 +39,10 @@ class RpnHead(tf.keras.layers.Layer):
                num_convs=2,
                num_filters=256,
                use_separable_conv=False,
+               activation='relu',
                use_batch_norm=True,
-               batch_norm_relu=nn_ops.BatchNormRelu):
+               norm_activation=nn_ops.norm_activation_builder(
+                   activation='relu')):
     """Initialize params to build Region Proposal Network head.
 
     Args:
@@ -55,12 +57,18 @@ class RpnHead(tf.keras.layers.Layer):
       use_separable_conv: `bool`, indicating whether the separable conv layers
         is used.
       use_batch_norm: 'bool', indicating whether batchnorm layers are added.
-      batch_norm_relu: an operation that includes a batch normalization layer
-        followed by a relu layer(optional).
+      norm_activation: an operation that includes a normalization layer
+        followed by an optional activation layer.
     """
     self._min_level = min_level
     self._max_level = max_level
     self._anchors_per_location = anchors_per_location
+    if activation == 'relu':
+      self._activation_op = tf.nn.relu
+    elif activation == 'swish':
+      self._activation_op = tf.nn.swish
+    else:
+      raise ValueError('Unsupported activation `{}`.'.format(activation))
     self._use_batch_norm = use_batch_norm
 
     if use_separable_conv:
@@ -78,7 +86,7 @@ class RpnHead(tf.keras.layers.Layer):
         num_filters,
         kernel_size=(3, 3),
         strides=(1, 1),
-        activation=(None if self._use_batch_norm else tf.nn.relu),
+        activation=(None if self._use_batch_norm else self._activation_op),
         padding='same',
         name='rpn')
     self._rpn_class_conv = self._conv2d_op(
@@ -94,10 +102,10 @@ class RpnHead(tf.keras.layers.Layer):
         padding='valid',
         name='rpn-box')
 
-    self._batch_norm_relus = {}
+    self._norm_activations = {}
     if self._use_batch_norm:
       for level in range(self._min_level, self._max_level + 1):
-        self._batch_norm_relus[level] = batch_norm_relu(name='rpn-l%d-bn' %
+        self._norm_activations[level] = norm_activation(name='rpn-l%d-bn' %
                                                         level)
 
   def _shared_rpn_heads(self, features, anchors_per_location, level,
@@ -106,7 +114,7 @@ class RpnHead(tf.keras.layers.Layer):
     features = self._rpn_conv(features)
     if self._use_batch_norm:
       # The batch normalization layers are not shared between levels.
-      features = self._batch_norm_relus[level](
+      features = self._norm_activations[level](
           features, is_training=is_training)
     # Proposal classification scores
     scores = self._rpn_class_conv(features)
@@ -139,8 +147,10 @@ class FastrcnnHead(tf.keras.layers.Layer):
                use_separable_conv=False,
                num_fcs=2,
                fc_dims=1024,
+               activation='relu',
                use_batch_norm=True,
-               batch_norm_relu=nn_ops.BatchNormRelu):
+               norm_activation=nn_ops.norm_activation_builder(
+                   activation='relu')):
     """Initialize params to build Fast R-CNN box head.
 
     Args:
@@ -156,8 +166,8 @@ class FastrcnnHead(tf.keras.layers.Layer):
       fc_dims: `int` number that represents the number of dimension of the FC
         layers.
       use_batch_norm: 'bool', indicating whether batchnorm layers are added.
-      batch_norm_relu: an operation that includes a batch normalization layer
-        followed by a relu layer(optional).
+      norm_activation: an operation that includes a normalization layer
+        followed by an optional activation layer.
     """
     self._num_classes = num_classes
 
@@ -177,9 +187,14 @@ class FastrcnnHead(tf.keras.layers.Layer):
 
     self._num_fcs = num_fcs
     self._fc_dims = fc_dims
-
+    if activation == 'relu':
+      self._activation_op = tf.nn.relu
+    elif activation == 'swish':
+      self._activation_op = tf.nn.swish
+    else:
+      raise ValueError('Unsupported activation `{}`.'.format(activation))
     self._use_batch_norm = use_batch_norm
-    self._batch_norm_relu = batch_norm_relu
+    self._norm_activation = norm_activation
 
     self._conv_ops = []
     self._conv_bn_ops = []
@@ -191,10 +206,10 @@ class FastrcnnHead(tf.keras.layers.Layer):
               strides=(1, 1),
               padding='same',
               dilation_rate=(1, 1),
-              activation=(None if self._use_batch_norm else tf.nn.relu),
+              activation=(None if self._use_batch_norm else self._activation_op),
               name='conv_{}'.format(i)))
       if self._use_batch_norm:
-        self._conv_bn_ops.append(self._batch_norm_relu())
+        self._conv_bn_ops.append(self._norm_activation())
 
     self._fc_ops = []
     self._fc_bn_ops = []
@@ -202,10 +217,10 @@ class FastrcnnHead(tf.keras.layers.Layer):
       self._fc_ops.append(
           tf.keras.layers.Dense(
               units=self._fc_dims,
-              activation=(None if self._use_batch_norm else tf.nn.relu),
+              activation=(None if self._use_batch_norm else self._activation_op),
               name='fc{}'.format(i)))
       if self._use_batch_norm:
-        self._fc_bn_ops.append(self._batch_norm_relu(fused=False))
+        self._fc_bn_ops.append(self._norm_activation(fused=False))
 
     self._class_predict = tf.keras.layers.Dense(
         self._num_classes,
@@ -266,8 +281,10 @@ class MaskrcnnHead(tf.keras.layers.Layer):
                num_convs=4,
                num_filters=256,
                use_separable_conv=False,
+               activation='relu',
                use_batch_norm=True,
-               batch_norm_relu=nn_ops.BatchNormRelu):
+               norm_activation=nn_ops.norm_activation_builder(
+                   activation='relu')):
     """Initialize params to build Fast R-CNN head.
 
     Args:
@@ -280,8 +297,8 @@ class MaskrcnnHead(tf.keras.layers.Layer):
       use_separable_conv: `bool`, indicating whether the separable conv layers
         is used.
       use_batch_norm: 'bool', indicating whether batchnorm layers are added.
-      batch_norm_relu: an operation that includes a batch normalization layer
-        followed by a relu layer(optional).
+      norm_activation: an operation that includes a normalization layer
+        followed by an optional activation layer.
     """
     self._num_classes = num_classes
     self._mask_target_size = mask_target_size
@@ -299,9 +316,14 @@ class MaskrcnnHead(tf.keras.layers.Layer):
           kernel_initializer=tf.keras.initializers.VarianceScaling(
               scale=2, mode='fan_out', distribution='untruncated_normal'),
           bias_initializer=tf.zeros_initializer())
-
+    if activation == 'relu':
+      self._activation_op = tf.nn.relu
+    elif activation == 'swish':
+      self._activation_op = tf.nn.swish
+    else:
+      raise ValueError('Unsupported activation `{}`.'.format(activation))
     self._use_batch_norm = use_batch_norm
-    self._batch_norm_relu = batch_norm_relu
+    self._norm_activation = norm_activation
     self._conv2d_ops = []
     for i in range(self._num_convs):
       self._conv2d_ops.append(
@@ -311,14 +333,14 @@ class MaskrcnnHead(tf.keras.layers.Layer):
               strides=(1, 1),
               padding='same',
               dilation_rate=(1, 1),
-              activation=(None if self._use_batch_norm else tf.nn.relu),
+              activation=(None if self._use_batch_norm else self._activation_op),
               name='mask-conv-l%d' % i))
     self._mask_conv_transpose = tf.keras.layers.Conv2DTranspose(
         self._num_filters,
         kernel_size=(2, 2),
         strides=(2, 2),
         padding='valid',
-        activation=(None if self._use_batch_norm else tf.nn.relu),
+        activation=(None if self._use_batch_norm else self._activation_op),
         kernel_initializer=tf.keras.initializers.VarianceScaling(
             scale=2, mode='fan_out', distribution='untruncated_normal'),
         bias_initializer=tf.zeros_initializer(),
@@ -353,11 +375,11 @@ class MaskrcnnHead(tf.keras.layers.Layer):
         for i in range(self._num_convs):
           net = self._conv2d_ops[i](net)
           if self._use_batch_norm:
-            net = self._batch_norm_relu()(net, is_training=is_training)
+            net = self._norm_activation()(net, is_training=is_training)
 
         net = self._mask_conv_transpose(net)
         if self._use_batch_norm:
-          net = self._batch_norm_relu()(net, is_training=is_training)
+          net = self._norm_activation()(net, is_training=is_training)
 
         mask_outputs = self._conv2d_op(
             self._num_classes,
@@ -398,7 +420,8 @@ class RetinanetHead(object):
                num_convs=4,
                num_filters=256,
                use_separable_conv=False,
-               batch_norm_relu=nn_ops.BatchNormRelu):
+               norm_activation=nn_ops.norm_activation_builder(
+                   activation='relu')):
     """Initialize params to build RetinaNet head.
 
     Args:
@@ -411,8 +434,8 @@ class RetinanetHead(object):
       num_filters: `int` number of filters used in the head architecture.
       use_separable_conv: `bool` to indicate whether to use separable
         convoluation.
-      batch_norm_relu: an operation that includes a batch normalization layer
-        followed by a relu layer(optional).
+      norm_activation: an operation that includes a normalization layer
+        followed by an optional activation layer.
     """
     self._min_level = min_level
     self._max_level = max_level
@@ -423,13 +446,12 @@ class RetinanetHead(object):
     self._num_convs = num_convs
     self._num_filters = num_filters
     self._use_separable_conv = use_separable_conv
-
     with tf.name_scope('class_net') as scope_name:
       self._class_name_scope = tf.name_scope(scope_name)
     with tf.name_scope('box_net') as scope_name:
       self._box_name_scope = tf.name_scope(scope_name)
-    self._build_class_net_layers(batch_norm_relu)
-    self._build_box_net_layers(batch_norm_relu)
+    self._build_class_net_layers(norm_activation)
+    self._build_box_net_layers(norm_activation)
 
   def _class_net_batch_norm_name(self, i, level):
     return 'class-%d-%d' % (i, level)
@@ -437,7 +459,7 @@ class RetinanetHead(object):
   def _box_net_batch_norm_name(self, i, level):
     return 'box-%d-%d' % (i, level)
 
-  def _build_class_net_layers(self, batch_norm_relu):
+  def _build_class_net_layers(self, norm_activation):
     """Build re-usable layers for class prediction network."""
     if self._use_separable_conv:
       self._class_predict = tf.keras.layers.SeparableConv2D(
@@ -455,7 +477,7 @@ class RetinanetHead(object):
           padding='same',
           name='class-predict')
     self._class_conv = []
-    self._class_batch_norm_relu = {}
+    self._class_norm_activation = {}
     for i in range(self._num_convs):
       if self._use_separable_conv:
         self._class_conv.append(
@@ -479,9 +501,9 @@ class RetinanetHead(object):
                 name='class-' + str(i)))
       for level in range(self._min_level, self._max_level + 1):
         name = self._class_net_batch_norm_name(i, level)
-        self._class_batch_norm_relu[name] = batch_norm_relu(name=name)
+        self._class_norm_activation[name] = norm_activation(name=name)
 
-  def _build_box_net_layers(self, batch_norm_relu):
+  def _build_box_net_layers(self, norm_activation):
     """Build re-usable layers for box prediction network."""
     if self._use_separable_conv:
       self._box_predict = tf.keras.layers.SeparableConv2D(
@@ -499,7 +521,7 @@ class RetinanetHead(object):
           padding='same',
           name='box-predict')
     self._box_conv = []
-    self._box_batch_norm_relu = {}
+    self._box_norm_activation = {}
     for i in range(self._num_convs):
       if self._use_separable_conv:
         self._box_conv.append(
@@ -523,13 +545,13 @@ class RetinanetHead(object):
                 name='box-' + str(i)))
       for level in range(self._min_level, self._max_level + 1):
         name = self._box_net_batch_norm_name(i, level)
-        self._box_batch_norm_relu[name] = batch_norm_relu(name=name)
+        self._box_norm_activation[name] = norm_activation(name=name)
 
   def __call__(self, fpn_features, is_training=None):
     """Returns outputs of RetinaNet head."""
     class_outputs = {}
     box_outputs = {}
-    with backend.get_graph().as_default(), tf.name_scope('retinanet'):
+    with backend.get_graph().as_default(), tf.name_scope('retinanet_head'):
       for level in range(self._min_level, self._max_level + 1):
         features = fpn_features[level]
 
@@ -548,7 +570,7 @@ class RetinanetHead(object):
         # each level has its batch normlization to capture the statistical
         # difference among different levels.
         name = self._class_net_batch_norm_name(i, level)
-        features = self._class_batch_norm_relu[name](
+        features = self._class_norm_activation[name](
             features, is_training=is_training)
 
       classes = self._class_predict(features)
@@ -563,7 +585,7 @@ class RetinanetHead(object):
         # each level has its batch normlization to capture the statistical
         # difference among different levels.
         name = self._box_net_batch_norm_name(i, level)
-        features = self._box_batch_norm_relu[name](
+        features = self._box_norm_activation[name](
             features, is_training=is_training)
 
       boxes = self._box_predict(features)
@@ -953,13 +975,13 @@ class ShapemaskCoarsemaskHead(object):
   def coarsemask_decoder_net(self,
                              images,
                              is_training=None,
-                             batch_norm_relu=nn_ops.BatchNormRelu):
+                             norm_activation=nn_ops.norm_activation_builder()):
     """Coarse mask decoder network architecture.
 
     Args:
       images: A tensor of size [batch, height_in, width_in, channels_in].
       is_training: Whether batch_norm layers are in training mode.
-      batch_norm_relu: an operation that includes a batch normalization layer
+      norm_activation: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     Returns:
       images: A feature tensor of size [batch, output_size, output_size,
@@ -975,7 +997,7 @@ class ShapemaskCoarsemaskHead(object):
           padding='same',
           name='coarse-class-%d' % i)(
               images)
-      images = batch_norm_relu(name='coarse-class-%d-bn' % i)(
+      images = norm_activation(name='coarse-class-%d-bn' % i)(
           images, is_training=is_training)
 
     return images
@@ -991,7 +1013,7 @@ class ShapemaskFinemaskHead(object):
                num_convs,
                coarse_mask_thr,
                gt_upsample_scale,
-               batch_norm_relu=nn_ops.BatchNormRelu):
+               norm_activation=nn_ops.norm_activation_builder()):
     """Initialize params to build ShapeMask coarse and fine prediction head.
 
     Args:
@@ -1002,7 +1024,7 @@ class ShapemaskFinemaskHead(object):
         layer.
       coarse_mask_thr: the threshold for suppressing noisy coarse prediction.
       gt_upsample_scale: scale for upsampling groundtruths.
-      batch_norm_relu: an operation that includes a batch normalization layer
+      norm_activation: an operation that includes a batch normalization layer
         followed by a relu layer(optional).
     """
     self._mask_num_classes = num_classes
@@ -1038,7 +1060,7 @@ class ShapemaskFinemaskHead(object):
               activation=None,
               padding='same',
               name='fine-class-%d' % i))
-      self._fine_class_bn.append(batch_norm_relu(name='fine-class-%d-bn' % i))
+      self._fine_class_bn.append(norm_activation(name='fine-class-%d-bn' % i))
 
   def __call__(self, prior_conditioned_features, class_probs, is_training=None):
     """Generate instance masks from FPN features and detection priors.

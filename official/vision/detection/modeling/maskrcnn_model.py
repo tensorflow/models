@@ -49,14 +49,16 @@ class MaskrcnnModel(base_model.Model):
     # Architecture generators.
     self._backbone_fn = factory.backbone_generator(params)
     self._fpn_fn = factory.multilevel_features_generator(params)
-    self._rpn_head_fn = factory.rpn_head_generator(params.rpn_head)
+    self._rpn_head_fn = factory.rpn_head_generator(params)
     self._generate_rois_fn = roi_ops.ROIGenerator(params.roi_proposal)
     self._sample_rois_fn = sampling_ops.ROISampler(params.roi_sampling)
-    self._sample_masks_fn = sampling_ops.MaskSampler(params.mask_sampling)
+    self._sample_masks_fn = sampling_ops.MaskSampler(
+        params.architecture.mask_target_size,
+        params.mask_sampling.num_mask_samples_per_image)
 
-    self._frcnn_head_fn = factory.fast_rcnn_head_generator(params.frcnn_head)
+    self._frcnn_head_fn = factory.fast_rcnn_head_generator(params)
     if self._include_mask:
-      self._mrcnn_head_fn = factory.mask_rcnn_head_generator(params.mrcnn_head)
+      self._mrcnn_head_fn = factory.mask_rcnn_head_generator(params)
 
     # Loss function.
     self._rpn_score_loss_fn = losses.RpnScoreLoss(params.rpn_score_loss)
@@ -91,8 +93,8 @@ class MaskrcnnModel(base_model.Model):
             tf.nest.map_structure(lambda x: tf.cast(x, tf.float32),
                                   rpn_box_outputs),
     })
-    input_anchor = anchor.Anchor(self._params.anchor.min_level,
-                                 self._params.anchor.max_level,
+    input_anchor = anchor.Anchor(self._params.architecture.min_level,
+                                 self._params.architecture.max_level,
                                  self._params.anchor.num_scales,
                                  self._params.anchor.aspect_ratios,
                                  self._params.anchor.anchor_size,
