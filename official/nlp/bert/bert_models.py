@@ -212,6 +212,7 @@ def pretrain_model(bert_config,
         stddev=bert_config.initializer_range)
   pretrainer_model = models.BertPretrainer(
       network=transformer_encoder,
+      embedding_table=transformer_encoder.get_embedding_table(),
       num_classes=2,  # The next sentence prediction label has two classes.
       num_token_predictions=max_predictions_per_seq,
       initializer=initializer,
