@@ -96,6 +96,11 @@ def _get_classifier_parameters(
               'enable_time_history': True,
           },
       },
+      'model': {
+          'loss': {
+              'label_smoothing': 0.1,
+          },
+      },
       'evaluation': {
           'epochs_between_evals': epochs_between_evals,
           'skip_eval': skip_eval,
