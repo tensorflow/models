@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 from absl import app
 from absl import flags
 from absl import logging
@@ -81,8 +82,8 @@ def get_num_train_iterations(flags_obj):
     train_steps = min(flags_obj.train_steps, train_steps)
     train_epochs = 1
 
-  eval_steps = (
-      imagenet_preprocessing.NUM_IMAGES['validation'] // flags_obj.batch_size)
+  eval_steps = math.ceil(1.0 * imagenet_preprocessing.NUM_IMAGES['validation'] /
+                         flags_obj.batch_size)
 
   return train_steps, train_epochs, eval_steps
 

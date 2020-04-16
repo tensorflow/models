@@ -101,15 +101,16 @@ def get_image_size_from_model(
 def _get_dataset_builders(params: base_configs.ExperimentConfig,
                           strategy: tf.distribute.Strategy,
                           one_hot: bool
-                         ) -> Tuple[Any, Any, Any]:
-  """Create and return train, validation, and test dataset builders."""
+                         ) -> Tuple[Any, Any]:
+  """Create and return train and validation dataset builders."""
   if one_hot:
     logging.warning('label_smoothing > 0, so datasets will be one hot encoded.')
   else:
     logging.warning('label_smoothing not applied, so datasets will not be one '
                     'hot encoded.')
 
-  num_devices = strategy.num_replicas_in_sync
+  num_devices = strategy.num_replicas_in_sync if strategy else 1
+
   image_size = get_image_size_from_model(params)
 
   dataset_configs = [
@@ -309,7 +310,8 @@ def train_and_eval(
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
-  logging.info('Detected %d devices.', strategy.num_replicas_in_sync)
+  logging.info('Detected %d devices.',
+               strategy.num_replicas_in_sync if strategy else 1)
 
   label_smoothing = params.model.loss.label_smoothing
   one_hot = label_smoothing and label_smoothing > 0

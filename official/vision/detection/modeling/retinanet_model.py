@@ -44,16 +44,19 @@ class RetinanetModel(base_model.Model):
     # Architecture generators.
     self._backbone_fn = factory.backbone_generator(params)
     self._fpn_fn = factory.multilevel_features_generator(params)
-    self._head_fn = factory.retinanet_head_generator(params.retinanet_head)
+    self._head_fn = factory.retinanet_head_generator(params)
 
     # Loss function.
-    self._cls_loss_fn = losses.RetinanetClassLoss(params.retinanet_loss)
+    self._cls_loss_fn = losses.RetinanetClassLoss(
+        params.retinanet_loss, params.architecture.num_classes)
     self._box_loss_fn = losses.RetinanetBoxLoss(params.retinanet_loss)
     self._box_loss_weight = params.retinanet_loss.box_loss_weight
     self._keras_model = None
 
     # Predict function.
     self._generate_detections_fn = postprocess_ops.MultilevelDetectionGenerator(
+        params.architecture.min_level,
+        params.architecture.max_level,
         params.postprocess)
 
     self._transpose_input = params.train.transpose_input

@@ -294,10 +294,10 @@ def _generate_detections_batched(boxes,
 class MultilevelDetectionGenerator(object):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
-  def __init__(self, params):
+  def __init__(self, min_level, max_level, params):
+    self._min_level = min_level
+    self._max_level = max_level
     self._generate_detections = generate_detections_factory(params)
-    self._min_level = params.min_level
-    self._max_level = params.max_level
 
   def __call__(self, box_outputs, class_outputs, anchor_boxes, image_shape):
     # Collects outputs from all levels into a list.
