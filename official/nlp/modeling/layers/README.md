@@ -17,6 +17,9 @@ for auto-agressive decoding.
 * [Transformer](transformer.py) implements an optionally masked transformer as
 described in ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
 
+* [ReZeroTransformer](rezero_transformer.py) implements Transformer with ReZero
+described in ["ReZero is All You Need: Fast Convergence at Large Depth"](https://arxiv.org/abs/2003.04887).
+
 * [OnDeviceEmbedding](on_device_embedding.py) implements efficient embedding lookups designed for TPU-based models.
 
 * [PositionalEmbedding](position_embedding.py) creates a positional embedding
