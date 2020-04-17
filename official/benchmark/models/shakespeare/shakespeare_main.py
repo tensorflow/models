@@ -47,7 +47,6 @@ def define_flags():
                          epochs_between_evals=False,
                          stop_threshold=False,
                          num_gpu=True,
-                         hooks=False,
                          export_dir=False,
                          run_eagerly=True,
                          distribution_strategy=True)

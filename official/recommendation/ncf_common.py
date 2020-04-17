@@ -149,7 +149,7 @@ def define_ncf_flags():
   flags_core.define_base(model_dir=True, clean=True, train_epochs=True,
                          epochs_between_evals=True, export_dir=False,
                          run_eagerly=True, stop_threshold=True, num_gpu=True,
-                         hooks=True, distribution_strategy=True)
+                         distribution_strategy=True)
   flags_core.define_performance(
       synthetic_data=True,
       dtype=True,
@@ -168,7 +168,6 @@ def define_ncf_flags():
       data_dir="/tmp/movielens-data/",
       train_epochs=2,
       batch_size=99000,
-      hooks="ProfilerHook",
       tpu=None
   )
 

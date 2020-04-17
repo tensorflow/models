@@ -39,7 +39,6 @@ def define_common_bert_flags():
       stop_threshold=False,
       batch_size=False,
       num_gpu=True,
-      hooks=False,
       export_dir=False,
       distribution_strategy=True,
       run_eagerly=True)
