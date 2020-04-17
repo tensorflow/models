@@ -32,6 +32,7 @@ model:
       num_classes: 1000
       batch_norm: 'tpu'
       dtype: 'bfloat16'
+      activation: 'swish'
   optimizer:
     name: 'rmsprop'
     momentum: 0.9
