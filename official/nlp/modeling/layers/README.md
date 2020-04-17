@@ -14,6 +14,9 @@ If `from_tensor` and `to_tensor` are the same, then this is self-attention.
 * [CachedAttention](attention.py) implements an attention layer with cache used
 for auto-agressive decoding.
 
+* [TalkingHeadsAttention](talking_heads_attention.py) implements the talking
+heads attention, as decribed in ["Talking-Heads Attention"](https://arxiv.org/abs/2003.02436).
+
 * [Transformer](transformer.py) implements an optionally masked transformer as
 described in ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
 
