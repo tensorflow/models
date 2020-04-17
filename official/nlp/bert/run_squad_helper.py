@@ -88,6 +88,7 @@ def define_common_squad_flags():
       'another.')
 
   common_flags.define_common_bert_flags()
+  common_flags.define_gin_flags()
 
 
 FLAGS = flags.FLAGS
