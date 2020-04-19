@@ -1,0 +1,26 @@
+<annotation>
+	<folder>train</folder>
+	<filename>31.jpg</filename>
+	<path>C:/Users/alexs/OneDrive/Documents/GitHub/models/research/images/train/31.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1000</width>
+		<height>750</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>occupied</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>559</xmin>
+			<ymin>184</ymin>
+			<xmax>640</xmax>
+			<ymax>268</ymax>
+		</bndbox>
+	</object>
+</annotation>
