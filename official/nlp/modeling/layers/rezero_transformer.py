@@ -187,6 +187,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
             self._dropout_rate,
         "attention_dropout_rate":
             self._attention_dropout_rate,
+        "use_layer_norm":
+            self._use_layer_norm,
         "kernel_initializer":
             tf.keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
@@ -201,8 +203,6 @@ class ReZeroTransformer(tf.keras.layers.Layer):
             tf.keras.constraints.serialize(self._kernel_constraint),
         "bias_constraint":
             tf.keras.constraints.serialize(self._bias_constraint),
-        "use_layer_norm":
-            tf.keras.constraints.serialize(self._use_layer_norm)
     }
     base_config = super(ReZeroTransformer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
