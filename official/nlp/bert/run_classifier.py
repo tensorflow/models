@@ -86,7 +86,7 @@ def get_dataset_fn(input_file_pattern, max_seq_length, global_batch_size,
     batch_size = ctx.get_per_replica_batch_size(
         global_batch_size) if ctx else global_batch_size
     dataset = input_pipeline.create_classifier_dataset(
-        input_file_pattern,
+        tf.io.gfile.glob(input_file_pattern),
         max_seq_length,
         batch_size,
         is_training=is_training,

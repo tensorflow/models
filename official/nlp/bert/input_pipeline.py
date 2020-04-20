@@ -156,7 +156,6 @@ def create_classifier_dataset(file_path,
       'input_mask': tf.io.FixedLenFeature([seq_length], tf.int64),
       'segment_ids': tf.io.FixedLenFeature([seq_length], tf.int64),
       'label_ids': tf.io.FixedLenFeature([], tf.int64),
-      'is_real_example': tf.io.FixedLenFeature([], tf.int64),
   }
   dataset = single_file_dataset(file_path, name_to_features)
 
