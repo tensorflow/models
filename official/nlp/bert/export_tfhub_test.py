@@ -32,9 +32,10 @@ class ExportTfhubTest(tf.test.TestCase):
 
   def test_export_tfhub(self):
     # Exports a savedmodel for TF-Hub
+    hidden_size = 16
     bert_config = configs.BertConfig(
         vocab_size=100,
-        hidden_size=16,
+        hidden_size=hidden_size,
         intermediate_size=32,
         max_position_embeddings=128,
         num_attention_heads=2,
@@ -67,7 +68,8 @@ class ExportTfhubTest(tf.test.TestCase):
                                          hub_layer.trainable_weights):
       self.assertAllClose(source_weight.numpy(), hub_weight.numpy())
 
-    dummy_ids = np.zeros((2, 10), dtype=np.int32)
+    seq_length = 10
+    dummy_ids = np.zeros((2, seq_length), dtype=np.int32)
     hub_outputs = hub_layer([dummy_ids, dummy_ids, dummy_ids])
     source_outputs = bert_model([dummy_ids, dummy_ids, dummy_ids])
 
@@ -75,12 +77,22 @@ class ExportTfhubTest(tf.test.TestCase):
     # while the outputs of encoder is in reversed order, i.e.,
     # "sequence_output" and "pooled_output".
     encoder_outputs = reversed(encoder([dummy_ids, dummy_ids, dummy_ids]))
-    self.assertEqual(hub_outputs[0].shape, (2, 16))
-    self.assertEqual(hub_outputs[1].shape, (2, 10, 16))
+    self.assertEqual(hub_outputs[0].shape, (2, hidden_size))
+    self.assertEqual(hub_outputs[1].shape, (2, seq_length, hidden_size))
     for source_output, hub_output, encoder_output in zip(
         source_outputs, hub_outputs, encoder_outputs):
       self.assertAllClose(source_output.numpy(), hub_output.numpy())
       self.assertAllClose(source_output.numpy(), encoder_output.numpy())
+
+    # Test propagation of seq_length in shape inference.
+    input_word_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_mask = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    input_type_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
+    pooled_output, sequence_output = hub_layer(
+        [input_word_ids, input_mask, input_type_ids])
+    self.assertEqual(pooled_output.shape.as_list(), [None, hidden_size])
+    self.assertEqual(sequence_output.shape.as_list(),
+                     [None, seq_length, hidden_size])
 
 
 if __name__ == "__main__":
