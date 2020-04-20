@@ -207,7 +207,7 @@ class ModelConfig(base_config.Config):
 
   """
   name: str = None
-  model_params: Mapping[str, Any] = None
+  model_params: base_config.Config = None
   num_classes: int = None
   loss: LossConfig = None
   optimizer: OptimizerConfig = None

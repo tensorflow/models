@@ -22,6 +22,7 @@ from typing import Any, Mapping
 
 import dataclasses
 
+from official.modeling.hyperparams import base_config
 from official.vision.image_classification.configs import base_configs
 
 
@@ -38,12 +39,13 @@ class ResNetModelConfig(base_configs.ModelConfig):
   """Configuration for the ResNet model."""
   name: str = 'ResNet'
   num_classes: int = 1000
-  model_params: Mapping[str, Any] = dataclasses.field(default_factory=lambda: {
-      'num_classes': 1000,
-      'batch_size': None,
-      'use_l2_regularizer': True,
-      'rescale_inputs': False,
-  })
+  model_params: base_config.Config = dataclasses.field(
+      default_factory=lambda: {
+          'num_classes': 1000,
+          'batch_size': None,
+          'use_l2_regularizer': True,
+          'rescale_inputs': False,
+      })
   loss: base_configs.LossConfig = base_configs.LossConfig(
       name='sparse_categorical_crossentropy')
   optimizer: base_configs.OptimizerConfig = base_configs.OptimizerConfig(

@@ -187,8 +187,7 @@ def _get_params_from_flags(flags_obj: flags.FlagValues):
 
   for param in overriding_configs:
     logging.info('Overriding params: %s', param)
-    # Set is_strict to false because we can have dynamic dict parameters.
-    params = params_dict.override_params_dict(params, param, is_strict=False)
+    params = params_dict.override_params_dict(params, param, is_strict=True)
 
   params.validate()
   params.lock()
