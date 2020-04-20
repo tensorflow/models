@@ -122,7 +122,8 @@ class AlbertTransformerEncoder(network.Network):
     self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length)
+        max_sequence_length=max_sequence_length,
+        name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
 
     type_embeddings = (

@@ -146,7 +146,8 @@ class EncoderScaffold(network.Network):
       self._position_embedding_layer = layers.PositionEmbedding(
           initializer=embedding_cfg['initializer'],
           use_dynamic_slicing=True,
-          max_sequence_length=embedding_cfg['max_seq_length'])
+          max_sequence_length=embedding_cfg['max_seq_length'],
+          name='position_embedding')
       position_embeddings = self._position_embedding_layer(word_embeddings)
 
       type_embeddings = (
