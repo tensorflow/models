@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,32 +26,38 @@ from absl import flags
 
 import tensorflow as tf
 
-from official.vision.image_classification.resnet import imagenet_preprocessing
-from official.vision.image_classification.resnet import resnet_model
+from official.vision.image_classification.efficientnet import efficientnet_model
 
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string("model_name", None,
+                    "EfficientNet model name.")
 flags.DEFINE_string("model_path", None,
-                    "File path to TF model checkpoint or H5 file.")
+                    "File path to TF model checkpoint.")
 flags.DEFINE_string("export_path", None,
                     "TF-Hub SavedModel destination path to export.")
 
 
-def export_tfhub(model_path, hub_destination):
+def export_tfhub(model_path, hub_destination, model_name):
   """Restores a tf.keras.Model and saves for TF-Hub."""
-  model = resnet_model.resnet50(
-      num_classes=imagenet_preprocessing.NUM_CLASSES, rescale_inputs=True)
-  model.load_weights(model_path)
-  model.save(
-      os.path.join(hub_destination, "classification"), include_optimizer=False)
+  model = efficientnet_model.EfficientNet.from_name(model_name)
+  ckpt = tf.train.Checkpoint(model=model)
+  ckpt.restore(model_path).assert_existing_objects_matched()
 
-  # Extracts a sub-model to use pooling feature vector as model output.
-  image_input = model.get_layer(index=0).get_output_at(0)
-  feature_vector_output = model.get_layer(name="reduce_mean").get_output_at(0)
-  hub_model = tf.keras.Model(image_input, feature_vector_output)
-
+  image_input = tf.keras.layers.Input(
+      shape=(None, None, 3), name="image_input", dtype=tf.float32)
+  x = image_input * 255.0
+  ouputs = model(x)
+  hub_model = tf.keras.Model(image_input, ouputs)
   # Exports a SavedModel.
   hub_model.save(
+      os.path.join(hub_destination, "classification"), include_optimizer=False)
+
+  feature_vector_output = hub_model.get_layer(name="efficientnet").get_layer(
+      name="top_pool").get_output_at(0)
+  hub_model2 = tf.keras.Model(model.inputs, feature_vector_output)
+  # Exports a SavedModel.
+  hub_model2.save(
       os.path.join(hub_destination, "feature-vector"), include_optimizer=False)
 
 
@@ -59,7 +65,7 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
 
-  export_tfhub(FLAGS.model_path, FLAGS.export_path)
+  export_tfhub(FLAGS.model_path, FLAGS.export_path, FLAGS.model_name)
 
 
 if __name__ == "__main__":
