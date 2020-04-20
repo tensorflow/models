@@ -23,13 +23,13 @@ from absl import flags
 from absl import logging
 import numpy as np
 import tensorflow as tf
+from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_model
 from official.benchmark.models import synthetic_util
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-from official.vision.image_classification.resnet import cifar_preprocessing
 from official.vision.image_classification.resnet import common
 
 

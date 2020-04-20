@@ -24,10 +24,10 @@ import tensorflow as tf
 
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
+from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_main
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
-from official.vision.image_classification.resnet import cifar_preprocessing
 
 
 class KerasCifarTest(googletest.TestCase):
