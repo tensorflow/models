@@ -32,7 +32,6 @@ import tensorflow as tf
 from official.modeling import performance
 from official.modeling.hyperparams import params_dict
 from official.utils import hyperparams_flags
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.vision.image_classification import callbacks as custom_callbacks
@@ -316,7 +315,8 @@ def train_and_eval(
   one_hot = label_smoothing and label_smoothing > 0
 
   builders = _get_dataset_builders(params, strategy, one_hot)
-  datasets = [builder.build() if builder else None for builder in builders]
+  datasets = [builder.build(strategy)
+              if builder else None for builder in builders]
 
   # Unpack datasets and builders based on train/val/test splits
   train_builder, validation_builder = builders  # pylint: disable=unbalanced-tuple-unpacking
