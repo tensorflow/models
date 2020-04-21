@@ -608,25 +608,35 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
         loss_scale='dynamic',
         dataset_num_private_threads=48)
 
-  def benchmark_2x2_tpu_fp16(self):
-    """Test Keras model with 2x2 TPU, fp16."""
+  def benchmark_2x2_tpu_bf16(self):
+    """Test Keras model with 2x2 TPU, bf16."""
     self._setup()
     self._run_and_report_benchmark(
-        experiment_name='benchmark_2x2_tpu_fp16',
+        experiment_name='benchmark_2x2_tpu_bf16',
         dtype='bfloat16',
         num_tpus=8,
         distribution_strategy='tpu',
         per_replica_batch_size=128)
 
-  def benchmark_4x4_tpu_fp16(self):
-    """Test Keras model with 4x4 TPU, fp16."""
+  def benchmark_4x4_tpu_bf16(self):
+    """Test Keras model with 4x4 TPU, bf16."""
     self._setup()
     self._run_and_report_benchmark(
-        experiment_name='benchmark_4x4_tpu_fp16',
+        experiment_name='benchmark_4x4_tpu_bf16',
         dtype='bfloat16',
         num_tpus=32,
         distribution_strategy='tpu',
         per_replica_batch_size=128)
+
+  def benchmark_8x8_tpu_bf16(self):
+    """Test Keras model with 8x8 TPU, bf16."""
+    self._setup()
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_8x8_tpu_bf16',
+        dtype='bfloat16',
+        num_tpus=128,
+        distribution_strategy='tpu',
+        per_replica_batch_size=64)
 
   def fill_report_object(self, stats):
     super(Resnet50KerasClassifierBenchmarkBase, self).fill_report_object(
@@ -1031,24 +1041,34 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.datasets_num_private_threads = 48
     self._run_and_report_benchmark()
 
-  def benchmark_2x2_tpu_fp16(self):
-    """Test Keras model with 2x2 TPU, fp16."""
+  def benchmark_2x2_tpu_bf16(self):
+    """Test Keras model with 2x2 TPU, bf16."""
     self._setup()
 
     FLAGS.dtype = 'bf16'
     FLAGS.distribution_strategy = 'tpu'
-    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_fp16')
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_bf16')
     FLAGS.batch_size = 1024
     self._run_and_report_benchmark()
 
-  def benchmark_4x4_tpu_fp16(self):
-    """Test Keras model with 4x4 TPU, fp16."""
+  def benchmark_4x4_tpu_bf16(self):
+    """Test Keras model with 4x4 TPU, bf16."""
     self._setup()
 
     FLAGS.dtype = 'bf16'
     FLAGS.distribution_strategy = 'tpu'
-    FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_fp16')
+    FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_bf16')
     FLAGS.batch_size = 4096
+    self._run_and_report_benchmark()
+
+  def benchmark_8x8_tpu_bf16(self):
+    """Test Keras model with 8x8 TPU, bf16."""
+    self._setup()
+
+    FLAGS.dtype = 'bf16'
+    FLAGS.distribution_strategy = 'tpu'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8x8_tpu_bf16')
+    FLAGS.batch_size = 8192
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):

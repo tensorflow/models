@@ -163,7 +163,7 @@ def run(flags_obj):
   resnet_controller = controller.Controller(
       strategy,
       runnable.train,
-      runnable.evaluate,
+      runnable.evaluate if not flags_obj.skip_eval else None,
       global_step=runnable.global_step,
       steps_per_loop=steps_per_loop,
       train_steps=per_epoch_steps * train_epochs,

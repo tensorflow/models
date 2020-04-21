@@ -38,11 +38,10 @@ class CtlBenchmark(PerfZeroBenchmark):
   """Base benchmark class with methods to simplify testing."""
 
   def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
-    self.output_dir = output_dir
     self.default_flags = default_flags or {}
     self.flag_methods = flag_methods or {}
     super(CtlBenchmark, self).__init__(
-        output_dir=self.output_dir,
+        output_dir=output_dir,
         default_flags=self.default_flags,
         flag_methods=self.flag_methods)
 
@@ -186,9 +185,6 @@ class Resnet50CtlAccuracy(CtlBenchmark):
         log_steps=100,
         start_time_sec=start_time_sec)
 
-  def _get_model_dir(self, folder_name):
-    return os.path.join(self.output_dir, folder_name)
-
 
 class Resnet50CtlBenchmarkBase(CtlBenchmark):
   """Resnet50 benchmarks."""
@@ -207,16 +203,14 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     stats = resnet_ctl_imagenet_main.run(FLAGS)
     wall_time_sec = time.time() - start_time_sec
 
-    # Number of logged step time entries that are excluded in performance
-    # report. We keep results from last 100 batches in this case.
-    warmup = (FLAGS.train_steps - 100) // FLAGS.log_steps
-
+    # Warmup means the number of logged step time entries that are excluded in
+    # performance report. Default to exclude 1 FLAGS.log_steps time.
     super(Resnet50CtlBenchmarkBase, self)._report_benchmark(
         stats,
         wall_time_sec,
         total_batch_size=FLAGS.batch_size,
         log_steps=FLAGS.log_steps,
-        warmup=warmup,
+        warmup=1,
         start_time_sec=start_time_sec)
 
   def benchmark_1_gpu_no_dist_strat(self):
@@ -371,6 +365,41 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.dtype = 'fp16'
     FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
+  def _set_df_common(self):
+    FLAGS.steps_per_loop = 500
+    FLAGS.train_epochs = 2
+    FLAGS.train_steps = None
+    FLAGS.skip_eval = True
+    FLAGS.enable_eager = True
+    FLAGS.enable_tensorboard = False
+    FLAGS.distribution_strategy = 'tpu'
+    FLAGS.report_accuracy_metrics = False
+    FLAGS.log_steps = 50
+    FLAGS.single_l2_loss_op = True
+    FLAGS.use_tf_function = True
+    FLAGS.enable_checkpoint_and_export = False
+
+  def benchmark_2x2_tpu_bf16(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 1024
+    FLAGS.dtype = 'bf16'
+    self._run_and_report_benchmark()
+
+  def benchmark_4x4_tpu_bf16(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 4096
+    FLAGS.dtype = 'bf16'
+    self._run_and_report_benchmark()
+
+  def benchmark_8x16_tpu_bf16(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 8192
+    FLAGS.dtype = 'bf16'
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):
