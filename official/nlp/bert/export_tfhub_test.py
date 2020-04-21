@@ -84,6 +84,16 @@ class ExportTfhubTest(tf.test.TestCase):
       self.assertAllClose(source_output.numpy(), hub_output.numpy())
       self.assertAllClose(source_output.numpy(), encoder_output.numpy())
 
+    # Test that training=True makes a difference (activates dropout).
+    def _dropout_mean_stddev(training, num_runs=20):
+      input_ids = np.array([[14, 12, 42, 95, 99]], np.int32)
+      inputs = [input_ids, np.ones_like(input_ids), np.zeros_like(input_ids)]
+      outputs = np.concatenate(
+          [hub_layer(inputs, training=training)[0] for _ in range(num_runs)])
+      return np.mean(np.std(outputs, axis=0))
+    self.assertLess(_dropout_mean_stddev(training=False), 1e-6)
+    self.assertGreater(_dropout_mean_stddev(training=True), 1e-3)
+
     # Test propagation of seq_length in shape inference.
     input_word_ids = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
     input_mask = tf.keras.layers.Input(shape=(seq_length,), dtype=tf.int32)
