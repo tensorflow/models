@@ -67,7 +67,7 @@ def load_image_into_numpy_array(image):
 # If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
 PATH_TO_TEST_IMAGES_DIR = 'test_images'
 TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(i)) for i in range(1, 2) ]
-image_path= r'C:\Users\alexs\OneDrive\Documents\GitHub\models\research\object_detection\test_images\image1.jpg'
+image_path= r'C:\Users\alexs\OneDrive\Documents\GitHub\models\research\object_detection\test_images\one.jpg'
 image = Image.open(image_path)
 image2= Image.open(image_path)
 draw = ImageDraw.Draw(image2)
@@ -167,6 +167,10 @@ for row in range(1,len(coord)):
   #cv2.waitKey(0)
   #cv2.destroyAllWindows()
 print("Number of open spots:",empty,"Number of occupied spots: ", occupied)
+
+with open("Output.txt", "w") as text_file:
+    text_file.write("Number of open spots: %i Number of occupied spots: %i" % (empty, occupied))
+
 image2.show()
 image2.save("output.jpg") 
 
