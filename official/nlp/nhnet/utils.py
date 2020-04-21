@@ -40,7 +40,6 @@ def get_test_params(cls=nhnet_configs.BERT2BERTConfig):
 def encoder_common_layers(transformer_block):
   return [
       transformer_block._attention_layer,
-      transformer_block._attention_output_dense,
       transformer_block._attention_layer_norm,
       transformer_block._intermediate_dense, transformer_block._output_dense,
       transformer_block._output_layer_norm

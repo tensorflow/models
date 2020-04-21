@@ -102,7 +102,7 @@ class Transformer(tf.keras.layers.Layer):
 
     self._attention_layer = attention.MultiHeadAttention(
         num_heads=self._num_heads,
-        head_size=self._attention_head_size,
+        key_size=self._attention_head_size,
         dropout_rate=self._attention_dropout_rate,
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
@@ -112,17 +112,11 @@ class Transformer(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
         name="self_attention")
-    self._attention_output_dense = dense_einsum.DenseEinsum(
-        output_shape=hidden_size,
-        num_summed_dimensions=2,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="self_attention_output")
+    # TODO(hongkuny): Remove when checkpoint backward compatibility is resolved.
+    # pylint: disable=protected-access
+    self._attention_layer.build([input_tensor_shape])
+    self._attention_output_dense = self._attention_layer._output_dense
+
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
@@ -200,11 +194,7 @@ class Transformer(tf.keras.layers.Layer):
 
     attention_inputs = [input_tensor, input_tensor]
 
-    if attention_mask is not None:
-      attention_inputs.append(attention_mask)
-
-    attention_output = self._attention_layer(attention_inputs)
-    attention_output = self._attention_output_dense(attention_output)
+    attention_output = self._attention_layer(attention_inputs, attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = self._attention_layer_norm(input_tensor +
                                                   attention_output)

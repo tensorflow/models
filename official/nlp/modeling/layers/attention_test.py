@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -30,34 +31,44 @@ from official.nlp.modeling.layers import attention
 @keras_parameterized.run_all_keras_modes
 class MultiHeadAttentionTest(keras_parameterized.TestCase):
 
-  def test_non_masked_attention(self):
+  @parameterized.named_parameters(
+      ("key_value_same_proj", None, None, [40, 80]),
+      ("key_value_different_proj", 32, 60, [40, 60]),
+  )
+  def test_non_masked_attention(self, value_size, output_shape, output_dims):
     """Test that the attention layer can be created without a mask tensor."""
-    test_layer = attention.MultiHeadAttention(num_heads=12, head_size=64)
+    test_layer = attention.MultiHeadAttention(
+        num_heads=12,
+        key_size=64,
+        value_size=value_size,
+        output_shape=output_shape)
     # Create a 3-dimensional input (the first dimension is implicit).
-    from_tensor = tf.keras.Input(shape=(40, 80))
-    to_tensor = tf.keras.Input(shape=(20, 80))
-    output = test_layer([from_tensor, to_tensor])
-    self.assertEqual(output.shape.as_list(), [None, 40, 12, 64])
+    query = tf.keras.Input(shape=(40, 80))
+    value = tf.keras.Input(shape=(20, 80))
+    output = test_layer([query, value])
+    self.assertEqual(output.shape.as_list(), [None] + output_dims)
 
   def test_non_masked_self_attention(self):
     """Test with one input (self-attenntion) and no mask tensor."""
-    test_layer = attention.MultiHeadAttention(num_heads=12, head_size=64)
+    test_layer = attention.MultiHeadAttention(num_heads=12, key_size=64)
     # Create a 3-dimensional input (the first dimension is implicit).
-    from_tensor = tf.keras.Input(shape=(40, 80))
-    output = test_layer([from_tensor, from_tensor])
-    self.assertEqual(output.shape.as_list(), [None, 40, 12, 64])
+    query = tf.keras.Input(shape=(40, 80))
+    output = test_layer([query, query])
+    self.assertEqual(output.shape.as_list(), [None, 40, 80])
 
-  def test_masked_attention(self):
+  @parameterized.parameters(True, False)
+  def test_masked_attention(self, use_bias):
     """Test with a mask tensor."""
-    test_layer = attention.MultiHeadAttention(num_heads=2, head_size=2)
+    test_layer = attention.MultiHeadAttention(
+        num_heads=2, key_size=2, use_bias=use_bias)
     # Create a 3-dimensional input (the first dimension is implicit).
-    from_tensor = tf.keras.Input(shape=(4, 8))
-    to_tensor = tf.keras.Input(shape=(2, 8))
+    query = tf.keras.Input(shape=(4, 8))
+    value = tf.keras.Input(shape=(2, 8))
     mask_tensor = tf.keras.Input(shape=(4, 2))
-    output = test_layer([from_tensor, to_tensor, mask_tensor])
+    output = test_layer([query, value], mask_tensor)
 
     # Create a model containing the test layer.
-    model = tf.keras.Model([from_tensor, to_tensor, mask_tensor], output)
+    model = tf.keras.Model([query, value, mask_tensor], output)
 
     # Generate data for the input (non-mask) tensors.
     from_data = 10 * np.random.random_sample((3, 4, 8))
@@ -76,16 +87,28 @@ class MultiHeadAttentionTest(keras_parameterized.TestCase):
     # same.
     self.assertNotAllClose(masked_output_data, unmasked_output_data)
 
+    # Tests the layer with three inputs: Q, K, V.
+    key = tf.keras.Input(shape=(2, 8))
+    output = test_layer([query, value, key], mask_tensor)
+    model = tf.keras.Model([query, value, key, mask_tensor], output)
+
+    masked_output_data = model.predict([from_data, to_data, to_data, mask_data])
+    unmasked_output_data = model.predict(
+        [from_data, to_data, to_data, null_mask_data])
+    # Because one data is masked and one is not, the outputs should not be the
+    # same.
+    self.assertNotAllClose(masked_output_data, unmasked_output_data)
+
   def test_initializer(self):
     """Test with a specified initializer."""
     test_layer = attention.MultiHeadAttention(
         num_heads=12,
-        head_size=64,
+        key_size=64,
         kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
     # Create a 3-dimensional input (the first dimension is implicit).
-    from_tensor = tf.keras.Input(shape=(40, 80))
-    output = test_layer([from_tensor, from_tensor])
-    self.assertEqual(output.shape.as_list(), [None, 40, 12, 64])
+    query = tf.keras.Input(shape=(40, 80))
+    output = test_layer([query, query])
+    self.assertEqual(output.shape.as_list(), [None, 40, 80])
 
 
 def _create_cache(batch_size, init_decode_length, num_heads, head_size):
@@ -112,7 +135,7 @@ class CachedAttentionTest(keras_parameterized.TestCase):
     init_decode_length = 0
     # Directly tests the keras layer.
     cache = _create_cache(batch_size, init_decode_length, num_heads, head_size)
-    layer = attention.CachedAttention(num_heads=num_heads, head_size=head_size)
+    layer = attention.CachedAttention(num_heads=num_heads, key_size=head_size)
 
     # Generate data for the input (non-mask) tensors.
     from_data = tf.zeros((batch_size, from_seq_length, 8), dtype=np.float32)
@@ -121,12 +144,12 @@ class CachedAttentionTest(keras_parameterized.TestCase):
     mask_data = np.random.randint(
         2, size=(batch_size, from_seq_length, from_seq_length))
     masked_output_data, cache = layer([from_data, from_data, mask_data, cache])
-    self.assertEqual(masked_output_data.shape, (3, 4, 2, 2))
+    self.assertEqual(masked_output_data.shape, (3, 4, 8))
     self.assertEqual(cache["value"].shape, (3, 4, 2, 2))
 
     # Tests inputs without cache.
     masked_output_data, cache = layer([from_data, from_data, mask_data])
-    self.assertEqual(masked_output_data.shape, (3, 4, 2, 2))
+    self.assertEqual(masked_output_data.shape, (3, 4, 8))
     self.assertIsNone(cache)
 
   def test_padded_decode(self):
@@ -139,7 +162,7 @@ class CachedAttentionTest(keras_parameterized.TestCase):
 
     # Directly tests the keras layer.
     cache = _create_cache(batch_size, init_decode_length, num_heads, head_size)
-    layer = attention.CachedAttention(num_heads=num_heads, head_size=head_size)
+    layer = attention.CachedAttention(num_heads=num_heads, key_size=head_size)
 
     # Generate data for the input (non-mask) tensors.
     from_data = tf.zeros((batch_size, from_seq_length, 8), dtype=np.float32)
@@ -149,7 +172,7 @@ class CachedAttentionTest(keras_parameterized.TestCase):
     # Testing the invocation directly as Keras cannot consume inputs correctly.
     masked_output_data, cache = layer([from_data, from_data, mask_data, cache],
                                       decode_loop_step=decode_loop_step)
-    self.assertEqual(masked_output_data.shape, (3, 4, 2, 2))
+    self.assertEqual(masked_output_data.shape, (3, 4, 8))
     self.assertEqual(cache["value"].shape, (3, 4, 2, 2))
 
 

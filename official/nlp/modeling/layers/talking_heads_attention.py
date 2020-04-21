@@ -31,8 +31,10 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
 
   Arguments:
     num_heads: Number of attention heads.
-    head_size: Size of each attention head.
-    dropout: Dropout probability.
+    key_size: Size of each attention head.
+    dropout_rate: Dropout probability.
+    output_shape: The expected shape of an output tensor, besides the batch and
+      sequence dims. If not specified, projects back to the key feature dim.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -44,8 +46,9 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
 
   def __init__(self,
                num_heads,
-               head_size,
+               key_size,
                dropout_rate=0.0,
+               output_shape=None,
                kernel_initializer="glorot_uniform",
                bias_initializer="zeros",
                kernel_regularizer=None,
@@ -56,8 +59,9 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
                **kwargs):
     super(TalkingHeadsAttention, self).__init__(**kwargs)
     self._num_heads = num_heads
-    self._head_size = head_size
+    self._key_size = key_size
     self._dropout_rate = dropout_rate
+    self._output_shape = output_shape
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
     self._bias_initializer = tf.keras.initializers.get(bias_initializer)
     self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
@@ -66,7 +70,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
     self._bias_constraint = tf.keras.constraints.get(bias_constraint)
 
     self._query_dense = dense_einsum.DenseEinsum(
-        output_shape=(self._num_heads, self._head_size),
+        output_shape=(self._num_heads, self._key_size),
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -77,7 +81,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
         name="query")
 
     self._key_dense = dense_einsum.DenseEinsum(
-        output_shape=(self._num_heads, self._head_size),
+        output_shape=(self._num_heads, self._key_size),
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -88,7 +92,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
         name="key")
 
     self._value_dense = dense_einsum.DenseEinsum(
-        output_shape=(self._num_heads, self._head_size),
+        output_shape=(self._num_heads, self._key_size),
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -103,7 +107,22 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
     self._dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
 
   def build(self, input_shape):
-    super(TalkingHeadsAttention, self).build(input_shape)
+    if self._output_shape:
+      output_shape = self._output_shape
+    else:
+      input_shape = tf.TensorShape(input_shape[0])
+      output_shape = input_shape[-1]
+    self._output_dense = dense_einsum.DenseEinsum(
+        output_shape=output_shape,
+        num_summed_dimensions=2,
+        kernel_initializer=self._kernel_initializer,
+        bias_initializer=self._bias_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer,
+        activity_regularizer=self._activity_regularizer,
+        kernel_constraint=self._kernel_constraint,
+        bias_constraint=self._bias_constraint,
+        name="attention_output")
     self._pre_softmax_weight = self.add_weight(
         "pre_softmax_weight",
         shape=(self._num_heads, self._num_heads),
@@ -120,13 +139,14 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
         constraint=self._kernel_constraint,
         dtype=self.dtype,
         trainable=True)
+    super(TalkingHeadsAttention, self).build(input_shape)
 
   def get_config(self):
     config = {
         "num_heads":
             self._num_heads,
-        "head_size":
-            self._head_size,
+        "key_size":
+            self._key_size,
         "dropout_rate":
             self._dropout_rate,
         "kernel_initializer":
@@ -147,10 +167,9 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
     base_config = super(TalkingHeadsAttention, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self, inputs):
+  def call(self, inputs, attention_mask=None):
     from_tensor = inputs[0]
     to_tensor = inputs[1]
-    attention_mask = inputs[2] if len(inputs) == 3 else None
 
     # Scalar dimensions referenced here:
     #   B = batch size (number of sequences)
@@ -171,7 +190,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
     # attention scores.
     attention_scores = tf.einsum("BTNH,BFNH->BNFT", key_tensor, query_tensor)
     attention_scores = tf.multiply(attention_scores,
-                                   1.0 / math.sqrt(float(self._head_size)))
+                                   1.0 / math.sqrt(float(self._key_size)))
 
     # Apply talking heads before softmax.
     attention_scores = tf.einsum("BNFT,NL->BLFT", attention_scores,
@@ -190,4 +209,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
     attention_probs = self._dropout(attention_probs)
 
     # `context_layer` = [B, F, N, H]
-    return tf.einsum("BNFT,BTNH->BFNH", attention_probs, value_tensor)
+    attention_output = tf.einsum("BNFT,BTNH->BFNH", attention_probs,
+                                 value_tensor)
+    attention_output = self._output_dense(attention_output)
+    return attention_output

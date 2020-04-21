@@ -118,7 +118,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
       if self._attention_cfg is None:
         attention_cfg = {
             "num_heads": self._num_heads,
-            "head_size": self._attention_head_size,
+            "key_size": self._attention_head_size,
             "dropout_rate": self._attention_dropout_rate,
             "kernel_initializer": self._kernel_initializer,
             "bias_initializer": self._bias_initializer,
@@ -219,11 +219,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
     attention_inputs = [input_tensor, input_tensor]
 
-    if attention_mask is not None:
-      attention_inputs.append(attention_mask)
-
-    attention_output = self._attention_layer(attention_inputs)
-    attention_output = self._attention_output_dense(attention_output)
+    attention_output = self._attention_layer(attention_inputs, attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = self._attention_layer_norm(input_tensor +
                                                   attention_output)

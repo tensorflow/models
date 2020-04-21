@@ -33,31 +33,31 @@ class MultiHeadAttentionTest(keras_parameterized.TestCase):
   def test_non_masked_attention(self):
     """Test that the attention layer can be created without a mask tensor."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
-        num_heads=12, head_size=64)
+        num_heads=12, key_size=64)
     # Create a 3-dimensional input (the first dimension is implicit).
     from_tensor = tf.keras.Input(shape=(40, 80))
     to_tensor = tf.keras.Input(shape=(20, 80))
     output = test_layer([from_tensor, to_tensor])
-    self.assertEqual(output.shape.as_list(), [None, 40, 12, 64])
+    self.assertEqual(output.shape.as_list(), [None, 40, 80])
 
   def test_non_masked_self_attention(self):
     """Test with one input (self-attenntion) and no mask tensor."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
-        num_heads=12, head_size=64)
+        num_heads=12, key_size=64)
     # Create a 3-dimensional input (the first dimension is implicit).
     from_tensor = tf.keras.Input(shape=(40, 80))
     output = test_layer([from_tensor, from_tensor])
-    self.assertEqual(output.shape.as_list(), [None, 40, 12, 64])
+    self.assertEqual(output.shape.as_list(), [None, 40, 80])
 
   def test_masked_attention(self):
     """Test with a mask tensor."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
-        num_heads=2, head_size=2)
+        num_heads=2, key_size=2)
     # Create a 3-dimensional input (the first dimension is implicit).
     from_tensor = tf.keras.Input(shape=(4, 8))
     to_tensor = tf.keras.Input(shape=(2, 8))
     mask_tensor = tf.keras.Input(shape=(4, 2))
-    output = test_layer([from_tensor, to_tensor, mask_tensor])
+    output = test_layer([from_tensor, to_tensor], mask_tensor)
 
     # Create a model containing the test layer.
     model = tf.keras.Model([from_tensor, to_tensor, mask_tensor], output)
@@ -83,12 +83,12 @@ class MultiHeadAttentionTest(keras_parameterized.TestCase):
     """Test with a specified initializer."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
         num_heads=12,
-        head_size=64,
+        key_size=64,
         kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
     # Create a 3-dimensional input (the first dimension is implicit).
     from_tensor = tf.keras.Input(shape=(40, 80))
     output = test_layer([from_tensor, from_tensor])
-    self.assertEqual(output.shape.as_list(), [None, 40, 12, 64])
+    self.assertEqual(output.shape.as_list(), [None, 40, 80])
 
 
 if __name__ == "__main__":
